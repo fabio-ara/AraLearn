@@ -58,6 +58,17 @@ function resolveLocalReference(document, reference) {
   }, document);
 }
 
+function resolveSchema(document, schema) {
+  const visited = new Set();
+  let resolved = schema;
+  while (typeof resolved?.$ref === "string") {
+    assert.equal(visited.has(resolved.$ref), false, `Referência circular: ${resolved.$ref}`);
+    visited.add(resolved.$ref);
+    resolved = resolveLocalReference(document, resolved.$ref);
+  }
+  return resolved;
+}
+
 function directBranchLiterals(schema, property) {
   return sorted((schema.oneOf || []).flatMap((branch) => {
     const marker = branch.properties?.[property];
@@ -286,7 +297,7 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
     ["auditCommand", "auditCommandTypes"],
     ["variantCommand", "variantCommandTypes"]
   ]) {
-    const command = change.properties[field];
+    const command = resolveSchema(openApi, change.properties[field]);
     assert.equal(command.type, "object", field);
     assert.ok(command.required.includes("type"), `${field}.type obrigatório`);
     assert.equal(command.properties.type.type, "string", `${field}.type`);
@@ -301,31 +312,39 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
       field
     );
   }
+  const planCommand = resolveSchema(openApi, change.properties.planCommand);
+  const materializationCommand = resolveSchema(
+    openApi,
+    change.properties.materializationCommand
+  );
   assert.deepEqual(
-    sorted(change.properties.materializationCommand.properties.operation.enum),
+    sorted(materializationCommand.properties.operation.enum),
     sorted(AUTHORING_PROTOCOL_V1_VOCABULARY.materializationOperations)
   );
   assert.match(change.properties.expectedRevision.description, /update_instructional_plan/u);
   assert.match(change.properties.expectedPlanVersion.description, /update_instructional_plan/u);
-  assert.match(change.properties.planCommand.description, /update_instructional_plan/u);
+  assert.match(planCommand.description, /update_instructional_plan/u);
   for (const field of ["id", "position", "title", "intent"]) {
     assert.doesNotMatch(
-      change.properties.planCommand.properties[field].description,
+      planCommand.properties[field].description,
       /add_part/u,
       `${field} genérico não anuncia a operação dedicada removida`
     );
   }
-  const addPart = openApi.paths["/add_part"].post.requestBody
-    .content["application/json"].schema.properties.planCommand;
+  const addPart = resolveSchema(
+    openApi,
+    openApi.paths["/add_part"].post.requestBody
+      .content["application/json"].schema.properties.planCommand
+  );
   assert.equal(addPart.properties.id, undefined);
   assert.deepEqual(addPart.properties.type.enum, ["add_part"]);
   assert.equal(addPart.properties.position.maximum, 63);
   assert.match(addPart.properties.position.description, /zero-based.*primeira Parte/iu);
   assert.deepEqual(
-    sorted(change.properties.designCommand.properties.mode.enum),
+    sorted(resolveSchema(openApi, change.properties.designCommand).properties.mode.enum),
     ["automatic", "explicit"]
   );
-  const design = change.properties.designCommand.properties;
+  const design = resolveSchema(openApi, change.properties.designCommand).properties;
   assert.match(
     design.value.description,
     /Formato em [^.]*parameterId=new_analysis_unit_ceiling[^.]*: inteiro \(mínimo 1, máximo 64\)\./iu
@@ -376,7 +395,10 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
     );
   }
   assert.match(read.properties.targetStudyUnitId.description, /view=audit_cycle, mode=context/iu);
-  const materialization = change.properties.materializationCommand.properties;
+  const materialization = resolveSchema(
+    openApi,
+    change.properties.materializationCommand
+  ).properties;
   assert.equal(materialization.materializationId.type, "string");
   assert.equal(materialization.materializationId.anyOf, undefined);
   assert.match(
@@ -439,10 +461,17 @@ test("OpenAPI final resolve referências pela raiz e usa components.schemas", as
       .filter((name) => name.startsWith("AlterarCurso"))
       .sort(),
     [
+      "AlterarCursoAnnotationCommand",
+      "AlterarCursoAuditCommand",
       "AlterarCursoCourseEntity",
       "AlterarCursoCourseEntityDelete",
+      "AlterarCursoDesignCommand",
+      "AlterarCursoMaterializationCommand",
+      "AlterarCursoPlanCommand",
       "AlterarCursoSourceAttributionApplications",
-      "AlterarCursoSourceLinks"
+      "AlterarCursoSourceCommand",
+      "AlterarCursoSourceLinks",
+      "AlterarCursoVariantCommand"
     ]
   );
 
@@ -470,8 +499,11 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
   addFormats(ajv);
   const documentId = "urn:aralearn:chatgpt-action-plan-items";
   ajv.addSchema(openApi, documentId);
-  const genericSchema = openApi.paths["/alterarCurso"].post.requestBody
-    .content["application/json"].schema.properties.planCommand;
+  const genericSchema = resolveSchema(
+    openApi,
+    openApi.paths["/alterarCurso"].post.requestBody
+      .content["application/json"].schema.properties.planCommand
+  );
   const dedicatedTypes = AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
     .map(({ commandType }) => commandType);
   const genericTypes = genericSchema.properties.type.enum;
@@ -494,8 +526,11 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
   assert.equal(genericSchema.anyOf, undefined);
   assert.equal(genericSchema.oneOf, undefined);
   assert.equal(
-    openApi.paths["/alterarCurso"].post.requestBody.content["application/json"]
-      .schema.properties.sourceCommand.properties.type.enum.includes("attach_pdf"),
+    resolveSchema(
+      openApi,
+      openApi.paths["/alterarCurso"].post.requestBody.content["application/json"]
+        .schema.properties.sourceCommand
+    ).properties.type.enum.includes("attach_pdf"),
     false,
     "Actions não deve oferecer o comando que pressupõe metadados internos de Storage."
   );
@@ -531,12 +566,13 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
       );
     }
     assert.deepEqual(schema.properties.operation.enum, [projection.operation]);
+    const planCommand = resolveSchema(openApi, schema.properties.planCommand);
     assert.deepEqual(
-      schema.properties.planCommand.properties.type.enum,
+      planCommand.properties.type.enum,
       [projection.commandType]
     );
     assert.equal(schema.additionalProperties, false);
-    assert.equal(schema.properties.planCommand.additionalProperties, false);
+    assert.equal(planCommand.additionalProperties, false);
     const projectedCanonicalPlanCommand = actionByName.alterarCurso.inputSchema
       .properties.planCommand;
     const canonicalVariant = projectedCanonicalPlanCommand.oneOf.find(
@@ -547,7 +583,7 @@ test("OpenAPI final especializa os comandos de item do plano sem unions condicio
     );
     const generatedIdentityFields = new Set(projection.generatedIdentityFields || []);
     assert.deepEqual(
-      sorted(Object.keys(schema.properties.planCommand.properties)),
+      sorted(Object.keys(planCommand.properties)),
       sorted(Object.keys(projectedCanonicalPlanCommand.properties)
         .filter((name) =>
           !forbiddenProperties.has(name) && !generatedIdentityFields.has(name)

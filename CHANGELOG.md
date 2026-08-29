@@ -4,6 +4,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.45] - 2026-08-29
+
+### Corrigido
+
+- a projeção OpenAPI de Actions permanece completa quando o editor do GPT
+  expande o documento importado, preservando as nove operações até `add_part`;
+- a validação de release passa a rejeitar o OpenAPI antes que sua representação
+  formatada alcance o limite do editor.
+
 ## [0.0.44] - 2026-08-29
 
 ### Alterado

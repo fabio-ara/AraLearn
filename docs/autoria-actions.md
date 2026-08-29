@@ -103,7 +103,7 @@ conta. Uma conta pode manter até 25 integrações vinculadas e ativas.
 A [configuração oficial de OAuth para Actions](https://developers.openai.com/api/docs/actions/authentication)
 pede os mesmos campos devolvidos pelo AraLearn. No editor do GPT:
 
-1. importe
+1. em **Importar de URL**, use
    [`aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml);
 2. escolha OAuth na autenticação da Action;
 3. informe `client_id`, `client_secret`, URL de autorização, URL de token e o
@@ -347,6 +347,13 @@ OpenAI injetado, e atravessa executor, RLS, PostgreSQL e Storage antes de reabri
 o Curso por título em outro cliente. O smoke no GPT continua necessário para
 comprovar a configuração externa salva, a discovery apresentada ao modelo e a
 referência temporária emitida pelo ChatGPT.
+
+O editor expande o documento importado antes de salvá-lo e limita o campo de
+schema. Por isso, a geração também valida o tamanho da representação formatada,
+não apenas o arquivo minificado. Depois da importação, a tabela **Ações
+disponíveis** precisa mostrar as seis operações canônicas e as três projeções
+dedicadas, terminando em `add_part`; ausência de uma operação indica importação
+incompleta e impede o smoke.
 
 Se a importação divergir, regenere o documento com `npm run actions:openapi` e
 revise o diff. Se a conexão falhar antes do consentimento, confronte
