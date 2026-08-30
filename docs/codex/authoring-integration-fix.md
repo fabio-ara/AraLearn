@@ -512,7 +512,7 @@ publicado. A conclusão exige todos os itens aplicáveis marcados.
 - [x] Push e integração/merge foram concluídos.
 - [x] MCP, Action, Pages/OpenAPI e demais superfícies necessárias foram implantados.
 - [x] Ambiente publicado corresponde aos fingerprints e artefatos esperados.
-- [x] Fluxo real ChatGPT → Action/MCP → AraLearn → releitura funciona de ponta a ponta.
+- [x] Fluxos reais não-PDF ChatGPT → Action/MCP → AraLearn → releitura funcionam de ponta a ponta; o PDF não fez parte deste aceite histórico.
 - [x] OpenAPI final exige os campos estruturais de `add_plan_item` após a projeção para o importador.
 - [x] Payload inválido de item do plano devolve erro público e nunca `internal_error`.
 - [x] Os três tipos de item são escritos e relidos por Action em fixture descartável publicada.

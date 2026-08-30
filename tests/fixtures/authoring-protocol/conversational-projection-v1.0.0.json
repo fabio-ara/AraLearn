@@ -1,0 +1,36 @@
+{
+  "id": "aralearn.authoring-conversational-projection.v1",
+  "version": "1.0.0",
+  "hash": "sha256:bfe3d643f6fa201889da1d20649d085c9ee9d8b15f7c0b156d1a6862ac81e543",
+  "pdfSource": {
+    "modes": ["existing", "create", "revise"],
+    "creationProperty": "newSource",
+    "creationFields": [
+      "title",
+      "authorship",
+      "publicationDate",
+      "identifier",
+      "language",
+      "citationText",
+      "url",
+      "editionOrVersion"
+    ],
+    "creationRequired": ["title"],
+    "revisionProperty": "revisedSource",
+    "revisionRequired": [
+      "kind",
+      "title",
+      "authorship",
+      "publicationDate",
+      "identifier",
+      "language",
+      "citationText",
+      "url",
+      "editionOrVersion",
+      "origin",
+      "availability",
+      "verificationStatus",
+      "studyVisibility"
+    ]
+  }
+}

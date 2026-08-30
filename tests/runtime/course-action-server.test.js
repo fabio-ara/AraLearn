@@ -16,6 +16,12 @@ import {
   AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
 import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_ID,
+  AUTHORING_CONVERSATIONAL_PROJECTION_VERSION
+} from "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
   applyCourseAuthoringPlanCommand
 } from "../../supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringPlan.js";
 import { AuthoringApiError } from
@@ -121,6 +127,10 @@ test("Actions lista Cursos pelo canal HTTP e pelo principal opaco próprio", asy
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("access-control-allow-origin"), ORIGIN);
+  assert.equal(
+    response.headers.get("x-aralearn-authoring-projection"),
+    AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
+  );
   const payload = await response.json();
   assert.equal(payload.ok, true);
   assert.equal(payload.data.items[0].title, "Curso corrente");
@@ -649,10 +659,7 @@ test("Actions converte o PDF e completa metadados conservadores de uma Fonte nov
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "save",
-      sourceId: null,
-      expectedSourceRevision: 0,
-      source: { title: "Edital Dataprev 2026" }
+      newSource: { title: "Edital Dataprev 2026" }
     },
     openaiFileIdRefs: [{
       name: "edital-sintetico.pdf",
@@ -708,6 +715,120 @@ test("Actions converte o PDF e completa metadados conservadores de uma Fonte nov
   assert.equal(JSON.stringify(payload).includes(fileId), false);
 });
 
+test("Actions preserva o payload rico 1.x de uma conversa em cache", async () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  const source = {
+    kind: "document",
+    title: "Edital Dataprev 2026",
+    authorship: null,
+    publicationDate: null,
+    identifier: null,
+    language: null,
+    citationText: null,
+    url: null,
+    editionOrVersion: null,
+    origin: "author_provided",
+    availability: "unknown",
+    verificationStatus: "unverified",
+    studyVisibility: "hidden"
+  };
+  let ingestion = null;
+  const response = await createHandler({
+    async fetchImpl() {
+      return new Response(pdfBytes, {
+        headers: { "content-type": "application/pdf" }
+      });
+    },
+    async ingestCourseSourcePdf(value) {
+      ingestion = value;
+      return {
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 5,
+        requestId: value.requestId,
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "fonte-legada", revision: 1 },
+        source: {
+          sourceId: "fonte-legada",
+          sourceRevision: 1,
+          bibliographyChanged: true
+        },
+        attachment: {
+          contentHash: "d".repeat(64),
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath: `${ACTOR_ID}/${"d".repeat(64)}.pdf`
+        },
+        stored: true
+      };
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-legacy-save-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      mode: "save",
+      sourceId: null,
+      expectedSourceRevision: 0,
+      source
+    },
+    openaiFileIdRefs: [{
+      name: "edital-legado.pdf",
+      id: "file-legacy-save",
+      mime_type: "application/pdf",
+      download_link: "https://files.oaiusercontent.com/legacy.pdf?sig=temporary"
+    }]
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200, JSON.stringify(payload));
+  assert.deepEqual(ingestion.sourceIntent, {
+    mode: "save",
+    sourceId: null,
+    expectedSourceRevision: 0,
+    source
+  });
+});
+
+test("Actions rejeita estados operacionais na criação antes do download", async () => {
+  let downloads = 0;
+  let ingestions = 0;
+  const response = await createHandler({
+    async fetchImpl() {
+      downloads += 1;
+      assert.fail("Uma Fonte inválida não pode iniciar download.");
+    },
+    async ingestCourseSourcePdf() {
+      ingestions += 1;
+      assert.fail("Uma Fonte inválida não pode iniciar persistência.");
+    }
+  })(request("incorporarPdfComoFonte", {
+    requestId: "action-pdf-managed-state-0001",
+    courseId: ACTOR_ID,
+    expectedRevision: 4,
+    sourceIntent: {
+      newSource: {
+        title: "Edital Dataprev 2026",
+        studyVisibility: "citation",
+        verificationStatus: "author_verified"
+      }
+    },
+    openaiFileIdRefs: [{
+      name: "edital.pdf",
+      id: "file-invalid-source",
+      mime_type: "application/pdf",
+      download_link: "https://files.oaiusercontent.com/edital.pdf?sig=temporary"
+    }]
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 422);
+  assert.equal(payload.error.code, "invalid_course_source_pdf_ingestion");
+  assert.equal(downloads, 0);
+  assert.equal(ingestions, 0);
+});
+
 test("Actions recupera ingestão confirmada antes de acessar uma URL temporária expirada", async () => {
   const downloadLink =
     "https://files.oaiusercontent.com/edital.pdf?sig=expirado-e-nao-reutilizavel";
@@ -754,9 +875,10 @@ test("Actions recupera ingestão confirmada antes de acessar uma URL temporária
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "existing",
-      sourceId: "fonte-edital",
-      sourceRevision: 1
+      existingSource: {
+        sourceId: "fonte-edital",
+        sourceRevision: 1
+      }
     },
     openaiFileIdRefs: [{
       name: "edital-dataprev-2026.pdf",
@@ -808,9 +930,10 @@ test("Actions distingue ausência, quantidade e referência de arquivo malformad
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "existing",
-      sourceId: "fonte-edital",
-      sourceRevision: 1
+      existingSource: {
+        sourceId: "fonte-edital",
+        sourceRevision: 1
+      }
     }
   };
   const validReference = {
@@ -931,9 +1054,10 @@ test("Actions distingue tipo inválido de acesso temporário expirado", async ()
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "existing",
-      sourceId: "fonte-edital",
-      sourceRevision: 1
+      existingSource: {
+        sourceId: "fonte-edital",
+        sourceRevision: 1
+      }
     }
   };
   let downloads = 0;
@@ -1002,9 +1126,10 @@ test("Actions relata falha de transferência sem sucesso nem vazamento da refer�
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "existing",
-      sourceId: "fonte-edital",
-      sourceRevision: 1
+      existingSource: {
+        sourceId: "fonte-edital",
+        sourceRevision: 1
+      }
     },
     openaiFileIdRefs: [{
       name: "edital.pdf",
@@ -1052,9 +1177,10 @@ test("Actions explica a cota de PDFs sem afirmar persistência", async () => {
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "existing",
-      sourceId: "fonte-edital",
-      sourceRevision: 1
+      existingSource: {
+        sourceId: "fonte-edital",
+        sourceRevision: 1
+      }
     },
     openaiFileIdRefs: [{
       name: "edital.pdf",
@@ -1108,9 +1234,10 @@ test("Actions não narra sucesso quando a ingestão não confirma stored true", 
     courseId: ACTOR_ID,
     expectedRevision: 4,
     sourceIntent: {
-      mode: "existing",
-      sourceId: "fonte-edital",
-      sourceRevision: 1
+      existingSource: {
+        sourceId: "fonte-edital",
+        sourceRevision: 1
+      }
     },
     openaiFileIdRefs: [{
       name: "edital.pdf",
@@ -1270,6 +1397,18 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
   assert.equal(
     openApi.info["x-aralearn-contract-fingerprint"],
     AUTHORING_PROTOCOL_V1_SCHEMA_HASH
+  );
+  assert.equal(
+    openApi.info["x-aralearn-conversational-projection"],
+    AUTHORING_CONVERSATIONAL_PROJECTION_ID
+  );
+  assert.equal(
+    openApi.info["x-aralearn-conversational-projection-version"],
+    AUTHORING_CONVERSATIONAL_PROJECTION_VERSION
+  );
+  assert.equal(
+    openApi.info["x-aralearn-conversational-projection-fingerprint"],
+    AUTHORING_CONVERSATIONAL_PROJECTION_HASH
   );
   const inputSchemas = Object.values(openApi.paths).map(
     ({ post }) => post.requestBody.content["application/json"].schema

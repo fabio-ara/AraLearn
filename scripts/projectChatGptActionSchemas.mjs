@@ -1,3 +1,6 @@
+import { projectConversationalPdfSourceTool } from
+  "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+
 function literalType(value) {
   if (value === null) return "null";
   if (typeof value === "number") return Number.isInteger(value) ? "integer" : "number";
@@ -1164,10 +1167,15 @@ function variantFieldDescription(branches, property, discriminator) {
   if (!allowed.length) return null;
   const format = (values) => [...values].map((value) => `\`${value}\``).join(", ");
   const details = [];
-  if (!allowedEverywhere) {
+  const requiredMatchesAllowed = allowed.length === required.length &&
+    allowed.every((condition) => required.includes(condition));
+  if (!allowedEverywhere && required.length && !requiredEverywhere &&
+      requiredMatchesAllowed) {
+    details.push(`Use somente e obrigatoriamente em ${format(allowed)}.`);
+  } else if (!allowedEverywhere) {
     details.push(`Use somente em ${format(allowed)}.`);
   }
-  if (required.length && !requiredEverywhere) {
+  if (required.length && !requiredEverywhere && !requiredMatchesAllowed) {
     details.push(`Obrigatório em ${format(required)}.`);
   }
   details.push(...exclusiveRequiredAlternativeDescriptions(
@@ -1427,22 +1435,55 @@ function projectChatGptActionFileInput(toolName, inputSchema) {
     );
   }
   const sourceIntent = projected.properties?.sourceIntent;
-  if (!object(sourceIntent) || !object(sourceIntent.properties?.sourceId) ||
-      !object(sourceIntent.properties?.expectedSourceRevision)) {
+  if (!object(sourceIntent) || !object(sourceIntent.properties?.newSource) ||
+      !object(sourceIntent.properties?.revisedSource)) {
     throw new TypeError(
-      "incorporarPdfComoFonte perdeu os controles de identidade da Fonte."
+      "incorporarPdfComoFonte perdeu as formas distintas de criação e revisão da Fonte."
     );
   }
-  sourceIntent.anyOf = [{
-    properties: { sourceId: { type: "string" } },
-    required: ["sourceId"]
-  }, {
+  const transportField = (name) => {
+    const schema = structuredClone(sourceIntent.properties[name]);
+    delete schema.description;
+    return schema;
+  };
+  const newSource = transportField("newSource");
+  newSource.description =
+    "Crie uma Fonte com título e somente os metadados bibliográficos confirmados no PDF.";
+  const revisedSourceDocument = transportField("revisedSource");
+  revisedSourceDocument.description =
+    "Documento completo da Fonte relida, preservando seus estados correntes.";
+  projected.properties.sourceIntent = {
+    type: "object",
+    additionalProperties: false,
+    minProperties: 1,
+    maxProperties: 1,
     properties: {
-      sourceId: { type: "null" },
-      expectedSourceRevision: { type: "integer", enum: [0] }
+      existingSource: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          sourceId: transportField("sourceId"),
+          sourceRevision: transportField("sourceRevision")
+        },
+        required: ["sourceId", "sourceRevision"],
+        description: "Anexe o PDF a uma Fonte já relida, sem alterar sua bibliografia."
+      },
+      newSource,
+      revisedSource: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          sourceId: transportField("sourceId"),
+          expectedSourceRevision: transportField("expectedSourceRevision"),
+          source: revisedSourceDocument
+        },
+        required: ["sourceId", "expectedSourceRevision", "source"],
+        description: "Anexe o PDF e grave uma revisão bibliográfica completa da Fonte relida."
+      }
     },
-    required: ["sourceId", "expectedSourceRevision"]
-  }];
+    description:
+      "Envie exatamente um de existingSource, newSource ou revisedSource."
+  };
   delete projected.properties.pdf;
   projected.properties.openaiFileIdRefs = {
     type: "array",
@@ -1461,10 +1502,13 @@ function projectChatGptActionFileInput(toolName, inputSchema) {
 
 export function projectAuthoringProtocolToolsForActions(tools) {
   if (!Array.isArray(tools)) throw new TypeError("O catálogo público de Autoria é inválido.");
-  return tools.map((tool) => ({
-    ...tool,
-    inputSchema: projectChatGptActionFileInput(tool.name, projectActionInputSchema(tool))
-  }));
+  return tools.map((definition) => {
+    const tool = projectConversationalPdfSourceTool(definition);
+    return {
+      ...tool,
+      inputSchema: projectChatGptActionFileInput(tool.name, projectActionInputSchema(tool))
+    };
+  });
 }
 
 function uniqueRequired(...values) {
@@ -1645,7 +1689,7 @@ function omitDedicatedCommandVariants(tool, projections) {
               .replaceAll(`, ${marker}`, "")
               .replaceAll(marker, "")
               .trim();
-            return /^(?:Use somente em|Obrigatório em)\s*\.$/u.test(cleaned)
+            return /^(?:Use somente em|Use somente e obrigatoriamente em|Obrigatório em)\s*\.$/u.test(cleaned)
               ? []
               : [cleaned];
           })

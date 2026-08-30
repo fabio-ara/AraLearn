@@ -6,6 +6,10 @@ import {
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH
 } from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+} from "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
@@ -14,6 +18,7 @@ const MCP_PATH = "/functions/v1/aralearn-authoring-mcp";
 const ACTION_PATH = "/functions/v1/aralearn-authoring-action";
 const ACTION_ORIGIN = "https://chatgpt.com";
 const AUTHORING_CONTRACT_HEADER_NAME = "X-AraLearn-Authoring-Contract";
+const AUTHORING_PROJECTION_HEADER_NAME = "X-AraLearn-Authoring-Projection";
 const SUPPORTED_JWT_KEYS = new Set(["EC:ES256:P-256"]);
 export const EXPECTED_AUTHORING_CONTRACT_HEADER = [
   AUTHORING_PROTOCOL_ID,
@@ -162,6 +167,10 @@ function validateHostedAuthoringContract(response, label) {
       EXPECTED_AUTHORING_CONTRACT_HEADER) {
     throw new Error(`${label} não corresponde ao contrato público corrente da Autoria.`);
   }
+  if (response.headers.get(AUTHORING_PROJECTION_HEADER_NAME) !==
+      AUTHORING_CONVERSATIONAL_PROJECTION_HEADER) {
+    throw new Error(`${label} não corresponde à projeção conversacional corrente.`);
+  }
 }
 
 export async function verifyHostedBackend({
@@ -231,7 +240,8 @@ export async function verifyHostedBackend({
       id: AUTHORING_PROTOCOL_ID,
       version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
       hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-    }
+    },
+    conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
   };
 }
 

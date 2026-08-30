@@ -99,6 +99,29 @@ function minimalPersistedPdfSource(title) {
   };
 }
 
+function conversationalNewPdfSource(source) {
+  const {
+    title,
+    authorship,
+    publicationDate,
+    identifier,
+    language,
+    citationText,
+    url,
+    editionOrVersion
+  } = source;
+  return {
+    title,
+    authorship,
+    publicationDate,
+    identifier,
+    language,
+    citationText,
+    url,
+    editionOrVersion
+  };
+}
+
 async function discoverPublishedAction(operationId) {
   const response = await fetch(
     `${LOCAL_APPLICATION_ORIGIN}/docs/downloads/aralearn-chatgpt-action-openapi.yaml`,
@@ -480,11 +503,30 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     expect(visibleIngestionSchema).not.toContain("contentHash");
     expect(visibleIngestionSchema).not.toContain("byteSize");
     expect(visibleIngestionSchema).not.toContain('"pdf"');
+    const actionSourceIntent = discoveredIngestion.openApi.components.schemas
+      .IncorporarPdfComoFonteSourceIntent;
+    expect(actionSourceIntent.minProperties).toBe(1);
+    expect(actionSourceIntent.maxProperties).toBe(1);
+    expect(Object.keys(actionSourceIntent.properties)).toEqual([
+      "existingSource", "newSource", "revisedSource"
+    ]);
+    expect(Object.keys(actionSourceIntent.properties.newSource.properties)).toEqual([
+      "title", "authorship", "publicationDate", "identifier", "language",
+      "citationText", "url", "editionOrVersion"
+    ]);
+    expect(actionSourceIntent.properties.newSource.properties.studyVisibility).toBeUndefined();
 
     const ingestionClient = await createLocalMcpClient(config, mcpLifecycle.accessToken);
     expect(ingestionClient.toolNames).toEqual(expect.arrayContaining([
       "listarCursos", "lerCurso", "alterarCurso", "incorporarPdfComoFonte"
     ]));
+    const mcpIngestionDefinition = ingestionClient.toolDefinitions.find(
+      ({ name }) => name === "incorporarPdfComoFonte"
+    );
+    expect(
+      mcpIngestionDefinition.inputSchema.properties.sourceIntent.oneOf
+        .map(({ properties }) => properties.mode.const)
+    ).toEqual(["existing", "create", "revise"]);
     const webClient = new CourseApiClient({
       projectUrl: config.projectUrl,
       publishableKey: config.publishableKey,
@@ -514,10 +556,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
             courseId,
             expectedRevision: currentRevision,
             sourceIntent: {
-              mode: "save",
-              sourceId: null,
-              expectedSourceRevision: 0,
-              source: sourceFixture.source
+              newSource: conversationalNewPdfSource(sourceFixture.source)
             },
             openaiFileIdRefs: [{
               name: sourceFixture.attachment.fileName,
@@ -539,10 +578,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
             courseId,
             expectedRevision: currentRevision,
             sourceIntent: {
-              mode: "save",
-              sourceId: null,
-              expectedSourceRevision: 0,
-              source: sourceFixture.source
+              newSource: conversationalNewPdfSource(sourceFixture.source)
             },
             openaiFileIdRefs: [{
               name: sourceFixture.attachment.fileName,
@@ -571,6 +607,10 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
         currentRevision = ingested.data.courseRevision;
         persistedSources.set(sourceFixture.key, {
           ...sourceFixture,
+          source: {
+            ...minimalPersistedPdfSource(sourceFixture.source.title),
+            ...conversationalNewPdfSource(sourceFixture.source)
+          },
           sourceId: ingested.data.source.sourceId
         });
         uploadCount += 1;
@@ -584,10 +624,8 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
           courseId,
           expectedRevision: currentRevision,
           sourceIntent: {
-            mode: "save",
-            sourceId: null,
-            expectedSourceRevision: 0,
-            source: { title: sourceFixture.source.title }
+            mode: "create",
+            newSource: { title: sourceFixture.source.title }
           },
           pdf: {
             download_url: boundMcp.downloadUrl,

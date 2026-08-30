@@ -262,9 +262,13 @@ No MCP, compare sempre o catálogo hospedado com a conversa corrente. A função
 publica seis ferramentas e `incorporarPdfComoFonte` declara
 `_meta["openai/fileParams"] = ["pdf"]`. Depois de um deploy, use **Atualizar** na
 conexão e abra uma conversa nova; uma sessão anterior pode conservar um
-`tools/list` antigo mesmo quando o endpoint já mudou. A ferramenta de PDF deve
-receber no servidor um objeto com `download_url` e `file_id`, além de
-`mime_type` e `file_name` quando fornecidos. Caminho local, nome, URL ou
+`tools/list` antigo mesmo quando o endpoint já mudou. Compare também
+`_meta.conversationalProjection` ou `X-AraLearn-Authoring-Projection`; o
+fingerprint canônico isolado não identifica a forma projetada. Quando
+`tools/call` é
+efetivamente enviado, a ferramenta de PDF deve receber no servidor um objeto
+com `download_url` e `file_id`, além de `mime_type` e `file_name` quando
+fornecidos. Caminho local, nome, URL ou
 identidade temporária isolados podem aparecer na visão do modelo, mas devem ser
 convertidos pelo ChatGPT antes de `tools/call`.
 
@@ -294,6 +298,16 @@ Se um PDF anexado não puder ser incorporado, confira na discovery da Action se
 OpenAPI anterior. Publicar o arquivo não atualiza a configuração salva:
 reimporte o documento, salve o GPT e teste em uma conversa nova.
 
+Na Action corrente, `sourceIntent` contém exatamente um de `existingSource`,
+`newSource` ou `revisedSource`; `newSource` oferece somente metadados
+bibliográficos. No MCP, a criação usa `sourceIntent.mode: create` com
+`newSource`. Se Actions ainda mostrar `mode`, se qualquer canal pedir ID ou
+revisão da Fonte nova, ou se a criação oferecer `origin`, `availability`,
+`verificationStatus` e `studyVisibility`, a sessão ou a configuração ainda usa
+o contrato anterior. Em MCP, atualize a conexão; em
+Actions, reimporte o OpenAPI e salve o GPT antes de abrir a conversa nova.
+O OpenAPI e o endpoint devem anunciar a mesma versão e fingerprint de projeção.
+
 No schema mostrado ao modelo, `openaiFileIdRefs` é uma lista de strings com um
 único elemento. No request que chega ao endpoint, porém, o ChatGPT já substituiu
 essa referência por um objeto com `name`, `id`, `mime_type` e `download_link`.
@@ -316,11 +330,12 @@ de pedir qualquer reenvio:
 | download indisponível ou timeout | repita a chamada idêntica com o mesmo `requestId`; não peça reenvio sem sinal de expiração |
 | a persistência não foi confirmada | repita com o mesmo `requestId` para recuperar o recibo e só anuncie sucesso após `stored: true` |
 
-Uma URL válida usa HTTPS em algum subdomínio de `oaiusercontent.com`; o ChatGPT
-pode emitir um host regional em vez de `files.oaiusercontent.com`. Se o objeto
-runtime estiver correto e o download for recusado antes do Storage, confira se a
-versão publicada aceita esse sufixo exato. Não amplie a allowlist para o domínio
-nu ou hosts apenas parecidos e não permita redirecionamentos, credenciais,
+O AraLearn aceita atualmente HTTPS em subdomínios de `oaiusercontent.com`,
+inclusive hosts regionais já observados. Essa allowlist é política local de
+egress, não garantia de hostname da OpenAI. Se o objeto runtime estiver correto
+e o download for recusado antes do Storage, colete somente o hostname
+sanitizado e reavalie a política contra SSRF. Não amplie para HTTPS arbitrário,
+o domínio nu ou hosts apenas parecidos e não permita redirecionamentos, credenciais,
 fragmentos ou portas não padrão. Registre somente o código e a categoria segura
 do erro: URL assinada, identidade do arquivo, hash e caminho de Storage não
 devem aparecer em logs permanentes nem na conversa comum.

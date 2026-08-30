@@ -248,18 +248,24 @@ edição atribuída.
 
 Para manter um PDF no Curso, a Action `incorporarPdfComoFonte` recebe os
 controles do Curso, um `sourceIntent` e a referência de arquivo oficial do
-ChatGPT. `sourceIntent` usa `existing` para uma Fonte já registrada ou `save`
-para criar ou revisar a Fonte junto com a incorporação.
+ChatGPT. `sourceIntent` contém exatamente uma propriedade: `existingSource`
+para uma Fonte já registrada, `newSource` para criar uma Fonte ou
+`revisedSource` para revisar uma Fonte junto com a incorporação. O limite de
+uma propriedade elimina a combinação entre um modo e dados de outro modo no
+OpenAPI achatado pelo importador.
 
 Ao criar uma Fonte, o título é o único metadado bibliográfico obrigatório. Os
-campos conhecidos podem ser enviados, mas lacunas permanecem explicitamente
-desconhecidas, não verificadas e ocultas no Estudo até revisão posterior. O
-backend determina que o arquivo é um documento fornecido pela pessoa. Ao
-revisar uma Fonte existente, o estado bibliográfico completo continua
-obrigatório para impedir que uma chamada parcial apague dados já registrados.
-Por compatibilidade com clientes da versão 1.x, o schema público mantém a mesma
-forma de `source` para criação e revisão; a descrição orienta o preenchimento e
-o backend rejeita uma revisão parcial antes de baixar ou persistir o arquivo.
+campos bibliográficos conhecidos podem ser enviados em `newSource`, mas
+lacunas permanecem desconhecidas, não verificadas e ocultas no Estudo até
+revisão posterior. A criação não recebe ID nem revisão da Fonte. O backend gera
+a identidade e determina tipo, origem, disponibilidade, verificação e
+visibilidade. `revisedSource` reúne a identidade, a revisão esperada e o estado
+completo lido da Fonte para impedir que uma chamada parcial apague dados já
+registrados.
+
+O runtime continua aceitando a forma 1.x `mode: save` com `source` para retries
+de clientes antigos conservarem o mesmo payload e a mesma idempotência. Essa
+forma de compatibilidade não aparece no OpenAPI novo apresentado ao modelo.
 
 No OpenAPI importado e na superfície apresentada ao modelo,
 `openaiFileIdRefs` é uma lista de strings com exatamente um elemento. O modelo
@@ -277,12 +283,14 @@ de uma mensagem posterior, anexe novamente o mesmo PDF. A pessoa nunca informa
 hash, tamanho nem caminho técnico. O backend baixa o arquivo, calcula tamanho e
 hash, escolhe o caminho privado e confirma a associação com a Fonte.
 
-O endereço temporário precisa usar HTTPS em um subdomínio de
-`oaiusercontent.com`. Isso inclui hosts regionais emitidos pelo ChatGPT, e não
-somente `files.oaiusercontent.com`. A validação continua recusando o domínio nu,
-hosts apenas parecidos, credenciais na URL, fragmentos, portas não padrão e
-redirecionamentos. A URL assinada, a identidade do arquivo, o hash e o caminho
-de Storage não aparecem na conversa nem em logs permanentes.
+A política de egress corrente aceita HTTPS somente em subdomínios de
+`oaiusercontent.com`, inclusive os regionais já observados. Essa allowlist é
+uma regra de segurança do AraLearn, não uma promessa de hostname do contrato da
+OpenAI. Alterá-la exige evidência do canal e nova análise de SSRF; o backend não
+aceita HTTPS arbitrário. Domínio nu, hosts apenas parecidos, credenciais na URL,
+fragmentos, portas não padrão e redirecionamentos continuam recusados. A URL
+assinada, a identidade do arquivo, o hash e o caminho de Storage não aparecem
+na conversa nem em logs permanentes.
 
 O comando legado `attach_pdf`, que pressupõe um objeto já gravado no Storage,
 continua aceito pelo protocolo canônico para clientes anteriores, mas fica fora
@@ -364,10 +372,11 @@ não pode ser realizado pelo repositório.
 O arquivo gerado deve permanecer abaixo de 136 KiB. O teste também confirma que
 os discriminadores chegam como enums unitários, que toda condicional canônica
 foi compilada e que os casos condicionais cobertos pelo contrato são
-distinguidos pelo próprio esquema. Invariantes de estado, como a revisão
-bibliográfica completa, permanecem sob validação do backend. O documento
-declara o identificador do protocolo, sua `schemaVersion` e o fingerprint
-SHA-256 do catálogo.
+distinguidos pelo próprio esquema. A criação bibliográfica mínima e a revisão
+completa são formas estruturalmente distintas, e o backend revalida suas
+invariantes de forma autoritativa. O documento declara o identificador do
+protocolo, sua `schemaVersion` e o fingerprint SHA-256 do runtime canônico do
+qual deriva.
 
 O endpoint da Action devolve a mesma identidade no cabeçalho
 `X-AraLearn-Authoring-Contract`, inclusive no preflight. Durante a implantação,
@@ -376,6 +385,12 @@ gate. Como o editor do GPT conserva uma cópia da especificação importada,
 publicar outro arquivo não atualiza sozinho um GPT existente: reimporte, salve e
 confira no Preview os discriminadores e argumentos efetivamente apresentados ao
 modelo.
+
+O OpenAPI também declara `x-aralearn-conversational-projection`, sua versão e
+seu fingerprint; as respostas repetem essa identidade em
+`X-AraLearn-Authoring-Projection`. Ela identifica a forma conversacional
+compartilhada com MCP, enquanto o fingerprint do contrato identifica o runtime
+canônico que continua aceitando retries 1.x.
 
 Depois de publicar uma mudança de contrato, importe novamente o OpenAPI no GPT,
 salve a configuração e abra uma conversa nova. Antes do smoke, confirme na

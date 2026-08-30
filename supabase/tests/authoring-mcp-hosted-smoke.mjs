@@ -14,6 +14,11 @@ import {
   COURSE_MCP_APP_RESOURCE_URI,
   readCourseMcpAppResource
 } from "../functions/_shared/aralearn-authoring/courseMcpAppResource.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
+  projectConversationalPdfSourceTool
+} from "../functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
 
 const projectUrl = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/u, "");
 const accessToken = String(
@@ -43,6 +48,7 @@ const expectedAuthoringContractHeader = [
   `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
   `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
 ].join("; ");
+const expectedConversationalProjection = AUTHORING_CONVERSATIONAL_PROJECTION_METADATA;
 let rpcId = 0;
 
 const AUDIT_CRITERIA = Object.freeze({
@@ -139,6 +145,11 @@ async function call(method, params = {}, { initialize = false } = {}) {
     expectedAuthoringContractHeader,
     `${method}: o fingerprint servido não corresponde ao contrato canônico local.`
   );
+  assert.equal(
+    response.headers.get("x-aralearn-authoring-projection"),
+    AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+    `${method}: a projeção conversacional hospedada está defasada.`
+  );
   return body.result;
 }
 
@@ -169,6 +180,11 @@ assert.equal(
   expectedAuthoringContractHeader,
   "A metadata OAuth está vinculada a outra revisão do contrato de Autoria."
 );
+assert.equal(
+  metadataResponse.headers.get("x-aralearn-authoring-projection"),
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  "A metadata OAuth está vinculada a outra projeção conversacional."
+);
 const metadata = await metadataResponse.json();
 assert.equal(metadata.resource, edgeUrl);
 assert.deepEqual(metadata.scopes_supported, ["offline_access"]);
@@ -195,10 +211,15 @@ assert.equal(initialized.protocolVersion, protocolVersion);
 assert.equal(initialized.capabilities.tools.listChanged, false);
 assert.equal(initialized.serverInfo.version, AUTHORING_PROTOCOL_SCHEMA_VERSION);
 assert.deepEqual(initialized._meta?.authoringContract, expectedAuthoringContract);
+assert.deepEqual(
+  initialized._meta?.conversationalProjection,
+  expectedConversationalProjection
+);
 
 await call("ping");
 const listed = await call("tools/list");
 assert.deepEqual(listed._meta?.authoringContract, expectedAuthoringContract);
+assert.deepEqual(listed._meta?.conversationalProjection, expectedConversationalProjection);
 assert.deepEqual(listed.tools.map(({ name }) => name), [
   "listarCursos",
   "lerCurso",
@@ -209,8 +230,8 @@ assert.deepEqual(listed.tools.map(({ name }) => name), [
 ]);
 assert.deepEqual(
   withoutMcpTransportMetadata(listed.tools),
-  AUTHORING_PROTOCOL_V1_TOOLS,
-  "O schema completo servido pelo MCP diverge do protocolo público canônico."
+  AUTHORING_PROTOCOL_V1_TOOLS.map(projectConversationalPdfSourceTool),
+  "O schema completo servido pelo MCP diverge da projeção conversacional local."
 );
 assert.ok(listed.tools.every((entry) =>
   entry.securitySchemes?.[0]?.type === "oauth2" &&

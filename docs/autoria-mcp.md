@@ -98,27 +98,37 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
-As seis ferramentas são projetadas do protocolo público
+As seis ferramentas derivam do protocolo público
 `aralearn.authoring-protocol.v1`. Essa autoridade não é gerada a partir das
-estruturas internas do domínio. `courseMcpTools` funciona como adaptador:
-preserva o vocabulário público, acrescenta os metadados OAuth e MCP Apps do
-transporte e converte cada chamada para o roteador e os validadores do backend.
-Uma alteração interna, portanto, não muda silenciosamente o esquema descoberto
-por `tools/list`.
+estruturas internas do domínio. Antes do transporte, a incorporação de PDF
+recebe uma projeção conversacional compartilhada com Actions, que distingue
+criação bibliográfica de revisão completa. `courseMcpTools` acrescenta os
+metadados OAuth e MCP Apps e converte cada chamada para o roteador e os
+validadores do backend. Uma alteração interna, portanto, não muda
+silenciosamente o esquema descoberto por `tools/list`.
 
 O protocolo possui três níveis de identidade. O sufixo v1 do identificador
 aponta para o major público, `schemaVersion` identifica o snapshot semântico e o
-fingerprint SHA-256 identifica exatamente seu catálogo. `initialize` usa a
+fingerprint SHA-256 identifica o catálogo canônico aceito pelo runtime.
+`initialize` usa a
 `schemaVersion` em `serverInfo.version`; `initialize` e `tools/list` expõem os
 três valores em `_meta.authoringContract`. As respostas HTTP, a descoberta OAuth
 e o preflight repetem a identidade em
 `X-AraLearn-Authoring-Contract`.
 
+A forma conversacional descoberta possui identidade própria em
+`_meta.conversationalProjection` e
+`X-AraLearn-Authoring-Projection`. A projeção corrente é
+`aralearn.authoring-conversational-projection.v1`, versão `1.0.0`; seu hash
+cobre as seis ferramentas depois da separação de criação e revisão de Fonte.
+Assim o runtime 1.x pode continuar aceitando retries antigos sem tornar uma
+mudança de `tools/list` invisível ao diagnóstico de cache.
+
 O servidor permanece sem sessão e não anuncia `listChanged`, pois não emite a
 notificação correspondente. Depois de publicar outro snapshot compatível, um
 cliente que conservou a descoberta anterior precisa reconectar a integração. O
-fingerprint permite distinguir esse cache de uma Edge Function realmente
-defasada.
+fingerprint permite distinguir versões do runtime; a forma exata da projeção
+conversacional deve ser conferida no `tools/list` corrente.
 
 As instruções permanentes contêm somente invariantes transversais: Curso vivo,
 leitura focal antes da escrita, revisões correntes, ausência de invenção e ciclo
@@ -490,7 +500,7 @@ aceita outra Microssequência da mesma Lição. Em atualizações,
 aposentadorias, vínculos e demais operações sobre objetos existentes, o ID lido
 continua obrigatório. `criarCurso` e `create_inspection_focus` já delegam suas
 identidades ao banco. A ingestão de PDF também gera a identidade da Fonte de
-forma estável quando `sourceIntent: save` cria uma Fonte nova.
+forma estável quando `sourceIntent: create` cria uma Fonte nova.
 
 Os Cursos filhos criados por `create_comparison_variants` recebem identidade do
 banco; o cliente fornece apenas as diferenças declaradas e o conjunto de
@@ -528,29 +538,33 @@ digital nem caminho técnico.
 
 No `tools/list`, `pdf` é um descritor de arquivo com `download_url` e `file_id`
 obrigatórios; `mime_type` e `file_name` são opcionais, mas também declarados.
-Esse é o formato recebido pelo servidor. O ChatGPT pode mostrar ao modelo uma
-referência curta, um caminho local ou a identidade temporária do anexo: a ponte
-do cliente deve substituí-la pelo descritor antes de enviar `tools/call`. O
-servidor não aceita essas strings como atalho, porque isso eliminaria a origem
-confiável, a validação de tipo e o download seguro. O anexo deve estar na mesma
+Quando o cliente conclui o binding e envia `tools/call`, esse é o formato
+recebido pelo servidor. O ChatGPT pode mostrar ao modelo uma referência curta,
+um caminho local ou a identidade temporária do anexo: isso sozinho não prova
+chegada ao AraLearn, e a ponte do cliente deve substituí-la pelo descritor antes
+de enviar `tools/call`. O
+servidor não aceita essas strings como atalho, porque isso eliminaria o binding
+oficial e as validações de tipo e egress. O anexo deve estar na mesma
 mensagem que autoriza a incorporação; uma nova mensagem precisa anexar o PDF
 novamente.
 
-`sourceIntent` escolhe um dos dois efeitos de produto:
+`sourceIntent` escolhe um dos três efeitos de produto:
 
 - `existing` liga o PDF a uma Fonte e revisão já existentes;
-- `save` cria ou revisa os metadados da Fonte e incorpora o PDF na mesma
-  intenção, com os controles de concorrência pertinentes.
+- `create` recebe `newSource` e cria a Fonte junto com o PDF, sem pedir ID nem
+  revisão da nova entidade;
+- `revise` recebe a identidade, a revisão esperada e `revisedSource` completo
+  para atualizar uma Fonte lida e incorporar o PDF na mesma intenção.
 
-Na criação, apenas o título da Fonte é obrigatório. O servidor completa campos
-ausentes com valores conservadores: documento fornecido pela pessoa, dados
-bibliográficos desconhecidos, estado não verificado e visibilidade oculta no
-Estudo. Valores informados continuam prevalecendo e sendo validados. Em uma
-revisão, o documento bibliográfico completo permanece obrigatório para não
-apagar silenciosamente metadados existentes.
-Por compatibilidade com clientes do protocolo 1.x, criação e revisão conservam
-a mesma forma pública de `source`; a descrição orienta o modelo e o backend
-recusa uma revisão parcial antes do download ou de qualquer persistência.
+Na criação, apenas o título da Fonte é obrigatório e a ferramenta oferece
+somente metadados bibliográficos verificáveis. O servidor gera a identidade e
+completa tipo, origem, disponibilidade, verificação e visibilidade com valores
+conservadores. Em uma revisão, o documento completo permanece obrigatório para
+não apagar silenciosamente metadados existentes.
+
+O runtime continua aceitando a forma 1.x `mode: save` com `source` para retries
+de clientes antigos conservarem semântica e idempotência. Ela não aparece no
+`tools/list` novo, no qual criação e revisão são formas distintas.
 
 Uma intenção inequívoca de usar edital, livro, capítulo, prova, gabarito, PPC,
 artigo ou norma como base do Curso autoriza a chamada em qualquer fase, sem
@@ -933,9 +947,9 @@ também não substitui a usabilidade da assistência num navegador ou aparelho
 real. A verificação hospedada só deve ser executada depois que as
 migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
 O smoke hospedado também compara o cabeçalho e o metadado servidos, além do
-esquema completo de `tools/list`, com o catálogo canônico local. Somente
-`securitySchemes` e metadados próprios do transporte são retirados antes dessa
-comparação.
+esquema completo de `tools/list`, com a projeção conversacional derivada do
+catálogo canônico local. Somente `securitySchemes` e metadados próprios do
+transporte são retirados antes dessa comparação.
 
 ## Referências normativas e técnicas
 

@@ -26,6 +26,11 @@ import {
 } from "../aralearn/runtime/domain/courseSources.js";
 import { courseMcpAppToolMeta } from "./courseMcpAppResource.js";
 import {
+  normalizeConversationalPdfSourceIntent,
+  projectConversationalPdfSourceTool
+} from
+  "./conversationalPdfSourceProjection.js";
+import {
   ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES,
   AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES,
   AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES,
@@ -52,7 +57,7 @@ export {
 
 export const COURSE_MCP_TOOLS = Object.freeze(
   AUTHORING_PROTOCOL_V1_TOOLS.map((definition) => {
-    const tool = structuredClone(definition);
+    const tool = projectConversationalPdfSourceTool(definition);
     const uiTool = new Set([
       "lerCurso",
       "consultarComponentesDidaticos"
@@ -895,7 +900,9 @@ function mapCourseSourcePdfIngestion(raw) {
   const requestId = requiredRequestId(raw.requestId);
   const sourceIntent = normalizeCourseSourcesDomain(() =>
     normalizeCourseSourcePdfSourceIntent(
-      boundedJsonObject(raw.sourceIntent, "sourceIntent", 16 * 1024)
+      normalizeConversationalPdfSourceIntent(
+        boundedJsonObject(raw.sourceIntent, "sourceIntent", 16 * 1024)
+      )
     )
   );
   return {

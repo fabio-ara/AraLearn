@@ -92,10 +92,15 @@ para ocultar uma projeção defasada.
 
 Os transportes partem da mesma autoridade, mas não servem o mesmo documento:
 
-- o MCP conserva o esquema canônico das ferramentas e acrescenta somente
-  segurança OAuth e metadados próprios do transporte e do recurso visual;
+- MCP e Actions compartilham uma projeção conversacional que separa criação
+  bibliográfica e revisão completa na incorporação de PDF;
+- o MCP acrescenta segurança OAuth e metadados próprios do transporte e do
+  recurso visual;
 - Actions compila uma projeção OpenAPI adequada ao importador do ChatGPT,
-  associa cada ferramenta a um caminho HTTP e usa seu OAuth próprio.
+  associa cada ferramenta a um caminho HTTP e usa seu OAuth próprio. Como o
+  importador achata unions de objetos, a intenção de PDF em Actions usa três
+  propriedades alternativas e `minProperties/maxProperties = 1`, em vez de
+  pedir que o modelo combine um discriminador com outro campo.
 
 O executor conserva identidades, revisões, versões esperadas, chaves de
 repetição e detalhes de diagnóstico no resultado estruturado. Uma projeção
@@ -495,6 +500,7 @@ etapas e pelas cotas do Curso.
 | protocolo público de Autoria | `supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js` e snapshots em `tests/fixtures/authoring-protocol/` |
 | adaptação do protocolo ao backend e MCP | `supabase/functions/_shared/aralearn-authoring/courseMcpTools.js` |
 | identidades de criação conversacional | `supabase/functions/_shared/aralearn-authoring/trustedCreationIdentity.js` |
+| criação e revisão conversacional de Fonte PDF | `supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js` |
 | projeção para Actions | `scripts/projectChatGptActionSchemas.mjs` e `scripts/buildChatGptActionOpenApi.mjs` |
 | funções remotas | `supabase/functions/aralearn-course-api/`, `supabase/functions/aralearn-authoring-mcp/`, `supabase/functions/aralearn-authoring-action/` |
 | esquema e operações SQL | `supabase/migrations/` |
@@ -509,18 +515,25 @@ inicialização compara o contrato esperado com o ambiente remoto antes de
 oferecer operações dependentes dele.
 
 O protocolo público possui identidade implantável independente do manifesto do
-banco. O OpenAPI declara seu identificador, `schemaVersion` e fingerprint. O
+banco. O fingerprint identifica o runtime canônico; projeções conversacionais
+compatíveis podem mudar sua forma descoberta sem alterar o superset aceito. O
+OpenAPI declara seu identificador, `schemaVersion` e fingerprint. O
 MCP repete os mesmos valores em `initialize`, `tools/list` e no cabeçalho
 `X-AraLearn-Authoring-Contract`; a Action envia esse cabeçalho em respostas e
 preflights. Assim uma diferença de implantação ou cache pode ser diagnosticada
 sem inferir a revisão pelo conteúdo de uma chamada.
 
+A projeção compartilhada tem ID, versão e hash próprios, expostos no OpenAPI,
+em `_meta.conversationalProjection` e no cabeçalho
+`X-AraLearn-Authoring-Projection`. Seu snapshot materializado impede que uma
+mudança na discovery conserve silenciosamente a identidade anterior.
+
 A promoção exige migrações em paridade, análise do banco, testes de
 concorrência, testes reais de funcionamento da API, do MCP e de Actions, validação de
 autenticação, testes do navegador e artefatos web e Android. O smoke hospedado
-compara o esquema completo servido por `tools/list` com o snapshot local,
-ignorando apenas metadados de transporte. O fluxo de implantação também recusa
-uma Action cujo preflight anuncie outro fingerprint.
+compara o esquema completo servido por `tools/list` com a projeção local
+derivada do snapshot, ignorando apenas metadados de transporte. O fluxo de
+implantação também recusa uma Action cujo preflight anuncie outro fingerprint.
 
 Detalhes operacionais estão em [Persistência relacional e sincronização](persistencia-relacional.md),
 [Supabase](supabase.md), [Implantação](implantacao.md) e

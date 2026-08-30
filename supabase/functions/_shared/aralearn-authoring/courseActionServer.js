@@ -24,6 +24,11 @@ import {
   projectConversationalAuthoringError,
   projectConversationalAuthoringToolSuccess
 } from "./conversationalAuthoringProjection.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  normalizeConversationalPdfSourceIntent
+} from
+  "./conversationalPdfSourceProjection.js";
 
 const BODY_LIMIT = 96 * 1024;
 const RESPONSE_LIMIT = 96 * 1024;
@@ -42,7 +47,8 @@ const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
-  "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
+  "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER,
+  "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
 });
 
 function actionSuccessOutcome(actionName) {
@@ -68,6 +74,7 @@ function jsonResponse(status, payload, headers = {}) {
 function withAuthoringContractHeader(response) {
   const headers = new Headers(response.headers);
   headers.set("X-AraLearn-Authoring-Contract", ARALEARN_ACTION_CONTRACT_HEADER);
+  headers.set("X-AraLearn-Authoring-Projection", AUTHORING_CONVERSATIONAL_PROJECTION_HEADER);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -124,6 +131,40 @@ function invalidActionPdfReference(
   );
 }
 
+function exactObjectFields(value, names) {
+  return value && typeof value === "object" && !Array.isArray(value) &&
+    Object.keys(value).length === names.length &&
+    names.every((name) => Object.hasOwn(value, name));
+}
+
+function normalizeActionPdfSourceIntent(value) {
+  if (exactObjectFields(value, ["existingSource"])) {
+    return exactObjectFields(value.existingSource, ["sourceId", "sourceRevision"])
+      ? { mode: "existing", ...value.existingSource }
+      : value;
+  }
+  if (exactObjectFields(value, ["newSource"])) {
+    return normalizeConversationalPdfSourceIntent({
+      mode: "create",
+      newSource: value.newSource
+    });
+  }
+  if (exactObjectFields(value, ["revisedSource"]) &&
+      exactObjectFields(value.revisedSource, [
+        "sourceId", "expectedSourceRevision", "source"
+      ])) {
+    return normalizeConversationalPdfSourceIntent({
+      mode: "revise",
+      sourceId: value.revisedSource.sourceId,
+      expectedSourceRevision: value.revisedSource.expectedSourceRevision,
+      revisedSource: value.revisedSource.source
+    });
+  }
+  // Preserva retries já emitidos pelas projeções conversacionais anteriores e
+  // o superset 1.x; o normalizador canônico continua validando-os integralmente.
+  return normalizeConversationalPdfSourceIntent(value);
+}
+
 function normalizeActionTransportArguments(actionName, rawArguments) {
   if (actionName !== "incorporarPdfComoFonte") return rawArguments;
   if (Object.hasOwn(rawArguments, "pdf")) {
@@ -175,6 +216,7 @@ function normalizeActionTransportArguments(actionName, rawArguments) {
   }
   const normalized = {
     ...rawArguments,
+    sourceIntent: normalizeActionPdfSourceIntent(rawArguments.sourceIntent),
     pdf: {
       file_name: reference.name,
       file_id: reference.id,
@@ -248,7 +290,8 @@ export function createAuthoringActionHandler({
           status: 204,
           headers: {
             ...preflightHeaders(request, allowedOrigins),
-            "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
+            "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER,
+            "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
           }
         });
       }

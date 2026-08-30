@@ -315,13 +315,44 @@ test("ingestão conversacional recebe arquivo oficial sem metadados de Storage",
   const minimalCreation = {
     ...input,
     sourceIntent: {
-      mode: "save",
-      sourceId: null,
-      expectedSourceRevision: 0,
-      source: { title: "Edital Dataprev 2026" }
+      mode: "create",
+      newSource: { title: "Edital Dataprev 2026" }
     }
   };
   assert.equal(validate(minimalCreation), true, JSON.stringify(validate.errors));
+  assert.deepEqual(
+    Object.keys(definition.inputSchema.properties.sourceIntent.oneOf[1]
+      .properties.newSource.properties),
+    [
+      "title", "authorship", "publicationDate", "identifier", "language",
+      "citationText", "url", "editionOrVersion"
+    ]
+  );
+  for (const invalidIntent of [{
+    mode: "create",
+    newSource: {
+      title: "Edital Dataprev 2026",
+      origin: "external",
+      verificationStatus: "author_verified"
+    }
+  }, {
+    mode: "revise",
+    sourceId: "source-inventada",
+    expectedSourceRevision: 0,
+    revisedSource: { title: "Edital Dataprev 2026" }
+  }, {
+    mode: "revise",
+    sourceId: "source-edital",
+    expectedSourceRevision: 1,
+    revisedSource: { title: "Edital Dataprev 2026" }
+  }]) {
+    const invalid = { ...input, sourceIntent: invalidIntent };
+    assert.equal(validate(invalid), false, JSON.stringify(invalidIntent));
+    assert.throws(
+      () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", invalid),
+      (error) => error.code === "invalid_course_source_pdf_ingestion"
+    );
+  }
   assert.deepEqual(
     mapAuthoringMcpToolCall("incorporarPdfComoFonte", minimalCreation).body.sourceIntent.source,
     {
@@ -347,7 +378,7 @@ test("ingestão conversacional recebe arquivo oficial sem metadados de Storage",
       sourceId: "source-edital",
       expectedSourceRevision: 1
     }
-  }), true, JSON.stringify(validate.errors));
+  }), false);
   assert.throws(
     () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", {
       ...minimalCreation,
@@ -357,6 +388,69 @@ test("ingestão conversacional recebe arquivo oficial sem metadados de Storage",
         expectedSourceRevision: 1
       }
     }),
+    (error) => error.code === "invalid_course_source_pdf_ingestion"
+  );
+  const legacySource = {
+    kind: "document",
+    title: "Edital Dataprev 2026",
+    authorship: null,
+    publicationDate: "2026",
+    identifier: null,
+    language: "pt-BR",
+    citationText: "Edital Dataprev 2026",
+    url: null,
+    editionOrVersion: null,
+    origin: "author_provided",
+    availability: "private",
+    verificationStatus: "author_verified",
+    studyVisibility: "citation"
+  };
+  const legacyCreation = {
+    ...minimalCreation,
+    sourceIntent: {
+      mode: "save",
+      sourceId: null,
+      expectedSourceRevision: 0,
+      source: legacySource
+    }
+  };
+  assert.equal(validate(legacyCreation), false);
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("incorporarPdfComoFonte", legacyCreation)
+      .body.sourceIntent.source,
+    legacySource,
+    "um cliente 1.x em cache conserva fingerprint e semântica no runtime"
+  );
+  const conversationalRevision = {
+    ...input,
+    sourceIntent: {
+      mode: "revise",
+      sourceId: "source-edital",
+      expectedSourceRevision: 1,
+      revisedSource: legacySource
+    }
+  };
+  assert.equal(validate(conversationalRevision), true, JSON.stringify(validate.errors));
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("incorporarPdfComoFonte", conversationalRevision)
+      .body.sourceIntent,
+    {
+      mode: "save",
+      sourceId: "source-edital",
+      expectedSourceRevision: 1,
+      source: legacySource
+    }
+  );
+  const visibleWithoutCitation = {
+    ...conversationalRevision,
+    sourceIntent: {
+      ...conversationalRevision.sourceIntent,
+      revisedSource: { ...legacySource, citationText: null }
+    }
+  };
+  assert.equal(validate(visibleWithoutCitation), false);
+  assert.throws(
+    () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", visibleWithoutCitation),
     (error) => error.code === "invalid_course_source"
   );
   assert.throws(

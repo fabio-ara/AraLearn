@@ -201,6 +201,13 @@ suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
 salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
 ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
 
+Para uma Fonte nova, o MCP usa `create` com `newSource`; em Actions,
+`sourceIntent` recebe diretamente `newSource`. Em ambos os casos entram o
+título e apenas os metadados bibliográficos confirmados. Identidade, revisão
+inicial e estados operacionais são responsabilidade do AraLearn. A revisão é
+reservada a uma Fonte já lida e exige seu documento completo em
+`revisedSource`.
+
 Quando a intenção cria uma Fonte ou uma Âncora, a pessoa também não informa ID:
 a camada confiável o gera de forma repetível e a releitura confirma o registro.
 Em Actions, o GPT deve descobrir `openaiFileIdRefs` em

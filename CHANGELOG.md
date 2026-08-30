@@ -4,6 +4,27 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+### Corrigido
+
+- Actions usa um envelope com exatamente um de `existingSource`, `newSource`
+  ou `revisedSource`, e o MCP usa três variantes fechadas; em ambos, a criação
+  bibliográfica mínima não oferece identidade, revisão nem estados operacionais
+  para o modelo preencher;
+- o AraLearn gera a identidade e aplica defaults seguros de tipo, origem,
+  disponibilidade, verificação e visibilidade, enquanto o runtime preserva a
+  forma 1.x anterior para retries e clientes em cache;
+- a projeção conversacional passa a ter versão, fingerprint, snapshot e
+  cabeçalho próprios, permitindo distinguir cache de discovery do contrato
+  canônico aceito pelo runtime.
+
+### Limitação conhecida
+
+- os handlers e harnesses provam ingestão, Storage e retomada quando o cliente
+  entrega o descritor oficial. Na tentativa corrente com o ChatGPT conectado
+  por MCP, o painel ainda mostrou uma referência local e `Sem resposta de
+  ferramenta`, sem evidência de `tools/call`; esse binding externo permanece
+  pendente de validação na superfície real.
+
 ## [0.0.45] - 2026-08-29
 
 ### Corrigido

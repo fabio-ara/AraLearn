@@ -14,6 +14,8 @@ import {
   readHostedCourseSourcePdfEnvironment
 } from "./runHostedCourseSourcePdfSmoke.mjs";
 import { EXPECTED_AUTHORING_CONTRACT_HEADER } from "./verifyHostedBackend.mjs";
+import { AUTHORING_CONVERSATIONAL_PROJECTION_HEADER } from
+  "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
 
 const APPLICATION_ORIGIN = "https://fabio-ara.github.io";
 const MCP_PROTOCOL_VERSION = "2025-11-25";
@@ -117,6 +119,11 @@ export function createHostedMcpClient({
       response.headers.get("x-aralearn-authoring-contract") ===
         EXPECTED_AUTHORING_CONTRACT_HEADER,
       `MCP/${method} não corresponde ao contrato hospedado corrente.`
+    );
+    ensure(
+      response.headers.get("x-aralearn-authoring-projection") ===
+        AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+      `MCP/${method} não corresponde à projeção conversacional corrente.`
     );
     ensure(
       response.headers.get("mcp-session-id") === null,

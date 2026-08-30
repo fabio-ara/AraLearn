@@ -34,8 +34,8 @@
     {
       "id": "ingest_attached_pdf",
       "prompt": "O PDF anexado deve permanecer entre as Fontes deste Curso como ‘Edital Dataprev 2026’.",
-      "actions": { "tool": "incorporarPdfComoFonte", "fileField": "openaiFileIdRefs" },
-      "mcp": { "tool": "incorporarPdfComoFonte", "fileField": "pdf" }
+      "actions": { "tool": "incorporarPdfComoFonte", "intentProperty": "newSource", "fileField": "openaiFileIdRefs", "generatedIdentityFields": ["sourceId"] },
+      "mcp": { "tool": "incorporarPdfComoFonte", "selectors": { "mode": "create" }, "fileField": "pdf", "generatedIdentityFields": ["sourceId"] }
     },
     {
       "id": "create_annotation",

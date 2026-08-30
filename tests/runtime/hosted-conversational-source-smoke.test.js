@@ -9,6 +9,8 @@ import {
 } from "../../scripts/runHostedConversationalSourceSmoke.mjs";
 import { createHostedPdfFixture } from "../../scripts/runHostedCourseSourcePdfSmoke.mjs";
 import { EXPECTED_AUTHORING_CONTRACT_HEADER } from "../../scripts/verifyHostedBackend.mjs";
+import { AUTHORING_CONVERSATIONAL_PROJECTION_HEADER } from
+  "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
 
 const PROJECT_URL = "https://abcdefghijklmnopqrst.supabase.co";
 const SECRET_KEY = "sb_secret_hosted-conversational-smoke-secret";
@@ -34,7 +36,10 @@ function json(payload, { status = 200, headers = {} } = {}) {
 
 function mcpResponse(request, result) {
   return json({ jsonrpc: "2.0", id: request.id, result }, {
-    headers: { "X-AraLearn-Authoring-Contract": EXPECTED_AUTHORING_CONTRACT_HEADER }
+    headers: {
+      "X-AraLearn-Authoring-Contract": EXPECTED_AUTHORING_CONTRACT_HEADER,
+      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
+    }
   });
 }
 

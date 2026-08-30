@@ -8,6 +8,8 @@ import {
 import {
   AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
+import { COURSE_MCP_TOOLS } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 import {
   projectChatGptActionTransportTools,
   projectAuthoringProtocolToolsForActions
@@ -22,7 +24,7 @@ const toolsBySurface = {
     projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS),
     AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
   ).map((tool) => [tool.name, tool])),
-  mcp: new Map(AUTHORING_PROTOCOL_V1_TOOLS.map((tool) => [tool.name, tool]))
+  mcp: new Map(COURSE_MCP_TOOLS.map((tool) => [tool.name, tool]))
 };
 
 function schemaContainsLiteral(root, property, expected) {
@@ -40,6 +42,16 @@ function schemaContainsLiteral(root, property, expected) {
   }
   visit(root);
   return found;
+}
+
+function findPropertySchema(root, property) {
+  if (!root || typeof root !== "object") return null;
+  if (root.properties?.[property]) return root.properties[property];
+  for (const child of Array.isArray(root) ? root : Object.values(root)) {
+    const found = findPropertySchema(child, property);
+    if (found) return found;
+  }
+  return null;
 }
 
 test("guarda estrutural publica as rotas esperadas para oito intenções", () => {
@@ -68,6 +80,31 @@ test("guarda estrutural publica as rotas esperadas para oito intenções", () =>
           tool.inputSchema.properties?.[expectation.fileField],
           `${scenario.id}/${surface}: parâmetro de arquivo ausente`
         );
+        if (expectation.intentProperty) {
+          const sourceIntent = tool.inputSchema.properties?.sourceIntent;
+          assert.equal(sourceIntent?.minProperties, 1);
+          assert.equal(sourceIntent?.maxProperties, 1);
+          assert.ok(
+            sourceIntent?.properties?.[expectation.intentProperty],
+            `${scenario.id}/${surface}: ${expectation.intentProperty} não pertence ao contrato`
+          );
+          assert.equal(
+            sourceIntent?.properties?.mode,
+            undefined,
+            `${scenario.id}/${surface}: mode não deve competir com a intenção em Actions`
+          );
+        }
+        const newSource = findPropertySchema(tool.inputSchema, "newSource");
+        assert.ok(newSource, `${scenario.id}/${surface}: criação de Fonte ausente`);
+        for (const managed of [
+          "kind", "origin", "availability", "verificationStatus", "studyVisibility"
+        ]) {
+          assert.equal(
+            newSource.properties?.[managed],
+            undefined,
+            `${scenario.id}/${surface}: ${managed} não pertence à criação`
+          );
+        }
       }
     }
   }

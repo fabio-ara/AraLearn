@@ -201,43 +201,73 @@ test("Actions projeta o PDF canônico somente pelo transporte oficial de arquivo
     courseId: COURSE_ID,
     expectedRevision: 1,
     sourceIntent: {
-      mode: "save",
-      sourceId: null,
-      expectedSourceRevision: 0,
-      source
+      newSource: source
     },
     openaiFileIdRefs: ["file-synthetic"]
   };
   const validate = actionValidators.incorporarPdfComoFonte;
-  assert.equal(validate(payload), true, JSON.stringify(validate.errors));
+  assert.equal(validate(payload), false);
+  assert.ok(validate.errors.some((error) =>
+    error.keyword === "additionalProperties" &&
+    ["kind", "origin", "availability", "verificationStatus", "studyVisibility"]
+      .includes(error.params.additionalProperty)
+  ));
   const minimalCreation = {
     ...payload,
     sourceIntent: {
-      mode: "save",
-      sourceId: null,
-      expectedSourceRevision: 0,
-      source: { title: "Edital Dataprev 2026" }
+      newSource: { title: "Edital Dataprev 2026" }
     }
   };
   assert.equal(validate(minimalCreation), true, JSON.stringify(validate.errors));
+  assert.deepEqual(
+    Object.keys(action.properties.sourceIntent.properties.newSource.properties),
+    [
+      "title", "authorship", "publicationDate", "identifier", "language",
+      "citationText", "url", "editionOrVersion"
+    ]
+  );
   assert.equal(validate({
     ...minimalCreation,
     sourceIntent: {
       ...minimalCreation.sourceIntent,
-      sourceId: "source-existing",
-      expectedSourceRevision: 1
+      existingSource: { sourceId: "source-existing", sourceRevision: 1 }
     }
-  }), true, JSON.stringify(validate.errors));
+  }), false);
+  assert.equal(validate({ ...minimalCreation, sourceIntent: {} }), false);
   assert.equal(validate({
     ...payload,
-    sourceIntent: { ...payload.sourceIntent, expectedSourceRevision: 1 }
+    sourceIntent: {
+      revisedSource: {
+        sourceId: "source-existing",
+        expectedSourceRevision: 1,
+        source: { title: "Edital Dataprev 2026" }
+      }
+    }
   }), false);
   assert.equal(validate({
     ...payload,
     sourceIntent: {
-      ...payload.sourceIntent,
-      sourceId: "source-existing",
-      expectedSourceRevision: 1
+      revisedSource: {
+        sourceId: "source-existing",
+        expectedSourceRevision: 1,
+        source: { ...source, citationText: null }
+      }
+    }
+  }), false);
+  assert.equal(validate({
+    ...payload,
+    sourceIntent: {
+      revisedSource: {
+        sourceId: "source-existing",
+        expectedSourceRevision: 1,
+        source
+      }
+    }
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...payload,
+    sourceIntent: {
+      existingSource: { sourceId: "source-existing", sourceRevision: 1 }
     }
   }), true, JSON.stringify(validate.errors));
 });
@@ -265,10 +295,32 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
   ));
   assert.deepEqual(
     openApi.components.schemas.IncorporarPdfComoFonteSourceIntent
-      .properties.source.required,
+      .properties.newSource.required,
     ["title"],
     "a Action publicada deve aceitar a criação de Fonte sem metadados inventados"
   );
+  assert.equal(
+    openApi.components.schemas.IncorporarPdfComoFonteSourceIntent
+      .properties.newSource.properties.studyVisibility,
+    undefined,
+    "controles operacionais não podem reaparecer na criação publicada"
+  );
+  const publishedSourceIntent =
+    openApi.components.schemas.IncorporarPdfComoFonteSourceIntent;
+  assert.equal(publishedSourceIntent.minProperties, 1);
+  assert.equal(publishedSourceIntent.maxProperties, 1);
+  assert.equal(publishedSourceIntent.properties.mode, undefined);
+  const validatePublishedSourceIntent = new Ajv2020({ allErrors: true, strict: false })
+    .compile(publishedSourceIntent);
+  assert.equal(validatePublishedSourceIntent({
+    newSource: { title: "Edital Dataprev 2026" }
+  }), true, JSON.stringify(validatePublishedSourceIntent.errors));
+  assert.equal(validatePublishedSourceIntent({}), false);
+  assert.equal(validatePublishedSourceIntent({ mode: "create" }), false);
+  assert.equal(validatePublishedSourceIntent({
+    newSource: { title: "Edital Dataprev 2026" },
+    existingSource: { sourceId: "source-existing", sourceRevision: 1 }
+  }), false);
   for (const [pathName, pathItem] of Object.entries(openApi.paths)) {
     const schema = pathItem.post?.requestBody?.content?.["application/json"]?.schema;
     if (!schema) continue;

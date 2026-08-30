@@ -22,6 +22,10 @@ import {
   authoringMcpToolsForPrincipal
 } from "./courseMcpTools.js";
 import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+} from "./conversationalPdfSourceProjection.js";
+import {
   listCourseMcpAppResources,
   readCourseMcpAppResource
 } from "./courseMcpAppResource.js";
@@ -53,6 +57,7 @@ const BASE_HEADERS = Object.freeze({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+  "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
   "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
   Vary: "Origin"
 });
@@ -133,6 +138,7 @@ function metadataResponse(resourceUrl, authorizationServer, headers = {}) {
       "Cache-Control": "public, max-age=300",
       "X-Content-Type-Options": "nosniff",
       "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
       ...headers
     }
   });
@@ -174,7 +180,8 @@ function preflightResponse(request, allowedOrigins) {
       ].join(", "),
       "Access-Control-Max-Age": "600",
       "X-Content-Type-Options": "nosniff",
-      "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER
+      "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
     }
   });
 }
@@ -665,7 +672,10 @@ async function dispatchMcpRequest(envelope, context) {
         },
         serverInfo: SERVER_INFO,
         instructions: COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-        _meta: { authoringContract: AUTHORING_CONTRACT_METADATA }
+        _meta: {
+          authoringContract: AUTHORING_CONTRACT_METADATA,
+          conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+        }
       }
     };
   }
@@ -687,7 +697,10 @@ async function dispatchMcpRequest(envelope, context) {
       id,
       result: {
         tools: authoringMcpToolsForPrincipal(context.principal),
-        _meta: { authoringContract: AUTHORING_CONTRACT_METADATA }
+        _meta: {
+          authoringContract: AUTHORING_CONTRACT_METADATA,
+          conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+        }
       }
     };
   }
@@ -887,6 +900,7 @@ export function createAuthoringMcpHandler({
           headers: {
             ...cors,
             "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+            "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
             Vary: "Origin"
           }
         });
