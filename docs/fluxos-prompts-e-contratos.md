@@ -112,9 +112,9 @@ altera a propriedade do Curso nem o resultado da validação.
 
 ## Superfícies conversacionais
 
-MCP expõe seis ferramentas; Actions expõe as seis operações canônicas e três
-projeções dedicadas descritas por OpenAPI. Nomes canônicos e executor são
-compartilhados. O OpenAPI pode omitir
+MCP expõe seis ferramentas canônicas e `add_part` dedicado; Actions expõe as
+seis operações canônicas e três projeções dedicadas descritas por OpenAPI.
+Nomes canônicos e executor são compartilhados. O OpenAPI pode omitir
 condicionais mecânicas profundas que o servidor continua validando, sem criar
 uma entrada de negócio para cada objeto:
 
@@ -124,6 +124,7 @@ uma entrada de negócio para cada objeto:
 | `lerCurso` | ler uma vista delimitada e versionada |
 | `criarCurso` | criar a raiz privada do Curso |
 | `alterarCurso` | alterar plano, desenho, Fontes, Observações, auditoria, variantes, composição ou materialização |
+| `add_part` | criar uma Parte sem pedir identidade técnica ao modelo |
 | `incorporarPdfComoFonte` | manter um PDF transportado pelo cliente em uma Fonte existente, nova ou revisada |
 | `consultarComponentesDidaticos` | descobrir, inspecionar, validar, auditar e apresentar componentes |
 
@@ -250,12 +251,21 @@ conjunto ordenado de atribuições de um item do plano ou de uma Unidade. Cada
 vínculo declara relação e Âncoras exatas.
 
 `incorporarPdfComoFonte` recebe o arquivo por um mecanismo oficialmente
-suportado pelo canal e um `sourceIntent`: `existing` escolhe uma Fonte já
-registrada; `save` cria ou revisa seus metadados junto com a incorporação. MCP,
-Actions e interface visual convergem para a mesma ingestão, que valida o PDF,
-aplica limites e confirma o vínculo. A pessoa não precisa informar impressão
-digital, tamanho ou caminho técnico. A leitura posterior usa uma URL assinada
-de 60 segundos, emitida apenas sob declaração explícita.
+suportado pelo canal e uma intenção de Fonte existente, nova ou revisada. No
+MCP, `sourceIntent` usa `existing|create|revise`; em Actions, contém exatamente
+um de `existingSource`, `newSource` ou `revisedSource`, evitando uma decisão
+duplicada depois do achatamento do OpenAPI. MCP, Actions e interface visual
+convergem para a mesma ingestão, que valida o PDF, aplica limites e confirma o
+vínculo. A pessoa não precisa informar identidade nova,
+impressão digital, tamanho ou caminho técnico. A leitura posterior usa uma URL
+assinada de 60 segundos, emitida apenas sob declaração explícita.
+
+Uma Fonte nova exige somente título; metadados ausentes ficam desconhecidos,
+não verificados e ocultos no Estudo, sem inferência bibliográfica. Revisar uma
+Fonte existente continua exigindo seu estado completo para preservar os dados
+já registrados. O runtime aceita a forma 1.x anterior para retries de clientes
+antigos, mas a discovery corrente separa criação e revisão. O
+backend faz a validação autoritativa antes de baixar ou persistir o arquivo.
 
 Intenção inequívoca de usar edital, PPC, prova, livro, artigo ou norma como base
 do Curso autoriza a incorporação em qualquer fase sem confirmação redundante. Um

@@ -4,6 +4,27 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+### Corrigido
+
+- o MCP passa a oferecer `add_part` como projeção dedicada e sem campo de
+  identidade; o servidor converte a chamada para a alteração canônica, gera a
+  identidade e preserva CAS e idempotência;
+- `alterarCurso` deixa de anunciar a variante concorrente de criação de Parte,
+  mas continua aceitando o formato canônico anterior para compatibilidade;
+- `tools/list`, `resources/list` e `resources/read` aceitam `_meta` no formato
+  previsto pelo protocolo MCP, sem deixar de rejeitar campos desconhecidos ou
+  metadados malformados;
+- Actions usa um envelope com exatamente um de `existingSource`, `newSource`
+  ou `revisedSource`, e o MCP usa três variantes fechadas; em ambos, a criação
+  bibliográfica mínima não oferece identidade, revisão nem estados operacionais
+  para o modelo preencher;
+- o AraLearn gera a identidade e aplica defaults seguros de tipo, origem,
+  disponibilidade, verificação e visibilidade, enquanto o runtime preserva a
+  forma 1.x anterior para retries e clientes em cache;
+- a projeção conversacional passa a ter versão, fingerprint, snapshot e
+  cabeçalho próprios, permitindo distinguir cache de discovery do contrato
+  canônico aceito pelo runtime.
+
 ## [0.0.45] - 2026-08-29
 
 ### Corrigido

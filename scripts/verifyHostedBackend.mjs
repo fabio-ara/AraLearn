@@ -6,6 +6,14 @@ import {
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH
 } from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+} from "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA
+} from "../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
@@ -14,6 +22,8 @@ const MCP_PATH = "/functions/v1/aralearn-authoring-mcp";
 const ACTION_PATH = "/functions/v1/aralearn-authoring-action";
 const ACTION_ORIGIN = "https://chatgpt.com";
 const AUTHORING_CONTRACT_HEADER_NAME = "X-AraLearn-Authoring-Contract";
+const AUTHORING_PROJECTION_HEADER_NAME = "X-AraLearn-Authoring-Projection";
+const AUTHORING_MCP_CATALOG_HEADER_NAME = "X-AraLearn-Authoring-Mcp-Catalog";
 const SUPPORTED_JWT_KEYS = new Set(["EC:ES256:P-256"]);
 export const EXPECTED_AUTHORING_CONTRACT_HEADER = [
   AUTHORING_PROTOCOL_ID,
@@ -154,13 +164,22 @@ async function responseJson(response, label) {
   return payload;
 }
 
-function validateHostedAuthoringContract(response, label) {
+function validateHostedAuthoringContract(response, label, { requireMcpCatalog = false } = {}) {
   if (!response.ok) {
     throw new Error(`${label} falhou (HTTP ${response.status}).`);
   }
   if (response.headers.get(AUTHORING_CONTRACT_HEADER_NAME) !==
       EXPECTED_AUTHORING_CONTRACT_HEADER) {
     throw new Error(`${label} não corresponde ao contrato público corrente da Autoria.`);
+  }
+  if (response.headers.get(AUTHORING_PROJECTION_HEADER_NAME) !==
+      AUTHORING_CONVERSATIONAL_PROJECTION_HEADER) {
+    throw new Error(`${label} não corresponde à projeção conversacional corrente.`);
+  }
+  if (requireMcpCatalog &&
+      response.headers.get(AUTHORING_MCP_CATALOG_HEADER_NAME) !==
+        AUTHORING_MCP_CATALOG_HEADER) {
+    throw new Error(`${label} não corresponde ao catálogo MCP projetado corrente.`);
   }
 }
 
@@ -217,7 +236,9 @@ export async function verifyHostedBackend({
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     })
   ]);
-  validateHostedAuthoringContract(metadataResponse, "O MCP hospedado");
+  validateHostedAuthoringContract(metadataResponse, "O MCP hospedado", {
+    requireMcpCatalog: true
+  });
   validateHostedAuthoringContract(actionPreflightResponse, "A Action hospedada");
   const oauth = validateHostedOAuthBoundary({
     projectUrl: publicConfiguration.projectUrl,
@@ -231,7 +252,9 @@ export async function verifyHostedBackend({
       id: AUTHORING_PROTOCOL_ID,
       version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
       hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-    }
+    },
+    conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
+    mcpCatalog: AUTHORING_MCP_CATALOG_METADATA
   };
 }
 

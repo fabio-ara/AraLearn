@@ -24,6 +24,11 @@ import {
   projectConversationalAuthoringError,
   projectConversationalAuthoringToolSuccess
 } from "./conversationalAuthoringProjection.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  normalizeConversationalPdfSourceIntent
+} from
+  "./conversationalPdfSourceProjection.js";
 
 const BODY_LIMIT = 96 * 1024;
 const RESPONSE_LIMIT = 96 * 1024;
@@ -42,7 +47,8 @@ const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
-  "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
+  "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER,
+  "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
 });
 
 function actionSuccessOutcome(actionName) {
@@ -68,6 +74,7 @@ function jsonResponse(status, payload, headers = {}) {
 function withAuthoringContractHeader(response) {
   const headers = new Headers(response.headers);
   headers.set("X-AraLearn-Authoring-Contract", ARALEARN_ACTION_CONTRACT_HEADER);
+  headers.set("X-AraLearn-Authoring-Projection", AUTHORING_CONVERSATIONAL_PROJECTION_HEADER);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -96,44 +103,120 @@ function validateDedicatedProjection(rawArguments, projection) {
   }
 }
 
-function invalidActionPdf() {
+function missingActionPdf() {
   return new AuthoringApiError(
     422,
-    "invalid_action_pdf",
-    "O PDF anexado não está disponível para incorporação. Anexe-o novamente e repita a operação."
+    "openai_file_missing",
+    "Nenhum PDF chegou com esta tentativa. Se o documento ainda aparece na conversa, use esse mesmo anexo novamente; só será necessário anexá-lo de novo se ele não estiver mais disponível."
   );
+}
+
+function invalidActionPdfCount() {
+  return new AuthoringApiError(
+    422,
+    "openai_file_count_invalid",
+    "Esta tentativa recebeu mais de um arquivo, mas a incorporação aceita um PDF por vez. Escolha um único PDF e repita."
+  );
+}
+
+function invalidActionPdfReference(
+  path = "openaiFileIdRefs",
+  rule = "official_runtime_file_reference"
+) {
+  return new AuthoringApiError(
+    422,
+    "invalid_openai_file",
+    "A referência temporária do PDF não chegou em um formato utilizável. O documento já anexado não precisa ser reenviado; refaça a chamada a partir desse anexo.",
+    { path, rule }
+  );
+}
+
+function exactObjectFields(value, names) {
+  return value && typeof value === "object" && !Array.isArray(value) &&
+    Object.keys(value).length === names.length &&
+    names.every((name) => Object.hasOwn(value, name));
+}
+
+function normalizeActionPdfSourceIntent(value) {
+  if (exactObjectFields(value, ["existingSource"])) {
+    return exactObjectFields(value.existingSource, ["sourceId", "sourceRevision"])
+      ? { mode: "existing", ...value.existingSource }
+      : value;
+  }
+  if (exactObjectFields(value, ["newSource"])) {
+    return normalizeConversationalPdfSourceIntent({
+      mode: "create",
+      newSource: value.newSource
+    });
+  }
+  if (exactObjectFields(value, ["revisedSource"]) &&
+      exactObjectFields(value.revisedSource, [
+        "sourceId", "expectedSourceRevision", "source"
+      ])) {
+    return normalizeConversationalPdfSourceIntent({
+      mode: "revise",
+      sourceId: value.revisedSource.sourceId,
+      expectedSourceRevision: value.revisedSource.expectedSourceRevision,
+      revisedSource: value.revisedSource.source
+    });
+  }
+  // Preserva retries já emitidos pelas projeções conversacionais anteriores e
+  // o superset 1.x; o normalizador canônico continua validando-os integralmente.
+  return normalizeConversationalPdfSourceIntent(value);
 }
 
 function normalizeActionTransportArguments(actionName, rawArguments) {
   if (actionName !== "incorporarPdfComoFonte") return rawArguments;
-  if (Object.hasOwn(rawArguments, "pdf")) throw invalidActionPdf();
+  if (Object.hasOwn(rawArguments, "pdf")) {
+    throw invalidActionPdfReference("pdf", "transport_managed_field");
+  }
   const references = rawArguments.openaiFileIdRefs;
-  if (!Array.isArray(references) || references.length !== 1) throw invalidActionPdf();
+  if (references == null || (Array.isArray(references) && references.length === 0)) {
+    throw missingActionPdf();
+  }
+  if (!Array.isArray(references)) {
+    throw invalidActionPdfReference("openaiFileIdRefs", "array");
+  }
+  if (references.length > 1) throw invalidActionPdfCount();
   const reference = references[0];
   if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
-    throw invalidActionPdf();
+    throw invalidActionPdfReference("openaiFileIdRefs[0]", "runtime_file_object");
   }
   const fields = Object.keys(reference).sort();
   if (fields.length !== ACTION_PDF_RUNTIME_FIELDS.length ||
       fields.some((field, index) => field !== ACTION_PDF_RUNTIME_FIELDS[index])) {
-    throw invalidActionPdf();
+    throw invalidActionPdfReference(
+      "openaiFileIdRefs[0]",
+      "official_runtime_file_fields"
+    );
   }
-  if (ACTION_PDF_RUNTIME_FIELDS.some((field) =>
+  const invalidField = ACTION_PDF_RUNTIME_FIELDS.find((field) =>
     typeof reference[field] !== "string" || !reference[field].trim()
-  )) {
-    throw invalidActionPdf();
+  );
+  if (invalidField) {
+    throw invalidActionPdfReference(
+      `openaiFileIdRefs[0].${invalidField}`,
+      "nonempty_string"
+    );
   }
   try {
     const downloadUrl = new URL(reference.download_link);
     if (downloadUrl.protocol !== "https:" || downloadUrl.username || downloadUrl.password) {
-      throw invalidActionPdf();
+      throw invalidActionPdfReference(
+        "openaiFileIdRefs[0].download_link",
+        "absolute_https_url_without_credentials"
+      );
     }
   } catch (error) {
     if (error instanceof AuthoringApiError) throw error;
-    throw invalidActionPdf();
+    throw invalidActionPdfReference(
+      "openaiFileIdRefs[0].download_link",
+      "absolute_https_url_without_credentials"
+    );
   }
   const normalized = {
     ...rawArguments,
+    sourceIntent: normalizeActionPdfSourceIntent(rawArguments.sourceIntent),
     pdf: {
       file_name: reference.name,
       file_id: reference.id,
@@ -207,7 +290,8 @@ export function createAuthoringActionHandler({
           status: 204,
           headers: {
             ...preflightHeaders(request, allowedOrigins),
-            "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER
+            "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER,
+            "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
           }
         });
       }

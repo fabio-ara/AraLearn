@@ -14,6 +14,24 @@ import {
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import {
+  AUTHORING_MCP_CATALOG_HASH,
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA,
+  COURSE_MCP_TOOLS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
+  projectConversationalPdfSourceTool
+} from
+  "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
+  computeAuthoringProtocolCatalogHash,
+  decodeAuthoringProtocolSnapshot
+} from
+  "../../scripts/authoringProtocolCompatibilityV1.mjs";
 import { courseVariantComparisonFixture } from
   "../support/courseVariantComparisonFixture.js";
 
@@ -67,7 +85,19 @@ function request(method, params = {}) {
   });
 }
 
-test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async () => {
+function expectedMcpCanonicalTools(tools) {
+  return tools.map(projectConversationalPdfSourceTool).map((definition) => {
+    if (definition.name !== "alterarCurso") return definition;
+    const projected = structuredClone(definition);
+    projected.inputSchema.properties.planCommand.oneOf = projected
+      .inputSchema.properties.planCommand.oneOf.filter(
+        (branch) => branch.properties.type.const !== "add_part"
+      );
+    return projected;
+  });
+}
+
+test("MCP anuncia invariantes, ferramentas canônicas e add_part dedicado", async () => {
   const initialize = await handler()(request("initialize", {
     protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
     capabilities: {},
@@ -83,19 +113,43 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     initialize.headers.get("X-AraLearn-Authoring-Contract"),
     ARALEARN_AUTHORING_CONTRACT_HEADER
   );
+  assert.equal(
+    initialize.headers.get("X-AraLearn-Authoring-Projection"),
+    AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
+  );
+  assert.equal(
+    initialize.headers.get("X-AraLearn-Authoring-Mcp-Catalog"),
+    AUTHORING_MCP_CATALOG_HEADER
+  );
   assert.equal(initialized.result.serverInfo.version, AUTHORING_PROTOCOL_SCHEMA_VERSION);
   assert.equal(initialized.result.capabilities.tools.listChanged, false);
   assert.deepEqual(initialized.result._meta.authoringContract, expectedContract);
+  assert.deepEqual(
+    initialized.result._meta.conversationalProjection,
+    AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+  );
+  assert.deepEqual(initialized.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   assert.match(initialized.result.instructions, /Curso vivo e mutável/iu);
   assert.match(initialized.result.instructions, /phaseGuidance focal/iu);
 
-  const listed = await handler()(request("tools/list"));
+  const listed = await handler()(request("tools/list", {
+    _meta: { progressToken: "catalogo-de-ferramentas" }
+  }));
   const listedPayload = await listed.json();
   assert.equal(
     listed.headers.get("X-AraLearn-Authoring-Contract"),
     ARALEARN_AUTHORING_CONTRACT_HEADER
   );
+  assert.equal(
+    listed.headers.get("X-AraLearn-Authoring-Mcp-Catalog"),
+    AUTHORING_MCP_CATALOG_HEADER
+  );
   assert.deepEqual(listedPayload.result._meta.authoringContract, expectedContract);
+  assert.deepEqual(
+    listedPayload.result._meta.conversationalProjection,
+    AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+  );
+  assert.deepEqual(listedPayload.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   const tools = listedPayload.result.tools;
   const names = tools.map(({ name }) => name);
   assert.deepEqual(names, [
@@ -104,7 +158,8 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     "criarCurso",
     "alterarCurso",
     "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos"
+    "consultarComponentesDidaticos",
+    "add_part"
   ]);
   assert.equal(names.includes("gerirPessoas"), false);
   assert.equal(names.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o/iu.test(name)), false);
@@ -122,7 +177,15 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
     return normalized;
   });
-  assert.deepEqual(contractTools, AUTHORING_PROTOCOL_V1_TOOLS);
+  const expectedCanonical = expectedMcpCanonicalTools(AUTHORING_PROTOCOL_V1_TOOLS);
+  const actualCanonical = contractTools.filter(({ name }) => name !== "add_part");
+  assert.deepEqual(actualCanonical, expectedCanonical);
+  const addPart = contractTools.find(({ name }) => name === "add_part");
+  assert.deepEqual(Object.keys(addPart.inputSchema.properties), [
+    "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
+    "position", "title", "intent"
+  ]);
+  assert.equal(Object.hasOwn(addPart.inputSchema.properties, "id"), false);
   assert.deepEqual(
     tools.find(({ name }) => name === "incorporarPdfComoFonte")
       ._meta["openai/fileParams"],
@@ -130,7 +193,151 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
   );
 });
 
-test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados técnicos", async () => {
+test("projeção conversacional possui snapshot e fingerprint próprios", async () => {
+  const snapshot = JSON.parse(await readFile(new URL(
+    "../fixtures/authoring-protocol/conversational-projection-v1.0.0.json",
+    import.meta.url
+  ), "utf8"));
+  const projectedTools = AUTHORING_PROTOCOL_V1_TOOLS.map(projectConversationalPdfSourceTool);
+  assert.deepEqual(
+    {
+      id: snapshot.id,
+      version: snapshot.version,
+      hash: snapshot.hash
+    },
+    AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+  );
+  assert.equal(computeAuthoringProtocolCatalogHash(projectedTools), snapshot.hash);
+  assert.equal(snapshot.hash, AUTHORING_CONVERSATIONAL_PROJECTION_HASH);
+
+  const pdfTool = projectedTools.find(({ name }) => name === "incorporarPdfComoFonte");
+  const variants = pdfTool.inputSchema.properties.sourceIntent.oneOf;
+  const creation = variants.find(({ properties }) => properties.mode.const === "create");
+  const revision = variants.find(({ properties }) => properties.mode.const === "revise");
+  assert.deepEqual(variants.map(({ properties }) => properties.mode.const), snapshot.pdfSource.modes);
+  assert.equal(snapshot.pdfSource.creationProperty, "newSource");
+  assert.deepEqual(
+    Object.keys(creation.properties.newSource.properties),
+    snapshot.pdfSource.creationFields
+  );
+  assert.deepEqual(creation.properties.newSource.required, snapshot.pdfSource.creationRequired);
+  assert.equal(snapshot.pdfSource.revisionProperty, "revisedSource");
+  assert.deepEqual(
+    revision.properties.revisedSource.required,
+    snapshot.pdfSource.revisionRequired
+  );
+});
+
+test("catálogo MCP completo possui fingerprint próprio e sensível ao tools/list", () => {
+  assert.equal(computeAuthoringProtocolCatalogHash(COURSE_MCP_TOOLS), AUTHORING_MCP_CATALOG_HASH);
+  assert.deepEqual(AUTHORING_MCP_CATALOG_METADATA, {
+    id: "aralearn.authoring-mcp-catalog",
+    version: "1.0.0",
+    hash: AUTHORING_MCP_CATALOG_HASH
+  });
+  assert.notEqual(
+    computeAuthoringProtocolCatalogHash(COURSE_MCP_TOOLS.slice(0, -1)),
+    AUTHORING_MCP_CATALOG_HASH,
+    "a remoção silenciosa de uma ferramenta precisa invalidar o fingerprint"
+  );
+});
+
+test("tools/list preserva o snapshot canônico e a projeção dedicada esperada", async () => {
+  const snapshot = JSON.parse(await readFile(new URL(
+    `../fixtures/authoring-protocol/v${AUTHORING_PROTOCOL_SCHEMA_VERSION}.snapshot.json`,
+    import.meta.url
+  ), "utf8"));
+  const approved = decodeAuthoringProtocolSnapshot(snapshot);
+  const approvedConversationalTools = expectedMcpCanonicalTools(approved.tools);
+  const response = await handler()(request("tools/list"));
+  const payload = await response.json();
+  const listedTools = payload.result.tools.map((definition) => {
+    const normalized = structuredClone(definition);
+    delete normalized.securitySchemes;
+    delete normalized._meta?.securitySchemes;
+    delete normalized._meta?.ui;
+    delete normalized._meta?.["openai/outputTemplate"];
+    delete normalized._meta?.["openai/fileParams"];
+    if (normalized._meta && Object.keys(normalized._meta).length === 0) {
+      delete normalized._meta;
+    }
+    return normalized;
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(listedTools.map(({ name }) => name), [
+    ...approvedConversationalTools.map(({ name }) => name),
+    "add_part"
+  ]);
+  const listedCanonical = listedTools.filter(({ name }) => name !== "add_part");
+  assert.deepEqual(listedCanonical, approvedConversationalTools);
+  assert.equal(
+    listedTools.some(({ name }) => name === "incorporarPdfComoFonte"),
+    true,
+    "a ingestão pública de PDF não pode desaparecer silenciosamente do discovery"
+  );
+  assert.equal(
+    listedTools.some(({ name }) => name === "add_part"),
+    true,
+    "a criação natural de Parte não pode desaparecer silenciosamente do discovery"
+  );
+});
+
+test("MCP cria Parte pela ferramenta dedicada e gera a identidade na camada confiável", async () => {
+  const calls = [];
+  const deepLink = `https://app.example/#/authoring/courses/${COURSE_ID}?section=planning`;
+  const response = await handler({
+    async commitCourseInstructionalPlan(value) {
+      calls.push(value);
+      return {
+        contract: "aralearn.course-instructional-plan-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        planId: "90000000-0000-4000-8000-000000000009",
+        planVersion: 3,
+        requestId: value.requestId,
+        changed: true,
+        idempotent: false,
+        deepLink
+      };
+    }
+  })(request("tools/call", {
+    name: "add_part",
+    arguments: {
+      requestId: "request-mcp-add-part-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      expectedPlanVersion: 2,
+      position: 0,
+      title: "Fundamentos de Linux",
+      intent: "Introduzir terminal, arquivos e permissões."
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].expectedCourseRevision, 4);
+  assert.equal(calls[0].expectedPlanVersion, 2);
+  assert.deepEqual(calls[0].command, {
+    type: "add_part",
+    id: calls[0].command.id,
+    position: 0,
+    title: "Fundamentos de Linux",
+    intent: "Introduzir terminal, arquivos e permissões."
+  });
+  assert.match(
+    calls[0].command.id,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+  );
+  assert.equal(payload.result.isError, false);
+  assert.match(payload.result.content[0].text, /Parte foi adicionada/iu);
+  assert.match(payload.result.content[0].text, /Abrir a área alterada no AraLearn/u);
+  assert.equal(payload.result.content[0].text.includes(calls[0].command.id), false);
+  assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
+});
+
+test("MCP transfere PDF e completa metadados conservadores de uma Fonte nova", async () => {
   const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
   let ingested = null;
   const response = await handler({
@@ -145,7 +352,7 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
       return {
         contract: "aralearn.course-source-pdf-ingestion.v1",
         courseId: COURSE_ID,
-        courseRevision: 4,
+        courseRevision: 5,
         requestId: value.requestId,
         idempotent: false,
         changed: true,
@@ -153,7 +360,7 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
         source: {
           sourceId: "source-edital",
           sourceRevision: 1,
-          bibliographyChanged: false
+          bibliographyChanged: true
         },
         attachment: {
           contentHash: PDF_HASH,
@@ -171,9 +378,8 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
       courseId: COURSE_ID,
       expectedRevision: 3,
       sourceIntent: {
-        mode: "existing",
-        sourceId: "source-edital",
-        sourceRevision: 1
+        mode: "create",
+        newSource: { title: "Edital Dataprev 2026" }
       },
       pdf: {
         download_url: "https://files.oaiusercontent.com/edital.pdf?token=temporary",
@@ -188,6 +394,26 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
   assert.equal(payload.result.isError, false);
   assert.deepEqual(ingested.bytes, pdfBytes);
   assert.equal(ingested.expectedCourseRevision, 3);
+  assert.deepEqual(ingested.sourceIntent, {
+    mode: "save",
+    sourceId: null,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Edital Dataprev 2026",
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      language: null,
+      citationText: null,
+      url: null,
+      editionOrVersion: null,
+      origin: "author_provided",
+      availability: "unknown",
+      verificationStatus: "unverified",
+      studyVisibility: "hidden"
+    }
+  });
   assert.equal(payload.result.structuredContent.data.stored, true);
   assert.equal(
     payload.result.structuredContent.data.technicalDetails.storagePath,
@@ -198,6 +424,88 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
   assert.equal(payload.result.content[0].text.includes(PDF_PATH), false);
   assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
   assert.doesNotMatch(payload.result.content[0].text, /file-edital|download_url|storage/iu);
+});
+
+test("MCP rejeita chamada sem PDF antes de baixar ou persistir qualquer arquivo", async () => {
+  let fetchCalls = 0;
+  let ingestionCalls = 0;
+  const response = await handler({
+    async fetchImpl() {
+      fetchCalls += 1;
+      throw new Error("não deveria baixar");
+    },
+    async ingestCourseSourcePdf() {
+      ingestionCalls += 1;
+      throw new Error("não deveria persistir");
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-missing-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "invalid_tool_arguments");
+  assert.equal(fetchCalls, 0);
+  assert.equal(ingestionCalls, 0);
+  assert.match(payload.result.content[0].text, /Nada foi salvo/iu);
+  assert.doesNotMatch(payload.result.content[0].text, /mantido com sucesso|foi persistido/iu);
+});
+
+test("MCP rejeita estados operacionais na criação antes do download", async () => {
+  let fetchCalls = 0;
+  let ingestionCalls = 0;
+  const response = await handler({
+    async fetchImpl() {
+      fetchCalls += 1;
+      throw new Error("não deveria baixar");
+    },
+    async ingestCourseSourcePdf() {
+      ingestionCalls += 1;
+      throw new Error("não deveria persistir");
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-managed-state-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "create",
+        newSource: {
+          title: "Edital Dataprev 2026",
+          studyVisibility: "citation",
+          verificationStatus: "author_verified"
+        }
+      },
+      pdf: {
+        download_url: "https://files.oaiusercontent.com/edital.pdf?token=temporary",
+        file_id: "file-edital-invalid-source",
+        mime_type: "application/pdf",
+        file_name: "edital.pdf"
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "invalid_course_source_pdf_ingestion"
+  );
+  assert.equal(fetchCalls, 0);
+  assert.equal(ingestionCalls, 0);
 });
 
 test("MCP não alega persistência quando o arquivo temporário não pode ser transferido", async () => {
@@ -429,7 +737,9 @@ test("MCP retoma uma Fonte com referência humana sem narrar controles internos"
 });
 
 test("MCP publica conhecimento e componente opcional e lê o plano pela rota compartilhada", async () => {
-  const resourcesResponse = await handler()(request("resources/list"));
+  const resourcesResponse = await handler()(request("resources/list", {
+    _meta: { progressToken: "catalogo-de-recursos" }
+  }));
   const resources = (await resourcesResponse.json()).result.resources;
   assert.deepEqual(resources.map(({ uri }) => uri), [
     "aralearn://authoring/planning-design",
@@ -439,10 +749,14 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
     "aralearn://authoring/audit-repair",
     "aralearn://authoring/linguistic-didactic-review",
     "aralearn://authoring/components",
-    "ui://aralearn/course-inspector/0.0.24.html"
+    "ui://aralearn/course-inspector/0.0.46.html"
   ]);
   const componentResponse = await handler()(request("resources/read", {
-    uri: "ui://aralearn/course-inspector/0.0.24.html"
+    uri: "ui://aralearn/course-inspector/0.0.46.html",
+    _meta: {
+      progressToken: "leitura-do-componente",
+      "com.openai/client": "chatgpt"
+    }
   }));
   const component = (await componentResponse.json()).result.contents[0];
   assert.equal(component.mimeType, "text/html;profile=mcp-app");
@@ -471,6 +785,28 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   assert.doesNotMatch(payload.result.content[0].text, /structuredContent/u);
   assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
+});
+
+test("MCP rejeita _meta malformado e campos desconhecidos nas listagens e leituras", async () => {
+  const malformedCases = [
+    ["tools/list", { _meta: null }],
+    ["tools/list", { _meta: [] }],
+    ["tools/list", { _meta: "inválido" }],
+    ["resources/list", { _meta: null }],
+    ["resources/list", { _meta: [] }],
+    ["resources/list", { _meta: "inválido" }],
+    ["resources/read", { uri: "aralearn://authoring/sources", _meta: null }],
+    ["resources/read", { uri: "aralearn://authoring/sources", _meta: [] }],
+    ["resources/read", { uri: "aralearn://authoring/sources", _meta: "inválido" }],
+    ["tools/list", { inesperado: true }],
+    ["resources/list", { inesperado: true }],
+    ["resources/read", { uri: "aralearn://authoring/sources", inesperado: true }]
+  ];
+  for (const [method, params] of malformedCases) {
+    const response = await handler()(request(method, params));
+    const payload = await response.json();
+    assert.equal(payload.error.code, -32602, `${method}: ${JSON.stringify(params)}`);
+  }
 });
 
 test("MCP lê a materialização retomável sem duplicar o DTO no texto", async () => {

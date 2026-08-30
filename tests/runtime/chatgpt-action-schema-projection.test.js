@@ -201,25 +201,73 @@ test("Actions projeta o PDF canônico somente pelo transporte oficial de arquivo
     courseId: COURSE_ID,
     expectedRevision: 1,
     sourceIntent: {
-      mode: "save",
-      sourceId: null,
-      expectedSourceRevision: 0,
-      source
+      newSource: source
     },
     openaiFileIdRefs: ["file-synthetic"]
   };
   const validate = actionValidators.incorporarPdfComoFonte;
-  assert.equal(validate(payload), true, JSON.stringify(validate.errors));
+  assert.equal(validate(payload), false);
+  assert.ok(validate.errors.some((error) =>
+    error.keyword === "additionalProperties" &&
+    ["kind", "origin", "availability", "verificationStatus", "studyVisibility"]
+      .includes(error.params.additionalProperty)
+  ));
+  const minimalCreation = {
+    ...payload,
+    sourceIntent: {
+      newSource: { title: "Edital Dataprev 2026" }
+    }
+  };
+  assert.equal(validate(minimalCreation), true, JSON.stringify(validate.errors));
+  assert.deepEqual(
+    Object.keys(action.properties.sourceIntent.properties.newSource.properties),
+    [
+      "title", "authorship", "publicationDate", "identifier", "language",
+      "citationText", "url", "editionOrVersion"
+    ]
+  );
+  assert.equal(validate({
+    ...minimalCreation,
+    sourceIntent: {
+      ...minimalCreation.sourceIntent,
+      existingSource: { sourceId: "source-existing", sourceRevision: 1 }
+    }
+  }), false);
+  assert.equal(validate({ ...minimalCreation, sourceIntent: {} }), false);
   assert.equal(validate({
     ...payload,
-    sourceIntent: { ...payload.sourceIntent, expectedSourceRevision: 1 }
+    sourceIntent: {
+      revisedSource: {
+        sourceId: "source-existing",
+        expectedSourceRevision: 1,
+        source: { title: "Edital Dataprev 2026" }
+      }
+    }
   }), false);
   assert.equal(validate({
     ...payload,
     sourceIntent: {
-      ...payload.sourceIntent,
-      sourceId: "source-existing",
-      expectedSourceRevision: 1
+      revisedSource: {
+        sourceId: "source-existing",
+        expectedSourceRevision: 1,
+        source: { ...source, citationText: null }
+      }
+    }
+  }), false);
+  assert.equal(validate({
+    ...payload,
+    sourceIntent: {
+      revisedSource: {
+        sourceId: "source-existing",
+        expectedSourceRevision: 1,
+        source
+      }
+    }
+  }), true, JSON.stringify(validate.errors));
+  assert.equal(validate({
+    ...payload,
+    sourceIntent: {
+      existingSource: { sourceId: "source-existing", sourceRevision: 1 }
     }
   }), true, JSON.stringify(validate.errors));
 });
@@ -245,6 +293,34 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
     new URL("../../docs/downloads/aralearn-chatgpt-action-openapi.yaml", import.meta.url),
     "utf8"
   ));
+  assert.deepEqual(
+    openApi.components.schemas.IncorporarPdfComoFonteSourceIntent
+      .properties.newSource.required,
+    ["title"],
+    "a Action publicada deve aceitar a criação de Fonte sem metadados inventados"
+  );
+  assert.equal(
+    openApi.components.schemas.IncorporarPdfComoFonteSourceIntent
+      .properties.newSource.properties.studyVisibility,
+    undefined,
+    "controles operacionais não podem reaparecer na criação publicada"
+  );
+  const publishedSourceIntent =
+    openApi.components.schemas.IncorporarPdfComoFonteSourceIntent;
+  assert.equal(publishedSourceIntent.minProperties, 1);
+  assert.equal(publishedSourceIntent.maxProperties, 1);
+  assert.equal(publishedSourceIntent.properties.mode, undefined);
+  const validatePublishedSourceIntent = new Ajv2020({ allErrors: true, strict: false })
+    .compile(publishedSourceIntent);
+  assert.equal(validatePublishedSourceIntent({
+    newSource: { title: "Edital Dataprev 2026" }
+  }), true, JSON.stringify(validatePublishedSourceIntent.errors));
+  assert.equal(validatePublishedSourceIntent({}), false);
+  assert.equal(validatePublishedSourceIntent({ mode: "create" }), false);
+  assert.equal(validatePublishedSourceIntent({
+    newSource: { title: "Edital Dataprev 2026" },
+    existingSource: { sourceId: "source-existing", sourceRevision: 1 }
+  }), false);
   for (const [pathName, pathItem] of Object.entries(openApi.paths)) {
     const schema = pathItem.post?.requestBody?.content?.["application/json"]?.schema;
     if (!schema) continue;
@@ -846,6 +922,44 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
     verificationStatus: "unverified",
     studyVisibility: "hidden"
   };
+  assertParity("Fonte nova dispensa identidade", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: {
+      type: "save_source",
+      expectedSourceRevision: 0,
+      source
+    }
+  }, true);
+  assertParity("Fonte existente preserva identidade", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: {
+      type: "save_source",
+      expectedSourceRevision: 1,
+      source
+    }
+  }, false);
+  assertParity("Âncora nova dispensa identidade", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: {
+      type: "save_anchor",
+      sourceId: "source-1",
+      sourceRevision: 1,
+      expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: 44, endPage: 44 },
+      verificationExcerpt: "Gestão de Servidores"
+    }
+  }, true);
+  assertParity("Âncora existente preserva identidade", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: {
+      type: "save_anchor",
+      sourceId: "source-1",
+      sourceRevision: 1,
+      expectedAnchorRevision: 1,
+      selector: { kind: "page_range", startPage: 44, endPage: 44 },
+      verificationExcerpt: "Gestão de Servidores"
+    }
+  }, false);
   assertParity("Fonte oculta", "alterarCurso", {
     ...sourceEnvelope,
     sourceCommand: {
@@ -876,6 +990,19 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
     courseId: COURSE_ID,
     operation: "update_anchored_annotations"
   };
+  assertParity("Observação nova dispensa identidade", "alterarCurso", {
+    ...annotationEnvelope,
+    expectedRevision: 1,
+    annotationCommand: {
+      type: "create_anchored_annotation",
+      target: { kind: "course", id: COURSE_ID },
+      rawText: "Revisar a progressão desta Parte.",
+      category: "suggestion",
+      capturedAt: null,
+      briefSummary: "Revisar progressão",
+      confirmed: true
+    }
+  }, true);
   const answer = {
     type: "respond_to_anchored_annotation",
     annotationId: SECOND_ID,
@@ -937,6 +1064,12 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
     operation: "update_course_variants",
     variantCommand: variant
   };
+  const naturalVariantEnvelope = structuredClone(variantEnvelope);
+  delete naturalVariantEnvelope.variantCommand.comparisonSetId;
+  assertParity("comparação nova dispensa identidade", "alterarCurso", {
+    ...naturalVariantEnvelope,
+    expectedRevision: 1
+  }, true);
   assertParity("criação de variantes usa CAS", "alterarCurso", {
     ...variantEnvelope,
     expectedRevision: 1
@@ -955,6 +1088,113 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
     ...detachEnvelope,
     expectedRevision: 1
   }, false);
+
+  const auditCheck = (dimension, index) => ({
+    dimension,
+    criterion: {
+      code: `${dimension}.review-${index}`,
+      version: "1",
+      statement: `Critério público ${index}.`
+    },
+    result: index === 1 ? "failed" : "not_checked",
+    publicEvidence: `Evidência pública ${index}.`,
+    adequacy: index === 1 ? "insufficient" : "not_assessed",
+    planItemRefs: [],
+    parameterRefs: [],
+    sourceLinks: []
+  });
+  assertParity("auditoria e achado novos dispensam identidades", "alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 1,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "record_audit",
+      targetStudyUnitId: "study-unit-1",
+      contextHash: "a".repeat(64),
+      origin: "human_audit",
+      method: { id: "manual-review", version: "1" },
+      checks: [
+        auditCheck("pedagogical_quality", 0),
+        auditCheck("factual_quality", 1),
+        auditCheck("editorial_quality", 2)
+      ],
+      findings: [{
+        checkIndex: 1,
+        code: "factual_quality.missing-source",
+        severity: "high",
+        annotationRefs: []
+      }]
+    }
+  }, true);
+  assertParity("correção nova dispensa identidade", "alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 1,
+    operation: "update_audit_cycle",
+    auditCommand: {
+      type: "propose_authoring_correction",
+      findingId: SECOND_ID,
+      expectedFindingVersion: 1,
+      expectedCorrectionVersion: 0,
+      afterContent: {},
+      afterSourceLinks: [],
+      rationale: "Corrigir o achado confirmado."
+    }
+  }, true);
+
+  assertParity("composição nova dispensa identidades técnicas", "alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 1,
+    operation: "commit_course_composition",
+    upserts: [{
+      entityType: "module",
+      parentType: null,
+      position: 0,
+      content: {
+        title: "Fundamentos",
+        guide: { goal: "Introduzir Linux.", include: [], exclude: [], notation: [], avoid: [] }
+      }
+    }, {
+      entityType: "lesson",
+      parentType: "module",
+      parentUpsertIndex: 0,
+      position: 0,
+      content: {
+        title: "Terminal",
+        guide: { goal: "Usar o terminal.", include: [], exclude: [], notation: [], avoid: [] }
+      }
+    }, {
+      entityType: "topic",
+      parentType: "lesson",
+      parentUpsertIndex: 1,
+      position: 0,
+      content: { label: "Permissões", kind: "concept", checks: [], errors: [] }
+    }, {
+      entityType: "microsequence",
+      parentType: "lesson",
+      parentUpsertIndex: 1,
+      position: 0,
+      content: {
+        title: "Permissões no terminal",
+        goal: "Interpretar permissões.",
+        role: "explain",
+        dependsOn: [],
+        covers: [],
+        checks: [],
+        errors: []
+      }
+    }, {
+      entityType: "study_unit",
+      parentType: "microsequence",
+      parentUpsertIndex: 3,
+      position: 1,
+      content: {}
+    }],
+    deletes: [],
+    sourceAttributionApplications: [{ studyUnitUpsertIndex: 4, sourceLinks: [] }]
+  }, true);
 
   const materializationEnvelope = {
     requestId: REQUEST_ID,

@@ -35,7 +35,8 @@ detalhe recuperado sem fabricar campos ausentes.
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
 2. Autorize sua conta individual por OAuth.
-3. No MCP, confirme a descoberta das seis ferramentas e dos recursos
+3. No MCP, confirme a descoberta das seis ferramentas canônicas, de `add_part`
+   e dos recursos
    `aralearn://authoring/*`; em Actions, confira as seis operações canônicas e as
    três projeções dedicadas importadas do OpenAPI.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
@@ -200,6 +201,13 @@ use `incorporarPdfComoFonte`: a operação recebe o PDF pelo mecanismo de arquiv
 suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
 salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
 ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
+
+Para uma Fonte nova, o MCP usa `create` com `newSource`; em Actions,
+`sourceIntent` recebe diretamente `newSource`. Em ambos os casos entram o
+título e apenas os metadados bibliográficos confirmados. Identidade, revisão
+inicial e estados operacionais são responsabilidade do AraLearn. A revisão é
+reservada a uma Fonte já lida e exige seu documento completo em
+`revisedSource`.
 
 Quando a intenção cria uma Fonte ou uma Âncora, a pessoa também não informa ID:
 a camada confiável o gera de forma repetível e a releitura confirma o registro.

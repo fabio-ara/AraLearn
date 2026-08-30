@@ -5,9 +5,24 @@ import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import {
   AUTHORING_PROTOCOL_ID,
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
-  AUTHORING_PROTOCOL_V1_TOOLS
+  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
 } from "../functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA,
+  COURSE_MCP_TOOLS
+} from
+  "../functions/_shared/aralearn-authoring/courseMcpTools.js";
+import {
+  COURSE_MCP_APP_HTML_MARKER,
+  COURSE_MCP_APP_MIME_TYPE,
+  COURSE_MCP_APP_RESOURCE_URI,
+  readCourseMcpAppResource
+} from "../functions/_shared/aralearn-authoring/courseMcpAppResource.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+} from "../functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
 
 const projectUrl = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/u, "");
 const accessToken = String(
@@ -37,6 +52,7 @@ const expectedAuthoringContractHeader = [
   `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
   `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
 ].join("; ");
+const expectedConversationalProjection = AUTHORING_CONVERSATIONAL_PROJECTION_METADATA;
 let rpcId = 0;
 
 const AUDIT_CRITERIA = Object.freeze({
@@ -133,6 +149,16 @@ async function call(method, params = {}, { initialize = false } = {}) {
     expectedAuthoringContractHeader,
     `${method}: o fingerprint servido não corresponde ao contrato canônico local.`
   );
+  assert.equal(
+    response.headers.get("x-aralearn-authoring-projection"),
+    AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+    `${method}: a projeção conversacional hospedada está defasada.`
+  );
+  assert.equal(
+    response.headers.get("x-aralearn-authoring-mcp-catalog"),
+    AUTHORING_MCP_CATALOG_HEADER,
+    `${method}: o catálogo MCP hospedado está defasado.`
+  );
   return body.result;
 }
 
@@ -163,6 +189,16 @@ assert.equal(
   expectedAuthoringContractHeader,
   "A metadata OAuth está vinculada a outra revisão do contrato de Autoria."
 );
+assert.equal(
+  metadataResponse.headers.get("x-aralearn-authoring-projection"),
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  "A metadata OAuth está vinculada a outra projeção conversacional."
+);
+assert.equal(
+  metadataResponse.headers.get("x-aralearn-authoring-mcp-catalog"),
+  AUTHORING_MCP_CATALOG_HEADER,
+  "A metadata OAuth está vinculada a outro catálogo MCP projetado."
+);
 const metadata = await metadataResponse.json();
 assert.equal(metadata.resource, edgeUrl);
 assert.deepEqual(metadata.scopes_supported, ["offline_access"]);
@@ -189,22 +225,30 @@ assert.equal(initialized.protocolVersion, protocolVersion);
 assert.equal(initialized.capabilities.tools.listChanged, false);
 assert.equal(initialized.serverInfo.version, AUTHORING_PROTOCOL_SCHEMA_VERSION);
 assert.deepEqual(initialized._meta?.authoringContract, expectedAuthoringContract);
+assert.deepEqual(
+  initialized._meta?.conversationalProjection,
+  expectedConversationalProjection
+);
+assert.deepEqual(initialized._meta?.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
 
 await call("ping");
 const listed = await call("tools/list");
 assert.deepEqual(listed._meta?.authoringContract, expectedAuthoringContract);
+assert.deepEqual(listed._meta?.conversationalProjection, expectedConversationalProjection);
+assert.deepEqual(listed._meta?.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
 assert.deepEqual(listed.tools.map(({ name }) => name), [
   "listarCursos",
   "lerCurso",
   "criarCurso",
   "alterarCurso",
   "incorporarPdfComoFonte",
-  "consultarComponentesDidaticos"
+  "consultarComponentesDidaticos",
+  "add_part"
 ]);
 assert.deepEqual(
   withoutMcpTransportMetadata(listed.tools),
-  AUTHORING_PROTOCOL_V1_TOOLS,
-  "O schema completo servido pelo MCP diverge do protocolo público canônico."
+  withoutMcpTransportMetadata(COURSE_MCP_TOOLS),
+  "O schema completo servido pelo MCP diverge da projeção conversacional local."
 );
 assert.ok(listed.tools.every((entry) =>
   entry.securitySchemes?.[0]?.type === "oauth2" &&
@@ -217,6 +261,34 @@ assert.equal(
     /workspace|trilha|cole(?:ç|c)[aã]o|publica(?:ç|c)[aã]o/iu.test(name)
   ),
   false
+);
+
+const listedResources = await call("resources/list", {
+  _meta: { progressToken: "catalogo-de-recursos-hospedado" }
+});
+const appDescriptor = listedResources.resources.find(
+  ({ uri }) => uri === COURSE_MCP_APP_RESOURCE_URI
+);
+assert.ok(appDescriptor, "O recurso visual corrente não apareceu em resources/list.");
+assert.equal(appDescriptor.mimeType, COURSE_MCP_APP_MIME_TYPE);
+
+const localAppResource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+assert.ok(localAppResource?.text.includes(COURSE_MCP_APP_HTML_MARKER));
+const readResources = await call("resources/read", {
+  uri: COURSE_MCP_APP_RESOURCE_URI,
+  _meta: {
+    progressToken: "leitura-do-componente-hospedado",
+    "com.openai/client": "chatgpt"
+  }
+});
+assert.equal(readResources.contents.length, 1);
+const hostedAppResource = readResources.contents[0];
+assert.equal(hostedAppResource.uri, COURSE_MCP_APP_RESOURCE_URI);
+assert.equal(hostedAppResource.mimeType, COURSE_MCP_APP_MIME_TYPE);
+assert.equal(
+  hostedAppResource.text.includes(COURSE_MCP_APP_HTML_MARKER),
+  true,
+  "O HTML hospedado não corresponde à versão corrente do recurso visual."
 );
 
 const componentSearch = await tool("consultarComponentesDidaticos", {

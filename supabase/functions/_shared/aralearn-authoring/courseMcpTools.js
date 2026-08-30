@@ -25,6 +25,13 @@ import {
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
 import { courseMcpAppToolMeta } from "./courseMcpAppResource.js";
+import { authoringActionV1DedicatedProjection } from
+  "./authoringActionProjectionV1.js";
+import {
+  normalizeConversationalPdfSourceIntent,
+  projectConversationalPdfSourceTool
+} from
+  "./conversationalPdfSourceProjection.js";
 import {
   ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES,
   AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES,
@@ -50,14 +57,87 @@ export {
   AUTHORING_PROTOCOL_V1_VOCABULARY
 };
 
+const MCP_ADD_PART_PROJECTION = authoringActionV1DedicatedProjection("add_part");
+
+function clone(value) {
+  return structuredClone(value);
+}
+
+function projectMcpAddPartTool() {
+  const projection = MCP_ADD_PART_PROJECTION;
+  const canonical = AUTHORING_PROTOCOL_V1_TOOLS.find(
+    ({ name }) => name === projection?.canonicalToolName
+  );
+  const planCommand = canonical?.inputSchema?.properties?.[projection?.commandProperty];
+  const command = planCommand?.oneOf?.find(
+    (branch) => branch?.properties?.type?.const === projection?.commandType
+  );
+  if (!canonical || !command) {
+    throw new TypeError("A projeção MCP de add_part perdeu o contrato canônico.");
+  }
+  const root = canonical.inputSchema.properties;
+  return Object.freeze({
+    name: projection.operationId,
+    title: projection.title,
+    description: projection.description,
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        requestId: clone(root.requestId),
+        courseId: clone(root.courseId),
+        expectedRevision: clone(root.expectedRevision),
+        expectedPlanVersion: clone(root.expectedPlanVersion),
+        position: clone(command.properties.position),
+        title: clone(command.properties.title),
+        intent: clone(command.properties.intent)
+      },
+      required: [
+        "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
+        "position", "title", "intent"
+      ]
+    },
+    outputSchema: clone(canonical.outputSchema),
+    annotations: Object.freeze({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    })
+  });
+}
+
+function omitMcpAddPartFromGenericTool(toolDefinition) {
+  if (toolDefinition.name !== MCP_ADD_PART_PROJECTION.canonicalToolName) {
+    return toolDefinition;
+  }
+  const tool = clone(toolDefinition);
+  const command = tool.inputSchema?.properties?.[MCP_ADD_PART_PROJECTION.commandProperty];
+  if (!Array.isArray(command?.oneOf)) {
+    throw new TypeError("alterarCurso perdeu as variantes do planejamento.");
+  }
+  const remaining = command.oneOf.filter(
+    (branch) => branch?.properties?.type?.const !== MCP_ADD_PART_PROJECTION.commandType
+  );
+  if (remaining.length !== command.oneOf.length - 1) {
+    throw new TypeError("alterarCurso perdeu a variante canônica add_part.");
+  }
+  command.oneOf = remaining;
+  return tool;
+}
+
 export const COURSE_MCP_TOOLS = Object.freeze(
-  AUTHORING_PROTOCOL_V1_TOOLS.map((definition) => {
-    const tool = structuredClone(definition);
+  [
+    ...AUTHORING_PROTOCOL_V1_TOOLS.map((definition) =>
+      omitMcpAddPartFromGenericTool(projectConversationalPdfSourceTool(definition))
+    ),
+    projectMcpAddPartTool()
+  ].map((tool) => {
     const uiTool = new Set([
       "lerCurso",
       "consultarComponentesDidaticos"
-    ]).has(definition.name);
-    const fileTool = definition.name === "incorporarPdfComoFonte";
+    ]).has(tool.name);
+    const fileTool = tool.name === "incorporarPdfComoFonte";
     return Object.freeze(uiTool || fileTool
       ? {
         ...tool,
@@ -70,11 +150,29 @@ export const COURSE_MCP_TOOLS = Object.freeze(
   })
 );
 
+export const AUTHORING_MCP_CATALOG_ID = "aralearn.authoring-mcp-catalog";
+export const AUTHORING_MCP_CATALOG_VERSION = "1.0.0";
+export const AUTHORING_MCP_CATALOG_HASH =
+  "sha256:85b8f672b86970a7be2cfb7a8731283d8144827adc368e01d7e6e4345eb514cd";
+export const AUTHORING_MCP_CATALOG_METADATA = Object.freeze({
+  id: AUTHORING_MCP_CATALOG_ID,
+  version: AUTHORING_MCP_CATALOG_VERSION,
+  hash: AUTHORING_MCP_CATALOG_HASH
+});
+export const AUTHORING_MCP_CATALOG_HEADER = [
+  AUTHORING_MCP_CATALOG_ID,
+  `version=${AUTHORING_MCP_CATALOG_VERSION}`,
+  `hash=${AUTHORING_MCP_CATALOG_HASH}`
+].join("; ");
+
 const BY_NAME = new Map(COURSE_MCP_TOOLS.map((definition) => [definition.name, definition]));
 const PROTOCOL_BY_NAME = new Map(
   AUTHORING_PROTOCOL_V1_TOOLS.map((definition) => [definition.name, definition])
 );
-const WRITE_TOOLS = new Set([
+const MCP_PROJECTION_BY_NAME = new Map([
+  [MCP_ADD_PART_PROJECTION.operationId, MCP_ADD_PART_PROJECTION]
+]);
+const PROTOCOL_WRITE_TOOLS = new Set([
   "criarCurso", "alterarCurso", "incorporarPdfComoFonte"
 ]);
 export const COURSE_APPLICATION_ONLY_TOOLS = Object.freeze([
@@ -84,11 +182,11 @@ export const COURSE_APPLICATION_ONLY_TOOLS = Object.freeze([
   Object.freeze({ name: "manterAraLearn" })
 ]);
 const APPLICATION_BY_NAME = new Map([
-  ...BY_NAME,
+  ...AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => [name, PROTOCOL_BY_NAME.get(name)]),
   ...COURSE_APPLICATION_ONLY_TOOLS.map((definition) => [definition.name, definition])
 ]);
 const APPLICATION_WRITE_TOOLS = new Set([
-  ...WRITE_TOOLS,
+  ...PROTOCOL_WRITE_TOOLS,
   ...COURSE_APPLICATION_ONLY_TOOLS.map(({ name }) => name)
 ]);
 
@@ -895,7 +993,9 @@ function mapCourseSourcePdfIngestion(raw) {
   const requestId = requiredRequestId(raw.requestId);
   const sourceIntent = normalizeCourseSourcesDomain(() =>
     normalizeCourseSourcePdfSourceIntent(
-      boundedJsonObject(raw.sourceIntent, "sourceIntent", 16 * 1024)
+      normalizeConversationalPdfSourceIntent(
+        boundedJsonObject(raw.sourceIntent, "sourceIntent", 16 * 1024)
+      )
     )
   );
   return {
@@ -1581,13 +1681,15 @@ export function authoringMcpToolsForPrincipal(principal) {
 
 export function authoringProtocolV1ToolIsAllowed(name, principal) {
   if (!principal?.actorId || !PROTOCOL_BY_NAME.has(name)) return false;
-  if (!WRITE_TOOLS.has(name)) return true;
+  if (!PROTOCOL_WRITE_TOOLS.has(name)) return true;
   const scopes = new Set(Array.isArray(principal.scopes) ? principal.scopes : []);
   return scopes.has("authoring:write");
 }
 
 export function authoringMcpToolIsAllowed(name, principal) {
-  return authoringProtocolV1ToolIsAllowed(name, principal);
+  const canonicalName = authoringMcpCanonicalToolName(name);
+  return canonicalName != null &&
+    authoringProtocolV1ToolIsAllowed(canonicalName, principal);
 }
 
 export function authoringApplicationToolIsAllowed(name, principal) {
@@ -1608,8 +1710,50 @@ export function mapAuthoringProtocolV1Call(name, rawArguments) {
   throw new AuthoringApiError(404, "unknown_tool", "Ferramenta de autoria inexistente.");
 }
 
+export function authoringMcpCanonicalToolName(name) {
+  const normalized = String(name || "");
+  return MCP_PROJECTION_BY_NAME.get(normalized)?.canonicalToolName ||
+    (PROTOCOL_BY_NAME.has(normalized) ? normalized : null);
+}
+
+export function resolveAuthoringMcpToolCall(name, rawArguments) {
+  const normalizedName = String(name || "");
+  const projection = MCP_PROJECTION_BY_NAME.get(normalizedName);
+  if (!projection) {
+    return {
+      canonicalToolName: normalizedName,
+      rawArguments
+    };
+  }
+  const raw = object(rawArguments ?? {}, "arguments");
+  exactFields(raw, new Set([
+    "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
+    "position", "title", "intent"
+  ]));
+  return {
+    canonicalToolName: projection.canonicalToolName,
+    rawArguments: {
+      requestId: raw.requestId,
+      courseId: raw.courseId,
+      expectedRevision: raw.expectedRevision,
+      expectedPlanVersion: raw.expectedPlanVersion,
+      operation: projection.operation,
+      [projection.commandProperty]: {
+        type: projection.commandType,
+        position: raw.position,
+        title: raw.title,
+        intent: raw.intent
+      }
+    }
+  };
+}
+
 export function mapAuthoringMcpToolCall(name, rawArguments) {
-  return mapAuthoringProtocolV1Call(name, rawArguments);
+  const resolved = resolveAuthoringMcpToolCall(name, rawArguments);
+  return mapAuthoringProtocolV1Call(
+    resolved.canonicalToolName,
+    resolved.rawArguments
+  );
 }
 
 export function mapAuthoringApplicationToolCall(

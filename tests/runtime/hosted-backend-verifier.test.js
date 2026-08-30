@@ -16,6 +16,14 @@ import {
   AUTHORING_PROTOCOL_SCHEMA_VERSION,
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+} from "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA
+} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const runtimeManifest = JSON.parse(readFileSync(
@@ -33,7 +41,10 @@ function response(status, body, headers = {}) {
 
 function createHostedFetch({
   mcpContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
-  actionContract = EXPECTED_AUTHORING_CONTRACT_HEADER
+  actionContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
+  mcpProjection = AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  actionProjection = AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  mcpCatalog = AUTHORING_MCP_CATALOG_HEADER
 } = {}) {
   return async (url) => {
     if (url.endsWith("/.well-known/jwks.json")) {
@@ -47,12 +58,17 @@ function createHostedFetch({
         resource: "https://example.supabase.co/functions/v1/aralearn-authoring-mcp",
         authorization_servers: ["https://example.supabase.co/auth/v1"],
         scopes_supported: ["offline_access"]
-      }, { "X-AraLearn-Authoring-Contract": mcpContract });
+      }, {
+        "X-AraLearn-Authoring-Contract": mcpContract,
+        "X-AraLearn-Authoring-Projection": mcpProjection,
+        "X-AraLearn-Authoring-Mcp-Catalog": mcpCatalog
+      });
     }
     if (url.endsWith("/aralearn-authoring-action/listarCursos")) {
       return response(204, null, {
         "Access-Control-Allow-Origin": "https://chatgpt.com",
-        "X-AraLearn-Authoring-Contract": actionContract
+        "X-AraLearn-Authoring-Contract": actionContract,
+        "X-AraLearn-Authoring-Projection": actionProjection
       });
     }
     return response(200, {
@@ -147,6 +163,11 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
     hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
   });
+  assert.deepEqual(
+    result.conversationalProjection,
+    AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+  );
+  assert.deepEqual(result.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
 });
 
 test("verificador bloqueia MCP hospedado com fingerprint defasado", async () => {
@@ -168,6 +189,28 @@ test("verificador bloqueia Action hospedada com fingerprint defasado", async () 
       fetchImpl: createHostedFetch({ actionContract: "aralearn.authoring-protocol.v1; version=0.9.0; hash=sha256:old" })
     }),
     /Action hospedada não corresponde ao contrato público corrente/u
+  );
+});
+
+test("verificador bloqueia projeção conversacional defasada", async () => {
+  await assert.rejects(
+    () => verifyHostedBackend({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: createHostedFetch({ mcpProjection: "projection-old" })
+    }),
+    /MCP hospedado não corresponde à projeção conversacional corrente/u
+  );
+});
+
+test("verificador bloqueia catálogo MCP projetado defasado", async () => {
+  await assert.rejects(
+    () => verifyHostedBackend({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: createHostedFetch({ mcpCatalog: "mcp-catalog-old" })
+    }),
+    /MCP hospedado não corresponde ao catálogo MCP projetado corrente/u
   );
 });
 

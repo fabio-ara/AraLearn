@@ -13,6 +13,11 @@ import {
 import {
   AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
 } from "../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
+  AUTHORING_CONVERSATIONAL_PROJECTION_ID,
+  AUTHORING_CONVERSATIONAL_PROJECTION_VERSION
+} from "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -389,7 +394,13 @@ function validatePublishedActionsOpenApi(source, expectedVersion, projectOrigin)
       document.info["x-aralearn-protocol-schema-version"] !==
         AUTHORING_PROTOCOL_SCHEMA_VERSION ||
       document.info["x-aralearn-contract-fingerprint"] !==
-        AUTHORING_PROTOCOL_V1_SCHEMA_HASH) {
+        AUTHORING_PROTOCOL_V1_SCHEMA_HASH ||
+      document.info["x-aralearn-conversational-projection"] !==
+        AUTHORING_CONVERSATIONAL_PROJECTION_ID ||
+      document.info["x-aralearn-conversational-projection-version"] !==
+        AUTHORING_CONVERSATIONAL_PROJECTION_VERSION ||
+      document.info["x-aralearn-conversational-projection-fingerprint"] !==
+        AUTHORING_CONVERSATIONAL_PROJECTION_HASH) {
     throw new Error("O OpenAPI publicado de Actions usa outro contrato público de Autoria.");
   }
   const expectedServer = new URL(

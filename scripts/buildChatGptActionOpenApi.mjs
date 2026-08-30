@@ -15,6 +15,11 @@ import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS
 } from "../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
+  AUTHORING_CONVERSATIONAL_PROJECTION_ID,
+  AUTHORING_CONVERSATIONAL_PROJECTION_VERSION
+} from "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
   actionLiteralSchema,
   forChatGptActionImporter,
   forChatGptActionDocumentation,
@@ -277,6 +282,11 @@ const document = {
     "x-aralearn-protocol": AUTHORING_PROTOCOL_ID,
     "x-aralearn-protocol-schema-version": AUTHORING_PROTOCOL_SCHEMA_VERSION,
     "x-aralearn-contract-fingerprint": AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
+    "x-aralearn-conversational-projection": AUTHORING_CONVERSATIONAL_PROJECTION_ID,
+    "x-aralearn-conversational-projection-version":
+      AUTHORING_CONVERSATIONAL_PROJECTION_VERSION,
+    "x-aralearn-conversational-projection-fingerprint":
+      AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
     description: [
       "Permite que um GPT personalizado opere os Cursos próprios da pessoa conectada pelos contratos correntes do AraLearn.",
       COURSE_AUTHORING_SERVER_INSTRUCTIONS

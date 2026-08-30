@@ -248,11 +248,49 @@ edição atribuída.
 
 Para manter um PDF no Curso, a Action `incorporarPdfComoFonte` recebe os
 controles do Curso, um `sourceIntent` e a referência de arquivo oficial do
-ChatGPT. `sourceIntent` usa `existing` para uma Fonte já registrada ou `save`
-para criar ou revisar a Fonte junto com a incorporação. No OpenAPI importado, o
-ChatGPT preenche `openaiFileIdRefs`; o adaptador converte a única referência PDF
-da chamada no objeto `pdf` canônico. A pessoa não informa hash, tamanho nem
-caminho técnico.
+ChatGPT. `sourceIntent` contém exatamente uma propriedade: `existingSource`
+para uma Fonte já registrada, `newSource` para criar uma Fonte ou
+`revisedSource` para revisar uma Fonte junto com a incorporação. O limite de
+uma propriedade elimina a combinação entre um modo e dados de outro modo no
+OpenAPI achatado pelo importador.
+
+Ao criar uma Fonte, o título é o único metadado bibliográfico obrigatório. Os
+campos bibliográficos conhecidos podem ser enviados em `newSource`, mas
+lacunas permanecem desconhecidas, não verificadas e ocultas no Estudo até
+revisão posterior. A criação não recebe ID nem revisão da Fonte. O backend gera
+a identidade e determina tipo, origem, disponibilidade, verificação e
+visibilidade. `revisedSource` reúne a identidade, a revisão esperada e o estado
+completo lido da Fonte para impedir que uma chamada parcial apague dados já
+registrados.
+
+O runtime continua aceitando a forma 1.x `mode: save` com `source` para retries
+de clientes antigos conservarem o mesmo payload e a mesma idempotência. Essa
+forma de compatibilidade não aparece no OpenAPI novo apresentado ao modelo.
+
+No OpenAPI importado e na superfície apresentada ao modelo,
+`openaiFileIdRefs` é uma lista de strings com exatamente um elemento. O modelo
+seleciona a referência lógica do PDF anexado; não monta nome, URL nem objeto de
+arquivo. Ao executar a Action, o próprio ChatGPT substitui essa referência pelo
+descritor de transporte `{name, id, mime_type, download_link}`. O adaptador
+valida esse descritor e o converte no objeto `pdf` canônico. As duas formas
+pertencem, portanto, a momentos diferentes da mesma chamada: a lista de string
+é o contrato que orienta o modelo, e o descritor rico é o payload entregue em
+runtime ao backend.
+
+O anexo fica vinculado à mensagem em que foi enviado. A primeira chamada e um
+retry ainda associado àquela mensagem podem reutilizá-lo; se a tentativa partir
+de uma mensagem posterior, anexe novamente o mesmo PDF. A pessoa nunca informa
+hash, tamanho nem caminho técnico. O backend baixa o arquivo, calcula tamanho e
+hash, escolhe o caminho privado e confirma a associação com a Fonte.
+
+A política de egress corrente aceita HTTPS somente em subdomínios de
+`oaiusercontent.com`, inclusive os regionais já observados. Essa allowlist é
+uma regra de segurança do AraLearn, não uma promessa de hostname do contrato da
+OpenAI. Alterá-la exige evidência do canal e nova análise de SSRF; o backend não
+aceita HTTPS arbitrário. Domínio nu, hosts apenas parecidos, credenciais na URL,
+fragmentos, portas não padrão e redirecionamentos continuam recusados. A URL
+assinada, a identidade do arquivo, o hash e o caminho de Storage não aparecem
+na conversa nem em logs permanentes.
 
 O comando legado `attach_pdf`, que pressupõe um objeto já gravado no Storage,
 continua aceito pelo protocolo canônico para clientes anteriores, mas fica fora
@@ -276,6 +314,15 @@ Um retry consulta primeiro um recibo vinculado à identidade estável do arquivo
 sem conservar a URL temporária. Se o recibo for compatível, o backend reverifica
 o objeto privado e devolve o resultado confirmado sem novo download. Trocar o
 arquivo e reutilizar o mesmo `requestId` é conflito, não sucesso idempotente.
+
+Falhas de arquivo não são tratadas como um único “anexe novamente”. Referência
+ausente ou malformada pede correção da chamada com o anexo corrente; mais de um
+arquivo pede a escolha de um único PDF; tipo incompatível pede um PDF válido;
+acesso temporário expirado pede que o mesmo arquivo seja anexado de novo. Falha
+transitória de download ou timeout repete a mesma chamada e o mesmo `requestId`.
+Se a persistência não puder ser confirmada, o mesmo `requestId` recupera o
+recibo antes de qualquer nova escrita. A resposta comum traduz cada caso para a
+tarefa e não expõe o descritor técnico.
 
 Para produzir uma Unidade com componentes didáticos:
 
@@ -302,7 +349,7 @@ somente quando a tarefa precisar ler aquele PDF.
 | cliente OAuth | confidencial, ligado ao GPT | público ou conforme o cliente MCP cadastrado dinamicamente |
 | escopo | `openid email` | `offline_access` |
 | token | opaco, resolvido por hash | JWT ES256 minimizado e destinado ao recurso MCP |
-| catálogo | seis operações canônicas e três projeções dedicadas | seis ferramentas canônicas |
+| catálogo | seis operações canônicas e três projeções dedicadas | seis ferramentas canônicas e `add_part` dedicado |
 
 Depois de autenticar seus principais, os dois canais chegam ao mesmo executor
 de Curso. Essa convergência mantém revisão, idempotência, validação e histórico;
@@ -324,9 +371,12 @@ não pode ser realizado pelo repositório.
 
 O arquivo gerado deve permanecer abaixo de 136 KiB. O teste também confirma que
 os discriminadores chegam como enums unitários, que toda condicional canônica
-foi compilada e que chamadas válidas e inválidas são distinguidas pelo próprio
-esquema. O documento declara o identificador do protocolo, sua `schemaVersion`
-e o fingerprint SHA-256 do catálogo.
+foi compilada e que os casos condicionais cobertos pelo contrato são
+distinguidos pelo próprio esquema. A criação bibliográfica mínima e a revisão
+completa são formas estruturalmente distintas, e o backend revalida suas
+invariantes de forma autoritativa. O documento declara o identificador do
+protocolo, sua `schemaVersion` e o fingerprint SHA-256 do runtime canônico do
+qual deriva.
 
 O endpoint da Action devolve a mesma identidade no cabeçalho
 `X-AraLearn-Authoring-Contract`, inclusive no preflight. Durante a implantação,
@@ -335,6 +385,12 @@ gate. Como o editor do GPT conserva uma cópia da especificação importada,
 publicar outro arquivo não atualiza sozinho um GPT existente: reimporte, salve e
 confira no Preview os discriminadores e argumentos efetivamente apresentados ao
 modelo.
+
+O OpenAPI também declara `x-aralearn-conversational-projection`, sua versão e
+seu fingerprint; as respostas repetem essa identidade em
+`X-AraLearn-Authoring-Projection`. Ela identifica a forma conversacional
+compartilhada com MCP, enquanto o fingerprint do contrato identifica o runtime
+canônico que continua aceitando retries 1.x.
 
 Depois de publicar uma mudança de contrato, importe novamente o OpenAPI no GPT,
 salve a configuração e abra uma conversa nova. Antes do smoke, confirme na
@@ -347,6 +403,25 @@ OpenAI injetado, e atravessa executor, RLS, PostgreSQL e Storage antes de reabri
 o Curso por título em outro cliente. O smoke no GPT continua necessário para
 comprovar a configuração externa salva, a discovery apresentada ao modelo e a
 referência temporária emitida pelo ChatGPT.
+
+Faça o smoke real somente com um Curso privado descartável e um título único;
+nunca use um Curso de trabalho como fixture. O caso mínimo é:
+
+1. em uma conversa nova, crie `TESTE ACTIONS PDF — <data-hora>`;
+2. anexe, na mesma mensagem do pedido de incorporação, uma fixture sintética de
+   PDF com conteúdo reconhecível na página 44;
+3. peça para mantê-lo como Fonte “Edital de exemplo 2026” e criar a Âncora
+   “Edital de exemplo 2026, p. 44” para “Perfil 13 — Gestão de Servidores”;
+4. confirme pela releitura que a Fonte possui um PDF mantido, a Âncora existe e
+   a revisão do Curso avançou, sem IDs, hash, URL ou caminho de Storage na
+   resposta comum;
+5. encerre a conversa, abra outra e peça “Continue a autoria do Curso
+   `TESTE ACTIONS PDF — <data-hora>`”; a nova conversa deve localizar o Curso
+   pelo título e reencontrar Fonte, PDF e Âncora.
+
+Se for necessário repetir a incorporação em outra mensagem, anexe nela o mesmo
+arquivo. Limpe o Curso descartável pela aplicação somente depois de concluir a
+prova entre as duas conversas.
 
 O editor expande o documento importado antes de salvá-lo e limita o campo de
 schema. Por isso, a geração também valida o tamanho da representação formatada,

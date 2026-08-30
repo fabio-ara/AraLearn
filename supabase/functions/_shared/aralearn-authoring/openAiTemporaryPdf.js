@@ -2,7 +2,7 @@ import { COURSE_SOURCE_PDF_MAX_BYTES } from
   "../aralearn/runtime/domain/courseSources.js";
 import { AuthoringApiError } from "./errors.js";
 
-const OPENAI_FILE_HOST = "files.oaiusercontent.com";
+const OPENAI_FILE_HOST_SUFFIX = ".oaiusercontent.com";
 const DESCRIPTOR_FIELDS = new Set([
   "download_url",
   "file_id",
@@ -15,11 +15,12 @@ const ALLOWED_RESPONSE_MEDIA_TYPES = new Set([
   "application/octet-stream"
 ]);
 
-function invalidDescriptor() {
+function invalidDescriptor(path = "pdf", rule = "valid_openai_file_reference") {
   return new AuthoringApiError(
     422,
     "invalid_openai_file",
-    "O anexo enviado pelo ChatGPT é inválido. Anexe o PDF novamente."
+    "A referência temporária do PDF não está em um formato utilizável. O documento já anexado não precisa ser reenviado; refaça a chamada a partir desse anexo.",
+    { path, rule }
   );
 }
 
@@ -43,7 +44,7 @@ function unavailableFile() {
   return new AuthoringApiError(
     502,
     "openai_file_unavailable",
-    "Não foi possível receber o PDF. Anexe o arquivo novamente."
+    "Não foi possível baixar o PDF agora. Repita a mesma tentativa; só anexe o arquivo novamente se o acesso temporário tiver expirado."
   );
 }
 
@@ -51,7 +52,7 @@ function timedOutFile() {
   return new AuthoringApiError(
     408,
     "openai_file_timeout",
-    "O prazo para receber o PDF terminou. Anexe o arquivo novamente."
+    "O recebimento do PDF não terminou a tempo. Repita a mesma tentativa."
   );
 }
 
@@ -71,29 +72,33 @@ function hasControlCharacter(value) {
   return false;
 }
 
+function isTrustedOpenAiFileHost(hostname) {
+  return hostname.endsWith(OPENAI_FILE_HOST_SUFFIX);
+}
+
 function normalizeDescriptor(descriptor) {
   if (!descriptor || typeof descriptor !== "object" || Array.isArray(descriptor)) {
-    throw invalidDescriptor();
+    throw invalidDescriptor("pdf", "object");
   }
 
   const fields = Object.keys(descriptor);
   if (!Object.hasOwn(descriptor, "download_url") ||
       !Object.hasOwn(descriptor, "file_id") ||
       fields.some((field) => !DESCRIPTOR_FIELDS.has(field))) {
-    throw invalidDescriptor();
+    throw invalidDescriptor("pdf", "official_file_descriptor_fields");
   }
 
   const fileId = descriptor.file_id;
   if (typeof fileId !== "string" || fileId.length < 1 || fileId.length > 240 ||
       fileId.trim() !== fileId || hasControlCharacter(fileId)) {
-    throw invalidDescriptor();
+    throw invalidDescriptor("pdf.file_id", "nonempty_file_identifier");
   }
 
   if (Object.hasOwn(descriptor, "file_name")) {
     const fileName = descriptor.file_name;
     if (typeof fileName !== "string" || fileName.length < 1 || fileName.length > 500 ||
         hasControlCharacter(fileName)) {
-      throw invalidDescriptor();
+      throw invalidDescriptor("pdf.file_name", "safe_file_name");
     }
   }
 
@@ -104,19 +109,31 @@ function normalizeDescriptor(descriptor) {
     }
   }
 
-  if (typeof descriptor.download_url !== "string") throw invalidDescriptor();
+  if (typeof descriptor.download_url !== "string") {
+    throw invalidDescriptor("pdf.download_url", "absolute_https_url");
+  }
 
   let downloadUrl;
   try {
     downloadUrl = new URL(descriptor.download_url);
   } catch {
-    throw invalidDescriptor();
+    throw invalidDescriptor("pdf.download_url", "absolute_https_url");
   }
 
-  if (downloadUrl.protocol !== "https:" || downloadUrl.hostname !== OPENAI_FILE_HOST ||
-      downloadUrl.username !== "" || downloadUrl.password !== "" ||
-      downloadUrl.hash !== "" || (downloadUrl.port !== "" && downloadUrl.port !== "443")) {
-    throw invalidDescriptor();
+  if (downloadUrl.protocol !== "https:") {
+    throw invalidDescriptor("pdf.download_url", "https");
+  }
+  if (!isTrustedOpenAiFileHost(downloadUrl.hostname)) {
+    throw invalidDescriptor("pdf.download_url", "trusted_openai_file_origin");
+  }
+  if (downloadUrl.username !== "" || downloadUrl.password !== "") {
+    throw invalidDescriptor("pdf.download_url", "no_url_credentials");
+  }
+  if (downloadUrl.hash !== "") {
+    throw invalidDescriptor("pdf.download_url", "no_url_fragment");
+  }
+  if (downloadUrl.port !== "" && downloadUrl.port !== "443") {
+    throw invalidDescriptor("pdf.download_url", "standard_https_port");
   }
 
   return downloadUrl.href;
@@ -190,7 +207,7 @@ export async function resolveOpenAiTemporaryPdf({
 } = {}) {
   const downloadUrl = normalizeDescriptor(descriptor);
   if (typeof fetchImpl !== "function" || !Number.isFinite(deadlineAt)) {
-    throw invalidDescriptor();
+    throw invalidDescriptor("pdf", "resolver_configuration");
   }
 
   const remainingMilliseconds = deadlineAt - Date.now();

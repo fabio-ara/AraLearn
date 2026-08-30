@@ -311,8 +311,8 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
 
 test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", async () => {
   const runtime = await javascriptRuntimeMetrics();
-  assert.equal(COURSE_MCP_TOOLS.length, 6);
-  assert.ok(byteLength(COURSE_MCP_TOOLS) <= 104_000);
+  assert.equal(COURSE_MCP_TOOLS.length, 7);
+  assert.ok(byteLength(COURSE_MCP_TOOLS) <= 105_000);
   assert.equal(runtime.files, 51);
   assert.ok(runtime.bytes <= 560 * 1024);
 });

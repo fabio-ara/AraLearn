@@ -6,6 +6,10 @@ import { expect, test } from "@playwright/test";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 import { createAuthoringActionHandler } from
   "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
+import {
+  ARALEARN_MCP_PROTOCOL_VERSION,
+  createAuthoringMcpHandler
+} from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
 import { CourseSupabaseAdapter } from
   "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import {
@@ -77,6 +81,47 @@ function fixturePdfBytes(key) {
   );
 }
 
+function minimalPersistedPdfSource(title) {
+  return {
+    kind: "document",
+    title,
+    authorship: null,
+    publicationDate: null,
+    identifier: null,
+    language: null,
+    citationText: null,
+    url: null,
+    editionOrVersion: null,
+    origin: "author_provided",
+    availability: "unknown",
+    verificationStatus: "unverified",
+    studyVisibility: "hidden"
+  };
+}
+
+function conversationalNewPdfSource(source) {
+  const {
+    title,
+    authorship,
+    publicationDate,
+    identifier,
+    language,
+    citationText,
+    url,
+    editionOrVersion
+  } = source;
+  return {
+    title,
+    authorship,
+    publicationDate,
+    identifier,
+    language,
+    citationText,
+    url,
+    editionOrVersion
+  };
+}
+
 async function discoverPublishedAction(operationId) {
   const response = await fetch(
     `${LOCAL_APPLICATION_ORIGIN}/docs/downloads/aralearn-chatgpt-action-openapi.yaml`,
@@ -92,7 +137,8 @@ async function discoverPublishedAction(operationId) {
 }
 
 function createBoundActionHarness(pdfBytes) {
-  const downloadLink = "https://files.oaiusercontent.com/aralearn-edital-fixture.pdf?temporary=1";
+  const downloadLink =
+    "https://sdmntprbrazilsouth.oaiusercontent.com/aralearn-edital-fixture.pdf?temporary=1";
   const adapter = new CourseSupabaseAdapter({
     supabaseUrl: config.projectUrl,
     publicSupabaseUrl: config.projectUrl,
@@ -134,6 +180,64 @@ function createBoundActionHarness(pdfBytes) {
           body: JSON.stringify(body)
         }
       ));
+      return { response, payload: await response.json() };
+    }
+  };
+}
+
+function createBoundMcpHarness(pdfBytes) {
+  const downloadUrl =
+    "https://files.oaiusercontent.com/aralearn-mcp-edital-fixture.pdf?temporary=1";
+  const resourceUrl = `${config.projectUrl}/functions/v1/aralearn-authoring-mcp`;
+  const authorizationServer = `${config.projectUrl}/auth/v1`;
+  const adapter = new CourseSupabaseAdapter({
+    supabaseUrl: config.projectUrl,
+    publicSupabaseUrl: config.projectUrl,
+    oauthIssuer: authorizationServer,
+    serverApiKey: config.adminKey,
+    publishableKey: config.publishableKey,
+    publicAppUrl: LOCAL_APPLICATION_ORIGIN,
+    attempts: 1,
+    fetchImpl: async (url, init) => {
+      if (String(url) === downloadUrl) {
+        return new Response(pdfBytes, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Length": String(pdfBytes.byteLength)
+          }
+        });
+      }
+      return globalThis.fetch(url, init);
+    }
+  });
+  const handler = createAuthoringMcpHandler({
+    adapter,
+    allowedOrigins: new Set([LOCAL_APPLICATION_ORIGIN]),
+    resourceUrl,
+    authorizationServer
+  });
+  let rpcId = 0;
+  return {
+    downloadUrl,
+    async callTool(name, argumentsValue, token = mcpLifecycle.accessToken) {
+      rpcId += 1;
+      const response = await handler(new Request(resourceUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json, text/event-stream",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Origin: LOCAL_APPLICATION_ORIGIN,
+          "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: rpcId,
+          method: "tools/call",
+          params: { name, arguments: argumentsValue }
+        })
+      }));
       return { response, payload: await response.json() };
     }
   };
@@ -399,11 +503,30 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     expect(visibleIngestionSchema).not.toContain("contentHash");
     expect(visibleIngestionSchema).not.toContain("byteSize");
     expect(visibleIngestionSchema).not.toContain('"pdf"');
+    const actionSourceIntent = discoveredIngestion.openApi.components.schemas
+      .IncorporarPdfComoFonteSourceIntent;
+    expect(actionSourceIntent.minProperties).toBe(1);
+    expect(actionSourceIntent.maxProperties).toBe(1);
+    expect(Object.keys(actionSourceIntent.properties)).toEqual([
+      "existingSource", "newSource", "revisedSource"
+    ]);
+    expect(Object.keys(actionSourceIntent.properties.newSource.properties)).toEqual([
+      "title", "authorship", "publicationDate", "identifier", "language",
+      "citationText", "url", "editionOrVersion"
+    ]);
+    expect(actionSourceIntent.properties.newSource.properties.studyVisibility).toBeUndefined();
 
     const ingestionClient = await createLocalMcpClient(config, mcpLifecycle.accessToken);
     expect(ingestionClient.toolNames).toEqual(expect.arrayContaining([
       "listarCursos", "lerCurso", "alterarCurso", "incorporarPdfComoFonte"
     ]));
+    const mcpIngestionDefinition = ingestionClient.toolDefinitions.find(
+      ({ name }) => name === "incorporarPdfComoFonte"
+    );
+    expect(
+      mcpIngestionDefinition.inputSchema.properties.sourceIntent.oneOf
+        .map(({ properties }) => properties.mode.const)
+    ).toEqual(["existing", "create", "revise"]);
     const webClient = new CourseApiClient({
       projectUrl: config.projectUrl,
       publishableKey: config.publishableKey,
@@ -433,10 +556,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
             courseId,
             expectedRevision: currentRevision,
             sourceIntent: {
-              mode: "save",
-              sourceId: null,
-              expectedSourceRevision: 0,
-              source: sourceFixture.source
+              newSource: conversationalNewPdfSource(sourceFixture.source)
             },
             openaiFileIdRefs: [{
               name: sourceFixture.attachment.fileName,
@@ -458,10 +578,7 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
             courseId,
             expectedRevision: currentRevision,
             sourceIntent: {
-              mode: "save",
-              sourceId: null,
-              expectedSourceRevision: 0,
-              source: sourceFixture.source
+              newSource: conversationalNewPdfSource(sourceFixture.source)
             },
             openaiFileIdRefs: [{
               name: sourceFixture.attachment.fileName,
@@ -490,7 +607,71 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
         currentRevision = ingested.data.courseRevision;
         persistedSources.set(sourceFixture.key, {
           ...sourceFixture,
+          source: {
+            ...minimalPersistedPdfSource(sourceFixture.source.title),
+            ...conversationalNewPdfSource(sourceFixture.source)
+          },
           sourceId: ingested.data.source.sourceId
+        });
+        uploadCount += 1;
+        continue;
+      }
+
+      if (sourceIndex === 1) {
+        const boundMcp = createBoundMcpHarness(pdfBytes);
+        const mcpIngestion = await boundMcp.callTool("incorporarPdfComoFonte", {
+          requestId: "e2e223-mcp-public-pdf-source-02",
+          courseId,
+          expectedRevision: currentRevision,
+          sourceIntent: {
+            mode: "create",
+            newSource: { title: sourceFixture.source.title }
+          },
+          pdf: {
+            download_url: boundMcp.downloadUrl,
+            file_id: "file-aralearn-mcp-source-02",
+            mime_type: "application/pdf",
+            file_name: sourceFixture.attachment.fileName
+          }
+        });
+        expect(
+          mcpIngestion.response.status,
+          `MCP público não ingeriu o PDF: ${JSON.stringify(mcpIngestion.payload)}`
+        ).toBe(200);
+        expect(mcpIngestion.payload.error).toBeUndefined();
+        expect(mcpIngestion.payload.result).toMatchObject({
+          isError: false,
+          structuredContent: {
+            ok: true,
+            data: {
+              stored: true,
+              changed: true,
+              source: {
+                sourceId: expect.stringMatching(UUID_PATTERN),
+                sourceRevision: 1,
+                bibliographyChanged: true
+              }
+            }
+          }
+        });
+        const ingested = mcpIngestion.payload.result.structuredContent.data;
+        expect(ingested.courseRevision).toBe(currentRevision + 2);
+        expect(mcpIngestion.payload.result.content[0].text)
+          .toMatch(/mantido entre as Fontes do Curso/iu);
+        expectNominalConversation(
+          { message: mcpIngestion.payload.result.content[0].text },
+          [
+            courseId,
+            ingested.source.sourceId,
+            sourceFixture.attachment.contentHash,
+            boundMcp.downloadUrl
+          ]
+        );
+        currentRevision = ingested.courseRevision;
+        persistedSources.set(sourceFixture.key, {
+          ...sourceFixture,
+          source: minimalPersistedPdfSource(sourceFixture.source.title),
+          sourceId: ingested.source.sourceId
         });
         uploadCount += 1;
         continue;
@@ -687,8 +868,9 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
       }, resumedActionLifecycle.accessToken)
     );
     expect(actionCatalog.data.items).toHaveLength(4);
-    for (const { source } of fixture.sources) {
-      expect(actionCatalog.conversation.message).toContain(source.citationText);
+    for (const { key } of fixture.sources) {
+      const source = persistedSources.get(key).source;
+      expect(actionCatalog.conversation.message).toContain(source.citationText || source.title);
     }
     expectNominalConversation(actionCatalog.conversation, [
       courseId,
@@ -727,11 +909,12 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
     expect(storageBeforeDownloads).toHaveLength(4);
 
     for (const sourceFixture of fixture.sources) {
+      const persistedSource = persistedSources.get(sourceFixture.key);
       const catalogItem = resumedCatalog.items.find(
-        ({ citationText }) => citationText === sourceFixture.source.citationText
+        ({ citationText }) => citationText === persistedSource.source.citationText
       );
       expect(catalogItem).toEqual(expect.objectContaining({
-        citationText: sourceFixture.source.citationText,
+        citationText: persistedSource.source.citationText,
         status: "active"
       }));
       const detail = await resumedClient.callTool("lerCurso", {
@@ -746,9 +929,9 @@ test.describe("regressão conversacional integrada #223 no Supabase local", () =
       const recoveredSource = detail.items[0];
       expect(recoveredSource).toMatchObject({
         sourceId: catalogItem.sourceId,
-        revision: sourceFixture.revision,
+        revision: persistedSource.revision,
         status: "active",
-        citationText: sourceFixture.source.citationText
+        citationText: persistedSource.source.citationText
       });
       expect(recoveredSource.attachments).toEqual([
         expect.objectContaining({

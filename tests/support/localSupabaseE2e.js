@@ -509,10 +509,12 @@ export async function createLocalMcpClient(config, accessToken) {
     throw new Error("O MCP não negociou a versão de protocolo esperada.");
   }
   const listed = await call("tools/list");
-  const toolNames = listed?.tools?.map(({ name }) => name) || [];
+  const toolDefinitions = structuredClone(listed?.tools || []);
+  const toolNames = toolDefinitions.map(({ name }) => name);
   return Object.freeze({
     protocolVersion: initialized.protocolVersion,
     toolNames: Object.freeze(toolNames),
+    toolDefinitions: Object.freeze(toolDefinitions),
     async callTool(name, argumentsValue = {}) {
       if (!toolNames.includes(name)) throw new Error(`A ferramenta MCP ${name} não foi anunciada.`);
       const result = await call("tools/call", { name, arguments: argumentsValue });

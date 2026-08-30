@@ -278,7 +278,7 @@ test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", 
   ));
   expect(initializeRequest.params).toEqual({
     protocolVersion: "2026-01-26",
-    appInfo: { name: "AraLearn Course Inspector", version: "0.0.24" },
+    appInfo: { name: "AraLearn Course Inspector", version: "0.0.46" },
     appCapabilities: { availableDisplayModes: ["inline"] }
   });
   await expect.poll(() => page.evaluate(() => window.__mcpMessages.some(

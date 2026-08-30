@@ -9,6 +9,12 @@ import {
 } from "../../scripts/runHostedConversationalSourceSmoke.mjs";
 import { createHostedPdfFixture } from "../../scripts/runHostedCourseSourcePdfSmoke.mjs";
 import { EXPECTED_AUTHORING_CONTRACT_HEADER } from "../../scripts/verifyHostedBackend.mjs";
+import { AUTHORING_CONVERSATIONAL_PROJECTION_HEADER } from
+  "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA
+} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const PROJECT_URL = "https://abcdefghijklmnopqrst.supabase.co";
 const SECRET_KEY = "sb_secret_hosted-conversational-smoke-secret";
@@ -34,7 +40,11 @@ function json(payload, { status = 200, headers = {} } = {}) {
 
 function mcpResponse(request, result) {
   return json({ jsonrpc: "2.0", id: request.id, result }, {
-    headers: { "X-AraLearn-Authoring-Contract": EXPECTED_AUTHORING_CONTRACT_HEADER }
+    headers: {
+      "X-AraLearn-Authoring-Contract": EXPECTED_AUTHORING_CONTRACT_HEADER,
+      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+      "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER
+    }
   });
 }
 
@@ -77,6 +87,7 @@ test("gate humano aceita linguagem de domínio e bloqueia controles internos", (
     "lerCurso",
     "criarCurso",
     "alterarCurso",
+    "add_part",
     "consultarComponentesDidaticos",
     "incorporarPdfComoFonte",
     "ingerirPdfDaFonte",
@@ -106,7 +117,10 @@ test("falha ambígua de upload conserva o caminho para a limpeza integral", asyn
     if (url.pathname.endsWith("/aralearn-authoring-mcp")) {
       const request = JSON.parse(String(init.body));
       if (request.method === "initialize") {
-        return mcpResponse(request, { protocolVersion: "2025-11-25" });
+        return mcpResponse(request, {
+          protocolVersion: "2025-11-25",
+          _meta: { mcpCatalog: AUTHORING_MCP_CATALOG_METADATA }
+        });
       }
       const { name, arguments: argumentsValue } = request.params;
       if (name === "criarCurso") {
@@ -197,7 +211,10 @@ test("smoke orquestra nova sessão, ingestão canônica, Âncora e limpeza zero"
       const request = JSON.parse(String(init.body));
       if (request.method === "initialize") {
         initializations += 1;
-        return mcpResponse(request, { protocolVersion: "2025-11-25" });
+        return mcpResponse(request, {
+          protocolVersion: "2025-11-25",
+          _meta: { mcpCatalog: AUTHORING_MCP_CATALOG_METADATA }
+        });
       }
       assert.equal(request.method, "tools/call");
       const { name, arguments: argumentsValue } = request.params;

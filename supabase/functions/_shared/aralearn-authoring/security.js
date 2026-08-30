@@ -19,7 +19,7 @@ export function corsHeaders(request, allowedOrigins) {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Expose-Headers":
-      "ETag, X-AraLearn-Revision-Hash, X-AraLearn-Authoring-Contract",
+      "ETag, X-AraLearn-Revision-Hash, X-AraLearn-Authoring-Contract, X-AraLearn-Authoring-Projection",
     Vary: "Origin"
   };
 }

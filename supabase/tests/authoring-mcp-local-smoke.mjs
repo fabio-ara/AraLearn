@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA
+} from "../functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const projectUrl = String(
   process.env.SUPABASE_URL || process.env.API_URL || "http://127.0.0.1:54321"
@@ -82,6 +86,10 @@ const metadataResponse = await fetch(
   `${edgeUrl}/.well-known/oauth-protected-resource`
 );
 assert.equal(metadataResponse.status, 200);
+assert.equal(
+  metadataResponse.headers.get("x-aralearn-authoring-mcp-catalog"),
+  AUTHORING_MCP_CATALOG_HEADER
+);
 const metadata = await metadataResponse.json();
 assert.equal(metadata.resource, edgeUrl);
 assert.deepEqual(metadata.scopes_supported, ["offline_access"]);
@@ -147,6 +155,10 @@ if (!accessToken) {
     });
     const body = await json(response);
     assert.equal(response.status, 200, JSON.stringify(body));
+    assert.equal(
+      response.headers.get("x-aralearn-authoring-mcp-catalog"),
+      AUTHORING_MCP_CATALOG_HEADER
+    );
     assert.equal(body.error, undefined, body.error?.message);
     return body.result;
   }
@@ -185,8 +197,10 @@ if (!accessToken) {
     clientInfo: { name: "aralearn-local-smoke", version: "1" }
   });
   assert.equal(initialized.protocolVersion, protocolVersion);
+  assert.deepEqual(initialized._meta?.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
 
   const listed = await call("tools/list");
+  assert.deepEqual(listed._meta?.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   const toolNames = listed.tools.map(({ name }) => name);
   assert.deepEqual(toolNames, [
     "listarCursos",
@@ -194,7 +208,8 @@ if (!accessToken) {
     "criarCurso",
     "alterarCurso",
     "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos"
+    "consultarComponentesDidaticos",
+    "add_part"
   ]);
   assert.equal(
     toolNames.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o|publica(?:ç|c)[aã]o/iu.test(name)),
@@ -208,7 +223,6 @@ if (!accessToken) {
   const chatGptProposal = {
     requestId: humanRequests[0].id,
     parts: Array.from({ length: 9 }, (_, index) => ({
-      id: randomUUID(),
       title: `Parte proposta ${index + 1}`,
       intent: `Desenvolver o recorte ${index + 1} do objetivo do Curso.`
     }))
@@ -302,13 +316,18 @@ if (!accessToken) {
   }
 
   for (const [position, part] of chatGptProposal.parts.entries()) {
-    await applyJourneyPlanChange({
-      type: "add_part",
-      id: part.id,
+    const change = await tool("add_part", {
+      requestId: randomUUID(),
+      courseId: journeyCourseId,
+      expectedRevision: journeyRevision,
+      expectedPlanVersion: journeyPlanVersion,
       position,
       title: part.title,
       intent: part.intent
     });
+    assert.equal(change.changed, true);
+    journeyRevision = change.courseRevision;
+    journeyPlanVersion = change.planVersion;
   }
   const proposedPlan = await tool("lerCurso", {
     courseId: journeyCourseId,
@@ -320,10 +339,11 @@ if (!accessToken) {
     maximum: 12,
     origin: "automatic"
   });
+  const createdParts = proposedPlan.plan.parts;
 
   await applyJourneyPlanChange({
     type: "remove_part",
-    id: chatGptProposal.parts.at(-1).id
+    id: createdParts.at(-1).id
   });
   const authorAdjustedPlan = await tool("lerCurso", {
     courseId: journeyCourseId,
@@ -332,10 +352,10 @@ if (!accessToken) {
   assert.equal(authorAdjustedPlan.plan.parts.length, 8);
   assert.deepEqual(
     authorAdjustedPlan.plan.parts.map(({ id }) => id),
-    chatGptProposal.parts.slice(0, 8).map(({ id }) => id)
+    createdParts.slice(0, 8).map(({ id }) => id)
   );
 
-  const journeyPartId = chatGptProposal.parts[0].id;
+  const journeyPartId = createdParts[0].id;
   for (const [position, microsequenceId] of journeyMicrosequenceIds.entries()) {
     await applyJourneyPlanChange({
       type: "assign_microsequence",

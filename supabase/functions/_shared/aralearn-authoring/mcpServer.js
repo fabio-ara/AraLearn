@@ -17,10 +17,16 @@ import {
 import { readAuthoringOAuthAuthorization } from "./security.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
 import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA,
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal
 } from "./courseMcpTools.js";
+import {
+  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
+} from "./conversationalPdfSourceProjection.js";
 import {
   listCourseMcpAppResources,
   readCourseMcpAppResource
@@ -45,7 +51,7 @@ const SERVER_INFO = Object.freeze({
 const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
 const WRITE_TOOLS = new Set([
-  "criarCurso", "alterarCurso", "incorporarPdfComoFonte"
+  "criarCurso", "alterarCurso", "incorporarPdfComoFonte", "add_part"
 ]);
 const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
 const BASE_HEADERS = Object.freeze({
@@ -53,6 +59,8 @@ const BASE_HEADERS = Object.freeze({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+  "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+  "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER,
   "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
   Vary: "Origin"
 });
@@ -133,6 +141,8 @@ function metadataResponse(resourceUrl, authorizationServer, headers = {}) {
       "Cache-Control": "public, max-age=300",
       "X-Content-Type-Options": "nosniff",
       "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+      "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER,
       ...headers
     }
   });
@@ -174,7 +184,9 @@ function preflightResponse(request, allowedOrigins) {
       ].join(", "),
       "Access-Control-Max-Age": "600",
       "X-Content-Type-Options": "nosniff",
-      "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER
+      "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+      "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER
     }
   });
 }
@@ -532,6 +544,8 @@ function summarizeToolResult(name, value) {
   }
   const action = name === "criarCurso"
     ? "O Curso foi criado."
+    : name === "add_part"
+      ? "A Parte foi adicionada ao planejamento."
     : name === "alterarCurso"
       ? "A alteração foi concluída."
       : name === "incorporarPdfComoFonte"
@@ -665,7 +679,11 @@ async function dispatchMcpRequest(envelope, context) {
         },
         serverInfo: SERVER_INFO,
         instructions: COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-        _meta: { authoringContract: AUTHORING_CONTRACT_METADATA }
+        _meta: {
+          authoringContract: AUTHORING_CONTRACT_METADATA,
+          conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
+          mcpCatalog: AUTHORING_MCP_CATALOG_METADATA
+        }
       }
     };
   }
@@ -673,8 +691,11 @@ async function dispatchMcpRequest(envelope, context) {
     return { jsonrpc: JSON_RPC_VERSION, id, result: {} };
   }
   if (method === "tools/list") {
-    const unknown = Object.keys(params).find((field) => field !== "cursor");
-    if (unknown) {
+    const unknown = Object.keys(params).find((field) =>
+      field !== "cursor" && field !== "_meta");
+    const invalidMeta = Object.hasOwn(params, "_meta") &&
+      (!params._meta || typeof params._meta !== "object" || Array.isArray(params._meta));
+    if (unknown || invalidMeta) {
       return jsonRpcError(id, -32602, "Parâmetros inválidos para tools/list.");
     }
     if (params.cursor != null) {
@@ -687,13 +708,20 @@ async function dispatchMcpRequest(envelope, context) {
       id,
       result: {
         tools: authoringMcpToolsForPrincipal(context.principal),
-        _meta: { authoringContract: AUTHORING_CONTRACT_METADATA }
+        _meta: {
+          authoringContract: AUTHORING_CONTRACT_METADATA,
+          conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
+          mcpCatalog: AUTHORING_MCP_CATALOG_METADATA
+        }
       }
     };
   }
   if (method === "resources/list") {
-    const unknown = Object.keys(params).find((field) => field !== "cursor");
-    if (unknown || params.cursor != null) {
+    const unknown = Object.keys(params).find((field) =>
+      field !== "cursor" && field !== "_meta");
+    const invalidMeta = Object.hasOwn(params, "_meta") &&
+      (!params._meta || typeof params._meta !== "object" || Array.isArray(params._meta));
+    if (unknown || invalidMeta || params.cursor != null) {
       return jsonRpcError(id, -32602, "A lista de conhecimentos não usa parâmetros.");
     }
     return {
@@ -708,7 +736,10 @@ async function dispatchMcpRequest(envelope, context) {
     };
   }
   if (method === "resources/read") {
-    if (typeof params.uri !== "string" || Object.keys(params).some((field) => field !== "uri")) {
+    const invalidMeta = Object.hasOwn(params, "_meta") &&
+      (!params._meta || typeof params._meta !== "object" || Array.isArray(params._meta));
+    if (typeof params.uri !== "string" || invalidMeta ||
+        Object.keys(params).some((field) => field !== "uri" && field !== "_meta")) {
       return jsonRpcError(id, -32602, "resources/read exige somente uri.");
     }
     const resource = readCourseAuthoringKnowledgeResource(params.uri) ||
@@ -887,6 +918,8 @@ export function createAuthoringMcpHandler({
           headers: {
             ...cors,
             "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
+            "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
+            "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER,
             Vary: "Origin"
           }
         });

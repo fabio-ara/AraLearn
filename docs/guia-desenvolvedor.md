@@ -73,6 +73,7 @@ transportes costuma deixar o contrato divergente.
 | `supabase/migrations/` | esquema, funções, privilégios e políticas versionados |
 | `supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js` | autoridade do protocolo público v1 e de seu catálogo |
 | `supabase/functions/_shared/aralearn-authoring/courseMcpTools.js` | adaptação explícita do protocolo para rotas, comandos internos e MCP |
+| `supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js` | projeção compartilhada de criação e revisão de Fonte PDF |
 | `scripts/projectChatGptActionSchemas.mjs` | projeção do protocolo para esquemas aceitos pelo importador de Actions |
 | `supabase/functions/aralearn-course-api/` | entrada HTTP da Autoria no navegador |
 | `supabase/functions/aralearn-authoring-mcp/` | servidor MCP e recurso visual |
@@ -145,13 +146,17 @@ estreitamento de tipo, enum, padrão ou limite, novo campo obrigatório e nova
 proibição. Uma ruptura exige novo major; a linha v1 permanece disponível para
 os consumidores existentes durante a migração.
 
-O MCP recebe o catálogo canônico e acrescenta apenas segurança e `_meta` de
-transporte. Actions usa `projectChatGptActionSchemas.mjs`. O projetor percorre
+MCP e Actions aplicam primeiro a projeção compartilhada de Fonte PDF. O MCP
+acrescenta segurança e `_meta` de transporte; Actions usa ainda
+`projectChatGptActionSchemas.mjs`. O projetor percorre
 todas as condicionais `allOf`: condições necessárias para construir a chamada
 viram variantes explícitas, e a geração falha se alguma ficar sem compilação.
 Ele também converte cada `const` em `enum` de um único valor, pois essa é a forma
 que o importador corrente do ChatGPT preserva como discriminador. Não restaure
-`allOf` indiscriminadamente nem volte a removê-lo por uma passagem genérica.
+`allOf` indiscriminadamente nem volte a removê-lo por uma passagem genérica. A
+intenção de Fonte PDF em Actions é a exceção deliberada ao union achatado: o
+objeto expõe `existingSource`, `newSource` e `revisedSource` e exige exatamente
+uma propriedade com `minProperties/maxProperties = 1`.
 
 Ao alterar o catálogo, gere um novo snapshot em vez de sobrescrever o anterior,
 regenere o OpenAPI e execute:
@@ -166,8 +171,16 @@ npm.cmd run test:authoring:actions
 MCP e Action anunciam o mesmo ID, versão e hash no cabeçalho
 `X-AraLearn-Authoring-Contract`; o MCP também usa
 `_meta.authoringContract`. O smoke hospedado compara o esquema inteiro de
-`tools/list` com a autoridade local, removendo somente metadados de transporte,
-e o preflight da Action bloqueia uma implantação com fingerprint divergente.
+`tools/list` com `approved.tools.map(projectConversationalPdfSourceTool)`,
+removendo somente metadados de transporte, e o preflight da Action bloqueia uma
+implantação com fingerprint divergente. Uma mudança apenas nessa projeção ainda
+exige novo deploy e reconexão, mesmo quando o runtime canônico e seu fingerprint
+permanecem iguais.
+
+A forma projetada usa ainda `X-AraLearn-Authoring-Projection`,
+`_meta.conversationalProjection` e os campos `x-aralearn-*` correspondentes no
+OpenAPI. Ao alterar o projetor, acrescente um snapshot de projeção, incremente
+sua versão e atualize o hash; não reutilize a identidade anterior.
 
 ## Concorrência e repetição
 

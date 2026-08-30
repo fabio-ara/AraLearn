@@ -1,0 +1,59 @@
+{
+  "format": "aralearn.authoring-tool-selection-eval.v1",
+  "cases": [
+    {
+      "id": "locate_course",
+      "prompt": "Continue a autoria do Curso privado descartável ‘Curso de Redes — avaliação’. Localize-o pelo título antes de fazer qualquer alteração.",
+      "actions": { "tool": "listarCursos" },
+      "mcp": { "tool": "listarCursos" }
+    },
+    {
+      "id": "read_instructional_plan",
+      "prompt": "Leia o planejamento atual desse Curso e resuma onde a autoria parou.",
+      "actions": { "tool": "lerCurso", "selectors": { "view": "instructional_plan" } },
+      "mcp": { "tool": "lerCurso", "selectors": { "view": "instructional_plan" } }
+    },
+    {
+      "id": "read_sources",
+      "prompt": "Quais Fontes já estão vinculadas ao Curso? Comece pelo catálogo, sem baixar os PDFs.",
+      "actions": { "tool": "lerCurso", "selectors": { "view": "course_sources", "mode": "catalog" } },
+      "mcp": { "tool": "lerCurso", "selectors": { "view": "course_sources", "mode": "catalog" } }
+    },
+    {
+      "id": "add_plan_item",
+      "prompt": "Acrescente ao plano o resultado de aprendizagem ‘Distinguir permissões de leitura, escrita e execução no Linux’.",
+      "actions": { "tool": "add_plan_item", "selectors": { "kind": "intended_learning_outcome" }, "generatedIdentityFields": ["id"] },
+      "mcp": { "tool": "alterarCurso", "selectors": { "operation": "update_instructional_plan", "type": "add_plan_item", "kind": "intended_learning_outcome" }, "generatedIdentityFields": ["planCommand.id"] }
+    },
+    {
+      "id": "add_part",
+      "prompt": "Adicione uma Parte chamada ‘Fundamentos de Linux’ com o objetivo de introduzir terminal, arquivos e permissões.",
+      "actions": { "tool": "add_part", "selectors": { "operation": "update_instructional_plan", "type": "add_part" }, "generatedIdentityFields": ["id"] },
+      "mcp": { "tool": "add_part", "generatedIdentityFields": ["id"] }
+    },
+    {
+      "id": "change_course_design",
+      "prompt": "No desenho do Curso, defina explicitamente em três o teto de novas unidades de análise por Unidade de estudo expositiva.",
+      "actions": { "tool": "alterarCurso", "selectors": { "operation": "update_course_design", "type": "set_parameter" } },
+      "mcp": { "tool": "alterarCurso", "selectors": { "operation": "update_course_design", "type": "set_parameter" } }
+    },
+    {
+      "id": "ingest_attached_pdf",
+      "prompt": "O PDF anexado deve permanecer entre as Fontes deste Curso como ‘Edital Dataprev 2026’.",
+      "actions": { "tool": "incorporarPdfComoFonte", "intentProperty": "newSource", "fileField": "openaiFileIdRefs", "generatedIdentityFields": ["sourceId"] },
+      "mcp": { "tool": "incorporarPdfComoFonte", "selectors": { "mode": "create" }, "fileField": "pdf", "generatedIdentityFields": ["sourceId"] }
+    },
+    {
+      "id": "create_annotation",
+      "prompt": "Registre na Unidade de estudo selecionada a Observação ‘A passagem precisa distinguir os dois mecanismos’.",
+      "actions": { "tool": "alterarCurso", "selectors": { "operation": "update_anchored_annotations", "type": "create_anchored_annotation" }, "generatedIdentityFields": ["annotationCommand.annotationId"] },
+      "mcp": { "tool": "alterarCurso", "selectors": { "operation": "update_anchored_annotations", "type": "create_anchored_annotation" }, "generatedIdentityFields": ["annotationCommand.annotationId"] }
+    },
+    {
+      "id": "materialize_part",
+      "prompt": "Comece a materializar a Parte ‘Fundamentos de Linux’ a partir do planejamento validado.",
+      "actions": { "tool": "alterarCurso", "selectors": { "operation": "advance_part_materialization", "materializationOperation": "start" }, "generatedIdentityFields": ["materializationCommand.materializationId"] },
+      "mcp": { "tool": "alterarCurso", "selectors": { "operation": "advance_part_materialization", "materializationOperation": "start" }, "generatedIdentityFields": ["materializationCommand.materializationId"] }
+    }
+  ]
+}
