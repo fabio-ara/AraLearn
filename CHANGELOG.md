@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.46] - 2026-08-30
+
 ### Corrigido
 
 - o MCP passa a oferecer `add_part` como projeção dedicada e sem campo de
