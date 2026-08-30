@@ -112,9 +112,9 @@ altera a propriedade do Curso nem o resultado da validação.
 
 ## Superfícies conversacionais
 
-MCP expõe seis ferramentas; Actions expõe as seis operações canônicas e três
-projeções dedicadas descritas por OpenAPI. Nomes canônicos e executor são
-compartilhados. O OpenAPI pode omitir
+MCP expõe seis ferramentas canônicas e `add_part` dedicado; Actions expõe as
+seis operações canônicas e três projeções dedicadas descritas por OpenAPI.
+Nomes canônicos e executor são compartilhados. O OpenAPI pode omitir
 condicionais mecânicas profundas que o servidor continua validando, sem criar
 uma entrada de negócio para cada objeto:
 
@@ -124,6 +124,7 @@ uma entrada de negócio para cada objeto:
 | `lerCurso` | ler uma vista delimitada e versionada |
 | `criarCurso` | criar a raiz privada do Curso |
 | `alterarCurso` | alterar plano, desenho, Fontes, Observações, auditoria, variantes, composição ou materialização |
+| `add_part` | criar uma Parte sem pedir identidade técnica ao modelo |
 | `incorporarPdfComoFonte` | manter um PDF transportado pelo cliente em uma Fonte existente, nova ou revisada |
 | `consultarComponentesDidaticos` | descobrir, inspecionar, validar, auditar e apresentar componentes |
 

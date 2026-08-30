@@ -15,6 +15,12 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import {
+  AUTHORING_MCP_CATALOG_HASH,
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA,
+  COURSE_MCP_TOOLS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+import {
   AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
   AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
   AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
@@ -79,7 +85,19 @@ function request(method, params = {}) {
   });
 }
 
-test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async () => {
+function expectedMcpCanonicalTools(tools) {
+  return tools.map(projectConversationalPdfSourceTool).map((definition) => {
+    if (definition.name !== "alterarCurso") return definition;
+    const projected = structuredClone(definition);
+    projected.inputSchema.properties.planCommand.oneOf = projected
+      .inputSchema.properties.planCommand.oneOf.filter(
+        (branch) => branch.properties.type.const !== "add_part"
+      );
+    return projected;
+  });
+}
+
+test("MCP anuncia invariantes, ferramentas canônicas e add_part dedicado", async () => {
   const initialize = await handler()(request("initialize", {
     protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
     capabilities: {},
@@ -99,6 +117,10 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     initialize.headers.get("X-AraLearn-Authoring-Projection"),
     AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
   );
+  assert.equal(
+    initialize.headers.get("X-AraLearn-Authoring-Mcp-Catalog"),
+    AUTHORING_MCP_CATALOG_HEADER
+  );
   assert.equal(initialized.result.serverInfo.version, AUTHORING_PROTOCOL_SCHEMA_VERSION);
   assert.equal(initialized.result.capabilities.tools.listChanged, false);
   assert.deepEqual(initialized.result._meta.authoringContract, expectedContract);
@@ -106,20 +128,28 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     initialized.result._meta.conversationalProjection,
     AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
   );
+  assert.deepEqual(initialized.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   assert.match(initialized.result.instructions, /Curso vivo e mutável/iu);
   assert.match(initialized.result.instructions, /phaseGuidance focal/iu);
 
-  const listed = await handler()(request("tools/list"));
+  const listed = await handler()(request("tools/list", {
+    _meta: { progressToken: "catalogo-de-ferramentas" }
+  }));
   const listedPayload = await listed.json();
   assert.equal(
     listed.headers.get("X-AraLearn-Authoring-Contract"),
     ARALEARN_AUTHORING_CONTRACT_HEADER
+  );
+  assert.equal(
+    listed.headers.get("X-AraLearn-Authoring-Mcp-Catalog"),
+    AUTHORING_MCP_CATALOG_HEADER
   );
   assert.deepEqual(listedPayload.result._meta.authoringContract, expectedContract);
   assert.deepEqual(
     listedPayload.result._meta.conversationalProjection,
     AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
   );
+  assert.deepEqual(listedPayload.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   const tools = listedPayload.result.tools;
   const names = tools.map(({ name }) => name);
   assert.deepEqual(names, [
@@ -128,7 +158,8 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     "criarCurso",
     "alterarCurso",
     "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos"
+    "consultarComponentesDidaticos",
+    "add_part"
   ]);
   assert.equal(names.includes("gerirPessoas"), false);
   assert.equal(names.some((name) => /workspace|trilha|cole(?:ç|c)[aã]o/iu.test(name)), false);
@@ -146,10 +177,15 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
     if (Object.keys(normalized._meta).length === 0) delete normalized._meta;
     return normalized;
   });
-  assert.deepEqual(
-    contractTools,
-    AUTHORING_PROTOCOL_V1_TOOLS.map(projectConversationalPdfSourceTool)
-  );
+  const expectedCanonical = expectedMcpCanonicalTools(AUTHORING_PROTOCOL_V1_TOOLS);
+  const actualCanonical = contractTools.filter(({ name }) => name !== "add_part");
+  assert.deepEqual(actualCanonical, expectedCanonical);
+  const addPart = contractTools.find(({ name }) => name === "add_part");
+  assert.deepEqual(Object.keys(addPart.inputSchema.properties), [
+    "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
+    "position", "title", "intent"
+  ]);
+  assert.equal(Object.hasOwn(addPart.inputSchema.properties, "id"), false);
   assert.deepEqual(
     tools.find(({ name }) => name === "incorporarPdfComoFonte")
       ._meta["openai/fileParams"],
@@ -192,13 +228,27 @@ test("projeção conversacional possui snapshot e fingerprint próprios", async 
   );
 });
 
-test("tools/list bruto preserva todas as ferramentas do snapshot público aprovado", async () => {
+test("catálogo MCP completo possui fingerprint próprio e sensível ao tools/list", () => {
+  assert.equal(computeAuthoringProtocolCatalogHash(COURSE_MCP_TOOLS), AUTHORING_MCP_CATALOG_HASH);
+  assert.deepEqual(AUTHORING_MCP_CATALOG_METADATA, {
+    id: "aralearn.authoring-mcp-catalog",
+    version: "1.0.0",
+    hash: AUTHORING_MCP_CATALOG_HASH
+  });
+  assert.notEqual(
+    computeAuthoringProtocolCatalogHash(COURSE_MCP_TOOLS.slice(0, -1)),
+    AUTHORING_MCP_CATALOG_HASH,
+    "a remoção silenciosa de uma ferramenta precisa invalidar o fingerprint"
+  );
+});
+
+test("tools/list preserva o snapshot canônico e a projeção dedicada esperada", async () => {
   const snapshot = JSON.parse(await readFile(new URL(
     `../fixtures/authoring-protocol/v${AUTHORING_PROTOCOL_SCHEMA_VERSION}.snapshot.json`,
     import.meta.url
   ), "utf8"));
   const approved = decodeAuthoringProtocolSnapshot(snapshot);
-  const approvedConversationalTools = approved.tools.map(projectConversationalPdfSourceTool);
+  const approvedConversationalTools = expectedMcpCanonicalTools(approved.tools);
   const response = await handler()(request("tools/list"));
   const payload = await response.json();
   const listedTools = payload.result.tools.map((definition) => {
@@ -215,16 +265,76 @@ test("tools/list bruto preserva todas as ferramentas do snapshot público aprova
   });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(
-    listedTools.map(({ name }) => name),
-    approvedConversationalTools.map(({ name }) => name)
-  );
-  assert.deepEqual(listedTools, approvedConversationalTools);
+  assert.deepEqual(listedTools.map(({ name }) => name), [
+    ...approvedConversationalTools.map(({ name }) => name),
+    "add_part"
+  ]);
+  const listedCanonical = listedTools.filter(({ name }) => name !== "add_part");
+  assert.deepEqual(listedCanonical, approvedConversationalTools);
   assert.equal(
     listedTools.some(({ name }) => name === "incorporarPdfComoFonte"),
     true,
     "a ingestão pública de PDF não pode desaparecer silenciosamente do discovery"
   );
+  assert.equal(
+    listedTools.some(({ name }) => name === "add_part"),
+    true,
+    "a criação natural de Parte não pode desaparecer silenciosamente do discovery"
+  );
+});
+
+test("MCP cria Parte pela ferramenta dedicada e gera a identidade na camada confiável", async () => {
+  const calls = [];
+  const deepLink = `https://app.example/#/authoring/courses/${COURSE_ID}?section=planning`;
+  const response = await handler({
+    async commitCourseInstructionalPlan(value) {
+      calls.push(value);
+      return {
+        contract: "aralearn.course-instructional-plan-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        planId: "90000000-0000-4000-8000-000000000009",
+        planVersion: 3,
+        requestId: value.requestId,
+        changed: true,
+        idempotent: false,
+        deepLink
+      };
+    }
+  })(request("tools/call", {
+    name: "add_part",
+    arguments: {
+      requestId: "request-mcp-add-part-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 4,
+      expectedPlanVersion: 2,
+      position: 0,
+      title: "Fundamentos de Linux",
+      intent: "Introduzir terminal, arquivos e permissões."
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].expectedCourseRevision, 4);
+  assert.equal(calls[0].expectedPlanVersion, 2);
+  assert.deepEqual(calls[0].command, {
+    type: "add_part",
+    id: calls[0].command.id,
+    position: 0,
+    title: "Fundamentos de Linux",
+    intent: "Introduzir terminal, arquivos e permissões."
+  });
+  assert.match(
+    calls[0].command.id,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+  );
+  assert.equal(payload.result.isError, false);
+  assert.match(payload.result.content[0].text, /Parte foi adicionada/iu);
+  assert.match(payload.result.content[0].text, /Abrir a área alterada no AraLearn/u);
+  assert.equal(payload.result.content[0].text.includes(calls[0].command.id), false);
+  assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
 });
 
 test("MCP transfere PDF e completa metadados conservadores de uma Fonte nova", async () => {
@@ -627,7 +737,9 @@ test("MCP retoma uma Fonte com referência humana sem narrar controles internos"
 });
 
 test("MCP publica conhecimento e componente opcional e lê o plano pela rota compartilhada", async () => {
-  const resourcesResponse = await handler()(request("resources/list"));
+  const resourcesResponse = await handler()(request("resources/list", {
+    _meta: { progressToken: "catalogo-de-recursos" }
+  }));
   const resources = (await resourcesResponse.json()).result.resources;
   assert.deepEqual(resources.map(({ uri }) => uri), [
     "aralearn://authoring/planning-design",
@@ -640,7 +752,11 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
     "ui://aralearn/course-inspector/0.0.46.html"
   ]);
   const componentResponse = await handler()(request("resources/read", {
-    uri: "ui://aralearn/course-inspector/0.0.46.html"
+    uri: "ui://aralearn/course-inspector/0.0.46.html",
+    _meta: {
+      progressToken: "leitura-do-componente",
+      "com.openai/client": "chatgpt"
+    }
   }));
   const component = (await componentResponse.json()).result.contents[0];
   assert.equal(component.mimeType, "text/html;profile=mcp-app");
@@ -669,6 +785,28 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   assert.doesNotMatch(payload.result.content[0].text, /structuredContent/u);
   assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
+});
+
+test("MCP rejeita _meta malformado e campos desconhecidos nas listagens e leituras", async () => {
+  const malformedCases = [
+    ["tools/list", { _meta: null }],
+    ["tools/list", { _meta: [] }],
+    ["tools/list", { _meta: "inválido" }],
+    ["resources/list", { _meta: null }],
+    ["resources/list", { _meta: [] }],
+    ["resources/list", { _meta: "inválido" }],
+    ["resources/read", { uri: "aralearn://authoring/sources", _meta: null }],
+    ["resources/read", { uri: "aralearn://authoring/sources", _meta: [] }],
+    ["resources/read", { uri: "aralearn://authoring/sources", _meta: "inválido" }],
+    ["tools/list", { inesperado: true }],
+    ["resources/list", { inesperado: true }],
+    ["resources/read", { uri: "aralearn://authoring/sources", inesperado: true }]
+  ];
+  for (const [method, params] of malformedCases) {
+    const response = await handler()(request(method, params));
+    const payload = await response.json();
+    assert.equal(payload.error.code, -32602, `${method}: ${JSON.stringify(params)}`);
+  }
 });
 
 test("MCP lê a materialização retomável sem duplicar o DTO no texto", async () => {

@@ -243,7 +243,8 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. verifique as seis ferramentas MCP ou, em Actions, as seis operações
+3. verifique as seis ferramentas canônicas e `add_part` no MCP ou, em Actions,
+   as seis operações
    canônicas e as três projeções dedicadas a itens do plano e à criação de Parte no ambiente
    hospedado;
 4. use `listarCursos` e `lerCurso` antes da mutação;
@@ -259,7 +260,7 @@ dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
 credencial exclusiva do recurso MCP, não uma sessão da aplicação.
 
 No MCP, compare sempre o catálogo hospedado com a conversa corrente. A função
-publica seis ferramentas e `incorporarPdfComoFonte` declara
+publica seis ferramentas canônicas e `add_part`; `incorporarPdfComoFonte` declara
 `_meta["openai/fileParams"] = ["pdf"]`. Depois de um deploy, use **Atualizar** na
 conexão e abra uma conversa nova; uma sessão anterior pode conservar um
 `tools/list` antigo mesmo quando o endpoint já mudou. Compare também

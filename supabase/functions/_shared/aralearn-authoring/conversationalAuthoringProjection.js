@@ -54,7 +54,9 @@ function normalizedTitle(value) {
 
 function humanAction(toolName, data) {
   const deepLink = optionalText(data?.deepLink || data?.course?.deepLink || data?.result?.deepLink);
-  if (!deepLink || !new Set(["criarCurso", "alterarCurso", "consultarComponentesDidaticos"])
+  if (!deepLink || !new Set([
+    "criarCurso", "alterarCurso", "add_part", "consultarComponentesDidaticos"
+  ])
     .has(toolName)) return null;
   try {
     const url = new URL(deepLink);

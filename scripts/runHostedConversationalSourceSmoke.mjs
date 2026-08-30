@@ -16,6 +16,10 @@ import {
 import { EXPECTED_AUTHORING_CONTRACT_HEADER } from "./verifyHostedBackend.mjs";
 import { AUTHORING_CONVERSATIONAL_PROJECTION_HEADER } from
   "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA
+} from "../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
 
 const APPLICATION_ORIGIN = "https://fabio-ara.github.io";
 const MCP_PROTOCOL_VERSION = "2025-11-25";
@@ -28,7 +32,7 @@ const UUID_PATTERN =
   /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu;
 const HASH_PATTERN = /\b[a-f0-9]{64}\b/iu;
 const NOMINAL_CONTROL_PATTERN =
-  /\b(?:courseId|sourceId|sourceRevision|anchorId|anchorRevision|expectedRevision|expectedPlanVersion|requestId|storagePath|contentHash|planVersion|revision|path|hash|CAS|payload|schema|listarCursos|lerCurso|criarCurso|alterarCurso|consultarComponentesDidaticos|incorporarPdfComoFonte|ingerirPdfDaFonte|save_source|save_anchor|attach_pdf|update_course_sources|course_sources|course_source_attachment|tools\/call|aralearn\.[A-Za-z0-9._-]+)\b/iu;
+  /\b(?:courseId|sourceId|sourceRevision|anchorId|anchorRevision|expectedRevision|expectedPlanVersion|requestId|storagePath|contentHash|planVersion|revision|path|hash|CAS|payload|schema|listarCursos|lerCurso|criarCurso|alterarCurso|add_part|consultarComponentesDidaticos|incorporarPdfComoFonte|ingerirPdfDaFonte|save_source|save_anchor|attach_pdf|update_course_sources|course_sources|course_source_attachment|tools\/call|aralearn\.[A-Za-z0-9._-]+)\b/iu;
 
 export const HOSTED_CONVERSATIONAL_SOURCE_SMOKE_CONTRACT =
   "aralearn.hosted-conversational-source-smoke.v1";
@@ -126,6 +130,11 @@ export function createHostedMcpClient({
       `MCP/${method} não corresponde à projeção conversacional corrente.`
     );
     ensure(
+      response.headers.get("x-aralearn-authoring-mcp-catalog") ===
+        AUTHORING_MCP_CATALOG_HEADER,
+      `MCP/${method} não corresponde ao catálogo MCP projetado corrente.`
+    );
+    ensure(
       response.headers.get("mcp-session-id") === null,
       "O MCP hospedado conservou sessão de transporte inesperada."
     );
@@ -143,6 +152,13 @@ export function createHostedMcpClient({
       ensure(
         result?.protocolVersion === MCP_PROTOCOL_VERSION,
         "O MCP hospedado não negociou o protocolo esperado."
+      );
+      const mcpCatalog = result?._meta?.mcpCatalog;
+      ensure(
+        mcpCatalog?.id === AUTHORING_MCP_CATALOG_METADATA.id &&
+          mcpCatalog?.version === AUTHORING_MCP_CATALOG_METADATA.version &&
+          mcpCatalog?.hash === AUTHORING_MCP_CATALOG_METADATA.hash,
+        "O MCP hospedado não anunciou a identidade do catálogo projetado corrente."
       );
       initialized = true;
     },

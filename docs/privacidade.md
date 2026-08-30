@@ -312,7 +312,8 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-O catálogo MCP público possui seis ferramentas. Perfil,
+O catálogo MCP público possui seis ferramentas canônicas e `add_part` dedicado.
+Perfil,
 avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.

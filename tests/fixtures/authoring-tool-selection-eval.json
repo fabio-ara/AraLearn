@@ -26,6 +26,12 @@
       "mcp": { "tool": "alterarCurso", "selectors": { "operation": "update_instructional_plan", "type": "add_plan_item", "kind": "intended_learning_outcome" }, "generatedIdentityFields": ["planCommand.id"] }
     },
     {
+      "id": "add_part",
+      "prompt": "Adicione uma Parte chamada ‘Fundamentos de Linux’ com o objetivo de introduzir terminal, arquivos e permissões.",
+      "actions": { "tool": "add_part", "selectors": { "operation": "update_instructional_plan", "type": "add_part" }, "generatedIdentityFields": ["id"] },
+      "mcp": { "tool": "add_part", "generatedIdentityFields": ["id"] }
+    },
+    {
       "id": "change_course_design",
       "prompt": "No desenho do Curso, defina explicitamente em três o teto de novas unidades de análise por Unidade de estudo expositiva.",
       "actions": { "tool": "alterarCurso", "selectors": { "operation": "update_course_design", "type": "set_parameter" } },

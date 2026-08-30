@@ -133,7 +133,7 @@ aceita até 20 MiB; o conteúdo único vinculado a um Curso aceita até 64 MiB.
 | Função | Entrada | Identidade aceita |
 | --- | --- | --- |
 | `aralearn-course-api` | aplicação web e Android | sessão AraLearn validada pelo handler |
-| `aralearn-authoring-mcp` | protocolo MCP e seis ferramentas canônicas | JWT OAuth minimizado do MCP |
+| `aralearn-authoring-mcp` | protocolo MCP, seis ferramentas canônicas e `add_part` dedicado | JWT OAuth minimizado do MCP |
 | `aralearn-authoring-action` | seis operações HTTP importadas por OpenAPI | access token opaco do OAuth de Actions |
 
 As três funções usam `verify_jwt = false` na configuração. Isso não as torna

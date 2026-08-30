@@ -3,9 +3,11 @@ import { routeCourseRequest } from "./courseProtocol.js";
 import { executeCourseRoute } from "./courseRouter.js";
 import {
   authoringApplicationToolIsAllowed,
+  authoringMcpToolIsAllowed,
   authoringProtocolV1ToolIsAllowed,
   mapAuthoringApplicationToolCall,
   mapAuthoringProtocolV1Call,
+  resolveAuthoringMcpToolCall,
   validateAuthoringApplicationToolOutput,
   validateAuthoringMcpToolOutput
 } from "./courseMcpTools.js";
@@ -590,7 +592,9 @@ export async function executeCourseTool({
 }) {
   const allowed = surface === "application"
     ? authoringApplicationToolIsAllowed(name, principal)
-    : authoringProtocolV1ToolIsAllowed(name, principal);
+    : surface === "mcp"
+      ? authoringMcpToolIsAllowed(name, principal)
+      : authoringProtocolV1ToolIsAllowed(name, principal);
   if (!allowed) {
     throw new AuthoringApiError(
       403,
@@ -598,12 +602,18 @@ export async function executeCourseTool({
       "A sessão não permite usar esta ferramenta."
     );
   }
-  const trustedArguments = await withTrustedCreationIdentities(name, rawArguments);
+  const resolved = surface === "mcp"
+    ? resolveAuthoringMcpToolCall(name, rawArguments)
+    : { canonicalToolName: name, rawArguments };
+  const trustedArguments = await withTrustedCreationIdentities(
+    resolved.canonicalToolName,
+    resolved.rawArguments
+  );
   const operation = surface === "application"
     ? mapAuthoringApplicationToolCall(name, trustedArguments, {
         inspectionVersion: applicationInspectionVersion
       })
-    : mapAuthoringProtocolV1Call(name, trustedArguments);
+    : mapAuthoringProtocolV1Call(resolved.canonicalToolName, trustedArguments);
   if (typeof onRequestIdValidated === "function") {
     onRequestIdValidated(operation.requestId ?? null);
   }

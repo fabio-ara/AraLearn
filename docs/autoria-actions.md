@@ -349,7 +349,7 @@ somente quando a tarefa precisar ler aquele PDF.
 | cliente OAuth | confidencial, ligado ao GPT | público ou conforme o cliente MCP cadastrado dinamicamente |
 | escopo | `openid email` | `offline_access` |
 | token | opaco, resolvido por hash | JWT ES256 minimizado e destinado ao recurso MCP |
-| catálogo | seis operações canônicas e três projeções dedicadas | seis ferramentas canônicas |
+| catálogo | seis operações canônicas e três projeções dedicadas | seis ferramentas canônicas e `add_part` dedicado |
 
 Depois de autenticar seus principais, os dois canais chegam ao mesmo executor
 de Curso. Essa convergência mantém revisão, idempotência, validação e histórico;

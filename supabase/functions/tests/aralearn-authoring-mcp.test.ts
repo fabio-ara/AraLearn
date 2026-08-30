@@ -2,6 +2,10 @@ import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../_shared/aralearn-authoring/mcpServer.js";
+import {
+  AUTHORING_MCP_CATALOG_HEADER,
+  AUTHORING_MCP_CATALOG_METADATA
+} from "../_shared/aralearn-authoring/courseMcpTools.js";
 
 function assertEquals(actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -66,10 +70,15 @@ Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas de Curs
   const body = await response.json();
   assertEquals(response.status, 200);
   assertEquals(body.result.protocolVersion, ARALEARN_MCP_PROTOCOL_VERSION);
+  assertEquals(
+    response.headers.get("x-aralearn-authoring-mcp-catalog"),
+    AUTHORING_MCP_CATALOG_HEADER
+  );
+  assertEquals(body.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   assertEquals(response.headers.get("mcp-session-id"), null);
 });
 
-Deno.test("gateway MCP mantém seis tools e anuncia arquivo, observações e auditoria", async () => {
+Deno.test("gateway MCP mantém sete tools e anuncia arquivo, Parte e auditoria", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: adapter(),
     allowedOrigins: new Set([origin]),
@@ -78,6 +87,11 @@ Deno.test("gateway MCP mantém seis tools e anuncia arquivo, observações e aud
   });
   const response = await handler(request("tools/list"));
   const body = await response.json();
+  assertEquals(
+    response.headers.get("x-aralearn-authoring-mcp-catalog"),
+    AUTHORING_MCP_CATALOG_HEADER
+  );
+  assertEquals(body.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   const tools = body.result.tools as Array<Record<string, unknown>>;
   assertEquals(tools.map(({ name }) => name), [
     "listarCursos",
@@ -85,7 +99,8 @@ Deno.test("gateway MCP mantém seis tools e anuncia arquivo, observações e aud
     "criarCurso",
     "alterarCurso",
     "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos"
+    "consultarComponentesDidaticos",
+    "add_part"
   ]);
   const read = tools.find(({ name }) => name === "lerCurso") as {
     inputSchema: { properties: { view: { enum: string[] } } }
@@ -107,6 +122,10 @@ Deno.test("gateway MCP mantém seis tools e anuncia arquivo, observações e aud
     _meta: { "openai/fileParams": string[] }
   };
   assertEquals(pdf._meta["openai/fileParams"], ["pdf"]);
+  const addPart = tools.find(({ name }) => name === "add_part") as {
+    inputSchema: { properties: Record<string, unknown> }
+  };
+  assertEquals(Object.hasOwn(addPart.inputSchema.properties, "id"), false);
 });
 
 Deno.test("gateway MCP cria Curso pelo mesmo caso de uso do aplicativo", async () => {

@@ -54,10 +54,10 @@ function findPropertySchema(root, property) {
   return null;
 }
 
-test("guarda estrutural publica as rotas esperadas para oito intenções", () => {
+test("guarda estrutural publica as rotas esperadas para nove intenções", () => {
   assert.equal(fixture.format, "aralearn.authoring-tool-selection-eval.v1");
-  assert.equal(fixture.cases.length, 8);
-  assert.equal(new Set(fixture.cases.map(({ id }) => id)).size, 8);
+  assert.equal(fixture.cases.length, 9);
+  assert.equal(new Set(fixture.cases.map(({ id }) => id)).size, 9);
 
   for (const scenario of fixture.cases) {
     assert.ok(scenario.prompt.length >= 40, `${scenario.id}: prompt realista ausente`);
@@ -107,6 +107,21 @@ test("guarda estrutural publica as rotas esperadas para oito intenções", () =>
         }
       }
     }
+  }
+});
+
+test("criação natural de Parte usa ferramenta dedicada sem identidade do chamador", () => {
+  const scenario = fixture.cases.find(({ id }) => id === "add_part");
+  for (const surface of ["actions", "mcp"]) {
+    const tool = toolsBySurface[surface].get(scenario[surface].tool);
+    assert.ok(tool, `${surface}: add_part não foi publicado`);
+    const command = surface === "actions"
+      ? tool.inputSchema.properties.planCommand
+      : tool.inputSchema;
+    assert.equal(Object.hasOwn(command.properties, "id"), false);
+    assert.ok(command.properties.title);
+    assert.ok(command.properties.intent);
+    assert.ok(command.properties.position);
   }
 });
 

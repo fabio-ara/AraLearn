@@ -71,7 +71,8 @@
           "listarCursos",
           "lerCurso",
           "criarCurso",
-          "alterarCurso"
+          "alterarCurso",
+          "add_part"
         ],
         "manifestFeatures": [
           "single-live-course-identity-v1",

@@ -5,7 +5,8 @@ Este capítulo ensina como um cliente conversacional opera a Autoria pelo
 visual usa a API de Cursos, enquanto o cliente conversacional usa o MCP; ambos
 leem e alteram o mesmo Curso vivo no PostgreSQL.
 
-O ambiente hospedado oferece seis ferramentas. Perfil e
+O ambiente hospedado oferece seis ferramentas canônicas e a projeção dedicada
+`add_part`, totalizando sete entradas em `tools/list`. Perfil e
 gestão de acesso permanecem na aplicação autenticada. O escopo
 `offline_access`, os aliases pareados e o transporte de PDF compatível integram
 o contrato publicado.
@@ -98,14 +99,15 @@ Há duas classes de objeto:
 - **ferramenta MCP:** executa uma leitura ou mutação tipada;
 - **recurso MCP:** entrega conhecimento estável que pode ser lido sob demanda.
 
-As seis ferramentas derivam do protocolo público
+As seis ferramentas canônicas derivam do protocolo público
 `aralearn.authoring-protocol.v1`. Essa autoridade não é gerada a partir das
 estruturas internas do domínio. Antes do transporte, a incorporação de PDF
 recebe uma projeção conversacional compartilhada com Actions, que distingue
 criação bibliográfica de revisão completa. `courseMcpTools` acrescenta os
-metadados OAuth e MCP Apps e converte cada chamada para o roteador e os
-validadores do backend. Uma alteração interna, portanto, não muda
-silenciosamente o esquema descoberto por `tools/list`.
+metadados OAuth e MCP Apps e projeta `add_part` sem identidade do chamador;
+ambos os formatos convergem para o mesmo roteador e os mesmos validadores do
+backend. Uma alteração interna, portanto, não muda silenciosamente o esquema
+descoberto por `tools/list`.
 
 O protocolo possui três níveis de identidade. O sufixo v1 do identificador
 aponta para o major público, `schemaVersion` identifica o snapshot semântico e o
@@ -120,15 +122,23 @@ A forma conversacional descoberta possui identidade própria em
 `_meta.conversationalProjection` e
 `X-AraLearn-Authoring-Projection`. A projeção corrente é
 `aralearn.authoring-conversational-projection.v1`, versão `1.0.0`; seu hash
-cobre as seis ferramentas depois da separação de criação e revisão de Fonte.
-Assim o runtime 1.x pode continuar aceitando retries antigos sem tornar uma
-mudança de `tools/list` invisível ao diagnóstico de cache.
+cobre a projeção compartilhada das seis ferramentas canônicas depois da
+separação de criação e revisão de Fonte.
+
+O catálogo MCP projetado completo possui identidade separada em
+`_meta.mcpCatalog` e `X-AraLearn-Authoring-Mcp-Catalog`. A versão `1.0.0` desse
+catálogo cobre as sete ferramentas efetivamente descobertas, inclusive
+`add_part` e a retirada de sua variante concorrente em `alterarCurso`. Actions
+não anuncia essa identidade, pois serve sua própria projeção OpenAPI. Assim o
+runtime 1.x pode continuar aceitando retries antigos e o catálogo hospedado
+permanece distinguível de uma descoberta MCP conservada em cache.
 
 O servidor permanece sem sessão e não anuncia `listChanged`, pois não emite a
 notificação correspondente. Depois de publicar outro snapshot compatível, um
-cliente que conservou a descoberta anterior precisa reconectar a integração. O
-fingerprint permite distinguir versões do runtime; a forma exata da projeção
-conversacional deve ser conferida no `tools/list` corrente.
+cliente que conservou a descoberta anterior precisa reconectar a integração. Os
+fingerprints distinguem o contrato canônico, a projeção compartilhada e o
+catálogo MCP completo; a forma exata deve ser conferida no `tools/list`
+corrente.
 
 As instruções permanentes contêm somente invariantes transversais: Curso vivo,
 leitura focal antes da escrita, revisões correntes, ausência de invenção e ciclo
@@ -436,13 +446,21 @@ ponto de partida editável e pesquisável, não uma prescrição sobre ensino.
 Não cria recipiente, estágio editorial ou cópia de distribuição. A pessoa que
 autenticou a chamada é proprietária.
 
+### `add_part`
+
+Cria uma Parte no plano a partir de posição, título e intenção. O cliente envia
+as revisões correntes, mas não envia a identidade da Parte: a camada confiável a
+gera antes de aplicar o mesmo comando canônico usado por `alterarCurso`. Um
+retry com o mesmo `requestId` preserva identidade, CAS e idempotência.
+
 ### `alterarCurso`
 
 Possui nove operações fechadas:
 
 - `update_instructional_plan`: aplica um comando semântico ao plano, como atualizar
-  campos naturais, incluir/editar/reordenar itens, incluir/editar/dividir/
-  juntar/reordenar Partes ou mover vínculos de microssequência;
+  campos naturais, incluir/editar/reordenar itens, editar/dividir/juntar/
+  reordenar Partes ou mover vínculos de microssequência; a criação natural de
+  Parte usa `add_part`, embora o formato canônico anterior continue aceito;
 - `update_course_design`: define ou limpa parâmetro, orientação e política de
   componentes, registra interpretação ligada à revisão exata da orientação ou
   aplica `set_target_plan_items` para substituir as duas listas de itens de uma
@@ -899,7 +917,8 @@ Para conectar um cliente:
 2. cadastre o cliente OAuth e seus endereços de redirecionamento;
 3. configure o endereço acima;
 4. autentique uma conta individual;
-5. confira a descoberta das seis ferramentas, seu `_meta.authoringContract`,
+5. confira a descoberta das seis ferramentas canônicas e de `add_part`, seu
+   `_meta.authoringContract`,
    os recursos focais de autoria e, num cliente compatível, o recurso visual
    versionado;
 6. faça primeiro uma leitura sem mutação;
@@ -946,10 +965,11 @@ anexo. Essa ligação final exige uma conversa nova no GPT configurado. A prova
 também não substitui a usabilidade da assistência num navegador ou aparelho
 real. A verificação hospedada só deve ser executada depois que as
 migrations remotas estiverem em paridade com `supabase/runtime-manifest.json`.
-O smoke hospedado também compara o cabeçalho e o metadado servidos, além do
-esquema completo de `tools/list`, com a projeção conversacional derivada do
-catálogo canônico local. Somente `securitySchemes` e metadados próprios do
-transporte são retirados antes dessa comparação.
+O smoke hospedado também confere o cabeçalho e o metadado da projeção
+conversacional compartilhada, a identidade separada do catálogo MCP completo e
+o esquema das sete entradas de `tools/list` contra a projeção local. Somente
+`securitySchemes` e metadados próprios do transporte são retirados antes da
+comparação estrutural.
 
 ## Referências normativas e técnicas
 

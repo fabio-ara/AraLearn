@@ -696,10 +696,10 @@ async function validateEdgeAndMcp() {
   const expected = [
     "listarCursos", "lerCurso", "criarCurso", "alterarCurso",
     "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos"
+    "consultarComponentesDidaticos", "add_part"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às seis ferramentas públicas esperadas.");
+    fail("O catálogo MCP não corresponde às sete ferramentas públicas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

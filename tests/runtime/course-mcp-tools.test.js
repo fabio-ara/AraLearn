@@ -72,7 +72,8 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     "criarCurso",
     "alterarCurso",
     "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos"
+    "consultarComponentesDidaticos",
+    "add_part"
   ]);
   const serialized = JSON.stringify(COURSE_MCP_TOOLS);
   assert.doesNotMatch(serialized, /workspace|trilha|coleç|publicaç/iu);
@@ -101,6 +102,19 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
   assert.equal(pdfSchema.properties.file_id.type, "string");
   assert.deepEqual(pdfSchema.properties.mime_type.enum, ["application/pdf"]);
   assert.equal(pdfSchema.properties.file_name.type, "string");
+  const addPartTool = COURSE_MCP_TOOLS.find(({ name }) => name === "add_part");
+  assert.deepEqual(addPartTool.annotations, {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false
+  });
+  assert.deepEqual(Object.keys(addPartTool.inputSchema.properties), [
+    "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
+    "position", "title", "intent"
+  ]);
+  assert.equal(Object.hasOwn(addPartTool.inputSchema.properties, "id"), false);
+  assert.equal(Object.hasOwn(addPartTool.inputSchema.properties, "planCommand"), false);
   const componentUri = "ui://aralearn/course-inspector/0.0.46.html";
   for (const name of ["lerCurso", "consultarComponentesDidaticos"]) {
     const definition = COURSE_MCP_TOOLS.find((tool) => tool.name === name);
@@ -115,6 +129,12 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
     { name: "manterAraLearn" }
   ]);
   assert.equal(authoringApplicationToolDefinition("gerirPessoas")?.name, "gerirPessoas");
+  assert.equal(
+    authoringApplicationToolDefinition("alterarCurso")
+      .inputSchema.properties.planCommand.oneOf.length,
+    14,
+    "a projeção exclusiva do MCP não pode estreitar o contrato da aplicação"
+  );
   assert.equal(authoringMcpToolIsAllowed("gerirPessoas", {
     actorId: COURSE_ID,
     scopes: ["authoring:write"]
@@ -261,6 +281,11 @@ test("leitura exige identidade e escrita também exige escopo", () => {
     actorId: COURSE_ID,
     scopes: ["authoring:write"]
   }), true);
+  assert.equal(authoringMcpToolIsAllowed("add_part", reader), false);
+  assert.equal(authoringMcpToolIsAllowed("add_part", {
+    actorId: COURSE_ID,
+    scopes: ["authoring:write"]
+  }), true);
   for (const substitutedScope of ["authoring:private:write", "*"]) {
     const principal = { actorId: COURSE_ID, scopes: [substitutedScope] };
     assert.equal(authoringMcpToolIsAllowed("criarCurso", principal), false);
@@ -269,6 +294,44 @@ test("leitura exige identidade e escrita também exige escopo", () => {
       ["listarCursos", "lerCurso", "consultarComponentesDidaticos"]
     );
   }
+});
+
+test("add_part projeta argumentos mínimos no comando canônico sem aceitar identidade", () => {
+  const definition = COURSE_MCP_TOOLS.find(({ name }) => name === "add_part");
+  const validate = new Ajv2020({ allErrors: true, strict: false })
+    .compile(definition.inputSchema);
+  const input = {
+    requestId: "request-add-part-0001",
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    expectedPlanVersion: 2,
+    position: 0,
+    title: "Fundamentos de Linux",
+    intent: "Introduzir terminal, arquivos e permissões."
+  };
+  assert.equal(validate(input), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...input, id: PART_ID }), false);
+  assert.deepEqual(mapAuthoringMcpToolCall("add_part", input), {
+    kind: "route",
+    method: "POST",
+    path: `/v1/courses/${COURSE_ID}/instructional-plan/changes`,
+    requestId: input.requestId,
+    body: {
+      requestId: input.requestId,
+      expectedCourseRevision: 4,
+      expectedPlanVersion: 2,
+      command: {
+        type: "add_part",
+        position: 0,
+        title: "Fundamentos de Linux",
+        intent: "Introduzir terminal, arquivos e permissões."
+      }
+    }
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("add_part", { ...input, id: PART_ID }),
+    (error) => error.code === "unknown_tool_argument"
+  );
 });
 
 test("ingestão conversacional recebe arquivo oficial sem metadados de Storage", () => {
@@ -1092,7 +1155,7 @@ test("rejeita argumentos desconhecidos e alteração vazia", () => {
   );
 });
 
-test("schema MCP anuncia comandos do plano, Partes e materialização delimitada", () => {
+test("schema MCP separa criação de Parte dos demais comandos do plano", () => {
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso").inputSchema;
   assert.deepEqual(schema.properties.operation.enum, [
     "update_instructional_plan",
@@ -1125,15 +1188,18 @@ test("schema MCP anuncia comandos do plano, Partes e materialização delimitada
     }, { inspectionVersion: 2 }).path,
     new RegExp(`^/v2/courses/${COURSE_ID}/study-units\\?`, "u")
   );
-  assert.equal(planBranches.length, 14);
-  assert.equal(planBranch("add_part").additionalProperties, false);
-  assert.deepEqual(planBranch("add_part").required, [
-    "type", "position", "title", "intent"
+  assert.equal(planBranches.length, 13);
+  assert.equal(planBranch("add_part"), undefined);
+  const addPart = COURSE_MCP_TOOLS.find(({ name }) => name === "add_part").inputSchema;
+  assert.equal(addPart.additionalProperties, false);
+  assert.deepEqual(addPart.required, [
+    "requestId", "courseId", "expectedRevision", "expectedPlanVersion",
+    "position", "title", "intent"
   ]);
-  assert.equal(planBranch("add_part").properties.id.description.includes("camada confiável"), true);
+  assert.equal(Object.hasOwn(addPart.properties, "id"), false);
   assert.ok(planBranch("update_part").required.includes("intent"));
   assert.ok(planBranch("split_part").required.includes("intent"));
-  assert.equal(Object.hasOwn(planBranch("add_part").properties, "partId"), false);
+  assert.equal(Object.hasOwn(addPart.properties, "partId"), false);
   assert.equal(Object.hasOwn(planBranch("remove_part").properties, "title"), false);
   assert.equal(planBranch("update_plan").anyOf.length, 5);
   assert.equal(schema.properties.designCommand.oneOf.length, 8);
@@ -2505,7 +2571,7 @@ test("MCP usa o mesmo fato de Fonte e exige referências na reformulação", () 
 });
 
 test("schema MCP condiciona a revisão do Curso no registro público", () => {
-  assert.equal(COURSE_MCP_TOOLS.length, 6);
+  assert.equal(COURSE_MCP_TOOLS.length, 7);
   const schema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
     .inputSchema;
   const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);

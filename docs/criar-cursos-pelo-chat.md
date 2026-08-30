@@ -35,7 +35,8 @@ detalhe recuperado sem fabricar campos ausentes.
 
 1. Conecte o endereço MCP do ambiente do AraLearn.
 2. Autorize sua conta individual por OAuth.
-3. No MCP, confirme a descoberta das seis ferramentas e dos recursos
+3. No MCP, confirme a descoberta das seis ferramentas canônicas, de `add_part`
+   e dos recursos
    `aralearn://authoring/*`; em Actions, confira as seis operações canônicas e as
    três projeções dedicadas importadas do OpenAPI.
 4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de

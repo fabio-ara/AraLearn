@@ -35,7 +35,7 @@ test("o registro corrente cobre UI, ferramentas, Edge, manifesto e testes", asyn
   assert.deepEqual(await auditVerticalParity({ repositoryRoot }), []);
 });
 
-test("o registro usa somente as seis ferramentas públicas canônicas de Curso", async () => {
+test("o registro cobre as seis ferramentas canônicas e add_part dedicado", async () => {
   const current = await registry();
   const registered = current.cases.flatMap((caseRecord) =>
     caseRecord.objects?.mcpTools || []
