@@ -1,22 +1,26 @@
+export const COURSE_MCP_APP_VERSION = "0.0.46";
 export const COURSE_MCP_APP_RESOURCE_URI =
-  "ui://aralearn/course-inspector/0.0.24.html";
+  `ui://aralearn/course-inspector/${COURSE_MCP_APP_VERSION}.html`;
 export const COURSE_MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
+export const COURSE_MCP_APP_HTML_MARKER =
+  `<meta name="aralearn-mcp-app" content="course-inspector/${COURSE_MCP_APP_VERSION}">`;
 
 const PUBLISHED_APP_ORIGIN = "https://fabio-ara.github.io";
 const PUBLISHED_APP_BASE = `${PUBLISHED_APP_ORIGIN}/AraLearn`;
 const PUBLISHED_RENDERER =
-  `${PUBLISHED_APP_BASE}/src/render/renderPackageStudyUnit.js?v=0.0.24`;
+  `${PUBLISHED_APP_BASE}/src/render/renderPackageStudyUnit.js?v=${COURSE_MCP_APP_VERSION}`;
 const PUBLISHED_REGISTRY =
-  `${PUBLISHED_APP_BASE}/src/resources/packages/index.js?v=0.0.24`;
+  `${PUBLISHED_APP_BASE}/src/resources/packages/index.js?v=${COURSE_MCP_APP_VERSION}`;
 
 const COURSE_MCP_APP_HTML = `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
+  ${COURSE_MCP_APP_HTML_MARKER}
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Inspeção do Curso no AraLearn</title>
-  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles-tokens.css?v=0.0.24">
-  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles.css?v=0.0.24">
+  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles-tokens.css?v=${COURSE_MCP_APP_VERSION}">
+  <link rel="stylesheet" href="${PUBLISHED_APP_BASE}/styles.css?v=${COURSE_MCP_APP_VERSION}">
   <style>
     :root {
       color-scheme: light dark;
@@ -806,7 +810,7 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
     try {
       const initialized = await request("ui/initialize", {
         protocolVersion: "2026-01-26",
-        appInfo: { name: "AraLearn Course Inspector", version: "0.0.24" },
+        appInfo: { name: "AraLearn Course Inspector", version: "${COURSE_MCP_APP_VERSION}" },
         appCapabilities: { availableDisplayModes: ["inline"] }
       });
       if (!tornDown) {

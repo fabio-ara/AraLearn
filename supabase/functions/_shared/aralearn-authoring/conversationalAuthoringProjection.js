@@ -7,6 +7,9 @@ const CONFLICT_CODES = new Set([
 ]);
 const NO_WRITE_STRATEGIES = new Set(["reconnect", "stop"]);
 const COURSE_SOURCE_PDF_NO_WRITE_CODES = new Set([
+  "openai_file_missing",
+  "openai_file_count_invalid",
+  "invalid_action_pdf",
   "invalid_openai_file",
   "unsupported_pdf_media_type",
   "openai_file_expired",
@@ -14,6 +17,7 @@ const COURSE_SOURCE_PDF_NO_WRITE_CODES = new Set([
   "openai_file_timeout",
   "pdf_too_large",
   "invalid_course_source_pdf",
+  "course_source_pdf_ingestion_unavailable",
   "course_source_pdf_quota_exceeded",
   "course_source_pdf_attachment_limit"
 ]);

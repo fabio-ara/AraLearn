@@ -479,6 +479,21 @@ export function normalizeCourseSourceLinks(value, { allowLegacyIds = false } = {
   return links;
 }
 
+const NEW_PDF_SOURCE_DEFAULTS = Object.freeze({
+  kind: "document",
+  authorship: null,
+  publicationDate: null,
+  identifier: null,
+  language: null,
+  citationText: null,
+  url: null,
+  editionOrVersion: null,
+  origin: "author_provided",
+  availability: "unknown",
+  verificationStatus: "unverified",
+  studyVisibility: "hidden"
+});
+
 function normalizeSourceDocument(value) {
   exact(value, [
     "kind", "title", "authorship", "publicationDate", "identifier", "language",
@@ -521,6 +536,13 @@ function normalizeSourceDocument(value) {
     fail("invalid_course_source", "Uma Fonte visível no Estudo exige texto de citação.");
   }
   return normalized;
+}
+
+function normalizePdfSourceDocument(value, expectedSourceRevision) {
+  const candidate = expectedSourceRevision === 0 && isObject(value)
+    ? { ...NEW_PDF_SOURCE_DEFAULTS, ...value }
+    : value;
+  return normalizeSourceDocument(candidate);
 }
 
 export function normalizeCourseSourcePdfSourceIntent(value) {
@@ -574,7 +596,7 @@ export function normalizeCourseSourcePdfSourceIntent(value) {
     mode: intent.mode,
     sourceId,
     expectedSourceRevision,
-    source: normalizeSourceDocument(intent.source)
+    source: normalizePdfSourceDocument(intent.source, expectedSourceRevision)
   };
   byteBound(
     normalized,

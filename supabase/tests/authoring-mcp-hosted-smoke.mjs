@@ -8,6 +8,12 @@ import {
   AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+import {
+  COURSE_MCP_APP_HTML_MARKER,
+  COURSE_MCP_APP_MIME_TYPE,
+  COURSE_MCP_APP_RESOURCE_URI,
+  readCourseMcpAppResource
+} from "../functions/_shared/aralearn-authoring/courseMcpAppResource.js";
 
 const projectUrl = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/u, "");
 const accessToken = String(
@@ -217,6 +223,28 @@ assert.equal(
     /workspace|trilha|cole(?:ç|c)[aã]o|publica(?:ç|c)[aã]o/iu.test(name)
   ),
   false
+);
+
+const listedResources = await call("resources/list");
+const appDescriptor = listedResources.resources.find(
+  ({ uri }) => uri === COURSE_MCP_APP_RESOURCE_URI
+);
+assert.ok(appDescriptor, "O recurso visual corrente não apareceu em resources/list.");
+assert.equal(appDescriptor.mimeType, COURSE_MCP_APP_MIME_TYPE);
+
+const localAppResource = readCourseMcpAppResource(COURSE_MCP_APP_RESOURCE_URI);
+assert.ok(localAppResource?.text.includes(COURSE_MCP_APP_HTML_MARKER));
+const readResources = await call("resources/read", {
+  uri: COURSE_MCP_APP_RESOURCE_URI
+});
+assert.equal(readResources.contents.length, 1);
+const hostedAppResource = readResources.contents[0];
+assert.equal(hostedAppResource.uri, COURSE_MCP_APP_RESOURCE_URI);
+assert.equal(hostedAppResource.mimeType, COURSE_MCP_APP_MIME_TYPE);
+assert.equal(
+  hostedAppResource.text.includes(COURSE_MCP_APP_HTML_MARKER),
+  true,
+  "O HTML hospedado não corresponde à versão corrente do recurso visual."
 );
 
 const componentSearch = await tool("consultarComponentesDidaticos", {

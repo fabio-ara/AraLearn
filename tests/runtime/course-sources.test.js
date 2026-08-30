@@ -105,6 +105,46 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     requestId: "request-pdf-ingestion-1",
     sourceIntent: save
   }).sourceIntent, save);
+  assert.deepEqual(normalizeCourseSourcePdfSourceIntent({
+    mode: "save",
+    sourceId: null,
+    expectedSourceRevision: 0,
+    source: { title: "Edital Dataprev 2026" }
+  }), {
+    mode: "save",
+    sourceId: null,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Edital Dataprev 2026",
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      language: null,
+      citationText: null,
+      url: null,
+      editionOrVersion: null,
+      origin: "author_provided",
+      availability: "unknown",
+      verificationStatus: "unverified",
+      studyVisibility: "hidden"
+    }
+  });
+  assert.throws(
+    () => normalizeCourseSourcePdfSourceIntent({
+      mode: "save",
+      sourceId: "source-a",
+      expectedSourceRevision: 1,
+      source: { title: "Título novo sem o estado anterior" }
+    }),
+    (error) => error.code === "invalid_course_source"
+  );
+  assert.deepEqual(normalizeCourseSourcePdfSourceIntent({
+    mode: "save",
+    sourceId: "source-a",
+    expectedSourceRevision: 1,
+    source: sourceDocument()
+  }).source, sourceDocument());
   assert.throws(
     () => normalizeCourseSourcePdfSourceIntent({
       ...save,

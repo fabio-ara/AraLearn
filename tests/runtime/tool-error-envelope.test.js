@@ -64,6 +64,30 @@ test("campo desconhecido não é refletido no erro público", () => {
   assert.equal(serialized.includes(unknownField), false);
 });
 
+test("referência de arquivo expõe somente campo e regra seguros", () => {
+  const signedUrl = "https://unexpected.example.test/private.pdf?signature=segredo";
+  const fileId = "file-identidade-que-nao-pode-vazar";
+  const projected = toolErrorData(new AuthoringApiError(
+    422,
+    "invalid_openai_file",
+    "A referência temporária do PDF não está em um formato utilizável.",
+    {
+      path: "pdf.download_url",
+      rule: "trusted_openai_file_origin",
+      downloadUrl: signedUrl,
+      fileId
+    }
+  ));
+  const serialized = JSON.stringify(projected);
+
+  assert.deepEqual(projected.details, {
+    path: "pdf.download_url",
+    rule: "trusted_openai_file_origin"
+  });
+  assert.equal(serialized.includes(signedUrl), false);
+  assert.equal(serialized.includes(fileId), false);
+});
+
 test("limites de PDF recebem recuperação própria sem repetição automática", () => {
   const tooLarge = toolErrorData(new AuthoringApiError(
     413,
@@ -86,5 +110,78 @@ test("limites de PDF recebem recuperação própria sem repetição automática"
     assert.equal(projected.recovery.retryable, false);
     assert.equal(projected.recovery.requestIdMode, "none");
     assert.doesNotMatch(projected.recovery.steps.join(" "), /composição|lote menor/iu);
+  }
+});
+
+test("erros do transporte de PDF distinguem correção, reanexo, retry e recibo", () => {
+  const cases = [
+    {
+      status: 422,
+      code: "openai_file_missing",
+      strategy: "correct_and_retry",
+      requestIdMode: "new",
+      expected: /mesmo anexo|novo anexo/iu
+    },
+    {
+      status: 422,
+      code: "openai_file_count_invalid",
+      strategy: "correct_and_retry",
+      requestIdMode: "new",
+      expected: /exatamente um/iu
+    },
+    {
+      status: 422,
+      code: "invalid_openai_file",
+      strategy: "correct_and_retry",
+      requestIdMode: "new",
+      expected: /não copie nem fabrique|não peça reenvio/iu
+    },
+    {
+      status: 415,
+      code: "unsupported_pdf_media_type",
+      strategy: "correct_and_retry",
+      requestIdMode: "new",
+      expected: /somente PDF/iu
+    },
+    {
+      status: 410,
+      code: "openai_file_expired",
+      strategy: "correct_and_retry",
+      requestIdMode: "new",
+      expected: /novo anexo/iu
+    },
+    {
+      status: 502,
+      code: "openai_file_unavailable",
+      strategy: "repeat_identical",
+      requestIdMode: "same",
+      expected: /mesma chamada|sem uma resposta de expiração/iu
+    },
+    {
+      status: 408,
+      code: "openai_file_timeout",
+      strategy: "repeat_identical",
+      requestIdMode: "same",
+      expected: /mesma chamada|sem uma resposta de expiração/iu
+    },
+    {
+      status: 502,
+      code: "course_source_pdf_persistence_unconfirmed",
+      strategy: "repeat_identical",
+      requestIdMode: "same",
+      expected: /recibo|stored igual a true/iu
+    }
+  ];
+
+  for (const candidate of cases) {
+    const projected = toolErrorData(new AuthoringApiError(
+      candidate.status,
+      candidate.code,
+      `Falha sintética: ${candidate.code}.`
+    ), { requestId: `request-${candidate.code}-0001` });
+    assert.equal(projected.recovery.strategy, candidate.strategy, candidate.code);
+    assert.equal(projected.recovery.retryable, true, candidate.code);
+    assert.equal(projected.recovery.requestIdMode, candidate.requestIdMode, candidate.code);
+    assert.match(projected.recovery.steps.join(" "), candidate.expected, candidate.code);
   }
 });

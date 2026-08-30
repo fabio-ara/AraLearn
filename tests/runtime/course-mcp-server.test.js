@@ -14,6 +14,8 @@ import {
   AUTHORING_PROTOCOL_V1_TOOLS
 } from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { decodeAuthoringProtocolSnapshot } from
+  "../../scripts/authoringProtocolCompatibilityV1.mjs";
 import { courseVariantComparisonFixture } from
   "../support/courseVariantComparisonFixture.js";
 
@@ -130,7 +132,41 @@ test("MCP anuncia somente invariantes e ferramentas canônicas de Curso", async 
   );
 });
 
-test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados técnicos", async () => {
+test("tools/list bruto preserva todas as ferramentas do snapshot público aprovado", async () => {
+  const snapshot = JSON.parse(await readFile(new URL(
+    `../fixtures/authoring-protocol/v${AUTHORING_PROTOCOL_SCHEMA_VERSION}.snapshot.json`,
+    import.meta.url
+  ), "utf8"));
+  const approved = decodeAuthoringProtocolSnapshot(snapshot);
+  const response = await handler()(request("tools/list"));
+  const payload = await response.json();
+  const listedTools = payload.result.tools.map((definition) => {
+    const normalized = structuredClone(definition);
+    delete normalized.securitySchemes;
+    delete normalized._meta?.securitySchemes;
+    delete normalized._meta?.ui;
+    delete normalized._meta?.["openai/outputTemplate"];
+    delete normalized._meta?.["openai/fileParams"];
+    if (normalized._meta && Object.keys(normalized._meta).length === 0) {
+      delete normalized._meta;
+    }
+    return normalized;
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    listedTools.map(({ name }) => name),
+    approved.tools.map(({ name }) => name)
+  );
+  assert.deepEqual(listedTools, approved.tools);
+  assert.equal(
+    listedTools.some(({ name }) => name === "incorporarPdfComoFonte"),
+    true,
+    "a ingestão pública de PDF não pode desaparecer silenciosamente do discovery"
+  );
+});
+
+test("MCP transfere PDF e completa metadados conservadores de uma Fonte nova", async () => {
   const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF");
   let ingested = null;
   const response = await handler({
@@ -145,7 +181,7 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
       return {
         contract: "aralearn.course-source-pdf-ingestion.v1",
         courseId: COURSE_ID,
-        courseRevision: 4,
+        courseRevision: 5,
         requestId: value.requestId,
         idempotent: false,
         changed: true,
@@ -153,7 +189,7 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
         source: {
           sourceId: "source-edital",
           sourceRevision: 1,
-          bibliographyChanged: false
+          bibliographyChanged: true
         },
         attachment: {
           contentHash: PDF_HASH,
@@ -171,9 +207,10 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
       courseId: COURSE_ID,
       expectedRevision: 3,
       sourceIntent: {
-        mode: "existing",
-        sourceId: "source-edital",
-        sourceRevision: 1
+        mode: "save",
+        sourceId: null,
+        expectedSourceRevision: 0,
+        source: { title: "Edital Dataprev 2026" }
       },
       pdf: {
         download_url: "https://files.oaiusercontent.com/edital.pdf?token=temporary",
@@ -188,6 +225,26 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
   assert.equal(payload.result.isError, false);
   assert.deepEqual(ingested.bytes, pdfBytes);
   assert.equal(ingested.expectedCourseRevision, 3);
+  assert.deepEqual(ingested.sourceIntent, {
+    mode: "save",
+    sourceId: null,
+    expectedSourceRevision: 0,
+    source: {
+      kind: "document",
+      title: "Edital Dataprev 2026",
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      language: null,
+      citationText: null,
+      url: null,
+      editionOrVersion: null,
+      origin: "author_provided",
+      availability: "unknown",
+      verificationStatus: "unverified",
+      studyVisibility: "hidden"
+    }
+  });
   assert.equal(payload.result.structuredContent.data.stored, true);
   assert.equal(
     payload.result.structuredContent.data.technicalDetails.storagePath,
@@ -198,6 +255,42 @@ test("MCP transfere PDF oficial para a ingestão canônica sem narrar metadados 
   assert.equal(payload.result.content[0].text.includes(PDF_PATH), false);
   assert.equal(payload.result.content[0].text.includes(COURSE_ID), false);
   assert.doesNotMatch(payload.result.content[0].text, /file-edital|download_url|storage/iu);
+});
+
+test("MCP rejeita chamada sem PDF antes de baixar ou persistir qualquer arquivo", async () => {
+  let fetchCalls = 0;
+  let ingestionCalls = 0;
+  const response = await handler({
+    async fetchImpl() {
+      fetchCalls += 1;
+      throw new Error("não deveria baixar");
+    },
+    async ingestCourseSourcePdf() {
+      ingestionCalls += 1;
+      throw new Error("não deveria persistir");
+    }
+  })(request("tools/call", {
+    name: "incorporarPdfComoFonte",
+    arguments: {
+      requestId: "request-mcp-pdf-missing-0001",
+      courseId: COURSE_ID,
+      expectedRevision: 3,
+      sourceIntent: {
+        mode: "existing",
+        sourceId: "source-edital",
+        sourceRevision: 1
+      }
+    }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "invalid_tool_arguments");
+  assert.equal(fetchCalls, 0);
+  assert.equal(ingestionCalls, 0);
+  assert.match(payload.result.content[0].text, /Nada foi salvo/iu);
+  assert.doesNotMatch(payload.result.content[0].text, /mantido com sucesso|foi persistido/iu);
 });
 
 test("MCP não alega persistência quando o arquivo temporário não pode ser transferido", async () => {
@@ -439,10 +532,10 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
     "aralearn://authoring/audit-repair",
     "aralearn://authoring/linguistic-didactic-review",
     "aralearn://authoring/components",
-    "ui://aralearn/course-inspector/0.0.24.html"
+    "ui://aralearn/course-inspector/0.0.46.html"
   ]);
   const componentResponse = await handler()(request("resources/read", {
-    uri: "ui://aralearn/course-inspector/0.0.24.html"
+    uri: "ui://aralearn/course-inspector/0.0.46.html"
   }));
   const component = (await componentResponse.json()).result.contents[0];
   assert.equal(component.mimeType, "text/html;profile=mcp-app");

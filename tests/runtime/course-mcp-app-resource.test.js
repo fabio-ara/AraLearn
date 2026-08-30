@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  COURSE_MCP_APP_HTML_MARKER,
   COURSE_MCP_APP_MIME_TYPE,
   COURSE_MCP_APP_RESOURCE_URI,
+  COURSE_MCP_APP_VERSION,
   courseMcpAppToolMeta,
   listCourseMcpAppResources,
   readCourseMcpAppResource
 } from "../../supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js";
 
 test("o recurso visual usa MCP Apps com URI versionada e degradação textual", () => {
+  assert.equal(COURSE_MCP_APP_VERSION, "0.0.46");
   assert.equal(COURSE_MCP_APP_RESOURCE_URI,
-    "ui://aralearn/course-inspector/0.0.24.html");
+    "ui://aralearn/course-inspector/0.0.46.html");
   assert.equal(COURSE_MCP_APP_MIME_TYPE, "text/html;profile=mcp-app");
   assert.deepEqual(courseMcpAppToolMeta(), {
     ui: { resourceUri: COURSE_MCP_APP_RESOURCE_URI },
@@ -30,6 +33,7 @@ test("o recurso visual usa MCP Apps com URI versionada e degradação textual", 
     resourceDomains: ["https://fabio-ara.github.io"]
   });
   assert.equal(resource._meta.ui.prefersBorder, true);
+  assert.equal(resource.text.includes(COURSE_MCP_APP_HTML_MARKER), true);
   assert.match(resource.text, /method === "ui\/notifications\/tool-result"/u);
   assert.match(resource.text, /request\("ui\/initialize", \{/u);
   assert.match(resource.text, /appInfo: \{ name: "AraLearn Course Inspector"/u);
@@ -40,7 +44,13 @@ test("o recurso visual usa MCP Apps com URI versionada e degradação textual", 
   assert.doesNotMatch(resource.text, /ui\/notifications\/teardown-complete/u);
   assert.match(resource.text, /renderPackageStudyUnitArticle\(studyUnit, \{/u);
   assert.match(resource.text,
-    /https:\/\/fabio-ara\.github\.io\/AraLearn\/src\/render\/renderPackageStudyUnit\.js\?v=0\.0\.24/u);
+    /https:\/\/fabio-ara\.github\.io\/AraLearn\/src\/render\/renderPackageStudyUnit\.js\?v=0\.0\.46/u);
+  assert.match(resource.text,
+    /https:\/\/fabio-ara\.github\.io\/AraLearn\/src\/resources\/packages\/index\.js\?v=0\.0\.46/u);
+  assert.match(resource.text,
+    /https:\/\/fabio-ara\.github\.io\/AraLearn\/styles-tokens\.css\?v=0\.0\.46/u);
+  assert.match(resource.text,
+    /https:\/\/fabio-ara\.github\.io\/AraLearn\/styles\.css\?v=0\.0\.46/u);
   assert.doesNotMatch(resource._meta.ui.csp.resourceDomains[0], /\/AraLearn/u);
   assert.match(resource.text, /A representação textual do resultado continua disponível/u);
   assert.match(resource.text, /member\?\.currentCourseRevision/u);

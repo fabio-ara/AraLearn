@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.4.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.5.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -398,6 +398,14 @@ const sourceDocumentSchema = {
   }]
 };
 
+const pdfSourceInputSchema = {
+  ...objectSchema(sourceDocumentSchema.properties, ["title"]),
+  description:
+    "Ao criar uma Fonte para o PDF, informe o título e somente os metadados conhecidos. " +
+    "O AraLearn registra lacunas com valores conservadores; nunca invente dados bibliográficos. " +
+    "Ao revisar uma Fonte existente, preserve e envie o documento bibliográfico completo."
+};
+
 const sourceCommandSchema = {
   oneOf: [
     {
@@ -475,7 +483,7 @@ const courseSourcePdfIntentSchema = {
           "em revisão maior que zero, preserve a identidade lida da Fonte."
       },
       expectedSourceRevision: { type: "integer", minimum: 0 },
-      source: sourceDocumentSchema
+      source: pdfSourceInputSchema
     })
   ]
 };
@@ -2259,7 +2267,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:680280b94aaa749b5dcc0f1b5606ca76859f73fc093ce416a98a5ca95b661c04";
+  "sha256:477f6c8424565459024f405f010e82015f40498d57bc684c40611b531fed6201";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

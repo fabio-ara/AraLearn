@@ -9,6 +9,8 @@ import { COURSE_SOURCE_PDF_MAX_BYTES } from
   "../../supabase/functions/_shared/aralearn/runtime/domain/courseSources.js";
 
 const DOWNLOAD_URL = "https://files.oaiusercontent.com/file.pdf?sig=temporary-secret";
+const REGIONAL_DOWNLOAD_URL =
+  "https://sdmntprbrazilsouth.oaiusercontent.com/files/file.pdf?sig=temporary-secret";
 const FILE_ID = "file-aralearn-synthetic-pdf";
 
 function descriptor(overrides = {}) {
@@ -59,10 +61,17 @@ test("resolve PDF oficial sem propagar credenciais do servidor", async () => {
   assert.equal(headers.has("cookie"), false);
 });
 
-test("rejeita campo extra e file_id com caractere de controle", async () => {
+test("rejeita descritor ausente, shape inválido e campos malformados sem pedir reanexo", async () => {
   for (const candidate of [
+    undefined,
+    "file-isolado",
+    [descriptor()],
+    {},
+    { file_id: FILE_ID },
+    { download_url: DOWNLOAD_URL },
     descriptor({ extra: "não permitido" }),
-    descriptor({ file_id: "file-id\nforjado" })
+    descriptor({ file_id: "file-id\nforjado" }),
+    descriptor({ file_name: "arquivo\nforjado.pdf" })
   ]) {
     const error = await captureError(() => resolveOpenAiTemporaryPdf({
       descriptor: candidate,
@@ -71,7 +80,27 @@ test("rejeita campo extra e file_id com caractere de controle", async () => {
     }));
     assert.ok(error instanceof AuthoringApiError);
     assert.equal(error.code, "invalid_openai_file");
+    assert.match(error.message, /não precisa ser reenviado/iu);
+    assert.doesNotMatch(error.message, /^Anexe|Anexe o PDF novamente/iu);
   }
+});
+
+test("aceita o host regional entregue pelo ChatGPT Actions", async () => {
+  const expected = new TextEncoder().encode("%PDF-1.7\n%%EOF");
+  let receivedUrl;
+  const bytes = await resolveOpenAiTemporaryPdf({
+    descriptor: descriptor({ download_url: REGIONAL_DOWNLOAD_URL }),
+    deadlineAt: Date.now() + 1_000,
+    fetchImpl: async (url) => {
+      receivedUrl = url;
+      return new Response(expected, {
+        headers: { "content-type": "application/pdf" }
+      });
+    }
+  });
+
+  assert.deepEqual(bytes, expected);
+  assert.equal(receivedUrl, REGIONAL_DOWNLOAD_URL);
 });
 
 test("rejeita MIME declarado que não seja PDF", async () => {
@@ -88,20 +117,24 @@ test("rejeita MIME declarado que não seja PDF", async () => {
 
 test("rejeita URL não HTTPS, host aproximado, credenciais, fragmento e porta não padrão", async () => {
   const invalidUrls = [
-    "http://files.oaiusercontent.com/file.pdf",
-    "https://files.oaiusercontent.com.example.test/file.pdf",
-    "https://user:password@files.oaiusercontent.com/file.pdf",
-    "https://files.oaiusercontent.com/file.pdf#fragment",
-    "https://files.oaiusercontent.com:8443/file.pdf"
+    ["http://files.oaiusercontent.com/file.pdf", "https"],
+    ["https://files.oaiusercontent.com.example.test/file.pdf", "trusted_openai_file_origin"],
+    ["https://oaiusercontent.com/file.pdf", "trusted_openai_file_origin"],
+    ["https://sdmntprbrazilsouth.oaiusercontent.com.example.test/file.pdf",
+      "trusted_openai_file_origin"],
+    ["https://user:password@files.oaiusercontent.com/file.pdf", "no_url_credentials"],
+    ["https://files.oaiusercontent.com/file.pdf#fragment", "no_url_fragment"],
+    ["https://files.oaiusercontent.com:8443/file.pdf", "standard_https_port"]
   ];
 
-  for (const downloadUrl of invalidUrls) {
+  for (const [downloadUrl, rule] of invalidUrls) {
     const error = await captureError(() => resolveOpenAiTemporaryPdf({
       descriptor: descriptor({ download_url: downloadUrl }),
       deadlineAt: Date.now() + 1_000,
       fetchImpl: async () => assert.fail("não deveria buscar")
     }));
     assert.equal(error.code, "invalid_openai_file", downloadUrl);
+    assert.deepEqual(error.details, { path: "pdf.download_url", rule }, downloadUrl);
   }
 });
 
@@ -121,21 +154,24 @@ test("bloqueia redirecionamento mesmo quando o fetch simulado o devolve", async 
 });
 
 test("distingue acesso temporário expirado de falha remota", async () => {
-  const expired = await captureError(() => resolveOpenAiTemporaryPdf({
-    descriptor: descriptor(),
-    deadlineAt: Date.now() + 1_000,
-    fetchImpl: async () => new Response(null, { status: 410 })
-  }));
+  for (const status of [401, 403, 404, 410]) {
+    const expired = await captureError(() => resolveOpenAiTemporaryPdf({
+      descriptor: descriptor(),
+      deadlineAt: Date.now() + 1_000,
+      fetchImpl: async () => new Response(null, { status })
+    }));
+    assert.equal(expired.code, "openai_file_expired", String(status));
+    assert.match(expired.message, /Anexe o arquivo novamente/u);
+  }
   const failed = await captureError(() => resolveOpenAiTemporaryPdf({
     descriptor: descriptor(),
     deadlineAt: Date.now() + 1_000,
     fetchImpl: async () => new Response(null, { status: 503 })
   }));
 
-  assert.equal(expired.code, "openai_file_expired");
-  assert.match(expired.message, /Anexe o arquivo novamente/u);
   assert.equal(failed.code, "openai_file_unavailable");
-  assert.match(failed.message, /Anexe o arquivo novamente/u);
+  assert.match(failed.message, /Repita a mesma tentativa/u);
+  assert.match(failed.message, /só anexe o arquivo novamente se/iu);
 });
 
 test("rejeita MIME explícito incompatível e aceita octet-stream", async () => {
@@ -217,6 +253,8 @@ test("aborta fetch que excede deadline", async () => {
 
   assert.equal(error.status, 408);
   assert.equal(error.code, "openai_file_timeout");
+  assert.match(error.message, /Repita a mesma tentativa/u);
+  assert.doesNotMatch(error.message, /Anexe o arquivo novamente/u);
   assert.equal(signal.aborted, true);
 });
 

@@ -89,7 +89,19 @@ test("registro expõe somente ferramentas centradas no Curso e nos componentes",
   );
   assert.equal(pdfTool.annotations.destructiveHint, true);
   assert.deepEqual(pdfTool._meta["openai/fileParams"], ["pdf"]);
-  const componentUri = "ui://aralearn/course-inspector/0.0.24.html";
+  assert.equal(pdfTool.inputSchema.required.includes("pdf"), true);
+  const pdfSchema = pdfTool.inputSchema.properties.pdf;
+  assert.equal(pdfSchema.type, "object");
+  assert.equal(pdfSchema.additionalProperties, false);
+  assert.deepEqual(Object.keys(pdfSchema.properties).sort(), [
+    "download_url", "file_id", "file_name", "mime_type"
+  ]);
+  assert.deepEqual([...pdfSchema.required].sort(), ["download_url", "file_id"]);
+  assert.equal(pdfSchema.properties.download_url.type, "string");
+  assert.equal(pdfSchema.properties.file_id.type, "string");
+  assert.deepEqual(pdfSchema.properties.mime_type.enum, ["application/pdf"]);
+  assert.equal(pdfSchema.properties.file_name.type, "string");
+  const componentUri = "ui://aralearn/course-inspector/0.0.46.html";
   for (const name of ["lerCurso", "consultarComponentesDidaticos"]) {
     const definition = COURSE_MCP_TOOLS.find((tool) => tool.name === name);
     assert.equal(definition._meta.ui.resourceUri, componentUri);
@@ -300,6 +312,53 @@ test("ingestão conversacional recebe arquivo oficial sem metadados de Storage",
       pdf
     }
   });
+  const minimalCreation = {
+    ...input,
+    sourceIntent: {
+      mode: "save",
+      sourceId: null,
+      expectedSourceRevision: 0,
+      source: { title: "Edital Dataprev 2026" }
+    }
+  };
+  assert.equal(validate(minimalCreation), true, JSON.stringify(validate.errors));
+  assert.deepEqual(
+    mapAuthoringMcpToolCall("incorporarPdfComoFonte", minimalCreation).body.sourceIntent.source,
+    {
+      kind: "document",
+      title: "Edital Dataprev 2026",
+      authorship: null,
+      publicationDate: null,
+      identifier: null,
+      language: null,
+      citationText: null,
+      url: null,
+      editionOrVersion: null,
+      origin: "author_provided",
+      availability: "unknown",
+      verificationStatus: "unverified",
+      studyVisibility: "hidden"
+    }
+  );
+  assert.equal(validate({
+    ...minimalCreation,
+    sourceIntent: {
+      ...minimalCreation.sourceIntent,
+      sourceId: "source-edital",
+      expectedSourceRevision: 1
+    }
+  }), true, JSON.stringify(validate.errors));
+  assert.throws(
+    () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", {
+      ...minimalCreation,
+      sourceIntent: {
+        ...minimalCreation.sourceIntent,
+        sourceId: "source-edital",
+        expectedSourceRevision: 1
+      }
+    }),
+    (error) => error.code === "invalid_course_source"
+  );
   assert.throws(
     () => mapAuthoringMcpToolCall("incorporarPdfComoFonte", {
       ...input,

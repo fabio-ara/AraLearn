@@ -121,6 +121,86 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
+  if (error.code === "openai_file_missing") {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Use exatamente um PDF já anexado à conversa.",
+        "Se o anexo ainda estiver disponível, refaça a chamada sem pedir reenvio.",
+        "Só peça um novo anexo se nenhum PDF continuar disponível."
+      ]
+    };
+  }
+  if (error.code === "openai_file_count_invalid") {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Escolha exatamente um dos PDFs anexados.",
+        "Refaça a chamada somente para esse documento."
+      ]
+    };
+  }
+  if (error.code === "invalid_openai_file") {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Reconstrua a chamada a partir do PDF já anexado.",
+        "Não copie nem fabrique nome, URL ou identificador do arquivo.",
+        "Não peça reenvio enquanto o anexo continuar disponível."
+      ]
+    };
+  }
+  if (error.code === "unsupported_pdf_media_type") {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Informe que a incorporação aceita somente PDF.",
+        "Use um único arquivo PDF em uma nova tentativa."
+      ]
+    };
+  }
+  if (error.code === "openai_file_expired") {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Informe que o acesso temporário ao documento expirou.",
+        "Peça um novo anexo do mesmo PDF e refaça a chamada."
+      ]
+    };
+  }
+  if (error.code === "openai_file_unavailable" ||
+      error.code === "openai_file_timeout") {
+    return {
+      strategy: "repeat_identical",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "same",
+      steps: [
+        "Repita exatamente a mesma chamada e o mesmo requestId.",
+        "Não peça um novo anexo sem uma resposta de expiração."
+      ]
+    };
+  }
+  if (error.code === "course_source_pdf_persistence_unconfirmed") {
+    return {
+      strategy: "repeat_identical",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "same",
+      steps: [
+        "Repita exatamente a mesma chamada e o mesmo requestId para recuperar o recibo.",
+        "Não declare sucesso até o resultado confirmar stored igual a true."
+      ]
+    };
+  }
   if (error.code === "pdf_too_large") {
     return {
       strategy: "correct_and_retry",

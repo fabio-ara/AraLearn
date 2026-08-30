@@ -128,7 +128,7 @@ Fontes, inspeção, Auditoria e componentes possuem recursos próprios sob
 `phaseGuidance`; assim o cliente recebe a orientação da fase sem carregar
 simultaneamente os manuais das demais fases.
 
-O recurso visual opcional `ui://aralearn/course-inspector/0.0.24.html` segue a
+O recurso visual opcional `ui://aralearn/course-inspector/0.0.46.html` segue a
 extensão MCP Apps. Ele representa focos de inspeção agrupados por
 Microssequência, a prévia de uma Unidade de estudo, os indicadores agregados de
 Pesquisa e a comparação de Variantes; também apresenta um resumo adequado para
@@ -526,11 +526,31 @@ cliente MCP fornece `pdf` pelo parâmetro de arquivo declarado em
 `_meta["openai/fileParams"]`; a pessoa não precisa calcular tamanho, impressão
 digital nem caminho técnico.
 
+No `tools/list`, `pdf` é um descritor de arquivo com `download_url` e `file_id`
+obrigatórios; `mime_type` e `file_name` são opcionais, mas também declarados.
+Esse é o formato recebido pelo servidor. O ChatGPT pode mostrar ao modelo uma
+referência curta, um caminho local ou a identidade temporária do anexo: a ponte
+do cliente deve substituí-la pelo descritor antes de enviar `tools/call`. O
+servidor não aceita essas strings como atalho, porque isso eliminaria a origem
+confiável, a validação de tipo e o download seguro. O anexo deve estar na mesma
+mensagem que autoriza a incorporação; uma nova mensagem precisa anexar o PDF
+novamente.
+
 `sourceIntent` escolhe um dos dois efeitos de produto:
 
 - `existing` liga o PDF a uma Fonte e revisão já existentes;
 - `save` cria ou revisa os metadados da Fonte e incorpora o PDF na mesma
   intenção, com os controles de concorrência pertinentes.
+
+Na criação, apenas o título da Fonte é obrigatório. O servidor completa campos
+ausentes com valores conservadores: documento fornecido pela pessoa, dados
+bibliográficos desconhecidos, estado não verificado e visibilidade oculta no
+Estudo. Valores informados continuam prevalecendo e sendo validados. Em uma
+revisão, o documento bibliográfico completo permanece obrigatório para não
+apagar silenciosamente metadados existentes.
+Por compatibilidade com clientes do protocolo 1.x, criação e revisão conservam
+a mesma forma pública de `source`; a descrição orienta o modelo e o backend
+recusa uma revisão parcial antes do download ou de qualquer persistência.
 
 Uma intenção inequívoca de usar edital, livro, capítulo, prova, gabarito, PPC,
 artigo ou norma como base do Curso autoriza a chamada em qualquer fase, sem
@@ -557,6 +577,17 @@ permanece aceito apenas para compatibilidade com clientes anteriores; novas
 integrações usam `incorporarPdfComoFonte`. A projeção de Actions não anuncia o
 comando legado, evitando que um GPT escolha por engano o caminho que pressupõe
 metadados internos já existentes.
+
+Depois de publicar uma alteração de ferramenta ou recurso, atualize a conexão
+do plugin e inicie uma conversa nova. Sessões existentes preservam o catálogo
+que descobriram ao começar. Para diagnosticar upload, compare três fatos:
+`incorporarPdfComoFonte` no `tools/list` hospedado, a ferramenta mostrada pelo
+ChatGPT e a chegada efetiva de `tools/call` à função. Se a interface registrar
+`Sem resposta de ferramenta` e não houver invocação no servidor, a falha ocorreu
+na ponte de arquivo do cliente; não se deve ampliar o backend para aceitar
+caminho local, nome, URL ou identidade solta. Se a chamada chegou ao servidor,
+use a categoria segura do erro para distinguir referência malformada, expiração,
+tipo inválido, falha de download, limite ou persistência não confirmada.
 
 `update_course_variants` aceita `create_comparison_variants` e
 `detach_comparison_variant`. A criação recebe de duas a oito variantes, fixa o

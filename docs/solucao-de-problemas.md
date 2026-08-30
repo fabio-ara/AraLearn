@@ -258,6 +258,26 @@ o bearer funcionar no MCP, mas for recusado diretamente no GoTrue, na API de
 dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
 credencial exclusiva do recurso MCP, não uma sessão da aplicação.
 
+No MCP, compare sempre o catálogo hospedado com a conversa corrente. A função
+publica seis ferramentas e `incorporarPdfComoFonte` declara
+`_meta["openai/fileParams"] = ["pdf"]`. Depois de um deploy, use **Atualizar** na
+conexão e abra uma conversa nova; uma sessão anterior pode conservar um
+`tools/list` antigo mesmo quando o endpoint já mudou. A ferramenta de PDF deve
+receber no servidor um objeto com `download_url` e `file_id`, além de
+`mime_type` e `file_name` quando fornecidos. Caminho local, nome, URL ou
+identidade temporária isolados podem aparecer na visão do modelo, mas devem ser
+convertidos pelo ChatGPT antes de `tools/call`.
+
+Se a tentativa mostrar `Sem resposta de ferramenta`, verifique se houve uma
+invocação da função MCP. Ausência simultânea de invocação e de log estrutural
+localiza o defeito na ponte ChatGPT → MCP, antes do backend; preserve o contrato
+oficial e não aceite a string como arquivo. Se a invocação existir, classifique
+o erro no servidor e confirme que nenhuma Fonte, âncora ou revisão parcial foi
+gravada. O mesmo raciocínio vale para o componente visual: `resources/list` e
+`resources/read` podem estar corretos enquanto o endpoint interno do ChatGPT
+falha ao materializar o `ui://`. Nesse caso, registre URI, status e categoria do
+erro sem copiar HTML, credenciais ou metadados privados.
+
 Em Actions, confira se o OpenAPI importado coincide com o documento corrente,
 se `client_id` e `client_secret` pertencem ao cliente vinculado àquele GPT e se
 as URLs de autorização e token usam a função `aralearn-authoring-action`. O
@@ -273,6 +293,37 @@ Se um PDF anexado não puder ser incorporado, confira na discovery da Action se
 `attach_pdf` não aparece. Se `add_part` pedir `id`, o GPT ainda está usando um
 OpenAPI anterior. Publicar o arquivo não atualiza a configuração salva:
 reimporte o documento, salve o GPT e teste em uma conversa nova.
+
+No schema mostrado ao modelo, `openaiFileIdRefs` é uma lista de strings com um
+único elemento. No request que chega ao endpoint, porém, o ChatGPT já substituiu
+essa referência por um objeto com `name`, `id`, `mime_type` e `download_link`.
+Ver esse objeto no request é o comportamento esperado do transporte de Actions,
+não evidência de que o modelo inventou um payload. O backend valida o objeto e
+não aceita string, nome, URL ou identidade de arquivo isolados como substitutos.
+
+O anexo pertence à mensagem em que foi enviado. Um retry ainda ligado à mesma
+mensagem pode usar a referência corrente; uma tentativa iniciada em mensagem
+posterior precisa receber novamente o mesmo PDF. Diagnostique a categoria antes
+de pedir qualquer reenvio:
+
+| Situação | Recuperação |
+| --- | --- |
+| nenhum arquivo chegou à chamada | repita com o PDF da mensagem corrente; em outra mensagem, anexe novamente o mesmo arquivo |
+| a referência chegou malformada | reconstrua a chamada a partir do anexo, sem copiar ou fabricar nome, URL ou identidade |
+| chegaram vários arquivos | selecione exatamente um PDF |
+| o tipo não é PDF | use um único PDF válido |
+| o acesso temporário expirou | anexe novamente o mesmo PDF e faça uma nova tentativa |
+| download indisponível ou timeout | repita a chamada idêntica com o mesmo `requestId`; não peça reenvio sem sinal de expiração |
+| a persistência não foi confirmada | repita com o mesmo `requestId` para recuperar o recibo e só anuncie sucesso após `stored: true` |
+
+Uma URL válida usa HTTPS em algum subdomínio de `oaiusercontent.com`; o ChatGPT
+pode emitir um host regional em vez de `files.oaiusercontent.com`. Se o objeto
+runtime estiver correto e o download for recusado antes do Storage, confira se a
+versão publicada aceita esse sufixo exato. Não amplie a allowlist para o domínio
+nu ou hosts apenas parecidos e não permita redirecionamentos, credenciais,
+fragmentos ou portas não padrão. Registre somente o código e a categoria segura
+do erro: URL assinada, identidade do arquivo, hash e caminho de Storage não
+devem aparecer em logs permanentes nem na conversa comum.
 
 ## A alteração por MCP ou Actions não aparece na interface
 
