@@ -1507,8 +1507,9 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   await expect(assistanceDialog).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(assistanceDialog).toHaveCount(0);
-  await expect(page.getByText(
-    "Texto de inspeção revisado."
+  await expect(page.locator(".course-inspection-runtime").getByText(
+    "Texto de inspeção revisado.",
+    { exact: true }
   )).toBeVisible();
 
   await openInspectionUnit(page, "shared");
