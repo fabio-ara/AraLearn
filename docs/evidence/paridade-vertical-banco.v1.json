@@ -3155,7 +3155,7 @@
       "caseId": "course-source-provenance"
     },
     {
-      "object": "trigger:private.course_source_attachments/course_source_attachments_append_only_v1",
+      "object": "trigger:private.course_source_attachments/course_source_attachments_lifecycle_v1",
       "caseId": "course-source-provenance"
     },
     {

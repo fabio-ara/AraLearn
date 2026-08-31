@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260831000829',
+  '20260831005116',
   'o manifesto identifica a revisão final do esquema'
 );
 

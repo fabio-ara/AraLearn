@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(15);
 select set_config('request.jwt.claim.role','service_role',true);
 
 insert into auth.users(id,email)
@@ -69,6 +69,34 @@ select is(
   1::bigint,
   'a revisão corrente recebe somente uma ponte removida para a finalização'
 );
+
+select throws_ok(
+  $$select public.get_course_source_attachment_access_for_actor_v1(
+    'a1000000-0000-4000-8000-000000000001',
+    'a2000000-0000-4000-8000-000000000002',5,'download','source-pdf',1,
+    repeat('a',64),null,null
+  )$$,
+  'PT404','Anexo nao vinculado a revisao solicitada.',
+  'o tombstone não pode emitir um novo download'
+);
+
+create temporary table transitional_preparation as
+select public.get_course_source_attachment_access_for_actor_v1(
+  'a1000000-0000-4000-8000-000000000001',
+  'a2000000-0000-4000-8000-000000000002',5,'prepare_upload','source-pdf',2,
+  repeat('a',64),1024,'application/pdf'
+) value;
+
+select is(
+  value#>>'{attachment,storagePath}',
+  'a3000000-0000-4000-8000-000000000003/'||repeat('a',64)||'.pdf',
+  'o preparo transitório preserva o path histórico'
+) from transitional_preparation;
+select is((value->>'alreadyLinked')::boolean,false,
+  'o tombstone não é projetado como vínculo ativo') from transitional_preparation;
+select is((value->>'uploadRequired')::boolean,true,
+  'o preparo transitório solicita novamente os bytes ausentes')
+from transitional_preparation;
 
 insert into storage.objects(id,bucket_id,name,metadata)
 values(

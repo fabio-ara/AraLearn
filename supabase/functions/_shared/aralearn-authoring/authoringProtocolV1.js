@@ -475,7 +475,7 @@ const sourceCommandSchema = {
         })
       }),
       description:
-        "Remove só o PDF ativo; mantém Fonte, citação, bibliografia, Âncoras e vínculos."
+        "Remove só o PDF ativo. Mantém a Fonte, citação, bibliografia, Âncoras e vínculos."
     },
     objectSchema({
       type: { const: "set_target_sources" },
@@ -2287,7 +2287,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:739ad6a53a1f3488165706f4246ad28cbc2607a0174038e5c526a349e93e904f";
+  "sha256:5ca104178d90f238eea438cbcaf9bafcd8a234894fa0bda0dbce6c2f24fae262";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);
