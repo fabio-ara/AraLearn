@@ -633,6 +633,14 @@ if (!accessToken) {
   assert.match(completedResult.content[0].text, /revisão editorial antes de uso/u);
   assert.match(completedResult.content[0].text, /sem duplicação/u);
 
+  const producedStudyUnitIds = completedMaterialization.materialization.steps
+    .flatMap(({ resultFacts }) => Array.isArray(resultFacts?.changedObjects)
+      ? resultFacts.changedObjects
+      : [])
+    .filter(({ entityType }) => entityType === "study_unit")
+    .map(({ entityId }) => entityId);
+  assert.deepEqual(producedStudyUnitIds, journeyStudyUnitIds);
+
   const inspectionFocusResult = await toolResult("alterarCurso", {
     requestId: randomUUID(),
     courseId: journeyCourseId,
@@ -640,13 +648,13 @@ if (!accessToken) {
     operation: "create_inspection_focus",
     inspectionFocus: {
       title: "Unidades produzidas na materialização",
-      studyUnitIds: journeyStudyUnitIds
+      studyUnitIds: producedStudyUnitIds
     }
   });
   const inspectionFocus = inspectionFocusResult.structuredContent.data;
   assert.equal(inspectionFocus.courseRevision, journeyRevision);
-  assert.deepEqual(inspectionFocus.studyUnitIds, journeyStudyUnitIds);
-  assert.deepEqual(inspectionFocus.availableStudyUnitIds, journeyStudyUnitIds);
+  assert.deepEqual(inspectionFocus.studyUnitIds, producedStudyUnitIds);
+  assert.deepEqual(inspectionFocus.availableStudyUnitIds, producedStudyUnitIds);
   assert.deepEqual(inspectionFocus.missingStudyUnitIds, []);
   assert.match(inspectionFocus.deepLink,
     new RegExp(
@@ -665,7 +673,7 @@ if (!accessToken) {
   });
   assert.deepEqual(
     focusedStudyUnits.items.map(({ studyUnit }) => studyUnit.id),
-    journeyStudyUnitIds
+    producedStudyUnitIds
   );
   assert.equal(focusedStudyUnits.inspectionFocus.deepLink, inspectionFocus.deepLink);
 

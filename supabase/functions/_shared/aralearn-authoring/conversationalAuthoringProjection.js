@@ -580,19 +580,20 @@ export function projectConversationalAuthoringError({
       "correct_and_retry", "reconnect", "split_and_retry"
     ]).has(recoveryStrategy);
   const automaticNextStep = concurrencyConflict
-    ? "Vou reler o estado atual e só interromper se a mudança concorrente afetar a intenção aprovada"
+    ? "Vou reler o estado atual e só interromper se a mudança concorrente afetar a intenção em curso"
     : recoveryStrategy === "repeat_identical"
       ? "Vou conferir o estado atual, recuperar o recibo e só então repetir a mesma chamada se necessário"
       : recoveryStrategy === "correct_and_retry"
-        ? "Vou corrigir a chamada e tentar novamente sem mudar a intenção aprovada"
+        ? "Vou corrigir somente o que for mecânico e tentar novamente; se isso exigir mudar a intenção em curso, volto à pessoa"
         : recoveryStrategy === "split_and_retry"
-          ? "Vou dividir a operação e repetir os lotes sem mudar a intenção aprovada"
+          ? "Vou dividir a operação e repetir os lotes preservando o resultado pretendido"
           : "";
   let message;
   if (COURSE_SOURCE_PDF_NO_WRITE_CODES.has(optionalText(error.code).toLowerCase())) {
     message = sentences(
       optionalText(error.message) || "O PDF não pôde ser incorporado ao Curso",
-      "Nada foi salvo"
+      "Nada foi salvo",
+      recoveryStrategy === "repeat_identical" ? automaticNextStep : failure.nextStep
     );
   } else if (classification === "conflict") {
     message = sentences(

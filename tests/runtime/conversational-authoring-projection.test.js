@@ -639,12 +639,33 @@ test("falhas mecânicas recuperáveis ficam com o agente, não com a pessoa", ()
     }
   });
 
-  assert.match(invalid.message, /Vou corrigir a chamada e tentar novamente/iu);
+  assert.match(invalid.message, /Vou corrigir somente o que for mecânico e tentar novamente/iu);
+  assert.match(invalid.message, /se isso exigir mudar a intenção em curso, volto à pessoa/iu);
   assert.match(oversized.message, /Vou dividir a operação e repetir os lotes/iu);
+  assert.doesNotMatch(invalid.message, /intenção aprovada/iu);
   assert.doesNotMatch(invalid.message, /Revise|Corrija|Tente/iu);
   assert.doesNotMatch(oversized.message, /Reduza|Divida|Tente/iu);
   assertHumanProjection(invalid);
   assertHumanProjection(oversized);
+});
+
+test("falha temporária de PDF conserva a recuperação autônoma sem pedir reenvio", () => {
+  const projected = projectConversationalAuthoringError({
+    envelope: {
+      ok: false,
+      requestId: REQUEST_ID,
+      error: {
+        code: "openai_file_unavailable",
+        message: "O PDF está temporariamente indisponível.",
+        recovery: { strategy: "repeat_identical", retryable: true }
+      }
+    }
+  });
+
+  assert.match(projected.message, /Nada foi salvo/iu);
+  assert.match(projected.message, /recuperar o recibo/iu);
+  assert.doesNotMatch(projected.message, /reenvie|novo anexo/iu);
+  assertHumanProjection(projected);
 });
 
 test("diagnóstico distingue reconexão de falta de permissão", () => {

@@ -14,7 +14,7 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "Uso temporário não chama a ferramenta. Só confirme a permanência após stored igual a true; Falha de transferência ou resultado incerto nunca é sucesso nem expõe detalhes técnicos.",
   "As leituras devolvem phaseGuidance focal; use-a só na fase corrente, sem fixar na conversa plano, desenho, Fontes ou progresso.",
   "Use ferramentas para fatos; não invente conteúdo, Fontes, permissões ou resultados. Registre conclusões e evidências públicas, nunca conversa, raciocínio privado ou instrução secreta.",
-  "Achado não autoriza alteração: proponha, confirme, aplique e verifique separadamente no Curso vivo.",
+  "Achado não autoriza alteração: apresente uma proposta concreta e obtenha uma aprovação. Aplicação e verificação continuam estados distintos, sem confirmação ritual entre operações que preservem a intenção aprovada.",
   "Preserve deep links no estado. Ao concluir planejamento, devolva proativamente o planejamento ou a Parte; após materialização, auditoria ou correção, crie um foco das Unidades pertinentes e devolva a ação rotulada, sem despejar URL.",
   "Mostre Unidades somente quando a pessoa pedir ou uma etapa material exigir evidência; crie então um foco coerente, de preferência da Microssequência inteira."
 ].join("\n");
@@ -41,7 +41,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "O servidor confere revisões, pertencimento, unicidade, política de componentes, cobertura e mínimos quantitativos; trate cada falha localizada antes de repetir.",
       "Retome pelo estado persistido e não duplique conteúdo ou aplicações em resultFacts.",
       "Na resposta final, não descreva novamente o conteúdo visível dos cards. Escreva uma nota editorial curta: intenção e progressão didática, como os parâmetros efetivos orientaram as escolhas, quais Fontes e Âncoras verificadas sustentaram as decisões, por que os componentes foram escolhidos e que incerteza permanece.",
-      "Ao encerrar uma Microssequência, faça uma síntese curta, crie um foco com todas as Unidades dela, leia esse foco uma vez e devolva proativamente seu deep link com rótulo humano. Se a etapa abrange muitas Microssequências, apresente apenas o primeiro recorte útil e ofereça os demais sob demanda."
+      "Ao concluir a Parte aprovada, faça uma síntese curta, reúna pelos fatos relidos as Unidades produzidas, crie um único foco coerente, leia esse foco uma vez e devolva proativamente seu deep link com rótulo humano. Se a Parte abrange muitas Microssequências, use no foco o primeiro subconjunto útil e ofereça os demais sob demanda."
     ])
   }),
   sources: Object.freeze({
@@ -74,7 +74,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Abra audit_cycle em mode context para o alvo exato; use mode runs para rodadas inclusive limpas e detail para uma rodada, achado ou correção.",
       "Checks, achados e propostas são conclusões públicas, localizadas e limitadas; alegação factual exige sourceLinks e incerteza explícita.",
-      "Mostre a proposta e o antes/depois. Aplicação não prova resolução: somente verificação posterior pode resolver ou reabrir pendências vinculadas.",
+      "Mostre a proposta e o antes/depois. Uma aprovação da proposta concreta cobre a aplicação e sua verificação mecânica enquanto a intenção não mudar. Aplicação não prova resolução: somente verificação posterior pode resolver ou reabrir pendências vinculadas.",
       "Ao concluir auditoria, reparo ou verificação, crie um foco das Unidades afetadas, leia-o uma vez e devolva proativamente seu deep link com rótulo humano; use a Microssequência inteira quando a relação entre elas fizer parte do julgamento e não repita o mesmo conjunto sem mudança material."
     ])
   }),

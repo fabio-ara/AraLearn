@@ -793,6 +793,8 @@ test("conhecimento mantém núcleo curto e carrega orientação somente por fase
   assert.match(materialization.text, /mesmos ids em entityChanges/iu);
   assert.match(materialization.text, /execute internamente start, etapas, finish/iu);
   assert.match(materialization.text, /não peça confirmação entre essas chamadas/iu);
+  assert.match(materialization.text, /Ao concluir a Parte aprovada/iu);
+  assert.match(materialization.text, /reúna pelos fatos relidos as Unidades produzidas/iu);
   assert.match(materialization.text, /devolva proativamente seu deep link/iu);
   assert.match(linguisticReview.text, /curto\/curta/iu);
   assert.match(linguisticReview.text, /explica em vez de apenas resumir/iu);
