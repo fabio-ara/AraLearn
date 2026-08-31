@@ -276,7 +276,7 @@ function hostedFetch(requests, {
     if (url.pathname === `/storage/v1/object/info/course-source-pdfs/${storagePath}`) {
       assert.equal(method, "GET");
       assert.equal(headers.get("apikey"), SECRET_KEY);
-      return json({ statusCode: "404", error: "not_found" }, { status: 404 });
+      return json({ statusCode: "404", error: "not_found" }, { status: 400 });
     }
     if (url.href === signedUrl) {
       assert.equal(headers.get("authorization"), null);

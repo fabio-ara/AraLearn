@@ -703,9 +703,14 @@ async function executePdfFlow({
     },
     "Verificação da exclusão física do PDF"
   );
-  await parseJson(objectInfo, "Verificação da exclusão física do PDF");
+  const objectInfoPayload = await parseJson(
+    objectInfo,
+    "Verificação da exclusão física do PDF"
+  );
   ensure(
-    objectInfo.status === 404,
+    [400, 404].includes(objectInfo.status) &&
+      String(objectInfoPayload?.statusCode) === "404" &&
+      objectInfoPayload?.error === "not_found",
     "O objeto físico removido ainda existe no Storage."
   );
 
