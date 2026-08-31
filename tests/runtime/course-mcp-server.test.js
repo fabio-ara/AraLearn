@@ -131,6 +131,8 @@ test("MCP anuncia invariantes, ferramentas canônicas e add_part dedicado", asyn
   assert.deepEqual(initialized.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
   assert.match(initialized.result.instructions, /Curso vivo e mutável/iu);
   assert.match(initialized.result.instructions, /phaseGuidance focal/iu);
+  assert.match(initialized.result.instructions, /uma única aprovação/iu);
+  assert.match(initialized.result.instructions, /não confirme cada chamada/iu);
 
   const listed = await handler()(request("tools/list", {
     _meta: { progressToken: "catalogo-de-ferramentas" }
@@ -332,7 +334,7 @@ test("MCP cria Parte pela ferramenta dedicada e gera a identidade na camada conf
   );
   assert.equal(payload.result.isError, false);
   assert.match(payload.result.content[0].text, /Parte foi adicionada/iu);
-  assert.match(payload.result.content[0].text, /Abrir a área alterada no AraLearn/u);
+  assert.match(payload.result.content[0].text, /Abrir o planejamento no AraLearn/u);
   assert.equal(payload.result.content[0].text.includes(calls[0].command.id), false);
   assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
 });
@@ -1017,7 +1019,7 @@ test("MCP devolve recibo humano e mantém controles e link no estado estruturado
   assert.equal(text.includes(deepLink), false);
   assert.equal(text.includes(MATERIALIZATION_ID), false);
   assert.equal(payload.result.structuredContent.data.deepLink, deepLink);
-  assert.match(text, /Abrir a área alterada no AraLearn/u);
+  assert.match(text, /Abrir o andamento da Parte no AraLearn/u);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "conversation"), false);
 });
 
