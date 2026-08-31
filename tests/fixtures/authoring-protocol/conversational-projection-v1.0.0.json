@@ -1,7 +1,7 @@
 {
   "id": "aralearn.authoring-conversational-projection.v1",
   "version": "1.0.0",
-  "hash": "sha256:bfe3d643f6fa201889da1d20649d085c9ee9d8b15f7c0b156d1a6862ac81e543",
+  "hash": "sha256:f3c1c7fba93a09a8d585db2d5514862ed79ca4ebcccee44b1e4a14ae0857035a",
   "pdfSource": {
     "modes": ["existing", "create", "revise"],
     "creationProperty": "newSource",

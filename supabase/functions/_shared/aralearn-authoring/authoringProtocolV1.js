@@ -462,21 +462,20 @@ const sourceCommandSchema = {
         type: { const: "remove_pdf" },
         sourceId: {
           ...legacySourceIdSchema,
-          description: "Preserve a identidade obtida na releitura da Fonte; não a peça à pessoa."
+          description: "Use a identidade da Fonte lida."
         },
         expectedSourceRevision: {
           type: "integer",
           minimum: 1,
-          description: "Preserve a revisão corrente obtida na releitura da Fonte."
+          description: "Use a revisão corrente lida."
         },
         contentHash: stringSchema({
           pattern: "^[a-f0-9]{64}$",
-          description:
-            "Preserve silenciosamente o identificador do PDF ativo obtido na releitura; não o peça à pessoa."
+          description: "Use o identificador do PDF ativo lido."
         })
       }),
       description:
-        "Remove somente o PDF ativo. Mantém a Fonte, citação, bibliografia, Âncoras e vínculos pedagógicos; não aposenta a Fonte."
+        "Remove só o PDF ativo; mantém Fonte, citação, bibliografia, Âncoras e vínculos."
     },
     objectSchema({
       type: { const: "set_target_sources" },
@@ -2288,7 +2287,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:9a0dd28f2b310ae9075e4487275413cde0ff46c03fac150ab43fe0d4ca034b9a";
+  "sha256:739ad6a53a1f3488165706f4246ad28cbc2607a0174038e5c526a349e93e904f";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);
