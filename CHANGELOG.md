@@ -4,7 +4,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
-## [0.0.47] - 2026-08-30
+## [0.0.47] - 2026-08-31
 
 ### Corrigido
 
