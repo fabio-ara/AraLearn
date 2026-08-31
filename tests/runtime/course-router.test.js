@@ -2346,6 +2346,35 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
   assert.equal(call.payload.designApplication, null);
   assert.equal(call.payload.sourceAttributionApplication, null);
 
+  const omittedFacts = structuredClone(base);
+  omittedFacts.requestId = "request-materialization-omitted-facts";
+  delete omittedFacts.payload.resultFacts;
+  await executeCourseRoute({
+    request: request(path, {
+      method: "POST",
+      requestId: omittedFacts.requestId,
+      body: omittedFacts
+    }),
+    route: routeCourseRequest("POST", path),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(call.payload.resultFacts, {});
+
+  const nullFacts = structuredClone(base);
+  nullFacts.requestId = "request-materialization-null-result-facts";
+  nullFacts.payload.resultFacts = null;
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(path, { method: "POST", requestId: nullFacts.requestId, body: nullFacts }),
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_command" &&
+      error.details?.field === "payload.resultFacts"
+  );
+
   const missing = structuredClone(base);
   missing.requestId = "request-materialization-missing-facts";
   delete missing.payload.sourceAttributionApplication;
@@ -2400,4 +2429,41 @@ test("record_step mantém designApplication nulo fora de conclusão didática", 
       (error) => new Set(["invalid_course_command", "payload_too_large"]).has(error.code)
     );
   }
+
+  const finishWithoutFacts = {
+    requestId: "request-materialization-finish-without-facts",
+    expectedCourseRevision: 8,
+    expectedMaterializationVersion: 2,
+    operation: "finish",
+    payload: { status: "completed" }
+  };
+  await executeCourseRoute({
+    request: request(path, {
+      method: "POST",
+      requestId: finishWithoutFacts.requestId,
+      body: finishWithoutFacts
+    }),
+    route: routeCourseRequest("POST", path),
+    adapter,
+    principal: PRINCIPAL
+  });
+  assert.deepEqual(call.payload.resultFacts, {});
+
+  const finishWithNullFacts = structuredClone(finishWithoutFacts);
+  finishWithNullFacts.requestId = "request-materialization-finish-null-facts";
+  finishWithNullFacts.payload.resultFacts = null;
+  await assert.rejects(
+    () => executeCourseRoute({
+      request: request(path, {
+        method: "POST",
+        requestId: finishWithNullFacts.requestId,
+        body: finishWithNullFacts
+      }),
+      route: routeCourseRequest("POST", path),
+      adapter,
+      principal: PRINCIPAL
+    }),
+    (error) => error.code === "invalid_course_command" &&
+      error.details?.field === "payload.resultFacts"
+  );
 });

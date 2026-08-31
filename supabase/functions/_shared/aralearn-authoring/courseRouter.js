@@ -1290,7 +1290,11 @@ async function validateMaterializationChange(body, request) {
       payload.entityChanges,
       entityRuntime.validateCourseEntityContent
     );
-    const resultFacts = jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024);
+    const resultFacts = jsonObject(
+      payload.resultFacts === undefined ? {} : payload.resultFacts,
+      "payload.resultFacts",
+      16 * 1024
+    );
     const duplicatedFact = [
       "designApplication", "sourceAttributionApplication", "entityChanges", "content"
     ].find((field) => Object.hasOwn(resultFacts, field));
@@ -1358,7 +1362,11 @@ async function validateMaterializationChange(body, request) {
     operation,
     payload: {
       status,
-      resultFacts: jsonObject(payload.resultFacts, "payload.resultFacts", 16 * 1024)
+      resultFacts: jsonObject(
+        payload.resultFacts === undefined ? {} : payload.resultFacts,
+        "payload.resultFacts",
+        16 * 1024
+      )
     }
   };
 }

@@ -1,5 +1,5 @@
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.5.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.6.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -457,6 +457,27 @@ const sourceCommandSchema = {
         })
       })
     }),
+    {
+      ...objectSchema({
+        type: { const: "remove_pdf" },
+        sourceId: {
+          ...legacySourceIdSchema,
+          description: "Preserve a identidade obtida na releitura da Fonte; não a peça à pessoa."
+        },
+        expectedSourceRevision: {
+          type: "integer",
+          minimum: 1,
+          description: "Preserve a revisão corrente obtida na releitura da Fonte."
+        },
+        contentHash: stringSchema({
+          pattern: "^[a-f0-9]{64}$",
+          description:
+            "Preserve silenciosamente o identificador do PDF ativo obtido na releitura; não o peça à pessoa."
+        })
+      }),
+      description:
+        "Remove somente o PDF ativo. Mantém a Fonte, citação, bibliografia, Âncoras e vínculos pedagógicos; não aposenta a Fonte."
+    },
     objectSchema({
       type: { const: "set_target_sources" },
       targetKind: stringSchema({ enum: ["plan_item", "study_unit"] }),
@@ -1331,7 +1352,7 @@ const materializationCommandSchema = {
     if: { properties: { operation: { const: "record_step" } }, required: ["operation"] },
     then: {
       required: [
-        "materializationId", "stepId", "expectedStepVersion", "status", "resultFacts", "entityChanges",
+        "materializationId", "stepId", "expectedStepVersion", "status", "entityChanges",
         "designApplication", "sourceAttributionApplication"
       ],
       properties: {
@@ -1343,7 +1364,7 @@ const materializationCommandSchema = {
   }, {
     if: { properties: { operation: { const: "finish" } }, required: ["operation"] },
     then: {
-      required: ["materializationId", "status", "resultFacts"],
+      required: ["materializationId", "status"],
       properties: {
         materializationId: uuidSchema,
         expectedMaterializationVersion: { minimum: 1 }
@@ -2267,7 +2288,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:477f6c8424565459024f405f010e82015f40498d57bc684c40611b531fed6201";
+  "sha256:9a0dd28f2b310ae9075e4487275413cde0ff46c03fac150ab43fe0d4ca034b9a";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

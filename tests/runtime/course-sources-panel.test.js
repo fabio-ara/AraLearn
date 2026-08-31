@@ -174,7 +174,7 @@ function annotationController() {
   };
 }
 
-test("detalhe distingue referência remota, PDF preservado e material apenas referido", async () => {
+test("detalhe distingue acesso web, PDF privado e Fonte sem acesso disponível", async () => {
   const scenarios = [{
     value: source(1),
     expected: "Referência remota: o endereço pode mudar ou deixar de estar disponível."
@@ -187,7 +187,7 @@ test("detalhe distingue referência remota, PDF preservado e material apenas ref
       actorId: null,
       createdAt: "2026-08-17T12:00:00.000Z"
     }] }),
-    expected: "1 PDF preservado nesta revisão do AraLearn."
+    expected: "A Fonte oferece PDF privado e endereço web."
   }, {
     value: source(1, {
       url: null,
@@ -195,7 +195,7 @@ test("detalhe distingue referência remota, PDF preservado e material apenas ref
       studyVisibility: "citation",
       attachments: []
     }),
-    expected: "Somente a referência foi registrada; esta revisão não oferece arquivo nem endereço de acesso."
+    expected: "A Fonte continua registrada sem PDF ou endereço de acesso."
   }];
   for (const scenario of scenarios) {
     const root = new FakeRoot();
@@ -2634,9 +2634,11 @@ test("painel envia PDF da revisão ativa e baixa o vínculo exato por URL assina
   };
   const uploads = [];
   const downloads = [];
+  const mutations = [];
   const opened = [];
   let courseRevision = 5;
   let attachments = [];
+  let needsReverification = false;
   const panel = createCourseSourcesPanel({
     root,
     courseId: COURSE_ID,
@@ -2647,10 +2649,24 @@ test("painel envia PDF da revisão ativa e baixa o vínculo exato por URL assina
         if (options.mode === "catalog") {
           return catalogPage([current], { revision: options.expectedRevision });
         }
-        return sourcePage({ ...current, attachments }, { revision: options.expectedRevision });
+        const page = sourcePage({ ...current, attachments }, { revision: options.expectedRevision });
+        page.items[0].anchors[0].needsReverification = needsReverification;
+        return page;
       },
-      async mutateCourseSources() {
-        throw new Error("Não deve usar o comando genérico.");
+      async mutateCourseSources(value) {
+        mutations.push(structuredClone(value));
+        attachments = [];
+        needsReverification = true;
+        courseRevision += 1;
+        return {
+          contract: "aralearn.course-source-change.v1",
+          courseId: COURSE_ID,
+          courseRevision,
+          requestId: value.requestId,
+          idempotent: false,
+          changed: true,
+          change: { type: "remove_pdf", subjectId: current.sourceId, revision: 1 }
+        };
       },
       async uploadCourseSourcePdf(value) {
         uploads.push(value);
@@ -2690,7 +2706,9 @@ test("painel envia PDF da revisão ativa e baixa o vínculo exato por URL assina
   assert.equal(uploads.length, 1);
   assert.equal(uploads[0].file, file);
   assert.equal(uploads[0].sourceRevision, 1);
-  assert.match(root.innerHTML, /Baixar PDF/u);
+  assert.match(root.innerHTML, /PDF disponível/u);
+  assert.match(root.innerHTML, /Baixar/u);
+  assert.match(root.innerHTML, /Remover PDF/u);
   assert.match(root.innerHTML, /1 KiB/u);
 
   click(root, "download-attachment", {
@@ -2707,6 +2725,29 @@ test("painel envia PDF da revisão ativa e baixa o vínculo exato por URL assina
   }]);
   assert.equal(opened[0].url, "https://storage.example.test/file.pdf?token=sealed");
   assert.deepEqual(opened[0].value, attachment);
+
+  click(root, "remove-attachment", {
+    sourceRevision: "1",
+    contentHash: attachment.contentHash
+  });
+  assert.match(root.innerHTML, /Somente o arquivo PDF será removido/u);
+  assert.match(root.innerHTML, /Fonte, sua citação, as Âncoras e os vínculos pedagógicos serão preservados/u);
+  click(root, "confirm-retirement");
+  await settle();
+  await settle();
+  assert.deepEqual(mutations[0].command, {
+    type: "remove_pdf",
+    sourceId: current.sourceId,
+    expectedSourceRevision: 1,
+    contentHash: attachment.contentHash
+  });
+  assert.equal(mutations[0].expectedCourseRevision, 6);
+  assert.match(root.innerHTML, /Fonte 1/u);
+  assert.match(root.innerHTML, /Autoria\. Fonte 1\. 2026\./u);
+  assert.match(root.innerHTML, /https:\/\/example\.test\/source-1/u);
+  assert.match(root.innerHTML, /A Fonte continua disponível sem arquivo PDF/u);
+  assert.match(root.innerHTML, /Reverificação necessária/u);
+  assert.doesNotMatch(root.innerHTML, /data-source-action="remove-attachment"/u);
 });
 
 test("PDF distingue TypeError de transporte e repete naturalmente o envelope preservado", async () => {

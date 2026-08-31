@@ -166,7 +166,7 @@ function requestIdentity(value) {
 
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source" ||
-    command.type === "attach_pdf"
+    command.type === "attach_pdf" || command.type === "remove_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -443,14 +443,19 @@ function normalizedMaterializationCommand(value) {
     ? ["authoringPartVersion", "steps"]
     : operation === "record_step"
       ? [
-          "stepId", "expectedStepVersion", "status", "resultFacts",
+          "stepId", "expectedStepVersion", "status",
           "entityChanges", "designApplication", "sourceAttributionApplication"
         ]
       : operation === "finish"
-        ? ["status", "resultFacts"]
+        ? ["status"]
         : [];
-  const fields = new Set([...base, ...operationFields]);
-  if (!operationFields.length || [...fields].some((field) => !Object.hasOwn(command, field)) ||
+  const fields = new Set([
+    ...base,
+    ...operationFields,
+    ...(operation === "record_step" || operation === "finish" ? ["resultFacts"] : [])
+  ]);
+  const requiredFields = new Set([...base, ...operationFields]);
+  if (!operationFields.length || [...requiredFields].some((field) => !Object.hasOwn(command, field)) ||
       Object.keys(command).some((field) => !fields.has(field))) {
     throw new TypeError("Comando de materialização inválido.");
   }
@@ -458,6 +463,11 @@ function normalizedMaterializationCommand(value) {
     command.sourceAttributionApplication = command.sourceAttributionApplication == null
       ? null
       : normalizeCourseSourceAttributionApplication(command.sourceAttributionApplication);
+  }
+  if (operation === "record_step" || operation === "finish") {
+    command.resultFacts = Object.hasOwn(command, "resultFacts")
+      ? boundedJsonObject(command.resultFacts, "Fatos da materialização", 16 * 1024)
+      : {};
   }
   return command;
 }

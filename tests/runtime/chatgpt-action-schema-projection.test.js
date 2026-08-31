@@ -286,6 +286,21 @@ test("projeção Action-safe não deixa allOf, const nem discriminador sem tipo"
       }
     });
   }
+  const resultFacts = actionByName.alterarCurso.inputSchema.properties
+    .materializationCommand.properties.resultFacts;
+  assert.equal(resultFacts.type, "object");
+  assert.equal(resultFacts.additionalProperties, false);
+  assert.deepEqual(resultFacts.required, []);
+  assert.deepEqual(sorted(Object.keys(resultFacts.properties)), [
+    "observations", "summary", "warnings"
+  ]);
+  assert.equal(resultFacts.properties.summary.maxLength, 1_000);
+  for (const field of ["warnings", "observations"]) {
+    assert.equal(resultFacts.properties[field].maxItems, 8);
+    assert.equal(resultFacts.properties[field].items.maxLength, 240);
+  }
+  assert.equal(resultFacts.not, undefined);
+  assert.equal(resultFacts.anyOf, undefined);
 });
 
 test("OpenAPI entrega propriedades completas na raiz que o importador preserva", async () => {
@@ -1256,6 +1271,67 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
       entityChanges: { upserts: [], deletes: [] }
     }
   }, true);
+  assertParity("materialização record_step sem fatos derivados", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "record_step",
+      authoringPartId: SECOND_ID,
+      materializationId: THIRD_ID,
+      expectedMaterializationVersion: 1,
+      stepId: THIRD_ID,
+      expectedStepVersion: 1,
+      status: "completed",
+      designApplication: null,
+      sourceAttributionApplication: null,
+      entityChanges: { upserts: [], deletes: [] }
+    }
+  }, true);
+  assertParity("materialização record_step rejeita fatos nulos", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "record_step",
+      authoringPartId: SECOND_ID,
+      materializationId: THIRD_ID,
+      expectedMaterializationVersion: 1,
+      stepId: THIRD_ID,
+      expectedStepVersion: 1,
+      status: "completed",
+      resultFacts: null,
+      designApplication: null,
+      sourceAttributionApplication: null,
+      entityChanges: { upserts: [], deletes: [] }
+    }
+  }, false);
+  const contentHash = "a".repeat(64);
+  const removePdf = {
+    type: "remove_pdf",
+    sourceId: "source-1",
+    expectedSourceRevision: 2,
+    contentHash
+  };
+  assertParity("remove somente o PDF da Fonte relida", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: removePdf
+  }, true);
+  assertParity("remoção de PDF exige o hash relido", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: {
+      type: "remove_pdf",
+      sourceId: "source-1",
+      expectedSourceRevision: 2
+    }
+  }, false);
+  assertParity("remoção de PDF não recebe caminho de Storage", "alterarCurso", {
+    ...sourceEnvelope,
+    sourceCommand: { ...removePdf, storagePath: `${COURSE_ID}/${contentHash}.pdf` }
+  }, false);
+  const canonicalRemovePdf = canonicalByName.alterarCurso.inputSchema.properties
+    .sourceCommand.oneOf.find((branch) => branch.properties.type.const === "remove_pdf");
+  assert.deepEqual(canonicalRemovePdf.required, [
+    "type", "sourceId", "expectedSourceRevision", "contentHash"
+  ]);
+  assert.equal(canonicalRemovePdf.properties.storagePath, undefined);
+  assert.match(canonicalRemovePdf.description, /Mantém a Fonte.*Âncoras.*vínculos/iu);
   assertParity("materialização record_step preserva identidade", "alterarCurso", {
     ...materializationEnvelope,
     materializationCommand: {
@@ -1282,6 +1358,63 @@ test("AJV preserva Fontes, Observações, variantes e materialização", () => {
       resultFacts: {}
     }
   }, true);
+  assertParity("materialização finish sem fatos derivados", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "finish",
+      authoringPartId: SECOND_ID,
+      materializationId: THIRD_ID,
+      expectedMaterializationVersion: 2,
+      status: "completed"
+    }
+  }, true);
+  assertParity("materialização finish preserva fatos autorais tipados", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "finish",
+      authoringPartId: SECOND_ID,
+      materializationId: THIRD_ID,
+      expectedMaterializationVersion: 2,
+      status: "completed",
+      resultFacts: {
+        summary: "A materialização preservou a intenção confirmada.",
+        warnings: ["Uma Fonte requer conferência humana."],
+        observations: ["A progressão ficou coerente com a Parte."]
+      }
+    }
+  }, true);
+  const genericResultFacts = {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "finish",
+      authoringPartId: SECOND_ID,
+      materializationId: THIRD_ID,
+      expectedMaterializationVersion: 2,
+      status: "completed",
+      resultFacts: { producedStudyUnitCount: 1 }
+    }
+  };
+  assert.equal(
+    canonicalValidators.alterarCurso(genericResultFacts),
+    true,
+    JSON.stringify(canonicalValidators.alterarCurso.errors)
+  );
+  assert.equal(
+    actionValidators.alterarCurso(genericResultFacts),
+    false,
+    "Actions deve oferecer somente fatos autorais convencionais sem estreitar o protocolo canônico."
+  );
+  assertParity("materialização finish rejeita fatos nulos", "alterarCurso", {
+    ...materializationEnvelope,
+    materializationCommand: {
+      operation: "finish",
+      authoringPartId: SECOND_ID,
+      materializationId: THIRD_ID,
+      expectedMaterializationVersion: 2,
+      status: "completed",
+      resultFacts: null
+    }
+  }, false);
   for (const invalidIdentity of [null, { generated: "não" }]) {
     assertParity("materialização finish rejeita identidade inválida", "alterarCurso", {
       ...materializationEnvelope,

@@ -519,6 +519,58 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
   );
 });
 
+test("materialização normaliza fatos omitidos e rejeita null", async () => {
+  const calls = [];
+  const { client } = clientWithFetch(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return jsonResponse({ ok: true, data: { changed: true } });
+  });
+  const finish = {
+    authoringPartId: AVATAR_ID,
+    materializationId: USER_ID,
+    expectedMaterializationVersion: 2,
+    operation: "finish",
+    status: "completed"
+  };
+  const recordStep = {
+    authoringPartId: AVATAR_ID,
+    materializationId: USER_ID,
+    expectedMaterializationVersion: 1,
+    operation: "record_step",
+    stepId: COURSE_ID,
+    expectedStepVersion: 1,
+    status: "completed",
+    entityChanges: { upserts: [], deletes: [] },
+    designApplication: null,
+    sourceAttributionApplication: null
+  };
+
+  await client.advanceAuthoringPartMaterialization({
+    requestId: AVATAR_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 5,
+    materializationCommand: recordStep
+  });
+  await client.advanceAuthoringPartMaterialization({
+    requestId: USER_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 6,
+    materializationCommand: finish
+  });
+  assert.deepEqual(calls[0].body.materializationCommand.resultFacts, {});
+  assert.deepEqual(calls[1].body.materializationCommand.resultFacts, {});
+
+  assert.throws(
+    () => client.advanceAuthoringPartMaterialization({
+      requestId: AVATAR_ID,
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      materializationCommand: { ...finish, resultFacts: null }
+    }),
+    /Fatos da materialização inválido/u
+  );
+});
+
 test("repete uma vez a operação idempotente quando a Edge reinicia", async () => {
   const requests = [];
   const { client } = clientWithFetch(async (url, init) => {
@@ -925,6 +977,41 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     }),
     /não corresponde ao pedido/u
   );
+});
+
+test("remoção de PDF usa a Fonte relida sem transportar caminho de Storage", async () => {
+  const contentHash = "a".repeat(64);
+  const command = {
+    type: "remove_pdf",
+    sourceId: "source-pdf",
+    expectedSourceRevision: 2,
+    contentHash
+  };
+  let requestBody = null;
+  const { client } = clientWithFetch(async (_url, init) => {
+    requestBody = JSON.parse(init.body);
+    return jsonResponse({
+      ok: true,
+      data: {
+        contract: "aralearn.course-source-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-source-remove-pdf",
+        idempotent: false,
+        changed: true,
+        change: { type: "remove_pdf", subjectId: "source-pdf", revision: 3 }
+      }
+    });
+  });
+
+  await client.mutateCourseSources({
+    requestId: "request-source-remove-pdf",
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    sourceCommand: command
+  });
+  assert.deepEqual(requestBody.sourceCommand, command);
+  assert.equal(JSON.stringify(requestBody).includes("storagePath"), false);
 });
 
 test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requisição idempotente", async () => {

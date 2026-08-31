@@ -444,7 +444,7 @@ function assertSourceLinksAllowedByContext(studyUnits, target) {
 
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source" ||
-    command.type === "attach_pdf"
+    command.type === "attach_pdf" || command.type === "remove_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -2796,6 +2796,47 @@ export class CourseSupabaseAdapter {
     );
   }
 
+  async #deleteRemovedCourseSourcePdf({
+    principal,
+    courseId,
+    requestId,
+    deadlineAt = null
+  }) {
+    const claimed = first(await this.rpc(
+      "claim_course_source_pdf_delete_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_request_id: requestId
+      },
+      { deadlineAt, responseLimitBytes: 4 * 1024 }
+    ));
+    if (claimed === null) return;
+    if (!exactRecord(claimed, new Set(["storagePath"]))) {
+      throw unavailableCourseSourcePdf();
+    }
+    const storagePath = maintenanceObjectPath(
+      claimed.storagePath,
+      COURSE_SOURCE_ATTACHMENT_BUCKET
+    );
+    await this.#deleteMaintenanceObject(
+      COURSE_SOURCE_ATTACHMENT_BUCKET,
+      storagePath,
+      { deadlineAt }
+    );
+    const completed = first(await this.rpc(
+      "complete_course_source_pdf_delete_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_request_id: requestId,
+        p_storage_path: storagePath
+      },
+      { deadlineAt, responseLimitBytes: 4 * 1024 }
+    ));
+    if (completed !== true) throw unavailableCourseSourcePdf();
+  }
+
   rpc(functionName, payload, options = {}) {
     return this.#request(`${this.supabaseUrl}/rest/v1/rpc/${functionName}`, {
       method: "POST",
@@ -4192,6 +4233,8 @@ export class CourseSupabaseAdapter {
     const execute = () => this.rpc(
       normalizedCommand.type === "attach_pdf"
         ? "attach_course_source_pdf_for_actor_v1"
+        : normalizedCommand.type === "remove_pdf"
+          ? "remove_course_source_pdf_for_actor_v1"
         : "execute_course_source_command_for_actor_v1",
       {
         p_actor_id: principal.actorId,
@@ -4249,6 +4292,14 @@ export class CourseSupabaseAdapter {
         "course_service_unavailable",
         "A confirmação de Fontes não corresponde ao comando solicitado."
       );
+    }
+    if (normalizedCommand.type === "remove_pdf") {
+      await this.#deleteRemovedCourseSourcePdf({
+        principal,
+        courseId,
+        requestId,
+        deadlineAt
+      });
     }
     return normalized;
   }

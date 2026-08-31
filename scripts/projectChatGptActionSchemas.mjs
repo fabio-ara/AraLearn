@@ -1372,6 +1372,38 @@ function projectActionObjectSurfaces(value, path) {
   ]));
 }
 
+function projectActionMaterializationResultFacts(toolName, inputSchema) {
+  if (toolName !== "alterarCurso") return inputSchema;
+  const command = inputSchema.properties?.materializationCommand;
+  if (!object(command?.properties?.resultFacts)) {
+    throw new TypeError("alterarCurso perdeu resultFacts da materialização na projeção Actions.");
+  }
+  command.properties.resultFacts = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      summary: { type: "string", minLength: 1, maxLength: 1_000 },
+      warnings: {
+        type: "array",
+        maxItems: 8,
+        uniqueItems: true,
+        items: { type: "string", minLength: 1, maxLength: 240 }
+      },
+      observations: {
+        type: "array",
+        maxItems: 8,
+        uniqueItems: true,
+        items: { type: "string", minLength: 1, maxLength: 240 }
+      }
+    },
+    required: [],
+    description:
+      "Fatos autorais opcionais que o produtor observou e o backend não deriva dos demais campos. " +
+      "Use somente em operation=record_step ou operation=finish."
+  };
+  return inputSchema;
+}
+
 export function findSchemaKeywordPaths(value, keyword) {
   const paths = [];
   function visit(entry, path) {
@@ -1400,6 +1432,7 @@ export function projectActionInputSchemaWithAudit(toolDefinition) {
     projected = projectNode(toolDefinition.inputSchema, context, toolDefinition.name);
   }
   projected = projectActionObjectSurfaces(projected, toolDefinition.name);
+  projected = projectActionMaterializationResultFacts(toolDefinition.name, projected);
   if (projected.type !== "object") {
     throw new TypeError(
       `A raiz de entrada de ${toolDefinition.name} precisa ser um objeto para Actions.`

@@ -3595,6 +3595,90 @@ test("replay de PDF alcança o recibo após a revisão avançar sem reler o obje
   assert.equal(calls.some((url) => url.includes("/storage/v1/object/")), false);
 });
 
+test("remove_pdf apaga via Storage somente após claim global e confirma a intenção", async () => {
+  const contentHash = "a".repeat(64);
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, method: init.method, body });
+    if (url.endsWith("/remove_course_source_pdf_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-source-pdf-remove-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "remove_pdf", subjectId: "source-pdf", revision: 2 }
+      });
+    }
+    if (url.endsWith("/claim_course_source_pdf_delete_for_actor_v1")) {
+      return json({ storagePath });
+    }
+    if (init.method === "DELETE" &&
+        url.endsWith("/storage/v1/object/course-source-pdfs")) {
+      assert.deepEqual(body, { prefixes: [storagePath] });
+      return json([]);
+    }
+    if (url.endsWith("/complete_course_source_pdf_delete_for_actor_v1")) {
+      assert.equal(body.p_storage_path, storagePath);
+      return json(true);
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  const result = await value.executeCourseSourceCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-source-pdf-remove-1",
+    expectedCourseRevision: 5,
+    command: {
+      type: "remove_pdf",
+      sourceId: "source-pdf",
+      expectedSourceRevision: 2,
+      contentHash
+    }
+  });
+  assert.equal(result.changed, true);
+  assert.deepEqual(calls.map(({ method, url }) => [method, url.split("/").at(-1)]), [
+    ["POST", "remove_course_source_pdf_for_actor_v1"],
+    ["POST", "claim_course_source_pdf_delete_for_actor_v1"],
+    ["DELETE", "course-source-pdfs"],
+    ["POST", "complete_course_source_pdf_delete_for_actor_v1"]
+  ]);
+
+  let storageDelete = false;
+  const shared = adapter(async (url, init) => {
+    if (url.endsWith("/remove_course_source_pdf_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-source-pdf-shared-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "remove_pdf", subjectId: "source-pdf", revision: 2 }
+      });
+    }
+    if (url.endsWith("/claim_course_source_pdf_delete_for_actor_v1")) return json(null);
+    if (init.method === "DELETE") storageDelete = true;
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  await shared.executeCourseSourceCommand({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    requestId: "request-source-pdf-shared-1",
+    expectedCourseRevision: 5,
+    command: {
+      type: "remove_pdf",
+      sourceId: "source-pdf",
+      expectedSourceRevision: 2,
+      contentHash
+    }
+  });
+  assert.equal(storageDelete, false);
+});
+
 test("Adapter entrega o DTO factual de variantes sem projeção paralela", async () => {
   const comparisonSetId = "81000000-0000-4000-8000-000000000008";
   const expected = courseVariantComparisonFixture({
