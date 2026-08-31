@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260829205000',
+  '20260831012600',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -23,7 +23,7 @@ select is(
 
 select is(
   jsonb_array_length(public.get_aralearn_runtime_manifest() -> 'features'),
-  45,
+  46,
   'o manifesto não omite nem duplica capacidades correntes'
 );
 
@@ -55,6 +55,7 @@ select ok(
     "course-source-provenance-v1",
     "course-source-pdf-attachments-v1",
     "course-source-pdf-ingestion-v1",
+    "course-source-pdf-access-lifecycle-v1",
     "course-source-human-locators-v1",
     "course-anchored-annotations-v1",
     "course-annotation-subject-classification-v1",

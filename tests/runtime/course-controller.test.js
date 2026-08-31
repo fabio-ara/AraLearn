@@ -1405,6 +1405,45 @@ test("Controller owner encaminha upload e download do PDF exato e invalida o Cur
   );
 });
 
+test("Controller classifica remove_pdf como mudança da Fonte", async () => {
+  const sourceId = "source-pdf";
+  const contentHash = "b".repeat(64);
+  const calls = [];
+  const owner = new CourseController({
+    store: new MemoryStateStore(),
+    ownerOnly: true,
+    api: {
+      async listCourses() { return courseListPage([]); },
+      async getCourse() { throw new Error("não usado"); },
+      async mutateCourseSources(value) {
+        calls.push(structuredClone(value));
+        return {
+          contract: "aralearn.course-source-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: 5,
+          requestId: value.requestId,
+          idempotent: false,
+          changed: true,
+          change: { type: "remove_pdf", subjectId: sourceId, revision: 1 }
+        };
+      }
+    }
+  });
+  const command = {
+    type: "remove_pdf",
+    sourceId,
+    expectedSourceRevision: 1,
+    contentHash
+  };
+  await owner.mutateCourseSources({
+    requestId: "request-remove-pdf-1",
+    courseId: COURSE_ID,
+    expectedCourseRevision: 4,
+    command
+  });
+  assert.deepEqual(calls[0].sourceCommand, command);
+});
+
 test("Controller preserva o DTO factual e encaminha a desvinculação canônica", async () => {
   const comparisonSetId = "81000000-0000-4000-8000-000000000008";
   const memberCourseId = "82000000-0000-4000-8000-000000000009";

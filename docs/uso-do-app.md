@@ -187,11 +187,13 @@ estudante.
 ## Manter Fontes, PDFs e proveniência
 
 Em **Fontes**, crie registros, acrescente revisões, aposente fontes e consulte o
-histórico. Uma revisão pode ter Âncoras por página, tempo, fragmento de endereço
-ou trecho textual. O trecho de verificação não aparece no Estudo. Como faz parte
-do detalhe autoral da Fonte, ele também é enviado ao cliente conectado por MCP
-ou Actions quando esse detalhe é solicitado; evite dados pessoais
-desnecessários.
+histórico. A Fonte é a referência; URL e PDF são formas opcionais de acesso. Ela
+pode ter uma delas, ambas ou nenhuma sem perder identidade, citação, Âncoras ou
+vínculos pedagógicos. Uma revisão pode ter Âncoras por página, tempo, fragmento
+de endereço ou trecho textual. O trecho de verificação não aparece no Estudo.
+Como faz parte do detalhe autoral da Fonte, ele também é enviado ao cliente
+conectado por MCP ou Actions quando esse detalhe é solicitado; evite dados
+pessoais desnecessários.
 
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
 interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora
@@ -202,7 +204,12 @@ consideradas.
 
 Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
 64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
-**Baixar PDF** para consultar o arquivo autorizado.
+**Baixar PDF** para consultar o arquivo autorizado. **Remover PDF** revoga esse
+acesso, mas preserva a Fonte, a citação, as Âncoras e os vínculos pedagógicos; a
+confirmação mostra esse efeito antes da gravação. Uma nova solicitação de
+download deixa de ser autorizada. Use **Enviar PDF** novamente para reanexar o
+mesmo arquivo ou outra representação adequada. A cota é liberada quando os bytes
+deixam de possuir vínculo ativo no Curso.
 
 O recebimento do PDF usa o contrato temporário de leitura; o envio usa o contrato
 autenticado e uma sessão ativa. A seleção depende da operação, não da

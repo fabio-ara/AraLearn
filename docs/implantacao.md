@@ -164,7 +164,7 @@ da API e de Actions, OAuth do MCP hospedado e o fluxo autenticado de PDF antes
 de encerrar.
 
 O manifesto corrente termina em
-`20260829205000_course_source_pdf_ingestion_receipt_replay.sql`. Depois da aplicação:
+`20260831012600_preserve_unlinked_source_pdf_quota.sql`. Depois da aplicação:
 
 ```powershell
 npm.cmd run deployment:verify-hosted

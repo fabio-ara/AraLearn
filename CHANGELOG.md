@@ -4,6 +4,21 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.47] - 2026-08-31
+
+### Corrigido
+
+- a materialização por Actions mantém `resultFacts` em uma forma convencional,
+  com resumo, avisos e observações opcionais, sem exigir controle contábil do
+  modelo para concluir as etapas;
+- a Fonte passa a permanecer independente de seu acesso PDF: remover o arquivo
+  preserva identidade, citação, Âncoras e vínculos pedagógicos, revoga novos
+  downloads e libera a quota visível;
+- a reanexação restaura o acesso somente depois da operação concluída, inclusive
+  para o mesmo arquivo, sem reativar prematuramente vínculos removidos;
+- Actions e MCP resolvem as identidades técnicas necessárias para remover ou
+  reanexar o PDF a partir da Fonte escolhida pela pessoa.
+
 ## [0.0.46] - 2026-08-30
 
 ### Corrigido

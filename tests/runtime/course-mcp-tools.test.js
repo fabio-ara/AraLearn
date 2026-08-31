@@ -1011,6 +1011,23 @@ test("mapeia plano, composição e materialização com cercas CAS explícitas",
       command: sourceCommand
     }
   });
+  const removePdfCommand = {
+    type: "remove_pdf",
+    sourceId: "source-a",
+    expectedSourceRevision: 2,
+    contentHash: "a".repeat(64)
+  };
+  assert.deepEqual(mapAuthoringMcpToolCall("alterarCurso", {
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: removePdfCommand
+  }).body, {
+    requestId: REQUEST_ID,
+    expectedCourseRevision: 4,
+    command: removePdfCommand
+  });
 
   const materialization = mapAuthoringMcpToolCall("alterarCurso", {
     requestId: REQUEST_ID,
@@ -2219,6 +2236,26 @@ test("preparo de anexo exige a aplicação e MCP só mapeia download após discl
     operation: "update_course_sources",
     sourceCommand: command
   }), true, JSON.stringify(validateChange.errors));
+  const removePdf = {
+    type: "remove_pdf",
+    sourceId: "source-pdf",
+    expectedSourceRevision: 2,
+    contentHash
+  };
+  assert.equal(validateChange({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: removePdf
+  }), true, JSON.stringify(validateChange.errors));
+  assert.equal(validateChange({
+    requestId: REQUEST_ID,
+    courseId: COURSE_ID,
+    expectedRevision: 4,
+    operation: "update_course_sources",
+    sourceCommand: { ...removePdf, storagePath: `${COURSE_ID}/${contentHash}.pdf` }
+  }), false);
   assert.equal(validateChange({
     requestId: REQUEST_ID,
     courseId: COURSE_ID,

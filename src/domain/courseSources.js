@@ -54,7 +54,7 @@ export const COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT =
   "aralearn.course-source-attribution-application.v1";
 export const COURSE_SOURCE_COMMAND_TYPES = Object.freeze([
   "save_source", "retire_source", "save_anchor", "retire_anchor",
-  "attach_pdf", "set_target_sources"
+  "attach_pdf", "remove_pdf", "set_target_sources"
 ]);
 
 export class CourseSourcesError extends Error {
@@ -642,8 +642,7 @@ export function normalizeCourseSourcePdfIngestionPreparation(value) {
   ], "invalid_course_source_pdf_ingestion_preparation", "A preparação da ingestão de PDF");
   if (preparation.contract !== COURSE_SOURCE_PDF_INGESTION_PREPARATION_CONTRACT ||
       typeof preparation.uploadRequired !== "boolean" ||
-      typeof preparation.alreadyLinked !== "boolean" ||
-      preparation.uploadRequired && preparation.alreadyLinked) {
+      typeof preparation.alreadyLinked !== "boolean") {
     fail(
       "invalid_course_source_pdf_ingestion_preparation",
       "A preparação da ingestão de PDF é inválida."
@@ -821,6 +820,15 @@ export function normalizeCourseSourceCommand(value) {
       sourceId: legacySourceId(command.sourceId),
       sourceRevision: integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte"),
       attachment: normalizeCourseSourceAttachment(command.attachment)
+    };
+  }
+  if (command.type === "remove_pdf") {
+    exact(command, ["type", "sourceId", "expectedSourceRevision", "contentHash"], "invalid_course_source_command", "O comando remove_pdf");
+    return {
+      type: command.type,
+      sourceId: legacySourceId(command.sourceId),
+      expectedSourceRevision: integer(command.expectedSourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Fonte"),
+      contentHash: contentHash(command.contentHash, "invalid_course_source_command")
     };
   }
   exact(command, ["type", "targetKind", "targetId", "expectedTargetVersion", "sourceLinks"], "invalid_course_source_command", "O comando set_target_sources");
@@ -1085,6 +1093,7 @@ function validateSourceRevision(value, { detailed = false } = {}) {
     value.anchors.forEach((anchor) => {
       const anchorFields = ["anchorId", "revision", "sourceRevision", "status", "selector", "verificationExcerpt", "actorId", "createdAt"];
       if (Object.hasOwn(anchor, "humanLocator")) anchorFields.push("humanLocator");
+      if (Object.hasOwn(anchor, "needsReverification")) anchorFields.push("needsReverification");
       exact(anchor, anchorFields, "invalid_course_sources_read", "A revisão da Âncora");
       anchorId(anchor.anchorId);
       integer(anchor.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Âncora");
@@ -1100,6 +1109,10 @@ function validateSourceRevision(value, { detailed = false } = {}) {
         text(anchor.verificationExcerpt, 2000, "invalid_course_sources_read", "O trecho de verificação", {
           preserveWhitespace: true
         });
+      }
+      if (Object.hasOwn(anchor, "needsReverification") &&
+          typeof anchor.needsReverification !== "boolean") {
+        fail("invalid_course_sources_read", "A necessidade de reverificação da Âncora é inválida.");
       }
       nullableActor(anchor.actorId);
       timestamp(anchor.createdAt, "invalid_course_sources_read", "A criação da Âncora");
@@ -1207,7 +1220,7 @@ export function normalizeCourseSourceChange(value) {
   if (change.change !== null) {
     exact(change.change, ["type", "subjectId", "revision"], "invalid_course_source_change", "O fato da mudança");
     if (!COURSE_SOURCE_COMMAND_TYPES.includes(change.change.type)) fail("invalid_course_source_change", "O tipo da mudança é inválido.");
-    if (["save_source", "retire_source"].includes(change.change.type)) {
+    if (["save_source", "retire_source", "remove_pdf"].includes(change.change.type)) {
       legacySourceId(change.change.subjectId);
     } else {
       opaqueId(change.change.subjectId, 240, "invalid_course_source_change", "A identidade alterada");

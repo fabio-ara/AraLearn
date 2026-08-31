@@ -19,7 +19,11 @@ const REQUEST_IDS = [
   "33333333-3333-4333-8333-333333333333",
   "44444444-4444-4444-8444-444444444444",
   "55555555-5555-4555-8555-555555555555",
-  "66666666-6666-4666-8666-666666666666"
+  "66666666-6666-4666-8666-666666666666",
+  "77777777-7777-4777-8777-777777777777",
+  "88888888-8888-4888-8888-888888888888",
+  "99999999-9999-4999-8999-999999999999",
+  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ];
 const environment = {
   SUPABASE_URL: PROJECT_URL,
@@ -52,12 +56,16 @@ function noResiduals(inspections = []) {
   };
 }
 
-function hostedFetch(requests, { uploadStatus = 200 } = {}) {
+function hostedFetch(requests, {
+  uploadStatus = 200,
+  removedDownloadCode = "PT404"
+} = {}) {
   const fixture = createHostedPdfFixture();
   const storagePath = `${COURSE_ID}/${fixture.contentHash}.pdf`;
   const signedUrl = `${PROJECT_URL}/storage/v1/object/sign/course-source-pdfs/${
     storagePath
   }?token=signed-fixture&download=true`;
+  let removed = false;
   return async (input, init = {}) => {
     const url = new URL(input);
     const headers = new Headers(init.headers);
@@ -113,19 +121,55 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
           }
         });
       }
-      assert.equal(body.sourceCommand?.type, "attach_pdf");
-      assert.equal(body.requestId, REQUEST_IDS[3]);
-      assert.equal(body.expectedRevision, 2);
-      assert.equal(body.sourceCommand.attachment.storagePath, storagePath);
+      if (body.sourceCommand?.type === "attach_pdf") {
+        const reattach = body.expectedRevision === 6;
+        assert.equal(body.requestId, REQUEST_IDS[reattach ? 7 : 3]);
+        assert.equal(body.sourceCommand.attachment.storagePath, storagePath);
+        if (reattach) removed = false;
+        return json({
+          ok: true,
+          requestId: null,
+          data: {
+            courseId: COURSE_ID,
+            courseRevision: reattach ? 7 : 3,
+            changed: true,
+            change: {
+              type: "attach_pdf",
+              subjectId: "source-hosted-pdf-smoke",
+              revision: 1
+            }
+          }
+        });
+      }
+      if (body.sourceCommand?.type === "save_anchor") {
+        assert.equal(body.requestId, REQUEST_IDS[4]);
+        assert.equal(body.expectedRevision, 3);
+        return json({ ok: true, data: {
+          courseId: COURSE_ID, courseRevision: 4, changed: true,
+          change: { type: "save_anchor", subjectId: "anchor-hosted-pdf-smoke", revision: 1 }
+        } });
+      }
+      if (body.planCommand?.type === "add_plan_item") {
+        assert.equal(body.requestId, REQUEST_IDS[5]);
+        assert.equal(body.expectedRevision, 4);
+        assert.equal(body.expectedPlanVersion, 1);
+        return json({ ok: true, data: {
+          courseId: COURSE_ID, courseRevision: 5, planVersion: 2, changed: true
+        } });
+      }
+      assert.equal(body.sourceCommand?.type, "remove_pdf");
+      assert.equal(body.requestId, REQUEST_IDS[6]);
+      assert.equal(body.expectedRevision, 5);
+      removed = true;
       return json({
         ok: true,
         requestId: null,
         data: {
           courseId: COURSE_ID,
-          courseRevision: 3,
+          courseRevision: 6,
           changed: true,
           change: {
-            type: "attach_pdf",
+            type: "remove_pdf",
             subjectId: "source-hosted-pdf-smoke",
             revision: 1
           }
@@ -135,9 +179,34 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
     if (url.pathname.endsWith("/aralearn-course-api/app/lerCurso")) {
       const body = JSON.parse(String(init.body));
       assert.equal(body.courseId, COURSE_ID);
+      if (body.view === "instructional_plan") {
+        return json({ ok: true, data: { courseId: COURSE_ID, courseRevision: removed ? 6 : 4,
+          plan: { version: removed ? 2 : 1, intendedLearningOutcomes: removed ? [{
+            sourceLinks: [{ sourceId: "source-hosted-pdf-smoke", anchors: [{
+              anchorId: "anchor-hosted-pdf-smoke", anchorRevision: 1
+            }] }]
+          }] : [] } } });
+      }
       assert.equal(body.sourceId, "source-hosted-pdf-smoke");
+      if (body.view === "course_sources") {
+        const attachmentPresent = body.expectedRevision !== 6;
+        return json({ ok: true, data: {
+          contract: "aralearn.course-sources.v1", courseId: COURSE_ID,
+          courseRevision: body.expectedRevision, mode: "source",
+          query: { sourceId: "source-hosted-pdf-smoke", targetKind: null, targetId: null },
+          pdfStorage: { uniqueBytes: attachmentPresent ? fixture.byteSize : 0,
+            maxUniqueBytes: 64 * 1024 * 1024 },
+          items: [{ sourceId: "source-hosted-pdf-smoke", revision: 1,
+            citationText: "AraLearn. Fonte efêmera do smoke PDF hospedado, 2026.",
+            url: "https://example.test/aralearn/hosted-pdf-smoke",
+            anchors: [{ anchorId: "anchor-hosted-pdf-smoke", revision: 1 }],
+            attachments: attachmentPresent ? [{ contentHash: fixture.contentHash,
+              byteSize: fixture.byteSize, mediaType: fixture.mediaType, storagePath }] : [] }],
+          nextCursor: null
+        } });
+      }
       if (body.attachmentOperation === "prepare_upload") {
-        assert.equal(body.expectedRevision, 2);
+        assert.ok(body.expectedRevision === 2 || body.expectedRevision === 6);
         assert.equal(body.contentHash, fixture.contentHash);
         assert.equal(body.byteSize, fixture.byteSize);
         assert.equal(body.mediaType, fixture.mediaType);
@@ -147,7 +216,7 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
           data: {
             contract: "aralearn.course-source-attachment-access.v2",
             courseId: COURSE_ID,
-            courseRevision: 2,
+            courseRevision: body.expectedRevision,
             operation: "prepare_upload",
             sourceId: "source-hosted-pdf-smoke",
             sourceRevision: 1,
@@ -166,14 +235,18 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
         });
       }
       assert.equal(body.attachmentOperation, "download");
-      assert.equal(body.expectedRevision, 3);
+      if (body.expectedRevision === 6) {
+        return json({ ok: false, error: { code: removedDownloadCode } },
+          { status: 404 });
+      }
+      assert.ok(body.expectedRevision === 3 || body.expectedRevision === 7);
       return json({
         ok: true,
         requestId: null,
         data: {
           contract: "aralearn.course-source-attachment-access.v1",
           courseId: COURSE_ID,
-          courseRevision: 3,
+          courseRevision: body.expectedRevision,
           operation: "download",
           sourceId: "source-hosted-pdf-smoke",
           sourceRevision: 1,
@@ -200,8 +273,14 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
       assert.deepEqual(new Uint8Array(init.body), fixture.bytes);
       return json({}, { status: uploadStatus });
     }
+    if (url.pathname === `/storage/v1/object/info/course-source-pdfs/${storagePath}`) {
+      assert.equal(method, "GET");
+      assert.equal(headers.get("apikey"), SECRET_KEY);
+      return json({ statusCode: "404", error: "not_found" }, { status: 400 });
+    }
     if (url.href === signedUrl) {
       assert.equal(headers.get("authorization"), null);
+      if (removed) return json({ message: "not found" }, { status: 404 });
       return new Response(fixture.bytes, {
         status: 200,
         headers: { "Content-Type": "application/pdf" }
@@ -246,6 +325,8 @@ test("smoke percorre prepare_upload v2, upload autenticado, attach, download v1 
     contract: HOSTED_COURSE_SOURCE_PDF_SMOKE_CONTRACT,
     cleanup: { courseCount: 0, objectCount: 0, userCount: 0 },
     downloadContract: "aralearn.course-source-attachment-access.v1",
+    pdfLifecycle: "remove-and-reattach-same-hash",
+    preserved: ["source", "citation", "anchor", "plan-source-link"],
     uploadContract: "aralearn.course-source-attachment-access.v2"
   });
   assert.equal(
@@ -253,7 +334,31 @@ test("smoke percorre prepare_upload v2, upload autenticado, attach, download v1 
       url.pathname.endsWith("/aralearn-course-api/app/excluirMinhaConta")),
     true
   );
+  const downloadRevisions = requests
+    .filter(({ url, body }) =>
+      url.pathname.endsWith("/aralearn-course-api/app/lerCurso") &&
+      JSON.parse(String(body)).attachmentOperation === "download")
+    .map(({ body }) => JSON.parse(String(body)).expectedRevision);
+  assert.deepEqual(downloadRevisions, [3, 6, 6, 7]);
+  assert.equal(
+    requests.filter(({ url }) =>
+      url.pathname.startsWith("/storage/v1/object/sign/course-source-pdfs/")).length,
+    2
+  );
   assert.equal(inspections.length, 1);
+});
+
+test("smoke exige PT404 exato na nova tentativa de download após remoção", async () => {
+  await assert.rejects(
+    () => runHostedCourseSourcePdfSmoke({
+      environment,
+      fetchImpl: hostedFetch([], { removedDownloadCode: "not_found" }),
+      createId: ids(),
+      createBytes: () => Buffer.alloc(24, 0x5a),
+      inspectResiduals: noResiduals()
+    }),
+    /não devolveu PT404/u
+  );
 });
 
 test("falha do fluxo ainda limpa a conta e não inclui credenciais nem identificadores no erro", async () => {

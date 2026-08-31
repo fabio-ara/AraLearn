@@ -270,7 +270,7 @@ function courseAuditCycleReadOptions(courseId, value = {}) {
 
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source" ||
-    command.type === "attach_pdf"
+    command.type === "attach_pdf" || command.type === "remove_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId

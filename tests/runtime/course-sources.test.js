@@ -9,6 +9,7 @@ import {
   normalizeCourseSourceAttributionApplication,
   normalizeCourseSourceAttachment,
   normalizeCourseSourceAttachmentAccess,
+  normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourceContext,
   normalizeCourseSourcePdfIngestion,
@@ -188,13 +189,13 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     normalizeCourseSourcePdfIngestionPreparation(inheritedPreparation),
     inheritedPreparation
   );
-  assert.throws(
-    () => normalizeCourseSourcePdfIngestionPreparation({
-      ...preparation,
-      uploadRequired: true,
-      alreadyLinked: true
-    }),
-    (error) => error.code === "invalid_course_source_pdf_ingestion_preparation"
+  const removedBytesPreparation = {
+    ...inheritedPreparation,
+    uploadRequired: true
+  };
+  assert.deepEqual(
+    normalizeCourseSourcePdfIngestionPreparation(removedBytesPreparation),
+    removedBytesPreparation
   );
 
   const result = {
@@ -243,6 +244,26 @@ test("anexo PDF sela hash, caminho, limite e transporte autorizado da revisão e
     sourceRevision: 2,
     attachment: attachment()
   });
+  assert.deepEqual(normalizeCourseSourceCommand({
+    type: "remove_pdf",
+    sourceId: "source-a",
+    expectedSourceRevision: 2,
+    contentHash: HASH_A
+  }), {
+    type: "remove_pdf",
+    sourceId: "source-a",
+    expectedSourceRevision: 2,
+    contentHash: HASH_A
+  });
+  assert.throws(
+    () => normalizeCourseSourceCommand({
+      type: "remove_pdf",
+      sourceId: "source-a",
+      expectedSourceRevision: 2,
+      contentHash: "hash-visivel"
+    }),
+    (error) => error.code === "invalid_course_source_command"
+  );
   assert.throws(
     () => normalizeCourseSourceAttachment(attachment({
       storagePath: `${IDS.course}/${HASH_B}.pdf`
@@ -372,6 +393,15 @@ test("normaliza comandos fechados, metadados e seletores exatos", () => {
       citationText: null, url: null, origin: "imported_legacy", availability: "unknown",
       verificationStatus: "unverified", studyVisibility: "hidden" })
   }).sourceId, legacyIdentity);
+  assert.equal(normalizeCourseSourceChange({
+    contract: "aralearn.course-source-change.v1",
+    courseId: IDS.course,
+    courseRevision: 2,
+    requestId: "request-remove-pdf-1",
+    idempotent: false,
+    changed: true,
+    change: { type: "remove_pdf", subjectId: legacyIdentity, revision: 1 }
+  }).change.subjectId, legacyIdentity);
 
   const astralLegacyIdentity = "🔎".repeat(2_048);
   assert.equal(normalizeCourseSourceCommand({
@@ -894,6 +924,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
         status: "active",
         selector: { kind: "page_range", startPage: 3, endPage: 4 },
         verificationExcerpt: null,
+        needsReverification: true,
         actorId: null,
         createdAt
       }],
@@ -902,6 +933,16 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
     nextCursor: null
   };
   assert.deepEqual(normalizeCourseSourcesRead(contextualSource), contextualSource);
+  assert.throws(
+    () => normalizeCourseSourcesRead({
+      ...contextualSource,
+      items: [{
+        ...contextualSource.items[0],
+        anchors: [{ ...contextualSource.items[0].anchors[0], needsReverification: "sim" }]
+      }]
+    }),
+    (error) => error.code === "invalid_course_sources_read"
+  );
   assert.throws(
     () => normalizeCourseSourcesRead({
       ...contextualSource,

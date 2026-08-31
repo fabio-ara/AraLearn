@@ -695,9 +695,14 @@ function renderAnchor(anchor, sourceRevision, state) {
     (deepLinked ? ' data-source-deep-linked-anchor tabindex="-1"' : "") + ">" +
     `<div><strong>${escapeHtml(anchorLabel(anchor))}</strong>` +
     `<span>${anchor.status === "active" ? "Âncora ativa" : "Âncora aposentada"}</span>` +
+    (anchor.needsReverification
+      ? '<span class="course-source-deep-link-label">Reverificação necessária</span>'
+      : "") +
     (deepLinked ? '<span class="course-source-deep-link-label">Âncora indicada</span>' : "") +
     "</div>" +
-    (anchor.verificationExcerpt
+    (anchor.needsReverification
+      ? '<p>O PDF mudou. Confira a paginação e o trecho antes de reutilizar esta Âncora.</p>'
+      : anchor.verificationExcerpt
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
     (editable ? '<div class="course-source-compact-actions">' +
@@ -714,14 +719,15 @@ function byteSizeLabel(value) {
 }
 
 function renderSourceAttachments(source, index, state) {
+  if (index !== 0) return "";
   const attachments = Array.isArray(source.attachments) ? source.attachments : [];
   const canUpload = index === 0 && source.status === "active" && attachments.length < 8;
-  return '<section class="course-source-attachments"><header><div><h4>PDFs desta revisão</h4>' +
-    `<p>${attachments.length} ${attachments.length === 1 ? "anexo" : "anexos"}</p></div>` +
+  return '<section class="course-source-attachments"><header><div><h4>Acesso PDF da Fonte</h4>' +
+    `<p>${attachments.length ? "PDF disponível" : "Sem PDF"}</p></div>` +
     (canUpload
-      ? `<label class="course-source-pdf-picker" title="${state.busy ? "Aguarde" : "Enviar PDF"}">` +
-        `${renderUiIcon("upload", "course-authoring-button-icon")}<span class="visually-hidden">${state.busy ? "Aguarde" : "Enviar PDF"}</span>` +
-        `<input type="file" accept="application/pdf,.pdf" aria-label="Enviar PDF" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
+      ? `<label class="course-source-pdf-picker" title="${state.busy ? "Aguarde" : "Anexar PDF"}">` +
+        `${renderUiIcon("upload", "course-authoring-button-icon")}<span class="visually-hidden">${state.busy ? "Aguarde" : "Anexar PDF"}</span>` +
+        `<input type="file" accept="application/pdf,.pdf" aria-label="Anexar PDF" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
         "</label>"
       : "") + "</header>" +
     (attachments.length
@@ -729,20 +735,26 @@ function renderSourceAttachments(source, index, state) {
         '<button type="button" data-source-action="download-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
           `${state.busy ? " disabled" : ""}>${renderUiIcon("arrow-down", "course-authoring-button-icon")}` +
-          `<span><strong>Baixar PDF</strong><small>${escapeHtml(byteSizeLabel(attachment.byteSize))}</small></span></button>`
+          `<span><strong>PDF disponível</strong><small>Baixar · ${escapeHtml(byteSizeLabel(attachment.byteSize))}</small></span></button>` +
+        '<button type="button" data-source-action="remove-attachment" ' +
+          `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
+          `${state.busy || source.status !== "active" ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}` +
+          '<span><strong>Remover PDF</strong><small>Manter Fonte e referências</small></span></button>'
       ).join("") + "</div>"
-      : '<p class="course-source-empty">Nenhum PDF anexado a esta revisão.</p>') + "</section>";
+      : '<p class="course-source-empty">A Fonte continua disponível sem arquivo PDF.</p>') + "</section>";
 }
 
 function sourceAvailabilityNote(source) {
   const attachmentCount = Array.isArray(source.attachments) ? source.attachments.length : 0;
   if (attachmentCount > 0) {
-    return `${attachmentCount} ${attachmentCount === 1 ? "PDF preservado" : "PDFs preservados"} nesta revisão do AraLearn.`;
+    return safeHttpUrl(source.url)
+      ? "A Fonte oferece PDF privado e endereço web."
+      : "PDF privado disponível como forma de acesso à Fonte.";
   }
   if (safeHttpUrl(source.url)) {
     return "Referência remota: o endereço pode mudar ou deixar de estar disponível.";
   }
-  return "Somente a referência foi registrada; esta revisão não oferece arquivo nem endereço de acesso.";
+  return "A Fonte continua registrada sem PDF ou endereço de acesso.";
 }
 
 function renderSourceRevision(source, index, state) {
@@ -2363,6 +2375,31 @@ export function createCourseSourcesPanel({
         Number(node.dataset.sourceRevision),
         String(node.dataset.contentHash || "")
       );
+    } else if (action === "remove-attachment") {
+      const sourceRevision = Number(node.dataset.sourceRevision);
+      const contentHash = String(node.dataset.contentHash || "");
+      const source = state.detail?.items?.[0];
+      const attachment = source?.attachments.find((item) => item.contentHash === contentHash);
+      if (!source || source.status !== "active" || source.revision !== sourceRevision ||
+          !attachment) return;
+      const command = {
+        type: "remove_pdf",
+        sourceId: source.sourceId,
+        expectedSourceRevision: source.revision,
+        contentHash
+      };
+      requestConfirmation({
+        title: "Remover PDF?",
+        message: "Somente o arquivo PDF será removido. A Fonte, sua citação, as Âncoras e os vínculos pedagógicos serão preservados.",
+        confirmLabel: "Remover PDF",
+        command,
+        draft: command,
+        returnFocusIdentity: {
+          selector: '[data-source-action="remove-attachment"]',
+          datasetKey: "contentHash",
+          datasetValue: contentHash
+        }
+      });
     } else if (action === "export-target") {
       try {
         const value = buildTargetExport(state, now());

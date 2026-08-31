@@ -297,6 +297,14 @@ continua aceito pelo protocolo canônico para clientes anteriores, mas fica fora
 da descoberta de Actions. Para um GPT, `incorporarPdfComoFonte` é o único
 caminho anunciado de ingestão.
 
+A projeção de `alterarCurso` também oferece `remove_pdf` entre as alterações de
+Fontes. O GPT localiza o anexo pela leitura corrente e preserva seus controles no
+estado estruturado; a pessoa só precisa pedir “remova o PDF desta Fonte, mas
+mantenha a Fonte”. A operação revoga o acesso sem aposentar a Fonte nem apagar
+citação, Âncoras ou vínculos pedagógicos. Para “anexe este PDF novamente a esta
+Fonte”, o GPT volta a usar `incorporarPdfComoFonte`; nenhum dos dois pedidos
+exige hash, caminho de Storage, cota ou UUID desconhecido da pessoa.
+
 Pedidos como “use este edital para fundamentar o Curso”, “considere este PPC e
 esta prova no planejamento” ou “incorpore esta nova norma e revise a Parte” já
 autorizam manter os respectivos documentos, sem exigir “salve este arquivo” ou

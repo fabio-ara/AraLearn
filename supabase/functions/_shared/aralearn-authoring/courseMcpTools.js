@@ -153,7 +153,7 @@ export const COURSE_MCP_TOOLS = Object.freeze(
 export const AUTHORING_MCP_CATALOG_ID = "aralearn.authoring-mcp-catalog";
 export const AUTHORING_MCP_CATALOG_VERSION = "1.0.0";
 export const AUTHORING_MCP_CATALOG_HASH =
-  "sha256:85b8f672b86970a7be2cfb7a8731283d8144827adc368e01d7e6e4345eb514cd";
+  "sha256:75ea019f5075398b74bcda055d30bf63068de424e64d42d7f6c43cecce8b2c29";
 export const AUTHORING_MCP_CATALOG_METADATA = Object.freeze({
   id: AUTHORING_MCP_CATALOG_ID,
   version: AUTHORING_MCP_CATALOG_VERSION,

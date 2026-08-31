@@ -422,11 +422,14 @@ comprovadas; correção factual e autoria científica exigem outras evidências.
 sem metadados ou Âncora inventados. Fica oculta em Estudo até receber uma revisão
 ativa na mesma identidade.
 
-**Anexo PDF de Fonte.** Objeto privado e imutável ligado à revisão exata da
-Fonte. O serviço canônico recebe o arquivo autorizado, limita e valida os bytes,
-calcula tamanho e SHA-256, escolhe o objeto privado e confirma o vínculo. O
-cliente não fornece hash nem caminho do Storage. URL assinada é emitida apenas
-para leitura temporária.
+**Anexo PDF de Fonte.** Forma opcional de acesso a uma Fonte, representada por
+um objeto privado e imutável ligado à revisão exata. O serviço canônico recebe o
+arquivo autorizado, limita e valida os bytes, calcula tamanho e SHA-256, escolhe
+o objeto privado e confirma o vínculo. O cliente não fornece hash nem caminho do
+Storage. URL assinada é emitida apenas para leitura temporária. Remover o anexo
+revoga novas leituras e conserva um registro histórico do vínculo; a Fonte, sua
+citação, suas Âncoras e atribuições permanecem. O mesmo conteúdo pode ser
+reanexado, mas só volta a autorizar leitura depois da confirmação do novo vínculo.
 
 **Ingestão de PDF de Fonte.** Caso de uso único que transforma bytes autorizados
 em anexo persistente. Pode usar uma Fonte existente ou criar/revisar a Fonte e
@@ -438,7 +441,7 @@ tamanho e tipo coincidem dentro do Curso e da política de acesso. Cada revisão
 mantém seu vínculo próprio.
 
 **Cota de PDFs.** Cada arquivo aceita até 20 MiB; uma revisão de Fonte aceita
-até oito PDFs; o Curso aceita 64 MiB de conteúdo PDF único.
+até oito PDFs; o Curso aceita 64 MiB de conteúdo PDF único com vínculo ativo.
 
 ## Auditoria e correções
 

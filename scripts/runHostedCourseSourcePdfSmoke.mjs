@@ -37,8 +37,11 @@ function text(value) {
   return String(value || "").trim();
 }
 
-function sanitizedStatusError(label, status) {
-  return new Error(`${label} devolveu HTTP ${status}.`);
+function sanitizedStatusError(label, status, code = "") {
+  const error = new Error(`${label} devolveu HTTP ${status}.`);
+  error.status = status;
+  error.code = text(code);
+  return error;
 }
 
 async function fetchSafely(fetchImpl, input, init, label) {
@@ -204,9 +207,110 @@ async function courseAction(
       TRANSIENT_EDGE_STATUSES.has(response.status) &&
       !edgeCode && !applicationCode
     ) continue;
-    throw sanitizedStatusError(label, response.status);
+    throw sanitizedStatusError(label, response.status, applicationCode);
   }
   throw sanitizedStatusError(label, lastStatus);
+}
+
+async function downloadCourseSourcePdf({
+  fetchImpl,
+  configuration,
+  lifecycle,
+  sourceId,
+  courseRevision,
+  pdf,
+  expectedStoragePath
+}) {
+  const download = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    {
+      courseId: lifecycle.courseId,
+      view: "course_source_attachment",
+      attachmentOperation: "download",
+      expectedRevision: courseRevision,
+      sourceId,
+      sourceRevision: 1,
+      contentHash: pdf.contentHash
+    }
+  );
+  ensure(
+    download.contract === "aralearn.course-source-attachment-access.v1" &&
+      download.courseId === lifecycle.courseId &&
+      download.operation === "download" && download.courseRevision === courseRevision &&
+      download.sourceId === sourceId && download.sourceRevision === 1 &&
+      download.storageOriginCourseId === lifecycle.courseId &&
+      download.alreadyLinked === true &&
+      download.attachment?.contentHash === pdf.contentHash &&
+      download.attachment?.byteSize === pdf.byteSize &&
+      download.attachment?.mediaType === pdf.mediaType &&
+      download.attachment?.storagePath === expectedStoragePath,
+    "O download hospedado não respeitou o contrato transitório v1."
+  );
+  let signedUrl;
+  try {
+    signedUrl = new URL(text(download.signedUrl));
+  } catch {
+    throw new Error("O download hospedado não devolveu URL assinada válida.");
+  }
+  ensure(
+    signedUrl.protocol === "https:" && signedUrl.origin === configuration.projectUrl &&
+      signedUrl.pathname.startsWith(
+        `/storage/v1/object/sign/${COURSE_SOURCE_PDF_BUCKET}/`
+      ) && signedUrl.searchParams.has("token") &&
+      signedUrl.searchParams.has("download"),
+    "A URL assinada não pertence ao Storage hospedado esperado."
+  );
+  const signedResponse = await fetchSafely(
+    fetchImpl,
+    signedUrl,
+    { headers: { Accept: "application/pdf" } },
+    "Download assinado do PDF"
+  );
+  ensure(
+    signedResponse.ok,
+    sanitizedStatusError("Download assinado do PDF", signedResponse.status).message
+  );
+  const downloadedBytes = new Uint8Array(await signedResponse.arrayBuffer());
+  ensure(
+    Buffer.from(downloadedBytes).equals(Buffer.from(pdf.bytes)),
+    "O download assinado não devolveu os bytes enviados."
+  );
+}
+
+async function ensureCourseSourcePdfDownloadDenied({
+  fetchImpl,
+  configuration,
+  lifecycle,
+  sourceId,
+  courseRevision,
+  contentHash,
+  message
+}) {
+  let downloadError = null;
+  try {
+    await courseAction(
+      fetchImpl,
+      configuration,
+      lifecycle.accessToken,
+      "lerCurso",
+      {
+        courseId: lifecycle.courseId,
+        view: "course_source_attachment",
+        attachmentOperation: "download",
+        expectedRevision: courseRevision,
+        sourceId,
+        sourceRevision: 1,
+        contentHash
+      },
+      { attempts: 1 }
+    );
+  } catch (error) {
+    downloadError = error;
+  }
+  ensure(downloadError?.status === 404 && downloadError?.code === "PT404", message);
 }
 
 async function provisionApplicationSession({
@@ -279,7 +383,7 @@ async function executePdfFlow({
     {
       requestId: validateUuid(createId(), "A criação do Curso não recebeu requestId válido."),
       title: "Curso efêmero do smoke PDF hospedado",
-      objective: "Validar o upload autenticado e o download assinado de uma Fonte."
+      objective: "Validar o ciclo completo do PDF sem perder a Fonte nem seus vínculos."
     }
   );
   lifecycle.courseId = validateUuid(
@@ -424,7 +528,193 @@ async function executePdfFlow({
     "O PDF não foi vinculado à Fonte na revisão esperada."
   );
 
-  const download = await courseAction(
+  await downloadCourseSourcePdf({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 3,
+    pdf,
+    expectedStoragePath
+  });
+
+  const anchorId = "anchor-hosted-pdf-smoke";
+  const savedAnchor = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "alterarCurso",
+    {
+      requestId: validateUuid(createId(), "A Âncora não recebeu requestId válido."),
+      courseId: lifecycle.courseId,
+      expectedRevision: 3,
+      operation: "update_course_sources",
+      sourceCommand: {
+        type: "save_anchor",
+        anchorId,
+        sourceId,
+        sourceRevision: 1,
+        expectedAnchorRevision: 0,
+        selector: { kind: "page_range", startPage: 1, endPage: 1 },
+        humanLocator: "Página 1",
+        verificationExcerpt: "Trecho sintético descartável do smoke PDF hospedado."
+      }
+    }
+  );
+  ensure(
+    savedAnchor.courseRevision === 4 && savedAnchor.change?.type === "save_anchor" &&
+      savedAnchor.change?.subjectId === anchorId,
+    "A Âncora efêmera não foi persistida."
+  );
+
+  const planBefore = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    { courseId: lifecycle.courseId, view: "instructional_plan" }
+  );
+  const planVersion = planBefore.plan?.version;
+  ensure(Number.isSafeInteger(planVersion) && planVersion >= 1,
+    "O plano inicial não devolveu versão válida.");
+  const linkedPlanItem = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "alterarCurso",
+    {
+      requestId: validateUuid(createId(), "O vínculo pedagógico não recebeu requestId válido."),
+      courseId: lifecycle.courseId,
+      expectedRevision: 4,
+      expectedPlanVersion: planVersion,
+      operation: "update_instructional_plan",
+      planCommand: {
+        type: "add_plan_item",
+        kind: "intended_learning_outcome",
+        position: 0,
+        statement: "Compreender o ciclo independente do acesso PDF.",
+        sourceLinks: [{
+          sourceId,
+          sourceRevision: 1,
+          relation: "supported_by",
+          anchors: [{ anchorId, anchorRevision: 1 }]
+        }]
+      }
+    }
+  );
+  ensure(
+    linkedPlanItem.courseRevision === 5 && linkedPlanItem.planVersion === planVersion + 1,
+    "O vínculo pedagógico não foi persistido."
+  );
+
+  const sourceBeforeRemoval = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    {
+      courseId: lifecycle.courseId,
+      view: "course_sources",
+      expectedRevision: 5,
+      mode: "source",
+      sourceId,
+      limit: 10
+    }
+  );
+  ensure(
+    sourceBeforeRemoval.items?.[0]?.citationText ===
+      "AraLearn. Fonte efêmera do smoke PDF hospedado, 2026." &&
+      sourceBeforeRemoval.items[0].anchors?.some((item) => item.anchorId === anchorId) &&
+      sourceBeforeRemoval.items[0].attachments?.some(
+        (item) => item.contentHash === pdf.contentHash
+      ) && sourceBeforeRemoval.pdfStorage?.uniqueBytes === pdf.byteSize,
+    "A Fonte completa ou a quota inicial do PDF não foram relidas."
+  );
+
+  const removed = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "alterarCurso",
+    {
+      requestId: validateUuid(createId(), "A remoção do PDF não recebeu requestId válido."),
+      courseId: lifecycle.courseId,
+      expectedRevision: 5,
+      operation: "update_course_sources",
+      sourceCommand: {
+        type: "remove_pdf",
+        sourceId,
+        expectedSourceRevision: 1,
+        contentHash: pdf.contentHash
+      }
+    }
+  );
+  ensure(
+    removed.courseRevision === 6 && removed.changed === true &&
+      removed.change?.type === "remove_pdf" && removed.change?.subjectId === sourceId,
+    "A remoção isolada do PDF não foi confirmada."
+  );
+
+  const [sourceAfterRemoval, planAfterRemoval] = await Promise.all([
+    courseAction(fetchImpl, configuration, lifecycle.accessToken, "lerCurso", {
+      courseId: lifecycle.courseId,
+      view: "course_sources",
+      expectedRevision: 6,
+      mode: "source",
+      sourceId,
+      limit: 10
+    }),
+    courseAction(fetchImpl, configuration, lifecycle.accessToken, "lerCurso", {
+      courseId: lifecycle.courseId,
+      view: "instructional_plan"
+    })
+  ]);
+  const survivingSource = sourceAfterRemoval.items?.[0];
+  const survivingPlanItem = planAfterRemoval.plan?.intendedLearningOutcomes?.[0];
+  ensure(
+    survivingSource?.sourceId === sourceId && survivingSource.revision === 1 &&
+      survivingSource.citationText === "AraLearn. Fonte efêmera do smoke PDF hospedado, 2026." &&
+      survivingSource.url === "https://example.test/aralearn/hosted-pdf-smoke" &&
+      survivingSource.anchors?.some((item) => item.anchorId === anchorId) &&
+      survivingSource.attachments?.length === 0 &&
+      sourceAfterRemoval.pdfStorage?.uniqueBytes === 0 &&
+      survivingPlanItem?.sourceLinks?.some((link) =>
+        link.sourceId === sourceId && link.anchors?.some((item) => item.anchorId === anchorId)
+      ),
+    "A Fonte, citação, Âncora, vínculo pedagógico ou quota não sobreviveram à remoção do PDF."
+  );
+  await ensureCourseSourcePdfDownloadDenied({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 6,
+    contentHash: pdf.contentHash,
+    message: "O vínculo removido não devolveu PT404 ao solicitar novo download."
+  });
+  const objectInfo = await fetchSafely(
+    fetchImpl,
+    `${configuration.projectUrl}/storage/v1/object/info/${COURSE_SOURCE_PDF_BUCKET}/${
+      expectedStoragePath
+    }`,
+    {
+      method: "GET",
+      headers: supabaseServerHeaders(configuration.serverApiKey, { contentType: false })
+    },
+    "Verificação da exclusão física do PDF"
+  );
+  const objectInfoPayload = await parseJson(
+    objectInfo,
+    "Verificação da exclusão física do PDF"
+  );
+  ensure(
+    [400, 404].includes(objectInfo.status) &&
+      String(objectInfoPayload?.statusCode) === "404" &&
+      objectInfoPayload?.error === "not_found",
+    "O objeto físico removido ainda existe no Storage."
+  );
+
+  const reprepare = await courseAction(
     fetchImpl,
     configuration,
     lifecycle.accessToken,
@@ -432,55 +722,123 @@ async function executePdfFlow({
     {
       courseId: lifecycle.courseId,
       view: "course_source_attachment",
-      attachmentOperation: "download",
-      expectedRevision: 3,
+      attachmentOperation: "prepare_upload",
+      expectedRevision: 6,
       sourceId,
       sourceRevision: 1,
-      contentHash: pdf.contentHash
+      contentHash: pdf.contentHash,
+      byteSize: pdf.byteSize,
+      mediaType: pdf.mediaType
     }
   );
   ensure(
-    download.contract === "aralearn.course-source-attachment-access.v1" &&
-      download.courseId === lifecycle.courseId &&
-      download.operation === "download" && download.courseRevision === 3 &&
-      download.sourceId === sourceId && download.sourceRevision === 1 &&
-      download.storageOriginCourseId === lifecycle.courseId &&
-      download.alreadyLinked === true &&
-      download.attachment?.contentHash === pdf.contentHash &&
-      download.attachment?.byteSize === pdf.byteSize &&
-      download.attachment?.mediaType === pdf.mediaType &&
-      download.attachment?.storagePath === expectedStoragePath,
-    "O download hospedado não respeitou o contrato transitório v1."
+    reprepare.operation === "prepare_upload" && reprepare.uploadRequired === true &&
+      reprepare.alreadyLinked === false &&
+      reprepare.attachment?.storagePath === expectedStoragePath,
+    "O reupload do mesmo hash após exclusão física não foi preparado."
   );
-  let signedUrl;
-  try {
-    signedUrl = new URL(text(download.signedUrl));
-  } catch {
-    throw new Error("O download hospedado não devolveu URL assinada válida.");
-  }
-  ensure(
-    signedUrl.protocol === "https:" && signedUrl.origin === configuration.projectUrl &&
-      signedUrl.pathname.startsWith(
-        `/storage/v1/object/sign/${COURSE_SOURCE_PDF_BUCKET}/`
-      ) && signedUrl.searchParams.has("token") &&
-      signedUrl.searchParams.has("download"),
-    "A URL assinada não pertence ao Storage hospedado esperado."
-  );
-  const signedResponse = await fetchSafely(
+  const reuploadResponse = await fetchSafely(
     fetchImpl,
-    signedUrl,
-    { headers: { Accept: "application/pdf" } },
-    "Download assinado do PDF"
+    `${configuration.projectUrl}/storage/v1/object/${COURSE_SOURCE_PDF_BUCKET}/${
+      expectedStoragePath
+    }`,
+    {
+      method: "POST",
+      headers: {
+        apikey: configuration.publishableKey,
+        Authorization: `Bearer ${lifecycle.accessToken}`,
+        "Content-Type": pdf.mediaType,
+        "cache-control": "max-age=3600",
+        "x-upsert": "false"
+      },
+      body: pdf.bytes
+    },
+    "Reupload autenticado do mesmo PDF"
+  );
+  await parseJson(reuploadResponse, "Reupload autenticado do mesmo PDF");
+  ensure(reuploadResponse.ok, sanitizedStatusError(
+    "Reupload autenticado do mesmo PDF", reuploadResponse.status
+  ).message);
+  const sourceBeforeReattach = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    {
+      courseId: lifecycle.courseId,
+      view: "course_sources",
+      expectedRevision: 6,
+      mode: "source",
+      sourceId,
+      limit: 10
+    }
   );
   ensure(
-    signedResponse.ok,
-    sanitizedStatusError("Download assinado do PDF", signedResponse.status).message
+    sourceBeforeReattach.items?.[0]?.attachments?.length === 0 &&
+      sourceBeforeReattach.pdfStorage?.uniqueBytes === 0,
+    "O reupload físico reativou o vínculo ou consumiu quota antes do attach_pdf."
   );
-  const downloadedBytes = new Uint8Array(await signedResponse.arrayBuffer());
+  await ensureCourseSourcePdfDownloadDenied({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 6,
+    contentHash: pdf.contentHash,
+    message: "O reupload físico autorizou download antes do attach_pdf."
+  });
+  const reattached = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "alterarCurso",
+    {
+      requestId: validateUuid(createId(), "A reanexação do PDF não recebeu requestId válido."),
+      courseId: lifecycle.courseId,
+      expectedRevision: 6,
+      operation: "update_course_sources",
+      sourceCommand: {
+        type: "attach_pdf",
+        sourceId,
+        sourceRevision: 1,
+        attachment: reprepare.attachment
+      }
+    }
+  );
   ensure(
-    Buffer.from(downloadedBytes).equals(Buffer.from(pdf.bytes)),
-    "O download assinado não devolveu os bytes enviados."
+    reattached.courseRevision === 7 && reattached.change?.type === "attach_pdf",
+    "O mesmo PDF não foi reanexado à Fonte preservada."
   );
+  const sourceAfterReattach = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    {
+      courseId: lifecycle.courseId,
+      view: "course_sources",
+      expectedRevision: 7,
+      mode: "source",
+      sourceId,
+      limit: 10
+    }
+  );
+  ensure(
+    sourceAfterReattach.items?.[0]?.attachments?.some(
+      (item) => item.contentHash === pdf.contentHash
+    ) && sourceAfterReattach.items[0].anchors?.some((item) => item.anchorId === anchorId) &&
+      sourceAfterReattach.pdfStorage?.uniqueBytes === pdf.byteSize,
+    "A reanexação não restaurou o PDF e a quota na mesma Fonte."
+  );
+  await downloadCourseSourcePdf({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 7,
+    pdf,
+    expectedStoragePath
+  });
 }
 
 async function deleteAccountThroughApplication({ configuration, fetchImpl, lifecycle }) {
@@ -701,6 +1059,8 @@ export async function runHostedCourseSourcePdfSmoke({
     contract: HOSTED_COURSE_SOURCE_PDF_SMOKE_CONTRACT,
     cleanup: Object.freeze({ courseCount: 0, objectCount: 0, userCount: 0 }),
     downloadContract: "aralearn.course-source-attachment-access.v1",
+    pdfLifecycle: "remove-and-reattach-same-hash",
+    preserved: Object.freeze(["source", "citation", "anchor", "plan-source-link"]),
     uploadContract: "aralearn.course-source-attachment-access.v2"
   });
 }
@@ -771,5 +1131,7 @@ const entryPoint = process.argv[1] ? path.resolve(process.argv[1]) : "";
 if (entryPoint === fileURLToPath(import.meta.url)) {
   const environment = await readHostedCourseSourcePdfEnvironment();
   await runHostedCourseSourcePdfSmoke({ environment });
-  console.log("Smoke PDF hospedado: upload v2, download v1 e limpeza integral aprovados.");
+  console.log(
+    "Smoke PDF hospedado: upload, remoção física, preservação, quota, reanexação e limpeza aprovados."
+  );
 }
