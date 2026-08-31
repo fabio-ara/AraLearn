@@ -165,6 +165,40 @@ function repairedApplication() {
   };
 }
 
+function analysisOnlyContext(ids, { ceiling = 2 } = {}) {
+  const value = context();
+  value.instructionalAnalysisUnits = value.instructionalAnalysisUnits.filter(({ id }) => (
+    ids.includes(id)
+  ));
+  value.evidenceRequirements = [];
+  value.targets[0].instructionalAnalysisUnitIds = [...ids];
+  value.targets[0].evidenceRequirementIds = [];
+  value.targets[0].parameters = value.targets[0].parameters.map((parameter) => (
+    parameter.parameterId === "new_analysis_unit_ceiling_per_expository_study_unit"
+      ? { ...parameter, value: ceiling }
+      : parameter
+  ));
+  return value;
+}
+
+function decomposedExplanationApplication({ unitCount, analysisId = ANALYSIS_IDS[0] }) {
+  const formsByUnit = unitCount === 2
+    ? [REQUIRED_FORMS.slice(0, 2), REQUIRED_FORMS.slice(2)]
+    : [[REQUIRED_FORMS[0]], REQUIRED_FORMS.slice(1, 3), REQUIRED_FORMS.slice(3)];
+  return {
+    contextHash: CONTEXT_HASH,
+    didacticMicrosequenceId: MICROSEQUENCE,
+    studyUnits: formsByUnit.map((developedForms, index) => ({
+      studyUnitId: `unit-analysis-split-${unitCount}-${index + 1}`,
+      mode: "expository",
+      introducedInstructionalAnalysisUnitIds: index === 0 ? [analysisId] : [],
+      explanationApplications: [explanation(analysisId, developedForms)],
+      practiceApplications: [],
+      componentRefs: []
+    }))
+  };
+}
+
 test("catálogo v1 contém somente quatro hipóteses operacionais sem proxy de caracteres", () => {
   assert.deepEqual(
     COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultStatus }) => [id, defaultStatus]),
@@ -367,6 +401,77 @@ test("#89 detecta densidade estruturada, cobertura e formas sem usar comprimento
       `instructional_analysis_unit_not_covered:${ANALYSIS_IDS[6]}`
     )
   );
+});
+
+test("#235 distribui uma AnalysisUnit por duas ou três StudyUnits sem contar continuação como novidade", () => {
+  const designContext = analysisOnlyContext([ANALYSIS_IDS[0]], { ceiling: 1 });
+  const twoUnits = auditDesignApplication(
+    designContext,
+    decomposedExplanationApplication({ unitCount: 2 }),
+    { contextHash: CONTEXT_HASH }
+  );
+  const threeUnits = auditDesignApplication(
+    designContext,
+    decomposedExplanationApplication({ unitCount: 3 }),
+    { contextHash: CONTEXT_HASH }
+  );
+
+  assert.deepEqual(twoUnits.issues, []);
+  assert.deepEqual(threeUnits.issues, []);
+  assert.equal(twoUnits.summary.introducedInstructionalAnalysisUnitIds.length, 1);
+  assert.equal(threeUnits.summary.introducedInstructionalAnalysisUnitIds.length, 1);
+});
+
+test("#235 aceita duas AnalysisUnits em uma StudyUnit dentro do teto e acusa o teto real", () => {
+  const ids = ANALYSIS_IDS.slice(0, 2);
+  const application = {
+    contextHash: CONTEXT_HASH,
+    didacticMicrosequenceId: MICROSEQUENCE,
+    studyUnits: [{
+      studyUnitId: "unit-two-analysis",
+      mode: "expository",
+      introducedInstructionalAnalysisUnitIds: ids,
+      explanationApplications: ids.map((id) => explanation(id)),
+      practiceApplications: [],
+      componentRefs: []
+    }]
+  };
+
+  assert.equal(auditDesignApplication(
+    analysisOnlyContext(ids, { ceiling: 2 }),
+    application,
+    { contextHash: CONTEXT_HASH }
+  ).valid, true);
+  assert.ok(auditDesignApplication(
+    analysisOnlyContext(ids, { ceiling: 1 }),
+    application,
+    { contextHash: CONTEXT_HASH }
+  ).issues.includes("new_analysis_unit_ceiling_exceeded:unit-two-analysis"));
+});
+
+test("#235 mantém introdução única e torna continuação antes da introdução acionável", () => {
+  const application = decomposedExplanationApplication({ unitCount: 2 });
+  application.studyUnits[0].introducedInstructionalAnalysisUnitIds = [];
+  application.studyUnits[1].introducedInstructionalAnalysisUnitIds = [ANALYSIS_IDS[0]];
+
+  assert.ok(auditDesignApplication(
+    analysisOnlyContext([ANALYSIS_IDS[0]]),
+    application,
+    { contextHash: CONTEXT_HASH }
+  ).issues.includes(`explanation_before_introduction:${ANALYSIS_IDS[0]}:unit-analysis-split-2-1`));
+});
+
+test("#235 rejeita continuação que não identifica contribuição local", () => {
+  const application = decomposedExplanationApplication({ unitCount: 2 });
+  application.studyUnits[1].explanationApplications[0].developedForms = [];
+
+  assert.ok(auditDesignApplication(
+    analysisOnlyContext([ANALYSIS_IDS[0]]),
+    application,
+    { contextHash: CONTEXT_HASH }
+  ).issues.includes(
+    `explanation_without_local_contribution:${ANALYSIS_IDS[0]}:unit-analysis-split-2-2`
+  ));
 });
 
 test("auditoria separa dois alvos e exige somente o subconjunto atribuído a cada um", () => {

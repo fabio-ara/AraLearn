@@ -202,6 +202,15 @@ Cada etapa registra fatos delimitados sobre o que foi aplicado:
 - operação mantida e dimensões variadas;
 - componentes usados.
 
+`introducedInstructionalAnalysisUnitIds` marca somente a primeira apresentação
+de cada unidade de análise. O desenvolvimento pode continuar em duas ou mais
+Unidades por `explanationApplications`, sem repetir a introdução; as formas
+requeridas são verificadas sobre o conjunto dessas aplicações. No sentido
+inverso, uma Unidade pode desenvolver várias unidades de análise quando as
+relações forem intencionais e a quantidade de introduções novas respeitar o
+teto efetivo. Assim, o teto mede novidade no desenho, não comprimento de texto
+nem quantidade de telas.
+
 O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
 e política de componentes. O PostgreSQL também confere se as Unidades, os pais,
 as Microssequências e os componentes correspondem ao conteúdo gravado.

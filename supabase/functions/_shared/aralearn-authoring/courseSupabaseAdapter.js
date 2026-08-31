@@ -12,6 +12,7 @@ import {
   COURSE_COMPONENT_CATALOG_VERSION,
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   CourseDesignParametersError,
+  auditDesignApplication,
   normalizeCourseAuthoringGuidanceInterpretation,
   normalizeCourseComponentPolicy,
   normalizeCourseDesignChange,
@@ -409,6 +410,41 @@ function assertComponentRefsAllowed(refs, policy) {
       { ref: denied }
     );
   }
+}
+
+function invalidDesignApplication(issues) {
+  const [rule = "unknown", subjectId = null, detail = null] = String(issues[0] || "").split(":");
+  const messages = {
+    new_analysis_unit_ceiling_exceeded:
+      "Uma StudyUnit introduz mais AnalysisUnits novas do que o teto didático permite.",
+    instructional_analysis_unit_introduced_twice:
+      "Uma AnalysisUnit foi marcada como nova em mais de uma StudyUnit; introduza-a somente na primeira e continue o desenvolvimento nas seguintes.",
+    explanation_before_introduction:
+      "Uma StudyUnit desenvolve uma AnalysisUnit antes de ela ser introduzida no lote.",
+    explanation_without_local_contribution:
+      "Uma StudyUnit relaciona uma AnalysisUnit sem identificar nenhuma forma desenvolvida ou não aplicável nessa Unidade.",
+    explanation_form_conflict:
+      "Uma forma de explicação foi declarada simultaneamente como desenvolvida e não aplicável para a mesma AnalysisUnit.",
+    required_explanation_form_missing:
+      "O conjunto de StudyUnits não cobre uma forma de explicação requerida para uma AnalysisUnit.",
+    introduced_unit_without_explanation_application:
+      "Uma AnalysisUnit foi introduzida sem desenvolvimento identificável na mesma StudyUnit.",
+    instructional_analysis_unit_not_covered:
+      "Uma AnalysisUnit atribuída à Microssequência não foi introduzida.",
+    unknown_instructional_analysis_unit:
+      "A aplicação referencia uma AnalysisUnit fora do contexto selado."
+  };
+  return new AuthoringApiError(
+    422,
+    "invalid_course_design_application",
+    messages[rule] || "A aplicação factual do desenho viola uma regra do contexto selado.",
+    {
+      rule,
+      subjectId,
+      detail,
+      issues: issues.slice(0, 16)
+    }
+  );
 }
 
 function assertSourceLinksAllowedByContext(studyUnits, target) {
@@ -4621,6 +4657,12 @@ export class CourseSupabaseAdapter {
           (studyUnit) => studyUnit.componentRefs
         ))];
         assertComponentRefsAllowed(componentRefs, target.componentPolicy.policy);
+        const designAudit = auditDesignApplication(
+          materialization.designContext,
+          application,
+          { contextHash: materialization.contextHash }
+        );
+        if (!designAudit.valid) throw invalidDesignApplication(designAudit.issues);
         const designStudyUnitIds = application.studyUnits
           .map(({ studyUnitId }) => studyUnitId)
           .sort((left, right) => left.localeCompare(right, "en"));

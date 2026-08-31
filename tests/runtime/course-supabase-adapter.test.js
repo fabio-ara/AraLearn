@@ -4407,10 +4407,26 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
       didacticMicrosequenceId: "micro-a",
       studyUnits: [{
         studyUnitId: "unit-a",
-        mode: "expository",
-        introducedInstructionalAnalysisUnitIds: [],
-        explanationApplications: [],
-        practiceApplications: [],
+        mode: "mixed",
+        introducedInstructionalAnalysisUnitIds: [PLAN_ID],
+        explanationApplications: [{
+          instructionalAnalysisUnitId: PLAN_ID,
+          developedForms: [
+            "plain_definition", "concrete_example", "mechanism", "contrast"
+          ],
+          notApplicable: []
+        }],
+        practiceApplications: [{
+          evidenceRequirementId: STEP_ID,
+          opportunityId: "case-a",
+          invariantTaskOperation: "explicar a relação entre configuração e concessão",
+          variedDimensions: ["case_or_data"]
+        }, {
+          evidenceRequirementId: STEP_ID,
+          opportunityId: "case-b",
+          invariantTaskOperation: "explicar a relação entre configuração e concessão",
+          variedDimensions: ["case_or_data"]
+        }],
         componentRefs: [paragraphRef]
       }]
     },
@@ -4447,6 +4463,34 @@ test("record_step confere hash e policy selados antes da escrita", async () => {
     "get_owned_course_authoring_part_materialization_for_actor_v1",
     "advance_course_authoring_part_materialization_for_actor_v2"
   ]);
+
+  calls.length = 0;
+  const beforeIntroduction = structuredClone(payload.designApplication);
+  beforeIntroduction.studyUnits[0].introducedInstructionalAnalysisUnitIds = [];
+  await assert.rejects(
+    () => value.advanceCourseAuthoringPartMaterialization({
+      ...command,
+      payload: { ...payload, designApplication: beforeIntroduction }
+    }),
+    (error) => error.code === "invalid_course_design_application" &&
+      error.details.rule === "explanation_before_introduction" &&
+      /antes de ela ser introduzida/iu.test(error.message)
+  );
+  assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
+
+  calls.length = 0;
+  const emptyContribution = structuredClone(payload.designApplication);
+  emptyContribution.studyUnits[0].explanationApplications[0].developedForms = [];
+  await assert.rejects(
+    () => value.advanceCourseAuthoringPartMaterialization({
+      ...command,
+      payload: { ...payload, designApplication: emptyContribution }
+    }),
+    (error) => error.code === "invalid_course_design_application" &&
+      error.details.rule === "explanation_without_local_contribution" &&
+      /sem identificar nenhuma forma/iu.test(error.message)
+  );
+  assert.deepEqual(calls, ["get_owned_course_authoring_part_materialization_for_actor_v1"]);
 
   calls.length = 0;
   await assert.rejects(

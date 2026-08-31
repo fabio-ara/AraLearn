@@ -219,6 +219,13 @@ observadas semanticamente pelo banco. IDs de Unidades, pai/alvo e
 permitem confrontar planejado e declarado como aplicado; não constituem pontuação,
 diagnóstico ou resultado de aprendizagem.
 
+Uma unidade de análise é introduzida uma vez, mas pode ser desenvolvida em
+várias Unidades de estudo. Cada continuação declara a mesma relação e a
+cobertura explicativa é reunida no lote; isso permite aprofundar sem condensar
+conteúdo para satisfazer cardinalidade técnica. Uma Unidade também pode
+desenvolver mais de uma unidade de análise, desde que a combinação seja
+coerente e o teto de introduções novas seja respeitado.
+
 Interface, MCP e Actions operam o mesmo contrato em linguagem comum. A pessoa
 autora não precisa editar JSON nem um esquema opaco de componentes. A
 fundamentação e os limites estão em
