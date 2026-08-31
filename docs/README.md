@@ -134,7 +134,9 @@ resultado empírico:
 3. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
 4. [Auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md);
 5. [Auditoria da interface](auditoria-front-end.md);
-6. [Capacidades e limites atuais](estado-atual-e-roadmap.md).
+6. [Benchmark de footprint editorial](benchmark-footprint-editorial.md):
+   comparação reproduzível entre extensão, composição e espaço no leitor móvel;
+7. [Capacidades e limites atuais](estado-atual-e-roadmap.md).
 
 O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) prepara a
 avaliação com pessoas. Automação pode verificar contrato e geometria, mas não

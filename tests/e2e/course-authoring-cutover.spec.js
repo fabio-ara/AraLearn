@@ -2480,6 +2480,20 @@ async function mountCourseAuthoring(page, {
         studyUnit.title = title;
         course.revision += 1;
         return course.revision;
+      },
+      updateInspectionStudyUnitParagraph(studyUnitId, text) {
+        const studyUnit = studyUnits.find(({ id }) => id === studyUnitId);
+        const course = courses.find(({ courseId }) => courseId === courseIds[0]);
+        const paragraph = studyUnit?.content?.find(({ package: packageId }) =>
+          packageId === "aralearn.resource.paragraph"
+        );
+        if (!studyUnit || !course || !paragraph) {
+          throw new Error("Parágrafo da Unidade de estudo ausente na fixture.");
+        }
+        paragraph.data.text = text;
+        studyUnitVersions.set(studyUnitId, (studyUnitVersions.get(studyUnitId) || 0) + 1);
+        course.revision += 1;
+        return course.revision;
       }
     };
     await surface.open();
@@ -4075,6 +4089,70 @@ test("Planejamento sinaliza de forma compacta Conteúdo ainda sem Parte", async 
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
 });
+
+for (const { width, colorMode } of [
+  { width: 390, colorMode: "dark" },
+  { width: 430, colorMode: "light" }
+]) {
+  test(`preview colapsado conserva geometria e abre por teclado em ${width} px`, async ({
+    page
+  }) => {
+    const clientErrors = captureClientErrors(page);
+    await page.emulateMedia({ colorScheme: colorMode, reducedMotion: "reduce" });
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 932 });
+    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+    await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+    const studyUnitId = "study-unit-02";
+    const finalMarker = "MARCADOR_FINAL_DO_PREVIEW_236";
+    const item = page.locator(`[data-inspection-study-unit="${studyUnitId}"]`);
+    const preview = item.locator(`[data-inspection-preview="${studyUnitId}"]`);
+    const toggle = preview.locator(":scope > summary");
+    await expect(preview).not.toHaveAttribute("open", "");
+    await expect(item.locator(".course-inspection-runtime")).toHaveCount(0);
+    const collapsedHeight = await item.evaluate((element) =>
+      element.getBoundingClientRect().height
+    );
+
+    await page.evaluate(({ id, text }) => {
+      globalThis.__courseAuthoringHarness.updateInspectionStudyUnitParagraph(id, text);
+    }, {
+      id: studyUnitId,
+      text: `Início preservado no excerpt. ${"conteúdo extenso ".repeat(420)}${finalMarker}`
+    });
+    await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
+
+    await expect(preview).not.toHaveAttribute("open", "");
+    await expect(item).toContainText("Início preservado no excerpt.");
+    await expect(item).not.toContainText(finalMarker);
+    await expect(item.locator(".course-inspection-runtime")).toHaveCount(0);
+    const updatedCollapsedHeight = await item.evaluate((element) =>
+      element.getBoundingClientRect().height
+    );
+    expect(Math.abs(updatedCollapsedHeight - collapsedHeight)).toBeLessThanOrEqual(1);
+
+    await toggle.focus();
+    await toggle.press("Enter");
+    await expect(preview).toHaveAttribute("open", "");
+    await expect(page.locator(".course-inspection-preview[open]")).toHaveCount(1);
+    await expect(item.locator(".course-inspection-runtime")).toHaveCount(1);
+    await expect(item).toContainText(finalMarker);
+    await expect(toggle).toBeFocused();
+
+    await toggle.press("Enter");
+    await expect(preview).not.toHaveAttribute("open", "");
+    await expect(page.locator(".course-inspection-preview[open]")).toHaveCount(0);
+    await expect(item.locator(".course-inspection-runtime")).toHaveCount(0);
+    await expect(item).not.toContainText(finalMarker);
+    const restoredCollapsedHeight = await item.evaluate((element) =>
+      element.getBoundingClientRect().height
+    );
+    expect(Math.abs(restoredCollapsedHeight - collapsedHeight)).toBeLessThanOrEqual(1);
+    await expect(toggle).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+    expect(clientErrors).toEqual([]);
+  });
+}
 
 for (const width of [360, 390, 430, 1280]) {
   test(`Inspeção virtualiza 60 Unidades de estudo em ${width} px`, async ({ page }, testInfo) => {

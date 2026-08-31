@@ -8,6 +8,7 @@ import {
   createCourseInspectionSequence,
   inspectionRequestFromTarget,
   normalizeCourseInspectionPage,
+  projectCourseInspectionStudyUnitPreview,
   searchCourseInspectionIndex
 } from "../../src/ui/CourseInspectionSequence.js";
 import { renderPackageStudyUnitBlocksWithDock } from
@@ -407,6 +408,53 @@ test("índice curricular preserva a ordem canônica do documento sem posições 
   assert.equal(searchCourseInspectionIndex(index, "unidade 2")[0].id, "unit-second");
 });
 
+test("projeção compacta é determinística e estritamente limitada para texto, código, tabela e diagrama", () => {
+  const unit = studyUnit(1);
+  unit.title = "Representações com footprint distinto";
+  unit.content = [{
+    id: "code-preview",
+    package: "aralearn.resource.code",
+    version: "1.0.0",
+    data: {
+      prompt: "Observe a saída.",
+      language: "text",
+      code: `${"linha\n".repeat(80)}MARCADOR_FINAL_DO_CODIGO`
+    }
+  }, {
+    id: "table-preview",
+    package: "aralearn.resource.table",
+    version: "1.0.0",
+    data: {
+      prompt: "Compare.",
+      columns: ["Caso", "Resultado"],
+      rows: [["A", "1"], ["B", "2"]]
+    }
+  }, {
+    id: "diagram-preview",
+    package: "aralearn.resource.set_diagram",
+    version: "1.0.0",
+    data: {
+      prompt: "Relacione os conjuntos.",
+      kind: "venn",
+      sets: [
+        { id: "a", symbol: "A", label: "Grupo A" },
+        { id: "b", symbol: "B", label: "Grupo B" }
+      ],
+      regions: [{ id: "both", setIds: ["a", "b"], items: ["x"] }]
+    }
+  }];
+
+  const first = projectCourseInspectionStudyUnitPreview(unit);
+  const second = projectCourseInspectionStudyUnitPreview(structuredClone(unit));
+
+  assert.deepEqual(second, first);
+  assert.equal(first.title, unit.title);
+  assert.deepEqual(first.metadata, ["Teoria", "3 recursos", "Código", "Tabela", "+1 tipo"]);
+  assert.ok([...first.excerpt].length <= 160);
+  assert.match(first.excerpt, /Observe a saída/u);
+  assert.doesNotMatch(first.excerpt, /MARCADOR_FINAL_DO_CODIGO/u);
+});
+
 test("normaliza o DTO paginado exato e recusa revisão, ordem ou campos extras", () => {
   const options = {
     expectedRevision: REVISION,
@@ -528,6 +576,74 @@ test("menu situado preserva observações e produção; desenho mostra usado ver
   assert.match(root.innerHTML, /section=planning&amp;authoringPartId=20000000-0000-4000-8000-000000000002&amp;materializationId=30000000-0000-4000-8000-000000000003/u);
   assert.match(root.innerHTML, /<span>Produção<\/span>/u);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
+  sequence.destroy();
+});
+
+test("card colapsada deriva preview limitado sem despejar o corpo e abre o runtime sob demanda", async () => {
+  const root = new FakeRoot();
+  const finalMarker = "CORPO_FINAL_236_NAO_PODE_VAZAR";
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      const page = pageFor(options, 2);
+      page.items[1].studyUnit.content[0].data.text =
+        `Início da explicação. ${"palavra ".repeat(1_000)}${finalMarker}`;
+      page.items[1].authorship.pendingObservationCount = 2;
+      return page;
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+
+  assert.equal(await sequence.open(), true);
+  assert.match(root.innerHTML, /data-inspection-preview="unit-01" open/u);
+  assert.match(root.innerHTML, /data-package-instance-id="paragraph-1"/u);
+  assert.match(root.innerHTML, /data-inspection-preview="unit-02"/u);
+  assert.match(root.innerHTML, /aria-describedby="inspection-preview-description-unit-02"/u);
+  assert.match(root.innerHTML, /Início da explicação/u);
+  assert.doesNotMatch(root.innerHTML, new RegExp(finalMarker, "u"));
+  assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
+  assert.match(root.innerHTML, /data-inspection-copy-link[^>]*data-deep-link="[^"]*studyUnitId=unit-02/u);
+
+  const details = {
+    open: false,
+    dataset: { inspectionPreview: "unit-02" }
+  };
+  const summary = {
+    dataset: {
+      inspectionPreviewToggle: "unit-02",
+      inspectionControlKey: "preview:unit-02"
+    },
+    closest(selector) {
+      if (selector === "[data-inspection-preview-toggle]") return this;
+      if (selector === "[data-inspection-preview]") return details;
+      return null;
+    },
+    focus() {}
+  };
+  let prevented = false;
+  assert.equal(await root.listeners.get("click")({
+    target: summary,
+    preventDefault() { prevented = true; }
+  }), true);
+  assert.equal(prevented, true);
+  assert.match(root.innerHTML, new RegExp(finalMarker, "u"));
+  assert.match(root.innerHTML, /data-inspection-preview="unit-02" open/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-preview="unit-01" open/u);
+  assert.doesNotMatch(root.innerHTML, /data-package-instance-id="paragraph-1"/u);
+
+  assert.equal(await root.listeners.get("click")({
+    target: summary,
+    preventDefault() {}
+  }), true);
+  assert.doesNotMatch(root.innerHTML, new RegExp(finalMarker, "u"));
+  assert.doesNotMatch(root.innerHTML, /data-inspection-preview="unit-02" open/u);
+
   sequence.destroy();
 });
 

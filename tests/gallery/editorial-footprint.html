@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Benchmark de extensão editorial</title>
+    <script src="/public/theme-bootstrap.js"></script>
+    <link rel="stylesheet" href="/public/styles-tokens.css">
+    <link rel="stylesheet" href="/public/styles-shell-baseline.css">
+    <link rel="stylesheet" href="/public/styles.css">
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--surface-page);
+        color: var(--text-primary);
+      }
+
+      .editorial-footprint-shell {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        width: min(100%, 430px);
+        height: 100dvh;
+        margin: 0 auto;
+        padding: 12px;
+      }
+
+      .editorial-footprint-shell > .screen-content {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      .editorial-footprint-shell .workbench-surface,
+      .editorial-footprint-shell .workbench-surface-body,
+      .editorial-footprint-shell .workbench-reader-pane,
+      .editorial-footprint-shell .study-stage {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      .editorial-footprint-shell .runtime-card-title {
+        flex: 0 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="screen microsequence-workbench-screen editorial-footprint-shell">
+      <section class="screen-content microsequence-generator-screen">
+        <section class="workbench-surface">
+          <div class="workbench-surface-body">
+            <section class="workbench-surface-pane workbench-reader-pane study-reader-screen">
+              <section class="card-portrait editor-card-portrait study-stage">
+                <article class="card-portrait-body card-portrait-sheet runtime-card-sheet">
+                  <div class="runtime-card-rendered-content">
+                    <div class="card-sheet-content" data-benchmark-content></div>
+                    <div data-benchmark-dock></div>
+                  </div>
+                </article>
+              </section>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script type="module">
+      import { renderPackageStudyUnitBlocksWithDock } from "/src/render/renderPackageStudyUnit.js";
+      import { RESOURCE_CATALOG } from "/src/resources/catalog/resourceCatalog.js";
+      import { RESOURCE_PACKAGE_REGISTRY } from "/src/resources/packages/index.js";
+
+      const response = await fetch("/tests/fixtures/editorial-footprint.v1.json", {
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Não foi possível carregar o corpus editorial.");
+      const fixture = await response.json();
+      const caseId = new URLSearchParams(location.search).get("case") || fixture.cases[0]?.id;
+      const benchmarkCase = fixture.cases.find((item) => item.id === caseId);
+      if (!benchmarkCase) throw new Error(`Caso editorial desconhecido: ${caseId}.`);
+
+      const validation = RESOURCE_CATALOG.validateStudyUnit(benchmarkCase.studyUnit);
+      if (!validation.valid) throw new Error(validation.errors.join(" "));
+      const rendered = renderPackageStudyUnitBlocksWithDock(benchmarkCase.studyUnit, {
+        blockKeyPrefix: `editorial-footprint:${benchmarkCase.id}`
+      });
+      const content = document.querySelector("[data-benchmark-content]");
+      const dock = document.querySelector("[data-benchmark-dock]");
+      content.innerHTML = rendered.bodyHtml;
+      const title = document.createElement("h1");
+      title.className = "runtime-card-title";
+      title.textContent = benchmarkCase.studyUnit.title;
+      content.prepend(title);
+      dock.innerHTML = rendered.dockHtml;
+      await RESOURCE_PACKAGE_REGISTRY.hydrate(document.querySelector(".runtime-card-sheet"));
+      await document.fonts.ready;
+
+      globalThis.__EDITORIAL_FOOTPRINT_BENCHMARK__ = {
+        accessibleText: RESOURCE_CATALOG.previewStudyUnitDescriptor(benchmarkCase.studyUnit).accessibleText,
+        caseId: benchmarkCase.id,
+        ready: true
+      };
+    </script>
+  </body>
+</html>

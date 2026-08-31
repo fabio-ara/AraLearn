@@ -4097,9 +4097,101 @@
   font-size: var(--type-xs);
 }
 
+.course-inspection-preview {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+}
+
+.course-inspection-preview > summary {
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.course-inspection-preview > summary::-webkit-details-marker {
+  display: none;
+}
+
+.course-inspection-preview[open] > summary {
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.course-inspection-preview[data-inspection-preview-forced="true"] > summary {
+  cursor: default;
+}
+
+.course-inspection-preview-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--action-primary-hover);
+  background: var(--action-primary-subtle);
+}
+
+.course-inspection-preview-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.course-inspection-preview-metadata {
+  min-width: 0;
+  display: flex;
+  gap: 3px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.course-inspection-preview-metadata span {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.course-inspection-preview-excerpt {
+  min-width: 0;
+  height: 4.5em;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.course-inspection-preview-action {
+  color: var(--action-primary-hover);
+  font-size: var(--type-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.course-inspection-preview > .course-inspection-response-notice {
+  margin: 9px 10px 0;
+}
+
 .course-inspection-runtime {
   min-height: 0;
   overflow: visible;
+}
+
+.course-inspection-preview > .course-inspection-runtime {
+  padding: 10px;
 }
 
 .course-inspection-runtime > .card-sheet-content {

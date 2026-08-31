@@ -1,0 +1,438 @@
+{
+  "contract": "aralearn.editorial-footprint-benchmark.v1",
+  "description": "Corpus diagnóstico fixo para comparar medidas de extensão editorial sem definir limites de produto.",
+  "cases": [
+    {
+      "id": "paragraph-short",
+      "label": "Parágrafo curto",
+      "families": ["paragraph"],
+      "scale": "small",
+      "studyUnit": {
+        "id": "footprint-paragraph-short",
+        "position": 1,
+        "title": "Uma regra em contexto",
+        "role": "theory",
+        "content": [
+          {
+            "id": "paragraph-short-content",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "Um protocolo estabelece regras para que duas partes troquem mensagens de modo previsível.",
+              "languageTag": "pt-BR",
+              "textDirection": "auto"
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "paragraph-medium",
+      "label": "Parágrafo médio",
+      "families": ["paragraph"],
+      "scale": "medium",
+      "studyUnit": {
+        "id": "footprint-paragraph-medium",
+        "position": 2,
+        "title": "Explicação com duas relações",
+        "role": "theory",
+        "content": [
+          {
+            "id": "paragraph-medium-content",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "O transporte confiável numera segmentos e confirma o que chegou ao destino. Quando uma confirmação não aparece no intervalo esperado, o emissor pode retransmitir os dados sem exigir que a aplicação reconstrua a conversa. O mesmo mecanismo controla o volume enviado: a janela cresce quando a rede responde bem e diminui diante de sinais de congestionamento. Confiabilidade e controle de fluxo resolvem problemas relacionados, mas não idênticos.",
+              "languageTag": "pt-BR",
+              "textDirection": "auto"
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "paragraph-extreme",
+      "label": "Parágrafo deliberadamente extremo",
+      "families": ["paragraph"],
+      "scale": "extreme",
+      "studyUnit": {
+        "id": "footprint-paragraph-extreme",
+        "position": 3,
+        "title": "Explicação extensa para contraste",
+        "role": "theory",
+        "content": [
+          {
+            "id": "paragraph-extreme-content",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "Quando um cliente solicita um recurso, a mensagem atravessa camadas com responsabilidades diferentes. A aplicação descreve o que deseja obter, o transporte organiza a conversa entre processos e a rede escolhe como alcançar o destino. Cada camada acrescenta informações úteis ao seu próprio trabalho sem exigir que as demais conheçam todos os detalhes internos. Essa separação reduz acoplamento e permite substituir uma tecnologia de enlace ou ajustar o controle de congestionamento sem reescrever a aplicação. No destino, o caminho é percorrido em sentido inverso: cada camada interpreta o cabeçalho que lhe pertence e entrega o restante à camada seguinte. O modelo não afirma que toda implementação seja idêntica nem elimina custos de coordenação. Ele oferece um vocabulário para localizar responsabilidades, comparar alternativas e investigar falhas. Se uma conexão fica lenta, por exemplo, a análise pode distinguir resolução de nomes, estabelecimento da sessão, perda de pacotes e processamento do servidor antes de propor uma correção. A investigação começa pela observação do sintoma e pela definição de uma medida reproduzível. Dizer apenas que a resposta parece demorada mistura espera de rede, trabalho computacional e percepção da pessoa. Um registro mais útil informa o instante de início, a operação executada, o tamanho da carga, a concorrência e a distribuição das durações. A mediana descreve o caso central, enquanto percentis altos revelam atrasos que afetam uma parcela menor das solicitações. Nenhum número isolado explica a causa. Ele delimita a pergunta que será testada. Em seguida, o percurso pode ser separado em resolução de nomes, abertura da conexão, negociação segura, envio, processamento remoto e transferência da resposta. Essa decomposição não precisa aparecer para quem usa o sistema, mas permite comparar execuções equivalentes e localizar onde a variação surge. Se a resolução de nomes domina apenas na primeira tentativa, o cache é uma hipótese. Se o tempo cresce com o número de requisições simultâneas, filas e contenção merecem atenção. Se há saltos acompanhados de retransmissões, perda ou congestionamento se tornam explicações mais plausíveis. A hipótese escolhida deve produzir uma previsão observável antes de qualquer mudança. Aumentar indiscriminadamente limites, repetir requisições ou adicionar cache pode esconder o sintoma e criar outro custo permanente. Um ensaio pequeno altera uma variável, mantém as demais condições e registra o efeito. Quando a previsão falha, a hipótese é descartada sem transformar a tentativa em arquitetura. Quando se confirma, a correção ainda precisa preservar segurança, consistência e comportamento sob falha. Depois da mudança, a mesma medição inicial é repetida para demonstrar o efeito e procurar regressões nos percentis, no consumo de recursos e na taxa de erro. Esse ciclo também exige reconhecer limites. Ambientes locais não reproduzem toda a variabilidade da internet, dados sintéticos não cobrem toda a distribuição real e uma captura curta pode ignorar padrões sazonais. Por isso, a conclusão deve declarar qual cenário foi observado, quais fatores permaneceram constantes e o que ainda não foi demonstrado. A precisão da linguagem evita que uma melhoria localizada seja apresentada como garantia universal. Um relatório útil termina quando a pergunta estreita foi respondida com evidência suficiente. Ele não acumula gráficos, métricas e explicações apenas porque estão disponíveis. A extensão deste texto é deliberadamente inadequada para uma única Unidade móvel: serve como extremo conhecido para verificar se medidas lexicais e estruturais reconhecem um caso grosseiro sem transformar o resultado do ensaio em limite automático de autoria.",
+              "languageTag": "pt-BR",
+              "textDirection": "auto"
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "code-short",
+      "label": "Código curto",
+      "families": ["code"],
+      "scale": "small",
+      "studyUnit": {
+        "id": "footprint-code-short",
+        "position": 3,
+        "title": "Função mínima",
+        "role": "theory",
+        "content": [
+          {
+            "id": "code-short-content",
+            "package": "aralearn.resource.code",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Observe a condição de parada.",
+              "language": "python",
+              "code": "def primeiro(valores):\n    if not valores:\n        return None\n    return valores[0]"
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "code-long",
+      "label": "Código com várias linhas",
+      "families": ["code"],
+      "scale": "large",
+      "studyUnit": {
+        "id": "footprint-code-long",
+        "position": 4,
+        "title": "Busca binária instrumentada",
+        "role": "theory",
+        "content": [
+          {
+            "id": "code-long-content",
+            "package": "aralearn.resource.code",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Acompanhe como os limites reduzem o intervalo e como cada tentativa é registrada.",
+              "language": "python",
+              "code": "def busca_binaria(valores, alvo):\n    inicio = 0\n    fim = len(valores) - 1\n    tentativas = []\n\n    while inicio <= fim:\n        meio = (inicio + fim) // 2\n        atual = valores[meio]\n        tentativas.append({\n            'inicio': inicio,\n            'fim': fim,\n            'meio': meio,\n            'valor': atual,\n        })\n\n        if atual == alvo:\n            return meio, tentativas\n        if atual < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio - 1\n\n    return None, tentativas"
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "table-compact",
+      "label": "Tabela compacta",
+      "families": ["table"],
+      "scale": "small",
+      "studyUnit": {
+        "id": "footprint-table-compact",
+        "position": 5,
+        "title": "Comparação direta",
+        "role": "theory",
+        "content": [
+          {
+            "id": "table-compact-content",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Compare os dois transportes.",
+              "columns": ["Protocolo", "Entrega"],
+              "rows": [["TCP", "Confiável"], ["UDP", "Melhor esforço"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "table-dense",
+      "label": "Tabela densa",
+      "families": ["table"],
+      "scale": "large",
+      "studyUnit": {
+        "id": "footprint-table-dense",
+        "position": 6,
+        "title": "Mecanismos de recuperação",
+        "role": "theory",
+        "content": [
+          {
+            "id": "table-dense-content",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Relacione cada sinal à resposta e ao efeito esperado.",
+              "caption": "Resumo operacional; parâmetros exatos dependem da implementação.",
+              "layout": "wide",
+              "columns": ["Mecanismo", "Sinal", "Resposta", "Efeito"],
+              "rows": [
+                ["Slow start", "Início ou timeout", "Crescimento exponencial", "Descobrir capacidade"],
+                ["Congestion avoidance", "Limiar alcançado", "Crescimento linear", "Sondar com cautela"],
+                ["Fast retransmit", "ACKs duplicados", "Retransmitir cedo", "Reduzir espera"],
+                ["Timeout", "Confirmação ausente", "Reduzir janela", "Responder à perda"],
+                ["Backoff", "Falhas repetidas", "Ampliar intervalo", "Evitar sobrecarga"],
+                ["Recovery", "Novo ACK", "Reabrir janela", "Retomar o fluxo"]
+              ]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "chart-standard",
+      "label": "Gráfico de linhas",
+      "families": ["diagram"],
+      "scale": "representative",
+      "studyUnit": {
+        "id": "footprint-chart-standard",
+        "position": 7,
+        "title": "Latência por concorrência",
+        "role": "theory",
+        "content": [
+          {
+            "id": "chart-standard-content",
+            "package": "aralearn.resource.chart",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Compare as duas arquiteturas conforme cresce a concorrência.",
+              "chartType": "line",
+              "xAxis": {"label": "Concorrência", "type": "quantitative", "unit": "requisições"},
+              "yAxis": {"label": "Latência", "type": "quantitative", "unit": "ms"},
+              "series": [
+                {
+                  "id": "central",
+                  "name": "Centralizada",
+                  "values": [{"x": 8, "y": 104}, {"x": 16, "y": 128}, {"x": 32, "y": 169}, {"x": 64, "y": 238}, {"x": 128, "y": 352}, {"x": 256, "y": 486}]
+                },
+                {
+                  "id": "adaptive",
+                  "name": "Adaptativa",
+                  "values": [{"x": 8, "y": 101}, {"x": 16, "y": 116}, {"x": 32, "y": 142}, {"x": 64, "y": 181}, {"x": 128, "y": 244}, {"x": 256, "y": 329}]
+                }
+              ],
+              "caption": "Dados sintéticos usados somente no corpus de medição."
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "graph-standard",
+      "label": "Diagrama de grafo",
+      "families": ["diagram"],
+      "scale": "representative",
+      "studyUnit": {
+        "id": "footprint-graph-standard",
+        "position": 8,
+        "title": "Ciclos ligados por uma ponte",
+        "role": "theory",
+        "content": [
+          {
+            "id": "graph-standard-content",
+            "package": "aralearn.resource.graph",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Identifique os vértices de articulação.",
+              "name": "G",
+              "directed": false,
+              "layout": "auto",
+              "vertices": [
+                {"id": "v1", "label": "v1"}, {"id": "v2", "label": "v2"},
+                {"id": "v3", "label": "v3"}, {"id": "v4", "label": "v4"},
+                {"id": "v5", "label": "v5"}, {"id": "v6", "label": "v6"},
+                {"id": "v7", "label": "v7"}, {"id": "v8", "label": "v8"}
+              ],
+              "edges": [
+                {"id": "e12", "from": "v1", "to": "v2"},
+                {"id": "e23", "from": "v2", "to": "v3"},
+                {"id": "e31", "from": "v3", "to": "v1"},
+                {"id": "bridge", "from": "v3", "to": "v4", "label": "ponte"},
+                {"id": "e45", "from": "v4", "to": "v5"},
+                {"id": "e56", "from": "v5", "to": "v6"},
+                {"id": "e64", "from": "v6", "to": "v4"},
+                {"id": "e47", "from": "v4", "to": "v7"},
+                {"id": "e78", "from": "v7", "to": "v8"}
+              ],
+              "highlight": {"vertices": ["v3", "v4"], "edges": ["bridge"]}
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "choice-compact",
+      "label": "Múltipla escolha curta",
+      "families": ["multiple-choice", "practice"],
+      "scale": "small",
+      "studyUnit": {
+        "id": "footprint-choice-compact",
+        "position": 9,
+        "title": "Escolha direta",
+        "role": "practice",
+        "content": [],
+        "response": {
+          "id": "choice-compact-response",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual protocolo oferece entrega confiável e ordenada?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "tcp", "kind": "text", "text": "TCP"},
+              {"id": "udp", "kind": "text", "text": "UDP"}
+            ],
+            "answerIds": ["tcp"]
+          }
+        },
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "choice-extended",
+      "label": "Múltipla escolha extensa",
+      "families": ["multiple-choice", "practice"],
+      "scale": "large",
+      "studyUnit": {
+        "id": "footprint-choice-extended",
+        "position": 10,
+        "title": "Escolha entre oito alternativas",
+        "role": "practice",
+        "content": [],
+        "response": {
+          "id": "choice-extended-response",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual ação pertence à camada de transporte em uma investigação de desempenho?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "a", "kind": "text", "text": "Controlar a janela de congestionamento"},
+              {"id": "b", "kind": "text", "text": "Resolver o nome do host"},
+              {"id": "c", "kind": "text", "text": "Escolher a rota entre redes"},
+              {"id": "d", "kind": "text", "text": "Codificar o sinal no enlace"},
+              {"id": "e", "kind": "text", "text": "Renderizar a interface do cliente"},
+              {"id": "f", "kind": "text", "text": "Consultar o índice do banco"},
+              {"id": "g", "kind": "text", "text": "Comprimir o arquivo estático"},
+              {"id": "h", "kind": "text", "text": "Validar a regra de negócio"}
+            ],
+            "answerIds": ["a"]
+          }
+        },
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "paragraph-choice-combination",
+      "label": "Parágrafo com escolha",
+      "families": ["paragraph", "multiple-choice", "practice", "combination"],
+      "scale": "combined",
+      "studyUnit": {
+        "id": "footprint-paragraph-choice",
+        "position": 11,
+        "title": "Contexto seguido de decisão",
+        "role": "practice",
+        "content": [
+          {
+            "id": "paragraph-choice-content",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "Uma conexão preserva a ordem dos bytes, retransmite segmentos perdidos e ajusta o envio quando detecta congestionamento. A aplicação recebe um fluxo contínuo e não precisa remontar cada pacote.",
+              "languageTag": "pt-BR",
+              "textDirection": "auto"
+            }
+          }
+        ],
+        "response": {
+          "id": "paragraph-choice-response",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual protocolo corresponde à descrição?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "tcp", "kind": "text", "text": "TCP"},
+              {"id": "udp", "kind": "text", "text": "UDP"},
+              {"id": "ip", "kind": "text", "text": "IP"},
+              {"id": "dns", "kind": "text", "text": "DNS"}
+            ],
+            "answerIds": ["tcp"]
+          }
+        },
+        "feedback": [],
+        "topics": []
+      }
+    },
+    {
+      "id": "table-ordering-combination",
+      "label": "Tabela com prática de ordenação",
+      "families": ["table", "practice", "combination"],
+      "scale": "combined",
+      "studyUnit": {
+        "id": "footprint-table-ordering",
+        "position": 12,
+        "title": "Ordene a resolução de nomes",
+        "role": "practice",
+        "content": [
+          {
+            "id": "table-ordering-content",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "columns": ["Etapa 1", "Etapa 2", "Etapa 3", "Etapa 4"],
+              "rows": [["Receber a consulta", "Consultar a raiz", "Consultar o autoritativo", "Devolver o endereço"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "table-ordering-response",
+          "package": "aralearn.response.ordering",
+          "version": "3.0.0",
+          "data": {
+            "targets": [
+              {"id": "query", "targetInstanceId": "table-ordering-content", "targetPath": "rows[0][0]", "answer": "Receber a consulta"},
+              {"id": "root", "targetInstanceId": "table-ordering-content", "targetPath": "rows[0][1]", "answer": "Consultar a raiz"},
+              {"id": "authoritative", "targetInstanceId": "table-ordering-content", "targetPath": "rows[0][2]", "answer": "Consultar o autoritativo"},
+              {"id": "answer", "targetInstanceId": "table-ordering-content", "targetPath": "rows[0][3]", "answer": "Devolver o endereço"}
+            ]
+          }
+        },
+        "feedback": [],
+        "topics": []
+      }
+    }
+  ]
+}

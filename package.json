@@ -38,6 +38,7 @@
     "audit:frontend": "node ./scripts/auditFrontendStyles.mjs",
     "audit:architecture": "node ./scripts/auditCurrentArchitecture.mjs",
     "audit:authoring-load": "node ./scripts/measureAuthoringToolLoad.mjs",
+    "audit:editorial-footprint": "node ./scripts/measureEditorialFootprint.mjs",
     "audit:terminology": "node ./scripts/auditTerminology.mjs",
     "audit:parity": "node ./scripts/auditVerticalParity.mjs",
     "audit:residues": "node ./scripts/auditFrontendResidues.mjs",
