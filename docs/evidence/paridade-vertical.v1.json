@@ -185,7 +185,8 @@
         { "path": "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql", "token": "ingest_course_source_pdf_for_actor_v1" },
         { "path": "supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql", "token": "get_course_source_pdf_ingestion_receipt_for_actor_v1" },
         { "path": "supabase/migrations/20260831000829_source_pdf_access_lifecycle.sql", "token": "remove_course_source_pdf_for_actor_v1" },
-        { "path": "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql", "token": "v_already_linked:=v_attachment_found and v_attachment.status='active'" }
+        { "path": "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql", "token": "v_already_linked:=v_attachment_found and v_attachment.status='active'" },
+        { "path": "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql", "token": "from storage.objects object_value" }
       ],
       "routes": [
         { "path": "src/supabase/CourseApiClient.js", "token": "view: \"course_sources\"" },

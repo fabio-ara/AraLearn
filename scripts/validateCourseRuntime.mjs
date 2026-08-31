@@ -260,7 +260,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260831005116" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260831012600" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -362,6 +362,9 @@ async function validateManifest() {
   );
   const sourcePdfAttachmentAccessMigration = await read(
     "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql"
+  );
+  const sourcePdfUnlinkedQuotaMigration = await read(
+    "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -549,6 +552,18 @@ async function validateManifest() {
       ) ||
       !sourcePdfAttachmentAccessMigration.includes(
         "to_jsonb('20260831005116'::text)"
+      ) ||
+      !sourcePdfUnlinkedQuotaMigration.includes(
+        "$advance_unlinked_source_pdf_quota_manifest$"
+      ) ||
+      !sourcePdfUnlinkedQuotaMigration.includes(
+        "to_jsonb('20260831012600'::text)"
+      ) ||
+      !sourcePdfUnlinkedQuotaMigration.includes(
+        "from storage.objects object_value"
+      ) ||
+      !sourcePdfUnlinkedQuotaMigration.includes(
+        "attachment.status='active'"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
