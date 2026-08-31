@@ -528,7 +528,7 @@ entidade persistida. Do mesmo modo, `covers`, `checks` e `errors` são enunciado
 pedagógicos; não devem ser tratados como referências técnicas.
 
 `update_course_sources` aceita somente os comandos `save_source`,
-`retire_source`, `save_anchor`, `retire_anchor`, `attach_pdf` e
+`retire_source`, `save_anchor`, `retire_anchor`, `attach_pdf`, `remove_pdf` e
 `set_target_sources`. Um
 vínculo novo declara `informed_by`, `supported_by`, `adapted_from`,
 `quoted_from`, `contrasted_with`, `exemplified_by`, `inspired_by` ou
@@ -609,6 +609,15 @@ permanece aceito apenas para compatibilidade com clientes anteriores; novas
 integrações usam `incorporarPdfComoFonte`. A projeção de Actions não anuncia o
 comando legado, evitando que um GPT escolha por engano o caminho que pressupõe
 metadados internos já existentes.
+
+`remove_pdf` remove somente o acesso PDF já selecionado numa Fonte relida. A
+camada conectada conserva internamente a identidade, a revisão e a impressão
+digital devolvidas pela leitura; a pessoa pode pedir “remova o PDF desta Fonte,
+mas mantenha a Fonte” sem informar UUID, hash, cota ou caminho de Storage. A
+operação preserva a citação, as Âncoras e os vínculos pedagógicos e impede novas
+solicitações de download. Para reanexar, a integração usa
+`incorporarPdfComoFonte` com a Fonte existente; o vínculo só volta a ficar ativo
+depois da confirmação completa da incorporação.
 
 Depois de publicar uma alteração de ferramenta ou recurso, atualize a conexão
 do plugin e inicie uma conversa nova. Sessões existentes preservam o catálogo

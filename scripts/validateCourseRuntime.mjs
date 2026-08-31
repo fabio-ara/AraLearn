@@ -33,6 +33,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-source-pdf-attachments-v1",
   "course-source-pdf-ingestion-v1",
   "course-source-pdf-ingestion-receipt-v1",
+  "course-source-pdf-access-lifecycle-v1",
   "course-source-human-locators-v1",
   "course-anchored-annotations-v1",
   "course-annotation-subject-classification-v1",
@@ -259,7 +260,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260829205000" || manifest.contractVersion !== 1 ||
+  if (manifest.schemaRevision !== "20260831005116" || manifest.contractVersion !== 1 ||
       !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
@@ -355,6 +356,12 @@ async function validateManifest() {
   );
   const sourcePdfReceiptReplayMigration = await read(
     "supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql"
+  );
+  const sourcePdfAccessLifecycleMigration = await read(
+    "supabase/migrations/20260831000829_source_pdf_access_lifecycle.sql"
+  );
+  const sourcePdfAttachmentAccessMigration = await read(
+    "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -530,6 +537,18 @@ async function validateManifest() {
       ) ||
       !sourcePdfReceiptReplayMigration.includes(
         "to_jsonb('20260829205000'::text)"
+      ) ||
+      !sourcePdfAccessLifecycleMigration.includes(
+        "$advance_source_pdf_access_lifecycle_manifest$"
+      ) ||
+      !sourcePdfAccessLifecycleMigration.includes(
+        "to_jsonb('20260831000829'::text)"
+      ) ||
+      !sourcePdfAttachmentAccessMigration.includes(
+        "$advance_source_pdf_attachment_access_manifest$"
+      ) ||
+      !sourcePdfAttachmentAccessMigration.includes(
+        "to_jsonb('20260831005116'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -559,7 +578,9 @@ async function validateManifest() {
         !continuousInspectionV2Migration.includes(`'${feature}'`) &&
         !inspectionFocusMigration.includes(`'${feature}'`) &&
         !sourcePdfIngestionMigration.includes(`'${feature}'`) &&
-        !sourcePdfReceiptReplayMigration.includes(`'${feature}'`)) {
+        !sourcePdfReceiptReplayMigration.includes(`'${feature}'`) &&
+        !sourcePdfAccessLifecycleMigration.includes(`'${feature}'`) &&
+        !sourcePdfAttachmentAccessMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

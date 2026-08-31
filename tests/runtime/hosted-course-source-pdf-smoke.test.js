@@ -56,7 +56,10 @@ function noResiduals(inspections = []) {
   };
 }
 
-function hostedFetch(requests, { uploadStatus = 200 } = {}) {
+function hostedFetch(requests, {
+  uploadStatus = 200,
+  removedDownloadCode = "PT404"
+} = {}) {
   const fixture = createHostedPdfFixture();
   const storagePath = `${COURSE_ID}/${fixture.contentHash}.pdf`;
   const signedUrl = `${PROJECT_URL}/storage/v1/object/sign/course-source-pdfs/${
@@ -233,17 +236,17 @@ function hostedFetch(requests, { uploadStatus = 200 } = {}) {
       }
       assert.equal(body.attachmentOperation, "download");
       if (body.expectedRevision === 6) {
-        return json({ ok: false, error: { code: "course_source_attachment_not_found" } },
+        return json({ ok: false, error: { code: removedDownloadCode } },
           { status: 404 });
       }
-      assert.equal(body.expectedRevision, 3);
+      assert.ok(body.expectedRevision === 3 || body.expectedRevision === 7);
       return json({
         ok: true,
         requestId: null,
         data: {
           contract: "aralearn.course-source-attachment-access.v1",
           courseId: COURSE_ID,
-          courseRevision: 3,
+          courseRevision: body.expectedRevision,
           operation: "download",
           sourceId: "source-hosted-pdf-smoke",
           sourceRevision: 1,
@@ -331,7 +334,31 @@ test("smoke percorre prepare_upload v2, upload autenticado, attach, download v1 
       url.pathname.endsWith("/aralearn-course-api/app/excluirMinhaConta")),
     true
   );
+  const downloadRevisions = requests
+    .filter(({ url, body }) =>
+      url.pathname.endsWith("/aralearn-course-api/app/lerCurso") &&
+      JSON.parse(String(body)).attachmentOperation === "download")
+    .map(({ body }) => JSON.parse(String(body)).expectedRevision);
+  assert.deepEqual(downloadRevisions, [3, 6, 6, 7]);
+  assert.equal(
+    requests.filter(({ url }) =>
+      url.pathname.startsWith("/storage/v1/object/sign/course-source-pdfs/")).length,
+    2
+  );
   assert.equal(inspections.length, 1);
+});
+
+test("smoke exige PT404 exato na nova tentativa de download após remoção", async () => {
+  await assert.rejects(
+    () => runHostedCourseSourcePdfSmoke({
+      environment,
+      fetchImpl: hostedFetch([], { removedDownloadCode: "not_found" }),
+      createId: ids(),
+      createBytes: () => Buffer.alloc(24, 0x5a),
+      inspectResiduals: noResiduals()
+    }),
+    /não devolveu PT404/u
+  );
 });
 
 test("falha do fluxo ainda limpa a conta e não inclui credenciais nem identificadores no erro", async () => {

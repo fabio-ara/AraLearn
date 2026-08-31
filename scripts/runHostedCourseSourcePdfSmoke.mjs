@@ -37,8 +37,11 @@ function text(value) {
   return String(value || "").trim();
 }
 
-function sanitizedStatusError(label, status) {
-  return new Error(`${label} devolveu HTTP ${status}.`);
+function sanitizedStatusError(label, status, code = "") {
+  const error = new Error(`${label} devolveu HTTP ${status}.`);
+  error.status = status;
+  error.code = text(code);
+  return error;
 }
 
 async function fetchSafely(fetchImpl, input, init, label) {
@@ -204,9 +207,110 @@ async function courseAction(
       TRANSIENT_EDGE_STATUSES.has(response.status) &&
       !edgeCode && !applicationCode
     ) continue;
-    throw sanitizedStatusError(label, response.status);
+    throw sanitizedStatusError(label, response.status, applicationCode);
   }
   throw sanitizedStatusError(label, lastStatus);
+}
+
+async function downloadCourseSourcePdf({
+  fetchImpl,
+  configuration,
+  lifecycle,
+  sourceId,
+  courseRevision,
+  pdf,
+  expectedStoragePath
+}) {
+  const download = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    {
+      courseId: lifecycle.courseId,
+      view: "course_source_attachment",
+      attachmentOperation: "download",
+      expectedRevision: courseRevision,
+      sourceId,
+      sourceRevision: 1,
+      contentHash: pdf.contentHash
+    }
+  );
+  ensure(
+    download.contract === "aralearn.course-source-attachment-access.v1" &&
+      download.courseId === lifecycle.courseId &&
+      download.operation === "download" && download.courseRevision === courseRevision &&
+      download.sourceId === sourceId && download.sourceRevision === 1 &&
+      download.storageOriginCourseId === lifecycle.courseId &&
+      download.alreadyLinked === true &&
+      download.attachment?.contentHash === pdf.contentHash &&
+      download.attachment?.byteSize === pdf.byteSize &&
+      download.attachment?.mediaType === pdf.mediaType &&
+      download.attachment?.storagePath === expectedStoragePath,
+    "O download hospedado não respeitou o contrato transitório v1."
+  );
+  let signedUrl;
+  try {
+    signedUrl = new URL(text(download.signedUrl));
+  } catch {
+    throw new Error("O download hospedado não devolveu URL assinada válida.");
+  }
+  ensure(
+    signedUrl.protocol === "https:" && signedUrl.origin === configuration.projectUrl &&
+      signedUrl.pathname.startsWith(
+        `/storage/v1/object/sign/${COURSE_SOURCE_PDF_BUCKET}/`
+      ) && signedUrl.searchParams.has("token") &&
+      signedUrl.searchParams.has("download"),
+    "A URL assinada não pertence ao Storage hospedado esperado."
+  );
+  const signedResponse = await fetchSafely(
+    fetchImpl,
+    signedUrl,
+    { headers: { Accept: "application/pdf" } },
+    "Download assinado do PDF"
+  );
+  ensure(
+    signedResponse.ok,
+    sanitizedStatusError("Download assinado do PDF", signedResponse.status).message
+  );
+  const downloadedBytes = new Uint8Array(await signedResponse.arrayBuffer());
+  ensure(
+    Buffer.from(downloadedBytes).equals(Buffer.from(pdf.bytes)),
+    "O download assinado não devolveu os bytes enviados."
+  );
+}
+
+async function ensureCourseSourcePdfDownloadDenied({
+  fetchImpl,
+  configuration,
+  lifecycle,
+  sourceId,
+  courseRevision,
+  contentHash,
+  message
+}) {
+  let downloadError = null;
+  try {
+    await courseAction(
+      fetchImpl,
+      configuration,
+      lifecycle.accessToken,
+      "lerCurso",
+      {
+        courseId: lifecycle.courseId,
+        view: "course_source_attachment",
+        attachmentOperation: "download",
+        expectedRevision: courseRevision,
+        sourceId,
+        sourceRevision: 1,
+        contentHash
+      },
+      { attempts: 1 }
+    );
+  } catch (error) {
+    downloadError = error;
+  }
+  ensure(downloadError?.status === 404 && downloadError?.code === "PT404", message);
 }
 
 async function provisionApplicationSession({
@@ -424,63 +528,15 @@ async function executePdfFlow({
     "O PDF não foi vinculado à Fonte na revisão esperada."
   );
 
-  const download = await courseAction(
+  await downloadCourseSourcePdf({
     fetchImpl,
     configuration,
-    lifecycle.accessToken,
-    "lerCurso",
-    {
-      courseId: lifecycle.courseId,
-      view: "course_source_attachment",
-      attachmentOperation: "download",
-      expectedRevision: 3,
-      sourceId,
-      sourceRevision: 1,
-      contentHash: pdf.contentHash
-    }
-  );
-  ensure(
-    download.contract === "aralearn.course-source-attachment-access.v1" &&
-      download.courseId === lifecycle.courseId &&
-      download.operation === "download" && download.courseRevision === 3 &&
-      download.sourceId === sourceId && download.sourceRevision === 1 &&
-      download.storageOriginCourseId === lifecycle.courseId &&
-      download.alreadyLinked === true &&
-      download.attachment?.contentHash === pdf.contentHash &&
-      download.attachment?.byteSize === pdf.byteSize &&
-      download.attachment?.mediaType === pdf.mediaType &&
-      download.attachment?.storagePath === expectedStoragePath,
-    "O download hospedado não respeitou o contrato transitório v1."
-  );
-  let signedUrl;
-  try {
-    signedUrl = new URL(text(download.signedUrl));
-  } catch {
-    throw new Error("O download hospedado não devolveu URL assinada válida.");
-  }
-  ensure(
-    signedUrl.protocol === "https:" && signedUrl.origin === configuration.projectUrl &&
-      signedUrl.pathname.startsWith(
-        `/storage/v1/object/sign/${COURSE_SOURCE_PDF_BUCKET}/`
-      ) && signedUrl.searchParams.has("token") &&
-      signedUrl.searchParams.has("download"),
-    "A URL assinada não pertence ao Storage hospedado esperado."
-  );
-  const signedResponse = await fetchSafely(
-    fetchImpl,
-    signedUrl,
-    { headers: { Accept: "application/pdf" } },
-    "Download assinado do PDF"
-  );
-  ensure(
-    signedResponse.ok,
-    sanitizedStatusError("Download assinado do PDF", signedResponse.status).message
-  );
-  const downloadedBytes = new Uint8Array(await signedResponse.arrayBuffer());
-  ensure(
-    Buffer.from(downloadedBytes).equals(Buffer.from(pdf.bytes)),
-    "O download assinado não devolveu os bytes enviados."
-  );
+    lifecycle,
+    sourceId,
+    courseRevision: 3,
+    pdf,
+    expectedStoragePath
+  });
 
   const anchorId = "anchor-hosted-pdf-smoke";
   const savedAnchor = await courseAction(
@@ -627,31 +683,15 @@ async function executePdfFlow({
       ),
     "A Fonte, citação, Âncora, vínculo pedagógico ou quota não sobreviveram à remoção do PDF."
   );
-  let removedLinkError = null;
-  try {
-    await courseAction(
-      fetchImpl,
-      configuration,
-      lifecycle.accessToken,
-      "lerCurso",
-      {
-        courseId: lifecycle.courseId,
-        view: "course_source_attachment",
-        attachmentOperation: "download",
-        expectedRevision: 6,
-        sourceId,
-        sourceRevision: 1,
-        contentHash: pdf.contentHash
-      },
-      { attempts: 1 }
-    );
-  } catch (error) {
-    removedLinkError = error;
-  }
-  ensure(
-    /HTTP 4[0-9]{2}\./u.test(String(removedLinkError?.message || "")),
-    "O vínculo removido ainda permite solicitar download do PDF."
-  );
+  await ensureCourseSourcePdfDownloadDenied({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 6,
+    contentHash: pdf.contentHash,
+    message: "O vínculo removido não devolveu PT404 ao solicitar novo download."
+  });
   const objectInfo = await fetchSafely(
     fetchImpl,
     `${configuration.projectUrl}/storage/v1/object/info/${COURSE_SOURCE_PDF_BUCKET}/${
@@ -714,6 +754,34 @@ async function executePdfFlow({
   ensure(reuploadResponse.ok, sanitizedStatusError(
     "Reupload autenticado do mesmo PDF", reuploadResponse.status
   ).message);
+  const sourceBeforeReattach = await courseAction(
+    fetchImpl,
+    configuration,
+    lifecycle.accessToken,
+    "lerCurso",
+    {
+      courseId: lifecycle.courseId,
+      view: "course_sources",
+      expectedRevision: 6,
+      mode: "source",
+      sourceId,
+      limit: 10
+    }
+  );
+  ensure(
+    sourceBeforeReattach.items?.[0]?.attachments?.length === 0 &&
+      sourceBeforeReattach.pdfStorage?.uniqueBytes === 0,
+    "O reupload físico reativou o vínculo ou consumiu quota antes do attach_pdf."
+  );
+  await ensureCourseSourcePdfDownloadDenied({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 6,
+    contentHash: pdf.contentHash,
+    message: "O reupload físico autorizou download antes do attach_pdf."
+  });
   const reattached = await courseAction(
     fetchImpl,
     configuration,
@@ -757,6 +825,15 @@ async function executePdfFlow({
       sourceAfterReattach.pdfStorage?.uniqueBytes === pdf.byteSize,
     "A reanexação não restaurou o PDF e a quota na mesma Fonte."
   );
+  await downloadCourseSourcePdf({
+    fetchImpl,
+    configuration,
+    lifecycle,
+    sourceId,
+    courseRevision: 7,
+    pdf,
+    expectedStoragePath
+  });
 }
 
 async function deleteAccountThroughApplication({ configuration, fetchImpl, lifecycle }) {

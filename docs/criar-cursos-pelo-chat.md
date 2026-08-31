@@ -187,6 +187,8 @@ Na área **Fontes**, a pessoa proprietária também pode:
 
 - anexar PDFs privados à revisão ativa da Fonte;
 - baixar um anexo por URL assinada de 60 segundos;
+- remover somente o acesso PDF, preservando a Fonte, a citação, as Âncoras e os
+  vínculos pedagógicos, e reanexá-lo depois;
 - acompanhar a cota de PDFs do Curso;
 - exportar a proveniência de um alvo em JSON, preservando identidades,
   revisões, relações e Âncoras.
@@ -201,6 +203,11 @@ use `incorporarPdfComoFonte`: a operação recebe o PDF pelo mecanismo de arquiv
 suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
 salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
 ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
+
+Fonte e PDF não são o mesmo objeto. Uma Fonte pode manter apenas URL, apenas
+PDF, ambos ou nenhum acesso disponível. Remover o PDF impede novas solicitações
+de download e libera a cota quando não resta outro vínculo ativo para os mesmos
+bytes; a identidade bibliográfica e a proveniência continuam no Curso.
 
 Para uma Fonte nova, o MCP usa `create` com `newSource`; em Actions,
 `sourceIntent` recebe diretamente `newSource`. Em ambos os casos entram o
