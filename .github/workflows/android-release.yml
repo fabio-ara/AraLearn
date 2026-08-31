@@ -252,13 +252,13 @@ jobs:
           @"
           ## AraLearn v${{ steps.identity.outputs.version }}
 
-          Esta versão fecha a retomada conversacional e o ciclo de Fontes persistentes.
+          Esta versão corrige a materialização por Actions e separa a Fonte do acesso PDF.
 
-          - A autoria é retomada pelo título do Curso, sem transportar identificadores ou controles técnicos entre conversas.
-          - PDFs com intenção inequívoca podem ser incorporados como Fontes; anexos ambíguos ou temporários não são persistidos silenciosamente.
-          - Fontes, PDFs e Âncoras permanecem recuperáveis em outra sessão sem novo envio do arquivo.
-          - MCP e Actions compartilham o protocolo público e mantêm revisões, CAS, requestIds e hashes fora da conversa comum.
-          - Conflitos, limites, falhas de upload e acesso negado não produzem falso sucesso nem escrita parcial.
+          - A materialização recebe resumo, avisos e observações opcionais sem perder etapas válidas.
+          - Remover um PDF preserva a Fonte, a citação, as Âncoras e os vínculos pedagógicos.
+          - Novos downloads são recusados depois da remoção e a quota visível é liberada.
+          - Reanexar o arquivo restaura o acesso somente após a operação concluída, inclusive quando o conteúdo é o mesmo.
+          - Actions e MCP mantêm caminhos, hashes, revisões e controles de quota fora da conversa comum.
 
           Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.
           "@ | Set-Content -Encoding UTF8 release-notes.md
