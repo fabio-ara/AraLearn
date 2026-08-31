@@ -409,6 +409,202 @@ begin
 end;
 $function$;
 
+-- O pipeline canônico precisa conseguir reenviar bytes fisicamente removidos
+-- usando o path histórico, inclusive quando uma variante herdou o objeto de
+-- outro Curso. O núcleo anterior continua atendendo todos os demais preparos.
+alter function public.prepare_course_source_pdf_ingestion_for_actor_v1(
+  uuid,uuid,bigint,jsonb,text,bigint,text,text
+) set schema private;
+alter function private.prepare_course_source_pdf_ingestion_for_actor_v1(
+  uuid,uuid,bigint,jsonb,text,bigint,text,text
+) rename to prepare_course_source_pdf_ingestion_before_lifecycle_v1;
+
+create function public.prepare_course_source_pdf_ingestion_for_actor_v1(
+  p_actor_id uuid,p_course_id uuid,p_expected_revision bigint,
+  p_source_intent jsonb,p_content_hash text,p_byte_size bigint,
+  p_media_type text,p_request_id text
+) returns jsonb language plpgsql volatile security definer
+set search_path = '' as $function$
+declare
+  v_course_revision bigint;
+  v_source private.course_source_revisions%rowtype;
+  v_attachment private.course_source_attachments%rowtype;
+  v_conflicting_intent private.course_source_pdf_upload_intents%rowtype;
+  v_source_id text;
+  v_source_revision bigint;
+  v_request_fingerprint text;
+  v_object_exists boolean;
+  v_reserved_bytes bigint;
+begin
+  if not private.valid_course_source_pdf_ingestion_intent_v1(p_source_intent)
+     or p_source_intent->>'mode'<>'existing' then
+    return private.prepare_course_source_pdf_ingestion_before_lifecycle_v1(
+      p_actor_id,p_course_id,p_expected_revision,p_source_intent,p_content_hash,
+      p_byte_size,p_media_type,p_request_id
+    );
+  end if;
+  v_source_id:=p_source_intent->>'sourceId';
+  v_source_revision:=(p_source_intent->>'sourceRevision')::bigint;
+  select * into v_attachment
+  from private.course_source_attachments attachment
+  where attachment.course_id=p_course_id
+    and attachment.source_id=v_source_id
+    and attachment.content_hash=p_content_hash
+    and attachment.status='removed'
+  order by attachment.updated_at desc,attachment.source_revision desc
+  limit 1;
+  if not found then
+    return private.prepare_course_source_pdf_ingestion_before_lifecycle_v1(
+      p_actor_id,p_course_id,p_expected_revision,p_source_intent,p_content_hash,
+      p_byte_size,p_media_type,p_request_id
+    );
+  end if;
+
+  perform private.require_service_role();
+  perform private.require_course_access_v1(p_course_id,p_actor_id,true);
+  if p_expected_revision is null or p_expected_revision<1
+     or p_content_hash is null or p_content_hash!~'^[a-f0-9]{64}$'
+     or p_byte_size is null or p_byte_size not between 1 and 20971520
+     or p_media_type is distinct from 'application/pdf'
+     or p_request_id is null
+     or p_request_id!~'^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$'
+     or v_attachment.byte_size<>p_byte_size
+     or v_attachment.media_type<>p_media_type then
+    raise exception 'Preparo de reanexo PDF inválido.' using errcode='22023';
+  end if;
+  v_request_fingerprint:=private.course_source_json_hash_v1(
+    jsonb_build_object(
+      'courseId',p_course_id,'expectedRevision',p_expected_revision,
+      'sourceIntent',p_source_intent,'contentHash',p_content_hash,
+      'byteSize',p_byte_size,'mediaType',p_media_type
+    )
+  );
+  perform pg_advisory_xact_lock(hashtextextended('course-row:'||p_course_id::text,0));
+  select course.revision into strict v_course_revision
+  from public.courses course where course.id=p_course_id for update;
+  if v_course_revision<>p_expected_revision then
+    raise exception 'O Curso mudou; releia antes de preparar o PDF.'
+      using errcode='40001';
+  end if;
+  select * into v_source from private.course_source_revisions source
+  where source.course_id=p_course_id and source.source_id=v_source_id
+  order by source.revision desc limit 1;
+  if not found or v_source.status<>'active' or v_source.revision<>v_source_revision then
+    raise exception 'O PDF exige a revisão corrente e ativa da Fonte.'
+      using errcode='23514';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(
+    'course-source-pdf-quota:'||p_course_id::text,0
+  ));
+  perform pg_advisory_xact_lock(hashtextextended(
+    'course-source-pdf-object:'||v_attachment.storage_path,0
+  ));
+  if exists(select 1 from private.course_source_pdf_delete_intents intent
+    where intent.storage_path=v_attachment.storage_path) then
+    raise exception 'A remoção física deste PDF ainda está em andamento.'
+      using errcode='40001';
+  end if;
+  if (select count(*) from private.course_source_attachments active_attachment
+      where active_attachment.course_id=p_course_id
+        and active_attachment.source_id=v_source_id
+        and active_attachment.status='active')>=8 then
+    raise exception 'Uma Fonte aceita no máximo oito anexos PDF ativos.'
+      using errcode='23514';
+  end if;
+  v_reserved_bytes:=private.course_source_pdf_reserved_bytes_v1(p_course_id);
+  if not exists(select 1 from private.course_source_attachments active_attachment
+       where active_attachment.course_id=p_course_id
+         and active_attachment.content_hash=p_content_hash
+         and active_attachment.status='active')
+     and v_reserved_bytes+p_byte_size>67108864 then
+    raise exception 'A cota de 64 MiB de PDFs únicos do Curso seria excedida.'
+      using errcode='23514';
+  end if;
+  select exists(select 1 from storage.objects object_value
+    where object_value.bucket_id='course-source-pdfs'
+      and object_value.name=v_attachment.storage_path) into v_object_exists;
+  if v_object_exists and not private.valid_course_source_pdf_object_v1(
+    v_attachment.storage_path,p_byte_size,p_media_type
+  ) then
+    raise exception 'O objeto deduplicado possui tamanho ou tipo incompatível.'
+      using errcode='23514';
+  end if;
+
+  -- O núcleo de finalização v1 procura o vínculo pela revisão bibliográfica.
+  -- Uma nova linha removida conserva o tombstone original e fornece essa ponte
+  -- sem ativar o acesso nem consumir quota antes da confirmação dos bytes.
+  if not exists(select 1 from private.course_source_attachments exact_attachment
+    where exact_attachment.course_id=p_course_id
+      and exact_attachment.source_id=v_source_id
+      and exact_attachment.source_revision=v_source_revision
+      and exact_attachment.content_hash=p_content_hash) then
+    insert into private.course_source_attachments(
+      course_id,source_id,source_revision,content_hash,byte_size,media_type,
+      storage_path,actor_id,status,version,updated_at,updated_by,removed_at,
+      removed_by,removed_course_revision
+    ) values(
+      p_course_id,v_source_id,v_source_revision,p_content_hash,p_byte_size,
+      p_media_type,v_attachment.storage_path,v_attachment.actor_id,'removed',1,
+      clock_timestamp(),p_actor_id,coalesce(v_attachment.removed_at,now()),
+      v_attachment.removed_by,
+      coalesce(v_attachment.removed_course_revision,v_course_revision)
+    );
+  end if;
+
+  delete from private.course_source_pdf_upload_intents intent
+  where intent.actor_id=p_actor_id and intent.request_id=p_request_id
+    and intent.expires_at<=statement_timestamp();
+  select * into v_conflicting_intent
+  from private.course_source_pdf_upload_intents intent
+  where intent.actor_id=p_actor_id and intent.course_id=p_course_id
+    and intent.storage_path=v_attachment.storage_path
+    and intent.expires_at>statement_timestamp();
+  if found and(
+       v_conflicting_intent.request_id is distinct from p_request_id
+       or v_conflicting_intent.request_fingerprint
+         is distinct from v_request_fingerprint
+     ) then
+    raise exception 'Outro envio deste PDF está em andamento; tente novamente.'
+      using errcode='40001';
+  end if;
+  if exists(select 1 from private.course_source_pdf_upload_intents intent
+    where intent.actor_id=p_actor_id and intent.request_id=p_request_id
+      and intent.expires_at>statement_timestamp()
+      and (intent.course_id<>p_course_id
+        or intent.storage_path<>v_attachment.storage_path)) then
+    raise exception 'requestId reutilizado para outro envio de PDF.'
+      using errcode='23514';
+  end if;
+  insert into private.course_source_pdf_upload_intents(
+    actor_id,course_id,storage_path,content_hash,byte_size,media_type,
+    source_id,source_revision,course_revision,created_at,expires_at,request_id,
+    request_fingerprint
+  ) values(
+    p_actor_id,p_course_id,v_attachment.storage_path,p_content_hash,p_byte_size,
+    p_media_type,v_source_id,v_source_revision,v_course_revision,
+    statement_timestamp(),statement_timestamp()+interval '10 minutes',
+    p_request_id,v_request_fingerprint
+  ) on conflict(actor_id,course_id,storage_path) do update set
+    content_hash=excluded.content_hash,byte_size=excluded.byte_size,
+    media_type=excluded.media_type,source_id=excluded.source_id,
+    source_revision=excluded.source_revision,
+    course_revision=excluded.course_revision,created_at=excluded.created_at,
+    expires_at=excluded.expires_at,request_id=excluded.request_id,
+    request_fingerprint=excluded.request_fingerprint;
+
+  return jsonb_build_object(
+    'contract','aralearn.course-source-pdf-ingestion-preparation.v1',
+    'courseId',p_course_id,'courseRevision',v_course_revision,
+    'requestId',p_request_id,'sourceId',v_source_id,
+    'sourceRevision',v_source_revision,
+    'attachment',jsonb_build_object(
+      'contentHash',p_content_hash,'byteSize',p_byte_size,
+      'mediaType',p_media_type,'storagePath',v_attachment.storage_path
+    ),'uploadRequired',not v_object_exists,'alreadyLinked',true
+  );
+end;
+$function$;
+
 -- A remoção lógica é transacional; a intenção é consumida pelo adapter via
 -- Storage API depois do commit. O hash e a revisão vieram da leitura da Fonte.
 create function public.remove_course_source_pdf_for_actor_v1(
@@ -579,6 +775,9 @@ revoke all on function private.guard_course_source_attachment_lifecycle_v1(),
     uuid,uuid,bigint,text,text,text,text,text,integer
   ),
   public.attach_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,text,text),
+  public.prepare_course_source_pdf_ingestion_for_actor_v1(
+    uuid,uuid,bigint,jsonb,text,bigint,text,text
+  ),
   public.remove_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,text,text),
   public.claim_course_source_pdf_delete_for_actor_v1(uuid,uuid,text),
   public.complete_course_source_pdf_delete_for_actor_v1(uuid,uuid,text,text)
@@ -588,6 +787,9 @@ grant execute on function
     uuid,uuid,bigint,text,text,text,text,text,integer
   ),
   public.attach_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,text,text),
+  public.prepare_course_source_pdf_ingestion_for_actor_v1(
+    uuid,uuid,bigint,jsonb,text,bigint,text,text
+  ),
   public.remove_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,text,text),
   public.claim_course_source_pdf_delete_for_actor_v1(uuid,uuid,text),
   public.complete_course_source_pdf_delete_for_actor_v1(uuid,uuid,text,text)

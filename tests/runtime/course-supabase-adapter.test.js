@@ -2917,6 +2917,81 @@ test("adapter recupera recibo de ingestão pelo arquivo público e reverifica o 
   assert.equal(calls[1].method, "GET");
 });
 
+test("reanexo reenviando bytes aceita vínculo histórico em storage_path herdado", async () => {
+  const pdfBytes = syntheticPdf("reattach-removed-inherited");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const originCourseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const storagePath = `${originCourseId}/${contentHash}.pdf`;
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const isUpload = init.method === "POST" &&
+      url.includes("/storage/v1/object/course-source-pdfs/");
+    const body = isUpload || init.body == null ? init.body : JSON.parse(init.body);
+    calls.push({ url, method: init.method, body });
+    if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion-preparation.v1",
+        courseId: COURSE_ID,
+        courseRevision: 5,
+        requestId: "request-ingest-reattach-1",
+        sourceId: "source-pdf",
+        sourceRevision: 2,
+        attachment: {
+          contentHash,
+          byteSize: pdfBytes.byteLength,
+          mediaType: "application/pdf",
+          storagePath
+        },
+        uploadRequired: true,
+        alreadyLinked: true
+      });
+    }
+    if (isUpload) {
+      assert.equal(url.endsWith(`/course-source-pdfs/${storagePath}`), true);
+      return json({ Key: storagePath });
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      assert.equal(url.endsWith(`/course-source-pdfs/${storagePath}`), true);
+      return new Response(pdfBytes, {
+        headers: { "Content-Length": String(pdfBytes.byteLength) }
+      });
+    }
+    if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
+      assert.equal(body.p_attachment.storagePath, storagePath);
+      return json({
+        contract: "aralearn.course-source-pdf-ingestion.v1",
+        courseId: COURSE_ID,
+        courseRevision: 6,
+        requestId: "request-ingest-reattach-1",
+        idempotent: false,
+        changed: true,
+        change: { type: "attach_pdf", subjectId: "source-pdf", revision: 2 },
+        source: {
+          sourceId: "source-pdf",
+          sourceRevision: 2,
+          bibliographyChanged: false
+        },
+        attachment: body.p_attachment,
+        stored: true
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  const result = await value.ingestCourseSourcePdf({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-ingest-reattach-1",
+    sourceIntent: { mode: "existing", sourceId: "source-pdf", sourceRevision: 2 },
+    bytes: pdfBytes,
+    mediaType: "application/pdf"
+  });
+  assert.equal(result.stored, true);
+  assert.equal(calls.filter(({ url }) =>
+    url.includes("/storage/v1/object/course-source-pdfs/")).length, 1);
+});
+
 test("ingestão recusa mídia e estrutura inválidas antes de acessar Supabase", async () => {
   let calls = 0;
   const value = adapter(async () => {
@@ -4873,9 +4948,8 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
   assert.equal(calls[4].payload.p_target_user_id, USER_ID);
 });
 
-test("ciclo de vida usa RPC canônica e limpa somente o prefixo PDF do Curso excluído", async () => {
+test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado", async () => {
   const calls = [];
-  const pdfName = `${"c".repeat(64)}.pdf`;
   const value = adapter(async (url, init) => {
     const body = init.body == null ? null : JSON.parse(init.body);
     calls.push({ url, init, body });
@@ -4889,11 +4963,6 @@ test("ciclo de vida usa RPC canônica e limpa somente o prefixo PDF do Curso exc
         requestId: "request-delete-course-0001"
       });
     }
-    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
-      assert.equal(body.prefix, `${COURSE_ID}/`);
-      return json([{ name: pdfName }]);
-    }
-    if (url.endsWith("/storage/v1/object/course-source-pdfs")) return json({});
     assert.fail(`Requisição inesperada: ${url}`);
   });
   assert.deepEqual(await value.maintainCourse({
@@ -4909,11 +4978,10 @@ test("ciclo de vida usa RPC canônica e limpa somente o prefixo PDF do Curso exc
     status: "completed",
     changed: true,
     requestId: "request-delete-course-0001",
-    fileCleanupPending: false
+    fileCleanupPending: true
   });
-  assert.deepEqual(calls.at(-1).body, {
-    prefixes: [`${COURSE_ID}/${pdfName}`]
-  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.includes("/storage/v1/object"), false);
 });
 
 test("repetição de exclusão já concluída não ganha autoridade sobre Storage órfão", async () => {

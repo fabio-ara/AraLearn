@@ -642,8 +642,7 @@ export function normalizeCourseSourcePdfIngestionPreparation(value) {
   ], "invalid_course_source_pdf_ingestion_preparation", "A preparação da ingestão de PDF");
   if (preparation.contract !== COURSE_SOURCE_PDF_INGESTION_PREPARATION_CONTRACT ||
       typeof preparation.uploadRequired !== "boolean" ||
-      typeof preparation.alreadyLinked !== "boolean" ||
-      preparation.uploadRequired && preparation.alreadyLinked) {
+      typeof preparation.alreadyLinked !== "boolean") {
     fail(
       "invalid_course_source_pdf_ingestion_preparation",
       "A preparação da ingestão de PDF é inválida."

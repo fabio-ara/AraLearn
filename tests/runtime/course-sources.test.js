@@ -189,13 +189,13 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     normalizeCourseSourcePdfIngestionPreparation(inheritedPreparation),
     inheritedPreparation
   );
-  assert.throws(
-    () => normalizeCourseSourcePdfIngestionPreparation({
-      ...preparation,
-      uploadRequired: true,
-      alreadyLinked: true
-    }),
-    (error) => error.code === "invalid_course_source_pdf_ingestion_preparation"
+  const removedBytesPreparation = {
+    ...inheritedPreparation,
+    uploadRequired: true
+  };
+  assert.deepEqual(
+    normalizeCourseSourcePdfIngestionPreparation(removedBytesPreparation),
+    removedBytesPreparation
   );
 
   const result = {

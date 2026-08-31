@@ -4039,18 +4039,10 @@ export class CourseSupabaseAdapter {
         "O serviço devolveu um ciclo de vida de Curso inválido."
       );
     }
-    let fileCleanupPending = false;
-    if (operation === "delete_owned_course" && result.changed) {
-      try {
-        await this.#deleteAccountStoragePrefix(
-          COURSE_SOURCE_ATTACHMENT_BUCKET,
-          `${courseId}/`,
-          { deadlineAt }
-        );
-      } catch {
-        fileCleanupPending = true;
-      }
-    }
+    // Um PDF sob o prefixo do Curso excluído pode continuar legitimamente
+    // vinculado a outro Curso por deduplicação. A limpeza física precisa passar
+    // pela manutenção que revalida cada objeto, nunca por delete amplo de prefixo.
+    const fileCleanupPending = operation === "delete_owned_course" && result.changed;
     return { ...result, fileCleanupPending };
   }
 
