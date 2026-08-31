@@ -623,9 +623,10 @@ test.describe("Autoria real com Supabase local", () => {
         mimeType: "application/pdf",
         buffer: PDF_BYTES
       });
-      await expect(page.getByRole("button", { name: /Baixar PDF/u }))
-        .toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText("1 anexo", { exact: true })).toBeVisible();
+      const pdfDownload = page.locator('[data-source-action="download-attachment"]');
+      await expect(pdfDownload).toBeVisible({ timeout: 15_000 });
+      await expect(pdfDownload).toContainText("PDF disponível");
+      await expect(pdfDownload).toContainText("Baixar");
       const pdfObjects = await listPdfObjects();
       expect(pdfObjects).toHaveLength(1);
       const pdfPath = String(pdfObjects[0].name).startsWith(`${courseId}/`)
