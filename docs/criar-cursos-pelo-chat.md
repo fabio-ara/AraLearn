@@ -109,8 +109,16 @@ nenhuma aula será criada. Confirmo?”. Essa forma se adapta à mudança real; 
 um texto fixo. Pedir confirmação de um nome de operação, de revisões ou de um
 payload é inadequado porque não esclarece o que mudará no Curso. Uma intenção
 que já declara inequivocamente manter um PDF entre as Fontes autoriza somente
-essa incorporação sem repetir uma pergunta cerimonial; as demais confirmações
-continuam regidas pela operação pertinente.
+essa incorporação sem repetir uma pergunta cerimonial.
+
+Quando a proposta concreta estiver aprovada, essa única decisão autoriza todas
+as escritas atômicas, releituras e repetições seguras necessárias para persistir
+exatamente o que foi apresentado. O cliente não pede uma confirmação por item,
+chamada ou etapa técnica e nunca transfere IDs, revisões, CAS ou `requestId` à
+pessoa. Só interrompe o ciclo se precisar mudar materialmente a proposta,
+encontrar contradição pedagógica, depender de nova decisão autoral, detectar
+concorrência relevante ou não conseguir recuperar uma falha sem mudar a
+intenção.
 
 Na interface, Observações e mudanças de Parâmetros são salvas no próprio Curso e
 permanecem visíveis na Autoria. No ChatGPT conectado por MCP ou Actions, peça
@@ -274,6 +282,13 @@ Para cada etapa, o cliente:
 5. aplica somente Fontes e Âncoras presentes no contexto;
 6. envia o lote com as revisões e versões esperadas;
 7. relê o resultado e informa apenas o que foi confirmado.
+
+Uma única aprovação da materialização da Parte cobre esse ciclo até o
+checkpoint de inspeção. Ao terminar, o cliente cria um foco com o subconjunto
+produzido, relê as Unidades e oferece proativamente **Abrir as Unidades no
+AraLearn**. Depois do planejamento, oferece **Abrir o planejamento no
+AraLearn**; após auditoria ou correção, cria o foco das Unidades afetadas e
+oferece a mesma ação contextual.
 
 Uma etapa de Microssequência confirma entidades, vínculo com a Parte,
 proveniência, progresso, evento e recibo na mesma transação. Se a validação

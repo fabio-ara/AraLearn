@@ -537,6 +537,35 @@ test("D — sucesso usa o envelope sem mostrar seu estado de máquina", () => {
   assert.deepEqual(envelope, before);
 });
 
+test("checkpoints devolvem ações humanas específicas sem expor o deep link", () => {
+  const deepLink = `https://example.test/#/authoring/courses/${COURSE_ID}`;
+  const planning = projectConversationalAuthoringToolSuccess({
+    toolName: "alterarCurso",
+    rawArguments: { operation: "update_instructional_plan" },
+    envelope: {
+      ok: true,
+      requestId: REQUEST_ID,
+      data: { changed: true, deepLink: `${deepLink}?section=planning` }
+    }
+  });
+  const inspection = projectConversationalAuthoringToolSuccess({
+    toolName: "alterarCurso",
+    rawArguments: { operation: "create_inspection_focus" },
+    envelope: {
+      ok: true,
+      requestId: REQUEST_ID,
+      data: { changed: true, deepLink: `${deepLink}?section=content&inspectionFocusId=foco` }
+    }
+  });
+
+  assert.equal(planning.action?.label, "Abrir o planejamento no AraLearn");
+  assert.equal(inspection.action?.label, "Abrir as Unidades no AraLearn");
+  assert.equal(planning.message.includes(deepLink), false);
+  assert.equal(inspection.message.includes(deepLink), false);
+  assertHumanProjection(planning);
+  assertHumanProjection(inspection);
+});
+
 test("E — conflito não sobrescreve estado novo e orienta releitura sem CAS", () => {
   const projected = projectConversationalAuthoringError({
     envelope: {
@@ -583,7 +612,59 @@ test("F — falha incerta nunca vira sucesso e conserva a dúvida sobre a escrit
   assert.equal(projected.concurrencyConflict, false);
   assert.match(projected.message, /Não foi possível confirmar/u);
   assert.match(projected.message, /Não vou tratá-la como concluída/u);
+  assert.match(projected.message, /recuperar o recibo/iu);
   assert.doesNotMatch(projected.message, /foi gravada|foi concluída\./u);
+  assertHumanProjection(projected);
+});
+
+test("falhas mecânicas recuperáveis ficam com o agente, não com a pessoa", () => {
+  const invalid = projectConversationalAuthoringError({
+    envelope: {
+      ok: false,
+      requestId: REQUEST_ID,
+      error: {
+        code: "invalid_tool_argument",
+        recovery: { strategy: "correct_and_retry", retryable: true }
+      }
+    }
+  });
+  const oversized = projectConversationalAuthoringError({
+    envelope: {
+      ok: false,
+      requestId: REQUEST_ID,
+      error: {
+        code: "request_too_large",
+        recovery: { strategy: "split_and_retry", retryable: true }
+      }
+    }
+  });
+
+  assert.match(invalid.message, /Vou corrigir somente o que for mecânico e tentar novamente/iu);
+  assert.match(invalid.message, /se isso exigir mudar a intenção em curso, volto à pessoa/iu);
+  assert.match(oversized.message, /Vou dividir a operação e repetir os lotes/iu);
+  assert.doesNotMatch(invalid.message, /intenção aprovada/iu);
+  assert.doesNotMatch(invalid.message, /Revise|Corrija|Tente/iu);
+  assert.doesNotMatch(oversized.message, /Reduza|Divida|Tente/iu);
+  assertHumanProjection(invalid);
+  assertHumanProjection(oversized);
+});
+
+test("falha temporária de PDF conserva a recuperação autônoma sem pedir reenvio", () => {
+  const projected = projectConversationalAuthoringError({
+    envelope: {
+      ok: false,
+      requestId: REQUEST_ID,
+      error: {
+        code: "openai_file_unavailable",
+        message: "O PDF está temporariamente indisponível.",
+        recovery: { strategy: "repeat_identical", retryable: true }
+      }
+    }
+  });
+
+  assert.match(projected.message, /Nada foi salvo/iu);
+  assert.match(projected.message, /recuperar o recibo/iu);
+  assert.doesNotMatch(projected.message, /reenvie|novo anexo/iu);
   assertHumanProjection(projected);
 });
 

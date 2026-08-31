@@ -81,8 +81,13 @@ real e relê silenciosamente as revisões necessárias antes de escrever. Deve-s
 evitar uma confirmação como “Vou enviar `update_instructional_plan` com
 `expectedRevision`, `expectedPlanVersion` e este payload. Confirmo?”, porque ela
 transfere a operação da máquina para a pessoa sem explicar o efeito educacional.
-As confirmações específicas de cada operação continuam valendo. A exceção
-focal é a incorporação de PDF: quando o próprio pedido já declara
+Depois da aprovação, todos os comandos atômicos, releituras e retries seguros
+necessários para gravar exatamente essa proposta pertencem ao cliente. Não há
+nova confirmação por chamada; IDs, revisões, CAS, ordenação e `requestId`
+continuam internos. O cliente volta à pessoa somente diante de divergência
+material, contradição pedagógica, decisão autoral nova, concorrência relevante
+ou falha irrecuperável sem mudar a intenção. A exceção focal é a incorporação de
+PDF: quando o próprio pedido já declara
 inequivocamente que o documento deve integrar as Fontes do Curso, não há uma
 segunda pergunta cerimonial.
 
@@ -222,6 +227,12 @@ Parte e Microssequências vinculadas
 → confirmação atômica da etapa
 → Conteúdo e eventual auditoria
 ```
+
+Uma aprovação da materialização da Parte cobre a sequência técnica até o
+checkpoint de inspeção. Ao final, o cliente cria e relê um foco das Unidades
+produzidas e devolve seu deep link rotulado. Planejamento devolve o link da
+Parte ou do plano; auditoria e correção devolvem um foco das Unidades afetadas.
+Esses checkpoints são proativos e não criam domínio de lote.
 
 Ao iniciar uma execução, o servidor sela o contexto efetivo. Catálogos de
 unidades de análise e requisitos de evidência preservam identidade, posição,

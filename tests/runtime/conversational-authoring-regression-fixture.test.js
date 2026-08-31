@@ -442,6 +442,6 @@ test("orientação de intenção de PDF não exige frase mágica nem trata anexo
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Falha de transferência.*nunca é sucesso/iu);
   assert.match(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /Antes de escrever, descreva e confirme/iu
+    /uma única aprovação da intenção ou fase.*não confirme cada chamada/isu
   );
 });

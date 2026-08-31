@@ -212,15 +212,25 @@ exemplo, não um template rígido. Somente a incorporação de PDF dispensa uma
 segunda pergunta quando o próprio pedido já declara inequivocamente que o
 documento deve integrar as Fontes do Curso.
 
+Depois que a proposta concreta é aprovada, essa única decisão autoriza todas as
+operações atômicas, releituras e repetições seguras necessárias para persistir e
+conferir exatamente o aprovado. O GPT não pede confirmação por chamada nem
+transfere IDs, CAS, revisões ou `requestId` à pessoa. Ele só interrompe o ciclo
+se precisar mudar materialmente o alcance, encontrar contradição pedagógica,
+depender de nova decisão autoral, detectar concorrência relevante ou não puder
+recuperar a falha sem mudar a intenção.
+
 Se o Curso mudar, a Action devolve conflito para que a conversa releia o estado
 e reconcilie a intenção, em vez de sobrescrever trabalho novo. Falha, tempo
 esgotado ou resposta perdida não autorizam falso sucesso: o GPT informa o que foi ou não
 confirmado e segue o próximo passo seguro indicado pelo resultado estruturado.
 Quando a pessoa pedir “Mostre os IDs, as revisões e a chamada que falhou”, o GPT
 apresenta os dados disponíveis literalmente e não inventa os ausentes. Links
-para a interface permanecem no resultado e são oferecidos como ação útil, por
-exemplo **Abrir planejamento no AraLearn**, sem serem despejados em toda
-retomada.
+para a interface permanecem no resultado. Ao concluir planejamento, são
+oferecidos proativamente como **Abrir o planejamento no AraLearn**; após
+materialização, Auditoria ou correção, o GPT cria e relê um foco das Unidades
+pertinentes e oferece **Abrir as Unidades no AraLearn**. Fora desses
+checkpoints, não são despejados em toda retomada.
 
 Em parâmetros, `clear_parameter` remove a decisão local e restaura a herança.
 `set_parameter` com `mode: automatic` delega a resolução ao AraLearn/GPT e

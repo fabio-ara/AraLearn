@@ -52,7 +52,7 @@ function normalizedTitle(value) {
     .trim();
 }
 
-function humanAction(toolName, data) {
+function humanAction(toolName, data, rawArguments = {}) {
   const deepLink = optionalText(data?.deepLink || data?.course?.deepLink || data?.result?.deepLink);
   if (!deepLink || !new Set([
     "criarCurso", "alterarCurso", "add_part", "consultarComponentesDidaticos"
@@ -68,7 +68,15 @@ function humanAction(toolName, data) {
     ? "Abrir o Curso no AraLearn"
     : toolName === "consultarComponentesDidaticos"
       ? "Abrir a prévia no AraLearn"
-      : "Abrir a área alterada no AraLearn";
+      : toolName === "add_part" || rawArguments?.operation === "update_instructional_plan"
+        ? "Abrir o planejamento no AraLearn"
+        : rawArguments?.operation === "create_inspection_focus"
+          ? "Abrir as Unidades no AraLearn"
+          : rawArguments?.operation === "advance_part_materialization"
+            ? "Abrir o andamento da Parte no AraLearn"
+            : rawArguments?.operation === "update_audit_cycle"
+              ? "Abrir a auditoria no AraLearn"
+              : "Abrir a área alterada no AraLearn";
   return { label };
 }
 
@@ -441,6 +449,7 @@ export function projectConversationalAuthoringSuccess({
   envelope,
   summary = {},
   toolName = "",
+  rawArguments = {},
   includeTechnicalDetails = false
 }) {
   const raw = record(envelope, "O envelope de sucesso");
@@ -453,7 +462,7 @@ export function projectConversationalAuthoringSuccess({
     : data.changed === false
       ? "O estado atual foi conferido; nenhuma alteração era necessária."
       : "A alteração foi gravada e validada.");
-  const action = humanAction(toolName, data);
+  const action = humanAction(toolName, data, rawArguments);
   return projection(
     "success",
     sentences(
@@ -511,7 +520,12 @@ export function projectConversationalAuthoringToolSuccess({
       envelope?.data?.contract === "aralearn.mcp-course-source-attachment-access.v1") {
     return sourceAttachmentResumption(envelope.data);
   }
-  return projectConversationalAuthoringSuccess({ envelope, summary, toolName });
+  return projectConversationalAuthoringSuccess({
+    envelope,
+    summary,
+    toolName,
+    rawArguments
+  });
 }
 
 function semanticError(error) {
@@ -565,23 +579,33 @@ export function projectConversationalAuthoringError({
     error.recovery?.retryable === true && new Set([
       "correct_and_retry", "reconnect", "split_and_retry"
     ]).has(recoveryStrategy);
+  const automaticNextStep = concurrencyConflict
+    ? "Vou reler o estado atual e só interromper se a mudança concorrente afetar a intenção em curso"
+    : recoveryStrategy === "repeat_identical"
+      ? "Vou conferir o estado atual, recuperar o recibo e só então repetir a mesma chamada se necessário"
+      : recoveryStrategy === "correct_and_retry"
+        ? "Vou corrigir somente o que for mecânico e tentar novamente; se isso exigir mudar a intenção em curso, volto à pessoa"
+        : recoveryStrategy === "split_and_retry"
+          ? "Vou dividir a operação e repetir os lotes preservando o resultado pretendido"
+          : "";
   let message;
   if (COURSE_SOURCE_PDF_NO_WRITE_CODES.has(optionalText(error.code).toLowerCase())) {
     message = sentences(
       optionalText(error.message) || "O PDF não pôde ser incorporado ao Curso",
-      "Nada foi salvo"
+      "Nada foi salvo",
+      recoveryStrategy === "repeat_identical" ? automaticNextStep : failure.nextStep
     );
   } else if (classification === "conflict") {
     message = sentences(
       "O Curso mudou desde a última leitura",
       "Nada foi sobrescrito com o estado antigo",
-      failure.nextStep || "Vou reler o estado atual antes de continuar"
+      automaticNextStep || failure.nextStep || "Vou reler o estado atual antes de continuar"
     );
   } else if (writeState === "unknown") {
     message = sentences(
       "Não foi possível confirmar o resultado da operação",
       "Não vou tratá-la como concluída",
-      failure.nextStep || "Confira o estado atual antes de tentar novamente"
+      automaticNextStep || failure.nextStep || "Confira o estado atual antes de tentar novamente"
     );
   } else if (writeState === "complete") {
     message = sentences(
@@ -598,7 +622,7 @@ export function projectConversationalAuthoringError({
     message = sentences(
       failure.task || "A operação de autoria não foi concluída",
       failure.notSaved || "Nada foi salvo",
-      failure.nextStep || (classification === "limit"
+      automaticNextStep || failure.nextStep || (classification === "limit"
         ? "Reduza o tamanho da operação e tente novamente"
         : classification === "access"
           ? recoveryStrategy === "reconnect"

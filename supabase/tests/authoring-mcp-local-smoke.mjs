@@ -608,7 +608,7 @@ if (!accessToken) {
   assert.match(finishResult.content[0].text, /5 de 5 concluídas; 0 com falha/u);
   assert.match(finishResult.content[0].text,
     /Entidades nesta operação: criadas 0; alteradas 0; removidas 0/u);
-  assert.match(finishResult.content[0].text, /Abrir a área alterada no AraLearn/u);
+  assert.match(finishResult.content[0].text, /Abrir o andamento da Parte no AraLearn/u);
 
   const completedResult = await toolResult("lerCurso", {
     courseId: journeyCourseId,
@@ -632,6 +632,50 @@ if (!accessToken) {
   });
   assert.match(completedResult.content[0].text, /revisão editorial antes de uso/u);
   assert.match(completedResult.content[0].text, /sem duplicação/u);
+
+  const producedStudyUnitIds = completedMaterialization.materialization.steps
+    .flatMap(({ resultFacts }) => Array.isArray(resultFacts?.changedObjects)
+      ? resultFacts.changedObjects
+      : [])
+    .filter(({ entityType }) => entityType === "study_unit")
+    .map(({ entityId }) => entityId);
+  assert.deepEqual(producedStudyUnitIds, journeyStudyUnitIds);
+
+  const inspectionFocusResult = await toolResult("alterarCurso", {
+    requestId: randomUUID(),
+    courseId: journeyCourseId,
+    expectedRevision: journeyRevision,
+    operation: "create_inspection_focus",
+    inspectionFocus: {
+      title: "Unidades produzidas na materialização",
+      studyUnitIds: producedStudyUnitIds
+    }
+  });
+  const inspectionFocus = inspectionFocusResult.structuredContent.data;
+  assert.equal(inspectionFocus.courseRevision, journeyRevision);
+  assert.deepEqual(inspectionFocus.studyUnitIds, producedStudyUnitIds);
+  assert.deepEqual(inspectionFocus.availableStudyUnitIds, producedStudyUnitIds);
+  assert.deepEqual(inspectionFocus.missingStudyUnitIds, []);
+  assert.match(inspectionFocus.deepLink,
+    new RegExp(
+      `/#/authoring/courses/${journeyCourseId}` +
+      `\\?section=content&inspectionFocusId=${inspectionFocus.inspectionFocusId}$`,
+      "u"
+    ));
+  assert.match(inspectionFocusResult.content[0].text, /Abrir as Unidades no AraLearn/u);
+
+  const focusedStudyUnits = await tool("lerCurso", {
+    courseId: journeyCourseId,
+    view: "study_units",
+    expectedRevision: journeyRevision,
+    inspectionFocusId: inspectionFocus.inspectionFocusId,
+    limit: 24
+  });
+  assert.deepEqual(
+    focusedStudyUnits.items.map(({ studyUnit }) => studyUnit.id),
+    producedStudyUnitIds
+  );
+  assert.equal(focusedStudyUnits.inspectionFocus.deepLink, inspectionFocus.deepLink);
 
   const completedPlan = await tool("lerCurso", {
     courseId: journeyCourseId,

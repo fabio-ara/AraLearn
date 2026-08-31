@@ -58,6 +58,14 @@ com `expectedRevision` e `requestId`. Confirmo?” transfere o protocolo à pess
 e deve ser evitado. O cliente relê silenciosamente as revisões correntes quando
 necessário antes da escrita.
 
+Uma vez aprovada a proposta concreta, essa única decisão cobre todas as
+operações atômicas, releituras e repetições seguras necessárias para persistir e
+conferir exatamente o aprovado. O cliente não volta a confirmar por chamada e
+não pede IDs, CAS, revisões ou `requestId`. Só devolve a decisão à pessoa se o
+alcance precisar mudar, houver contradição pedagógica ou decisão autoral nova,
+a concorrência alterar o estado relevante, ou a recuperação exigir mudar a
+intenção.
+
 Essa distinção vale também para anexos. “Use este edital para fundamentar o
 Curso”, “considere este PPC e esta prova no planejamento” e “incorpore esta nova
 norma e revise a Parte” já expressam a decisão de manter cada PDF entre as
@@ -749,6 +757,11 @@ transação reconcilia materialmente os IDs de Unidades, o pai/alvo e os
 
 O cliente deve reler depois da escrita. Uma resposta de sucesso demonstra que
 a transação foi aceita, não que a mudança é pedagogicamente adequada.
+
+A aprovação da materialização de uma Parte cobre o ciclo de início, etapas,
+finalização, criação do foco e releitura. Ao concluir, o MCP devolve
+proativamente o foco rotulado das Unidades produzidas. Planejamento devolve a
+Parte ou o plano; auditoria e correção reutilizam um foco das Unidades afetadas.
 
 ### Gestão de Pessoas permanece na aplicação
 

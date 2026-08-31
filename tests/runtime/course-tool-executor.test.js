@@ -791,9 +791,18 @@ test("conhecimento mantém núcleo curto e carrega orientação somente por fase
   );
   assert.match(materialization.text, /targetPlanItems/iu);
   assert.match(materialization.text, /mesmos ids em entityChanges/iu);
+  assert.match(materialization.text, /execute internamente start, etapas, finish/iu);
+  assert.match(materialization.text, /não peça confirmação entre essas chamadas/iu);
+  assert.match(materialization.text, /Ao concluir a Parte aprovada/iu);
+  assert.match(materialization.text, /reúna pelos fatos relidos as Unidades produzidas/iu);
+  assert.match(materialization.text, /devolva proativamente seu deep link/iu);
   assert.match(linguisticReview.text, /curto\/curta/iu);
   assert.match(linguisticReview.text, /explica em vez de apenas resumir/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /phaseGuidance focal/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /uma única aprovação/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não confirme cada chamada/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /IDs, revisões, CAS, requestIds/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /crie um foco das Unidades pertinentes/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /raciocínio privado/iu);
   assert.doesNotMatch(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /targetPlanItems|citationText|curto\/curta/iu);
   assert.doesNotMatch(materialization.text, /workspace|trilha|coleção|publica(?:ção|do)/iu);

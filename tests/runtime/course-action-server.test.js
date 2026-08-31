@@ -1410,6 +1410,9 @@ test("OpenAPI de Actions permanece derivado do catálogo corrente e compacto", a
     openApi.info["x-aralearn-conversational-projection-fingerprint"],
     AUTHORING_CONVERSATIONAL_PROJECTION_HASH
   );
+  assert.match(openApi.info.description, /uma única aprovação/iu);
+  assert.match(openApi.info.description, /não confirme cada chamada/iu);
+  assert.match(openApi.info.description, /crie um foco das Unidades pertinentes/iu);
   const inputSchemas = Object.values(openApi.paths).map(
     ({ post }) => post.requestBody.content["application/json"].schema
   );
