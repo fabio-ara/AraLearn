@@ -1574,6 +1574,7 @@ test.describe("Autoria real com Supabase local", () => {
       const inspectionUnit = page.locator(
         `[data-inspection-study-unit="${STUDY_UNIT_ID}"]`
       );
+      const inspectionRuntime = inspectionUnit.locator(".course-inspection-runtime");
       await expect(inspectionUnit.getByRole("heading", { name: STUDY_UNIT_TITLE }))
         .toBeVisible();
       await inspectionUnit.locator('[data-inspection-unit-mode="edit"]').click();
@@ -1588,7 +1589,7 @@ test.describe("Autoria real com Supabase local", () => {
       const afterManualRevision = materializationRevision + 1;
       await expect.poll(async () => (await canonicalHeader()).revision)
         .toBe(afterManualRevision);
-      await expect(inspectionUnit.getByText(MANUAL_STUDY_UNIT_TEXT, { exact: true }))
+      await expect(inspectionRuntime.getByText(MANUAL_STUDY_UNIT_TEXT, { exact: true }))
         .toBeVisible();
 
       await inspectionUnit.locator('[data-inspection-unit-mode="edit"]').click();
@@ -1621,14 +1622,14 @@ test.describe("Autoria real com Supabase local", () => {
       await expect(providerDialog.getByRole("heading", { name: "Proposta", exact: true }))
         .toBeVisible();
       await providerDialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
-      await expect(inspectionUnit.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
+      await expect(inspectionRuntime.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
         .toBeVisible();
       await inspectionUnit.getByRole("button", { name: "Salvar proposta" }).click();
       await expect(page.getByText("Proposta salva.", { exact: true })).toBeVisible();
       const afterProviderRevision = afterManualRevision + 1;
       await expect.poll(async () => (await canonicalHeader()).revision)
         .toBe(afterProviderRevision);
-      await expect(inspectionUnit.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
+      await expect(inspectionRuntime.getByText(PROVIDER_STUDY_UNIT_TEXT, { exact: true }))
         .toBeVisible();
 
       expect(providerRequests).toHaveLength(2);
