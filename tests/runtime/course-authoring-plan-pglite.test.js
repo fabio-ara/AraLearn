@@ -27,6 +27,10 @@ const courseSourcesMigrationUrl = new URL(
   "../../supabase/migrations/20260817190000_course_sources_provenance.sql",
   import.meta.url
 );
+const analysisDecompositionMigrationUrl = new URL(
+  "../../supabase/migrations/20260831183106_fix_analysis_unit_study_unit_decomposition.sql",
+  import.meta.url
+);
 const courseSourceHumanLocatorsMigrationUrl = new URL(
   "../../supabase/migrations/20260825190000_course_source_human_locators.sql",
   import.meta.url
@@ -470,6 +474,22 @@ async function applyCourseSourcesMigration(database) {
     $manifest$;
   `);
   await database.exec(await fs.readFile(courseSourceHumanLocatorsMigrationUrl, "utf8"));
+}
+
+async function applyAnalysisDecompositionMigration(database) {
+  const manifest = await scalar(database, `
+    select public.get_aralearn_runtime_manifest() as value
+  `);
+  manifest.schemaRevision = "20260831012600";
+  const literal = JSON.stringify(manifest).replaceAll("'", "''");
+  await database.exec(`
+    create or replace function public.get_aralearn_runtime_manifest()
+    returns jsonb language sql stable security definer
+    set search_path=pg_catalog as $manifest$
+      select '${literal}'::jsonb
+    $manifest$;
+  `);
+  await database.exec(await fs.readFile(analysisDecompositionMigrationUrl, "utf8"));
 }
 
 async function applyBoundedInstructionalPlanCasMigration(database) {
@@ -5543,6 +5563,280 @@ test("#123 composição relê versão real após cascade e recriação da Unidad
   assert.equal(movedTargetRead.items.length, 1);
   assert.equal(movedTargetRead.items[0].targetVersion, 2);
   assert.equal(movedTargetRead.items[0].effective, true);
+  await database.close();
+});
+
+test("#235 materializa e rematerializa 1→2 preservando relação, Fonte e Âncora", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await applyAnalysisDecompositionMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const plan = await scalar(database, `
+    select jsonb_build_object('id',plan.id,'partId',(
+      select part.id from private.course_authoring_parts part
+      where part.course_id=plan.course_id and part.retired_at is null
+      order by part.position limit 1
+    )) as value
+    from private.course_instructional_plans plan where course_id=$1
+  `, [COURSE]);
+  const analysisId = DESIGN_ANALYSIS_IDS[0];
+  await database.query(`
+    insert into private.course_instructional_plan_items(
+      id,course_id,instructional_plan_id,item_kind,position,statement
+    ) values($1,$2,$3,'instructional_analysis_unit',0,$4)
+  `, [analysisId, COURSE, plan.id, "Explicar uma relação em desenvolvimento progressivo."]);
+
+  let courseRevision = (await applyDesignCommand(database, 4, {
+    type: "set_target_plan_items",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    instructionalAnalysisUnitIds: [analysisId],
+    evidenceRequirementIds: []
+  }, "analysis-decomposition-target")).courseRevision;
+
+  const sourceId = "source-analysis-decomposition";
+  const anchorId = "anchor-analysis-decomposition";
+  courseRevision = (await executeCourseSourceCommand(database, courseRevision, {
+    type: "save_source",
+    sourceId,
+    expectedSourceRevision: 0,
+    source: sourceDocument({
+      title: "Fonte da decomposição",
+      citationText: "AUTOR. Fonte da decomposição.",
+      studyVisibility: "citation"
+    })
+  }, "analysis-decomposition-source")).courseRevision;
+  courseRevision = (await executeCourseSourceCommand(database, courseRevision, {
+    type: "save_anchor",
+    anchorId,
+    sourceId,
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 3, endPage: 4 },
+    verificationExcerpt: "Trecho focal da relação desenvolvida."
+  }, "analysis-decomposition-anchor")).courseRevision;
+  const sourceLink = {
+    sourceId,
+    sourceRevision: 1,
+    relation: "informed_by",
+    anchors: [{ anchorId, anchorRevision: 1 }]
+  };
+  courseRevision = (await executeCourseSourceCommand(database, courseRevision, {
+    type: "set_target_sources",
+    targetKind: "plan_item",
+    targetId: analysisId,
+    expectedTargetVersion: 1,
+    sourceLinks: [sourceLink]
+  }, "analysis-decomposition-attribution")).courseRevision;
+
+  async function materialize({
+    materializationId,
+    stepId,
+    requestPrefix,
+    contentSuffix,
+    verifyEmptyContinuation = false
+  }) {
+    const started = await scalar(database, `
+      select public.advance_course_authoring_part_materialization_for_actor_v1(
+        $1,$2,$3,$4,$5,0,'start',$6::jsonb,'application',$7
+      ) as value
+    `, [OWNER, COURSE, plan.partId, materializationId, courseRevision, {
+      authoringPartVersion: 1,
+      steps: [{
+        id: stepId,
+        position: 0,
+        kind: "didactic_microsequence_materialization",
+        targetDidacticMicrosequenceId: "micro-a",
+        productionPosition: 0
+      }]
+    }, `${requestPrefix}-start`]);
+    courseRevision = started.courseRevision;
+    const contextSource = started.materialization.designContext.targets[0]
+      .sourceAttributions.instructionalAnalysisUnits[0].sources[0];
+    assert.equal(contextSource.sourceId, sourceId);
+    assert.equal(contextSource.anchors[0].anchorId, anchorId);
+
+    const designApplication = {
+      contextHash: started.materialization.contextHash,
+      didacticMicrosequenceId: "micro-a",
+      studyUnits: [{
+        studyUnitId: "analysis-split-1",
+        mode: "expository",
+        introducedInstructionalAnalysisUnitIds: [analysisId],
+        explanationApplications: [{
+          instructionalAnalysisUnitId: analysisId,
+          developedForms: ["plain_definition", "mechanism"],
+          notApplicable: []
+        }],
+        practiceApplications: [],
+        componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+      }, {
+        studyUnitId: "analysis-split-2",
+        mode: "expository",
+        introducedInstructionalAnalysisUnitIds: [],
+        explanationApplications: [{
+          instructionalAnalysisUnitId: analysisId,
+          developedForms: ["concrete_example", "contrast"],
+          notApplicable: []
+        }],
+        practiceApplications: [],
+        componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+      }]
+    };
+    const upserts = studyUnitUpserts(
+      designApplication,
+      "aralearn.resource.paragraph",
+      10
+    ).map((upsert) => ({
+      ...upsert,
+      content: { ...upsert.content, title: `${upsert.content.title}${contentSuffix}` }
+    }));
+    const sourceAttributionApplication = {
+      contract: "aralearn.course-source-attribution-application.v1",
+      contextHash: started.materialization.contextHash,
+      didacticMicrosequenceId: "micro-a",
+      studyUnits: designApplication.studyUnits.map(({ studyUnitId }) => ({
+        studyUnitId,
+        sourceLinks: [sourceLink]
+      }))
+    };
+    if (verifyEmptyContinuation) {
+      const emptyContinuation = structuredClone(designApplication);
+      emptyContinuation.studyUnits[1].explanationApplications[0].developedForms = [];
+      await assert.rejects(() => scalar(database, `
+        select public.advance_course_authoring_part_materialization_for_actor_v1(
+          $1,$2,$3,$4,$5,1,'record_step',$6::jsonb,'application',$7
+        ) as value
+      `, [OWNER, COURSE, plan.partId, materializationId, courseRevision, {
+        stepId,
+        expectedStepVersion: 1,
+        status: "completed",
+        resultFacts: {},
+        entityChanges: { upserts, deletes: [] },
+        designApplication: emptyContinuation,
+        sourceAttributionApplication
+      }, `${requestPrefix}-empty-continuation`]), (error) => error.code === "23514");
+    }
+    const recorded = await scalar(database, `
+      select public.advance_course_authoring_part_materialization_for_actor_v1(
+        $1,$2,$3,$4,$5,1,'record_step',$6::jsonb,'application',$7
+      ) as value
+    `, [OWNER, COURSE, plan.partId, materializationId, courseRevision, {
+      stepId,
+      expectedStepVersion: 1,
+      status: "completed",
+      resultFacts: {},
+      entityChanges: { upserts, deletes: [] },
+      designApplication,
+      sourceAttributionApplication
+    }, `${requestPrefix}-record`]);
+    courseRevision = recorded.courseRevision;
+    assert.equal(recorded.step.status, "completed");
+
+    const finished = await scalar(database, `
+      select public.advance_course_authoring_part_materialization_for_actor_v1(
+        $1,$2,$3,$4,$5,2,'finish',$6::jsonb,'application',$7
+      ) as value
+    `, [OWNER, COURSE, plan.partId, materializationId, courseRevision, {
+      status: "completed",
+      resultFacts: {}
+    }, `${requestPrefix}-finish`]);
+    courseRevision = finished.courseRevision;
+    return designApplication;
+  }
+
+  const firstApplication = await materialize({
+    materializationId: "56000000-0000-4000-8000-000000000001",
+    stepId: "56000000-0000-4000-8000-000000000002",
+    requestPrefix: "analysis-decomposition-first",
+    contentSuffix: " v1",
+    verifyEmptyContinuation: true
+  });
+  const secondApplication = await materialize({
+    materializationId: "56000000-0000-4000-8000-000000000003",
+    stepId: "56000000-0000-4000-8000-000000000004",
+    requestPrefix: "analysis-decomposition-second",
+    contentSuffix: " v2"
+  });
+
+  for (const application of [firstApplication, secondApplication]) {
+    assert.deepEqual(
+      application.studyUnits.map(({ introducedInstructionalAnalysisUnitIds }) => (
+        introducedInstructionalAnalysisUnitIds
+      )),
+      [[analysisId], []]
+    );
+    assert.equal(application.studyUnits.every(({ explanationApplications }) => (
+      explanationApplications[0].instructionalAnalysisUnitId === analysisId
+    )), true);
+  }
+  const entityVersions = await database.query(`
+    select entity_id,version from private.course_entities
+    where course_id=$1 and entity_type='study_unit'
+      and entity_id in ('analysis-split-1','analysis-split-2')
+    order by entity_id
+  `, [COURSE]);
+  assert.deepEqual(entityVersions.rows, [
+    { entity_id: "analysis-split-1", version: 2 },
+    { entity_id: "analysis-split-2", version: 2 }
+  ]);
+
+  const latestAttributions = await database.query(`
+    select distinct on (attribution.target_id)
+      attribution.target_id,
+      private.course_source_links_v1(
+        attribution.course_id,attribution.id
+      ) links
+    from private.course_source_attributions attribution
+    where attribution.course_id=$1 and attribution.target_kind='study_unit'
+      and attribution.target_id in ('analysis-split-1','analysis-split-2')
+    order by attribution.target_id,attribution.revision desc
+  `, [COURSE]);
+  assert.equal(latestAttributions.rows.length, 2);
+  assert.equal(latestAttributions.rows.every(({ links }) => (
+    links.length === 1 &&
+    links[0].sourceId === sourceId &&
+    links[0].anchors.length === 1 &&
+    links[0].anchors[0].anchorId === anchorId
+  )), true);
+
+  const applications = await database.query(`
+    select result_facts->'designApplication' application
+    from private.course_authoring_part_materialization_steps
+    where course_id=$1 and id in ($2,$3)
+    order by completed_at
+  `, [
+    COURSE,
+    "56000000-0000-4000-8000-000000000002",
+    "56000000-0000-4000-8000-000000000004"
+  ]);
+  assert.equal(applications.rows.length, 2);
+  assert.equal(applications.rows.every(({ application }) => (
+    application.studyUnits.length === 2 &&
+    application.studyUnits.every(({ explanationApplications }) => (
+      explanationApplications[0].instructionalAnalysisUnitId === analysisId
+    ))
+  )), true);
+
+  const recent = await readCourseDesign(
+    database,
+    "didactic_microsequence",
+    "micro-a"
+  );
+  assert.equal(recent.recentApplications.length, 2);
+  assert.equal(recent.recentApplications.every((application) => (
+    application.studyUnitCount === 2 &&
+    application.introducedInstructionalAnalysisUnitIds.length === 1 &&
+    application.introducedInstructionalAnalysisUnitIds[0] === analysisId
+  )), true);
   await database.close();
 });
 

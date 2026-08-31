@@ -814,6 +814,10 @@ export function auditDesignApplication(contextValue, applicationValue, options =
   );
   const requiredVariation = effectiveParameter(target, "required_practice_variation_dimensions");
   const introductionPosition = new Map();
+  const explanationCoverage = new Map([...analysisIds].map((id) => [id, {
+    developedForms: new Set(),
+    notApplicableForms: new Set()
+  }]));
   const practices = new Map([...evidenceIds].map((id) => [id, []]));
   const componentPolicy = normalizeCourseComponentPolicy(target.componentPolicy.policy, options);
 
@@ -833,18 +837,30 @@ export function auditDesignApplication(contextValue, applicationValue, options =
       if (introductionPosition.has(id)) issues.push(`instructional_analysis_unit_introduced_twice:${id}`);
       else introductionPosition.set(id, position);
     }
-    const introducedSet = new Set(introduced);
     for (const explanation of studyUnit.explanationApplications) {
-      if (!introducedSet.has(explanation.instructionalAnalysisUnitId)) {
-        issues.push(`explanation_without_local_introduction:${explanation.instructionalAnalysisUnitId}`);
+      const analysisId = explanation.instructionalAnalysisUnitId;
+      if (!analysisIds.has(analysisId)) {
+        issues.push(`unknown_instructional_analysis_unit:${analysisId}`);
       }
-      const accounted = new Set([
-        ...explanation.developedForms,
-        ...explanation.notApplicable.map(({ form }) => form)
-      ]);
-      for (const form of requiredForms) {
-        if (!accounted.has(form)) {
-          issues.push(`required_explanation_form_missing:${explanation.instructionalAnalysisUnitId}:${form}`);
+      if (!introductionPosition.has(analysisId)) {
+        issues.push(`explanation_before_introduction:${analysisId}:${studyUnit.studyUnitId}`);
+      }
+      if (explanation.developedForms.length === 0 && explanation.notApplicable.length === 0) {
+        issues.push(`explanation_without_local_contribution:${analysisId}:${studyUnit.studyUnitId}`);
+      }
+      const coverage = explanationCoverage.get(analysisId);
+      if (coverage) {
+        for (const form of explanation.developedForms) {
+          if (coverage.notApplicableForms.has(form)) {
+            issues.push(`explanation_form_conflict:${analysisId}:${form}`);
+          }
+          coverage.developedForms.add(form);
+        }
+        for (const { form } of explanation.notApplicable) {
+          if (coverage.developedForms.has(form)) {
+            issues.push(`explanation_form_conflict:${analysisId}:${form}`);
+          }
+          coverage.notApplicableForms.add(form);
         }
       }
     }
@@ -866,6 +882,12 @@ export function auditDesignApplication(contextValue, applicationValue, options =
 
   for (const id of analysisIds) {
     if (!introductionPosition.has(id)) issues.push(`instructional_analysis_unit_not_covered:${id}`);
+    const coverage = explanationCoverage.get(id);
+    for (const form of requiredForms) {
+      if (!coverage.developedForms.has(form) && !coverage.notApplicableForms.has(form)) {
+        issues.push(`required_explanation_form_missing:${id}:${form}`);
+      }
+    }
   }
   for (const [evidenceId, opportunities] of practices) {
     if (opportunities.length < minimumPractice) {
