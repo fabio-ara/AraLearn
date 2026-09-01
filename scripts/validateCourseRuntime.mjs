@@ -248,6 +248,54 @@ function equalArray(actual, expected) {
     actual.every((value, index) => value === expected[index]);
 }
 
+const RUNTIME_MANIFEST_FUNCTION_REPLACEMENT =
+  /create\s+or\s+replace\s+function\s+public\.get_aralearn_runtime_manifest\s*\(/iu;
+
+function migrationAdvancesRuntimeManifest(fileName, source) {
+  const revision = fileName.match(/^(\d{14})_.+\.sql$/u)?.[1];
+  if (!revision || !RUNTIME_MANIFEST_FUNCTION_REPLACEMENT.test(source)) return null;
+  const revisionNearManifestField = new RegExp(
+    `(?:schemaRevision[\\s\\S]{0,160}["']${revision}["']|` +
+      `["']${revision}["'][\\s\\S]{0,160}schemaRevision)`,
+    "u"
+  );
+  return revisionNearManifestField.test(source) ? revision : null;
+}
+
+export async function latestRuntimeManifestMigration(migrationsDirectory = path.join(
+  repositoryRoot,
+  "supabase",
+  "migrations"
+)) {
+  const entries = await fs.readdir(migrationsDirectory, { withFileTypes: true });
+  const candidates = (await Promise.all(entries
+    .filter((entry) => entry.isFile() && /^(\d{14})_.+\.sql$/u.test(entry.name))
+    .map(async (entry) => {
+      const source = await fs.readFile(path.join(migrationsDirectory, entry.name), "utf8");
+      const revision = migrationAdvancesRuntimeManifest(entry.name, source);
+      return revision ? { fileName: entry.name, revision } : null;
+    })))
+    .filter(Boolean)
+    .sort((left, right) => left.revision.localeCompare(right.revision, "en"));
+  const latest = candidates.at(-1);
+  if (!latest) fail("Nenhuma migration avança get_aralearn_runtime_manifest.");
+  return Object.freeze(latest);
+}
+
+export async function validateRuntimeManifestRevision(
+  manifest,
+  migrationsDirectory
+) {
+  const latest = await latestRuntimeManifestMigration(migrationsDirectory);
+  if (manifest.schemaRevision !== latest.revision) {
+    fail(
+      `O manifesto estático está na revisão ${manifest.schemaRevision || "desconhecida"}; ` +
+      `a migration ${latest.fileName} exige ${latest.revision}.`
+    );
+  }
+  return latest;
+}
+
 function legacyPersonalObservationsStayInHandoffConverter(source) {
   const start = source.indexOf("function legacyObservationIntents(");
   const end = source.indexOf("\nfunction mergeAnnotationHandoff(", start);
@@ -260,8 +308,8 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  if (manifest.schemaRevision !== "20260831012600" || manifest.contractVersion !== 1 ||
-      !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
+  await validateRuntimeManifestRevision(manifest);
+  if (manifest.contractVersion !== 1 || !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
     fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
   }
   const courseMigration = await read(
@@ -365,6 +413,9 @@ async function validateManifest() {
   );
   const sourcePdfUnlinkedQuotaMigration = await read(
     "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql"
+  );
+  const analysisUnitDecompositionMigration = await read(
+    "supabase/migrations/20260831183106_fix_analysis_unit_study_unit_decomposition.sql"
   );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
@@ -564,6 +615,12 @@ async function validateManifest() {
       ) ||
       !sourcePdfUnlinkedQuotaMigration.includes(
         "attachment.status='active'"
+      ) ||
+      !analysisUnitDecompositionMigration.includes(
+        "$advance_analysis_unit_decomposition_manifest$"
+      ) ||
+      !analysisUnitDecompositionMigration.includes(
+        "to_jsonb('20260831183106'::text)"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -774,13 +831,19 @@ async function validateDeploymentPath() {
   }
 }
 
-await validateManifest();
-await validateRuntimeFiles();
-await validateEdgeAndMcp();
-await validateDeploymentPath();
+async function main() {
+  await validateManifest();
+  await validateRuntimeFiles();
+  await validateEdgeAndMcp();
+  await validateDeploymentPath();
 
-console.log(
-  "Runtime de Curso validado: identidade viva única, composição paginada, acesso direto, " +
-  "estado pessoal, perfil humano, acesso de Estudo, avatar privado, inspeção vertical, " +
-  "desenho parametrizado, Autoria visual e MCP."
-);
+  console.log(
+    "Runtime de Curso validado: identidade viva única, composição paginada, acesso direto, " +
+    "estado pessoal, perfil humano, acesso de Estudo, avatar privado, inspeção vertical, " +
+    "desenho parametrizado, Autoria visual e MCP."
+  );
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
+}
