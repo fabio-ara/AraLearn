@@ -525,10 +525,10 @@ const compareUnion = (previous, next, keyword, schemaPath, issues, compareSchema
   for (const [index, previousBranch] of previousBranches.entries()) {
     const identity = directDiscriminator(previousBranch);
     if (identity !== null) {
-      const matchIndex = nextBranches.findIndex(
+      const matches = nextBranches.filter(
         (candidate) => directDiscriminator(candidate) === identity
       );
-      if (matchIndex < 0) {
+      if (matches.length === 0) {
         issues.push(issue(
           "discriminator_removed",
           `${schemaPath}.${keyword}[${index}]`,
@@ -536,12 +536,20 @@ const compareUnion = (previous, next, keyword, schemaPath, issues, compareSchema
         ));
         continue;
       }
-      compareSchema(
-        previousBranch,
-        nextBranches[matchIndex],
-        `${schemaPath}.${keyword}{${identity}}`,
-        issues
-      );
+      const candidates = matches.map((candidate) => {
+        const candidateIssues = [];
+        compareSchema(
+          previousBranch,
+          candidate,
+          `${schemaPath}.${keyword}{${identity}}`,
+          candidateIssues
+        );
+        return candidateIssues;
+      });
+      const compatible = candidates.find((candidateIssues) => candidateIssues.length === 0);
+      if (!compatible) {
+        issues.push(...candidates.sort((left, right) => left.length - right.length)[0]);
+      }
       continue;
     }
 

@@ -129,12 +129,12 @@ e o preflight repetem a identidade em
 A forma conversacional descoberta possui identidade própria em
 `_meta.conversationalProjection` e
 `X-AraLearn-Authoring-Projection`. A projeção corrente é
-`aralearn.authoring-conversational-projection.v1`, versão `1.0.0`; seu hash
-cobre a projeção compartilhada das seis ferramentas canônicas depois da
-separação de criação e revisão de Fonte.
+`aralearn.authoring-conversational-projection.v1`, versão `1.1.0`; seu hash
+cobre a projeção compartilhada das seis ferramentas canônicas, inclusive as
+facetas estruturadas de intenção da biblioteca de componentes.
 
 O catálogo MCP projetado completo possui identidade separada em
-`_meta.mcpCatalog` e `X-AraLearn-Authoring-Mcp-Catalog`. A versão `1.0.0` desse
+`_meta.mcpCatalog` e `X-AraLearn-Authoring-Mcp-Catalog`. A versão `1.1.0` desse
 catálogo cobre as sete ferramentas efetivamente descobertas, inclusive
 `add_part` e a retirada de sua variante concorrente em `alterarCurso`. Actions
 não anuncia essa identidade, pois serve sua própria projeção OpenAPI. Assim o
@@ -804,6 +804,14 @@ Descobre e valida a biblioteca sem carregar todos os contratos no contexto:
 5. `validate_study_unit` valida uma Unidade composta;
 6. `audit_representation` confronta composição e intenção;
 7. `preview_study_unit` prepara inspeção fiel ao renderizador.
+
+Em `search` e `audit_representation`, o cliente envia as facetas estruturadas
+que conhecer — papel da Unidade, disciplina, estrutura, operação, modalidade de
+prática, objetos, relações preservadas e papel da notação — junto da intenção
+natural. A orientação da fase exige escolha por função, sem quota de variedade,
+e mantém o julgamento semântico com GPT e pessoa autora. O resultado conserva
+essa entrada em `producerDeclaration`, explicitamente não verificada pelo
+backend; as facetas sustentam somente a comparação determinística.
 
 ## Concorrência e repetição segura
 

@@ -24,6 +24,7 @@ import {
   AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
   AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
   AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
+  AUTHORING_CONVERSATIONAL_PROJECTION_VERSION,
   projectConversationalPdfSourceTool
 } from
   "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
@@ -197,7 +198,7 @@ test("MCP anuncia invariantes, ferramentas canônicas e add_part dedicado", asyn
 
 test("projeção conversacional possui snapshot e fingerprint próprios", async () => {
   const snapshot = JSON.parse(await readFile(new URL(
-    "../fixtures/authoring-protocol/conversational-projection-v1.0.0.json",
+    `../fixtures/authoring-protocol/conversational-projection-v${AUTHORING_CONVERSATIONAL_PROJECTION_VERSION}.json`,
     import.meta.url
   ), "utf8"));
   const projectedTools = AUTHORING_PROTOCOL_V1_TOOLS.map(projectConversationalPdfSourceTool);
@@ -234,7 +235,7 @@ test("catálogo MCP completo possui fingerprint próprio e sensível ao tools/li
   assert.equal(computeAuthoringProtocolCatalogHash(COURSE_MCP_TOOLS), AUTHORING_MCP_CATALOG_HASH);
   assert.deepEqual(AUTHORING_MCP_CATALOG_METADATA, {
     id: "aralearn.authoring-mcp-catalog",
-    version: "1.0.0",
+    version: "1.1.0",
     hash: AUTHORING_MCP_CATALOG_HASH
   });
   assert.notEqual(
@@ -781,6 +782,11 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   const payload = await toolResponse.json();
   assert.equal(payload.result.structuredContent.data.courseRevision, 2);
   assert.equal(payload.result.structuredContent.data.plan.version, 3);
+  assert.equal(payload.result.structuredContent.data.phaseGuidance.phase, "planning_design");
+  assert.match(
+    payload.result.structuredContent.data.phaseGuidance.instructions.join(" "),
+    /mais de uma mudança independente.*teto conta identidades novas declaradas/iu
+  );
   assert.match(payload.result.content[0].text, /A leitura foi concluída\./u);
   assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision|plan\.version/iu);
   assert.match(payload.result.content[0].text, /0 registros de atividade recente/u);

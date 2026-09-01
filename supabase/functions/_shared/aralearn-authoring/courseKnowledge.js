@@ -13,6 +13,7 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "Em qualquer fase da autoria, intenção inequívoca de manter um PDF autoriza incorporarPdfComoFonte sem pergunta cerimonial. A presença do anexo, sozinha, não autoriza persistência. Se anexo ou pedido for ambíguo, pergunte exatamente: ‘Você quer usar este documento só nesta análise ou mantê-lo entre as Fontes do Curso?’",
   "Uso temporário não chama a ferramenta. Só confirme a permanência após stored igual a true; Falha de transferência ou resultado incerto nunca é sucesso nem expõe detalhes técnicos.",
   "As leituras devolvem phaseGuidance focal; use-a só na fase corrente, sem fixar na conversa plano, desenho, Fontes ou progresso.",
+  "No planejamento e na materialização, trate cada unidade de análise instrucional como mudança contextual que vale rastrear separadamente, nunca como tópico amplo que esconde novidades independentes; o servidor não verifica essa semântica.",
   "Use ferramentas para fatos; não invente conteúdo, Fontes, permissões ou resultados. Registre conclusões e evidências públicas, nunca conversa, raciocínio privado ou instrução secreta.",
   "Achado não autoriza alteração: apresente uma proposta concreta e obtenha uma aprovação. Aplicação e verificação continuam estados distintos, sem confirmação ritual entre operações que preservem a intenção aprovada.",
   "Preserve deep links no estado. Ao concluir planejamento, devolva proativamente o planejamento ou a Parte; após materialização, auditoria ou correção, crie um foco das Unidades pertinentes e devolva a ação rotulada, sem despejar URL.",
@@ -28,6 +29,10 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Consolide a proposta concreta antes de pedir aprovação. Essa aprovação cobre todos os comandos atômicos necessários para gravá-la e relê-la; não peça nova confirmação enquanto alcance, efeito e preservações continuarem exatamente os aprovados.",
       "Depois de persistir e reler o planejamento, devolva proativamente o deep link do planejamento ou da Parte com um rótulo humano.",
       "Herdar é não manter decisão local. Automático delega a escolha ao AraLearn/GPT, registra o valor resolvido e uma justificativa pública breve. Explícito fixa decisão da autoria ou condição de pesquisa.",
+      "Uma unidade de análise instrucional é, naquele público, tarefa e escopo, a menor mudança de conhecimento ou desempenho que vale rastrear separadamente; pode ser distinção, relação, propriedade, regra, condição, exceção, passo ou correspondência, sem pretender ser átomo cognitivo universal.",
+      "Antes de persistir cada statement, confronte-o: há mais de uma mudança independente que mereça acompanhamento próprio; algum termo tratado como prévio esconde novidade; o enunciado declara relação, propriedade ou condição rastreável ou apenas um tópico agregado? Decomponha indício forte e peça decisão humana somente na ambiguidade pedagógica real.",
+      "O produtor declara a decomposição e você a avalia semanticamente; o servidor confere somente forma, identidade e relações determinísticas. Não descreva a granularidade como verificada pelo banco.",
+      "O teto conta identidades novas declaradas por Unidade expositiva, não palavras, altura, dificuldade ou carga cognitiva. Conhecimentos já estabelecidos podem ser mobilizados livremente; uma unidade de análise e suas formas de explicação podem se desenvolver ao longo de várias Unidades.",
       "Uma Parte é agrupamento operacional configurável, não nível da hierarquia didática."
     ])
   }),
@@ -35,10 +40,14 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Materialização",
     instructions: Object.freeze([
       "Antes de cada Microssequência, use targetPlanItems e produza somente as unidades de análise e requisitos de evidência atribuídos ao alvo.",
+      "Antes de produzir, confronte o conteúdo pretendido com os statements atribuídos: não introduza novidades independentes sob poucos ids. Se o plano estiver agregado, corrija-o antes; se a fronteira for realmente ambígua, devolva a decisão pedagógica à pessoa.",
       "Depois de a pessoa aprovar a materialização da Parte com o desenho apresentado, execute internamente start, etapas, finish, foco de inspeção e releitura até o checkpoint; não peça confirmação entre essas chamadas.",
       "Recupere autonomamente schema, identidades, releitura e retry seguro. Interrompa somente diante de divergência material, contradição pedagógica, decisão autoral real, concorrência relevante ou falha irrecuperável sem mudar a intenção.",
       "Inicie sem designContext, use o contexto selado devolvido e, na etapa didática, envie os mesmos ids em entityChanges, designApplication e sourceAttributionApplication.",
       "O servidor confere revisões, pertencimento, unicidade, política de componentes, cobertura e mínimos quantitativos; trate cada falha localizada antes de repetir.",
+      "Distribua profundidade: introduza cada unidade de análise uma vez e continue seu desenvolvimento em outras Unidades quando necessário, repartindo as formas de explicação sem transformar cada card em capítulo nem reduzir o conteúdo a resumo.",
+      "Quando for didaticamente útil, intercale pequena consolidação entre explicações. Consolidação formativa sem finalidade de evidência usa Unidade de prática sem practiceApplications; não invente evidence_requirement. Prática que sustenta evidência continua vinculada ao requisito e à oportunidade correspondentes.",
+      "Escolha componentes pela função do objeto. Use prosa quando ela for a melhor forma; para contraste, sequência, estrutura, código, tabela, classificação ou representação visual, consulte e audite a alternativa pertinente em vez de condensar tudo em paragraph.",
       "Retome pelo estado persistido e não duplique conteúdo ou aplicações em resultFacts.",
       "Na resposta final, não descreva novamente o conteúdo visível dos cards. Escreva uma nota editorial curta: intenção e progressão didática, como os parâmetros efetivos orientaram as escolhas, quais Fontes e Âncoras verificadas sustentaram as decisões, por que os componentes foram escolhidos e que incerteza permanece.",
       "Ao concluir a Parte aprovada, faça uma síntese curta, reúna pelos fatos relidos as Unidades produzidas, crie um único foco coerente, leia esse foco uma vez e devolva proativamente seu deep link com rótulo humano. Se a Parte abrange muitas Microssequências, use no foco o primeiro subconjunto útil e ofereça os demais sob demanda."
@@ -83,6 +92,8 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Revise pedagogical_quality e editorial_quality na Microssequência recém-produzida, usando conteúdo renderizável, público e contexto curricular mínimo.",
       "Examine se a microteoria explica em vez de apenas resumir e se novos conceitos progridem de modo compreensível; reduza ou distribua o escopo quando falta desenvolvimento.",
+      "Compare o conteúdo com as unidades de análise declaradas: sinalize novidades independentes escondidas em tópico amplo, uso de conhecimentos não estabelecidos como se fossem prévios e continuação que apenas repete a introdução.",
+      "Confira se a representação preserva a função instrucional e se consolidação local foi distinguida de prática de evidência; uma forma alternativa só é preferível quando representa melhor o objeto, nunca para cumprir variedade.",
       "Procure usos artificiais de curto/curta, negativas defensivas, metadiscurso, autorreferência e fórmulas como ‘X combina/reúne Y, Z’ usadas no lugar de relações explicadas.",
       "Procure enumerações extensas, empilhamento de conceitos, anglicismos ou decalques, metáforas técnicas inadequadas e terminologia ou sigla sem referente suficiente.",
       "Esses focos não são proibições mecânicas: preserve usos legítimos, registre achados concretos e use o ciclo canônico de proposta, aplicação e verificação."
@@ -91,8 +102,10 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   components: Object.freeze({
     title: "Componentes didáticos",
     instructions: Object.freeze([
-      "Explore ou pesquise primeiro, inspecione candidatos e carregue somente o contrato package@version escolhido.",
-      "Valide e visualize a Unidade antes de gravá-la; a política de componentes efetiva continua sendo conferida no servidor."
+      "Parta da função instrucional e do objeto que precisa permanecer legível; não escolha por variedade estética nem crie quota. Paragraph continua correto quando prosa progressiva representa melhor a relação.",
+      "Para contraste, sequência, estrutura, código, tabela, classificação, correspondência ou representação visual, explore ou pesquise candidatos antes de assumir paragraph; para prática, escolha a operação de resposta que produz a evidência pretendida em vez de assumir choice.",
+      "Na busca e em audit_representation, declare papel da Unidade e, quando pertinentes, estrutura, operação, objetos de conhecimento e o que precisa ser preservado. Essas facetas e os metadados do catálogo orientam o encaixe; a adequação semântica final continua sendo julgamento do GPT ou da pessoa.",
+      "Inspecione candidatos e carregue somente o contrato package@version escolhido. Valide a estrutura, audite com a mesma intenção e visualize a Unidade antes de gravá-la; repare substituição evitável ou explicite a limitação, mantendo a política efetiva sob conferência do servidor."
     ])
   })
 });

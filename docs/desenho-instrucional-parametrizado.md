@@ -38,6 +38,18 @@ O catálogo aceita quatro parâmetros. Comandos não criam definições livres.
 | `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; padrão `2` | Curso, Lição e Microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
 | `required_practice_variation_dimensions` | conjunto; padrão caso ou dados | Curso, Lição e Microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
 
+Uma unidade de análise instrucional identifica a menor novidade que precisa ser
+acompanhada separadamente no desenho corrente. Antes de agregar um enunciado, a
+Autoria verifica se suas partes podem ser ensinadas, aplicadas ou confundidas de
+modo independente. Se puderem, recebem identidades distintas; relações entre
+elas ficam explícitas no plano. Conhecimento já ensinado pode ser reutilizado
+sem contar como nova introdução.
+
+Essa decisão é semântica e contextual. Quem produz o plano declara a relação,
+o GPT pode avaliá-la e a pessoa autora decide ambiguidades reais. O servidor
+confere identidades, vínculos, cardinalidade e teto, mas não afirma ter
+compreendido o significado de um enunciado em linguagem natural.
+
 ### Formas de explicação
 
 O conjunto fechado admite:
@@ -210,6 +222,14 @@ inverso, uma Unidade pode desenvolver várias unidades de análise quando as
 relações forem intencionais e a quantidade de introduções novas respeitar o
 teto efetivo. Assim, o teto mede novidade no desenho, não comprimento de texto
 nem quantidade de telas.
+
+Uma Unidade de prática também pode fazer consolidação formativa sem se dirigir
+a um requisito de evidência: por exemplo, recuperar uma relação recém-explicada
+antes de introduzir a próxima. Nesse caso, `practiceApplications` fica vazio e
+a Unidade não entra na contagem mínima de oportunidades de evidência. Isso
+permite composições como explicação, pequena consolidação, nova explicação,
+aplicação e prática de evidência, sem transformar essa ordem em roteiro
+universal nem inventar um requisito de evidência.
 
 O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
 e política de componentes. O PostgreSQL também confere se as Unidades, os pais,

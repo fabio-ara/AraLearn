@@ -1,0 +1,44 @@
+{
+  "format": "aralearn.instructional-analysis-granularity-eval.v1",
+  "epistemicStatus": "synthetic_producer_declaration_for_model_and_human_review",
+  "courseBrief": {
+    "titleStem": "Fundamentos de servidores e serviços em rede",
+    "audience": "Pessoas iniciantes que sabem usar aplicações web, mas ainda não estudaram infraestrutura.",
+    "objective": "Explicar como recursos computacionais, sistema operacional, processos e rede cooperam para disponibilizar um serviço, com progressão retomável e prática situada.",
+    "constraints": [
+      "O produtor deve realizar a análise instrucional; este briefing não fornece um plano pronto.",
+      "A profundidade pode ser distribuída entre várias Unidades de estudo.",
+      "Representações devem ser escolhidas pela função instrucional, sem quota de variedade."
+    ]
+  },
+  "regressionCases": [
+    {
+      "id": "aggregated_topic",
+      "candidateStatement": "Recursos do servidor e as camadas de hardware, sistema operacional, processos e rede.",
+      "assumedPriorKnowledge": [],
+      "producerDeclaration": "decompose_before_materialization",
+      "reason": "O enunciado reúne objetos e relações que podem ser ensinados e confundidos independentemente."
+    },
+    {
+      "id": "granular_relation",
+      "candidateStatement": "Um processo servidor associa um socket a uma porta para receber requisições destinadas ao serviço.",
+      "assumedPriorKnowledge": ["processo servidor", "socket", "porta", "requisição", "serviço"],
+      "producerDeclaration": "accept_as_separately_trackable_change",
+      "reason": "O recorte acompanha uma relação delimitada entre processo, socket, porta e recebimento."
+    },
+    {
+      "id": "prior_knowledge_new_relation",
+      "candidateStatement": "Dadas CPU, memória e processo como conhecimentos anteriores, uma troca de contexto muda qual processo usa a CPU sem transferir sua memória persistente.",
+      "assumedPriorKnowledge": ["CPU", "memória", "processo"],
+      "producerDeclaration": "accept_as_separately_trackable_change",
+      "reason": "Vários conhecimentos anteriores sustentam uma única relação nova explicitamente declarada."
+    },
+    {
+      "id": "long_but_single_change",
+      "candidateStatement": "Enquanto aguarda dados de rede, um processo pode ficar bloqueado; quando o evento esperado ocorre, o sistema operacional o torna novamente elegível para execução, preservando a mesma identidade do processo durante essa mudança de estado.",
+      "assumedPriorKnowledge": ["processo", "sistema operacional", "estado de processo", "evento de rede"],
+      "producerDeclaration": "accept_without_length_proxy",
+      "reason": "O enunciado desenvolve uma única mudança de estado, embora precise de uma explicação mais longa."
+    }
+  ]
+}

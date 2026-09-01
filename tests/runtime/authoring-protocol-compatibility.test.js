@@ -155,6 +155,38 @@ test("detector permite somente ampliações conhecidas do idioma público", () =
   ), []);
 });
 
+test("detector compara todas as variantes que compartilham o mesmo discriminador", () => {
+  const localPreview = objectSchema({
+    operation: { const: "preview" },
+    payload: { type: "string" }
+  }, ["operation", "payload"]);
+  const targetedPreview = objectSchema({
+    operation: { const: "preview" },
+    payload: { type: "string" },
+    courseId: { type: "string" },
+    unitId: { type: "string" }
+  }, ["operation", "payload", "courseId", "unitId"]);
+  const search = objectSchema({
+    operation: { const: "search" },
+    query: { type: "string" }
+  }, ["operation"]);
+  const widenedSearch = objectSchema({
+    ...search.properties,
+    facets: { type: "array", items: { type: "string" } }
+  }, ["operation"]);
+
+  assert.deepEqual(findBreakingAuthoringProtocolChanges(
+    [syntheticTool({ oneOf: [localPreview, targetedPreview, search] })],
+    [syntheticTool({ oneOf: [localPreview, targetedPreview, widenedSearch] })]
+  ), []);
+
+  const issues = findBreakingAuthoringProtocolChanges(
+    [syntheticTool({ oneOf: [localPreview, targetedPreview, search] })],
+    [syntheticTool({ oneOf: [localPreview, widenedSearch] })]
+  );
+  assert.ok(issueCodes(issues).has("property_removed"));
+});
+
 test("detector bloqueia remoções e estreitamentos de schema no mesmo major", () => {
   const previous = [syntheticTool(objectSchema({
     operation: { type: "string", enum: ["read", "write"] },

@@ -510,9 +510,17 @@ test("OpenAPI entrega propriedades completas na raiz que o importador preserva",
   );
   const components = openApi.paths["/consultarComponentesDidaticos"].post.requestBody
     .content["application/json"].schema;
-  for (const field of ["packages", "studyUnitJson", "courseId", "studyUnitId"]) {
+  for (const field of [
+    "packages", "studyUnitJson", "courseId", "studyUnitId", "studyUnitRole",
+    "disciplineIds", "structureIds", "taskOperationIds", "practiceModeIds",
+    "knowledgeObjects", "mustPreserve", "notationIsLearningObject"
+  ]) {
     assert.ok(components.properties[field], `consultarComponentesDidaticos.${field}`);
   }
+  assert.ok(components.properties.structureIds.items.enum.includes("structure.table"));
+  assert.ok(components.properties.taskOperationIds.items.enum.includes("task_operation.compare"));
+  assert.equal(components.properties.knowledgeObjects.maxItems, 16);
+  assert.equal(components.properties.mustPreserve.maxItems, 16);
   const courseEntity = openApi.components.schemas.AlterarCursoCourseEntity;
   assert.equal(courseEntity.type, "object");
   assert.equal(courseEntity.oneOf, undefined);
@@ -1489,6 +1497,20 @@ test("AJV preserva vistas, paginação e operações de componentes", () => {
   }, false);
   assertParity("validate exige JSON", "consultarComponentesDidaticos", {
     operation: "validate_study_unit"
+  }, false);
+  assertParity("busca com função representacional declarada", "consultarComponentesDidaticos", {
+    operation: "search",
+    query: "comparar atributos",
+    studyUnitRole: "theory",
+    structureIds: ["structure.table"],
+    taskOperationIds: ["task_operation.compare"],
+    knowledgeObjects: ["atributos comparáveis"],
+    mustPreserve: ["linhas e colunas"]
+  }, true);
+  assertParity("auditoria rejeita faceta inexistente", "consultarComponentesDidaticos", {
+    operation: "audit_representation",
+    studyUnitJson: "{}",
+    structureIds: ["structure.inexistente"]
   }, false);
   assertParity("preview local", "consultarComponentesDidaticos", {
     operation: "preview_study_unit",

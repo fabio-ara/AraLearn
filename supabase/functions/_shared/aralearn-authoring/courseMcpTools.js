@@ -33,6 +33,9 @@ import {
 } from
   "./conversationalPdfSourceProjection.js";
 import {
+  RESOURCE_VOCABULARIES
+} from "../aralearn/runtime/resources/catalog/vocabularies.js";
+import {
   ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES,
   AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES,
   AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES,
@@ -151,9 +154,9 @@ export const COURSE_MCP_TOOLS = Object.freeze(
 );
 
 export const AUTHORING_MCP_CATALOG_ID = "aralearn.authoring-mcp-catalog";
-export const AUTHORING_MCP_CATALOG_VERSION = "1.0.0";
+export const AUTHORING_MCP_CATALOG_VERSION = "1.1.0";
 export const AUTHORING_MCP_CATALOG_HASH =
-  "sha256:75ea019f5075398b74bcda055d30bf63068de424e64d42d7f6c43cecce8b2c29";
+  "sha256:b6645c623b90337df59447c7f85ca5e92cbffed0fa5104000e3c0a473b1eff60";
 export const AUTHORING_MCP_CATALOG_METADATA = Object.freeze({
   id: AUTHORING_MCP_CATALOG_ID,
   version: AUTHORING_MCP_CATALOG_VERSION,
@@ -213,6 +216,85 @@ function requiredText(value, field, { maximum, optional = false } = {}) {
     fail("invalid_tool_argument", `${field} é inválido.`, { field });
   }
   return normalized;
+}
+
+function optionalSchemaText(raw, field, { minimum = 0, maximum }) {
+  if (!Object.hasOwn(raw, field)) return {};
+  const value = raw[field];
+  const length = typeof value === "string" ? [...value].length : -1;
+  if (length < minimum || length > maximum) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return { [field]: value };
+}
+
+function optionalSchemaEnum(raw, field, allowed) {
+  if (!Object.hasOwn(raw, field)) return {};
+  if (typeof raw[field] !== "string" || !allowed.has(raw[field])) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return { [field]: raw[field] };
+}
+
+function optionalSchemaTextList(raw, field, {
+  maximumItems,
+  maximumLength,
+  allowed = null
+}) {
+  if (!Object.hasOwn(raw, field)) return {};
+  const value = raw[field];
+  if (!Array.isArray(value) || value.length > maximumItems ||
+      new Set(value).size !== value.length || value.some((item) => (
+        typeof item !== "string" || [...item].length < 1 ||
+        [...item].length > maximumLength || allowed && !allowed.has(item)
+      ))) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return { [field]: [...value] };
+}
+
+function mapResourceIntent(raw) {
+  const vocabularyIds = (records) => new Set(records.map(({ id }) => id));
+  const facets = {
+    ...optionalSchemaEnum(raw, "studyUnitRole", new Set(["theory", "practice"])),
+    ...optionalSchemaTextList(raw, "disciplineIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.disciplines)
+    }),
+    ...optionalSchemaTextList(raw, "structureIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.structures)
+    }),
+    ...optionalSchemaTextList(raw, "taskOperationIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.taskOperations)
+    }),
+    ...optionalSchemaTextList(raw, "practiceModeIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.practiceModes)
+    }),
+    ...optionalSchemaTextList(raw, "knowledgeObjects", {
+      maximumItems: 16,
+      maximumLength: 300
+    }),
+    ...optionalSchemaTextList(raw, "mustPreserve", {
+      maximumItems: 16,
+      maximumLength: 300
+    })
+  };
+  if (Object.hasOwn(raw, "notationIsLearningObject")) {
+    if (typeof raw.notationIsLearningObject !== "boolean") {
+      fail("invalid_tool_argument", "notationIsLearningObject é inválido.", {
+        field: "notationIsLearningObject"
+      });
+    }
+    facets.notationIsLearningObject = raw.notationIsLearningObject;
+  }
+  return facets;
 }
 
 function requiredOpaqueText(value, field, maximum) {
@@ -1595,13 +1677,19 @@ function mapCurrentMaintenance(raw) {
 
 function mapResourceLibrary(raw) {
   const operation = requiredText(raw.operation, "operation", { maximum: 40 });
+  const intentFields = [
+    "studyUnitRole", "disciplineIds", "structureIds", "taskOperationIds",
+    "practiceModeIds", "knowledgeObjects", "mustPreserve", "notationIsLearningObject"
+  ];
   const fieldsByOperation = {
     explore: ["operation", "slot"],
-    search: ["operation", "query", "intent", "slot", "limit"],
+    search: ["operation", "query", "intent", "slot", "limit", ...intentFields],
     inspect: ["operation", "packages"],
     contracts: ["operation", "packages"],
     validate_study_unit: ["operation", "studyUnitJson"],
-    audit_representation: ["operation", "studyUnitJson", "query", "intent", "slot"],
+    audit_representation: [
+      "operation", "studyUnitJson", "query", "intent", "slot", ...intentFields
+    ],
     preview_study_unit: ["operation", "studyUnitJson", "courseId", "studyUnitId"]
   };
   if (!Object.hasOwn(fieldsByOperation, operation)) {
@@ -1633,12 +1721,19 @@ function mapResourceLibrary(raw) {
   ]).has(operation)) {
     requiredText(raw.studyUnitJson, "studyUnitJson", { maximum: 40_000 });
   }
+  const normalized = {
+    ...optionalSchemaText(raw, "query", { maximum: 500 }),
+    ...optionalSchemaText(raw, "intent", { maximum: 2_000 }),
+    ...optionalSchemaEnum(raw, "slot", new Set(["content", "response", "feedback"])),
+    ...mapResourceIntent(raw)
+  };
   if (raw.limit != null) positiveInteger(raw.limit, "limit", 8);
   return {
     kind: "resource-library",
     requestId: null,
     body: {
       ...raw,
+      ...normalized,
       operation,
       ...(hasCourseId
         ? {

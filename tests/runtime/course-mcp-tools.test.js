@@ -615,11 +615,28 @@ test("biblioteca publica variantes fechadas por operação", () => {
   const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
   const valid = [
     { operation: "explore" },
-    { operation: "search", query: "gráfico", limit: 4 },
+    {
+      operation: "search",
+      query: "comparar atributos",
+      studyUnitRole: "theory",
+      structureIds: ["structure.table"],
+      taskOperationIds: ["task_operation.compare"],
+      knowledgeObjects: ["atributos comparáveis"],
+      mustPreserve: ["linhas e colunas"],
+      limit: 4
+    },
     { operation: "inspect", packages: ["aralearn.resource.chart@1.0.0"] },
     { operation: "contracts", packages: ["aralearn.resource.chart@1.0.0"] },
     { operation: "validate_study_unit", studyUnitJson: "{}" },
-    { operation: "audit_representation", studyUnitJson: "{}", intent: "Comparar." },
+    {
+      operation: "audit_representation",
+      studyUnitJson: "{}",
+      intent: "Comparar.",
+      studyUnitRole: "theory",
+      structureIds: ["structure.table"],
+      taskOperationIds: ["task_operation.compare"],
+      notationIsLearningObject: false
+    },
     { operation: "preview_study_unit", studyUnitJson: "{}" },
     {
       operation: "preview_study_unit",
@@ -636,9 +653,31 @@ test("biblioteca publica variantes fechadas por operação", () => {
     { operation: "preview_study_unit" },
     { operation: "preview_study_unit", studyUnitJson: "{}", courseId: COURSE_ID },
     { operation: "search", query: "gráfico", packages: ["aralearn.resource.chart@1.0.0"] },
+    { operation: "search", structureIds: ["structure.inexistente"] },
+    { operation: "audit_representation", studyUnitJson: "{}", studyUnitRole: "mixed" },
     { operation: "validate_study_unit", studyUnitJson: "{}", query: "excedente" }
   ]) {
     assert.equal(validate(value), false, JSON.stringify(value));
+  }
+
+  const mapped = mapAuthoringMcpToolCall("consultarComponentesDidaticos", valid[1]);
+  assert.deepEqual(mapped.body.structureIds, ["structure.table"]);
+  assert.deepEqual(mapped.body.taskOperationIds, ["task_operation.compare"]);
+  assert.deepEqual(mapped.body.knowledgeObjects, ["atributos comparáveis"]);
+  assert.deepEqual(mapped.body.mustPreserve, ["linhas e colunas"]);
+
+  for (const value of [
+    { operation: "search", structureIds: ["structure.inexistente"] },
+    { operation: "search", studyUnitRole: "mixed" },
+    { operation: "search", notationIsLearningObject: "false" },
+    { operation: "search", knowledgeObjects: Array.from({ length: 17 }, (_, index) => `objeto-${index}`) },
+    { operation: "search", mustPreserve: ["ordem", "ordem"] }
+  ]) {
+    assert.throws(
+      () => mapAuthoringMcpToolCall("consultarComponentesDidaticos", value),
+      (error) => error.status === 422 && error.code === "invalid_tool_argument",
+      JSON.stringify(value)
+    );
   }
 });
 
