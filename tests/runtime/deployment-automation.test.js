@@ -6,6 +6,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntimeSecurity.js";
+import {
+  latestRuntimeManifestMigration,
+  validateRuntimeManifestRevision
+} from "../../scripts/validateCourseRuntime.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const packageManifest = JSON.parse(fs.readFileSync(
@@ -540,7 +544,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260831012600");
+  assert.equal(manifest.schemaRevision, "20260831183106");
   assert.equal(manifest.requiredFeatures.includes("continuous-authoring-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
@@ -574,6 +578,49 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-source-human-locators-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
+});
+
+test("manifesto estático acompanha a última migration que avança o runtime", async (context) => {
+  const migrationsDirectory = path.join(repositoryRoot, "supabase", "migrations");
+  const manifest = JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
+    "utf8"
+  ));
+  const latest = await latestRuntimeManifestMigration(migrationsDirectory);
+  assert.deepEqual(latest, {
+    fileName: "20260831183106_fix_analysis_unit_study_unit_decomposition.sql",
+    revision: "20260831183106"
+  });
+  await validateRuntimeManifestRevision(manifest, migrationsDirectory);
+
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-runtime-manifest-"));
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "20270101000000_first.sql"),
+    "create or replace function public.get_aralearn_runtime_manifest() returns jsonb " +
+      "language sql as $$ select jsonb_build_object('schemaRevision','20270101000000') $$;",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "20270102000000_unrelated.sql"),
+    "select 1;",
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(temporaryRoot, "20270103000000_latest.sql"),
+    "create or replace function public.get_aralearn_runtime_manifest() returns jsonb " +
+      "language sql as $$ select jsonb_build_object('schemaRevision','20270103000000') $$;",
+    "utf8"
+  );
+
+  assert.equal(
+    (await latestRuntimeManifestMigration(temporaryRoot)).revision,
+    "20270103000000"
+  );
+  await assert.rejects(
+    validateRuntimeManifestRevision({ schemaRevision: "20270101000000" }, temporaryRoot),
+    /20270103000000_latest\.sql exige 20270103000000/u
+  );
 });
 
 test("smokes MCP exercitam o contrato canônico e add_part dedicado", () => {
