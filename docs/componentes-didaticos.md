@@ -113,6 +113,11 @@ evitam que uma frase livre esconda o contraste entre, por exemplo, explicar em
 prosa e comparar por tabela, ou entre reconhecer uma alternativa e produzir
 uma resposta por digitação.
 
+O retorno preserva frase e facetas em `producerDeclaration`, marcada como não
+verificada pelo backend. Com facetas presentes, o ajuste usa essas propriedades
+determinísticas e mantém `query` apenas como localizador curto; interpretar a
+intenção livre continua sendo responsabilidade do GPT e da pessoa autora.
+
 ## 4. Seleção e cobertura
 
 O catálogo devolve um estado de cobertura:

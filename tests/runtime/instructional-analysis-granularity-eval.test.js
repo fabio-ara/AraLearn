@@ -20,6 +20,15 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
   assert.equal(fixture.courseBrief.plan, undefined);
   assert.equal(fixture.regressionCases.length, 4);
   assert.equal(new Set(fixture.regressionCases.map(({ id }) => id)).size, 4);
+  assert.equal(
+    fixture.regressionCases.every(({ assumedPriorKnowledge }) => (
+      Array.isArray(assumedPriorKnowledge) &&
+      new Set(assumedPriorKnowledge).size === assumedPriorKnowledge.length
+    )),
+    true
+  );
+  assert.deepEqual(fixture.regressionCases[0].assumedPriorKnowledge, []);
+  assert.ok(fixture.regressionCases[1].assumedPriorKnowledge.includes("socket"));
   assert.deepEqual(
     fixture.regressionCases.map(({ producerDeclaration }) => producerDeclaration),
     [

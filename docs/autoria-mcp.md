@@ -809,7 +809,9 @@ Em `search` e `audit_representation`, o cliente envia as facetas estruturadas
 que conhecer — papel da Unidade, disciplina, estrutura, operação, modalidade de
 prática, objetos, relações preservadas e papel da notação — junto da intenção
 natural. A orientação da fase exige escolha por função, sem quota de variedade,
-e mantém o julgamento semântico com GPT e pessoa autora.
+e mantém o julgamento semântico com GPT e pessoa autora. O resultado conserva
+essa entrada em `producerDeclaration`, explicitamente não verificada pelo
+backend; as facetas sustentam somente a comparação determinística.
 
 ## Concorrência e repetição segura
 

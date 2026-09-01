@@ -939,6 +939,96 @@ test("auditoria pública recebe intenção estruturada sem confundir prosa com t
   assert.equal(search.data.result.candidates[0].packageId, "aralearn.resource.table");
   assert.equal(search.data.result.candidates[0].fit, "canonical");
 
+  const combinedSearch = await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "search",
+      query: "tabela",
+      intent: "Comparar atributos entre casos.",
+      studyUnitRole: "theory",
+      limit: 4
+    },
+    surface: "mcp"
+  });
+  assert.ok(combinedSearch.data.result.candidates[0].matched.includes("query:tabela"));
+  assert.equal(combinedSearch.data.result.candidates[0].matched.includes("query:atributos"), false);
+  assert.deepEqual(combinedSearch.data.producerDeclaration, {
+    epistemicStatus: "producer_declaration_not_backend_verified",
+    query: "tabela",
+    intent: "Comparar atributos entre casos.",
+    facets: { studyUnitRole: "theory" }
+  });
+
+  const combinedPracticeSearch = await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "search",
+      query: "lacuna",
+      intent: "Produzir uma resposta curta sem pistas.",
+      slot: "response",
+      taskOperationIds: ["task_operation.recall"],
+      practiceModeIds: ["practice.typing"]
+    },
+    surface: "mcp"
+  });
+  assert.equal(combinedPracticeSearch.data.result.coverage.status, "canonical");
+  assert.equal(
+    combinedPracticeSearch.data.result.candidates[0].packageId,
+    "aralearn.response.gap"
+  );
+  assert.equal(combinedPracticeSearch.data.result.candidates[0].fit, "canonical");
+  assert.equal(
+    combinedPracticeSearch.data.producerDeclaration.intent,
+    "Produzir uma resposta curta sem pistas."
+  );
+
+  const structuredOnlySearch = await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "search",
+      intent: "Não exige argumentação extensa; basta resposta curta.",
+      slot: "response",
+      taskOperationIds: ["task_operation.recall"],
+      practiceModeIds: ["practice.typing"]
+    },
+    surface: "mcp"
+  });
+  assert.equal(structuredOnlySearch.data.result.coverage.status, "canonical");
+  assert.equal(structuredOnlySearch.data.result.candidates[0].fit, "canonical");
+  assert.match(structuredOnlySearch.data.result.candidates[0].reason, /metadados/iu);
+  assert.doesNotMatch(
+    structuredOnlySearch.data.result.candidates[0].reason,
+    /preserva.*intenção/iu
+  );
+  assert.equal(
+    structuredOnlySearch.data.result.candidates[0].matched.some((entry) => (
+      entry.startsWith("query:")
+    )),
+    false
+  );
+  assert.equal(
+    structuredOnlySearch.data.producerDeclaration.epistemicStatus,
+    "producer_declaration_not_backend_verified"
+  );
+
+  const combinedAudit = await audit({
+    query: "prosa",
+    intent: "Explicar uma relação.",
+    structureIds: ["structure.prose"]
+  });
+  assert.ok(combinedAudit.result.selections[0].matched.includes("query:prosa"));
+  assert.equal(combinedAudit.result.selections[0].matched.includes("query:relacao"), false);
+  assert.equal(
+    combinedAudit.producerDeclaration.intent,
+    "Explicar uma relação."
+  );
+
   const choiceAudit = await executeCourseTool({
     adapter: {},
     principal: PRINCIPAL,
@@ -983,4 +1073,22 @@ test("auditoria pública recebe intenção estruturada sem confundir prosa com t
     choiceAudit.data.result.warnings.join(" "),
     /recordar ou produzir.*operação desejada/iu
   );
+});
+
+test("executor rejeita faceta representacional inválida como erro 422", async () => {
+  await assert.rejects(() => executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "search",
+      intent: "Produzir a resposta sem pistas.",
+      notationIsLearningObject: "false"
+    },
+    surface: "mcp"
+  }), (error) => (
+    error.status === 422 &&
+    error.code === "invalid_tool_argument" &&
+    error.details?.field === "notationIsLearningObject"
+  ));
 });

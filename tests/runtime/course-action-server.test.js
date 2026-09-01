@@ -142,6 +142,20 @@ test("Actions lista Cursos pelo canal HTTP e pelo principal opaco próprio", asy
   assert.equal(resolved, 1);
 });
 
+test("Actions rejeita faceta representacional fora do contrato como 422", async () => {
+  const response = await createHandler()(request("consultarComponentesDidaticos", {
+    operation: "search",
+    intent: "Produzir uma resposta sem pistas.",
+    notationIsLearningObject: "false"
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 422);
+  assert.equal(payload.error.code, "invalid_tool_argument");
+  assert.equal(payload.error.details.field, "notationIsLearningObject");
+  assert.equal(payload.conversation.writeState, "none");
+});
+
 test("Actions retoma uma Fonte com referência humana sem narrar controles internos", async () => {
   const sourceId = "source-edital-private";
   const anchorId = "anchor-edital-page-44";

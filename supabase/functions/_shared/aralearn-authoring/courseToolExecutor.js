@@ -518,13 +518,29 @@ async function resourceLibraryResult(args, publicAppUrl) {
       ? { packageId: match[1], version: match[2] }
       : identity;
   });
+  const structuredIntentFields = [
+    "slot", "studyUnitRole", "disciplineIds", "structureIds", "taskOperationIds",
+    "practiceModeIds", "knowledgeObjects", "mustPreserve", "notationIsLearningObject"
+  ];
+  const hasStructuredIntent = structuredIntentFields.some((field) => (
+    Object.hasOwn(facets, field)
+  ));
+  const catalogQuery = query || (hasStructuredIntent ? "" : intent);
+  const producerDeclaration = {
+    epistemicStatus: "producer_declaration_not_backend_verified",
+    query: query || null,
+    intent: intent || null,
+    facets: Object.fromEntries(structuredIntentFields
+      .filter((field) => Object.hasOwn(facets, field))
+      .map((field) => [field, structuredClone(facets[field])]))
+  };
   let result;
   if (operation === "explore") {
     result = RESOURCE_CATALOG.explore({ slot: args.slot });
   } else if (operation === "search") {
     result = RESOURCE_CATALOG.search({
       ...facets,
-      query: query || intent,
+      query: catalogQuery,
       limit: facets.limit ?? 8
     });
   } else if (operation === "inspect") {
@@ -543,7 +559,7 @@ async function resourceLibraryResult(args, publicAppUrl) {
   } else if (operation === "audit_representation") {
     result = RESOURCE_CATALOG.auditRepresentation({
       studyUnit: parseStudyUnitJson(studyUnitJson),
-      intent: { ...facets, query: intent || query }
+      intent: { ...facets, query: catalogQuery }
     });
   } else if (operation === "preview_study_unit") {
     const studyUnit = parseStudyUnitJson(studyUnitJson);
@@ -569,6 +585,9 @@ async function resourceLibraryResult(args, publicAppUrl) {
     contract: "aralearn.instructional-component-library.v1",
     operation,
     availability: { source: "installed-catalog" },
+    ...(new Set(["search", "audit_representation"]).has(operation)
+      ? { producerDeclaration }
+      : {}),
     result
   };
 }

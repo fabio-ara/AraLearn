@@ -33,6 +33,9 @@ import {
 } from
   "./conversationalPdfSourceProjection.js";
 import {
+  RESOURCE_VOCABULARIES
+} from "../aralearn/runtime/resources/catalog/vocabularies.js";
+import {
   ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES,
   AUDIT_CYCLE_REQUEST_TARGET_LIMIT_BYTES,
   AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES,
@@ -213,6 +216,85 @@ function requiredText(value, field, { maximum, optional = false } = {}) {
     fail("invalid_tool_argument", `${field} é inválido.`, { field });
   }
   return normalized;
+}
+
+function optionalSchemaText(raw, field, { minimum = 0, maximum }) {
+  if (!Object.hasOwn(raw, field)) return {};
+  const value = raw[field];
+  const length = typeof value === "string" ? [...value].length : -1;
+  if (length < minimum || length > maximum) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return { [field]: value };
+}
+
+function optionalSchemaEnum(raw, field, allowed) {
+  if (!Object.hasOwn(raw, field)) return {};
+  if (typeof raw[field] !== "string" || !allowed.has(raw[field])) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return { [field]: raw[field] };
+}
+
+function optionalSchemaTextList(raw, field, {
+  maximumItems,
+  maximumLength,
+  allowed = null
+}) {
+  if (!Object.hasOwn(raw, field)) return {};
+  const value = raw[field];
+  if (!Array.isArray(value) || value.length > maximumItems ||
+      new Set(value).size !== value.length || value.some((item) => (
+        typeof item !== "string" || [...item].length < 1 ||
+        [...item].length > maximumLength || allowed && !allowed.has(item)
+      ))) {
+    fail("invalid_tool_argument", `${field} é inválido.`, { field });
+  }
+  return { [field]: [...value] };
+}
+
+function mapResourceIntent(raw) {
+  const vocabularyIds = (records) => new Set(records.map(({ id }) => id));
+  const facets = {
+    ...optionalSchemaEnum(raw, "studyUnitRole", new Set(["theory", "practice"])),
+    ...optionalSchemaTextList(raw, "disciplineIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.disciplines)
+    }),
+    ...optionalSchemaTextList(raw, "structureIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.structures)
+    }),
+    ...optionalSchemaTextList(raw, "taskOperationIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.taskOperations)
+    }),
+    ...optionalSchemaTextList(raw, "practiceModeIds", {
+      maximumItems: 8,
+      maximumLength: 300,
+      allowed: vocabularyIds(RESOURCE_VOCABULARIES.practiceModes)
+    }),
+    ...optionalSchemaTextList(raw, "knowledgeObjects", {
+      maximumItems: 16,
+      maximumLength: 300
+    }),
+    ...optionalSchemaTextList(raw, "mustPreserve", {
+      maximumItems: 16,
+      maximumLength: 300
+    })
+  };
+  if (Object.hasOwn(raw, "notationIsLearningObject")) {
+    if (typeof raw.notationIsLearningObject !== "boolean") {
+      fail("invalid_tool_argument", "notationIsLearningObject é inválido.", {
+        field: "notationIsLearningObject"
+      });
+    }
+    facets.notationIsLearningObject = raw.notationIsLearningObject;
+  }
+  return facets;
 }
 
 function requiredOpaqueText(value, field, maximum) {
@@ -1639,12 +1721,19 @@ function mapResourceLibrary(raw) {
   ]).has(operation)) {
     requiredText(raw.studyUnitJson, "studyUnitJson", { maximum: 40_000 });
   }
+  const normalized = {
+    ...optionalSchemaText(raw, "query", { maximum: 500 }),
+    ...optionalSchemaText(raw, "intent", { maximum: 2_000 }),
+    ...optionalSchemaEnum(raw, "slot", new Set(["content", "response", "feedback"])),
+    ...mapResourceIntent(raw)
+  };
   if (raw.limit != null) positiveInteger(raw.limit, "limit", 8);
   return {
     kind: "resource-library",
     requestId: null,
     body: {
       ...raw,
+      ...normalized,
       operation,
       ...(hasCourseId
         ? {

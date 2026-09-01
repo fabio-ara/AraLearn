@@ -361,7 +361,8 @@ alternativas permanecem válidas quando adequadas, enquanto contraste,
 sequência, código, tabela, classificação ou estrutura levam à consideração das
 representações correspondentes. O retorno do catálogo verifica metadados
 declarados; GPT e pessoa autora continuam responsáveis pelo julgamento do
-conteúdo em linguagem natural.
+conteúdo em linguagem natural. `producerDeclaration` preserva a intenção e as
+facetas recebidas, com estado explícito de declaração não verificada.
 
 Texto integral de Observações e URL temporária de PDF exigem declarações
 explícitas no pedido porque esses dados serão enviados ao GPT conectado. A URL

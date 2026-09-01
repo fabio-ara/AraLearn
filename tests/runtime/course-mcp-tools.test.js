@@ -665,6 +665,20 @@ test("biblioteca publica variantes fechadas por operação", () => {
   assert.deepEqual(mapped.body.taskOperationIds, ["task_operation.compare"]);
   assert.deepEqual(mapped.body.knowledgeObjects, ["atributos comparáveis"]);
   assert.deepEqual(mapped.body.mustPreserve, ["linhas e colunas"]);
+
+  for (const value of [
+    { operation: "search", structureIds: ["structure.inexistente"] },
+    { operation: "search", studyUnitRole: "mixed" },
+    { operation: "search", notationIsLearningObject: "false" },
+    { operation: "search", knowledgeObjects: Array.from({ length: 17 }, (_, index) => `objeto-${index}`) },
+    { operation: "search", mustPreserve: ["ordem", "ordem"] }
+  ]) {
+    assert.throws(
+      () => mapAuthoringMcpToolCall("consultarComponentesDidaticos", value),
+      (error) => error.status === 422 && error.code === "invalid_tool_argument",
+      JSON.stringify(value)
+    );
+  }
 });
 
 test("schema de leitura espelha escopos, paginação e alvos aceitos pelo adaptador", () => {

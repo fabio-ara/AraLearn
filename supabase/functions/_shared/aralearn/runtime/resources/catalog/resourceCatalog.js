@@ -227,10 +227,10 @@ function searchCandidate(profile, intent) {
   if (intent.notationIsLearningObject && contraindicationHits.length) fit = "substitute";
 
   const reason = fit === "canonical"
-    ? "O package preserva as facetas e a intenção solicitadas."
+    ? "Os metadados do package cobrem os sinais estruturados e lexicais informados."
     : fit === "versatile"
-      ? "O package preserva a estrutura principal, com aplicação transversal."
-      : "É a aproximação instalada mais próxima, mas não preserva todas as facetas solicitadas.";
+      ? "Os metadados cobrem sinais parciais ou transversais; isso não verifica a intenção livre."
+      : "Os metadados deixam sinais estruturados ou lexicais sem cobertura; a adequação depende de avaliação.";
   return {
     packageId: profile.packageId,
     version: profile.version,
