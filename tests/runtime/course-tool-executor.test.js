@@ -786,6 +786,12 @@ test("conhecimento mantém núcleo curto e carrega orientação somente por fase
   const materialization = readCourseAuthoringKnowledgeResource(
     "aralearn://authoring/materialization"
   );
+  const planning = readCourseAuthoringKnowledgeResource(
+    "aralearn://authoring/planning-design"
+  );
+  const components = readCourseAuthoringKnowledgeResource(
+    "aralearn://authoring/components"
+  );
   const linguisticReview = readCourseAuthoringKnowledgeResource(
     "aralearn://authoring/linguistic-didactic-review"
   );
@@ -796,9 +802,25 @@ test("conhecimento mantém núcleo curto e carrega orientação somente por fase
   assert.match(materialization.text, /Ao concluir a Parte aprovada/iu);
   assert.match(materialization.text, /reúna pelos fatos relidos as Unidades produzidas/iu);
   assert.match(materialization.text, /devolva proativamente seu deep link/iu);
+  assert.match(materialization.text, /não introduza novidades independentes sob poucos ids/iu);
+  assert.match(materialization.text, /Distribua profundidade/iu);
+  assert.match(materialization.text, /sem practiceApplications/iu);
+  assert.match(materialization.text, /não invente evidence_requirement/iu);
+  assert.match(planning.text, /menor mudança de conhecimento ou desempenho.*rastrear separadamente/iu);
+  assert.match(planning.text, /mais de uma mudança independente/iu);
+  assert.match(planning.text, /servidor confere somente forma, identidade e relações determinísticas/iu);
+  assert.match(planning.text, /teto conta identidades novas declaradas/iu);
+  assert.match(planning.text, /várias Unidades/iu);
+  assert.match(components.text, /não escolha por variedade estética nem crie quota/iu);
+  assert.match(components.text, /Paragraph continua correto quando prosa/iu);
+  assert.match(components.text, /estrutura, operação, objetos de conhecimento/iu);
+  assert.match(components.text, /julgamento do GPT ou da pessoa/iu);
   assert.match(linguisticReview.text, /curto\/curta/iu);
   assert.match(linguisticReview.text, /explica em vez de apenas resumir/iu);
+  assert.match(linguisticReview.text, /novidades independentes escondidas/iu);
+  assert.match(linguisticReview.text, /consolidação local.*prática de evidência/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /phaseGuidance focal/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /tópico amplo que esconde novidades independentes/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /uma única aprovação/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não confirme cada chamada/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /IDs, revisões, CAS, requestIds/iu);
@@ -845,4 +867,120 @@ test("biblioteca resolve a identidade pública pacote@versão em contracts", asy
   assert.equal(contract.packageId, "aralearn.resource.code");
   assert.equal(contract.version, "1.0.0");
   assert.equal(typeof contract.definition, "object");
+  assert.equal(result.data.phaseGuidance.phase, "components");
+});
+
+test("auditoria pública recebe intenção estruturada sem confundir prosa com tabela", async () => {
+  const studyUnitJson = JSON.stringify({
+    id: "unit-representation",
+    position: 1,
+    title: "Relação explicada",
+    role: "theory",
+    content: [{
+      id: "paragraph-content",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Uma relação delimitada é explicada em prosa progressiva." }
+    }],
+    response: null,
+    feedback: [],
+    topics: ["relação"]
+  });
+  const audit = async (facets) => (await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "audit_representation",
+      studyUnitJson,
+      studyUnitRole: "theory",
+      ...facets
+    },
+    surface: "mcp"
+  })).data;
+
+  const prose = await audit({
+    intent: "Explicar uma relação em prosa.",
+    structureIds: ["structure.prose"],
+    taskOperationIds: ["task_operation.explain"],
+    knowledgeObjects: ["relação contextual"]
+  });
+  assert.equal(prose.result.overallFit, "canonical");
+  assert.equal(prose.phaseGuidance.phase, "components");
+
+  const avoidableParagraph = await audit({
+    intent: "Comparar os mesmos atributos entre casos.",
+    structureIds: ["structure.table"],
+    taskOperationIds: ["task_operation.compare"],
+    mustPreserve: ["linhas e colunas"]
+  });
+  assert.equal(avoidableParagraph.result.overallFit, "substitute");
+  assert.match(avoidableParagraph.result.warnings.join(" "), /não representa relações.*tabulares/iu);
+  assert.match(
+    avoidableParagraph.result.warnings.join(" "),
+    /não deve condensar conceitos independentes/iu
+  );
+
+  const search = await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "search",
+      intent: "Comparar atributos repetidos entre casos.",
+      studyUnitRole: "theory",
+      structureIds: ["structure.table"],
+      taskOperationIds: ["task_operation.compare"],
+      mustPreserve: ["linhas e colunas"],
+      limit: 4
+    },
+    surface: "mcp"
+  });
+  assert.equal(search.data.result.candidates[0].packageId, "aralearn.resource.table");
+  assert.equal(search.data.result.candidates[0].fit, "canonical");
+
+  const choiceAudit = await executeCourseTool({
+    adapter: {},
+    principal: PRINCIPAL,
+    name: "consultarComponentesDidaticos",
+    rawArguments: {
+      operation: "audit_representation",
+      studyUnitJson: JSON.stringify({
+        id: "unit-choice",
+        position: 2,
+        title: "Produção sem pistas",
+        role: "practice",
+        content: [],
+        response: {
+          id: "choice-response",
+          package: "aralearn.response.choice",
+          version: "1.0.0",
+          data: {
+            question: "Qual serviço resolve nomes?",
+            selectionMode: "single",
+            selectionCriterion: "correct",
+            options: [
+              { id: "dns", kind: "text", text: "DNS" },
+              { id: "dhcp", kind: "text", text: "DHCP" }
+            ],
+            answerIds: ["dns"]
+          }
+        },
+        feedback: [],
+        topics: ["serviços"]
+      }),
+      intent: "Produzir a resposta sem pistas.",
+      studyUnitRole: "practice",
+      practiceModeIds: ["practice.typing"]
+    },
+    surface: "mcp"
+  });
+  assert.equal(choiceAudit.data.result.overallFit, "substitute");
+  assert.ok(
+    choiceAudit.data.result.selections[0].missing.includes("practice:practice.typing")
+  );
+  assert.match(
+    choiceAudit.data.result.warnings.join(" "),
+    /recordar ou produzir.*operação desejada/iu
+  );
 });

@@ -105,6 +105,14 @@ Autoria planeja primeiro, busca depois e carrega uma lista de até oito
 candidatos. Ampliar a biblioteca altera os dados catalográficos e os pacotes,
 preservando a interface da ferramenta.
 
+Em `search` e `audit_representation`, a Autoria pode declarar, além da frase de
+intenção, papel da Unidade, disciplina, estrutura, operação-alvo, modalidade de
+prática, objetos de conhecimento, relações que precisam ser preservadas e se a
+notação é objeto de aprendizagem. Essas facetas já pertencem ao catálogo e
+evitam que uma frase livre esconda o contraste entre, por exemplo, explicar em
+prosa e comparar por tabela, ou entre reconhecer uma alternativa e produzir
+uma resposta por digitação.
+
 ## 4. Seleção e cobertura
 
 O catálogo devolve um estado de cobertura:
@@ -116,6 +124,12 @@ O catálogo devolve um estado de cobertura:
 Esses termos descrevem o ajuste calculado; não proclamam que uma representação
 seja universal na academia. O assistente ainda precisa confrontar convenções,
 exemplo e contraindicações depois da busca.
+
+A escolha segue a função instrucional, não uma meta de variedade. `paragraph`
+continua adequado quando prosa é a melhor forma; `choice`, quando reconhecer
+entre alternativas é a operação pretendida. Contraste, sequência, estrutura,
+código, tabela, classificação e relações visuais devem levar a Autoria a
+considerar os componentes correspondentes quando preservarem melhor o objeto.
 
 O ajuste calculado não autoriza o uso sozinho. A política de componentes
 efetiva do Curso e do escopo fixa a revisão do catálogo, a disponibilidade
@@ -362,6 +376,10 @@ Pacotes complexos também devem apresentar retorno contextualizado.
 - `semantic_fit`: a forma preserva a intenção;
 - `response_affordance`: a interação exercita a operação planejada;
 - `feedback_legibility`: o retorno pode ser relacionado à resposta.
+
+O resultado compara as facetas declaradas com metadados determinísticos do
+catálogo; não prova que o texto realmente cumpre a intenção. O GPT confronta o
+conteúdo produzido com essa declaração e a pessoa autora decide ambiguidades.
 
 A apresentação real e os testes de navegador verificam geometria e
 comportamento. Essas etapas fornecem evidência técnica; correção científica e

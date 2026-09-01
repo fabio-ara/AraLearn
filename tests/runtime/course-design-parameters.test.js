@@ -415,11 +415,101 @@ test("#235 distribui uma AnalysisUnit por duas ou três StudyUnits sem contar co
     decomposedExplanationApplication({ unitCount: 3 }),
     { contextHash: CONTEXT_HASH }
   );
+  const justifiedNotApplicable = decomposedExplanationApplication({ unitCount: 2 });
+  justifiedNotApplicable.studyUnits[1].explanationApplications[0] = {
+    instructionalAnalysisUnitId: ANALYSIS_IDS[0],
+    developedForms: ["mechanism"],
+    notApplicable: [{
+      form: "contrast",
+      reason: "A relação apresentada não possui alternativa concorrente neste recorte."
+    }]
+  };
+  const withNotApplicable = auditDesignApplication(
+    designContext,
+    justifiedNotApplicable,
+    { contextHash: CONTEXT_HASH }
+  );
 
   assert.deepEqual(twoUnits.issues, []);
   assert.deepEqual(threeUnits.issues, []);
+  assert.deepEqual(withNotApplicable.issues, []);
   assert.equal(twoUnits.summary.introducedInstructionalAnalysisUnitIds.length, 1);
   assert.equal(threeUnits.summary.introducedInstructionalAnalysisUnitIds.length, 1);
+  assert.equal(
+    justifiedNotApplicable.studyUnits[1].explanationApplications[0].notApplicable[0].form,
+    "contrast"
+  );
+});
+
+test("#264 intercala consolidação formativa sem fabricar requisito de evidência", () => {
+  const designContext = context();
+  designContext.instructionalAnalysisUnits = designContext.instructionalAnalysisUnits.slice(0, 2);
+  designContext.targets[0].instructionalAnalysisUnitIds = ANALYSIS_IDS.slice(0, 2);
+  const application = {
+    contextHash: CONTEXT_HASH,
+    didacticMicrosequenceId: MICROSEQUENCE,
+    studyUnits: [{
+      studyUnitId: "unit-explanation-a",
+      mode: "expository",
+      introducedInstructionalAnalysisUnitIds: [ANALYSIS_IDS[0]],
+      explanationApplications: [explanation(
+        ANALYSIS_IDS[0],
+        ["plain_definition", "concrete_example"]
+      )],
+      practiceApplications: [],
+      componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+    }, {
+      studyUnitId: "unit-formative-consolidation",
+      mode: "practice",
+      introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [],
+      practiceApplications: [],
+      componentRefs: [
+        "aralearn.resource.table@1.0.0",
+        "aralearn.response.ordering@3.0.0"
+      ]
+    }, {
+      studyUnitId: "unit-explanation-b",
+      mode: "expository",
+      introducedInstructionalAnalysisUnitIds: [ANALYSIS_IDS[1]],
+      explanationApplications: [
+        explanation(ANALYSIS_IDS[0], ["mechanism", "contrast"]),
+        explanation(ANALYSIS_IDS[1])
+      ],
+      practiceApplications: [],
+      componentRefs: ["aralearn.resource.relation_map@1.0.0"]
+    }, {
+      studyUnitId: "unit-local-application",
+      mode: "practice",
+      introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [],
+      practiceApplications: [],
+      componentRefs: ["aralearn.response.ordering@3.0.0"]
+    }, {
+      studyUnitId: "unit-evidence-a",
+      mode: "practice",
+      introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [],
+      practiceApplications: [practice("evidence-case-a")],
+      componentRefs: ["aralearn.response.choice@1.0.0"]
+    }, {
+      studyUnitId: "unit-evidence-b",
+      mode: "practice",
+      introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [],
+      practiceApplications: [practice("evidence-case-b")],
+      componentRefs: ["aralearn.response.choice@1.0.0"]
+    }]
+  };
+
+  const audit = auditDesignApplication(designContext, application, {
+    contextHash: CONTEXT_HASH
+  });
+  assert.deepEqual(audit.issues, []);
+  assert.equal(audit.summary.introducedInstructionalAnalysisUnitIds.length, 2);
+  assert.equal(audit.summary.practiceOpportunityCount, 2);
+  assert.equal(application.studyUnits[1].practiceApplications.length, 0);
+  assert.equal(application.studyUnits[3].practiceApplications.length, 0);
 });
 
 test("#235 aceita duas AnalysisUnits em uma StudyUnit dentro do teto e acusa o teto real", () => {

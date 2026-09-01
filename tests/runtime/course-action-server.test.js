@@ -364,6 +364,11 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
     lastPlanConversation = payload.conversation;
     assert.equal(payload.conversation.kind, "resumption");
     assert.equal(JSON.stringify(payload.conversation).includes(ACTOR_ID), false);
+    assert.equal(payload.data.phaseGuidance.phase, "planning_design");
+    assert.match(
+      payload.data.phaseGuidance.instructions.join(" "),
+      /mais de uma mudança independente.*teto conta identidades novas declaradas/iu
+    );
     return payload.data;
   };
   const changePlan = async (

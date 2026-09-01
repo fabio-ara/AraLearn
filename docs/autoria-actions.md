@@ -353,6 +353,16 @@ JSON bem formado pode continuar semanticamente inválido. A operação de
 componentes valida o contrato e abre a prévia no renderer real antes da
 aplicação.
 
+Na descoberta e na auditoria, o GPT envia junto da intenção as facetas
+estruturadas que conhecer: papel da Unidade, disciplina, estrutura,
+operação-alvo, modalidade de prática, objetos, relações a preservar e papel da
+notação. A seleção segue a função didática, sem quota de variedade: prosa e
+alternativas permanecem válidas quando adequadas, enquanto contraste,
+sequência, código, tabela, classificação ou estrutura levam à consideração das
+representações correspondentes. O retorno do catálogo verifica metadados
+declarados; GPT e pessoa autora continuam responsáveis pelo julgamento do
+conteúdo em linguagem natural.
+
 Texto integral de Observações e URL temporária de PDF exigem declarações
 explícitas no pedido porque esses dados serão enviados ao GPT conectado. A URL
 assinada de download funciona como credencial por sessenta segundos; solicite-a

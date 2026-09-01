@@ -455,6 +455,12 @@ Esse protocolo descreve o catálogo de pacotes, não o conteúdo didático. Ele 
 6. `audit_representation`: ajuste semântico, possibilidade de resposta e legibilidade do retorno;
 7. `preview_study_unit`: capacidade de abrir a composição no renderizador.
 
+`search` e `audit_representation` aceitam a intenção textual e as facetas já
+catalogadas de papel da Unidade, disciplina, estrutura, operação, modalidade de
+prática, objetos de conhecimento, relações preservadas e papel da notação. O
+servidor calcula compatibilidade entre declarações e metadados; a avaliação do
+significado do conteúdo permanece com GPT e pessoa autora.
+
 `preview_study_unit` e `audit_representation` retornam `rendered: false`: não
 fingem simular a área visível, Graphviz, Vega ou ativação interativa. Uma prévia geométrica
 exige o aplicativo real.

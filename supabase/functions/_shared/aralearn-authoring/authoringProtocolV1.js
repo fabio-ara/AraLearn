@@ -1,5 +1,9 @@
+import {
+  RESOURCE_VOCABULARIES
+} from "../aralearn/runtime/resources/catalog/vocabularies.js";
+
 export const AUTHORING_PROTOCOL_ID = "aralearn.authoring-protocol.v1";
-export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.6.0";
+export const AUTHORING_PROTOCOL_SCHEMA_VERSION = "1.7.0";
 
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
@@ -139,6 +143,44 @@ const exactlyOneReference = (identityField, indexField) => ({
 });
 
 const stringSchema = (options = {}) => ({ type: "string", ...options });
+
+const resourceFacetListSchema = (records, maximum = 8) => ({
+  type: "array",
+  maxItems: maximum,
+  uniqueItems: true,
+  items: stringSchema({ enum: records.map(({ id }) => id) })
+});
+
+function resourceIntentProperties() {
+  return {
+    studyUnitRole: stringSchema({
+      enum: ["theory", "practice"],
+      description: "Papel da Unidade cuja representação está sendo escolhida ou auditada."
+    }),
+    disciplineIds: resourceFacetListSchema(RESOURCE_VOCABULARIES.disciplines),
+    structureIds: resourceFacetListSchema(RESOURCE_VOCABULARIES.structures),
+    taskOperationIds: resourceFacetListSchema(RESOURCE_VOCABULARIES.taskOperations),
+    practiceModeIds: resourceFacetListSchema(RESOURCE_VOCABULARIES.practiceModes),
+    knowledgeObjects: {
+      type: "array",
+      maxItems: 16,
+      uniqueItems: true,
+      items: stringSchema({ minLength: 1, maxLength: 300 }),
+      description: "Objetos de conhecimento que a representação precisa tornar legíveis."
+    },
+    mustPreserve: {
+      type: "array",
+      maxItems: 16,
+      uniqueItems: true,
+      items: stringSchema({ minLength: 1, maxLength: 300 }),
+      description: "Relações, ordem, notação ou propriedades que não podem ser perdidas."
+    },
+    notationIsLearningObject: {
+      type: "boolean",
+      description: "Verdadeiro somente quando dominar a notação ou forma externa faz parte do objetivo."
+    }
+  };
+}
 const uuidSchema = stringSchema({ pattern: UUID_PATTERN.source });
 const generatedUuidSchema = stringSchema({
   pattern: UUID_PATTERN.source,
@@ -2233,10 +2275,17 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
         }, ["operation"]),
         objectSchema({
           operation: { const: "search" },
-          query: stringSchema({ maxLength: 500 }),
-          intent: stringSchema({ maxLength: 2_000 }),
+          query: stringSchema({
+            maxLength: 500,
+            description: "Termos curtos para localizar representações candidatas."
+          }),
+          intent: stringSchema({
+            maxLength: 2_000,
+            description: "Função instrucional concreta; use as facetas quando a estrutura importa."
+          }),
           slot: stringSchema({ enum: ["content", "response", "feedback"] }),
-          limit: { type: "integer", minimum: 1, maximum: 8 }
+          limit: { type: "integer", minimum: 1, maximum: 8 },
+          ...resourceIntentProperties()
         }, ["operation"]),
         objectSchema({
           operation: { const: "inspect" },
@@ -2265,9 +2314,17 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
         objectSchema({
           operation: { const: "audit_representation" },
           studyUnitJson: stringSchema({ minLength: 2, maxLength: 40_000 }),
-          query: stringSchema({ maxLength: 500 }),
-          intent: stringSchema({ maxLength: 2_000 }),
-          slot: stringSchema({ enum: ["content", "response", "feedback"] })
+          query: stringSchema({
+            maxLength: 500,
+            description: "Objeto ou representação procurada."
+          }),
+          intent: stringSchema({
+            maxLength: 2_000,
+            description:
+              "Função instrucional declarada para esta Unidade; a auditoria orienta, não prova adequação semântica."
+          }),
+          slot: stringSchema({ enum: ["content", "response", "feedback"] }),
+          ...resourceIntentProperties()
         }, ["operation", "studyUnitJson"]),
         objectSchema({
           operation: { const: "preview_study_unit" },
@@ -2287,7 +2344,7 @@ export const AUTHORING_PROTOCOL_V1_TOOLS = Object.freeze([
 ]);
 
 export const AUTHORING_PROTOCOL_V1_SCHEMA_HASH =
-  "sha256:5ca104178d90f238eea438cbcaf9bafcd8a234894fa0bda0dbce6c2f24fae262";
+  "sha256:b7ae2b4dd57775a928cf59cd3cc40ad2ba35d4878a6b9aa8d6e26e715c1e86d6";
 
 const protocolTool = (name) =>
   AUTHORING_PROTOCOL_V1_TOOLS.find((tool) => tool.name === name);

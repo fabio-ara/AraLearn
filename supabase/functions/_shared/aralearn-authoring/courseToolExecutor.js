@@ -522,7 +522,11 @@ async function resourceLibraryResult(args, publicAppUrl) {
   if (operation === "explore") {
     result = RESOURCE_CATALOG.explore({ slot: args.slot });
   } else if (operation === "search") {
-    result = RESOURCE_CATALOG.search({ ...facets, query, limit: facets.limit ?? 8 });
+    result = RESOURCE_CATALOG.search({
+      ...facets,
+      query: query || intent,
+      limit: facets.limit ?? 8
+    });
   } else if (operation === "inspect") {
     result = RESOURCE_CATALOG.inspect(packageRequests);
   } else if (operation === "contracts") {
@@ -618,10 +622,14 @@ export async function executeCourseTool({
     onRequestIdValidated(operation.requestId ?? null);
   }
   if (operation.kind === "resource-library") {
+    const data = await resourceLibraryResult(operation.body, adapter?.publicAppUrl);
+    const phaseGuidance = surface === "mcp"
+      ? courseAuthoringGuidanceForCall(name, rawArguments)
+      : null;
     return validatedSuccess(
       name,
       operation.requestId,
-      await resourceLibraryResult(operation.body, adapter?.publicAppUrl),
+      phaseGuidance ? { ...data, phaseGuidance } : data,
       surface
     );
   }
