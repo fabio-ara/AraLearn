@@ -21,7 +21,6 @@ const adapter = new CourseSupabaseAdapter({
 });
 const origins = Deno.env.get("ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS") || [
   "https://chatgpt.com",
-  "https://chat.openai.com",
   "http://127.0.0.1:4182",
   "http://localhost:4182",
   "https://fabio-ara.github.io",

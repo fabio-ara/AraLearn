@@ -28,6 +28,29 @@ test("#274 restauração usa apenas contêineres e bancos descartáveis", () => 
   assert.doesNotMatch(script, /--linked|db reset|supabase stop/u);
 });
 
+test("#275 restauração aplica toda a cadeia final em ordem", () => {
+  const cut = script.indexOf("20260902044404_cut_legacy_authoring_runtime.sql");
+  const actionOrigin = script.indexOf(
+    "20260902123759_drop_legacy_chat_openai_action_origin.sql"
+  );
+  assert.ok(cut >= 0 && actionOrigin > cut);
+  assert.match(script, /values\.migrations\.push\(\.\.\.defaultMigrations\)/u);
+  assert.match(script, /const preCutMigrations = migrationsBefore\(resolved\.migrations\[0\]\)/u);
+  assert.match(script, /applyMigrationFiles\([\s\S]+pre-cut-migrations-/u);
+  assert.match(script, /\(\?:001\|\\d\{14\}\)/u);
+  assert.match(script, /cloneDatabase\(resolved\.sourceContainer, source\)/u);
+  assert.match(script, /resetDisposableApplicationState\(source, resolved\.migrations\[0\]\)/u);
+  assert.match(script, /drop schema if exists private cascade/u);
+  assert.match(script, /drop schema if exists public cascade/u);
+  assert.match(script, /where schemaname='storage'/u);
+  assert.match(script, /delete from supabase_migrations\.schema_migrations/u);
+  assert.match(script, /recordAppliedMigration\(restored, migration\)/u);
+  assert.match(script, /state\.migrationRevision, expectedManifestRevision/u);
+  assert.match(script, /for \(const \[index, migration\] of resolved\.migrations\.entries\(\)\)/u);
+  assert.match(script, /assertAfterState\(after\.state, migrationNames\.at\(-1\)/u);
+  assert.match(script, /aralearn\.backup-restore-upgrade-proof\.v2/u);
+});
+
 test("#274 fixture cobre estado útil e resíduos encerrados para o corte", () => {
   for (const object of [
     "course_instructional_plans",

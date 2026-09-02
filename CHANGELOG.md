@@ -4,6 +4,25 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.49] - 2026-09-02
+
+### Corrigido
+
+- navegação, deep links e histórico da Autoria passam a reler a revisão vigente
+  e preservam objeto, contexto e foco, inclusive na última StudyUnit;
+- parâmetros focais, Analytics e respostas esperadas de práticas ficam
+  inspecionáveis sem expor infraestrutura nem confundir estado de exercício com
+  gabarito;
+- seleção de componentes passa a obedecer função, papel, lugar, estrutura e
+  operação didática antes de coincidências lexicais.
+
+### Alterado
+
+- geração orienta prática e consolidação perto do bloco de novidades que elas
+  exercitam, preservando mínimos, variação e inventário semântico;
+- MCP e Actions recebem schemas integrais de StudyUnit e o contrato exato do
+  componente escolhido; o OAuth de Actions exige a origem canônica atual.
+
 ## [0.0.48] - 2026-09-02
 
 ### Alterado

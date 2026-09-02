@@ -18,8 +18,8 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
     "synthetic_producer_declaration_for_model_and_human_review"
   );
   assert.equal(fixture.courseBrief.plan, undefined);
-  assert.equal(fixture.regressionCases.length, 4);
-  assert.equal(new Set(fixture.regressionCases.map(({ id }) => id)).size, 4);
+  assert.equal(fixture.regressionCases.length, 5);
+  assert.equal(new Set(fixture.regressionCases.map(({ id }) => id)).size, 5);
   assert.equal(
     fixture.regressionCases.every(({ assumedPriorKnowledge }) => (
       Array.isArray(assumedPriorKnowledge) &&
@@ -35,9 +35,12 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
       "decompose_before_materialization",
       "accept_as_separately_trackable_change",
       "accept_as_separately_trackable_change",
-      "accept_without_length_proxy"
+      "accept_without_length_proxy",
+      "decompose_before_materialization"
     ]
   );
+  assert.deepEqual(fixture.regressionCases[4].assumedPriorKnowledge, []);
+  assert.match(fixture.regressionCases[4].reason, /fundamentais.*conhecimento prévio/iu);
 
   const guidance = courseAuthoringGuidanceForCall("consultar_planejamento");
   const instructions = guidance.instructions.join(" ");
@@ -45,4 +48,10 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
   assert.match(instructions, /Conhecimentos já estabelecidos podem ser mobilizados livremente/iu);
   assert.match(instructions, /não palavras, altura, dificuldade ou carga cognitiva/iu);
   assert.match(instructions, /produtor declara.*servidor confere somente/iu);
+
+  const materialization = courseAuthoringGuidanceForCall("preparar_materializacao")
+    .instructions.join(" ");
+  assert.match(materialization, /prática e consolidação perto.*bloco de novidades e pré-requisitos/iu);
+  assert.match(materialization, /não deixe toda a prática.*longa sequência teórica/iu);
+  assert.match(materialization, /não invente evidence_requirement/iu);
 });

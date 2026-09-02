@@ -39,6 +39,13 @@
       "assumedPriorKnowledge": ["processo", "sistema operacional", "estado de processo", "evento de rede"],
       "producerDeclaration": "accept_without_length_proxy",
       "reason": "O enunciado desenvolve uma única mudança de estado, embora precise de uma explicação mais longa."
+    },
+    {
+      "id": "hidden_foundational_novelties",
+      "candidateStatement": "Um dado é um valor observado ou registrado de uma variável em um caso.",
+      "assumedPriorKnowledge": [],
+      "producerDeclaration": "decompose_before_materialization",
+      "reason": "Caso, variável e valor precisam ser estabelecidos separadamente antes de acompanhar a relação que forma um dado. Serem fundamentais não os torna conhecimento prévio."
     }
   ]
 }

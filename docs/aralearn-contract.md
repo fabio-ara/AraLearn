@@ -107,7 +107,7 @@ texto, autorização e conflitos são diferentes.
 ## Catálogo humano de Autoria
 
 MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, versão
-2. O catálogo possui dezesseis tarefas: oito leituras e oito escritas.
+2.0.2. O catálogo possui dezesseis tarefas: oito leituras e oito escritas.
 
 Cada definição contém:
 
@@ -127,8 +127,10 @@ contexto pode acompanhar leituras sem alterar a mensagem curta.
 `structuredContent`. Recursos visuais são ligados somente às tarefas que têm um
 consumidor atual.
 
-O servidor identifica o catálogo por versão e hash. Uma conexão defasada precisa
-ser renovada; não há aliases de ferramentas antigas.
+O servidor identifica o catálogo por versão e hash. Depois de uma mudança, o app
+precisa de **Refresh** e a conversa deve ser nova. Renovar o login OAuth é
+necessário somente se a autorização ou a conta também mudar. Não há aliases de
+ferramentas antigas.
 
 ## Projeção Actions
 

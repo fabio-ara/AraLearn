@@ -21,6 +21,10 @@ import {
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
+import {
+  normalizeFacetText,
+  RESOURCE_VOCABULARIES
+} from "../aralearn/runtime/resources/catalog/vocabularies.js";
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
 import { materializeHumanCoursePart } from "./courseHumanMaterialization.js";
 import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
@@ -45,7 +49,7 @@ const COURSE_SCHEMA = Object.freeze({
   type: "string",
   minLength: 1,
   maxLength: 300,
-  description: "Título exato ou referência humana inequívoca do Curso."
+  description: "Título inequívoco do Curso."
 });
 const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   type: "array",
@@ -171,6 +175,52 @@ const SOURCE_METADATA_SCHEMA = Object.freeze({
   })
 });
 
+const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["id", "package", "version", "data"]),
+  properties: Object.freeze({
+    id: Object.freeze({ type: "string", minLength: 1 }),
+    package: Object.freeze({ type: "string", minLength: 1 }),
+    version: Object.freeze({ type: "string", minLength: 1 }),
+    data: Object.freeze({ type: "object" })
+  })
+});
+
+const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["title", "role", "content", "response", "feedback", "topics"]),
+  properties: Object.freeze({
+    title: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+    role: Object.freeze({ type: "string", enum: Object.freeze(["theory", "practice"]) }),
+    content: Object.freeze({ type: "array", maxItems: 64, items: COMPONENT_INSTANCE_SCHEMA }),
+    response: Object.freeze({ anyOf: Object.freeze([
+      Object.freeze({ type: "null" }), COMPONENT_INSTANCE_SCHEMA
+    ]) }),
+    feedback: Object.freeze({ type: "array", maxItems: 64, items: COMPONENT_INSTANCE_SCHEMA }),
+    topics: Object.freeze({
+      type: "array", maxItems: 64, uniqueItems: true,
+      items: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
+    })
+  }),
+  allOf: Object.freeze([Object.freeze({
+    if: Object.freeze({
+      properties: Object.freeze({ role: Object.freeze({ const: "theory" }) })
+    }),
+    then: Object.freeze({
+      properties: Object.freeze({
+        content: Object.freeze({ minItems: 1 }),
+        response: Object.freeze({ type: "null" })
+      })
+    }),
+    else: Object.freeze({
+      properties: Object.freeze({ response: Object.freeze({ not: Object.freeze({ type: "null" }) }) })
+    })
+  })]),
+  description: "StudyUnit sem id/position."
+});
+
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -180,10 +230,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
     posicao: Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 }),
-    conteudo: Object.freeze({
-      type: "object",
-      description: "Unidade de estudo completa conforme o componente escolhido; não inclua id nem position."
-    }),
+    conteudo: STUDY_UNIT_CONTENT_SCHEMA,
     aplicacaoPedagogica: Object.freeze({
       type: "object",
       additionalProperties: false,
@@ -270,7 +317,24 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         })
       })
     })
-  })
+  }),
+  allOf: Object.freeze([Object.freeze({
+    if: Object.freeze({ properties: Object.freeze({
+      aplicacaoPedagogica: Object.freeze({ properties: Object.freeze({
+        modo: Object.freeze({ const: "expositiva" })
+      }) })
+    }) }),
+    then: Object.freeze({ properties: Object.freeze({
+      conteudo: Object.freeze({ properties: Object.freeze({
+        role: Object.freeze({ const: "theory" })
+      }) })
+    }) }),
+    else: Object.freeze({ properties: Object.freeze({
+      conteudo: Object.freeze({ properties: Object.freeze({
+        role: Object.freeze({ const: "practice" })
+      }) })
+    }) })
+  })])
 });
 
 const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
@@ -297,7 +361,7 @@ function inputSchema(properties, required = []) {
 const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   titulo: "Título humano do objeto; por exemplo, “Fundamentos de redes”.",
   objetivo: "Objetivo autoral confirmado para o novo Curso.",
-  curso: "Título exato ou referência humana inequívoca do Curso.",
+  curso: "Título inequívoco do Curso.",
   parte: "Posição a partir de 1 ou título humano da Parte.",
   microssequencia: "Posição a partir de 1 ou título humano da Microssequência.",
   unidade: "Posição a partir de 1 ou título humano da Unidade de estudo.",
@@ -355,7 +419,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "retomar_curso",
     "Retomar um Curso",
-    "Use quando a pessoa quiser localizar ou continuar um Curso pelo título. Não use para alterar conteúdo ou planejamento.",
+    "Use para localizar ou continuar Curso por título. Não use para alterá-lo.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
     }),
@@ -364,21 +428,21 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_planejamento",
     "Consultar o planejamento",
-    "Use quando for preciso ler a Parte corrente, a próxima Parte ou reabrir uma Parte anterior. Não use para salvar uma proposta.",
+    "Use para ler a Parte corrente, próxima ou anterior. Não use para salvá-la.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use antes de escrever Unidades de estudo de uma Parte aprovada. Traz somente inventário semântico, conhecimentos estabelecidos e configuração do recorte; consulte Fontes separadamente quando forem pertinentes. Não grava conteúdo.",
+    "Use para ler inventário e configuração da Parte. Não use para gravar conteúdo ou Fontes.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Use para ler valores pedagógicos efetivos, herança, aplicação factual e direção editorial no Curso, Microssequência ou StudyUnit. Não use para mudar valores.",
+    "Use para ler parâmetros e direção editorial no escopo focal. Não use para alterá-los.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -389,7 +453,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_observacoes",
     "Consultar Observações",
-    "Use para ler Observações de autoria, normalmente as abertas, em um escopo humano. Não use para produzir a revisão pedagógica nem para registrar texto novo.",
+    "Use para ler Observações abertas no escopo. Não use para revisar nem registrar.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -402,7 +466,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Use quando o GPT precisar revisar Observações e reler progressão, pré-requisitos, exemplos, prática e transições potencialmente afetados. Não aplica correções.",
+    "Use para reler Observações e Units afetadas. Não use para aplicar correções.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -414,7 +478,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_fontes",
     "Consultar Fontes e Âncoras",
-    "Use para encontrar uma Fonte, ler suas Âncoras ou ver a proveniência de uma Unidade. Não baixa PDF nem altera metadados.",
+    "Use para ler Fonte, Âncoras e proveniência. Não use para baixar PDF nem alterar.",
     inputSchema({
       curso: COURSE_SCHEMA,
       fonte: HUMAN_REFERENCE_SCHEMA,
@@ -426,12 +490,31 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_componentes",
     "Consultar componentes didáticos",
-    "Use somente quando a função instrucional pedir uma representação e o componente adequado ainda não estiver claro. Não use como catálogo preventivo nem para gravar uma Unidade.",
+    "Use função e filtros focais para buscar; componente lê schema. Não use para listar tudo nem gravar.",
     Object.freeze({
       ...inputSchema({
-      busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      funcao: Object.freeze({ type: "string", minLength: 1, maxLength: 500 }),
-      componente: Object.freeze({ type: "string", minLength: 1, maxLength: 240 })
+        busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+        funcao: Object.freeze({ type: "string", minLength: 1, maxLength: 500 }),
+        estrutura: Object.freeze({
+          type: "string", minLength: 1, maxLength: 120,
+          description: "Estrutura: texto, tabela ou processo."
+        }),
+        operacao: Object.freeze({
+          type: "string", minLength: 1, maxLength: 120,
+          description: "Operação: comparar, recordar ou ordenar."
+        }),
+        componente: Object.freeze({
+          type: "string", minLength: 1, maxLength: 240,
+          description: "Nome exato ou referência package@version do candidato cujo contrato será lido."
+        }),
+        papel: Object.freeze({
+          type: "string", enum: Object.freeze(["teoria", "pratica"]),
+          description: "Papel didático."
+        }),
+        lugar: Object.freeze({
+          type: "string", enum: Object.freeze(["conteudo", "resposta", "feedback"]),
+          description: "Lugar na Unit."
+        })
       }),
       minProperties: 1
     }),
@@ -440,7 +523,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "criar_curso",
     "Criar um Curso",
-    "Use quando a pessoa tiver confirmado o título e o objetivo de um novo Curso privado. Não use para copiar ou alterar Curso existente.",
+    "Use após confirmar título e objetivo de Curso privado. Não use para copiar ou alterar.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
       objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
@@ -450,7 +533,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma Parte do planejamento",
-    "Use depois que a pessoa aprovar a próxima Parte ou pedir a revisão de uma Parte anterior. Sem parte, adiciona somente a próxima; com parte, revisa aquela Parte. Não materializa conteúdo.",
+    "Use após aprovar a próxima Parte ou revisar uma anterior. Não use para materializar.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -466,7 +549,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma Parte",
-    "Use para gravar as Unidades de estudo de uma Parte aprovada depois de preparar o recorte focal. O inventário semântico deve permanecer estável e completo; não use para esconder novidades nem para reparar uma Unidade existente.",
+    "Use para gravar Parte aprovada após preparar. Não use para reparar Unit.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -479,7 +562,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "ajustar_configuracao",
     "Ajustar a configuração autoral",
-    "Use para calibrar ou fixar os quatro parâmetros pedagógicos e/ou a direção editorial no Curso, Microssequência ou StudyUnit. A condição é automática por padrão; valor null restaura herança. Não use direção editorial para comprimir ou eliminar conteúdo necessário.",
+    "Use para definir ou herdar parâmetros e direção. Não use editorial para comprimir conteúdo.",
     Object.freeze({
       ...inputSchema({
       curso: COURSE_SCHEMA,
@@ -503,7 +586,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "registrar_observacao",
     "Registrar Observação",
-    "Use para registrar o mesmo apontamento em uma ou várias Unidades selecionadas. Cada Observação é gravada separadamente; não cria lote permanente e não aplica correção.",
+    "Use para anotar uma ou várias Units separadamente. Não use para criar lote nem corrigir.",
     inputSchema({
       curso: COURSE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
@@ -520,7 +603,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Use somente depois de preparar a revisão e definir o conjunto coerente de Unidades afetadas. Não use para comprovar aplicação de configuração alterada: rematerialize a Parte quando novidade, explicação, prática, representação ou distribuição precisarem mudar.",
+    "Use após revisar o conjunto coerente de Units afetadas. Não use para aplicar configuração.",
     inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -530,7 +613,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           required: Object.freeze(["unidade", "conteudo"]),
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
-            conteudo: Object.freeze({ type: "object" }),
+            conteudo: STUDY_UNIT_CONTENT_SCHEMA,
             fontes: Object.freeze({
               type: "array", maxItems: 32,
               items: Object.freeze({
@@ -555,7 +638,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "manter_fonte",
     "Manter Fonte e Âncoras",
-    "Use para salvar metadados de uma Fonte, adotar ou contestar sua verificação, manter Âncoras e/ou vincular proveniência a Unidades. Não use para receber o arquivo PDF.",
+    "Use para manter metadados, Âncoras e vínculos da Fonte. Não use para receber PDF.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
@@ -601,7 +684,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "incorporar_pdf_como_fonte",
     "Incorporar PDF como Fonte",
-    "Use quando o PDF anexado deve permanecer como Fonte do Curso ou ser anexado a uma Fonte existente. Não use para leitura descartável nem sem intenção inequívoca de armazenamento.",
+    "Use para incorporar PDF como Fonte permanente. Não use para leitura descartável.",
     inputSchema({
       curso: COURSE_SCHEMA,
       fonte: HUMAN_REFERENCE_SCHEMA,
@@ -623,9 +706,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.2";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:e876aa75459717f10a63ceab3eba83655a54f9d5bfb6c9a23f8cfa5b5f2cd925";
+  "sha256:2f566595ae3436db055695cc488bf7fefa582d26471216ed3a2e318fe2afb305";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -750,6 +833,10 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
+    if (normalizedKey === "component_authoring_contract") {
+      projected[key] = structuredClone(entry);
+      continue;
+    }
     const segments = normalizedKey.split("_");
     const technical = new Set(["id", "ids", "revision", "version", "hash", "path"]);
     if (technical.has(segments.at(-1)) ||
@@ -1100,6 +1187,11 @@ async function buildApprovedPart({ state, definitions, title, intent, newId }) {
     collection.push(created);
     return created;
   };
+  const resolvePlanItems = async (kind, statements) => {
+    const resolved = [];
+    for (const statement of statements) resolved.push(await resolvePlanItem(kind, statement));
+    return resolved;
+  };
 
   const microsequences = [];
   for (const [index, definition] of definitions.entries()) {
@@ -1178,9 +1270,9 @@ async function buildApprovedPart({ state, definitions, title, intent, newId }) {
     }
     selectedMicrosequenceIds.add(microsequenceRow.entityId);
 
-    const analysisUnits = await Promise.all(
-      definition.analysisUnitStatements.map((statement) =>
-        resolvePlanItem("instructional_analysis_unit", statement))
+    const analysisUnits = await resolvePlanItems(
+      "instructional_analysis_unit",
+      definition.analysisUnitStatements
     );
     for (const analysisUnit of analysisUnits) {
       const previousMicrosequenceId = analysisTargetById.get(analysisUnit.id);
@@ -1207,9 +1299,9 @@ async function buildApprovedPart({ state, definitions, title, intent, newId }) {
       role: definition.role,
       position: index,
       analysisUnits,
-      evidenceRequirements: await Promise.all(
-        definition.evidenceRequirementStatements.map((statement) =>
-          resolvePlanItem("evidence_requirement", statement))
+      evidenceRequirements: await resolvePlanItems(
+        "evidence_requirement",
+        definition.evidenceRequirementStatements
       )
     });
   }
@@ -1787,18 +1879,127 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   });
 };
 
+function componentLookupText(value) {
+  return String(value || "").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
+}
+
+function componentSearchProjection(catalog) {
+  return {
+    coverage: catalog.coverage,
+    candidates: catalog.candidates.map(({ packageId, version, ...candidate }) => ({
+      referencia: `${packageId}@${version}`,
+      ...candidate
+    }))
+  };
+}
+
+function selectedComponentCandidate(reference, candidates) {
+  const normalized = componentLookupText(reference);
+  const direct = String(reference).trim().match(/^(.+)@(\d+\.\d+\.\d+)$/u);
+  if (direct) return { packageId: direct[1], version: direct[2] };
+  return candidates.find((candidate) => [candidate.packageId, candidate.label]
+    .some((value) => componentLookupText(value) === normalized)) ?? null;
+}
+
+const COMPONENT_STUDY_UNIT_ROLE = Object.freeze({
+  teoria: "theory",
+  pratica: "practice"
+});
+const COMPONENT_SLOT = Object.freeze({
+  conteudo: "content",
+  resposta: "response",
+  feedback: "feedback"
+});
+
+function componentFilter(value, field, mapping) {
+  if (value === undefined) return "";
+  const humanValue = text(value, field, 20);
+  const normalized = mapping[humanValue];
+  if (!normalized) {
+    fail("invalid_human_task_argument", `${field} é inválido.`, { field });
+  }
+  return normalized;
+}
+
+function componentVocabularyFilter(value, field, records) {
+  if (value === undefined) return [];
+  const requested = normalizeFacetText(text(value, field, 120));
+  const matches = records.filter((record) => [record.label, ...(record.aliases || [])]
+    .some((candidate) => normalizeFacetText(candidate) === requested));
+  if (matches.length !== 1) {
+    fail(
+      "invalid_human_task_argument",
+      `${field} não corresponde a um termo humano inequívoco do catálogo.`,
+      { field }
+    );
+  }
+  return [matches[0].id];
+}
+
 HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
   if (!Object.keys(args).length) {
-    fail("missing_human_task_argument", "Informe busca, funcao ou componente.");
+    fail("missing_human_task_argument", "Informe função, busca, componente ou filtro focal.");
   }
   const query = [args.busca, args.funcao, args.componente]
     .filter((value) => value !== undefined)
     .map((value, index) => text(value, `consulta[${index}]`, 500))
     .join(" ");
-  const catalog = RESOURCE_CATALOG.search({ query, limit: 8 });
+  const catalog = RESOURCE_CATALOG.search({
+    query,
+    limit: 8,
+    studyUnitRole: componentFilter(
+      args.papel,
+      "papel",
+      COMPONENT_STUDY_UNIT_ROLE
+    ),
+    slot: componentFilter(args.lugar, "lugar", COMPONENT_SLOT),
+    structureIds: componentVocabularyFilter(
+      args.estrutura,
+      "estrutura",
+      RESOURCE_VOCABULARIES.structures
+    ),
+    taskOperationIds: componentVocabularyFilter(
+      args.operacao,
+      "operacao",
+      RESOURCE_VOCABULARIES.taskOperations
+    )
+  });
+  if (args.componente !== undefined) {
+    const selected = selectedComponentCandidate(args.componente, catalog.candidates);
+    const inspected = selected
+      ? RESOURCE_CATALOG.contracts([selected]).items[0]
+      : null;
+    if (inspected?.status === "ok") {
+      const definition = inspected.definition;
+      return result("Li o contrato exato do componente escolhido.", {
+        nextDecision: "Use este schema na instância ou consulte outro candidato se ele não cumprir a função.",
+        context: {
+          componentAuthoringContract: {
+            referencia: `${definition.package}@${definition.version}`,
+            rotulo: definition.manifest.label,
+            finalidade: definition.manifest.purpose,
+            slots: definition.manifest.slots,
+            compatibilidadeDeResposta: definition.manifest.responseCompatibility,
+            limitacoes: definition.manifest.limitations,
+            contrato: definition.contract,
+            schema: definition.schema,
+            ...(Object.hasOwn(definition, "practiceTargets")
+              ? { practiceTargets: definition.practiceTargets }
+              : {}),
+            modeloDeInstancia: {
+              id: "identificador-local-unico",
+              package: definition.package,
+              version: definition.version,
+              data: definition.contract.example
+            }
+          }
+        }
+      });
+    }
+  }
   return result("Encontrei representações candidatas para a função instrucional.", {
     nextDecision: "Qual representação cumpre melhor a função desta Unidade?",
-    context: { components: catalog }
+    context: { components: componentSearchProjection(catalog) }
   });
 };
 

@@ -27,8 +27,7 @@ $RequiredApplicationOrigins = @(
   'https://appassets.androidplatform.net'
 )
 $RequiredActionOrigins = @(
-  'https://chatgpt.com',
-  'https://chat.openai.com'
+  'https://chatgpt.com'
 )
 
 function Invoke-AraLearnSupabase {

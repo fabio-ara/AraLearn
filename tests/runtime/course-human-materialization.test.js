@@ -243,6 +243,24 @@ function pedagogicalUnit(position, {
   value.posicao = position;
   value.conteudo.title = `Unidade ${position}`;
   value.conteudo.content[0].id = `paragraph-${position}`;
+  if (mode !== "expositiva") {
+    value.conteudo.role = "practice";
+    value.conteudo.response = {
+      id: `choice-${position}`,
+      package: "aralearn.response.choice",
+      version: "1.0.0",
+      data: {
+        question: `Qual afirmação corresponde à Unidade ${position}?`,
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        options: [
+          { id: "correct", text: "A afirmação coerente." },
+          { id: "distractor", text: "Uma interpretação incompatível." }
+        ],
+        answerIds: ["correct"]
+      }
+    };
+  }
   value.aplicacaoPedagogica = {
     modo: mode,
     novidadesIntroduzidas: novelty,
@@ -251,6 +269,47 @@ function pedagogicalUnit(position, {
   };
   return value;
 }
+
+test("papel da StudyUnit corresponde ao modo pedagógico declarado", async () => {
+  const practiceAsTheory = pedagogicalUnit(1, { mode: "pratica", practices: [] });
+  practiceAsTheory.conteudo.role = "theory";
+  practiceAsTheory.conteudo.response = null;
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: pedagogicalAdapter({ analysisCount: 0 }),
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [practiceAsTheory]
+  }), (error) => error.code === "human_materialization_mode_mismatch");
+
+  const theoryAsPractice = pedagogicalUnit(1, {
+    novelty: [1],
+    explanations: [{ novidade: 1, formas: ["plain_definition", "mechanism"] }]
+  });
+  theoryAsPractice.conteudo.role = "practice";
+  theoryAsPractice.conteudo.response = {
+    id: "choice-1",
+    package: "aralearn.response.choice",
+    version: "1.0.0",
+    data: {
+      question: "Qual relação foi explicada?",
+      selectionMode: "single",
+      selectionCriterion: "correct",
+      options: [
+        { id: "correct", text: "A relação explicada." },
+        { id: "distractor", text: "Outra relação." }
+      ],
+      answerIds: ["correct"]
+    }
+  };
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: pedagogicalAdapter({ analysisCount: 1 }),
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [theoryAsPractice]
+  }), (error) => error.code === "human_materialization_mode_mismatch");
+});
 
 test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou requestIds públicos", async () => {
   const adapter = adapterFixture();

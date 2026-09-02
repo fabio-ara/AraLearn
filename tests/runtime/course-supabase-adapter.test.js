@@ -799,6 +799,19 @@ test("interrompe a leitura quando a resposta do banco excede o teto em bytes", a
   assert.equal(cancelled, true);
 });
 
+test("indisponibilidade do serviço não expõe o provedor na mensagem humana", async () => {
+  const value = adapter(async () => {
+    throw new Error("falha de rede sintética");
+  });
+
+  await assert.rejects(
+    () => value.listCourses({ principal: { actorId: USER_ID } }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable" &&
+      error.message === "Não foi possível alcançar o serviço." &&
+      !/supabase/iu.test(error.message)
+  );
+});
+
 test("autentica sessão do aplicativo sem resolver governança paralela", async () => {
   const calls = [];
   const value = adapter(async (url, init) => {

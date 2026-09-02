@@ -1167,6 +1167,23 @@ export function createCourseAuthoringSurface({
           : null,
         initialFocusKey,
         onNavigate: (hash, options) => navigate(hash, options),
+        onStudyUnitChange(studyUnitId) {
+          const explicitTarget = Boolean(state.routeTarget);
+          const hash = buildCourseAuthoringRoute(state.course.courseId, {
+            section: "content",
+            studyUnitId
+          });
+          if (hash === state.routeKey) return true;
+          if (typeof historyValue?.pushState !== "function") {
+            return navigate(hash);
+          }
+          historyValue.pushState(historyValue.state ?? null, "", locationUrl(hash));
+          state.routeKey = hash;
+          state.routeTarget = explicitTarget
+            ? Object.freeze({ kind: "study_unit", id: studyUnitId })
+            : null;
+          return true;
+        },
         onEditSources: (target) => openTargetSources(target),
         onEditContent: onOpenStudyContent ? openInspectionContentEditor : null,
         onSaveManualEdit: typeof controller.commitCourseComposition === "function"
@@ -1608,7 +1625,8 @@ export function createCourseAuthoringSurface({
     }
     if (route) {
       const nextKey = hash;
-      if (state.routeKey && state.routeKey !== nextKey) {
+      const routeChanged = Boolean(state.routeKey && state.routeKey !== nextKey);
+      if (routeChanged) {
         destroyInspectionSequence();
         state.sourceTarget = null;
         state.actionConfirmation = null;
@@ -1628,6 +1646,9 @@ export function createCourseAuthoringSurface({
       if (!force && state.course?.courseId === route.courseId &&
           state.course) {
         state.view = "course";
+        if (route.section === "content" && routeChanged) {
+          return loadCourse(route.courseId, { force: true });
+        }
         if (route.section === "people" && !state.people) {
           return loadPeople(route.courseId);
         }

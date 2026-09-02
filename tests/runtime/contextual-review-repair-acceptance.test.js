@@ -65,6 +65,7 @@ test("#271 guidance conduz Observações abertas até reparo contextual e reinsp
   assert.match(sourceText, /Fonte e Âncora continuam contestáveis/iu);
   assert.match(componentText, /condensação evitável.*proposta concreta.*revisão/iu);
   assert.match(componentText, /não uma quota de diversidade/iu);
+  assert.match(componentText, /função.*papel e lugar.*estrutura e operação/iu);
 });
 
 test("#271 MCP e Actions preservam consulta, revisão, Observação e correção humanas", () => {
@@ -91,7 +92,19 @@ test("#271 MCP e Actions preservam consulta, revisão, Observação e correção
       correcoes: fixture.affectedContext.filter(({ requiresRepair }) => requiresRepair)
         .map(({ studyUnitId }) => ({
           unidade: studyUnitId,
-          conteudo: { title: `Reparo de ${studyUnitId}`, role: "theory", content: [] },
+          conteudo: {
+            title: `Reparo de ${studyUnitId}`,
+            role: "theory",
+            content: [{
+              id: `reparo-${studyUnitId}`,
+              package: "aralearn.resource.paragraph",
+              version: "1.0.0",
+              data: { text: "Conteúdo integral corrigido para o percurso afetado." }
+            }],
+            response: null,
+            feedback: [],
+            topics: []
+          },
           fontes: []
         }))
     }
@@ -131,6 +144,17 @@ test("#271 Fontes, componentes e parâmetro seguinte permanecem casos focais", (
   assert.equal(fixture.sources[0].factualSupport, false);
   assert.equal(fixture.sources.every(({ contestable }) => contestable), true);
   assert.equal(fixture.parameterChange.appliesTo, "next_generation_or_revision");
+});
+
+test("orientação de planejamento não esconde conceitos fundamentais em AnalysisUnit larga", () => {
+  const planning = courseAuthoringGuidanceForCall("consultar_planejamento")
+    .instructions.join(" ");
+  const materialization = courseAuthoringGuidanceForCall("preparar_materializacao")
+    .instructions.join(" ");
+
+  assert.match(planning, /dois conceitos novos.*relação.*três unidades de análise/iu);
+  assert.match(planning, /conceitos fundamentais ainda não estabelecidos/iu);
+  assert.match(materialization, /mesmo quando fundamental.*alicerçar outra novidade/iu);
 });
 
 test("#271 OpenAPI usa somente as tarefas humanas e o resultado curto", () => {

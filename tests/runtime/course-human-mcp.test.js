@@ -149,7 +149,7 @@ test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.2");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
@@ -204,8 +204,14 @@ test("salvar_parte grava estrutura e inventário completos sem expor identidades
         titulo: "O que é um socket",
         objetivo: "Definir socket sem pressupor o modelo de transporte.",
         funcao: "explicar",
-        unidadesDeAnalise: ["Socket é uma interface entre processo e transporte."],
-        requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
+        unidadesDeAnalise: [
+          "Socket é uma interface entre processo e transporte.",
+          "Uma conexão relaciona dois endpoints de comunicação."
+        ],
+        requisitosDeEvidencia: [
+          "Distinguir processo, socket e conexão.",
+          "Relacionar cada endpoint ao processo correspondente."
+        ]
       }, {
         modulo: "Comunicação",
         objetivoDoModulo: "Explicar como processos se comunicam em rede.",
@@ -215,7 +221,10 @@ test("salvar_parte grava estrutura e inventário completos sem expor identidades
         objetivo: "Mobilizar a distinção em casos variados.",
         funcao: "praticar",
         unidadesDeAnalise: [],
-        requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
+        requisitosDeEvidencia: [
+          "Distinguir processo, socket e conexão.",
+          "Relacionar cada endpoint ao processo correspondente."
+        ]
       }]
     }
   });
@@ -232,8 +241,14 @@ test("salvar_parte grava estrutura e inventário completos sem expor identidades
   assert.equal(writes[0].part.microsequences[0].lessonId,
     writes[0].part.microsequences[1].lessonId);
   assert.equal(writes[0].part.microsequences[1].analysisUnits.length, 0);
+  assert.equal(new Set(writes[0].part.microsequences[0].analysisUnits
+    .map(({ id }) => id)).size, 2);
+  assert.equal(new Set(writes[0].part.microsequences[0].evidenceRequirements
+    .map(({ id }) => id)).size, 2);
   assert.equal(writes[0].part.microsequences[0].evidenceRequirements[0].id,
     writes[0].part.microsequences[1].evidenceRequirements[0].id);
+  assert.equal(writes[0].part.microsequences[0].evidenceRequirements[1].id,
+    writes[0].part.microsequences[1].evidenceRequirements[1].id);
   assert.equal(output.context.part.microsequenceCount, 2);
   assert.doesNotMatch(
     JSON.stringify(output.context),
@@ -555,6 +570,10 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     visit(task.inputSchema, (entry, path) => {
       for (const name of Object.keys(entry.properties || {})) {
         if (name === "file_id") continue;
+        const localComponentIdentity = ["id", "version"].includes(name) &&
+          /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
+            .test(path);
+        if (localComponentIdentity) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
     });
@@ -568,9 +587,214 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
   const components = ajv.compile(COURSE_HUMAN_TASKS.find(({ name }) => (
     name === "consultar_componentes"
   )).inputSchema);
+  const materialization = ajv.compile(COURSE_HUMAN_TASKS.find(({ name }) => (
+    name === "materializar_parte"
+  )).inputSchema);
+  const corrections = ajv.compile(COURSE_HUMAN_TASKS.find(({ name }) => (
+    name === "aplicar_correcoes"
+  )).inputSchema);
+  const content = {
+    title: "O que é um socket",
+    role: "theory",
+    content: [{
+      id: "body",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Um socket liga o processo ao transporte." }
+    }],
+    response: null,
+    feedback: [],
+    topics: ["socket"]
+  };
+  const materializationArguments = {
+    curso: "Redes",
+    parte: 1,
+    unidades: [{
+      microssequencia: 1,
+      posicao: 1,
+      conteudo: content,
+      aplicacaoPedagogica: {
+        modo: "expositiva",
+        novidadesIntroduzidas: [1],
+        explicacoes: [{ novidade: 1, formas: ["plain_definition"] }],
+        praticas: []
+      }
+    }]
+  };
   assert.equal(config({ curso: "Redes" }), false);
   assert.equal(source({ curso: "Redes" }), false);
   assert.equal(components({}), false);
+  assert.equal(materialization(materializationArguments), true,
+    JSON.stringify(materialization.errors));
+  assert.equal(materialization({
+    ...materializationArguments,
+    unidades: [{ ...materializationArguments.unidades[0], conteudo: {} }]
+  }), false);
+  assert.equal(materialization({
+    ...materializationArguments,
+    unidades: [{
+      ...materializationArguments.unidades[0],
+      conteudo: { ...content, content: [], response: content.content[0] }
+    }]
+  }), false);
+  assert.equal(materialization({
+    ...materializationArguments,
+    unidades: [{
+      ...materializationArguments.unidades[0],
+      conteudo: { ...content, role: "practice", response: null }
+    }]
+  }), false);
+  assert.equal(materialization({
+    ...materializationArguments,
+    unidades: [{
+      ...materializationArguments.unidades[0],
+      aplicacaoPedagogica: {
+        modo: "pratica",
+        novidadesIntroduzidas: [],
+        explicacoes: [],
+        praticas: []
+      }
+    }]
+  }), false);
+  assert.equal(corrections({
+    curso: "Redes",
+    correcoes: [{ unidade: 1, conteudo: content }]
+  }), true, JSON.stringify(corrections.errors));
+  assert.equal(corrections({
+    curso: "Redes",
+    correcoes: [{ unidade: 1, conteudo: { ...content, id: "unit-technical" } }]
+  }), false);
+});
+
+test("#275 consultar_componentes separa descoberta do contrato exato", async () => {
+  const discovered = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { busca: "plano cartesiano" }
+  });
+  assert.equal(
+    discovered.context.components.candidates[0].referencia,
+    "aralearn.resource.plane@1.0.0"
+  );
+  assert.equal(Object.hasOwn(discovered.context.components.candidates[0], "packageId"), false);
+
+  const inspected = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { componente: "aralearn.resource.plane@1.0.0" }
+  });
+  const contract = inspected.context.componentAuthoringContract;
+  assert.equal(inspected.result, "Li o contrato exato do componente escolhido.");
+  assert.equal(contract.referencia, "aralearn.resource.plane@1.0.0");
+  assert.equal(contract.modeloDeInstancia.package, "aralearn.resource.plane");
+  assert.equal(contract.modeloDeInstancia.version, "1.0.0");
+  assert.equal(contract.schema.properties.groups.items.properties.id.type, "string");
+  assert.deepEqual(contract.contrato.required, ["xAxis", "yAxis"]);
+
+  const practice = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: {
+      funcao: "Pedir que a pessoa ordene etapas de leitura de um gráfico.",
+      papel: "pratica",
+      lugar: "resposta"
+    }
+  });
+  assert.equal(practice.context.components.candidates.every(({ referencia }) => (
+    referencia.startsWith("aralearn.response.")
+  )), true);
+  assert.equal(practice.context.components.candidates.some(({ referencia }) => (
+    referencia === "aralearn.response.ordering@3.0.0"
+  )), true);
+
+  const table = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { componente: "aralearn.resource.table@1.0.0" }
+  });
+  assert.ok(table.context.componentAuthoringContract.practiceTargets.length > 0);
+  assert.equal(
+    table.context.componentAuthoringContract.practiceTargets[0].path,
+    "rows[0][0]"
+  );
+
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { papel: "laboratorio" }
+  }), (error) => error.code === "invalid_human_task_argument");
+});
+
+test("#275 consultar_componentes faz filtros estruturados regerem a função instrucional", async () => {
+  const cases = [{
+    args: {
+      funcao: "Pedir que a pessoa reconstrua a ordem das etapas de um procedimento.",
+      operacao: "ordenar",
+      papel: "pratica",
+      lugar: "resposta"
+    },
+    expected: "aralearn.response.ordering@3.0.0"
+  }, {
+    args: {
+      funcao: "Pedir recuperação ativa de um termo sem oferecer alternativas.",
+      operacao: "recuperar",
+      papel: "pratica",
+      lugar: "resposta"
+    },
+    expected: "aralearn.response.gap@1.0.0"
+  }, {
+    args: {
+      funcao: "Explicar uma sequência linear de passos sem decisão.",
+      estrutura: "texto",
+      papel: "teoria",
+      lugar: "conteudo"
+    },
+    expected: "aralearn.resource.paragraph@1.0.0"
+  }, {
+    args: {
+      funcao: "Comparar os mesmos atributos entre casos.",
+      estrutura: "tabela",
+      operacao: "comparar",
+      papel: "teoria",
+      lugar: "conteudo"
+    },
+    expected: "aralearn.resource.table@1.0.0"
+  }, {
+    args: {
+      funcao: "Acompanhar um processo com decisão.",
+      estrutura: "processo",
+      operacao: "acompanhar",
+      papel: "teoria",
+      lugar: "conteudo"
+    },
+    expected: "aralearn.resource.flow@1.0.0"
+  }];
+  for (const scenario of cases) {
+    const discovered = await executeHumanCourseTask({
+      adapter: adapter(),
+      principal: PRINCIPAL,
+      name: "consultar_componentes",
+      rawArguments: scenario.args
+    });
+    assert.equal(discovered.context.components.coverage.status, "canonical");
+    assert.equal(
+      discovered.context.components.candidates[0].referencia,
+      scenario.expected,
+      scenario.args.funcao
+    );
+  }
+
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { operacao: "decorar a tela" }
+  }), (error) => error.code === "invalid_human_task_argument");
 });
 
 test("#272 autorização filtra writes e recusa input mecânico antes do domínio", async () => {

@@ -2093,6 +2093,41 @@ test("Conteúdo carrega só o Curso e entrega toda a navegação à sequência",
   assert.doesNotMatch(root.innerHTML, /course-authoring-outline|Estrutura do Curso|Base · Relações/u);
 });
 
+test("deep link de outra Unit no mesmo Curso relê a revisão produzida fora da tela", async () => {
+  const root = new FakeRoot();
+  const windowValue = new FakeWindow();
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, {
+      section: "content",
+      studyUnitId: "unit-1"
+    })
+  };
+  let reads = 0;
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        reads += 1;
+        return courseDetailFixture({ courseId, revision: 4 + reads });
+      }
+    }),
+    locationValue,
+    windowValue
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.equal(reads, 1);
+  locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, {
+    section: "content",
+    studyUnitId: "unit-2"
+  });
+  windowValue.dispatch("hashchange");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(reads, 2);
+});
+
 test("back interno retorna do Conteúdo diretamente à lista sem overview intermediário", async () => {
   const root = new FakeRoot();
   const windowValue = new FakeWindow();
@@ -2200,7 +2235,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.doesNotMatch(surfaceSource, /course-authoring-chat|Trabalhar no ChatGPT|Copiar pedido/u);
   assert.match(
     surfaceSource,
-    /if \(state\.routeKey && state\.routeKey !== nextKey\) \{\s*destroyInspectionSequence\(\);[\s\S]*?root\.scrollTop = 0;/u
+    /const routeChanged = Boolean\(state\.routeKey && state\.routeKey !== nextKey\);\s*if \(routeChanged\) \{\s*destroyInspectionSequence\(\);[\s\S]*?root\.scrollTop = 0;/u
   );
   assert.match(css, /@media \(max-width: 380px\)/u);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/u);

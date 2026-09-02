@@ -320,6 +320,8 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   );
   assert.match(source, /ARALEARN_COURSE_API_ALLOWED_ORIGINS=\$origins/u);
   assert.match(source, /ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=\$actionOrigins/u);
+  assert.match(source, /\$RequiredActionOrigins\s*=\s*@\([\s\S]+https:\/\/chatgpt\.com[\s\S]+\)/u);
+  assert.doesNotMatch(source, /chat\.openai\.com/u);
   assert.match(source, /runHostedMcpOAuthSmoke\.mjs/u);
   assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-course-api\/v1\/courses/u);
   assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-authoring-action\/retomar_curso/u);
@@ -371,6 +373,9 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /supabase@2\.115\.0', 'test', 'db'/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
+  assert.equal((source.match(/= Start-LocalEdgeFunctions/g) || []).length, 1);
+  assert.doesNotMatch(source, /Start-LocalEdgeFunction -Name/u);
+  assert.match(source, /taskkill\.exe \/PID \$Process\.Id \/T \/F/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.doesNotMatch(
     source,
@@ -445,7 +450,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260902044404");
+  assert.equal(manifest.schemaRevision, "20260902123759");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-part-save-v1"), true);
   assert.equal(
@@ -504,8 +509,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260902044404_cut_legacy_authoring_runtime.sql",
-    revision: "20260902044404"
+    fileName: "20260902123759_drop_legacy_chat_openai_action_origin.sql",
+    revision: "20260902123759"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

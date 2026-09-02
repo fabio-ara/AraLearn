@@ -109,6 +109,18 @@ test("modalidade prática ausente impede classificação canônica", () => {
   assert.ok(plane.missing.includes("practice:practice.typing"));
 });
 
+test("faceta operacional explícita prevalece sobre coincidência lexical em contraindicação", () => {
+  const result = RESOURCE_CATALOG.search({
+    query: "Reconstruir a ordem das etapas de um procedimento.",
+    slot: "response",
+    studyUnitRole: "practice",
+    taskOperationIds: ["task_operation.order"],
+    practiceModeIds: ["practice.ordering"]
+  });
+  assert.equal(result.coverage.status, "canonical");
+  assert.equal(result.candidates[0].packageId, "aralearn.response.ordering");
+});
+
 test("versão do catálogo incorpora perfis, vocabulários e política", () => {
   assert.match(RESOURCE_CATALOG.catalogVersion, /^1-[0-9a-f]{8}$/u);
   const formerIdentityOnlyVersion = (() => {

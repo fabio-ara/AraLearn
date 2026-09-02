@@ -291,6 +291,84 @@ test("refresh adota a revisão relida e dados ausentes continuam explícitos", a
   await assert.rejects(panel.refresh(0), /revisão do Curso para atualizar Analytics é inválida/u);
 });
 
+test("falha transitória oferece nova tentativa sem expor a infraestrutura", async () => {
+  const root = new FakeRoot();
+  let calls = 0;
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() {
+      calls += 1;
+      if (calls === 1) throw new Error("O serviço não respondeu a tempo.");
+      return analyticsPage();
+    } }
+  });
+
+  await panel.open();
+  assert.match(root.innerHTML, /O serviço não respondeu a tempo\./u);
+  assert.match(root.innerHTML, /data-course-analytics-action="reload"/u);
+  assert.match(root.innerHTML, /aria-label="Tentar novamente"/u);
+  assert.doesNotMatch(root.innerHTML, /Supabase/iu);
+
+  root.listeners.get("click")({
+    target: {
+      closest: (selector) => selector === "[data-course-analytics-action]"
+        ? { dataset: { courseAnalyticsAction: "reload" } }
+        : null
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 2);
+  assert.match(root.innerHTML, /Resumo do desenho/u);
+  assert.doesNotMatch(root.innerHTML, /Tentar novamente/u);
+});
+
+test("nova tentativa preserva o escopo que falhou e não se oferece para erro de exportação", async () => {
+  const root = new FakeRoot();
+  const queries = [];
+  let calls = 0;
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    download() { throw new Error("O arquivo não pôde ser salvo."); },
+    controller: { async loadCourseAuthoringAnalytics(_courseId, { query }) {
+      calls += 1;
+      queries.push(query);
+      if (calls === 2) throw new Error("O serviço não respondeu a tempo.");
+      const selected = query.scope.kind === "course"
+        ? { kind: "course", ref: null, label: "Curso inteiro" }
+        : {
+          kind: "didactic_microsequence",
+          ref: MICRO_REF,
+          label: "Microssequência · Fundamentos"
+        };
+      return analyticsPage({ selected });
+    } }
+  });
+
+  await panel.open();
+  await submitScope(root, 1);
+  assert.match(root.innerHTML, /Tentar novamente/u);
+  root.listeners.get("click")({
+    target: {
+      closest: (selector) => selector === "[data-course-analytics-action]"
+        ? { dataset: { courseAnalyticsAction: "reload" } }
+        : null
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(queries.map(({ scope }) => scope), [
+    { kind: "course", ref: null },
+    { kind: "didactic_microsequence", ref: MICRO_REF },
+    { kind: "didactic_microsequence", ref: MICRO_REF }
+  ]);
+  assert.match(root.innerHTML, /<option value="1" selected>Microssequência · Fundamentos/u);
+
+  panel.export();
+  assert.match(root.innerHTML, /O arquivo não pôde ser salvo\./u);
+  assert.doesNotMatch(root.innerHTML, /data-course-analytics-action="reload"/u);
+});
+
 test("CSS e fonte do painel não restauram dashboard, segunda rolagem ou métricas técnicas", () => {
   const panelSource = fs.readFileSync(path.join(
     repositoryRoot, "src", "ui", "CourseAnalyticsPanel.js"

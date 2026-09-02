@@ -158,13 +158,16 @@ origens e publica:
 
 As origens mínimas da aplicação são o servidor local, GitHub Pages e
 `https://appassets.androidplatform.net`. Uma instalação alternativa acrescenta
-somente suas origens HTTPS exatas. Actions admite também
-`https://chatgpt.com` e `https://chat.openai.com`. O script verifica preflight
-da API e de Actions, OAuth do MCP hospedado e o fluxo autenticado de PDF antes
-de encerrar.
+somente suas origens HTTPS exatas. Actions admite também apenas
+`https://chatgpt.com`. O script verifica preflight da API e de Actions, OAuth
+do MCP hospedado e o fluxo autenticado de PDF antes de encerrar.
 
 O manifesto corrente termina em
-`20260902044404_cut_legacy_authoring_runtime.sql`. Depois da aplicação:
+`20260902123759_drop_legacy_chat_openai_action_origin.sql`. Depois da aplicação:
+
+- tokens Actions de clientes já vinculados ficam revogados uma vez;
+- reimporte o OpenAPI corrente no GPT e conclua novamente o OAuth numa conversa
+  nova.
 
 ```powershell
 npm.cmd run deployment:verify-hosted

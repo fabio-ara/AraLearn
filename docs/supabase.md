@@ -144,8 +144,8 @@ Supabase; o MCP verifica JWT e principal; Actions resolve o hash do token opaco.
 Uma credencial de um canal é recusada nos outros.
 
 As origens CORS são exatas. API e MCP admitem somente as origens da aplicação
-configuradas. Actions acrescenta `https://chatgpt.com` e
-`https://chat.openai.com`. Nenhum conjunto de produção aceita `*`.
+configuradas. Actions acrescenta apenas `https://chatgpt.com`. Nenhum conjunto
+de produção aceita `*`.
 
 ## Ambiente local reproduzível
 

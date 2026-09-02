@@ -272,6 +272,7 @@ test("#270 fixture representa 12 Partes e 120 Units em índice compacto pesquis�
 test("#270 leitor mantém uma Unit completa, salta para antiga, retorna e preserva deep link", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture();
+  const focusedDeepLinks = [];
   const sequence = createCourseInspectionSequence({
     root,
     controller,
@@ -283,6 +284,12 @@ test("#270 leitor mantém uma Unit completa, salta para antiga, retorna e preser
       canEdit: false
     },
     routeTarget: { kind: "study_unit", id: unitId(fixture.initialStudyUnitOrdinal) },
+    onStudyUnitChange(studyUnitId) {
+      focusedDeepLinks.push(buildCourseAuthoringRoute(fixture.course.id, {
+        section: "content",
+        studyUnitId
+      }));
+    },
     windowValue: new FakeWindow(),
     documentValue: { activeElement: null }
   });
@@ -333,6 +340,15 @@ test("#270 leitor mantém uma Unit completa, salta para antiga, retorna e preser
     }
   });
   assert.equal(sequence.snapshot().studyUnitId, unitId(fixture.initialStudyUnitOrdinal));
+  assert.deepEqual(
+    focusedDeepLinks.map((link) => parseCourseAuthoringRoute(link).target.id),
+    [
+      unitId(fixture.oldStudyUnitOrdinal),
+      unitId(fixture.initialStudyUnitOrdinal),
+      unitId(fixture.initialStudyUnitOrdinal + 1),
+      unitId(fixture.initialStudyUnitOrdinal)
+    ]
+  );
 
   const oldDeepLink = buildCourseAuthoringRoute(fixture.course.id, {
     section: "content",
