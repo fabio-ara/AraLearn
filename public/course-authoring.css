@@ -1014,6 +1014,111 @@
   margin-top: 8px;
 }
 
+.course-authoring-part-navigation {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  align-items: start;
+  gap: 6px;
+}
+
+.course-authoring-part-navigation > :is(a, span.is-disabled) {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--action-primary-hover);
+  background: var(--surface-raised);
+  text-decoration: none;
+}
+
+.course-authoring-part-navigation > span.is-disabled {
+  opacity: 0.35;
+}
+
+.course-authoring-part-navigation > details {
+  min-width: 0;
+}
+
+.course-authoring-part-navigation > details > summary {
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  padding: 5px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  cursor: pointer;
+  list-style: none;
+  text-align: center;
+}
+
+.course-authoring-part-navigation > details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.course-authoring-part-navigation > details > summary :is(span, strong) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-authoring-part-navigation > details > summary span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.course-authoring-part-navigation > details > summary strong {
+  font-size: var(--type-sm);
+}
+
+.course-authoring-part-navigation > details > ol {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  list-style: none;
+  box-shadow: var(--shadow-card);
+}
+
+.course-authoring-part-navigation > details > ol a {
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.course-authoring-part-navigation > details > ol a[aria-current="page"] {
+  color: var(--action-primary-hover);
+  background: var(--surface-sunken);
+}
+
+.course-authoring-part-navigation > details > ol :is(span, strong) {
+  overflow-wrap: anywhere;
+}
+
+.course-authoring-part-navigation > details > ol span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
 .course-authoring-plan-items,
 .course-authoring-parts,
 .course-authoring-recent-activity {

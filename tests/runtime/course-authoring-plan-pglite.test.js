@@ -1719,7 +1719,39 @@ test("commit permite cabeçalho e itens, mas bloqueia a Parte em materializaçã
     },
     itemTarget
   ]);
-  const partTarget = structuredClone(itemTarget);
+  const nextPartId = "61000000-0000-4000-8000-000000000001";
+  const nextPartTarget = structuredClone(itemTarget);
+  nextPartTarget.parts.push({
+    id: nextPartId,
+    position: 1,
+    title: "Próxima Parte",
+    intent: "Continuar o planejamento sem alterar a Parte em execução.",
+    microsequenceIds: []
+  });
+  const nextPartChanged = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,$3,$4,$5,$6,'application','request-running-next-part'
+    ) as value
+  `, [
+    OWNER,
+    COURSE,
+    itemChanged.courseRevision,
+    itemChanged.planVersion,
+    {
+      type: "add_part",
+      id: nextPartId,
+      position: 1,
+      title: "Próxima Parte",
+      intent: "Continuar o planejamento sem alterar a Parte em execução."
+    },
+    nextPartTarget
+  ]);
+  assert.equal(nextPartChanged.changed, true);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value from private.course_authoring_parts
+    where course_id=$1 and retired_at is null
+  `, [COURSE]), 2);
+  const partTarget = structuredClone(nextPartTarget);
   partTarget.parts[0].intent = "Intenção alterada durante execução.";
   await assert.rejects(() => scalar(database, `
     select public.commit_course_instructional_plan_for_actor_v1(
@@ -1728,8 +1760,8 @@ test("commit permite cabeçalho e itens, mas bloqueia a Parte em materializaçã
   `, [
     OWNER,
     COURSE,
-    itemChanged.courseRevision,
-    itemChanged.planVersion,
+    nextPartChanged.courseRevision,
+    nextPartChanged.planVersion,
     { type: "update_part", id: partId },
     partTarget
   ]), /Parte em materialização mudou/iu);
@@ -1740,6 +1772,165 @@ test("commit permite cabeçalho e itens, mas bloqueia a Parte em materializaçã
     select version=1 as value
     from private.course_authoring_part_materializations where id=$1
   `, [MATERIALIZATION]), true);
+  await database.close();
+});
+
+test("#269 persiste Parte por Parte, aceita Fonte intermediária e retoma revisão anterior", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await database.query(`
+    update private.course_entities
+    set content=content || '{"sources":[]}'::jsonb
+    where course_id=$1 and entity_type='study_unit' and entity_id='card-a'
+  `, [COURSE]);
+  await applyCourseSourcesMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  let plan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const firstPartId = plan.parts[0].id;
+  assert.equal(plan.parts.length, 1);
+  assert.deepEqual(plan.preferredPartCount, {
+    minimum: 7,
+    maximum: 12,
+    origin: "automatic"
+  });
+  plan.parts[0].title = "Parte 1 revista antes de continuar";
+  plan.parts[0].intent = "Delimitar a decisão corrente sem antecipar as demais Partes.";
+  const revisedFirst = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,4,1,$3::jsonb,$4::jsonb,'application','incremental-part-one'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "update_part",
+    id: firstPartId,
+    title: plan.parts[0].title,
+    intent: plan.parts[0].intent
+  }, plan]);
+  assert.equal(revisedFirst.courseRevision, 5);
+  assert.equal(revisedFirst.planVersion, 2);
+
+  const sourceId = "source-incremental-plan";
+  const sourceSaved = await executeCourseSourceCommand(database, 5, {
+    type: "save_source",
+    sourceId,
+    expectedSourceRevision: 0,
+    source: sourceDocument({
+      title: "Fonte acrescentada durante o planejamento",
+      citationText: "AUTOR. Fonte acrescentada durante o planejamento.",
+      studyVisibility: "citation"
+    })
+  }, "incremental-source-save");
+  assert.equal(sourceSaved.courseRevision, 6);
+  const anchorId = "anchor-incremental-plan";
+  const anchorSaved = await executeCourseSourceCommand(database, 6, {
+    type: "save_anchor",
+    anchorId,
+    sourceId,
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 1, endPage: 1 },
+    verificationExcerpt: "Trecho focal acrescentado entre a Parte 1 e a Parte 2."
+  }, "incremental-source-anchor");
+  assert.equal(anchorSaved.courseRevision, 7);
+
+  const analysisId = "61000000-0000-4000-8000-000000000010";
+  const sourceLink = {
+    sourceId,
+    sourceRevision: 1,
+    relation: "informed_by",
+    anchors: [{ anchorId, anchorRevision: 1 }]
+  };
+  plan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const analysis = {
+    id: analysisId,
+    position: plan.instructionalAnalysisUnits.length,
+    statement: "A Fonte intermediária informa uma relação da próxima Parte.",
+    sourceLinks: [sourceLink]
+  };
+  plan.instructionalAnalysisUnits.push(analysis);
+  const sourcedPlan = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,7,2,$3::jsonb,$4::jsonb,'application','incremental-source-link'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "add_plan_item",
+    kind: "instructional_analysis_unit",
+    ...analysis
+  }, plan]);
+  assert.equal(sourcedPlan.courseRevision, 8);
+  assert.equal(sourcedPlan.planVersion, 3);
+
+  const secondPartId = "61000000-0000-4000-8000-000000000011";
+  plan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  const secondPart = {
+    id: secondPartId,
+    position: plan.parts.length,
+    title: "Parte 2 proposta depois da decisão",
+    intent: "Continuar a partir da Parte 1 e da Fonte incorporada.",
+    microsequenceIds: []
+  };
+  plan.parts.push(secondPart);
+  const addedSecond = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,8,3,$3::jsonb,$4::jsonb,'application','incremental-part-two'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "add_part",
+    id: secondPartId,
+    position: 1,
+    title: secondPart.title,
+    intent: secondPart.intent
+  }, plan]);
+  assert.equal(addedSecond.courseRevision, 9);
+  assert.equal(addedSecond.planVersion, 4);
+
+  const resumed = await scalar(database, `
+    select public.get_owned_course_instructional_plan_for_actor_v1(
+      $1,$2,20
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(resumed.plan.parts.length, 2);
+  assert.deepEqual(resumed.plan.instructionalAnalysisUnits.find(({ id }) => (
+    id === analysisId
+  )).sourceLinks, [sourceLink]);
+  assert.equal(resumed.plan.parts[0].title, "Parte 1 revista antes de continuar");
+
+  plan = await scalar(database, `
+    select private.course_instructional_plan_command_document_v1($1) as value
+  `, [COURSE]);
+  plan.parts[0].intent = "Parte anterior reaberta depois da criação da Parte 2.";
+  const reopened = await scalar(database, `
+    select public.commit_course_instructional_plan_for_actor_v1(
+      $1,$2,9,4,$3::jsonb,$4::jsonb,'application','incremental-part-one-reopen'
+    ) as value
+  `, [OWNER, COURSE, {
+    type: "update_part",
+    id: firstPartId,
+    title: plan.parts[0].title,
+    intent: plan.parts[0].intent
+  }, plan]);
+  assert.equal(reopened.courseRevision, 10);
+  assert.equal(reopened.planVersion, 5);
+  const finalPlan = await scalar(database, `
+    select public.get_owned_course_instructional_plan_for_actor_v1(
+      $1,$2,20
+    ) as value
+  `, [OWNER, COURSE]);
+  assert.equal(finalPlan.plan.parts[0].intent,
+    "Parte anterior reaberta depois da criação da Parte 2.");
+  assert.equal(finalPlan.plan.parts[1].id, secondPartId);
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_instructional_plans where course_id=$1
+  `, [COURSE]), 1);
   await database.close();
 });
 

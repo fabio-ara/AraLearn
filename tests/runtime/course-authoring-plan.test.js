@@ -123,6 +123,79 @@ test("aplica os mesmos comandos fechados no navegador e no Edge com replay deter
   assert.equal(browser.evidenceRequirements.length, 2);
 });
 
+test("#269 constrói, retoma e revisa o plano corrente uma Parte por vez", () => {
+  const partOneId = "10000000-0000-4000-8000-000000000020";
+  const partTwoId = "10000000-0000-4000-8000-000000000021";
+  const sourcedAnalysisId = "10000000-0000-4000-8000-000000000022";
+  const sourceLink = {
+    sourceId: "source-incremental-plan",
+    sourceRevision: 1,
+    relation: "informed_by",
+    anchors: [{ anchorId: "anchor-incremental-plan", anchorRevision: 1 }]
+  };
+  const initial = planFixture();
+  initial.parts = [];
+  let browser = initial;
+  let edge = initial;
+  const apply = (command) => {
+    browser = applyCourseAuthoringPlanCommand(browser, command);
+    edge = applyEdgeCommand(edge, command);
+    assert.deepEqual(edge, browser);
+    browser = normalizeCourseAuthoringPlan(JSON.parse(JSON.stringify(browser)));
+    edge = normalizeEdgePlan(JSON.parse(JSON.stringify(edge)));
+  };
+
+  apply({
+    type: "add_part",
+    id: partOneId,
+    position: 0,
+    title: "Parte 1 — Fundamentos",
+    intent: "Delimitar a primeira decisão do percurso."
+  });
+  assert.equal(browser.parts.length, 1);
+  assert.deepEqual(browser.preferredPartCount, {
+    minimum: 7,
+    maximum: 12,
+    origin: "automatic"
+  });
+
+  apply({
+    type: "update_part",
+    id: partOneId,
+    title: "Parte 1 — Fundamentos revistos",
+    intent: "Incorporar a decisão tomada antes de seguir."
+  });
+  apply({
+    type: "add_plan_item",
+    kind: "instructional_analysis_unit",
+    id: sourcedAnalysisId,
+    position: 1,
+    statement: "A Fonte acrescentada delimita uma relação necessária à próxima Parte.",
+    sourceLinks: [sourceLink]
+  });
+  apply({
+    type: "add_part",
+    id: partTwoId,
+    position: 1,
+    title: "Parte 2 — Aplicação",
+    intent: "Prosseguir a partir do estado aprovado da Parte anterior."
+  });
+
+  assert.deepEqual(browser.parts.map(({ id, title }) => ({ id, title })), [{
+    id: partOneId,
+    title: "Parte 1 — Fundamentos revistos"
+  }, {
+    id: partTwoId,
+    title: "Parte 2 — Aplicação"
+  }]);
+  assert.deepEqual(
+    browser.instructionalAnalysisUnits.find(({ id }) => id === sourcedAnalysisId).sourceLinks,
+    [sourceLink]
+  );
+  assert.equal(Object.hasOwn(browser, "draft"), false);
+  assert.equal(Object.hasOwn(browser, "history"), false);
+});
+
 test("normaliza comando sem depender do estado corrente", () => {
   assert.deepEqual(normalizeCourseAuthoringPlanCommand({
     type: "split_part",

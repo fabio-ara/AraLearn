@@ -989,6 +989,18 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.match(root.innerHTML, /Resultados de aprendizagem/u);
   assert.match(root.innerHTML, /Comparar relações essenciais\./u);
   assert.match(root.innerHTML, /Parte 1/u);
+  assert.equal(
+    (root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length,
+    1,
+    "O overview do Planejamento deve renderizar somente a Parte focal."
+  );
+  assert.match(root.innerHTML, /class="course-authoring-part-navigation" aria-label="Navegação entre Partes"/u);
+  assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 1 de 2:[^"]+" title="Escolher Parte"><span>Parte 1 de 2<\/span>/u);
+  assert.match(
+    root.innerHTML,
+    new RegExp(`section=planning&amp;authoringPartId=${SECOND_PART_ID}`, "u")
+  );
+  assert.doesNotMatch(root.innerHTML, /<details open><summary aria-label="Escolher Parte\./u);
   assert.match(
     root.innerHTML,
     /<div class="course-authoring-part-counts" aria-label="Planejado e produzido"><span>2 microssequências<\/span><span>7 unidades<\/span><\/div>/u
@@ -1067,6 +1079,125 @@ test("refresh simultâneo do Planejamento mantém o conteúdo e não recompõe r
   );
   assert.match(root.innerHTML, /Compreender relações essenciais\./u);
   assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
+});
+
+test("Planejamento focaliza uma de doze Partes e reabre qualquer anterior por deep link", async () => {
+  const plan = structuredClone(authoringPlanFixture());
+  const template = plan.plan.parts[1];
+  plan.plan.parts = Array.from({ length: 12 }, (_, index) => ({
+    ...structuredClone(template),
+    id: `90000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    position: index,
+    title: `Parte incremental ${index + 1}`
+  }));
+  plan.plan.counts.authoringPartCount = 12;
+  plan.plan.counts.linkedDidacticMicrosequenceCount = 0;
+  plan.plan.counts.studyUnitCount = 0;
+  plan.recentActivity = [];
+  const targetId = plan.plan.parts[3].id;
+  const root = new FakeRoot();
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringPlan() { return structuredClone(plan); }
+    }),
+    locationValue: {
+      pathname: "/",
+      search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, {
+        section: "planning",
+        authoringPartId: targetId
+      })
+    },
+    windowValue: new FakeWindow()
+  });
+
+  assert.equal(await surface.open(), true);
+  assert.equal((root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 4 de 12: Parte incremental 4" title="Escolher Parte"><span>Parte 4 de 12<\/span>/u);
+  assert.match(root.innerHTML, /<strong>Parte incremental 4<\/strong>/u);
+  assert.match(
+    root.innerHTML,
+    new RegExp(`authoringPartId=${plan.plan.parts[2].id}[^>]* aria-label="Parte anterior"`, "u")
+  );
+  assert.match(
+    root.innerHTML,
+    new RegExp(`authoringPartId=${plan.plan.parts[4].id}[^>]* aria-label="Próxima Parte"`, "u")
+  );
+  assert.equal((root.innerHTML.match(/aria-current="page"/gu) || []).length, 2,
+    "A tarefa e a Parte focal têm estados correntes independentes e acessíveis.");
+  assert.doesNotMatch(root.innerHTML, /<details open><summary aria-label="Escolher Parte\./u);
+});
+
+test("adicionar Parte abre o novo deep link sem confirmação concorrente", async () => {
+  let plan = structuredClone(authoringPlanFixture());
+  let createdPartId = "";
+  const locationValue = {
+    pathname: "/",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+  };
+  const root = new FakeRoot();
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringPlan() { return structuredClone(plan); },
+      async mutateAuthoringPlan(command) {
+        createdPartId = command.id;
+        plan.plan.parts.push({
+          id: command.id,
+          title: command.title,
+          intent: command.intent,
+          version: 1,
+          position: command.position,
+          microsequences: [],
+          progress: {
+            state: "planned",
+            microsequenceCount: 0,
+            studyUnitCount: 0,
+            materializations: [],
+            lastMaterialization: null
+          }
+        });
+        plan.plan.version += 1;
+        plan.plan.counts.authoringPartCount += 1;
+      }
+    }),
+    locationValue,
+    windowValue: new FakeWindow()
+  });
+  await surface.open();
+
+  root.listeners.get("click")({
+    target: { closest: () => ({ dataset: { courseAuthoringAction: "add-part" } }) }
+  });
+  assert.match(root.innerHTML, /data-course-authoring-part/u);
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches: (selector) => selector === "[data-course-authoring-part]",
+      elements: {
+        partId: { value: "" },
+        title: { value: "Nova Parte focal" },
+        intent: { value: "Prosseguir somente após a decisão atual." }
+      }
+    }
+  });
+  for (let attempt = 0; attempt < 8 && !locationValue.hash.includes("authoringPartId="); attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.match(createdPartId, /^[0-9a-f-]{36}$/u);
+  assert.equal(locationValue.hash, buildCourseAuthoringRoute(COURSE_ID, {
+    section: "planning",
+    authoringPartId: createdPartId
+  }));
+  assert.equal((root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /Nova Parte focal/u);
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
 });
 
 test("Atualizar Curso usa somente o indicador fixo de sincronização", async () => {
@@ -2700,6 +2831,12 @@ test("planejamento preserva formulário e envelope até concluir a releitura con
 test("Partes oferecem operações explícitas e preservam a hierarquia didática nos vínculos", async () => {
   const root = new FakeRoot();
   const calls = [];
+  const locationValue = {
+    pathname: "/app",
+    search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+  };
+  const windowValue = new FakeWindow();
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
@@ -2707,17 +2844,13 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
         calls.push(structuredClone(value));
       }
     }),
-    locationValue: {
-      pathname: "/app",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
+    locationValue,
+    windowValue
   });
   await surface.open();
 
   for (const action of [
-    "add-part", "edit-part", "move-part-down", "split-part", "join-parts",
+    "add-part", "edit-part", "move-part-down", "split-part",
     "remove-part", "edit-part-link"
   ]) {
     assert.match(root.innerHTML, new RegExp(`data-course-authoring-action="${action}"`, "u"));
@@ -2808,6 +2941,15 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
   assert.equal(calls[2].intent, "Materializar exemplos fundamentais.");
   assert.deepEqual(calls[2].microsequenceIds, ["micro-b"]);
 
+  locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, {
+    section: "planning",
+    authoringPartId: SECOND_PART_ID
+  });
+  windowValue.dispatch("hashchange");
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(root.innerHTML, /data-course-authoring-action="join-parts"/u);
+
   root.listeners.get("click")({
     target: {
       closest() {
@@ -2846,6 +2988,14 @@ test("Partes oferecem operações explícitas e preservam a hierarquia didática
     sourcePartId: SECOND_PART_ID,
     targetPartId: PART_ID
   });
+
+  locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, {
+    section: "planning",
+    authoringPartId: PART_ID
+  });
+  windowValue.dispatch("hashchange");
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 
   root.listeners.get("click")({
     target: {

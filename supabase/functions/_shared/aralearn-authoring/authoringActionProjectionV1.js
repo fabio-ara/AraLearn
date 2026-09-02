@@ -32,7 +32,9 @@ export const AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS = Object.freeze([
     generatedIdentityFields: Object.freeze(["id"]),
     title: "Adicionar Parte",
     description:
-      "Adiciona uma Parte ao planejamento sem pedir identidade técnica. Use os controles estruturados silenciosamente e valide o planejamento depois da escrita."
+      "Adiciona somente a próxima Parte aprovada, sem pedir identidade técnica. " +
+      "Depois da escrita, releia o planejamento e coordene pelo link com uma única decisão; " +
+      "não antecipe várias Partes. A faixa de 7–12 é heurística, nunca gate."
   })
 ]);
 

@@ -1140,9 +1140,51 @@ function renderPart(state, part, index, parts, { detail = false } = {}) {
     "</div></details></footer></article>";
 }
 
+function focusedPlanningPart(parts) {
+  return parts.find(({ status }) => status === "attention_required") ||
+    parts.find(({ status }) => ["materializing", "partially_materialized"].includes(status)) ||
+    parts.at(-1) || null;
+}
+
+function planningPartRoute(courseId, partId) {
+  return buildCourseAuthoringRoute(courseId, {
+    section: "planning",
+    authoringPartId: partId
+  });
+}
+
+function renderPartNavigator(state, parts, activePart) {
+  if (!activePart || parts.length === 0) return "";
+  const index = parts.findIndex(({ id }) => id === activePart.id);
+  const link = (part, label, icon) => part
+    ? `<a href="${escapeHtml(planningPartRoute(state.course.courseId, part.id))}"` +
+      ' data-course-authoring-action="change-section" data-section="planning"' +
+      ` aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">` +
+      `${renderUiIcon(icon, "course-authoring-button-icon")}</a>`
+    : '<span class="is-disabled" aria-hidden="true"></span>';
+  const choices = parts.map((part, partIndex) =>
+    `<li><a href="${escapeHtml(planningPartRoute(state.course.courseId, part.id))}"` +
+      ' data-course-authoring-action="change-section" data-section="planning"' +
+      `${part.id === activePart.id ? ' aria-current="page"' : ""}>` +
+      `<span>Parte ${partIndex + 1}</span><strong>${escapeHtml(part.title)}</strong></a></li>`
+  ).join("");
+  return '<nav class="course-authoring-part-navigation" aria-label="Navegação entre Partes">' +
+    link(parts[index - 1], "Parte anterior", "arrow-left") +
+    `<details><summary aria-label="Escolher Parte. Parte ${index + 1} de ${parts.length}: ${escapeHtml(
+      activePart.title
+    )}" title="Escolher Parte">` +
+    `<span>Parte ${index + 1} de ${parts.length}</span>` +
+    `<strong>${escapeHtml(activePart.title)}</strong></summary>` +
+    `<ol>${choices}</ol></details>` +
+    link(parts[index + 1], "Próxima Parte", "arrow-right") + "</nav>";
+}
+
 function renderParts(state, planning) {
+  const focused = focusedPlanningPart(planning.parts);
+  const adding = state.partEditor?.mode === "add";
   return '<section class="course-authoring-parts" aria-labelledby="course-authoring-parts-title">' +
     '<header class="course-authoring-subsection-heading"><div><h3 id="course-authoring-parts-title">Partes</h3>' +
+    (focused ? '<p>Uma Parte em foco; abra o índice para retomar qualquer Parte anterior.</p>' : "") +
     '</div><div class="course-authoring-compact-actions">' +
     (planning.parts.length ? renderActionButton({
       action: "open-microsequence-assignment",
@@ -1154,11 +1196,17 @@ function renderParts(state, planning) {
     "</div>" +
     "</header>" +
     renderMicrosequenceAssignment(state, planning.parts) +
-    (state.partEditor?.mode === "add" ? renderPartForm(state) : "") +
-    (planning.parts.length
-      ? `<div class="course-authoring-part-list">${planning.parts.map((part, index) =>
-          renderPart(state, part, index, planning.parts)).join("")}</div>`
-      : "") + "</section>";
+    (adding
+      ? renderPartForm(state)
+      : focused
+        ? renderPartNavigator(state, planning.parts, focused) +
+          `<div class="course-authoring-part-list">${renderPart(
+            state,
+            focused,
+            planning.parts.indexOf(focused),
+            planning.parts
+          )}</div>`
+        : "") + "</section>";
 }
 
 function renderUnlinkedContentNotice(state, planning) {
@@ -1180,6 +1228,7 @@ function renderPartDetailScreen(state, planning, part) {
     `<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">${escapeHtml(
       part.title
     )}</h2>` +
+    renderPartNavigator(state, planning.parts, part) +
     renderPart(state, part, index, planning.parts, { detail: true }) + "</section>";
 }
 
@@ -4243,6 +4292,7 @@ export function createCourseAuthoringSurface({
       const command = pendingWriteMatches(state.pendingPlanningCommand, draft)
         ? state.pendingPlanningCommand.command
         : planCommand(operation, payload);
+      const createdPartId = current ? null : command.id;
       void runPlanningCommand({
         draft,
         command,
@@ -4251,6 +4301,18 @@ export function createCourseAuthoringSurface({
         afterSuccess() {
           state.partEditor = null;
           state.partDraft = null;
+          if (createdPartId && state.authoringPlan?.plan.parts.some(({ id }) =>
+            id === createdPartId)) {
+            const openCreatedPart = () => void navigate(planningPartRoute(
+              state.course.courseId,
+              createdPartId
+            ));
+            if (typeof globalThis.queueMicrotask === "function") {
+              globalThis.queueMicrotask(openCreatedPart);
+            } else {
+              openCreatedPart();
+            }
+          }
         }
       });
       return;

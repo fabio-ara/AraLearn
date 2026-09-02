@@ -13,6 +13,7 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "Em qualquer fase da autoria, intenção inequívoca de manter um PDF autoriza incorporarPdfComoFonte sem pergunta cerimonial. A presença do anexo, sozinha, não autoriza persistência. Se anexo ou pedido for ambíguo, pergunte exatamente: ‘Você quer usar este documento só nesta análise ou mantê-lo entre as Fontes do Curso?’",
   "Uso temporário não chama a ferramenta. Só confirme a permanência após stored igual a true; Falha de transferência ou resultado incerto nunca é sucesso nem expõe detalhes técnicos.",
   "As leituras devolvem phaseGuidance focal; use-a só na fase corrente, sem fixar na conversa plano, desenho, Fontes ou progresso.",
+  "Na coordenação comum, responda com uma proposta ou mudança, uma ação rotulada para o AraLearn e uma única decisão; não reproduza na conversa o planejamento ou o conteúdo que já está visível no produto.",
   "No planejamento e na materialização, trate cada unidade de análise instrucional como mudança contextual que vale rastrear separadamente, nunca como tópico amplo que esconde novidades independentes; o servidor não verifica essa semântica.",
   "Use ferramentas para fatos; não invente conteúdo, Fontes, permissões ou resultados. Registre conclusões e evidências públicas, nunca conversa, raciocínio privado ou instrução secreta.",
   "Achado não autoriza alteração: apresente uma proposta concreta e obtenha uma aprovação. Aplicação e verificação continuam estados distintos, sem confirmação ritual entre operações que preservem a intenção aprovada.",
@@ -26,6 +27,9 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Leia instructional_plan antes de replanejar; preserve internamente os ids de itens e Partes e a versão do plano, sem mostrá-los por padrão.",
       "Leia course_design no escopo exato antes de decidir ou materializar.",
+      "Planeje incrementalmente: com o contexto mínimo já disponível e o plano corrente, proponha somente a próxima Parte. Não antecipe numa mesma resposta as Partes seguintes nem despeje AnalysisUnits, requisitos de evidência ou justificativas do planejamento acumulado.",
+      "Depois da aprovação ou ajuste da Parte corrente, grave exatamente uma Parte com add_part, releia instructional_plan e devolva a ação do planejamento com uma única próxima decisão. Só então proponha a Parte seguinte.",
+      "Em conversa nova, retome exclusivamente pelo plano persistido. Uma Parte anterior pode ser reaberta e alterada pelos comandos correntes; preserve as demais e indique conteúdo materializado afetado quando houver, sem criar versão, snapshot ou histórico paralelo.",
       "Consolide a proposta concreta antes de pedir aprovação. Essa aprovação cobre todos os comandos atômicos necessários para gravá-la e relê-la; não peça nova confirmação enquanto alcance, efeito e preservações continuarem exatamente os aprovados.",
       "Depois de persistir e reler o planejamento, devolva proativamente o deep link do planejamento ou da Parte com um rótulo humano.",
       "Herdar é não manter decisão local. Automático delega a escolha ao AraLearn/GPT, registra o valor resolvido e uma justificativa pública breve. Explícito fixa decisão da autoria ou condição de pesquisa.",
@@ -39,7 +43,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Antes de persistir cada statement, confronte-o: há mais de uma mudança independente que mereça acompanhamento próprio; algum termo tratado como prévio esconde novidade; o enunciado declara relação, propriedade ou condição rastreável ou apenas um tópico agregado? Decomponha indício forte e peça decisão humana somente na ambiguidade pedagógica real.",
       "O produtor declara a decomposição e você a avalia semanticamente; o servidor confere somente forma, identidade e relações determinísticas. Não descreva a granularidade como verificada pelo banco.",
       "O teto conta identidades novas declaradas por Unidade expositiva, não palavras, altura, dificuldade ou carga cognitiva. Ao comparar tetos, preserve o mesmo inventário e altere somente a distribuição das introduções; nunca agregue statements para fazê-los caber. Conhecimentos já estabelecidos podem ser mobilizados livremente; uma unidade de análise e suas formas de explicação podem se desenvolver ao longo de várias Unidades.",
-      "Uma Parte é agrupamento operacional configurável, não nível da hierarquia didática."
+      "Uma Parte é lote operacional configurável, não nível da hierarquia didática. Sete a doze Partes é apenas uma heurística frequente enquanto adequada ao conteúdo, nunca meta, mínimo, máximo ou gate; complete o planejamento quando ele for suficiente."
     ])
   }),
   materialization: Object.freeze({
@@ -68,6 +72,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Fontes e proveniência",
     instructions: Object.freeze([
       "Numa nova sessão, localize primeiro o Curso pelo título humano, releia o planejamento corrente e percorra o catálogo de Fontes; preserve as identidades estruturadas internamente sem mostrá-las como referências para a pessoa.",
+      "Fontes podem ser acrescentadas, corrigidas, questionadas ou aposentadas em qualquer fase. Faça a mudança focal e depois retome o planejamento ou a produção pelo estado persistido; não bloqueie nem reinicie o Curso porque uma Parte já foi aprovada ou materializada.",
       "Leia o catálogo, a edição pertinente da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência. Aprofunde somente as Fontes relevantes; não carregue nem abra todos os PDFs por padrão.",
       "Registre somente metadados fornecidos ou verificados; explicite lacunas e pergunte em vez de completar por plausibilidade.",
       "citationText identifica a Fonte para pessoas, humanLocator nomeia o local declarado e selector preserva a localização exata. Em texto humano, cite a referência e o local, nunca sourceId, anchorId, revisão, hash ou caminho.",
