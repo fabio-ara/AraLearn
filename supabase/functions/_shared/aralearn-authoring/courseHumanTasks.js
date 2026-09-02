@@ -1358,14 +1358,14 @@ function projectedPlanContext(plan, part) {
         : []
     } : null,
     instructionalAnalysisUnits: Array.isArray(source.instructionalAnalysisUnits)
-      ? source.instructionalAnalysisUnits.map(({ position, statement }) => ({
-          position: Number(position) + 1,
+      ? source.instructionalAnalysisUnits.map(({ statement }, index) => ({
+          position: index + 1,
           statement
         }))
       : [],
     evidenceRequirements: Array.isArray(source.evidenceRequirements)
-      ? source.evidenceRequirements.map(({ position, statement }) => ({
-          position: Number(position) + 1,
+      ? source.evidenceRequirements.map(({ statement }, index) => ({
+          position: index + 1,
           statement
         }))
       : []
@@ -1563,15 +1563,18 @@ function projectFocalPlanItems(items, targetIds, label) {
   if (!Array.isArray(items) || !Array.isArray(targetIds)) {
     fail("course_service_unavailable", `O inventário focal de ${label} está incompleto.`, null, 503);
   }
-  const itemById = new Map(items.map((item) => [item?.id, item]));
+  const itemById = new Map(items.map((item, index) => [item?.id, {
+    item,
+    position: index + 1
+  }]));
   return targetIds.map((targetId) => {
-    const item = itemById.get(targetId);
-    const position = Number(item?.position);
-    if (!item || !Number.isSafeInteger(position) || position < 0 ||
+    const indexed = itemById.get(targetId);
+    const item = indexed?.item;
+    if (!item ||
         typeof item.statement !== "string" || !item.statement.trim()) {
       fail("course_service_unavailable", `O inventário focal de ${label} divergiu do plano.`, null, 503);
     }
-    return { position: position + 1, statement: item.statement };
+    return { position: indexed.position, statement: item.statement };
   });
 }
 
@@ -1599,11 +1602,12 @@ function projectMaterializationPart(planRead, part, designReads, unitDesignReads
     intent: part.intent,
     establishedAnalysisUnits: (Array.isArray(plan.instructionalAnalysisUnits)
       ? plan.instructionalAnalysisUnits
-      : []).filter((item) => item?.introduced === true &&
+      : []).map((item, index) => ({ ...item, currentPosition: index + 1 }))
+      .filter((item) => item?.introduced === true &&
         item.introducedPartPosition !== null &&
         Number.isSafeInteger(item.introducedPartPosition) &&
         item.introducedPartPosition < partPosition)
-      .map((item) => ({ position: Number(item.position) + 1, statement: item.statement })),
+      .map((item) => ({ position: item.currentPosition, statement: item.statement })),
     microsequences: microsequences.map((microsequence, index) => {
       const design = designReads[index];
       const targets = design?.targetPlanItems;

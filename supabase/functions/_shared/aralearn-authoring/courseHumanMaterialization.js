@@ -135,7 +135,7 @@ function planItems(plan, collection) {
 
 function resolvePlanItem(plan, collection, value, label) {
   return resolveReference(planItems(plan, collection), value, {
-    position: (item) => item.position,
+    position: () => Number.NaN,
     texts: (item) => [item.statement],
     label
   });

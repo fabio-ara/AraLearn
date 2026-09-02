@@ -4,6 +4,20 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.50] - 2026-09-02
+
+### Corrigido
+
+- Observações individuais e em lote passam a receber, conter e devolver o foco
+  e fecham por `Escape` sem perder a seleção;
+- parâmetros de StudyUnit atravessam todas as fronteiras do cliente e da API, e
+  a navegação dos escopos usa rótulos consistentes;
+- Planejamento continua legível depois de revisões que deixam intervalos nas
+  posições internas do inventário, projetando ordinais humanos correntes;
+- correções focais por GPT preservam a aplicação pedagógica vigente quando a
+  função da StudyUnit não muda; redistribuição de teoria e prática continua
+  exigindo rematerialização da Parte.
+
 ## [0.0.49] - 2026-09-02
 
 ### Corrigido

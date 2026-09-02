@@ -1282,6 +1282,7 @@ export function createCourseInspectionSequence({
     pendingObservationMutation: null,
     pendingBatchObservation: null,
     restoreObservationFocus: false,
+    restoreObservationCloseFocus: false,
     confirmation: null,
     manualStudyUnitId: null,
     manualTargetId: "",
@@ -1442,8 +1443,23 @@ export function createCourseInspectionSequence({
       });
       return;
     }
+    if (state.observationSheetOpen && event?.key === "Tab") {
+      trapAuthoringConfirmationTab({
+        event,
+        root,
+        confirmationSelector: ".study-observation-sheet",
+        documentValue
+      });
+      return;
+    }
     if (event?.key !== "Escape") return;
     if (cancelConfirmation()) {
+      event.preventDefault?.();
+      event.stopPropagation?.();
+      return;
+    }
+    if (state.observationSheetOpen) {
+      root.querySelector?.('[data-observation-action="close"]')?.click?.();
       event.preventDefault?.();
       event.stopPropagation?.();
       return;
@@ -1584,7 +1600,9 @@ export function createCourseInspectionSequence({
     if (captureDraft) captureManualDraft();
     const snapshot = anchor || captureAnchor();
     const restoreObservationFocus = state.restoreObservationFocus;
+    const restoreObservationCloseFocus = state.restoreObservationCloseFocus;
     state.restoreObservationFocus = false;
+    state.restoreObservationCloseFocus = false;
     manualInlineController?.destroy?.();
     manualInlineController = null;
     root.innerHTML = renderSequence(state);
@@ -1601,6 +1619,8 @@ export function createCourseInspectionSequence({
     }
     if (restoreObservationFocus) {
       focus("[data-field='study-unit-observation']");
+    } else if (restoreObservationCloseFocus) {
+      focus('[data-observation-action="close"]');
     }
     root.setAttribute?.("aria-busy", String(state.initialLoading || Boolean(state.loadingDirection)));
     void hydrate(epoch).then(() => {
@@ -1811,6 +1831,7 @@ export function createCourseInspectionSequence({
     state.observationMessage = "";
     state.pendingBatchObservation = null;
     state.observationLoading = true;
+    state.restoreObservationFocus = true;
     render({ anchor });
     try {
       const observations = await loadTargetObservations(studyUnitId);
@@ -1829,6 +1850,7 @@ export function createCourseInspectionSequence({
     } finally {
       if (!state.destroyed && epoch === observationEpoch) {
         state.observationLoading = false;
+        state.restoreObservationFocus = true;
         render();
       }
     }
@@ -1838,7 +1860,7 @@ export function createCourseInspectionSequence({
     const targetIds = [...state.selectedStudyUnitIds];
     if (targetIds.length < 2 || state.observationSaving) return false;
     const anchor = captureAnchor();
-    anchor.controlKey = "selection:observe";
+    anchor.controlKey = "";
     anchor.openControlKeys = [];
     ++observationEpoch;
     state.observationStudyUnitId = targetIds[0];
@@ -1854,8 +1876,8 @@ export function createCourseInspectionSequence({
     state.pendingObservationMutation = null;
     state.pendingBatchObservation = null;
     state.observationLoading = false;
+    state.restoreObservationFocus = true;
     render({ anchor });
-    focus("[data-field='study-unit-observation']");
     return true;
   }
 
@@ -1905,6 +1927,7 @@ export function createCourseInspectionSequence({
     state.observationSaving = true;
     state.observationError = "";
     state.observationMessage = "";
+    state.restoreObservationCloseFocus = true;
     render();
     try {
       for (const entry of pending.requests) {
@@ -1940,6 +1963,7 @@ export function createCourseInspectionSequence({
       return false;
     } finally {
       state.observationSaving = false;
+      state.restoreObservationFocus = true;
       render();
     }
   }
@@ -1966,6 +1990,7 @@ export function createCourseInspectionSequence({
     };
     state.observationSaving = true;
     state.observationError = "";
+    state.restoreObservationCloseFocus = true;
     render();
     let mutationConfirmed = false;
     try {
@@ -2007,6 +2032,7 @@ export function createCourseInspectionSequence({
       return false;
     } finally {
       state.observationSaving = false;
+      state.restoreObservationFocus = true;
       render();
     }
   }
@@ -3002,8 +3028,11 @@ export function createCourseInspectionSequence({
         }
         ++observationEpoch;
         const studyUnitId = state.observationStudyUnitId;
+        const batch = state.observationTargetIds.length > 1;
         const anchor = captureAnchor();
-        if (studyUnitId) {
+        if (batch) {
+          anchor.controlKey = "selection:observe";
+        } else if (studyUnitId) {
           anchor.studyUnitId = studyUnitId;
           anchor.controlKey = `observations:${studyUnitId}`;
         }

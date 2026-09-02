@@ -37,7 +37,7 @@ function adapterFixture() {
           title: "Curso de Redes",
           instructionalAnalysisUnits: [{
             id: ANALYSIS_ID,
-            position: 0,
+            position: 8,
             statement: "DNS associa nomes a endereços.",
             version: 1
           }],

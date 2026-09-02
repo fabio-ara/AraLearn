@@ -1,11 +1,11 @@
 begin;
 
-select plan(23);
+select plan(24);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260902123759','o manifesto identifica o corte final');
+  '20260902160602','o manifesto identifica o corte final');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),38,
@@ -27,6 +27,25 @@ select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
   'course-authoring-part-materialization-history-v1',
   'course-design-parameters-v1','course-variant-comparisons-v1'
 ]),'o manifesto não anuncia mecanismos substituídos');
+
+select ok(
+  pg_get_functiondef(
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+  ) like '%v_design_preservable_study_unit_ids%'
+  and pg_get_functiondef(
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+  ) like '%to_jsonb(entity.updated_at)%'
+  and pg_get_functiondef(
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+  ) like '%course_component_refs_from_content_v1(entity.content)%'
+  and pg_get_functiondef(
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+  ) ~ 'p_application_origin\s*=\s*''provider_assistance'''
+  and pg_get_functiondef(
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+  ) like '%course_component_policy_allows_v1%',
+  'a composição preserva aplicação corrente somente para correção GPT focal compatível'
+);
 
 select ok(
   pg_get_functiondef(

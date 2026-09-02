@@ -93,7 +93,9 @@ function renderScopeContext(design) {
   const selector = context.children.length
     ? '<form class="course-design-scope-selector" data-course-design-scope>' +
       `<label for="course-design-child-scope">Abrir ${escapeHtml(
-        (SCOPE_LABELS[childKind] || "subescopo").toLocaleLowerCase("pt-BR")
+        childKind === "study_unit"
+          ? SCOPE_LABELS[childKind]
+          : (SCOPE_LABELS[childKind] || "subescopo").toLocaleLowerCase("pt-BR")
       )}</label>` +
       `<input type="hidden" name="scopeKind" value="${escapeHtml(childKind)}">` +
       '<div><select id="course-design-child-scope" name="scopeRef" required>' +

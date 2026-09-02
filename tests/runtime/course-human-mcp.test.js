@@ -153,6 +153,28 @@ test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
+test("planejamento projeta posições humanas correntes após revisão do inventário", async () => {
+  const value = adapter();
+  const current = await value.getCourseInstructionalPlan();
+  current.plan.instructionalAnalysisUnits[0].position = 8;
+  current.plan.evidenceRequirements = [{
+    id: "50000000-0000-4000-8000-000000000006",
+    position: 4,
+    statement: "Distinguir socket de conexão."
+  }];
+  value.getCourseInstructionalPlan = async () => structuredClone(current);
+
+  const output = await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "consultar_planejamento",
+    rawArguments: { curso: "Redes para iniciantes" }
+  });
+
+  assert.equal(output.context.instructionalAnalysisUnits[0].position, 1);
+  assert.equal(output.context.evidenceRequirements[0].position, 1);
+});
+
 test("salvar_parte grava estrutura e inventário completos sem expor identidades técnicas", async () => {
   const writes = [];
   const value = {

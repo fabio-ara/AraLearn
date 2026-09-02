@@ -1420,3 +1420,29 @@ test("lê e altera parâmetros por escopo concreto com validação fechada", asy
     (error) => error.code === "invalid_course_design_scope"
   );
 });
+
+test("lê parâmetros da StudyUnit sem reduzir o escopo antes do adapter", async () => {
+  const calls = [];
+  const adapter = {
+    async getCourseDesign(value) {
+      calls.push(value);
+      return { contract: "aralearn.course-design.v2", courseId: COURSE_ID };
+    }
+  };
+  const read = request(
+    `/v1/courses/${COURSE_ID}/course-design?scopeKind=study_unit&scopeRef=study-unit-a&limit=16`
+  );
+
+  await executeCourseRoute({
+    request: read,
+    route: routeCourseRequest("GET", new URL(read.url).pathname),
+    adapter,
+    principal: PRINCIPAL
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].scopeKind, "study_unit");
+  assert.equal(calls[0].scopeRef, "study-unit-a");
+  assert.equal(calls[0].childLimit, 16);
+  assert.equal(calls[0].childCursor, null);
+});

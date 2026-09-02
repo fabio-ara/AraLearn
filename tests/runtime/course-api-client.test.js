@@ -548,6 +548,11 @@ test("parâmetros usam rota própria com escopo concreto e CAS", async () => {
       reason: "Adequar a granularidade ao público."
     }
   });
+  await client.loadCourseDesign(COURSE_ID, {
+    scope: { kind: "study_unit", ref: "study-unit-a" },
+    limit: 16,
+    cursor: null
+  });
 
   const designUrl = new URL(calls[0].url);
   assert.equal(designUrl.pathname,
@@ -562,6 +567,13 @@ test("parâmetros usam rota própria com escopo concreto e CAS", async () => {
   assert.equal(calls[1].body.requestId, "request-course-design-client");
   assert.equal(calls[1].body.expectedCourseRevision, 4);
   assert.equal(calls[1].body.command.origin, "author");
+  const studyUnitDesignUrl = new URL(calls[2].url);
+  assert.deepEqual(Object.fromEntries(studyUnitDesignUrl.searchParams), {
+    scopeKind: "study_unit",
+    scopeRef: "study-unit-a",
+    limit: "16"
+  });
+  assert.equal(calls[2].body, null);
   assert.throws(
     () => client.mutateCourseDesign({
       courseId: COURSE_ID,

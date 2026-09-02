@@ -105,7 +105,7 @@ const AUTHORING_INSPECTION_SCOPE_KINDS = new Set([
   "didactic_microsequence"
 ]);
 const COURSE_DESIGN_SCOPE_KINDS = new Set([
-  "course", "module", "lesson", "didactic_microsequence"
+  "course", "module", "lesson", "didactic_microsequence", "study_unit"
 ]);
 const COURSE_SOURCE_MODES = new Set(["catalog", "source", "target"]);
 const COURSE_SOURCE_TARGET_KINDS = new Set(["plan_item", "study_unit"]);

@@ -116,7 +116,7 @@ function courseDesignReadOptions(courseId, options = {}) {
       !candidate || typeof candidate !== "object" || Array.isArray(candidate) ||
       Object.keys(candidate).length !== 2 ||
       Object.keys(candidate).some((field) => !new Set(["kind", "ref"]).has(field)) ||
-      !new Set(["course", "module", "lesson", "didactic_microsequence"]).has(kind) ||
+      !new Set(["course", "module", "lesson", "didactic_microsequence", "study_unit"]).has(kind) ||
       kind !== candidate.kind || !ref || ref !== candidate.ref || ref.length > 240 ||
       (kind === "course" && ref !== normalizedCourseId) ||
       !Number.isSafeInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 64 ||
