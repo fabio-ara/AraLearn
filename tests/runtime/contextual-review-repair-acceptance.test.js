@@ -63,7 +63,7 @@ test("#271 guidance conduz Observações abertas até reparo contextual e reinsp
   assert.match(reviewText, /não apenas os alvos anotados/iu);
   assert.match(sourceText, /referência humana, o papel efetivo.*Âncora ou trecho/iu);
   assert.match(sourceText, /Fonte e Âncora continuam contestáveis/iu);
-  assert.match(componentText, /substituição por condensação evitável.*achado e proposta concreta/iu);
+  assert.match(componentText, /condensação evitável.*proposta concreta.*revisão/iu);
   assert.match(componentText, /não uma quota de diversidade/iu);
 });
 

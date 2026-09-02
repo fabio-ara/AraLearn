@@ -74,7 +74,7 @@ function hasPowerShell() {
 const powerShellAvailable = hasPowerShell();
 
 function runScript(scriptPath, args = [], environment = {}) {
-  return spawnSync("pwsh", ["-NoProfile", "-File", scriptPath, ...args], {
+  const invoke = () => spawnSync("pwsh", ["-NoProfile", "-File", scriptPath, ...args], {
     cwd: repositoryRoot,
     encoding: "utf8",
     env: {
@@ -86,6 +86,10 @@ function runScript(scriptPath, args = [], environment = {}) {
       ...environment
     }
   });
+  const first = invoke();
+  return /Fatal error\.\s*Internal CLR error/iu.test(`${first.stderr}\n${first.stdout}`)
+    ? invoke()
+    : first;
 }
 
 function parseJsonOutput(result) {

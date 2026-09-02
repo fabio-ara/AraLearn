@@ -4,6 +4,29 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.48] - 2026-09-02
+
+### Alterado
+
+- a Autoria passa a planejar uma Parte por vez e mantém uma StudyUnit principal
+  em foco, com acesso rápido a qualquer ponto do Curso;
+- AnalysisUnits passam a representar novidades semanticamente independentes, e
+  o teto de novidade distribui o mesmo inventário por mais Units sem comprimir
+  conteúdo necessário;
+- parâmetros pedagógicos e editoriais funcionam nos escopos de Curso,
+  Microssequência e StudyUnit, com prática e representações governadas pela
+  função instrucional;
+- Fontes, Observações individuais ou em lote, revisão contextual e Analytics
+  quantitativo ficam acessíveis no contexto da StudyUnit;
+- MCP e Actions compartilham dezesseis tarefas humanas e respostas curtas, sem
+  expor a maquinaria interna de gravação.
+
+### Removido
+
+- superfícies e infraestrutura substituídas de auditoria, variantes, histórico
+  de materialização e planejamento paralelo, preservando os Cursos, Fontes,
+  PDFs, Observações e configurações úteis na atualização.
+
 ## [0.0.47] - 2026-08-31
 
 ### Corrigido

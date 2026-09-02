@@ -209,7 +209,14 @@ function normalizeAuthorship(value) {
   return Object.freeze({
     createdOrigin: value.createdOrigin,
     lastRevisionOrigin: value.lastRevisionOrigin,
-    hasAppliedDesign: value.design.snapshot !== null
+    design: Object.freeze({
+      snapshot: value.design.snapshot === null
+        ? null
+        : structuredClone(value.design.snapshot),
+      application: value.design.application === null
+        ? null
+        : structuredClone(value.design.application)
+    })
   });
 }
 
@@ -235,7 +242,9 @@ function normalizeInspectionItem(value, totalCount) {
   if (!deepLink || deepLink.length > DEEP_LINK_MAX_LENGTH || containsControlCharacters(deepLink)) {
     throw new TypeError("O link de uma Unidade de estudo é inválido.");
   }
-  if (value.authoringPart !== null) normalizePart(value.authoringPart);
+  const authoringPart = value.authoringPart === null
+    ? null
+    : normalizePart(value.authoringPart);
   return Object.freeze({
     studyUnit: normalizeStudyUnit(value.studyUnit),
     version: natural(value.version, "A versão da Unidade de estudo", { minimum: 1 }),
@@ -252,6 +261,7 @@ function normalizeInspectionItem(value, totalCount) {
         "Microssequência didática"
       )
     }),
+    authoringPart,
     authorship: normalizeAuthorship(value.authorship),
     deepLink
   });

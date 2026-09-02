@@ -541,9 +541,12 @@ async function openInspectionUnit(page, ownership) {
               state: "materialized"
             },
             authorship: {
-              pendingObservationCount: 0,
-              production: null,
-              design: null
+              createdOrigin: "human",
+              lastRevisionOrigin: "human",
+              design: {
+                snapshot: null,
+                application: null
+              }
             },
             deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=${studyUnit.id}`
           }],

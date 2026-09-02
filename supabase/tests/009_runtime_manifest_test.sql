@@ -92,6 +92,7 @@ select is(array(
     'public.create_course_inspection_focus_for_actor_v1(uuid,uuid,bigint,text,jsonb,text)',
     'public.get_course_inspection_focus_for_actor_v1(uuid,uuid,uuid)',
     'public.list_owned_course_inspection_focus_units_for_actor_v1(uuid,uuid,bigint,uuid,text,text,integer,integer)',
+    'public.list_owned_course_study_units_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
     'public.get_course_source_attachment_access_for_actor_v1(uuid,uuid,bigint,text,text,bigint,text,bigint,text)',
     'public.attach_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_owned_course_audit_cycle_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,integer)',

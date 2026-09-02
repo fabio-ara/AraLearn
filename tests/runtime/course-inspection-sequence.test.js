@@ -421,7 +421,21 @@ test("normaliza o DTO paginado exato e recusa revisão, ordem ou campos extras",
   });
   assert.equal(page.items.length, 12);
   assert.equal(page.items[0].studyUnit.id, "unit-01");
+  assert.deepEqual(page.items[0].authoringPart, {
+    id: PART_ID,
+    position: 0,
+    title: "Parte inicial",
+    state: "materialized"
+  });
   assert.equal(page.nextCursor.studyUnitId, "unit-12");
+  assert.equal(normalizeCourseInspectionPage({
+    ...value,
+    items: page.items
+  }, {
+    expectedCourseId: COURSE_ID,
+    expectedRevision: REVISION,
+    expectedScope: options.scope
+  }).items.length, 12);
 
   assert.throws(() => normalizeCourseInspectionPage({ ...value, extra: true }), /página/u);
   assert.throws(() => normalizeCourseInspectionPage({ ...value, courseRevision: 8 }, {

@@ -9795,6 +9795,9 @@ drop function if exists public.get_course_inspection_focus_for_actor_v1(
 drop function if exists public.list_owned_course_inspection_focus_units_for_actor_v1(
   uuid,uuid,bigint,uuid,text,text,integer,integer
 );
+drop function if exists public.list_owned_course_study_units_for_actor_v1(
+  uuid,uuid,bigint,text,text,text,text,text,integer,integer
+);
 drop function if exists public.commit_course_instructional_plan_for_actor_v1(
   uuid,uuid,bigint,bigint,jsonb,jsonb,text,text
 );

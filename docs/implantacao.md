@@ -164,7 +164,7 @@ da API e de Actions, OAuth do MCP hospedado e o fluxo autenticado de PDF antes
 de encerrar.
 
 O manifesto corrente termina em
-`20260831183106_fix_analysis_unit_study_unit_decomposition.sql`. Depois da aplicação:
+`20260902044404_cut_legacy_authoring_runtime.sql`. Depois da aplicação:
 
 ```powershell
 npm.cmd run deployment:verify-hosted

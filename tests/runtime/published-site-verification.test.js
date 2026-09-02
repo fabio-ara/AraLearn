@@ -321,9 +321,9 @@ test("recusa OpenAPI de Actions hospedado com versão divergente", async () => {
   );
 });
 
-test("recusa OpenAPI hospedado sem uma projeção dedicada de item do plano", async () => {
+test("recusa OpenAPI hospedado sem a tarefa de salvar uma Parte", async () => {
   const incomplete = JSON.parse(ACTIONS_OPENAPI);
-  delete incomplete.paths["/add_plan_item"];
+  delete incomplete.paths["/salvar_parte"];
   const { fetchImpl } = createPublishedSiteFetch({
     overrides: {
       "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
@@ -340,7 +340,7 @@ test("recusa OpenAPI hospedado sem uma projeção dedicada de item do plano", as
 
 test("recusa OpenAPI de Actions hospedado com fingerprint divergente", async () => {
   const incompatible = JSON.parse(ACTIONS_OPENAPI);
-  incompatible.info["x-aralearn-contract-fingerprint"] = `sha256:${"0".repeat(64)}`;
+  incompatible.info["x-aralearn-task-catalog-fingerprint"] = `sha256:${"0".repeat(64)}`;
   const { fetchImpl } = createPublishedSiteFetch({
     overrides: {
       "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
@@ -351,17 +351,14 @@ test("recusa OpenAPI de Actions hospedado com fingerprint divergente", async () 
   });
   await assert.rejects(
     () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
-    /outro contrato público de Autoria/iu
+    /outro catálogo de tarefas humanas/iu
   );
 });
 
 test("recusa projeção OpenAPI defasada mesmo com metadata corrente", async () => {
   const staleProjection = JSON.parse(ACTIONS_OPENAPI);
-  const updatePlanType = staleProjection.components.schemas
-    .AlterarCursoPlanCommand.properties.type;
-  updatePlanType.enum = updatePlanType.enum.map((type) =>
-    type === "update_plan" ? "obsolete_update_plan" : type
-  );
+  staleProjection.paths["/salvar_parte"].post.requestBody
+    .content["application/json"].schema.properties.microssequencias.maxItems = 31;
   const { fetchImpl } = createPublishedSiteFetch({
     overrides: {
       "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
