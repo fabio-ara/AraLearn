@@ -1,157 +1,45 @@
-# Variantes comparáveis de um Curso
+# Comparar condições de desenho
 
-Uma variante comparável é um Curso independente criado a partir do mesmo ponto
-de planejamento que outros Cursos. A comparação preserva a origem comum, as
-diferenças pretendidas e as revisões observadas.
+O AraLearn permite fixar parâmetros pedagógicos e direção editorial para
+produzir Cursos sob condições deliberadas. Essa capacidade ajuda a preparar um
+estudo; ela não transforma automaticamente os Cursos em grupos experimentais
+nem demonstra efeito educacional.
 
-O recurso apoia análise descritiva do artefato. Ele não cria participantes,
-atribuição aleatória, consentimento, desfechos ou inferência causal.
-Desenhos experimentais e quase experimentais exigem relações declaradas entre
-condições, atribuição, medidas, perdas, análise e ameaças à validade; uma
-estrutura técnica de comparação não satisfaz esses requisitos
-([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
+## O que pode ser comparado
 
-## Quando usar
+Os quatro parâmetros pedagógicos permitem produzir diferenças concretas em:
 
-Variantes ajudam a examinar uma decisão concreta, por exemplo:
+- distribuição de novas AnalysisUnits;
+- formas de explicação;
+- quantidade de prática por requisito de evidência;
+- dimensões de variação da prática.
 
-- usar valores diferentes de um parâmetro pedagógico;
-- restringir os componentes disponíveis numa versão;
-- produzir abordagens distintas a partir das mesmas Partes;
-- identificar mudanças posteriores que não haviam sido declaradas.
+A direção editorial pode variar títulos, parágrafos e apresentação, mas não
+eliminar conteúdo necessário. Componentes devem variar quando houver função
+instrucional distinta, não para preencher um catálogo.
 
-A origem comum melhora a rastreabilidade, mas não transforma os Cursos em
-condições experimentais equivalentes. Uma pesquisa sobre aprendizagem ainda
-precisa definir população, procedimento, instrumentos, dados ausentes, análise
-e requisitos éticos. Quando houver participantes no escopo brasileiro das
-Ciências Humanas e Sociais, a Resolução CNS nº 510/2016 é uma das autoridades
-normativas aplicáveis
-([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
-Ela protege direitos e orienta a avaliação ética; não demonstra validade causal
-ou efeito educacional.
+## Procedimento mínimo
 
-## Criar um conjunto
+1. Defina público, objetivo, conhecimentos prévios e inventário semântico.
+2. Crie Cursos privados separados para as condições que serão comparadas.
+3. Fixe explicitamente apenas os parâmetros que distinguem as condições.
+4. Preserve o mesmo inventário de AnalysisUnits quando essa for a comparação.
+5. Produza quantas StudyUnits cada condição exigir.
+6. Abra Analytics e confira configuração aplicada, distribuição, componentes e
+   prática.
+7. Exporte o snapshot de Analytics de cada escopo usado.
+8. Preserve separadamente a composição completa entregue aos participantes.
 
-Na Autoria, abra **Variantes** e escolha **Criar variantes**. O conjunto aceita
-de duas a oito variantes derivadas. Para cada uma, informe rótulo, título e
-objetivo.
+Usar Cursos separados evita introduzir um sistema de versões ou uma entidade de
+Variante dentro do produto corrente.
 
-A primeira variante serve de referência inicial e conserva os parâmetros e a
-política de componentes do Curso de origem. Ao menos uma das demais declara:
+## O que o AraLearn não decide
 
-- uma diferença de parâmetro no Curso, na Lição ou na Microssequência;
-- uma política de componentes diferente;
-- a justificativa da diferença intencional.
+Uma comparação educacional ainda precisa definir população, atribuição,
+instrumentos, desfechos, tratamento de perdas, análise e limites de inferência.
+Diferença entre Cursos não demonstra causalidade. Ausência de Observação humana
+não significa aceitação, e contagem de prática não mede aprendizagem.
 
-O servidor registra um ponto comum imutável do planejamento antes de criar os
-Cursos. Esse registro conserva a versão do plano, a revisão do Curso, uma
-impressão digital e o conteúdo necessário à comparação. Ele não congela o
-Curso de origem nem copia sua composição integral como evidência permanente.
-
-## O que cada variante recebe
-
-Cada variante possui identidade, revisão e propriedade próprias. A criação
-preserva:
-
-- a hierarquia de Módulos, Lições, Tópicos e Microssequências;
-- o plano e as Partes;
-- as atribuições do plano às Microssequências;
-- parâmetros, orientações e política de componentes;
-- Fontes, Âncoras e atribuições ligadas ao planejamento;
-- vínculos com PDFs privados por referência ao mesmo conteúdo autorizado.
-
-Unidades de estudo já materializadas não são copiadas. Cada variante produz
-suas Unidades conforme as decisões efetivas do novo Curso. Essa fronteira evita
-apresentar conteúdo anterior como produção independente.
-
-PDFs iguais compartilham o mesmo objeto imutável quando a autorização permite,
-enquanto cada Curso conserva seus próprios vínculos e metadados. Alterar depois
-uma Fonte, um parâmetro ou o conteúdo de uma variante não modifica as outras.
-
-## Materialização independente
-
-Cada Curso derivado pode ser planejado, produzido, auditado, estudado e
-compartilhado separadamente. As operações usam a revisão do próprio Curso.
-Estado pessoal, Observações, acesso direto, fatos de Pesquisa e correções também
-permanecem separados.
-
-Para comparar decisões de desenho, produza cada variante sob sua política
-efetiva e registre a revisão observada. Revisões diferentes permanecem visíveis
-na comparação, em vez de serem tratadas como se representassem o mesmo
-instante.
-
-## Ler a comparação
-
-A tela apresenta:
-
-- o ponto comum de planejamento e sua versão;
-- a revisão do Curso de origem no ponto comum e no momento da leitura;
-- a revisão de cada variante no vínculo e no momento da leitura;
-- parâmetros e políticas de componentes efetivos em cada escopo;
-- Partes, estado de produção e Unidades existentes;
-- componentes realmente usados;
-- contagens e impressões digitais de Fontes, Âncoras e PDFs;
-- dados ausentes ou incompletos.
-
-As diferenças aparecem em cinco grupos:
-
-| Grupo | Significado |
-| --- | --- |
-| **Diferenças declaradas** | decisões que a pessoa informou ao criar o conjunto |
-| **Observadas conforme declarado** | diferenças intencionais ainda presentes na revisão corrente |
-| **Desvios não declarados** | mudanças posteriores fora das diferenças registradas |
-| **Diferenças factuais** | diferenças correntes de revisão, Partes, Unidades, componentes e proveniência |
-| **Dados ausentes ou incompletos** | parcelas que o contrato não pôde confrontar integralmente |
-
-A comparação usa valores e impressões digitais, além de contagens. Trocar uma
-Fonte por outra com a mesma quantidade, por exemplo, continua produzindo uma
-diferença observável.
-
-## Desvincular sem excluir
-
-**Desvincular** remove a participação da variante naquele conjunto de
-comparação. A operação exige confirmação. O Curso, seu conteúdo, seus acessos e
-seu histórico continuam existentes e podem integrar outra atividade.
-
-## Uso por MCP e Actions
-
-`lerCurso` oferece:
-
-- `variant_comparisons`, para listar os conjuntos associados ao Curso;
-- `variant_comparison`, para ler um conjunto e suas diferenças.
-
-`alterarCurso`, com `update_course_variants`, cria variantes ou desvincula um
-Curso. A escrita usa revisão esperada e `requestId`, o que protege concorrência
-e repetição.
-
-Clientes compatíveis com a extensão visual MCP Apps podem apresentar a
-comparação em tabela compacta dentro da conversa. Essa extensão pertence ao MCP;
-Actions recebe a representação estruturada da operação HTTP. A representação
-textual conserva revisões, números, diferenças e dados ausentes quando o cliente
-MCP não oferece o componente visual. Todas derivam do mesmo contrato de domínio,
-mas cada canal conserva autenticação e autorização próprias.
-
-## Relação com Pesquisa
-
-O conjunto `variants` da área **Pesquisa** registra fatos sobre ponto comum,
-criação, vínculo, desvinculação e comparação. Esses fatos permitem reencontrar o
-conjunto e as revisões sem transformar a comparação em medida de aprendizagem.
-
-Para análise externa, registre a pergunta, o recorte, as revisões e os dados
-ausentes. Uma diferença descritiva permite afirmar que os Cursos divergiram em
-determinado aspecto; decidir que uma variante é melhor ou que causou um
-resultado exige desenho de pesquisa compatível com essa inferência
-([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
-
-Consulte [Pesquisa sobre a Autoria](analytics-instrucionais.md) para fatos e
-exportação e [Guia do pesquisador](guia-pesquisador.md) para os limites de
-interpretação.
-
-<!-- referências locais: início -->
-
-## Referências
-
-- [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
-- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
-
-<!-- referências locais: fim -->
+O [Guia de investigação](guia-pesquisador.md) desenvolve essas decisões; o
+[Protocolo de avaliação](protocolo-avaliacao-artefato.md) separa propriedade de
+software, hipótese e evidência empírica.

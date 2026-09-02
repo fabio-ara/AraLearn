@@ -4,7 +4,7 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Evidência corrente revisada em **2026-08-29**.
+Evidência corrente revisada em **2026-09-02**.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -12,9 +12,9 @@ Evidência corrente revisada em **2026-08-29**.
 | Editar Unidade no Estudo | sim | para gravar | proprietário ou pessoa apta a criar cópia | sim | sim | sim | produto | acesso compartilhado grava somente numa cópia pessoal |
 | Planejar, materializar e revisar Curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
 | Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
-| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | seis ferramentas canônicas e `add_part` dedicado; não inclui perfil ou Manutenção |
+| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | dezesseis tarefas humanas; não inclui perfil ou Manutenção |
 | Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
-| Inspecionar Unidades focadas no chat ou na Autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | MCP Apps incorpora o material; o endereço abre o mesmo conjunto filtrado |
+| Inspecionar Unidades focadas no chat ou na Autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | a resposta traz um endereço direto; a Autoria abre a mesma StudyUnit em foco |
 | Excluir Curso próprio ou sair de Curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
 | Executar Manutenção | sim | sim | identidade administrativa | sim | sim | sim | operação | inventário classificado e revalidação por objeto; sem consulta genérica |
 | Medir efeito educacional | não automaticamente | não se aplica | pesquisa autorizada | não como inferência do produto | depende de estudo | quando houver pergunta empírica | pesquisa | requer desenho, participantes, instrumentos e análise |
@@ -58,28 +58,25 @@ inalterado, e o percurso continua na mesma Unidade da nova cópia.
 
 Autoria lista somente os Cursos próprios. A pessoa pode criar um Curso privado,
 definir título, objetivo, público e alcance e organizar sua estrutura. Ao abrir
-o Curso, a **Visão geral** mostra estado, próxima ação e as sete tarefas:
-**Planejamento**, **Conteúdo**, **Parâmetros e componentes**, **Fontes**,
-**Revisão**, **Variantes e pesquisa** e **Pessoas e acesso**.
+o Curso, **Conteúdo** recebe o foco; Planejamento fica no cabeçalho e
+Parâmetros, Fontes, Revisão, Analytics e Pessoas ficam no menu compacto.
 
-O Planejamento organiza Partes em linguagem natural e pode ligá-las a
-Microssequências reais. A materialização registra passos retomáveis sem declarar
-como produzido aquilo que o servidor ainda não confirmou.
+O Planejamento organiza uma Parte por vez em linguagem natural e a liga a
+Microssequências reais. A produção confirmada aparece como StudyUnits em
+Conteúdo, sem expor passos técnicos.
 
 Parâmetros pedagógicos, orientações e política de componentes podem ser
 definidos no Curso ou em um escopo didático mais específico. A interface mostra
 de onde veio cada decisão e o valor efetivo herdado.
 
-Fontes possuem revisões imutáveis, Âncoras e PDFs privados. Uma atribuição liga
-a Unidade à revisão e às Âncoras exatas usadas. Referências anteriores sem prova
-suficiente permanecem identificadas para resolução e não aparecem como citação
-comprovada no Estudo.
+Fontes e Âncoras possuem estado corrente; PDFs são privados. Uma
+atribuição liga a Unidade à Fonte e às Âncoras exatas usadas. Referências sem
+prova suficiente não aparecem como citação comprovada no Estudo.
 
-Conteúdo percorre a composição sem ativar respostas. A Auditoria registra
-rodadas, achados, correções, verificações e reversões. Observações de estudantes
-continuam separadas de achados de auditoria. Variantes registram relações entre
-Cursos; Pesquisa apresenta fatos, definições, denominadores, ausências e
-exportações sem inferir eficácia ou causalidade.
+Conteúdo percorre a composição sem ativar respostas. Revisão parte das
+Observações abertas e alcança outras StudyUnits quando a coerência do percurso
+exigir. Analytics apresenta desenho e intervenções correntes em números simples,
+sem inferir eficácia ou causalidade.
 
 ## Assistência por IA
 
@@ -110,17 +107,14 @@ gravação explícita e as cercas de versão do Curso.
 
 O AraLearn oferece dois canais conversacionais distintos.
 
-O **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
-canônicas de Curso. Ele permite localizar Cursos próprios, ler composição,
-planejar, materializar, operar Fontes, Auditoria, Variantes, Pesquisa e consultar
-componentes didáticos. Também pode reunir Unidades num foco ordenado, mostrá-las
-por Microssequência no próprio chat e oferecer o endereço filtrado da Autoria.
+O **Model Context Protocol (MCP)** conecta um cliente compatível às dezesseis
+tarefas humanas de Curso. Ele permite retomar, planejar, materializar, configurar,
+tratar Observações, revisar, operar Fontes e consultar componentes didáticos.
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
-autorizadas. Suas seis operações canônicas e três projeções dedicadas a itens do
-plano e à criação de Parte atuam sobre os mesmos contratos de Curso, com OAuth
-confidencial próprio.
+autorizadas. Ele projeta as mesmas dezesseis tarefas, com OAuth confidencial
+próprio.
 Actions não é um nome alternativo para
 MCP e não compartilha sua sessão ou seu protocolo.
 

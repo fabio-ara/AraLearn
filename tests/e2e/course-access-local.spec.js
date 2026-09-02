@@ -99,12 +99,14 @@ async function signIn(email) {
   return result.payload.access_token;
 }
 
-async function courseAction(name, body, token) {
-  const result = await request(
-    `/functions/v1/aralearn-course-api/app/${encodeURIComponent(name)}`,
-    { method: "POST", token, body, origin: APPLICATION_ORIGIN }
-  );
-  expect(result.response.status, failure(`Course API/${name}`, result)).toBe(200);
+async function courseApi(path, { method = "GET", body = undefined } = {}, token) {
+  const result = await request(`/functions/v1/aralearn-course-api${path}`, {
+    method,
+    token,
+    ...(body === undefined ? {} : { body }),
+    origin: APPLICATION_ORIGIN
+  });
+  expect(result.response.status, failure(`Course API${path}`, result)).toBe(200);
   return result.payload;
 }
 
@@ -450,26 +452,30 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     learnerToken = await signIn(learner.email);
     outsiderToken = await signIn(outsider.email);
 
-    const created = await courseAction("criarCurso", {
-      requestId: crypto.randomUUID(),
-      title: COURSE_TITLE,
-      objective: "Praticar uma Unidade sem ampliar o acesso do Curso."
+    const created = await courseApi("/v1/courses", {
+      method: "POST",
+      body: {
+        requestId: crypto.randomUUID(),
+        title: COURSE_TITLE,
+        objective: "Praticar uma Unidade sem ampliar o acesso do Curso."
+      }
     }, ownerToken);
     courseId = created.data.courseId;
-    const composition = await courseAction("alterarCurso", {
-      requestId: crypto.randomUUID(),
-      courseId,
-      expectedRevision: 1,
-      operation: "commit_course_composition",
-      upserts: courseRows(courseId),
-      deletes: [],
-      sourceAttributionApplications: [
-        "study-unit-access-local-1",
-        "study-unit-access-local-2",
-        "study-unit-access-local-3",
-        "study-unit-access-local-4",
-        "study-unit-access-local-5"
-      ].map((studyUnitId) => ({ studyUnitId, sourceLinks: [] }))
+    const composition = await courseApi(`/v1/courses/${courseId}/composition`, {
+      method: "POST",
+      body: {
+        requestId: crypto.randomUUID(),
+        expectedRevision: 1,
+        upserts: courseRows(courseId),
+        deletes: [],
+        sourceAttributionApplications: [
+          "study-unit-access-local-1",
+          "study-unit-access-local-2",
+          "study-unit-access-local-3",
+          "study-unit-access-local-4",
+          "study-unit-access-local-5"
+        ].map((studyUnitId) => ({ studyUnitId, sourceLinks: [] }))
+      }
     }, ownerToken);
     expect(composition.data.revision).toBe(2);
   });
@@ -690,9 +696,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       )).toBeVisible();
       await setProfile(ownerPage, "Pessoa proprietária local", { avatar: true });
       await setProfile(learnerPage, "Pessoa estudante local");
-      ownerAvatarObjectKey = (await courseAction("gerirPessoas", {
-        operation: "read_profile"
-      }, ownerToken)).data.avatarObjectKey;
+      ownerAvatarObjectKey = (await courseApi("/v1/profile", {}, ownerToken))
+        .data.avatarObjectKey;
       expect(ownerAvatarObjectKey).toMatch(new RegExp(`^${owner.id}/[0-9a-f-]{36}\\.png$`, "u"));
 
       const learnerBeforeGrant = await rpc("list_courses_v1", {

@@ -23,12 +23,15 @@ aparecer quando houver ação contextual própria. Na Unidade, **Visualizar**,
 sem deslocar elementos cuja função não mudou. Verifique resposta, retorno, Fontes, Observações,
 marcação para rever, zeragem de progresso e retomada.
 
-Em **Autoria**, parta da Visão geral e verifique as sete tarefas: Planejamento,
-inclusive Partes e o histórico completo de materializações; Conteúdo, inclusive
-hierarquia e edição; Parâmetros e componentes; Fontes, Âncoras e PDFs; Revisão,
-com Observações, Auditoria, correção, verificação e reversão; Variantes e
-pesquisa; Pessoas e acesso. Inclua criação, edição e exclusão segura de um Curso
-descartável.
+Em **Autoria**, abra o Curso diretamente em **Conteúdo**. Confirme que uma
+StudyUnit domina o leitor e que índice, pesquisa, endereços diretos, anterior e
+próxima permitem chegar também a Units antigas sem renderizar o Curso inteiro.
+Percorra **Planejamento**, uma Parte por vez, e as subvisões contextuais de
+Parâmetros, Fontes e Observações. Registre uma Observação numa Unit e outra em
+várias Units, peça revisão, aplique uma proposta aprovada e reinspecione o
+conjunto afetado. Abra **Analytics** em mais de um escopo e confira que seus
+números coincidem com o JSON exportado. Inclua criação, edição e exclusão segura
+de um Curso descartável.
 
 A Assistência por IA precisa demonstrar conversa, uma proposta concreta em cada
 resposta, revisão multiturmo, aceite explícito, descoberta progressiva de

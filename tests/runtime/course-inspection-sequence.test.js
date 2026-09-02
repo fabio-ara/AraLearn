@@ -8,7 +8,6 @@ import {
   createCourseInspectionSequence,
   inspectionRequestFromTarget,
   normalizeCourseInspectionPage,
-  projectCourseInspectionStudyUnitPreview,
   searchCourseInspectionIndex
 } from "../../src/ui/CourseInspectionSequence.js";
 import { renderPackageStudyUnitBlocksWithDock } from
@@ -182,17 +181,11 @@ function inspectionItem(index) {
       state: "materialized"
     },
     authorship: {
-      pendingObservationCount: 0,
-      production: {
-        materializationId: "30000000-0000-4000-8000-000000000003",
-        recordedAt: "2026-08-17T12:00:00Z",
-        state: "produced",
-        currentMaterialization: true
-      },
+      createdOrigin: "gpt",
+      lastRevisionOrigin: "gpt",
       design: {
-        used: designSnapshot(),
-        current: designSnapshot(),
-        state: "current"
+        snapshot: designSnapshot(),
+        application: {}
       }
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
@@ -220,7 +213,7 @@ function anchoredAnnotation(index) {
         { kind: "course", id: COURSE_ID, label: "Curso", version: REVISION },
         { kind: "study_unit", id: "unit-01", label: "Unidade 1", version: 1 }
       ],
-      deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-01`
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-01`
     },
     observedRevision: { certainty: "known", courseRevision: REVISION, targetVersion: 1 },
     rawText: `Observação da página ${index}.`,
@@ -262,7 +255,7 @@ function anchoredAnnotation(index) {
       canReopen: false,
       canCorrectSubjects: true
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${annotationId}`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=review&annotationId=${annotationId}`
   };
 }
 
@@ -365,7 +358,9 @@ test("índice curricular pesquisa hierarquia sem acento e prioriza título, cami
   const course = source.courses[0];
   course.title = "Curso de Decisão";
   course.modules[0].lessons[0].microsequences[0].studyUnits[4].title = "Árvore de decisão";
-  const index = buildCourseInspectionSearchIndex(source, COURSE_ID);
+  const index = buildCourseInspectionSearchIndex(source, COURSE_ID, {
+    authoringParts: [{ id: PART_ID, position: 0, title: "Parte inicial" }]
+  });
 
   assert.equal(searchCourseInspectionIndex(index, "arvore de decisao")[0].id, "unit-05");
   assert.equal(searchCourseInspectionIndex(index, "relacoes essenciais")[0].kind,
@@ -373,6 +368,7 @@ test("índice curricular pesquisa hierarquia sem acento e prioriza título, cami
   assert.equal(searchCourseInspectionIndex(index, "40")[0].id, "unit-40");
   assert.equal(searchCourseInspectionIndex(index, "unidade 40")[0].id, "unit-40");
   assert.equal(searchCourseInspectionIndex(index, "curso de")[0].kind, "course");
+  assert.equal(searchCourseInspectionIndex(index, "parte inicial")[0].kind, "authoring_part");
   const contentMatch = searchCourseInspectionIndex(index, "curricular 17")[0];
   assert.equal(contentMatch.id, "unit-17");
   assert.match(contentMatch.matchExcerpt, /Conteúdo curricular 17/u);
@@ -408,53 +404,6 @@ test("índice curricular preserva a ordem canônica do documento sem posições 
   assert.equal(searchCourseInspectionIndex(index, "unidade 2")[0].id, "unit-second");
 });
 
-test("projeção compacta é determinística e estritamente limitada para texto, código, tabela e diagrama", () => {
-  const unit = studyUnit(1);
-  unit.title = "Representações com footprint distinto";
-  unit.content = [{
-    id: "code-preview",
-    package: "aralearn.resource.code",
-    version: "1.0.0",
-    data: {
-      prompt: "Observe a saída.",
-      language: "text",
-      code: `${"linha\n".repeat(80)}MARCADOR_FINAL_DO_CODIGO`
-    }
-  }, {
-    id: "table-preview",
-    package: "aralearn.resource.table",
-    version: "1.0.0",
-    data: {
-      prompt: "Compare.",
-      columns: ["Caso", "Resultado"],
-      rows: [["A", "1"], ["B", "2"]]
-    }
-  }, {
-    id: "diagram-preview",
-    package: "aralearn.resource.set_diagram",
-    version: "1.0.0",
-    data: {
-      prompt: "Relacione os conjuntos.",
-      kind: "venn",
-      sets: [
-        { id: "a", symbol: "A", label: "Grupo A" },
-        { id: "b", symbol: "B", label: "Grupo B" }
-      ],
-      regions: [{ id: "both", setIds: ["a", "b"], items: ["x"] }]
-    }
-  }];
-
-  const first = projectCourseInspectionStudyUnitPreview(unit);
-  const second = projectCourseInspectionStudyUnitPreview(structuredClone(unit));
-
-  assert.deepEqual(second, first);
-  assert.equal(first.title, unit.title);
-  assert.deepEqual(first.metadata, ["Teoria", "3 recursos", "Código", "Tabela", "+1 tipo"]);
-  assert.ok([...first.excerpt].length <= 160);
-  assert.match(first.excerpt, /Observe a saída/u);
-  assert.doesNotMatch(first.excerpt, /MARCADOR_FINAL_DO_CODIGO/u);
-});
-
 test("normaliza o DTO paginado exato e recusa revisão, ordem ou campos extras", () => {
   const options = {
     expectedRevision: REVISION,
@@ -472,7 +421,21 @@ test("normaliza o DTO paginado exato e recusa revisão, ordem ou campos extras",
   });
   assert.equal(page.items.length, 12);
   assert.equal(page.items[0].studyUnit.id, "unit-01");
+  assert.deepEqual(page.items[0].authoringPart, {
+    id: PART_ID,
+    position: 0,
+    title: "Parte inicial",
+    state: "materialized"
+  });
   assert.equal(page.nextCursor.studyUnitId, "unit-12");
+  assert.equal(normalizeCourseInspectionPage({
+    ...value,
+    items: page.items
+  }, {
+    expectedCourseId: COURSE_ID,
+    expectedRevision: REVISION,
+    expectedScope: options.scope
+  }).items.length, 12);
 
   assert.throws(() => normalizeCourseInspectionPage({ ...value, extra: true }), /página/u);
   assert.throws(() => normalizeCourseInspectionPage({ ...value, courseRevision: 8 }, {
@@ -497,65 +460,25 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
     scope: { kind: "authoring_part", id: PART_ID },
     anchorStudyUnitId: null
   });
-  assert.deepEqual(inspectionRequestFromTarget({ kind: "inspection_focus", id: PART_ID }), {
-    scope: { kind: "course", id: null },
-    anchorStudyUnitId: null,
-    inspectionFocusId: PART_ID
-  });
 });
 
-test("foco mostra somente o conjunto e oferece saída para o Curso no ponto corrente", async () => {
+
+test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações imediatas", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
-      assert.equal(options.inspectionFocusId, PART_ID);
-      const page = pageFor(options, 3);
-      page.inspectionFocus = {
-        id: PART_ID,
-        title: "Microssequência · Relações essenciais",
-        deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=content&inspectionFocusId=${PART_ID}`,
-        requestedCount: 3,
-        availableCount: 3,
-        missingStudyUnitIds: []
-      };
-      return page;
+      return pageFor(options, 2);
     }
   });
   const sequence = createCourseInspectionSequence({
     root,
     controller,
-    course: { courseId: COURSE_ID, revision: REVISION },
-    routeTarget: { kind: "inspection_focus", id: PART_ID },
-    windowValue: new FakeWindow(),
-    documentValue: { activeElement: null },
-    navigatorValue: null
-  });
-
-  assert.equal(await sequence.open(), true);
-  assert.match(root.innerHTML, /Filtro de inspeção ativo/u);
-  assert.match(root.innerHTML, /Microssequência · Relações essenciais/u);
-  assert.match(root.innerHTML, /3 Unidades/u);
-  assert.match(root.innerHTML, /data-inspection-exit-focus/u);
-  assert.match(root.innerHTML, /section=content&amp;studyUnitId=unit-01/u);
-  assert.doesNotMatch(root.innerHTML, /inspectionFocusId=20000000/u);
-  sequence.destroy();
-});
-
-test("menu situado preserva observações e produção; desenho mostra usado versus vigente sem hashes", async () => {
-  const root = new FakeRoot();
-  const controller = controllerFixture({
-    async loadAuthoringStudyUnits(_courseId, options) {
-      const page = pageFor(options, 2);
-      page.items[0].authorship.pendingObservationCount = 2;
-      page.items[0].authorship.design.current = designSnapshot({ ceiling: 3 });
-      page.items[0].authorship.design.state = "changed";
-      return page;
-    }
-  });
-  const sequence = createCourseInspectionSequence({
-    root,
-    controller,
-    course: { courseId: COURSE_ID, revision: REVISION },
+    course: {
+      courseId: COURSE_ID,
+      revision: REVISION,
+      ownership: "owned",
+      canEdit: true
+    },
     windowValue: new FakeWindow(),
     documentValue: { activeElement: null },
     navigatorValue: null
@@ -563,31 +486,28 @@ test("menu situado preserva observações e produção; desenho mostra usado ver
 
   assert.equal(await sequence.open(), true);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
-  assert.match(root.innerHTML, /<span>Observações · 2<\/span>/u);
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
-  assert.match(root.innerHTML, /data-inspection-review-state="design"[^>]*aria-label="Desenho vigente diferente — revisar"/u);
-  assert.match(root.innerHTML, /data-inspection-review-state="materialization"[^>]*aria-label="Materialização atual — revisar"/u);
-  assert.match(root.innerHTML, /Desenho usado nesta versão × vigente agora/u);
-  assert.match(root.innerHTML, /Usado nesta versão/u);
-  assert.match(root.innerHTML, /Vigente agora/u);
-  assert.match(root.innerHTML, />2<\/span>/u);
-  assert.match(root.innerHTML, />3<\/span>/u);
-  assert.match(root.innerHTML, /data-inspection-control-key="production:unit-01"/u);
-  assert.match(root.innerHTML, /section=planning&amp;authoringPartId=20000000-0000-4000-8000-000000000002&amp;materializationId=30000000-0000-4000-8000-000000000003/u);
-  assert.match(root.innerHTML, /<span>Produção<\/span>/u);
+  assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
+  assert.match(
+    root.innerHTML,
+    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da StudyUnit"><svg[\s\S]*?<\/svg><\/a>/u
+  );
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Fontes e Âncoras de Unidade 1" title="Fontes e Âncoras"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Revisar Unidade 1" title="Revisar"><svg/u);
+  assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
+  assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
   sequence.destroy();
 });
 
-test("card colapsada deriva preview limitado sem despejar o corpo e abre o runtime sob demanda", async () => {
+test("leitor renderiza uma única StudyUnit completa e troca o objeto por anterior ou próxima", async () => {
   const root = new FakeRoot();
-  const finalMarker = "CORPO_FINAL_236_NAO_PODE_VAZAR";
+  const finalMarker = "CORPO_FINAL_DA_SEGUNDA_UNIT";
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
       const page = pageFor(options, 2);
       page.items[1].studyUnit.content[0].data.text =
-        `Início da explicação. ${"palavra ".repeat(1_000)}${finalMarker}`;
-      page.items[1].authorship.pendingObservationCount = 2;
+        `Início da explicação completa. ${finalMarker}`;
       return page;
     }
   });
@@ -601,75 +521,37 @@ test("card colapsada deriva preview limitado sem despejar o corpo e abre o runti
   });
 
   assert.equal(await sequence.open(), true);
-  assert.match(root.innerHTML, /data-inspection-preview="unit-01" open/u);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
   assert.match(root.innerHTML, /data-package-instance-id="paragraph-1"/u);
-  assert.match(root.innerHTML, /data-inspection-preview="unit-02"/u);
-  assert.match(root.innerHTML, /aria-describedby="inspection-preview-description-unit-02"/u);
-  assert.match(root.innerHTML, /Início da explicação/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-02"/u);
   assert.doesNotMatch(root.innerHTML, new RegExp(finalMarker, "u"));
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
-  assert.match(root.innerHTML, /data-inspection-copy-link[^>]*data-deep-link="[^"]*studyUnitId=unit-02/u);
 
-  const details = {
-    open: false,
-    dataset: { inspectionPreview: "unit-02" }
-  };
-  const summary = {
-    dataset: {
-      inspectionPreviewToggle: "unit-02",
-      inspectionControlKey: "preview:unit-02"
-    },
-    closest(selector) {
-      if (selector === "[data-inspection-preview-toggle]") return this;
-      if (selector === "[data-inspection-preview]") return details;
-      return null;
-    },
-    focus() {}
-  };
-  let prevented = false;
   assert.equal(await root.listeners.get("click")({
-    target: summary,
-    preventDefault() { prevented = true; }
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-action]"
+          ? { dataset: { inspectionAction: "next" } }
+          : null;
+      }
+    }
   }), true);
-  assert.equal(prevented, true);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-02"/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
   assert.match(root.innerHTML, new RegExp(finalMarker, "u"));
-  assert.match(root.innerHTML, /data-inspection-preview="unit-02" open/u);
-  assert.doesNotMatch(root.innerHTML, /data-inspection-preview="unit-01" open/u);
   assert.doesNotMatch(root.innerHTML, /data-package-instance-id="paragraph-1"/u);
-
-  assert.equal(await root.listeners.get("click")({
-    target: summary,
-    preventDefault() {}
-  }), true);
-  assert.doesNotMatch(root.innerHTML, new RegExp(finalMarker, "u"));
-  assert.doesNotMatch(root.innerHTML, /data-inspection-preview="unit-02" open/u);
+  assert.match(root.innerHTML, /data-inspection-copy-link[^>]*data-deep-link="[^"]*studyUnitId=unit-02/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-preview|course-inspection-spacer|data-inspection-load/u);
 
   sequence.destroy();
 });
 
-test("observa e libera o rolador real da Autoria em vez da janela", () => {
+test("anterior e próxima trocam o objeto focal sem observar a rolagem", async () => {
   const root = new FakeRoot();
   const authoringScroller = new FakeWindow();
   const windowValue = new FakeWindow();
   root.closest = (selector) => selector === ".course-authoring-root" ? authoringScroller : null;
-  const sequence = createCourseInspectionSequence({
-    root,
-    controller: controllerFixture(),
-    course: { courseId: COURSE_ID, revision: REVISION },
-    windowValue,
-    documentValue: { activeElement: null },
-    navigatorValue: null
-  });
-
-  assert.equal(authoringScroller.listeners.has("scroll"), true);
-  assert.equal(windowValue.listeners.has("scroll"), false);
-  sequence.destroy();
-  assert.equal(authoringScroller.listeners.has("scroll"), false);
-});
-
-test("rolagem entre hierarquias atualiza seleção, contexto, links e alvos de edição", async () => {
-  const root = new FakeRoot();
-  const windowValue = new FakeWindow();
   const sequence = createCourseInspectionSequence({
     root,
     controller: controllerFixture({
@@ -694,87 +576,28 @@ test("rolagem entre hierarquias atualiza seleção, contexto, links e alvos de e
     documentValue: { activeElement: null }
   });
   await sequence.open();
+  assert.equal(authoringScroller.listeners.has("scroll"), false);
+  assert.equal(windowValue.listeners.has("scroll"), false);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
 
-  const mutableNode = (dataset = {}) => ({
-    textContent: "",
-    dataset: { ...dataset },
-    attributes: new Map(),
-    setAttribute(name, value) { this.attributes.set(name, String(value)); },
-    removeAttribute(name) { this.attributes.delete(name); }
-  });
-  const articleOne = mutableNode();
-  const articleTwo = mutableNode();
-  const selected = new Map();
-  const cards = [
-    {
-      dataset: { inspectionStudyUnit: "unit-01" },
-      getBoundingClientRect: () => ({ bottom: 0 }),
-      classList: { toggle(_name, value) { selected.set("unit-01", value); } },
-      querySelector: () => articleOne
-    },
-    {
-      dataset: { inspectionStudyUnit: "unit-02" },
-      getBoundingClientRect: () => ({ bottom: 500 }),
-      classList: { toggle(_name, value) { selected.set("unit-02", value); } },
-      querySelector: () => articleTwo
+  await root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-action]"
+          ? { dataset: { inspectionAction: "next" } }
+          : null;
+      }
     }
-  ];
-  const nodes = {
-    position: mutableNode(),
-    parent: mutableNode(),
-    summary: mutableNode(),
-    selectorSummary: mutableNode(),
-    previous: mutableNode(),
-    next: mutableNode(),
-    module: mutableNode(),
-    lesson: mutableNode(),
-    microsequence: mutableNode(),
-    studyUnit: mutableNode(),
-    editModule: mutableNode({ targetId: "module-a" }),
-    editLesson: mutableNode({ targetId: "lesson-a" }),
-    editMicrosequence: mutableNode({ targetId: "micro-a" })
-  };
-  const selectors = new Map([
-    ["[data-inspection-context-position]", nodes.position],
-    ["[data-inspection-context-parent]", nodes.parent],
-    ["[data-inspection-context-summary]", nodes.summary],
-    [".course-inspection-context-selector > summary", nodes.selectorSummary],
-    ['[data-inspection-action="previous"]', nodes.previous],
-    ['[data-inspection-action="next"]', nodes.next],
-    ["[data-inspection-context-module]", nodes.module],
-    ["[data-inspection-context-lesson]", nodes.lesson],
-    ["[data-inspection-context-microsequence]", nodes.microsequence],
-    ["[data-inspection-context-study-unit]", nodes.studyUnit],
-    ['[data-inspection-edit-content="module"]', nodes.editModule],
-    ['[data-inspection-edit-content="lesson"]', nodes.editLesson],
-    ['[data-inspection-edit-content="didactic_microsequence"]', nodes.editMicrosequence]
-  ]);
-  root.querySelectorAll = (selector) => selector === "[data-inspection-study-unit]" ? cards : [];
-  root.querySelector = (selector) => selectors.get(selector) || null;
+  });
 
-  windowValue.listeners.get("scroll")();
-  await new Promise((resolve) => setTimeout(resolve, 5));
-
-  assert.equal(selected.get("unit-01"), false);
-  assert.equal(selected.get("unit-02"), true);
-  assert.equal(articleOne.attributes.has("aria-current"), false);
-  assert.equal(articleTwo.attributes.get("aria-current"), "true");
-  assert.equal(nodes.position.textContent, "2/2");
-  assert.equal(nodes.parent.textContent, "Aplicações · Cenários");
-  assert.equal(nodes.summary.textContent, "Decisões aplicadas");
-  assert.equal(nodes.selectorSummary.attributes.get("aria-label"),
-    "Localização: Aplicações, Cenários, Decisões aplicadas, Unidade 2");
-  assert.equal(nodes.module.textContent, "Módulo · Aplicações");
-  assert.match(nodes.module.attributes.get("href"), /moduleId=module-b$/u);
-  assert.equal(nodes.lesson.textContent, "Lição · Cenários");
-  assert.match(nodes.lesson.attributes.get("href"), /lessonId=lesson-b$/u);
-  assert.equal(nodes.microsequence.textContent, "Microssequência · Decisões aplicadas");
-  assert.match(nodes.microsequence.attributes.get("href"), /didacticMicrosequenceId=micro-b$/u);
-  assert.equal(nodes.studyUnit.textContent, "Unidade · Unidade 2");
-  assert.match(nodes.studyUnit.attributes.get("href"), /studyUnitId=unit-02$/u);
-  assert.equal(nodes.editModule.dataset.targetId, "module-b");
-  assert.equal(nodes.editLesson.dataset.targetId, "lesson-b");
-  assert.equal(nodes.editMicrosequence.dataset.targetId, "micro-b");
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /data-inspection-context-position>2\/2<\/span>/u);
+  assert.match(root.innerHTML, /Aplicações · Cenários/u);
+  assert.match(root.innerHTML, /Decisões aplicadas/u);
+  assert.match(root.innerHTML, /moduleId=module-b/u);
+  assert.match(root.innerHTML, /lessonId=lesson-b/u);
+  assert.match(root.innerHTML, /didacticMicrosequenceId=micro-b/u);
+  assert.match(root.innerHTML, /studyUnitId=unit-02/u);
   sequence.destroy();
 });
 
@@ -819,7 +642,7 @@ test("localizador abre e fecha sem permitir rolagem nativa do summary", async ()
   sequence.destroy();
 });
 
-test("pagina de 12 em 12 e conserva uma janela curricular de no máximo 36 artigos", async () => {
+test("pagina de 12 em 12 na memória e mantém somente a StudyUnit ativa no DOM", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture();
   const sequence = createCourseInspectionSequence({
@@ -832,15 +655,14 @@ test("pagina de 12 em 12 e conserva uma janela curricular de no máximo 36 artig
   });
 
   assert.equal(await sequence.open(), true);
-  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 12);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
   await sequence.loadMore("forward");
   await sequence.loadMore("forward");
   await sequence.loadMore("forward");
-  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length,
-    COURSE_INSPECTION_MAX_WINDOW_ITEMS);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
   assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
   assert.match(root.innerHTML, /data-inspection-study-unit="unit-13"/u);
-  assert.equal(sequence.snapshot().itemCount, 36);
+  assert.equal(sequence.snapshot().itemCount, COURSE_INSPECTION_MAX_WINDOW_ITEMS);
   assert.equal(controller.calls.length, 4);
   controller.calls.forEach(({ courseId, options }) => {
     assert.equal(courseId, COURSE_ID);
@@ -895,13 +717,12 @@ test("combobox curricular alcança uma Unidade distante e mantém a sequência c
   }), true);
 
   assert.equal(sequence.snapshot().studyUnitId, "unit-858");
-  assert.equal(sequence.snapshot().itemCount, 13);
-  assert.match(root.innerHTML, /data-inspection-study-unit="unit-846"/u);
+  assert.equal(sequence.snapshot().itemCount, 1);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-846"/u);
   assert.match(root.innerHTML, /data-inspection-study-unit="unit-858"/u);
-  assert.equal(controller.calls.length, 3);
-  assert.equal(controller.calls.at(-2).options.anchorStudyUnitId, "unit-858");
-  assert.equal(controller.calls.at(-1).options.direction, "backward");
-  assert.equal(controller.calls.at(-1).options.cursor.studyUnitId, "unit-858");
+  assert.equal(controller.calls.length, 2);
+  assert.equal(controller.calls.at(-1).options.anchorStudyUnitId, "unit-858");
   assert.equal(controller.documentCalls.length, 1);
   assert.deepEqual(controller.documentCalls[0].options, { verifiedRevision: REVISION });
   await new Promise((resolve) => setImmediate(resolve));
@@ -1000,15 +821,14 @@ test("seleção do combobox prevalece sobre pré-carga concorrente e libera pagi
     }
   }), true);
   assert.equal(sequence.snapshot().studyUnitId, "unit-40");
-  assert.equal(inspectionCalls.length, 4);
-  assert.equal(inspectionCalls.at(-2).options.anchorStudyUnitId, "unit-40");
-  assert.equal(inspectionCalls.at(-1).options.direction, "backward");
+  assert.equal(inspectionCalls.length, 3);
+  assert.equal(inspectionCalls.at(-1).options.anchorStudyUnitId, "unit-40");
 
   releasePrefetch();
   assert.equal(await prefetch, false);
   assert.equal(sequence.snapshot().studyUnitId, "unit-40");
   assert.equal(await sequence.loadMore("forward"), true);
-  assert.equal(inspectionCalls.length, 5);
+  assert.equal(inspectionCalls.length, 4);
   sequence.destroy();
 });
 
@@ -1075,13 +895,12 @@ test("combobox conserva o zoom atual ao buscar uma Unidade distante do mesmo esc
 
   assert.deepEqual(sequence.snapshot().scope, { kind: "module", id: "module-a" });
   assert.equal(sequence.snapshot().studyUnitId, "unit-40");
-  assert.deepEqual(controller.calls.at(-2).options.scope, { kind: "module", id: "module-a" });
-  assert.equal(controller.calls.at(-2).options.anchorStudyUnitId, "unit-40");
-  assert.equal(controller.calls.at(-1).options.direction, "backward");
+  assert.deepEqual(controller.calls.at(-1).options.scope, { kind: "module", id: "module-a" });
+  assert.equal(controller.calls.at(-1).options.anchorStudyUnitId, "unit-40");
   sequence.destroy();
 });
 
-test("combobox abre Módulo, Lição e Microssequência como escopos curriculares", async () => {
+test("combobox abre Parte e hierarquia curricular sem renderizar seus conteúdos juntos", async () => {
   const root = new FakeRoot();
   const navigations = [];
   const sequence = createCourseInspectionSequence({
@@ -1096,6 +915,25 @@ test("combobox abre Módulo, Lição e Microssequência como escopos curriculare
     documentValue: { activeElement: null }
   });
   await sequence.open();
+
+  await root.listeners.get("input")({
+    target: {
+      value: "Parte inicial",
+      matches(selector) { return selector === "[data-inspection-search-input]"; }
+    }
+  });
+  assert.match(root.innerHTML, new RegExp(
+    `data-inspection-search-option="authoring_part:${PART_ID}"`,
+    "u"
+  ));
+  assert.equal(await root.listeners.get("click")({
+    preventDefault() {},
+    target: {
+      dataset: { inspectionSearchOption: `authoring_part:${PART_ID}` },
+      closest(selector) { return selector === "[data-inspection-search-option]" ? this : null; }
+    }
+  }), true);
+  assert.match(navigations[0].hash, new RegExp(`section=content&authoringPartId=${PART_ID}`, "u"));
 
   await root.listeners.get("input")({
     target: {
@@ -1115,8 +953,8 @@ test("combobox abre Módulo, Lição e Microssequência como escopos curriculare
       }
     }
   }), true);
-  assert.equal(navigations.length, 1);
-  assert.match(navigations[0].hash, /section=content&moduleId=module-a/u);
+  assert.equal(navigations.length, 2);
+  assert.match(navigations[1].hash, /section=content&moduleId=module-a/u);
   sequence.destroy();
 });
 
@@ -1313,8 +1151,7 @@ test("sincroniza abas só por sinal e relê a posição local antes de reancorar
     }
   });
   assert.equal(positionReads, readsBeforeSignal + 1);
-  assert.equal(controller.calls.at(-2).options.anchorStudyUnitId, "unit-25");
-  assert.equal(controller.calls.at(-1).options.direction, "backward");
+  assert.equal(controller.calls.at(-1).options.anchorStudyUnitId, "unit-25");
   assert.equal(sequence.snapshot().studyUnitId, "unit-25");
 
   sequence.destroy();
@@ -1443,6 +1280,7 @@ test("alvo direto divergente ignora o deslocamento salvo de outra Unidade", asyn
   });
 
   assert.equal(await sequence.open(), true);
+  await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(sequence.snapshot().scope, { kind: "course", id: null });
   assert.equal(controller.calls[0].options.anchorStudyUnitId, "unit-25");
   assert.deepEqual(windowValue.scrolls[0], { top: 100, left: 0, behavior: "auto" });
@@ -1604,11 +1442,10 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"/u);
-  assert.match(root.innerHTML, /<span>Observações<\/span>/u);
-  assert.doesNotMatch(root.innerHTML, /Observar esta Unidade/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1"/u);
   assert.match(root.innerHTML, /aria-label="Visualizar"/u);
   assert.doesNotMatch(root.innerHTML, /<span>Visualizar<\/span>/u);
-  assert.doesNotMatch(root.innerHTML, /data-inspection-select-button/u);
+  assert.match(root.innerHTML, /data-inspection-selection-action="toggle-current"[^>]*aria-pressed="false"/u);
   assert.equal(annotationCalls.length, 0);
 
   await root.listeners.get("click")({
@@ -1641,6 +1478,121 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   sequence.destroy();
 });
 
+test("seleção temporária registra Observação em lote por chamadas individuais e permite repetir", async () => {
+  const root = new FakeRoot();
+  const requests = [];
+  let failedSecondTarget = false;
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) { return pageFor(options, 2); },
+      async loadCourseAnchoredAnnotations() {
+        throw new Error("O lote não deve criar consulta ou entidade intermediária.");
+      },
+      async mutateCourseAnchoredAnnotations(input) {
+        requests.push(structuredClone(input));
+        if (input.command.target.id === "unit-02" && !failedSecondTarget) {
+          failedSecondTarget = true;
+          const error = new Error("A conexão caiu depois do envio.");
+          error.code = "network_error";
+          throw error;
+        }
+        return {
+          contract: "aralearn.course-anchored-annotation-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: REVISION,
+          annotationSetVersion: requests.length + 3,
+          requestId: input.requestId,
+          idempotent: false,
+          changed: true,
+          annotation: null
+        };
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  const clickSelection = (action, studyUnitId = "") => root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-selection-action]"
+          ? { dataset: { inspectionSelectionAction: action, studyUnitId } }
+          : selector === "[data-inspection-action]" && action === "next"
+            ? { dataset: { inspectionAction: "next" } }
+            : null;
+      }
+    }
+  });
+  assert.equal(await clickSelection("toggle-current", "unit-01"), true);
+  assert.equal(await clickSelection("next"), true);
+  assert.equal(await clickSelection("toggle-current", "unit-02"), true);
+  assert.match(root.innerHTML, /2 Unidades selecionadas/u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /data-inspection-selection-action="observe-selected"[^>]*disabled/iu
+  );
+
+  assert.equal(await clickSelection("observe-selected"), true);
+  assert.match(root.innerHTML, /Observação em 2 Unidades/u);
+  assert.match(root.innerHTML, /registrado separadamente em cada Unidade selecionada/iu);
+  root.listeners.get("input")({
+    target: {
+      value: "Rever a transição entre as duas Unidades.",
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; },
+      closest() { return null; }
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  for (let attempt = 0; attempt < 8 && requests.length < 2; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(requests.map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
+  assert.match(root.innerHTML, /1 de 2 Observações foram registradas/iu);
+  const failedRequestId = requests[1].requestId;
+
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  for (let attempt = 0; attempt < 8 && requests.length < 3; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(requests[2].command.target.id, "unit-02");
+  assert.equal(requests[2].requestId, failedRequestId, "retry precisa reutilizar a chamada individual incerta");
+  assert.match(root.innerHTML, /registrada separadamente em 2 Unidades/iu);
+  assert.match(root.innerHTML, /Você pode registrar outra/iu);
+  assert.match(
+    root.innerHTML,
+    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar Observações abertas no Curso/u
+  );
+  assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
+
+  root.listeners.get("input")({
+    target: {
+      value: "Adicionar uma segunda Observação ao mesmo conjunto.",
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; },
+      closest() { return null; }
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  for (let attempt = 0; attempt < 8 && requests.length < 5; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.deepEqual(requests.slice(3).map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
+  assert.notEqual(requests[3].command.annotationId, requests[0].command.annotationId);
+  sequence.destroy();
+});
+
 test("observação resolvida deixa de marcar a Unidade como pendente", async () => {
   const root = new FakeRoot();
   const resolved = anchoredAnnotation(1);
@@ -1652,9 +1604,7 @@ test("observação resolvida deixa de marcar a Unidade como pendente", async () 
     root,
     controller: controllerFixture({
       async loadAuthoringStudyUnits(_courseId, options) {
-        const page = pageFor(options);
-        page.items[0].authorship.pendingObservationCount = 1;
-        return page;
+        return pageFor(options);
       },
       async loadCourseAnchoredAnnotations(_courseId, options) {
         return {
@@ -1682,7 +1632,7 @@ test("observação resolvida deixa de marcar a Unidade como pendente", async () 
   });
 
   await sequence.open();
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-review-state="observations"/u);
   await root.listeners.get("click")({
     target: {
       closest(selector) {
@@ -1865,7 +1815,7 @@ test("Inspeção agrega sete páginas byte-limited antes de renderizar o context
   });
 
   assert.deepEqual(cursors, [null, "cursor1", "cursor2", "cursor3", "cursor4", "cursor5", "cursor6"]);
-  assert.match(root.innerHTML, /Observações · 7/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 7 pendentes"/u);
   assert.match(root.innerHTML, /Observação da página 7\./u);
   sequence.destroy();
 });
@@ -1925,7 +1875,7 @@ test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", as
 
   assert.equal(cursors.length, 128);
   assert.equal(cursors.at(-1), "cursor127");
-  assert.match(root.innerHTML, /Observações · 129/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 129 pendentes"/u);
   assert.match(root.innerHTML, /Exibindo 128 de 129 observações correspondentes; 129 ativas/u);
   assert.match(root.innerHTML, /Abrir todas na área Observações/u);
   assert.match(root.innerHTML, /section=review/u);
@@ -2056,9 +2006,9 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
   });
   assert.equal(await partial.open(), true);
   assert.equal(await partial.loadMore("forward"), false);
-  assert.equal((partialRoot.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 12);
+  assert.equal((partialRoot.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
   assert.match(partialRoot.innerHTML, /Sem conexão para carregar este trecho/u);
-  assert.match(partialRoot.innerHTML, /Tentar novamente/u);
+  assert.match(partialRoot.innerHTML, /aria-label="Próxima Unidade"/u);
   partial.destroy();
 });
 
@@ -2098,7 +2048,9 @@ test("atualização na mesma revisão relê marcadores alterados por MCP ou Acti
       async loadAuthoringStudyUnits(_courseId, options) {
         reads += 1;
         const page = pageFor(options);
-        page.items[0].authorship.pendingObservationCount = reads === 1 ? 1 : 0;
+        page.items[0].studyUnit.content[0].data.text = reads === 1
+          ? "Conteúdo inicial."
+          : "Conteúdo atualizado fora desta tela.";
         return page;
       }
     }),
@@ -2108,10 +2060,57 @@ test("atualização na mesma revisão relê marcadores alterados por MCP ou Acti
   });
 
   assert.equal(await sequence.open(), true);
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"/u);
   assert.equal(await sequence.refresh(REVISION), true);
   assert.equal(reads, 2);
   assert.doesNotMatch(root.innerHTML, /data-inspection-review-state="observations"/u);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
+  assert.match(root.innerHTML, /Conteúdo atualizado fora desta tela/u);
+  sequence.destroy();
+});
+
+test("atualização externa só interrompe quando conflita com edição local real", async () => {
+  const root = new FakeRoot();
+  let reads = 0;
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        reads += 1;
+        const page = pageFor(options);
+        page.courseRevision = options.expectedRevision;
+        if (reads > 1) {
+          page.items[0].version = 2;
+          page.items[0].studyUnit.title = "Título externo";
+        }
+        return page;
+      }
+    }),
+    course: {
+      courseId: COURSE_ID,
+      revision: REVISION,
+      ownership: "owned",
+      canEdit: true
+    },
+    onSaveManualEdit() {},
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  assert.equal(await sequence.open(), true);
+  assert.equal(sequence.previewManualEdit({
+    studyUnitId: "unit-01",
+    targetId: "study_unit",
+    pathValues: { title: "Título local" },
+    origin: "manual"
+  }), true);
+
+  assert.equal(await sequence.refresh(REVISION + 1), false);
+  assert.equal(sequence.snapshot().courseRevision, REVISION);
+  assert.equal(sequence.snapshot().studyUnitId, "unit-01");
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /Título local/u);
+  assert.match(root.innerHTML, /mudou fora desta tela/iu);
+  assert.doesNotMatch(root.innerHTML, /Título externo/u);
   sequence.destroy();
 });
 
@@ -2149,7 +2148,7 @@ test("revisão nova cancela paginação antiga e mantém somente o trecho ancora
   sequence.destroy();
 });
 
-test("troca de escopo salva a posição e preserva no histórico o deep link exato", async () => {
+test("ação contextual de parâmetros abre a StudyUnit e preserva retorno", async () => {
   const root = new FakeRoot();
   const events = [];
   const activeElement = {
@@ -2184,11 +2183,11 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
   });
   await sequence.open();
 
-  const microsequenceRoute = `#/authoring/courses/${COURSE_ID}` +
-    "?section=content&didacticMicrosequenceId=micro-a";
+  const studyUnitRoute = `#/authoring/courses/${COURSE_ID}` +
+    "?section=parameters&studyUnitId=unit-02";
   const routeNode = {
-    dataset: { inspectionControlKey: "production:unit-02" },
-    getAttribute: () => microsequenceRoute,
+    dataset: { inspectionControlKey: "design:unit-02" },
+    getAttribute: () => studyUnitRoute,
     closest(selector) {
       return selector === "[data-inspection-study-unit]"
         ? { dataset: { inspectionStudyUnit: "unit-02" } }
@@ -2210,7 +2209,7 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
   assert.equal(events[0][1].studyUnitId, "unit-02");
   assert.deepEqual(events[1], [
     "navigate",
-    microsequenceRoute,
+    studyUnitRoute,
     {
       returnTo: inspectionItem(2).deepLink,
       returnPosition: {
@@ -2219,7 +2218,7 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
         offsetFromStickyTop: 0,
         courseRevision: REVISION
       },
-      returnFocusKey: "production:unit-02"
+      returnFocusKey: "design:unit-02"
     }
   ]);
   sequence.destroy();
@@ -2289,7 +2288,7 @@ test("teclado fecha menus, clique externo os recolhe e a navegação usa o rolad
   assert.match(root.innerHTML, /data-inspection-context-position>2\/60<\/span>/u);
   assert.match(root.innerHTML,
     /data-inspection-study-unit="unit-02"[^>]*>[\s\S]*?<article[^>]*aria-current="true"/u);
-  assert.match(root.innerHTML, /aria-posinset="1" aria-setsize="60"/u);
+  assert.match(root.innerHTML, /aria-posinset="2" aria-setsize="60"/u);
   sequence.destroy();
   assert.equal(documentListeners.size, 0);
 });

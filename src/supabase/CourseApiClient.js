@@ -1,5 +1,4 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
-import { normalizeCourseAuthoringPlanCommand } from "../domain/courseAuthoringPlan.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
@@ -7,21 +6,6 @@ import {
   normalizeCourseAnchoredAnnotationQuery,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
-import {
-  normalizeCourseAuditCycleChange,
-  normalizeCourseAuditCycleCommand,
-  normalizeCourseAuditCyclePage,
-  normalizeCourseAuditCycleQuery,
-  normalizeCourseAuditCycleReadOptions
-} from "../domain/courseAuditCycle.js";
-import {
-  normalizeCourseVariantChange,
-  normalizeCourseVariantCommand,
-  normalizeCourseVariantComparison,
-  normalizeCourseVariantComparisonList,
-  normalizeCourseVariantDetachCommand,
-  normalizeCourseVariantRead
-} from "../domain/courseVariants.js";
 import {
   normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
@@ -37,8 +21,7 @@ import {
   COURSE_SOURCE_PDF_MAX_BYTES,
   COURSE_SOURCE_PDF_MEDIA_TYPE,
   COURSE_SOURCE_CHANGE_CONTRACT,
-  normalizeCourseSourceAttachmentAccess,
-  normalizeCourseSourceAttributionApplication,
+  normalizeCourseSourcePdfDownload,
   normalizeCourseSourcePdfIngestion,
   normalizeSourceAttributionApplications,
   normalizeCourseSourceChange,
@@ -136,15 +119,6 @@ function boundedIdentifier(value, label, { maximum = 240 } = {}) {
   return normalized;
 }
 
-function boundedLegacySourceId(value, label) {
-  if (typeof value !== "string" || value.length < 1 || value.length > 4_096 ||
-      [...value].length > 2_048 || new TextEncoder().encode(value).byteLength > 8_192 ||
-      hasControlCharacter(value)) {
-    throw new TypeError(`${label} inválida.`);
-  }
-  return value;
-}
-
 function boundedCourseSourceIdentifier(value, label, { maximum = 240 } = {}) {
   const normalized = typeof value === "string" ? value.trim() : "";
   if (!normalized || normalized !== value || normalized.length > maximum * 2 ||
@@ -166,7 +140,7 @@ function requestIdentity(value) {
 
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source" ||
-    command.type === "attach_pdf" || command.type === "remove_pdf"
+    command.type === "remove_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -224,14 +198,14 @@ function courseSourcesReadOptions(value = {}) {
   const mode = source.mode == null ? "catalog" : String(source.mode).trim();
   const sourceId = source.sourceId == null
     ? null
-    : boundedLegacySourceId(source.sourceId, "Identidade da Fonte");
+    : boundedCourseSourceIdentifier(source.sourceId, "Identidade da Fonte");
   const targetKind = source.targetKind == null ? null : String(source.targetKind).trim();
   const targetId = source.targetId == null
     ? null
     : boundedCourseSourceIdentifier(source.targetId, "Identidade do alvo");
   const cursor = source.cursor == null ? null : String(source.cursor).trim();
   const limit = source.limit == null
-    ? 10
+    ? mode === "catalog" ? 10 : 1
     : positiveInteger(source.limit, "Limite de Fontes", { maximum: 24 });
   const hasTargetContext = targetKind !== null || targetId !== null;
   const validTargetContext = targetKind !== null && targetId !== null;
@@ -242,7 +216,7 @@ function courseSourcesReadOptions(value = {}) {
       mode === "source" && hasTargetContext && !validTargetContext ||
       (targetKind !== null && !COURSE_SOURCE_TARGET_KINDS.has(targetKind)) ||
       (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
-      (mode === "source" && hasTargetContext && cursor !== null) ||
+      (mode !== "catalog" && (cursor !== null || limit !== 1)) ||
       (source.cursor != null && (
         cursor !== source.cursor || cursor.length > 240 || !SOURCE_CURSOR_PATTERN.test(cursor)
       ))) {
@@ -259,51 +233,33 @@ function courseSourcesReadOptions(value = {}) {
   };
 }
 
-function courseSourceAttachmentIdentity(value = {}, {
-  operation,
-  requireSize = false
-} = {}) {
-  const allowed = new Set([
-    "courseId", "expectedRevision", "sourceId", "sourceRevision",
-    "contentHash", "byteSize", "mediaType"
-  ]);
-  const source = exactObject(value, allowed, "Acesso ao anexo de Fonte");
+function courseSourcePdfDownloadIdentity(value = {}) {
+  const source = exactObject(value, new Set([
+    "courseId", "expectedRevision", "sourceId", "sourceRevision", "contentHash"
+  ]), "Download do PDF de Fonte");
   const normalized = {
     courseId: uuid(source.courseId, "Curso"),
     expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
-    sourceId: boundedLegacySourceId(source.sourceId, "Identidade da Fonte"),
+    sourceId: boundedCourseSourceIdentifier(source.sourceId, "Identidade da Fonte"),
     sourceRevision: positiveInteger(source.sourceRevision, "Revisão da Fonte"),
-    contentHash: String(source.contentHash || "").trim().toLowerCase(),
-    byteSize: source.byteSize == null ? null : positiveInteger(
-      source.byteSize,
-      "Tamanho do anexo",
-      { maximum: COURSE_SOURCE_PDF_MAX_BYTES }
-    ),
-    mediaType: source.mediaType == null
-      ? null
-      : String(source.mediaType).trim().toLowerCase()
+    contentHash: String(source.contentHash || "").trim().toLowerCase()
   };
-  if (!SHA256_PATTERN.test(normalized.contentHash) ||
-      requireSize && normalized.byteSize === null ||
-      requireSize && normalized.mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE ||
-      !requireSize && (normalized.byteSize !== null || normalized.mediaType !== null)) {
-    throw new TypeError("Acesso ao anexo de Fonte inválido.");
+  if (!SHA256_PATTERN.test(normalized.contentHash)) {
+    throw new TypeError("Download do PDF de Fonte inválido.");
   }
-  return { operation, ...normalized };
+  return normalized;
 }
 
-function boundCourseSourceAttachmentAccess(value, request) {
-  const access = normalizeCourseSourceAttachmentAccess(value);
-  if (access.operation !== request.operation || access.courseId !== request.courseId ||
-      access.courseRevision !== request.expectedRevision ||
-      access.sourceId !== request.sourceId ||
-      access.sourceRevision !== request.sourceRevision ||
-      access.attachment.contentHash !== request.contentHash ||
-      request.byteSize !== null && access.attachment.byteSize !== request.byteSize ||
-      request.mediaType !== null && access.attachment.mediaType !== request.mediaType) {
-    throw new TypeError("O acesso ao anexo não corresponde ao pedido.");
+function boundCourseSourcePdfDownload(value, request) {
+  const download = normalizeCourseSourcePdfDownload(value);
+  if (download.courseId !== request.courseId ||
+      download.courseRevision !== request.expectedRevision ||
+      download.sourceId !== request.sourceId ||
+      download.sourceRevision !== request.sourceRevision ||
+      download.attachment.contentHash !== request.contentHash) {
+    throw new TypeError("O download do PDF não corresponde ao pedido.");
   }
-  return access;
+  return download;
 }
 
 function timestamp(value, label) {
@@ -432,46 +388,6 @@ function boundedJsonObject(value, label, maximumBytes) {
   return normalized;
 }
 
-function normalizedMaterializationCommand(value) {
-  const command = boundedJsonObject(value, "Comando de materialização", 512 * 1024);
-  const operation = String(command.operation || "").trim();
-  const base = [
-    "operation", "authoringPartId", "materializationId",
-    "expectedMaterializationVersion"
-  ];
-  const operationFields = operation === "start"
-    ? ["authoringPartVersion", "steps"]
-    : operation === "record_step"
-      ? [
-          "stepId", "expectedStepVersion", "status",
-          "entityChanges", "designApplication", "sourceAttributionApplication"
-        ]
-      : operation === "finish"
-        ? ["status"]
-        : [];
-  const fields = new Set([
-    ...base,
-    ...operationFields,
-    ...(operation === "record_step" || operation === "finish" ? ["resultFacts"] : [])
-  ]);
-  const requiredFields = new Set([...base, ...operationFields]);
-  if (!operationFields.length || [...requiredFields].some((field) => !Object.hasOwn(command, field)) ||
-      Object.keys(command).some((field) => !fields.has(field))) {
-    throw new TypeError("Comando de materialização inválido.");
-  }
-  if (operation === "record_step") {
-    command.sourceAttributionApplication = command.sourceAttributionApplication == null
-      ? null
-      : normalizeCourseSourceAttributionApplication(command.sourceAttributionApplication);
-  }
-  if (operation === "record_step" || operation === "finish") {
-    command.resultFacts = Object.hasOwn(command, "resultFacts")
-      ? boundedJsonObject(command.resultFacts, "Fatos da materialização", 16 * 1024)
-      : {};
-  }
-  return command;
-}
-
 function authenticationFailure(error) {
   const status = Number(error?.status || error?.response?.status || 0);
   const code = String(error?.code || "").toUpperCase();
@@ -489,9 +405,34 @@ function transientCourseEdgeFailure(error) {
     !String(error?.code || "").trim();
 }
 
-function courseActionCanBeReplayed(actionName, body) {
-  return actionName === "lerCurso" ||
+function courseRequestCanBeReplayed(method, body) {
+  return method === "GET" ||
     typeof body?.requestId === "string" && REQUEST_ID_PATTERN.test(body.requestId);
+}
+
+function courseApiPath(pathname, query = null) {
+  const path = String(pathname || "");
+  if (!/^\/v[12]\//u.test(path) && path !== "/app/excluirMinhaConta") {
+    throw new TypeError("Rota de Curso inválida.");
+  }
+  const params = new URLSearchParams();
+  if (query !== null) {
+    const source = plainObject(query, "Consulta da rota de Curso");
+    for (const [name, value] of Object.entries(source)) {
+      if (value == null || value === "") continue;
+      if (Array.isArray(value)) {
+        value.forEach((item) => params.append(name, String(item)));
+      } else {
+        params.set(name, String(value));
+      }
+    }
+  }
+  const suffix = params.toString();
+  return `/functions/v1/aralearn-course-api${path}${suffix ? `?${suffix}` : ""}`;
+}
+
+function courseResourcePath(courseId, suffix = "") {
+  return `/v1/courses/${encodeURIComponent(uuid(courseId, "Curso"))}${suffix}`;
 }
 
 function courseRevisionChangedError(cause = null) {
@@ -628,84 +569,6 @@ function boundAnchoredAnnotationChange(value, mutation, {
         expectedChannel !== null && annotation.provenance.channel !== expectedChannel
       )) {
     throw new TypeError("A confirmação da observação não corresponde ao comando.");
-  }
-  return change;
-}
-
-function defaultAuditCycleQuery() {
-  return {
-    mode: "findings",
-    targetStudyUnitId: null,
-    findingId: null,
-    correctionId: null,
-    auditRunId: null,
-    states: [],
-    dimensions: [],
-    severities: [],
-    annotationIds: []
-  };
-}
-
-function auditCycleReadOptions(value = {}) {
-  const source = exactObject(value, new Set([
-    "expectedCourseRevision", "auditSetVersion", "query", "cursor", "limit"
-  ]), "Leitura de auditoria");
-  return normalizeCourseAuditCycleReadOptions({
-    expectedCourseRevision: source.expectedCourseRevision,
-    auditSetVersion: source.auditSetVersion ?? null,
-    query: source.query ?? defaultAuditCycleQuery(),
-    cursor: source.cursor ?? null,
-    limit: source.limit ?? 12
-  });
-}
-
-function auditCycleMutation(value = {}) {
-  const source = exactObject(value, new Set([
-    "requestId", "courseId", "expectedCourseRevision", "command"
-  ]), "Alteração de auditoria");
-  return {
-    requestId: requestIdentity(source.requestId ?? createUuid()),
-    courseId: uuid(source.courseId, "Curso"),
-    expectedCourseRevision: positiveInteger(
-      source.expectedCourseRevision,
-      "Versão do Curso"
-    ),
-    command: normalizeCourseAuditCycleCommand(source.command)
-  };
-}
-
-function boundAuditCyclePage(value, { courseId, options }) {
-  const page = normalizeCourseAuditCyclePage(value);
-  if (page.courseId !== courseId ||
-      page.courseRevision !== options.expectedCourseRevision ||
-      options.auditSetVersion !== null &&
-        page.auditSetVersion !== options.auditSetVersion ||
-      JSON.stringify(normalizeCourseAuditCycleQuery(page.query)) !==
-        JSON.stringify(options.query)) {
-    throw new TypeError("A leitura de auditoria não corresponde ao pedido.");
-  }
-  return page;
-}
-
-function boundAuditCycleChange(value, mutation) {
-  const change = normalizeCourseAuditCycleChange(value);
-  const changesCourseContent = new Set([
-    "apply_authoring_correction",
-    "rollback_authoring_correction"
-  ]).has(mutation.command.type);
-  const expectedRevision = mutation.expectedCourseRevision +
-    (changesCourseContent && change.changed && !change.idempotent ? 1 : 0);
-  if (change.courseId !== mutation.courseId ||
-      change.requestId !== mutation.requestId ||
-      change.change !== null && change.change.type !== mutation.command.type ||
-      (change.idempotent
-        ? change.courseRevision < mutation.expectedCourseRevision
-        : change.courseRevision !== expectedRevision) ||
-      mutation.command.findingId != null && change.finding != null &&
-        change.finding.findingId !== mutation.command.findingId ||
-      mutation.command.correctionId != null && change.correction != null &&
-        change.correction.correctionId !== mutation.command.correctionId) {
-    throw new TypeError("A confirmação da auditoria não corresponde ao comando.");
   }
   return change;
 }
@@ -960,12 +823,25 @@ export class CourseApiClient {
     );
   }
 
-  async executeCourseAction(name, argumentsValue = {}, { headers = {} } = {}) {
-    const actionName = String(name || "").trim();
-    if (!/^[a-z][A-Za-z0-9]{2,79}$/u.test(actionName)) {
-      throw new TypeError("Operação de Curso inválida.");
+  async requestCourseApi(pathname, {
+    method = "GET",
+    query = null,
+    body = null,
+    headers = {},
+    timeoutMs = 60_000
+  } = {}) {
+    const normalizedMethod = String(method || "").toUpperCase();
+    if (!new Set(["GET", "POST", "PATCH", "DELETE"]).has(normalizedMethod)) {
+      throw new TypeError("Método da rota de Curso inválido.");
     }
-    const body = plainObject(argumentsValue, "Argumentos da operação");
+    const normalizedBody = body === null ? null : plainObject(body, "Corpo da rota de Curso");
+    if (normalizedMethod === "GET" && normalizedBody !== null) {
+      throw new TypeError("Leitura de Curso não aceita corpo.");
+    }
+    const requestHeaders = { ...headers };
+    if (typeof normalizedBody?.requestId === "string") {
+      requestHeaders["Idempotency-Key"] = requestIdentity(normalizedBody.requestId);
+    }
     try {
       const accessToken = await this.authClient.getAccessToken();
       if (!accessToken) {
@@ -974,14 +850,20 @@ export class CourseApiClient {
         throw error;
       }
       const execute = () => this.http.request(
-        `/functions/v1/aralearn-course-api/app/${encodeURIComponent(actionName)}`,
-        { method: "POST", body, accessToken, headers, timeoutMs: 60_000 }
+        courseApiPath(pathname, query),
+        {
+          method: normalizedMethod,
+          ...(normalizedBody === null ? {} : { body: normalizedBody }),
+          accessToken,
+          headers: requestHeaders,
+          timeoutMs
+        }
       );
       let response;
       try {
         response = await execute();
       } catch (error) {
-        if (!courseActionCanBeReplayed(actionName, body) ||
+        if (!courseRequestCanBeReplayed(normalizedMethod, normalizedBody) ||
             !transientCourseEdgeFailure(error)) {
           throw error;
         }
@@ -1000,10 +882,7 @@ export class CourseApiClient {
   }
 
   loadAuthoringPlan(courseId) {
-    return this.executeCourseAction("lerCurso", {
-      courseId: uuid(courseId, "Curso"),
-      view: "instructional_plan"
-    });
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/instructional-plan`);
   }
 
   loadCourseDesign(courseId, options = {}) {
@@ -1014,23 +893,24 @@ export class CourseApiClient {
     );
     const { scope = null, limit = 32, cursor = null } = source;
     const normalizedCourseId = uuid(courseId, "Curso");
-    return this.executeCourseAction("lerCurso", {
-      courseId: normalizedCourseId,
-      view: "course_design",
-      scope: courseDesignScope(scope, normalizedCourseId),
-      limit: positiveInteger(limit, "Limite de subescopos", { maximum: 64 }),
-      cursor: cursor == null ? null : boundedIdentifier(cursor, "Cursor de subescopos")
+    const normalizedScope = courseDesignScope(scope, normalizedCourseId);
+    return this.requestCourseApi(`${courseResourcePath(normalizedCourseId)}/course-design`, {
+      query: {
+        scopeKind: normalizedScope.kind,
+        scopeRef: normalizedScope.ref,
+        limit: positiveInteger(limit, "Limite de subescopos", { maximum: 64 }),
+        cursor: cursor == null ? null : boundedIdentifier(cursor, "Cursor de subescopos")
+      }
     });
   }
 
   async loadCourseSources(courseId, options = {}) {
     const normalizedCourseId = uuid(courseId, "Curso");
     const normalized = courseSourcesReadOptions(options);
-    const result = normalizeCourseSourcesRead(await this.executeCourseAction("lerCurso", {
-      courseId: normalizedCourseId,
-      view: "course_sources",
-      ...normalized
-    }));
+    const result = normalizeCourseSourcesRead(await this.requestCourseApi(
+      `${courseResourcePath(normalizedCourseId)}/sources`,
+      { query: normalized }
+    ));
     if (result.courseId !== normalizedCourseId ||
         result.courseRevision !== normalized.expectedRevision ||
         result.mode !== normalized.mode ||
@@ -1038,6 +918,8 @@ export class CourseApiClient {
         result.query.targetKind !== normalized.targetKind ||
         result.query.targetId !== normalized.targetId ||
         result.nextCursor !== null && !SOURCE_CURSOR_PATTERN.test(result.nextCursor) ||
+        normalized.mode !== "catalog" && (result.items.length > 1 ||
+          result.nextCursor !== null) ||
         normalized.mode === "source" && result.items.some(({ sourceId }) =>
           sourceId !== normalized.sourceId) ||
         normalized.mode === "target" && result.items.some(({ targetKind, targetId }) =>
@@ -1048,18 +930,15 @@ export class CourseApiClient {
   }
 
   async getCourseSourceAttachmentDownload(value = {}) {
-    const request = courseSourceAttachmentIdentity(value, {
-      operation: "download"
-    });
-    return boundCourseSourceAttachmentAccess(
-      await this.executeCourseAction("lerCurso", {
-        courseId: request.courseId,
-        view: "course_source_attachment",
-        attachmentOperation: request.operation,
-        expectedRevision: request.expectedRevision,
-        sourceId: request.sourceId,
-        sourceRevision: request.sourceRevision,
-        contentHash: request.contentHash
+    const request = courseSourcePdfDownloadIdentity(value);
+    return boundCourseSourcePdfDownload(
+      await this.requestCourseApi(`${courseResourcePath(request.courseId)}/source-pdf/download`, {
+        query: {
+          expectedRevision: request.expectedRevision,
+          sourceId: request.sourceId,
+          sourceRevision: request.sourceRevision,
+          contentHash: request.contentHash
+        }
       }),
       request
     );
@@ -1084,7 +963,7 @@ export class CourseApiClient {
       requestId: requestIdentity(requestId),
       courseId: uuid(courseId, "Curso"),
       expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
-      sourceId: boundedLegacySourceId(sourceId, "Identidade da Fonte"),
+      sourceId: boundedCourseSourceIdentifier(sourceId, "Identidade da Fonte"),
       sourceRevision: positiveInteger(sourceRevision, "Revisão da Fonte")
     };
     try {
@@ -1134,7 +1013,7 @@ export class CourseApiClient {
           result.requestId !== normalized.requestId ||
           result.courseRevision !== normalized.expectedRevision + (result.changed ? 1 : 0) ||
           result.change !== null && (
-            result.change.type !== "attach_pdf" ||
+            result.change.type !== "ingest_pdf" ||
             result.change.subjectId !== normalized.sourceId ||
             result.change.revision !== normalized.sourceRevision
           )) {
@@ -1155,111 +1034,36 @@ export class CourseApiClient {
     const normalizedCourseId = uuid(courseId, "Curso");
     const options = anchoredAnnotationReadOptions(value);
     const query = options.query;
-    const result = await this.executeCourseAction("lerCurso", {
-      courseId: normalizedCourseId,
-      view: "anchored_annotations",
-      expectedRevision: options.expectedCourseRevision,
-      annotationSetVersion: options.annotationSetVersion,
-      mode: query.mode,
-      origins: query.origins,
-      channels: query.channels,
-      states: query.states,
-      categories: query.categories,
-      includeUncategorized: query.includeUncategorized,
-      subjectIds: query.subjectIds,
-      ...(query.hierarchy === null
-        ? {}
-        : {
-            targetKind: query.hierarchy.target.kind,
-            targetId: query.hierarchy.target.id,
-            includeDescendants: query.hierarchy.includeDescendants
-          }),
-      ...(query.annotationId === null ? {} : { annotationId: query.annotationId }),
-      cursor: options.cursor,
-      limit: options.limit
-    });
+    const result = await this.requestCourseApi(
+      `${courseResourcePath(normalizedCourseId)}/anchored-annotations`,
+      {
+        query: {
+          expectedRevision: options.expectedCourseRevision,
+          annotationSetVersion: options.annotationSetVersion,
+          mode: query.mode,
+          origin: query.origins,
+          channel: query.channels,
+          state: query.states,
+          category: query.categories,
+          includeUncategorized: query.includeUncategorized,
+          subjectId: query.subjectIds,
+          ...(query.hierarchy === null
+            ? {}
+            : {
+                targetKind: query.hierarchy.target.kind,
+                targetId: query.hierarchy.target.id,
+                includeDescendants: query.hierarchy.includeDescendants
+              }),
+          ...(query.annotationId === null ? {} : { annotationId: query.annotationId }),
+          cursor: options.cursor,
+          limit: options.limit
+        }
+      }
+    );
     return boundAnchoredAnnotationPage(result, {
       courseId: normalizedCourseId,
       options
     });
-  }
-
-  async loadCourseAuditCycle(courseId, value = {}) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const options = auditCycleReadOptions(value);
-    const query = options.query;
-    const argumentsValue = {
-      courseId: normalizedCourseId,
-      view: "audit_cycle",
-      expectedRevision: options.expectedCourseRevision,
-      auditSetVersion: options.auditSetVersion,
-      mode: query.mode,
-      limit: options.limit
-    };
-    if (query.mode === "context") {
-      argumentsValue.targetStudyUnitId = query.targetStudyUnitId;
-      argumentsValue.annotationIds = query.annotationIds;
-    } else if (query.mode === "findings") {
-      if (query.targetStudyUnitId !== null) {
-        argumentsValue.targetStudyUnitId = query.targetStudyUnitId;
-      }
-      argumentsValue.states = query.states;
-      argumentsValue.dimensions = query.dimensions;
-      argumentsValue.severities = query.severities;
-      argumentsValue.cursor = options.cursor;
-    } else if (query.mode === "runs") {
-      if (query.targetStudyUnitId !== null) {
-        argumentsValue.targetStudyUnitId = query.targetStudyUnitId;
-      }
-      argumentsValue.cursor = options.cursor;
-    } else if (query.findingId !== null) {
-      argumentsValue.findingId = query.findingId;
-      if (query.correctionId !== null) {
-        argumentsValue.correctionId = query.correctionId;
-      }
-    } else {
-      argumentsValue.auditRunId = query.auditRunId;
-    }
-    const result = await this.executeCourseAction("lerCurso", argumentsValue);
-    return boundAuditCyclePage(result, {
-      courseId: normalizedCourseId,
-      options
-    });
-  }
-
-  async loadCourseVariantComparison(courseId, value = {}) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const options = normalizeCourseVariantRead(exactObject(
-      value,
-      new Set(["comparisonSetId", "expectedCourseRevision"]),
-      "Leitura de variantes"
-    ));
-    const result = normalizeCourseVariantComparison(await this.executeCourseAction("lerCurso", {
-      courseId: normalizedCourseId,
-      view: "variant_comparison",
-      comparisonSetId: options.comparisonSetId,
-      expectedRevision: options.expectedCourseRevision
-    }));
-    if (result.comparisonSetId !== options.comparisonSetId ||
-        result.source.courseId !== normalizedCourseId ||
-        result.source.currentCourseRevision !== options.expectedCourseRevision) {
-      throw new TypeError("A comparação de variantes não corresponde ao pedido.");
-    }
-    return result;
-  }
-
-  async listCourseVariantComparisons(courseId, expectedCourseRevision) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const revision = positiveInteger(expectedCourseRevision, "Versão do Curso");
-    const result = normalizeCourseVariantComparisonList(await this.executeCourseAction("lerCurso", {
-      courseId: normalizedCourseId,
-      view: "variant_comparisons",
-      expectedRevision: revision
-    }));
-    if (result.sourceCourseId !== normalizedCourseId || result.sourceCourseRevision !== revision) {
-      throw new TypeError("A lista de variantes não corresponde ao Curso solicitado.");
-    }
-    return result;
   }
 
   async loadCourseAuthoringAnalytics(courseId, value = {}) {
@@ -1267,7 +1071,7 @@ export class CourseApiClient {
     const source = exactObject(
       value,
       new Set(["expectedCourseRevision", "query"]),
-      "Leitura de Pesquisa"
+      "Leitura de Analytics"
     );
     const normalizedQuery = normalizeCourseAuthoringAnalyticsQuery(source.query ?? {});
     const expectedRevision = positiveInteger(
@@ -1275,38 +1079,30 @@ export class CourseApiClient {
       "Versão do Curso"
     );
     const result = normalizeCourseAuthoringAnalyticsPage(
-      await this.executeCourseAction("lerCurso", {
-        courseId: normalizedCourseId,
-        view: "research",
-        expectedRevision,
-        datasets: normalizedQuery.datasets,
-        channels: normalizedQuery.channels,
-        origins: normalizedQuery.origins,
-        states: normalizedQuery.states,
-        from: normalizedQuery.from,
-        to: normalizedQuery.to,
-        limit: normalizedQuery.limit,
-        cursor: normalizedQuery.cursor
+      await this.requestCourseApi(`${courseResourcePath(normalizedCourseId)}/research`, {
+        query: {
+          expectedRevision,
+          scopeKind: normalizedQuery.scope.kind,
+          scopeRef: normalizedQuery.scope.ref
+        }
       }),
       { expectedCourseId: normalizedCourseId, expectedQuery: normalizedQuery }
     );
-    if (result.courseRevision !== expectedRevision) {
-      throw new TypeError("A página de Pesquisa não corresponde ao Curso solicitado.");
+    if (result.course.revision !== expectedRevision) {
+      throw new TypeError("O snapshot de Analytics não corresponde ao Curso solicitado.");
     }
     return result;
   }
 
   loadAuthoringOutline(courseId) {
-    return this.executeCourseAction("lerCurso", {
-      courseId: uuid(courseId, "Curso"),
-      view: "outline"
+    return this.requestCourseApi(courseResourcePath(courseId), {
+      query: { view: "outline" }
     });
   }
 
   loadAuthoringStudyUnits(courseId, {
     expectedRevision,
     scope = { kind: "course", id: null },
-    inspectionFocusId = null,
     anchorStudyUnitId = null,
     cursor: cursorValue = null,
     direction = "forward",
@@ -1314,49 +1110,33 @@ export class CourseApiClient {
     maxBytes = 512 * 1024
   } = {}) {
     const normalizedScope = authoringInspectionScope(scope);
-    const normalizedInspectionFocusId = inspectionFocusId == null
-      ? null
-      : uuid(inspectionFocusId, "Foco de inspeção");
     const normalizedCursor = authoringStudyUnitCursor(cursorValue);
     const normalizedAnchor = anchorStudyUnitId == null
       ? null
       : boundedIdentifier(anchorStudyUnitId, "Unidade de âncora");
     const normalizedDirection = String(direction || "").trim();
     if (!new Set(["forward", "backward"]).has(normalizedDirection) ||
-        (normalizedAnchor && normalizedCursor) ||
-        normalizedInspectionFocusId !== null && (
-          normalizedScope.kind !== "course" || normalizedScope.id !== null || normalizedAnchor !== null
-        )) {
+        (normalizedAnchor && normalizedCursor)) {
       throw new TypeError("Paginação da inspeção inválida.");
     }
-    return this.executeCourseAction("lerCurso", {
-      courseId: uuid(courseId, "Curso"),
-      view: "study_units",
-      expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
-      ...(normalizedInspectionFocusId === null
-        ? { scope: normalizedScope, anchorStudyUnitId: normalizedAnchor }
-        : { inspectionFocusId: normalizedInspectionFocusId }),
-      cursor: normalizedCursor,
-      direction: normalizedDirection,
-      limit: positiveInteger(limit, "Limite da inspeção", { maximum: 24 }),
-      maxBytes: positiveInteger(maxBytes, "Limite de bytes", {
-        minimum: 64 * 1024,
-        maximum: 1_500_000
-      })
-    }, {
-      headers: {
-        Accept: "application/vnd.aralearn.course-study-unit-inspection.v2+json"
+    const normalizedCourseId = uuid(courseId, "Curso");
+    return this.requestCourseApi(
+      `/v2/courses/${encodeURIComponent(normalizedCourseId)}/study-units`, {
+      query: {
+        expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
+        scopeKind: normalizedScope.kind,
+        scopeId: normalizedScope.id,
+        anchorStudyUnitId: normalizedAnchor,
+        cursorStudyUnitId: normalizedCursor?.studyUnitId ?? null,
+        direction: normalizedDirection,
+        limit: positiveInteger(limit, "Limite da inspeção", { maximum: 24 }),
+        maxBytes: positiveInteger(maxBytes, "Limite de bytes", {
+          minimum: 64 * 1024,
+          maximum: 1_500_000
+        })
       }
-    });
-  }
-
-  loadPartMaterialization(courseId, authoringPartId, materializationId) {
-    return this.executeCourseAction("lerCurso", {
-      courseId: uuid(courseId, "Curso"),
-      view: "part_materialization",
-      authoringPartId: uuid(authoringPartId, "Parte de autoria"),
-      materializationId: uuid(materializationId, "Materialização")
-    });
+      }
+    );
   }
 
   createCourse({
@@ -1364,36 +1144,40 @@ export class CourseApiClient {
     title,
     objective
   } = {}) {
-    return this.executeCourseAction("criarCurso", {
-      requestId: uuid(requestId, "Identidade da criação"),
-      title: requiredText(title, "Título do Curso", 300),
-      objective: requiredText(objective, "Objetivo do Curso", 2_000)
+    return this.requestCourseApi("/v1/courses", {
+      method: "POST",
+      body: {
+        requestId: uuid(requestId, "Identidade da criação"),
+        title: requiredText(title, "Título do Curso", 300),
+        objective: requiredText(objective, "Objetivo do Curso", 2_000)
+      }
     });
   }
 
   async commitCourseComposition(value = {}) {
     const command = normalizeFocalStudyUnitCompositionCommand(value);
     const { id: studyUnitId, position, ...content } = command.studyUnit;
-    const result = await this.executeCourseAction("alterarCurso", {
-      requestId: command.requestId,
-      courseId: command.courseId,
-      expectedRevision: command.expectedCourseRevision,
-      expectedStudyUnitVersion: command.expectedStudyUnitVersion,
-      operation: "commit_course_composition",
-      upserts: [{
-        entityType: "study_unit",
-        entityId: studyUnitId,
-        parentType: "microsequence",
-        parentId: command.didacticMicrosequenceId,
-        position,
-        content
-      }],
-      deletes: [],
-      sourceAttributionApplications: [{
-        studyUnitId,
-        sourceLinks: command.sourceLinks
-      }],
-      applicationOrigin: command.origin
+    const result = await this.requestCourseApi(`${courseResourcePath(command.courseId)}/composition`, {
+      method: "POST",
+      body: {
+        requestId: command.requestId,
+        expectedRevision: command.expectedCourseRevision,
+        expectedStudyUnitVersion: command.expectedStudyUnitVersion,
+        upserts: [{
+          entityType: "study_unit",
+          entityId: studyUnitId,
+          parentType: "microsequence",
+          parentId: command.didacticMicrosequenceId,
+          position,
+          content
+        }],
+        deletes: [],
+        sourceAttributionApplications: [{
+          studyUnitId,
+          sourceLinks: command.sourceLinks
+        }],
+        applicationOrigin: command.origin
+      }
     });
     return normalizeFocalStudyUnitCompositionReceipt(result, command);
   }
@@ -1411,16 +1195,18 @@ export class CourseApiClient {
     }
     const bounded = boundedJsonObject({ upserts, deletes }, "Alteração estrutural assistida", 480 * 1024);
     const requestId = requestIdentity(source.requestId);
-    const result = await this.executeCourseAction("alterarCurso", {
-      requestId,
-      courseId: uuid(source.courseId, "Curso"),
-      expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
-      operation: "commit_course_composition",
-      upserts: bounded.upserts,
-      deletes: bounded.deletes,
-      sourceAttributionApplications: normalizeSourceAttributionApplications(
-        source.sourceAttributionApplications
-      )
+    const courseId = uuid(source.courseId, "Curso");
+    const result = await this.requestCourseApi(`${courseResourcePath(courseId)}/composition`, {
+      method: "POST",
+      body: {
+        requestId,
+        expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
+        upserts: bounded.upserts,
+        deletes: bounded.deletes,
+        sourceAttributionApplications: normalizeSourceAttributionApplications(
+          source.sourceAttributionApplications
+        )
+      }
     });
     return {
       ...result,
@@ -1433,15 +1219,21 @@ export class CourseApiClient {
     const command = normalizePersonalCourseCopyEditCommand(value);
     let result;
     try {
-      result = await this.executeCourseAction("criarCopiaPessoalDoCurso", {
-        requestId: command.requestId,
-        sourceCourseId: command.sourceCourseId,
-        expectedSourceCourseRevision: command.expectedSourceCourseRevision,
-        expectedStudyUnitVersion: command.expectedStudyUnitVersion,
-        didacticMicrosequenceId: command.didacticMicrosequenceId,
-        studyUnit: command.studyUnit,
-        applicationOrigin: command.origin
-      });
+      result = await this.requestCourseApi(
+        `${courseResourcePath(command.sourceCourseId)}/personal-copy/composition`,
+        {
+          method: "POST",
+          body: {
+            requestId: command.requestId,
+            sourceCourseId: command.sourceCourseId,
+            expectedSourceCourseRevision: command.expectedSourceCourseRevision,
+            expectedStudyUnitVersion: command.expectedStudyUnitVersion,
+            didacticMicrosequenceId: command.didacticMicrosequenceId,
+            studyUnit: command.studyUnit,
+            applicationOrigin: command.origin
+          }
+        }
+      );
     } catch (error) {
       if (String(error?.code || "").toLowerCase() === "personal_copy_exists") {
         const candidate = String(
@@ -1456,24 +1248,6 @@ export class CourseApiClient {
     return normalizePersonalCourseCopyEditReceipt(result, command);
   }
 
-  mutateAuthoringPlan({
-    requestId = createUuid(),
-    courseId,
-    expectedRevision,
-    expectedPlanVersion,
-    planCommand
-  } = {}) {
-    return this.executeCourseAction("alterarCurso", {
-      requestId: uuid(requestId, "Identidade da alteração"),
-      courseId: uuid(courseId, "Curso"),
-      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
-      expectedPlanVersion: positiveInteger(expectedPlanVersion, "Versão do plano"),
-      operation: "update_instructional_plan",
-      planCommand: normalizeCourseAuthoringPlanCommand(
-        plainObject(planCommand, "Comando do plano")
-      )
-    });
-  }
 
   mutateCourseDesign(value = {}) {
     const source = exactObject(
@@ -1487,16 +1261,18 @@ export class CourseApiClient {
       expectedRevision,
       designCommand
     } = source;
-    return this.executeCourseAction("alterarCurso", {
-      requestId: requestIdentity(requestId),
-      courseId: uuid(courseId, "Curso"),
-      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
-      operation: "update_course_design",
-      designCommand: boundedJsonObject(
-        normalizeCourseDesignCommand(designCommand),
-        "Comando dos parâmetros",
-        32 * 1024
-      )
+    const normalizedCourseId = uuid(courseId, "Curso");
+    return this.requestCourseApi(`${courseResourcePath(normalizedCourseId)}/course-design/changes`, {
+      method: "POST",
+      body: {
+        requestId: requestIdentity(requestId),
+        expectedCourseRevision: positiveInteger(expectedRevision, "Versão de estado"),
+        command: boundedJsonObject(
+          normalizeCourseDesignCommand(designCommand),
+          "Comando dos parâmetros",
+          32 * 1024
+        )
+      }
     });
   }
 
@@ -1510,13 +1286,17 @@ export class CourseApiClient {
     const courseId = uuid(source.courseId, "Curso");
     const expectedRevision = positiveInteger(source.expectedRevision, "Versão de estado");
     const sourceCommand = normalizeCourseSourceCommand(source.sourceCommand);
-    const result = normalizeCourseSourceChange(await this.executeCourseAction("alterarCurso", {
-      requestId,
-      courseId,
-      expectedRevision,
-      operation: "update_course_sources",
-      sourceCommand
-    }));
+    const result = normalizeCourseSourceChange(await this.requestCourseApi(
+      `${courseResourcePath(courseId)}/sources/changes`,
+      {
+        method: "POST",
+        body: {
+          requestId,
+          expectedCourseRevision: expectedRevision,
+          command: sourceCommand
+        }
+      }
+    ));
     if (result.courseId !== courseId || result.requestId !== requestId ||
         result.courseRevision !== expectedRevision + (result.changed ? 1 : 0) ||
         result.change != null && (
@@ -1530,88 +1310,25 @@ export class CourseApiClient {
 
   async mutateCourseAnchoredAnnotations(value = {}) {
     const mutation = anchoredAnnotationMutation(value);
-    const result = await this.executeCourseAction("alterarCurso", {
-      requestId: mutation.requestId,
-      courseId: mutation.courseId,
-      ...(mutation.expectedCourseRevision === null
-        ? {}
-        : { expectedRevision: mutation.expectedCourseRevision }),
-      operation: "update_anchored_annotations",
-      annotationCommand: mutation.command
-    });
+    const result = await this.requestCourseApi(
+      `${courseResourcePath(mutation.courseId)}/anchored-annotations/changes`,
+      {
+        method: "POST",
+        body: {
+          requestId: mutation.requestId,
+          expectedCourseRevision: mutation.expectedCourseRevision,
+          command: mutation.command
+        }
+      }
+    );
     return boundAnchoredAnnotationChange(result, mutation, {
       expectedOrigin: "author",
       expectedChannel: "authoring_interface"
     });
   }
 
-  async mutateCourseAuditCycle(value = {}) {
-    const mutation = auditCycleMutation(value);
-    const result = await this.executeCourseAction("alterarCurso", {
-      requestId: mutation.requestId,
-      courseId: mutation.courseId,
-      expectedRevision: mutation.expectedCourseRevision,
-      operation: "update_audit_cycle",
-      auditCommand: mutation.command
-    });
-    return boundAuditCycleChange(result, mutation);
-  }
-
-  async mutateCourseVariants(value = {}) {
-    const source = exactObject(value, new Set([
-      "requestId", "courseId", "expectedCourseRevision", "command"
-    ]), "Alteração de variantes");
-    const requestId = requestIdentity(source.requestId ?? createUuid());
-    const courseId = uuid(source.courseId, "Curso");
-    const command = source.command?.type === "create_comparison_variants"
-      ? normalizeCourseVariantCommand(source.command)
-      : normalizeCourseVariantDetachCommand(source.command);
-    if (command.type === "create_comparison_variants" &&
-        source.expectedCourseRevision !== command.expectedCourseRevision) {
-      throw new TypeError("A revisão da variante não corresponde ao invólucro.");
-    }
-    if (command.type === "detach_comparison_variant" &&
-        source.expectedCourseRevision !== undefined && source.expectedCourseRevision !== null) {
-      throw new TypeError("A desvinculação não recebe revisão de Curso.");
-    }
-    const result = normalizeCourseVariantChange(await this.executeCourseAction("alterarCurso", {
-      requestId,
-      courseId,
-      ...(command.type === "create_comparison_variants"
-        ? { expectedRevision: command.expectedCourseRevision }
-        : {}),
-      operation: "update_course_variants",
-      variantCommand: command
-    }));
-    if (result.sourceCourseId !== courseId ||
-        result.comparisonSetId !== command.comparisonSetId ||
-        command.type === "create_comparison_variants" &&
-          result.members.length !== command.variants.length ||
-        command.type === "detach_comparison_variant" && result.courseId !== command.courseId) {
-      throw new TypeError("A confirmação de variantes não corresponde ao comando.");
-    }
-    return result;
-  }
-
-  advanceAuthoringPartMaterialization({
-    requestId = createUuid(),
-    courseId,
-    expectedRevision,
-    materializationCommand
-  } = {}) {
-    return this.executeCourseAction("alterarCurso", {
-      requestId: uuid(requestId, "Identidade da alteração"),
-      courseId: uuid(courseId, "Curso"),
-      expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
-      operation: "advance_part_materialization",
-      materializationCommand: normalizedMaterializationCommand(materializationCommand)
-    });
-  }
-
   getPersonProfile() {
-    return this.executeCourseAction("gerirPessoas", {
-      operation: "read_profile"
-    });
+    return this.requestCourseApi("/v1/profile");
   }
 
   updatePersonProfile(patch) {
@@ -1621,17 +1338,14 @@ export class CourseApiClient {
         Object.keys(normalized).some((field) => !allowed.has(field))) {
       throw new TypeError("Alteração de perfil inválida.");
     }
-    return this.executeCourseAction("gerirPessoas", {
-      operation: "update_profile",
-      ...normalized
+    return this.requestCourseApi("/v1/profile", {
+      method: "PATCH",
+      body: normalized
     });
   }
 
   listCourseAccess(courseId) {
-    return this.executeCourseAction("gerirPessoas", {
-      operation: "list_access",
-      courseId: uuid(courseId, "Curso")
-    });
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/access`);
   }
 
   grantCourseAccess({
@@ -1645,12 +1359,13 @@ export class CourseApiClient {
         !/^[^\s@]+@[^\s@]+$/u.test(normalizedEmail)) {
       throw new TypeError("Concessão de acesso inválida.");
     }
-    return this.executeCourseAction("gerirPessoas", {
-      operation: "grant_access",
-      courseId: uuid(courseId, "Curso"),
-      email: normalizedEmail,
-      confirmed: true,
-      requestId: uuid(requestId, "Identidade da alteração")
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/access`, {
+      method: "POST",
+      body: {
+        email: normalizedEmail,
+        confirmed: true,
+        requestId: uuid(requestId, "Identidade da alteração")
+      }
     });
   }
 
@@ -1661,13 +1376,16 @@ export class CourseApiClient {
     requestId = createUuid()
   } = {}) {
     if (confirmed !== true) throw new TypeError("Revogação de acesso inválida.");
-    return this.executeCourseAction("gerirPessoas", {
-      operation: "revoke_access",
-      courseId: uuid(courseId, "Curso"),
-      userId: uuid(userId, "Pessoa"),
-      confirmed: true,
-      requestId: uuid(requestId, "Identidade da alteração")
-    });
+    return this.requestCourseApi(
+      `${courseResourcePath(courseId)}/access/${encodeURIComponent(uuid(userId, "Pessoa"))}`,
+      {
+        method: "DELETE",
+        body: {
+          confirmed: true,
+          requestId: uuid(requestId, "Identidade da alteração")
+        }
+      }
+    );
   }
 
   async maintainCourse({
@@ -1684,11 +1402,13 @@ export class CourseApiClient {
     }
     const normalizedCourseId = uuid(courseId, "Curso");
     const normalizedRequestId = requestIdentity(requestId);
-    const result = await this.executeCourseAction("manterCursos", {
-      courseId: normalizedCourseId,
-      operation: normalizedOperation,
-      confirmed: true,
-      requestId: normalizedRequestId
+    const result = await this.requestCourseApi(courseResourcePath(normalizedCourseId), {
+      method: "DELETE",
+      body: {
+        operation: normalizedOperation,
+        confirmed: true,
+        requestId: normalizedRequestId
+      }
     });
     if (!result || typeof result !== "object" || Array.isArray(result) ||
         result.contract !== "aralearn.course-lifecycle.v1" ||
@@ -1704,9 +1424,10 @@ export class CourseApiClient {
   }
 
   loadCurrentMaintenance({ limit = 100 } = {}) {
-    return this.executeCourseAction("manterAraLearn", {
-      operation: "inspect",
-      limit: positiveInteger(limit, "Limite da Manutenção", { maximum: 500 })
+    return this.requestCourseApi("/v1/maintenance", {
+      query: {
+        limit: positiveInteger(limit, "Limite da Manutenção", { maximum: 500 })
+      }
     });
   }
 
@@ -1724,10 +1445,13 @@ export class CourseApiClient {
       throw new TypeError("Ação de Manutenção inválida.");
     }
     if (normalizedOperation === "run_retention") {
-      return this.executeCourseAction("manterAraLearn", {
-        operation: normalizedOperation,
-        limit: positiveInteger(limit, "Limite da retenção", { maximum: 1000 }),
-        confirmed: true
+      return this.requestCourseApi("/v1/maintenance/actions", {
+        method: "POST",
+        body: {
+          operation: normalizedOperation,
+          limit: positiveInteger(limit, "Limite da retenção", { maximum: 1000 }),
+          confirmed: true
+        }
       });
     }
     const normalizedClassification = String(classification || "").trim();
@@ -1738,11 +1462,14 @@ export class CourseApiClient {
     ]).has(normalizedClassification) || !normalizedPath || normalizedPath.length > 500) {
       throw new TypeError("Resíduo de Manutenção inválido.");
     }
-    return this.executeCourseAction("manterAraLearn", {
-      operation: normalizedOperation,
-      classification: normalizedClassification,
-      objectPath: normalizedPath,
-      confirmed: true
+    return this.requestCourseApi("/v1/maintenance/actions", {
+      method: "POST",
+      body: {
+        operation: normalizedOperation,
+        classification: normalizedClassification,
+        objectPath: normalizedPath,
+        confirmed: true
+      }
     });
   }
 
@@ -1824,7 +1551,10 @@ export class CourseApiClient {
     }
     let result;
     try {
-      result = await this.executeCourseAction("excluirMinhaConta", { confirmation });
+      result = await this.requestCourseApi("/app/excluirMinhaConta", {
+        method: "POST",
+        body: { confirmation }
+      });
     } catch (error) {
       if (!accountDeletionMayBeAmbiguous(error)) throw error;
       if (error?.code === "account_deletion_in_progress") throw error;

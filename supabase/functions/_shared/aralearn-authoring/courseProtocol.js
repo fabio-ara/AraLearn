@@ -32,37 +32,6 @@ export function routeCourseRequest(method, pathname) {
     if (verb === "GET") return { name: "listCourses" };
     if (verb === "POST") return { name: "createCourse" };
   }
-  const materializationChange = path.match(
-    /^\/v1\/courses\/([^/]+)\/authoring-parts\/([^/]+)\/materializations\/([^/]+)\/changes$/u
-  );
-  if (materializationChange && verb === "POST") {
-    return {
-      name: "advanceCourseAuthoringPartMaterialization",
-      courseId: courseUuid(materializationChange[1]),
-      authoringPartId: courseUuid(materializationChange[2], "authoringPartId"),
-      materializationId: courseUuid(materializationChange[3], "materializationId")
-    };
-  }
-  const materialization = path.match(
-    /^\/v1\/courses\/([^/]+)\/authoring-parts\/([^/]+)\/materializations\/([^/]+)$/u
-  );
-  if (materialization && verb === "GET") {
-    return {
-      name: "getCourseAuthoringPartMaterialization",
-      courseId: courseUuid(materialization[1]),
-      authoringPartId: courseUuid(materialization[2], "authoringPartId"),
-      materializationId: courseUuid(materialization[3], "materializationId")
-    };
-  }
-  const instructionalPlanChange = path.match(
-    /^\/v1\/courses\/([^/]+)\/instructional-plan\/changes$/u
-  );
-  if (instructionalPlanChange && verb === "POST") {
-    return {
-      name: "commitCourseInstructionalPlan",
-      courseId: courseUuid(instructionalPlanChange[1])
-    };
-  }
   const instructionalPlan = path.match(/^\/v1\/courses\/([^/]+)\/instructional-plan$/u);
   if (instructionalPlan && verb === "GET") {
     return {
@@ -95,13 +64,13 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(courseSourceChange[1])
     };
   }
-  const courseSourceAttachmentAccess = path.match(
-    /^\/v1\/courses\/([^/]+)\/source-attachments\/access$/u
+  const courseSourcePdfDownload = path.match(
+    /^\/v1\/courses\/([^/]+)\/source-pdf\/download$/u
   );
-  if (courseSourceAttachmentAccess && verb === "GET") {
+  if (courseSourcePdfDownload && verb === "GET") {
     return {
-      name: "getCourseSourceAttachmentAccess",
-      courseId: courseUuid(courseSourceAttachmentAccess[1])
+      name: "getCourseSourcePdfDownload",
+      courseId: courseUuid(courseSourcePdfDownload[1])
     };
   }
   const courseSources = path.match(/^\/v1\/courses\/([^/]+)\/sources$/u);
@@ -129,51 +98,12 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(anchoredAnnotations[1])
     };
   }
-  const auditCycleChange = path.match(
-    /^\/v1\/courses\/([^/]+)\/audit-cycle\/changes$/u
-  );
-  if (auditCycleChange && verb === "POST") {
-    return {
-      name: "executeCourseAuditCycleCommand",
-      courseId: courseUuid(auditCycleChange[1])
-    };
-  }
-  const auditCycle = path.match(/^\/v1\/courses\/([^/]+)\/audit-cycle$/u);
-  if (auditCycle && verb === "GET") {
-    return {
-      name: "getCourseAuditCycle",
-      courseId: courseUuid(auditCycle[1])
-    };
-  }
   const research = path.match(/^\/v1\/courses\/([^/]+)\/research$/u);
   if (research && verb === "GET") {
     return {
       name: "getCourseAuthoringAnalytics",
       courseId: courseUuid(research[1])
     };
-  }
-  const variantComparisonChange = path.match(
-    /^\/v1\/courses\/([^/]+)\/variant-comparisons\/changes$/u
-  );
-  if (variantComparisonChange && verb === "POST") {
-    return {
-      name: "executeCourseVariantCommand",
-      courseId: courseUuid(variantComparisonChange[1])
-    };
-  }
-  const variantComparison = path.match(
-    /^\/v1\/courses\/([^/]+)\/variant-comparisons\/([^/]+)$/u
-  );
-  if (variantComparison && verb === "GET") {
-    return {
-      name: "getCourseVariantComparison",
-      courseId: courseUuid(variantComparison[1]),
-      comparisonSetId: courseUuid(variantComparison[2], "comparisonSetId")
-    };
-  }
-  const variantComparisons = path.match(/^\/v1\/courses\/([^/]+)\/variant-comparisons$/u);
-  if (variantComparisons && verb === "GET") {
-    return { name: "listCourseVariantComparisons", courseId: courseUuid(variantComparisons[1]) };
   }
   const personalCopyComposition = path.match(
     /^\/v1\/courses\/([^/]+)\/personal-copy\/composition$/u
@@ -188,40 +118,10 @@ export function routeCourseRequest(method, pathname) {
   if (composition && verb === "POST") {
     return { name: "commitCourseComposition", courseId: courseUuid(composition[1]) };
   }
-  const inspectionFocusStudyUnits = path.match(
-    /^\/v1\/courses\/([^/]+)\/inspection-focuses\/([^/]+)\/study-units$/u
-  );
-  if (inspectionFocusStudyUnits && verb === "GET") {
-    return {
-      name: "listCourseInspectionFocusStudyUnits",
-      courseId: courseUuid(inspectionFocusStudyUnits[1]),
-      inspectionFocusId: courseUuid(inspectionFocusStudyUnits[2], "inspectionFocusId")
-    };
-  }
-  const inspectionFocus = path.match(
-    /^\/v1\/courses\/([^/]+)\/inspection-focuses\/([^/]+)$/u
-  );
-  if (inspectionFocus && verb === "GET") {
-    return {
-      name: "getCourseInspectionFocus",
-      courseId: courseUuid(inspectionFocus[1]),
-      inspectionFocusId: courseUuid(inspectionFocus[2], "inspectionFocusId")
-    };
-  }
-  const inspectionFocuses = path.match(
-    /^\/v1\/courses\/([^/]+)\/inspection-focuses$/u
-  );
-  if (inspectionFocuses && verb === "POST") {
-    return { name: "createCourseInspectionFocus", courseId: courseUuid(inspectionFocuses[1]) };
-  }
-  const studyUnits = path.match(/^\/v1\/courses\/([^/]+)\/study-units$/u);
-  if (studyUnits && verb === "GET") {
-    return { name: "listCourseStudyUnits", courseId: courseUuid(studyUnits[1]) };
-  }
   const continuousStudyUnits = path.match(/^\/v2\/courses\/([^/]+)\/study-units$/u);
   if (continuousStudyUnits && verb === "GET") {
     return {
-      name: "listContinuousCourseStudyUnits",
+      name: "listCourseStudyUnits",
       courseId: courseUuid(continuousStudyUnits[1])
     };
   }

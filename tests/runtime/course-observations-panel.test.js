@@ -72,7 +72,7 @@ function outline(revision = 7) {
         }]
       }]
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=content`
   };
 }
 
@@ -103,7 +103,7 @@ function item() {
       }, {
         kind: "study_unit", id: "unit-a", label: "Unidade contextual", version: 2
       }],
-      deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-a`
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`
     },
     observedRevision: { certainty: "known", courseRevision: 7, targetVersion: 2 },
     rawText: "Há uma possível ambiguidade no segundo parágrafo.",
@@ -145,7 +145,7 @@ function item() {
       canReopen: false,
       canCorrectSubjects: true
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${ANNOTATION_ID}`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=review&annotationId=${ANNOTATION_ID}`
   };
 }
 
@@ -173,7 +173,7 @@ function pagedItem(index) {
   const value = item();
   value.annotationId = `20000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
   value.rawText = `Observação paginada ${index}.`;
-  value.deepLink = `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${value.annotationId}`;
+  value.deepLink = `#/authoring/courses/${COURSE_ID}?section=review&annotationId=${value.annotationId}`;
   return value;
 }
 
@@ -477,7 +477,7 @@ test("deep link nomeia cada tipo de contexto sem chamar tudo de Unidade", async 
       currentPath: kind === "course"
         ? [targetEntry]
         : [{ kind: "course", id: COURSE_ID, label: "Curso", version: 7 }, targetEntry],
-      deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection`
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=content`
     };
     contextual.observedRevision = {
       certainty: "known",

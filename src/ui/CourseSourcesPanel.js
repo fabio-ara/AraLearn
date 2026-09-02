@@ -17,9 +17,6 @@ import {
 } from "./courseAuthoringViewModel.js";
 
 const CATALOG_PAGE_LIMIT = 10;
-const HISTORY_PAGE_LIMIT = 1;
-const PINNED_HISTORY_PAGE_LIMIT = 24;
-const PINNED_HISTORY_MAX_PAGES = 8;
 const SOURCE_KINDS = Object.freeze({
   web_page: "Página web",
   article: "Artigo",
@@ -36,7 +33,7 @@ const SOURCE_VISIBILITIES = Object.freeze({
 const SOURCE_ORIGINS = Object.freeze({
   external: "Fonte externa",
   author_provided: "Fornecida pela autoria",
-  imported_legacy: "Importada do acervo anterior"
+  imported: "Importada"
 });
 const SOURCE_AVAILABILITIES = Object.freeze({
   open_access: "Acesso aberto",
@@ -50,8 +47,7 @@ const SOURCE_VERIFICATIONS = Object.freeze({
 });
 const SOURCE_STATUSES = Object.freeze({
   active: "Ativa",
-  retired: "Aposentada",
-  unresolved_legacy: "Legado não resolvido"
+  retired: "Aposentada"
 });
 const SELECTOR_KINDS = Object.freeze({
   page_range: "Páginas",
@@ -106,8 +102,8 @@ function containsControlCharacters(value) {
 }
 
 function validLiteralSourceId(value) {
-  return typeof value === "string" && value.length > 0 && value.length <= 4_096 &&
-    [...value].length <= 2_048 && new TextEncoder().encode(value).byteLength <= 8_192 &&
+  return typeof value === "string" && value.length > 0 && value === value.trim() &&
+    [...value].length <= 240 && new TextEncoder().encode(value).byteLength <= 960 &&
     !containsControlCharacters(value);
 }
 
@@ -349,11 +345,9 @@ function observationClassificationForExport(value) {
 function observationSourceLinksForExport(value) {
   return value.map((link) => ({
     sourceId: link.sourceId,
-    sourceRevision: link.sourceRevision,
     relation: link.relation,
     anchors: link.anchors.map((anchorValue) => ({
-      anchorId: anchorValue.anchorId,
-      anchorRevision: anchorValue.anchorRevision
+      anchorId: anchorValue.anchorId
     }))
   }));
 }
@@ -495,10 +489,9 @@ function renderSourceObservations(state, source) {
 }
 
 function sourceDraft(source = null) {
-  const resolving = source?.status === "unresolved_legacy";
   return {
     sourceId: source?.sourceId || "",
-    kind: source?.kind === "other" && resolving ? "document" : source?.kind || "web_page",
+    kind: source?.kind || "web_page",
     title: source?.title || "",
     authorship: source?.authorship || "",
     publicationDate: source?.publicationDate || "",
@@ -507,10 +500,10 @@ function sourceDraft(source = null) {
     citationText: source?.citationText || "",
     url: source?.url || "",
     editionOrVersion: source?.editionOrVersion || "",
-    origin: resolving ? "imported_legacy" : source?.origin || "author_provided",
+    origin: source?.origin || "author_provided",
     availability: source?.availability || "unknown",
     verificationStatus: source?.verificationStatus || "unverified",
-    studyVisibility: resolving ? "hidden" : source?.studyVisibility || "citation"
+    studyVisibility: source?.studyVisibility || "citation"
   };
 }
 
@@ -535,7 +528,6 @@ function renderSourceForm(state) {
   const editor = state.sourceEditor;
   if (!editor) return "";
   const source = editor.source;
-  const resolving = source?.status === "unresolved_legacy";
   const values = editor.draft || sourceDraft(source);
   const kindOptions = Object.entries(SOURCE_KINDS).map(([value, label]) =>
     `<option value="${value}"${values.kind === value ? " selected" : ""}>${escapeHtml(label)}</option>`
@@ -553,7 +545,7 @@ function renderSourceForm(state) {
     `<option value="${value}"${values.verificationStatus === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
   return '<form class="course-source-form" data-source-form="source">' +
-    `<h3>${source ? resolving ? "Resolver fonte legada" : "Nova revisão da fonte" : "Nova fonte"}</h3>` +
+    `<h3>${source ? "Editar fonte" : "Nova fonte"}</h3>` +
     `<input type="hidden" name="sourceId" value="${escapeHtml(values.sourceId)}">` +
     '<label for="course-source-kind">Tipo</label>' +
     `<select id="course-source-kind" name="kind" required>${kindOptions}</select>` +
@@ -653,7 +645,7 @@ function renderAnchorForm(state) {
     `<option value="${value}"${draft.selectorKind === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
   return '<form class="course-source-form" data-source-form="anchor">' +
-    `<h4>${editor.anchor ? "Nova revisão da âncora" : "Nova âncora"}</h4>` +
+    `<h4>${editor.anchor ? "Editar âncora" : "Nova âncora"}</h4>` +
     '<label for="course-anchor-kind">Como localizar</label>' +
     `<select id="course-anchor-kind" name="selectorKind" data-source-anchor-kind required>${options}</select>` +
     renderAnchorSelectorFields(draft) +
@@ -706,7 +698,7 @@ function renderAnchor(anchor, sourceRevision, state) {
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
     (editable ? '<div class="course-source-compact-actions">' +
-      `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Revisar âncora" title="Revisar âncora">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
+      `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Editar âncora" title="Editar âncora">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
           `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         + "</div>"
       : "") + "</article>";
@@ -757,22 +749,19 @@ function sourceAvailabilityNote(source) {
   return "A Fonte continua registrada sem PDF ou endereço de acesso.";
 }
 
-function renderSourceRevision(source, index, state) {
-  const current = index === 0;
+function renderSource(source, state) {
   const url = safeHttpUrl(source.url);
   const deepLinked = state.initialAnchorMatch?.sourceRevision === source.revision;
-  return `<article class="course-source-revision${deepLinked ? " is-deep-linked" : ""}">` +
+  return `<article class="course-source-current${deepLinked ? " is-deep-linked" : ""}">` +
     '<header><div>' + sourceStatusMarkup(source) +
-    `<h3>${escapeHtml(sourceTitle(source))}</h3><p>${current ? "Revisão atual" : "Revisão anterior"}</p></div>` +
-    (current && source.status !== "retired"
+    `<h3>${escapeHtml(sourceTitle(source))}</h3></div>` +
+    (source.status !== "retired"
       ? '<div class="course-source-compact-actions">' +
-      `<button type="button" data-source-action="edit-source" aria-label="${source.status === "unresolved_legacy" ? "Resolver" : "Revisar"} fonte" title="${source.status === "unresolved_legacy" ? "Resolver" : "Revisar"} fonte">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
+      `<button type="button" data-source-action="edit-source" aria-label="Editar fonte" title="Editar fonte">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
       (source.status === "active"
         ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         : "") + "</div>" : "") + "</header>" +
-    (source.status === "unresolved_legacy"
-      ? '<p class="course-source-unresolved">Este identificador foi preservado da migração. Título, autoria, link e âncoras ainda não foram comprovados.</p>'
-      : '<dl class="course-source-metadata">' +
+    '<dl class="course-source-metadata">' +
         `<div><dt>Tipo</dt><dd>${escapeHtml(SOURCE_KINDS[source.kind] || "Não informado")}</dd></div>` +
         `<div><dt>Autoria</dt><dd>${escapeHtml(source.authorship || "Não informada")}</dd></div>` +
         `<div><dt>Publicação</dt><dd>${escapeHtml(source.publicationDate || "Não informada")}</dd></div>` +
@@ -785,18 +774,18 @@ function renderSourceRevision(source, index, state) {
         `<div><dt>Verificação</dt><dd>${escapeHtml(SOURCE_VERIFICATIONS[source.verificationStatus])}</dd></div>` +
         `<div><dt>Estudo</dt><dd>${escapeHtml(SOURCE_VISIBILITIES[source.studyVisibility])}</dd></div>` +
         `<div><dt>Link</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(source.url)}</a>` : escapeHtml(source.url || "Não informado")}</dd></div></dl>` +
-        `<p class="course-source-availability-note">${escapeHtml(sourceAvailabilityNote(source))}</p>`) +
-    renderSourceAttachments(source, index, state) +
-    `<section class="course-source-anchors"><header><div><h4>Âncoras desta revisão</h4><p>${source.anchors.length} carregadas</p></div>` +
-    (current && source.status === "active"
+        `<p class="course-source-availability-note">${escapeHtml(sourceAvailabilityNote(source))}</p>` +
+    renderSourceAttachments(source, 0, state) +
+    `<section class="course-source-anchors"><header><div><h4>Âncoras</h4><p>${source.anchors.length} carregadas</p></div>` +
+    (source.status === "active"
       ? '<button type="button" data-source-action="add-anchor" aria-label="Adicionar âncora" title="Adicionar âncora">' +
         `${renderUiIcon("add", "course-authoring-button-icon")}</button>`
       : "") + "</header>" +
-    (current ? renderAnchorForm(state) : "") +
+    renderAnchorForm(state) +
     (source.anchors.length
       ? `<div class="course-source-anchor-list">${source.anchors.map((anchor) => renderAnchor(anchor, source.revision, state)).join("")}</div>`
-      : '<p class="course-source-empty">Nenhuma âncora nesta revisão.</p>') + "</section>" +
-    (current ? renderSourceObservations(state, source) : "") + "</article>";
+      : '<p class="course-source-empty">Nenhuma âncora.</p>') + "</section>" +
+    renderSourceObservations(state, source) + "</article>";
 }
 
 function renderSourceDetail(state) {
@@ -817,12 +806,9 @@ function renderSourceDetail(state) {
     `<h2 id="course-source-detail-title">${escapeHtml(items[0] ? sourceTitle(items[0]) : state.selectedSourceId)}</h2></div></header>` +
     renderNotice(state) + renderSourceConfirmation(state) + renderSourceForm(state) +
     (items.length
-      ? `<div class="course-source-revisions">${items.map((source, index) => renderSourceRevision(source, index, state)).join("")}</div>`
-      : '<p class="course-source-empty">A fonte não possui revisões disponíveis.</p>') +
-    (state.detail?.nextCursor
-      ? `<button type="button" class="course-authoring-more" data-source-action="load-more-revisions" aria-label="Carregar revisões anteriores" title="Carregar revisões anteriores"${state.detailLoading ? " disabled" : ""}>` +
-        `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>`
-      : "") + "</section>";
+      ? `<div class="course-source-current-view">${renderSource(items[0], state)}</div>`
+      : '<p class="course-source-empty">A fonte não está disponível.</p>') +
+    "</section>";
 }
 
 function renderCatalogCard(source, { selectable = false, selected = false } = {}) {
@@ -877,77 +863,58 @@ function renderCatalogPanel(state) {
 }
 
 function sourceForLink(state, link) {
-  const pinned = state.targetDetails.get(link.sourceId)?.items.find(({ revision }) =>
-    revision === link.sourceRevision);
-  if (pinned) return pinned;
+  const detail = state.targetDetails.get(link.sourceId)?.items[0] || null;
+  if (detail) return detail;
   const current = state.catalog?.items.find(({ sourceId }) => sourceId === link.sourceId);
-  return current?.revision === link.sourceRevision ? current : null;
+  return current || null;
 }
 
 function anchorsForLink(state, link) {
-  return state.targetDetails.get(link.sourceId)?.items
-    .find(({ revision }) => revision === link.sourceRevision)?.anchors || [];
-}
-
-function currentSourceForLink(state, link) {
-  return state.targetCurrentDetails.get(link.sourceId)?.items[0] ||
-    state.catalog?.items.find(({ sourceId }) => sourceId === link.sourceId) || null;
-}
-
-function currentAnchorsForLink(state, link) {
-  return currentSourceForLink(state, link)?.anchors || [];
+  return sourceForLink(state, link)?.anchors || [];
 }
 
 function renderTargetLink(state, link, index) {
   const source = sourceForLink(state, link);
-  const currentSource = currentSourceForLink(state, link);
   const anchors = anchorsForLink(state, link);
   const selectedAnchors = new Set(link.anchors.map(({ anchorId }) => anchorId));
-  const currentAnchors = new Map(currentAnchorsForLink(state, link)
+  const currentAnchors = new Map(anchors
     .map((anchor) => [anchor.anchorId, anchor]));
-  const loading = state.targetDetailsLoading.has(link.sourceId) ||
-    state.targetCurrentDetailsLoading.has(link.sourceId);
-  const unresolved = source?.status === "unresolved_legacy" || (!source && !loading);
-  const stale = !loading && source && (
-    currentSource?.status !== "active" || currentSource.revision !== link.sourceRevision ||
-    link.anchors.some(({ anchorId, anchorRevision }) => {
+  const loading = state.targetDetailsLoading.has(link.sourceId);
+  const unavailable = !source && !loading;
+  const unavailableReference = !loading && source && (
+    source.status !== "active" ||
+    link.anchors.some(({ anchorId }) => {
       const currentAnchor = currentAnchors.get(anchorId);
-      return currentAnchor?.status !== "active" || currentAnchor.revision !== anchorRevision;
+      return currentAnchor?.status !== "active";
     })
   );
-  const relationOptions = [
-    ...(link.relation === "legacy_reference"
-      ? ['<option value="legacy_reference" selected>Legado: escolha uma relação</option>']
-      : []),
-    ...Object.entries(SOURCE_RELATIONS).map(([value, label]) =>
-      `<option value="${value}"${link.relation === value ? " selected" : ""}>${escapeHtml(label)}</option>`)
-  ].join("");
+  const relationOptions = Object.entries(SOURCE_RELATIONS).map(([value, label]) =>
+    `<option value="${value}"${link.relation === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+  ).join("");
   return '<article class="course-source-target-link">' +
     '<header><div>' + (source ? sourceStatusMarkup(source) : "") +
     `<strong>${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}</strong>` +
-    `<span>${stale ? "Revisão histórica vinculada" : "Revisão atual vinculada"}</span></div>` +
+    `<span>${unavailableReference || unavailable ? "Atualização necessária" : "Fonte corrente"}</span></div>` +
     '<div class="course-source-compact-actions">' +
     `<button type="button" data-source-action="move-target-source-up" data-source-id="${escapeHtml(link.sourceId)}"${index === 0 ? " disabled" : ""} aria-label="Mover fonte para cima">${renderUiIcon("arrow-up", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="move-target-source-down" data-source-id="${escapeHtml(link.sourceId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="remove-target-source" data-source-id="${escapeHtml(link.sourceId)}" aria-label="Remover vínculo">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
-    (stale
-      ? '<p class="course-authoring-notice is-error">Este vínculo preserva uma revisão histórica. Sem alterações ele continua válido; para mudar o conjunto, remova-o e vincule novamente somente Fonte e Âncoras correntes.</p>'
+    (unavailableReference
+      ? '<p class="course-authoring-notice is-error">A Fonte ou uma Âncora vinculada não está mais ativa. Ajuste o vínculo.</p>'
       : "") +
     `<label class="course-source-relation"><span>Relação com o item</span><select data-source-target-relation data-source-id="${escapeHtml(link.sourceId)}">${relationOptions}</select></label>` +
-    (unresolved
-      ? '<p class="course-source-unresolved">Vínculo legado preservado sem âncora comprovada. Remova-o ou resolva a fonte no catálogo.</p>'
+    (unavailable
+      ? '<p class="course-authoring-notice is-error">A Fonte corrente não está disponível. Remova este vínculo e escolha outra Fonte.</p>'
       : loading
         ? '<p class="course-authoring-loading">Carregando âncoras…</p>'
         : anchors.filter(({ status }) => status === "active").length
           ? '<fieldset class="course-source-anchor-choices"><legend>Âncoras usadas</legend>' +
             anchors.filter(({ status }) => status === "active").map((anchor) =>
-              `<label><input type="checkbox" data-source-target-anchor data-source-id="${escapeHtml(link.sourceId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
-              `<span>${escapeHtml(anchorLabel(anchor))}${selectedAnchors.has(anchor.anchorId) &&
-                (currentAnchors.get(anchor.anchorId)?.status !== "active" ||
-                 currentAnchors.get(anchor.anchorId)?.revision !== anchor.revision)
-                ? " · revisão histórica"
-                : ""}</span></label>`).join("") + "</fieldset>"
-          : '<p class="course-source-empty">Esta revisão não tem âncora ativa; um vínculo novo exige um localizador exato.</p>') +
+              `<label><input type="checkbox" data-source-target-anchor data-source-id="${escapeHtml(link.sourceId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
+              `<span>${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
+          : link.relation === "needs_verification"
+            ? '<p class="course-source-empty">Sem Âncora: este vínculo permanece marcado para verificação.</p>'
+            : '<p class="course-source-empty">Esta Fonte não tem Âncora ativa. Escolha “Precisa de verificação” ou crie uma Âncora.</p>') +
     "</article>";
 }
 
@@ -982,58 +949,67 @@ function renderTargetPanel(state) {
 }
 
 function targetExportReady(state) {
-  if (!state.targetHistory || state.targetLoading || state.targetFailure ||
+  if (state.targetAttribution === undefined || state.targetLoading || state.targetFailure ||
       state.targetDetailsLoading.size ||
       JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks)) {
     return false;
   }
   return state.sourceLinks.every((link) => {
     const source = sourceForLink(state, link);
-    return source && link.anchors.every(({ anchorId, anchorRevision }) =>
-      source.anchors.some((anchor) =>
-        anchor.anchorId === anchorId && anchor.revision === anchorRevision));
+    return source && Array.isArray(source.anchors) &&
+      link.anchors.every(({ anchorId }) =>
+        source.anchors.some((anchor) => anchor.anchorId === anchorId));
   });
-}
-
-function recordWithoutActor(value) {
-  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "actorId"));
 }
 
 function buildTargetExport(state, exportedAt) {
   if (!targetExportReady(state)) {
     throw new TypeError("Salve e carregue a atribuição completa antes de exportar.");
   }
-  const attribution = state.targetHistory.items.find(({ effective }) => effective) || null;
   return {
-    contract: "aralearn.course-source-attribution-export.v1",
-    courseId: state.courseId,
-    courseRevision: state.courseRevision,
+    contract: "aralearn.course-source-attribution-export.v2",
     exportedAt,
+    course: { revision: state.courseRevision },
     target: {
       kind: state.targetKind,
-      id: state.targetId,
       version: state.targetVersion,
-      label: state.targetLabel || null,
-      attribution: attribution ? recordWithoutActor({
-        attributionId: attribution.attributionId,
-        revision: attribution.revision,
-        targetHash: attribution.targetHash,
-        createdAt: attribution.createdAt
-      }) : null
+      label: state.targetLabel || null
     },
     sources: state.sourceLinks.map((link) => {
       const source = sourceForLink(state, link);
       const { anchors, attachments, ...metadata } = source;
       return {
-        sourceId: link.sourceId,
-        sourceRevision: link.sourceRevision,
         relation: link.relation,
-        source: recordWithoutActor(metadata),
-        anchors: link.anchors.map(({ anchorId, anchorRevision }) => recordWithoutActor(
-          anchors.find((anchor) =>
-            anchor.anchorId === anchorId && anchor.revision === anchorRevision)
-        )),
-        attachments: attachments.map(recordWithoutActor)
+        source: {
+          sourceId: metadata.sourceId,
+          status: metadata.status,
+          kind: metadata.kind,
+          title: metadata.title,
+          authorship: metadata.authorship,
+          publicationDate: metadata.publicationDate,
+          identifier: metadata.identifier,
+          language: metadata.language,
+          citationText: metadata.citationText,
+          url: metadata.url,
+          editionOrVersion: metadata.editionOrVersion,
+          origin: metadata.origin,
+          availability: metadata.availability,
+          verificationStatus: metadata.verificationStatus,
+          studyVisibility: metadata.studyVisibility
+        },
+        anchors: link.anchors.map(({ anchorId }) => {
+          const anchor = anchors.find((candidate) => candidate.anchorId === anchorId);
+          return {
+            anchorId: anchor.anchorId,
+            status: anchor.status,
+            selector: anchor.selector,
+            humanLocator: anchor.humanLocator,
+            verificationExcerpt: anchor.verificationExcerpt
+          };
+        }),
+        attachments: attachments.map(({ byteSize, mediaType, createdAt }) => ({
+          byteSize, mediaType, createdAt
+        }))
       };
     })
   };
@@ -1139,15 +1115,13 @@ export function createCourseSourcesPanel({
     targetId,
     targetVersion,
     targetLabel,
-    targetHistory: null,
+    targetAttribution: undefined,
     targetLoading: false,
     targetFailure: "",
     sourceLinks: [],
     initialSourceLinks: [],
     targetDetails: new Map(),
-    targetCurrentDetails: new Map(),
     targetDetailsLoading: new Set(),
-    targetCurrentDetailsLoading: new Set(),
     busy: false,
     message: "",
     failure: "",
@@ -1383,7 +1357,7 @@ export function createCourseSourcesPanel({
       targetKind: null,
       targetId: null,
       expectedRevision: courseRevision,
-      limit: readMode === "catalog" ? CATALOG_PAGE_LIMIT : HISTORY_PAGE_LIMIT,
+      limit: readMode === "catalog" ? CATALOG_PAGE_LIMIT : 1,
       cursor: null,
       ...values
     };
@@ -1428,15 +1402,6 @@ export function createCourseSourcesPanel({
         render();
       }
     }
-  }
-
-  function mergeDetailPages(current, incoming) {
-    if (!current) return incoming;
-    const items = [...current.items, ...incoming.items];
-    if (new Set(items.map(({ revision }) => revision)).size !== items.length) {
-      throw new TypeError("A paginação repetiu uma revisão da fonte.");
-    }
-    return Object.freeze({ ...incoming, items: Object.freeze(items) });
   }
 
   function annotationQuery(sourceId) {
@@ -1519,26 +1484,18 @@ export function createCourseSourcesPanel({
   }
 
   async function loadDetail(sourceId, {
-    cursor = null,
-    append = false,
     target = false,
-    requiredRevision = null,
     contextualTarget = false,
-    currentTarget = false,
-    pageLimit = HISTORY_PAGE_LIMIT,
     preserveExisting = false,
     courseRevision = state.courseRevision
   } = {}) {
     const requestEpoch = epoch;
-    const targetLoading = currentTarget
-      ? state.targetCurrentDetailsLoading
-      : state.targetDetailsLoading;
-    if (target) targetLoading.add(sourceId);
+    if (target) state.targetDetailsLoading.add(sourceId);
     else {
       state.selectedSourceId = sourceId;
       state.detailLoading = true;
       state.detailFailure = "";
-      if (!append && !preserveExisting) state.detail = null;
+      if (!preserveExisting) state.detail = null;
     }
     if (!preserveExisting) render();
     try {
@@ -1548,8 +1505,6 @@ export function createCourseSourcesPanel({
       const page = normalizeCourseSourcesPage(
         await controller.loadCourseSources(state.courseId, readOptions("source", {
           sourceId,
-          cursor,
-          limit: pageLimit,
           ...targetContext
         }, courseRevision)),
         {
@@ -1563,24 +1518,14 @@ export function createCourseSourcesPanel({
           } : {})
         }
       );
-      if (requiredRevision !== null && page.items.length &&
-          !page.items.some(({ revision }) => revision === requiredRevision)) {
-        throw new TypeError("A revisão vinculada da fonte não corresponde ao alvo.");
-      }
       if (!state.opened || requestEpoch !== epoch) return null;
       if (target) {
-        if (currentTarget) state.targetCurrentDetails.set(sourceId, page);
-        else {
-          state.targetDetails.set(sourceId, page);
-          if (!contextualTarget) state.targetCurrentDetails.set(sourceId, page);
-        }
+        state.targetDetails.set(sourceId, page);
       }
       else {
         state.courseRevision = courseRevision;
-        state.detail = append ? mergeDetailPages(state.detail, page) : page;
-        if (!append) {
-          await loadAnnotations(sourceId, { preserveExisting, courseRevision });
-        }
+        state.detail = page;
+        await loadAnnotations(sourceId, { preserveExisting, courseRevision });
       }
       return page;
     } catch (error) {
@@ -1589,7 +1534,7 @@ export function createCourseSourcesPanel({
       return null;
     } finally {
       if (state.opened && requestEpoch === epoch) {
-        targetLoading.delete(sourceId);
+        state.targetDetailsLoading.delete(sourceId);
         if (!target) state.detailLoading = false;
         render();
       }
@@ -1621,48 +1566,23 @@ export function createCourseSourcesPanel({
     const sourceId = state.initialSourceId;
     const anchorId = state.initialAnchorId;
     if (sourceId === null) return false;
-    let cursor = null;
-    let append = false;
-    const seenCursors = new Set();
-    for (let pageIndex = 0; pageIndex < PINNED_HISTORY_MAX_PAGES; pageIndex += 1) {
-      const page = await loadDetail(sourceId, {
-        cursor,
-        append,
-        pageLimit: PINNED_HISTORY_PAGE_LIMIT,
-        preserveExisting,
-        courseRevision
-      });
-      if (!page) return false;
-      if (!page.items.length) {
-        return initialLinkFailure("not_found: a Fonte indicada não possui uma revisão disponível.");
-      }
-      if (anchorId === null) return true;
-      const source = state.detail?.items.find((item) =>
-        item.anchors.some((anchor) => anchor.anchorId === anchorId));
-      const anchor = source?.anchors.find((item) => item.anchorId === anchorId);
-      if (source && anchor) {
-        state.initialAnchorMatch = {
-          sourceRevision: source.revision,
-          anchorId: anchor.anchorId,
-          anchorRevision: anchor.revision
-        };
-        render();
-        focusInitialAnchor();
-        return true;
-      }
-      if (page.nextCursor === null) {
-        return initialLinkFailure("not_found: a Âncora indicada não existe no histórico da Fonte.");
-      }
-      if (seenCursors.has(page.nextCursor)) {
-        return initialLinkFailure("A paginação da Fonte repetiu o cursor; o deep link foi fechado por segurança.");
-      }
-      seenCursors.add(page.nextCursor);
-      cursor = page.nextCursor;
-      append = true;
+    const page = await loadDetail(sourceId, { preserveExisting, courseRevision });
+    if (!page) return false;
+    if (!page.items.length) {
+      return initialLinkFailure("not_found: a Fonte indicada não está disponível.");
     }
-    return initialLinkFailure(
-      "A Âncora indicada excede o limite seguro de 192 revisões; refine o vínculo antes de continuar."
-    );
+    if (anchorId === null) return true;
+    const source = page.items[0];
+    const anchor = source.anchors.find((item) => item.anchorId === anchorId);
+    if (!anchor) return initialLinkFailure("not_found: a Âncora indicada não existe na Fonte.");
+    state.initialAnchorMatch = {
+      sourceRevision: source.revision,
+      anchorId: anchor.anchorId,
+      anchorRevision: anchor.revision
+    };
+    render();
+    focusInitialAnchor();
+    return true;
   }
 
   async function loadTarget() {
@@ -1685,21 +1605,22 @@ export function createCourseSourcesPanel({
         }
       );
       if (!state.opened || requestEpoch !== epoch) return false;
-      state.targetHistory = page;
-      const effective = page.items.find(({ effective }) => effective) || null;
-      if (effective && effective.targetVersion !== state.targetVersion) {
+      if (page.items.length > 1 || page.nextCursor !== null) {
+        throw new TypeError("A leitura do alvo não corresponde ao estado corrente.");
+      }
+      const attribution = page.items[0] || null;
+      state.targetAttribution = attribution;
+      if (attribution && attribution.targetVersion !== state.targetVersion) {
         throw new TypeError("O item mudou. Feche esta janela e abra as fontes novamente.");
       }
-      state.sourceLinks = structuredClone(effective?.sourceLinks || []);
+      state.sourceLinks = structuredClone(attribution?.sourceLinks || []);
       state.initialSourceLinks = structuredClone(state.sourceLinks);
-      void Promise.all(state.sourceLinks.flatMap(({ sourceId, sourceRevision }) => [
+      void Promise.all(state.sourceLinks.map(({ sourceId }) =>
         loadDetail(sourceId, {
           target: true,
-          requiredRevision: sourceRevision,
           contextualTarget: true
-        }),
-        loadDetail(sourceId, { target: true, currentTarget: true })
-      ]));
+        })
+      ));
       return true;
     } catch (error) {
       if (!state.opened || requestEpoch !== epoch) return false;
@@ -1735,7 +1656,6 @@ export function createCourseSourcesPanel({
     state.sourceEditor = null;
     state.anchorEditor = null;
     state.targetDetails.clear();
-    state.targetCurrentDetails.clear();
     applyCourseRevision(change.courseRevision);
     if (state.mode === "target") {
       const refreshed = await Promise.all([loadCatalog(), loadTarget()]);
@@ -1816,7 +1736,7 @@ export function createCourseSourcesPanel({
     if (state.busy) return false;
     const source = state.detail?.items?.[0];
     if (!source || source.status !== "active") {
-      state.failure = "A revisão ativa da Fonte não está disponível.";
+      state.failure = "A Fonte corrente não está disponível.";
       render();
       return false;
     }
@@ -1991,7 +1911,7 @@ export function createCourseSourcesPanel({
     const source = state.detail?.items?.[0];
     const editor = state.anchorEditor;
     const existing = editor?.anchor || null;
-    if (!source || source.status !== "active") throw new TypeError("A fonte ativa não está disponível.");
+    if (!source || source.status !== "active") throw new TypeError("A Fonte corrente não está disponível.");
     if (!existing && editor && !editor.anchorId) editor.anchorId = createUuid();
     const command = {
       type: "save_anchor",
@@ -2094,7 +2014,7 @@ export function createCourseSourcesPanel({
     captureObservationDraft(form);
     const source = state.detail?.items?.[0];
     if (!source || source.status !== "active") {
-      throw new TypeError("A revisão ativa da Fonte não está disponível.");
+      throw new TypeError("A Fonte corrente não está disponível.");
     }
     const observationKind = requiredFormValue(
       form,
@@ -2134,20 +2054,18 @@ export function createCourseSourcesPanel({
     }
     return state.sourceLinks.every((link) => {
       const source = sourceForLink(state, link);
-      const currentSource = currentSourceForLink(state, link);
-      const currentAnchors = new Map(currentAnchorsForLink(state, link)
-        .map((anchor) => [anchor.anchorId, anchor]));
       const activeAnchors = new Map(anchorsForLink(state, link)
         .filter(({ status }) => status === "active")
-        .map((anchor) => [anchor.anchorId, anchor.revision]));
-      return source?.status === "active" && currentSource?.status === "active" &&
-        currentSource.revision === link.sourceRevision &&
+        .map((anchor) => [anchor.anchorId, anchor]));
+      const anchorCountIsValid = link.relation === "needs_verification"
+        ? link.anchors.length <= 8
+        : link.anchors.length >= 1 && link.anchors.length <= 8;
+      return source?.status === "active" &&
         Object.hasOwn(SOURCE_RELATIONS, link.relation) &&
-        link.anchors.length >= 1 && link.anchors.length <= 8 &&
-        link.anchors.every(({ anchorId, anchorRevision }) => {
-          const currentAnchor = currentAnchors.get(anchorId);
-          return activeAnchors.get(anchorId) === anchorRevision &&
-            currentAnchor?.status === "active" && currentAnchor.revision === anchorRevision;
+        anchorCountIsValid &&
+        link.anchors.every(({ anchorId }) => {
+          const currentAnchor = activeAnchors.get(anchorId);
+          return Boolean(currentAnchor);
         });
     });
   }
@@ -2205,9 +2123,8 @@ export function createCourseSourcesPanel({
       const link = state.sourceLinks.find((item) => item.sourceId === sourceId);
       if (!link) return;
       const anchorId = String(event.target.dataset.anchorId || "");
-      const anchorRevision = Number(event.target.dataset.anchorRevision);
       link.anchors = event.target.checked
-        ? [...link.anchors.filter((anchor) => anchor.anchorId !== anchorId), { anchorId, anchorRevision }]
+        ? [...link.anchors.filter((anchor) => anchor.anchorId !== anchorId), { anchorId }]
         : link.anchors.filter((anchor) => anchor.anchorId !== anchorId);
       state.failure = "";
       render();
@@ -2278,8 +2195,6 @@ export function createCourseSourcesPanel({
       void (state.initialSourceId === state.selectedSourceId
         ? loadInitialDetail()
         : loadDetail(state.selectedSourceId));
-    } else if (action === "load-more-revisions" && state.detail?.nextCursor && !state.detailLoading) {
-      void loadDetail(state.selectedSourceId, { cursor: state.detail.nextCursor, append: true });
     } else if (action === "edit-source") {
       const source = state.detail?.items?.[0];
       if (!source) return;
@@ -2296,7 +2211,7 @@ export function createCourseSourcesPanel({
       };
       requestConfirmation({
         title: "Aposentar fonte?",
-        message: "O histórico e as atribuições existentes serão preservados.",
+        message: "A Fonte deixará de estar ativa. Revise os conteúdos que ainda dependem dela.",
         confirmLabel: "Aposentar",
         command,
         draft: command,
@@ -2309,8 +2224,10 @@ export function createCourseSourcesPanel({
     } else if (action === "edit-anchor") {
       const anchorId = String(node.dataset.anchorId || "");
       const sourceRevision = Number(node.dataset.sourceRevision);
-      const anchor = state.detail?.items.find(({ revision }) => revision === sourceRevision)
-        ?.anchors.find((item) => item.anchorId === anchorId);
+      const source = state.detail?.items?.[0];
+      const anchor = source?.revision === sourceRevision
+        ? source.anchors.find((item) => item.anchorId === anchorId)
+        : null;
       if (!anchor) return;
       state.anchorEditor = { anchor, draft: null };
       state.failure = "";
@@ -2325,7 +2242,7 @@ export function createCourseSourcesPanel({
       const command = { type: "retire_anchor", anchorId, expectedAnchorRevision };
       requestConfirmation({
         title: "Aposentar âncora?",
-        message: "As atribuições históricas serão preservadas.",
+        message: "A Âncora deixará de estar ativa. Revise os vínculos que ainda dependem dela.",
         confirmLabel: "Aposentar",
         command,
         draft: command,
@@ -2405,7 +2322,7 @@ export function createCourseSourcesPanel({
         const value = buildTargetExport(state, now());
         downloadJson(
           value,
-          `aralearn-proveniencia-${state.courseId}-${state.targetKind}.json`
+          `aralearn-proveniencia-${state.targetKind}.json`
         );
         state.failure = "";
         state.message = "A exportação da proveniência foi preparada para salvamento.";
@@ -2428,11 +2345,10 @@ export function createCourseSourcesPanel({
       }
       state.sourceLinks.push({
         sourceId,
-        sourceRevision: source.revision,
         relation: "supported_by",
         anchors: []
       });
-      void loadDetail(sourceId, { target: true, requiredRevision: source.revision });
+      void loadDetail(sourceId, { target: true });
       render();
     } else if (action === "remove-target-source") {
       const sourceId = String(node.dataset.sourceId || "");
@@ -2449,7 +2365,7 @@ export function createCourseSourcesPanel({
       render();
     } else if (action === "save-target") {
       if (!targetLinksValid()) {
-        state.failure = "Cada fonte precisa usar a revisão corrente ativa, ter uma relação explícita e ao menos uma âncora exata. Remova e vincule novamente fontes alteradas; referências legadas devem ser resolvidas ou removidas.";
+        state.failure = "Cada Fonte precisa estar ativa e usar uma relação explícita. Somente “Precisa de verificação” pode permanecer sem Âncora.";
         render();
         return;
       }

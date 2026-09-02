@@ -1,623 +1,319 @@
 import {
-  COURSE_AUTHORING_ANALYTICS_CHANNELS,
-  COURSE_AUTHORING_ANALYTICS_DATASETS,
-  COURSE_AUTHORING_ANALYTICS_EXPORT_CONTRACT,
-  assembleCourseAuthoringAnalyticsExport,
   normalizeCourseAuthoringAnalyticsPage,
-  normalizeCourseAuthoringAnalyticsQuery,
-  serializeCourseAuthoringAnalyticsCsv
+  normalizeCourseAuthoringAnalyticsQuery
 } from "../domain/courseAuthoringAnalytics.js";
-import { downloadTextFile, TEXT_EXPORT_MAX_BYTES } from "./downloadTextFile.js";
-import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
+import { downloadTextFile } from "./downloadTextFile.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-const exportEncoder = new TextEncoder();
-const DATASET_LABELS = Object.freeze({
-  activity: "Atividade do Curso",
-  materializations: "Produção por Partes",
-  design: "Decisões de desenho",
-  sources: "Fontes e atribuições",
-  annotations: "Observações",
-  audits: "Auditorias e correções",
-  variants: "Variantes"
-});
-
-const CHANNEL_LABELS = Object.freeze({
-  authoring_interface: "Interface de Autoria",
-  authoring_chat: "Conversa com o assistente",
-  study_interface: "Estudo",
-  audit_process: "Processo de auditoria"
-});
-
-const FACT_KIND_LABELS = Object.freeze({
-  create_course: "Curso criado",
-  update_course_metadata: "Dados do Curso atualizados",
-  replace_course_composition: "Composição do Curso substituída",
-  update_course_instructional_plan: "Planejamento instrucional atualizado",
-  advance_course_authoring_part_materialization: "Materialização da Parte avançada",
-  update_course_design: "Desenho do Curso atualizado",
-  update_course_sources: "Fontes do Curso atualizadas",
-  grant_course_access: "Acesso ao Curso concedido",
-  revoke_course_access: "Acesso ao Curso revogado",
-  apply_authoring_correction: "Correção de Autoria aplicada",
-  rollback_authoring_correction: "Correção de Autoria revertida",
-  plan_changed: "Planejamento alterado",
-  materialization_started: "Materialização iniciada",
-  materialization_step_recorded: "Etapa de materialização registrada",
-  materialization_finished: "Materialização finalizada",
-  course_source_changed: "Fontes do Curso alteradas",
-  part_materialization_pending: "Materialização da Parte pendente",
-  part_materialization_running: "Materialização da Parte em andamento",
-  part_materialization_completed: "Materialização da Parte concluída",
-  part_materialization_failed: "Materialização da Parte com falha",
-  design_parameter_set: "Parâmetro de desenho definido",
-  design_parameter_clear: "Parâmetro de desenho removido",
-  authoring_guidance_set: "Orientação de Autoria definida",
-  authoring_guidance_clear: "Orientação de Autoria removida",
-  authoring_guidance_interpreted: "Orientação de Autoria interpretada",
-  component_policy_set: "Política de componentes definida",
-  component_policy_clear: "Política de componentes removida",
-  source_active: "Fonte ativa",
-  source_retired: "Fonte retirada",
-  source_unresolved_legacy: "Fonte importada pendente de identificação",
-  source_anchor_active: "Âncora de Fonte ativa",
-  source_anchor_retired: "Âncora de Fonte retirada",
-  source_attribution_recorded: "Atribuição de Fonte registrada",
-  source_attachment_recorded: "Anexo de Fonte registrado",
-  annotation_created: "Observação criada",
-  annotation_revised: "Observação revisada",
-  annotation_classification_corrected: "Classificação da Observação corrigida",
-  annotation_considered: "Observação considerada",
-  annotation_responded: "Observação respondida",
-  annotation_resolved: "Observação resolvida",
-  annotation_reopened: "Observação reaberta",
-  annotation_withdrawn: "Observação retirada",
-  audit_run_audit: "Auditoria realizada",
-  audit_run_verification: "Verificação realizada",
-  audit_finding_recorded: "Achado de auditoria registrado",
-  audit_finding_dismissed: "Achado de auditoria descartado",
-  audit_finding_reopened: "Achado de auditoria reaberto",
-  audit_finding_correction_applied: "Correção aplicada ao achado de auditoria",
-  audit_finding_resolved: "Achado de auditoria resolvido",
-  audit_finding_still_open: "Achado de auditoria mantido aberto",
-  audit_finding_rolled_back: "Correção do achado de auditoria revertida",
-  authoring_correction_proposed: "Correção de Autoria proposta",
-  authoring_correction_rejected: "Correção de Autoria rejeitada",
-  authoring_correction_applied: "Correção de Autoria aplicada",
-  authoring_correction_verified: "Correção de Autoria verificada",
-  authoring_correction_rolled_back: "Correção de Autoria revertida",
-  variant_checkpoint_recorded: "Marco de comparação de variantes registrado",
-  variant_comparison_recorded: "Comparação de variantes registrada",
-  variant_member_attached: "Variante vinculada à comparação",
-  variant_member_detached: "Variante retirada da comparação"
-});
 
 const ORIGIN_LABELS = Object.freeze({
-  automatic: "Processo automático",
+  automatic: "Calibração automática",
   author: "Pessoa autora",
   research_condition: "Condição de pesquisa",
   migration: "Estado importado",
-  learner: "Pessoa estudante",
-  human_audit: "Auditoria humana",
-  automatic_audit: "Auditoria automática",
-  unknown_legacy: "Origem não registrada"
+  provider_assistance: "Assistência por IA",
+  gpt: "GPT",
+  authoring_interface: "Edição na Autoria",
+  authoring_chat: "Conversa de Autoria",
+  unknown: "Origem não informada",
 });
 
-const STATE_LABELS = Object.freeze({
-  pending: "Pendente",
-  running: "Em andamento",
-  completed: "Conclusão registrada",
-  failed: "Falha registrada",
-  set: "Definição registrada",
-  clear: "Remoção registrada",
-  active: "Em atividade",
-  retired: "Retirada registrada",
-  unresolved_legacy: "Pendente de identificação",
-  recorded: "Registro concluído",
-  created: "Criação registrada",
-  revised: "Revisão registrada",
-  classification_corrected: "Correção da classificação registrada",
-  considered: "Consideração registrada",
-  responded: "Resposta registrada",
-  resolved: "Resolução registrada",
-  reopened: "Reabertura registrada",
-  withdrawn: "Retirada registrada",
-  open: "Em aberto",
-  awaiting_verification: "Aguardando verificação",
-  dismissed: "Descarte registrado",
-  still_open: "Permanece em aberto",
-  proposed: "Proposta registrada",
-  rejected: "Rejeição registrada",
-  applied: "Aplicação registrada",
-  verified: "Verificação concluída",
-  rolled_back: "Reversão registrada",
-  attached: "Vínculo ativo",
-  detached: "Vínculo encerrado"
-});
-
-const VALUE_KEY_LABELS = Object.freeze({
-  operation: "Operação",
-  activity_kind: "Tipo de atividade",
-  created_count: "Itens criados",
-  updated_count: "Itens atualizados",
-  deleted_count: "Itens excluídos",
-  materialization_version: "Versão da materialização",
-  authoring_part_version: "Versão da Parte",
-  duration_milliseconds: "Duração em milissegundos",
-  step_count: "Etapas",
-  produced_study_units: "Unidades de estudo produzidas",
-  configuration_hash: "Identificador da configuração",
-  action: "Ação",
-  parameter_id: "Parâmetro",
-  catalog_version: "Versão do catálogo",
-  value_kind: "Tipo de valor",
-  configuration_item_count: "Itens da configuração",
-  guidance_hash: "Identificador da orientação",
-  guidance_character_count: "Caracteres da orientação",
-  interpretation_hash: "Identificador da interpretação",
-  source_revision: "Revisão da Fonte",
-  source_kind: "Tipo de Fonte",
-  study_visibility: "Visibilidade no Estudo",
-  has_citation: "Possui citação",
-  has_url: "Possui endereço",
-  attachment_count: "Anexos",
-  anchor_revision: "Revisão da Âncora",
-  selector_kind: "Tipo de localização",
-  has_verification_excerpt: "Possui trecho de verificação",
-  target_version: "Versão do objeto",
-  attribution_revision: "Revisão da atribuição",
-  source_count: "Fontes",
-  anchor_count: "Âncoras",
-  attribution_hash: "Identificador da atribuição",
-  content_hash: "Identificador do conteúdo",
-  byte_size: "Tamanho em bytes",
-  media_type: "Tipo de mídia",
-  annotation_version: "Versão da Observação",
-  event_type: "Tipo do evento",
-  target_kind: "Tipo do objeto",
-  category: "Categoria",
-  subject_count: "Assuntos",
-  observed_target_version: "Versão observada do objeto",
-  automatic_method: "Método automático",
-  automatic_method_version: "Versão do método automático",
-  effective_method: "Método vigente",
-  effective_method_version: "Versão do método vigente",
-  effective_taxonomy_revision: "Revisão da taxonomia vigente",
-  run_kind: "Tipo de execução",
-  method_id: "Método",
-  method_version: "Versão do método",
-  check_count: "Verificações",
-  findings_created: "Achados criados",
-  context_hash: "Identificador do contexto",
-  finding_version: "Versão do achado",
-  decision: "Decisão",
+const CONCEPT_LABELS = Object.freeze({
+  definition: "Definição",
+  context: "Contexto",
+  mechanism: "Mecanismo",
+  relationship: "Relação",
+  example: "Exemplo",
+  contrast: "Contraste",
+  complementary_representation: "Representação complementar",
+  retrieval: "Recuperação",
+  consolidation: "Consolidação",
+  practice: "Prática",
+  paragraph: "Parágrafo",
+  choice: "Escolha",
+  table: "Tabela",
+  sequence: "Sequência",
+  flow: "Fluxo",
+  classification: "Classificação",
   code: "Código",
-  severity: "Gravidade",
-  annotation_count: "Observações",
-  correction_version: "Versão da correção",
-  base_target_version: "Versão inicial do objeto",
-  applied_target_version: "Versão aplicada do objeto",
-  verification_outcome: "Resultado da verificação",
-  rollback_course_revision: "Revisão do Curso após reversão",
-  source_plan_version: "Versão do planejamento de origem",
-  set_version: "Versão do conjunto",
-  member_count: "Variantes",
-  active_member_count: "Variantes vinculadas",
-  checkpoint_id: "Marco de comparação",
-  parameter_difference_count: "Diferenças de parâmetros",
-  has_component_policy_difference: "Possui diferença na política de componentes"
-});
-
-const HIDDEN_VALUE_KEYS = new Set([
-  "activity_kind",
-  "code",
-  "operation"
-]);
-
-const ENTITY_KIND_LABELS = Object.freeze({
-  course: "Curso",
-  module: "Módulo",
-  lesson: "Lição",
-  topic: "Assunto",
-  didactic_microsequence: "Microssequência",
-  study_unit: "Unidade de estudo",
-  authoring_part: "Parte",
-  materialization: "Materialização",
-  design_parameter: "Parâmetro de desenho",
-  guidance_revision: "Revisão de orientação",
-  source: "Fonte",
-  source_anchor: "Âncora de Fonte",
-  source_attachment: "Anexo de Fonte",
-  annotation: "Observação",
-  anchored_annotation: "Observação",
-  audit_run: "Execução de auditoria",
-  audit_finding: "Achado de auditoria",
-  variant_checkpoint: "Marco de comparação",
-  variant_comparison: "Comparação de variantes"
-});
-
-const VALUE_KIND_LABELS = Object.freeze({
-  integer: "Número inteiro",
-  number: "Número",
-  set: "Conjunto",
-  string: "Texto",
-  boolean: "Sim ou não"
-});
-
-const SOURCE_KIND_LABELS = Object.freeze({
-  web_page: "Página da internet",
-  article: "Artigo",
-  book: "Livro",
-  document: "Documento",
-  media: "Mídia",
-  other: "Outro"
-});
-
-const STUDY_VISIBILITY_LABELS = Object.freeze({
-  hidden: "Oculta",
-  citation: "Citação",
-  citation_and_link: "Citação e endereço"
-});
-
-const SELECTOR_KIND_LABELS = Object.freeze({
-  page_range: "Intervalo de páginas",
-  time_range: "Intervalo de tempo",
-  uri_fragment: "Trecho do endereço",
-  text_quote: "Trecho de texto"
-});
-
-const ANNOTATION_CATEGORY_LABELS = Object.freeze({
-  question: "Pergunta",
-  possible_error: "Possível erro",
-  confusing: "Trecho confuso",
-  suggestion: "Sugestão"
-});
-
-const CLASSIFICATION_METHOD_LABELS = Object.freeze({
-  exact_topic_target: "Assunto indicado pelo objeto",
-  target_scope_unclassified: "Escopo sem classificação",
-  legacy_unclassified: "Registro importado sem classificação",
-  human_topic_selection: "Assuntos selecionados por uma pessoa"
-});
-
-const RUN_KIND_LABELS = Object.freeze({
-  audit: "Auditoria",
-  verification: "Verificação"
-});
-
-const SEVERITY_LABELS = Object.freeze({
-  low: "Baixa",
-  medium: "Média",
-  high: "Alta",
-  critical: "Crítica"
-});
-
-const ACTION_LABELS = Object.freeze({
-  set: "Definição",
-  clear: "Remoção"
-});
-
-const ANNOTATION_EVENT_LABELS = Object.freeze({
-  created: "Criação",
-  revised: "Revisão",
-  classification_corrected: "Correção da classificação",
-  considered: "Consideração",
-  responded: "Resposta",
-  resolved: "Resolução",
-  reopened: "Reabertura",
-  withdrawn: "Retirada"
-});
-
-const AUDIT_DECISION_LABELS = Object.freeze({
-  recorded: "Registro",
-  dismissed: "Descarte",
-  reopened: "Reabertura",
-  correction_applied: "Correção aplicada",
-  resolved: "Resolução",
-  still_open: "Permanência em aberto",
-  rolled_back: "Reversão"
+  diagram: "Diagrama",
+  image: "Imagem",
+  relation_map: "Mapa de relações",
+  text: "Texto",
+  ordering: "Ordenação",
+  factual_support: "Sustentação factual",
+  contextualization: "Contextualização",
+  worked_example: "Exemplo desenvolvido",
+  counterexample: "Contraexemplo"
 });
 
 function escapeHtml(value) {
-  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function errorText(error) {
-  return String(error?.message || "Não foi possível carregar os fatos de Autoria.");
+  return String(error?.message || "Não foi possível carregar Analytics.");
 }
 
-function formatNumber(value, unit) {
-  if (value === null) return "Dado ausente";
-  if (unit === "percentage") {
-    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value) + "%";
-  }
-  if (unit === "ratio") {
-    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 }).format(value);
-  }
-  if (unit === "milliseconds") {
-    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value) + " ms";
-  }
-  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value);
+function formatCount(value) {
+  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value);
 }
 
-function unitLabel(value) {
-  return ({
-    count: "Contagem",
-    milliseconds: "Milissegundos",
-    ratio: "Proporção",
-    percentage: "Porcentagem"
-  })[value] || "Unidade não reconhecida";
+function plural(value, singular, pluralForm) {
+  return `${formatCount(value)} ${value === 1 ? singular : pluralForm}`;
 }
 
-function formatInstant(value) {
-  if (!value) return "Instante ausente";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
+function humanLabel(value) {
+  const source = String(value ?? "").trim();
+  if (!source) return "Não informado";
+  if (ORIGIN_LABELS[source]) return ORIGIN_LABELS[source];
+  if (CONCEPT_LABELS[source]) return CONCEPT_LABELS[source];
+  const words = source.replaceAll(/[_-]+/gu, " ").trim();
+  return words ? words[0].toLocaleUpperCase("pt-BR") + words.slice(1) : "Não informado";
 }
 
-function factKindLabel(value) {
-  return FACT_KIND_LABELS[value] || "Tipo de fato não reconhecido";
+function appliedValue(value) {
+  if (value === null) return "Não informado";
+  if (Array.isArray(value)) return value.length ? value.map(humanLabel).join(", ") : "Nenhum";
+  if (typeof value === "number") return formatCount(value);
+  return humanLabel(value);
 }
 
-function originLabel(value) {
-  return ORIGIN_LABELS[value] || "Origem não reconhecida";
+function componentLabel(value) {
+  const source = String(value ?? "").trim();
+  const token = source.match(/^aralearn\.(?:resource|response)\.([a-z0-9_-]+)@[0-9.]+$/u)?.[1] ||
+    source;
+  return humanLabel(token);
 }
 
-function stateLabel(value) {
-  return STATE_LABELS[value] || "Estado não reconhecido";
+function renderScopeFilter(page) {
+  return '<form class="course-analytics-scope" data-course-analytics-scope>' +
+    '<label for="course-analytics-scope">Escopo</label><div>' +
+    '<select id="course-analytics-scope" name="scope">' +
+    page.scope.options.map((option, index) => {
+      const selected = option.kind === page.scope.selected.kind &&
+        option.ref === page.scope.selected.ref;
+      return `<option value="${index}"${selected ? " selected" : ""}>` +
+        `${escapeHtml(option.label)}</option>`;
+    }).join("") + '</select><button type="submit" class="course-authoring-icon-action"' +
+    ' aria-label="Aplicar escopo" title="Aplicar escopo">' +
+    renderUiIcon("search", "course-authoring-button-icon") + '</button>' +
+    '<button type="button" class="course-authoring-icon-action"' +
+    ' data-course-analytics-action="export-json" aria-label="Exportar Analytics em JSON"' +
+    ' title="Exportar Analytics">' + renderUiIcon("download", "course-authoring-button-icon") +
+    "</button></div></form>";
 }
 
-function factValueLabel(key) {
-  return VALUE_KEY_LABELS[key] || "Dado registrado";
+function renderMetrics(items, label) {
+  return `<dl class="course-analytics-metrics" aria-label="${escapeHtml(label)}">` +
+    items.map(({ name, value, definition }) => '<div><dt>' + escapeHtml(name) +
+      `<small>${escapeHtml(definition)}</small></dt>` + (value === null
+        ? '<dd aria-label="Não disponível">—</dd>'
+        : `<dd>${escapeHtml(formatCount(value))}</dd>`) + "</div>"
+    ).join("") + "</dl>";
 }
 
-function factValueText(key, value) {
-  if (value === null) return "ausente";
-  if (typeof value === "boolean") return value ? "sim" : "não";
-  const labels = {
-    operation: FACT_KIND_LABELS,
-    activity_kind: FACT_KIND_LABELS,
-    action: ACTION_LABELS,
-    value_kind: VALUE_KIND_LABELS,
-    source_kind: SOURCE_KIND_LABELS,
-    study_visibility: STUDY_VISIBILITY_LABELS,
-    selector_kind: SELECTOR_KIND_LABELS,
-    event_type: ANNOTATION_EVENT_LABELS,
-    target_kind: ENTITY_KIND_LABELS,
-    category: ANNOTATION_CATEGORY_LABELS,
-    automatic_method: CLASSIFICATION_METHOD_LABELS,
-    effective_method: CLASSIFICATION_METHOD_LABELS,
-    run_kind: RUN_KIND_LABELS,
-    decision: AUDIT_DECISION_LABELS,
-    severity: SEVERITY_LABELS,
-    verification_outcome: AUDIT_DECISION_LABELS
-  }[key];
-  return typeof value === "string" && labels?.[value] ? labels[value] : String(value);
+function renderTableDetails({ title, definition, rows }) {
+  if (!rows.length) return "";
+  return '<details class="course-analytics-details"><summary><span>' + escapeHtml(title) +
+    `</span><small>${escapeHtml(plural(rows.length, "linha", "linhas"))}</small></summary>` +
+    `<p>${escapeHtml(definition)}</p><table aria-label="${escapeHtml(title)}"><thead>` +
+    '<tr><th scope="col">Item</th>' +
+    '<th scope="col">Leitura</th></tr></thead><tbody>' +
+    rows.map(({ label, value }) => `<tr><th scope="row">${escapeHtml(label)}</th>` +
+      `<td>${escapeHtml(value)}</td></tr>`).join("") + "</tbody></table></details>";
 }
 
-function visibleValueKey(key) {
-  return Object.hasOwn(VALUE_KEY_LABELS, key) &&
-    !HIDDEN_VALUE_KEYS.has(key) &&
-    !/(?:^|_)(?:hash|id)$/u.test(key);
-}
-
-function overviewEntryLabel(entry) {
-  const key = String(entry?.key || "");
-  if (DATASET_LABELS[key]) return DATASET_LABELS[key];
-  if (FACT_KIND_LABELS[key]) return FACT_KIND_LABELS[key];
-  if (STATE_LABELS[key]) return STATE_LABELS[key];
-  if (key === "no_facts") return "Nenhum fato";
-  const separator = key.indexOf(":");
-  if (separator > 0) {
-    const kind = key.slice(0, separator);
-    const state = key.slice(separator + 1);
-    const kindText = FACT_KIND_LABELS[kind];
-    if (kindText) {
-      return state && state !== "none" && STATE_LABELS[state]
-        ? `${kindText} · ${STATE_LABELS[state]}`
-        : kindText;
+function configurationRows(design) {
+  const rows = [];
+  for (const parameter of design.parameters) {
+    for (const applied of parameter.effectiveValues) {
+      const suffix = [
+        plural(applied.studyUnitCount, "StudyUnit", "StudyUnits"),
+        applied.origin ? humanLabel(applied.origin) : null
+      ].filter(Boolean).join(" · ");
+      rows.push({
+        label: parameter.label,
+        value: `${appliedValue(applied.value)} · ${suffix}`
+      });
     }
   }
-  return "Fato registrado";
+  for (const direction of design.editorialDirections) {
+    const suffix = [
+      plural(direction.studyUnitCount, "StudyUnit", "StudyUnits"),
+      direction.origin ? humanLabel(direction.origin) : null
+    ].filter(Boolean).join(" · ");
+    rows.push({
+      label: "Direção editorial",
+      value: `${direction.direction || "Sem direção adicional"} · ${suffix}`
+    });
+  }
+  return rows;
 }
 
-function subjectLabel(subject) {
-  const supplied = String(subject?.label || "").trim();
-  const identifier = String(subject?.id || "").trim();
-  const opaque = supplied === identifier ||
-    /^[0-9a-f]{8}-[0-9a-f-]{27,}$/iu.test(supplied) ||
-    /^[0-9a-f]{32,}$/iu.test(supplied) ||
-    /^[a-z_]+:[^\s]+$/u.test(supplied);
-  if (supplied && !opaque) return supplied;
-  return ENTITY_KIND_LABELS[subject?.kind] || "Objeto relacionado";
+function structureRows(design) {
+  return [
+    ...design.analysisUnits.map((unit) => ({
+      label: `AnalysisUnit ${unit.position}`,
+      value: `${unit.statement} · ${plural(
+        unit.introductionCount,
+        "introdução",
+        "introduções"
+      )}`
+    })),
+    ...design.introductionsByStudyUnit.map((unit) => ({
+      label: `StudyUnit ${unit.position} · ${unit.title}`,
+      value: plural(unit.introducedCount, "novidade introduzida", "novidades introduzidas")
+    })),
+    ...design.explanationForms.map((form) => ({
+      label: `Forma · ${humanLabel(form.form)}`,
+      value: `${plural(form.studyUnitCount, "StudyUnit", "StudyUnits")} · ${plural(
+        form.applicationCount,
+        "aplicação",
+        "aplicações"
+      )}`
+    })),
+    ...design.components.map((component) => ({
+      label: `Componente · ${componentLabel(component.componentRef)}`,
+      value: `${plural(component.studyUnitCount, "StudyUnit", "StudyUnits")} · ${plural(
+        component.instanceCount,
+        "uso",
+        "usos"
+      )}`
+    }))
+  ];
 }
 
-function renderFactMetadata(fact) {
-  const entries = [];
-  if (fact.channel && CHANNEL_LABELS[fact.channel]) {
-    entries.push(["Canal", CHANNEL_LABELS[fact.channel]]);
-  }
-  if (fact.origin) entries.push(["Origem", originLabel(fact.origin)]);
-  if (fact.state) entries.push(["Estado", stateLabel(fact.state)]);
-  if (Number.isSafeInteger(fact.courseRevision) && fact.courseRevision > 0) {
-    entries.push(["Revisão", String(fact.courseRevision)]);
-  }
-  return entries.length
-    ? '<dl>' + entries.map(([label, value]) =>
-      `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("") + '</dl>'
+function practiceAndSourceRows(design) {
+  return [
+    ...design.practiceByRequirement.map((requirement) => ({
+      label: `Prática ${requirement.position}`,
+      value: `${requirement.statement} · ${plural(
+        requirement.opportunityCount,
+        "oportunidade",
+        "oportunidades"
+      )}`
+    })),
+    ...design.practiceVariationDimensions.map((dimension) => ({
+      label: `Variação · ${humanLabel(dimension.dimension)}`,
+      value: plural(dimension.opportunityCount, "oportunidade", "oportunidades")
+    })),
+    ...design.sourcesByRole.map((source) => ({
+      label: `Fonte · ${humanLabel(source.role)}`,
+      value: `${plural(source.sourceCount, "Fonte", "Fontes")} · ${plural(
+        source.anchorCount,
+        "Âncora",
+        "Âncoras"
+      )} · ${plural(source.studyUnitCount, "StudyUnit", "StudyUnits")}`
+    }))
+  ];
+}
+
+function authorshipRows(authorship) {
+  return [
+    {
+      label: "Observações criadas",
+      value: plural(authorship.observations.createdCount, "Observação", "Observações")
+    },
+    {
+      label: "Observações resolvidas",
+      value: plural(authorship.observations.resolvedCount, "Observação", "Observações")
+    },
+    ...authorship.studyUnitsByOrigin.map((entry) => ({
+      label: humanLabel(entry.origin),
+      value: `${plural(entry.createdCount, "StudyUnit criada", "StudyUnits criadas")} · ${plural(
+        entry.lastRevisedCount,
+        "StudyUnit com última revisão",
+        "StudyUnits com última revisão"
+      )}`
+    }))
+  ];
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function renderDesign(design) {
+  const practiceCount = sum(design.practiceByRequirement.map(({ opportunityCount }) =>
+    opportunityCount));
+  const sourceCount = sum(design.sourcesByRole.map(({ sourceCount }) => sourceCount));
+  return '<section class="course-analytics-area" aria-labelledby="course-analytics-design-title">' +
+    '<header><h3 id="course-analytics-design-title">Desenho</h3>' +
+    '<p>Configuração e composição efetivamente usadas neste escopo.</p></header>' +
+    renderMetrics([{
+      name: "StudyUnits", value: design.studyUnitCount, definition: "Unidades no escopo."
+    }, {
+      name: "AnalysisUnits", value: design.analysisUnits.length,
+      definition: "Novidades semânticas inventariadas."
+    }, {
+      name: "Prática", value: practiceCount, definition: "Oportunidades produzidas."
+    }, {
+      name: "Fontes", value: sourceCount, definition: "Fontes relacionadas."
+    }], "Resumo do desenho") +
+    renderTableDetails({
+      title: "Configuração aplicada",
+      definition: "Parâmetros pedagógicos e direção editorial usados pelas StudyUnits.",
+      rows: configurationRows(design)
+    }) + renderTableDetails({
+      title: "Conteúdo e representações",
+      definition: "Novidades, distribuição, formas explicativas e componentes do escopo.",
+      rows: structureRows(design)
+    }) + renderTableDetails({
+      title: "Prática e Fontes",
+      definition: "Oportunidades, variações e sustentação por papel.",
+      rows: practiceAndSourceRows(design)
+    }) + "</section>";
+}
+
+function renderAuthorship(authorship) {
+  return '<section class="course-analytics-area" aria-labelledby="course-analytics-authorship-title">' +
+    '<header><h3 id="course-analytics-authorship-title">Autoria</h3>' +
+    '<p>Intervenções explícitas observáveis; ausência não significa concordância.</p></header>' +
+    renderMetrics([{
+      name: "Observações abertas", value: authorship.observations.openCount,
+      definition: "Pendências humanas atuais."
+    }, {
+      name: "Parâmetros definidos", value: authorship.explicitParameterOverrideCount,
+      definition: "Atribuições explícitas correntes."
+    }, {
+      name: "StudyUnits revistas manualmente", value: authorship.manuallyRevisedStudyUnitCount,
+      definition: "Unidades cuja última revisão observável é humana."
+    }], "Resumo da autoria") + renderTableDetails({
+      title: "Intervenções por origem",
+      definition: "Contagens explícitas por origem observável.",
+      rows: authorshipRows(authorship)
+    }) + "</section>";
+}
+
+function renderMissingData(missingData) {
+  return missingData.length
+    ? '<aside class="course-authoring-notice course-analytics-missing" aria-label="Dados ausentes">' +
+      '<strong>Dados ausentes</strong><p>' + escapeHtml(missingData.join(" ")) + "</p></aside>"
     : "";
-}
-
-function renderFilters(state) {
-  const selectedDataset = state.query.datasets.length === COURSE_AUTHORING_ANALYTICS_DATASETS.length
-    ? "all"
-    : state.query.datasets[0];
-  const selectedChannel = state.query.channels.length ? state.query.channels[0] : "all";
-  const dateValue = (value) => value ? value.slice(0, 10) : "";
-  return '<form class="course-analytics-filters" data-course-analytics-filters>' +
-    '<label>Fatos<select name="dataset">' +
-    '<option value="all">Todos os fatos</option>' +
-    COURSE_AUTHORING_ANALYTICS_DATASETS.map((dataset) =>
-      `<option value="${dataset}"${dataset === selectedDataset ? " selected" : ""}>` +
-      `${escapeHtml(DATASET_LABELS[dataset])}</option>`
-    ).join("") + '</select></label>' +
-    '<label>Origem da interação<select name="channel">' +
-    '<option value="all">Todas as origens</option>' +
-    COURSE_AUTHORING_ANALYTICS_CHANNELS.map((channel) =>
-      `<option value="${channel}"${channel === selectedChannel ? " selected" : ""}>` +
-      `${escapeHtml(CHANNEL_LABELS[channel])}</option>`
-    ).join("") + '</select></label>' +
-    `<label>Desde<input name="from" type="date" value="${escapeHtml(dateValue(state.query.from))}"></label>` +
-    `<label>Até<input name="to" type="date" value="${escapeHtml(dateValue(state.query.to))}"></label>` +
-    '<button type="submit" aria-label="Aplicar filtros" title="Aplicar filtros">' +
-    `${renderUiIcon("search", "course-authoring-button-icon")}</button></form>`;
-}
-
-function displaySeries(page) {
-  return page.overview.series.map((entry) => ({
-    ...entry,
-    displayLabel: overviewEntryLabel(entry)
-  }));
-}
-
-function renderOverview(page, detail) {
-  const metric = page.metrics.find(({ id }) => id === page.overview.metricId);
-  const series = displaySeries(page);
-  const finiteValues = series.map(({ value }) => value).filter((value) =>
-    typeof value === "number" && Number.isFinite(value) && value >= 0);
-  const maximum = Math.max(1, ...finiteValues);
-  return '<section class="course-analytics-overview" aria-labelledby="course-analytics-overview-title">' +
-    '<header><div><h3 id="course-analytics-overview-title">' + escapeHtml(page.overview.title) +
-    '</h3></div><div class="course-analytics-overview-actions"><span>Revisão ' +
-    escapeHtml(page.courseRevision) + '</span>' +
-    (metric ? '<button type="button" class="course-authoring-icon-action"' +
-      ' data-course-analytics-action="open-metric" aria-label="Detalhes da pesquisa"' +
-      ' title="Detalhes da pesquisa" aria-expanded="' + String(detail?.kind === "metric") + '">' +
-      renderUiIcon("review", "course-authoring-button-icon") + '</button>' : "") +
-    '</div></header>' +
-    (series.length
-      ? '<div class="course-analytics-chart" role="img" aria-label="' +
-        escapeHtml(`${page.overview.title}. ${series.map((entry) =>
-          `${entry.displayLabel}: ${formatNumber(entry.value, entry.unit)}`).join("; ")}`) + '">' +
-        series.map((entry) => {
-          const width = entry.value === null || entry.value < 0
-            ? 0
-            : Math.max(1, Math.min(100, entry.value / maximum * 100));
-          return '<div class="course-analytics-bar"><span>' + escapeHtml(entry.displayLabel) +
-            '</span><span class="course-analytics-bar-track" aria-hidden="true"><span style="width:' +
-            width + '%"></span></span><strong>' + escapeHtml(formatNumber(entry.value, entry.unit)) +
-            '</strong></div>';
-        }).join("") + '</div>'
-      : '<p class="course-authoring-empty-copy">Não há linhas neste recorte.</p>') +
-    '</section>';
-}
-
-function valuesSummary(values) {
-  const entries = Object.entries(values).filter(([key, value]) =>
-    value !== null && visibleValueKey(key));
-  return entries.length
-    ? entries.map(([key, value]) =>
-      `${factValueLabel(key)}: ${factValueText(key, value)}`).join(" · ")
-    : "";
-}
-
-function renderFacts(page, detail) {
-  return '<section class="course-analytics-facts" aria-labelledby="course-analytics-facts-title">' +
-    '<header><div><h3 id="course-analytics-facts-title">Fatos do recorte</h3></div></header>' +
-    (page.facts.length
-      ? '<ol>' + page.facts.map((fact) => {
-        const label = subjectLabel(fact.subject);
-        const context = fact.subject?.kind === "course" ? "" : label;
-        const hasDetails = Boolean(valuesSummary(fact.values) ||
-          renderFactMetadata(fact) || fact.missingData.length);
-        return '<li><article><header><div><strong>' + escapeHtml(factKindLabel(fact.kind)) +
-          '</strong>' + (context ? `<span>${escapeHtml(context)}</span>` : "") +
-          `</div><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(
-            formatInstant(fact.occurredAt)
-          )}</time></header><div class="course-analytics-fact-actions">` +
-          (hasDetails ? '<button type="button" class="course-authoring-icon-action"' +
-            ' data-course-analytics-action="open-fact" data-fact-id="' + escapeHtml(fact.factId) +
-            '" aria-label="Detalhes de ' + escapeHtml(factKindLabel(fact.kind)) + '"' +
-            ' title="Detalhes" aria-expanded="' +
-            String(detail?.kind === "fact" && detail.factId === fact.factId) + '">' +
-            renderUiIcon("more", "course-authoring-button-icon") + '</button>' : "") +
-          (fact.deepLink ? `<a href="${escapeHtml(fact.deepLink)}" aria-label="Abrir ${escapeHtml(label)}" title="Abrir objeto relacionado">` +
-            `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</a>` : "") +
-          '</div></article></li>';
-      }).join("") + '</ol>'
-      : '<p class="course-authoring-empty-copy">Nenhum fato corresponde ao recorte.</p>') +
-    '</section>';
-}
-
-function renderDetailSheet(page, detail) {
-  if (!detail) return "";
-  const close = '<button type="button" class="course-authoring-icon-action"' +
-    ' data-course-analytics-action="close-details" aria-label="Fechar" title="Fechar">' +
-    renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>';
-  if (detail.kind === "metric") {
-    const metric = page.metrics.find(({ id }) => id === page.overview.metricId);
-    if (!metric) return "";
-    return '<div class="course-analytics-sheet-backdrop" data-course-analytics-backdrop>' +
-      '<section class="course-analytics-sheet" role="dialog" aria-modal="true"' +
-      ' data-course-authoring-readonly-dialog' +
-      ' aria-labelledby="course-analytics-sheet-title"><header>' +
-      '<h3 id="course-analytics-sheet-title">Detalhes da pesquisa</h3>' + close + '</header>' +
-      '<div class="course-analytics-sheet-body"><dl>' +
-      `<div><dt>Mede</dt><dd>${escapeHtml(metric.question)}</dd></div>` +
-      `<div><dt>Unidade</dt><dd>${escapeHtml(unitLabel(metric.unit))}</dd></div>` +
-      `<div><dt>Base</dt><dd>${escapeHtml(metric.denominator || "Não se aplica")}</dd></div>` +
-      '</dl></div></section></div>';
-  }
-  const fact = page.facts.find(({ factId }) => factId === detail.factId);
-  if (!fact) return "";
-  const summary = valuesSummary(fact.values);
-  return '<div class="course-analytics-sheet-backdrop" data-course-analytics-backdrop>' +
-    '<section class="course-analytics-sheet" role="dialog" aria-modal="true"' +
-    ' data-course-authoring-readonly-dialog' +
-    ' aria-labelledby="course-analytics-sheet-title"><header>' +
-    `<h3 id="course-analytics-sheet-title">${escapeHtml(factKindLabel(fact.kind))}</h3>` +
-    close + '</header><div class="course-analytics-sheet-body">' +
-    `<p><time datetime="${escapeHtml(fact.occurredAt)}">${escapeHtml(
-      formatInstant(fact.occurredAt)
-    )}</time></p>` +
-    (summary ? `<p>${escapeHtml(summary)}</p>` : "") + renderFactMetadata(fact) +
-    (fact.missingData.length ? `<p>${escapeHtml(fact.missingData.join(" "))}</p>` : "") +
-    '</div></section></div>';
 }
 
 function renderPanel(state) {
-  return '<section class="course-authoring-section course-analytics" aria-labelledby="course-analytics-section-title">' +
-    '<h2 class="course-authoring-visually-hidden" id="course-analytics-section-title">Pesquisa</h2>' +
-    '<header class="course-authoring-section-toolbar"><details class="course-analytics-export-menu">' +
-    '<summary class="course-authoring-icon-action" aria-label="Exportar fatos" title="Exportar">' +
-    renderUiIcon("download", "course-authoring-button-icon") + '</summary><div>' +
-    `<button type="button" data-course-analytics-action="export-csv"${!state.page || state.exporting ? " disabled" : ""}>CSV</button>` +
-    `<button type="button" data-course-analytics-action="export-json"${!state.page || state.exporting ? " disabled" : ""}>JSON</button>` +
-    '</div></details></header>' + renderFilters(state) +
+  return '<section class="course-authoring-section course-analytics"' +
+    ' aria-labelledby="course-analytics-section-title">' +
+    '<h2 class="course-authoring-visually-hidden" id="course-analytics-section-title">Analytics</h2>' +
+    (state.page ? renderScopeFilter(state.page) : "") +
     (state.loading && !state.page
-      ? '<p class="course-authoring-loading" role="status">Carregando fatos de Autoria…</p>'
-      : state.page ? renderOverview(state.page, state.detail) +
-        renderFacts(state.page, state.detail) : "") +
-    (state.page?.nextCursor ? `<button type="button" data-course-analytics-action="more" aria-label="Carregar mais fatos" title="Carregar mais fatos"${state.loading ? " disabled" : ""}>` +
-      `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` : "") +
-    (state.exporting ? '<p class="course-authoring-loading" role="status">Preparando a exportação do recorte…</p>' : "") +
-    (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") +
-    (state.page ? renderDetailSheet(state.page, state.detail) : "") + '</section>';
-}
-
-function mergePages(current, incoming) {
-  if (!current) return incoming;
-  return {
-    ...incoming,
-    facts: [...current.facts, ...incoming.facts]
-  };
-}
-
-function dateBoundary(value, end = false) {
-  if (!value) return null;
-  return `${value}T${end ? "23:59:59.999" : "00:00:00.000"}Z`;
+      ? '<p class="course-authoring-loading" role="status">Carregando Analytics…</p>'
+      : state.page
+        ? renderDesign(state.page.design) + renderAuthorship(state.page.authorship) +
+          renderMissingData(state.page.missingData)
+        : "") +
+    (state.loading && state.page
+      ? '<p class="course-authoring-loading" role="status">Atualizando o escopo…</p>'
+      : "") +
+    (state.failure
+      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>`
+      : "") + "</section>";
 }
 
 export function createCourseAnalyticsPanel({
@@ -628,250 +324,108 @@ export function createCourseAnalyticsPanel({
 } = {}) {
   if (!root || !controller || !course?.courseId || !Number.isSafeInteger(course.revision) ||
       typeof controller.loadCourseAuthoringAnalytics !== "function") {
-    throw new TypeError("Painel de Pesquisa inválido.");
+    throw new TypeError("Painel de Analytics inválido.");
   }
   const state = {
     course,
     query: normalizeCourseAuthoringAnalyticsQuery(),
     page: null,
     loading: false,
-    exporting: false,
-    failure: "",
-    detail: null
-  };
-  const render = ({ focusDetails = false } = {}) => {
-    const active = root.ownerDocument?.activeElement || null;
-    const preserveDetailsFocus = Boolean(
-      state.detail && root.querySelector?.(".course-analytics-sheet")?.contains?.(active)
-    );
-    root.innerHTML = renderPanel(state);
-    if (focusDetails || preserveDetailsFocus) {
-      root.querySelector?.('[data-course-analytics-action="close-details"]')
-        ?.focus?.({ preventScroll: true });
-    }
-  };
-  const closeDetails = ({ restoreFocus = true } = {}) => {
-    const previous = state.detail;
-    if (!previous) return false;
-    state.detail = null;
-    render();
-    if (restoreFocus) {
-      const selector = previous.kind === "fact"
-        ? `[data-course-analytics-action="open-fact"][data-fact-id="${previous.factId}"]`
-        : '[data-course-analytics-action="open-metric"]';
-      root.querySelector?.(selector)?.focus?.({ preventScroll: true });
-    }
-    return true;
+    failure: ""
   };
 
-  const load = async ({ append = false } = {}) => {
+  const render = () => { root.innerHTML = renderPanel(state); };
+
+  const load = async () => {
     state.loading = true;
     state.failure = "";
     render();
     try {
-      const query = normalizeCourseAuthoringAnalyticsQuery({
-        ...state.query,
-        cursor: append ? state.page?.nextCursor || null : null
-      });
       const incoming = normalizeCourseAuthoringAnalyticsPage(
         await controller.loadCourseAuthoringAnalytics(state.course.courseId, {
           expectedCourseRevision: state.course.revision,
-          query
+          query: state.query
         }),
-        { expectedCourseId: state.course.courseId, expectedQuery: query }
+        { expectedCourseId: state.course.courseId, expectedQuery: state.query }
       );
-      if (incoming.courseRevision !== state.course.revision) {
-        state.course = { ...state.course, revision: incoming.courseRevision };
+      if (incoming.course.revision !== state.course.revision) {
+        state.course = { ...state.course, revision: incoming.course.revision };
       }
-      state.page = append ? mergePages(state.page, incoming) : incoming;
+      state.page = incoming;
+      state.query = normalizeCourseAuthoringAnalyticsQuery({
+        scope: { kind: incoming.scope.selected.kind, ref: incoming.scope.selected.ref }
+      });
     } catch (error) {
       state.failure = errorText(error);
+      if (state.page) {
+        state.query = normalizeCourseAuthoringAnalyticsQuery({
+          scope: {
+            kind: state.page.scope.selected.kind,
+            ref: state.page.scope.selected.ref
+          }
+        });
+      }
     } finally {
       state.loading = false;
       render();
     }
   };
 
-  const collectPages = async (format) => {
-    const pages = [];
-    let cursor = null;
-    const seen = new Set();
-    let minimumBytes = 0;
-    let factCount = 0;
-    let csvHeaderBytes = null;
-    let jsonEnvelopeBytes = null;
-    do {
-      if (cursor !== null && seen.has(cursor)) {
-        throw new Error("A paginação repetiu o mesmo cursor.");
-      }
-      if (cursor !== null) seen.add(cursor);
-      const query = normalizeCourseAuthoringAnalyticsQuery({ ...state.query, cursor });
-      const page = normalizeCourseAuthoringAnalyticsPage(
-        await controller.loadCourseAuthoringAnalytics(state.course.courseId, {
-          expectedCourseRevision: state.course.revision,
-          query
-        }),
-        { expectedCourseId: state.course.courseId, expectedQuery: query }
-      );
-      if (format === "csv") {
-        const csvSlice = {
-          contract: COURSE_AUTHORING_ANALYTICS_EXPORT_CONTRACT,
-          dictionaryVersion: page.dictionaryVersion,
-          courseId: page.courseId,
-          courseRevision: page.courseRevision,
-          facts: page.facts
-        };
-        const emptyBytes = exportEncoder.encode(serializeCourseAuthoringAnalyticsCsv({
-          ...csvSlice,
-          facts: []
-        })).byteLength;
-        const sliceBytes = exportEncoder.encode(
-          serializeCourseAuthoringAnalyticsCsv(csvSlice)
-        ).byteLength;
-        csvHeaderBytes ??= emptyBytes;
-        minimumBytes += sliceBytes - emptyBytes;
-      } else {
-        jsonEnvelopeBytes ??= exportEncoder.encode(JSON.stringify(
-          assembleCourseAuthoringAnalyticsExport([{
-            ...page,
-            facts: [],
-            nextCursor: null
-          }]),
-          null,
-          2
-        ) + "\n").byteLength;
-        for (const fact of page.facts) {
-          const serialized = JSON.stringify(fact, null, 2);
-          const lineCount = serialized.split("\n").length;
-          minimumBytes += exportEncoder.encode(serialized).byteLength + (lineCount * 4);
-          if (factCount > 0) minimumBytes += 2;
-          factCount += 1;
-        }
-      }
-      const projectedBytes = format === "csv"
-        ? (csvHeaderBytes ?? 0) + minimumBytes
-        : (jsonEnvelopeBytes ?? 0) + minimumBytes + (factCount > 0 ? 4 : 0);
-      if (projectedBytes > TEXT_EXPORT_MAX_BYTES) {
-        throw new RangeError(
-          "A exportação excede 8 MiB. Restrinja o período, o conjunto ou o canal e tente novamente."
-        );
-      }
-      pages.push(page);
-      cursor = page.nextCursor;
-      if (pages.length >= 100 && cursor !== null) {
-        throw new Error("A exportação excedeu o limite seguro de páginas.");
-      }
-    } while (cursor !== null);
-    return pages;
-  };
-
-  const exportFacts = async (format) => {
-    state.exporting = true;
-    state.failure = "";
-    render();
-    try {
-      if (format !== "csv" && format !== "json") {
-        throw new TypeError("O formato da exportação precisa ser CSV ou JSON.");
-      }
-      const assembled = assembleCourseAuthoringAnalyticsExport(await collectPages(format));
-      const stem = `aralearn-analytics-${assembled.courseId}-r${assembled.courseRevision}`;
-      download(format === "csv"
-        ? {
-          name: `${stem}.csv`,
-          type: "text/csv;charset=utf-8",
-          content: serializeCourseAuthoringAnalyticsCsv(assembled)
-        }
-        : {
-          name: `${stem}.json`,
-          type: "application/json;charset=utf-8",
-          content: JSON.stringify(assembled, null, 2) + "\n"
-        });
-    } catch (error) {
-      state.failure = errorText(error);
-    } finally {
-      state.exporting = false;
-      render();
-    }
-  };
-
   const onSubmit = (event) => {
-    if (!event.target?.matches?.("[data-course-analytics-filters]")) return;
+    if (!event.target?.matches?.("[data-course-analytics-scope]")) return;
     event.preventDefault();
-    const values = new FormData(event.target);
-    const dataset = values.get("dataset");
-    const channel = values.get("channel");
+    const index = Number(event.target.elements?.scope?.value);
+    const selected = Number.isSafeInteger(index) ? state.page?.scope.options[index] : null;
+    if (!selected || selected.kind === state.page.scope.selected.kind &&
+        selected.ref === state.page.scope.selected.ref) return;
     state.query = normalizeCourseAuthoringAnalyticsQuery({
-      datasets: dataset === "all" ? [...COURSE_AUTHORING_ANALYTICS_DATASETS] : [dataset],
-      channels: channel === "all" ? [] : [channel],
-      from: dateBoundary(values.get("from")),
-      to: dateBoundary(values.get("to"), true),
-      limit: state.query.limit
+      scope: { kind: selected.kind, ref: selected.ref }
     });
-    state.page = null;
-    state.detail = null;
     void load();
   };
 
-  const onClick = (event) => {
-    if (event.target?.matches?.("[data-course-analytics-backdrop]")) {
-      closeDetails();
-      return;
-    }
-    const node = event.target?.closest?.("[data-course-analytics-action]");
-    if (!node) return;
-    const action = node.dataset.courseAnalyticsAction;
-    if (action === "open-metric") {
-      state.detail = { kind: "metric" };
-      render({ focusDetails: true });
-    } else if (action === "open-fact") {
-      state.detail = { kind: "fact", factId: String(node.dataset.factId || "") };
-      render({ focusDetails: true });
-    } else if (action === "close-details") {
-      closeDetails();
-    } else if (action === "more" && state.page?.nextCursor) {
-      void load({ append: true });
-    } else if (action === "export-csv") {
-      void exportFacts("csv");
-    } else if (action === "export-json") {
-      void exportFacts("json");
+  const exportSnapshot = () => {
+    if (!state.page) return null;
+    try {
+      state.failure = "";
+      const result = download({
+        name: `aralearn-analytics-snapshot-r${state.page.course.revision}.json`,
+        type: "application/json;charset=utf-8",
+        content: JSON.stringify(state.page, null, 2) + "\n"
+      });
+      render();
+      return result;
+    } catch (error) {
+      state.failure = errorText(error);
+      render();
+      return null;
     }
   };
 
-  const onKeyDown = (event) => {
-    if (!state.detail) return;
-    if (event.key === "Tab") {
-      trapAuthoringConfirmationTab({
-        event,
-        root,
-        confirmationSelector: ".course-analytics-sheet"
-      });
-      return;
-    }
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation?.();
-    closeDetails();
+  const onClick = (event) => {
+    const node = event.target?.closest?.("[data-course-analytics-action]");
+    if (node?.dataset.courseAnalyticsAction === "export-json") exportSnapshot();
   };
 
   root.addEventListener("submit", onSubmit);
   root.addEventListener("click", onClick);
-  root.addEventListener("keydown", onKeyDown);
   render();
   return {
-    open: () => load(),
-    refresh: (nextCourseRevision = state.course.revision) => {
+    open: load,
+    export: exportSnapshot,
+    refresh(nextCourseRevision = state.course.revision) {
       const revision = Number(nextCourseRevision);
       if (!Number.isSafeInteger(revision) || revision < 1) {
-        return Promise.reject(new TypeError("A revisão do Curso para atualizar a Pesquisa é inválida."));
+        return Promise.reject(new TypeError(
+          "A revisão do Curso para atualizar Analytics é inválida."
+        ));
       }
       state.course = { ...state.course, revision };
       return load();
     },
-    export: (format) => exportFacts(format),
     destroy() {
       root.removeEventListener("submit", onSubmit);
       root.removeEventListener("click", onClick);
-      root.removeEventListener("keydown", onKeyDown);
       root.innerHTML = "";
     }
   };

@@ -1,13 +1,6 @@
 export const COURSE_AUTHORING_SECTIONS = Object.freeze([
-  "overview", "planning", "content", "parameters", "sources", "review", "research", "people"
+  "content", "planning", "parameters", "sources", "review", "research", "people"
 ]);
-
-const LEGACY_SECTION_ALIASES = Object.freeze({
-  structure: "content",
-  inspection: "content",
-  observations: "review",
-  variants: "research"
-});
 
 const COURSE_AUTHORING_ROUTE_PREFIX = "#/authoring/courses/";
 const COURSE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -23,28 +16,12 @@ const TARGET_DEFINITIONS = Object.freeze([
     kind: "didactic_microsequence"
   }),
   Object.freeze({ option: "studyUnitId", query: "studyUnitId", kind: "study_unit" }),
-  Object.freeze({
-    option: "inspectionFocusId",
-    query: "inspectionFocusId",
-    kind: "inspection_focus",
-    uuid: true
-  }),
   Object.freeze({ option: "annotationId", query: "annotationId", kind: "anchored_annotation", uuid: true }),
-  Object.freeze({ option: "findingId", query: "findingId", kind: "audit_finding", uuid: true }),
-  Object.freeze({ option: "auditRunId", query: "auditRunId", kind: "audit_run", uuid: true }),
-  Object.freeze({
-    option: "comparisonSetId",
-    query: "comparisonSetId",
-    kind: "variant_comparison",
-    uuid: true
-  }),
   Object.freeze({ option: "sourceId", query: "sourceId", kind: "course_source", source: true })
 ]);
 const BUILD_OPTION_FIELDS = new Set([
   "section", "authoringPartId", "moduleId", "lessonId", "topicId", "didacticMicrosequenceId",
-  "studyUnitId", "inspectionFocusId", "annotationId", "findingId", "correctionId", "auditRunId", "sourceId", "anchorId",
-  "comparisonSetId", "materializationId", "returnAuthoringPartId", "returnMaterializationId",
-  "unassigned"
+  "studyUnitId", "annotationId", "sourceId", "anchorId", "unassigned"
 ]);
 
 export function isCanonicalCourseId(value) {
@@ -94,46 +71,25 @@ function normalizedTargetOptions(options) {
     throw new TypeError("A rota de Autoria aceita somente um alvo.");
   }
   const target = selected[0] || null;
-  const correctionId = options?.correctionId;
   const anchorId = options?.anchorId;
-  const materializationId = options?.materializationId;
-  if ([correctionId, anchorId, materializationId].filter((value) =>
-    value != null && value !== "").length > 1) {
-    throw new TypeError("A rota aceita somente um detalhe do alvo por vez.");
-  }
-  if (correctionId != null && correctionId !== "") {
-    if (!isCanonicalCourseId(correctionId) || target?.kind !== "audit_finding") {
-      throw new TypeError("A correção exige um achado canônico na mesma rota.");
-    }
-    return { ...target, correctionId };
-  }
   if (anchorId != null && anchorId !== "") {
     if (!canonicalEntityId(anchorId) || target?.kind !== "course_source") {
       throw new TypeError("A âncora exige uma Fonte literal na mesma rota.");
     }
     return { ...target, anchorId };
   }
-  if (materializationId != null && materializationId !== "") {
-    if (!isCanonicalCourseId(materializationId) || target?.kind !== "authoring_part") {
-      throw new TypeError("A materialização exige uma Parte canônica na mesma rota.");
-    }
-    return { ...target, materializationId };
-  }
   return target;
 }
 
 function targetAllowedForSection(target, section) {
   if (!target) return true;
-  if (section === "research") return target.kind === "variant_comparison" || [
-    "module", "lesson", "topic", "didactic_microsequence", "study_unit"
-  ].includes(target.kind);
+  if (section === "research") return false;
   if (target.kind === "authoring_part") return section === "planning" || section === "content";
-  if (target.kind === "anchored_annotation") return section === "review";
-  if (target.kind === "audit_finding") return section === "review";
-  if (target.kind === "audit_run") return section === "review";
+  if (["anchored_annotation", "study_unit"].includes(target.kind)) {
+    return section === "review" || target.kind === "study_unit" &&
+      ["content", "parameters"].includes(section);
+  }
   if (target.kind === "course_source") return section === "sources";
-  if (target.kind === "study_unit" && section === "review") return true;
-  if (target.kind === "inspection_focus") return section === "content";
   if (target.kind === "topic") return section === "content";
   if (section === "content") return true;
   return section === "parameters" && [
@@ -146,7 +102,7 @@ export function buildCourseAuthoringRoute(courseId, options = {}) {
       Object.keys(options).some((field) => !BUILD_OPTION_FIELDS.has(field))) {
     throw new TypeError("Opções inválidas para a rota de Autoria.");
   }
-  const section = options.section || "overview";
+  const section = options.section || "content";
   if (!isCanonicalCourseId(courseId)) {
     throw new TypeError("Identidade de Curso inválida para a rota de Autoria.");
   }
@@ -157,28 +113,10 @@ export function buildCourseAuthoringRoute(courseId, options = {}) {
   if (!targetAllowedForSection(target, section)) {
     throw new TypeError("O alvo não pertence à seção escolhida.");
   }
-  const returnAuthoringPartId = options.returnAuthoringPartId;
-  const returnMaterializationId = options.returnMaterializationId;
-  const hasReturnContext = returnAuthoringPartId != null && returnAuthoringPartId !== "" ||
-    returnMaterializationId != null && returnMaterializationId !== "";
-  if (hasReturnContext && (
-    section !== "content" || !target || target.kind === "authoring_part" ||
-    !isCanonicalCourseId(returnAuthoringPartId) ||
-    !isCanonicalCourseId(returnMaterializationId)
-  )) {
-    throw new TypeError("O retorno à materialização exige alvo de Conteúdo, Parte e execução canônicos.");
-  }
   const suffix = target
     ? `&${target.query}=${target.kind === "unassigned" ? "true" : encodeURIComponent(target.id)}` +
-      (target.kind === "audit_finding" && target.correctionId
-        ? `&correctionId=${encodeURIComponent(target.correctionId)}`
-        : target.kind === "course_source" && target.anchorId
+      (target.kind === "course_source" && target.anchorId
           ? `&anchorId=${encodeURIComponent(target.anchorId)}`
-          : target.kind === "authoring_part" && target.materializationId
-            ? `&materializationId=${encodeURIComponent(target.materializationId)}`
-        : "") + (hasReturnContext
-          ? `&returnAuthoringPartId=${encodeURIComponent(returnAuthoringPartId)}` +
-            `&returnMaterializationId=${encodeURIComponent(returnMaterializationId)}`
           : "")
     : "";
   return `${COURSE_AUTHORING_ROUTE_PREFIX}${courseId}?section=${section}${suffix}`;
@@ -194,10 +132,9 @@ export function parseCourseAuthoringRoute(hashValue) {
   const courseId = remainder.slice(0, separator);
   if (!isCanonicalCourseId(courseId)) return null;
   const rawParameters = remainder.slice(separator + 1).split("&");
-  if (rawParameters.length < 1 || rawParameters.length > 4) return null;
+  if (rawParameters.length < 1 || rawParameters.length > 3) return null;
   const sectionMatch = /^section=([a-z]+)$/u.exec(rawParameters[0]);
-  const rawSection = sectionMatch?.[1] || "";
-  const section = LEGACY_SECTION_ALIASES[rawSection] || rawSection;
+  const section = sectionMatch?.[1] || "";
   if (!COURSE_AUTHORING_SECTIONS.includes(section)) return null;
 
   let target = null;
@@ -226,34 +163,10 @@ export function parseCourseAuthoringRoute(hashValue) {
     }
     if (!targetAllowedForSection(target, section)) return null;
   }
-  let returnContext = null;
   const detailParameters = rawParameters.slice(2);
-  if (detailParameters.length === 2) {
-    if (section !== "content" || !target || target.kind === "authoring_part") return null;
-    const partMatch = /^returnAuthoringPartId=([^=]+)$/u.exec(detailParameters[0]);
-    const materializationMatch = /^returnMaterializationId=([^=]+)$/u.exec(detailParameters[1]);
-    if (!partMatch || !materializationMatch) return null;
-    let authoringPartId;
-    let materializationId;
-    try {
-      authoringPartId = decodeURIComponent(partMatch[1]);
-      materializationId = decodeURIComponent(materializationMatch[1]);
-    } catch {
-      return null;
-    }
-    if (encodeURIComponent(authoringPartId) !== partMatch[1] ||
-        encodeURIComponent(materializationId) !== materializationMatch[1] ||
-        !isCanonicalCourseId(authoringPartId) || !isCanonicalCourseId(materializationId)) {
-      return null;
-    }
-    returnContext = Object.freeze({ authoringPartId, materializationId });
-  } else if (detailParameters.length === 1) {
-    const expectedQuery = target?.kind === "audit_finding"
-      ? "correctionId"
-      : target?.kind === "course_source"
+  if (detailParameters.length === 1) {
+    const expectedQuery = target?.kind === "course_source"
         ? "anchorId"
-        : target?.kind === "authoring_part"
-          ? "materializationId"
         : null;
     if (!expectedQuery) return null;
     const childMatch = new RegExp(`^${expectedQuery}=([^=]+)$`, "u").exec(detailParameters[0]);
@@ -264,22 +177,16 @@ export function parseCourseAuthoringRoute(hashValue) {
     } catch {
       return null;
     }
-    const childIsCanonical = target.kind === "audit_finding" ||
-      target.kind === "authoring_part"
-      ? isCanonicalCourseId(childId)
-      : canonicalEntityId(childId);
+    const childIsCanonical = canonicalEntityId(childId);
     if (encodeURIComponent(childId) !== childMatch[1] || !childIsCanonical) return null;
-    target[target.kind === "audit_finding"
-      ? "correctionId"
-      : target.kind === "authoring_part"
-        ? "materializationId"
-        : "anchorId"] = childId;
+    target.anchorId = childId;
+  } else if (detailParameters.length > 1) {
+    return null;
   }
   return Object.freeze({
     courseId,
     section,
-    target: target ? Object.freeze(target) : null,
-    ...(returnContext ? { returnContext } : {})
+    target: target ? Object.freeze(target) : null
   });
 }
 

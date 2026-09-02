@@ -8,18 +8,11 @@ import {
 const OWNERSHIP_VALUES = new Set(["owned"]);
 const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_condition"]);
 const PART_PROGRESS_STATES = new Set([
-  "planned", "materializing", "attention_required", "partially_materialized", "materialized"
+  "planned", "partially_materialized", "materialized"
 ]);
-const MATERIALIZATION_STATUSES = new Set(["running", "completed", "failed"]);
-const MATERIALIZATION_PROGRESS_STATES = new Set(["running", "partial", "completed", "failed"]);
-const AUTHORING_ACTIVITY_KINDS = new Set([
-  "plan_changed", "materialization_started", "materialization_step_recorded",
-  "materialization_finished"
-]);
-const POSITIVE_BIGINT_DECIMAL = /^[1-9][0-9]{0,18}$/u;
-const MAX_BIGINT_DECIMAL = "9223372036854775807";
+const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
 const COURSE_DESIGN_SCOPE_KINDS = Object.freeze([
-  "course", "module", "lesson", "didactic_microsequence"
+  "course", "module", "lesson", "didactic_microsequence", "study_unit"
 ]);
 const COURSE_DESIGN_PARAMETER_IDS = Object.freeze([
   "new_analysis_unit_ceiling_per_expository_study_unit",
@@ -31,28 +24,22 @@ const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.0.0";
 const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 const COURSE_DESIGN_CHANGE_TYPES = new Set([
   "set_parameter", "clear_parameter", "set_guidance", "clear_guidance",
-  "interpret_guidance", "set_component_policy", "clear_component_policy",
-  "set_target_plan_items"
+  "set_component_policy", "clear_component_policy"
 ]);
 const COURSE_DESIGN_WRITABLE_ORIGINS = new Set([
   "automatic", "author", "research_condition"
 ]);
+const COURSE_DESIGN_ASSIGNMENT_ORIGINS = new Set([
+  "migration", ...COURSE_DESIGN_WRITABLE_ORIGINS
+]);
 const COURSE_DESIGN_EFFECTIVE_ORIGINS = new Set([
-  "system_default", ...COURSE_DESIGN_WRITABLE_ORIGINS
+  "system_default", ...COURSE_DESIGN_ASSIGNMENT_ORIGINS
 ]);
 const COURSE_GUIDANCE_ORIGINS = new Set([
   "migration", ...COURSE_DESIGN_WRITABLE_ORIGINS
 ]);
-const EXPLANATION_FORMS = new Set([
-  "plain_definition", "concrete_example", "mechanism", "contrast",
-  "application_condition", "limit_or_exception", "worked_example", "representation_link"
-]);
-const PRACTICE_VARIATION_DIMENSIONS = new Set([
-  "case_or_data", "context", "task_feature", "external_representation", "support_level"
-]);
 const COMPONENT_REF_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+@(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
 const COURSE_DESIGN_REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
-const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 export class CourseAuthoringProjectionError extends Error {
   constructor(code, message) {
     super(message);
@@ -273,14 +260,6 @@ function uuid(value, label) {
   return normalized;
 }
 
-function positiveBigintDecimal(value, label) {
-  if (typeof value !== "string" || !POSITIVE_BIGINT_DECIMAL.test(value) ||
-      (value.length === MAX_BIGINT_DECIMAL.length && value > MAX_BIGINT_DECIMAL)) {
-    fail("invalid_authoring_plan", `${label} é inválida.`);
-  }
-  return value;
-}
-
 function dateTime(value, label) {
   const normalized = requiredText(value, label, { maximum: 64 });
   if (!Number.isFinite(Date.parse(normalized))) {
@@ -330,6 +309,14 @@ function normalizePartMicrosequence(value) {
       { maximum: 63 }
     ),
     title: requiredText(value.title, "O título da microssequência", { maximum: 300 }),
+    goal: requiredText(value.goal, "O objetivo da microssequência", { maximum: 4_000 }),
+    role: (() => {
+      const role = requiredText(value.role, "A função da microssequência", { maximum: 20 });
+      if (!MICROSEQUENCE_ROLES.has(role)) {
+        fail("invalid_authoring_plan", "A função da microssequência é inválida.");
+      }
+      return role;
+    })(),
     curriculumPath: Object.freeze({
       moduleId: requiredText(value.curriculumPath.moduleId, "O Módulo da microssequência", {
         maximum: 240
@@ -352,101 +339,28 @@ function normalizePartMicrosequence(value) {
   });
 }
 
-function normalizeLastMaterialization(value) {
-  if (value == null) return null;
-  if (!isPlainObject(value)) {
-    fail("invalid_authoring_plan", "A última materialização da Parte é inválida.");
-  }
-  const completedStepCount = boundedNaturalNumber(
-    value.completedStepCount,
-    "A quantidade de etapas concluídas"
-  );
-  const failedStepCount = boundedNaturalNumber(
-    value.failedStepCount,
-    "A quantidade de etapas com falha"
-  );
-  const totalStepCount = boundedNaturalNumber(
-    value.totalStepCount,
-    "A quantidade total de etapas"
-  );
-  if (completedStepCount > totalStepCount || failedStepCount > totalStepCount) {
-    fail("invalid_authoring_plan", "As etapas da última materialização são inconsistentes.");
-  }
-  const status = text(value.status);
-  if (!MATERIALIZATION_STATUSES.has(status)) {
-    fail("invalid_authoring_plan", "O estado da última materialização é inválido.");
-  }
-  return Object.freeze({
-    id: uuid(value.id, "A identidade da materialização"),
-    status,
-    version: boundedNaturalNumber(value.version, "A versão da materialização", {
-      minimum: 1
-    }),
-    completedStepCount,
-    failedStepCount,
-    totalStepCount,
-    startedAt: dateTime(value.startedAt, "O início da materialização"),
-    updatedAt: dateTime(value.updatedAt, "A atualização da materialização"),
-    completedAt: value.completedAt == null
-      ? null
-      : dateTime(value.completedAt, "O término da materialização")
-  });
-}
-
-function normalizeMaterializationSummary(value) {
-  if (!isPlainObject(value)) {
-    fail("invalid_authoring_plan", "Uma materialização da Parte é inválida.");
-  }
-  const base = normalizeLastMaterialization(value);
-  const channel = text(value.channel);
-  const progressState = text(value.progressState);
-  const summary = requiredText(value.summary, "O resumo da materialização", { maximum: 1_000 });
-  if (!new Set(["application", "mcp", "actions"]).has(channel)) {
-    fail("invalid_authoring_plan", "O canal da materialização é inválido.");
-  }
-  if (!MATERIALIZATION_PROGRESS_STATES.has(progressState)) {
-    fail("invalid_authoring_plan", "O progresso da materialização é inválido.");
-  }
-  return Object.freeze({ ...base, progressState, channel, summary });
-}
-
 function normalizePartProgress(value) {
-  if (!isPlainObject(value)) {
+  if (!isPlainObject(value) ||
+      Object.keys(value).length !== 3 ||
+      !Object.hasOwn(value, "state") ||
+      !Object.hasOwn(value, "microsequenceCount") ||
+      !Object.hasOwn(value, "studyUnitCount")) {
     fail("invalid_authoring_plan", "O progresso de uma Parte é inválido.");
   }
   const state = text(value.state);
   if (!PART_PROGRESS_STATES.has(state)) {
     fail("invalid_authoring_plan", "O estado derivado de uma Parte é inválido.");
   }
-  if (!Array.isArray(value.materializations)) {
-    fail("invalid_authoring_plan", "O histórico de materializações da Parte é inválido.");
-  }
-  const materializations = value.materializations.map(normalizeMaterializationSummary);
-  if (new Set(materializations.map(({ id }) => id)).size !== materializations.length ||
-      materializations.some((item, index) => index > 0 && (
-        item.startedAt > materializations[index - 1].startedAt ||
-        item.startedAt === materializations[index - 1].startedAt &&
-          item.id > materializations[index - 1].id
-      ))) {
-    fail("invalid_authoring_plan", "A ordem do histórico de materializações é inválida.");
-  }
-  const lastMaterialization = normalizeLastMaterialization(value.lastMaterialization);
-  if ((lastMaterialization == null) !== (materializations.length === 0) ||
-      lastMaterialization && !materializations.some(({ id }) => id === lastMaterialization.id)) {
-    fail("invalid_authoring_plan", "A última materialização não pertence ao histórico da Parte.");
-  }
   return Object.freeze({
     state,
     microsequenceCount: boundedNaturalNumber(
       value.microsequenceCount,
-      "A quantidade materializada de microssequências"
+      "A quantidade de microssequências"
     ),
     studyUnitCount: boundedNaturalNumber(
       value.studyUnitCount,
-      "A quantidade materializada de unidades"
-    ),
-    materializations: Object.freeze(materializations),
-    lastMaterialization
+      "A quantidade de unidades"
+    )
   });
 }
 
@@ -513,11 +427,33 @@ function normalizePlanItem(value, label) {
   });
 }
 
-function normalizePlanItemList(value, label) {
+function normalizeAnalysisPlanItem(value, label) {
+  const item = normalizePlanItem(value, label);
+  if (typeof value.introduced !== "boolean") {
+    fail("invalid_authoring_plan", "A introdução da unidade de análise é inválida.");
+  }
+  const introducedPartPosition = value.introducedPartPosition === null
+    ? null
+    : boundedNaturalNumber(
+        value.introducedPartPosition,
+        "A Parte de introdução da unidade de análise",
+        { maximum: 63 }
+      );
+  if (value.introduced !== (introducedPartPosition !== null)) {
+    fail("invalid_authoring_plan", "A introdução da unidade de análise é inconsistente.");
+  }
+  return Object.freeze({
+    ...item,
+    introduced: value.introduced,
+    introducedPartPosition
+  });
+}
+
+function normalizePlanItemList(value, label, normalizeItem = normalizePlanItem) {
   if (!Array.isArray(value) || value.length > 512) {
     fail("invalid_authoring_plan", `A lista de ${label.toLowerCase()} é inválida.`);
   }
-  const items = value.map((item) => normalizePlanItem(item, label))
+  const items = value.map((item) => normalizeItem(item, label))
     .sort((left, right) => left.position - right.position);
   if (new Set(items.map((item) => item.id)).size !== items.length ||
       items.some((item, position) => item.position !== position)) {
@@ -526,43 +462,17 @@ function normalizePlanItemList(value, label) {
   return Object.freeze(items);
 }
 
-function normalizeAuthoringActivity(value) {
-  if (!isPlainObject(value)) {
-    fail("invalid_authoring_plan", "Uma atividade recente é inválida.");
-  }
-  const kind = text(value.kind);
-  const channel = text(value.channel);
-  if (!AUTHORING_ACTIVITY_KINDS.has(kind) ||
-      !["application", "mcp", "actions"].includes(channel)) {
-    fail("invalid_authoring_plan", "Uma atividade recente é inconsistente.");
-  }
-  return Object.freeze({
-    eventId: positiveBigintDecimal(value.eventId, "A identidade da atividade"),
-    revision: boundedNaturalNumber(value.revision, "A revisão da atividade", { minimum: 1 }),
-    kind,
-    channel,
-    instructionalPlanItemId: value.instructionalPlanItemId == null
-      ? null
-      : uuid(value.instructionalPlanItemId, "O item de planejamento da atividade"),
-    partId: value.partId == null ? null : uuid(value.partId, "A Parte da atividade"),
-    materializationId: value.materializationId == null
-      ? null
-      : uuid(value.materializationId, "A materialização da atividade"),
-    createdAt: dateTime(value.createdAt, "A data da atividade")
-  });
-}
 
 export function normalizeCourseAuthoringPlan(value, {
   expectedCourseId = "",
   expectedCourseRevision = null
 } = {}) {
-  if (!isPlainObject(value) || value.contract !== "aralearn.course-instructional-plan.v1" ||
+  if (!isPlainObject(value) || value.contract !== "aralearn.course-instructional-plan.v2" ||
       !isPlainObject(value.plan) ||
       !Array.isArray(value.plan.intendedLearningOutcomes) ||
       !Array.isArray(value.plan.instructionalAnalysisUnits) ||
       !Array.isArray(value.plan.evidenceRequirements) ||
-      !Array.isArray(value.plan.parts) || value.plan.parts.length > 64 ||
-      !Array.isArray(value.recentActivity) || value.recentActivity.length > 100) {
+      !Array.isArray(value.plan.parts) || value.plan.parts.length > 64) {
     fail("invalid_authoring_plan", "O planejamento de autoria devolvido é inválido.");
   }
   const courseId = text(value.courseId).toLowerCase();
@@ -593,7 +503,8 @@ export function normalizeCourseAuthoringPlan(value, {
   );
   const instructionalAnalysisUnits = normalizePlanItemList(
     value.plan.instructionalAnalysisUnits,
-    "Unidades de análise instrucional"
+    "Unidades de análise instrucional",
+    normalizeAnalysisPlanItem
   );
   const evidenceRequirements = normalizePlanItemList(
     value.plan.evidenceRequirements,
@@ -614,7 +525,6 @@ export function normalizeCourseAuthoringPlan(value, {
   if (Object.entries(computedCounts).some(([field, count]) => counts[field] !== count)) {
     fail("invalid_authoring_plan", "As contagens do planejamento são inconsistentes.");
   }
-  const recentActivity = value.recentActivity.map(normalizeAuthoringActivity);
   return Object.freeze({
     courseId,
     courseRevision,
@@ -634,8 +544,7 @@ export function normalizeCourseAuthoringPlan(value, {
       evidenceRequirements,
       parts: Object.freeze(parts),
       counts
-    }),
-    recentActivity: Object.freeze(recentActivity)
+    })
   });
 }
 
@@ -667,8 +576,7 @@ export function projectCoursePlanning(course, authoringPlan) {
     intendedLearningOutcomes: authoringPlan.plan.intendedLearningOutcomes,
     instructionalAnalysisUnits: authoringPlan.plan.instructionalAnalysisUnits,
     evidenceRequirements: authoringPlan.plan.evidenceRequirements,
-    counts: authoringPlan.plan.counts,
-    recentActivity: authoringPlan.recentActivity
+    counts: authoringPlan.plan.counts
   });
 }
 
@@ -697,14 +605,6 @@ function designInteger(value, label, { minimum = 0, maximum = 100_000 } = {}) {
   return value;
 }
 
-function designBigint(value, label) {
-  if (typeof value !== "string" || !POSITIVE_BIGINT_DECIMAL.test(value) ||
-      (value.length === MAX_BIGINT_DECIMAL.length && value > MAX_BIGINT_DECIMAL)) {
-    designFail(`${label} é inválido.`);
-  }
-  return value;
-}
-
 function designUuid(value, label) {
   const normalized = text(value);
   if (!isCanonicalCourseId(normalized)) designFail(`${label} é inválido.`);
@@ -717,12 +617,6 @@ function designRequestId(value, label) {
     designFail(`${label} é inválida.`);
   }
   return value;
-}
-
-function designDate(value, label) {
-  const normalized = designText(value, label, { maximum: 64 });
-  if (!Number.isFinite(Date.parse(normalized))) designFail(`${label} é inválido.`);
-  return normalized;
 }
 
 function designEntityRef(value, label, { maximum = 240 } = {}) {
@@ -764,7 +658,7 @@ function normalizeScopeContext(value, { courseId, expectedScope }) {
   designRecord(value, [
     "current", "ancestors", "children", "childCount", "hasMoreChildren", "nextChildCursor"
   ], "O contexto de escopo");
-  if (!Array.isArray(value.ancestors) || value.ancestors.length > 3 ||
+  if (!Array.isArray(value.ancestors) || value.ancestors.length > 4 ||
       !Array.isArray(value.children) ||
       value.children.length > 64) {
     designFail("O contexto de escopo é inválido.");
@@ -896,11 +790,11 @@ function normalizeParameterDefinition(value) {
   }
   const valueSchema = normalizeParameterSchema(value.valueSchema);
   const supportedScopes = normalizeStringList(value.supportedScopes, "Um escopo suportado", {
-    allowed: new Set(["course", "lesson", "didactic_microsequence"]),
-    maximumItems: 3,
+    allowed: new Set(["course", "lesson", "didactic_microsequence", "study_unit"]),
+    maximumItems: 4,
     maximumLength: 40
   });
-  if (supportedScopes.join("|") !== "course|lesson|didactic_microsequence") {
+  if (supportedScopes.join("|") !== "course|lesson|didactic_microsequence|study_unit") {
     designFail("Os escopos suportados por um parâmetro são inconsistentes.");
   }
   return Object.freeze({
@@ -931,21 +825,20 @@ function normalizeParameterAssignment(value, definition, {
 } = {}) {
   if (value == null && !effective) return null;
   const fields = effective
-    ? ["changeId", "value", "origin", "reason", "sourceScope", "inherited"]
-    : ["changeId", "value", "origin", "reason"];
+    ? ["value", "origin", "reason", "sourceScope", "inherited"]
+    : ["value", "origin", "reason"];
   designRecord(value, fields, "A atribuição de um parâmetro");
   const origin = text(value.origin);
   if (effective ? !COURSE_DESIGN_EFFECTIVE_ORIGINS.has(origin) :
-    !COURSE_DESIGN_WRITABLE_ORIGINS.has(origin)) {
+    !COURSE_DESIGN_ASSIGNMENT_ORIGINS.has(origin)) {
     designFail("A origem de um parâmetro é inválida.");
   }
-  const changeId = value.changeId == null ? null : designBigint(value.changeId, "A mudança do parâmetro");
   const sourceScope = effective && value.sourceScope != null
     ? normalizeDesignScope(value.sourceScope, "O escopo de origem do parâmetro", { parameter: true })
     : null;
   if (effective && (typeof value.inherited !== "boolean" ||
-      origin === "system_default" && (changeId !== null || sourceScope !== null || value.inherited) ||
-      origin !== "system_default" && (changeId === null || sourceScope === null) ||
+      origin === "system_default" && (sourceScope !== null || value.inherited) ||
+      origin !== "system_default" && sourceScope === null ||
       sourceScope && !availableScopes.has(scopeIdentity(sourceScope)) ||
       sourceScope && value.inherited === (scopeIdentity(sourceScope) === scopeIdentity(currentScope)))) {
     designFail("A resolução de um parâmetro é inconsistente.");
@@ -959,9 +852,7 @@ function normalizeParameterAssignment(value, definition, {
       JSON.stringify(normalizedValue) !== JSON.stringify(definition.defaultValue)) {
     designFail("O valor padrão de um parâmetro é inconsistente.");
   }
-  if (!effective && changeId === null) designFail("A atribuição local de um parâmetro é inválida.");
   return Object.freeze({
-    changeId,
     value: normalizedValue,
     origin,
     reason: designText(value.reason, "A justificativa do parâmetro", { maximum: 1_000 }),
@@ -969,138 +860,75 @@ function normalizeParameterAssignment(value, definition, {
   });
 }
 
-function normalizeGuidanceInterpretation(value, guidanceRevisionId) {
-  if (value == null) return null;
-  designRecord(value, [
-    "interpretationId", "guidanceRevisionId", "interpretation", "createdAt"
-  ], "A interpretação da orientação");
-  designRecord(value.interpretation, [
-    "summary", "directives", "divergences", "questions"
-  ], "O conteúdo da interpretação");
-  const normalizedRevisionId = designUuid(
-    value.guidanceRevisionId,
-    "A revisão interpretada"
-  );
-  if (normalizedRevisionId !== guidanceRevisionId) {
-    designFail("A interpretação não corresponde à orientação.");
+function normalizeGuidanceAssignment(value, {
+  effective = false,
+  availableScopes,
+  currentScope
+} = {}) {
+  if (value == null && !effective) return null;
+  const fields = effective
+    ? ["guidance", "origin", "reason", "sourceScope", "inherited"]
+    : ["guidance", "origin", "reason"];
+  designRecord(value, fields, "A direção editorial");
+  const assignmentOrigin = text(value.origin);
+  if (!COURSE_GUIDANCE_ORIGINS.has(assignmentOrigin)) {
+    designFail("A origem da direção editorial é inválida.");
   }
-  if (!Array.isArray(value.interpretation.directives) ||
-      value.interpretation.directives.length > 16) {
-    designFail("As diretivas da interpretação são inválidas.");
+  const sourceScope = effective
+    ? normalizeDesignScope(value.sourceScope, "O escopo de origem da direção editorial")
+    : null;
+  if (effective && (typeof value.inherited !== "boolean" ||
+      !availableScopes.has(scopeIdentity(sourceScope)) ||
+      value.inherited === (scopeIdentity(sourceScope) === scopeIdentity(currentScope)))) {
+    designFail("A resolução da direção editorial é inconsistente.");
   }
-  const directives = value.interpretation.directives.map((directive) => {
-    designRecord(directive, ["kind", "statement"], "Uma diretiva da interpretação");
-    const kind = text(directive.kind);
-    if (!new Set(["require", "avoid", "prefer"]).has(kind)) {
-      designFail("Uma diretiva da interpretação é inválida.");
-    }
-    return Object.freeze({
-      kind,
-      statement: designText(directive.statement, "O enunciado da diretiva", { maximum: 500 })
-    });
-  });
-  if (new Set(directives.map((directive) =>
-    `${directive.kind}:${directive.statement}`)).size !== directives.length) {
-    designFail("As diretivas da interpretação se repetem.");
+  const maximum = assignmentOrigin === "migration" ? 16_384 : 8_192;
+  const maximumBytes = assignmentOrigin === "migration" ? 65_536 : 8_192;
+  const guidance = designText(value.guidance, "A direção editorial", { maximum });
+  if (new TextEncoder().encode(JSON.stringify(guidance)).byteLength > maximumBytes) {
+    designFail("A direção editorial excede o limite seguro.");
   }
-  const interpretation = Object.freeze({
-    summary: designText(value.interpretation.summary, "O resumo da interpretação", {
+  return Object.freeze({
+    guidance,
+    origin: assignmentOrigin,
+    reason: designText(value.reason, "A justificativa da direção editorial", {
       maximum: 1_000
     }),
-    directives: Object.freeze(directives),
-    divergences: normalizeStringList(
-      value.interpretation.divergences,
-      "Uma divergência da interpretação",
-      { maximumItems: 16, maximumLength: 500 }
-    ),
-    questions: normalizeStringList(
-      value.interpretation.questions,
-      "Uma pergunta da interpretação",
-      { maximumItems: 16, maximumLength: 500 }
-    )
-  });
-  if (new TextEncoder().encode(JSON.stringify(interpretation)).byteLength > 8_192) {
-    designFail("A interpretação excede o limite seguro.");
-  }
-  return Object.freeze({
-    interpretationId: designBigint(value.interpretationId, "A identidade da interpretação"),
-    guidanceRevisionId: normalizedRevisionId,
-    interpretation,
-    createdAt: designDate(value.createdAt, "A data da interpretação")
-  });
-}
-
-function normalizeGuidanceRevision(value, { effective = false, availableScopes } = {}) {
-  if (value == null) return null;
-  const fields = effective
-    ? [
-        "revisionId", "guidance", "origin", "reason", "sourceScope", "currentInterpretation"
-      ]
-    : ["revisionId", "guidance", "origin", "reason"];
-  designRecord(value, fields, "A orientação autoral");
-  const origin = text(value.origin);
-  if (!COURSE_GUIDANCE_ORIGINS.has(origin)) {
-    designFail("A origem da orientação autoral é inválida.");
-  }
-  const revisionId = designUuid(value.revisionId, "A revisão da orientação");
-  const sourceScope = effective
-    ? normalizeDesignScope(value.sourceScope, "O escopo de origem da orientação")
-    : null;
-  if (sourceScope && !availableScopes.has(scopeIdentity(sourceScope))) {
-    designFail("O escopo da orientação autoral é inconsistente.");
-  }
-  const guidance = designText(value.guidance, "A orientação autoral", { maximum: 8_192 });
-  if (new TextEncoder().encode(JSON.stringify(guidance)).byteLength > 8_192) {
-    designFail("A orientação autoral excede o limite seguro.");
-  }
-  return Object.freeze({
-    revisionId,
-    guidance,
-    origin,
-    reason: designText(value.reason, "A justificativa da orientação", { maximum: 1_000 }),
-    ...(effective
-      ? {
-          sourceScope,
-          currentInterpretation: normalizeGuidanceInterpretation(
-            value.currentInterpretation,
-            revisionId
-          )
-        }
-      : {})
+    ...(effective ? { sourceScope, inherited: value.inherited } : {})
   });
 }
 
 function normalizeGuidance(value, context) {
   designRecord(value, [
-    "localRevision", "effectiveRevisions"
-  ], "A orientação autoral");
-  if (!Array.isArray(value.effectiveRevisions) || value.effectiveRevisions.length > 4) {
-    designFail("A pilha de orientações é inválida.");
+    "localAssignment", "effectiveAssignments"
+  ], "A direção editorial");
+  if (!Array.isArray(value.effectiveAssignments) || value.effectiveAssignments.length > 4) {
+    designFail("As direções editoriais efetivas são inválidas.");
   }
-  const localRevision = normalizeGuidanceRevision(value.localRevision, context);
-  const effectiveRevisions = value.effectiveRevisions.map((revision) =>
-    normalizeGuidanceRevision(revision, { ...context, effective: true }));
-  const expectedOrder = new Map(context.scopePath.map((scope, index) => [scopeIdentity(scope), index]));
-  if (new Set(effectiveRevisions.map((revision) => revision.revisionId)).size !==
-        effectiveRevisions.length ||
-      new Set(effectiveRevisions.map((revision) => scopeIdentity(revision.sourceScope))).size !==
-        effectiveRevisions.length ||
-      effectiveRevisions.some((revision, index) => index > 0 &&
-        expectedOrder.get(scopeIdentity(effectiveRevisions[index - 1].sourceScope)) >=
-          expectedOrder.get(scopeIdentity(revision.sourceScope))) ||
-      localRevision && !effectiveRevisions.some((revision) =>
-        revision.revisionId === localRevision.revisionId &&
-        revision.guidance === localRevision.guidance &&
-        revision.origin === localRevision.origin &&
-        revision.reason === localRevision.reason &&
-        scopeIdentity(revision.sourceScope) === scopeIdentity(context.currentScope)) ||
-      !localRevision && effectiveRevisions.some((revision) =>
-        scopeIdentity(revision.sourceScope) === scopeIdentity(context.currentScope))) {
-    designFail("A pilha de orientações é inconsistente.");
+  const localAssignment = normalizeGuidanceAssignment(value.localAssignment, context);
+  const effectiveAssignments = value.effectiveAssignments.map((assignment) =>
+    normalizeGuidanceAssignment(assignment, { ...context, effective: true }));
+  const expectedOrder = new Map(context.scopePath.map((scope, index) => [
+    scopeIdentity(scope),
+    index
+  ]));
+  if (new Set(effectiveAssignments.map((assignment) =>
+      scopeIdentity(assignment.sourceScope))).size !== effectiveAssignments.length ||
+      effectiveAssignments.some((assignment, index) => index > 0 &&
+        expectedOrder.get(scopeIdentity(effectiveAssignments[index - 1].sourceScope)) >=
+          expectedOrder.get(scopeIdentity(assignment.sourceScope))) ||
+      localAssignment && !effectiveAssignments.some((assignment) =>
+        assignment.guidance === localAssignment.guidance &&
+        assignment.origin === localAssignment.origin &&
+        assignment.reason === localAssignment.reason &&
+        scopeIdentity(assignment.sourceScope) === scopeIdentity(context.currentScope)) ||
+      !localAssignment && effectiveAssignments.some((assignment) =>
+        scopeIdentity(assignment.sourceScope) === scopeIdentity(context.currentScope))) {
+    designFail("As direções editoriais efetivas são inconsistentes.");
   }
   return Object.freeze({
-    localRevision,
-    effectiveRevisions: Object.freeze(effectiveRevisions)
+    localAssignment,
+    effectiveAssignments: Object.freeze(effectiveAssignments)
   });
 }
 
@@ -1171,114 +999,53 @@ function normalizeComponentPolicyValue(value, catalog) {
   });
 }
 
-function normalizeComponentPolicyChange(value, catalog, {
+function normalizeComponentPolicyAssignment(value, catalog, {
   effective = false,
   availableScopes,
   currentScope
 } = {}) {
   const fields = effective
-    ? ["changeId", "policy", "origin", "reason", "sourceScope", "inherited"]
-    : ["changeId", "policy", "origin", "reason"];
-  designRecord(value, fields, "A mudança da política de componentes");
-  const origin = text(value.origin);
-  if (effective ? !COURSE_DESIGN_EFFECTIVE_ORIGINS.has(origin) :
-    !COURSE_DESIGN_WRITABLE_ORIGINS.has(origin)) {
+    ? ["policy", "origin", "reason", "sourceScope", "inherited"]
+    : ["policy", "origin", "reason"];
+  designRecord(value, fields, "A atribuição da política de componentes");
+  const assignmentOrigin = text(value.origin);
+  if (effective ? !COURSE_DESIGN_EFFECTIVE_ORIGINS.has(assignmentOrigin) :
+    !COURSE_DESIGN_ASSIGNMENT_ORIGINS.has(assignmentOrigin)) {
     designFail("A origem da política de componentes é inválida.");
   }
-  const changeId = value.changeId == null ? null : designBigint(value.changeId, "A mudança da política");
   const sourceScope = effective && value.sourceScope != null
     ? normalizeDesignScope(value.sourceScope, "O escopo de origem da política")
     : null;
   if (effective && (typeof value.inherited !== "boolean" ||
-      origin === "system_default" && (changeId !== null || sourceScope !== null || value.inherited) ||
-      origin !== "system_default" && (changeId === null || sourceScope === null) ||
+      assignmentOrigin === "system_default" && (sourceScope !== null || value.inherited) ||
+      assignmentOrigin !== "system_default" && sourceScope === null ||
       sourceScope && !availableScopes.has(scopeIdentity(sourceScope)) ||
-      sourceScope && value.inherited === (scopeIdentity(sourceScope) === scopeIdentity(currentScope)))) {
+      sourceScope && value.inherited === (
+        scopeIdentity(sourceScope) === scopeIdentity(currentScope)
+      ))) {
     designFail("A resolução da política de componentes é inconsistente.");
   }
-  if (!effective && changeId === null) designFail("A mudança local da política é inválida.");
   return Object.freeze({
-    changeId,
     policy: normalizeComponentPolicyValue(value.policy, catalog),
-    origin,
+    origin: assignmentOrigin,
     reason: designText(value.reason, "A justificativa da política", { maximum: 1_000 }),
     ...(effective ? { sourceScope, inherited: value.inherited } : {})
   });
 }
 
 function normalizeComponentPolicy(value, catalog, context) {
-  designRecord(value, ["localChange", "effectiveChange"], "A política de componentes");
+  designRecord(
+    value,
+    ["localAssignment", "effectiveAssignment"],
+    "A política de componentes"
+  );
   return Object.freeze({
-    localChange: value.localChange == null
+    localAssignment: value.localAssignment == null
       ? null
-      : normalizeComponentPolicyChange(value.localChange, catalog, context),
-    effectiveChange: normalizeComponentPolicyChange(value.effectiveChange, catalog, {
+      : normalizeComponentPolicyAssignment(value.localAssignment, catalog, context),
+    effectiveAssignment: normalizeComponentPolicyAssignment(value.effectiveAssignment, catalog, {
       ...context,
       effective: true
-    })
-  });
-}
-
-function normalizeRecentApplication(value, componentRefs) {
-  designRecord(value, [
-    "materializationId", "stepId", "didacticMicrosequenceId", "recordedAt", "contextHash",
-    "studyUnitCount", "modeCounts", "introducedInstructionalAnalysisUnitIds",
-    "developedExplanationForms", "practiceOpportunityCount", "variedDimensions", "componentRefs"
-  ], "Uma aplicação de desenho");
-  designRecord(value.modeCounts, ["expository", "practice", "mixed"], "Os modos aplicados");
-  const modeCounts = Object.freeze({
-    expository: designInteger(value.modeCounts.expository, "A contagem expositiva"),
-    practice: designInteger(value.modeCounts.practice, "A contagem de prática"),
-    mixed: designInteger(value.modeCounts.mixed, "A contagem mista")
-  });
-  const studyUnitCount = designInteger(value.studyUnitCount, "A quantidade aplicada de unidades");
-  if (modeCounts.expository + modeCounts.practice + modeCounts.mixed !== studyUnitCount) {
-    designFail("Os modos aplicados não correspondem às Unidades registradas.");
-  }
-  const materializationId = text(value.materializationId).toLowerCase();
-  const stepId = text(value.stepId).toLowerCase();
-  if (!isCanonicalCourseId(materializationId) || !isCanonicalCourseId(stepId) ||
-      !SHA256_PATTERN.test(value.contextHash)) {
-    designFail("A identidade de uma aplicação de desenho é inválida.");
-  }
-  const introducedIds = normalizeStringList(
-    value.introducedInstructionalAnalysisUnitIds,
-    "Uma unidade de análise aplicada",
-    { maximumItems: 4_096, maximumLength: 36 }
-  );
-  if (introducedIds.some((id) => !isCanonicalCourseId(id.toLowerCase()))) {
-    designFail("Uma unidade de análise aplicada é inválida.");
-  }
-  return Object.freeze({
-    materializationId,
-    stepId,
-    didacticMicrosequenceId: designEntityRef(
-      value.didacticMicrosequenceId,
-      "A microssequência aplicada"
-    ),
-    recordedAt: designDate(value.recordedAt, "A data da aplicação"),
-    contextHash: value.contextHash,
-    studyUnitCount,
-    modeCounts,
-    introducedInstructionalAnalysisUnitIds: introducedIds,
-    developedExplanationForms: normalizeStringList(
-      value.developedExplanationForms,
-      "Uma forma de explicação aplicada",
-      { allowed: EXPLANATION_FORMS, maximumItems: EXPLANATION_FORMS.size, maximumLength: 100 }
-    ),
-    practiceOpportunityCount: designInteger(
-      value.practiceOpportunityCount,
-      "A quantidade de oportunidades de prática"
-    ),
-    variedDimensions: normalizeStringList(value.variedDimensions, "Uma dimensão variada", {
-      allowed: PRACTICE_VARIATION_DIMENSIONS,
-      maximumItems: PRACTICE_VARIATION_DIMENSIONS.size,
-      maximumLength: 100
-    }),
-    componentRefs: normalizeStringList(value.componentRefs, "Um componente aplicado", {
-      allowed: componentRefs,
-      maximumItems: 32,
-      maximumLength: 160
     })
   });
 }
@@ -1321,7 +1088,7 @@ export function normalizeCourseDesign(value, {
   const topFields = [
     "contract", "courseId", "courseRevision", "parameterCatalogVersion", "scopeContext",
     "definitions", "parameters", "guidance", "componentCatalog", "componentPolicy",
-    "targetPlanItems", "recentApplications"
+    "targetPlanItems"
   ];
   designRecord(value, topFields, "O desenho do Curso");
   if (new TextEncoder().encode(JSON.stringify(value)).byteLength > 256 * 1_024) {
@@ -1335,11 +1102,10 @@ export function normalizeCourseDesign(value, {
   if (expectedCourseRevision !== null && courseRevision !== expectedCourseRevision) {
     fail("course_revision_changed", "O Curso mudou durante a leitura do desenho pedagógico.");
   }
-  if (value.contract !== "aralearn.course-design.v1" || !isCanonicalCourseId(courseId) ||
+  if (value.contract !== "aralearn.course-design.v2" || !isCanonicalCourseId(courseId) ||
       expectedCourseId && courseId !== expectedCourseId ||
       !Array.isArray(value.definitions) || value.definitions.length !== COURSE_DESIGN_PARAMETER_IDS.length ||
-      !Array.isArray(value.parameters) || value.parameters.length !== COURSE_DESIGN_PARAMETER_IDS.length ||
-      !Array.isArray(value.recentApplications) || value.recentApplications.length > 16) {
+      !Array.isArray(value.parameters) || value.parameters.length !== COURSE_DESIGN_PARAMETER_IDS.length) {
     designFail("O desenho do Curso é inválido.");
   }
   const parameterCatalogVersion = designText(
@@ -1393,18 +1159,11 @@ export function normalizeCourseDesign(value, {
     designFail("As resoluções dos parâmetros estão incompletas ou fora de ordem.");
   }
   const componentCatalog = normalizeComponentCatalog(value.componentCatalog);
-  const componentRefs = new Set(componentCatalog.options.map((option) => option.ref));
   const context = {
     currentScope: scopeContext.current,
     availableScopes,
     scopePath: Object.freeze([...scopeContext.ancestors, scopeContext.current])
   };
-  const recentApplications = value.recentApplications.map((application) =>
-    normalizeRecentApplication(application, componentRefs));
-  if (new Set(recentApplications.map((application) =>
-    `${application.materializationId}:${application.stepId}`)).size !== recentApplications.length) {
-    designFail("O histórico recente repete uma aplicação.");
-  }
   return Object.freeze({
     contract: value.contract,
     courseId,
@@ -1416,8 +1175,7 @@ export function normalizeCourseDesign(value, {
     guidance: normalizeGuidance(value.guidance, context),
     componentCatalog,
     componentPolicy: normalizeComponentPolicy(value.componentPolicy, componentCatalog, context),
-    targetPlanItems: normalizeTargetPlanItems(value.targetPlanItems, scopeContext.current),
-    recentApplications: Object.freeze(recentApplications)
+    targetPlanItems: normalizeTargetPlanItems(value.targetPlanItems, scopeContext.current)
   });
 }
 
@@ -1431,7 +1189,7 @@ export function normalizeCourseDesignChange(value, {
   designRecord(value, fields, "A confirmação da mudança de desenho");
   const courseId = designUuid(value.courseId, "O Curso da mudança");
   const requestId = designRequestId(value.requestId, "A identidade da requisição");
-  if (value.contract !== "aralearn.course-design-change.v1" ||
+  if (value.contract !== "aralearn.course-design-change.v2" ||
       expectedCourseId && courseId !== expectedCourseId ||
       expectedRequestId && requestId !== expectedRequestId ||
       typeof value.idempotent !== "boolean" || typeof value.changed !== "boolean" ||
@@ -1440,7 +1198,7 @@ export function normalizeCourseDesignChange(value, {
   }
   let change = null;
   if (value.change !== null) {
-    designRecord(value.change, ["changeId", "type", "scope"], "A mudança de desenho");
+    designRecord(value.change, ["type", "scope", "parameterId"], "A mudança de desenho");
     const type = text(value.change.type);
     if (!COURSE_DESIGN_CHANGE_TYPES.has(type)) {
       designFail("O tipo da mudança de desenho é inválido.");
@@ -1448,13 +1206,17 @@ export function normalizeCourseDesignChange(value, {
     const scope = normalizeDesignScope(value.change.scope, "O escopo da mudança", {
       parameter: new Set(["set_parameter", "clear_parameter"]).has(type)
     });
-    if (type === "set_target_plan_items" && scope.kind !== "didactic_microsequence") {
-      designFail("A atribuição de itens do plano deve apontar para uma Microssequência.");
+    const parameterChange = new Set(["set_parameter", "clear_parameter"]).has(type);
+    if (parameterChange !== (value.change.parameterId !== null) ||
+        parameterChange && !COURSE_DESIGN_PARAMETER_IDS.includes(value.change.parameterId)) {
+      designFail("O parâmetro da mudança de desenho é inconsistente.");
     }
     change = Object.freeze({
-      changeId: designBigint(value.change.changeId, "A identidade da mudança de desenho"),
       type,
-      scope
+      scope,
+      parameterId: value.change.parameterId == null
+        ? null
+        : designText(value.change.parameterId, "O parâmetro alterado", { maximum: 160 })
     });
   }
   return Object.freeze({

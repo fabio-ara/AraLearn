@@ -19,15 +19,11 @@ const REQUIRED_FEATURES = Object.freeze([
   "study-only-course-access-v1",
   "private-person-avatar-v1",
   "self-account-deletion-v1",
-  "course-instructional-plan-v1",
-  "course-authoring-part-materialization-v1",
-  "course-authoring-part-materialization-history-v1",
-  "course-study-unit-inspection-v1",
-  "continuous-authoring-inspection-v1",
-  "course-inspection-focus-v1",
-  "course-design-parameters-v1",
-  "course-authoring-guidance-v1",
-  "course-component-policy-v1",
+  "course-instructional-plan-v2",
+  "course-authoring-part-save-v1",
+  "course-authoring-part-materialization-atomic-v1",
+  "course-study-unit-inspection-v2",
+  "course-authoring-configuration-v2",
   "course-sources-v1",
   "course-source-provenance-v1",
   "course-source-pdf-attachments-v1",
@@ -36,19 +32,15 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-source-pdf-access-lifecycle-v1",
   "course-source-human-locators-v1",
   "course-anchored-annotations-v1",
+  "course-anchored-annotations-atomic-create-v1",
   "course-annotation-subject-classification-v1",
   "course-personal-state-v2",
-  "course-audit-cycle-v1",
-  "course-authoring-corrections-v1",
-  "course-audit-annotation-links-v1",
-  "course-variant-comparisons-v1",
-  "course-variant-comparison-list-v1",
-  "course-authoring-analytics-v1",
-  "course-variant-factual-comparison-v1",
+  "course-authoring-analytics-v2",
   "contextual-study-unit-edit-v1",
   "personal-course-copy-edit-v1",
   "current-data-lifecycle-v1",
-  "authenticated-course-source-pdf-upload-v1",
+  "course-source-current-state-v1",
+  "single-authoring-runtime-v1",
   "course-product-operations-v1",
   "current-administrative-maintenance-v1",
   "gpt-actions-openapi-v1"
@@ -57,14 +49,11 @@ const REQUIRED_FEATURES = Object.freeze([
 const CANONICAL_RUNTIME_FILES = Object.freeze([
   "public/main.js",
   "src/domain/courseAnchoredAnnotations.js",
-  "src/domain/courseAuditCycle.js",
   "src/domain/courseAuthoringAnalytics.js",
-  "src/domain/courseAuthoringPlan.js",
   "src/domain/courseComposition.js",
   "src/domain/courseDesignParameters.js",
   "src/domain/courseEntities.js",
   "src/domain/courseSources.js",
-  "src/domain/courseVariants.js",
   "src/persistence/AuthSessionStore.js",
   "src/persistence/CourseLocalStore.js",
   "src/persistence/CourseAnnotationRepository.js",
@@ -83,19 +72,19 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "src/ui/CourseInspectionSequence.js",
   "src/ui/CourseObservationsPanel.js",
   "src/ui/CourseSourcesPanel.js",
-  "src/ui/CourseVariantsPanel.js",
   "src/ui/courseAuthoringRoute.js",
   "src/ui/courseAuthoringViewModel.js",
   "src/ui/renderStudyUnitObservationSheet.js",
   "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
   "supabase/functions/_shared/aralearn-authoring/courseAuthoringState.js",
   "supabase/functions/_shared/aralearn-authoring/courseKnowledge.js",
-  "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js",
-  "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
   "supabase/functions/_shared/aralearn-authoring/courseProtocol.js",
   "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
   "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
-  "supabase/functions/_shared/aralearn-authoring/courseToolExecutor.js",
   "supabase/functions/_shared/aralearn-authoring/actionOAuthServer.js",
   "supabase/functions/_shared/aralearn-authoring/courseActionServer.js",
   "supabase/functions/aralearn-course-api/index.ts",
@@ -144,11 +133,6 @@ const LEGACY_PERSONAL_OBSERVATIONS_ACCESS =
 const STUDY_UNIT_SOURCE_CONTRACT_FILES = new Set([
   "src/resources/kernel/studyUnitEnvelope.js",
   "supabase/functions/_shared/aralearn/runtime/resources/kernel/studyUnitEnvelope.js"
-]);
-
-const COURSE_AUDIT_AUTHORING_GUIDANCE_CONTRACT_FILES = new Set([
-  "src/domain/courseAuditCycle.js",
-  "supabase/functions/_shared/aralearn/runtime/domain/courseAuditCycle.js"
 ]);
 
 const FORBIDDEN_COURSE_SOURCE_ALIASES = Object.freeze([
@@ -243,11 +227,6 @@ function relativePath(filePath) {
   return path.relative(repositoryRoot, filePath).split(path.sep).join("/");
 }
 
-function equalArray(actual, expected) {
-  return Array.isArray(actual) && actual.length === expected.length &&
-    actual.every((value, index) => value === expected[index]);
-}
-
 const RUNTIME_MANIFEST_FUNCTION_REPLACEMENT =
   /create\s+or\s+replace\s+function\s+public\.get_aralearn_runtime_manifest\s*\(/iu;
 
@@ -308,357 +287,55 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
-  await validateRuntimeManifestRevision(manifest);
-  if (manifest.contractVersion !== 1 || !equalArray(manifest.requiredFeatures, REQUIRED_FEATURES)) {
-    fail("O manifesto estático não descreve exatamente o runtime canônico de Curso.");
+  const required = [...REQUIRED_FEATURES];
+  if (manifest.schemaRevision !== "20260902044404" ||
+      manifest.contractVersion !== 1 ||
+      !Array.isArray(manifest.requiredFeatures) ||
+      manifest.requiredFeatures.length !== required.length ||
+      new Set(manifest.requiredFeatures).size !== required.length ||
+      required.some((feature) => !manifest.requiredFeatures.includes(feature))) {
+    fail("O manifesto estático não descreve exatamente o runtime final de Curso.");
   }
-  const courseMigration = await read(
-    "supabase/migrations/20260817140000_course_identity_cutover.sql"
+
+  const cut = await read(
+    "supabase/migrations/20260902044404_cut_legacy_authoring_runtime.sql"
   );
-  const profileMigration = await read(
-    "supabase/migrations/20260817150000_course_profiles_access.sql"
-  );
-  const authoringPlanMigration = await read(
-    "supabase/migrations/20260817160000_course_authoring_plan.sql"
-  );
-  const inspectionMigration = await read(
-    "supabase/migrations/20260817170000_course_study_unit_inspection.sql"
-  );
-  const designMigration = await read(
-    "supabase/migrations/20260817180000_course_design_parameters.sql"
-  );
-  const sourcesMigration = await read(
-    "supabase/migrations/20260817190000_course_sources_provenance.sql"
-  );
-  const annotationsMigration = await read(
-    "supabase/migrations/20260817200000_course_anchored_annotations.sql"
-  );
-  const auditMigration = await read(
-    "supabase/migrations/20260817210000_course_audit_corrections.sql"
-  );
-  const variantsMigration = await read(
-    "supabase/migrations/20260818042341_course_variant_comparisons.sql"
-  );
-  const variantListingManifestMigration = await read(
-    "supabase/migrations/20260818052044_course_variant_listing_manifest.sql"
-  );
-  const sourcePdfMigration = await read(
-    "supabase/migrations/20260820061206_course_source_pdf_attachments.sql"
-  );
-  const authoringAnalyticsMigration = await read(
-    "supabase/migrations/20260820063156_course_authoring_analytics.sql"
-  );
-  const completeVariantComparisonMigration = await read(
-    "supabase/migrations/20260820065720_complete_course_variant_comparison.sql"
-  );
-  const avatarPathMigration = await read(
-    "supabase/migrations/20260820101500_fix_person_avatar_path_validation.sql"
-  );
-  const contextualCompositionMigration = await read(
-    "supabase/migrations/20260820224424_canonical_study_unit_composition_edits.sql"
-  );
-  const personalCourseCopyMigration = await read(
-    "supabase/migrations/20260821145358_personal_course_copy_edit.sql"
-  );
-  const dataLifecycleMigration = await read(
-    "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql"
-  );
-  const productOperationsMigration = await read(
-    "supabase/migrations/20260824120000_product_operations_and_maintenance.sql"
-  );
-  const actionsMigration = await read(
-    "supabase/migrations/20260824130000_restore_gpt_actions_openapi.sql"
-  );
-  const actionsLegacyDetachmentMigration = await read(
-    "supabase/migrations/20260824140000_detach_gpt_actions_from_legacy_oauth.sql"
-  );
-  const legacyRemovalMigration = await read(
-    "supabase/migrations/20260824150000_remove_pre_course_runtime.sql"
-  );
-  const materializationHistoryMigration = await read(
-    "supabase/migrations/20260824174101_authoring_materialization_history.sql"
-  );
-  const sourceHumanLocatorsMigration = await read(
-    "supabase/migrations/20260825190000_course_source_human_locators.sql"
-  );
-  const continuousInspectionMigration = await read(
-    "supabase/migrations/20260826090000_continuous_authoring_inspection.sql"
-  );
-  const unitAnnotationScopeMigration = await read(
-    "supabase/migrations/20260826093000_align_unit_annotation_scope_with_materialization.sql"
-  );
-  const continuousInspectionV2Migration = await read(
-    "supabase/migrations/20260826094500_preserve_inspection_v1_and_scope_design_verification.sql"
-  );
-  const courseRlsActorLookupMigration = await read(
-    "supabase/migrations/20260826143846_optimize_course_rls_actor_lookup.sql"
-  );
-  const boundedInstructionalPlanCasMigration = await read(
-    "supabase/migrations/20260827185748_bound_instructional_plan_cas_retry.sql"
-  );
-  const inspectionFocusMigration = await read(
-    "supabase/migrations/20260828120000_course_inspection_focuses.sql"
-  );
-  const sourcePdfIngestionMigration = await read(
-    "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql"
-  );
-  const sourcePdfReceiptReplayMigration = await read(
-    "supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql"
-  );
-  const sourcePdfAccessLifecycleMigration = await read(
-    "supabase/migrations/20260831000829_source_pdf_access_lifecycle.sql"
-  );
-  const sourcePdfAttachmentAccessMigration = await read(
-    "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql"
-  );
-  const sourcePdfUnlinkedQuotaMigration = await read(
-    "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql"
-  );
-  const analysisUnitDecompositionMigration = await read(
-    "supabase/migrations/20260831183106_fix_analysis_unit_study_unit_decomposition.sql"
-  );
-  if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
-      !courseMigration.includes("'schemaRevision', '20260817140000'") ||
-      !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
-      !profileMigration.includes("'schemaRevision', '20260817150000'") ||
-      !authoringPlanMigration.includes(
-        "$advance_course_instructional_plan_runtime_manifest$"
-      ) ||
-      !authoringPlanMigration.includes("'schemaRevision', '20260817160000'") ||
-      !inspectionMigration.includes(
-        "$advance_course_study_unit_inspection_runtime_manifest$"
-      ) ||
-      !inspectionMigration.includes("'schemaRevision', '20260817170000'") ||
-      !designMigration.includes("$advance_course_design_runtime_manifest$") ||
-      !designMigration.includes("'schemaRevision','20260817180000'") ||
-      !sourcesMigration.includes("$advance_course_sources_runtime_manifest$") ||
-      !sourcesMigration.includes("'schemaRevision','20260817190000'") ||
-      !annotationsMigration.includes("$advance_course_anchored_annotations_manifest$") ||
-      !annotationsMigration.includes("'schemaRevision','20260817200000'") ||
-      !annotationsMigration.includes(
-        "where existing.value<>'course-personal-state-v1'"
-      ) ||
-      !auditMigration.includes("$advance_course_audit_corrections_manifest$") ||
-      !auditMigration.includes("'schemaRevision','20260817210000'") ||
-      !variantsMigration.includes("$advance_course_variant_comparisons_manifest$") ||
-      !variantsMigration.includes("'schemaRevision','20260818042341'") ||
-      !variantListingManifestMigration.includes("$advance_course_variant_listing_manifest$") ||
-      !variantListingManifestMigration.includes("'schemaRevision','20260818052044'") ||
-      !sourcePdfMigration.includes("$advance_course_source_pdf_runtime_manifest$") ||
-      !sourcePdfMigration.includes("'schemaRevision','20260820061206'") ||
-      !authoringAnalyticsMigration.includes("$advance_course_authoring_analytics_runtime_manifest$") ||
-      !authoringAnalyticsMigration.includes("'schemaRevision','20260820063156'") ||
-      !completeVariantComparisonMigration.includes(
-        "$advance_course_variant_factual_comparison_runtime_manifest$"
-      ) ||
-      !completeVariantComparisonMigration.includes("'schemaRevision','20260820065720'") ||
-      !avatarPathMigration.includes("$advance_person_avatar_path_runtime_manifest$") ||
-      !avatarPathMigration.includes("to_jsonb('20260820101500'::text)") ||
-      !contextualCompositionMigration.includes(
-        "$advance_contextual_composition_manifest$"
-      ) ||
-      !contextualCompositionMigration.includes(
-        "to_jsonb('20260820224424'::text)"
-      ) ||
-      !contextualCompositionMigration.includes(
-        "contextual-study-unit-edit-v1"
-      ) ||
-      !contextualCompositionMigration.includes(
-        "if p_channel = 'mcp' then"
-      ) ||
-      !contextualCompositionMigration.includes(
-        "return v_result - 'channel' - 'applicationOrigin'"
-      ) ||
-      !personalCourseCopyMigration.includes(
-        "$advance_personal_course_copy_edit_manifest$"
-      ) ||
-      !personalCourseCopyMigration.includes(
-        "to_jsonb('20260821145358'::text)"
-      ) ||
-      !personalCourseCopyMigration.includes(
-        "personal-course-copy-edit-v1"
-      ) ||
-      !personalCourseCopyMigration.includes(
-        "commit_personal_course_copy_edit_for_actor_v1"
-      ) ||
-      !dataLifecycleMigration.includes(
-        "$advance_current_data_lifecycle_manifest$"
-      ) ||
-      !dataLifecycleMigration.includes(
-        "to_jsonb('20260821191340'::text)"
-      ) ||
-      !dataLifecycleMigration.includes(
-        "current-data-lifecycle-v1"
-      ) ||
-      !dataLifecycleMigration.includes(
-        "authenticated-course-source-pdf-upload-v1"
-      ) ||
-      !dataLifecycleMigration.includes(
-        "isolated-mcp-oauth-principal-v1"
-      ) ||
-      !productOperationsMigration.includes(
-        "maintain_course_for_actor_v1"
-      ) ||
-      !productOperationsMigration.includes(
-        "get_current_maintenance_for_actor_v1"
-      ) ||
-      !actionsMigration.includes(
-        "$advance_product_operations_and_actions_manifest$"
-      ) ||
-      !actionsMigration.includes(
-        "to_jsonb('20260824130000'::text)"
-      ) ||
-      !actionsMigration.includes(
-        "gpt-actions-openapi-v1"
-      ) ||
-      !actionsLegacyDetachmentMigration.includes(
-        "$advance_actions_runtime_manifest$"
-      ) ||
-      !actionsLegacyDetachmentMigration.includes(
-        "to_jsonb('20260824140000'::text)"
-      ) ||
-      actionsLegacyDetachmentMigration.includes(
-        "v_principal := public.resolve_authoring_oauth_principal"
-      ) ||
-      !legacyRemovalMigration.includes(
-        "to_jsonb('20260824150000'::text)"
-      ) ||
-      !legacyRemovalMigration.includes(
-        "if v_object_count <> 758"
-      ) ||
-      !materializationHistoryMigration.includes(
-        "to_jsonb('20260824174101'::text)"
-      ) ||
-      !materializationHistoryMigration.includes(
-        "advance_course_authoring_part_materialization_for_actor_v2"
-      ) ||
-      !sourceHumanLocatorsMigration.includes(
-        "$advance_course_source_human_locators_manifest$"
-      ) ||
-      !sourceHumanLocatorsMigration.includes(
-        "to_jsonb('20260825190000'::text)"
-      ) ||
-      !sourceHumanLocatorsMigration.includes(
-        "course-source-human-locators-v1"
-      ) ||
-      !continuousInspectionMigration.includes(
-        "$advance_continuous_authoring_inspection_manifest$"
-      ) ||
-      !continuousInspectionMigration.includes(
-        "to_jsonb('20260826090000'::text)"
-      ) ||
-      !continuousInspectionMigration.includes(
-        "continuous-authoring-inspection-v1"
-      ) ||
-      !unitAnnotationScopeMigration.includes(
-        "$advance_unit_annotation_scope_manifest$"
-      ) ||
-      !unitAnnotationScopeMigration.includes(
-        "to_jsonb('20260826093000'::text)"
-      ) ||
-      !continuousInspectionV2Migration.includes(
-        "$advance_continuous_inspection_v2_manifest$"
-      ) ||
-      !continuousInspectionV2Migration.includes(
-        "to_jsonb('20260826094500'::text)"
-      ) ||
-      !courseRlsActorLookupMigration.includes(
-        "$advance_course_rls_actor_lookup_manifest$"
-      ) ||
-      !courseRlsActorLookupMigration.includes(
-        "to_jsonb('20260826143846'::text)"
-      ) ||
-      !boundedInstructionalPlanCasMigration.includes(
-        "$advance_instructional_plan_cas_manifest$"
-      ) ||
-      !boundedInstructionalPlanCasMigration.includes(
-        "to_jsonb('20260827185748'::text)"
-      ) ||
-      !inspectionFocusMigration.includes(
-        "$advance_course_inspection_focus_manifest$"
-      ) ||
-      !inspectionFocusMigration.includes(
-        "to_jsonb('20260828120000'::text)"
-      ) ||
-      !sourcePdfIngestionMigration.includes(
-        "$advance_course_source_pdf_ingestion_manifest$"
-      ) ||
-      !sourcePdfIngestionMigration.includes(
-        "to_jsonb('20260829043629'::text)"
-      ) ||
-      !sourcePdfReceiptReplayMigration.includes(
-        "$advance_course_source_pdf_receipt_replay_manifest$"
-      ) ||
-      !sourcePdfReceiptReplayMigration.includes(
-        "to_jsonb('20260829205000'::text)"
-      ) ||
-      !sourcePdfAccessLifecycleMigration.includes(
-        "$advance_source_pdf_access_lifecycle_manifest$"
-      ) ||
-      !sourcePdfAccessLifecycleMigration.includes(
-        "to_jsonb('20260831000829'::text)"
-      ) ||
-      !sourcePdfAttachmentAccessMigration.includes(
-        "$advance_source_pdf_attachment_access_manifest$"
-      ) ||
-      !sourcePdfAttachmentAccessMigration.includes(
-        "to_jsonb('20260831005116'::text)"
-      ) ||
-      !sourcePdfUnlinkedQuotaMigration.includes(
-        "$advance_unlinked_source_pdf_quota_manifest$"
-      ) ||
-      !sourcePdfUnlinkedQuotaMigration.includes(
-        "to_jsonb('20260831012600'::text)"
-      ) ||
-      !sourcePdfUnlinkedQuotaMigration.includes(
-        "from storage.objects object_value"
-      ) ||
-      !sourcePdfUnlinkedQuotaMigration.includes(
-        "attachment.status='active'"
-      ) ||
-      !analysisUnitDecompositionMigration.includes(
-        "$advance_analysis_unit_decomposition_manifest$"
-      ) ||
-      !analysisUnitDecompositionMigration.includes(
-        "to_jsonb('20260831183106'::text)"
-      )) {
-    fail("A migration de Curso não avança o manifesto remoto.");
+  for (const token of [
+    "begin;",
+    "$authoring_runtime_cut_preflight$",
+    "$authoring_runtime_cut_postflight$",
+    "course_design_parameter_assignments",
+    "save_course_authoring_part_for_actor_v1",
+    "materialize_course_authoring_part_for_actor_v1",
+    "get_owned_course_instructional_plan_for_actor_v2",
+    "get_owned_course_design_for_actor_v2",
+    "apply_course_design_command_for_actor_v2",
+    "create_course_anchored_annotations_for_actor_v1",
+    "get_course_source_pdf_download_for_actor_v1",
+    "alter table private.course_source_revisions rename to course_sources",
+    "drop table private.course_events",
+    "drop table private.course_authoring_part_materializations",
+    "drop table private.course_instructional_audit_runs",
+    "drop table private.course_variant_comparison_sets",
+    "drop policy if exists course_source_pdfs_owner_insert_v1",
+    "to_jsonb('20260902044404'::text)",
+    "commit;"
+  ]) {
+    if (!cut.includes(token)) fail(`A migration final não demonstra ${token}.`);
   }
-  for (const feature of REQUIRED_FEATURES) {
-    if (!courseMigration.includes(`'${feature}'`) &&
-        !profileMigration.includes(`'${feature}'`) &&
-        !authoringPlanMigration.includes(`'${feature}'`) &&
-        !inspectionMigration.includes(`'${feature}'`) &&
-        !designMigration.includes(`'${feature}'`) &&
-        !sourcesMigration.includes(`'${feature}'`) &&
-        !annotationsMigration.includes(`'${feature}'`) &&
-        !auditMigration.includes(`'${feature}'`) &&
-        !variantsMigration.includes(`'${feature}'`) &&
-        !variantListingManifestMigration.includes(`'${feature}'`) &&
-        !sourcePdfMigration.includes(`'${feature}'`) &&
-        !authoringAnalyticsMigration.includes(`'${feature}'`) &&
-        !completeVariantComparisonMigration.includes(`'${feature}'`) &&
-        !avatarPathMigration.includes(`'${feature}'`) &&
-        !contextualCompositionMigration.includes(`'${feature}'`) &&
-        !personalCourseCopyMigration.includes(`'${feature}'`) &&
-        !dataLifecycleMigration.includes(`'${feature}'`) &&
-        !actionsMigration.includes(`'${feature}'`) &&
-        !materializationHistoryMigration.includes(`'${feature}'`) &&
-        !sourceHumanLocatorsMigration.includes(`'${feature}'`) &&
-        !continuousInspectionMigration.includes(`'${feature}'`) &&
-        !unitAnnotationScopeMigration.includes(`'${feature}'`) &&
-        !continuousInspectionV2Migration.includes(`'${feature}'`) &&
-        !inspectionFocusMigration.includes(`'${feature}'`) &&
-        !sourcePdfIngestionMigration.includes(`'${feature}'`) &&
-        !sourcePdfReceiptReplayMigration.includes(`'${feature}'`) &&
-        !sourcePdfAccessLifecycleMigration.includes(`'${feature}'`) &&
-        !sourcePdfAttachmentAccessMigration.includes(`'${feature}'`)) {
-      fail(`A migration de Curso não declara ${feature}.`);
-    }
+  if (/drop\s+[^;]+\s+cascade\s*;/iu.test(cut) ||
+      cut.includes("execute v_definition")) {
+    fail("A migration final usa corte implícito ou restaura capacidade removida.");
   }
-  if (!courseMigration.includes("pg_temp.course_content_import_v1") ||
-      courseMigration.includes("course_content_import_gate")) {
-    fail("A importação do Curso não está limitada à staging TEMP transacional.");
+  for (const removed of [
+    "src/domain/courseAuditCycle.js",
+    "src/domain/courseVariants.js",
+    "src/ui/CourseAuditPanel.js",
+    "src/ui/CourseVariantsPanel.js",
+    "supabase/functions/_shared/aralearn/runtime/domain/courseAuditCycle.js",
+    "supabase/functions/_shared/aralearn/runtime/domain/courseVariants.js"
+  ]) {
+    if (await exists(removed)) fail(`O runtime removido ainda existe: ${removed}.`);
   }
 }
 
@@ -668,15 +345,6 @@ async function validateRuntimeFiles() {
     source: await read(runtimePath)
   })));
   const edgeGraph = await collectEdgeRuntimeGraph();
-  const browserAuthoringPlan = entries.find(({ relativePath }) =>
-    relativePath === "src/domain/courseAuthoringPlan.js")?.source;
-  const edgeAuthoringPlan = edgeGraph.get(path.join(
-    repositoryRoot,
-    "supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringPlan.js"
-  ));
-  if (!browserAuthoringPlan || browserAuthoringPlan !== edgeAuthoringPlan) {
-    fail("O domínio do plano instrucional diverge entre navegador e Edge.");
-  }
   const browserCourseDesign = entries.find(({ relativePath }) =>
     relativePath === "src/domain/courseDesignParameters.js")?.source;
   const edgeCourseDesign = edgeGraph.get(path.join(
@@ -704,15 +372,6 @@ async function validateRuntimeFiles() {
   if (!browserAnchoredAnnotations || browserAnchoredAnnotations !== edgeAnchoredAnnotations) {
     fail("O domínio de observações ancoradas diverge entre navegador e Edge.");
   }
-  const browserCourseAuditCycle = entries.find(({ relativePath }) =>
-    relativePath === "src/domain/courseAuditCycle.js")?.source;
-  const edgeCourseAuditCycle = edgeGraph.get(path.join(
-    repositoryRoot,
-    "supabase/functions/_shared/aralearn/runtime/domain/courseAuditCycle.js"
-  ));
-  if (!browserCourseAuditCycle || browserCourseAuditCycle !== edgeCourseAuditCycle) {
-    fail("O domínio do ciclo de auditoria diverge entre navegador e Edge.");
-  }
   for (const [filePath, source] of edgeGraph) {
     const runtimePath = relativePath(filePath);
     if (WILDCARD_SCOPE_AUTHORIZATION.test(source)) {
@@ -724,10 +383,6 @@ async function validateRuntimeFiles() {
   }
   for (const { relativePath, source } of entries) {
     for (const symbol of FORBIDDEN_RUNTIME_SYMBOLS) {
-      if (symbol === "authoringGuidance" &&
-          COURSE_AUDIT_AUTHORING_GUIDANCE_CONTRACT_FILES.has(relativePath)) {
-        continue;
-      }
       if (source.includes(symbol)) {
         fail(`${relativePath} ainda usa o símbolo substituído ${symbol}.`);
       }
@@ -783,16 +438,18 @@ async function validateEdgeAndMcp() {
   }
   const toolsModule = await import(pathToFileURL(path.join(
     repositoryRoot,
-    "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js"
+    "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
   )).href);
-  const names = toolsModule.COURSE_MCP_TOOLS.map(({ name }) => name);
+  const names = toolsModule.COURSE_HUMAN_TASKS.map(({ name }) => name);
   const expected = [
-    "listarCursos", "lerCurso", "criarCurso", "alterarCurso",
-    "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos", "add_part"
+    "retomar_curso", "consultar_planejamento", "preparar_materializacao",
+    "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
+    "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_parte",
+    "materializar_parte", "ajustar_configuracao", "registrar_observacao",
+    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às sete ferramentas públicas esperadas.");
+    fail("O catálogo MCP não corresponde às dezesseis tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

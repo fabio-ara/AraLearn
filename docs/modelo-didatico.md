@@ -517,7 +517,7 @@ educacionais permanecem resultados a investigar.
 
 **Problema.** Controle aparente pode significar apenas exposição a muitas
 opções. No extremo oposto, automação sem possibilidade real de rejeição ou
-reversão transfere decisões pedagógicas para mecanismos opacos.
+revisão transfere decisões pedagógicas para mecanismos opacos.
 
 **Alternativas e requisitos.** A pessoa pode receber um percurso fechado, um
 ambiente sem estrutura ou apoio ajustável com consequências compreensíveis.
@@ -525,10 +525,11 @@ Autoria assistida precisa separar sugestão, decisão, validação e
 responsabilidade.
 
 **Decisão.** O AraLearn oferece percurso visível, marca pessoal para revisão,
-Observações situadas e assistência conversacional delimitada. Na Autoria,
-propostas focais de correção preservam o estado anterior para eventual reversão.
-A inteligência artificial (IA) propõe e transforma conteúdo sob escopo
-explícito; a decisão editorial continua humana.
+Observações situadas e assistência conversacional delimitada. Na Autoria, a
+pessoa pode voltar a qualquer StudyUnit, registrar a mudança necessária e
+revisar o conjunto de Units pedagogicamente afetado. A inteligência artificial
+(IA) propõe e transforma conteúdo sob escopo explícito; a decisão editorial
+continua humana.
 
 **Fundamentação.** Autorregulação envolve planejamento, execução, monitoramento
 e reflexão ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). Agência
@@ -540,14 +541,14 @@ comunicar capacidades e limites, permitir correção e sustentar controle
 
 **Operacionalização.** O estudante pode marcar conteúdo para revisão e registrar
 Observações. A pessoa autora recebe contexto de leitura, alvos graváveis
-separados e meios de reverter uma correção focal. Estrutura e permissões vêm de
-contratos explícitos, e não da linguagem livre.
+separados e meios de reabrir, anotar e corrigir qualquer ponto do Curso.
+Estrutura e permissões vêm de contratos explícitos, e não da linguagem livre.
 
 **Consequências.** A automação funciona como instrumento de autoria, não como
 substituto da avaliação humana. A proveniência pode distinguir contribuições e
 revisões.
 
-**Limites e evidência.** A existência de botões de confirmação e reversão pode
+**Limites e evidência.** A existência de controles de confirmação e revisão pode
 ser apenas controle simbólico. Agência, compreensão do escopo e qualidade
 autoral exigem avaliação própria.
 

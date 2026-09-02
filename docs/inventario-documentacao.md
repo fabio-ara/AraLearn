@@ -24,7 +24,7 @@ da tarefa ou do conceito procurado.
 | Como escolher e compor representações e respostas? | [Componentes didáticos](componentes-didaticos.md) |
 | Que fundamentos sustentam essas representações? | [Fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md) |
 | Como continuidade, revisão e progresso são tratados sem nota implícita? | [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) |
-| O que diferencia uma Anotação ancorada de um achado de auditoria? | [Observações pedagógicas](observacoes-pedagogicas.md) |
+| Como uma Observação leva a uma revisão sem virar diagnóstico automático? | [Observações pedagógicas](observacoes-pedagogicas.md) |
 
 A [revisão de literatura](revisao-de-literatura.md), o
 [quadro teórico](quadro-teorico.md), o
@@ -42,15 +42,15 @@ A [revisão de literatura](revisao-de-literatura.md), o
 | Configurar o acesso por Model Context Protocol | [Autoria por MCP](autoria-mcp.md) |
 | Configurar um GPT personalizado por Actions/OpenAPI | [GPT personalizado com Actions](autoria-actions.md) |
 | Registrar Fontes, Âncoras e atribuição | [Contrato de conteúdo](aralearn-contract.md) |
-| Auditar, corrigir, verificar e reverter | [Auditoria e correções](auditoria-de-conformidade-instrucional.md) |
+| Revisar Observações, corrigir o conjunto afetado e reinspecionar | [Revisão e correções](auditoria-de-conformidade-instrucional.md) |
 
 ## Investigar a Autoria
 
 | Pergunta | Documento |
 | --- | --- |
-| Como comparar Cursos derivados de um mesmo ponto de recuperação? | [Variantes comparáveis](experimentos-instrucionais-parametrizados.md) |
-| Que fatos a área Pesquisa apresenta e como exportá-los? | [Pesquisa sobre a Autoria](analytics-instrucionais.md) |
-| O que significa cada conjunto, campo e métrica? | [Dicionário de métricas e conjuntos de dados](dicionario-metricas-datasets.md) |
+| Como comparar condições de desenho em Cursos independentes? | [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md) |
+| Que números Analytics apresenta e como exportá-los? | [Analytics da Autoria](analytics-instrucionais.md) |
+| O que significa cada número do snapshot? | [Referência do snapshot de Analytics](dicionario-metricas-datasets.md) |
 | Como formular uma investigação sem transformar contagem em conclusão causal? | [Guia de investigação](guia-pesquisador.md) |
 | Quais limites de inferência e governança se aplicam? | [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
 | Como avaliar o artefato e registrar evidências? | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) |
@@ -130,16 +130,16 @@ produto.
 | [`docs/fundamentacao-pedagogica-dos-resources.md`](fundamentacao-pedagogica-dos-resources.md) | capítulo acadêmico das decisões representacionais |
 | [`docs/estado-de-estudo-nao-punitivo.md`](estado-de-estudo-nao-punitivo.md) | capítulo conceitual sobre continuidade e estado pessoal |
 | [`docs/observacoes-pedagogicas.md`](observacoes-pedagogicas.md) | capítulo conceitual e guia de Observações |
-| [`docs/experimentos-instrucionais-parametrizados.md`](experimentos-instrucionais-parametrizados.md) | guia conceitual de Variantes comparáveis |
-| [`docs/analytics-instrucionais.md`](analytics-instrucionais.md) | capítulo conceitual e operacional de Pesquisa |
-| [`docs/dicionario-metricas-datasets.md`](dicionario-metricas-datasets.md) | referência de conjuntos, campos e métricas |
+| [`docs/experimentos-instrucionais-parametrizados.md`](experimentos-instrucionais-parametrizados.md) | guia para comparar condições em Cursos separados |
+| [`docs/analytics-instrucionais.md`](analytics-instrucionais.md) | capítulo conceitual e operacional de Analytics |
+| [`docs/dicionario-metricas-datasets.md`](dicionario-metricas-datasets.md) | referência do snapshot corrente de Analytics |
 | [`docs/revisao-de-literatura.md`](revisao-de-literatura.md) | revisão narrativa orientada ao desenho |
 | [`docs/quadro-teorico.md`](quadro-teorico.md) | capítulo acadêmico de proposições e relações |
 | [`docs/fundamentos-pesquisa-e-governanca.md`](fundamentos-pesquisa-e-governanca.md) | capítulo metodológico e de governança |
 | [`docs/contribuicao-originalidade.md`](contribuicao-originalidade.md) | capítulo acadêmico sobre contribuição e limites |
 | [`docs/protocolo-avaliacao-artefato.md`](protocolo-avaliacao-artefato.md) | referência metodológica de avaliação |
 | [`docs/auditoria-academica-dos-resources.md`](auditoria-academica-dos-resources.md) | avaliação acadêmica e técnica dos componentes |
-| [`docs/auditoria-de-conformidade-instrucional.md`](auditoria-de-conformidade-instrucional.md) | capítulo de avaliação e correção instrucional |
+| [`docs/auditoria-de-conformidade-instrucional.md`](auditoria-de-conformidade-instrucional.md) | capítulo de revisão contextual e correção instrucional |
 | [`docs/matriz-rastreabilidade-pedagogica.md`](matriz-rastreabilidade-pedagogica.md) | referência entre fundamentos, decisões e avaliação |
 | [`docs/roteiro-aceitacao-humana-autoria.md`](roteiro-aceitacao-humana-autoria.md) | instrumento de avaliação humana da Autoria |
 | [`docs/origens-do-aralearn.md`](origens-do-aralearn.md) | genealogia biográfica explícita |

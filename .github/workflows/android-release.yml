@@ -252,13 +252,13 @@ jobs:
           @"
           ## AraLearn v${{ steps.identity.outputs.version }}
 
-          Esta versão corrige a materialização por Actions e separa a Fonte do acesso PDF.
+          Esta versão torna a Autoria mais simples para a pessoa e mais rigorosa pedagogicamente.
 
-          - A materialização recebe resumo, avisos e observações opcionais sem perder etapas válidas.
-          - Remover um PDF preserva a Fonte, a citação, as Âncoras e os vínculos pedagógicos.
-          - Novos downloads são recusados depois da remoção e a quota visível é liberada.
-          - Reanexar o arquivo restaura o acesso somente após a operação concluída, inclusive quando o conteúdo é o mesmo.
-          - Actions e MCP mantêm caminhos, hashes, revisões e controles de quota fora da conversa comum.
+          - O planejamento avança uma Parte por vez e mantém uma StudyUnit principal em foco.
+          - AnalysisUnits controlam novidades semanticamente independentes sem comprimir conteúdo necessário.
+          - Parâmetros pedagógicos e editoriais funcionam no Curso, na Microssequência e na StudyUnit.
+          - Fontes, Observações, revisão contextual e Analytics ficam acessíveis junto do conteúdo.
+          - Actions e MCP compartilham tarefas humanas curtas, sem expor a maquinaria interna.
 
           Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.
           "@ | Set-Content -Encoding UTF8 release-notes.md

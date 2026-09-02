@@ -1,0 +1,117 @@
+{
+  "format": "aralearn.contextual-review-repair-eval.v1",
+  "epistemicStatus": "synthetic_review_declarations_for_contract_and_human_review",
+  "scope": {
+    "kind": "didactic_microsequence",
+    "id": "request-routing"
+  },
+  "initialInspection": {
+    "targetStudyUnitId": "unit-04-routing-rule",
+    "position": 4,
+    "totalStudyUnits": 8
+  },
+  "openObservations": [
+    {
+      "annotationId": "91000000-0000-5000-8000-000000000001",
+      "annotationVersion": 1,
+      "targetStudyUnitId": "unit-04-routing-rule",
+      "text": "A regra aparece sem explicar a condição que escolhe o destino."
+    },
+    {
+      "annotationId": "91000000-0000-5000-8000-000000000002",
+      "annotationVersion": 1,
+      "targetStudyUnitId": "unit-07-routing-practice",
+      "text": "A prática ainda pede a regra anterior e contradiz o novo exemplo."
+    }
+  ],
+  "affectedContext": [
+    {
+      "studyUnitId": "unit-02-request-prerequisite",
+      "relation": "prerequisite",
+      "reason": "Estabelece o significado de destino usado pela regra.",
+      "requiresRepair": false
+    },
+    {
+      "studyUnitId": "unit-04-routing-rule",
+      "relation": "observed_target",
+      "reason": "Recebe a definição e a condição corrigidas.",
+      "requiresRepair": true
+    },
+    {
+      "studyUnitId": "unit-05-routing-transition",
+      "relation": "transition",
+      "reason": "Conecta a regra corrigida ao mecanismo seguinte.",
+      "requiresRepair": true
+    },
+    {
+      "studyUnitId": "unit-06-routing-example",
+      "relation": "example",
+      "reason": "Precisa demonstrar a condição corrigida.",
+      "requiresRepair": true
+    },
+    {
+      "studyUnitId": "unit-07-routing-practice",
+      "relation": "practice",
+      "reason": "Precisa avaliar a mesma operação sob a condição corrigida.",
+      "requiresRepair": true
+    }
+  ],
+  "representationAudit": {
+    "studyUnitId": "unit-05-routing-transition",
+    "componentRef": "aralearn.resource.paragraph@1.0.0",
+    "structuralValid": true,
+    "overallFit": "substitute",
+    "reason": "O parágrafo condensa uma sequência de decisões que precisa permanecer ordenada.",
+    "expectedConsequence": "record_finding_and_propose_functional_replacement",
+    "replacementComponentRef": "aralearn.resource.flow@1.0.0",
+    "diversityQuota": null
+  },
+  "sources": [
+    {
+      "citationText": "Programa curricular de Redes",
+      "role": "scope_and_calibration",
+      "anchor": "Unidade curricular Redes de Computadores, pp. 18–19",
+      "factualSupport": false,
+      "contestable": true
+    },
+    {
+      "citationText": "Manual técnico do proxy",
+      "role": "factual_support",
+      "anchor": "Roteamento por condição, seção 4.2",
+      "factualSupport": true,
+      "contestable": true
+    }
+  ],
+  "parameterChange": {
+    "parameterId": "minimum_distinct_practice_opportunities_per_evidence_requirement",
+    "scope": {
+      "kind": "didactic_microsequence",
+      "ref": "request-routing"
+    },
+    "previousValue": 2,
+    "effectiveValue": 3,
+    "origin": "author",
+    "appliesTo": "next_generation_or_revision",
+    "expectedRecordedPracticeOpportunities": 3
+  },
+  "flow": [
+    "inspect",
+    "observe",
+    "request_review",
+    "read_open_observations",
+    "expand_affected_context",
+    "record_findings",
+    "propose_repairs",
+    "obtain_one_decision",
+    "apply_confirmed_repairs",
+    "reinspect_affected_units",
+    "verify_findings"
+  ],
+  "coordination": {
+    "proposal": "Propus reparos na regra, transição, exemplo e prática.",
+    "actionLabel": "Abrir as Unidades no AraLearn",
+    "nextDecision": "Posso aplicar este conjunto coerente?",
+    "verificationDecision": "A revisão resolveu as duas Observações abertas?"
+  },
+  "persistentBatchEntity": null
+}

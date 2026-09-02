@@ -131,7 +131,7 @@ function inspectionItem(studyUnit, version, updatedAt) {
       }
     },
     authoringPart: null,
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-a`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`
   };
 }
 
@@ -246,7 +246,7 @@ test("save relê r+1 uma vez e reconcilia a Unidade canônica no IndexedDB", asy
     async loadCourseSources(courseId) {
       if (!online) throw networkFailure();
       return {
-        contract: "aralearn.course-sources.v1",
+        contract: "aralearn.course-sources.v2",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -377,7 +377,7 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
     },
     async loadCourseSources(courseId) {
       return {
-        contract: "aralearn.course-sources.v1",
+        contract: "aralearn.course-sources.v2",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -511,7 +511,7 @@ test("revisão canônica posterior elimina o snapshot focal superseded", async (
     async getCourse() { throw new Error("não usado"); },
     async loadCourseSources(courseId) {
       return {
-        contract: "aralearn.course-sources.v1",
+        contract: "aralearn.course-sources.v2",
         courseId,
         courseRevision: 4,
         mode: "target",

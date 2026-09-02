@@ -10,6 +10,7 @@ $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) "aralearn-supabase-$PID"
 $edgeProcesses = [Collections.Generic.List[Diagnostics.Process]]::new()
 $environmentNames = @(
   'ARALEARN_SUPABASE_URL',
+  'ARALEARN_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_URL',
   'SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_SERVICE_ROLE_KEY'
@@ -146,6 +147,7 @@ try {
   }
 
   $env:ARALEARN_SUPABASE_URL = $apiUrl
+  $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = $publishableKey
   $env:SUPABASE_URL = $apiUrl
   $env:SUPABASE_PUBLISHABLE_KEY = $publishableKey
   $env:SUPABASE_SERVICE_ROLE_KEY = $serviceRoleKey
@@ -176,7 +178,7 @@ try {
   $courseApiHandle = Start-LocalEdgeFunction -Name 'aralearn-course-api'
   try {
     Wait-LocalEdgeFunction `
-      -Url "$apiUrl/functions/v1/aralearn-course-api/app/listarCursos" `
+      -Url "$apiUrl/functions/v1/aralearn-course-api/v1/courses" `
       -Process $courseApiHandle.Process
     Invoke-CheckedCommand 'Smoke da API, do PostgREST e do RLS de Curso' 'npm.cmd' @(
       'run',
@@ -190,6 +192,11 @@ try {
   finally {
     Stop-LocalEdgeFunction -Process $courseApiHandle.Process
   }
+
+  Invoke-CheckedCommand 'Ciclo de vida de PDFs pela Storage API' 'npm.cmd' @(
+    'run',
+    'test:storage:lifecycle:local'
+  )
 
   Invoke-CheckedCommand 'Smoke dos e-mails de Auth' 'node' @('.\supabase\tests\auth-email-smoke.mjs')
 

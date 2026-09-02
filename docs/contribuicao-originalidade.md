@@ -85,7 +85,7 @@ O AraLearn investiga uma configuração integrada composta por:
 - estudo com cópia local e sincronização assíncrona;
 - autoria do Curso e correção focal em escalas distintas;
 - propriedade do Curso, acesso direto para Estudo, proveniência e correções
-  reversíveis;
+  revisáveis em qualquer ponto;
 - política de dados orientada pela finalidade, sem telemetria comportamental
   automática.
 
@@ -259,12 +259,14 @@ escala, risco e contexto diferentes.
 
 **Alternativas e requisitos.** Usar o mesmo fluxo para tudo, separar completamente
 as ferramentas ou coordenar autoria estrutural e correção focal. O escopo
-precisa ser visível, validável e reversível.
+precisa ser visível, validável e revisável.
 
-**Decisão.** A autoria estrutural planeja e compõe por meio de catálogo e
-contratos. O ciclo de auditoria mantém a Unidade focal e seu contexto visíveis,
-limita a correção ao conteúdo e às atribuições de Fontes autorizadas e exige
-verificação posterior.
+**Decisão.** A autoria estrutural avança uma Parte por vez por contratos de
+tarefas humanas. Observações ficam ancoradas no Curso, na Microssequência ou na
+StudyUnit e podem ser registradas em vários alvos na mesma ação. Ao preparar uma
+revisão, o contexto inclui também as Units afetadas por progressão,
+pré-requisitos, exemplos, prática e transições; a correção atualiza diretamente
+o Curso mutável e a rematerialização volta a comprovar seus parâmetros.
 
 **Fundamentação.** A interação entre pessoas e IA requer limites
 compreensíveis, correção e controle
@@ -274,17 +276,19 @@ excessiva e acrescentaram custo; o resultado não demonstra controle efetivo na
 autoria educacional
 ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 
-**Operacionalização.** Contexto derivado pelo servidor, rodada imutável, achado,
-proposta versionada, aplicação confirmada, verificação e reversão são registros
-distintos.
+**Operacionalização.** O servidor deriva o contexto focal, mantém as Observações
+abertas consultáveis e aplica correções com controle de concorrência. Voltar a
+qualquer ponto significa abrir Units antigas, anotar e reparar o conjunto
+coerente afetado; não requer rodadas imutáveis nem um histórico paralelo de
+mutações.
 
 **Consequências.** A contribuição potencial é um modelo de coordenação entre
 autoria ampla e correção localizada com assistência de modelos de linguagem.
 
 **Limites e evidência.** Devem ser medidos erro de escopo, qualidade da mudança,
-retrabalho, compreensão, controle percebido, verificação e capacidade de
-reverter. Diretrizes de interação não garantem que os controles sejam
-compreendidos.
+retrabalho, compreensão, controle percebido, verificação e capacidade de voltar
+a pontos anteriores para revisá-los. Diretrizes de interação não garantem que
+os controles sejam compreendidos.
 
 ### C6: continuidade local e sincronização não bloqueante
 
@@ -381,7 +385,7 @@ configuração inexista em outros produtos ou estudos.
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
 | bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
 | aplicações com cópia local | réplica, fila e sincronização | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
-| assistência por modelo de linguagem | geração e transformação de conteúdo | escopo explícito, validação e reversão reduzem mudanças indevidas sem criar controle apenas simbólico? |
+| assistência por modelo de linguagem | geração e transformação de conteúdo | escopo explícito, validação e revisão contextual reduzem mudanças indevidas sem criar controle apenas simbólico? |
 | análise de dados educacionais | descrição, previsão e intervenção | que perguntas úteis podem ser respondidas com dados mínimos, definições explícitas e participação adequada? |
 
 Uma revisão comparativa deve definir corpus, critérios de inclusão, data de
@@ -399,14 +403,14 @@ como:
 - descoberta de catálogo antes da recuperação do contrato;
 - validação de esquemas de dados e escopo de edição;
 - operação sem conexão nos cenários testados;
-- reversão segundo o fluxo implementado;
+- retorno a qualquer ponto do Curso e revisão segundo o fluxo implementado;
 - ausência de recorte ou sobreposição nos casos geométricos avaliados.
 
 ### 6.2 Alegações que exigem avaliação de uso
 
 Não podem ser inferidas apenas do código:
 
-- pessoas leigas compreendem catálogo, componentes, propriedade, acesso e reversão;
+- pessoas leigas compreendem catálogo, componentes, propriedade, acesso e revisão;
 - autoria assistida reduz retrabalho;
 - retomada local reduz atrito;
 - propriedade e acesso direto tornam a responsabilidade compreensível;

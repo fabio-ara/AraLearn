@@ -8,7 +8,7 @@ tem responsabilidade e fronteira próprias:
 
 | Parte da plataforma | Problema que resolve no AraLearn | Autoridade |
 | --- | --- | --- |
-| [PostgreSQL](https://supabase.com/docs/guides/database/overview) | relações, transações, revisões, recibos e projeções do Curso | dados relacionais correntes |
+| [PostgreSQL](https://supabase.com/docs/guides/database/overview) | relações, transações, estado corrente e repetição segura de escritas | dados relacionais correntes |
 | [Auth](https://supabase.com/docs/guides/auth/architecture) | cadastro, sessão, recuperação e identidade da aplicação | conta e sessão |
 | [Storage](https://supabase.com/docs/guides/storage) | objetos binários privados, como avatar e PDF | bytes; vínculo e acesso continuam no banco |
 | [Edge Functions](https://supabase.com/docs/guides/functions) | fronteiras HTTP da aplicação, do MCP e de Actions | transporte e orquestração; regras finais continuam nos contratos de domínio e SQL |
@@ -19,21 +19,16 @@ visibilidade e retorno da conexão.
 
 ## PostgreSQL, esquemas e autorização
 
-O banco conserva o Curso vivo, sua hierarquia, planejamento, materializações,
-parâmetros, política de componentes, Fontes, Âncoras, vínculos de PDF,
-Observações, Auditoria, Variantes, acesso, estado pessoal e fatos projetados
-para Pesquisa. As migrations reproduzem o esquema, e o manifesto corrente
-termina em `20260831183106_fix_analysis_unit_study_unit_decomposition.sql`.
+O banco conserva o Curso vivo, sua hierarquia, planejamento, Partes,
+AnalysisUnits, requisitos de evidência, parâmetros, direção editorial, Fontes,
+Âncoras, vínculos de PDF, Observações, acesso e estado pessoal. Cada StudyUnit
+guarda o recorte de desenho que efetivamente recebeu. Analytics deriva números
+dessas autoridades correntes; não mantém uma história da execução.
 
-A inspeção contínua de Autoria agrega na página das Unidades os marcadores de
-Observações, a materialização de origem e a comparação entre desenho usado e
-vigente. A verificação de Auditoria coordena, na mesma transação, o estado das
-Observações vinculadas. Esses comportamentos reutilizam as autoridades
-existentes e não criam uma fila ou entidade de revisão em lote.
-Durante o corte único da sequência, a projeção v1 permanece estável para a
-release publicada e a inspeção contínua usa a projeção v2 separada. A API do
-aplicativo negocia v2 pelo media type da inspeção; clientes anteriores sem essa
-declaração continuam na rota e na projeção v1.
+Fontes, Âncoras e atribuições também possuem uma única linha corrente por
+objeto. O número público chamado de revisão funciona como versão para
+concorrência e deep links; não implica uma coleção consultável de versões
+anteriores.
 
 Uma pessoa autenticada ainda precisa estar autorizada para a linha e para a
 operação pedida. Nas tabelas expostas pela API de dados, privilégios explícitos
@@ -48,11 +43,11 @@ agir com os direitos de seu proprietário (`security definer`), ela fixa
 `search_path`, valida a identidade recebida e revoga execução dos papéis que
 não pertencem ao contrato. Escritas relacionadas são confirmadas na mesma
 [transação do PostgreSQL](https://www.postgresql.org/docs/current/tutorial-transactions.html),
-para que conteúdo, revisão, evento e recibo avancem ou sejam revertidos juntos.
+para que conteúdo, revisão e recibo temporário avancem ou sejam revertidos juntos.
 
 Revisão esperada e identificador de pedido resolvem falhas distintas. A revisão
-impede sobrescrita de trabalho concorrente; o identificador permite repetir a
-mesma intenção depois de uma resposta perdida sem duplicar o efeito.
+impede sobrescrita de trabalho concorrente; um recibo temporário permite repetir
+a mesma intenção depois de uma resposta perdida sem duplicar o efeito.
 
 ## Auth: conta da aplicação e OAuth do MCP
 
@@ -107,34 +102,39 @@ somente na memória da sessão, não no Supabase nem no artefato público.
 ## Storage: bytes privados e vínculo relacional
 
 Os buckets `person-avatars` e `course-source-pdfs` são privados. O Storage
-guarda bytes; o PostgreSQL conserva autoria, caminho autorizado, hash, tamanho,
-tipo, revisão e vínculo com a Fonte. Conhecer um caminho não concede leitura.
+guarda bytes; o PostgreSQL conserva caminho, resumo criptográfico, tamanho,
+tipo e vínculo corrente com a Fonte. Conhecer um caminho não concede leitura.
 [Políticas do Storage](https://supabase.com/docs/guides/storage/security/access-control)
 protegem `storage.objects` e complementam as verificações relacionais.
 
 Avatar usa a pasta da própria conta e admite JPEG, PNG ou WebP até 512 KiB. O
 PDF segue outro contrato:
 
-1. o navegador confere o cabeçalho e calcula SHA-256;
-2. a API verifica propriedade, revisão, duplicidade e cota e cria uma intenção
-   privada válida por dez minutos;
-3. o navegador faz `POST` autenticado no caminho exato do bucket, sem URL
-   assinada de envio;
-4. política e gatilho exigem sessão viva e consomem a intenção na inserção;
-5. a API relê o objeto com credencial de servidor, limita os bytes, confere
-   tamanho, `%PDF-` e SHA-256 e só então cria o vínculo relacional.
+1. a borda de Autoria recebe os bytes com limite explícito;
+2. o serviço calcula SHA-256 e pede ao banco um preparo curto, que verifica
+   propriedade, revisão, duplicidade e cota;
+3. o serviço envia o objeto ao caminho exato pela Storage API, sem sobrescrever
+   conteúdo existente;
+4. o serviço relê o objeto e confere tamanho, cabeçalho e SHA-256;
+5. a transação relacional salva ou atualiza a Fonte e ativa o vínculo do PDF;
+6. o preparo é consumido ou cancelado; preparos vencidos saem pela retenção.
 
-Download é uma operação separada. Depois de verificar o vínculo e a propriedade
-do Curso, a API emite URL assinada de leitura por sessenta segundos. Cada PDF
-aceita até 20 MiB; o conteúdo único vinculado a um Curso aceita até 64 MiB.
+Download é uma operação separada. Depois de verificar o vínculo ativo e a
+propriedade do Curso, a API emite URL assinada de curta duração. Cada PDF aceita
+até 20 MiB; o conteúdo único vinculado a um Curso aceita até 64 MiB.
+
+Remover um PDF primeiro desativa o vínculo e cria uma intenção de exclusão. O
+serviço reivindica essa intenção, remove o objeto pela Storage API e confirma a
+conclusão. Se outro vínculo ativo usar os mesmos bytes, a remoção física não é
+autorizada. Reanexar o conteúdo reativa o vínculo e volta a verificar os bytes.
 
 ## Edge Functions e autenticação no handler
 
 | Função | Entrada | Identidade aceita |
 | --- | --- | --- |
 | `aralearn-course-api` | aplicação web e Android | sessão AraLearn validada pelo handler |
-| `aralearn-authoring-mcp` | protocolo MCP, seis ferramentas canônicas e `add_part` dedicado | JWT OAuth minimizado do MCP |
-| `aralearn-authoring-action` | seis operações HTTP importadas por OpenAPI | access token opaco do OAuth de Actions |
+| `aralearn-authoring-mcp` | dezesseis tarefas humanas pelo MCP | JWT OAuth minimizado do MCP |
+| `aralearn-authoring-action` | as mesmas dezesseis tarefas projetadas em OpenAPI | access token opaco do OAuth de Actions |
 
 As três funções usam `verify_jwt = false` na configuração. Isso não as torna
 anônimas. Cada handler precisa receber formatos que o verificador genérico da
@@ -168,10 +168,21 @@ MCP, OAuth e revisão do esquema.
 para a autoria das Edge Functions. O teste local demonstra o estado recriado; não comprova que o
 projeto hospedado recebeu a mesma revisão.
 
+As provas focais de Storage e recuperação usam somente ambientes locais:
+
+```powershell
+npm run test:storage:lifecycle:local
+npm run test:backup-restore:local
+```
+
+A primeira percorre PDF ativo, removido, reativado e órfão, sempre pela Storage
+API. A segunda restaura um dump lógico numa instância descartável, aplica a
+migration corrente e compara o estado e a complexidade antes e depois.
+
 ## Retenção e Manutenção
 
-A rotina `current-data-lifecycle-v1` remove, por classe e em lotes, Observações
-retiradas depois do prazo lógico, recibos expirados, intenções de PDF vencidas e
+A rotina de retenção remove, por classe e em lotes, Observações retiradas depois
+do prazo lógico, recibos expirados, intenções de PDF vencidas e
 janelas antigas de limitação de acesso. O [pg_cron](https://supabase.com/docs/guides/database/extensions/pg_cron)
 a executa diariamente às 03:17, no fuso do banco, com limite de 512 itens por
 classe. Leituras e escritas também podem limpar dados vencidos nos caminhos
@@ -180,9 +191,25 @@ confirmação explícita.
 
 Manutenção apresenta o estado do agendamento e um inventário classificado de
 objetos. A remoção de órfão revalida classe, caminho e estado imediatamente
-antes de excluir. Objeto ausente é informado; metadados não são apagados para
-ocultar a divergência. Objeto desconhecido não é removido por semelhança de
-prefixo.
+antes de excluir pela Storage API. O schema `storage` é somente consultado pelo
+banco; código do AraLearn não insere nem apaga suas linhas diretamente.
+
+## Backup e restauração
+
+Backup lógico do PostgreSQL conserva relações e metadados do Storage, mas não
+os bytes dos objetos. Uma recuperação completa precisa de dois conjuntos
+coerentes: dump do banco e cópia dos objetos privados. Essa separação é
+documentada pelo [Supabase](https://supabase.com/docs/guides/platform/backups).
+
+O ensaio local cria duas instâncias descartáveis. A primeira recebe uma fixture
+com Curso, plano, Parte, desenho, StudyUnit, Fonte, Âncora, PDF, Observações e
+operações ainda abertas. Depois do dump, a segunda restaura o banco, aplica a
+migration de corte e confere o estado útil. Nenhuma delas modifica o projeto
+hospedado ou a stack usada como origem.
+
+Os objetos reais são exercitados separadamente pela Storage API. O relatório de
+restauração marca explicitamente que metadados restaurados não provam a presença
+dos bytes.
 
 ## Promoção e prova hospedada
 

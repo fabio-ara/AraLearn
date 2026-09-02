@@ -20,9 +20,9 @@ para Estudo assim que contém Unidades válidas.
 continuar ou retomar o percurso, marcar Unidades para rever e registrar
 Observações próprias.
 
-**Autoria** apresenta somente Cursos próprios. A Visão geral leva a
-Planejamento, Conteúdo, Parâmetros e componentes, Fontes, Revisão, Variantes e
-pesquisa e Pessoas e acesso.
+**Autoria** apresenta somente Cursos próprios e abre diretamente em Conteúdo.
+Planejamento fica sempre à mão; Parâmetros, Fontes, Revisão, Analytics e Pessoas
+e acesso aparecem no menu de tarefas.
 
 Uma **réplica local** é a cópia dos dados necessários à continuidade no
 dispositivo. Ela permite retomar conteúdo carregado, enquanto o servidor
@@ -143,12 +143,9 @@ Módulo, Lição, Microssequência ou a partir de uma Unidade.
 ## Criar e planejar um Curso
 
 Em Autoria, use **Criar Curso**, informe título e objetivo e salve. O Curso nasce
-privado, com plano vazio e sugestão inicial de 7 a 12 Partes.
-
-Ao abrir o Curso, a **Visão geral** mostra estado, próxima ação e as sete tarefas
-principais em um único nível de escolha. A barra superior conserva o contexto e
-um menu permite trocar de tarefa. A superfície mantém uma coluna útil de até
-430 px também no computador.
+privado e abre em Conteúdo. A barra superior conserva o contexto; Conteúdo e
+Planejamento usam atalhos permanentes, e o menu reúne as tarefas ocasionais. A
+superfície mantém uma coluna útil de até 430 px também no computador.
 
 Em **Planejamento**, edite título, objetivo, público, escopo e faixa de Partes.
 Acrescente, reordene ou retire resultados de aprendizagem pretendidos, unidades
@@ -156,70 +153,46 @@ de análise e requisitos de evidência. Em **Partes**, organize a ordem de
 produção e os vínculos com Microssequências. Essas ações preservam a hierarquia
 curricular e as Unidades já existentes.
 
-A tela apresenta primeiro a próxima ação e o estado de cada Parte. Use o botão
-de organização da Parte para abrir edição, reordenação, divisão, união ou
-exclusão. Contexto e referências do plano permanecem recolhidos até serem
-necessários.
-
-Abra a Parte para consultar seu histórico completo de materializações. Cada
-execução informa estado, canal, início, término e resumo. No detalhe, as etapas,
-os fatos e os objetos produzidos aparecem em linguagem de produto. O link do
-objeto abre Conteúdo no alvo exato; voltar restaura a mesma execução, inclusive
-depois de recarregar a página.
+A tela focaliza uma Parte por vez. Use a navegação compacta para abrir qualquer
+Parte anterior e o botão de organização para editar, reordenar, dividir, unir
+ou retirar. A Parte registra o que deve ser produzido; o conteúdo confirmado
+fica em Conteúdo, não num histórico de execução.
 
 ## Configurar o desenho do Curso
 
-Em **Parâmetros**, percorra Curso, Módulo, Lição e Microssequência. Cada decisão
-mostra valor, origem e escopo. Use **Remover definição local** para voltar à
+Em **Parâmetros**, consulte as definições do Curso ou da Microssequência focal.
+Cada decisão mostra o valor efetivo e o escopo que o definiu. Uma StudyUnit usa
+a configuração de sua Microssequência. Remover uma definição local restaura a
 herança.
 
-As orientações autorais conservam o texto original e suas revisões. Uma
-interpretação estruturada aparece em bloco separado. A política de componentes
-permite usar a biblioteca completa ou restringi-la, além de registrar exclusões
-e preferências.
-
-Numa Microssequência, **Cobertura planejada desta Microssequência** atribui os
-itens de análise e evidência pertinentes. O resumo **Planejado × aplicado**
-confronta essa seleção com fatos registrados na produção. Ele descreve a
-correspondência entre plano e aplicação, sem atribuir nota ao Curso ou ao
-estudante.
+Os quatro parâmetros pedagógicos controlam distribuição de novidade, formas de
+explicação, oportunidades de prática e dimensões de variação. Direção editorial
+fica separada e nunca elimina conteúdo necessário. A política de componentes
+pode restringir ou preferir pacotes, mas a escolha final continua ligada à
+função instrucional.
 
 ## Manter Fontes, PDFs e proveniência
 
-Em **Fontes**, crie registros, acrescente revisões, aposente fontes e consulte o
-histórico. A Fonte é a referência; URL e PDF são formas opcionais de acesso. Ela
-pode ter uma delas, ambas ou nenhuma sem perder identidade, citação, Âncoras ou
-vínculos pedagógicos. Uma revisão pode ter Âncoras por página, tempo, fragmento
-de endereço ou trecho textual. O trecho de verificação não aparece no Estudo.
-Como faz parte do detalhe autoral da Fonte, ele também é enviado ao cliente
-conectado por MCP ou Actions quando esse detalhe é solicitado; evite dados
-pessoais desnecessários.
+Em **Fontes**, crie, atualize, conteste ou retire Fontes e mantenha Âncoras. A
+Fonte é a referência corrente; URL e PDF são formas opcionais de acesso. Uma
+Âncora pode localizar página, tempo, fragmento de endereço ou trecho. O papel
+explica por que a Fonte foi ligada ao objeto: apoio, contexto, contraste,
+exemplo ou outra relação declarada.
 
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
 interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora
-ativa como alvo. A lista no mesmo detalhe reúne essas manifestações, permite
-carregar outras páginas e exporta o recorte filtrado, até 8 MiB por arquivo.
-Uma reformulação respondida informa quais revisões de Fonte e Âncora foram
-consideradas.
+ativa como alvo. A revisão posterior precisa considerar esse contexto antes de
+alterar as StudyUnits relacionadas.
 
-Uma revisão ativa aceita até oito PDFs de 20 MiB cada, observado o total de
-64 MiB de conteúdo único no Curso. Use **Enviar PDF** no detalhe da revisão e
-**Baixar PDF** para consultar o arquivo autorizado. **Remover PDF** revoga esse
-acesso, mas preserva a Fonte, a citação, as Âncoras e os vínculos pedagógicos; a
-confirmação mostra esse efeito antes da gravação. Uma nova solicitação de
-download deixa de ser autorizada. Use **Enviar PDF** novamente para reanexar o
-mesmo arquivo ou outra representação adequada. A cota é liberada quando os bytes
-deixam de possuir vínculo ativo no Curso.
+Para incorporar um PDF, envie um único arquivo na conversa que executará
+`incorporar_pdf_como_fonte`. O serviço valida os bytes e grava no Storage
+privado. O download autorizado usa um endereço temporário. Remover o PDF revoga
+novas leituras, preservando Fonte, Âncoras e vínculos; o mesmo conteúdo pode ser
+reativado por uma nova incorporação confirmada.
 
-O recebimento do PDF usa o contrato temporário de leitura; o envio usa o contrato
-autenticado e uma sessão ativa. A seleção depende da operação, não da
-identificação do aparelho.
-
-Toda nova atribuição exige uma Âncora ativa da revisão exata. Use **Definir
-fontes** em um item do Planejamento ou numa Unidade de Conteúdo. Salvar substitui
-o conjunto completo daquele alvo. **Exportar proveniência** gera um arquivo JSON com o
-alvo, as relações, as revisões, as Âncoras e os metadados dos PDFs depois que o
-conjunto estiver salvo.
+Use **Definir fontes** numa StudyUnit para revisar o conjunto corrente. Salvar
+substitui as relações daquele alvo. Identidades técnicas, caminhos de Storage e
+endereços assinados não aparecem no uso normal.
 
 Uma referência anterior pendente de comprovação fica oculta em Estudo. Para
 resolvê-la, preserve a identidade apresentada e acrescente metadados e Âncoras
@@ -291,20 +264,18 @@ uso normal.
 A interface normal não abre um compositor e não exige copiar e colar um pedido.
 O cliente conectado obtém o contexto necessário pelas operações autorizadas,
 respeita a revisão corrente e pode devolver um endereço direto para o alvo. Uma
-conversa ou proposta sem aprovação não altera o Curso. Quando o cliente executa
-uma materialização aprovada, a execução aparece no histórico da Parte com seu
-canal. Abra-a para acompanhar etapas, resultados e objetos produzidos sem perder
-falhas ou execuções anteriores.
+conversa ou proposta sem aprovação não altera o Curso. Quando o cliente produz
+uma Parte aprovada, as StudyUnits aparecem em Conteúdo e a Parte conserva sua
+organização atual, sem expor a execução técnica.
 
 Curso, Módulo, Lição, Tópico, Microssequência, Unidade, Parâmetro, Fonte e
 Âncora podem ser alvos de leitura ou alteração conforme a operação disponível.
 Materialização continua restrita à Parte operacional.
 
-Para uma Parte sem Microssequência vinculada, peça ao cliente conectado que
-prepare a estrutura. A operação cria apenas os Módulos, Lições e
-Microssequências necessários e os vincula ao planejamento. A materialização da
-Parte só fica disponível depois desse vínculo. **Ver etapas** apresenta o
-andamento e a próxima ação confirmada pelo servidor.
+Ao aprovar uma Parte, inclua as Microssequências, seus Módulos e Lições, as
+AnalysisUnits e os requisitos de evidência necessários. O cliente salva essa
+estrutura antes de preparar as StudyUnits. Conteúdo permite conferir o resultado
+sem abrir uma tela de etapas.
 
 Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
@@ -319,9 +290,8 @@ ChatGPT não descarta uma contribuição ainda não enviada.
 
 Validação local, recomposição do painel e resposta de rede ambígua também
 conservam o formulário aberto e devolvem o foco ao campo pertinente. Esse
-comportamento abrange Parâmetros, Fontes e Âncoras, Variantes, Observações na
-caixa autoral e em Conteúdo, além dos editores de rodada, verificação e correção
-da Auditoria. **Descartar** ou **Cancelar** remove o rascunho de propósito.
+comportamento abrange Parâmetros, Fontes e Âncoras, Observações na caixa autoral
+e em Conteúdo. **Descartar** ou **Cancelar** remove o rascunho de propósito.
 
 Se a rede cair depois do envio e não for possível saber se o servidor confirmou
 a mudança, a mensagem oferece a repetição natural pelo mesmo formulário. Sem
@@ -347,7 +317,7 @@ Microssequência.
 
 A sequência mantém uma janela limitada de Unidades e conserva a posição no
 dispositivo. Ao mudar de revisão, procura a mesma identidade de Unidade.
-**Editar**, **Definir fontes**, **Anotar** e **Auditar** trabalham sobre o alvo
+**Editar**, **Fontes**, **Observações** e **Parâmetros** trabalham sobre o alvo
 exato. No Curso, Módulo, Lição e Microssequência, Editar abre os metadados e a
 composição autorizados para aquele nível e exige salvamento explícito.
 
@@ -362,47 +332,31 @@ ChatGPT conectado pode ler as Observações pendentes, discutir uma proposta e,
 depois da aprovação explícita, executar a alteração pertinente ou registrar a
 decisão de manter o estado. O resultado atualizado permanece no mesmo Curso.
 
-Na aba **Achados**, escolha uma Unidade e carregue seu contexto. Uma rodada pode
-registrar verificações estruturais, pedagógicas, factuais e editoriais. Se um
-achado justificar mudança, examine a proposta antes de aplicar. A correção é
-focal, preserva o estado anterior e precisa de outra rodada para ser verificada.
-Uma reversão restaura o estado anterior somente enquanto a Unidade ainda
-corresponde à aplicação.
+Para pedir uma correção ampla, use o GPT conectado. Ele consulta as Observações
+abertas, prepara uma revisão com progressão, pré-requisitos, transições,
+exemplos e prática afetados e apresenta uma proposta. Depois da decisão,
+`aplicar_correcoes` grava o conjunto aprovado. Volte ao deep link e reinspecione
+as Units; aplicação não demonstra que a questão foi resolvida.
 
-Aplicar ou reverter correção abre uma confirmação dentro do AraLearn. O mesmo
-padrão protege retirada de itens ou Partes, união de Partes, aposentadoria de
-Fonte ou Âncora, desvinculação de Variante e mudanças de acesso. A confirmação
-mantém o foco contido, fecha por cancelar, clique externo ou Esc quando a ação
-permite, nomeia o objeto e usa o verbo próprio da consequência, como
-**Retirar**, **Aposentar**, **Desvincular**, **Aplicar** ou **Reverter**. Ao sair,
-ela devolve o foco ao acionador. Confirmar no ChatGPT não provoca uma segunda
-confirmação no AraLearn; a interface apenas relê o resultado persistido.
+Revisão autoral exige conexão. A cópia e a fila de Anotações próprias pertencem
+ao percurso de Estudo; a consulta do Curso e as correções usam o estado remoto
+corrente.
 
-Revisão exige conexão na Autoria. A cópia e a fila de Anotações
-próprias pertencem ao percurso de Estudo; a caixa autoral de Observações e as
-operações de auditoria não possuem fila de saída no IndexedDB.
+## Consultar Analytics
 
-## Criar e comparar Variantes
+**Analytics** caracteriza o estado atual do Curso em duas áreas: **Desenho** e
+**Autoria**. Selecione Curso, Parte, Microssequência ou StudyUnit; leia os poucos
+números principais e expanda apenas a tabela necessária.
 
-Em **Variantes**, crie de dois a oito Cursos derivados do mesmo planejamento.
-Informe rótulo, título, objetivo e ao menos uma diferença intencional de
-parâmetro ou política de componentes para cada variante.
+Desenho mostra parâmetros aplicados, AnalysisUnits, distribuição de novidades,
+formas explicativas, componentes, prática e Fontes. Autoria mostra parâmetros
+definidos explicitamente e a origem observável da criação e da última revisão
+das StudyUnits. Uma origem incerta permanece ausente, em vez de virar uma
+inferência.
 
-A comparação mostra o ponto comum, as diferenças declaradas e observadas,
-Fontes, PDFs, Partes, Unidades e componentes usados. Cada variante é um Curso
-independente. **Desvincular** retira a relação comparativa sem excluir o Curso.
-
-## Consultar Pesquisa
-
-**Pesquisa** apresenta fatos da atividade, produção por Partes, desenho,
-Fontes, Observações, auditorias e Variantes. Use os filtros de conjunto, canal,
-origem, estado e período. O gráfico e a tabela representam o mesmo recorte; os
-links levam ao registro correspondente.
-
-As exportações CSV e JSON conservam os códigos estáveis para análise, enquanto
-a tela apresenta rótulos em português. Definições, dados ausentes e limitações
-acompanham o resultado. A Pesquisa descreve o processo autoral; qualquer medida
-de aprendizagem ou efeito exige outro desenho de pesquisa.
+**Exportar Analytics** baixa um JSON com o mesmo snapshot mostrado na tela. Ele
+não é uma cópia completa do Curso nem uma medida de aprendizagem. Veja
+[Analytics da Autoria](analytics-instrucionais.md).
 
 ## Conceder e revogar acesso
 
@@ -428,17 +382,17 @@ cliente localizar e ler o recorte necessário, revise a proposta, autorize a
 alteração e confira o resultado na Autoria e em Estudo.
 
 Ao retornar do cliente conversacional, o AraLearn relê o cabeçalho canônico do
-Curso antes de atualizar Planejamento, Conteúdo, Revisão, Fontes, Variantes ou
-Pesquisa. A cópia de um pedido não escreve na API, no PostgreSQL, no Storage nem
-no IndexedDB.
+Curso antes de atualizar Planejamento, Conteúdo, Revisão, Fontes ou Analytics. A
+cópia de um pedido não escreve na API, no PostgreSQL, no Storage nem no
+IndexedDB.
 
 O cliente usa a revisão do Curso e a versão do objeto lido para proteger a
 escrita. A pessoa escolhe a finalidade; o cliente seleciona a ferramenta e a
 operação adequadas. Veja [Autoria por MCP](autoria-mcp.md).
 
 Um GPT personalizado com **Actions** usa o contrato OpenAPI e um OAuth próprios,
-distintos do MCP. Os dois canais chegam às mesmas operações canônicas e aparecem
-no mesmo histórico visual de materializações, identificados por sua origem.
+distintos do MCP. Os dois canais chegam às mesmas tarefas humanas e alteram o
+mesmo Curso vivo.
 
 ## Trabalhar sem conexão
 
@@ -475,8 +429,8 @@ igual normaliza a cópia; uma revisão superior a descarta como superada. Sair d
 conta, limpar o Curso ou perder acesso purga esse estado.
 
 Parâmetros, catálogo privado de Fontes, metadados e bytes de PDFs, caixa autoral
-de Observações, auditoria, correções, Variantes, Pesquisa, gestão de acesso e
-mutações autorais dependem do servidor. O Storage não é reproduzido no
+de Observações, revisão, correções, Analytics, gestão de acesso e mutações
+autorais dependem do servidor. O Storage não é reproduzido no
 IndexedDB. A tela inicial pode mostrar um Curso conhecido, mas a própria prévia
 distingue esse caso de uma composição já disponível no dispositivo. Perder a
 autoridade sobre o Curso elimina a cópia e o ponto de retomada; a tela informa a

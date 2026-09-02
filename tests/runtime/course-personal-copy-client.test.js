@@ -489,7 +489,10 @@ test("cliente Edge envia apenas o comando focal e normaliza a confirmação da c
   });
 
   assert.match(request.url,
-    /\/functions\/v1\/aralearn-course-api\/app\/criarCopiaPessoalDoCurso$/u);
+    new RegExp(
+      `/functions/v1/aralearn-course-api/v1/courses/${SOURCE_ID}/personal-copy/composition$`,
+      "u"
+    ));
   assert.deepEqual(Object.keys(request.body).sort(), [
     "applicationOrigin", "didacticMicrosequenceId", "expectedSourceCourseRevision",
     "expectedStudyUnitVersion", "requestId", "sourceCourseId", "studyUnit"

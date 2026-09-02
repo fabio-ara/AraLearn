@@ -143,7 +143,7 @@ test("inspeção em lote e contrato exato mantêm os limites progressivos", () =
   ]), /precisa ser 1/u);
 });
 
-test("validação e auditoria separam slots e entregam a prévia ao renderer canônico", () => {
+test("validação separa slots e entrega a prévia ao renderer canônico", () => {
   const studyUnit = auditedPracticeStudyUnit();
   const validation = RESOURCE_CATALOG.validateStudyUnit(studyUnit);
   assert.equal(validation.valid, true, validation.errors.join(" "));
@@ -151,47 +151,9 @@ test("validação e auditoria separam slots e entregam a prévia ao renderer can
     "content", "response", "feedback"
   ]);
 
-  const audit = RESOURCE_CATALOG.auditRepresentation({
-    studyUnit,
-    intent: {
-      query: "gráfico estatístico de tendência",
-      disciplineIds: ["discipline.statistics"],
-      structureIds: ["structure.quantitative_series"],
-      taskOperationIds: ["task_operation.compare"],
-      practiceModeIds: ["practice.selection"]
-    }
-  });
-  assert.equal(audit.structural.valid, true);
-  assert.equal(audit.overallFit, "canonical");
-  assert.deepEqual(audit.selections.map(({ basis }) => basis), [
-    "semantic_fit", "response_affordance", "feedback_legibility"
-  ]);
-  assert.ok(audit.accessibleText);
-  assert.deepEqual(audit.visualPreview, {
-    mode: "client_renderer",
-    description: "O cliente pode abrir esta Unidade com o mesmo renderer usado no Estudo."
-  });
-
   const preview = RESOURCE_CATALOG.previewStudyUnitDescriptor(studyUnit);
   assert.equal(preview.structural.valid, true);
   assert.equal(preview.previewMode, "client_renderer");
   assert.deepEqual(preview.studyUnit, studyUnit);
   assert.ok(preview.accessibleText);
-});
-
-test("auditoria nunca aprova semanticamente uma Unidade de estudo estruturalmente inválida", () => {
-  const studyUnit = auditedPracticeStudyUnit();
-  studyUnit.content[0].data = {};
-  const audit = RESOURCE_CATALOG.auditRepresentation({
-    studyUnit,
-    intent: {
-      structureIds: ["structure.quantitative_series"],
-      taskOperationIds: ["task_operation.compare"]
-    }
-  });
-  assert.equal(audit.structural.valid, false);
-  assert.equal(audit.overallFit, "substitute");
-  assert.equal(audit.selections[0].fit, "substitute");
-  assert.ok(audit.selections[0].missing.includes("contract:content"));
-  assert.match(audit.warnings[0], /estruturalmente inválida/u);
 });

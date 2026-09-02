@@ -166,14 +166,14 @@ function mcpToolMeasurements(tools) {
 
 async function measure(repositoryRoot = defaultRepositoryRoot) {
   const [{
-    COURSE_MCP_TOOLS,
-    authoringMcpToolsForPrincipal
+    COURSE_HUMAN_TASKS,
+    courseHumanTasksForPrincipal
   }, {
     COURSE_AUTHORING_SERVER_INSTRUCTIONS
   }] = await Promise.all([
     import(pathToFileURL(path.join(
       repositoryRoot,
-      "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js"
+      "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
     )).href),
     import(pathToFileURL(path.join(
       repositoryRoot,
@@ -189,20 +189,20 @@ async function measure(repositoryRoot = defaultRepositoryRoot) {
   const openApiText = await readFile(openApiPath, "utf8");
   const openApi = JSON.parse(openApiText);
   const operations = actionOperationMeasurements(openApi);
-  const discoveredTools = authoringMcpToolsForPrincipal({
+  const discoveredTools = courseHumanTasksForPrincipal({
     actorId: "00000000-0000-4000-8000-000000000001",
-    scopes: ["authoring:write"]
+    scopes: ["authoring:read", "authoring:write"]
   });
   const toolsListEnvelope = {
     jsonrpc: "2.0",
     id: 1,
     result: { tools: discoveredTools }
   };
-  const inputSchemaCorpus = Object.fromEntries(COURSE_MCP_TOOLS.map((tool) => [
+  const inputSchemaCorpus = Object.fromEntries(COURSE_HUMAN_TASKS.map((tool) => [
     tool.name,
     tool.inputSchema
   ]));
-  const mcpTools = mcpToolMeasurements(COURSE_MCP_TOOLS);
+  const mcpTools = mcpToolMeasurements(COURSE_HUMAN_TASKS);
   const serverInstructions = serializedSize(COURSE_AUTHORING_SERVER_INSTRUCTIONS);
   const toolsListSize = serializedSize(toolsListEnvelope);
 
@@ -233,9 +233,9 @@ async function measure(repositoryRoot = defaultRepositoryRoot) {
     },
     mcp: {
       registry: {
-        ...serializedSize(COURSE_MCP_TOOLS),
-        fingerprint: fingerprint(COURSE_MCP_TOOLS),
-        toolCount: COURSE_MCP_TOOLS.length
+        ...serializedSize(COURSE_HUMAN_TASKS),
+        fingerprint: fingerprint(COURSE_HUMAN_TASKS),
+        toolCount: COURSE_HUMAN_TASKS.length
       },
       toolsList: {
         ...toolsListSize,
@@ -253,7 +253,7 @@ async function measure(repositoryRoot = defaultRepositoryRoot) {
           (serverInstructions.chars + toolsListSize.chars) / 4
         )
       },
-      structure: scanJsonTree(COURSE_MCP_TOOLS, { includeDuplicateDetails: true }),
+      structure: scanJsonTree(COURSE_HUMAN_TASKS, { includeDuplicateDetails: true }),
       tools: mcpTools,
       largestTool: mcpTools[0] || null
     }

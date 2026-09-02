@@ -154,16 +154,15 @@ A segunda pergunta ainda não mede aprendizagem. Ela investiga retomada. Uma
 tarefa posterior de compreensão ou retenção precisaria ser planejada
 separadamente.
 
-### Quando a avaliação usa variantes comparáveis
+### Quando a avaliação compara condições
 
-O AraLearn registra Cursos independentes criados a partir de um mesmo
-planejamento, com diferenças declaradas de parâmetros ou da política de
-componentes. Essa relação sustenta a descrição técnica da intervenção, mas não
-constitui experimento. Antes de usar variantes numa investigação, o protocolo
-particular precisa identificar:
+Use Cursos privados independentes para condições distintas e registre fora do
+produto o que deve permanecer comum. Essa separação sustenta a descrição
+técnica da intervenção, mas não constitui experimento. Antes da investigação, o
+protocolo particular precisa identificar:
 
 - o planejamento comum e sua revisão;
-- as revisões de cada Curso no vínculo e na exposição;
+- as revisões de cada Curso na produção e na exposição;
 - cada diferença pretendida como definição e valor interpretáveis;
 - os invariantes e os desvios não declarados que afetam a comparação;
 - a população e a regra de atribuição, quando houver;
@@ -171,12 +170,10 @@ particular precisa identificar:
 - os instrumentos, desfechos, momentos e procedimentos de análise;
 - as perdas, os dados ausentes e os critérios de correção ou invalidação.
 
-Cada variante continua sendo um Curso mutável. A relação preserva o ponto de
-partida e permite comparar fatos atuais, mas não congela a exposição, não
-atribui participantes e não controla fidelidade. O protocolo precisa registrar
-a revisão realmente apresentada e tratar desvios, efeitos adversos e
-explicações rivais. Veja [Variantes comparáveis de um
-Curso](experimentos-instrucionais-parametrizados.md).
+Cada condição continua sendo um Curso mutável. O protocolo precisa exportar o
+artefato efetivamente apresentado, registrar desvios, efeitos adversos e
+explicações rivais; o AraLearn não congela exposição nem atribui participantes.
+Veja [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md).
 
 ## Progressão de episódios de avaliação
 

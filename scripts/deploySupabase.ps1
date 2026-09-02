@@ -111,22 +111,19 @@ function Resolve-ProjectRefFromUrl {
 
 Push-Location $repositoryRoot
 try {
-  Write-Host 'Validando o protocolo público de Autoria antes da implantação...'
-  & node .\scripts\verifyAuthoringProtocolSnapshotHistory.mjs
-  if ($LASTEXITCODE -ne 0) {
-    throw 'Um snapshot aprovado do protocolo público de Autoria foi alterado ou removido.'
-  }
+  Write-Host 'Validando as tarefas humanas de Autoria antes da implantação...'
   & node .\scripts\buildChatGptActionOpenApi.mjs --check
   if ($LASTEXITCODE -ne 0) {
     throw 'O OpenAPI de Actions não corresponde ao protocolo público corrente.'
   }
   & node --test `
-    .\tests\runtime\authoring-protocol-compatibility.test.js `
-    .\tests\runtime\chatgpt-action-schema-projection.test.js `
+    .\tests\runtime\chatgpt-action-human-schema.test.js `
     .\tests\runtime\course-authoring-contract-runtime.test.js `
     .\tests\runtime\course-action-server.test.js `
-    .\tests\runtime\course-mcp-server.test.js `
-    .\tests\runtime\course-mcp-tools.test.js
+    .\tests\runtime\course-human-task-executor.test.js `
+    .\tests\runtime\course-human-materialization.test.js `
+    .\tests\runtime\course-human-corrections.test.js `
+    .\tests\runtime\course-human-mcp.test.js
   if ($LASTEXITCODE -ne 0) {
     throw 'Os gates do protocolo público de Autoria falharam; a implantação foi bloqueada.'
   }
@@ -183,15 +180,9 @@ try {
     $resolvedProjectUrl = "https://$resolvedProjectRef.supabase.co"
     $contractIdentitySource = @'
 import {
-  AUTHORING_PROTOCOL_ID,
-  AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-} from "./supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
-process.stdout.write([
-  AUTHORING_PROTOCOL_ID,
-  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
-  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
-].join("; "));
+  COURSE_HUMAN_TASK_CATALOG_HEADER
+} from "./supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+process.stdout.write(COURSE_HUMAN_TASK_CATALOG_HEADER);
 '@
     $expectedAuthoringContractHeader = [string](
       & node --input-type=module --eval $contractIdentitySource
@@ -202,11 +193,11 @@ process.stdout.write([
     }
     $expectedAuthoringContractHeader = $expectedAuthoringContractHeader.Trim()
     $courseApiPreflight = Invoke-WebRequest `
-      -Uri "$resolvedProjectUrl/functions/v1/aralearn-course-api/app/listarCursos" `
+      -Uri "$resolvedProjectUrl/functions/v1/aralearn-course-api/v1/courses" `
       -Method Options `
       -Headers @{
         Origin = 'https://fabio-ara.github.io'
-        'Access-Control-Request-Method' = 'POST'
+        'Access-Control-Request-Method' = 'GET'
       } `
       -UseBasicParsing
     if ($courseApiPreflight.StatusCode -lt 200 -or
@@ -218,7 +209,7 @@ process.stdout.write([
 
     Write-Host 'Validando a configuração CORS de Actions...'
     $actionPreflight = Invoke-WebRequest `
-      -Uri "$resolvedProjectUrl/functions/v1/aralearn-authoring-action/listarCursos" `
+      -Uri "$resolvedProjectUrl/functions/v1/aralearn-authoring-action/retomar_curso" `
       -Method Options `
       -Headers @{
         Origin = 'https://chatgpt.com'
@@ -240,18 +231,6 @@ process.stdout.write([
     & node .\scripts\runHostedMcpOAuthSmoke.mjs
     if ($LASTEXITCODE -ne 0) {
       throw 'O smoke hospedado do runtime de Cursos falhou; as funções antigas foram preservadas.'
-    }
-
-    Write-Host 'Validando o upload autenticado e o download de PDF hospedados...'
-    & node .\scripts\runHostedCourseSourcePdfSmoke.mjs
-    if ($LASTEXITCODE -ne 0) {
-      throw 'O smoke hospedado de PDF falhou; a implantação requer correção.'
-    }
-
-    Write-Host 'Validando a retomada conversacional hospedada em nova sessão lógica...'
-    & node .\scripts\runHostedConversationalSourceSmoke.mjs
-    if ($LASTEXITCODE -ne 0) {
-      throw 'O smoke conversacional hospedado falhou; a implantação requer correção.'
     }
 
     Write-Host 'As funções da versão publicada foram preservadas até a verificação do novo site.'

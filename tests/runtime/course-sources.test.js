@@ -3,15 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
-  COURSE_DESIGN_CONTEXT_V2_CONTRACT,
-  COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT,
   CourseSourcesError,
-  normalizeCourseSourceAttributionApplication,
   normalizeCourseSourceAttachment,
-  normalizeCourseSourceAttachmentAccess,
-  normalizeCourseSourceChange,
+  normalizeCourseSourcePdfDownload,
   normalizeCourseSourceCommand,
-  normalizeCourseSourceContext,
+  normalizeCourseSourceChange,
   normalizeCourseSourcePdfIngestion,
   normalizeCourseSourcePdfIngestionPreparation,
   normalizeCourseSourcePdfIngestionRequest,
@@ -20,26 +16,22 @@ import {
   normalizeCourseSourceSelector,
   normalizeCourseSourcesRead,
   normalizeCourseStudyCitationsRead,
-  normalizeSourceAttributionApplications
 } from "../../src/domain/courseSources.js";
 
 const IDS = {
   course: "10000000-0000-4000-8000-000000000001",
   part: "10000000-0000-4000-8000-000000000002",
-  planItem: "10000000-0000-4000-8000-000000000003",
-  attribution: "10000000-0000-4000-8000-000000000004"
+  planItem: "10000000-0000-4000-8000-000000000003"
 };
 const HASH_A = "a".repeat(64);
-const HASH_B = "b".repeat(64);
 
-function anchor(anchorId = "anchor-a", anchorRevision = 1) {
-  return { anchorId, anchorRevision };
+function anchor(anchorId = "anchor-a") {
+  return { anchorId };
 }
 
 function sourceLink(overrides = {}) {
   return {
     sourceId: "source-a",
-    sourceRevision: 1,
     relation: "supported_by",
     anchors: [anchor()],
     ...overrides
@@ -205,7 +197,7 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     requestId: "request-pdf-ingestion-1",
     idempotent: false,
     changed: true,
-    change: { type: "attach_pdf", subjectId: "source-a", revision: 2 },
+    change: { type: "ingest_pdf", subjectId: "source-a", revision: 2 },
     source: {
       sourceId: "source-a",
       sourceRevision: 2,
@@ -231,19 +223,14 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
   );
 });
 
-test("anexo PDF sela hash, caminho, limite e transporte autorizado da revisão exata", () => {
+test("PDF usa ingestão server-side e expõe somente download autorizado", () => {
   assert.deepEqual(normalizeCourseSourceAttachment(attachment()), attachment());
-  assert.deepEqual(normalizeCourseSourceCommand({
+  assert.throws(() => normalizeCourseSourceCommand({
     type: "attach_pdf",
     sourceId: "source-a",
     sourceRevision: 2,
     attachment: attachment()
-  }), {
-    type: "attach_pdf",
-    sourceId: "source-a",
-    sourceRevision: 2,
-    attachment: attachment()
-  });
+  }), (error) => error.code === "invalid_course_source_command");
   assert.deepEqual(normalizeCourseSourceCommand({
     type: "remove_pdf",
     sourceId: "source-a",
@@ -255,94 +242,33 @@ test("anexo PDF sela hash, caminho, limite e transporte autorizado da revisão e
     expectedSourceRevision: 2,
     contentHash: HASH_A
   });
-  assert.throws(
-    () => normalizeCourseSourceCommand({
-      type: "remove_pdf",
-      sourceId: "source-a",
-      expectedSourceRevision: 2,
-      contentHash: "hash-visivel"
-    }),
-    (error) => error.code === "invalid_course_source_command"
-  );
-  assert.throws(
-    () => normalizeCourseSourceAttachment(attachment({
-      storagePath: `${IDS.course}/${HASH_B}.pdf`
-    })),
-    (error) => error.code === "invalid_course_source_attachment"
-  );
-  assert.throws(
-    () => normalizeCourseSourceAttachment(attachment({ byteSize: 20 * 1024 * 1024 + 1 })),
-    (error) => error.code === "invalid_course_source_attachment"
-  );
-
   const download = {
-    contract: "aralearn.course-source-attachment-access.v2",
+    contract: "aralearn.course-source-pdf-download.v1",
     courseId: IDS.course,
     courseRevision: 7,
-    operation: "download",
     sourceId: "source-a",
     sourceRevision: 2,
     storageOriginCourseId: IDS.course,
-    attachment: attachment(),
-    uploadRequired: false,
-    alreadyLinked: true,
+    attachment: attachment({
+      createdAt: "2026-08-20T12:00:00.000Z"
+    }),
     signedUrl: `https://storage.example.test/object/${HASH_A}.pdf?token=sealed`,
     expiresAt: "2026-08-20T12:01:00.000Z"
   };
-  assert.deepEqual(normalizeCourseSourceAttachmentAccess(download), download);
-  const compatibleDownload = {
-    ...download,
-    contract: "aralearn.course-source-attachment-access.v1"
-  };
-  assert.deepEqual(
-    normalizeCourseSourceAttachmentAccess(compatibleDownload),
-    compatibleDownload
-  );
-  const upload = {
-    ...download,
-    operation: "prepare_upload",
-    alreadyLinked: false,
-    uploadRequired: true,
-    signedUrl: null,
-    expiresAt: null
-  };
-  assert.deepEqual(normalizeCourseSourceAttachmentAccess(upload), upload);
+  assert.deepEqual(normalizeCourseSourcePdfDownload(download), download);
   assert.throws(
-    () => normalizeCourseSourceAttachmentAccess({
-      ...upload,
-      contract: "aralearn.course-source-attachment-access.v1"
-    }),
-    (error) => error.code === "invalid_course_source_attachment_access"
-  );
-  const inherited = {
-    ...download,
-    courseId: "10000000-0000-4000-8000-000000000099"
-  };
-  assert.deepEqual(
-    normalizeCourseSourceAttachmentAccess(inherited).storageOriginCourseId,
-    IDS.course
-  );
-  assert.throws(
-    () => normalizeCourseSourceAttachmentAccess({
+    () => normalizeCourseSourcePdfDownload({
       ...download,
       storageOriginCourseId: "10000000-0000-4000-8000-000000000099"
     }),
-    (error) => error.code === "invalid_course_source_attachment_access"
+    (error) => error.code === "invalid_course_source_pdf_download"
   );
   assert.throws(
-    () => normalizeCourseSourceAttachmentAccess({
-      ...inherited,
-      operation: "prepare_upload",
-      alreadyLinked: false,
-      uploadRequired: true
-    }),
-    (error) => error.code === "invalid_course_source_attachment_access"
-  );
-  assert.throws(
-    () => normalizeCourseSourceAttachmentAccess({ ...download, signedUrl: null, expiresAt: null }),
-    (error) => error.code === "invalid_course_source_attachment_access"
+    () => normalizeCourseSourcePdfDownload({ ...download, signedUrl: null }),
+    (error) => error.code === "invalid_course_source_pdf_download"
   );
 });
+
 
 test("normaliza comandos fechados, metadados e seletores exatos", () => {
   assert.deepEqual(normalizeCourseSourceCommand({
@@ -384,55 +310,26 @@ test("normaliza comandos fechados, metadados e seletores exatos", () => {
     (error) => error.code === "invalid_course_source_selector"
   );
 
-  const legacyIdentity = `  ${"fonte-ç".repeat(36)}  `;
-  assert.equal(normalizeCourseSourceCommand({
-    type: "save_source",
-    sourceId: legacyIdentity,
-    expectedSourceRevision: 1,
-    source: sourceDocument({ kind: "document", title: "Documento legado resolvido",
-      citationText: null, url: null, origin: "imported_legacy", availability: "unknown",
-      verificationStatus: "unverified", studyVisibility: "hidden" })
-  }).sourceId, legacyIdentity);
-  assert.equal(normalizeCourseSourceChange({
-    contract: "aralearn.course-source-change.v1",
-    courseId: IDS.course,
-    courseRevision: 2,
-    requestId: "request-remove-pdf-1",
-    idempotent: false,
-    changed: true,
-    change: { type: "remove_pdf", subjectId: legacyIdentity, revision: 1 }
-  }).change.subjectId, legacyIdentity);
-
-  const astralLegacyIdentity = "🔎".repeat(2_048);
-  assert.equal(normalizeCourseSourceCommand({
-    type: "save_source",
-    sourceId: astralLegacyIdentity,
-    expectedSourceRevision: 1,
-    source: sourceDocument({ kind: "document", title: "Documento astral preservado",
-      citationText: null, url: null, origin: "imported_legacy", availability: "unknown",
-      verificationStatus: "unverified", studyVisibility: "hidden" })
-  }).sourceId, astralLegacyIdentity);
+  for (const invalidSourceId of [`  ${"fonte-ç".repeat(36)}  `, "🔎".repeat(241)]) {
+    assert.throws(() => normalizeCourseSourceCommand({
+      type: "save_source",
+      sourceId: invalidSourceId,
+      expectedSourceRevision: 1,
+      source: sourceDocument()
+    }), (error) => error.code === "invalid_course_source_id");
+  }
   assert.throws(
     () => normalizeCourseSourceLinks([
-      sourceLink({ sourceId: "🔎".repeat(2_049) })
+      sourceLink({ sourceId: "界".repeat(241) })
     ]),
     (error) => error.code === "invalid_course_source_id"
   );
-  assert.throws(
-    () => normalizeCourseSourceLinks([
-      sourceLink({ sourceId: "界".repeat(2_049) })
-    ]),
-    (error) => error.code === "invalid_course_source_id"
-  );
-  assert.equal(normalizeCourseSourceCommand({
-    type: "save_anchor",
-    anchorId: "anchor-legacy",
-    sourceId: legacyIdentity,
-    sourceRevision: 2,
-    expectedAnchorRevision: 0,
-    selector: { kind: "page_range", startPage: 1, endPage: 1 },
-    verificationExcerpt: null
-  }).sourceId, legacyIdentity);
+  assert.throws(() => normalizeCourseSourceCommand({
+    type: "save_source",
+    sourceId: "source-imported",
+    expectedSourceRevision: 1,
+    source: sourceDocument({ origin: "imported_legacy" })
+  }), (error) => error.code === "invalid_course_source");
 });
 
 test("metadados estruturados aceitam precisão declarada e rejeitam valores inventados", () => {
@@ -708,8 +605,19 @@ test("controles de layout seguem a mesma semântica textual do SQL", () => {
   );
 });
 
-test("vínculos novos exigem relação, Âncora e unicidade; legado preserva ordem e duplicata", () => {
+test("vínculos exigem Âncora salvo quando aguardam verificação", () => {
   assert.deepEqual(normalizeCourseSourceLinks([sourceLink()]), [sourceLink()]);
+  assert.throws(
+    () => normalizeCourseSourceLinks([{ ...sourceLink(), sourceRevision: 1 }]),
+    (error) => error.code === "invalid_course_source_link"
+  );
+  assert.throws(
+    () => normalizeCourseSourceLinks([{
+      ...sourceLink(),
+      anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+    }]),
+    (error) => error.code === "invalid_course_source_link"
+  );
   assert.throws(
     () => normalizeCourseSourceLinks([sourceLink({ anchors: [] })]),
     (error) => error.code === "invalid_course_source_link"
@@ -722,139 +630,70 @@ test("vínculos novos exigem relação, Âncora e unicidade; legado preserva ord
     () => normalizeCourseSourceLinks([sourceLink({ relation: "legacy_reference" })]),
     (error) => error.code === "invalid_course_source_link"
   );
-
-  const legacy = [
-    sourceLink({
-      sourceId: "  Referência ç  ",
-      relation: "legacy_reference",
-      anchors: []
-    }),
-    sourceLink({
-      sourceId: "  Referência ç  ",
-      relation: "legacy_reference",
-      anchors: []
-    })
-  ];
   assert.deepEqual(
-    normalizeCourseSourceLinks(legacy, { allowLegacyIds: true }),
-    legacy
+    normalizeCourseSourceLinks([sourceLink({ relation: "needs_verification", anchors: [] })]),
+    [sourceLink({ relation: "needs_verification", anchors: [] })]
   );
   assert.throws(
     () => normalizeCourseSourceLinks([
-      sourceLink({ sourceId: "legado\ninválido" })
-    ], { allowLegacyIds: true }),
-    (error) => error.code === "invalid_course_source_id"
-  );
-  const resolvedLegacyIdentity = `  ${"fonte-ç".repeat(36)}  `;
-  assert.equal(normalizeCourseSourceLinks([
-    sourceLink({ sourceId: resolvedLegacyIdentity })
-  ])[0].sourceId, resolvedLegacyIdentity);
-});
-
-test("composição e materialização exigem aplicações explícitas e contrato v1", () => {
-  assert.deepEqual(normalizeSourceAttributionApplications([{
-    studyUnitId: "study-a",
-    sourceLinks: []
-  }]), [{ studyUnitId: "study-a", sourceLinks: [] }]);
-  assert.throws(
-    () => normalizeSourceAttributionApplications([
-      { studyUnitId: "study-a", sourceLinks: [] },
-      { studyUnitId: "study-a", sourceLinks: [] }
+      sourceLink({ relation: "quoted_from", anchors: [] })
     ]),
-    (error) => error.code === "duplicate_course_source_attribution_application"
-  );
-
-  const application = {
-    contract: COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT,
-    contextHash: HASH_A,
-    didacticMicrosequenceId: "micro-a",
-    studyUnits: [{ studyUnitId: "study-a", sourceLinks: [] }]
-  };
-  assert.deepEqual(normalizeCourseSourceAttributionApplication(application), application);
-  assert.throws(
-    () => normalizeCourseSourceAttributionApplication({
-      ...application,
-      contract: "aralearn.course-source-attribution-application.v0"
-    }),
-    (error) => error.code === "invalid_course_source_attribution_application"
-  );
-  assert.throws(
-    () => normalizeCourseSourceAttributionApplication({
-      ...application,
-      studyUnits: null
-    }),
-    (error) => error.code === "invalid_course_source_attribution_application"
+    (error) => error.code === "invalid_course_source_link"
   );
 });
 
-test("contexto v2 sela somente hashes e refs compactos com relação", () => {
-  const context = {
-    contract: COURSE_DESIGN_CONTEXT_V2_CONTRACT,
+test("mudança de proveniência confirma a versão do alvo sem contador paralelo", () => {
+  const base = {
+    contract: "aralearn.course-source-change.v1",
     courseId: IDS.course,
     courseRevision: 3,
-    authoringPartId: IDS.part,
-    componentCatalogVersion: "1-3e5629f8",
-    instructionalAnalysisUnits: [],
-    evidenceRequirements: [],
-    guidanceRevisions: [],
-    targets: [{
-      didacticMicrosequenceId: "micro-a",
-      sourceAttributions: {
-        instructionalAnalysisUnits: [{
-          planItemId: IDS.planItem,
-          planItemVersion: 2,
-          targetHash: HASH_A,
-          attributionRevision: 1,
-          attributionHash: HASH_B,
-          sources: [{
-            sourceId: "source-a",
-            sourceRevision: 2,
-            relation: "adapted_from",
-            sourceHash: HASH_A,
-            anchors: [{
-              anchorId: "anchor-a",
-              anchorRevision: 3,
-              anchorHash: HASH_B
-            }]
-          }]
-        }],
-        evidenceRequirements: []
-      }
-    }]
+    requestId: "request-source-target-1",
+    idempotent: false,
+    changed: true
   };
-  assert.deepEqual(normalizeCourseSourceContext(context), context);
+  const current = {
+    ...base,
+    change: {
+      type: "set_target_sources",
+      subjectId: "study-a",
+      targetVersion: 2
+    }
+  };
+  assert.deepEqual(normalizeCourseSourceChange(current), current);
   assert.throws(
-    () => normalizeCourseSourceContext({
-      ...context,
-      contract: "aralearn.course-design-context.v1"
+    () => normalizeCourseSourceChange({
+      ...base,
+      change: { type: "set_target_sources", subjectId: "study-a", revision: 1 }
     }),
-    (error) => error.code === "invalid_course_source_context"
+    (error) => error.code === "invalid_course_source_change"
   );
 });
+
+
 
 test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () => {
   const createdAt = "2026-08-17T12:00:00.000Z";
   const catalog = {
-    contract: "aralearn.course-sources.v1",
+    contract: "aralearn.course-sources.v2",
     courseId: IDS.course,
     courseRevision: 2,
     mode: "catalog",
     query: { sourceId: null, targetKind: null, targetId: null },
     pdfStorage: pdfStorage(),
     items: [{
-      sourceId: "  Referência ç  ",
+      sourceId: "source-imported",
       revision: 1,
-      status: "unresolved_legacy",
-      kind: null,
-      title: null,
+      status: "active",
+      kind: "other",
+      title: "Referência importada",
       authorship: null,
       publicationDate: null,
       identifier: null,
       language: null,
-      citationText: null,
+      citationText: "Referência importada sem metadados confirmados.",
       url: null,
       editionOrVersion: null,
-      origin: "imported_legacy",
+      origin: "imported",
       availability: "unknown",
       verificationStatus: "unverified",
       studyVisibility: "hidden",
@@ -874,16 +713,11 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
     mode: "target",
     query: { sourceId: null, targetKind: "study_unit", targetId: "study-a" },
     items: [{
-      attributionId: IDS.attribution,
       targetKind: "study_unit",
       targetId: "study-a",
       targetVersion: 1,
-      targetHash: HASH_A,
-      revision: 1,
       sourceLinks: [],
-      actorId: null,
-      createdAt,
-      effective: true
+      createdAt
     }],
     nextCursor: null
   };
@@ -916,16 +750,15 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       studyVisibility: "citation",
       anchorCount: 1,
       createdAt,
-      actorId: null,
       anchors: [{
         anchorId: "anchor-a",
         revision: 1,
         sourceRevision: 105,
         status: "active",
         selector: { kind: "page_range", startPage: 3, endPage: 4 },
+        humanLocator: null,
         verificationExcerpt: null,
         needsReverification: true,
-        actorId: null,
         createdAt
       }],
       attachments: []
@@ -962,14 +795,12 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
     studyUnitId: "study-a",
     citations: [{
       sourceId: "source-a",
-      sourceRevision: 1,
       title: "Artigo",
       citationText: "AUTOR. Artigo.",
       url: null,
       editionOrVersion: null,
       anchors: [{
         anchorId: "anchor-a",
-        anchorRevision: 1,
         selector: { kind: "page_range", startPage: 3, endPage: 4 },
         humanLocator: "Capítulo 1 · Tabela 2"
       }]

@@ -12,7 +12,7 @@ import {
 import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
-import { COURSE_MCP_TOOLS } from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+import { COURSE_HUMAN_TASKS } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const PROJECT_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const UTF8 = new TextEncoder();
@@ -311,8 +311,8 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
 
 test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", async () => {
   const runtime = await javascriptRuntimeMetrics();
-  assert.equal(COURSE_MCP_TOOLS.length, 7);
-  assert.ok(byteLength(COURSE_MCP_TOOLS) <= 112_000);
+  assert.equal(COURSE_HUMAN_TASKS.length, 16);
+  assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 32_000);
   assert.equal(runtime.files, 51);
   assert.ok(runtime.bytes <= 560 * 1024);
 });

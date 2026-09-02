@@ -39,9 +39,7 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
     ]
   );
 
-  const guidance = courseAuthoringGuidanceForCall("lerCurso", {
-    view: "instructional_plan"
-  });
+  const guidance = courseAuthoringGuidanceForCall("consultar_planejamento");
   const instructions = guidance.instructions.join(" ");
   assert.match(instructions, /tópico agregado.*Decomponha/iu);
   assert.match(instructions, /Conhecimentos já estabelecidos podem ser mobilizados livremente/iu);

@@ -12,18 +12,9 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 import {
-  AUTHORING_PROTOCOL_ID,
-  AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-} from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
-import {
-  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
-} from "../../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
-import {
-  AUTHORING_MCP_CATALOG_HEADER,
-  AUTHORING_MCP_CATALOG_METADATA
-} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+  COURSE_HUMAN_TASK_CATALOG_HEADER,
+  COURSE_HUMAN_TASK_CATALOG_METADATA
+} from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const runtimeManifest = JSON.parse(readFileSync(
@@ -42,9 +33,7 @@ function response(status, body, headers = {}) {
 function createHostedFetch({
   mcpContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
   actionContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
-  mcpProjection = AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-  actionProjection = AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-  mcpCatalog = AUTHORING_MCP_CATALOG_HEADER
+  mcpCatalog = COURSE_HUMAN_TASK_CATALOG_HEADER
 } = {}) {
   return async (url) => {
     if (url.endsWith("/.well-known/jwks.json")) {
@@ -60,15 +49,13 @@ function createHostedFetch({
         scopes_supported: ["offline_access"]
       }, {
         "X-AraLearn-Authoring-Contract": mcpContract,
-        "X-AraLearn-Authoring-Projection": mcpProjection,
         "X-AraLearn-Authoring-Mcp-Catalog": mcpCatalog
       });
     }
-    if (url.endsWith("/aralearn-authoring-action/listarCursos")) {
+    if (url.endsWith("/aralearn-authoring-action/retomar_curso")) {
       return response(204, null, {
         "Access-Control-Allow-Origin": "https://chatgpt.com",
-        "X-AraLearn-Authoring-Contract": actionContract,
-        "X-AraLearn-Authoring-Projection": actionProjection
+        "X-AraLearn-Authoring-Contract": actionContract
       });
     }
     return response(200, {
@@ -149,7 +136,7 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
   assert.equal("Authorization" in calls[0].options.headers, false);
   assert.equal(
     calls[3].url,
-    "https://example.supabase.co/functions/v1/aralearn-authoring-action/listarCursos"
+    "https://example.supabase.co/functions/v1/aralearn-authoring-action/retomar_curso"
   );
   assert.equal(calls[3].options.method, "OPTIONS");
   assert.equal(calls[3].options.headers.Origin, "https://chatgpt.com");
@@ -158,16 +145,8 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     resource: "https://example.supabase.co/functions/v1/aralearn-authoring-mcp",
     scope: "offline_access"
   });
-  assert.deepEqual(result.authoringContract, {
-    id: AUTHORING_PROTOCOL_ID,
-    version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
-    hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-  });
-  assert.deepEqual(
-    result.conversationalProjection,
-    AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
-  );
-  assert.deepEqual(result.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
+  assert.deepEqual(result.authoringContract, COURSE_HUMAN_TASK_CATALOG_METADATA);
+  assert.deepEqual(result.mcpCatalog, COURSE_HUMAN_TASK_CATALOG_METADATA);
 });
 
 test("verificador bloqueia MCP hospedado com fingerprint defasado", async () => {
@@ -175,7 +154,7 @@ test("verificador bloqueia MCP hospedado com fingerprint defasado", async () => 
     () => verifyHostedBackend({
       projectUrl: "https://example.supabase.co",
       publishableKey: PUBLIC_KEY,
-      fetchImpl: createHostedFetch({ mcpContract: "aralearn.authoring-protocol.v1; version=0.9.0; hash=sha256:old" })
+      fetchImpl: createHostedFetch({ mcpContract: "aralearn.human-authoring-tasks; version=0.9.0; hash=sha256:old" })
     }),
     /MCP hospedado não corresponde ao contrato público corrente/u
   );
@@ -186,20 +165,9 @@ test("verificador bloqueia Action hospedada com fingerprint defasado", async () 
     () => verifyHostedBackend({
       projectUrl: "https://example.supabase.co",
       publishableKey: PUBLIC_KEY,
-      fetchImpl: createHostedFetch({ actionContract: "aralearn.authoring-protocol.v1; version=0.9.0; hash=sha256:old" })
+      fetchImpl: createHostedFetch({ actionContract: "aralearn.human-authoring-tasks; version=0.9.0; hash=sha256:old" })
     }),
     /Action hospedada não corresponde ao contrato público corrente/u
-  );
-});
-
-test("verificador bloqueia projeção conversacional defasada", async () => {
-  await assert.rejects(
-    () => verifyHostedBackend({
-      projectUrl: "https://example.supabase.co",
-      publishableKey: PUBLIC_KEY,
-      fetchImpl: createHostedFetch({ mcpProjection: "projection-old" })
-    }),
-    /MCP hospedado não corresponde à projeção conversacional corrente/u
   );
 });
 

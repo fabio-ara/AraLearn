@@ -1,387 +1,313 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
-  COURSE_AUTHORING_ANALYTICS_CONTRACT,
-  COURSE_AUTHORING_ANALYTICS_DICTIONARY_VERSION
+  COURSE_AUTHORING_ANALYTICS_CONTRACT
 } from "../../src/domain/courseAuthoringAnalytics.js";
 import { createCourseAnalyticsPanel } from "../../src/ui/CourseAnalyticsPanel.js";
 
 const COURSE_ID = "123e4567-e89b-42d3-a456-426614174000";
-
-class FakeFocusable {
-  constructor(root, name) {
-    this.root = root;
-    this.name = name;
-    this.focusOptions = [];
-  }
-
-  focus(options) {
-    this.focusOptions.push(options);
-    this.root.ownerDocument.activeElement = this;
-  }
-}
+const MICRO_REF = "microsequence:fundamentos";
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 class FakeRoot {
   constructor() {
     this.innerHTML = "";
     this.listeners = new Map();
-    this.ownerDocument = { activeElement: null };
-    this.metricTrigger = new FakeFocusable(this, "metric-trigger");
-    this.factTrigger = new FakeFocusable(this, "fact-trigger");
-    this.closeControl = new FakeFocusable(this, "close-details");
-    this.sheet = { contains: (node) => node === this.closeControl };
   }
   addEventListener(type, listener) { this.listeners.set(type, listener); }
   removeEventListener(type) { this.listeners.delete(type); }
-  querySelector(selector) {
-    const sheetOpen = this.innerHTML.includes('class="course-analytics-sheet"');
-    if (selector === ".course-analytics-sheet") return sheetOpen ? this.sheet : null;
-    if (selector === '[data-course-analytics-action="close-details"]') {
-      return sheetOpen ? this.closeControl : null;
-    }
-    if (selector === '[data-course-analytics-action="open-metric"]') {
-      return this.innerHTML.includes('data-course-analytics-action="open-metric"')
-        ? this.metricTrigger
-        : null;
-    }
-    if (selector.startsWith('[data-course-analytics-action="open-fact"]')) {
-      return this.innerHTML.includes('data-course-analytics-action="open-fact"')
-        ? this.factTrigger
-        : null;
-    }
-    return null;
-  }
-  querySelectorAll(selector) {
-    return selector.startsWith(".course-analytics-sheet :is(") &&
-      this.innerHTML.includes('class="course-analytics-sheet"')
-      ? [this.closeControl]
-      : [];
-  }
 }
 
-function clickAction(root, action, dataset = {}) {
-  const target = {
-    dataset: { courseAnalyticsAction: action, ...dataset },
-    matches: () => false,
-    closest: (selector) => selector === "[data-course-analytics-action]" ? target : null
-  };
-  root.listeners.get("click")({ target });
-}
-
-function clickBackdrop(root) {
-  root.listeners.get("click")({
-    target: {
-      matches: (selector) => selector === "[data-course-analytics-backdrop]",
-      closest: () => null
-    }
-  });
-}
-
-function fact(id, label, value = 1) {
-  return {
-    factId: id,
-    dataset: "annotations",
-    kind: "annotation_reopened",
-    occurredAt: "2026-08-20T08:30:00.000Z",
-    courseRevision: 7,
-    channel: "study_interface",
-    origin: "learner",
-    state: "open",
-    subject: { kind: "anchored_annotation", id: `annotation:${id}`, label },
-    related: { kind: "study_unit", id: "unit-a", label: "Unidade A" },
-    values: { annotation_version: value, event_type: "reopened", target_kind: "study_unit" },
-    missingData: value === null ? ["A contagem não foi registrada."] : [],
-    deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=observations`
-  };
-}
-
-function page({
-  cursor = null,
-  nextCursor = null,
-  facts = [fact("annotation:a", "Observação A")],
-  revision = 7
+function analyticsPage({
+  revision = 7,
+  selected = { kind: "course", ref: null, label: "Curso inteiro" },
+  studyUnitCount = 2,
+  manuallyRevisedStudyUnitCount = 2,
+  missingData = ["Uma direção editorial não informou origem."]
 } = {}) {
+  const courseScope = { kind: "course", ref: null, label: "Curso inteiro" };
+  const microScope = {
+    kind: "didactic_microsequence",
+    ref: MICRO_REF,
+    label: "Microssequência · Fundamentos"
+  };
+  const units = Array.from({ length: studyUnitCount }, (_, index) => ({
+    studyUnitRef: `study-unit:${index + 1}`,
+    position: index + 1,
+    title: index === 0 ? "O que é um servidor" : "Pedido e resposta",
+    introducedCount: 1
+  }));
   return {
     contract: COURSE_AUTHORING_ANALYTICS_CONTRACT,
-    dictionaryVersion: COURSE_AUTHORING_ANALYTICS_DICTIONARY_VERSION,
-    courseId: COURSE_ID,
-    courseRevision: revision,
-    generatedAt: "2026-08-20T09:00:00.000Z",
-    query: {
-      datasets: ["activity", "materializations", "design", "sources", "annotations", "audits", "variants"],
-      channels: [], origins: [], states: [], from: null, to: null, limit: 100, cursor
-    },
-    metrics: [{
-      id: "annotations_by_state",
-      version: 1,
-      label: "Observações por estado",
-      question: "Qual é o estado corrente das observações do recorte?",
-      definition: "Conta a versão corrente de cada observação uma vez pelo estado.",
-      unit: "count",
-      denominator: "Observações correntes no recorte.",
-      missingData: "Ausência de observação permanece ausência.",
-      prohibitedInferences: ["Não mede aprendizagem, atenção ou dificuldade."]
-    }],
-    overview: {
-      metricId: "annotations_by_state",
-      title: "Estado das observações",
-      question: "Qual é o estado corrente das observações do recorte?",
-      series: [{
-        key: "open", label: "Aberta", value: 1, unit: "count", denominator: 1, missing: false
+    course: { id: COURSE_ID, revision, title: "Redes para iniciantes" },
+    scope: { selected, options: [courseScope, microScope] },
+    design: {
+      studyUnitCount,
+      parameters: [{
+        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+        label: "Novidades por StudyUnit expositiva",
+        valueKind: "integer",
+        effectiveValues: [{ value: 1, origin: "research_condition", studyUnitCount }]
       }, {
-        key: "resolved", label: "Resolvida", value: null, unit: "count", denominator: 1, missing: true
+        parameterId: "required_explanation_forms",
+        label: "Formas de explicação requeridas",
+        valueKind: "string_list",
+        effectiveValues: [{ value: ["definition", "contrast"], origin: "automatic", studyUnitCount }]
+      }, {
+        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+        label: "Práticas distintas por requisito",
+        valueKind: "integer",
+        effectiveValues: [{ value: 3, origin: "author", studyUnitCount }]
+      }, {
+        parameterId: "required_practice_variation_dimensions",
+        label: "Dimensões de variação requeridas",
+        valueKind: "string_list",
+        effectiveValues: [{ value: ["context", "representation"], origin: "automatic", studyUnitCount }]
+      }],
+      editorialDirections: [{
+        direction: "Títulos diretos e parágrafos breves.",
+        origin: null,
+        studyUnitCount
+      }],
+      analysisUnits: Array.from({ length: studyUnitCount }, (_, index) => ({
+        position: index + 1,
+        statement: index === 0
+          ? "Servidor oferece um serviço em rede."
+          : "Pedido e resposta organizam a comunicação.",
+        introductionCount: 1
+      })),
+      introductionsByStudyUnit: units,
+      explanationForms: [{ form: "definition", studyUnitCount, applicationCount: studyUnitCount }, {
+        form: "contrast", studyUnitCount: 1, applicationCount: 1
+      }],
+      components: [{
+        componentRef: "aralearn.resource.paragraph@1.0.0",
+        studyUnitCount,
+        instanceCount: studyUnitCount + 2
+      }, {
+        componentRef: "aralearn.resource.table@1.0.0",
+        studyUnitCount: 1,
+        instanceCount: 1
+      }],
+      practiceByRequirement: [{
+        position: 1,
+        statement: "Distinguir cliente e servidor em situações novas.",
+        opportunityCount: 3
+      }],
+      practiceVariationDimensions: [{ dimension: "context", opportunityCount: 2 }, {
+        dimension: "representation", opportunityCount: 1
+      }],
+      sourcesByRole: [{
+        role: "factual_support",
+        sourceCount: 2,
+        anchorCount: 3,
+        studyUnitCount
       }]
     },
-    facts,
-    nextCursor,
-    limitations: ["O estado da observação não mede a aprendizagem do estudante."],
-    deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=research`
+    authorship: {
+      observations: { createdCount: 5, openCount: 2, resolvedCount: 3 },
+      explicitParameterOverrideCount: 1,
+      manuallyRevisedStudyUnitCount,
+      studyUnitsByOrigin: [{ origin: "gpt", createdCount: 2, lastRevisedCount: 1 }, {
+        origin: "author", createdCount: 0, lastRevisedCount: 2
+      }]
+    },
+    missingData,
+    deepLink: null
   };
 }
 
-test("Pesquisa abre uma sheet compacta, contém o foco e o restaura ao acionador", async () => {
-  const root = new FakeRoot();
-  const panel = createCourseAnalyticsPanel({
-    root,
-    course: { courseId: COURSE_ID, revision: 7 },
-    controller: { async loadCourseAuthoringAnalytics() { return page(); } }
+async function submitScope(root, index) {
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: {
+      matches: (selector) => selector === "[data-course-analytics-scope]",
+      elements: { scope: { value: String(index) } }
+    }
   });
-  await panel.open();
-  assert.match(root.innerHTML, /course-authoring-visually-hidden[^>]*>Pesquisa<\/h2>/u);
-  assert.match(root.innerHTML, /role="img" aria-label="Estado das observações\./u);
-  assert.match(root.innerHTML, /Em aberto: 1/u);
-  assert.doesNotMatch(root.innerHTML, />Aberta</u);
-  assert.match(root.innerHTML, /Revisão 7/u);
-  assert.match(root.innerHTML, /data-course-analytics-action="open-metric"/u);
-  assert.doesNotMatch(root.innerHTML, /<table|<dt>Pergunta<\/dt>|<dt>Definição<\/dt>/u);
-  assert.doesNotMatch(root.innerHTML, /não mede a aprendizagem do estudante/u);
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
-  clickAction(root, "open-metric");
-  const sheetHtml = root.innerHTML.slice(root.innerHTML.indexOf(
-    '<div class="course-analytics-sheet-backdrop"'
-  ));
-  assert.match(root.innerHTML, /course-analytics-sheet-backdrop/u);
-  assert.match(root.innerHTML, /role="dialog"[^>]*aria-modal="true"/u);
-  assert.match(root.innerHTML, /<h3 id="course-analytics-sheet-title">Detalhes da pesquisa<\/h3>/u);
-  assert.match(sheetHtml, /<dt>Mede<\/dt><dd>Qual é o estado corrente das observações do recorte\?<\/dd>/u);
-  assert.match(sheetHtml, /<dt>Unidade<\/dt><dd>Contagem<\/dd>/u);
-  assert.match(sheetHtml, /<dt>Base<\/dt><dd>Observações correntes no recorte\.<\/dd>/u);
-  assert.doesNotMatch(sheetHtml, /<table|Definição|Dados ausentes|Dado ausente/u);
-  assert.doesNotMatch(sheetHtml, /Não mede aprendizagem|não mede a aprendizagem/u);
-  assert.equal(root.ownerDocument.activeElement, root.closeControl);
-  assert.deepEqual(root.closeControl.focusOptions.at(-1), { preventScroll: true });
-
-  const tab = { key: "Tab", shiftKey: false, defaultPrevented: false, preventDefault() {
-    this.defaultPrevented = true;
-  } };
-  root.listeners.get("keydown")(tab);
-  assert.equal(tab.defaultPrevented, true);
-  assert.equal(root.ownerDocument.activeElement, root.closeControl);
-
-  const escape = { key: "Escape", defaultPrevented: false, preventDefault() {
-    this.defaultPrevented = true;
-  } };
-  root.listeners.get("keydown")(escape);
-  assert.equal(escape.defaultPrevented, true);
-  assert.doesNotMatch(root.innerHTML, /course-analytics-sheet-backdrop/u);
-  assert.equal(root.ownerDocument.activeElement, root.metricTrigger);
-  assert.deepEqual(root.metricTrigger.focusOptions.at(-1), { preventScroll: true });
-
-  clickAction(root, "open-metric");
-  clickAction(root, "close-details");
-  assert.doesNotMatch(root.innerHTML, /course-analytics-sheet-backdrop/u);
-  assert.equal(root.ownerDocument.activeElement, root.metricTrigger);
-
-  clickAction(root, "open-metric");
-  clickBackdrop(root);
-  assert.doesNotMatch(root.innerHTML, /course-analytics-sheet-backdrop/u);
-  assert.equal(root.ownerDocument.activeElement, root.metricTrigger);
-  panel.destroy();
-  assert.equal(root.innerHTML, "");
-});
-
-test("Pesquisa mantém bastidores fora dos cards e preserva os dados no detalhe e na exportação", async () => {
+test("Analytics mostra somente Desenho e Autoria em uma leitura quantitativa estreita", async () => {
   const root = new FakeRoot();
-  const downloads = [];
-  const opaqueId = "0f3a1df0-3e75-47cc-9c78-1328e7c17798";
-  const opaqueHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-  const opaqueParameter = "content_density_v2";
-  const internalFact = {
-    ...fact("opaque", null),
-    subject: { kind: "study_unit", id: opaqueId, label: null },
-    values: {
-      operation: "update_course",
-      configuration_hash: opaqueHash,
-      parameter_id: opaqueParameter,
-      method_id: "audit-v3",
-      checkpoint_id: "checkpoint-19",
-      created_count: 2,
-      source_revision: 4
-    },
-    missingData: ["A origem deste fato não foi registrada."],
-    deepLink: null
-  };
+  const queries = [];
   const panel = createCourseAnalyticsPanel({
     root,
     course: { courseId: COURSE_ID, revision: 7 },
-    download: (value) => downloads.push(value),
-    controller: { async loadCourseAuthoringAnalytics() {
-      return page({
-        facts: [internalFact],
-        revision: 7
-      });
+    controller: { async loadCourseAuthoringAnalytics(_courseId, { query }) {
+      queries.push(query);
+      return analyticsPage();
     } }
   });
 
   await panel.open();
 
-  assert.match(root.innerHTML, /<strong>Observação reaberta<\/strong><span>Unidade de estudo<\/span>/u);
-  assert.match(root.innerHTML, /data-course-analytics-action="open-fact" data-fact-id="opaque"/u);
-  assert.doesNotMatch(root.innerHTML, /Itens criados: 2|Revisão da Fonte: 4/u);
-  assert.doesNotMatch(root.innerHTML, /<dt>Canal<\/dt>|<dt>Origem<\/dt>|<dt>Estado<\/dt>/u);
-  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueId, "u"));
-  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueHash, "u"));
-  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueParameter, "u"));
-  assert.doesNotMatch(root.innerHTML, /update_course|audit-v3|checkpoint-19/u);
-
-  clickAction(root, "open-fact", { factId: "opaque" });
-  assert.match(root.innerHTML, /role="dialog"[^>]*aria-modal="true"/u);
-  assert.match(root.innerHTML, /Itens criados: 2 · Revisão da Fonte: 4/u);
-  assert.match(root.innerHTML, /<dt>Canal<\/dt><dd>Estudo<\/dd>/u);
-  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>Pessoa estudante<\/dd>/u);
-  assert.match(root.innerHTML, /<dt>Estado<\/dt><dd>Em aberto<\/dd>/u);
-  assert.match(root.innerHTML, /A origem deste fato não foi registrada\./u);
-  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueHash, "u"));
-  assert.doesNotMatch(root.innerHTML, new RegExp(opaqueParameter, "u"));
-  assert.doesNotMatch(root.innerHTML, /update_course|audit-v3|checkpoint-19/u);
-
-  await panel.export("json");
-  assert.deepEqual(JSON.parse(downloads[0].content).facts[0].values, internalFact.values);
+  assert.deepEqual(queries, [{ scope: { kind: "course", ref: null } }]);
+  assert.match(root.innerHTML, /id="course-analytics-section-title">Analytics<\/h2>/u);
+  assert.match(root.innerHTML, /<label for="course-analytics-scope">Escopo<\/label>/u);
+  assert.match(root.innerHTML, /aria-label="Aplicar escopo"/u);
+  assert.match(root.innerHTML, /aria-label="Exportar Analytics em JSON"/u);
+  assert.deepEqual([...root.innerHTML.matchAll(/<h3[^>]*>([^<]+)<\/h3>/gu)].map((match) => match[1]), [
+    "Desenho", "Autoria"
+  ]);
+  assert.match(root.innerHTML, /aria-label="Resumo do desenho"/u);
+  assert.match(root.innerHTML, /StudyUnits<small>Unidades no escopo\.<\/small><\/dt><dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /AnalysisUnits<small>Novidades semânticas inventariadas\.<\/small><\/dt><dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>3<\/dd>/u);
+  assert.match(root.innerHTML, /Observações abertas<small>Pendências humanas atuais\.<\/small><\/dt><dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Parâmetros definidos[\s\S]+<dd>1<\/dd>/u);
+  assert.match(root.innerHTML, /StudyUnits revistas manualmente[\s\S]+<dd>2<\/dd>/u);
+  assert.doesNotMatch(root.innerHTML, /Reparos aceitos|Reparos rejeitados/u);
+  assert.equal((root.innerHTML.match(/<table /gu) || []).length, 4);
+  assert.equal((root.innerHTML.match(/<details /gu) || []).length, 4);
+  assert.doesNotMatch(root.innerHTML, new RegExp(MICRO_REF, "u"));
+  assert.doesNotMatch(root.innerHTML, /Fatos do recorte|timeline|dashboard|sidebar|role="dialog"/iu);
+  panel.destroy();
 });
 
-test("sheet aberta sobrevive ao refresh que adota a revisão relida", async () => {
+test("tabelas simples preservam os números do desenho e intervenções explícitas", async () => {
+  const root = new FakeRoot();
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() { return analyticsPage(); } }
+  });
+
+  await panel.open();
+
+  for (const table of [
+    "Configuração aplicada", "Conteúdo e representações", "Prática e Fontes",
+    "Intervenções por origem"
+  ]) assert.match(root.innerHTML, new RegExp(`table aria-label="${table}"`, "u"));
+  assert.match(root.innerHTML, /Novidades por StudyUnit expositiva<\/th><td>1 · 2 StudyUnits · Condição de pesquisa/u);
+  assert.match(root.innerHTML, /Formas de explicação requeridas<\/th><td>Definição, Contraste · 2 StudyUnits · Calibração automática/u);
+  assert.match(root.innerHTML, /Direção editorial<\/th><td>Títulos diretos e parágrafos breves\./u);
+  assert.match(root.innerHTML, /AnalysisUnit 1<\/th><td>Servidor oferece um serviço em rede\. · 1 introdução/u);
+  assert.match(root.innerHTML, /StudyUnit 2 · Pedido e resposta<\/th><td>1 novidade introduzida/u);
+  assert.match(root.innerHTML, /Forma · Contraste<\/th><td>1 StudyUnit · 1 aplicação/u);
+  assert.match(root.innerHTML, /Componente · Tabela<\/th><td>1 StudyUnit · 1 uso/u);
+  assert.match(root.innerHTML, /Prática 1<\/th><td>Distinguir cliente e servidor em situações novas\. · 3 oportunidades/u);
+  assert.match(root.innerHTML, /Fonte · Sustentação factual<\/th><td>2 Fontes · 3 Âncoras · 2 StudyUnits/u);
+  assert.match(root.innerHTML, /GPT<\/th><td>2 StudyUnits criadas · 1 StudyUnit com última revisão/u);
+  assert.match(root.innerHTML, /Pessoa autora<\/th><td>0 StudyUnits criadas · 2 StudyUnits com última revisão/u);
+  assert.match(root.innerHTML, /<strong>Dados ausentes<\/strong>/u);
+  assert.match(root.innerHTML, /Uma direção editorial não informou origem\./u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /provider_assistance|parameterId|componentRef|studyUnitRef|aralearn\.resource/iu
+  );
+});
+
+test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", async () => {
+  const root = new FakeRoot();
+  const downloads = [];
+  const expected = analyticsPage();
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    download: (file) => { downloads.push(file); return file; },
+    controller: { async loadCourseAuthoringAnalytics() { return expected; } }
+  });
+
+  await panel.open();
+  panel.export();
+
+  assert.equal(downloads.length, 1);
+  assert.equal(downloads[0].name, "aralearn-analytics-snapshot-r7.json");
+  assert.equal(downloads[0].type, "application/json;charset=utf-8");
+  const snapshot = JSON.parse(downloads[0].content);
+  assert.deepEqual(snapshot, expected);
+  assert.equal(snapshot.contract, COURSE_AUTHORING_ANALYTICS_CONTRACT);
+  assert.equal(snapshot.design.studyUnitCount, 2);
+  assert.equal(snapshot.design.analysisUnits.length, 2);
+  assert.equal(snapshot.design.practiceByRequirement[0].opportunityCount, 3);
+  assert.equal(snapshot.authorship.observations.openCount, 2);
+  assert.equal(snapshot.authorship.explicitParameterOverrideCount, 1);
+  assert.equal(snapshot.authorship.manuallyRevisedStudyUnitCount, 2);
+  assert.doesNotMatch(downloads[0].content, /"facts"|"runs"|"steps"|"duration"|"hash"|"payload"/iu);
+  for (const value of [2, 3, 1]) {
+    assert.match(root.innerHTML, new RegExp(`<dd>${value}</dd>`, "u"));
+  }
+  assert.match(root.innerHTML, /StudyUnits revistas manualmente[\s\S]+<dd>2<\/dd>/u);
+});
+
+test("filtro relê um escopo humano sem expor sua referência no DOM", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics(_courseId, request) {
+      calls.push(request);
+      const selected = request.query.scope.kind === "course"
+        ? { kind: "course", ref: null, label: "Curso inteiro" }
+        : {
+          kind: "didactic_microsequence",
+          ref: MICRO_REF,
+          label: "Microssequência · Fundamentos"
+        };
+      return analyticsPage({ selected, studyUnitCount: selected.kind === "course" ? 2 : 1 });
+    } }
+  });
+
+  await panel.open();
+  await submitScope(root, 1);
+
+  assert.deepEqual(calls.map(({ query }) => query), [{
+    scope: { kind: "course", ref: null }
+  }, {
+    scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+  }]);
+  assert.match(root.innerHTML, /<option value="1" selected>Microssequência · Fundamentos<\/option>/u);
+  assert.match(root.innerHTML, /StudyUnits<small>Unidades no escopo\.<\/small><\/dt><dd>1<\/dd>/u);
+  assert.doesNotMatch(root.innerHTML, new RegExp(MICRO_REF, "u"));
+
+  await submitScope(root, 1);
+  assert.equal(calls.length, 2);
+});
+
+test("refresh adota a revisão relida e dados ausentes continuam explícitos", async () => {
   const root = new FakeRoot();
   const revisions = [];
   const panel = createCourseAnalyticsPanel({
     root,
     course: { courseId: COURSE_ID, revision: 7 },
-    controller: {
-      async loadCourseAuthoringAnalytics(_courseId, { expectedCourseRevision }) {
-        revisions.push(expectedCourseRevision);
-        return page({ revision: expectedCourseRevision });
-      }
-    }
+    controller: { async loadCourseAuthoringAnalytics(_courseId, { expectedCourseRevision }) {
+      revisions.push(expectedCourseRevision);
+      return analyticsPage({ revision: expectedCourseRevision });
+    } }
   });
 
   await panel.open();
-  clickAction(root, "open-metric");
-  assert.match(root.innerHTML, /course-analytics-sheet-backdrop/u);
   await panel.refresh(8);
 
   assert.deepEqual(revisions, [7, 8]);
-  assert.match(root.innerHTML, /Revisão 8/u);
-  assert.match(root.innerHTML, /course-analytics-sheet-backdrop/u);
-  assert.match(root.innerHTML, /<dt>Mede<\/dt>/u);
-  assert.doesNotMatch(root.innerHTML.slice(root.innerHTML.indexOf(
-    '<div class="course-analytics-sheet-backdrop"'
-  )), /<table|<dt>Definição<\/dt>/u);
-  assert.equal(root.ownerDocument.activeElement, root.closeControl);
+  assert.match(root.innerHTML, /aria-label="Dados ausentes"/u);
+  assert.doesNotMatch(root.innerHTML, /Revisão 8|courseRevision|generatedAt/iu);
+  await assert.rejects(panel.refresh(0), /revisão do Curso para atualizar Analytics é inválida/u);
 });
 
-test("CSV e JSON exportam todas as páginas do mesmo recorte", async () => {
-  const root = new FakeRoot();
-  const downloads = [];
-  const cursors = [];
-  const panel = createCourseAnalyticsPanel({
-    root,
-    course: { courseId: COURSE_ID, revision: 7 },
-    download: (value) => downloads.push(value),
-    controller: {
-      async loadCourseAuthoringAnalytics(courseId, { expectedCourseRevision, query }) {
-        assert.equal(courseId, COURSE_ID);
-        assert.equal(expectedCourseRevision, 7);
-        cursors.push(query.cursor);
-        return query.cursor === null
-          ? page({ nextCursor: "cGFnZS0y" })
-          : page({ cursor: "cGFnZS0y", facts: [fact("annotation:b", "Observação B", null)] });
-      }
-    }
-  });
-  await panel.export("csv");
-  await panel.export("json");
-  assert.deepEqual(cursors, [null, "cGFnZS0y", null, "cGFnZS0y"]);
-  assert.equal(downloads.length, 2);
-  assert.match(downloads[0].name, /-r7\.csv$/u);
-  assert.match(downloads[0].content, /annotation:a/u);
-  assert.match(downloads[0].content, /annotation:b/u);
-  const json = JSON.parse(downloads[1].content);
-  assert.equal(json.dictionaryVersion, COURSE_AUTHORING_ANALYTICS_DICTIONARY_VERSION);
-  assert.equal(json.facts.length, 2);
-  assert.equal(json.query.cursor, null);
-  assert.equal(json.facts[0].kind, "annotation_reopened");
-  assert.equal(json.facts[0].origin, "learner");
-  assert.deepEqual(json.facts[0].values, {
-    annotation_version: 1,
-    event_type: "reopened",
-    target_kind: "study_unit"
-  });
-  assert.match(downloads[0].content, /annotation_reopened/u);
-  assert.match(downloads[0].content, /learner/u);
-});
+test("CSS e fonte do painel não restauram dashboard, segunda rolagem ou métricas técnicas", () => {
+  const panelSource = fs.readFileSync(path.join(
+    repositoryRoot, "src", "ui", "CourseAnalyticsPanel.js"
+  ), "utf8");
+  const css = fs.readFileSync(path.join(repositoryRoot, "public", "course-authoring.css"), "utf8");
+  const analyticsCss = css.slice(
+    css.indexOf(".course-analytics-host,"),
+    css.indexOf("/* Parâmetros conserva quatro decisões pedagógicas")
+  );
 
-test("exportação interrompe a paginação assim que os fatos já não cabem em 8 MiB", async () => {
-  const root = new FakeRoot();
-  let calls = 0;
-  const panel = createCourseAnalyticsPanel({
-    root,
-    course: { courseId: COURSE_ID, revision: 7 },
-    download: () => assert.fail("A exportação acima do limite não pode criar arquivo."),
-    controller: {
-      async loadCourseAuthoringAnalytics(_courseId, { query }) {
-        calls += 1;
-        const facts = Array.from({ length: 20 }, (_, index) => ({
-          ...fact(`annotation:${calls}:${index}`, `Observação ${calls}:${index}`),
-          values: Object.fromEntries(Array.from({ length: 24 }, (__, valueIndex) => [
-            `value_${valueIndex}`,
-            `${calls}:${index}:`.padEnd(1000, "x")
-          ]))
-        }));
-        return page({
-          cursor: query.cursor,
-          nextCursor: Buffer.from(`page-${calls + 1}`).toString("base64url"),
-          facts
-        });
-      }
-    }
-  });
-  await panel.export("json");
-  assert.ok(calls < 100);
-  assert.match(root.innerHTML, /excede 8 MiB.*Restrinja o período, o conjunto ou o canal/u);
-});
-
-test("estimativa incremental do JSON inclui recuo e invólucro do arquivo final", async () => {
-  const root = new FakeRoot();
-  let calls = 0;
-  const panel = createCourseAnalyticsPanel({
-    root,
-    course: { courseId: COURSE_ID, revision: 7 },
-    download: () => assert.fail("A exportação acima do limite não pode criar arquivo."),
-    controller: {
-      async loadCourseAuthoringAnalytics(_courseId, { query }) {
-        calls += 1;
-        return page({
-          cursor: query.cursor,
-          nextCursor: Buffer.from(`compact-page-${calls + 1}`).toString("base64url"),
-          facts: Array.from({ length: 200 }, (_, index) =>
-            fact(`annotation:${calls}:${index}`, `Observação ${calls}:${index}`))
-        });
-      }
-    }
-  });
-
-  await panel.export("json");
-
-  assert.ok(calls > 1 && calls < 100);
-  assert.match(root.innerHTML, /excede 8 MiB.*Restrinja o período, o conjunto ou o canal/u);
+  assert.match(analyticsCss, /\.course-analytics\s*\{[\s\S]+max-width: 720px/u);
+  assert.match(analyticsCss, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/u);
+  assert.match(analyticsCss, /@media \(min-width: 620px\)[\s\S]+repeat\(4, minmax\(0, 1fr\)\)/u);
+  assert.doesNotMatch(analyticsCss, /overflow-y|position:\s*(?:fixed|sticky)|course-analytics-(?:sheet|facts|chart|bar)/u);
+  assert.doesNotMatch(
+    panelSource,
+    /\b(?:run|runs|step|steps|retry|duration|hash|payload|timeline|score|percentage)\b/iu
+  );
+  assert.doesNotMatch(panelSource, /serializeCourseAuthoringAnalyticsCsv|text\/csv|open-fact/u);
 });

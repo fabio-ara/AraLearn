@@ -348,12 +348,11 @@ crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scopi
 ### Proveniência das Fontes de um Curso
 
 A bibliografia desta documentação e as Fontes usadas num Curso cumprem funções
-diferentes. Dentro do produto, uma Fonte possui identidade estável e revisões;
-uma Âncora localiza página, tempo, fragmento de endereço ou trecho textual numa
-revisão exata; e uma atribuição liga essa Âncora a um item do plano ou a uma
-Unidade de estudo. A relação declara se a Fonte informa ou sustenta o alvo, ou
-se o alvo foi adaptado ou citado a partir dela. O histórico não é reescrito
-quando surge outra revisão.
+diferentes. Dentro do produto, uma Fonte possui identidade e estado correntes;
+uma Âncora localiza página, tempo, fragmento de endereço ou trecho textual; e
+uma atribuição liga essa Âncora a um item do plano ou a uma StudyUnit. A relação
+declara se a Fonte informa ou sustenta o alvo, ou se o alvo foi adaptado ou
+citado a partir dela.
 
 Essa cadeia permite localizar o material usado e reconstruir a decisão
 autoral. Ela não demonstra que a Fonte é verdadeira, que a atribuição é
@@ -419,26 +418,17 @@ integra o desenho da análise de dados desde a definição da finalidade
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
 operacional sempre que o desenho e o risco assim exigirem.
 
-### Governança de variantes comparáveis
+### Governança de condições comparáveis
 
-O AraLearn pode criar de dois a oito Cursos independentes a partir de um mesmo
-planejamento. A relação preserva o planejamento comum, as revisões de vínculo e
-as diferenças declaradas de parâmetros ou da política de componentes. Cada
-Curso derivado permanece editável e mantém composição, acesso, estado pessoal,
-Observações e revisões próprios.
+Uma investigação pode usar Cursos privados independentes para produzir
+condições diferentes. O protocolo externo registra a pergunta, o inventário
+semântico comum, a configuração fixada, o artefato efetivamente exposto, a
+população, a atribuição, os instrumentos, os dados ausentes e a análise.
 
-Essa capacidade permite reconstituir a origem comum e verificar diferenças
-declaradas, observadas ou surgidas depois. Ela não cria participantes,
-atribuição, aleatorização, consentimento, desfecho nem análise causal. A origem
-`research_condition` de um parâmetro também registra apenas proveniência; ela
-não bloqueia alterações e não constitui condição experimental.
-
-Quando uma investigação usa variantes, o protocolo externo precisa fixar a
-pergunta, a população, as revisões efetivamente expostas, os invariantes, a
-regra de atribuição, os instrumentos, os dados ausentes e a análise. A
-comparação técnica ajuda a descrever a intervenção, mas não garante equivalência
-semântica, fidelidade de exposição ou validade causal. Consulte [Variantes
-comparáveis de um Curso](experimentos-instrucionais-parametrizados.md).
+O produto não cria uma entidade de Variante nem bloqueia o Curso. Separar os
+Cursos ajuda a evitar mistura acidental, mas não garante equivalência semântica,
+fidelidade de exposição ou validade causal. Consulte [Comparar condições de
+desenho](experimentos-instrucionais-parametrizados.md).
 
 ## Limitações atuais do programa
 
@@ -467,30 +457,26 @@ comparáveis de um Curso](experimentos-instrucionais-parametrizados.md).
 | contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
 | bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |
 
-## Governança dos fatos e das métricas
+## Governança de Analytics e medidas
 
-A área **Pesquisa** projeta fatos correntes de atividade, materialização,
-desenho, Fontes, Observações, auditorias e variantes. A consulta é exclusiva da
-pessoa proprietária e omite identidades de conta, endereços de correio
-eletrônico, texto bruto de Observações e cópias integrais de conteúdo.
+**Analytics** deriva do estado corrente contagens de desenho e intervenções
+humanas explicitamente observáveis. A consulta é exclusiva da pessoa
+proprietária e não inclui texto de Observações, identidade de conta, conversa ou
+cópia integral do Curso.
 
-Uma métrica só entra no produto com pergunta, definição, unidade, derivação,
-denominador, tratamento de ausências, interpretação permitida e limite. A
-definição é versionada. As métricas correntes contam fatos por conjunto, tipo e
-estado dentro de um recorte explícito; elas não medem aprendizagem, atenção,
-esforço ou qualidade. Um desfecho de pesquisa exige protocolo, consentimento,
-instrumento e finalidade próprios. A exportação sem dados identificadores reduz
-a exposição, mas não dispensa retenção, controle de acesso nem direito de
-retirada. O produto
-não escolhe teste estatístico nem emite conclusão causal automaticamente.
+Uma medida só deve orientar pesquisa com pergunta, unidade, denominador,
+tratamento de ausências, interpretação permitida e limite. As contagens do
+produto não medem aprendizagem, atenção, esforço ou qualidade. Um desfecho exige
+protocolo, consentimento, instrumento e finalidade próprios. O snapshot sem
+identificadores diretos ainda pode ser associável ao Curso; exportá-lo não
+dispensa retenção, controle de acesso nem avaliação de reidentificação.
 
 ## Conceitos mínimos para interpretar uma investigação
 
-Um **evento** é uma ocorrência observável registrada com tipo, instante,
-objeto, contexto e proveniência. Ele não é automaticamente uma medida: abrir
-uma tela, concluir uma materialização ou registrar uma Observação só ganha
-significado analítico depois que pergunta e regra de interpretação forem
-declaradas.
+Um **estado observável** é uma condição que o produto consegue derivar do
+artefato corrente, como quantidade de StudyUnits ou Observações abertas. Ele não
+é automaticamente uma medida educacional: só ganha significado analítico
+depois que pergunta e regra de interpretação forem declaradas.
 
 O **denominador** é o conjunto de oportunidades ao qual uma contagem se refere.
 “Duas correções”, por exemplo, muda de significado se o denominador for duas,
@@ -516,8 +502,9 @@ Num **desenho experimental**, a atribuição aleatória é usada para formar
 condições comparáveis em expectativa. Num **desenho quase experimental**, a
 intervenção é estudada sem atribuição aleatória, recorrendo a comparação,
 temporalidade, modelagem e pressupostos adicionais para sustentar a inferência.
-Criar Variantes no AraLearn não realiza nenhum dos dois: ainda faltam
-participantes, atribuição, exposição, instrumentos, desfechos e análise.
+Criar Cursos separados com configurações diferentes não realiza nenhum dos dois:
+ainda faltam participantes, atribuição, exposição, instrumentos, desfechos e
+análise.
 
 **Validade externa** trata do argumento para transferir uma conclusão entre
 pessoas, tarefas, contextos, versões e momentos. **Generalização** não é um selo

@@ -161,21 +161,21 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
         change->>'contract','|',change->>'courseRevision','|',
         change->>'idempotent','|',change->>'changed'
       ) from (
-        select public.apply_course_design_command_for_actor_v1(
+        select public.apply_course_design_command_for_actor_v2(
           '${ownerId}','${courseId}',1,${command},
-          'application','course-122-design-1'
+          'course-122-design-1',repeat('a',64),'application'
         ) as change
       ) applied;
     `));
     const first = firstOutput.split(/\r?\n/u).at(-1);
-    assert.equal(first, "aralearn.course-design-change.v1|2|false|true");
+    assert.equal(first, "aralearn.course-design-change.v2|2|false|true");
     const replayOutput = await result(psql(`
       select set_config('request.jwt.claim.role','service_role',false);
       select concat(change->>'courseRevision','|',change->>'idempotent')
       from (
-        select public.apply_course_design_command_for_actor_v1(
+        select public.apply_course_design_command_for_actor_v2(
           '${ownerId}','${courseId}',1,${command},
-          'application','course-122-design-1'
+          'course-122-design-1',repeat('a',64),'application'
         ) as change
       ) applied;
     `));
@@ -188,13 +188,13 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
         design#>>'{componentCatalog,version}','|',
         design#>>'{parameters,0,effectiveAssignment,value}'
       ) from (
-        select public.get_owned_course_design_for_actor_v1(
+        select public.get_owned_course_design_for_actor_v2(
           '${ownerId}','${courseId}','course','${courseId}',32,null
         ) as design
       ) loaded;
     `));
     const read = readOutput.split(/\r?\n/u).at(-1);
-    assert.equal(read, "aralearn.course-design.v1|4|1-3e5629f8|3");
+    assert.equal(read, "aralearn.course-design.v2|4|1-3e5629f8|3");
   } finally {
     await cleanupUser(ownerId, email);
   }
@@ -290,9 +290,10 @@ test("PostgreSQL mantém a ordem pessoa antes de Curso entre anotação e exclus
       from private.course_anchored_annotations where id='${annotationId}';
     `)), "withdrawn|3|true|true");
     assert.equal(await result(psql(`
-      select count(*) from private.course_anchored_annotation_events
-      where annotation_id='${annotationId}';
-    `)), "3");
+      select count(*) || '|' ||
+        (to_regclass('private.course_anchored_annotation_events') is null)::text
+      from private.course_anchored_annotations where id='${annotationId}';
+    `)), "1|true");
   } finally {
     await cleanupUser(learnerId, learnerEmail);
     await cleanupUser(ownerId, ownerEmail);
@@ -310,7 +311,6 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
   const avatarEmail = "storage-lock-avatar-150@aralearn.invalid";
   const pdfOwnerId = "00000000-0000-4000-8000-000000001510";
   const pdfSessionId = "00000000-0000-4000-8000-000000001511";
-  const pdfObjectId = "00000000-0000-4000-8000-000000001512";
   const pdfCourseId = "10000000-0000-4000-8000-000000001510";
   const pdfHash = "a".repeat(64);
   const pdfObjectName = `${pdfCourseId}/${pdfHash}.pdf`;
@@ -337,13 +337,6 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
       values(
         '${pdfCourseId}','${pdfOwnerId}',
         'Curso do lock de PDF','Serializar upload e exclusão de conta'
-      );
-      insert into private.course_source_pdf_upload_intents(
-        actor_id,course_id,storage_path,content_hash,byte_size,media_type,
-        source_id,source_revision,course_revision
-      ) values(
-        '${pdfOwnerId}','${pdfCourseId}','${pdfObjectName}','${pdfHash}',512,
-        'application/pdf','source-lock',1,1
       );
     `));
 
@@ -414,14 +407,21 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
     const pdfWriter = psql(`
       set application_name='aralearn-pdf-write-lock-probe';
       begin;
-      set local role authenticated;
-      ${authenticatedContext(pdfOwnerId, pdfSessionId)}
-      insert into storage.objects(
-        id,bucket_id,name,owner,owner_id,metadata
-      ) values(
-        '${pdfObjectId}','course-source-pdfs','${pdfObjectName}',
-        '${pdfOwnerId}','${pdfOwnerId}',
-        '{"size":512,"mimetype":"application/pdf"}'::jsonb
+      set local role service_role;
+      select set_config('request.jwt.claim.role','service_role',true);
+      select public.prepare_course_source_pdf_ingestion_for_actor_v1(
+        '${pdfOwnerId}','${pdfCourseId}',1,
+        jsonb_build_object(
+          'mode','save','sourceId','source-lock','expectedSourceRevision',0,
+          'source',jsonb_build_object(
+            'kind','document','title','Fonte do lock de PDF',
+            'authorship',null,'publicationDate',null,'identifier',null,
+            'language',null,'citationText',null,'url',null,
+            'editionOrVersion',null,'origin','author_provided',
+            'availability','private','verificationStatus','unverified',
+            'studyVisibility','hidden'
+          )
+        ),'${pdfHash}',512,'application/pdf','pdf-lock-prepare-150'
       );
       commit;
     `);
@@ -435,7 +435,7 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
       result(pdfAccountDeletion),
       assert.rejects(
         result(pdfWriter),
-        /row-level security|nova linha viola|new row violates/iu
+        /não autorizada|inexistente|inacessível/iu
       )
     ]);
     assert.equal(await result(psql(`
@@ -460,103 +460,6 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
   }
 });
 
-test("PostgreSQL serializa intents simultâneos contra a mesma cota física de PDF", {
-  skip: postgresGate
-}, async () => {
-  const ownerId = "00000000-0000-4000-8000-000000001540";
-  const courseId = "10000000-0000-4000-8000-000000001540";
-  const email = "pdf-quota-lock-150@aralearn.invalid";
-  const hashes = Object.fromEntries(
-    ["a", "b", "c", "d", "e"].map((digit) => [digit, digit.repeat(64)])
-  );
-  const objectIds = [
-    "00000000-0000-4000-8000-000000001541",
-    "00000000-0000-4000-8000-000000001542",
-    "00000000-0000-4000-8000-000000001543"
-  ];
-  const twentyMiB = 20 * 1024 * 1024;
-  const fourMiB = 4 * 1024 * 1024;
-
-  await createUser(ownerId, email);
-  try {
-    await result(psql(`
-      insert into public.courses(id,owner_id,title,goal)
-      values(
-        '${courseId}','${ownerId}',
-        'Curso da cota concorrente de PDF','Reservar bytes físicos e intents vivos'
-      );
-      insert into private.course_source_revisions(
-        course_id,source_id,revision,status,kind,title,origin,availability,
-        verification_status,study_visibility,actor_id
-      ) values
-        ('${courseId}','source-quota-first',1,'active','document','Fonte A',
-          'author_provided','private','author_verified','hidden','${ownerId}'),
-        ('${courseId}','source-quota-second',1,'active','document','Fonte B',
-          'author_provided','private','author_verified','hidden','${ownerId}');
-      insert into storage.objects(id,bucket_id,name,owner,owner_id,metadata) values
-        ('${objectIds[0]}','course-source-pdfs','${courseId}/${hashes.a}.pdf',
-          '${ownerId}','${ownerId}',
-          '{"size":${twentyMiB},"mimetype":"application/pdf"}'::jsonb),
-        ('${objectIds[1]}','course-source-pdfs','${courseId}/${hashes.b}.pdf',
-          '${ownerId}','${ownerId}',
-          '{"size":${twentyMiB},"mimetype":"application/pdf"}'::jsonb),
-        ('${objectIds[2]}','course-source-pdfs','${courseId}/${hashes.c}.pdf',
-          '${ownerId}','${ownerId}',
-          '{"size":${twentyMiB},"mimetype":"application/pdf"}'::jsonb);
-    `));
-
-    const firstReservation = psql([
-      `set application_name='aralearn-pdf-quota-first-reservation';
-       begin;
-       select set_config('request.jwt.claim.role','service_role',true);
-       select public.get_course_source_attachment_access_for_actor_v1(
-         '${ownerId}','${courseId}',1,'prepare_upload','source-quota-first',1,
-         '${hashes.d}',${fourMiB},'application/pdf'
-       );`,
-      "select 'pdf-quota-first-reserved';",
-      "select pg_sleep(3); commit;"
-    ]);
-    await marker(firstReservation, "pdf-quota-first-reserved");
-
-    const secondReservation = psql(`
-      set application_name='aralearn-pdf-quota-second-reservation';
-      begin;
-      select set_config('request.jwt.claim.role','service_role',true);
-      select public.get_course_source_attachment_access_for_actor_v1(
-        '${ownerId}','${courseId}',1,'prepare_upload','source-quota-second',1,
-        '${hashes.e}',1,'application/pdf'
-      );
-      commit;
-    `);
-    await waitForDatabaseCondition(`
-      select (count(*)=1)::integer
-      from pg_stat_activity
-      where application_name='aralearn-pdf-quota-second-reservation'
-        and state='active' and wait_event_type='Lock';
-    `);
-    await Promise.all([
-      result(firstReservation),
-      assert.rejects(result(secondReservation), /cota de 64 MiB/iu)
-    ]);
-    assert.equal(await result(psql(`
-      select private.course_source_pdf_reserved_bytes_v1('${courseId}')::text
-        ||'|'||(select count(*)::text
-          from private.course_source_pdf_upload_intents intent
-          where intent.course_id='${courseId}'
-            and intent.content_hash in('${hashes.d}','${hashes.e}'));
-    `)), "67108864|1");
-  } finally {
-    await result(psql(`
-      begin;
-      set local session_replication_role='replica';
-      delete from storage.objects
-      where bucket_id='course-source-pdfs'
-        and name like '${courseId}/%';
-      commit;
-    `));
-    await cleanupUser(ownerId, email);
-  }
-});
 
 test("PostgreSQL não recria acesso quando concessão ou revogação perde para a exclusão", {
   skip: postgresGate
@@ -647,16 +550,11 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
           where course_id='${courseId}' and user_id='${grantTargetId}'
         ))::text
         ||'|'||(exists(
-          select 1 from private.course_events
-          where course_id='${courseId}'
-            and summary::text like '%${grantTargetId}%'
-        ))::text
-        ||'|'||(exists(
           select 1 from private.course_change_receipts
           where actor_id='${ownerId}' and request_id='${grantRequestId}'
             and result::text like '%${grantTargetId}%'
         ))::text;
-    `)), "false|false|false|false");
+    `)), "false|false|false");
 
     const revokeTargetDeletion = psql([
       `set application_name='aralearn-revoke-target-delete-lock-holder';
@@ -697,15 +595,10 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
           where course_id='${courseId}' and user_id='${revokeTargetId}'
         ))::text
         ||'|'||(exists(
-          select 1 from private.course_events
-          where course_id='${courseId}'
-            and summary::text like '%${revokeTargetId}%'
-        ))::text
-        ||'|'||(exists(
           select 1 from private.course_change_receipts
           where actor_id='${ownerId}' and request_id='${revokeRequestId}'
         ))::text;
-    `)), "false|false|false|false");
+    `)), "false|false|false");
   } finally {
     await cleanupUser(grantTargetId, grantEmail);
     await cleanupUser(revokeTargetId, revokeEmail);
@@ -1006,13 +899,6 @@ test("PostgreSQL serializa duas primeiras edições sobre a mesma origem compart
           '{"title":"Microssequência 149","dependsOn":[]}'::jsonb),
         ('${sourceCourseId}','study_unit','unit-149','microsequence','micro-149',1,
           '{"title":"Unidade original"}'::jsonb);
-      insert into private.course_events(
-        course_id,revision,operation,summary,actor_id
-      ) values(
-        '${sourceCourseId}',1,'create_course',
-        '{"changeKind":"course_initialized","createdCount":4,"updatedCount":0,"deletedCount":0}'::jsonb,
-        '${ownerId}'
-      );
       insert into public.course_access(course_id,user_id,granted_by)
       values('${sourceCourseId}','${learnerId}','${ownerId}');
     `));
@@ -1253,14 +1139,14 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
       id: partId,
       position: 0,
       title: "Parte única",
-      state: "partially_materialized"
+      state: "materialized"
     });
     assert.deepEqual(first.scopeOptions, {
       authoringParts: [{
         id: partId,
         position: 0,
         title: "Parte única",
-        state: "partially_materialized"
+        state: "materialized"
       }],
       unassignedStudyUnitCount: 0
     });

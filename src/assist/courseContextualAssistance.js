@@ -377,22 +377,13 @@ function instanceIdentities(value) {
 }
 
 function discoverContracts(target, proposal) {
-  const trace = [];
   const identities = new Map(instanceIdentities(target)
     .map((identity) => [`${identity.packageId}@${identity.version}`, identity]));
   for (const need of proposal.componentNeeds) {
-    const explored = RESOURCE_CATALOG.explore({ slot: need.slot });
-    trace.push({ operation: "explore", slot: need.slot, packageCount: explored.packageCount });
     const searched = RESOURCE_CATALOG.search({
       query: need.query,
       slot: need.slot,
       limit: 3
-    });
-    trace.push({
-      operation: "search",
-      slot: need.slot,
-      query: need.query,
-      candidates: searched.candidates.map(({ packageId, version }) => ({ packageId, version }))
     });
     const requested = searched.candidates.slice(0, 3)
       .map(({ packageId, version }) => ({ packageId, version }));
@@ -403,14 +394,6 @@ function discoverContracts(target, proposal) {
       );
     }
     const inspected = RESOURCE_CATALOG.inspect(requested);
-    trace.push({
-      operation: "inspect",
-      items: inspected.items.map(({ status, profile }) => ({
-        status,
-        packageId: profile?.packageId || "",
-        version: profile?.version || ""
-      }))
-    });
     const chosen = inspected.items.find(({ status }) => status === "ok")?.profile;
     if (chosen) identities.set(`${chosen.packageId}@${chosen.version}`, {
       packageId: chosen.packageId,
@@ -420,7 +403,6 @@ function discoverContracts(target, proposal) {
   const contracts = [];
   for (const identity of identities.values()) {
     const result = RESOURCE_CATALOG.contracts([identity]);
-    trace.push({ operation: "contracts", packages: [identity] });
     const item = result.items[0];
     if (item?.status !== "ok") {
       throw new StudyUnitProviderError(
@@ -430,7 +412,7 @@ function discoverContracts(target, proposal) {
     }
     contracts.push(item.definition);
   }
-  return { contracts, trace };
+  return contracts;
 }
 
 function instanceSchema(slot, contracts) {
@@ -717,7 +699,7 @@ function selectionAuthorityErrors(currentTarget, candidate, scope, selectedIds) 
   return errors;
 }
 
-function validateRenderableCandidate({ project, selection, scope, candidate, intent, selectedIds }) {
+function validateRenderableCandidate({ project, selection, scope, candidate, selectedIds }) {
   const errors = [];
   const current = findPath(project, selection);
   if (scope === "study_unit" && candidate.id !== current.studyUnit.id) {
@@ -741,8 +723,6 @@ function validateRenderableCandidate({ project, selection, scope, candidate, int
   if (!projectValidation.ok) {
     errors.push(...projectValidation.errors.map(({ path, message }) => `${path}: ${message}`));
   }
-  const previews = [];
-  const audits = [];
   if (!errors.length) {
     for (const unit of unitsInTarget(scope, candidate)) {
       try {
@@ -756,11 +736,6 @@ function validateRenderableCandidate({ project, selection, scope, candidate, int
           errors.push(`A Unidade ${unit.id} não produziu conteúdo renderizável.`);
           continue;
         }
-        previews.push({ studyUnit: clone(unit), descriptor, rendered });
-        audits.push(RESOURCE_CATALOG.auditRepresentation({
-          studyUnit: unit,
-          intent: { query: intent }
-        }));
       } catch (error) {
         errors.push(error instanceof Error ? error.message : "A prévia não pôde ser renderizada.");
       }
@@ -769,9 +744,7 @@ function validateRenderableCandidate({ project, selection, scope, candidate, int
   return {
     valid: errors.length === 0,
     errors: [...new Set(errors)].slice(0, 24),
-    proposedProject,
-    previews,
-    audits
+    proposedProject
   };
 }
 
@@ -808,7 +781,7 @@ export async function prepareCourseAssistanceProposal({
     project, selection, scope, writeTargetIds
   });
   const target = targetForScope(path, scope);
-  const { contracts, trace } = discoverContracts(target, confirmedProposal);
+  const contracts = discoverContracts(target, confirmedProposal);
   if (!contracts.length) {
     throw new StudyUnitProviderError(
       "assistance_component_contract_unavailable",
@@ -865,32 +838,18 @@ export async function prepareCourseAssistanceProposal({
         selection,
         scope,
         candidate: generated.candidate,
-        intent: confirmedProposal.summary,
         selectedIds: context.writeTarget.selectedIds
-      });
-      trace.push({
-        operation: "validate_study_unit",
-        attempt,
-        valid: validation.valid,
-        errors: validation.errors
       });
       if (!validation.valid) {
         validationErrors = validation.errors;
         continue;
       }
-      trace.push({ operation: "audit_representation", count: validation.audits.length });
-      trace.push({ operation: "preview_study_unit", count: validation.previews.length });
       return Object.freeze({
         contract: "aralearn.course-assistance-proposal.v1",
         scope,
         message: generated.message,
         candidate: clone(generated.candidate),
-        proposedProject: clone(validation.proposedProject),
-        previews: clone(validation.previews),
-        audits: clone(validation.audits),
-        catalogTrace: clone(trace),
-        repairCount: attempt,
-        renderable: true
+        proposedProject: clone(validation.proposedProject)
       });
     } catch (error) {
       if (error instanceof StudyUnitProviderError &&
@@ -901,12 +860,6 @@ export async function prepareCourseAssistanceProposal({
           message: "A saída não pôde ser lida como a composição estruturada exigida."
         }];
         priorCandidate = null;
-        trace.push({
-          operation: "validate_study_unit",
-          attempt,
-          valid: false,
-          errors: clone(validationErrors)
-        });
         continue;
       }
       throw error;

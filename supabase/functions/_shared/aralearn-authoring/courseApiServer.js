@@ -1,10 +1,7 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import { corsHeaders, preflightHeaders, readAuthoringOAuthAuthorization } from "./security.js";
-import {
-  authoringApplicationToolDefinition,
-  authoringApplicationToolIsAllowed
-} from "./courseMcpTools.js";
-import { executeCourseTool } from "./courseToolExecutor.js";
+import { routeCourseRequest } from "./courseProtocol.js";
+import { executeCourseRoute } from "./courseRouter.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
 
 const BODY_LIMIT = 512 * 1024;
@@ -34,7 +31,7 @@ function jsonResponse(status, payload, headers = {}) {
   });
 }
 
-function actionNameFromPath(pathname) {
+function courseApiRequestFromPath(pathname) {
   const segments = String(pathname || "")
     .replace(/\/+$/u, "")
     .split("/")
@@ -42,10 +39,16 @@ function actionNameFromPath(pathname) {
     .map((segment) => decodeURIComponent(segment));
   const slugIndex = segments.lastIndexOf("aralearn-course-api");
   const route = slugIndex >= 0 ? segments.slice(slugIndex + 1) : segments;
-  if (route.length !== 2 || route[0] !== "app") {
-    throw new AuthoringApiError(404, "not_found", "Endpoint do aplicativo inexistente.");
+  if (route.length === 2 && route[0] === "app" && new Set([
+    ACCOUNT_DELETION_ACTION,
+    PDF_INGESTION_ACTION
+  ]).has(route[1])) {
+    return { kind: "special", name: route[1] };
   }
-  return route[1];
+  if (route.length >= 2 && new Set(["v1", "v2"]).has(route[0])) {
+    return { kind: "course", pathname: `/${route.join("/")}` };
+  }
+  throw new AuthoringApiError(404, "not_found", "Endpoint do aplicativo inexistente.");
 }
 
 async function readBody(request) {
@@ -276,19 +279,21 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
         });
       }
       cors = corsHeaders(request, allowedOrigins);
-      if (request.method !== "POST") {
+      const apiRequest = courseApiRequestFromPath(new URL(request.url).pathname);
+      const specialRequest = apiRequest.kind === "special";
+      const allowedMethods = specialRequest
+        ? new Set(["POST"])
+        : new Set(["GET", "POST", "PATCH", "DELETE"]);
+      if (!allowedMethods.has(request.method)) {
         return jsonResponse(405, {
           ok: false,
           requestId: null,
-          error: { code: "method_not_allowed", message: "A operação aceita somente POST." }
-        }, { ...cors, Allow: "POST, OPTIONS" });
+          error: { code: "method_not_allowed", message: "Método não aceito por este endpoint." }
+        }, { ...cors, Allow: `${[...allowedMethods].join(", ")}, OPTIONS` });
       }
-      const actionName = actionNameFromPath(new URL(request.url).pathname);
+      const actionName = specialRequest ? apiRequest.name : null;
       const accountDeletion = actionName === ACCOUNT_DELETION_ACTION;
       const pdfIngestion = actionName === PDF_INGESTION_ACTION;
-      if (!accountDeletion && !pdfIngestion && !authoringApplicationToolDefinition(actionName)) {
-        throw new AuthoringApiError(404, "unknown_action", "Operação de Curso inexistente.");
-      }
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = requestStartedAt + 40_000;
       let result;
@@ -315,12 +320,9 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
           authentication.credential,
           { deadlineAt }
         );
-        const allowed = pdfIngestion
-          ? principal?.actorId && new Set(
-              Array.isArray(principal.scopes) ? principal.scopes : []
-            ).has("authoring:write")
-          : authoringApplicationToolIsAllowed(actionName, principal);
-        if (!allowed) {
+        if (pdfIngestion && !(principal?.actorId && new Set(
+          Array.isArray(principal.scopes) ? principal.scopes : []
+        ).has("authoring:write"))) {
           throw new AuthoringApiError(
             403,
             "insufficient_scope",
@@ -359,23 +361,14 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
             })
           };
         } else {
-          const rawArguments = await readBody(request);
-          result = await executeCourseTool({
+          result = await executeCourseRoute({
+            request,
+            route: routeCourseRequest(request.method, apiRequest.pathname),
             adapter,
             principal,
-            name: actionName,
-            rawArguments,
             deadlineAt,
-            surface: "application",
-            applicationInspectionVersion:
-              request.headers.get("accept") ===
-                "application/vnd.aralearn.course-study-unit-inspection.v2+json"
-                ? 2
-                : 1,
-            onRequestIdValidated(value) {
-              requestId = value;
-            }
           });
+          requestId = result.requestId;
         }
       }
       const payload = { ok: true, requestId: result.requestId, data: result.data ?? null };

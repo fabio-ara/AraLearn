@@ -730,20 +730,17 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
     citations: {
       citations: [{
         sourceId: "fonte-citacao",
-        sourceRevision: 2,
         title: "Fonte somente citada",
         citationText: "Autoria. Fonte somente citada. 2026.",
         url: null,
         editionOrVersion: "2ª edição",
         anchors: [{
           anchorId: "anchor-publica",
-          anchorRevision: 1,
           selector: { kind: "page_range", startPage: 8, endPage: 9 },
           humanLocator: "Capítulo 2 · Figura 4"
         }]
       }, {
         sourceId: "fonte-com-link",
-        sourceRevision: 1,
         title: "Fonte com link público",
         citationText: "Autoria. Fonte com link público. 2026.",
         url: "https://example.test/fonte",
