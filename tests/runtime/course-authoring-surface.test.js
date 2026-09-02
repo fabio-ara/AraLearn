@@ -17,11 +17,6 @@ const OUTCOME_ID = "50000000-0000-4000-8000-000000000005";
 const ANALYSIS_ID = "60000000-0000-4000-8000-000000000006";
 const EVIDENCE_ID = "70000000-0000-4000-8000-000000000007";
 const MATERIALIZATION_ID = "80000000-0000-4000-8000-000000000008";
-const MATERIALIZATION_HISTORY_IDS = Object.freeze([
-  "81000000-0000-4000-8000-000000000008",
-  "82000000-0000-4000-8000-000000000008",
-  "83000000-0000-4000-8000-000000000008"
-]);
 const EVENT_ID = "9";
 const PLAN_ID = "a0000000-0000-4000-8000-00000000000a";
 const MATERIALIZATION_STEP_IDS = Object.freeze([
@@ -520,78 +515,6 @@ function courseDesignFixture({
   };
 }
 
-function partMaterializationFixture(overrides = {}) {
-  const step = ({ id, position, kind, status, target = null, production = null,
-    resultFacts = {} }) => ({
-    id,
-    position,
-    kind,
-    targetDidacticMicrosequenceId: target,
-    productionPosition: production,
-    status,
-    version: status === "pending" ? 1 : 2,
-    resultFacts,
-    updatedAt: status === "pending"
-      ? "2026-08-17T10:00:00Z"
-      : "2026-08-17T10:10:00Z",
-    completedAt: status === "pending" ? null : "2026-08-17T10:10:00Z"
-  });
-  const steps = [
-    step({
-      id: MATERIALIZATION_STEP_IDS[0],
-      position: 0,
-      kind: "context_load",
-      status: "completed",
-      resultFacts: { loadedSources: 2 }
-    }),
-    step({
-      id: MATERIALIZATION_STEP_IDS[1],
-      position: 1,
-      kind: "didactic_microsequence_materialization",
-      status: "completed",
-      target: "micro-a",
-      production: 0,
-      resultFacts: { studyUnitCount: 4 }
-    }),
-    step({
-      id: MATERIALIZATION_STEP_IDS[2],
-      position: 2,
-      kind: "validation",
-      status: "pending"
-    }),
-    step({
-      id: MATERIALIZATION_STEP_IDS[3],
-      position: 3,
-      kind: "didactic_microsequence_materialization",
-      status: "pending",
-      target: "micro-b",
-      production: 1
-    })
-  ];
-  return {
-    contract: "aralearn.course-authoring-part-materialization.v1",
-    courseId: COURSE_ID,
-    courseRevision: 5,
-    authoringPartId: PART_ID,
-    materialization: {
-      id: MATERIALIZATION_ID,
-      authoringPartVersion: 2,
-      channel: "mcp",
-      status: "running",
-      version: 3,
-      designContext: { focus: "Aplicação concreta" },
-      contextHash: "a".repeat(64),
-      resultFacts: {},
-      startedAt: "2026-08-17T10:00:00Z",
-      updatedAt: "2026-08-17T10:10:00Z",
-      completedAt: null,
-      steps,
-      nextPendingStep: steps[2]
-    },
-    ...overrides
-  };
-}
-
 function controllerFixture(overrides = {}) {
   const controller = {
     async listCourses() {
@@ -645,9 +568,6 @@ function controllerFixture(overrides = {}) {
     },
     async loadCourseDesign() {
       return courseDesignFixture();
-    },
-    async loadPartMaterialization() {
-      return partMaterializationFixture();
     },
     async mutateAuthoringPlan() {
       return undefined;
@@ -838,7 +758,8 @@ test("Conteúdo monta uma única sequência sem árvore paralela nem carga de ou
 
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["course", COURSE_ID]]);
-  assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
+  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
+  assert.match(root.innerHTML, /<p class="course-authoring-context-title">Conteúdo<\/p>/u);
   assert.doesNotMatch(root.innerHTML, /Inspeção do conteúdo|Leia as Unidades como elas aparecem em Estudo/u);
   assert.doesNotMatch(root.innerHTML, /course-authoring-content-hierarchy|Estrutura do Curso/u);
   assert.match(
@@ -868,7 +789,7 @@ test("Conteúdo monta uma única sequência sem árvore paralela nem carga de ou
   assert.equal(root.innerHTML, "");
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["course", COURSE_ID], ["course", COURSE_ID]]);
-  assert.match(root.innerHTML, /<h1>Conteúdo<\/h1>/u);
+  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
 });
 
 test("menu de tarefas fecha antes de trocar de seção", async () => {
@@ -914,11 +835,10 @@ test("menu de tarefas fecha antes de trocar de seção", async () => {
   surface.destroy();
 });
 
-test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segunda hierarquia", async () => {
+test("Planejamento mostra uma Parte focal sem painel de execução nem segunda hierarquia", async () => {
   const root = new FakeRoot();
   let outlineReads = 0;
   let inspectionReads = 0;
-  let materializationReads = 0;
   const basePlan = authoringPlanFixture();
   basePlan.recentActivity.unshift({
     eventId: "8",
@@ -964,10 +884,6 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
         inspectionReads += 1;
         throw new Error("Planejamento não deve carregar Unidades de estudo.");
       },
-      async loadPartMaterialization() {
-        materializationReads += 1;
-        throw new Error("Planejamento não deve carregar etapas sem ação humana.");
-      }
     }),
     locationValue: {
       pathname: "/",
@@ -980,19 +896,18 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
   assert.equal(await surface.open(), true);
   assert.equal(outlineReads, 0);
   assert.equal(inspectionReads, 0);
-  assert.equal(materializationReads, 0);
-  assert.match(root.innerHTML, /<h1>Planejamento<\/h1>/u);
+  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
+  assert.match(root.innerHTML, /<p class="course-authoring-context-title">Planejamento<\/p>/u);
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; e aplicação\./u);
-  assert.match(root.innerHTML, /7–12/u);
-  assert.match(root.innerHTML, /Escolha automática/u);
+  assert.doesNotMatch(root.innerHTML, /7–12|Escolha automática/u);
   assert.match(root.innerHTML, /Resultados de aprendizagem/u);
   assert.match(root.innerHTML, /Comparar relações essenciais\./u);
   assert.match(root.innerHTML, /Parte 1/u);
   assert.equal(
     (root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length,
     1,
-    "O overview do Planejamento deve renderizar somente a Parte focal."
+    "O Planejamento deve renderizar somente a Parte focal."
   );
   assert.match(root.innerHTML, /class="course-authoring-part-navigation" aria-label="Navegação entre Partes"/u);
   assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 1 de 2:[^"]+" title="Escolher Parte"><span>Parte 1 de 2<\/span>/u);
@@ -1005,12 +920,10 @@ test("Planejamento mostra plano vivo, Partes e fatos recentes sem JSON nem segun
     root.innerHTML,
     /<div class="course-authoring-part-counts" aria-label="Planejado e produzido"><span>2 microssequências<\/span><span>7 unidades<\/span><\/div>/u
   );
-  assert.match(root.innerHTML, /Materialização.*etapa|Etapa de materialização registrada/isu);
-  assert.match(
+  assert.doesNotMatch(
     root.innerHTML,
-    /<details class="course-authoring-recent-activity">[\s\S]*Relação entre grandezas\.[\s\S]*<\/details>/u
+    /course-authoring-(?:materialization|recent-activity)|Etapas e resultados|Fatos da etapa|resultFacts|contextHash|>MCP<|>Actions</iu
   );
-  assert.match(root.innerHTML, />Abrir Parte</u);
   assert.doesNotMatch(root.innerHTML, /materialize-part|context-chat|Trabalhar no ChatGPT|Copiar pedido/u);
   assert.match(root.innerHTML, /<details class="course-authoring-part-tools"/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
@@ -1570,10 +1483,10 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial, 
   }]);
   assert.equal(outlineReads, 0);
   assert.equal(planReads, 0);
-  assert.match(root.innerHTML, /<h1>Parâmetros<\/h1>/u);
+  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
   assert.match(
     root.innerHTML,
-    /<p class="course-authoring-context-title" title="Fundamentos">Fundamentos<\/p>/u
+    /<p class="course-authoring-context-title">Parâmetros<\/p>/u
   );
   assert.match(
     root.innerHTML,
@@ -2185,218 +2098,6 @@ test("desenho mantém o envelope até a releitura e não reaplica escrita já co
   assert.equal(surface.close(), true, "A confirmação remove o envelope sem pedir nova escrita.");
 });
 
-test("deep link abre qualquer materialização e mantém retorno à mesma Parte", async () => {
-  const root = new FakeRoot();
-  const calls = [];
-  const locationValue = {
-    pathname: "/",
-    search: "",
-    hash: buildCourseAuthoringRoute(COURSE_ID, {
-      section: "planning",
-      authoringPartId: PART_ID,
-      materializationId: MATERIALIZATION_ID
-    })
-  };
-  const fixture = partMaterializationFixture();
-  fixture.materialization.designContext = {
-    contract: "aralearn.course-design-context.v2",
-    courseId: COURSE_ID,
-    componentCatalogVersion: "1-technical",
-    focus: "Comparar <origem> com aplicação",
-    sourceSet: ["A", "B"]
-  };
-  fixture.materialization.steps[0].resultFacts = {
-    observation: "Contexto <script>alert(1)</script> carregado",
-    loadedSources: 2,
-    sourceAttributionApplicationHash: "c".repeat(64),
-    designApplication: { contract: "internal" }
-  };
-  fixture.materialization.nextPendingStep = fixture.materialization.steps[2];
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async loadPartMaterialization(...args) {
-        calls.push(args);
-        return fixture;
-      }
-    }),
-    locationValue,
-    windowValue: new FakeWindow()
-  });
-
-  assert.equal(await surface.open(), true);
-  assert.deepEqual(calls, [[COURSE_ID, PART_ID, MATERIALIZATION_ID]]);
-  assert.match(root.innerHTML, /Etapas e resultados/u);
-  assert.match(root.innerHTML, /Próxima: etapa 3 · Validar produção/u);
-  assert.match(root.innerHTML, /Carregar contexto/u);
-  assert.match(root.innerHTML, /Fatos da etapa/u);
-  assert.match(root.innerHTML, /Fontes carregadas/u);
-  assert.match(root.innerHTML, /Unidades/u);
-  assert.match(root.innerHTML, /Foco/u);
-  assert.doesNotMatch(root.innerHTML, /Loaded Sources|Study Unit Count|Focus/u);
-  assert.match(root.innerHTML, /Comparar &lt;origem&gt; com aplicação/u);
-  assert.match(root.innerHTML, /Contexto &lt;script&gt;alert\(1\)&lt;\/script&gt; carregado/u);
-  assert.doesNotMatch(root.innerHTML, /<script|"designContext"|"resultFacts"/u);
-  assert.doesNotMatch(root.innerHTML, /Course Id|Component Catalog Version|c{64}|Design Application/u);
-  assert.match(root.innerHTML, /returnAuthoringPartId=/u);
-  assert.match(root.innerHTML, /returnMaterializationId=/u);
-  assert.equal(
-    (root.innerHTML.match(/class="course-authoring-back"/gu) || []).length,
-    1,
-    "A execução usa somente o botão Voltar global."
-  );
-  const detailNavigation = root.innerHTML.match(
-    /<header class="course-authoring-detail-navigation is-heading-only">[\s\S]*?<\/header>/u
-  )?.[0];
-  assert.ok(detailNavigation);
-  assert.doesNotMatch(detailNavigation, /<a\b|<button\b|>Voltar</u);
-  assert.equal(surface.handleBack(), true);
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(
-    locationValue.hash,
-    buildCourseAuthoringRoute(COURSE_ID, {
-      section: "planning", authoringPartId: PART_ID
-    })
-  );
-  assert.equal(calls.length, 1);
-
-  const directRoot = new FakeRoot();
-  const directLocationValue = {
-    pathname: "/",
-    search: "",
-    hash: buildCourseAuthoringRoute(COURSE_ID, {
-      section: "content",
-      moduleId: "module-a",
-      returnAuthoringPartId: PART_ID,
-      returnMaterializationId: MATERIALIZATION_ID
-    })
-  };
-  const directSurface = createCourseAuthoringSurface({
-    root: directRoot,
-    controller: controllerFixture(),
-    locationValue: directLocationValue,
-    windowValue: new FakeWindow()
-  });
-  assert.equal(await directSurface.open(), true);
-  assert.equal(
-    (directRoot.innerHTML.match(/class="course-authoring-back"/gu) || []).length,
-    1,
-    "O Conteúdo também conserva somente o botão Voltar global."
-  );
-  assert.doesNotMatch(directRoot.innerHTML, /aria-label="Voltar à execução"|>Voltar à execução</u);
-  assert.equal(directSurface.handleBack(), true);
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(
-    directLocationValue.hash,
-    buildCourseAuthoringRoute(COURSE_ID, {
-      section: "planning",
-      authoringPartId: PART_ID,
-      materializationId: MATERIALIZATION_ID
-    })
-  );
-});
-
-test("Parte mostra histórico completo com execução parcial, concluída e falha anterior", async () => {
-  const root = new FakeRoot();
-  const plan = authoringPlanFixture();
-  const [partialId, completedId, failedId] = MATERIALIZATION_HISTORY_IDS;
-  plan.plan.parts[0].progress = {
-    state: "materializing",
-    microsequenceCount: 2,
-    studyUnitCount: 7,
-    materializations: [{
-      id: MATERIALIZATION_ID,
-      status: "running",
-      progressState: "running",
-      channel: "mcp",
-      version: 1,
-      completedStepCount: 0,
-      failedStepCount: 0,
-      totalStepCount: 3,
-      startedAt: "2026-08-17T14:00:00Z",
-      updatedAt: "2026-08-17T14:00:00Z",
-      completedAt: null,
-      summary: "A execução está preparando o contexto."
-    }, {
-      id: partialId,
-      status: "running",
-      progressState: "partial",
-      channel: "application",
-      version: 2,
-      completedStepCount: 1,
-      failedStepCount: 0,
-      totalStepCount: 3,
-      startedAt: "2026-08-17T13:00:00Z",
-      updatedAt: "2026-08-17T13:02:00Z",
-      completedAt: null,
-      summary: "A estrutura foi iniciada e pode ser retomada."
-    }, {
-      id: completedId,
-      status: "completed",
-      progressState: "completed",
-      channel: "actions",
-      version: 4,
-      completedStepCount: 3,
-      failedStepCount: 0,
-      totalStepCount: 3,
-      startedAt: "2026-08-17T12:00:00Z",
-      updatedAt: "2026-08-17T12:05:00Z",
-      completedAt: "2026-08-17T12:05:00Z",
-      summary: "Duas Unidades foram produzidas."
-    }, {
-      id: failedId,
-      status: "failed",
-      progressState: "failed",
-      channel: "mcp",
-      version: 2,
-      completedStepCount: 1,
-      failedStepCount: 1,
-      totalStepCount: 3,
-      startedAt: "2026-08-17T11:00:00Z",
-      updatedAt: "2026-08-17T11:02:00Z",
-      completedAt: "2026-08-17T11:02:00Z",
-      summary: "Revise a Fonte pendente e tente novamente."
-    }],
-    lastMaterialization: {
-      id: MATERIALIZATION_ID,
-      status: "running",
-      version: 1,
-      completedStepCount: 0,
-      failedStepCount: 0,
-      totalStepCount: 3,
-      startedAt: "2026-08-17T14:00:00Z",
-      updatedAt: "2026-08-17T14:00:00Z",
-      completedAt: null
-    }
-  };
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({ async loadAuthoringPlan() { return plan; } }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, {
-        section: "planning", authoringPartId: PART_ID
-      })
-    },
-    windowValue: new FakeWindow()
-  });
-
-  assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /4 execuções/u);
-  assert.match(root.innerHTML, />Em andamento</u);
-  assert.match(root.innerHTML, />Parcial</u);
-  assert.match(root.innerHTML, />Concluída</u);
-  assert.match(root.innerHTML, />Falhou</u);
-  assert.match(root.innerHTML, /Aplicativo/u);
-  assert.match(root.innerHTML, /Actions/u);
-  assert.match(root.innerHTML, /MCP/u);
-  assert.match(root.innerHTML, /Revise a Fonte pendente e tente novamente/u);
-  assert.ok(root.innerHTML.indexOf(MATERIALIZATION_ID) < root.innerHTML.indexOf(partialId));
-  assert.ok(root.innerHTML.indexOf(partialId) < root.innerHTML.indexOf(completedId));
-  assert.ok(root.innerHTML.indexOf(completedId) < root.innerHTML.indexOf(failedId));
-});
-
 test("cria Curso privado pela mesma operação canônica disponível ao MCP", async () => {
   const root = new FakeRoot();
   const calls = [];
@@ -2567,8 +2268,7 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
             title,
             objective,
             audience: value.audience,
-            scope: value.scope,
-            preferredPartCount: value.preferredPartCount
+            scope: value.scope
           }
         };
       }
@@ -2589,7 +2289,7 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
       }
     }
   });
-  assert.match(root.innerHTML, /name="rangeMinimum"[^>]*value="7"/u);
+  assert.doesNotMatch(root.innerHTML, /rangeMinimum|rangeMaximum|rangeOrigin|Faixa preferencial/u);
   assert.doesNotMatch(root.innerHTML, /JSON|authoringState|brief/iu);
 
   root.listeners.get("submit")({
@@ -2600,10 +2300,7 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
         title: { value: "Fundamentos revisados" },
         objective: { value: "Novo objetivo." },
         audience: { value: "Pesquisadores iniciantes." },
-        scope: { value: "Relações e aplicações." },
-        rangeMinimum: { value: "8" },
-        rangeMaximum: { value: "10" },
-        rangeOrigin: { value: "research_condition" }
+        scope: { value: "Relações e aplicações." }
       }
     }
   });
@@ -2620,12 +2317,7 @@ test("edita título canônico e plano humano sem JSON nem autoridade duplicada",
     title: "Fundamentos revisados",
     objective: "Novo objetivo.",
     audience: "Pesquisadores iniciantes.",
-    scope: "Relações e aplicações.",
-    preferredPartCount: {
-      minimum: 8,
-      maximum: 10,
-      origin: "research_condition"
-    }
+    scope: "Relações e aplicações."
   });
   assert.match(root.innerHTML, /Planejamento salvo/u);
   assert.doesNotMatch(root.innerHTML, /data-course-authoring-planning/u);
@@ -3285,7 +2977,8 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   });
 
   assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /<h1>Pessoas e acesso<\/h1>/u);
+  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
+  assert.match(root.innerHTML, /<p class="course-authoring-context-title">Pessoas e acesso<\/p>/u);
   assert.match(
     root.innerHTML,
     /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso<\/h2>/u
@@ -3482,7 +3175,7 @@ test("Conteúdo carrega só o Curso e entrega toda a navegação à sequência",
   assert.doesNotMatch(root.innerHTML, /course-authoring-outline|Estrutura do Curso|Base · Relações/u);
 });
 
-test("back interno retorna da tarefa à Visão geral e então à lista", async () => {
+test("back interno retorna do Conteúdo diretamente à lista sem overview intermediário", async () => {
   const root = new FakeRoot();
   const windowValue = new FakeWindow();
   const locationValue = {
@@ -3505,10 +3198,6 @@ test("back interno retorna da tarefa à Visão geral e então à lista", async (
   });
 
   await surface.open();
-  assert.equal(surface.handleBack(), true);
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(locationValue.hash, buildCourseAuthoringRoute(COURSE_ID, { section: "overview" }));
-  assert.match(root.innerHTML, /<h1>Visão geral<\/h1>/u);
   assert.equal(surface.handleBack(), true);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(locationValue.hash, "");
@@ -3600,11 +3289,11 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.match(css, /\.course-authoring-task-menu > nav \{[\s\S]*?width: min\(82vw, 320px\)/u);
   assert.match(
     css,
-    /\.course-authoring-course-header \{[\s\S]*?grid-template-columns: var\(--tap\) minmax\(0, 1fr\) var\(--tap\)/u
+    /\.course-authoring-course-header:has\(> \.course-authoring-header-actions\) \{[\s\S]*?grid-template-columns: var\(--tap\) minmax\(0, 1fr\) auto/u
   );
   assert.match(
     surfaceSource,
-    /const title = state\.section === "research" && state\.researchView === "variants"[\s\S]*?: AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1>\$\{escapeHtml\(title\)\}<\/h1>[\s\S]*?course-authoring-context-title/u
+    /const title = state\.section === "research" && state\.researchView === "variants"[\s\S]*?: AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1 title="\$\{escapeHtml\(course\?\.title \|\| "Curso"\)\}">[\s\S]*?course-authoring-context-title/u
   );
   assert.match(
     css,
@@ -3625,10 +3314,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
     contextTitleRule,
     /text-transform:\s*uppercase/u
   );
-  assert.match(
-    surfaceSource,
-    /class="course-authoring-context-title" title="\$\{escapeHtml\(/u
-  );
+  assert.match(surfaceSource, /class="course-authoring-context-title">\$\{escapeHtml\(title\)\}/u);
   assert.match(
     css,
     /\.course-authoring-course-header \{[\s\S]*?height: calc\(var\(--tap\) \+ 8px\);/u
@@ -3643,7 +3329,12 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.doesNotMatch(css, /width: min\(100%, (?:560|620|720|760|820|1180)px\)/u);
   assert.doesNotMatch(css, /@media \(min-width: (?:640|680|900)px\)/u);
   assert.doesNotMatch(css, /course-authoring-sidebar-navigation/u);
-  assert.doesNotMatch(css, /course-authoring-(?:sections|primary-navigation|area-menu)/u);
+  assert.doesNotMatch(css, /course-authoring-(?:sections|area-menu)/u);
+  assert.match(css, /\.course-authoring-primary-navigation \{/u);
+  assert.doesNotMatch(
+    css,
+    /course-authoring-(?:overview|task-grid|task-section|materialization|recent-activity|detail-navigation|planning-metric-counts)|course-inspection-(?:spacer|boundary|preview)/u
+  );
   assert.doesNotMatch(
     surfaceSource,
     /globalThis\.confirm|confirmValue/u,
@@ -3651,7 +3342,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   );
 });
 
-test("Visão geral revela as sete tarefas humanas em um único nível", () => {
+test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasionais", () => {
   const course = {
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -3663,7 +3354,7 @@ test("Visão geral revela as sete tarefas humanas em um único nível", () => {
   };
   const markup = renderCourseAuthoringSurface({
     view: "course",
-    section: "overview",
+    section: "content",
     course,
     knownCourse: course,
     loading: false,
@@ -3671,18 +3362,21 @@ test("Visão geral revela as sete tarefas humanas em um único nível", () => {
     sourceTarget: null
   });
 
-  assert.match(markup, /<h1>Visão geral<\/h1>/u);
-  assert.match(markup, /Curso próprio/u);
-  assert.equal((markup.match(/Compreender relações essenciais\./gu) || []).length, 1);
-  assert.match(markup, /data-course-authoring-task-list/u);
-  assert.equal((markup.match(/class="course-authoring-task-card"/gu) || []).length, 7);
-  assert.doesNotMatch(markup,
-    /Cada tarefa abre|Objetivo, público|Hierarquia, leitura|Valores efetivos|Catálogo, revisões|Comparações, fatos/u);
-  assert.doesNotMatch(markup, /class="course-authoring-sections"|course-authoring-primary-navigation/u);
+  assert.match(markup, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
+  assert.match(markup, /<p class="course-authoring-context-title">Conteúdo<\/p>/u);
+  assert.equal((markup.match(/class="course-authoring-primary-destination/gu) || []).length, 2);
+  const primary = markup.match(
+    /<nav class="course-authoring-primary-navigation"[\s\S]*?<\/nav>/u
+  )?.[0];
+  assert.ok(primary);
+  assert.match(primary, /aria-label="Conteúdo"/u);
+  assert.match(primary, /aria-label="Planejamento"/u);
+  assert.doesNotMatch(primary, /<strong>|>Conteúdo<|>Planejamento</u);
+  assert.match(markup, /<details class="course-authoring-task-menu"/u);
+  assert.doesNotMatch(markup, /Visão geral|section=overview|course-authoring-overview/u);
   assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
   for (const label of [
-    "Planejamento", "Conteúdo", "Parâmetros", "Fontes", "Revisão",
-    "Variantes e pesquisa", "Pessoas e acesso"
+    "Parâmetros", "Fontes", "Revisão", "Variantes e pesquisa", "Pessoas e acesso"
   ]) assert.match(markup, new RegExp(`<strong>${label}<\\/strong>`, "u"));
   for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {
     assert.match(markup, new RegExp(`section=${section}`, "u"));

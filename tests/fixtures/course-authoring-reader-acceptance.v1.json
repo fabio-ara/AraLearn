@@ -1,0 +1,47 @@
+{
+  "contract": "aralearn.course-authoring-reader-acceptance.v1",
+  "course": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "title": "Curso extenso para navegação focal",
+    "revision": 41
+  },
+  "viewports": [360, 390, 430, 1280],
+  "unitsPerPart": 10,
+  "totalStudyUnits": 120,
+  "initialStudyUnitOrdinal": 76,
+  "oldStudyUnitOrdinal": 3,
+  "externalUpdate": {
+    "revision": 42,
+    "studyUnitOrdinal": 76,
+    "marker": "CONTEUDO_ATUALIZADO_EXTERNAMENTE_SEM_DESLOCAMENTO"
+  },
+  "parts": [
+    { "id": "20000000-0000-4000-8000-000000000001", "position": 0, "title": "Parte 1 — Fundamentos" },
+    { "id": "20000000-0000-4000-8000-000000000002", "position": 1, "title": "Parte 2 — Relações" },
+    { "id": "20000000-0000-4000-8000-000000000003", "position": 2, "title": "Parte 3 — Mecanismos" },
+    { "id": "20000000-0000-4000-8000-000000000004", "position": 3, "title": "Parte 4 — Contrastes" },
+    { "id": "20000000-0000-4000-8000-000000000005", "position": 4, "title": "Parte 5 — Representações" },
+    { "id": "20000000-0000-4000-8000-000000000006", "position": 5, "title": "Parte 6 — Procedimentos" },
+    { "id": "20000000-0000-4000-8000-000000000007", "position": 6, "title": "Parte 7 — Consolidação" },
+    { "id": "20000000-0000-4000-8000-000000000008", "position": 7, "title": "Parte 8 — Aplicação" },
+    { "id": "20000000-0000-4000-8000-000000000009", "position": 8, "title": "Parte 9 — Variações" },
+    { "id": "20000000-0000-4000-8000-000000000010", "position": 9, "title": "Parte 10 — Diagnóstico" },
+    { "id": "20000000-0000-4000-8000-000000000011", "position": 10, "title": "Parte 11 — Reparos" },
+    { "id": "20000000-0000-4000-8000-000000000012", "position": 11, "title": "Parte 12 — Síntese" }
+  ],
+  "accessibleControls": [
+    "Unidade anterior",
+    "Próxima Unidade",
+    "Ir para",
+    "Navegação entre Unidades"
+  ],
+  "forbiddenEverydayTerms": [
+    "runs",
+    "steps",
+    "CAS",
+    "hash",
+    "payload",
+    "resultFacts",
+    "requestId"
+  ]
+}
