@@ -176,7 +176,7 @@ try {
   $courseApiHandle = Start-LocalEdgeFunction -Name 'aralearn-course-api'
   try {
     Wait-LocalEdgeFunction `
-      -Url "$apiUrl/functions/v1/aralearn-course-api/app/listarCursos" `
+      -Url "$apiUrl/functions/v1/aralearn-course-api/v1/courses" `
       -Process $courseApiHandle.Process
     Invoke-CheckedCommand 'Smoke da API, do PostgREST e do RLS de Curso' 'npm.cmd' @(
       'run',

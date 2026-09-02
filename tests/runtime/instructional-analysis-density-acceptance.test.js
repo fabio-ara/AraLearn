@@ -18,8 +18,8 @@ import {
   courseAuthoringGuidanceForCall
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
-  COURSE_MCP_TOOLS
-} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+  COURSE_HUMAN_TASKS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const fixture = JSON.parse(await fs.readFile(new URL(
   "../fixtures/instructional-analysis-density-acceptance.v1.json",
@@ -181,17 +181,9 @@ test("#267 fixa os julgamentos semânticos como declarações revisáveis, não 
 });
 
 test("#267 projeta ao produtor inventário prévio, estabilidade do teto e a fronteira determinística", () => {
-  const planning = courseAuthoringGuidanceForCall("lerCurso", {
-    view: "instructional_plan"
-  });
-  const materialization = courseAuthoringGuidanceForCall("lerCurso", {
-    view: "part_materialization"
-  });
-  const review = courseAuthoringGuidanceForCall("lerCurso", {
-    view: "audit_cycle",
-    mode: "context",
-    dimensions: ["pedagogical_quality"]
-  });
+  const planning = courseAuthoringGuidanceForCall("consultar_planejamento");
+  const materialization = courseAuthoringGuidanceForCall("preparar_materializacao");
+  const review = courseAuthoringGuidanceForCall("preparar_revisao");
   assert.equal(planning.contract, "aralearn.authoring-guidance.v1");
   assert.equal(materialization.contract, "aralearn.authoring-guidance.v1");
   assert.equal(review.contract, "aralearn.authoring-guidance.v1");
@@ -391,28 +383,45 @@ test("#267 o contrato interno transporta a aplicação granular sem score, grafo
   const application = applicationForDistribution(fixture.ceilingComparison.variants[0]);
   assert.deepEqual(normalizeCourseDesignApplication(application), application);
 
-  const changeSchema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
-    .inputSchema;
-  const designApplicationSchema = changeSchema.properties.materializationCommand.properties
-    .designApplication.anyOf[0];
+  const designApplicationSchema = COURSE_HUMAN_TASKS.find(
+    ({ name }) => name === "materializar_parte"
+  ).inputSchema;
   const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
     designApplicationSchema
   );
-  assert.equal(validate(application), true, JSON.stringify(validate.errors));
+  const statements = new Map(fixture.analysisInventory.map(({ id, statement }) => [id, statement]));
+  const humanApplication = {
+    curso: "Redes para iniciantes",
+    parte: "Percurso de uma requisição",
+    unidades: fixture.ceilingComparison.variants[0].introducedByStudyUnit.map((ids, index) => ({
+      microssequencia: "Sockets e portas",
+      posicao: index + 1,
+      conteudo: { title: `Unidade ${index + 1}`, role: "theory", content: [] },
+      aplicacaoPedagogica: {
+        modo: "expositiva",
+        novidadesIntroduzidas: ids.map((id) => statements.get(id)),
+        explicacoes: ids.map((id) => ({
+          novidade: statements.get(id),
+          formas: ["plain_definition"]
+        })),
+        praticas: []
+      },
+      fontes: []
+    }))
+  };
+  assert.equal(validate(humanApplication), true, JSON.stringify(validate.errors));
   const transportedFields = Object.keys(
-    designApplicationSchema.properties.studyUnits.items.properties
+    designApplicationSchema.properties.unidades.items.properties
   );
   assert.deepEqual(transportedFields.sort(), [
-    "componentRefs",
-    "explanationApplications",
-    "introducedInstructionalAnalysisUnitIds",
-    "mode",
-    "practiceApplications",
-    "studyUnitId",
-    "studyUnitUpsertIndex"
+    "aplicacaoPedagogica",
+    "conteudo",
+    "fontes",
+    "microssequencia",
+    "posicao"
   ]);
   assert.doesNotMatch(
     JSON.stringify(designApplicationSchema),
-    /semanticScore|clusterId|hierarchy|cognitiveLoad/iu
+    /semanticScore|clusterId|hierarchy|cognitiveLoad|requestId|expectedRevision/iu
   );
 });

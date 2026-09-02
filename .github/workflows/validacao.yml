@@ -55,12 +55,6 @@ jobs:
         if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
-      - name: Preservar snapshots aprovados do protocolo de Autoria
-        if: steps.paths.outputs.docs_only != 'true'
-        env:
-          ARALEARN_AUTHORING_PROTOCOL_BASE_REF: ${{ github.event.pull_request.base.sha }}
-        run: npm run authoring:contract:history
-
       - name: Executar testes
         if: steps.paths.outputs.docs_only != 'true'
         run: npm test
@@ -345,7 +339,7 @@ jobs:
             exit "$status"
           }
           trap cleanup_course_api EXIT
-          COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/app/listarCursos'
+          COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/v1/courses'
           COURSE_API_PROBE_BODY='/tmp/aralearn-course-api-readiness.json'
           COURSE_API_PROBE_HEADERS='/tmp/aralearn-course-api-readiness.headers'
           COURSE_API_RUNTIME_READY=false
@@ -362,8 +356,8 @@ jobs:
                 --request GET \
                 --header 'Origin: http://127.0.0.1:4182' \
                 "$COURSE_API_URL" || true)"
-              if [ "$status_code" = 405 ] && \
-                grep --fixed-strings --quiet '"code":"method_not_allowed"' "$COURSE_API_PROBE_BODY" && \
+              if [ "$status_code" = 401 ] && \
+                grep --fixed-strings --quiet '"code":"authentication_required"' "$COURSE_API_PROBE_BODY" && \
                 grep --ignore-case --fixed-strings --quiet \
                   'content-type: application/json; charset=utf-8' "$COURSE_API_PROBE_HEADERS"; then
                 COURSE_API_READY=true
@@ -419,7 +413,7 @@ jobs:
           }
           trap cleanup_functions EXIT
           MCP_METADATA_URL='http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource'
-          COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/app/listarCursos'
+          COURSE_API_URL='http://127.0.0.1:54321/functions/v1/aralearn-course-api/v1/courses'
           COURSE_API_PROBE_BODY='/tmp/aralearn-course-api-integrated-readiness.json'
           COURSE_API_PROBE_HEADERS='/tmp/aralearn-course-api-integrated-readiness.headers'
           FUNCTIONS_RUNTIME_READY=false
@@ -440,8 +434,8 @@ jobs:
                 --dump-header "$COURSE_API_PROBE_HEADERS" --write-out '%{http_code}' \
                 --request GET --header 'Origin: http://127.0.0.1:4182' \
                 "$COURSE_API_URL" || true)"
-              if [ "$course_api_status" = 405 ] && \
-                grep --fixed-strings --quiet '"code":"method_not_allowed"' "$COURSE_API_PROBE_BODY" && \
+              if [ "$course_api_status" = 401 ] && \
+                grep --fixed-strings --quiet '"code":"authentication_required"' "$COURSE_API_PROBE_BODY" && \
                 grep --ignore-case --fixed-strings --quiet \
                   'content-type: application/json; charset=utf-8' "$COURSE_API_PROBE_HEADERS"; then
                 COURSE_API_READY=true
@@ -469,11 +463,6 @@ jobs:
             exit 1
           fi
           npm run test:authoring:mcp:local:oauth
-          export ARALEARN_E2E_REAL_SUPABASE=1
-          export ARALEARN_SUPABASE_URL="$API_URL"
-          export ARALEARN_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
-          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
-          npm run test:authoring:supabase:e2e
 
       - name: Encerrar stack Supabase
         if: ${{ always() && steps.paths.outputs.docs_only != 'true' }}

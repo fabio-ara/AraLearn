@@ -36,31 +36,8 @@ const scripts = {
     "android", "app", "src", "main", "res", "values", "strings.xml"
   ),
   androidWorkflow: path.join(repositoryRoot, ".github", "workflows", "android-release.yml"),
-  authoringMcpHostedSmoke: path.join(
-    repositoryRoot,
-    "supabase",
-    "tests",
-    "authoring-mcp-hosted-smoke.mjs"
-  ),
-  authoringMcpLocalSmoke: path.join(
-    repositoryRoot,
-    "supabase",
-    "tests",
-    "authoring-mcp-local-smoke.mjs"
-  ),
-  hostedConversationalSourceSmoke: path.join(
-    repositoryRoot,
-    "scripts",
-    "runHostedConversationalSourceSmoke.mjs"
-  ),
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
-  courseRuntimeSmoke: path.join(
-    repositoryRoot,
-    "supabase",
-    "tests",
-    "course-runtime-local-smoke.mjs"
-  ),
   courseRuntimeValidator: path.join(repositoryRoot, "scripts", "validateCourseRuntime.mjs"),
   coursePostgresConcurrency: path.join(
     repositoryRoot,
@@ -317,11 +294,13 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   assert.match(source, /functions deploy aralearn-authoring-mcp/u);
   assert.match(source, /functions deploy aralearn-course-api/u);
   assert.match(source, /functions deploy aralearn-authoring-action/u);
-  assert.match(source, /verifyAuthoringProtocolSnapshotHistory\.mjs/u);
   assert.match(source, /buildChatGptActionOpenApi\.mjs --check/u);
-  assert.match(source, /authoring-protocol-compatibility\.test\.js/u);
-  assert.match(source, /chatgpt-action-schema-projection\.test\.js/u);
+  assert.match(source, /chatgpt-action-human-schema\.test\.js/u);
   assert.match(source, /course-authoring-contract-runtime\.test\.js/u);
+  assert.match(source, /course-human-task-executor\.test\.js/u);
+  assert.match(source, /course-human-materialization\.test\.js/u);
+  assert.match(source, /course-human-corrections\.test\.js/u);
+  assert.match(source, /course-human-mcp\.test\.js/u);
   assert.doesNotMatch(source, /functions deploy aralearn-course-revisions/u);
   assert.doesNotMatch(source, /functions delete|Remove-AraLearnSupabaseFunctionIfPresent/u);
   assert.match(source, /funções da versão publicada foram preservadas/u);
@@ -338,18 +317,16 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   assert.match(source, /ARALEARN_COURSE_API_ALLOWED_ORIGINS=\$origins/u);
   assert.match(source, /ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=\$actionOrigins/u);
   assert.match(source, /runHostedMcpOAuthSmoke\.mjs/u);
-  assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-course-api\/app\/listarCursos/u);
-  assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-authoring-action\/listarCursos/u);
+  assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-course-api\/v1\/courses/u);
+  assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-authoring-action\/retomar_curso/u);
   assert.match(source, /X-AraLearn-Authoring-Contract/u);
   assert.match(source, /Access-Control-Allow-Origin/u);
   assert.doesNotMatch(source, /ARALEARN_AUTHORING_ALLOWED_ORIGINS=/u);
   assert.doesNotMatch(source, /secrets unset/u);
-  assert.match(source, /runHostedCourseSourcePdfSmoke\.mjs/u);
-  assert.match(source, /runHostedConversationalSourceSmoke\.mjs/u);
   assert.ok(
     source.indexOf("buildChatGptActionOpenApi.mjs --check") <
-      source.indexOf("chatgpt-action-schema-projection.test.js") &&
-    source.indexOf("chatgpt-action-schema-projection.test.js") <
+      source.indexOf("chatgpt-action-human-schema.test.js") &&
+    source.indexOf("chatgpt-action-human-schema.test.js") <
       source.indexOf("functions deploy aralearn-authoring-mcp") &&
     source.indexOf("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins") <
       source.indexOf("functions deploy aralearn-authoring-mcp") &&
@@ -360,39 +337,19 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
     source.indexOf("functions deploy aralearn-authoring-action") <
       source.indexOf("X-AraLearn-Authoring-Contract") &&
     source.indexOf("X-AraLearn-Authoring-Contract") <
-      source.indexOf("runHostedMcpOAuthSmoke.mjs") &&
-    source.indexOf("runHostedMcpOAuthSmoke.mjs") <
-      source.indexOf("runHostedCourseSourcePdfSmoke.mjs") &&
-    source.indexOf("runHostedCourseSourcePdfSmoke.mjs") <
-      source.indexOf("runHostedConversationalSourceSmoke.mjs")
+      source.indexOf("runHostedMcpOAuthSmoke.mjs")
   );
   assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
 });
 
-test("smoke hospedado focal retoma somente o Curso sintético e limpa seus resíduos", () => {
-  const source = fs.readFileSync(scripts.hostedConversationalSourceSmoke, "utf8");
-  assert.match(source, /provisionHostedMcpOAuthToken/u);
-  assert.match(source, /refreshLocalMcpOAuthToken/u);
-  assert.match(source, /"listarCursos"/u);
-  assert.match(source, /ingerirPdfDaFonte/u);
-  assert.match(source, /type:\s*"save_anchor"/u);
-  assert.match(source, /view:\s*"course_sources"/u);
-  assert.match(source, /view:\s*"course_source_attachment"/u);
-  assert.match(source, /assertHostedHumanProjection/u);
-  assert.match(source, /cleanupHostedCourseSourcePdfFixture/u);
-  assert.match(source, /cleanupLocalMcpOAuthProvision/u);
-  assert.doesNotMatch(source, /Dataprev/iu);
-});
-
 test("scripts focais de MCP e Actions incluem o contrato público comum", () => {
   const contract = packageManifest.scripts["test:authoring:contract"];
-  assert.match(packageManifest.scripts["authoring:contract:history"], /verifyAuthoringProtocolSnapshotHistory\.mjs/u);
-  assert.match(contract, /^npm run authoring:contract:history &&/u);
-  assert.match(contract, /authoring-protocol-snapshot-history\.test\.js/u);
-  assert.match(contract, /authoring-protocol-compatibility\.test\.js/u);
-  assert.match(contract, /chatgpt-action-schema-projection\.test\.js/u);
+  assert.match(contract, /^node --test/u);
+  assert.match(contract, /chatgpt-action-human-schema\.test\.js/u);
   assert.match(contract, /course-authoring-contract-runtime\.test\.js/u);
+  assert.match(contract, /course-human-task-executor\.test\.js/u);
+  assert.match(contract, /course-human-materialization\.test\.js/u);
   assert.match(packageManifest.scripts["test:authoring:mcp"], /^npm run test:authoring:contract &&/u);
   assert.match(packageManifest.scripts["test:authoring:actions"], /^npm run test:authoring:contract &&/u);
 });
@@ -435,93 +392,32 @@ test("CI só considera a API de Cursos pronta depois de alcançar seu handler", 
     /if \[ "\$COURSE_API_RUNTIME_READY" != true \]; then[\s\S]+exit 1/u
   );
   assert.match(readiness, /--request GET/u);
-  assert.match(readiness, /\[ "\$status_code" = 405 \]/u);
-  assert.match(readiness, /"code":"method_not_allowed"/u);
+  assert.match(readiness, /\[ "\$status_code" = 401 \]/u);
+  assert.match(readiness, /"code":"authentication_required"/u);
   assert.match(readiness, /content-type: application\/json; charset=utf-8/u);
   assert.doesNotMatch(readiness, /--request OPTIONS|Access-Control-Request-Method/u);
 });
 
-test("smoke real de Curso cobre proveniência redigida sem enviar a chave como Bearer", () => {
-  const source = fs.readFileSync(scripts.courseRuntimeSmoke, "utf8");
-  assert.match(source, /resolveSupabaseAdministrativeEnvironment/u);
-  assert.match(source, /supabaseServerHeaders/u);
-  assert.match(source, /\.\.\.process\.env/u);
-  assert.match(source, /aralearn-course-api/u);
-  assert.match(source, /aralearn\.course\.v1/u);
-  assert.match(source, /studyUnits/u);
-  assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
-  assert.match(source, /view:\s*"study_units"/u);
-  assert.match(source, /aralearn\.course-study-unit-inspection-page\.v2/u);
-  assert.match(source, /view:\s*"course_design"/u);
-  assert.match(source, /operation:\s*"update_course_design"/u);
-  assert.match(source, /aralearn\.course-design\.v1/u);
-  assert.match(source, /type:\s*"set_target_plan_items"/u);
-  assert.match(source, /kind:\s*"didactic_microsequence_materialization"/u);
-  assert.match(source, /designApplication/u);
-  assert.match(source, /sourceAttributionApplication/u);
-  assert.match(source, /sourceAttributionApplications/u);
-  assert.match(source, /aralearn\.course-design-context\.v2/u);
-  assert.match(source, /aralearn\.course-source-attribution-application\.v1/u);
-  assert.match(source, /view:\s*"course_sources"/u);
-  assert.match(source, /operation:\s*"update_course_sources"/u);
-  assert.match(source, /type:\s*"save_source"/u);
-  assert.match(source, /type:\s*"save_anchor"/u);
-  assert.match(source, /type:\s*"set_target_sources"/u);
-  assert.match(source, /verificationExcerpt/u);
-  assert.match(source, /get_course_study_citations_v1/u);
-  assert.match(
-    source,
-    /get_course_study_citations_v1"[\s\S]{0,180}p_expected_revision:\s*17/u
-  );
-  assert.match(source, /aralearn\.course-study-citations\.v1/u);
-  assert.match(source, /staleRemovedStudyUnitCitations[\s\S]+code,\s*"40001"/u);
-  assert.match(source, /revokedCitations[\s\S]+status,[\s\S]+404[\s\S]+"PT404"/u);
-  assert.match(source, /rejectedSourceAttribution/u);
-  assert.match(source, /afterRejectedSourceAttribution\.data\.courseRevision/u);
-  assert.match(source, /verificationExcerpt\|studyVisibility\|actorId\|channel\|history\|excerpt/u);
-  assert.match(source, /unassignedAnalysisUnitId/u);
-  assert.match(source, /steps\[0\]\.status,\s*"pending"/u);
-  assert.match(source, /list_courses_v1/u);
-  assert.match(source, /list_owned_courses_v1/u);
-  assert.match(source, /mutate_course_personal_state_v2/u);
-  assert.match(source, /aralearn\.course-personal-state\.v2/u);
-  assert.doesNotMatch(source, /(?:load|mutate)_course_personal_state_v1/u);
-  assert.match(source, /execute_my_course_anchored_annotation_command_v1/u);
-  assert.match(source, /view:\s*"anchored_annotations"/u);
-  assert.match(source, /provenance\.channel,\s*"authoring_interface"/u);
-  assert.match(source, /contributor\.kind,\s*"protected_person"/u);
-  assert.match(source, /foreignAnnotationProbes/u);
-  assert.match(source, /course_anchored_annotation_not_found/u);
-  assert.match(source, /view:\s*"audit_cycle"/u);
-  assert.match(source, /operation:\s*"update_audit_cycle"/u);
-  assert.match(source, /mode:\s*"runs"/u);
-  assert.match(source, /cleanAuditSummary\.findingsCreated,\s*0/u);
-  assert.match(source, /runDetail\.target\.path/u);
-  assert.match(source, /aralearn\.course-audit-cycle-page\.v1/u);
-  assert.match(source, /aralearn\.course-audit-context\.v1/u);
-  for (const command of [
-    "record_audit",
-    "propose_authoring_correction",
-    "reject_authoring_correction",
-    "apply_authoring_correction",
-    "verify_finding",
-    "rollback_authoring_correction"
+test("tarefas humanas cobrem proveniência, Observações e correções sem mega-protocolo", () => {
+  const sources = [
+    "courseHumanTasks.js",
+    "courseHumanMaterialization.js",
+    "courseHumanCorrections.js"
+  ].map((name) => fs.readFileSync(path.join(
+    repositoryRoot,
+    "supabase/functions/_shared/aralearn-authoring",
+    name
+  ), "utf8")).join("\n");
+  for (const task of [
+    "consultar_fontes", "manter_fonte", "incorporar_pdf_como_fonte",
+    "consultar_observacoes", "registrar_observacao", "preparar_revisao",
+    "aplicar_correcoes"
   ]) {
-    assert.match(source, new RegExp(`type:\\s*"${command}"`, "u"));
+    assert.match(sources, new RegExp(task, "u"));
   }
-  assert.match(source, /suggestedAnnotationActions/u);
-  assert.match(source, /type:\s*"resolve_anchored_annotation"/u);
-  assert.match(source, /type:\s*"reopen_anchored_annotation"/u);
-  assert.match(source, /sourceLinks:\s*\[sourceLink\]/u);
-  assert.match(source, /checkpoint\.before\.content\.topics/u);
-  assert.match(source, /replayedEditorialApplication\.idempotent,\s*true/u);
-  assert.match(source, /replayedFactualRollback\.idempotent,\s*true/u);
-  assert.match(source, /staleEditorialApplication[\s\S]+stale_course_state/u);
-  assert.match(source, /staleFactualRollback[\s\S]+stale_course_state/u);
-  assert.doesNotMatch(source, /aralearn\.library\.v1/u);
-  assert.doesNotMatch(source, /\bcards\s*:/u);
-  assert.doesNotMatch(source, /\bsources\s*:/u);
-  assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{serverApiKey\}`/u);
+  assert.match(sources, /executeTrustedCourseWrite/u);
+  assert.match(sources, /sourceAttributionApplication/u);
+  assert.doesNotMatch(sources, /\brequestId\b[^\n]*inputSchema/iu);
 });
 
 test("validator canônico cerca RPCs e observações pessoais removidos", () => {
@@ -621,75 +517,6 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
     validateRuntimeManifestRevision({ schemaRevision: "20270101000000" }, temporaryRoot),
     /20270103000000_latest\.sql exige 20270103000000/u
   );
-});
-
-test("smokes MCP exercitam o contrato canônico e add_part dedicado", () => {
-  for (const smokePath of [scripts.authoringMcpLocalSmoke, scripts.authoringMcpHostedSmoke]) {
-    const source = fs.readFileSync(smokePath, "utf8");
-    for (const toolName of [
-      "listarCursos",
-      "lerCurso",
-      "criarCurso",
-      "alterarCurso",
-      "incorporarPdfComoFonte",
-      "consultarComponentesDidaticos",
-      "add_part"
-    ]) {
-      assert.match(source, new RegExp(`"${toolName}"`, "u"));
-    }
-    assert.doesNotMatch(source, /auditarCurso|corrigirCurso|verificarCurso/u);
-    assert.match(source, /aralearn\.course\.v1/u);
-    assert.match(source, /studyUnits/u);
-    assert.match(source, /entityType\s*\}\)\s*=>\s*entityType === "study_unit"/u);
-    assert.match(source, /view:\s*"study_units"/u);
-    assert.match(source, /aralearn\.course-study-unit-inspection-page\.v2/u);
-    assert.match(source, /view:\s*"course_design"/u);
-    assert.match(source, /operation:\s*"update_course_design"/u);
-    assert.match(source, /aralearn\.course-design\.v1/u);
-    assert.match(source, /type:\s*"set_target_plan_items"/u);
-    assert.match(source, /targetPlanItems/u);
-    assert.match(source, /view:\s*"course_sources"/u);
-    assert.match(source, /operation:\s*"update_course_sources"/u);
-    assert.match(source, /type:\s*"save_source"/u);
-    assert.match(source, /type:\s*"save_anchor"/u);
-    assert.match(source, /type:\s*"set_target_sources"/u);
-    assert.match(source, /sourceAttributionApplications/u);
-    assert.match(source, /rejectedTool/u);
-    assert.match(source, /rejectedAttribution/u);
-    assert.match(source, /afterRejectedAttribution\.courseRevision/u);
-    assert.match(source, /targetVersion,\s*2/u);
-    assert.match(source, /view:\s*"anchored_annotations"/u);
-    assert.match(source, /operation:\s*"update_anchored_annotations"/u);
-    assert.match(source, /type:\s*"create_anchored_annotation"/u);
-    assert.match(source, /anchored_annotation_confirmation_required/u);
-    assert.match(source, /provenance\.channel,\s*"authoring_chat"/u);
-    assert.match(source, /aralearn\.mcp-anchored-annotation-page\.v1/u);
-    assert.match(source, /includeObservationText:\s*true/u);
-    assert.match(source, /contributor,\s*"label"/u);
-    assert.match(source, /replayedAnnotation\.idempotent,\s*true/u);
-    assert.match(source, /view:\s*"audit_cycle"/u);
-    assert.match(source, /operation:\s*"update_audit_cycle"/u);
-    assert.match(source, /mode:\s*"runs"/u);
-    assert.match(source, /runDetail\.target\.path/u);
-    assert.match(source, /aralearn\.course-audit-cycle-page\.v1/u);
-    assert.match(source, /aralearn\.course-audit-context\.v1/u);
-    assert.match(source, /type:\s*"record_audit"/u);
-    assert.match(source, /type:\s*"propose_authoring_correction"/u);
-    assert.match(source, /type:\s*"apply_authoring_correction"/u);
-    assert.match(source, /type:\s*"rollback_authoring_correction"/u);
-    assert.match(source, /confirmed:\s*false/u);
-    assert.match(source, /confirmed:\s*true/u);
-    assert.match(source, /authoring_correction_confirmation_required/u);
-    assert.match(source, /checkpoint\.before\.content\.topics/u);
-    assert.match(source, /checkpoint\.before\.sourceLinks/u);
-    assert.doesNotMatch(source, /aralearn\.library\.v1/u);
-    assert.doesNotMatch(source, /\bcards\s*:/u);
-    assert.doesNotMatch(source, /\bsources\s*:/u);
-    assert.doesNotMatch(
-      source,
-      /criarWorkspaceDeAutoria|salvarCardsNaMicrossequencia|listarCardsDaMicrossequencia/u
-    );
-  }
 });
 
 test("diagnóstico valida configuração pública sem revelar seu valor", {
@@ -1015,7 +842,7 @@ test("validação limpa e repete somente a inicialização local do Supabase", (
   );
 });
 
-test("validação local atravessa navegador, MCP OAuth, API, IndexedDB e Supabase real", () => {
+test("validação local atravessa MCP OAuth, API direta e Supabase real", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   assert.match(source, /Instalar dependências da integração local[\s\S]+?run: npm ci/u);
   assert.match(
@@ -1025,22 +852,15 @@ test("validação local atravessa navegador, MCP OAuth, API, IndexedDB e Supabas
   assert.match(source, /functions serve --no-verify-jwt/u);
   assert.doesNotMatch(source, /functions serve aralearn-authoring-mcp --no-verify-jwt/u);
   assert.match(source, /--request GET[\s\S]+?"\$COURSE_API_URL"/u);
-  assert.match(source, /course_api_status" = 405/u);
-  assert.match(source, /"code":"method_not_allowed"/u);
+  assert.match(source, /course_api_status" = 401/u);
+  assert.match(source, /"code":"authentication_required"/u);
   assert.doesNotMatch(
     source.slice(source.indexOf("Servir e testar o gateway MCP e a Autoria real")),
     /--request OPTIONS/u
   );
   assert.match(source, /npm run test:authoring:mcp:local:oauth/u);
-  assert.match(source, /export ARALEARN_E2E_REAL_SUPABASE=1/u);
-  assert.match(source, /export ARALEARN_SUPABASE_URL="\$API_URL"/u);
-  assert.match(source, /export ARALEARN_SUPABASE_PUBLISHABLE_KEY="\$ANON_KEY"/u);
-  assert.match(source, /export SUPABASE_SERVICE_ROLE_KEY="\$SERVICE_ROLE_KEY"/u);
-  assert.match(source, /npm run test:authoring:supabase:e2e/u);
-  assert.ok(
-    source.indexOf("supabase@2.115.0 db reset") <
-      source.indexOf("npm run test:authoring:supabase:e2e")
-  );
+  assert.match(source, /npm run test:supabase:smoke/u);
+  assert.doesNotMatch(source, /test:authoring:supabase:e2e/u);
 });
 
 test("Pages publica diretamente o push não documental protegido em main", () => {
@@ -1084,8 +904,7 @@ test("validação do repositório usa permissão mínima", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   assert.match(source, /permissions:\s*\n\s*contents: read/u);
   assert.doesNotMatch(source, /contents: write|actions: write|pages: write|id-token: write/u);
-  assert.match(source, /ARALEARN_AUTHORING_PROTOCOL_BASE_REF: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/u);
-  assert.match(source, /npm run authoring:contract:history/u);
+  assert.match(source, /npm test/u);
 });
 
 test("validação obrigatória distingue documentação sem omitir os jobs existentes", () => {

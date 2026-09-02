@@ -1,0 +1,235 @@
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import test from "node:test";
+
+import Ajv2020 from "ajv/dist/2020.js";
+
+import {
+  COURSE_HUMAN_TASK_CATALOG_METADATA,
+  COURSE_HUMAN_TASKS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import {
+  HUMAN_ACTION_FILE_FIELD,
+  projectHumanAuthoringTasksForActions
+} from "../../scripts/projectHumanAuthoringActions.mjs";
+
+const openApiText = await fs.readFile(new URL(
+  "../../docs/downloads/aralearn-chatgpt-action-openapi.yaml",
+  import.meta.url
+), "utf8");
+const openApi = JSON.parse(openApiText);
+const actionTools = projectHumanAuthoringTasksForActions(COURSE_HUMAN_TASKS);
+const golden = JSON.parse(await fs.readFile(new URL(
+  "../fixtures/human-authoring-golden-prompts.v2.json",
+  import.meta.url
+), "utf8"));
+
+const samples = {
+  retomar_curso: { titulo: "Redes para iniciantes" },
+  consultar_planejamento: { curso: "Redes para iniciantes", parte: 2 },
+  preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets" },
+  consultar_configuracao: {
+    curso: "Redes para iniciantes",
+    microssequencia: "Sockets"
+  },
+  consultar_observacoes: {
+    curso: "Redes para iniciantes",
+    unidades: [4, 7],
+    somenteAbertas: true
+  },
+  preparar_revisao: {
+    curso: "Redes para iniciantes",
+    microssequencia: "Roteamento"
+  },
+  consultar_fontes: { curso: "Redes para iniciantes", fonte: "Manual do proxy" },
+  consultar_componentes: {
+    funcao: "Representar uma sequência de decisões sem perder a ordem."
+  },
+  criar_curso: {
+    titulo: "Redes para iniciantes",
+    objetivo: "Explicar como requisições chegam a serviços."
+  },
+  salvar_parte: {
+    curso: "Redes para iniciantes",
+    titulo: "Sockets",
+    intencao: "Relacionar processos e comunicação em rede."
+  },
+  materializar_parte: {
+    curso: "Redes para iniciantes",
+    parte: "Sockets",
+    unidades: [{
+      microssequencia: "Sockets",
+      posicao: 1,
+      conteudo: { title: "O papel do socket", role: "theory", content: [] },
+      aplicacaoPedagogica: {
+        modo: "expositiva",
+        novidadesIntroduzidas: ["Socket como interface"],
+        explicacoes: [{
+          novidade: "Socket como interface",
+          formas: ["plain_definition"]
+        }],
+        praticas: []
+      },
+      fontes: []
+    }]
+  },
+  ajustar_configuracao: {
+    curso: "Redes para iniciantes",
+    microssequencia: "Sockets",
+    parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
+  },
+  registrar_observacao: {
+    curso: "Redes para iniciantes",
+    unidades: [4, 7],
+    texto: "A condição de roteamento continua ambígua.",
+    categoria: "confusing"
+  },
+  aplicar_correcoes: {
+    curso: "Redes para iniciantes",
+    correcoes: [{
+      unidade: 4,
+      conteudo: { title: "Regra revista", role: "theory", content: [] },
+      fontes: []
+    }]
+  },
+  manter_fonte: {
+    curso: "Redes para iniciantes",
+    metadados: {
+      tipo: "document",
+      titulo: "Manual do proxy"
+    }
+  },
+  incorporar_pdf_como_fonte: {
+    curso: "Redes para iniciantes",
+    titulo: "Manual do proxy",
+    intencao: "Manter o PDF como referência técnica do Curso.",
+    [HUMAN_ACTION_FILE_FIELD]: ["file-reference"]
+  }
+};
+
+function operation(name) {
+  return openApi.paths[`/${name}`]?.post;
+}
+
+function visit(value, callback, path = "$") {
+  if (!value || typeof value !== "object") return;
+  callback(value, path);
+  if (Array.isArray(value)) value.forEach((entry, index) => visit(entry, callback, `${path}[${index}]`));
+  else Object.entries(value).forEach(([key, entry]) => visit(entry, callback, `${path}.${key}`));
+}
+
+test("#272 OpenAPI publica exatamente as dezesseis tarefas humanas", () => {
+  assert.deepEqual(Object.keys(openApi.paths), COURSE_HUMAN_TASKS.map(({ name }) => `/${name}`));
+  assert.equal(openApi.info["x-aralearn-task-catalog"], COURSE_HUMAN_TASK_CATALOG_METADATA.id);
+  assert.equal(
+    openApi.info["x-aralearn-task-catalog-version"],
+    COURSE_HUMAN_TASK_CATALOG_METADATA.version
+  );
+  assert.equal(
+    openApi.info["x-aralearn-task-catalog-fingerprint"],
+    COURSE_HUMAN_TASK_CATALOG_METADATA.hash
+  );
+  assert.doesNotMatch(COURSE_HUMAN_TASK_CATALOG_METADATA.hash, /pending/iu);
+});
+
+test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real", () => {
+  for (const task of COURSE_HUMAN_TASKS) {
+    assert.match(task.description, /^Use\b/u, task.name);
+    assert.match(task.description, /\bNão\b/iu, task.name);
+    assert.equal(task.annotations.openWorldHint, false, task.name);
+    assert.equal(task.annotations.destructiveHint, false, task.name);
+    assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
+    const action = operation(task.name);
+    assert.equal(action.description, task.description);
+    assert.equal(action["x-openai-isConsequential"], task.annotations.readOnlyHint !== true);
+  }
+});
+
+test("#272 argumentos humanos são documentados e não recebem controles internos", () => {
+  const forbidden = /^(?:id|ids|courseId|revision|version|hash|path|requestId|expectedRevision|expectedPlanVersion|cursor)$/iu;
+  for (const task of actionTools) {
+    const schema = task.inputSchema;
+    for (const [name, property] of Object.entries(schema.properties || {})) {
+      if (task.name === "incorporar_pdf_como_fonte" && name === HUMAN_ACTION_FILE_FIELD) continue;
+      assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
+      assert.equal(typeof property.description, "string", `${task.name}.${name} sem descrição`);
+      assert.ok(property.description.trim().length >= 12, `${task.name}.${name} descrição curta`);
+    }
+    visit(schema, (entry, path) => {
+      for (const name of Object.keys(entry.properties || {})) {
+        if (name === "file_id") continue;
+        assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
+      }
+    });
+  }
+  assert.doesNotMatch(
+    openApi.info.description,
+    /\bCAS\b|requestId|expectedRevision|expectedPlanVersion|\bhashes\b|\bpaths\b|\bpayloads\b/iu
+  );
+});
+
+test("#272 os dezesseis inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  for (const task of actionTools) {
+    const validate = ajv.compile(task.inputSchema);
+    assert.equal(validate(samples[task.name]), true, (
+      `${task.name}: ${JSON.stringify(validate.errors)}`
+    ));
+    assert.equal(validate({ ...samples[task.name], requestId: "technical-request" }), false);
+  }
+  const adjust = validatorFor("ajustar_configuracao");
+  const source = validatorFor("manter_fonte");
+  assert.equal(adjust({ curso: "Redes para iniciantes" }), false);
+  assert.equal(source({ curso: "Redes para iniciantes" }), false);
+});
+
+function validatorFor(name) {
+  return new Ajv2020({ allErrors: true, strict: false }).compile(
+    actionTools.find((task) => task.name === name).inputSchema
+  );
+}
+
+test("#272 resultado comum é curto e não usa envelope de compatibilidade", () => {
+  assert.deepEqual(openApi.components.schemas.HumanTaskResult.required, [
+    "result", "deepLink", "nextDecision"
+  ]);
+  assert.equal(openApi.components.schemas.HumanTaskResult.additionalProperties, false);
+  assert.equal(Object.hasOwn(openApi.components.schemas, "ConversationProjection"), false);
+  assert.equal(Object.hasOwn(openApi.components.schemas, "SuccessResponse"), false);
+  const serialized = JSON.stringify(openApi.components.schemas.HumanTaskResult);
+  assert.doesNotMatch(serialized, /requestId|courseId|revision|hash|path|resultFacts/iu);
+});
+
+test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
+  assert.deepEqual(openApi.security, [{ AraLearnOAuth: ["openid", "email"] }]);
+  const flow = openApi.components.securitySchemes.AraLearnOAuth.flows.authorizationCode;
+  assert.match(flow.authorizationUrl, /\/oauth\/authorize$/u);
+  assert.match(flow.tokenUrl, /\/oauth\/token$/u);
+  for (const task of COURSE_HUMAN_TASKS) {
+    assert.deepEqual(operation(task.name).responses, {
+      "200": { $ref: "#/components/responses/Success" },
+      default: { $ref: "#/components/responses/Error" }
+    });
+  }
+  assert.ok(openApiText.length < 40_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 96_000);
+  assert.doesNotMatch(openApiText, /"const"/u);
+});
+
+test("#272 golden set cobre prompts diretos, indiretos e negativos", () => {
+  assert.equal(golden.format, "aralearn.human-authoring-golden-prompts.v2");
+  assert.deepEqual(golden.metadataPolicy.classes, ["direct", "indirect", "negative"]);
+  assert.equal(new Set(golden.cases.map(({ id }) => id)).size, golden.cases.length);
+  const positive = golden.cases.filter(({ expectedTool }) => expectedTool !== null);
+  const negative = golden.cases.filter(({ expectedTool }) => expectedTool === null);
+  assert.equal(negative.length, 8);
+  for (const task of COURSE_HUMAN_TASKS) {
+    assert.equal(positive.filter(({ expectedTool, class: className }) => (
+      expectedTool === task.name && className === "direct"
+    )).length, 1, `${task.name}: direct`);
+    assert.equal(positive.filter(({ expectedTool, class: className }) => (
+      expectedTool === task.name && className === "indirect"
+    )).length, 1, `${task.name}: indirect`);
+  }
+  assert.equal(negative.every(({ class: className }) => className === "negative"), true);
+});

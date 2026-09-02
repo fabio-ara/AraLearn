@@ -34,6 +34,10 @@ function jsonResponse(body, status = 200) {
   });
 }
 
+function parsedBody(init) {
+  return init.body == null ? null : JSON.parse(init.body);
+}
+
 function clientWithFetch(fetchImpl, { accessToken = "token", userId = USER_ID } = {}) {
   const events = [];
   let cleared = false;
@@ -63,7 +67,7 @@ test("lista Cursos com cursor completo e sem expor recipiente indireto", async (
     nextCursor: null
   };
   const { client } = clientWithFetch(async (url, init) => {
-    request = { url, init, body: JSON.parse(init.body) };
+    request = { url, init, body: parsedBody(init) };
     return jsonResponse(fixture);
   });
 
@@ -98,7 +102,7 @@ test("transporta uma página de entidades sem assumir a composição do Curso", 
     nextCursor: null
   };
   const { client } = clientWithFetch(async (url, init) => {
-    request = { url, body: JSON.parse(init.body) };
+    request = { url, body: parsedBody(init) };
     return jsonResponse(fixture);
   });
 
@@ -134,7 +138,7 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
     anchors: []
   }];
   const { client } = clientWithFetch(async (url, init) => {
-    request = { url, body: JSON.parse(init.body) };
+    request = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, data: {
       courseId: COURSE_ID,
       revision: 5,
@@ -163,8 +167,9 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
     origin: "manual"
   });
 
-  assert.match(request.url, /\/functions\/v1\/aralearn-course-api\/app\/alterarCurso$/u);
-  assert.equal(request.body.operation, "commit_course_composition");
+  assert.match(request.url, new RegExp(
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/composition$`, "u"
+  ));
   assert.equal(request.body.expectedStudyUnitVersion, 2);
   assert.equal(request.body.applicationOrigin, "manual");
   assert.deepEqual(request.body.sourceAttributionApplications, [{
@@ -210,7 +215,7 @@ test("edição estrutural assistida reutiliza a composição genérica sem metad
     idempotent: false
   };
   const { client } = clientWithFetch(async (url, init) => {
-    request = { url, body: JSON.parse(init.body) };
+    request = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, requestId: "request-structural-edit-0001", data: backendReceipt });
   });
   const result = await client.commitCourseStructuralComposition({
@@ -238,8 +243,9 @@ test("edição estrutural assistida reutiliza a composição genérica sem metad
     requestId: "request-structural-edit-0001",
     courseRevision: 8
   });
-  assert.match(request.url, /\/functions\/v1\/aralearn-course-api\/app\/alterarCurso$/u);
-  assert.equal(request.body.operation, "commit_course_composition");
+  assert.match(request.url, new RegExp(
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/composition$`, "u"
+  ));
   assert.equal(Object.hasOwn(request.body, "expectedStudyUnitVersion"), false);
   assert.equal(Object.hasOwn(request.body, "applicationOrigin"), false);
   assert.deepEqual(request.body.sourceAttributionApplications, []);
@@ -266,7 +272,7 @@ test("fila Rever é paginada por RPC browser-only e normalizada estritamente", a
     nextCursor
   };
   const { client } = clientWithFetch(async (url, init) => {
-    request = { url, body: JSON.parse(init.body) };
+    request = { url, body: parsedBody(init) };
     return jsonResponse(fixture);
   });
 
@@ -311,7 +317,7 @@ test("estado pessoal usa somente os RPCs e o envelope v2", async () => {
   };
   let legacy = false;
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: parsedBody(init) });
     return url.endsWith("/load_course_personal_state_v2")
       ? jsonResponse(legacy
           ? {
@@ -415,7 +421,7 @@ test("invalida a sessão somente diante de falha de autenticação", async () =>
 test("Autoria usa RPCs owner-only sem mudar a leitura compartilhada do Estudo", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body), headers: new Headers(init.headers) });
+    calls.push({ url, body: parsedBody(init), headers: new Headers(init.headers) });
     return jsonResponse({ items: [], hasMore: false, nextCursor: null });
   });
 
@@ -430,10 +436,10 @@ test("Autoria usa RPCs owner-only sem mudar a leitura compartilhada do Estudo", 
   ]);
 });
 
-test("plano instrucional e materialização usam a mesma operação Edge do MCP", async () => {
+test("plano instrucional e materialização usam rotas canônicas diretas", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: parsedBody(init) });
     return jsonResponse({ ok: true, data: { changed: true } });
   });
 
@@ -471,30 +477,29 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
     }
   });
 
-  assert.deepEqual(calls.map(({ url }) => url.split("/").at(-1)), [
-    "criarCurso", "lerCurso", "lerCurso", "alterarCurso", "alterarCurso"
-  ]);
-  assert.deepEqual(calls.map(({ body }) => body.operation || body.view), [
-    undefined, "instructional_plan", "part_materialization",
-    "update_instructional_plan", "advance_part_materialization"
+  assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
+    "/functions/v1/aralearn-course-api/v1/courses",
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/instructional-plan`,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/authoring-parts/` +
+      `${AVATAR_ID}/materializations/${USER_ID}`,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/instructional-plan/changes`,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/authoring-parts/` +
+      `${AVATAR_ID}/materializations/${USER_ID}/changes`
   ]);
   assert.deepEqual(calls[0].body, {
     requestId: AVATAR_ID,
     title: "Curso novo",
     objective: "Aprender com evidência"
   });
-  assert.deepEqual(calls[2].body, {
-    courseId: COURSE_ID,
-    view: "part_materialization",
-    authoringPartId: AVATAR_ID,
-    materializationId: USER_ID
-  });
+  assert.equal(calls[2].body, null);
   assert.equal(calls[3].body.expectedPlanVersion, 2);
-  assert.deepEqual(calls[3].body.planCommand, {
+  assert.equal(calls[3].body.expectedCourseRevision, 4);
+  assert.deepEqual(calls[3].body.command, {
     type: "update_plan",
     audience: "Docentes"
   });
-  assert.equal(calls[4].body.materializationCommand.operation, "start");
+  assert.equal(calls[4].body.operation, "start");
+  assert.equal(calls[4].body.payload.authoringPartVersion, 1);
   assert.throws(
     () => client.advanceAuthoringPartMaterialization({
       courseId: COURSE_ID,
@@ -522,7 +527,7 @@ test("plano instrucional e materialização usam a mesma operação Edge do MCP"
 test("materialização normaliza fatos omitidos e rejeita null", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: parsedBody(init) });
     return jsonResponse({ ok: true, data: { changed: true } });
   });
   const finish = {
@@ -557,8 +562,8 @@ test("materialização normaliza fatos omitidos e rejeita null", async () => {
     expectedRevision: 6,
     materializationCommand: finish
   });
-  assert.deepEqual(calls[0].body.materializationCommand.resultFacts, {});
-  assert.deepEqual(calls[1].body.materializationCommand.resultFacts, {});
+  assert.deepEqual(calls[0].body.payload.resultFacts, {});
+  assert.deepEqual(calls[1].body.payload.resultFacts, {});
 
   assert.throws(
     () => client.advanceAuthoringPartMaterialization({
@@ -574,15 +579,16 @@ test("materialização normaliza fatos omitidos e rejeita null", async () => {
 test("repete uma vez a operação idempotente quando a Edge reinicia", async () => {
   const requests = [];
   const { client } = clientWithFetch(async (url, init) => {
-    requests.push({ url, body: JSON.parse(init.body) });
+    requests.push({ url, body: parsedBody(init) });
     if (requests.length === 1) {
       return jsonResponse({ message: "An invalid response was received from the upstream server" }, 502);
     }
     return jsonResponse({ ok: true, data: { changed: true } });
   });
 
-  assert.deepEqual(await client.executeCourseAction("alterarCurso", {
-    requestId: "request-course-edge-retry-1"
+  assert.deepEqual(await client.requestCourseApi(`/v1/courses/${COURSE_ID}/composition`, {
+    method: "POST",
+    body: { requestId: "request-course-edge-retry-1" }
   }), { changed: true });
   assert.equal(requests.length, 2);
   assert.deepEqual(requests[1], requests[0]);
@@ -596,7 +602,10 @@ test("não repete alteração sem identidade diante de resposta ambígua", async
   });
 
   await assert.rejects(
-    client.executeCourseAction("gerirPessoas", { operation: "update_profile" }),
+    client.requestCourseApi("/v1/profile", {
+      method: "PATCH",
+      body: { displayName: "Pessoa" }
+    }),
     (error) => error.status === 502
   );
   assert.equal(requestCount, 1);
@@ -615,18 +624,19 @@ test("não repete resposta transitória que contém erro de aplicação", async 
   });
 
   await assert.rejects(
-    client.executeCourseAction("alterarCurso", {
-      requestId: "request-course-no-application-retry-1"
+    client.requestCourseApi(`/v1/courses/${COURSE_ID}/composition`, {
+      method: "POST",
+      body: { requestId: "request-course-no-application-retry-1" }
     }),
     (error) => error.status === 503 && error.code === "course_service_unavailable"
   );
   assert.equal(requestCount, 1);
 });
 
-test("parâmetros usam a mesma operação Edge do MCP com escopo concreto e CAS", async () => {
+test("parâmetros usam rota própria com escopo concreto e CAS", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: parsedBody(init) });
     return jsonResponse({ ok: true, data: { changed: true } });
   });
 
@@ -649,17 +659,19 @@ test("parâmetros usam a mesma operação Edge do MCP com escopo concreto e CAS"
     }
   });
 
-  assert.deepEqual(calls[0].body, {
-    courseId: COURSE_ID,
-    view: "course_design",
-    scope: { kind: "lesson", ref: "lesson-a" },
-    limit: 16,
+  const designUrl = new URL(calls[0].url);
+  assert.equal(designUrl.pathname,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/course-design`);
+  assert.deepEqual(Object.fromEntries(designUrl.searchParams), {
+    scopeKind: "lesson",
+    scopeRef: "lesson-a",
+    limit: "16",
     cursor: "lesson-child-a"
   });
-  assert.equal(calls[1].body.operation, "update_course_design");
+  assert.equal(calls[0].body, null);
   assert.equal(calls[1].body.requestId, "request-course-design-client");
-  assert.equal(calls[1].body.expectedRevision, 4);
-  assert.equal(calls[1].body.designCommand.origin, "author");
+  assert.equal(calls[1].body.expectedCourseRevision, 4);
+  assert.equal(calls[1].body.command.origin, "author");
   assert.throws(
     () => client.mutateCourseDesign({
       courseId: COURSE_ID,
@@ -732,11 +744,13 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     }]
   };
   const { client } = clientWithFetch(async (url, init) => {
-    const body = JSON.parse(init.body);
+    const body = parsedBody(init);
     calls.push({ url, body });
     if (url.endsWith("/rpc/get_course_study_citations_v1")) return jsonResponse(citations);
-    if (body.view === "course_sources") return jsonResponse({ ok: true, data: read });
-    if (body.operation === "update_course_sources") {
+    if (new URL(url).pathname.endsWith("/sources")) {
+      return jsonResponse({ ok: true, data: read });
+    }
+    if (new URL(url).pathname.endsWith("/sources/changes")) {
       return jsonResponse({ ok: true, data: changed });
     }
     assert.fail(`Requisição inesperada: ${url}`);
@@ -772,19 +786,15 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     "unit-a",
     { expectedRevision: 4 }
   ), citations);
-  assert.deepEqual(calls[0].body, {
-    courseId: COURSE_ID,
-    view: "course_sources",
-    expectedRevision: 4,
+  assert.equal(calls[0].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), {
+    expectedRevision: "4",
     mode: "target",
-    sourceId: null,
     targetKind: "study_unit",
     targetId: "unit-a",
-    cursor: null,
-    limit: 10
+    limit: "10"
   });
-  assert.equal(calls[1].body.operation, "update_course_sources");
-  assert.deepEqual(calls[1].body.sourceCommand, sourceCommand);
+  assert.deepEqual(calls[1].body.command, sourceCommand);
   assert.deepEqual(calls[2].body, {
     p_course_id: COURSE_ID,
     p_expected_revision: 4,
@@ -823,7 +833,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     nextCursor: null
   };
   const contextualClient = clientWithFetch(async (url, init) => {
-    contextualRequest = { url, body: JSON.parse(init.body) };
+    contextualRequest = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, data: contextualRead });
   }).client;
   assert.deepEqual(await contextualClient.loadCourseSources(COURSE_ID, {
@@ -833,16 +843,14 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     targetKind: "study_unit",
     targetId: "unit-a"
   }), contextualRead);
-  assert.deepEqual(contextualRequest.body, {
-    courseId: COURSE_ID,
-    view: "course_sources",
-    expectedRevision: 4,
+  assert.equal(contextualRequest.body, null);
+  assert.deepEqual(Object.fromEntries(new URL(contextualRequest.url).searchParams), {
+    expectedRevision: "4",
     mode: "source",
     sourceId: astralSourceId,
     targetKind: "study_unit",
     targetId: "unit-a",
-    cursor: null,
-    limit: 10
+    limit: "10"
   });
   await assert.rejects(
     () => contextualClient.loadCourseSources(COURSE_ID, {
@@ -989,7 +997,7 @@ test("remoção de PDF usa a Fonte relida sem transportar caminho de Storage", a
   };
   let requestBody = null;
   const { client } = clientWithFetch(async (_url, init) => {
-    requestBody = JSON.parse(init.body);
+    requestBody = parsedBody(init);
     return jsonResponse({
       ok: true,
       data: {
@@ -1010,7 +1018,7 @@ test("remoção de PDF usa a Fonte relida sem transportar caminho de Storage", a
     expectedRevision: 4,
     sourceCommand: command
   });
-  assert.deepEqual(requestBody.sourceCommand, command);
+  assert.deepEqual(requestBody.command, command);
   assert.equal(JSON.stringify(requestBody).includes("storagePath"), false);
 });
 
@@ -1095,9 +1103,9 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
   assert.deepEqual(requestTimeouts, [145_000, 145_000]);
   assert.equal(browserRead, false);
 
-  let downloadBody = null;
+  let downloadRequest = null;
   const downloadClient = clientWithFetch(async (url, init) => {
-    downloadBody = JSON.parse(init.body);
+    downloadRequest = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, data: {
       contract: "aralearn.course-source-attachment-access.v1",
       courseId: COURSE_ID,
@@ -1122,13 +1130,12 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
   });
   assert.equal(download.operation, "download");
   assert.equal(download.contract, "aralearn.course-source-attachment-access.v1");
-  assert.deepEqual(downloadBody, {
-    courseId: COURSE_ID,
-    view: "course_source_attachment",
-    attachmentOperation: "download",
-    expectedRevision: 5,
+  assert.equal(downloadRequest.body, null);
+  assert.deepEqual(Object.fromEntries(new URL(downloadRequest.url).searchParams), {
+    operation: "download",
+    expectedRevision: "5",
     sourceId,
-    sourceRevision: 1,
+    sourceRevision: "1",
     contentHash
   });
 
@@ -1165,13 +1172,13 @@ test("cliente usa o DTO factual de variantes e o nome canônico ao desvincular",
     courseRevision: 7
   });
   const calls = [];
-  const { client } = clientWithFetch(async (_url, init) => {
-    const body = JSON.parse(init.body);
-    calls.push(body);
-    if (body.view === "variant_comparison") {
+  const { client } = clientWithFetch(async (url, init) => {
+    const body = parsedBody(init);
+    calls.push({ url, body });
+    if (new URL(url).pathname.endsWith(`/variant-comparisons/${comparisonSetId}`)) {
       return jsonResponse({ ok: true, data: expected });
     }
-    if (body.operation === "update_course_variants") {
+    if (new URL(url).pathname.endsWith("/variant-comparisons/changes")) {
       return jsonResponse({ ok: true, data: {
         contract: "aralearn.course-variant-comparison-change.v1",
         comparisonSetId,
@@ -1199,18 +1206,18 @@ test("cliente usa o DTO factual de variantes e o nome canônico ao desvincular",
     }
   });
   assert.equal(detached.courseId, memberCourseId);
-  assert.deepEqual(calls[1].variantCommand, {
+  assert.deepEqual(calls[1].body.command, {
     type: "detach_comparison_variant",
     comparisonSetId,
     courseId: memberCourseId
   });
-  assert.equal(Object.hasOwn(calls[1], "expectedRevision"), false);
+  assert.equal(calls[1].body.expectedCourseRevision, null);
 });
 
 test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body), headers: new Headers(init.headers) });
+    calls.push({ url, body: parsedBody(init), headers: new Headers(init.headers) });
     return jsonResponse({ ok: true, data: { items: [] } });
   });
 
@@ -1229,31 +1236,28 @@ test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", 
     limit: 24
   });
 
-  assert.deepEqual(calls.map(({ body }) => body.view), ["outline", "study_units", "study_units"]);
-  assert.deepEqual(calls[1].body, {
-    courseId: COURSE_ID,
-    view: "study_units",
-    expectedRevision: 9,
-    scope: { kind: "module", id: "module-a" },
+  assert.equal(calls.every(({ body }) => body === null), true);
+  assert.equal(new URL(calls[0].url).searchParams.get("view"), "outline");
+  assert.equal(new URL(calls[1].url).pathname,
+    `/functions/v1/aralearn-course-api/v2/courses/${COURSE_ID}/study-units`);
+  assert.deepEqual(Object.fromEntries(new URL(calls[1].url).searchParams), {
+    expectedRevision: "9",
+    scopeKind: "module",
+    scopeId: "module-a",
     anchorStudyUnitId: "unit-a",
-    cursor: null,
     direction: "backward",
-    limit: 12,
-    maxBytes: 262144
+    limit: "12",
+    maxBytes: "262144"
   });
-  assert.equal(
-    calls[1].headers.get("accept"),
-    "application/vnd.aralearn.course-study-unit-inspection.v2+json"
-  );
-  assert.deepEqual(calls[2].body, {
-    courseId: COURSE_ID,
-    view: "study_units",
-    expectedRevision: 9,
-    inspectionFocusId: AVATAR_ID,
-    cursor: null,
+  assert.equal(new URL(calls[2].url).pathname,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/inspection-focuses/` +
+      `${AVATAR_ID}/study-units`);
+  assert.deepEqual(Object.fromEntries(new URL(calls[2].url).searchParams), {
+    expectedRevision: "9",
+    scopeKind: "course",
     direction: "forward",
-    limit: 24,
-    maxBytes: 512 * 1024
+    limit: "24",
+    maxBytes: String(512 * 1024)
   });
   assert.throws(
     () => client.loadAuthoringStudyUnits(COURSE_ID, {
@@ -1298,10 +1302,10 @@ test("cliente bloqueia controles no cabeçalho antes de abrir a rede", () => {
   assert.equal(calls, 0);
 });
 
-test("perfil e acesso direto usam a mesma operação Edge do MCP", async () => {
+test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, method: init.method, body: parsedBody(init) });
     return jsonResponse({ ok: true, data: { contract: "aralearn.person.v1" } });
   });
 
@@ -1321,11 +1325,14 @@ test("perfil e acesso direto usam a mesma operação Edge do MCP", async () => {
     requestId: AVATAR_ID
   });
 
-  assert.equal(calls.every(({ url }) =>
-    url.endsWith("/functions/v1/aralearn-course-api/app/gerirPessoas")), true);
-  assert.deepEqual(calls.map(({ body }) => body.operation), [
-    "read_profile", "update_profile", "list_access", "grant_access", "revoke_access"
+  assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
+    "/functions/v1/aralearn-course-api/v1/profile",
+    "/functions/v1/aralearn-course-api/v1/profile",
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access`,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access`,
+    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access/${USER_ID}`
   ]);
+  assert.deepEqual(calls.map(({ method }) => method), ["GET", "PATCH", "GET", "POST", "DELETE"]);
   assert.equal(calls[3].body.email, "pessoa@example.com");
   assert.equal(calls[3].body.confirmed, true);
   assert.equal(calls[4].body.confirmed, true);
@@ -1381,7 +1388,7 @@ test("avatar privado é enviado diretamente, imutável e limitado a 512 KiB", as
 test("exclusão da conta delega toda a limpeza à rota autenticada do aplicativo", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    const body = init.body == null ? null : JSON.parse(init.body);
+    const body = parsedBody(init);
     calls.push({ url, body, headers: init.headers });
     return jsonResponse({
       ok: true,
@@ -1565,15 +1572,15 @@ test("observações owner e Study usam contratos ligados e não aceitam spoof de
   });
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {
-    const body = JSON.parse(init.body);
+    const body = parsedBody(init);
     calls.push({ url, body });
-    if (url.endsWith("/app/lerCurso")) {
+    if (new URL(url).pathname.endsWith("/anchored-annotations")) {
       return jsonResponse({ ok: true, data: anchoredAnnotationPage(
         Object.fromEntries(Object.entries(ownerQuery).reverse()),
         ownerItem
       ) });
     }
-    if (url.endsWith("/app/alterarCurso")) {
+    if (new URL(url).pathname.endsWith("/anchored-annotations/changes")) {
       return jsonResponse({ ok: true, data: {
         contract: "aralearn.course-anchored-annotation-change.v1",
         courseId: COURSE_ID,
@@ -1610,8 +1617,10 @@ test("observações owner e Study usam contratos ligados e não aceitam spoof de
     cursor: null,
     limit: 12
   }), anchoredAnnotationPage(ownerQuery, ownerItem));
-  assert.equal(calls[0].body.annotationSetVersion, null);
-  assert.equal(calls[0].body.view, "anchored_annotations");
+  assert.equal(calls[0].body, null);
+  const observationQuery = new URL(calls[0].url).searchParams;
+  assert.equal(observationQuery.has("annotationSetVersion"), false);
+  assert.equal(observationQuery.get("mode"), "inbox");
 
   const revised = await client.mutateCourseAnchoredAnnotations({
     requestId: "request-annotation-owner-1",
@@ -1627,8 +1636,8 @@ test("observações owner e Study usam contratos ligados e não aceitam spoof de
     }
   });
   assert.equal(revised.courseRevision, 8);
-  assert.equal(Object.hasOwn(calls[1].body, "expectedRevision"), false);
-  assert.equal(calls[1].body.annotationCommand.rawText, "Texto revisto");
+  assert.equal(calls[1].body.expectedCourseRevision, null);
+  assert.equal(calls[1].body.command.rawText, "Texto revisto");
 
   assert.deepEqual(await client.getMyCourseAnchoredAnnotations(COURSE_ID, {
     expectedCourseRevision: 7,
@@ -1726,10 +1735,12 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
   };
   const requestId = "request-audit-client-0001";
   const { client } = clientWithFetch(async (url, init) => {
-    const body = JSON.parse(init.body);
+    const body = parsedBody(init);
     calls.push({ url, body });
-    if (url.endsWith("/app/lerCurso")) {
-      if (body.mode === "detail" && body.auditRunId === auditRunId) {
+    const requestUrl = new URL(url);
+    if (requestUrl.pathname.endsWith("/audit-cycle")) {
+      if (requestUrl.searchParams.get("mode") === "detail" &&
+          requestUrl.searchParams.get("auditRunId") === auditRunId) {
         const check = (dimension, result, index) => ({
           checkId: `50000000-0000-5000-8000-${String(index).padStart(12, "0")}`,
           dimension,
@@ -1796,7 +1807,7 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
           }
         } });
       }
-      if (body.mode === "runs") {
+      if (requestUrl.searchParams.get("mode") === "runs") {
         return jsonResponse({ ok: true, data: {
           ...page,
           query: {
@@ -1829,7 +1840,7 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
       }
       return jsonResponse({ ok: true, data: page });
     }
-    if (url.endsWith("/app/alterarCurso")) {
+    if (requestUrl.pathname.endsWith("/audit-cycle/changes")) {
       return jsonResponse({ ok: true, data: {
         contract: "aralearn.course-audit-cycle-change.v1",
         courseId: COURSE_ID,
@@ -1854,17 +1865,16 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
     cursor: "YWZ0ZXI=",
     limit: 12
   }), page);
-  assert.deepEqual(calls[0].body, {
-    courseId: COURSE_ID,
-    view: "audit_cycle",
-    expectedRevision: 7,
-    auditSetVersion: 4,
+  assert.equal(calls[0].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), {
+    expectedRevision: "7",
+    auditSetVersion: "4",
     mode: "findings",
-    limit: 12,
+    limit: "12",
     targetStudyUnitId: "unit-a",
-    states: ["open"],
-    dimensions: ["factual_quality"],
-    severities: ["high"],
+    state: "open",
+    dimension: "factual_quality",
+    severity: "high",
     cursor: "YWZ0ZXI="
   });
 
@@ -1882,10 +1892,8 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
   assert.equal(changed.changed, false);
   assert.deepEqual(calls[1].body, {
     requestId,
-    courseId: COURSE_ID,
-    expectedRevision: 7,
-    operation: "update_audit_cycle",
-    auditCommand: {
+    expectedCourseRevision: 7,
+    command: {
       type: "decide_finding",
       findingId,
       expectedFindingVersion: 2,
@@ -1911,13 +1919,12 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
     limit: 6
   });
   assert.equal(runs.runs[0].findingsCreated, 0);
-  assert.deepEqual(calls[2].body, {
-    courseId: COURSE_ID,
-    view: "audit_cycle",
-    expectedRevision: 7,
-    auditSetVersion: 4,
+  assert.equal(calls[2].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[2].url).searchParams), {
+    expectedRevision: "7",
+    auditSetVersion: "4",
     mode: "runs",
-    limit: 6,
+    limit: "6",
     targetStudyUnitId: "unit-a",
     cursor: "cnVuLTI="
   });
@@ -1940,13 +1947,12 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
     limit: 1
   });
   assert.equal(runDetail.runDetail.target.path.at(-1).id, "unit-a");
-  assert.deepEqual(calls[3].body, {
-    courseId: COURSE_ID,
-    view: "audit_cycle",
-    expectedRevision: 7,
-    auditSetVersion: 4,
+  assert.equal(calls[3].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[3].url).searchParams), {
+    expectedRevision: "7",
+    auditSetVersion: "4",
     mode: "detail",
-    limit: 1,
+    limit: "1",
     auditRunId
   });
 
@@ -1968,7 +1974,7 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
   assert.equal(calls.length, 4);
 });
 
-test("cliente owner lê o recorte de Pesquisa pelo mesmo lerCurso", async () => {
+test("cliente owner lê o recorte de Pesquisa pela rota quantitativa", async () => {
   const calls = [];
   const query = {
     datasets: ["design"],
@@ -2017,7 +2023,7 @@ test("cliente owner lê o recorte de Pesquisa pelo mesmo lerCurso", async () => 
     deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=research`
   };
   const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: JSON.parse(init.body) });
+    calls.push({ url, body: parsedBody(init) });
     return jsonResponse({ ok: true, data: page });
   });
 
@@ -2025,19 +2031,14 @@ test("cliente owner lê o recorte de Pesquisa pelo mesmo lerCurso", async () => 
     expectedCourseRevision: 7,
     query
   }), page);
-  assert.match(calls[0].url, /\/app\/lerCurso$/u);
-  assert.deepEqual(calls[0].body, {
-    courseId: COURSE_ID,
-    view: "research",
-    expectedRevision: 7,
-    datasets: ["design"],
-    channels: [],
-    origins: [],
-    states: [],
-    from: null,
-    to: null,
-    limit: 25,
-    cursor: null
+  assert.match(calls[0].url, new RegExp(
+    `/v1/courses/${COURSE_ID}/research\\?`, "u"
+  ));
+  assert.equal(calls[0].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), {
+    expectedRevision: "7",
+    dataset: "design",
+    limit: "25"
   });
 });
 
@@ -2047,7 +2048,7 @@ test("retry após resposta perdida aceita receipt idempotente na revisão corren
   let targetId = "unit-a";
   let courseRevision = 9;
   const { client } = clientWithFetch(async (_url, init) => {
-    const body = JSON.parse(init.body);
+    const body = parsedBody(init);
     calls.push(body);
     attempt += 1;
     if (attempt === 1) throw new TypeError("Failed to fetch");

@@ -27,7 +27,7 @@ export function corsHeaders(request, allowedOrigins) {
 export function preflightHeaders(request, allowedOrigins) {
   return {
     ...corsHeaders(request, allowedOrigins),
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     // O cliente web do Supabase envia a publishable key neste cabeçalho. Sem
     // declará-lo no preflight, o navegador bloqueia a consulta antes que a
     // função possa verificar a sessão do usuário.

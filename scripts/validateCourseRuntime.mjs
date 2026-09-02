@@ -90,12 +90,14 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
   "supabase/functions/_shared/aralearn-authoring/courseAuthoringState.js",
   "supabase/functions/_shared/aralearn-authoring/courseKnowledge.js",
-  "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js",
+  "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
   "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js",
   "supabase/functions/_shared/aralearn-authoring/courseProtocol.js",
   "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
   "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
-  "supabase/functions/_shared/aralearn-authoring/courseToolExecutor.js",
   "supabase/functions/_shared/aralearn-authoring/actionOAuthServer.js",
   "supabase/functions/_shared/aralearn-authoring/courseActionServer.js",
   "supabase/functions/aralearn-course-api/index.ts",
@@ -783,16 +785,18 @@ async function validateEdgeAndMcp() {
   }
   const toolsModule = await import(pathToFileURL(path.join(
     repositoryRoot,
-    "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js"
+    "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
   )).href);
-  const names = toolsModule.COURSE_MCP_TOOLS.map(({ name }) => name);
+  const names = toolsModule.COURSE_HUMAN_TASKS.map(({ name }) => name);
   const expected = [
-    "listarCursos", "lerCurso", "criarCurso", "alterarCurso",
-    "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos", "add_part"
+    "retomar_curso", "consultar_planejamento", "preparar_materializacao",
+    "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
+    "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_parte",
+    "materializar_parte", "ajustar_configuracao", "registrar_observacao",
+    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às sete ferramentas públicas esperadas.");
+    fail("O catálogo MCP não corresponde às dezesseis tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

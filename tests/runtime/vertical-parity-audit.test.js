@@ -7,7 +7,7 @@ import {
   auditVerticalParity,
   buildExactDatabaseInventory
 } from "../../scripts/auditVerticalParity.mjs";
-import { COURSE_MCP_TOOLS } from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+import { COURSE_HUMAN_TASKS } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -35,14 +35,14 @@ test("o registro corrente cobre UI, ferramentas, Edge, manifesto e testes", asyn
   assert.deepEqual(await auditVerticalParity({ repositoryRoot }), []);
 });
 
-test("o registro cobre as seis ferramentas canônicas e add_part dedicado", async () => {
+test("o registro cobre as dezesseis tarefas humanas", async () => {
   const current = await registry();
   const registered = current.cases.flatMap((caseRecord) =>
     caseRecord.objects?.mcpTools || []
   ).toSorted();
   assert.deepEqual(
     registered,
-    COURSE_MCP_TOOLS.map(({ name }) => name).toSorted()
+    COURSE_HUMAN_TASKS.map(({ name }) => name).toSorted()
   );
   assert.equal(current.cases.some((caseRecord) =>
     Object.hasOwn(caseRecord.objects || {}, "applicationTools") ||

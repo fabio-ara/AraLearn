@@ -1,0 +1,174 @@
+import { AuthoringApiError } from "./errors.js";
+import {
+  executeTrustedCourseWrite,
+  resolveHumanCourseContext
+} from "./courseHumanTaskExecutor.js";
+import { resolveHumanSourceLinks } from "./courseHumanMaterialization.js";
+import { validateCourseEntityContent } from
+  "../aralearn/runtime/domain/courseEntities.js";
+
+function plainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function fail(code, message, status = 422) {
+  throw new AuthoringApiError(status, code, message);
+}
+
+function validateCorrections(corrections) {
+  if (!Array.isArray(corrections) || corrections.length < 1 || corrections.length > 64) {
+    fail("invalid_human_corrections", "Informe de 1 a 64 correções focais.");
+  }
+  for (const [index, correction] of corrections.entries()) {
+    if (!plainObject(correction) || !Object.hasOwn(correction, "unidade") ||
+        !plainObject(correction.conteudo) ||
+        correction.fontes != null && !Array.isArray(correction.fontes)) {
+      fail("invalid_human_corrections", `A correção ${index + 1} é inválida.`);
+    }
+  }
+}
+
+function microsequenceId(item) {
+  const id = item?.curriculumPath?.didacticMicrosequence?.id ??
+    item?.didacticMicrosequenceId ?? item?.microsequenceId;
+  if (typeof id !== "string" || !id) {
+    fail("course_service_unavailable", "A Unidade não informa sua Microssequência.", 503);
+  }
+  return id;
+}
+
+async function currentSourceLinks({ adapter, principal, course, unit, deadlineAt }) {
+  const page = await adapter.getCourseSources({
+    principal,
+    courseId: course.id,
+    expectedRevision: course.revision,
+    mode: "target",
+    sourceId: null,
+    targetKind: "study_unit",
+    targetId: unit.studyUnit.id,
+    cursor: null,
+    limit: 24,
+    deadlineAt
+  });
+  const items = Array.isArray(page?.items) ? page.items : [];
+  const current = items.find((item) => item.effective === true) ?? null;
+  return Array.isArray(current?.sourceLinks) ? structuredClone(current.sourceLinks) : [];
+}
+
+async function loadCorrectionState({
+  adapter,
+  principal,
+  course,
+  corrections,
+  deadlineAt
+}) {
+  const resolved = await resolveHumanCourseContext({
+    adapter,
+    principal,
+    course,
+    studyUnits: corrections.map(({ unidade }) => unidade),
+    deadlineAt
+  });
+  const sourceCache = new Map();
+  const prepared = await Promise.all(corrections.map(async (correction, index) => {
+    const unit = resolved.studyUnits[index];
+    const sourceLinks = correction.fontes === undefined
+      ? await currentSourceLinks({
+          adapter,
+          principal,
+          course: resolved.course,
+          unit,
+          deadlineAt
+        })
+      : await resolveHumanSourceLinks({
+          adapter,
+          principal,
+          courseContext: resolved,
+          requested: correction.fontes,
+          deadlineAt,
+          sourceCache
+        });
+    const candidate = {
+      ...correction.conteudo,
+      id: unit.studyUnit.id,
+      position: unit.studyUnit.position
+    };
+    const validation = validateCourseEntityContent("study_unit", candidate);
+    if (!validation.valid) {
+      fail(
+        "invalid_human_study_unit",
+        `A correção da Unidade ${index + 1} é inválida: ${validation.errors.join(" ")}`
+      );
+    }
+    const content = structuredClone(validation.normalized);
+    delete content.id;
+    delete content.position;
+    return { unit, content, sourceLinks };
+  }));
+  return { ...resolved, prepared };
+}
+
+export async function applyHumanCourseCorrections({
+  adapter,
+  principal,
+  course,
+  corrections,
+  deadlineAt = null
+}) {
+  validateCorrections(corrections);
+  const receipt = await executeTrustedCourseWrite({
+    load: () => loadCorrectionState({
+      adapter,
+      principal,
+      course,
+      corrections,
+      deadlineAt
+    }),
+    build(state) {
+      const contextualApplication = principal.authenticationKind === "application" &&
+        state.prepared.length === 1;
+      return {
+        principal,
+        courseId: state.course.id,
+        expectedRevision: state.course.revision,
+        ...(contextualApplication
+          ? {
+            expectedStudyUnitVersion: Number(state.prepared[0].unit.version),
+            applicationOrigin: "provider_assistance"
+          }
+          : {}),
+        upserts: state.prepared.map(({ unit, content }) => ({
+          entityType: "study_unit",
+          entityId: unit.studyUnit.id,
+          parentType: "microsequence",
+          parentId: microsequenceId(unit),
+          position: unit.studyUnit.position,
+          content
+        })),
+        deletes: [],
+        sourceAttributionApplications: state.prepared.map(({ unit, sourceLinks }) => ({
+          studyUnitId: unit.studyUnit.id,
+          sourceLinks
+        })),
+        deadlineAt
+      };
+    },
+    commit: ({ requestId, ...request }) => adapter.commitCourseComposition({
+      ...request,
+      requestId
+    })
+  });
+  return {
+    result: corrections.length === 1
+      ? "A correção foi aplicada à Unidade afetada."
+      : `As ${corrections.length} correções coerentes foram aplicadas às Unidades afetadas.`,
+    deepLink: receipt.deepLink ?? null,
+    nextDecision: "Quer reinspecionar as Unidades e verificar se os achados foram resolvidos?",
+    context: {
+      correctionCount: corrections.length,
+      sourceMode: corrections.some(({ fontes }) => fontes !== undefined)
+        ? "explicit"
+        : "preserved"
+    }
+  };
+}

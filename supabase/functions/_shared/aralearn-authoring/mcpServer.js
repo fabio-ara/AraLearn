@@ -1,66 +1,43 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import {
-  AUTHORING_PROTOCOL_ID,
-  AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-} from "./authoringProtocolV1.js";
-import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
   listCourseAuthoringKnowledgeResources,
   readCourseAuthoringKnowledgeResource
 } from "./courseKnowledge.js";
-import { executeCourseTool } from "./courseToolExecutor.js";
-import {
-  projectConversationalAuthoringError,
-  projectConversationalAuthoringToolSuccess
-} from "./conversationalAuthoringProjection.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
-import { toolErrorData } from "./toolErrorEnvelope.js";
 import {
-  AUTHORING_MCP_CATALOG_HEADER,
-  AUTHORING_MCP_CATALOG_METADATA,
-  authoringMcpToolDefinition,
-  authoringMcpToolIsAllowed,
-  authoringMcpToolsForPrincipal
-} from "./courseMcpTools.js";
-import {
-  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-  AUTHORING_CONVERSATIONAL_PROJECTION_METADATA
-} from "./conversationalPdfSourceProjection.js";
+  COURSE_HUMAN_TASKS,
+  COURSE_HUMAN_TASK_CATALOG_HEADER,
+  COURSE_HUMAN_TASK_CATALOG_METADATA,
+  courseHumanTaskDefinition,
+  courseHumanTaskIsAllowed,
+  courseHumanTasksForPrincipal,
+  executeHumanCourseTask
+} from "./courseHumanTasks.js";
 import {
   listCourseMcpAppResources,
   readCourseMcpAppResource
 } from "./courseMcpAppResource.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
-export const ARALEARN_AUTHORING_CONTRACT_HEADER = [
-  AUTHORING_PROTOCOL_ID,
-  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
-  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
-].join("; ");
+export const ARALEARN_AUTHORING_CONTRACT_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
 const JSON_RPC_VERSION = "2.0";
-const AUTHORING_CONTRACT_METADATA = Object.freeze({
-  id: AUTHORING_PROTOCOL_ID,
-  version: AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  hash: AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-});
 const SERVER_INFO = Object.freeze({
   name: "aralearn-authoring",
-  version: AUTHORING_PROTOCOL_SCHEMA_VERSION
+  version: COURSE_HUMAN_TASK_CATALOG_METADATA.version
 });
 const MCP_BODY_LIMIT = 1024 * 1024;
 const MCP_RESPONSE_LIMIT = 2 * 1024 * 1024;
-const WRITE_TOOLS = new Set([
-  "criarCurso", "alterarCurso", "incorporarPdfComoFonte", "add_part"
-]);
+const WRITE_TOOLS = new Set(COURSE_HUMAN_TASKS
+  .filter(({ annotations }) => annotations.readOnlyHint !== true)
+  .map(({ name }) => name));
 const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
-  "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-  "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER,
+  "X-AraLearn-Authoring-Mcp-Catalog": COURSE_HUMAN_TASK_CATALOG_HEADER,
   "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
   Vary: "Origin"
 });
@@ -141,8 +118,7 @@ function metadataResponse(resourceUrl, authorizationServer, headers = {}) {
       "Cache-Control": "public, max-age=300",
       "X-Content-Type-Options": "nosniff",
       "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
-      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-      "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER,
+      "X-AraLearn-Authoring-Mcp-Catalog": COURSE_HUMAN_TASK_CATALOG_HEADER,
       ...headers
     }
   });
@@ -185,8 +161,7 @@ function preflightResponse(request, allowedOrigins) {
       "Access-Control-Max-Age": "600",
       "X-Content-Type-Options": "nosniff",
       "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
-      "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-      "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER
+      "X-AraLearn-Authoring-Mcp-Catalog": COURSE_HUMAN_TASK_CATALOG_HEADER
     }
   });
 }
@@ -517,6 +492,7 @@ function summarizeMcpAnnotations(value) {
 }
 
 function summarizeToolResult(name, value) {
+  if (typeof value?.result === "string") return value.result.slice(0, 4000);
   if (new Set([
     "aralearn.mcp-anchored-annotation-page.v1",
     "aralearn.mcp-anchored-annotation-change.v1"
@@ -542,15 +518,18 @@ function summarizeToolResult(name, value) {
   if (value?.contract === "aralearn.instructional-component-library.v1") {
     return summarizeComponentLibrary(value).slice(0, 12000);
   }
-  const action = name === "criarCurso"
+  const action = name === "criar_curso"
     ? "O Curso foi criado."
-    : name === "add_part"
+    : name === "salvar_parte"
       ? "A Parte foi adicionada ao planejamento."
-    : name === "alterarCurso"
+    : new Set([
+        "materializar_parte", "ajustar_configuracao", "registrar_observacao",
+        "aplicar_correcoes", "manter_fonte"
+      ]).has(name)
       ? "A alteração foi concluída."
-      : name === "incorporarPdfComoFonte"
+      : name === "incorporar_pdf_como_fonte"
         ? "O documento foi mantido entre as Fontes do Curso."
-      : name === "consultarComponentesDidaticos"
+      : name === "consultar_componentes"
         ? "A biblioteca de componentes didáticos foi consultada."
         : "A leitura foi concluída.";
   const parts = [action];
@@ -568,57 +547,52 @@ function summarizeToolResult(name, value) {
   return parts.join(" ").slice(0, 12000);
 }
 
-function toolSuccess(requestId, name, value, rawArguments = {}) {
-  const envelope = { ok: true, requestId, data: value ?? null };
-  const conversation = projectConversationalAuthoringToolSuccess({
-    envelope,
-    toolName: name,
-    rawArguments,
-    summary: { outcome: summarizeToolResult(name, value) }
-  });
-  const text = conversation.action?.label
-    ? `${conversation.message} ${conversation.action.label}.`
-    : conversation.message;
+function toolSuccess(name, value) {
+  const summary = summarizeToolResult(name, value);
+  const text = [
+    summary,
+    value?.deepLink ? "Abrir no AraLearn." : null,
+    value?.nextDecision ?? null
+  ].filter(Boolean).join(" ");
   return {
-    content: [{
-      type: "text",
-      text
-    }],
-    structuredContent: envelope,
+    content: [{ type: "text", text }],
+    structuredContent: value,
     isError: false
   };
 }
 
 function toolFailure(
-  requestId,
   error,
   challenge = null,
   failure = {}
 ) {
   const normalized = asAuthoringApiError(error);
-  const publicError = toolErrorData(normalized, { requestId });
-  if (failure.writeState === "complete") {
-    publicError.recovery = {
-      strategy: "verify_state",
-      retryable: false,
-      requestIdMode: "none",
-      steps: [
-        "Releia o estado atual antes de continuar.",
-        "Não repita a escrita apenas porque a resposta excedeu o limite."
-      ]
-    };
-  }
-  const structuredContent = {
-    ok: false,
-    requestId,
-    error: publicError
+  const retryable = normalized.status === 408 || normalized.status === 429 ||
+    normalized.status >= 500 || new Set([
+      "course_service_unavailable", "request_timeout", "network_error"
+    ]).has(normalized.code);
+  const publicError = {
+    code: String(normalized.code || "human_task_failed"),
+    message: String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
+    retryable
   };
-  const conversation = projectConversationalAuthoringError({
-    envelope: structuredContent,
-    failure
-  });
+  let nextDecision = normalized.code === "ambiguous_human_reference"
+    ? "Informe um título mais específico ou a posição humana do objeto."
+    : normalized.code === "human_reference_not_found"
+      ? "Confira o título ou a posição e tente novamente."
+      : normalized.code === "human_task_result_too_large"
+        ? "Escolha um Curso, Parte, Microssequência ou Unidade mais específica."
+        : retryable
+          ? "Tente novamente sem mudar a intenção da tarefa."
+          : null;
+  if (failure.writeState === "complete") {
+    publicError.message = "A escrita pode ter sido concluída, mas a resposta excedeu o limite.";
+    publicError.retryable = false;
+    nextDecision = "Releia o Curso antes de decidir se ainda falta alguma mudança.";
+  }
+  const structuredContent = { error: publicError, nextDecision };
   return {
-    content: [{ type: "text", text: conversation.message }],
+    content: [{ type: "text", text: normalized.message }],
     structuredContent,
     isError: true,
     ...(challenge
@@ -632,18 +606,16 @@ async function executeTool({
   principal,
   name,
   rawArguments,
-  deadlineAt,
-  onRequestIdValidated
+  deadlineAt
 }) {
-  const result = await executeCourseTool({
+  const value = await executeHumanCourseTask({
     adapter,
     principal,
     name,
     rawArguments,
-    deadlineAt,
-    onRequestIdValidated
+    deadlineAt
   });
-  return toolSuccess(result.requestId, name, result.data, rawArguments);
+  return toolSuccess(name, value);
 }
 
 async function dispatchMcpRequest(envelope, context) {
@@ -680,9 +652,7 @@ async function dispatchMcpRequest(envelope, context) {
         serverInfo: SERVER_INFO,
         instructions: COURSE_AUTHORING_SERVER_INSTRUCTIONS,
         _meta: {
-          authoringContract: AUTHORING_CONTRACT_METADATA,
-          conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
-          mcpCatalog: AUTHORING_MCP_CATALOG_METADATA
+          humanTaskCatalog: COURSE_HUMAN_TASK_CATALOG_METADATA
         }
       }
     };
@@ -707,11 +677,9 @@ async function dispatchMcpRequest(envelope, context) {
       jsonrpc: JSON_RPC_VERSION,
       id,
       result: {
-        tools: authoringMcpToolsForPrincipal(context.principal),
+        tools: courseHumanTasksForPrincipal(context.principal),
         _meta: {
-          authoringContract: AUTHORING_CONTRACT_METADATA,
-          conversationalProjection: AUTHORING_CONVERSATIONAL_PROJECTION_METADATA,
-          mcpCatalog: AUTHORING_MCP_CATALOG_METADATA
+          humanTaskCatalog: COURSE_HUMAN_TASK_CATALOG_METADATA
         }
       }
     };
@@ -757,14 +725,14 @@ async function dispatchMcpRequest(envelope, context) {
     if (typeof params.name !== "string") {
       return jsonRpcError(id, -32602, "tools/call exige o nome da ferramenta.");
     }
-    if (!authoringMcpToolDefinition(params.name)) {
+    if (!courseHumanTaskDefinition(params.name)) {
       return jsonRpcError(id, -32602, "Ferramenta de autoria inexistente.");
     }
     const rawArguments = params.arguments ?? {};
     if (!rawArguments || typeof rawArguments !== "object" || Array.isArray(rawArguments)) {
       return jsonRpcError(id, -32602, "tools/call exige arguments como objeto.");
     }
-    if (!authoringMcpToolIsAllowed(
+    if (!courseHumanTaskIsAllowed(
       params.name,
       context.principal,
       rawArguments
@@ -777,19 +745,15 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(null, denied, context.oauthChallenge)
+        result: toolFailure(denied, context.oauthChallenge)
       };
     }
-    let requestId = null;
     try {
       const result = await executeTool({
         ...context,
         name: params.name,
         rawArguments,
-        deadlineAt: Date.now() + 40_000,
-        onRequestIdValidated(value) {
-          requestId = value;
-        }
+        deadlineAt: Date.now() + 40_000
       });
       const payload = { jsonrpc: JSON_RPC_VERSION, id, result };
       if (!exceedsMcpResponseLimit(payload)) return payload;
@@ -805,7 +769,6 @@ async function dispatchMcpRequest(envelope, context) {
         jsonrpc: JSON_RPC_VERSION,
         id,
         result: toolFailure(
-          requestId,
           tooLarge,
           null,
           completedWrite ? { writeState: "complete" } : {}
@@ -820,7 +783,7 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(requestId, normalized, challenge)
+        result: toolFailure(normalized, challenge)
       };
     }
   }
@@ -918,8 +881,7 @@ export function createAuthoringMcpHandler({
           headers: {
             ...cors,
             "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
-            "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-            "X-AraLearn-Authoring-Mcp-Catalog": AUTHORING_MCP_CATALOG_HEADER,
+            "X-AraLearn-Authoring-Mcp-Catalog": COURSE_HUMAN_TASK_CATALOG_HEADER,
             Vary: "Origin"
           }
         });

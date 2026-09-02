@@ -5,19 +5,9 @@ import {
   readAssistAllowedOrigins
 } from "../src/assist/providerRuntimeSecurity.js";
 import {
-  AUTHORING_PROTOCOL_ID,
-  AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH,
-  AUTHORING_PROTOCOL_V1_TOOLS
-} from "../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
-import {
-  AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS
-} from "../supabase/functions/_shared/aralearn-authoring/authoringActionProjectionV1.js";
-import {
-  AUTHORING_CONVERSATIONAL_PROJECTION_HASH,
-  AUTHORING_CONVERSATIONAL_PROJECTION_ID,
-  AUTHORING_CONVERSATIONAL_PROJECTION_VERSION
-} from "../supabase/functions/_shared/aralearn-authoring/conversationalPdfSourceProjection.js";
+  COURSE_HUMAN_TASK_CATALOG_METADATA,
+  COURSE_HUMAN_TASKS
+} from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -41,10 +31,7 @@ const EXPECTED_ACTIONS_OPENAPI_SOURCE = readFileSync(
   "utf8"
 );
 const ACTIONS_OPERATION_IDS = Object.freeze(
-  [
-    ...AUTHORING_PROTOCOL_V1_TOOLS.map(({ name }) => name),
-    ...AUTHORING_ACTION_V1_DEDICATED_PROJECTIONS.map(({ operationId }) => operationId)
-  ].sort()
+  COURSE_HUMAN_TASKS.map(({ name }) => name).sort()
 );
 const REQUIRED_ASSETS = Object.freeze([
   "./index.html",
@@ -390,18 +377,12 @@ function validatePublishedActionsOpenApi(source, expectedVersion, projectOrigin)
   if (document?.openapi !== "3.1.0" || document?.info?.version !== expectedVersion) {
     throw new Error(`O OpenAPI publicado de Actions não corresponde à versão ${expectedVersion}.`);
   }
-  if (document.info["x-aralearn-protocol"] !== AUTHORING_PROTOCOL_ID ||
-      document.info["x-aralearn-protocol-schema-version"] !==
-        AUTHORING_PROTOCOL_SCHEMA_VERSION ||
-      document.info["x-aralearn-contract-fingerprint"] !==
-        AUTHORING_PROTOCOL_V1_SCHEMA_HASH ||
-      document.info["x-aralearn-conversational-projection"] !==
-        AUTHORING_CONVERSATIONAL_PROJECTION_ID ||
-      document.info["x-aralearn-conversational-projection-version"] !==
-        AUTHORING_CONVERSATIONAL_PROJECTION_VERSION ||
-      document.info["x-aralearn-conversational-projection-fingerprint"] !==
-        AUTHORING_CONVERSATIONAL_PROJECTION_HASH) {
-    throw new Error("O OpenAPI publicado de Actions usa outro contrato público de Autoria.");
+  if (document.info["x-aralearn-task-catalog"] !== COURSE_HUMAN_TASK_CATALOG_METADATA.id ||
+      document.info["x-aralearn-task-catalog-version"] !==
+        COURSE_HUMAN_TASK_CATALOG_METADATA.version ||
+      document.info["x-aralearn-task-catalog-fingerprint"] !==
+        COURSE_HUMAN_TASK_CATALOG_METADATA.hash) {
+    throw new Error("O OpenAPI publicado de Actions usa outro catálogo de tarefas humanas.");
   }
   const expectedServer = new URL(
     "/functions/v1/aralearn-authoring-action",

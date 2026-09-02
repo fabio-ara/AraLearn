@@ -68,11 +68,14 @@
       "terminologyReview": "#116",
       "objects": {
         "mcpTools": [
-          "listarCursos",
-          "lerCurso",
-          "criarCurso",
-          "alterarCurso",
-          "add_part"
+          "retomar_curso",
+          "consultar_planejamento",
+          "preparar_materializacao",
+          "consultar_configuracao",
+          "criar_curso",
+          "salvar_parte",
+          "materializar_parte",
+          "ajustar_configuracao"
         ],
         "manifestFeatures": [
           "single-live-course-identity-v1",
@@ -104,7 +107,7 @@
       "visibleEffects": [
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPlanningSection" },
         { "path": "src/ui/CourseInspectionSequence.js", "token": "createCourseInspectionSequence" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "loadPartMaterialization" },
+        { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPart" },
         { "path": "src/ui/CourseInspectionSequence.js", "token": "onSaveManualEdit" },
         { "path": "src/ui/CourseDesignPanel.js", "token": "effectiveRevisions" },
         { "path": "src/ui/CourseDesignPanel.js", "token": "data-course-design-target-items" }
@@ -119,12 +122,12 @@
         { "path": "src/supabase/CourseController.js", "token": "commitCourseComposition" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "mapAuthoringMcpToolCall" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "executeHumanCourseTask" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "executeCourseRoute" },
         { "path": "src/supabase/CourseApiClient.js", "token": "commitCourseComposition" }
       ],
       "tests": [
-        "tests/runtime/course-mcp-tools.test.js",
+        "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-authoring-surface.test.js",
         "tests/runtime/course-design-parameters.test.js",
         "tests/runtime/course-inspection-sequence.test.js",
@@ -147,7 +150,9 @@
       "terminologyReview": "#116",
       "objects": {
         "mcpTools": [
-          "incorporarPdfComoFonte"
+          "consultar_fontes",
+          "manter_fonte",
+          "incorporar_pdf_como_fonte"
         ],
         "manifestFeatures": [
           "course-sources-v1",
@@ -189,7 +194,7 @@
         { "path": "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql", "token": "from storage.objects object_value" }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "view: \"course_sources\"" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseSources" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "ingerirPdfDaFonte" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseProtocol.js", "token": "name: \"getCourseSources\"" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "courseSourcesQuery" }
@@ -201,8 +206,8 @@
         "tests/runtime/course-api-server.test.js",
         "tests/runtime/course-source-attachments-pglite.test.js",
         "tests/runtime/course-source-pdf-ingestion-pglite.test.js",
-        "tests/runtime/hosted-course-source-pdf-smoke.test.js",
-        "tests/runtime/course-mcp-server.test.js",
+        "tests/runtime/course-human-materialization.test.js",
+        "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-action-server.test.js",
         "tests/runtime/openai-temporary-pdf.test.js",
         "tests/runtime/course-data-lifecycle-pglite.test.js",
@@ -219,6 +224,10 @@
       "status": "current",
       "terminologyReview": "#124",
       "objects": {
+        "mcpTools": [
+          "consultar_observacoes",
+          "registrar_observacao"
+        ],
         "manifestFeatures": [
           "course-anchored-annotations-v1",
           "course-annotation-subject-classification-v1"
@@ -246,9 +255,10 @@
       "routes": [
         { "path": "src/supabase/CourseApiClient.js", "token": "getMyCourseAnchoredAnnotations" },
         { "path": "src/supabase/CourseApiClient.js", "token": "executeMyCourseAnchoredAnnotationCommand" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "anchored_annotations" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "registrar_observacao" }
       ],
       "tests": [
+        "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-anchored-annotations-pglite.test.js",
         "tests/runtime/course-annotation-repository.test.js",
         "tests/runtime/course-observations-panel.test.js",
@@ -264,6 +274,10 @@
       "status": "current",
       "terminologyReview": "#125",
       "objects": {
+        "mcpTools": [
+          "preparar_revisao",
+          "aplicar_correcoes"
+        ],
         "manifestFeatures": [
           "course-audit-cycle-v1",
           "course-authoring-corrections-v1",
@@ -292,15 +306,16 @@
         { "path": "supabase/migrations/20260817210000_course_audit_corrections.sql", "token": "course_instructional_audit_runs" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "audit_cycle" },
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "aplicar_correcoes" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuditCycle" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js", "token": "executeCourseAuditCycleCommand" }
       ],
       "tests": [
+        "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-audit-cycle.test.js",
         "tests/runtime/course-audit-corrections-pglite.test.js",
         "tests/runtime/course-audit-panel.test.js",
-        "tests/runtime/course-mcp-tools.test.js",
+        "tests/runtime/course-human-corrections.test.js",
         "tests/e2e/course-audit-panel.spec.js"
       ],
       "justification": "Rodadas imutáveis, achados versionados, vínculos redigíveis com Observações e checkpoints focais de correção formam um único ciclo verificável. A correção só altera a Unidade em transação com CAS e checkpoint; a verificação posterior preserva evidência e pode sugerir, mas nunca executar silenciosamente, ações no ciclo independente de Observações. Rodadas limpas continuam enumeráveis e auditáveis pela mesma leitura paginada."
@@ -338,7 +353,7 @@
         { "path": "supabase/migrations/20260818042341_course_variant_comparisons.sql", "token": "course_variant_plan_checkpoints" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "variant_comparison" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseVariantComparison" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseVariantComparison" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "COURSE_MCP_APP_RESOURCE_URI" }
       ],
@@ -379,7 +394,7 @@
         { "path": "supabase/migrations/20260820063156_course_authoring_analytics.sql", "token": "get_owned_course_authoring_analytics_for_actor_v1" }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "view: \"research\"" },
+        { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseAuthoringAnalytics" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuthoringAnalytics" },
         { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "COURSE_MCP_APP_RESOURCE_URI" }
       ],
@@ -422,8 +437,7 @@
       "tests": [
         "tests/runtime/course-data-lifecycle-pglite.test.js",
         "tests/runtime/course-supabase-adapter.test.js",
-        "tests/runtime/product-operations-pglite.test.js",
-        "supabase/tests/course-runtime-local-smoke.mjs"
+        "tests/runtime/product-operations-pglite.test.js"
       ],
       "justification": "A limpeza trabalha por classe, com limite e contagem próprios, e pode ser repetida sem efeito adicional. A Manutenção aparece somente para identidade administrativa autorizada, revalida o objeto antes de remover e relê o inventário; não expõe banco ou Storage genéricos. A validação de sessão fecha escritas sensíveis após a revogação sem ampliar o perfil ou o compartilhamento como capacidade de produto."
     },
@@ -466,7 +480,6 @@
         { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "manageCourseAccess" }
       ],
       "tests": [
-        "tests/runtime/course-mcp-tools.test.js",
         "tests/runtime/course-api-client.test.js",
         "tests/runtime/course-authoring-surface.test.js",
         "tests/runtime/course-controller.test.js"
@@ -481,7 +494,7 @@
       "terminologyReview": "#116",
       "objects": {
         "mcpTools": [
-          "consultarComponentesDidaticos"
+          "consultar_componentes"
         ],
         "manifestFeatures": [
           "package-library-v1",
@@ -501,10 +514,10 @@
         { "path": "src/resources/packages/generated.js", "token": "RESOURCE_PACKAGE_DEFINITIONS" }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpTools.js", "token": "mapResourceLibrary" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "consultar_componentes" }
       ],
       "tests": [
-        "tests/runtime/course-mcp-tools.test.js",
+        "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/package-study-rendering-regressions.test.js"
       ],
       "justification": "O catálogo modular só entrega valor se o contrato descoberto pelo MCP for o mesmo que o runtime valida e renderiza; a ferramenta não cria uma taxonomia paralela."
@@ -540,11 +553,11 @@
       ],
       "tests": [
         "tests/runtime/course-api-server.test.js",
-        "tests/runtime/course-mcp-server.test.js",
+        "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-action-server.test.js",
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
-      "justification": "Aplicativo, MCP e Actions reutilizam o mesmo executor de Curso. MCP mantém seu protocolo e principal OAuth; Actions publica seis operações HTTP e um OpenAPI próprio para GPT personalizado, sem converter um canal no outro nem criar segundo motor de autoria."
+      "justification": "Aplicativo, MCP e Actions usam os mesmos casos de uso humanos sobre o Curso vivo. MCP mantém seu transporte e principal OAuth; Actions projeta as mesmas dezesseis tarefas em HTTP/OpenAPI, sem expor o mecanismo interno nem criar segundo motor de autoria."
     }
   ]
 }

@@ -35,7 +35,7 @@ function request(path, {
       "Content-Type": "application/json",
       ...headers
     },
-    ...(method === "POST" ? { body: JSON.stringify(body) } : {})
+    ...(!new Set(["GET", "HEAD", "OPTIONS"]).has(method) ? { body: JSON.stringify(body) } : {})
   });
 }
 
@@ -67,7 +67,7 @@ function pdfIngestionRequest({
   );
 }
 
-test("negocia inspeção v2 sem alterar a operação legada do aplicativo", async () => {
+test("expõe as duas versões da inspeção por rotas explícitas", async () => {
   const versions = [];
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),
@@ -86,13 +86,12 @@ test("negocia inspeção v2 sem alterar a operação legada do aplicativo", asyn
       }
     }
   });
-  const body = { courseId: COURSE_ID, view: "study_units", expectedRevision: 7 };
-  assert.equal((await handler(request("/app/lerCurso", { body }))).status, 200);
-  assert.equal((await handler(request("/app/lerCurso", {
-    body,
-    headers: {
-      Accept: "application/vnd.aralearn.course-study-unit-inspection.v2+json"
-    }
+  const query = `?expectedRevision=7`;
+  assert.equal((await handler(request(`/v1/courses/${COURSE_ID}/study-units${query}`, {
+    method: "GET"
+  }))).status, 200);
+  assert.equal((await handler(request(`/v2/courses/${COURSE_ID}/study-units${query}`, {
+    method: "GET"
   }))).status, 200);
   assert.deepEqual(versions, [1, 2]);
 });
@@ -166,8 +165,8 @@ test("expõe leitura autenticada do plano instrucional no aplicativo", async () 
       }
     }
   });
-  const response = await handler(request("/app/lerCurso", {
-    body: { courseId: COURSE_ID, view: "instructional_plan" }
+  const response = await handler(request(`/v1/courses/${COURSE_ID}/instructional-plan`, {
+    method: "GET"
   }));
   const payload = await response.json();
 
@@ -177,7 +176,7 @@ test("expõe leitura autenticada do plano instrucional no aplicativo", async () 
   assert.equal(payload.data.plan.version, 1);
 });
 
-test("rota /app aceita sessão comum e recusa o token OAuth destinado ao MCP", async () => {
+test("rota interna aceita sessão comum e recusa o token OAuth destinado ao MCP", async () => {
   const applicationToken = jwt({
     aud: "authenticated",
     exp: 2_000_000_000,
@@ -229,16 +228,15 @@ test("rota /app aceita sessão comum e recusa o token OAuth destinado ao MCP", a
       }
     }
   });
-  const body = { courseId: COURSE_ID, view: "instructional_plan" };
-
-  const accepted = await handler(request("/app/lerCurso", {
-    body,
+  const path = `/v1/courses/${COURSE_ID}/instructional-plan`;
+  const accepted = await handler(request(path, {
+    method: "GET",
     token: applicationToken
   }));
   assert.equal(accepted.status, 200);
 
-  const rejected = await handler(request("/app/lerCurso", {
-    body,
+  const rejected = await handler(request(path, {
+    method: "GET",
     token: mcpToken
   }));
   const rejectedPayload = await rejected.json();
@@ -269,14 +267,10 @@ test("expõe a mesma leitura retomável da materialização ao aplicativo", asyn
       }
     }
   });
-  const response = await handler(request("/app/lerCurso", {
-    body: {
-      courseId: COURSE_ID,
-      view: "part_materialization",
-      authoringPartId: PART_ID,
-      materializationId: MATERIALIZATION_ID
-    }
-  }));
+  const response = await handler(request(
+    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}/materializations/${MATERIALIZATION_ID}`,
+    { method: "GET" }
+  ));
   const payload = await response.json();
 
   assert.equal(response.status, 200);
@@ -303,7 +297,7 @@ test("rejeita origem não autorizada antes de executar", async () => {
     allowedOrigins: new Set([ORIGIN]),
     adapter: {}
   });
-  const value = request("/app/lerCurso", { body: { courseId: COURSE_ID } });
+  const value = request(`/v1/courses/${COURSE_ID}`, { method: "GET" });
   value.headers.set("Origin", "https://evil.example");
   const response = await handler(value);
   assert.equal(response.status, 403);
@@ -323,7 +317,8 @@ test("autentica antes de ler o corpo e interrompe payload acima de 512 KiB", asy
       }
     }
   });
-  const unauthenticated = request("/app/alterarCurso", {
+  const planPath = `/v1/courses/${COURSE_ID}/instructional-plan/changes`;
+  const unauthenticated = request(planPath, {
     body: { padding: "x".repeat(513 * 1024) },
     token: ""
   });
@@ -332,7 +327,7 @@ test("autentica antes de ler o corpo e interrompe payload acima de 512 KiB", asy
   assert.equal(unauthorizedResponse.status, 401);
   assert.equal(authenticationCalls, 0);
 
-  const oversized = request("/app/alterarCurso", {
+  const oversized = request(planPath, {
     body: { padding: "x".repeat(513 * 1024) }
   });
   oversized.headers.delete("content-length");
@@ -503,14 +498,12 @@ test("preserva o envelope CAS do plano até o adaptador", async () => {
       }
     }
   });
-  const response = await handler(request("/app/alterarCurso", {
+  const response = await handler(request(`/v1/courses/${COURSE_ID}/instructional-plan/changes`, {
     body: {
       requestId: "request-course-plan-0001",
-      courseId: COURSE_ID,
-      expectedRevision: 5,
+      expectedCourseRevision: 5,
       expectedPlanVersion: 3,
-      operation: "update_instructional_plan",
-      planCommand: { type: "update_plan", audience: "Docentes" }
+      command: { type: "update_plan", audience: "Docentes" }
     }
   }));
   const payload = await response.json();
@@ -568,7 +561,8 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
     studyUnit,
     applicationOrigin: "manual"
   };
-  const response = await handler(request("/app/criarCopiaPessoalDoCurso", { body }));
+  const personalCopyPath = `/v1/courses/${COURSE_ID}/personal-copy/composition`;
+  const response = await handler(request(personalCopyPath, { body }));
   const payload = await response.json();
 
   assert.equal(response.status, 200);
@@ -600,7 +594,7 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
     }
   });
   const conflictResponse = await conflictHandler(
-    request("/app/criarCopiaPessoalDoCurso", { body })
+    request(personalCopyPath, { body })
   );
   const conflictPayload = await conflictResponse.json();
   assert.equal(conflictResponse.status, 409);
@@ -626,24 +620,18 @@ test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async ()
       }
     }
   });
-  const readResponse = await handler(request("/app/lerCurso", {
-    body: {
-      courseId: COURSE_ID,
-      view: "course_design",
-      scope: { kind: "course", ref: COURSE_ID },
-      limit: 16,
-      cursor: null
-    }
-  }));
+  const designPath = `/v1/courses/${COURSE_ID}/course-design`;
+  const readResponse = await handler(request(
+    `${designPath}?scopeKind=course&scopeRef=${COURSE_ID}&limit=16`,
+    { method: "GET" }
+  ));
   assert.equal(readResponse.status, 200);
 
-  const writeResponse = await handler(request("/app/alterarCurso", {
+  const writeResponse = await handler(request(`${designPath}/changes`, {
     body: {
       requestId: "request-course-design-0001",
-      courseId: COURSE_ID,
-      expectedRevision: 5,
-      operation: "update_course_design",
-      designCommand: {
+      expectedCourseRevision: 5,
+      command: {
         type: "clear_guidance",
         scope: { kind: "course", ref: COURSE_ID }
       }
@@ -675,17 +663,11 @@ test("aplicativo alcança audit_cycle pelas mesmas duas tools do MCP", async () 
       }
     }
   });
-  const readResponse = await handler(request("/app/lerCurso", {
-    body: {
-      courseId: COURSE_ID,
-      view: "audit_cycle",
-      expectedRevision: 7,
-      mode: "context",
-      targetStudyUnitId: "unit-a",
-      annotationIds: [],
-      limit: 1
-    }
-  }));
+  const auditPath = `/v1/courses/${COURSE_ID}/audit-cycle`;
+  const readResponse = await handler(request(
+    `${auditPath}?expectedRevision=7&mode=context&targetStudyUnitId=unit-a&limit=1`,
+    { method: "GET" }
+  ));
   assert.equal(readResponse.status, 200);
   assert.equal((await readResponse.json()).data.contract, "audit-read-ok");
   assert.deepEqual(calls[0][1].query, {
@@ -700,13 +682,11 @@ test("aplicativo alcança audit_cycle pelas mesmas duas tools do MCP", async () 
     annotationIds: []
   });
 
-  const writeResponse = await handler(request("/app/alterarCurso", {
+  const writeResponse = await handler(request(`${auditPath}/changes`, {
     body: {
       requestId: "request-audit-api-0001",
-      courseId: COURSE_ID,
-      expectedRevision: 7,
-      operation: "update_audit_cycle",
-      auditCommand: {
+      expectedCourseRevision: 7,
+      command: {
         type: "decide_finding",
         findingId,
         expectedFindingVersion: 2,
@@ -761,27 +741,18 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
       }
     }
   });
-  const readResponse = await handler(request("/app/lerCurso", {
-    body: {
-      courseId: COURSE_ID,
-      view: "course_sources",
-      expectedRevision: 5,
-      mode: "target",
-      targetKind: "study_unit",
-      targetId: "unit-a",
-      limit: 12,
-      cursor: null
-    }
-  }));
+  const sourcesPath = `/v1/courses/${COURSE_ID}/sources`;
+  const readResponse = await handler(request(
+    `${sourcesPath}?expectedRevision=5&mode=target&targetKind=study_unit&targetId=unit-a&limit=12`,
+    { method: "GET" }
+  ));
   assert.equal(readResponse.status, 200);
 
-  const writeResponse = await handler(request("/app/alterarCurso", {
+  const writeResponse = await handler(request(`${sourcesPath}/changes`, {
     body: {
       requestId: "request-course-source-0001",
-      courseId: COURSE_ID,
-      expectedRevision: 5,
-      operation: "update_course_sources",
-      sourceCommand: {
+      expectedCourseRevision: 5,
+      command: {
         type: "retire_source",
         sourceId: legacySourceId,
         expectedSourceRevision: 1
@@ -798,13 +769,11 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
     expectedSourceRevision: 1
   });
 
-  const spoofed = await handler(request("/app/alterarCurso", {
+  const spoofed = await handler(request(`${sourcesPath}/changes`, {
     body: {
       requestId: "request-course-source-0002",
-      courseId: COURSE_ID,
-      expectedRevision: 5,
-      operation: "update_course_sources",
-      sourceCommand: {
+      expectedCourseRevision: 5,
+      command: {
         type: "retire_source",
         sourceId: "source-a",
         expectedSourceRevision: 1,
@@ -835,21 +804,12 @@ test("aplicativo expõe observações sem confirmação MCP nem campos de autori
     }
   });
 
-  const read = await handler(request("/app/lerCurso", {
-    body: {
-      courseId: COURSE_ID,
-      view: "anchored_annotations",
-      expectedRevision: 7,
-      annotationSetVersion: null,
-      mode: "target",
-      states: ["open"],
-      targetKind: "study_unit",
-      targetId: "unit-a",
-      includeDescendants: false,
-      cursor: null,
-      limit: 12
-    }
-  }));
+  const annotationPath = `/v1/courses/${COURSE_ID}/anchored-annotations`;
+  const read = await handler(request(
+    `${annotationPath}?expectedRevision=7&mode=target&state=open&` +
+      "targetKind=study_unit&targetId=unit-a&includeDescendants=false&limit=12",
+    { method: "GET" }
+  ));
   assert.equal(read.status, 200);
   assert.deepEqual(calls[0][1].query.hierarchy, {
     target: { kind: "study_unit", id: "unit-a" },
@@ -859,10 +819,8 @@ test("aplicativo expõe observações sem confirmação MCP nem campos de autori
 
   const createBody = {
     requestId: "request-annotation-app-1",
-    courseId: COURSE_ID,
-    expectedRevision: 7,
-    operation: "update_anchored_annotations",
-    annotationCommand: {
+    expectedCourseRevision: 7,
+    command: {
       type: "create_anchored_annotation",
       annotationId,
       target: { kind: "study_unit", id: "unit-a" },
@@ -872,17 +830,16 @@ test("aplicativo expõe observações sem confirmação MCP nem campos de autori
       briefSummary: null
     }
   };
-  const create = await handler(request("/app/alterarCurso", { body: createBody }));
+  const create = await handler(request(`${annotationPath}/changes`, { body: createBody }));
   assert.equal(create.status, 200);
   assert.equal(calls[1][1].expectedCourseRevision, 7);
   assert.equal(Object.hasOwn(calls[1][1].command, "confirmed"), false);
 
-  const revise = await handler(request("/app/alterarCurso", {
+  const revise = await handler(request(`${annotationPath}/changes`, {
     body: {
       requestId: "request-annotation-app-2",
-      courseId: COURSE_ID,
-      operation: "update_anchored_annotations",
-      annotationCommand: {
+      expectedCourseRevision: null,
+      command: {
         type: "revise_anchored_annotation",
         annotationId,
         expectedAnnotationVersion: 1,
@@ -895,11 +852,11 @@ test("aplicativo expõe observações sem confirmação MCP nem campos de autori
   assert.equal(revise.status, 200);
   assert.equal(calls[2][1].expectedCourseRevision, null);
 
-  const spoofed = await handler(request("/app/alterarCurso", {
+  const spoofed = await handler(request(`${annotationPath}/changes`, {
     body: {
       ...createBody,
       requestId: "request-annotation-app-3",
-      annotationCommand: { ...createBody.annotationCommand, channel: "authoring_chat" }
+      command: { ...createBody.command, channel: "authoring_chat" }
     }
   }));
   assert.equal(spoofed.status, 422);
@@ -921,20 +878,18 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
       }
     }
   });
-  const response = await handler(request("/app/alterarCurso", {
+  const response = await handler(request(`/v1/courses/${COURSE_ID}/instructional-plan/changes`, {
     body: {
       requestId: " request-course-stale-0001 ",
-      courseId: COURSE_ID,
-      expectedRevision: 1,
+      expectedCourseRevision: 1,
       expectedPlanVersion: 1,
-      operation: "update_instructional_plan",
-      planCommand: { type: "update_plan", title: "Curso revisto" }
+      command: { type: "update_plan", title: "Curso revisto" }
     }
   }));
   const payload = await response.json();
 
   assert.equal(response.status, 409);
-  assert.equal(payload.requestId, "request-course-stale-0001");
+  assert.equal(payload.requestId, null);
   assert.equal(payload.error.code, "stale_course_state");
   assert.deepEqual(payload.error.recovery, {
     strategy: "reread_and_retry",
@@ -948,7 +903,7 @@ test("orienta reler o Curso e usar novo requestId após conflito de versão", as
   assert.doesNotMatch(JSON.stringify(payload), /workspace|trilha|salvarCards/iu);
 });
 
-test("Edge da aplicação nunca reflete requestId hostil rejeitado pelo mapper", async () => {
+test("Edge da aplicação nunca reflete requestId hostil rejeitado pela rota", async () => {
   const hostileRequestId = "Bearer token-that-must-not-leak";
   let createCalls = 0;
   const handler = createCourseApiHandler({
@@ -962,7 +917,7 @@ test("Edge da aplicação nunca reflete requestId hostil rejeitado pelo mapper",
       }
     }
   });
-  const response = await handler(request("/app/criarCurso", {
+  const response = await handler(request("/v1/courses", {
     body: {
       requestId: hostileRequestId,
       title: "Curso seguro",
@@ -975,7 +930,7 @@ test("Edge da aplicação nunca reflete requestId hostil rejeitado pelo mapper",
   assert.equal(response.status, 422);
   assert.equal(createCalls, 0);
   assert.equal(payload.requestId, null);
-  assert.equal(payload.error.code, "invalid_tool_argument");
+  assert.equal(payload.error.code, "invalid_request_id");
   assert.equal(payload.error.recovery.requestIdMode, "none");
   assert.equal(serialized.includes(hostileRequestId), false);
   assert.equal(serialized.includes("token-that-must-not-leak"), false);

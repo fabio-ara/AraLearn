@@ -3,170 +3,77 @@ import {
   createAuthoringMcpHandler
 } from "../_shared/aralearn-authoring/mcpServer.js";
 import {
-  AUTHORING_MCP_CATALOG_HEADER,
-  AUTHORING_MCP_CATALOG_METADATA
-} from "../_shared/aralearn-authoring/courseMcpTools.js";
+  COURSE_HUMAN_TASKS
+} from "../_shared/aralearn-authoring/courseHumanTasks.js";
 
-function assertEquals(actual: unknown, expected: unknown): void {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    throw new Error(`Esperado ${JSON.stringify(expected)}, recebido ${JSON.stringify(actual)}.`);
-  }
+const ORIGIN = "https://client.example";
+const RESOURCE = "https://edge.example/functions/v1/aralearn-authoring-mcp";
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
 }
 
-const origin = "https://mcp.example";
-const oauthToken = "header.oauth-payload.signature";
-const resourceUrl = "https://edge.example/functions/v1/aralearn-authoring-mcp";
-const authorizationServer = "https://project.example/auth/v1";
-
-function request(method: string, params: Record<string, unknown> = {}, id = 1): Request {
-  return new Request("https://edge.example/functions/v1/aralearn-authoring-mcp", {
+function request(method: string, params: Record<string, unknown> = {}) {
+  return new Request(RESOURCE, {
     method: "POST",
     headers: {
+      Origin: ORIGIN,
+      Authorization: "Bearer token",
       Accept: "application/json, text/event-stream",
       "Content-Type": "application/json",
-      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
-      Origin: origin,
-      Authorization: `Bearer ${oauthToken}`
+      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
     },
-    body: JSON.stringify({ jsonrpc: "2.0", id, method, params })
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
   });
 }
 
-function adapter() {
-  return {
-    async resolvePrincipal() {
-      return {
-        actorId: "11111111-1111-4111-8111-111111111111",
-        oauthClientId: "chatgpt-client",
-        authenticationKind: "oauth",
-        scopes: ["authoring:read", "authoring:write"]
-      };
+Deno.test("#272 MCP Edge publica somente tarefas humanas", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      supabaseUrl: "https://project.example",
+      async resolvePrincipal() {
+        return {
+          actorId: "10000000-0000-4000-8000-000000000001",
+          authenticationKind: "oauth",
+          scopes: ["authoring:read", "authoring:write"]
+        };
+      }
     },
-    async createCourse(command: Record<string, unknown>) {
-      return {
-        courseId: "10000000-0000-4000-8000-000000000001",
-        title: command.title,
-        revision: 1,
-        createdAt: "2026-08-13T00:00:00.000Z",
-        updatedAt: "2026-08-13T00:00:00.000Z",
-        idempotent: false
-      };
-    }
-  };
-}
-
-Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas de Curso", async () => {
-  const handler = createAuthoringMcpHandler({
-    adapter: adapter(),
-    allowedOrigins: new Set([origin]),
-    resourceUrl,
-    authorizationServer
-  });
-  const response = await handler(request("initialize", {
-    protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
-    capabilities: {},
-    clientInfo: { name: "deno", version: "1" }
-  }));
-  const body = await response.json();
-  assertEquals(response.status, 200);
-  assertEquals(body.result.protocolVersion, ARALEARN_MCP_PROTOCOL_VERSION);
-  assertEquals(
-    response.headers.get("x-aralearn-authoring-mcp-catalog"),
-    AUTHORING_MCP_CATALOG_HEADER
-  );
-  assertEquals(body.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
-  assertEquals(response.headers.get("mcp-session-id"), null);
-});
-
-Deno.test("gateway MCP mantém sete tools e anuncia arquivo, Parte e auditoria", async () => {
-  const handler = createAuthoringMcpHandler({
-    adapter: adapter(),
-    allowedOrigins: new Set([origin]),
-    resourceUrl,
-    authorizationServer
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE,
+    authorizationServer: "https://project.example/auth/v1"
   });
   const response = await handler(request("tools/list"));
-  const body = await response.json();
-  assertEquals(
-    response.headers.get("x-aralearn-authoring-mcp-catalog"),
-    AUTHORING_MCP_CATALOG_HEADER
+  const payload = await response.json();
+  const names = payload.result.tools.map(({ name }: { name: string }) => name);
+  assert(
+    JSON.stringify(names) === JSON.stringify(COURSE_HUMAN_TASKS.map(({ name }) => name)),
+    "tools/list divergiu do catálogo humano"
   );
-  assertEquals(body.result._meta.mcpCatalog, AUTHORING_MCP_CATALOG_METADATA);
-  const tools = body.result.tools as Array<Record<string, unknown>>;
-  assertEquals(tools.map(({ name }) => name), [
-    "listarCursos",
-    "lerCurso",
-    "criarCurso",
-    "alterarCurso",
-    "incorporarPdfComoFonte",
-    "consultarComponentesDidaticos",
-    "add_part"
-  ]);
-  const read = tools.find(({ name }) => name === "lerCurso") as {
-    inputSchema: { properties: { view: { enum: string[] } } }
-  };
-  const change = tools.find(({ name }) => name === "alterarCurso") as {
-    inputSchema: { properties: { operation: { enum: string[] } } }
-  };
-  assertEquals(read.inputSchema.properties.view.enum.includes("anchored_annotations"), true);
-  assertEquals(read.inputSchema.properties.view.enum.includes("audit_cycle"), true);
-  assertEquals(
-    change.inputSchema.properties.operation.enum.includes("update_anchored_annotations"),
-    true
-  );
-  assertEquals(
-    change.inputSchema.properties.operation.enum.includes("update_audit_cycle"),
-    true
-  );
-  const pdf = tools.find(({ name }) => name === "incorporarPdfComoFonte") as {
-    _meta: { "openai/fileParams": string[] }
-  };
-  assertEquals(pdf._meta["openai/fileParams"], ["pdf"]);
-  const addPart = tools.find(({ name }) => name === "add_part") as {
-    inputSchema: { properties: Record<string, unknown> }
-  };
-  assertEquals(Object.hasOwn(addPart.inputSchema.properties, "id"), false);
 });
 
-Deno.test("gateway MCP cria Curso pelo mesmo caso de uso do aplicativo", async () => {
+Deno.test("#272 MCP Edge filtra writes sem authoring:write", async () => {
   const handler = createAuthoringMcpHandler({
-    adapter: adapter(),
-    allowedOrigins: new Set([origin]),
-    resourceUrl,
-    authorizationServer
-  });
-  const response = await handler(request("tools/call", {
-    name: "criarCurso",
-    arguments: {
-      requestId: "deno-course-create-0001",
-      title: "Curso",
-      objective: "Compreender o tema."
-    }
-  }));
-  const body = await response.json();
-  assertEquals(response.status, 200);
-  assertEquals(body.result.isError, false);
-  assertEquals(body.result.structuredContent.data.revision, 1);
-});
-
-Deno.test("gateway MCP rejeita Origin hostil antes de resolver a sessão OAuth", async () => {
-  let resolved = 0;
-  const handler = createAuthoringMcpHandler({
-    allowedOrigins: new Set([origin]),
-    resourceUrl,
-    authorizationServer,
     adapter: {
+      supabaseUrl: "https://project.example",
       async resolvePrincipal() {
-        resolved += 1;
-        return null;
+        return {
+          actorId: "10000000-0000-4000-8000-000000000001",
+          authenticationKind: "oauth",
+          scopes: ["authoring:read"]
+        };
       }
-    }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE,
+    authorizationServer: "https://project.example/auth/v1"
   });
-  const hostile = request("ping");
-  hostile.headers.set("Origin", "https://hostile.example");
-  const response = await handler(hostile);
-  const body = await response.json();
-  assertEquals(response.status, 403);
-  assertEquals(body.error.data.code, "origin_not_allowed");
-  assertEquals(resolved, 0);
+  const response = await handler(request("tools/list"));
+  const payload = await response.json();
+  assert(
+    payload.result.tools.every(({ annotations }: { annotations: { readOnlyHint: boolean } }) => (
+      annotations.readOnlyHint === true
+    )),
+    "tools/list expôs escrita sem escopo"
+  );
 });

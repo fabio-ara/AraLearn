@@ -14,17 +14,14 @@ import {
   resolveCourseDesignParameters
 } from "../../src/domain/courseDesignParameters.js";
 import {
-  AUTHORING_PROTOCOL_V1_TOOLS
-} from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
-import {
-  COURSE_MCP_TOOLS
-} from "../../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+  COURSE_HUMAN_TASKS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
   courseAuthoringGuidanceForCall
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
-  projectAuthoringProtocolToolsForActions
-} from "../../scripts/projectChatGptActionSchemas.mjs";
+  projectHumanAuthoringTasksForActions
+} from "../../scripts/projectHumanAuthoringActions.mjs";
 
 const fixture = JSON.parse(await fs.readFile(new URL(
   "../fixtures/authoring-parameter-calibration.v1.json",
@@ -210,15 +207,10 @@ test("#268 mantém quatro parâmetros pedagógicos e calibra automaticamente com
 });
 
 test("#268 guidance separa calibração, geração focal, inspeção e demais fases", () => {
-  const planning = courseAuthoringGuidanceForCall("lerCurso", { view: "course_design" });
-  const materialization = courseAuthoringGuidanceForCall("lerCurso", {
-    view: "part_materialization"
-  });
-  const inspection = courseAuthoringGuidanceForCall("lerCurso", { view: "study_units" });
-  const sources = courseAuthoringGuidanceForCall("lerCurso", {
-    view: "course_sources",
-    mode: "catalog"
-  });
+  const planning = courseAuthoringGuidanceForCall("consultar_configuracao");
+  const materialization = courseAuthoringGuidanceForCall("preparar_materializacao");
+  const inspection = courseAuthoringGuidanceForCall("consultar_observacoes");
+  const sources = courseAuthoringGuidanceForCall("consultar_fontes");
   const planningText = planning.instructions.join(" ");
   const generationText = materialization.instructions.join(" ");
   const inspectionText = inspection.instructions.join(" ");
@@ -245,17 +237,13 @@ test("#268 guidance separa calibração, geração focal, inspeção e demais fa
   assert.match(generationText, /Editorial organiza a apresentação, nunca elimina/iu);
   assert.match(generationText, /quando faltar espaço, crie mais StudyUnits/iu);
   assert.match(inspectionText, /escopo de sua Microssequência/iu);
-  assert.match(inspectionText, /valores efetivos.*aplicação registrada/iu);
-  assert.match(inspectionText, /não reconstrua a decisão por run, payload/iu);
+  assert.match(inspectionText, /valor efetivo.*aplicação registrada/iu);
+  assert.doesNotMatch(inspectionText, /\brun\b|\bpayload\b/iu);
   assert.doesNotMatch(
     sourcesText,
     /quatro parâmetros pedagógicos|Calibre automaticamente|mínimo de prática|catálogo preventivo/iu
   );
-  assert.equal(courseAuthoringGuidanceForCall("lerCurso", { view: "summary" }), null);
-  assert.equal(courseAuthoringGuidanceForCall("lerCurso", {
-    view: "course_design",
-    cursor: "next"
-  }), null);
+  assert.equal(courseAuthoringGuidanceForCall("tarefa_inexistente"), null);
 });
 
 test("#268 condições explícitas preservam origem, inventário e diferenças comparáveis", () => {
@@ -459,53 +447,40 @@ test("#268 mínimo e dimensões mudam prática efetiva preservando a operação-
   ))).size, 1);
 });
 
-test("#268 MCP, Actions e OpenAPI preservam os quatro parâmetros e os dois modos", () => {
-  const mcpSchema = COURSE_MCP_TOOLS.find(({ name }) => name === "alterarCurso")
+test("#268 MCP, Actions e OpenAPI preservam a configuração pedagógica unificada", () => {
+  const mcpSchema = COURSE_HUMAN_TASKS.find(({ name }) => name === "ajustar_configuracao")
     .inputSchema;
-  const actionTools = projectAuthoringProtocolToolsForActions(AUTHORING_PROTOCOL_V1_TOOLS);
-  const actionSchema = actionTools.find(({ name }) => name === "alterarCurso").inputSchema;
+  const actionTools = projectHumanAuthoringTasksForActions(COURSE_HUMAN_TASKS);
+  const actionSchema = actionTools.find(({ name }) => name === "ajustar_configuracao").inputSchema;
   const validateMcp = validator(mcpSchema);
   const validateAction = validator(actionSchema);
-  const base = {
-    requestId: "parameter-parity-0001",
-    courseId: COURSE_ID,
-    expectedRevision: 1,
-    operation: "update_course_design"
-  };
-  const samples = fixture.automaticScenarios[0].resolvedParameters.flatMap((resolution) => ([
-    {
-      ...base,
-      designCommand: {
-        type: "set_parameter",
-        scope: { kind: "didactic_microsequence", ref: MICROSEQUENCE_ID },
-        parameterId: resolution.parameterId,
-        value: resolution.value,
-        mode: "automatic",
-        reason: resolution.reason
-      }
+  const resolved = Object.fromEntries(
+    fixture.automaticScenarios[0].resolvedParameters.map(({ parameterId, value }) => [
+      parameterId,
+      value
+    ])
+  );
+  const sample = {
+    curso: "Redes para iniciantes",
+    microssequencia: MICROSEQUENCE_ID,
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise:
+        resolved.new_analysis_unit_ceiling_per_expository_study_unit,
+      formasDeExplicacao: resolved.required_explanation_forms,
+      minimoDePraticasPorRequisito:
+        resolved.minimum_distinct_practice_opportunities_per_evidence_requirement,
+      dimensoesDeVariacaoDaPratica: resolved.required_practice_variation_dimensions
     },
-    {
-      ...base,
-      designCommand: {
-        type: "set_parameter",
-        scope: { kind: "didactic_microsequence", ref: MICROSEQUENCE_ID },
-        parameterId: resolution.parameterId,
-        value: resolution.value,
-        mode: "explicit",
-        origin: "research_condition",
-        reason: resolution.reason
-      }
-    }
-  ]));
-  for (const sample of samples) {
-    assert.equal(validateMcp(sample), true, JSON.stringify(validateMcp.errors));
-    assert.equal(validateAction(sample), true, JSON.stringify(validateAction.errors));
-  }
-
-  assert.match(openApi.paths["/lerCurso"].post.description, /phaseGuidance focal/iu);
-  for (const parameterId of PARAMETER_IDS) assert.match(openApiText, new RegExp(parameterId, "u"));
-  assert.match(openApiText, /"automatic"/u);
-  assert.match(openApiText, /"explicit"/u);
+    direcaoEditorial: "Parágrafos diretos; criar mais Units quando necessário."
+  };
+  assert.equal(validateMcp(sample), true, JSON.stringify(validateMcp.errors));
+  assert.equal(validateAction(sample), true, JSON.stringify(validateAction.errors));
+  assert.ok(openApi.paths["/consultar_configuracao"]);
+  assert.ok(openApi.paths["/ajustar_configuracao"]);
+  assert.doesNotMatch(
+    JSON.stringify(actionSchema),
+    /"(?:mode|origin|parameterId|requestId)"/u
+  );
   for (const editorialDimension of fixture.editorialDimensions) {
     assert.equal(openApiText.includes(JSON.stringify(editorialDimension)), false);
   }

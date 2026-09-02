@@ -2,10 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  AUTHORING_PROTOCOL_ID,
-  AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-} from "../../supabase/functions/_shared/aralearn-authoring/authoringProtocolV1.js";
+  COURSE_HUMAN_TASK_CATALOG_HEADER
+} from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
   ARALEARN_ACTION_CONTRACT_HEADER,
   createAuthoringActionHandler
@@ -19,11 +17,7 @@ const ORIGIN = "https://client.example";
 const ACTION_URL = "https://edge.example/functions/v1/aralearn-authoring-action";
 const MCP_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
 const AUTHORIZATION_SERVER = "https://project.example/auth/v1";
-const EXPECTED_HEADER = [
-  AUTHORING_PROTOCOL_ID,
-  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
-  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
-].join("; ");
+const EXPECTED_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
 
 test("MCP identifica o contrato canônico em preflight e descoberta OAuth", async () => {
   const handle = createAuthoringMcpHandler({
@@ -57,7 +51,7 @@ test("Action identifica o contrato canônico em preflight, erro e rota OAuth", a
     publicAppUrl: "https://app.example/"
   });
 
-  const preflight = await handle(new Request(`${ACTION_URL}/listarCursos`, {
+  const preflight = await handle(new Request(`${ACTION_URL}/retomar_curso`, {
     method: "OPTIONS",
     headers: { Origin: ORIGIN }
   }));
@@ -65,7 +59,7 @@ test("Action identifica o contrato canônico em preflight, erro e rota OAuth", a
   assert.equal(ARALEARN_ACTION_CONTRACT_HEADER, EXPECTED_HEADER);
   assert.equal(preflight.headers.get("X-AraLearn-Authoring-Contract"), EXPECTED_HEADER);
 
-  const methodError = await handle(new Request(`${ACTION_URL}/listarCursos`, {
+  const methodError = await handle(new Request(`${ACTION_URL}/retomar_curso`, {
     method: "GET",
     headers: { Origin: ORIGIN }
   }));

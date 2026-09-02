@@ -1,68 +1,29 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
-import {
-  AUTHORING_PROTOCOL_ID,
-  AUTHORING_PROTOCOL_SCHEMA_VERSION,
-  AUTHORING_PROTOCOL_V1_SCHEMA_HASH
-} from "./authoringProtocolV1.js";
-import {
-  authoringActionV1DedicatedProjection
-} from "./authoringActionProjectionV1.js";
 import { createAuthoringActionOAuthHandler } from "./actionOAuthServer.js";
+import {
+  COURSE_HUMAN_TASK_CATALOG_HEADER,
+  courseHumanTaskDefinition,
+  courseHumanTaskIsAllowed,
+  executeHumanCourseTask
+} from "./courseHumanTasks.js";
 import {
   corsHeaders,
   preflightHeaders,
   readAuthoringOAuthAuthorization,
   sha256Hex
 } from "./security.js";
-import {
-  authoringProtocolV1ToolDefinition,
-  authoringProtocolV1ToolIsAllowed
-} from "./courseMcpTools.js";
-import { executeCourseTool } from "./courseToolExecutor.js";
-import { toolErrorData } from "./toolErrorEnvelope.js";
-import {
-  projectConversationalAuthoringError,
-  projectConversationalAuthoringToolSuccess
-} from "./conversationalAuthoringProjection.js";
-import {
-  AUTHORING_CONVERSATIONAL_PROJECTION_HEADER,
-  normalizeConversationalPdfSourceIntent
-} from
-  "./conversationalPdfSourceProjection.js";
 
-const BODY_LIMIT = 96 * 1024;
-const RESPONSE_LIMIT = 96 * 1024;
-const ACTION_PDF_RUNTIME_FIELDS = Object.freeze([
-  "download_link",
-  "id",
-  "mime_type",
-  "name"
-]);
-export const ARALEARN_ACTION_CONTRACT_HEADER = [
-  AUTHORING_PROTOCOL_ID,
-  `version=${AUTHORING_PROTOCOL_SCHEMA_VERSION}`,
-  `hash=${AUTHORING_PROTOCOL_V1_SCHEMA_HASH}`
-].join("; ");
+const BODY_LIMIT = 512 * 1024;
+const RESPONSE_LIMIT = 512 * 1024;
+const FILE_TASK = "incorporar_pdf_como_fonte";
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
-  "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER,
-  "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
+  "X-AraLearn-Authoring-Contract": COURSE_HUMAN_TASK_CATALOG_HEADER
 });
 
-function actionSuccessOutcome(actionName) {
-  if (actionName === "listarCursos") return "Os Cursos próprios foram localizados.";
-  if (actionName === "lerCurso") return "Reli o estado atual do Curso.";
-  if (actionName === "criarCurso") return "O Curso foi criado.";
-  if (actionName === "incorporarPdfComoFonte") {
-    return "O PDF foi incorporado às Fontes do Curso.";
-  }
-  if (actionName === "consultarComponentesDidaticos") {
-    return "A biblioteca de componentes didáticos foi consultada.";
-  }
-  return "A alteração foi gravada e validada.";
-}
+export const ARALEARN_ACTION_CONTRACT_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
 
 function jsonResponse(status, payload, headers = {}) {
   return new Response(JSON.stringify(payload), {
@@ -73,8 +34,7 @@ function jsonResponse(status, payload, headers = {}) {
 
 function withAuthoringContractHeader(response) {
   const headers = new Headers(response.headers);
-  headers.set("X-AraLearn-Authoring-Contract", ARALEARN_ACTION_CONTRACT_HEADER);
-  headers.set("X-AraLearn-Authoring-Projection", AUTHORING_CONVERSATIONAL_PROJECTION_HEADER);
+  headers.set("X-AraLearn-Authoring-Contract", COURSE_HUMAN_TASK_CATALOG_HEADER);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -92,142 +52,6 @@ function routeFromPath(pathname) {
   return slugIndex >= 0 ? segments.slice(slugIndex + 1) : segments;
 }
 
-function validateDedicatedProjection(rawArguments, projection) {
-  if (rawArguments.operation !== projection.operation ||
-      rawArguments[projection.commandProperty]?.type !== projection.commandType) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_action_projection",
-      "A operação não corresponde à Action solicitada."
-    );
-  }
-}
-
-function missingActionPdf() {
-  return new AuthoringApiError(
-    422,
-    "openai_file_missing",
-    "Nenhum PDF chegou com esta tentativa. Se o documento ainda aparece na conversa, use esse mesmo anexo novamente; só será necessário anexá-lo de novo se ele não estiver mais disponível."
-  );
-}
-
-function invalidActionPdfCount() {
-  return new AuthoringApiError(
-    422,
-    "openai_file_count_invalid",
-    "Esta tentativa recebeu mais de um arquivo, mas a incorporação aceita um PDF por vez. Escolha um único PDF e repita."
-  );
-}
-
-function invalidActionPdfReference(
-  path = "openaiFileIdRefs",
-  rule = "official_runtime_file_reference"
-) {
-  return new AuthoringApiError(
-    422,
-    "invalid_openai_file",
-    "A referência temporária do PDF não chegou em um formato utilizável. O documento já anexado não precisa ser reenviado; refaça a chamada a partir desse anexo.",
-    { path, rule }
-  );
-}
-
-function exactObjectFields(value, names) {
-  return value && typeof value === "object" && !Array.isArray(value) &&
-    Object.keys(value).length === names.length &&
-    names.every((name) => Object.hasOwn(value, name));
-}
-
-function normalizeActionPdfSourceIntent(value) {
-  if (exactObjectFields(value, ["existingSource"])) {
-    return exactObjectFields(value.existingSource, ["sourceId", "sourceRevision"])
-      ? { mode: "existing", ...value.existingSource }
-      : value;
-  }
-  if (exactObjectFields(value, ["newSource"])) {
-    return normalizeConversationalPdfSourceIntent({
-      mode: "create",
-      newSource: value.newSource
-    });
-  }
-  if (exactObjectFields(value, ["revisedSource"]) &&
-      exactObjectFields(value.revisedSource, [
-        "sourceId", "expectedSourceRevision", "source"
-      ])) {
-    return normalizeConversationalPdfSourceIntent({
-      mode: "revise",
-      sourceId: value.revisedSource.sourceId,
-      expectedSourceRevision: value.revisedSource.expectedSourceRevision,
-      revisedSource: value.revisedSource.source
-    });
-  }
-  // Preserva retries já emitidos pelas projeções conversacionais anteriores e
-  // o superset 1.x; o normalizador canônico continua validando-os integralmente.
-  return normalizeConversationalPdfSourceIntent(value);
-}
-
-function normalizeActionTransportArguments(actionName, rawArguments) {
-  if (actionName !== "incorporarPdfComoFonte") return rawArguments;
-  if (Object.hasOwn(rawArguments, "pdf")) {
-    throw invalidActionPdfReference("pdf", "transport_managed_field");
-  }
-  const references = rawArguments.openaiFileIdRefs;
-  if (references == null || (Array.isArray(references) && references.length === 0)) {
-    throw missingActionPdf();
-  }
-  if (!Array.isArray(references)) {
-    throw invalidActionPdfReference("openaiFileIdRefs", "array");
-  }
-  if (references.length > 1) throw invalidActionPdfCount();
-  const reference = references[0];
-  if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
-    throw invalidActionPdfReference("openaiFileIdRefs[0]", "runtime_file_object");
-  }
-  const fields = Object.keys(reference).sort();
-  if (fields.length !== ACTION_PDF_RUNTIME_FIELDS.length ||
-      fields.some((field, index) => field !== ACTION_PDF_RUNTIME_FIELDS[index])) {
-    throw invalidActionPdfReference(
-      "openaiFileIdRefs[0]",
-      "official_runtime_file_fields"
-    );
-  }
-  const invalidField = ACTION_PDF_RUNTIME_FIELDS.find((field) =>
-    typeof reference[field] !== "string" || !reference[field].trim()
-  );
-  if (invalidField) {
-    throw invalidActionPdfReference(
-      `openaiFileIdRefs[0].${invalidField}`,
-      "nonempty_string"
-    );
-  }
-  try {
-    const downloadUrl = new URL(reference.download_link);
-    if (downloadUrl.protocol !== "https:" || downloadUrl.username || downloadUrl.password) {
-      throw invalidActionPdfReference(
-        "openaiFileIdRefs[0].download_link",
-        "absolute_https_url_without_credentials"
-      );
-    }
-  } catch (error) {
-    if (error instanceof AuthoringApiError) throw error;
-    throw invalidActionPdfReference(
-      "openaiFileIdRefs[0].download_link",
-      "absolute_https_url_without_credentials"
-    );
-  }
-  const normalized = {
-    ...rawArguments,
-    sourceIntent: normalizeActionPdfSourceIntent(rawArguments.sourceIntent),
-    pdf: {
-      file_name: reference.name,
-      file_id: reference.id,
-      mime_type: reference.mime_type,
-      download_url: reference.download_link
-    }
-  };
-  delete normalized.openaiFileIdRefs;
-  return normalized;
-}
-
 async function readBody(request) {
   if (!String(request.headers.get("content-type") || "").toLowerCase()
     .startsWith("application/json")) {
@@ -243,11 +67,7 @@ async function readBody(request) {
     total += value.byteLength;
     if (total > BODY_LIMIT) {
       await reader.cancel();
-      throw new AuthoringApiError(
-        413,
-        "action_payload_too_large",
-        "Divida a operação em alterações menores."
-      );
+      throw new AuthoringApiError(413, "action_payload_too_large", "Divida a tarefa em partes menores.");
     }
     chunks.push(value);
   }
@@ -266,6 +86,115 @@ async function readBody(request) {
   }
 }
 
+function actionFileReference(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new AuthoringApiError(422, "invalid_openai_file", "O PDF anexado não chegou em formato utilizável.");
+  }
+  const fileId = String(value.id || value.file_id || "").trim();
+  const fileName = String(value.name || value.file_name || "").trim();
+  const mediaType = String(value.mime_type || "").trim().toLowerCase();
+  const downloadLink = String(value.download_link || value.download_url || "").trim();
+  let downloadUrl;
+  try {
+    downloadUrl = new URL(downloadLink);
+  } catch {
+    downloadUrl = null;
+  }
+  if (!fileId || mediaType && mediaType !== "application/pdf" ||
+      downloadUrl?.protocol !== "https:" ||
+      !downloadUrl.hostname.endsWith(".oaiusercontent.com") ||
+      downloadUrl.username || downloadUrl.password || downloadUrl.hash ||
+      downloadUrl.port && downloadUrl.port !== "443") {
+    throw new AuthoringApiError(422, "invalid_openai_file", "A referência precisa apontar para um PDF.");
+  }
+  return {
+    download_url: downloadUrl.href,
+    file_id: fileId,
+    ...(fileName ? { file_name: fileName } : {}),
+    ...(mediaType ? { mime_type: mediaType } : {})
+  };
+}
+
+function normalizeActionArguments(taskName, rawArguments) {
+  if (taskName !== FILE_TASK) return rawArguments;
+  if (Object.hasOwn(rawArguments, "pdf")) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_openai_file",
+      "O campo do PDF é preenchido pelo transporte do ChatGPT."
+    );
+  }
+  const references = rawArguments.openaiFileIdRefs;
+  if (!Array.isArray(references) || references.length !== 1) {
+    throw new AuthoringApiError(422, "openai_file_count_invalid", "Escolha um único PDF anexado.");
+  }
+  const normalized = {
+    ...rawArguments,
+    pdf: actionFileReference(references[0])
+  };
+  delete normalized.openaiFileIdRefs;
+  return normalized;
+}
+
+function normalizedResult(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      typeof value.result !== "string" || !value.result.trim() ||
+      !(value.deepLink === null || typeof value.deepLink === "string") ||
+      !(value.nextDecision === null || typeof value.nextDecision === "string") ||
+      Object.keys(value).some((field) => !new Set([
+        "result", "deepLink", "nextDecision", "context"
+      ]).has(field))) {
+    throw new AuthoringApiError(502, "invalid_human_task_result", "A tarefa devolveu um resultado inválido.");
+  }
+  return value;
+}
+
+function retryableError(error) {
+  if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
+  return new Set([
+    "course_service_unavailable", "request_timeout", "network_error"
+  ]).has(error.code);
+}
+
+function nextDecisionForError(error, retryable) {
+  if (error.code === "ambiguous_human_reference") {
+    return "Informe um título mais específico ou a posição humana do objeto.";
+  }
+  if (error.code === "human_reference_not_found") {
+    return "Confira o título ou a posição e tente novamente.";
+  }
+  if (error.code === "human_task_result_too_large") {
+    return "Escolha um Curso, Parte, Microssequência ou Unidade mais específica.";
+  }
+  if (error.code === "action_payload_too_large") {
+    return "Divida a tarefa em um conjunto menor de Units ou correções.";
+  }
+  if (retryable) return "Tente novamente sem mudar a intenção da tarefa.";
+  return null;
+}
+
+function publicError(error, { completedWrite = false } = {}) {
+  if (completedWrite && error.code === "action_response_too_large") {
+    return {
+      error: {
+        code: error.code,
+        message: "A escrita pode ter sido concluída, mas a resposta excedeu o limite.",
+        retryable: false
+      },
+      nextDecision: "Releia o Curso antes de decidir se ainda falta alguma mudança."
+    };
+  }
+  const retryable = retryableError(error);
+  return {
+    error: {
+      code: String(error.code || "human_task_failed"),
+      message: String(error.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
+      retryable
+    },
+    nextDecision: nextDecisionForError(error, retryable)
+  };
+}
+
 export function createAuthoringActionHandler({
   adapter,
   allowedOrigins = new Set(),
@@ -280,9 +209,6 @@ export function createAuthoringActionHandler({
 
   return async function handleAction(request) {
     let cors = { Vary: "Origin" };
-    let requestId = null;
-    let actionName = null;
-    let rawArguments = null;
     let completedWrite = false;
     try {
       if (request.method === "OPTIONS") {
@@ -290,8 +216,8 @@ export function createAuthoringActionHandler({
           status: 204,
           headers: {
             ...preflightHeaders(request, allowedOrigins),
-            "X-AraLearn-Authoring-Contract": ARALEARN_ACTION_CONTRACT_HEADER,
-            "X-AraLearn-Authoring-Projection": AUTHORING_CONVERSATIONAL_PROJECTION_HEADER
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "X-AraLearn-Authoring-Contract": COURSE_HUMAN_TASK_CATALOG_HEADER
           }
         });
       }
@@ -303,99 +229,43 @@ export function createAuthoringActionHandler({
       if (request.method !== "POST") {
         throw new AuthoringApiError(405, "method_not_allowed", "A Action aceita somente POST.");
       }
-      const requestedActionName = route.length === 1 ? route[0] : "";
-      const dedicatedProjection = authoringActionV1DedicatedProjection(requestedActionName);
-      actionName = dedicatedProjection?.canonicalToolName || requestedActionName;
-      if (!authoringProtocolV1ToolDefinition(actionName)) {
-        throw new AuthoringApiError(404, "unknown_action", "Operação de Curso inexistente.");
-      }
-      rawArguments = await readBody(request);
-      requestId = rawArguments.requestId ?? null;
-      if (dedicatedProjection) validateDedicatedProjection(rawArguments, dedicatedProjection);
+      const taskName = route.length === 1 ? route[0] : "";
+      const task = courseHumanTaskDefinition(taskName);
+      if (!task) throw new AuthoringApiError(404, "unknown_human_task", "Tarefa de autoria inexistente.");
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = Date.now() + 40_000;
       const principal = await adapter.resolveActionPrincipal(
         await sha256Hex(authentication.credential),
         { deadlineAt }
       );
-      if (!authoringProtocolV1ToolIsAllowed(actionName, principal)) {
-        throw new AuthoringApiError(
-          403,
-          "insufficient_scope",
-          "A conta conectada não permite esta operação."
-        );
+      if (!courseHumanTaskIsAllowed(taskName, principal)) {
+        throw new AuthoringApiError(403, "insufficient_scope", "A conta conectada não permite esta tarefa.");
       }
-      rawArguments = normalizeActionTransportArguments(actionName, rawArguments);
-      const result = await executeCourseTool({
+      const rawArguments = normalizeActionArguments(taskName, await readBody(request));
+      const result = normalizedResult(await executeHumanCourseTask({
         adapter,
         principal,
-        name: actionName,
+        name: taskName,
         rawArguments,
         deadlineAt,
-        surface: "mcp",
-        projectionRecipient: "connected_actions_gpt",
-        onRequestIdValidated(value) {
-          requestId = value;
-        }
-      });
-      completedWrite = new Set([
-        "criarCurso",
-        "alterarCurso",
-        "incorporarPdfComoFonte"
-      ]).has(actionName);
-      const envelope = { ok: true, requestId: result.requestId, data: result.data ?? null };
-      const payload = {
-        ...envelope,
-        conversation: projectConversationalAuthoringToolSuccess({
-          envelope,
-          toolName: actionName,
-          rawArguments,
-          summary: { outcome: actionSuccessOutcome(actionName) }
-        })
-      };
-      if (new TextEncoder().encode(JSON.stringify(payload)).byteLength >= RESPONSE_LIMIT) {
-        throw new AuthoringApiError(
-          413,
-          "action_response_too_large",
-          "Leia uma parcela menor do Curso."
-        );
+        projectionRecipient: "connected_actions_gpt"
+      }));
+      completedWrite = task.annotations?.readOnlyHint !== true;
+      if (new TextEncoder().encode(JSON.stringify(result)).byteLength >= RESPONSE_LIMIT) {
+        throw new AuthoringApiError(413, "action_response_too_large", "A resposta excedeu o limite.");
       }
-      return jsonResponse(200, payload, cors);
+      return jsonResponse(200, result, cors);
     } catch (error) {
       const normalized = asAuthoringApiError(error);
       const headers = { ...cors };
       if (normalized.status === 401) headers["WWW-Authenticate"] = "Bearer";
       if (normalized.status === 429) headers["Retry-After"] = "60";
       if (normalized.status === 405) headers.Allow = "POST, OPTIONS";
-      const failedAfterCompletedWrite = completedWrite &&
-        normalized.code === "action_response_too_large";
-      const publicError = toolErrorData(
-        normalized,
-        { toolName: actionName, rawArguments, requestId }
+      return jsonResponse(
+        normalized.status,
+        publicError(normalized, { completedWrite }),
+        headers
       );
-      if (failedAfterCompletedWrite) {
-        publicError.recovery = {
-          strategy: "verify_state",
-          retryable: false,
-          requestIdMode: "none",
-          steps: [
-            "Releia o estado atual antes de continuar.",
-            "Não repita a escrita apenas porque a resposta excedeu o limite."
-          ]
-        };
-      }
-      const envelope = {
-        ok: false,
-        requestId,
-        error: publicError
-      };
-      return jsonResponse(normalized.status, {
-        ...envelope,
-        conversation: projectConversationalAuthoringError({
-          envelope,
-          failure: failedAfterCompletedWrite ? { writeState: "complete" } : {}
-        })
-      }, headers);
     }
   };
 }

@@ -1,7 +1,7 @@
 import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { COURSE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/courseMcpTools.js";
+import { COURSE_HUMAN_TASKS } from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultRepositoryRoot = path.resolve(path.dirname(scriptPath), "..");
@@ -81,7 +81,7 @@ async function edgeFunctionNames(repositoryRoot) {
 async function currentRuntimeInventory(repositoryRoot) {
   const manifest = await readJson(path.join(repositoryRoot, "supabase", "runtime-manifest.json"));
   return {
-    mcpTools: COURSE_MCP_TOOLS.map((definition) => definition.name).sort(),
+    mcpTools: COURSE_HUMAN_TASKS.map((definition) => definition.name).sort(),
     edgeFunctions: await edgeFunctionNames(repositoryRoot),
     manifestFeatures: list(manifest.requiredFeatures).map(String).sort(),
     databaseObjects: null
@@ -497,7 +497,7 @@ export async function auditVerticalParity({
     if (mcpNames.length && list(caseRecord.routes).length === 0) {
       findings.push(`${caseRecord.id}: operação de ferramenta sem rota associada.`);
     }
-    const definitions = mcpNames.map((name) => COURSE_MCP_TOOLS.find(
+    const definitions = mcpNames.map((name) => COURSE_HUMAN_TASKS.find(
       (definition) => definition.name === name
     )).filter(Boolean);
     if (definitions.some((definition) => definition.annotations?.readOnlyHint !== true)
