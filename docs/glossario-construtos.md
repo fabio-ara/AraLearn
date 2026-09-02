@@ -500,8 +500,8 @@ construto.
   evidência pública permanecem coerentes segundo critérios e revisão semântica.
 - **Não equivale a:** qualidade pedagógica global, aprendizagem, compreensão,
   eficácia do reparo ou validade de um parâmetro.
-- **Evidência necessária:** rodada de auditoria reproduzível, unidades reais, regras
-  declaradas, julgamento humano nos itens semânticos e reauditoria após reparo.
+- **Evidência necessária:** revisão contextual reproduzível, Units reais, regras
+  declaradas, julgamento humano nos itens semânticos e reinspeção após reparo.
 
 ## Termos operacionais de Curso e Autoria
 
@@ -515,23 +515,23 @@ intervenção educacional validada ou programa institucional.
 
 ### Materialização
 
-Execução que transforma planejamento confirmado e contexto selado numa
-alteração tipada do Curso, preservando etapas, resultados e recibos. Ela pode
-criar ou alterar objetos de conteúdo conforme o escopo autorizado.
+Operação que transforma planejamento aprovado e contexto focal em StudyUnits
+persistidas. Ela grava composição, configuração aplicada e proveniência na
+mesma transação, sem conservar etapas intermediárias como produto.
 Materialização não equivale a geração textual, publicação, qualidade autoral ou
 aprendizagem; seu término demonstra apenas que a operação de Autoria alcançou
 um estado persistido verificável.
 
 ### Fonte
 
-Objeto de proveniência que identifica um material usado na Autoria e conserva
-revisões. Uma Fonte pode ser documento, página da Web, vídeo, PDF ou outro
+Objeto de proveniência que identifica o estado corrente de um material usado na
+Autoria. Uma Fonte pode ser documento, página da Web, vídeo, PDF ou outro
 material aceito pelo produto. Sua presença permite localizar a origem, mas não
 atesta verdade, qualidade, pertinência ou fidelidade da interpretação.
 
 ### Âncora
 
-Localização delimitada dentro de uma revisão exata de Fonte, como página,
+Localização delimitada dentro da Fonte corrente, como página,
 instante de mídia, fragmento de endereço ou trecho textual. Ela torna a
 atribuição reencontrável; não demonstra que o alvo foi interpretado
 corretamente nem substitui a leitura do contexto.
@@ -756,67 +756,64 @@ Não equivale a painel de indicadores, predição ou vigilância.
 
 ## Termos operacionais de pesquisa e comparação
 
-### Comparação descritiva de variantes
+### Comparação descritiva de condições
 
 - **Tipo:** operação de pesquisa sobre o artefato.
-- **Definição:** confronto entre Cursos que partem de um planejamento registrado,
-  com diferenças declaradas e revisões identificadas.
+- **Definição:** confronto entre Cursos privados independentes cujas condições,
+  invariantes e diferenças foram registradas pelo protocolo de pesquisa.
 - **Não equivale a:** experimento, atribuição de participantes, comparação de
   aprendizagem ou teste causal.
-- **Evidência necessária:** ponto comum verificável, valores efetivos,
-  materialização independente, dados ausentes e classificação das diferenças.
+- **Evidência necessária:** inventário comum verificável, valores efetivos,
+  artefatos exportados, dados ausentes e classificação das diferenças.
 
-### Variante comparável
+### Condição autoral fixada
 
 - **Tipo:** termo operacional.
-- **Definição:** Curso independente criado a partir do mesmo ponto de
-  planejamento que outros Cursos, com diferenças intencionais registradas.
-- **Não equivale a:** condição experimental, cópia sem proveniência, ramo de
-  código ou garantia de que apenas uma propriedade mudou.
-- **Evidência necessária:** identidade própria, revisão exata, origem comum,
-  diferenças declaradas e comparação factual. Alterar uma variante não pode
-  alterar outra.
+- **Definição:** Curso independente no qual parâmetros pedagógicos e direção
+  editorial foram explicitamente definidos para uma comparação deliberada.
+- **Não equivale a:** condição experimental governada, randomização ou garantia
+  de que apenas uma propriedade mudou.
+- **Evidência necessária:** identidade própria, revisão exposta, configuração,
+  inventário semântico e diferenças declaradas.
 
-### Ponto comum de planejamento
+### Artefato congelado para pesquisa
 
-- **Tipo:** registro técnico de pesquisa.
-- **Definição:** cópia imutável e delimitada do plano, de sua versão e da revisão
-  do Curso usada como origem de uma comparação.
-- **Não equivale a:** verdade definitiva do Curso, congelamento permanente ou
-  cópia integral de sua composição.
-- **Evidência necessária:** conteúdo canônico, impressão digital, revisão e
-  vínculo inequívoco com os Cursos comparados.
+- **Tipo:** registro externo delimitado pelo protocolo de pesquisa.
+- **Definição:** exportação explícita do estado e da configuração efetivamente
+  usados numa condição.
+- **Não equivale a:** versão cotidiana do Curso ou snapshot de Analytics.
+- **Evidência necessária:** conteúdo, configuração, data, revisão e vínculo
+  inequívoco com a condição exposta.
 
-### Fato bruto de Autoria
+### Estado observável de Autoria
 
 - **Tipo:** registro observável.
-- **Definição:** linha identificável sobre atividade, produção, desenho, Fonte,
-  Observação, auditoria ou variante, preservada antes da agregação.
+- **Definição:** propriedade derivável do Curso corrente, como configuração,
+  composição, Fonte ou estado de Observação.
 - **Não equivale a:** conversa completa, raciocínio privado, interpretação
   educacional ou telemetria de Estudo.
-- **Evidência necessária:** identidade, instante, origem, revisão quando
-  aplicável, objeto, valores e indicação de ausência.
+- **Evidência necessária:** regra de derivação, escopo, revisão e indicação de
+  ausência.
 
-### Conjunto de fatos
+### Escopo de Analytics
 
 - **Tipo:** recorte operacional.
-- **Definição:** agrupamento temático usado para consultar fatos de Autoria sem
-  modificar suas linhas de origem.
+- **Definição:** Curso, Parte, Microssequência ou StudyUnit escolhida para
+  agregar o estado corrente.
 - **Não equivale a:** depósito analítico, população de participantes ou
   construto científico.
-- **Evidência necessária:** definição versionada, regras de inclusão, filtros e
-  correspondência verificável com as linhas apresentadas.
+- **Evidência necessária:** definição do recorte, regras de inclusão e
+  correspondência entre tela e snapshot JSON.
 
-### Evento
+### Intervenção explicitamente observável
 
-- **Tipo:** ocorrência observável.
-- **Definição:** mudança ou ação registrada com tipo, instante, objeto,
-  contexto e proveniência identificáveis.
-- **Não equivale a:** medida, indicador, intenção, atenção ou aprendizagem. Um
-  evento só adquire função analítica quando pergunta e regra de interpretação
-  determinam como ele será usado.
-- **Evidência necessária:** contrato do evento, condições de registro, versão,
-  cobertura conhecida e tratamento das ocorrências ausentes ou duplicadas.
+- **Tipo:** estado autoral atribuível.
+- **Definição:** definição de parâmetro, revisão manual ou Observação que o
+  estado corrente permite contar sem interpretar intenção psicológica.
+- **Não equivale a:** medida, indicador, atenção, aprendizagem ou percentual de
+  autoria humana.
+- **Evidência necessária:** regra de atribuição, escopo, cobertura conhecida e
+  tratamento dos casos ausentes.
 
 ### Denominador
 
@@ -888,8 +885,8 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Definição:** estudo em que a atribuição aleatória forma condições
   comparáveis em expectativa e a intervenção, a exposição e os desfechos são
   definidos pelo protocolo.
-- **Não equivale a:** criação de Variantes, teste de software ou comparação
-  descritiva entre Cursos.
+- **Não equivale a:** criação de Cursos com configurações diferentes, teste de
+  software ou comparação descritiva entre artefatos.
 - **Evidência necessária:** participantes, atribuição, intervenção,
   instrumentos, aderência, perdas, análise e incerteza documentados
   ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).

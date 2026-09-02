@@ -463,6 +463,10 @@ jobs:
             exit 1
           fi
           npm run test:authoring:mcp:local:oauth
+          ARALEARN_SUPABASE_URL="$API_URL" \
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+            npm run test:storage:lifecycle:local
 
       - name: Encerrar stack Supabase
         if: ${{ always() && steps.paths.outputs.docs_only != 'true' }}

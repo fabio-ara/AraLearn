@@ -122,7 +122,7 @@ export function normalizeFocalStudyUnitCompositionCommand(value) {
   });
   return {
     ...intent,
-    sourceLinks: normalizeCourseSourceLinks(source.sourceLinks, { allowLegacyIds: true })
+    sourceLinks: normalizeCourseSourceLinks(source.sourceLinks)
   };
 }
 

@@ -20,8 +20,6 @@ const SECOND_COURSE_ID = "20000000-0000-4000-8000-000000000002";
 const PART_ID = "30000000-0000-4000-8000-000000000003";
 const SECOND_PART_ID = "40000000-0000-4000-8000-000000000004";
 const ITEM_ID = "50000000-0000-4000-8000-000000000005";
-const MATERIALIZATION_ID = "60000000-0000-4000-8000-000000000006";
-const EVENT_ID = "42";
 const PLAN_ID = "80000000-0000-4000-8000-000000000008";
 
 function courseItem(courseId = COURSE_ID, title = "Fundamentos") {
@@ -101,7 +99,7 @@ function courseDesignFixture({
     limitations: "O agregado não demonstra desenvolvimento conceitual.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: ["https://doi.org/10.1111/j.1551-6709.2012.01245.x"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
     valueSchema: { type: "integer", minimum: 1, maximum: 8 },
     defaultValue: 2
   }, {
@@ -112,7 +110,7 @@ function courseDesignFixture({
     limitations: "Presença não prova clareza.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: ["https://doi.org/10.1080/01638539609544975"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
     valueSchema: {
       type: "set",
       allowedValues: [
@@ -131,7 +129,7 @@ function courseDesignFixture({
     limitations: "Quantidade não mede recuperação bem-sucedida.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
     valueSchema: { type: "integer", minimum: 1, maximum: 16 },
     defaultValue: 2
   }, {
@@ -142,7 +140,7 @@ function courseDesignFixture({
     limitations: "Variação registrada não prova transferência.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: ["https://doi.org/10.1002/acp.1598"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence"],
+    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
     valueSchema: {
       type: "set",
       allowedValues: [
@@ -159,7 +157,7 @@ function courseDesignFixture({
     purpose: `Finalidade acadêmica ${index + 1}.`
   }));
   return {
-    contract: "aralearn.course-design.v1",
+    contract: "aralearn.course-design.v2",
     courseId: COURSE_ID,
     courseRevision: 3,
     parameterCatalogVersion: "1.0.0",
@@ -176,7 +174,6 @@ function courseDesignFixture({
       parameterId: definition.id,
       localAssignment: null,
       effectiveAssignment: {
-        changeId: null,
         value: structuredClone(definition.defaultValue),
         origin: "system_default",
         reason: "Hipótese operacional inicial do produto.",
@@ -185,36 +182,23 @@ function courseDesignFixture({
       }
     })),
     guidance: {
-      localRevision: {
-        revisionId: "91000000-0000-4000-8000-000000000019",
+      localAssignment: {
         guidance: "Explique cada termo antes de depender dele.",
         origin: "migration",
         reason: "Texto preservado do planejamento anterior."
       },
-      effectiveRevisions: [{
-        revisionId: "91000000-0000-4000-8000-000000000019",
+      effectiveAssignments: [{
         guidance: "Explique cada termo antes de depender dele.",
         origin: "migration",
         reason: "Texto preservado do planejamento anterior.",
         sourceScope: { kind: "course", ref: COURSE_ID },
-        currentInterpretation: {
-          interpretationId: "12",
-          guidanceRevisionId: "91000000-0000-4000-8000-000000000019",
-          interpretation: {
-            summary: "Desenvolver termos antes de usá-los.",
-            directives: [{ kind: "require", statement: "Definir cada termo novo." }],
-            divergences: [],
-            questions: ["Qual exemplo concreto deve vir primeiro?"]
-          },
-          createdAt: "2026-08-17T12:00:00Z"
-        }
+        inherited: false
       }]
     },
     componentCatalog: { version: "1-3e5629f8", options: componentOptions },
     componentPolicy: {
-      localChange: null,
-      effectiveChange: {
-        changeId: null,
+      localAssignment: null,
+      effectiveAssignment: {
         policy: {
           catalogVersion: "1-3e5629f8",
           availability: "all",
@@ -228,21 +212,7 @@ function courseDesignFixture({
         inherited: false
       }
     },
-    targetPlanItems: null,
-    recentApplications: [{
-      materializationId: MATERIALIZATION_ID,
-      stepId: "92000000-0000-4000-8000-000000000029",
-      didacticMicrosequenceId: "micro-a",
-      recordedAt: "2026-08-17T12:10:00Z",
-      contextHash: "a".repeat(64),
-      studyUnitCount: 3,
-      modeCounts: { expository: 1, practice: 1, mixed: 1 },
-      introducedInstructionalAnalysisUnitIds: [ITEM_ID],
-      developedExplanationForms: ["plain_definition", "concrete_example"],
-      practiceOpportunityCount: 2,
-      variedDimensions: ["case_or_data"],
-      componentRefs: [componentOptions[0].ref]
-    }]
+    targetPlanItems: null
   };
 }
 
@@ -324,7 +294,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
     canEdit: true
   }, { expectedCourseId: COURSE_ID });
   const plan = normalizeCourseAuthoringPlan({
-    contract: "aralearn.course-instructional-plan.v1",
+    contract: "aralearn.course-instructional-plan.v2",
     courseId: COURSE_ID,
     courseRevision: 3,
     plan: {
@@ -353,6 +323,8 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
           id: "micro-a",
           productionPosition: 0,
           title: "Primeiro caso",
+          goal: "Explicar a relação inicial.",
+          role: "explain",
           curriculumPath: {
             moduleId: "module-a",
             moduleTitle: "Base",
@@ -364,32 +336,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
         progress: {
           state: "partially_materialized",
           microsequenceCount: 1,
-          studyUnitCount: 2,
-          materializations: [{
-            id: MATERIALIZATION_ID,
-            status: "running",
-            progressState: "partial",
-            channel: "mcp",
-            version: 1,
-            completedStepCount: 2,
-            failedStepCount: 0,
-            totalStepCount: 4,
-            startedAt: "2026-08-17T10:00:00Z",
-            updatedAt: "2026-08-17T10:10:00Z",
-            completedAt: null,
-            summary: "2 de 4 etapas concluídas"
-          }],
-          lastMaterialization: {
-            id: MATERIALIZATION_ID,
-            status: "running",
-            version: 1,
-            completedStepCount: 2,
-            failedStepCount: 0,
-            totalStepCount: 4,
-            startedAt: "2026-08-17T10:00:00Z",
-            updatedAt: "2026-08-17T10:10:00Z",
-            completedAt: null
-          }
+          studyUnitCount: 2
         }
       }, {
         id: SECOND_PART_ID,
@@ -401,9 +348,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
         progress: {
           state: "planned",
           microsequenceCount: 0,
-          studyUnitCount: 0,
-          materializations: [],
-          lastMaterialization: null
+          studyUnitCount: 0
         }
       }],
       counts: {
@@ -415,17 +360,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
         studyUnitCount: 2
       },
       updatedAt: "2026-08-17T10:10:00Z"
-    },
-    recentActivity: [{
-      eventId: EVENT_ID,
-      revision: 3,
-      kind: "plan_changed",
-      channel: "mcp",
-      instructionalPlanItemId: ITEM_ID,
-      partId: null,
-      materializationId: null,
-      createdAt: "2026-08-17T10:10:00Z"
-    }]
+    }
   }, { expectedCourseId: COURSE_ID, expectedCourseRevision: 3 });
 
   const projection = projectCoursePlanning(course, plan);
@@ -447,73 +382,13 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
     status: "partially_materialized"
   });
   assert.equal(projection.parts[0].linkedMicrosequenceCount, 1);
-  assert.equal(projection.recentActivity[0].eventId, "42");
-  assert.equal(projection.recentActivity[0].kind, "plan_changed");
-  assert.equal(projection.recentActivity[0].instructionalPlanItemId, ITEM_ID);
 });
 
-test("atividade recente aceita somente o bigint identity decimal positivo do banco", () => {
-  const payload = {
-    contract: "aralearn.course-instructional-plan.v1",
-    courseId: COURSE_ID,
-    courseRevision: 4,
-    plan: {
-      id: PLAN_ID,
-      version: 2,
-      title: "Fundamentos",
-      objective: "Aprender.",
-      audience: "",
-      scope: "",
-      preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
-      intendedLearningOutcomes: [],
-      instructionalAnalysisUnits: [],
-      evidenceRequirements: [],
-      parts: [],
-      counts: {
-        intendedLearningOutcomeCount: 0,
-        instructionalAnalysisUnitCount: 0,
-        evidenceRequirementCount: 0,
-        authoringPartCount: 0,
-        linkedDidacticMicrosequenceCount: 0,
-        studyUnitCount: 0
-      },
-      updatedAt: "2026-08-17T10:10:00Z"
-    },
-    recentActivity: [{
-      eventId: "9223372036854775807",
-      revision: 4,
-      kind: "plan_changed",
-      channel: "application",
-      instructionalPlanItemId: null,
-      partId: null,
-      materializationId: null,
-      createdAt: "2026-08-17T10:10:00Z"
-    }]
-  };
-
-  const normalized = normalizeCourseAuthoringPlan(payload);
-  assert.equal(normalized.recentActivity[0].eventId, "9223372036854775807");
-  for (const eventId of [
-    "0",
-    "01",
-    "9223372036854775808",
-    "70000000-0000-4000-8000-000000000007",
-    42
-  ]) {
-    assert.throws(
-      () => normalizeCourseAuthoringPlan({
-        ...payload,
-        recentActivity: [{ ...payload.recentActivity[0], eventId }]
-      }),
-      (error) => error.code === "invalid_authoring_plan"
-    );
-  }
-});
 
 test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => {
   const curriculumId = "x".repeat(240);
   const base = {
-    contract: "aralearn.course-instructional-plan.v1",
+    contract: "aralearn.course-instructional-plan.v2",
     courseId: COURSE_ID,
     courseRevision: 3,
     plan: {
@@ -537,6 +412,8 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
           id: "micro-a",
           productionPosition: 0,
           title: "Microssequência",
+          goal: "Preparar o primeiro recorte.",
+          role: "support",
           curriculumPath: {
             moduleId: curriculumId,
             moduleTitle: "Módulo",
@@ -546,11 +423,9 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
           studyUnitCount: 0
         }],
         progress: {
-          state: "partially_materialized",
+          state: "planned",
           microsequenceCount: 1,
-          studyUnitCount: 0,
-          materializations: [],
-          lastMaterialization: null
+          studyUnitCount: 0
         }
       }],
       counts: {
@@ -562,8 +437,7 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
         studyUnitCount: 0
       },
       updatedAt: "2026-08-17T10:10:00Z"
-    },
-    recentActivity: []
+    }
   };
 
   assert.equal(
@@ -591,7 +465,7 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
     canEdit: true
   });
   const base = {
-    contract: "aralearn.course-instructional-plan.v1",
+    contract: "aralearn.course-instructional-plan.v2",
     courseId: COURSE_ID,
     courseRevision: 3,
     plan: {
@@ -615,8 +489,7 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
         studyUnitCount: 0
       },
       updatedAt: "2026-08-17T10:00:00Z"
-    },
-    recentActivity: []
+    }
   };
   const plan = normalizeCourseAuthoringPlan(base);
   assert.throws(
@@ -636,7 +509,7 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
   );
 });
 
-test("desenho por escopo preserva hipótese, proveniência, orientação original e fatos aplicados", () => {
+test("desenho por escopo preserva hipótese, proveniência e direção editorial corrente", () => {
   const design = normalizeCourseDesign(courseDesignFixture(), {
     expectedCourseId: COURSE_ID,
     expectedCourseRevision: 3,
@@ -645,18 +518,9 @@ test("desenho por escopo preserva hipótese, proveniência, orientação origina
   assert.equal(design.definitions.length, 4);
   assert.equal(design.componentCatalog.options.length, 32);
   assert.equal(design.parameters[0].effectiveAssignment.origin, "system_default");
-  assert.equal(design.guidance.localRevision.origin, "migration");
-  assert.equal(design.guidance.effectiveRevisions.length, 1);
+  assert.equal(design.guidance.localAssignment.origin, "migration");
+  assert.equal(design.guidance.effectiveAssignments.length, 1);
   assert.equal(design.targetPlanItems, null);
-  assert.equal(
-    design.guidance.effectiveRevisions[0].currentInterpretation.interpretation.directives[0].kind,
-    "require"
-  );
-  assert.deepEqual(design.recentApplications[0].modeCounts, {
-    expository: 1,
-    practice: 1,
-    mixed: 1
-  });
 
   const micro = courseDesignFixture({ children: [] });
   micro.scopeContext = {
@@ -675,7 +539,8 @@ test("desenho por escopo preserva hipótese, proveniência, orientação origina
     hasMoreChildren: false,
     nextChildCursor: null
   };
-  micro.guidance.localRevision = null;
+  micro.guidance.localAssignment = null;
+  micro.guidance.effectiveAssignments[0].inherited = true;
   micro.targetPlanItems = {
     instructionalAnalysisUnitIds: [ITEM_ID],
     evidenceRequirementIds: []
@@ -688,12 +553,48 @@ test("desenho por escopo preserva hipótese, proveniência, orientação origina
   assert.deepEqual(normalizedMicro.targetPlanItems.instructionalAnalysisUnitIds, [ITEM_ID]);
 });
 
+test("StudyUnit é escopo corrente de configuração com herança e override próprios", () => {
+  const unit = courseDesignFixture({ children: [] });
+  unit.scopeContext = {
+    current: { kind: "study_unit", ref: "unit-a", label: "Unidade A" },
+    ancestors: [
+      { kind: "course", ref: COURSE_ID, label: "Fundamentos" },
+      { kind: "module", ref: "module-a", label: "Módulo A" },
+      { kind: "lesson", ref: "lesson-a", label: "Lição A" },
+      { kind: "didactic_microsequence", ref: "micro-a", label: "Microssequência A" }
+    ],
+    children: [],
+    childCount: 0,
+    hasMoreChildren: false,
+    nextChildCursor: null
+  };
+  unit.parameters[0].localAssignment = {
+    value: 1,
+    origin: "author",
+    reason: "Condição desta Unit."
+  };
+  unit.parameters[0].effectiveAssignment = {
+    ...unit.parameters[0].localAssignment,
+    sourceScope: { kind: "study_unit", ref: "unit-a" },
+    inherited: false
+  };
+  unit.guidance.localAssignment = null;
+  unit.guidance.effectiveAssignments[0].inherited = true;
+  const normalized = normalizeCourseDesign(unit, {
+    expectedCourseId: COURSE_ID,
+    expectedCourseRevision: 3,
+    expectedScope: { kind: "study_unit", ref: "unit-a" }
+  });
+  assert.equal(normalized.scopeContext.current.kind, "study_unit");
+  assert.equal(normalized.parameters[0].effectiveAssignment.value, 1);
+  assert.equal(normalized.parameters[0].effectiveAssignment.inherited, false);
+});
+
 test("desenho rejeita contrato singular legado, campo extra e política preferida excluída", () => {
   const singular = courseDesignFixture();
   singular.guidance = {
-    localRevision: singular.guidance.localRevision,
-    effectiveRevision: singular.guidance.effectiveRevisions[0],
-    interpretations: []
+    localRevision: singular.guidance.localAssignment,
+    effectiveRevisions: singular.guidance.effectiveAssignments
   };
   assert.throws(
     () => normalizeCourseDesign(singular),
@@ -710,8 +611,8 @@ test("desenho rejeita contrato singular legado, campo extra e política preferid
 
   const conflict = courseDesignFixture();
   const ref = conflict.componentCatalog.options[0].ref;
-  conflict.componentPolicy.effectiveChange.policy.excludedRefs = [ref];
-  conflict.componentPolicy.effectiveChange.policy.preferredRefs = [ref];
+  conflict.componentPolicy.effectiveAssignment.policy.excludedRefs = [ref];
+  conflict.componentPolicy.effectiveAssignment.policy.preferredRefs = [ref];
   assert.throws(
     () => normalizeCourseDesign(conflict),
     (error) => error.code === "invalid_course_design"
@@ -721,55 +622,40 @@ test("desenho rejeita contrato singular legado, campo extra e política preferid
 test("confirmação de desenho preserva requestId opaco e expõe somente fato canônico", () => {
   const requestId = "client.retry:001";
   const changed = normalizeCourseDesignChange({
-    contract: "aralearn.course-design-change.v1",
+    contract: "aralearn.course-design-change.v2",
     courseId: COURSE_ID,
     courseRevision: 4,
     requestId,
     idempotent: true,
     changed: true,
     change: {
-      changeId: "13",
-      type: "interpret_guidance",
-      scope: { kind: "lesson", ref: "lesson-a" }
+      type: "set_guidance",
+      scope: { kind: "lesson", ref: "lesson-a" },
+      parameterId: null
     }
   }, { expectedCourseId: COURSE_ID, expectedRequestId: requestId });
   assert.equal(changed.requestId, requestId);
-  assert.equal(changed.change.changeId, "13");
-
-  const targetChange = normalizeCourseDesignChange({
-    contract: "aralearn.course-design-change.v1",
-    courseId: COURSE_ID,
-    courseRevision: 5,
-    requestId,
-    idempotent: false,
-    changed: true,
-    change: {
-      changeId: "14",
-      type: "set_target_plan_items",
-      scope: { kind: "didactic_microsequence", ref: "micro-a" }
-    }
-  });
-  assert.equal(targetChange.change.scope.ref, "micro-a");
+  assert.equal(changed.change.type, "set_guidance");
 
   assert.throws(
     () => normalizeCourseDesignChange({
-      contract: "aralearn.course-design-change.v1",
+      contract: "aralearn.course-design-change.v2",
       courseId: COURSE_ID,
       courseRevision: 5,
       requestId,
       idempotent: false,
       changed: true,
       change: {
-        changeId: "14",
         type: "set_target_plan_items",
-        scope: { kind: "lesson", ref: "lesson-a" }
+        scope: { kind: "didactic_microsequence", ref: "micro-a" },
+        parameterId: null
       }
     }),
     (error) => error.code === "invalid_course_design"
   );
 
   assert.equal(normalizeCourseDesignChange({
-    contract: "aralearn.course-design-change.v1",
+    contract: "aralearn.course-design-change.v2",
     courseId: COURSE_ID,
     courseRevision: 4,
     requestId,
@@ -780,7 +666,7 @@ test("confirmação de desenho preserva requestId opaco e expõe somente fato ca
 
   assert.throws(
     () => normalizeCourseDesignChange({
-      contract: "aralearn.course-design-change.v1",
+      contract: "aralearn.course-design-change.v2",
       courseId: COURSE_ID,
       courseRevision: 4,
       requestId,

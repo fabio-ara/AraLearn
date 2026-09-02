@@ -15,7 +15,6 @@ const ORIGIN_LABELS = Object.freeze({
   authoring_interface: "Edição na Autoria",
   authoring_chat: "Conversa de Autoria",
   unknown: "Origem não informada",
-  unknown_legacy: "Origem não informada"
 });
 
 const CONCEPT_LABELS = Object.freeze({
@@ -224,16 +223,12 @@ function authorshipRows(authorship) {
       label: "Observações resolvidas",
       value: plural(authorship.observations.resolvedCount, "Observação", "Observações")
     },
-    {
-      label: "Reparos rejeitados",
-      value: plural(authorship.repairs.rejectedCount, "reparo", "reparos")
-    },
-    ...authorship.studyUnitChangesByOrigin.map((entry) => ({
+    ...authorship.studyUnitsByOrigin.map((entry) => ({
       label: humanLabel(entry.origin),
       value: `${plural(entry.createdCount, "StudyUnit criada", "StudyUnits criadas")} · ${plural(
-        entry.revisedCount,
-        "StudyUnit revisada",
-        "StudyUnits revisadas"
+        entry.lastRevisedCount,
+        "StudyUnit com última revisão",
+        "StudyUnits com última revisão"
       )}`
     }))
   ];
@@ -283,14 +278,11 @@ function renderAuthorship(authorship) {
       name: "Observações abertas", value: authorship.observations.openCount,
       definition: "Pendências humanas atuais."
     }, {
-      name: "Parâmetros alterados", value: authorship.explicitParameterChangeCount,
-      definition: "Mudanças explícitas da pessoa autora."
+      name: "Parâmetros definidos", value: authorship.explicitParameterOverrideCount,
+      definition: "Atribuições explícitas correntes."
     }, {
-      name: "Edições manuais", value: authorship.manualEditCount,
-      definition: "Edições aplicadas diretamente."
-    }, {
-      name: "Reparos aceitos", value: authorship.repairs.acceptedCount,
-      definition: "Propostas aceitas no fluxo."
+      name: "StudyUnits revistas manualmente", value: authorship.manuallyRevisedStudyUnitCount,
+      definition: "Unidades cuja última revisão observável é humana."
     }], "Resumo da autoria") + renderTableDetails({
       title: "Intervenções por origem",
       definition: "Contagens explícitas por origem observável.",

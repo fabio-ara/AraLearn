@@ -154,20 +154,18 @@ O mesmo Curso pode ser observado em dois contextos complementares:
   Unidade; quando o Curso é
   compartilhado, a primeira gravação cria um Curso pessoal privado sem alterar o
   original;
-- na **Autoria**, a pessoa proprietária parametriza e inspeciona o planejamento,
-  a materialização e a revisão do Curso, registra intenções e pode editar texto
-  existente. Ela também mantém a proveniência, tria Anotações, audita correções,
-  compara variantes, consulta fatos da produção e concede acesso direto para
-  Estudo. O fluxo conectado pode planejar, materializar, auditar e revisar; a
-  responsabilidade humana permanece sobretudo em conferir o objeto produzido e
-  indicar o que deve mudar.
+- na **Autoria**, a pessoa proprietária abre diretamente o Conteúdo, planeja uma
+  Parte por vez, inspeciona StudyUnits, define parâmetros, mantém Fontes, registra
+  Observações e consulta Analytics. O fluxo conectado pode planejar, produzir e
+  revisar; a responsabilidade humana permanece em conferir o objeto e decidir o
+  que deve mudar.
 
 A assistência computacional chega ao Curso por três canais distintos. A
 **Assistência por IA** dentro do aplicativo mantém uma sessão contextual em
 memória para Unidade, Microssequência ou Lição. O **Model Context Protocol
 (MCP)** conecta um cliente compatível às operações canônicas de Autoria. O
-canal **Actions/OpenAPI** permite que um GPT personalizado use seis operações
-HTTP do mesmo domínio. Eles não compartilham protocolo, sessão, credencial ou
+canal **Actions/OpenAPI** permite que um GPT personalizado use as mesmas tarefas
+humanas por HTTP. Eles não compartilham protocolo, sessão, credencial ou
 principal de autorização, embora obedeçam às mesmas regras de Curso.
 
 Quando a conversa precisa mostrar conteúdo material, o cliente pode reunir um
@@ -185,11 +183,11 @@ linguagem é montado para o Curso e o alvo pertinentes, e a resposta precisa
 satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
-é uma ferramenta de autoria sob responsabilidade humana. O AraLearn separa
-conversa, proposta corrente, aceite para gerar, validação, aplicação ao rascunho
-e gravação. Escopo delimitado, possibilidade de rejeitar e reversão são
-condições de supervisão; a existência desses controles não prova que a pessoa
-compreenda o erro ou exerça controle efetivo.
+é uma ferramenta de autoria sob responsabilidade humana. O AraLearn separa a
+coordenação na conversa, a tarefa humana contratada, a validação e a gravação no
+Curso corrente. Escopo delimitado, possibilidade de rejeitar, reabrir qualquer
+ponto e pedir revisão são condições de supervisão; a existência desses
+controles não prova que a pessoa compreenda o erro ou exerça controle efetivo.
 
 **Confiança calibrada** ocorre quando a confiança e a dependência correspondem
 à capacidade observada do sistema naquela tarefa e às incertezas conhecidas; o

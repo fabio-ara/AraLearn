@@ -879,14 +879,12 @@ test("citações são buscadas somente por Unidade carregada e vinculadas à rev
           studyUnitId,
           citations: [{
             sourceId: "fonte-publica",
-            sourceRevision: 2,
             title: "Fonte pública",
             citationText: "Autoria. Fonte pública. 2026.",
             url: "https://example.test/fonte",
             editionOrVersion: null,
             anchors: [{
               anchorId: "anchor-publica",
-              anchorRevision: 1,
               selector: { kind: "page_range", startPage: 8, endPage: 9 }
             }]
           }]

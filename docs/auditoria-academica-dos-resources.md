@@ -293,16 +293,15 @@ pelo modelo (tokens).
 | maior resposta de um contrato exato | 13.117 bytes | 16 KiB |
 | soma das 32 respostas de contrato, consultadas separadamente | 191.078 bytes | 200 KiB |
 | Curso de catálogo completo em disco | 361.088 bytes | lido por recortes no produto |
-| definições das sete ferramentas MCP publicadas | 104.364 bytes | 105.000 bytes |
 | código dos componentes espelhado no navegador e na Edge | 51 arquivos; 548.156 bytes | 560 KiB |
 
-O fluxo publicado permanece com seis ferramentas canônicas e `add_part`
-dedicado e não cria tabela ou objeto de
-Storage por Unidade. Os dados versionados do pacote ficam no conteúdo
-relacional da Unidade. Ainda faltam medições com o GPT hospedado para tokens,
-número de chamadas, reparos, latência e retomada, além de CPU, memória e partida
-fria da Edge e consumo efetivo de banco, transferência e Storage. Os limites acima
-impedem regressões locais conhecidas, mas não comprovam esses custos externos.
+O fluxo conversacional consulta componentes sob demanda por
+`consultar_componentes`; a representação escolhida é gravada com a StudyUnit e
+não cria tabela nem objeto de Storage por Unidade. Os dados versionados do
+pacote ficam no conteúdo relacional da Unit. Ainda faltam medições hospedadas de
+latência, retomada, CPU, memória, partida fria da Edge e consumo efetivo de
+banco, transferência e Storage. Os limites acima impedem regressões locais
+conhecidas, mas não comprovam esses custos externos.
 
 ## 7. Processo de auditoria
 
@@ -414,7 +413,7 @@ tarefa. Esses três estados não devem ser fundidos em um selo único de
 
 ## 9. Registro de resultados
 
-Cada rodada de auditoria registra:
+Cada avaliação acadêmica de um componente registra:
 
 ```text
 pacote e escopo

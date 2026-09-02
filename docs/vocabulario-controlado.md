@@ -45,13 +45,13 @@ Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, cor
 
 **Base.** [padrão externo](https://www.w3.org/TR/ATAG20/); [decisão de produto](visao-do-produto.md).
 
-#### Pesquisa
+#### Analytics
 
-Superfície que expõe fatos de Autoria, métricas descritivas, Variantes e comparações e permite exportar fatos e metadados; não configura o protocolo de um estudo nem certifica validade científica. Em Pesquisa, a pessoa proprietária fixa recorte e revisão, compara fatos e métricas de Variantes e exporta fatos brutos e metadados para uma análise externa.
+Superfície quantitativa que caracteriza o desenho corrente de um Curso e as intervenções humanas explicitamente observáveis, sem atribuir score de qualidade, aprendizagem ou participação. Em Analytics, a pessoa proprietária escolhe Curso, Parte, Microssequência ou StudyUnit e confronta parâmetros aplicados, novidades, prática, Fontes e intervenções humanas em números simples.
 
-**Domínio e implementação.** Pesquisa; equivalente internacional: research; símbolo: `research_surface`.
+**Domínio e implementação.** Analytics da Autoria; equivalente internacional: authoring analytics; símbolo: `authoring_analytics`.
 
-**Uso.** `restringir`. Distinguir de `analytics`, `experimento`, `relatório`.
+**Uso.** `restringir`. Distinguir de `Pesquisa`, `experimento`, `painel administrativo`.
 
 **Base.** [decisão de produto](analytics-instrucionais.md).
 
@@ -265,7 +265,7 @@ Estado revisável que explicita objetivos, organização, cobertura, progressão
 
 #### Produção
 
-Transformação controlada do plano e do estado autoral em unidades de estudo persistidas, renderizáveis e novamente auditáveis. Na interface, a pessoa acompanha a Produção; no domínio, cada transformação de uma Parte planejada em unidades persistidas e auditáveis é uma Materialização.
+Transformação controlada de uma Parte aprovada em StudyUnits persistidas, renderizáveis e novamente inspecionáveis. A pessoa aprova uma Parte; o GPT materializa suas StudyUnits e devolve um endereço de Conteúdo para reinspeção, sem expor etapas intermediárias.
 
 **Domínio e implementação.** Materialização; equivalente internacional: materialization; símbolo: `course_materialization`.
 
@@ -273,23 +273,23 @@ Transformação controlada do plano e do estado autoral em unidades de estudo pe
 
 **Base.** [definição própria](guia-professor-autor.md).
 
-#### Auditoria instrucional
+#### Revisão
 
-Exame explícito e rastreável que confronta plano, parâmetros, fontes, materialização e critérios, produzindo achados sem alterar automaticamente o curso. Depois de produzir uma Parte, a Auditoria instrucional compara unidades, objetivos, parâmetros, fontes e observações e gera achados verificáveis.
+Releitura de Observações, conteúdo e contexto pedagogicamente afetado que produz uma proposta antes de qualquer alteração do Curso. Ao receber uma Observação sobre uma Unit, o GPT relê também os pré-requisitos, exemplos e práticas afetados antes de propor correções.
 
-**Domínio e implementação.** Auditoria instrucional; equivalente internacional: instructional audit; símbolo: `instructional_audit`.
+**Domínio e implementação.** Revisão contextual; equivalente internacional: contextual authoring review; símbolo: `contextual_authoring_review`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `auditoria`. Distinguir de `correção`, `teste automatizado`, `aprovação`.
+**Uso.** `restringir`; formas técnicas ou históricas: `revisão contextual`, `revisão autoral`. Distinguir de `correção aplicada`, `teste automatizado`, `aprovação automática`.
 
 **Base.** [decisão de produto](auditoria-de-conformidade-instrucional.md).
 
 #### Correção autoral
 
-Alteração autorizada do curso em resposta a um achado ou observação, seguida de verificação independente do resultado. Uma Correção autoral altera uma unidade por causa de um achado ou observação e registra o vínculo com a razão da mudança.
+Conjunto autorizado de alterações em resposta a uma revisão ou Observação, seguido de reinspeção do resultado corrente. Depois de aprovar a proposta, a pessoa aplica correções às Units realmente afetadas e as reinspeciona no Conteúdo.
 
 **Domínio e implementação.** Correção autoral; equivalente internacional: authoring correction; símbolo: `authoring_correction`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `reparo`. Distinguir de `auditoria`, `revisão`, `resolução do achado`.
+**Uso.** `restringir`; formas técnicas ou históricas: `reparo`. Distinguir de `revisão contextual`, `revisão`, `resolução da Observação`.
 
 **Base.** [decisão de produto](auditoria-de-conformidade-instrucional.md).
 
@@ -299,7 +299,7 @@ Leitura e reconsideração humana ou assistida de conteúdo e desenho, que pode 
 
 **Domínio e implementação.** Revisão autoral; equivalente internacional: authoring review; símbolo: `authoring_review`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `revisão de conteúdo`. Distinguir de `versão de estado`, `auditoria`, `correção`.
+**Uso.** `restringir`; formas técnicas ou históricas: `revisão de conteúdo`. Distinguir de `versão de estado`, `correção aplicada`, `correção`.
 
 **Base.** [definição própria](auditoria-de-conformidade-instrucional.md).
 
@@ -351,17 +351,17 @@ Anotação com corpo e alvo endereçável, autoria, motivação e estado; na int
 
 **Domínio e implementação.** Anotação ancorada; equivalente internacional: anchored annotation; símbolo: `anchored_annotation`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `comentário`. Distinguir de `achado de auditoria`, `mensagem de chat`, `nota privada sem alvo`.
+**Uso.** `restringir`; formas técnicas ou históricas: `comentário`. Distinguir de `achado de revisão`, `mensagem de chat`, `nota privada sem alvo`.
 
 **Base.** [padrão externo](https://www.w3.org/TR/annotation-model/); [decisão de produto](observacoes-pedagogicas.md).
 
-#### Achado de auditoria
+#### Problema encontrado
 
-Afirmação estruturada, verificável e situada produzida por uma auditoria, com regra, alvo, evidência, estado e decisão separados. A Auditoria registra que uma afirmação não possui âncora suficiente como um Achado de auditoria, distinto da observação que pode tê-lo motivado.
+Problema concreto identificado na revisão corrente, acompanhado de evidência e proposta, sem criar uma identidade histórica permanente. A revisão identifica que uma representação condensou uma relação necessária e propõe uma forma mais adequada antes da correção.
 
-**Domínio e implementação.** Achado de auditoria; equivalente internacional: audit finding; símbolo: `audit_finding`.
+**Domínio e implementação.** Achado de revisão; equivalente internacional: review finding; símbolo: `review_finding`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `finding`, `achado`. Distinguir de `anotação ancorada`, `erro confirmado`, `correção`.
+**Uso.** `restringir`; formas técnicas ou históricas: `achado de revisão`, `finding`. Distinguir de `anotação ancorada`, `erro confirmado`, `correção`.
 
 **Base.** [decisão de produto](auditoria-de-conformidade-instrucional.md).
 
@@ -419,7 +419,7 @@ Valor explicitamente definido e versionado que se aplica na ausência de atribui
 
 #### Herança calculada
 
-Resultado do resolvedor que aplica um valor de escopo ancestral quando não existe atribuição de maior autoridade no alvo; não é uma atribuição gravada. Uma Microssequência mostra o valor efetivo herdado da Lição ou do Curso e informa o escopo fonte sem copiar a atribuição.
+Resultado do resolvedor que aplica um valor de escopo ancestral quando não existe atribuição de maior autoridade no alvo; não é uma atribuição gravada. Uma Microssequência mostra o valor efetivo herdado do Curso e informa o escopo fonte sem copiar a definição.
 
 **Domínio e implementação.** Herança calculada; equivalente internacional: resolved inheritance; símbolo: `resolved_inheritance`.
 
@@ -427,39 +427,39 @@ Resultado do resolvedor que aplica um valor de escopo ancestral quando não exis
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
-#### Sobrescrita explícita
+#### Parâmetro definido
 
-Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada. A pessoa define para uma microssequência um valor diferente do curso; a Sobrescrita explícita fica registrada naquele escopo.
+Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada. A pessoa define para uma Microssequência um valor diferente do Curso; Analytics conta esse Parâmetro definido no estado corrente.
 
-**Domínio e implementação.** Sobrescrita explícita; equivalente internacional: explicit override; símbolo: `explicit_override`.
+**Domínio e implementação.** Definição explícita de parâmetro; equivalente internacional: explicit override; símbolo: `explicit_override`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `sobrescrita`, `override`. Distinguir de `edição do default`, `herança`, `lock de pesquisa`.
-
-**Base.** [definição própria](desenho-instrucional-parametrizado.md).
-
-#### Orientação de autoria
-
-Revisão imutável do texto original de uma orientação, ligada a um Curso, escopo, origem, ator, canal e revisão do Curso. Uma orientação da Lição complementa a orientação do Curso; a leitura efetiva preserva os dois textos e suas revisões na ordem estrutural.
-
-**Domínio e implementação.** Revisão de orientação de autoria; equivalente internacional: authoring guidance revision; símbolo: `course_authoring_guidance_revision`.
-
-**Uso.** `restringir`; formas técnicas ou históricas: `orientação autoral`, `guidance`. Distinguir de `prompt`, `campo do plano`, `interpretação automatizada`.
+**Uso.** `restringir`; formas técnicas ou históricas: `definição explícita`. Distinguir de `edição do default`, `herança`, `lock de pesquisa`.
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
-#### Interpretação da orientação
+#### Direção editorial
 
-Leitura estruturada, versionada e separada de uma revisão exata de orientação, com resumo, diretivas, divergências e perguntas. A interpretação registra uma diretiva prefer e uma pergunta para a revisão exata sem alterar uma palavra do texto original.
+Orientação corrente de extensão, estilo, títulos ou organização, separada dos quatro parâmetros pedagógicos e incapaz de eliminar conteúdo necessário. Uma Microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais StudyUnits em vez de o comprimir.
 
-**Domínio e implementação.** Interpretação da orientação; equivalente internacional: authoring guidance interpretation; símbolo: `course_authoring_guidance_interpretation`.
+**Domínio e implementação.** Direção editorial; equivalente internacional: editorial direction; símbolo: `course_authoring_guidance`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `interpretação de orientação`. Distinguir de `orientação original`, `raciocínio privado`, `resposta do modelo`.
+**Uso.** `restringir`; formas técnicas ou históricas: `orientação editorial`. Distinguir de `parâmetro pedagógico`, `prompt persistido`, `limite de conteúdo`.
+
+**Base.** [definição própria](desenho-instrucional-parametrizado.md).
+
+#### Calibração automática
+
+Escolha contextual dos quatro parâmetros pedagógicos a partir do público, da tarefa e do contexto mínimo, sem transformar a conversa num questionário. Com público e tarefa conhecidos, o GPT escolhe valores iniciais e só pergunta quando uma lacuna material impede a produção.
+
+**Domínio e implementação.** Calibração automática de parâmetros; equivalente internacional: automatic parameter calibration; símbolo: `automatic_parameter_calibration`.
+
+**Uso.** `restringir`. Distinguir de `valor-padrão`, `condição fixada`, `questionário obrigatório`.
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
 #### Política de componentes
 
-Política completa e versionada por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização. Uma Lição permite somente referências declaradas, exclui um pacote e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.
+Política corrente por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização. Uma Lição permite somente referências declaradas, exclui um pacote e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.
 
 **Domínio e implementação.** Política de componentes do Curso; equivalente internacional: course component policy; símbolo: `course_component_policy`.
 
@@ -489,15 +489,15 @@ Contagem observável de caracteres, palavras, linhas, altura, duração ou volum
 
 ### Desenho e mensuração de pesquisa
 
-#### Variante comparável
+#### Condição
 
-Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal. A mesma origem e o mesmo plano geram as variantes A e B, com valores diferentes do parâmetro nível de apoio e identificadores próprios.
+Curso privado independente cuja configuração e invariantes foram explicitamente registrados para uma comparação deliberada. Dois Cursos preservam o mesmo inventário semântico e fixam tetos 1 e 2 para comparar a distribuição de StudyUnits.
 
-**Domínio e implementação.** Variante comparável; equivalente internacional: comparable course variant; símbolo: `course_variant_comparison`.
+**Domínio e implementação.** Condição em Curso independente; equivalente internacional: independent course condition; símbolo: `independent_course_condition`.
 
-**Uso.** `manter`; formas técnicas ou históricas: `variante`. Distinguir de `experimento`, `condição experimental`, `versão de estado`, `ramificação Git`.
+**Uso.** `restringir`; formas técnicas ou históricas: `condição autoral`, `comparação de condições`. Distinguir de `experimento`, `condição experimental`, `variante persistida`, `versão de estado`.
 
-**Base.** [decisão de produto](experimentos-instrucionais-parametrizados.md): A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal.
+**Base.** [decisão de produto](experimentos-instrucionais-parametrizados.md): Condições são produzidas em Cursos independentes, sem entidade de Variante nem promessa de experimento, atribuição ou análise causal.
 
 #### Experimento
 
@@ -505,19 +505,19 @@ Protocolo de pesquisa que compara condições mediante fatores, atribuição, me
 
 **Domínio e implementação.** Experimento; equivalente internacional: experiment; símbolo: `research_experiment`.
 
-**Uso.** `restringir`. Distinguir de `variante comparável`, `teste A/B informal`, `analytics`.
+**Uso.** `restringir`. Distinguir de `condição autoral em Curso independente`, `teste A/B informal`, `analytics`.
 
-**Base.** [decisão de produto](experimentos-instrucionais-parametrizados.md): A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal; [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o esquema técnico do AraLearn garanta um experimento válido.
+**Base.** [decisão de produto](experimentos-instrucionais-parametrizados.md): Cursos configurados para comparação não ativam Experimento, participantes, atribuição, medidas ou análise causal; [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o esquema técnico do AraLearn garanta um experimento válido.
 
 #### Condição experimental
 
-Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada por Variante comparável. Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.
+Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada apenas por configurar um Curso. Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.
 
 **Domínio e implementação.** Condição experimental; equivalente internacional: experimental condition; símbolo: `experimental_condition`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `condição`. Distinguir de `variante comparável`, `parâmetro isolado`, `grupo de acesso`.
+**Uso.** `restringir`; formas técnicas ou históricas: `condição`. Distinguir de `condição autoral`, `parâmetro isolado`, `grupo de acesso`.
 
-**Base.** [definição própria](experimentos-instrucionais-parametrizados.md): A capacidade local de variantes comparáveis explicita que diferenças declaradas não criam Condição experimental.
+**Base.** [definição própria](experimentos-instrucionais-parametrizados.md): Cursos independentes com configurações declaradas não criam uma Condição experimental governada.
 
 #### Medida observada
 
@@ -531,11 +531,11 @@ Valor obtido por instrumento ou procedimento declarado, antes de qualquer interp
 
 #### Métrica calculada
 
-Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados. A mediana do tempo por Unidade de estudo é uma Métrica calculada a partir dos eventos exportáveis e de uma fórmula versionada.
+Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados. A soma de oportunidades de prática num escopo é uma Métrica calculada a partir do estado corrente das StudyUnits e dos requisitos de evidência.
 
 **Domínio e implementação.** Métrica calculada; equivalente internacional: computed metric; símbolo: `computed_metric`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `métrica`, `Analytics`. Distinguir de `medida observada`, `indicador`, `atenção`, `aprendizagem`.
+**Uso.** `restringir`; formas técnicas ou históricas: `métrica`. Distinguir de `medida observada`, `indicador`, `atenção`, `aprendizagem`.
 
 **Base.** [Messick (1995)](referencias.md#ref-messick1995validity); [decisão de produto](analytics-instrucionais.md).
 

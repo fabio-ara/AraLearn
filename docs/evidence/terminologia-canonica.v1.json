@@ -110,14 +110,14 @@
       "status": "vigente"
     },
     {
-      "id": "research-surface",
+      "id": "analytics-surface",
       "family": "product-surfaces",
       "currentTerms": [
-        "Pesquisa"
+        "Analytics"
       ],
-      "productTerm": "Pesquisa",
-      "technicalSymbol": "research_surface",
-      "definition": "Superfície que expõe fatos de Autoria, métricas descritivas, Variantes e comparações e permite exportar fatos e metadados; não configura o protocolo de um estudo nem certifica validade científica.",
+      "productTerm": "Analytics",
+      "technicalSymbol": "authoring_analytics",
+      "definition": "Superfície quantitativa que caracteriza o desenho corrente de um Curso e as intervenções humanas explicitamente observáveis, sem atribuir score de qualidade, aprendizagem ou participação.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -131,19 +131,19 @@
         }
       ],
       "notSynonyms": [
-        "analytics",
+        "Pesquisa",
         "experimento",
-        "relatório"
+        "painel administrativo"
       ],
-      "interfaceTerm": "Pesquisa",
-      "domainTerm": "Pesquisa",
-      "englishEquivalent": "research",
-      "araLearnExample": "Em Pesquisa, a pessoa proprietária fixa recorte e revisão, compara fatos e métricas de Variantes e exporta fatos brutos e metadados para uma análise externa.",
-      "ambiguityRisk": "Sem esta delimitação, “Pesquisa” pode ser confundido com analytics, experimento, relatório, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "interfaceTerm": "Analytics",
+      "domainTerm": "Analytics da Autoria",
+      "englishEquivalent": "authoring analytics",
+      "araLearnExample": "Em Analytics, a pessoa proprietária escolhe Curso, Parte, Microssequência ou StudyUnit e confronta parâmetros aplicados, novidades, prática, Fontes e intervenções humanas em números simples.",
+      "ambiguityRisk": "Sem esta delimitação, Analytics pode ser confundido com telemetria de atenção, avaliação de aprendizagem, score de qualidade ou protocolo de pesquisa.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Dados de pesquisa”: designa os registros tratados, não a superfície que inspeciona fatos e métricas, compara Variantes e exporta conjuntos analisáveis.",
-        "“Análises da autoria”: cobre apenas um subconjunto do ciclo de pesquisa e por isso não pode nomear a superfície completa."
+        "“Pesquisa”: foi retirado porque a superfície caracteriza o artefato, mas não executa nem configura um estudo.",
+        "“Relatório”: foi rejeitado porque sugere um documento fechado, enquanto a leitura muda com o escopo corrente."
       ],
       "status": "vigente"
     },
@@ -774,7 +774,7 @@
       ],
       "productTerm": "Produção",
       "technicalSymbol": "course_materialization",
-      "definition": "Transformação controlada do plano e do estado autoral em unidades de estudo persistidas, renderizáveis e novamente auditáveis.",
+      "definition": "Transformação controlada de uma Parte aprovada em StudyUnits persistidas, renderizáveis e novamente inspecionáveis.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -796,7 +796,7 @@
       "interfaceTerm": "Produção",
       "domainTerm": "Materialização",
       "englishEquivalent": "materialization",
-      "araLearnExample": "Na interface, a pessoa acompanha a Produção; no domínio, cada transformação de uma Parte planejada em unidades persistidas e auditáveis é uma Materialização.",
+      "araLearnExample": "A pessoa aprova uma Parte; o GPT materializa suas StudyUnits e devolve um endereço de Conteúdo para reinspeção, sem expor etapas intermediárias.",
       "ambiguityRisk": "Sem separar o rótulo concreto da interface do termo de domínio, Produção pode ser confundida com geração de texto e Materialização com publicação ou release.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -806,21 +806,21 @@
       "status": "vigente"
     },
     {
-      "id": "instructional-audit",
+      "id": "contextual-review",
       "family": "authoring-process",
       "currentTerms": [
-        "auditoria"
+        "revisão contextual",
+        "revisão autoral"
       ],
-      "productTerm": "Auditoria instrucional",
-      "technicalSymbol": "instructional_audit",
-      "definition": "Exame explícito e rastreável que confronta plano, parâmetros, fontes, materialização e critérios, produzindo achados sem alterar automaticamente o curso.",
+      "productTerm": "Revisão contextual",
+      "technicalSymbol": "contextual_authoring_review",
+      "definition": "Releitura de Observações, conteúdo e contexto pedagogicamente afetado que produz uma proposta antes de qualquer alteração do Curso.",
       "decision": "restringir",
       "layers": [
         "interface",
         "domain",
-        "database",
         "mcp",
-        "research"
+        "documentation"
       ],
       "sources": [
         {
@@ -829,19 +829,19 @@
         }
       ],
       "notSynonyms": [
-        "correção",
+        "correção aplicada",
         "teste automatizado",
-        "aprovação"
+        "aprovação automática"
       ],
-      "interfaceTerm": "Auditoria instrucional",
-      "domainTerm": "Auditoria instrucional",
-      "englishEquivalent": "instructional audit",
-      "araLearnExample": "Depois de produzir uma Parte, a Auditoria instrucional compara unidades, objetivos, parâmetros, fontes e observações e gera achados verificáveis.",
-      "ambiguityRisk": "Sem esta delimitação, “Auditoria instrucional” pode ser confundido com correção, teste automatizado, aprovação, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "interfaceTerm": "Revisão",
+      "domainTerm": "Revisão contextual",
+      "englishEquivalent": "contextual authoring review",
+      "araLearnExample": "Ao receber uma Observação sobre uma Unit, o GPT relê também os pré-requisitos, exemplos e práticas afetados antes de propor correções.",
+      "ambiguityRisk": "Sem esta delimitação, Revisão pode ser confundida com correção já aplicada, teste automatizado ou nova versão imutável do Curso.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Avaliação instrucional”: pode significar mensuração de mérito ou resultado educacional, enquanto a Auditoria confronta evidências com critérios declarados.",
-        "“Revisão de qualidade”: não exige por si só protocolo rastreável nem separa achado de alteração do curso."
+        "“Auditoria instrucional”: foi retirada da interface porque sugeria uma maquinaria persistente de rodadas e achados que não é necessária ao ciclo corrente.",
+        "“Revisão de conteúdo”: é estreita porque progressão, parâmetros, Fontes e prática também podem precisar de reconsideração."
       ],
       "status": "vigente"
     },
@@ -853,12 +853,11 @@
       ],
       "productTerm": "Correção autoral",
       "technicalSymbol": "authoring_correction",
-      "definition": "Alteração autorizada do curso em resposta a um achado ou observação, seguida de verificação independente do resultado.",
+      "definition": "Conjunto autorizado de alterações em resposta a uma revisão ou Observação, seguido de reinspeção do resultado corrente.",
       "decision": "restringir",
       "layers": [
         "interface",
         "domain",
-        "database",
         "mcp",
         "code"
       ],
@@ -869,15 +868,15 @@
         }
       ],
       "notSynonyms": [
-        "auditoria",
+        "revisão contextual",
         "revisão",
-        "resolução do achado"
+        "resolução da Observação"
       ],
       "interfaceTerm": "Correção autoral",
       "domainTerm": "Correção autoral",
       "englishEquivalent": "authoring correction",
-      "araLearnExample": "Uma Correção autoral altera uma unidade por causa de um achado ou observação e registra o vínculo com a razão da mudança.",
-      "ambiguityRisk": "Sem esta delimitação, “Correção autoral” pode ser confundido com auditoria, revisão, resolução do achado, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "araLearnExample": "Depois de aprovar a proposta, a pessoa aplica correções às Units realmente afetadas e as reinspeciona no Conteúdo.",
+      "ambiguityRisk": "Sem esta delimitação, Correção autoral pode ser confundida com revisão, resolução de Observação ou garantia de melhoria pedagógica.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Reparo”: carrega metáfora técnica de conserto e não deixa claro que a mudança é uma decisão autoral sobre conteúdo ou desenho.",
@@ -908,14 +907,14 @@
       ],
       "notSynonyms": [
         "versão de estado",
-        "auditoria",
+        "correção aplicada",
         "correção"
       ],
       "interfaceTerm": "Revisão autoral",
       "domainTerm": "Revisão autoral",
       "englishEquivalent": "authoring review",
       "araLearnExample": "A pessoa autora relê uma Parte já materializada e decide manter, comentar ou solicitar correção de uma unidade.",
-      "ambiguityRisk": "Sem esta delimitação, “Revisão autoral” pode ser confundido com versão de estado, auditoria, correção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Sem esta delimitação, Revisão autoral pode ser confundida com versão de estado, correção aplicada ou resolução da Observação.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Revisão de conteúdo”: exclui reconsideração do desenho instrucional e dos parâmetros, que também pertencem à Revisão autoral.",
@@ -1115,7 +1114,7 @@
         }
       ],
       "notSynonyms": [
-        "achado de auditoria",
+        "achado de revisão",
         "mensagem de chat",
         "nota privada sem alvo"
       ],
@@ -1123,7 +1122,7 @@
       "domainTerm": "Anotação ancorada",
       "englishEquivalent": "anchored annotation",
       "araLearnExample": "Na interface aparece “Observação”; ao enviá-la sobre uma unidade específica, o domínio registra uma Anotação ancorada com corpo, alvo, autoria e motivação.",
-      "ambiguityRisk": "Sem esta delimitação, “Observação” pode ser confundido com achado de auditoria, mensagem de chat, nota privada sem alvo, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Sem esta delimitação, Observação pode ser confundida com achado de revisão, mensagem de chat ou nota privada sem alvo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Observação situada”: não foi adotado no domínio porque situated possui sentidos teóricos concorrentes e não explicita um alvo endereçável.",
@@ -1132,22 +1131,20 @@
       "status": "vigente"
     },
     {
-      "id": "audit-finding",
+      "id": "review-finding",
       "family": "evidence-provenance",
       "currentTerms": [
-        "finding",
-        "achado"
+        "achado de revisão",
+        "finding"
       ],
-      "productTerm": "Achado de auditoria",
-      "technicalSymbol": "audit_finding",
-      "definition": "Afirmação estruturada, verificável e situada produzida por uma auditoria, com regra, alvo, evidência, estado e decisão separados.",
+      "productTerm": "Achado de revisão",
+      "technicalSymbol": "review_finding",
+      "definition": "Problema concreto identificado na revisão corrente, acompanhado de evidência e proposta, sem criar uma identidade histórica permanente.",
       "decision": "restringir",
       "layers": [
-        "interface",
         "domain",
-        "database",
         "mcp",
-        "research"
+        "documentation"
       ],
       "sources": [
         {
@@ -1160,14 +1157,14 @@
         "erro confirmado",
         "correção"
       ],
-      "interfaceTerm": "Achado de auditoria",
-      "domainTerm": "Achado de auditoria",
-      "englishEquivalent": "audit finding",
-      "araLearnExample": "A Auditoria registra que uma afirmação não possui âncora suficiente como um Achado de auditoria, distinto da observação que pode tê-lo motivado.",
-      "ambiguityRisk": "Sem esta delimitação, “Achado de auditoria” pode ser confundido com anotação ancorada, erro confirmado, correção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "interfaceTerm": "Problema encontrado",
+      "domainTerm": "Achado de revisão",
+      "englishEquivalent": "review finding",
+      "araLearnExample": "A revisão identifica que uma representação condensou uma relação necessária e propõe uma forma mais adequada antes da correção.",
+      "ambiguityRisk": "Sem esta delimitação, Achado de revisão pode ser confundido com Observação, erro confirmado ou correção já aplicada.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Anotação ancorada”: permanece conceito separado porque registra uma contribuição ligada a um alvo; o achado é uma afirmação verificável produzida pela auditoria."
+        "“Anotação ancorada”: registra a contribuição ligada ao alvo; o achado é a interpretação proposta durante a revisão corrente."
       ],
       "status": "vigente"
     },
@@ -1392,7 +1389,7 @@
       "interfaceTerm": "Herança calculada",
       "domainTerm": "Herança calculada",
       "englishEquivalent": "resolved inheritance",
-      "araLearnExample": "Uma Microssequência mostra o valor efetivo herdado da Lição ou do Curso e informa o escopo fonte sem copiar a atribuição.",
+      "araLearnExample": "Uma Microssequência mostra o valor efetivo herdado do Curso e informa o escopo fonte sem copiar a definição.",
       "ambiguityRisk": "Sem esta delimitação, “Herança calculada” pode ser confundido com cópia, default, sobrescrita, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1401,13 +1398,13 @@
       "status": "vigente"
     },
     {
-      "id": "explicit-override",
+      "id": "explicit-parameter-definition",
       "family": "design-parameters",
       "currentTerms": [
-        "sobrescrita",
-        "override"
+        "parâmetro definido",
+        "definição explícita"
       ],
-      "productTerm": "Sobrescrita explícita",
+      "productTerm": "Parâmetro definido",
       "technicalSymbol": "explicit_override",
       "definition": "Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada.",
       "decision": "restringir",
@@ -1428,11 +1425,11 @@
         "herança",
         "lock de pesquisa"
       ],
-      "interfaceTerm": "Sobrescrita explícita",
-      "domainTerm": "Sobrescrita explícita",
+      "interfaceTerm": "Parâmetro definido",
+      "domainTerm": "Definição explícita de parâmetro",
       "englishEquivalent": "explicit override",
-      "araLearnExample": "A pessoa define para uma microssequência um valor diferente do curso; a Sobrescrita explícita fica registrada naquele escopo.",
-      "ambiguityRisk": "Sem esta delimitação, “Sobrescrita explícita” pode ser confundido com edição do default, herança, lock de pesquisa, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "araLearnExample": "A pessoa define para uma Microssequência um valor diferente do Curso; Analytics conta esse Parâmetro definido no estado corrente.",
+      "ambiguityRisk": "Sem esta delimitação, Parâmetro definido pode ser confundido com edição do padrão, herança ou bloqueio de pesquisa.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Exceção local”: não explicita que existe uma atribuição intencional que substitui integralmente o valor herdado segundo uma ordem de autoridade."
@@ -1440,15 +1437,15 @@
       "status": "vigente"
     },
     {
-      "id": "authoring-guidance-revision",
+      "id": "editorial-direction",
       "family": "design-parameters",
       "currentTerms": [
-        "orientação autoral",
-        "guidance"
+        "direção editorial",
+        "orientação editorial"
       ],
-      "productTerm": "Orientação de autoria",
-      "technicalSymbol": "course_authoring_guidance_revision",
-      "definition": "Revisão imutável do texto original de uma orientação, ligada a um Curso, escopo, origem, ator, canal e revisão do Curso.",
+      "productTerm": "Direção editorial",
+      "technicalSymbol": "course_authoring_guidance",
+      "definition": "Orientação corrente de extensão, estilo, títulos ou organização, separada dos quatro parâmetros pedagógicos e incapaz de eliminar conteúdo necessário.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1463,36 +1460,35 @@
         }
       ],
       "notSynonyms": [
-        "prompt",
-        "campo do plano",
-        "interpretação automatizada"
+        "parâmetro pedagógico",
+        "prompt persistido",
+        "limite de conteúdo"
       ],
-      "interfaceTerm": "Orientação de autoria",
-      "domainTerm": "Revisão de orientação de autoria",
-      "englishEquivalent": "authoring guidance revision",
-      "araLearnExample": "Uma orientação da Lição complementa a orientação do Curso; a leitura efetiva preserva os dois textos e suas revisões na ordem estrutural.",
-      "ambiguityRisk": "Sem esta delimitação, “Orientação de autoria” pode ser confundida com prompt, campo livre do plano ou interpretação automatizada, apagando origem e versão.",
+      "interfaceTerm": "Direção editorial",
+      "domainTerm": "Direção editorial",
+      "englishEquivalent": "editorial direction",
+      "araLearnExample": "Uma Microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais StudyUnits em vez de o comprimir.",
+      "ambiguityRisk": "Sem esta delimitação, Direção editorial pode ser confundida com parâmetro pedagógico, prompt persistido ou autorização para retirar conteúdo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Brief”: mistura intenção, contexto e estado e não preserva a pilha por escopo.",
-        "“Prompt persistido”: confunde uma decisão humana confirmada com a mensagem enviada a um modelo."
+        "“Orientação de autoria”: é ampla demais e mistura decisões pedagógicas com escolhas de apresentação.",
+        "“Limite editorial”: sugere compressão obrigatória mesmo quando mais StudyUnits são pedagogicamente necessárias."
       ],
       "status": "vigente"
     },
     {
-      "id": "authoring-guidance-interpretation",
+      "id": "automatic-parameter-calibration",
       "family": "design-parameters",
       "currentTerms": [
-        "interpretação de orientação"
+        "calibração automática"
       ],
-      "productTerm": "Interpretação da orientação",
-      "technicalSymbol": "course_authoring_guidance_interpretation",
-      "definition": "Leitura estruturada, versionada e separada de uma revisão exata de orientação, com resumo, diretivas, divergências e perguntas.",
+      "productTerm": "Calibração automática",
+      "technicalSymbol": "automatic_parameter_calibration",
+      "definition": "Escolha contextual dos quatro parâmetros pedagógicos a partir do público, da tarefa e do contexto mínimo, sem transformar a conversa num questionário.",
       "decision": "restringir",
       "layers": [
         "interface",
         "domain",
-        "database",
         "mcp"
       ],
       "sources": [
@@ -1502,19 +1498,19 @@
         }
       ],
       "notSynonyms": [
-        "orientação original",
-        "raciocínio privado",
-        "resposta do modelo"
+        "valor-padrão",
+        "condição fixada",
+        "questionário obrigatório"
       ],
-      "interfaceTerm": "Interpretação da orientação",
-      "domainTerm": "Interpretação da orientação",
-      "englishEquivalent": "authoring guidance interpretation",
-      "araLearnExample": "A interpretação registra uma diretiva prefer e uma pergunta para a revisão exata sem alterar uma palavra do texto original.",
-      "ambiguityRisk": "Sem esta separação, uma automação poderia parecer autora do texto humano ou substituir silenciosamente a orientação que deveria interpretar.",
+      "interfaceTerm": "Calibração automática",
+      "domainTerm": "Calibração automática de parâmetros",
+      "englishEquivalent": "automatic parameter calibration",
+      "araLearnExample": "Com público e tarefa conhecidos, o GPT escolhe valores iniciais e só pergunta quando uma lacuna material impede a produção.",
+      "ambiguityRisk": "Sem esta delimitação, calibração automática pode ser confundida com padrão fixo, condição experimental ou questionário obrigatório.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Orientação estruturada”: sugere que a estrutura substitui o original, quando ambos precisam permanecer distinguíveis.",
-        "“Resumo do modelo”: não inclui diretivas, divergências, perguntas nem vínculo versionado."
+        "“Valor-padrão”: ignora diferenças observáveis de público, tarefa e contexto.",
+        "“Questionário de configuração”: transfere rotineiramente à pessoa uma decisão que o contexto já permite calibrar."
       ],
       "status": "vigente"
     },
@@ -1526,7 +1522,7 @@
       ],
       "productTerm": "Política de componentes",
       "technicalSymbol": "course_component_policy",
-      "definition": "Política completa e versionada por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização.",
+      "definition": "Política corrente por escopo que fixa catálogo, disponibilidade, referências permitidas, excluídas e preferidas e é imposta na materialização.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1558,43 +1554,43 @@
       "status": "vigente"
     },
     {
-      "id": "course-variant-comparison",
+      "id": "independent-course-condition",
       "family": "research-design",
       "currentTerms": [
-        "variante"
+        "condição autoral",
+        "comparação de condições"
       ],
-      "productTerm": "Variante comparável",
-      "technicalSymbol": "course_variant_comparison",
-      "definition": "Curso independente criado de um ponto comum de planejamento, com diferenças declaradas de parâmetros ou política de componentes. Não cria condição, participantes, atribuição, medida, desfecho ou inferência causal.",
-      "decision": "manter",
+      "productTerm": "Condição em Curso independente",
+      "technicalSymbol": "independent_course_condition",
+      "definition": "Curso privado independente cuja configuração e invariantes foram explicitamente registrados para uma comparação deliberada.",
+      "decision": "restringir",
       "layers": [
-        "interface",
         "domain",
-        "database",
+        "research",
         "documentation"
       ],
       "sources": [
         {
           "status": "decisao-produto",
           "ref": "docs/experimentos-instrucionais-parametrizados.md",
-          "supports": "A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal."
+          "supports": "Condições são produzidas em Cursos independentes, sem entidade de Variante nem promessa de experimento, atribuição ou análise causal."
         }
       ],
       "notSynonyms": [
         "experimento",
         "condição experimental",
-        "versão de estado",
-        "ramificação Git"
+        "variante persistida",
+        "versão de estado"
       ],
-      "interfaceTerm": "Variante comparável",
-      "domainTerm": "Variante comparável",
-      "englishEquivalent": "comparable course variant",
-      "araLearnExample": "A mesma origem e o mesmo plano geram as variantes A e B, com valores diferentes do parâmetro nível de apoio e identificadores próprios.",
-      "ambiguityRisk": "Sem esta delimitação, “Variante comparável” pode ser confundido com experimento, condição experimental, versão de estado ou branch Git, produzindo promessas causais e de pesquisa que não existem no produto.",
+      "interfaceTerm": "Condição",
+      "domainTerm": "Condição em Curso independente",
+      "englishEquivalent": "independent course condition",
+      "araLearnExample": "Dois Cursos preservam o mesmo inventário semântico e fixam tetos 1 e 2 para comparar a distribuição de StudyUnits.",
+      "ambiguityRisk": "Sem esta delimitação, uma configuração em Curso separado pode ser confundida com experimento governado ou versão imutável do mesmo Curso.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Variante experimental”: exige participantes, atribuição, medidas e análise que esta fatia não implementa.",
-        "“Curso derivado”: registra origem comum, mas não torna explícita a comparação das diferenças declaradas."
+        "“Variante comparável”: foi retirada porque exigia relação e estado próprios sem acrescentar capacidade à separação por Curso.",
+        "“Condição experimental”: exige participantes, atribuição, medidas e análise que o produto não cria."
       ],
       "status": "vigente"
     },
@@ -1618,7 +1614,7 @@
         {
           "status": "decisao-produto",
           "ref": "docs/experimentos-instrucionais-parametrizados.md",
-          "supports": "A capacidade local cria variantes comparáveis, sem ativar Experimento, participantes, atribuição, medidas ou análise causal."
+          "supports": "Cursos configurados para comparação não ativam Experimento, participantes, atribuição, medidas ou análise causal."
         },
         {
           "status": "evidencia-academica",
@@ -1627,7 +1623,7 @@
         }
       ],
       "notSynonyms": [
-        "variante comparável",
+        "condição autoral em Curso independente",
         "teste A/B informal",
         "analytics"
       ],
@@ -1635,7 +1631,7 @@
       "domainTerm": "Experimento",
       "englishEquivalent": "experiment",
       "araLearnExample": "Um experimento, se vier a ser implementado, compara condições previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.",
-      "ambiguityRisk": "Sem esta delimitação, “Experimento” pode ser confundido com Variante comparável, teste A/B informal, analytics, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Sem esta delimitação, Experimento pode ser confundido com condição autoral em Curso independente, teste A/B informal ou Analytics.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "O AraLearn reserva Experimento ao protocolo com fatores, condições, atribuição, medidas e análise declarados, à luz da literatura de desenho e validade causal; estudo, comparação e teste A/B nomeiam escopos diferentes, e nenhum esquema garante validade por si.",
       "status": "vigente"
@@ -1648,7 +1644,7 @@
       ],
       "productTerm": "Condição experimental",
       "technicalSymbol": "experimental_condition",
-      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada por Variante comparável.",
+      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada apenas por configurar um Curso.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -1659,11 +1655,11 @@
         {
           "status": "definicao-propria",
           "ref": "docs/experimentos-instrucionais-parametrizados.md",
-          "supports": "A capacidade local de variantes comparáveis explicita que diferenças declaradas não criam Condição experimental."
+          "supports": "Cursos independentes com configurações declaradas não criam uma Condição experimental governada."
         }
       ],
       "notSynonyms": [
-        "variante comparável",
+        "condição autoral",
         "parâmetro isolado",
         "grupo de acesso"
       ],
@@ -1671,7 +1667,7 @@
       "domainTerm": "Condição experimental",
       "englishEquivalent": "experimental condition",
       "araLearnExample": "Em um futuro Experimento, a Condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.",
-      "ambiguityRisk": "Sem esta delimitação, “Condição experimental” pode ser confundida com Variante comparável, parâmetro isolado, grupo de acesso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Sem esta delimitação, Condição experimental pode ser confundida com condição autoral, parâmetro isolado ou grupo de acesso.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Grupo experimental”: designa participantes agrupados e não a combinação de níveis de fatores atribuída à variante ou participação.",
@@ -1721,8 +1717,7 @@
       "id": "computed-metric",
       "family": "research-design",
       "currentTerms": [
-        "métrica",
-        "Analytics"
+        "métrica"
       ],
       "productTerm": "Métrica calculada",
       "technicalSymbol": "computed_metric",
@@ -1753,7 +1748,7 @@
       "interfaceTerm": "Métrica calculada",
       "domainTerm": "Métrica calculada",
       "englishEquivalent": "computed metric",
-      "araLearnExample": "A mediana do tempo por Unidade de estudo é uma Métrica calculada a partir dos eventos exportáveis e de uma fórmula versionada.",
+      "araLearnExample": "A soma de oportunidades de prática num escopo é uma Métrica calculada a partir do estado corrente das StudyUnits e dos requisitos de evidência.",
       "ambiguityRisk": "Sem esta delimitação, “Métrica calculada” pode ser confundido com medida observada, indicador, atenção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [

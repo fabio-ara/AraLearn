@@ -22,7 +22,7 @@ científica nem representa endosso institucional.
 3. [Guia do estudante](guia-estudante.md): primeiro percurso, retomada,
    revisão, observações e citações redigidas;
 4. [Guia do professor e autor](guia-professor-autor.md): criação privada,
-   planejamento, Conteúdo, Fontes, revisão, pesquisa e acesso direto;
+   planejamento incremental, Conteúdo, Fontes, revisão, Analytics e acesso;
 5. [Solução de problemas](solucao-de-problemas.md): diagnóstico por sintoma e
    recuperação segura.
 
@@ -111,17 +111,18 @@ Comece pelo comportamento já implementado:
 7. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
    parâmetros, orientação natural, herança e política de componentes.
 
-O ciclo implementado de revisão possui um capítulo próprio:
+O ciclo de revisão possui um capítulo próprio:
 
-8. [Auditoria e correções do Curso](auditoria-de-conformidade-instrucional.md):
-   contexto focal, achados, pontos de recuperação, verificação, reversão e relação
-   explícita com Observações.
+8. [Revisão e correções do Curso](auditoria-de-conformidade-instrucional.md):
+   Observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
+   reinspeção.
 
-Variantes e Pesquisa também operam sobre o mesmo Curso:
+Analytics caracteriza o desenho corrente e intervenções observáveis no mesmo
+Curso:
 
-- [Variantes comparáveis](experimentos-instrucionais-parametrizados.md);
-- [Pesquisa sobre a Autoria](analytics-instrucionais.md);
-- [Dicionário de métricas e conjuntos de dados](dicionario-metricas-datasets.md);
+- [Analytics da Autoria](analytics-instrucionais.md);
+- [Referência do snapshot de Analytics](dicionario-metricas-datasets.md);
+- [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md);
 - [Guia de investigação](guia-pesquisador.md).
 
 ## Avaliar o artefato

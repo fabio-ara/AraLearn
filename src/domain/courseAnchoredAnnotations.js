@@ -21,11 +21,10 @@ export const COURSE_ANCHORED_ANNOTATION_TARGET_KINDS = Object.freeze([
   "source", "source_anchor"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_ORIGINS = Object.freeze([
-  "author", "learner", "human_audit", "automatic_audit", "unknown_legacy"
+  "author", "learner", "reviewer", "imported"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_CHANNELS = Object.freeze([
-  "authoring_interface", "authoring_chat", "study_interface", "audit_interface",
-  "audit_automation", "unknown_legacy"
+  "authoring_interface", "authoring_chat", "study_interface", "imported"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_CATEGORIES = Object.freeze([
   "question", "possible_error", "confusing", "suggestion", "reformulation_request"
@@ -37,7 +36,7 @@ export const COURSE_ANCHORED_ANNOTATION_STATES = Object.freeze([
   "open", "considered", "resolved", "withdrawn"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_CONTRIBUTOR_ROLES = Object.freeze([
-  "author", "learner", "auditor", "unknown_legacy"
+  "author", "learner", "reviewer", "imported"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_COMMAND_TYPES = Object.freeze([
   "create_anchored_annotation",
@@ -130,8 +129,8 @@ function sourceId(value, code, label) {
     const point = character.codePointAt(0);
     return point <= 31 || point >= 127 && point <= 159;
   });
-  if (typeof value !== "string" || !value.trim() || [...value].length > 2048 ||
-      encoder.encode(value).byteLength > 8192 || hasControl) {
+  if (typeof value !== "string" || !value || value !== value.trim() ||
+      [...value].length > 240 || encoder.encode(value).byteLength > 960 || hasControl) {
     fail(code, `${label} é inválida.`);
   }
   return value;
@@ -405,13 +404,13 @@ function classificationFact(value, code, { effective = false } = {}) {
   exact(value, ["method", "methodVersion", "taxonomyRevision", "subjects"], code, "A classificação de assunto");
   const automaticMethods = [
     "exact_topic_target", "target_scope_unclassified",
-    "legacy_unclassified"
+    "imported_unclassified"
   ];
   const methods = effective ? [...automaticMethods, "human_topic_selection"] : automaticMethods;
   enumValue(value.method, methods, code, "O método de classificação");
   integer(value.methodVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão do método");
-  if (value.method === "legacy_unclassified") {
-    if (value.taxonomyRevision !== null) fail(code, "A classificação legada não inventa revisão taxonômica.");
+  if (value.method === "imported_unclassified") {
+    if (value.taxonomyRevision !== null) fail(code, "A classificação importada não inventa revisão taxonômica.");
   } else {
     integer(value.taxonomyRevision, 1, Number.MAX_SAFE_INTEGER, code, "A revisão taxonômica");
   }
@@ -434,21 +433,16 @@ function annotationItem(value) {
   enumValue(value.provenance.channel, COURSE_ANCHORED_ANNOTATION_CHANNELS, code, "O canal");
   const provenancePairs = new Set([
     "author\0authoring_interface", "author\0authoring_chat", "learner\0study_interface",
-    "human_audit\0audit_interface", "automatic_audit\0audit_automation",
-    "author\0unknown_legacy", "learner\0unknown_legacy",
-    "human_audit\0unknown_legacy", "automatic_audit\0unknown_legacy",
-    "unknown_legacy\0unknown_legacy"
+    "author\0imported", "learner\0imported", "reviewer\0imported",
+    "imported\0imported"
   ]);
   if (!provenancePairs.has(`${value.provenance.origin}\0${value.provenance.channel}`)) {
     fail(code, "A origem e o canal não formam um par permitido.");
   }
   exact(value.contributor, ["kind", "role", "ref", "label"], code, "A pessoa contribuinte protegida");
-  enumValue(value.contributor.kind, ["self", "protected_person", "software", "unknown_legacy"], code, "O tipo de contribuinte");
+  enumValue(value.contributor.kind, ["self", "protected_person", "software", "imported"], code, "O tipo de contribuinte");
   enumValue(value.contributor.role, COURSE_ANCHORED_ANNOTATION_CONTRIBUTOR_ROLES, code, "O papel da pessoa contribuinte");
-  const expectedRole = value.provenance.origin === "human_audit" ||
-    value.provenance.origin === "automatic_audit"
-    ? "auditor"
-    : value.provenance.origin;
+  const expectedRole = value.provenance.origin;
   if (value.contributor.role !== expectedRole) fail(code, "O papel não corresponde à origem da observação.");
   const protectedRef = value.contributor.ref;
   if (value.contributor.kind === "protected_person" &&
@@ -456,9 +450,9 @@ function annotationItem(value) {
       value.contributor.kind === "self" &&
         protectedRef !== null && protectedRef !== "self" ||
       value.contributor.kind === "software" && protectedRef !== null ||
-      value.contributor.kind === "unknown_legacy" && protectedRef !== null ||
-      value.provenance.origin === "automatic_audit" && value.contributor.kind !== "software" ||
-      value.provenance.origin !== "automatic_audit" && value.contributor.kind === "software") {
+      value.contributor.kind === "imported" && protectedRef !== null ||
+      value.provenance.origin !== "imported" &&
+        ["software", "imported"].includes(value.contributor.kind)) {
     fail(code, "A referência ou o tipo da pessoa contribuinte não corresponde à projeção protegida.");
   }
   boundedText(value.contributor.label, 120, 480, code, "O rótulo protegido", { preserveLayout: true });
@@ -483,7 +477,7 @@ function annotationItem(value) {
   }
   if (value.target.deepLink !== null) boundedText(value.target.deepLink, 2048, 8192, code, "O link contextual");
   exact(value.observedRevision, ["certainty", "courseRevision", "targetVersion"], code, "A revisão observada");
-  enumValue(value.observedRevision.certainty, ["known", "legacy_unknown"], code, "A certeza da revisão");
+  enumValue(value.observedRevision.certainty, ["known", "unknown"], code, "A certeza da revisão");
   if (value.observedRevision.certainty === "known") {
     integer(value.observedRevision.courseRevision, 1, Number.MAX_SAFE_INTEGER, code, "A revisão observada do Curso");
     integer(value.observedRevision.targetVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão observada do alvo");
@@ -491,7 +485,7 @@ function annotationItem(value) {
       fail(code, "A versão observada do Curso precisa coincidir com sua revisão.");
     }
   } else if (value.observedRevision.courseRevision !== null || value.observedRevision.targetVersion !== null) {
-    fail(code, "Uma revisão legada desconhecida não contém valores.");
+    fail(code, "Uma revisão desconhecida não contém valores.");
   }
   if (value.rawText !== null) boundedText(value.rawText, 2000, 16384, code, "O texto bruto", { preserveLayout: true });
   if (value.state === "withdrawn" && (value.rawText !== null || value.briefSummary !== null ||

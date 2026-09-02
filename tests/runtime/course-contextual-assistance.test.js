@@ -193,19 +193,14 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
       { message: "Composição reparada.", candidate: valid }
     ], requests)
   });
-  assert.equal(result.repairCount, 1);
-  assert.equal(result.renderable, true);
+  assert.deepEqual(Object.keys(result), [
+    "contract", "scope", "message", "candidate", "proposedProject"
+  ]);
   assert.equal(result.candidate.content[0].data.text, valid.content[0].data.text);
   assert.equal(Object.hasOwn(result.candidate.content[0].data, "languageTag"), false);
   assert.equal(Object.hasOwn(result.candidate.content[0].data, "textDirection"), false);
-  assert.ok(result.previews[0].rendered.contentHtml.includes("package-instance"));
-  assert.deepEqual(
-    result.catalogTrace.map(({ operation }) => operation),
-    [
-      "explore", "search", "inspect", "contracts", "validate_study_unit",
-      "validate_study_unit", "audit_representation", "preview_study_unit"
-    ]
-  );
+  assert.equal(result.proposedProject.courses[0].modules[0].lessons[0]
+    .microsequences[0].studyUnits[0].content[0].data.text, valid.content[0].data.text);
   assert.equal(requests.length, 2);
   assert.match(requests[1].body.input, /repair/u);
   assert.match(requests[1].body.input, /curto demais/iu);
@@ -386,7 +381,8 @@ test("Lição aceita criação de Microssequência somente como proposta da pró
   });
   assert.equal(result.scope, "lesson");
   assert.equal(result.candidate.microsequences.length, 2);
-  assert.equal(result.previews.length, 3);
+  assert.equal(result.proposedProject.courses[0].modules[0].lessons[0]
+    .microsequences.length, 2);
   assert.equal(fixture.courses[0].modules[0].lessons[0].microsequences.length, 1);
 });
 

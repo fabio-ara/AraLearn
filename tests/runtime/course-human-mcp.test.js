@@ -153,6 +153,391 @@ test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
+test("salvar_parte grava estrutura e inventário completos sem expor identidades técnicas", async () => {
+  const writes = [];
+  const value = {
+    ...adapter(),
+    async getCourseInstructionalPlan() {
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        plan: {
+          id: "40000000-0000-4000-8000-000000000004",
+          version: 3,
+          title: "Redes para iniciantes",
+          objective: "Explicar serviços em rede.",
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: []
+        }
+      };
+    },
+    async listCourseEntities() {
+      return { revision: 7, items: [], hasMore: false, nextCursor: null };
+    },
+    async saveCourseAuthoringPart(input) {
+      writes.push(structuredClone(input));
+      return {
+        contract: "aralearn.course-authoring-part-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 8,
+        planVersion: 4,
+        authoringPartId: input.part.partId,
+        changed: true,
+        idempotent: false
+      };
+    }
+  };
+  const output = await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_parte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      titulo: "Sockets",
+      intencao: "Construir o modelo antes da prática.",
+      microssequencias: [{
+        modulo: "Comunicação",
+        objetivoDoModulo: "Explicar como processos se comunicam em rede.",
+        licao: "Sockets",
+        objetivoDaLicao: "Relacionar processo, endereço e transporte.",
+        titulo: "O que é um socket",
+        objetivo: "Definir socket sem pressupor o modelo de transporte.",
+        funcao: "explicar",
+        unidadesDeAnalise: ["Socket é uma interface entre processo e transporte."],
+        requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
+      }, {
+        modulo: "Comunicação",
+        objetivoDoModulo: "Explicar como processos se comunicam em rede.",
+        licao: "Sockets",
+        objetivoDaLicao: "Relacionar processo, endereço e transporte.",
+        titulo: "Prática de identificação",
+        objetivo: "Mobilizar a distinção em casos variados.",
+        funcao: "praticar",
+        unidadesDeAnalise: [],
+        requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
+      }]
+    }
+  });
+
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].expectedCourseRevision, 7);
+  assert.equal(writes[0].expectedPlanVersion, 3);
+  assert.equal(writes[0].part.position, 0);
+  assert.deepEqual(writes[0].part.microsequences.map(({ role }) => role), [
+    "explain", "practice"
+  ]);
+  assert.equal(writes[0].part.microsequences[0].moduleId,
+    writes[0].part.microsequences[1].moduleId);
+  assert.equal(writes[0].part.microsequences[0].lessonId,
+    writes[0].part.microsequences[1].lessonId);
+  assert.equal(writes[0].part.microsequences[1].analysisUnits.length, 0);
+  assert.equal(writes[0].part.microsequences[0].evidenceRequirements[0].id,
+    writes[0].part.microsequences[1].evidenceRequirements[0].id);
+  assert.equal(output.context.part.microsequenceCount, 2);
+  assert.doesNotMatch(
+    JSON.stringify(output.context),
+    /courseId|partId|moduleId|lessonId|requestId/iu
+  );
+});
+
+test("salvar_parte não atribui a mesma novidade a duas Microssequências", async () => {
+  const value = {
+    ...adapter(),
+    async getCourseInstructionalPlan() {
+      return {
+        courseRevision: 7,
+        plan: {
+          version: 3,
+          title: "Redes para iniciantes",
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: []
+        }
+      };
+    },
+    async listCourseEntities() {
+      return { revision: 7, items: [], hasMore: false, nextCursor: null };
+    },
+    async saveCourseAuthoringPart() {
+      assert.fail("A duplicidade semântica precisa falhar antes do commit.");
+    }
+  };
+  const micro = (titulo) => ({
+    modulo: "Comunicação",
+    objetivoDoModulo: "Explicar comunicação em rede.",
+    licao: "Sockets",
+    objetivoDaLicao: "Relacionar processo e transporte.",
+    titulo,
+    objetivo: `Explicar ${titulo}.`,
+    funcao: "explicar",
+    unidadesDeAnalise: ["Socket relaciona processo e transporte."],
+    requisitosDeEvidencia: []
+  });
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_parte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      titulo: "Sockets",
+      intencao: "Construir a progressão.",
+      microssequencias: [micro("Definição"), micro("Mecanismo")]
+    }
+  }), (error) => error.code === "analysis_unit_assigned_to_multiple_microsequences");
+});
+
+test("salvar_parte exige novidade somente quando a Microssequência vai explicar", async () => {
+  const definition = COURSE_HUMAN_TASKS.find(({ name }) => name === "salvar_parte");
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
+    definition.inputSchema
+  );
+  const microsequence = (funcao) => ({
+    modulo: "Comunicação",
+    objetivoDoModulo: "Construir um modelo de comunicação em rede.",
+    licao: "Sockets",
+    objetivoDaLicao: "Relacionar processos e transporte.",
+    titulo: funcao === "explicar" ? "Definição" : "Consolidação",
+    objetivo: funcao === "explicar"
+      ? "Explicar uma novidade."
+      : "Retomar conhecimentos já estabelecidos.",
+    funcao,
+    unidadesDeAnalise: [],
+    requisitosDeEvidencia: []
+  });
+  const args = {
+    curso: "Redes para iniciantes",
+    titulo: "Sockets",
+    intencao: "Construir e consolidar o modelo.",
+    microssequencias: [microsequence("explicar")]
+  };
+  assert.equal(validate(args), false);
+  assert.equal(validate({ ...args, microssequencias: [microsequence("revisar")] }), true);
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: adapter(), principal: PRINCIPAL, name: "salvar_parte", rawArguments: args
+  }), (error) => error.code === "missing_instructional_analysis_unit");
+});
+
+test("preparar_materializacao separa o inventário focal de duas Microssequências", async () => {
+  const analysisEstablished = "50000000-0000-4000-8000-000000000004";
+  const analysisA = "50000000-0000-4000-8000-000000000005";
+  const analysisB = "50000000-0000-4000-8000-000000000006";
+  const analysisOutsidePart = "50000000-0000-4000-8000-000000000007";
+  const evidenceA = "60000000-0000-4000-8000-000000000001";
+  const evidenceB = "60000000-0000-4000-8000-000000000002";
+  const microA = "micro-definicao";
+  const microB = "micro-mecanismo";
+  const existingStudyUnitId = "70000000-0000-4000-8000-000000000001";
+  const parameterDefinitions = [
+    ["new_analysis_unit_ceiling_per_expository_study_unit", "Novas unidades de análise"],
+    ["required_explanation_forms", "Formas de explicação"],
+    ["minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas"],
+    ["required_practice_variation_dimensions", "Variação da prática"]
+  ];
+  const design = (scopeRef, targetAnalysis, targetEvidence, ceiling) => ({
+    scopeContext: { current: { label: scopeRef === microA ? "Definição" : "Mecanismo" } },
+    definitions: parameterDefinitions.map(([id, label]) => ({ id, label })),
+    parameters: parameterDefinitions.map(([parameterId], index) => ({
+      parameterId,
+      localAssignment: null,
+      effectiveAssignment: {
+        value: index === 0 ? ceiling : index === 1 ? ["plain_definition"] :
+          index === 2 ? 2 : ["case_or_data"],
+        inherited: true,
+        origin: "automatic",
+        reason: "Calibração focal.",
+        sourceScope: { kind: "course" }
+      }
+    })),
+    guidance: { localAssignment: null, effectiveAssignments: [] },
+    targetPlanItems: {
+      instructionalAnalysisUnitIds: targetAnalysis,
+      evidenceRequirementIds: targetEvidence
+    },
+    componentPolicy: {
+      effectiveAssignment: {
+        policy: {
+          catalogVersion: "fixture",
+          availability: "all",
+          allowedRefs: [],
+          excludedRefs: [],
+          preferredRefs: []
+        },
+        inherited: false,
+        origin: "system_default",
+        reason: "Política padrão.",
+        sourceScope: null
+      }
+    }
+  });
+  const value = {
+    ...adapter(),
+    async getCourseInstructionalPlan() {
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        plan: {
+          id: "40000000-0000-4000-8000-000000000004",
+          version: 3,
+          title: "Redes para iniciantes",
+          objective: "Explicar serviços em rede.",
+          instructionalAnalysisUnits: [{
+            id: analysisEstablished,
+            position: 0,
+            statement: "Processos trocam dados por serviços de transporte.",
+            introduced: true,
+            introducedPartPosition: 0
+          }, {
+            id: analysisA,
+            position: 1,
+            statement: "Socket liga processo e transporte.",
+            introduced: false,
+            introducedPartPosition: null
+          }, {
+            id: analysisB,
+            position: 2,
+            statement: "Endereço localiza uma ponta da comunicação.",
+            introduced: false,
+            introducedPartPosition: null
+          }, {
+            id: analysisOutsidePart,
+            position: 3,
+            statement: "Novidade de outra Parte.",
+            introduced: true,
+            introducedPartPosition: 2
+          }],
+          evidenceRequirements: [{
+            id: evidenceA, position: 0, statement: "Distinguir processo e socket."
+          }, {
+            id: evidenceB, position: 1, statement: "Relacionar endereço e comunicação."
+          }],
+          parts: [{
+            id: "20000000-0000-4000-8000-000000000001",
+            version: 1,
+            position: 0,
+            title: "Processos",
+            intent: "Estabelecer o conhecimento anterior.",
+            microsequences: []
+          }, {
+            id: PART_ID,
+            version: 2,
+            position: 1,
+            title: "Sockets",
+            intent: "Construir o modelo em duas etapas.",
+            microsequences: [{
+              id: microA,
+              productionPosition: 0,
+              title: "Definição",
+              goal: "Definir socket e sua relação com o processo.",
+              role: "explain",
+              curriculumPath: { moduleTitle: "Comunicação", lessonTitle: "Sockets" }
+            }, {
+              id: microB,
+              productionPosition: 1,
+              title: "Mecanismo",
+              goal: "Explicar como o endereço participa da comunicação.",
+              role: "explain",
+              curriculumPath: { moduleTitle: "Comunicação", lessonTitle: "Sockets" }
+            }]
+          }]
+        }
+      };
+    },
+    async listCourseStudyUnits() {
+      return {
+        items: [{
+          studyUnit: {
+            id: existingStudyUnitId,
+            position: 1,
+            title: "Definição já produzida"
+          },
+          curriculumPath: {
+            didacticMicrosequence: { id: microA, title: "Definição", position: 0 }
+          }
+        }],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async getCourseDesign({ scopeKind, scopeRef }) {
+      if (scopeKind === "study_unit") {
+        assert.equal(scopeRef, existingStudyUnitId);
+        const current = design(microA, [analysisA], [evidenceA], 2);
+        current.parameters[0].effectiveAssignment = {
+          value: 2,
+          inherited: false,
+          origin: "research_condition",
+          reason: "Comparação deliberada.",
+          sourceScope: { kind: "study_unit", ref: existingStudyUnitId }
+        };
+        return current;
+      }
+      return scopeRef === microA
+        ? design(scopeRef, [analysisA], [evidenceA], 1)
+        : design(scopeRef, [analysisB], [evidenceB], 2);
+    }
+  };
+
+  const output = await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "preparar_materializacao",
+    rawArguments: { curso: "Redes para iniciantes", parte: 2 }
+  });
+
+  assert.equal(output.result, "Preparei o recorte focal da Parte 2: Sockets.");
+  assert.equal(Object.hasOwn(output.context, "instructionalAnalysisUnits"), false);
+  assert.deepEqual(output.context.part.establishedAnalysisUnits, [{
+    position: 1,
+    statement: "Processos trocam dados por serviços de transporte."
+  }]);
+  assert.equal(output.context.part.microsequences.length, 2);
+  assert.deepEqual(output.context.part.microsequences.map((microsequence) => ({
+    title: microsequence.title,
+    analysis: microsequence.instructionalAnalysisUnits,
+    evidence: microsequence.evidenceRequirements,
+    objective: microsequence.objective,
+    function: microsequence.function,
+    ceiling: microsequence.configuration.parameters[0].effectiveValue
+  })), [{
+    title: "Definição",
+    analysis: [{ position: 2, statement: "Socket liga processo e transporte." }],
+    evidence: [{ position: 1, statement: "Distinguir processo e socket." }],
+    objective: "Definir socket e sua relação com o processo.",
+    function: "explicar",
+    ceiling: 1
+  }, {
+    title: "Mecanismo",
+    analysis: [{ position: 3, statement: "Endereço localiza uma ponta da comunicação." }],
+    evidence: [{ position: 2, statement: "Relacionar endereço e comunicação." }],
+    objective: "Explicar como o endereço participa da comunicação.",
+    function: "explicar",
+    ceiling: 2
+  }]);
+  assert.equal(output.context.part.microsequences.every((microsequence) =>
+    !Object.hasOwn(microsequence.configuration, "targets")), true);
+  assert.deepEqual(
+    output.context.part.microsequences[0].existingStudyUnitOverrides.map((unit) => ({
+      position: unit.position,
+      title: unit.title,
+      ceiling: unit.configuration.parameters[0].effectiveValue,
+      sourceScope: unit.configuration.parameters[0].sourceScope
+    })),
+    [{
+      position: 1,
+      title: "Definição já produzida",
+      ceiling: 2,
+      sourceScope: "study_unit"
+    }]
+  );
+  assert.deepEqual(
+    output.context.part.microsequences[1].existingStudyUnitOverrides,
+    []
+  );
+  assert.doesNotMatch(JSON.stringify(output.context.part), /Novidade de outra Parte/u);
+  assert.doesNotMatch(JSON.stringify(output.context.part), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
+});
+
 test("#272 schemas, descrições e annotations distinguem leitura de escrita", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   const forbidden = /^(?:id|ids|courseId|revision|version|hash|path|requestId|expectedRevision|expectedPlanVersion|cursor)$/iu;
@@ -337,15 +722,13 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
       }
       if (options.mode === "target") {
         return {
-          attribution: {
+          items: [{
             sourceLinks: [{
               sourceId: "source-other",
-              sourceRevision: 3,
               relation: "supported_by",
-              anchors: [{ anchorId: "anchor-other", anchorRevision: 2 }]
+              anchors: [{ anchorId: "anchor-other" }]
             }]
-          },
-          items: [],
+          }],
           nextCursor: null
         };
       }
@@ -399,8 +782,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
     "source-other", "source-existing-a"
   ]);
   assert.deepEqual(binding.sourceLinks[0].anchors, [{
-    anchorId: "anchor-other",
-    anchorRevision: 2
+    anchorId: "anchor-other"
   }]);
 });
 
@@ -610,7 +992,7 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
 
 test("#272 configuração e Observações escrevem por objetivos focais", async () => {
   const designCommands = [];
-  const observationCommands = [];
+  const observationBatches = [];
   const writeAdapter = {
     ...adapter(),
     async getCourseDesign() {
@@ -624,7 +1006,7 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
           localAssignment: { value: 1 },
           effectiveAssignment: { value: 1, inherited: false, origin: "author" }
         }],
-        guidance: { localRevision: null, effectiveRevisions: [] },
+        guidance: { localAssignment: null, effectiveAssignments: [] },
         targetPlanItems: null
       };
     },
@@ -647,9 +1029,9 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
         nextCursor: null
       };
     },
-    async executeCourseAnchoredAnnotationCommand(value) {
-      observationCommands.push(structuredClone(value.command));
-      return { changed: true };
+    async createCourseAnchoredAnnotations(value) {
+      observationBatches.push(structuredClone(value));
+      return { changed: true, createdCount: value.commands.length };
     }
   };
   const configured = await executeHumanCourseTask({
@@ -665,7 +1047,28 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
   assert.deepEqual(designCommands.map(({ type }) => type), [
     "set_parameter", "set_guidance"
   ]);
+  assert.equal(designCommands.every(({ origin }) => origin === "automatic"), true);
   assert.doesNotMatch(JSON.stringify(configured.context), /definitions|componentCatalog|recentApplications/u);
+
+  await executeHumanCourseTask({
+    adapter: writeAdapter,
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      unidade: "Unidade um",
+      condicao: "pesquisa",
+      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 }
+    }
+  });
+  assert.deepEqual(designCommands.at(-1), {
+    type: "set_parameter",
+    scope: { kind: "study_unit", ref: "unit-one" },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 2,
+    origin: "research_condition",
+    reason: "Condição de pesquisa fixada explicitamente."
+  });
 
   const observed = await executeHumanCourseTask({
     adapter: writeAdapter,
@@ -678,10 +1081,13 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
       categoria: "suggestion"
     }
   });
-  assert.equal(observationCommands.length, 2);
-  assert.deepEqual(observationCommands.map(({ target }) => target.id), [
+  assert.equal(observationBatches.length, 1);
+  assert.deepEqual(observationBatches[0].commands.map(({ target }) => target.id), [
     "unit-one", "unit-two"
   ]);
-  assert.equal(new Set(observationCommands.map(({ annotationId }) => annotationId)).size, 2);
+  assert.equal(new Set(observationBatches[0].commands.map(({ annotationId }) =>
+    annotationId)).size, 2);
+  assert.equal(new Set(observationBatches[0].commands.map(({ capturedAt }) =>
+    capturedAt)).size, 1);
   assert.match(observed.result, /separadamente em 2 Unidades/u);
 });

@@ -1,536 +1,331 @@
 # Glossário técnico
 
-Este glossário define os mecanismos da execução corrente do AraLearn. Conceitos
-de pesquisa educacional estão no [glossário de
-construtos](glossario-construtos.md). As decisões terminológicas e os
-equivalentes internacionais ficam no [vocabulário
+Este glossário define mecanismos da execução corrente do AraLearn. Conceitos de
+pesquisa educacional estão no [glossário de construtos](glossario-construtos.md).
+Decisões de nomenclatura e equivalentes internacionais ficam no [vocabulário
 controlado](vocabulario-controlado.md).
 
 ## Camadas do sistema
 
-**Execução corrente (`runtime`).** Código, banco e serviços efetivamente usados
-por uma versão. Um arquivo histórico, uma migração antiga ou um teste removido
-da jornada não pertence à execução apenas por existir no Git.
+**Execução corrente (`runtime`).** Código, banco e serviços usados por uma
+versão. Arquivo histórico ou migração antiga não volta a integrar a execução
+apenas por permanecer no Git.
 
-**Interface cliente (`frontend`).** Camada executada no navegador ou no
-WebView Android. Inclui Estudo, Autoria, Pesquisa, componentes didáticos e
-persistência local.
+**Interface cliente (`frontend`).** Código executado no navegador ou no WebView
+Android. Inclui Estudo, Autoria, componentes didáticos e persistência local.
 
-**Serviço remoto (`backend`).** Camadas que autenticam, autorizam, validam e
-persistem operações. O AraLearn usa PostgreSQL, Auth, armazenamento de objetos
-e funções remotas do Supabase.
+**Serviço remoto (`backend`).** Funções que autenticam, autorizam, validam e
+persistem operações. O AraLearn usa PostgreSQL, Auth, Storage e Edge Functions
+do Supabase.
 
-**Domínio.** Regras que expressam o produto sem depender da aparência da tela.
-Composição de Curso, resolução de parâmetros, proveniência, auditoria e
-variantes são regras de domínio.
+**Domínio.** Regras do produto independentes da aparência da tela, como
+composição, resolução de parâmetros, Fontes, Observações e Analytics.
 
-**Contrato fechado.** Estrutura que aceita apenas os campos e valores
-declarados. Evita interpretações diferentes entre navegador, função remota e
-banco.
+**Contrato fechado.** Estrutura que recusa campos e valores não declarados.
+Evita interpretações diferentes entre navegador, Edge Function e banco.
 
-**Manifesto da execução.** Resposta fechada que informa revisão do esquema,
-versão do contrato e capacidades obrigatórias. Site e função remota recusam uma
-revisão de banco incompatível.
+**Manifesto da execução.** Contrato que informa a revisão mínima do esquema e as
+capacidades exigidas pelo site e pelas funções publicadas.
 
 ## Formatos e identidades
 
-**JSON.** Formato textual de objetos, listas, textos, números, booleanos e
-`null`. Um documento JSON ainda precisa de esquema e regras adicionais para ser
-válido.
+**JSON.** Formato textual para objetos, listas e valores escalares. Um JSON ainda
+precisa de schema e regras de domínio para ser válido.
 
-**UUID.** Identificador de 128 bits representado em texto. Cursos, contas,
-Partes, Fontes e pedidos usam UUIDs para conservar identidade sem depender de
-uma sequência global.
+**UUID.** Identificador de 128 bits. O servidor usa UUIDs para manter identidade
+sem depender de título ou posição; o contrato conversacional resolve essas
+identidades a partir de referências humanas.
 
-**SHA-256.** Função de impressão digital usada para comparar bytes e conteúdo
-canônico. A igualdade da impressão digital não cifra informação nem concede
-acesso.
+**SHA-256.** Função que produz uma impressão digital dos bytes. No AraLearn ela
+ajuda a conferir PDFs; não concede acesso e não é exposta como tarefa autoral.
 
-**Esquema (`schema`).** Descrição da forma aceita por um contrato ou banco. Um
-esquema estrutural não avalia correção factual ou qualidade pedagógica.
+**Schema.** Descrição da forma aceita por um contrato ou tabela. Validade
+estrutural não demonstra correção factual ou qualidade pedagógica.
 
-**Canonicidade.** Existência de uma única representação normativa para o mesmo
-fato ou contrato. A forma canônica permite comparar, assinar e repetir pedidos
-sem manter nomes paralelos.
+**Canonicidade.** Existência de uma representação normativa para o mesmo estado
+ou contrato, sem aliases e caminhos concorrentes.
 
 ## Curso e composição
 
-**Curso vivo (`course`).** Raiz identificável e mutável compartilhada por
-Estudo, Autoria, Pesquisa, MCP e Actions. Conserva proprietário, título,
-objetivo, revisão e datas. Plano, composição e estados relacionados ficam em
-relações próprias sob o mesmo `courseId`.
+**Curso vivo (`course`).** Raiz mutável compartilhada por Estudo, Autoria, MCP e
+Actions. Possui proprietário, título, objetivo, revisão e relações próprias para
+plano, composição, configuração, Fontes e Observações.
 
-**Revisão do Curso (`revision`).** Inteiro crescente alterado por uma mudança
-autoral confirmada. Serve à concorrência e à leitura coerente; não cria outro
-Curso.
+**Revisão do Curso (`revision`).** Inteiro crescente usado para leitura coerente
+e concorrência. Não cria uma versão paralela do Curso.
 
-**Cópia pessoal de Curso.** Curso privado criado para a pessoa que editou, em
-Estudo, um Curso recebido por acesso direto. A primeira gravação materializa a
-composição e aplica a mudança no novo Curso; não transfere propriedade do
-original nem copia planejamento, Fontes, PDFs, acessos, progresso ou
-Observações. Distingue-se de réplica local e cópia temporária, que não constituem
-outra autoridade no servidor.
+**Composição didática.** Estrutura corrente de Curso, Módulo, Lição,
+Microssequência didática e StudyUnit. Um Tópico pode classificar conteúdo dentro
+da Lição, mas não acrescenta um nível ao percurso principal.
 
-**Composição didática.** Estrutura curricular corrente do Curso:
-Curso, Módulo, Lição, Microssequência didática e Unidade de estudo. Um Tópico
-pode classificar conteúdo dentro da Lição, mas não acrescenta outro nível a
-essa sequência.
+**StudyUnit (`study_unit`).** Unidade persistida, ordenável, endereçável e
+renderizável. Pode explicar, representar, pedir resposta e oferecer retorno.
 
-**Entidade de Curso (`course entity`).** Linha persistida de Módulo, Lição,
-Tópico, Microssequência ou Unidade, com identidade, pai, posição e conteúdo
-compatíveis com seu tipo.
+**Documento `aralearn.course.v1`.** Forma hierárquica aceita para intercâmbio e
+composição de um Curso.
 
-**Unidade de estudo (`study_unit`).** Menor unidade persistida, ordenável,
-endereçável e renderizável. Pode apresentar conteúdo, pedir resposta e oferecer
-retorno. `studyUnits` é a coleção correspondente no documento hierárquico.
+**Achatamento (`flatten`).** Conversão do documento hierárquico em linhas.
+**Composição (`compose`)** é o caminho inverso. A ida e volta só é válida quando
+recompõe um documento aceito pelo contrato.
 
-**Documento `aralearn.course.v1`.** Contrato hierárquico corrente. O perfil de
-intercâmbio aceita um ou mais Cursos; o perfil unitário do núcleo representa um
-Curso. Ambos usam a mesma identidade e a mesma hierarquia.
-
-**Achatamento (`flatten`).** Transformação do documento hierárquico em linhas
-de entidades. **Composição (`compose`)** é a operação inversa. O percurso de ida
-e volta só é válido quando recompõe um documento aceito pelo contrato.
-
-**Normalização relacional.** Separação de fatos para evitar duplicação e
-anomalias. O AraLearn normaliza raiz, entidades, acesso, planejamento e fatos
-consultáveis; o conteúdo interno dos componentes permanece em JSON validado e
-versionado.
+**Cópia pessoal de Curso.** Curso privado criado quando uma pessoa edita um Curso
+recebido somente para Estudo. Não transfere propriedade do original nem cria uma
+réplica compartilhada.
 
 ## Planejamento e produção
 
-**Plano instrucional vivo.** Planejamento revisável que reúne público, escopo,
-resultados pretendidos, unidades de análise, requisitos de evidência e Partes.
-Título e objetivo aparecem nessa leitura, mas pertencem à raiz do Curso.
+**Plano instrucional vivo.** Planejamento revisável com público, escopo,
+resultados pretendidos, AnalysisUnits, requisitos de evidência e Partes.
 
-**Item do plano.** Enunciado ordenado e versionado de resultado pretendido,
-unidade de análise instrucional ou requisito de evidência. A pessoa o edita em
-linguagem natural.
+**Parte de autoria.** Lote operacional para planejar e produzir uma ou mais
+Microssequências. Parte não pertence à hierarquia didática e pode ser reaberta.
 
-**Atribuição de item.** Relação entre uma Microssequência e os itens que sua
-produção precisa considerar. Resultados gerais do Curso não são copiados para
-cada alvo.
+**AnalysisUnit (`instructional_analysis_unit`).** Novidade semanticamente
+independente para o público, tarefa e contexto. Não é sinônimo de tópico amplo.
 
-**Parte de autoria.** Agrupamento operacional configurável para planejar,
-produzir e revisar várias Microssequências numa iteração. Parte não pertence à
-hierarquia didática.
+**Requisito de evidência.** Evidência de desempenho que o plano considera
+necessária. Uma atividade de consolidação não cria um requisito apenas por
+existir.
 
-**Faixa preferencial de Partes.** Mínimo e máximo operacionais associados à
-origem automática, autoral ou de pesquisa. O valor inicial de 7 a 12 é
-configurável e pesquisável, sem valor de lei pedagógica.
+**Materialização.** Gravação atômica das StudyUnits de uma Parte aprovada, com
+aplicação da configuração e da proveniência pertinente. Preparação e validação
+intermediárias não se tornam um histórico de produto.
 
-**Vínculo de produção.** Relação exclusiva entre uma Parte e uma
-Microssequência, com ordem própria. Retirar o vínculo não exclui a
-Microssequência nem muda sua posição curricular.
+**Inventário semântico.** Conjunto de novidades necessárias antes da produção.
+Ao comparar tetos diferentes, o inventário permanece equivalente e muda apenas
+a distribuição pelas StudyUnits.
 
-**Execução de materialização.** Registro retomável da produção ou atualização
-de conteúdo de uma Parte. Conserva estado, versão, contexto derivado no servidor
-e fatos do resultado.
+## Configuração autoral
 
-**Etapa de materialização.** Operação limitada de leitura de contexto,
-produção de uma Microssequência ou validação. A confirmação grava entidades,
-vínculos, aplicação de desenho, proveniência e revisão na mesma transação.
+**Parâmetro pedagógico.** Uma das quatro decisões configuráveis sobre teto de
+novidade, formas de explicação, oportunidades mínimas de prática e dimensões de
+variação.
 
-**Progresso derivado de Parte.** Projeção calculada a partir dos vínculos, das
-Unidades e das etapas confirmadas. Nenhuma pessoa ou modelo marca esse progresso
-por simples declaração.
+**Valor efetivo.** Resultado corrente da precedência entre Curso e
+Microssequência para uma StudyUnit. A leitura informa o valor e o escopo que o
+definiu.
 
-## Parâmetros e orientações
+**Herança.** Uso do valor do escopo mais amplo quando o escopo focal não possui
+uma definição. Limpar uma definição restaura essa relação.
 
-**Parâmetro de desenho instrucional.** Definição fechada e versionada de uma
-decisão pedagógica controlável, com tipo, escopos, valor-padrão, limitações e
-referências. Limites técnicos e métricas pertencem a outros conceitos.
+**Direção editorial.** Orientação de extensão, estilo, títulos ou organização,
+separada dos parâmetros pedagógicos. Nunca elimina novidade necessária; pode
+levar à criação de mais StudyUnits.
 
-**Atribuição de parâmetro.** Registro que define ou remove o valor num escopo e
-conserva origem automática, autoral ou de pesquisa, além do motivo. Herança e
-valor-padrão são calculados.
-
-**Valor efetivo.** Resultado da resolução de precedência para um alvo. A
-interface mostra o valor, a origem e o escopo de onde ele veio.
-
-**Revisão de orientação.** Texto original imutável ligado ao Curso, ao escopo,
-ao canal e à revisão. Orientações efetivas acumulam do Curso até o alvo.
-
-**Interpretação de orientação.** Registro separado que conserva resumo,
-diretivas, divergências e perguntas para uma revisão exata. Não substitui o
-texto humano nem armazena raciocínio privado.
-
-**Política de componentes.** Valor completo que fixa a revisão do catálogo,
-disponibilidade geral ou restrita, referências permitidas, bloqueadas e
-preferidas. Bloqueio prevalece; preferência não concede permissão.
+**Política de componentes.** Disponibilidade, preferência ou restrição corrente
+de pacotes didáticos. Preferência não concede permissão e não cria quota de
+variedade.
 
 ## Componentes didáticos
 
 **Componente didático.** Capacidade modular que apresenta uma representação,
-coleta uma resposta ou oferece retorno dentro de uma Unidade de estudo.
+coleta resposta ou oferece retorno dentro de uma StudyUnit.
 
 **Pacote de componente (`component package`).** Módulo versionado que reúne
-manifesto, esquema, normalização, validação, mecanismo de renderização,
-capacidades e exemplos.
+manifesto, schema, normalização, renderização, capacidades e exemplos.
 
-**Núcleo de execução de componentes.** Código comum de composição, ciclo de
-vida, acessibilidade e protocolos. Um pacote novo não exige uma enumeração
-paralela no núcleo, no navegador, na função remota ou no MCP.
-
-**Biblioteca de componentes.** Índice gerado a partir dos manifestos. Navegador
-e função remota usam a mesma fonte para descoberta, inspeção e validação.
+**Biblioteca de componentes.** Índice gerado dos manifestos e consultado sob
+demanda quando a função instrucional não determina claramente a representação.
 
 **Forma de resposta.** Contrato de interação da prática, como escolha,
-preenchimento ou ordenação. Distingue-se do componente que apresenta o
-conteúdo.
+preenchimento ou ordenação. Distingue-se do componente que apresenta conteúdo.
 
-**Adequação contextual (`canonical`, `versatile`, `substitute`).** Relação
-declarada entre uma necessidade e um candidato específico, geral ou
-aproximativo. A classificação orienta seleção e aviso; não ordena qualidade ou
-eficácia.
+**Adequação contextual (`canonical`, `versatile`, `substitute`).** Relação entre
+uma necessidade e um candidato específico, geral ou aproximativo. Uma forma
+substituta pode exigir reparo mesmo quando seu schema é válido.
 
-**Hidratação.** Etapa em que um componente já desenhado liga comportamento ao
-DOM. HTML visível sem interação necessária caracteriza falha de hidratação.
+**Hidratação.** Ligação do comportamento ao DOM já renderizado. HTML visível sem
+uma interação obrigatória indica falha de hidratação.
 
-## Persistência local e carregamento
+## Persistência local e navegação
 
-**IndexedDB.** Banco transacional do navegador. Mantém sessão, páginas,
-documentos compostos, estado pessoal e as filas específicas de Observações.
+**IndexedDB.** Banco transacional do navegador usado para sessão, páginas,
+documentos compostos, estado pessoal e filas específicas de Observações.
 
-**Cópia temporária (`cache`).** Cópia regenerável usada para reduzir latência e
-rede. Não constitui outra autoridade sobre o Curso.
+**Cache.** Cópia regenerável usada para reduzir latência. Não constitui outra
+autoridade sobre o Curso.
 
-**Réplica local.** Cópia suficientemente completa para continuar uma tarefa sem
-conexão. A réplica do Curso permite leitura; estado pessoal e Observações
-conservam intenções de escrita em filas separadas.
+**Réplica local.** Cópia suficiente para leitura sem conexão. Uma candidata só
+substitui a revisão local válida depois de ser recomposta e validada.
 
-**Fila de saída.** Operações ainda não confirmadas pelo servidor. Estado
-pessoal e Observações usam contratos próprios; não existe uma fila universal de
-Autoria.
+**Fila de saída.** Intenções ainda não confirmadas pelo servidor. Estado pessoal
+e Observações usam filas próprias; não existe fila universal de Autoria.
 
-**Estado pessoal de Curso.** Documento v2 por pessoa e Curso que contém
-progresso e marcas para rever. Sua alteração não incrementa a revisão autoral.
+**Estado pessoal de Curso.** Documento por pessoa e Curso com progresso e marcas
+para rever. Sua alteração não incrementa a revisão autoral.
 
-**Lista fina.** Página de descritores sem a composição integral. Contém apenas
-o necessário para localizar, ordenar e apresentar a lista de Cursos.
+**Paginação por cursor.** Leitura cuja página seguinte começa após uma chave
+estável. O cursor pertence ao recorte e não representa posição curricular.
 
-**Paginação por cursor.** Leitura cuja página seguinte começa depois da última
-chave estável recebida. O cursor é vinculado ao recorte e não representa posição
-curricular.
+**Deep link.** Endereço que abre Curso, área e objeto reconhecível. IDs técnicos
+podem existir no URL, mas não são a linguagem pedida à pessoa ou ao modelo.
 
-**Carregamento sob demanda.** Busca da composição ou do detalhe apenas quando o
-destino é aberto. Não implica descarte automático de dados locais válidos.
-
-**Sequência curricular de Conteúdo.** Percurso exclusivo do proprietário que
-apresenta Unidades numa sequência vertical fiel a Estudo, com respostas inertes,
-dentro da tarefa Conteúdo.
-
-**Âncora de Conteúdo.** Identidade da Unidade que precisa entrar na primeira
-página de um endereço direto ou de uma restauração. Não é enviada junto com o
-cursor.
-
-**Posição local de Conteúdo.** Registro por dispositivo com escopo, Unidade,
-deslocamento em relação ao topo fixo e revisão do Curso. Serve à retomada e não
-vira fato pedagógico compartilhado.
-
-**Janela limitada.** Trecho da sequência mantido no DOM enquanto itens
-distantes usam espaçadores. A sequência de Conteúdo pagina doze Unidades e mantém no máximo
-trinta e seis.
+**Posição local de Conteúdo.** Registro por dispositivo usado para retomar Unit,
+deslocamento e revisão. Não vira fato pedagógico compartilhado.
 
 ## Concorrência e repetição segura
 
-**Concorrência otimista.** Estratégia em que uma escrita só confirma se a
-versão lida ainda for corrente.
+**Concorrência otimista.** Uma escrita só confirma se a revisão lida continuar
+corrente.
 
 **Comparação e troca (`compare-and-swap`, CAS).** Comparação atômica entre a
-revisão esperada e a atual antes de gravar o novo estado.
+revisão esperada e a atual antes da gravação. A camada confiável executa essa
+operação sem pedir números ao modelo.
 
-**Idempotência.** Propriedade de repetir o mesmo pedido e obter o mesmo efeito,
-sem duplicação. Reutilizar a chave com conteúdo diferente é recusado.
+**Idempotência.** Repetir a mesma intenção produz o mesmo efeito sem duplicação.
 
-**`requestId`.** Identidade da repetição segura. Não é identidade de Curso nem
-permissão.
-
-**Recibo de idempotência.** Registro temporário da impressão digital e do
-resultado mínimo. Não substitui evento, histórico ou estado corrente.
-
-**Rebase de estado pessoal.** Releitura do estado remoto seguida da aplicação
-das operações locais pendentes. Conflito persistente encerra o ciclo e pede nova
-leitura.
+**Recibo temporário.** Registro de curta duração que permite recuperar o
+resultado de uma escrita cuja resposta se perdeu. Não é histórico autoral.
 
 **Bloqueio consultivo transacional (`advisory lock`).** Bloqueio PostgreSQL por
-chave lógica durante uma transação. Serializa operações concorrentes sem criar
-uma entidade de produto.
-
-**Evento de Curso.** Registro somente de acréscimo que conserva metadados e um
-resumo da mudança quando há consumidor de histórico ou pesquisa. Não copia o
-conteúdo nem registra endereço de correio eletrônico.
+chave lógica durante uma transação, sem criar entidade de produto.
 
 ## Autenticação, acesso e segurança
 
 **Autenticação.** Verificação da identidade de uma conta.
 
-**Autorização.** Decisão sobre uma operação específica e um Curso específico.
+**Autorização.** Decisão sobre uma operação e um Curso específicos.
 
-**Proprietário (`owner`).** Conta que possui o Curso. A Autoria, a Pesquisa, o
-MCP e Actions sobre esse Curso pertencem ao proprietário.
+**Proprietário (`owner`).** Conta que possui o Curso e pode usar sua Autoria,
+MCP, Actions e Analytics.
 
-**Acesso direto.** Relação Curso-pessoa que concede Estudo. Não cria grupo,
-organização, papel autoral ou coautoria.
-
-**Perfil de pessoa.** Nome e referência opcional de avatar associados à conta.
-Perfil não define autorização.
+**Acesso direto.** Relação Curso–pessoa que concede Estudo. Não cria coautoria
+nem permissão de edição.
 
 **Segurança por linha (`Row Level Security`, RLS).** Políticas PostgreSQL que
-filtram linhas segundo a sessão autenticada. A proteção permanece necessária
-mesmo quando uma função remota também valida autoridade.
+filtram linhas segundo a sessão autenticada.
 
-**Menor privilégio.** Cada papel recebe apenas tabelas e funções exigidas. Uma
-função nova não se torna acessível até entrar na lista explícita de permissões.
+**Menor privilégio.** Cada papel recebe somente tabelas e funções necessárias.
 
-**Papel de serviço (`service_role`).** Papel administrativo do PostgreSQL usado
-pelas funções remotas para chamar contratos internos. No ambiente hospedado, a
-Edge Function recebe uma chave secreta `sb_secret_` que atua com essa
-autoridade; a antiga JWT `service_role` fica restrita ao stack local de teste.
-Nenhuma das duas pertence ao navegador, ao MCP ou a Actions.
+**Papel de serviço (`service_role`).** Autoridade administrativa restrita às
+Edge Functions e testes locais; nunca pertence ao navegador ou ao modelo.
 
-**Compartimento privado (`bucket`).** Conjunto de objetos sem endereço público.
-Avatar e PDF de Fonte exigem autorização antes da emissão de um endereço
-temporário.
-
-**Exclusão de conta com limpeza física.** O aplicativo envia uma solicitação
-confirmada, e a API deriva os Cursos e caminhos privados da pessoa autenticada.
-A credencial administrativa permanece dentro da API enquanto ela remove PDFs e
-avatares. A função transacional confirma que nenhum desses objetos permanece
-antes de excluir a conta e os dados relacionais. Uma limpeza incompleta
-interrompe a operação sem excluir a conta e permite repeti-la.
+**Bucket privado.** Conjunto de objetos que exige autorização antes de emitir um
+endereço temporário. PDFs de Fonte e avatares usam buckets separados.
 
 ## API, banco e funções remotas
 
-**PostgreSQL.** Autoridade remota para Curso, composição, planejamento,
-propriedade, acesso, perfil, estado pessoal, Observações, Fontes, auditoria,
-variantes e fatos de Pesquisa.
+**PostgreSQL.** Autoridade remota para Curso, composição, plano, configuração,
+acesso, estado pessoal, Observações, Fontes e dados de Analytics.
 
-**PostgREST.** Camada que expõe funções PostgreSQL por HTTP conforme as
-permissões do banco.
+**PostgREST.** Camada que expõe funções PostgreSQL por HTTP conforme privilégios
+e políticas.
 
-**Chamada de procedimento remoto (`Remote Procedure Call`, RPC).** Função de
-banco chamada pela rede. Mantém transação, autorização e regras próximas aos
-dados.
+**RPC (`Remote Procedure Call`).** Função de banco chamada pela rede para manter
+transação, autorização e invariantes próximos dos dados.
 
-**Função remota (`Edge Function`).** Função HTTP executada na infraestrutura do
-Supabase. A API de Curso, o servidor MCP e Actions autenticam seus transportes
-e delegam mutações às funções canônicas do banco.
+**Edge Function.** Função HTTP executada no Supabase. API de Curso, MCP e
+Actions autenticam o transporte e delegam aos mesmos casos de uso.
 
-**Roteador de Curso.** Camada compartilhada que transforma rotas HTTP em casos
-de uso. Evita que interface visual, MCP e Actions implementem regras de domínio
-diferentes.
+**Roteador de Curso.** Camada que transforma rotas HTTP em casos de uso sem
+duplicar regras entre interface, MCP e Actions.
 
-## MCP e assistência conversacional
+## MCP e Actions
 
-**Model Context Protocol (MCP).** Protocolo pelo qual um cliente descobre
-ferramentas e recursos e os chama com argumentos tipados.
+**Model Context Protocol (MCP).** Protocolo pelo qual um cliente descobre e chama
+ferramentas tipadas.
 
-**Ferramenta MCP.** Operação tipada, com esquema e indicação de leitura ou
-escrita. Não oferece acesso direto ao banco.
+**Tarefa humana.** Caso de uso público expresso em títulos, posições e outras
+referências reconhecíveis. O catálogo corrente possui oito leituras e oito
+escritas compartilhadas por MCP e Actions.
 
-**Recurso MCP.** Conhecimento carregado sob demanda. Invariantes estáveis podem
-ficar num recurso; planejamento, parâmetros e demais dados mutáveis permanecem
-no Curso.
+**Ferramenta MCP.** Projeção de uma tarefa humana com schema e indicação de
+leitura ou escrita.
 
-**MCP Apps.** Extensão opcional que apresenta conteúdo estruturado dentro do
-cliente. Pesquisa e Variantes podem usar um componente visual; a representação
-textual continua disponível com os elementos canônicos do resultado quando o
-cliente não oferece essa extensão. Um
-endereço permanece disponível somente nos contratos que o fornecem.
+**Action.** Caminho HTTP descrito em OpenAPI para a mesma tarefa humana. O
+transporte de arquivo pode adaptar a referência temporária de PDF sem mudar o
+caso de uso.
 
-**OAuth.** Protocolo de autorização usado para conectar a conta individual a
-um cliente. O MCP usa o servidor OAuth 2.1 do Supabase; Actions mantém uma
-concessão própria para o GPT. Tokens e consentimentos não são intercambiáveis.
+**Recurso MCP.** Conhecimento estável carregado sob demanda. Estado mutável do
+Curso é lido por tarefas e não copiado para o recurso.
 
-**PKCE.** Vínculo criptográfico entre a solicitação de autorização e a troca do
-código. O AraLearn exige o método S256.
+**OAuth.** Protocolo usado para conectar a conta individual ao cliente. MCP e
+Actions possuem concessões próprias; os tokens não são intercambiáveis.
 
-**Escopo OAuth.** Limite declarado numa concessão. O MCP anuncia exatamente
-`offline_access`, necessário à renovação; Actions declara `openid email` para a
-conexão da conta. Nenhum desses nomes concede escrita por si. Cada mutação ainda
-depende da operação admitida, do principal resolvido e da propriedade do Curso.
+**PKCE.** Vínculo criptográfico entre pedido de autorização e troca do código.
+O MCP usa o método S256.
 
-**Capacidade interna de autoria.** Marca criada pelo servidor depois de validar
-a credencial e resolver a pessoa. `authoring:read` permite as operações de
-leitura e `authoring:write`, as operações mutáveis. Essas marcas não integram a
-descoberta OAuth nem podem ser pedidas pelo cliente para ampliar autoridade.
+**Resposta de coordenação.** Resultado curto, deep link e uma próxima decisão.
+O contexto estruturado pode permanecer completo sem ser despejado na conversa.
 
-**Instrução de sistema (`system prompt`).** Instruções estáveis do cliente.
-Dados mutáveis do Curso são lidos pelas ferramentas e não copiados para esse
-texto.
+## Observações e revisão
 
-**Pedido levado à conversa.** Texto que a interface copia para uso num cliente
-conectado. A cópia não altera o Curso nem informa progresso até que operações
-confirmadas ocorram.
+**Observação.** Apontamento ancorado num objeto do Curso. Uma seleção de várias
+StudyUnits cria registros separados, não um lote permanente.
 
-**Comando de plano.** Operação fechada para atualizar campos, itens, Partes e
-vínculos de produção. Interface, MCP e Actions usam o mesmo domínio.
+**Caixa de Observações.** Consulta filtrável das manifestações correntes. Estado
+aberto ou resolvido descreve triagem e não altera o conteúdo por implicação.
 
-**Comando de composição.** Operação separada que cria, altera ou remove
-entidades didáticas. Reorganizar uma Parte não substitui conteúdo
-implicitamente.
+**Revisão contextual.** Releitura do alvo e de Units relacionadas por progressão,
+pré-requisito, transição, exemplo ou prática antes de propor mudanças.
 
-**Canal de autoria.** Origem persistida da mutação: `application` para a
-interface, `mcp` para um cliente MCP ou `actions` para um GPT conectado. O canal
-descreve o transporte, sem mudar autoridade ou validação.
+**Achado de revisão.** Problema concreto identificado na análise corrente, com
+evidência e proposta. Não cria um ledger ou uma identidade histórica permanente.
 
-**Endereço direto.** Endereço que abre Curso, área e objeto reconhecível sem expor
-um identificador técnico como linguagem principal para a pessoa.
-
-## Observações situadas
-
-**Observação.** Nome apresentado à pessoa para uma manifestação voluntária
-ligada a um alvo do Curso.
-
-**Anotação ancorada.** Registro técnico da Observação, com corpo, alvo,
-identidade protegida, canal, revisão, estado e datas. Várias podem coexistir no
-mesmo alvo.
-
-**Reformulação de Fonte.** Resposta autoral a uma solicitação ligada a Fonte ou
-Âncora. O registro identifica as revisões de Fonte e Âncora consideradas, sem
-copiar o PDF ou seu conteúdo para a Observação.
-
-**Versão do conjunto de Observações.** Contador crescente que protege leituras
-e mutações. Para o proprietário cobre o Curso; em Estudo cobre somente a
-projeção privada da própria pessoa.
-
-**Pessoa protegida.** Forma pseudonimizada apresentada ao proprietário. O
-contrato não entrega UUID ou endereço de correio eletrônico de quem registrou a
-Observação.
+**Correção autoral.** Conjunto aprovado de mudanças em uma ou mais StudyUnits.
+Aplicação não prova resolução; o conjunto precisa ser reinspecionado.
 
 ## Fontes, Âncoras e PDFs
 
-**Fonte.** Objeto interno ou externo do qual uma afirmação ou representação
-deriva. Possui identidade estável e revisões somente de acréscimo.
+**Fonte.** Referência bibliográfica corrente pertencente ao Curso. Pode ser
+contestada, revisada, removida e reativada.
 
-**Revisão de Fonte.** Estado imutável dos metadados de uma Fonte em determinado
-momento. Título, autoria, data, idioma, origem, disponibilidade, relações e
-identificadores pertencem à revisão.
+**Âncora.** Localização verificável dentro de uma Fonte, como página, seção ou
+trecho.
 
-**Âncora de Fonte.** Seletor versionado que localiza página, seção, parágrafo,
-intervalo temporal, fragmento de endereço ou trecho textual numa revisão exata.
+**Atribuição de Fonte.** Relação corrente entre Fonte, Âncora e objeto do Curso,
+com papel como apoio, contexto, contraste ou exemplo.
 
-**Atribuição de Fonte.** Conjunto ordenado de vínculos entre um item do plano ou
-uma Unidade, revisões de Fontes, relações declaradas e Âncoras exatas.
+**Anexo de PDF.** Descritor relacional ligado a uma Fonte e a um objeto privado.
+O serviço calcula tamanho e SHA-256; cliente e modelo não escolhem o caminho do
+Storage.
 
-**Proveniência.** Relação verificável entre Fonte, planejamento, produção e
-Unidade. Identidade, revisão, relação, localização e aplicação podem ser
-comprovadas; correção factual e autoria científica exigem outras evidências.
+**Tombstone de anexo.** Estado relacional que conserva a remoção necessária para
+impedir novas leituras e coordenar a limpeza física.
 
-**Referência importada não resolvida (`unresolved_legacy`).** Referência preservada
-sem metadados ou Âncora inventados. Fica oculta em Estudo até receber uma revisão
-ativa na mesma identidade.
+**Intenção de upload ou exclusão.** Registro temporário aberto enquanto uma
+operação com bytes precisa ser concluída ou recuperada. Intenções encerradas ou
+expiradas não formam histórico permanente.
 
-**Anexo PDF de Fonte.** Forma opcional de acesso a uma Fonte, representada por
-um objeto privado e imutável ligado à revisão exata. O serviço canônico recebe o
-arquivo autorizado, limita e valida os bytes, calcula tamanho e SHA-256, escolhe
-o objeto privado e confirma o vínculo. O cliente não fornece hash nem caminho do
-Storage. URL assinada é emitida apenas para leitura temporária. Remover o anexo
-revoga novas leituras e conserva um registro histórico do vínculo; a Fonte, sua
-citação, suas Âncoras e atribuições permanecem. O mesmo conteúdo pode ser
-reanexado, mas só volta a autorizar leitura depois da confirmação do novo vínculo.
+**URL assinada.** Endereço temporário de leitura emitido depois da autorização.
+Não é identidade do PDF e não deve ser persistido.
 
-**Ingestão de PDF de Fonte.** Caso de uso único que transforma bytes autorizados
-em anexo persistente. Pode usar uma Fonte existente ou criar/revisar a Fonte e
-ligar o PDF atomicamente. Metadados bibliográficos ausentes continuam ausentes;
-identidade binária não cria autoria, data, edição ou identificador.
+**Objeto órfão.** Byte presente no bucket sem vínculo relacional ativo. O serviço
+inventaria, confirma ausência de autorização e remove o objeto somente pela API
+do Storage.
 
-**Deduplicação por conteúdo.** Reutilização dos mesmos bytes quando o SHA-256,
-tamanho e tipo coincidem dentro do Curso e da política de acesso. Cada revisão
-mantém seu vínculo próprio.
+## Analytics e pesquisa
 
-**Cota de PDFs.** Cada arquivo aceita até 20 MiB; uma revisão de Fonte aceita
-até oito PDFs; o Curso aceita 64 MiB de conteúdo PDF único com vínculo ativo.
+**Analytics de Autoria.** Leitura quantitativa do desenho corrente e das
+intervenções humanas explicitamente observáveis, agrupada em **Desenho** e
+**Autoria**.
 
-## Auditoria e correções
+**Escopo de Analytics.** Curso, Parte, Microssequência ou StudyUnit escolhida
+para o recorte. Dados que não podem ser atribuídos aparecem como ausentes, não
+como zero.
 
-**Auditoria instrucional focal.** Verificação de uma Unidade nas dimensões
-estrutural, pedagógica, factual e editorial, usando contexto derivado pelo
-servidor. Diagnostica sem alterar o Curso.
+**Parâmetros definidos.** Quantidade de condições pedagógicas explicitamente
+fixadas no estado corrente.
 
-**Rodada de auditoria.** Registro imutável dos critérios, resultados e
-evidências de uma execução. Uma rodada sem achados continua enumerável.
+**Origem observável de StudyUnit.** Classificação factual de criação e última
+revisão como manual ou GPT quando o estado permite essa atribuição. Não é
+percentual de autoria humana.
 
-**Verificação de critério.** Aplicação de uma regra pública com resultado
-aprovado, reprovado, incerto, não aplicável ou não verificado.
+**Snapshot de Analytics.** JSON normalizado exportado pela interface com os
+mesmos números exibidos no recorte. Não contém o Curso completo.
 
-**Evidência factual.** Referência a uma revisão e Âncora ativas. Relações como
-`supported_by` e `quoted_from` possuem sentidos diferentes e não podem ser
-trocadas.
+**Condição de pesquisa.** Curso privado independente no qual a pessoa fixa uma
+configuração para comparação deliberada. A comparação não exige entidade de
+Variante nem autoriza inferência causal.
 
-**Achado de auditoria.** Identidade estável de uma divergência ou incerteza,
-com versões somente de acréscimo e estado próprio. Achado não é Observação nem
-alteração do Curso.
+## Backup e restauração
 
-**Versão do conjunto de auditoria.** Contador crescente que identifica a
-revisão consultada por páginas e exigida pelos comandos do ciclo. Distingue-se
-da revisão do Curso.
+**Backup lógico.** Dump do estado PostgreSQL. Preserva metadados relacionais de
+Storage, mas não os bytes dos objetos.
 
-**Vínculo entre achado e Observação.** Relação que guarda identidade e versão da
-Observação sem copiar texto ou pessoa. Uma Observação retirada aparece como
-indisponível enquanto o vínculo existir.
+**Restauração de upgrade.** Ensaio que restaura um backup anterior num banco
+descartável, aplica migrações e verifica o estado útil corrente.
 
-**Correção autoral.** Proposta versionada para substituir somente conteúdo e
-Fontes da Unidade focal. Não move, cria ou exclui entidades.
-
-**Registro de correção.** Par de estados anterior e posterior usado para
-conferir aplicação e reversão. Cada lado possui limite próprio e não copia o
-Curso inteiro.
-
-**Verificação de achado.** Nova rodada ligada ao achado e à correção aplicada.
-O estado resolvido exige aprovação do critério focal; resultado contrário reabre
-o achado.
-
-**Reversão de correção.** Restauração confirmada do estado anterior, permitida
-somente enquanto a Unidade ainda corresponde ao estado posterior registrado.
-
-## Variantes comparáveis
-
-**Variante comparável.** Curso independente criado a partir do mesmo
-planejamento registrado que outros Cursos. Possui identidade, revisão,
-composição, acesso e estado pessoal próprios.
-
-**Ponto comum de planejamento.** Cópia imutável do plano, da revisão e da
-impressão digital de configuração usada como origem da comparação.
-
-**Conjunto de comparação.** Relação entre o Curso de origem, o ponto comum e de
-duas a oito variantes pertencentes à mesma pessoa.
-
-**Diferença declarada.** Parâmetro ou política de componentes que a pessoa
-decidiu variar. Diferenças atuais podem coincidir com a declaração, aparecer
-sem declaração ou refletir apenas fatos de composição e proveniência.
-
-**Comparação factual.** Leitura de revisões, plano, parâmetros, política,
-Partes, Unidades, componentes, Fontes, Âncoras e PDFs. É descritiva e não produz
-inferência causal.
-
-**Desvinculação.** Remoção da relação entre um Curso e o conjunto. O Curso não é
-excluído.
-
-## Pesquisa sobre a Autoria
-
-**Fato de Autoria.** Linha identificável e redigida que descreve uma mudança ou
-estado relevante do processo, com instante, revisão, canal, origem, estado,
-objeto e valores escalares. Texto privado e identidade de conta não são
-copiados para a projeção.
-
-**Conjunto de fatos.** Recorte temático de atividade, materialização, desenho,
-Fontes, Observações, auditorias ou variantes.
-
-**Consulta versionada.** Recorte que fixa Curso, revisão, filtros, instante e
-cursor. Um cursor não pode ser reutilizado com outros filtros.
-
-**Dados ausentes.** Campo ou fato que não está disponível no recorte. Ausência
-permanece explícita e não vira zero.
-
-**Métrica.** Regra de cálculo com unidade, denominador, filtros e tratamento de
-ausências. A medida resultante não é sinônimo de construto educacional.
-
-**Exportação.** Representação CSV ou JSON de todas as páginas de uma consulta,
-acompanhada pelo recorte, dicionário e limitações. A exportação não substitui a
-consulta autorizada que a originou.
-
-**Representação equivalente.** Gráfico, tabela, texto e componente MCP que
-derivam das mesmas linhas e contagens. Divergência entre formas constitui falha
-de contrato.
+**Fronteira de Storage.** Separação entre descritores no banco e bytes nos
+buckets. Backup dos objetos exige procedimento próprio e mutações sempre passam
+pela API do Storage.

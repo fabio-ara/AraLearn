@@ -226,7 +226,6 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
         studyUnitId: reference.studyUnitId,
         citations: [{
           sourceId: "fonte-exclusiva-a",
-          sourceRevision: 1,
           title: "Fonte exclusiva do Curso anterior",
           citationText: "Fonte exibida apenas para comprovar o isolamento entre Cursos.",
           url: null,
@@ -555,7 +554,6 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
           studyUnitId: reference.studyUnitId,
           citations: [{
             sourceId: "fonte-somente-citada",
-            sourceRevision: 2,
             title: revisedProjection ? "Fonte somente citada atualizada" : "Fonte somente citada",
             citationText: revisedProjection
               ? "Autoria. Fonte somente citada atualizada. 2026."
@@ -564,13 +562,11 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
             editionOrVersion: "2ª edição",
             anchors: [{
               anchorId: "anchor-publica",
-              anchorRevision: 1,
               humanLocator: "Capítulo 4, seção 2",
               selector: { kind: "page_range", startPage: 8, endPage: 9 }
             }]
           }, {
             sourceId: "fonte-com-link",
-            sourceRevision: 1,
             title: revisedProjection ? "Fonte com link público atualizada" : "Fonte com link público",
             citationText: revisedProjection
               ? "Autoria. Fonte com link público atualizada. 2026."
@@ -580,7 +576,6 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
             anchors: []
           }, ...Array.from({ length: 18 }, (_, index) => ({
             sourceId: `fonte-extensa-${index + 1}`,
-            sourceRevision: 1,
             title: `Fonte extensa ${index + 1}`,
             citationText: `Autoria. Fonte extensa ${index + 1}. 2026.`,
             url: null,

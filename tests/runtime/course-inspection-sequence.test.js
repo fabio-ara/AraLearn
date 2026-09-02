@@ -181,17 +181,11 @@ function inspectionItem(index) {
       state: "materialized"
     },
     authorship: {
-      pendingObservationCount: 0,
-      production: {
-        materializationId: "30000000-0000-4000-8000-000000000003",
-        recordedAt: "2026-08-17T12:00:00Z",
-        state: "produced",
-        currentMaterialization: true
-      },
+      createdOrigin: "gpt",
+      lastRevisionOrigin: "gpt",
       design: {
-        used: designSnapshot(),
-        current: designSnapshot(),
-        state: "current"
+        snapshot: designSnapshot(),
+        application: {}
       }
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
@@ -452,59 +446,14 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
     scope: { kind: "authoring_part", id: PART_ID },
     anchorStudyUnitId: null
   });
-  assert.deepEqual(inspectionRequestFromTarget({ kind: "inspection_focus", id: PART_ID }), {
-    scope: { kind: "course", id: null },
-    anchorStudyUnitId: null,
-    inspectionFocusId: PART_ID
-  });
 });
 
-test("foco mostra somente o conjunto e oferece saída para o Curso no ponto corrente", async () => {
-  const root = new FakeRoot();
-  const controller = controllerFixture({
-    async loadAuthoringStudyUnits(_courseId, options) {
-      assert.equal(options.inspectionFocusId, PART_ID);
-      const page = pageFor(options, 3);
-      page.inspectionFocus = {
-        id: PART_ID,
-        title: "Microssequência · Relações essenciais",
-        deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=content&inspectionFocusId=${PART_ID}`,
-        requestedCount: 3,
-        availableCount: 3,
-        missingStudyUnitIds: []
-      };
-      return page;
-    }
-  });
-  const sequence = createCourseInspectionSequence({
-    root,
-    controller,
-    course: { courseId: COURSE_ID, revision: REVISION },
-    routeTarget: { kind: "inspection_focus", id: PART_ID },
-    windowValue: new FakeWindow(),
-    documentValue: { activeElement: null },
-    navigatorValue: null
-  });
-
-  assert.equal(await sequence.open(), true);
-  assert.match(root.innerHTML, /Filtro de inspeção ativo/u);
-  assert.match(root.innerHTML, /Microssequência · Relações essenciais/u);
-  assert.match(root.innerHTML, /3 Unidades/u);
-  assert.match(root.innerHTML, /data-inspection-exit-focus/u);
-  assert.match(root.innerHTML, /section=content&amp;studyUnitId=unit-01/u);
-  assert.doesNotMatch(root.innerHTML, /inspectionFocusId=20000000/u);
-  sequence.destroy();
-});
 
 test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações imediatas", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
-      const page = pageFor(options, 2);
-      page.items[0].authorship.pendingObservationCount = 2;
-      page.items[0].authorship.design.current = designSnapshot({ ceiling: 3 });
-      page.items[0].authorship.design.state = "changed";
-      return page;
+      return pageFor(options, 2);
     }
   });
   const sequence = createCourseInspectionSequence({
@@ -524,13 +473,11 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   assert.equal(await sequence.open(), true);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
   assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
-  assert.match(root.innerHTML, /data-inspection-review-state="design"[^>]*aria-label="Desenho vigente diferente — revisar"/u);
   assert.match(
     root.innerHTML,
-    /<a href="[^"]*section=parameters&amp;didacticMicrosequenceId=micro-a" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da Microssequência"><svg[\s\S]*?<\/svg><\/a>/u
+    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da StudyUnit"><svg[\s\S]*?<\/svg><\/a>/u
   );
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 2 pendentes" title="Observações"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e Âncoras de Unidade 1" title="Fontes e Âncoras"><svg/u);
   assert.match(root.innerHTML, /aria-label="Revisar Unidade 1" title="Revisar"><svg/u);
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
@@ -547,7 +494,6 @@ test("leitor renderiza uma única StudyUnit completa e troca o objeto por anteri
       const page = pageFor(options, 2);
       page.items[1].studyUnit.content[0].data.text =
         `Início da explicação completa. ${finalMarker}`;
-      page.items[1].authorship.pendingObservationCount = 2;
       return page;
     }
   });
@@ -581,7 +527,6 @@ test("leitor renderiza uma única StudyUnit completa e troca o objeto por anteri
   assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
   assert.match(root.innerHTML, new RegExp(finalMarker, "u"));
   assert.doesNotMatch(root.innerHTML, /data-package-instance-id="paragraph-1"/u);
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
   assert.match(root.innerHTML, /data-inspection-copy-link[^>]*data-deep-link="[^"]*studyUnitId=unit-02/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-preview|course-inspection-spacer|data-inspection-load/u);
 
@@ -1645,9 +1590,7 @@ test("observação resolvida deixa de marcar a Unidade como pendente", async () 
     root,
     controller: controllerFixture({
       async loadAuthoringStudyUnits(_courseId, options) {
-        const page = pageFor(options);
-        page.items[0].authorship.pendingObservationCount = 1;
-        return page;
+        return pageFor(options);
       },
       async loadCourseAnchoredAnnotations(_courseId, options) {
         return {
@@ -1675,7 +1618,7 @@ test("observação resolvida deixa de marcar a Unidade como pendente", async () 
   });
 
   await sequence.open();
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-review-state="observations"/u);
   await root.listeners.get("click")({
     target: {
       closest(selector) {
@@ -2091,7 +2034,6 @@ test("atualização na mesma revisão relê marcadores alterados por MCP ou Acti
       async loadAuthoringStudyUnits(_courseId, options) {
         reads += 1;
         const page = pageFor(options);
-        page.items[0].authorship.pendingObservationCount = reads === 1 ? 1 : 0;
         page.items[0].studyUnit.content[0].data.text = reads === 1
           ? "Conteúdo inicial."
           : "Conteúdo atualizado fora desta tela.";
@@ -2104,7 +2046,6 @@ test("atualização na mesma revisão relê marcadores alterados por MCP ou Acti
   });
 
   assert.equal(await sequence.open(), true);
-  assert.match(root.innerHTML, /data-inspection-review-state="observations"/u);
   assert.equal(await sequence.refresh(REVISION), true);
   assert.equal(reads, 2);
   assert.doesNotMatch(root.innerHTML, /data-inspection-review-state="observations"/u);
@@ -2193,7 +2134,7 @@ test("revisão nova cancela paginação antiga e mantém somente o trecho ancora
   sequence.destroy();
 });
 
-test("ação contextual de parâmetros abre a Microssequência e preserva retorno à Unit", async () => {
+test("ação contextual de parâmetros abre a StudyUnit e preserva retorno", async () => {
   const root = new FakeRoot();
   const events = [];
   const activeElement = {
@@ -2228,11 +2169,11 @@ test("ação contextual de parâmetros abre a Microssequência e preserva retorn
   });
   await sequence.open();
 
-  const microsequenceRoute = `#/authoring/courses/${COURSE_ID}` +
-    "?section=parameters&didacticMicrosequenceId=micro-a";
+  const studyUnitRoute = `#/authoring/courses/${COURSE_ID}` +
+    "?section=parameters&studyUnitId=unit-02";
   const routeNode = {
     dataset: { inspectionControlKey: "design:unit-02" },
-    getAttribute: () => microsequenceRoute,
+    getAttribute: () => studyUnitRoute,
     closest(selector) {
       return selector === "[data-inspection-study-unit]"
         ? { dataset: { inspectionStudyUnit: "unit-02" } }
@@ -2254,7 +2195,7 @@ test("ação contextual de parâmetros abre a Microssequência e preserva retorn
   assert.equal(events[0][1].studyUnitId, "unit-02");
   assert.deepEqual(events[1], [
     "navigate",
-    microsequenceRoute,
+    studyUnitRoute,
     {
       returnTo: inspectionItem(2).deepLink,
       returnPosition: {

@@ -80,9 +80,12 @@ function inspectionItem(ordinal, revision = fixture.course.revision) {
       state: "materialized"
     },
     authorship: {
-      pendingObservationCount: 0,
-      production: null,
-      design: null
+      createdOrigin: "gpt",
+      lastRevisionOrigin: "gpt",
+      design: {
+        snapshot: null,
+        application: null
+      }
     },
     deepLink: buildCourseAuthoringRoute(fixture.course.id, {
       section: "content",

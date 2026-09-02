@@ -1,427 +1,187 @@
-# Criar e desenvolver Cursos por conversa
+# Criar e revisar Cursos por conversa
 
-Este guia apresenta a Autoria por um cliente conectado ao Model Context
-Protocol (MCP) ou por um GPT personalizado com Actions. A conversa e a interface
-visual trabalham sobre o mesmo Curso. O cliente traduz a intenção expressa em
-linguagem natural para leituras e operações delimitadas, enquanto o AraLearn
-verifica propriedade, revisões, contratos e relações antes de confirmar uma
-mudança.
+Um cliente conectado por MCP ou um GPT com Actions pode trabalhar no mesmo
+Curso que a interface visual. A conversa serve para propor e coordenar; o
+AraLearn guarda plano, conteúdo, configuração, Fontes e Observações.
 
-Este percurso pressupõe que a organização já disponibilizou um cliente MCP
-compatível. Ele não implica que um app do AraLearn esteja publicado ou
-instalável no ChatGPT e não substitui um tutorial de instalação na interface
-corrente desse produto.
+## Fale sobre o Curso
 
-## Conversar sobre o Curso, não sobre o protocolo
+Descreva a mudança em linguagem de autoria. Você não precisa fornecer
+identificadores do banco, versões ou dados de transporte. O GPT localiza objetos
+por título, posição e referência humana e pede esclarecimento somente quando há
+ambiguidade real.
 
-O cliente precisa conservar internamente identidades, revisões, versões e
-chaves de repetição segura. Isso não obriga a pessoa a operar esses campos. A
-regra é **preservar internamente != mostrar ao usuário**.
+Uma resposta coordenadora costuma ter:
 
-A conversa progride em quatro níveis. Por padrão, mostra onde a autoria parou,
-o que existe, o que falta, o efeito da proposta, o que permanecerá intacto e a
-decisão humana necessária. Quando útil, acrescenta transparência leve, como
-“Reli o estado atual do Curso antes de preparar esta proposta”. Diante de falha,
-explica em linguagem de tarefa o que foi ou não salvo e o próximo passo seguro.
-IDs, revisões, CAS, payloads, hashes, caminhos e erros brutos aparecem somente
-sob pedido explícito.
+- uma proposta ou resultado;
+- um link para o contexto no AraLearn;
+- uma decisão seguinte, quando necessária.
 
-Prefira “A alteração foi gravada e validada; as 12 Partes continuam intactas”.
-Evite “Sucesso no `requestId` X, revisão Y, com este payload”. Se a pessoa pedir
-“Mostre os IDs, as revisões e a chamada que falhou”, o cliente pode apresentar o
-detalhe recuperado sem fabricar campos ausentes.
+Conteúdo pedagógico pode ser profundo. A coordenação não precisa repetir o que
+já está aberto na interface.
 
-## Antes de começar
+## Comece com o contexto que muda o desenho
 
-1. Conecte o endereço MCP do ambiente do AraLearn.
-2. Autorize sua conta individual por OAuth.
-3. No MCP, confirme a descoberta das seis ferramentas canônicas, de `add_part`
-   e dos recursos
-   `aralearn://authoring/*`; em Actions, confira as seis operações canônicas e as
-   três projeções dedicadas importadas do OpenAPI.
-4. Peça ao cliente que localize o Curso e leia a vista pertinente antes de
-   propor alterações.
-
-A conta conectada conserva as mesmas permissões do AraLearn. A Autoria por
-conversa exige que a pessoa seja proprietária do Curso; uma pessoa com acesso
-direto ao Estudo continua limitada ao estudo.
-
-## Apresentar o problema educacional
-
-Um bom primeiro pedido informa:
+Um briefing útil informa:
 
 - quem deverá aprender;
 - o que deverá compreender ou conseguir fazer;
 - conhecimentos prévios relevantes;
 - conteúdo e Fontes disponíveis;
-- restrições de tempo, idioma, dispositivo ou acessibilidade;
-- decisões que ainda precisam de julgamento humano.
-
-Esses elementos dão base ao planejamento. Quando faltar informação, o cliente
-deve explicitar a lacuna ou pedir esclarecimento, em vez de inventar Fonte,
-resultado de aprendizagem, valor de parâmetro ou alegação de eficácia.
-
-## Localizar ou criar o Curso
-
-Peça ao cliente que procure pelo título com `listarCursos`. Uma correspondência
-única plausível pode ser usada diretamente. Diante de homônimos, ele deve pedir
-uma escolha por informações humanas, como objetivo, etapa atual ou atividade
-recente; UUID não é a primeira opção de desambiguação.
-
-Se o Curso ainda não existir, `criarCurso` cria uma raiz privada com título e
-objetivo. A operação usa um `requestId`, que permite recuperar o mesmo resultado
-quando uma resposta de rede se perde. O Curso criado possui uma única identidade
-para Autoria, Pesquisa, Estudo, MCP e Actions.
-
-## Planejar por Partes
-
-Use `lerCurso` com `view: "instructional_plan"`. O plano reúne:
-
-- público e escopo;
-- resultados de aprendizagem pretendidos;
-- unidades de análise instrucional;
-- requisitos de evidência;
-- Partes de autoria e seus vínculos com Microssequências;
-- faixa preferencial de Partes e a origem dessa escolha.
-
-Parte de autoria agrupa trabalho de produção. Ela não integra a hierarquia
-didática, formada por Curso, Módulo, Lição, Microssequência didática e Unidade
-de estudo. A faixa inicial de 7 a 12 Partes é uma orientação operacional
-configurável, não uma prescrição pedagógica.
-
-A pessoa pode pedir que o cliente reorganize, divida, una, amplie ou reduza
-Partes. Essas mudanças preservam as Unidades já produzidas. Depois que as
-Microssequências existem, atribua a cada uma as unidades de análise e os
-requisitos de evidência que ela precisa desenvolver. Essa atribuição é
-explícita e admite vários itens em vários alvos.
-
-Ao criar um resultado de aprendizagem, uma unidade de análise, um requisito de
-evidência ou uma Parte, informe apenas os dados autorais. A camada confiável
-gera a identidade; nem a pessoa nem o modelo precisam fornecer um UUID. Para
-editar, mover, dividir ou vincular algo existente, o cliente preserva em
-silêncio a identidade recuperada na leitura do Curso.
-
-Quando a escrita ainda depender de uma decisão humana ou possuir confirmação
-própria, a confirmação deve explicar alcance e efeito pedagógico. Um
-exemplo adequado é: “Vou acrescentar 9 resultados de aprendizagem, 30 elementos
-fundamentais e 12 formas de evidência. As 12 Partes permanecem como estão e
-nenhuma aula será criada. Confirmo?”. Essa forma se adapta à mudança real; não é
-um texto fixo. Pedir confirmação de um nome de operação, de revisões ou de um
-payload é inadequado porque não esclarece o que mudará no Curso. Uma intenção
-que já declara inequivocamente manter um PDF entre as Fontes autoriza somente
-essa incorporação sem repetir uma pergunta cerimonial.
-
-Quando a proposta concreta estiver aprovada, essa única decisão autoriza todas
-as escritas atômicas, releituras e repetições seguras necessárias para persistir
-exatamente o que foi apresentado. O cliente não pede uma confirmação por item,
-chamada ou etapa técnica e nunca transfere IDs, revisões, CAS ou `requestId` à
-pessoa. Só interrompe o ciclo se precisar mudar materialmente a proposta,
-encontrar contradição pedagógica, depender de nova decisão autoral, detectar
-concorrência relevante ou não conseguir recuperar uma falha sem mudar a
-intenção.
-
-Na interface, Observações e mudanças de Parâmetros são salvas no próprio Curso e
-permanecem visíveis na Autoria. No ChatGPT conectado por MCP ou Actions, peça
-para ler esse estado, discuta a proposta e ajuste-a até que represente a intenção
-autoral. Quando a decisão ainda estiver aberta, o Curso só muda depois da
-aprovação explícita no cliente conectado. A interface normal não usa compositor
-nem transferência por cópia e cola para iniciar esse trabalho.
-
-## Configurar o desenho
-
-Leia `course_design` no Curso, na Lição ou na Microssequência pertinente. A
-vista apresenta quatro parâmetros pedagógicos:
-
-- teto de novas unidades de análise por Unidade expositiva;
-- formas de explicação exigidas quando aplicáveis;
-- quantidade mínima de oportunidades distintas de prática por requisito de
-  evidência;
-- dimensões que precisam variar entre essas oportunidades.
-
-O valor efetivo vem de uma decisão explícita da autoria ou da pesquisa, de uma
-atribuição automática justificada, ou do valor-padrão do produto. A leitura
-informa origem e escopo de proveniência. Limpar uma atribuição restaura o valor
-herdado ou o valor-padrão calculado.
-
-Orientações autorais permanecem no texto original e recebem revisões. Uma
-interpretação estruturada pode registrar resumo, diretivas, divergências e
-perguntas, sempre ligada à revisão exata e sem substituir o texto humano.
-
-A política de componentes didáticos separa:
-
-- catálogo disponível por inteiro ou limitado a uma lista;
-- componentes bloqueados;
-- componentes preferidos entre os permitidos.
-
-Bloqueio prevalece sobre permissão. Preferência orienta a escolha entre
-candidatos adequados, sem tornar o uso obrigatório.
-
-No escopo de Microssequência, `targetPlanItems` mostra os itens do plano
-atribuídos. `set_target_plan_items` substitui, na mesma operação, as listas de
-unidades de análise e requisitos de evidência daquele alvo.
-
-## Registrar Fontes e Âncoras
-
-Ao retomar em outra sessão, localize o Curso pelo título, releia o planejamento
-e consulte primeiro o catálogo. O resumo conversacional usa referências e
-localizadores humanos e permanece curto. Abra o detalhe apenas das Fontes
-pertinentes e solicite um PDF por vez somente quando a tarefa exigir verificação
-focal; não é necessário anexar novamente um documento já mantido no Curso.
-
-Use `course_sources` para percorrer o catálogo, abrir uma Fonte ou consultar o
-histórico de um alvo. Registre somente metadados conhecidos. Se faltarem autoria,
-data, edição, periódico ou outros dados necessários à referência, explicite a
-lacuna e pergunte à pessoa; não complete por plausibilidade. `citationText`
-identifica a Fonte para pessoas. Depois, crie uma Âncora que localize o trecho
-relevante por páginas, intervalo de tempo, fragmento de endereço ou citação
-textual. `humanLocator` pode nomear capítulo, seção, unidade, slide, figura ou
-tabela somente quando o próprio material declara essa identificação.
-
-Uma atribuição liga a revisão exata da Fonte e suas Âncoras a um item do plano
-ou a uma Unidade. A relação pode indicar que a Fonte informou, sustentou,
-inspirou, exemplificou, contrastou ou serviu de base para adaptação ou citação.
-Também pode registrar que o caso ainda precisa de verificação.
-
-Uma nova edição, errata ou norma substituta não herda seletores. Crie Âncoras
-na revisão ativa correspondente. A aposentadoria impede novas atribuições, mas
-mantém legíveis as referências históricas do planejamento e das Unidades.
-
-`set_target_sources` substitui o conjunto completo e ordenado do alvo. Para
-cada Unidade criada ou substituída numa operação de composição, o cliente envia
-uma aplicação de Fontes correspondente, ainda que vazia. O conteúdo interno da
-Unidade não recebe um campo paralelo `sources`.
-
-Na área **Fontes**, a pessoa proprietária também pode:
-
-- anexar PDFs privados à revisão ativa da Fonte;
-- baixar um anexo por URL assinada de 60 segundos;
-- remover somente o acesso PDF, preservando a Fonte, a citação, as Âncoras e os
-  vínculos pedagógicos, e reanexá-lo depois;
-- acompanhar a cota de PDFs do Curso;
-- exportar a proveniência de um alvo em JSON, preservando identidades,
-  revisões, relações e Âncoras.
-
-Cada PDF aceita até 20 MiB, cada revisão de Fonte aceita até oito anexos e o
-Curso aceita até 64 MiB de conteúdo PDF único. Arquivos com os mesmos bytes são
-reutilizados dentro do Curso quando impressão digital, tamanho, tipo e autorização
-coincidem.
-
-Na interface visual, selecione o arquivo na área **Fontes**. Em MCP ou Actions,
-use `incorporarPdfComoFonte`: a operação recebe o PDF pelo mecanismo de arquivo
-suportado pelo cliente e uma intenção de ligá-lo a uma Fonte existente ou de
-salvar a Fonte junto com o documento. Os três canais chegam ao mesmo serviço de
-ingestão. A pessoa não informa hash, tamanho nem caminho técnico.
-
-Fonte e PDF não são o mesmo objeto. Uma Fonte pode manter apenas URL, apenas
-PDF, ambos ou nenhum acesso disponível. Remover o PDF impede novas solicitações
-de download e libera a cota quando não resta outro vínculo ativo para os mesmos
-bytes; a identidade bibliográfica e a proveniência continuam no Curso.
-
-Para uma Fonte nova, o MCP usa `create` com `newSource`; em Actions,
-`sourceIntent` recebe diretamente `newSource`. Em ambos os casos entram o
-título e apenas os metadados bibliográficos confirmados. Identidade, revisão
-inicial e estados operacionais são responsabilidade do AraLearn. A revisão é
-reservada a uma Fonte já lida e exige seu documento completo em
-`revisedSource`.
-
-Quando a intenção cria uma Fonte ou uma Âncora, a pessoa também não informa ID:
-a camada confiável o gera de forma repetível e a releitura confirma o registro.
-Em Actions, o GPT deve descobrir `openaiFileIdRefs` em
-`incorporarPdfComoFonte`; o comando legado `attach_pdf` não é oferecido.
-
-A intenção determina se o anexo fica apenas na conversa ou passa a integrar o
-Curso:
-
-- “Use este edital para fundamentar o Curso”, “considere este PPC e esta prova
-  no planejamento” ou “incorpore esta nova norma e revise a Parte” são pedidos
-  inequívocos; o cliente incorpora cada PDF sem pedir uma frase mágica ou outra
-  confirmação cerimonial;
-- diante de “O que você acha deste PDF?”, o cliente pergunta exatamente “Você
-  quer usar este documento só nesta análise ou mantê-lo entre as Fontes do
-  Curso?”;
-- “compare só nesta análise” ou “não incorpore ao Curso” limita o uso à análise
-  temporária e não chama a operação.
-
-Essa regra vale no planejamento, materialização, revisão de Parte, Auditoria,
-correção, atualização normativa, bibliografia, Observações e Pesquisa. Se uma
-confirmação ainda for necessária, ela fala do efeito — manter o documento entre
-as Fontes e onde ele será considerado —, não do transporte. O cliente só informa
-que o PDF foi mantido depois que o AraLearn confirma a gravação. Falha de
-transferência, tamanho ou cota não vira sucesso; detalhes técnicos ficam para um
-pedido explícito.
-
-## Descobrir componentes conforme a intenção
-
-O cliente consulta o catálogo progressivamente:
-
-1. explora famílias e facetas;
-2. pesquisa pela intenção didática;
-3. inspeciona até oito candidatos;
-4. obtém o contrato exato de um componente por chamada;
-5. valida a Unidade proposta;
-6. prepara uma prévia quando a inspeção visual é necessária.
-
-No texto para pessoas, prefira o nome **componente didático**. A identidade
-técnica `package@version` deve aparecer apenas quando for necessária para
-diagnóstico ou contrato. Quando o catálogo oferece apenas uma aproximação, o
-cliente precisa informar a limitação antes de materializar.
-
-## Produzir uma Parte com segurança
-
-Ao iniciar a produção, o servidor deriva o contexto efetivo de cada
-Microssequência: parâmetros, orientações, política de componentes, itens do
-plano e Fontes aplicáveis. O cliente não fornece esse contexto como declaração
-confiável.
-
-Para cada etapa, o cliente:
-
-1. lê a execução persistida e identifica a próxima etapa;
-2. produz somente o recorte autorizado;
-3. valida hierarquia, conteúdo e contratos dos componentes;
-4. declara fatos delimitados sobre a aplicação do desenho;
-5. aplica somente Fontes e Âncoras presentes no contexto;
-6. envia o lote com as revisões e versões esperadas;
-7. relê o resultado e informa apenas o que foi confirmado.
-
-Uma única aprovação da materialização da Parte cobre esse ciclo até o
-checkpoint de inspeção. Ao terminar, o cliente cria um foco com o subconjunto
-produzido, relê as Unidades e oferece proativamente **Abrir as Unidades no
-AraLearn**. Depois do planejamento, oferece **Abrir o planejamento no
-AraLearn**; após auditoria ou correção, cria o foco das Unidades afetadas e
-oferece a mesma ação contextual.
-
-Uma etapa de Microssequência confirma entidades, vínculo com a Parte,
-proveniência, progresso, evento e recibo na mesma transação. Se a validação
-falhar, esse conjunto é revertido. Uma interrupção pode ser retomada pela etapa
-pendente, e a repetição do mesmo pedido não duplica conteúdo.
-
-As declarações sobre formas de explicação, oportunidades de prática e
-dimensões de variação permanecem examináveis. A validação comprova sua
-consistência com o contrato; a avaliação semântica e pedagógica continua sendo
-uma responsabilidade humana apoiada por auditoria.
-
-## Conferir na interface e no Estudo
-
-Depois de produzir ou alterar conteúdo:
-
-1. peça ou receba um foco coerente — normalmente uma Microssequência — e
-   confira no chat as Unidades materiais, suas práticas resolvidas, feedbacks e
-   parâmetros;
-2. use as referências curtas das Unidades para comentar diretamente na
-   conversa;
-3. abra o endereço do foco em **Conteúdo** quando precisar comparar o conjunto,
-   registrar Observações ou continuar por Unidades fora do filtro;
-4. confira o plano, as Partes e o histórico de materializações em
-   **Planejamento**, e confirme decisões e proveniência em **Parâmetros e
-   componentes** e **Fontes**;
-5. abra o mesmo Curso em **Estudo** para conferir apresentação, navegação e
-   citações visíveis;
-6. trate divergências em **Revisão**.
-
-Conteúdo e o foco incorporado reproduzem o material real sem pedir que a pessoa
-resolva a prática: lacunas, alternativas esperadas e feedback ficam expostos
-para inspeção. A edição manual e a Assistência por IA ativam somente os textos
-autorizados nesse mesmo renderer; não existe outra representação ou
-persistência de Unidade.
-
-## Registrar e tratar Observações
-
-`lerCurso` com `view: "anchored_annotations"` consulta caixa de entrada, alvo
-ou detalhe. `alterarCurso`, com `update_anchored_annotations`, cria, revisa,
-retira, considera, responde, resolve, reabre ou corrige a classificação de uma
-Observação.
-
-Para criar uma Observação pela conversa, o cliente apresenta o alvo e uma
-síntese breve e pede confirmação. O comando conserva o texto declarado, sem
-copiar a conversa inteira. Responder ou resolver uma Observação registra
-triagem; uma mudança de conteúdo pertence ao ciclo de auditoria e correção.
-
-## Auditar, corrigir e verificar
-
-Use `audit_cycle` no modo `context` para preparar uma Unidade focal. Os modos
-`findings` e `runs` listam achados e rodadas, inclusive rodadas sem achados. O
-modo `detail` abre um achado ou uma rodada exata.
-
-Uma rodada registra critérios estruturais, pedagógicos, factuais e editoriais.
-Resultado factual positivo exige Fonte e Âncora ativas. A relação
-`supported_by` pode sustentar uma afirmação; `quoted_from` comprova apenas que o
-trecho foi citado com fidelidade.
-
-Quando um achado justificar mudança, proponha uma correção focal da Unidade. A
-proposta pode substituir conteúdo e o conjunto de Fontes, preservando
-identidade, pai e posição. A pessoa confirma a aplicação depois de compreender
-o efeito. Em seguida, outra rodada verifica o critério: `resolved` exige
-resultado aprovado; `still_open` mantém o achado aberto. A reversão também
-exige confirmação e só se aplica enquanto o estado correspondente continuar
-corrente.
-
-## Criar variantes comparáveis
-
-Use a área **Variantes** ou `update_course_variants` para criar de duas a oito
-variantes a partir do planejamento atual. Uma variante serve de referência
-inicial; ao menos outra declara uma diferença de parâmetro ou de política de
-componentes. Cada resultado é um Curso independente.
-
-A comparação informa o ponto comum de planejamento, as revisões, as diferenças
-declaradas, os fatos materializados, os desvios e os dados ausentes. Alterar um
-Curso não altera os demais. Desvincular uma variante remove somente a relação
-comparativa e preserva o Curso.
-
-## Examinar os fatos de Autoria
-
-A vista `research` e a área **Pesquisa** consultam os mesmos sete conjuntos de
-fatos: atividade, materializações, desenho, Fontes, Observações, auditorias e
-variantes. O recorte pode usar canal, origem, estado e período. Cada gráfico
-possui tabela equivalente, definição da métrica, denominador, dados ausentes e
-limites de interpretação.
-
-O cliente pode conduzir a pessoa ao Curso, Parte, Unidade, Fonte, Observação,
-achado ou comparação que originou o fato. A interface exporta CSV e JSON sob a
-mesma revisão. Contagens descrevem o processo de Autoria; não medem
-aprendizagem, atenção, esforço ou eficácia.
-
-## Retomar em outra conversa
-
-Não é necessário levar um prompt de restauração, UUIDs ou revisões para outra
-sessão. Um pedido suficiente pode ser:
-
-> Continue a autoria do curso Gestão de Servidores; quero terminar o planejamento
-> antes de produzir conteúdo.
-
-O cliente localiza os Cursos próprios pelo nome. Se houver uma única
-correspondência plausível, continua com ela; se houver ambiguidade real,
-apresenta diferenças compreensíveis e pede uma escolha. Em seguida, deve reler:
-
-1. o recurso de invariantes;
-2. o Curso e sua revisão;
-3. o plano e a Parte pertinente;
-4. o desenho, os componentes e as Fontes do alvo;
-5. a execução de materialização, se houver etapa pendente;
-6. o achado, a rodada ou a comparação pertinente, quando aplicável.
-
-O estado recuperável está no Curso e em seus registros associados. A conversa
-anterior não se torna uma cópia oculta do planejamento. Ela pode ajudar a
-descobrir o alvo, mas o cliente reconstrói revisões e versões a partir do estado
-vivo, identifica a etapa autoral e responde com o que falta e a próxima decisão.
-Um link para a interface é oferecido quando ajuda uma ação concreta, não como
-detalhe obrigatório de toda retomada.
-
-## Resolver falhas comuns
-
-| Situação | Como proceder |
-| --- | --- |
-| autorização expirou | refaça o OAuth com a mesma conta |
-| Curso não foi encontrado | confira conta, identidade e propriedade |
-| revisão mudou | releia o estado vivo, preserve o trabalho novo e reconcilie a proposta |
-| pedido perdeu a resposta | não anuncie sucesso; recupere o resultado ou repita com segurança |
-| componente foi bloqueado | releia a política efetiva e escolha entre os permitidos |
-| Fonte ou Âncora foi recusada | releia a revisão ativa e envie o conjunto completo do alvo |
-| PDF não foi transferido | informe que a incorporação não foi confirmada e tente novamente com o mesmo documento quando for seguro |
-| PDF excedeu tamanho ou cota | explique o limite aplicável e peça outro arquivo ou a liberação de espaço, sem afirmar que o documento foi mantido |
-| evidência factual foi recusada | confira relação, Fonte, Âncora e revisão do critério |
-| correção ficou desatualizada | releia a Unidade e prepare outra proposta sobre o estado corrente |
-| resultado não apareceu | informe o que não pôde ser confirmado e confira ambiente, conta, Curso e destino da interface |
-
-Os argumentos completos estão em [Autoria por MCP](autoria-mcp.md). Para os
-fundamentos da assistência, consulte [Assistência por modelo de
-linguagem](assistencia-por-ia.md).
+- idioma, dispositivo, acessibilidade e outras restrições reais;
+- condições que você deseja fixar para comparação.
+
+No uso comum, o GPT calibra os parâmetros pedagógicos a partir desse contexto.
+Ele não transforma a conversa num questionário. Se faltar uma decisão material,
+faz uma pergunta por vez.
+
+## Localize ou crie o Curso
+
+Para continuar algo existente, peça que o GPT retome pelo título. A tarefa
+`retomar_curso` devolve o Curso e um link. Se houver homônimos, acrescente
+objetivo ou outro traço humano.
+
+Para começar do zero, confirme título e objetivo. `criar_curso` cria um Curso
+privado. Depois, a próxima decisão é planejar a primeira Parte; não é necessário
+preencher toda a estrutura numa única resposta.
+
+## Planeje uma Parte por vez
+
+O ciclo padrão é:
+
+1. o GPT propõe a próxima Parte;
+2. você aprova ou pede uma mudança;
+3. `salvar_parte` grava a Parte completa;
+4. `consultar_planejamento` relê o estado;
+5. o GPT propõe a Parte seguinte.
+
+Uma Parte salva contém uma ou mais Microssequências. Para cada uma, a proposta
+declara:
+
+- Módulo e objetivo do Módulo;
+- Lição e objetivo da Lição;
+- título e objetivo da Microssequência;
+- função de explicar, praticar, revisar ou apoiar;
+- AnalysisUnits que ela deverá desenvolver;
+- requisitos de evidência pertinentes.
+
+Essa informação cria a estrutura necessária sem pedir IDs. AnalysisUnit é uma
+novidade semântica materialmente independente, não um tópico amplo. Inclua
+conceitos auxiliares, relações, condições, procedimentos e operações
+intelectuais quando também precisarem ser aprendidos.
+
+Sete a doze Partes são uma heurística possível. Não existe meta de Partes ou de
+StudyUnits. Se o conteúdo exigir mais Unidades para permanecer autossuficiente,
+o plano deve acomodá-las.
+
+## Configure pedagogia e edição
+
+`consultar_configuracao` mostra valores efetivos e direção editorial no Curso
+ou numa Microssequência. `ajustar_configuracao` permite definir ou restaurar a
+herança de:
+
+- teto de novas AnalysisUnits por StudyUnit expositiva;
+- formas de explicação requeridas;
+- mínimo de práticas distintas por requisito de evidência;
+- dimensões de variação da prática;
+- direção editorial separada.
+
+Uma direção sobre extensão, títulos ou estilo organiza a apresentação. Ela não
+autoriza eliminar explicação, exemplo ou prática necessária; crie mais
+StudyUnits quando faltar espaço.
+
+## Produza uma Parte
+
+Antes de escrever Unidades, o GPT chama `preparar_materializacao`. A leitura
+traz apenas a Parte aprovada, inventário semântico, conhecimentos estabelecidos,
+configuração e Fontes pertinentes.
+
+Ao propor as StudyUnits, confira:
+
+- qual novidade cada Unidade introduz;
+- que novidades já estavam estabelecidas;
+- definição, contexto, mecanismo, relações, exemplos e contrastes necessários;
+- forma explicativa e componente adequados;
+- oportunidades de prática e dimensões de variação;
+- Fontes e Âncoras usadas.
+
+`materializar_parte` grava as StudyUnits. Um teto 1 não permite esconder quatro
+novidades dentro de uma AnalysisUnit; um teto 2 não exige compactar novidades
+que continuam independentes. Mudar o teto preserva o inventário e muda sua
+distribuição.
+
+## Escolha componentes pela função
+
+Use `consultar_componentes` quando a função instrucional pedir uma representação
+e o componente adequado ainda não estiver claro. Parágrafo e escolha continuam
+válidos quando cumprem a função. Tabela, sequência, classificação, código,
+diagrama ou outra forma devem ser usados quando tornam a relação ensinada mais
+legível.
+
+Não consulte o catálogo apenas para variar a aparência.
+
+## Trabalhe com Fontes e PDFs
+
+`consultar_fontes` localiza uma Fonte, suas Âncoras ou a proveniência de uma
+StudyUnit. `manter_fonte` salva metadados, verificação, Âncoras e vínculos. Uma
+Fonte pode ser adotada, contestada e revista.
+
+Use `incorporar_pdf_como_fonte` somente quando o arquivo anexado deve permanecer
+no Curso. Informe se ele cria uma Fonte ou se pertence a uma Fonte existente.
+Uma leitura descartável não deve gravar o PDF.
+
+Depois da incorporação, o arquivo pode ser retomado por título em outra
+conversa; a memória do chat não é sua autoridade.
+
+## Registre Observações e revise
+
+Você pode registrar Observações na interface ou pedir
+`registrar_observacao`. Várias StudyUnits podem receber o mesmo apontamento, mas
+cada Observação permanece um registro próprio.
+
+Para tratar pendências:
+
+1. use `consultar_observacoes` no escopo desejado;
+2. peça `preparar_revisao`;
+3. confira também StudyUnits afetadas por progressão, pré-requisitos,
+   transições, exemplos ou prática;
+4. discuta um conjunto coerente de mudanças;
+5. depois da decisão, use `aplicar_correcoes`;
+6. volte ao link e reinspecione.
+
+Resolver apenas a Unit anotada pode deixar o percurso incoerente. A revisão
+deve alcançar todos os pontos materialmente afetados, sem expandir para uma
+reescrita sem necessidade.
+
+## Consulte Analytics
+
+Na interface, Analytics permite escolher Curso, Parte, Microssequência ou
+StudyUnit. Desenho mostra configuração aplicada, AnalysisUnits, formas,
+componentes, prática e Fontes. Autoria mostra parâmetros definidos e a origem
+observável da criação e da última revisão das StudyUnits.
+
+O JSON exportado contém os mesmos números da tela. Ele não mede aprendizagem e
+não substitui a cópia do artefato exigida por um protocolo de pesquisa.
+
+## Retome em outra conversa
+
+Uma conversa nova começa com `retomar_curso`. O GPT relê o planejamento e o
+escopo necessário em vez de depender do resumo da conversa anterior. Uma Parte
+antiga pode ser aberta por posição ou título; Fontes e Observações também podem
+ser consultadas a qualquer momento.
+
+## Quando algo falhar
+
+- **Curso ou Parte ambíguos:** forneça título ou posição mais específica.
+- **Curso mudou:** deixe o GPT reler e reconstruir a mesma intenção.
+- **Objeto não encontrado:** abra o link ou consulte o escopo pai antes de
+  decidir se deve recriá-lo.
+- **Falha transitória:** repita a tarefa sem alterar a proposta.
+- **Acesso negado:** conecte a conta proprietária; repetição não amplia
+  permissão.
+- **PDF recusado:** confira tipo, integridade, tamanho e intenção de
+  armazenamento.
+
+Veja [Autoria pelo MCP](autoria-mcp.md), [Autoria por Actions](autoria-actions.md)
+e [Analytics da Autoria](analytics-instrucionais.md) para os contratos e limites
+de cada superfície.

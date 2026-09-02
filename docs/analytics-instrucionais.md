@@ -1,157 +1,127 @@
-# Pesquisa sobre a Autoria
+# Analytics da Autoria
 
-A área **Pesquisa** permite examinar fatos registrados durante a criação de um
-Curso. Ela apresenta o processo de planejamento, produção, revisão e comparação
-sem atribuir nota ao Curso, à pessoa autora ou a quem estuda.
+A área **Analytics** responde, com números simples, a duas perguntas sobre o
+estado atual de um Curso:
 
-Gráfico, tabela, lista, exportação, MCP e Actions partem das mesmas linhas e da
-mesma revisão. Cada métrica informa pergunta, definição, unidade, denominador,
-tratamento dos dados ausentes e inferências indevidas.
+1. como o conteúdo foi desenhado;
+2. onde houve intervenção humana explícita.
+
+Ela não reconstitui a execução técnica que produziu o Curso. Também não atribui
+nota de qualidade, aprendizagem ou participação humana. Os números são
+descrições do artefato e de ações observáveis.
 
 ## Como consultar
 
-1. Abra **Autoria** e escolha um Curso próprio.
-2. Entre em **Pesquisa**.
-3. Selecione um conjunto de fatos ou mantenha **Todos os fatos**.
-4. Filtre pelo canal da interação e pelo período, quando necessário.
-5. Leia o gráfico e a tabela equivalente.
-6. Abra **Como esta métrica é definida** antes de interpretar os valores.
-7. Percorra os fatos que sustentam o resumo.
-8. Use **Abrir o objeto relacionado** para chegar ao contexto de origem.
-9. Exporte CSV ou JSON quando precisar conferir ou tratar o recorte filtrado.
+1. Abra um Curso próprio em **Autoria**.
+2. Entre em **Analytics**.
+3. Selecione o escopo: Curso, Parte, Microssequência ou StudyUnit.
+4. Leia os números de **Desenho** e **Autoria**.
+5. Expanda apenas a tabela necessária para conferir a composição do número.
 
-A área pertence à pessoa proprietária do Curso. A revisão esperada integra a
-consulta: se o Curso mudar, a leitura não mistura fatos de revisões diferentes.
+O seletor recarrega um snapshot do escopo escolhido. Uma referência interna
+localiza esse escopo no banco, mas a interface mostra seu nome humano.
 
-## Conjuntos de fatos
+## Desenho
 
-| Conjunto | Conteúdo |
-| --- | --- |
-| `activity` | mudanças registradas no Curso |
-| `materializations` | início, etapas e conclusão da produção por Partes |
-| `design` | parâmetros, orientações, itens do plano e políticas de componentes |
-| `sources` | Fontes, Âncoras, atribuições e PDFs |
-| `annotations` | Observações e seu tratamento |
-| `audits` | rodadas, achados, correções, verificações e reversões |
-| `variants` | pontos comuns, vínculos e comparações entre Cursos |
+A síntese apresenta quatro quantidades:
 
-Os canais são:
+- **StudyUnits** no escopo;
+- **AnalysisUnits**, isto é, novidades semânticas inventariadas;
+- oportunidades de **Prática** vinculadas aos requisitos de evidência;
+- **Fontes** relacionadas.
 
-- `authoring_interface`, para a interface de Autoria;
-- `authoring_chat`, para operações feitas pela conversa conectada;
-- `study_interface`, para fatos originados no Estudo;
-- `audit_process`, para o ciclo de auditoria.
+Três tabelas recolhidas permitem examinar a composição desses números.
 
-Canal ausente permanece ausente. O AraLearn não o deduz pelo conteúdo do fato.
+### Configuração aplicada
 
-## O que um fato conserva
+Mostra os quatro parâmetros pedagógicos efetivamente usados pelas StudyUnits:
 
-Um fato de Autoria possui:
+- teto de novas AnalysisUnits por StudyUnit expositiva;
+- formas de explicação requeridas;
+- mínimo de oportunidades distintas de prática por requisito de evidência;
+- dimensões de variação requeridas para a prática.
 
-- identidade, conjunto e tipo;
-- instante registrado;
-- revisão do Curso, quando disponível;
-- canal, origem e estado, quando aplicáveis;
-- objeto principal e objeto relacionado;
-- até 24 valores escalares;
-- indicação dos dados ausentes;
-- endereço do objeto no AraLearn, quando houver destino seguro.
+Quando StudyUnits do mesmo escopo usaram valores diferentes, cada valor aparece
+com a quantidade de Units a que se aplica e sua origem observável. A direção
+editorial permanece separada desses quatro parâmetros.
 
-A projeção exclui identidade de conta, endereço de correio eletrônico, texto
-bruto de Observação e cópias integrais de estados anteriores e posteriores.
-Rótulos dos objetos ajudam a leitura, enquanto as identidades preservam a
-rastreabilidade da exportação.
+### Conteúdo e representações
 
-## Métricas correntes
+A tabela relaciona:
 
-A visão geral usa duas regras de contagem:
+- cada AnalysisUnit e sua quantidade de introduções;
+- a quantidade de novidades introduzidas por StudyUnit;
+- formas explicativas aplicadas;
+- componentes e representações usados.
 
-- `facts_by_dataset`, quando o recorte contém vários conjuntos, conta cada fato
-  uma vez em seu conjunto de origem;
-- `facts_by_kind`, quando há um único conjunto, conta cada fato pela combinação
-  de tipo e estado.
+Assim, comparar teto 1 e teto 2 não exige transformar assuntos amplos em uma
+AnalysisUnit maior. O inventário pode permanecer igual enquanto sua distribuição
+entre StudyUnits muda.
 
-O denominador é a quantidade total de fatos que corresponde aos filtros e à
-revisão. Uma consulta sem fatos produz contagem zero. Dentro de um fato, revisão
-ou valor ausente permanece marcado como ausência e não recebe um valor
-inventado.
+### Prática e Fontes
 
-Essas métricas descrevem a distribuição dos registros. Diferenças entre canais,
-tipos, estados ou variantes não demonstram relação causal.
+A última tabela de Desenho apresenta:
 
-## Gráfico, tabela e fatos
+- oportunidades por requisito de evidência;
+- oportunidades que exercitam cada dimensão de variação;
+- Fontes, Âncoras e StudyUnits relacionadas, agrupadas pelo papel da Fonte.
 
-O gráfico de barras resume a métrica selecionada. A tabela logo abaixo contém
-as mesmas categorias, valores, denominadores e indicações de ausência. O
-próprio gráfico possui descrição textual para tecnologias assistivas.
+Contar uma oportunidade não demonstra que alguém aprendeu. O número informa
+apenas que o artefato oferece aquela prática.
 
-A lista de fatos permite conferir cada parcela do resumo. Ela mostra instante,
-conjunto, tipo, valores, canal, origem, estado, revisão e dados ausentes. O
-endereço direto conduz à Parte, Unidade, Fonte, Observação, auditoria ou
-comparação correspondente.
+## Autoria
 
-## Filtros e paginação
+A síntese de Autoria mostra:
 
-A interface oferece seleção de um conjunto ou de todos, um canal ou todos e um
-intervalo de datas. O contrato também admite filtros por várias origens e
-estados. Cada página aceita de 1 a 200 fatos e usa paginação por chave.
+- Observações humanas ainda abertas;
+- parâmetros definidos explicitamente e ainda vigentes;
+- StudyUnits cuja última revisão observável foi manual.
 
-O cursor fica vinculado ao Curso, à revisão, aos filtros e ao instante de corte.
-Ele não pode continuar outra consulta. A interface também recusa cursor
-repetido, fato duplicado ou página de outro recorte.
+A tabela complementar informa Observações criadas e resolvidas e agrupa
+StudyUnits pela origem de sua criação e de sua última revisão. Essas contagens
+descrevem o estado corrente; não formam percentual de autoria nem score de
+colaboração. Ausência de intervenção registrada não significa concordância.
 
-## Exportação
+Quando a origem corrente não pode ser atribuída com segurança, Analytics a
+mantém ausente; não converte desconhecimento em zero nem reconstrói uma história
+por inferência.
 
-A exportação direta percorre as páginas sob a mesma consulta e revisão, até cem
-páginas e 8 MiB por arquivo. Acima desse volume, nenhum arquivo parcial é salvo:
-a área Pesquisa orienta restringir o período, o conjunto ou o canal. Esse limite
-impede que o AraLearn tente manter ou salvar um arquivo acima de 8 MiB no
-navegador e no Android. Exportações maiores por arquivos temporários no Storage
-não fazem parte do contrato corrente. Uma investigação cujo volume exceda esse
-limite precisa restringir e validar o recorte antes da exportação.
+## De onde vêm os números
 
-O JSON usa o contrato `aralearn.course-authoring-analytics-export.v1` e
-conserva:
+Analytics deriva o snapshot das autoridades correntes do Curso sempre que isso
+é possível: estrutura, plano, configuração efetiva, StudyUnits, componentes,
+Fontes, Âncoras e Observações. Intervenções humanas entram apenas quando o estado
+corrente conserva origem explícita com significado estável.
 
-- versão do dicionário;
-- instante de exportação;
-- Curso e revisão;
-- filtros sem cursor;
-- definições das métricas;
-- fatos completos do recorte aceito pelo limite do arquivo;
-- limites de interpretação.
+O contrato `aralearn.course-authoring-analytics.v2` contém somente:
 
-O CSV possui uma linha por fato e colunas estáveis para dicionário, Curso,
-revisão, identidade, conjunto, tipo, instante, canal, origem, estado, objetos,
-valores, ausências e endereço. O campo de valores usa JSON canônico para manter
-as chaves sem criar colunas instáveis.
+- Curso e escopo;
+- desenho quantitativo;
+- autoria quantitativa;
+- dados ausentes;
+- endereço da área, quando disponível.
 
-## Consulta pela conversa
+O AraLearn não transforma a execução técnica nem a interação cotidiana em uma
+segunda história do Curso. Também não guarda conversa, raciocínio privado,
+cliques, rolagem ou tempo em tela para produzir esses números.
 
-`lerCurso` com `view: "research"` devolve o mesmo contrato da área Pesquisa por
-MCP ou Actions. O cliente pode filtrar, explicar a métrica, apresentar a tabela
-e abrir os objetos relacionados sem criar outra base de dados.
+## Exportar Analytics
 
-Quando o cliente oferece a extensão visual MCP Apps, o resultado pode aparecer
-num componente com indicadores agregados, gráfico, tabela equivalente, limites
-de interpretação e endereço para a área Pesquisa. Em outros clientes, a
-representação textual conserva números, denominadores, revisão, ausências e o
-mesmo endereço. Para preservar a legibilidade, a síntese apresenta até 12
-categorias e avisa quando o conteúdo estruturado conserva outras linhas do
-mesmo recorte.
+O botão **Exportar Analytics** baixa um JSON com o mesmo snapshot normalizado
+que está na tela. Os números e os dados ausentes são idênticos aos da leitura
+visual.
+
+Esse arquivo registra Analytics do escopo naquele momento. Ele não é uma cópia
+completa do Curso, não congela o artefato usado numa pesquisa e não cria uma
+versão imutável. Uma investigação que precise preservar conteúdo e configuração
+deve definir e validar uma exportação própria do artefato.
 
 ## Limites de interpretação
 
-Os fatos descrevem operações e estados do processo de Autoria. Eles não medem
-aprendizagem, atenção, esforço, dificuldade, domínio ou eficácia. O intervalo
-entre etapas inclui rede, processamento e espera, portanto não representa tempo
-de trabalho humano.
+Analytics caracteriza o desenho instrucional e intervenções observáveis. Não
+mede compreensão, retenção, transferência, atenção, esforço, dificuldade ou
+qualidade global. Esses resultados exigem pergunta, população, instrumento,
+tratamento de dados ausentes e análise definidos no protocolo da pesquisa.
 
-O AraLearn não coleta rolagem, abertura de tela, sequência de toques ou tempo de
-permanência para essa área. Uma pesquisa que precise de outra medida deve
-definir previamente construto, população, instrumento, finalidade, dados
-ausentes, retenção e interpretação permitida.
-
-Consulte o [Dicionário de métricas e conjuntos de
-dados](dicionario-metricas-datasets.md) para os campos do contrato e o [Guia do
-pesquisador](guia-pesquisador.md) para formular perguntas e registrar limites.
+Consulte o [Guia do pesquisador](guia-pesquisador.md) para formular perguntas e
+registrar limites de inferência.

@@ -1,271 +1,154 @@
 # Guia de investigação
 
-## Finalidade
+Este guia ajuda a estudar o AraLearn sem confundir propriedade do software,
+decisão de desenho e efeito educacional. Configuração e Analytics tornam parte
+do artefato inspecionável; não criam, por si, amostra, instrumento, medida,
+atribuição ou inferência causal.
 
-Este guia ajuda a estudar o AraLearn sem confundir uma propriedade do software
-com um efeito educacional. **Parâmetros** torna decisões de desenho e fatos de
-produção reproduzíveis; **Variantes** registra Cursos de origem comum; e
-**Pesquisa** expõe fatos brutos e contagens descritivas. Nenhuma dessas áreas
-cria, por si só, experimento, instrumento, medida, amostra ou inferência causal.
-
-Antes de formular uma pergunta, consulte:
-
-1. [Visão do produto](visao-do-produto.md);
-2. [Modelo didático](modelo-didatico.md);
-3. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md);
-4. [Arquitetura](arquitetura.md);
-5. [Estado corrente](estado-atual-e-roadmap.md).
+Antes de formular a pergunta, consulte [Visão do produto](visao-do-produto.md),
+[Modelo didático](modelo-didatico.md), [Desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md), [Analytics da
+Autoria](analytics-instrucionais.md) e [Capacidades atuais](estado-atual-e-roadmap.md).
 
 ## Classificar a afirmação
 
-Toda afirmação de pesquisa deve receber um estatuto:
+Toda afirmação deve ser identificada como:
 
-- **evidência externa:** resultado ou argumento da literatura;
-- **decisão de desenho:** escolha feita para responder a um problema;
-- **propriedade implementada:** comportamento verificável do artefato;
-- **hipótese:** relação ainda sujeita a investigação;
-- **resultado empírico:** conclusão produzida por um estudo adequado.
+- evidência externa da literatura;
+- decisão de desenho do AraLearn;
+- propriedade implementada e verificável;
+- hipótese sujeita a investigação;
+- resultado empírico produzido por um estudo adequado.
 
-Por exemplo, a literatura sustenta investigar prática de recuperação e
-variação. O default de duas oportunidades no AraLearn é uma hipótese de
-produto. Um teste pode provar que duas oportunidades distintas foram
-registradas; não pode provar que uma pessoa aprendeu.
+Por exemplo, um teste pode demonstrar que duas oportunidades de prática foram
+gravadas e variam em dimensões declaradas. Isso não demonstra que uma pessoa
+aprendeu ou transferiu conhecimento.
 
-## Escolher a unidade de análise
+## Escolher unidade de análise e medida
 
-A pergunta precisa dizer o que será observado. São unidades diferentes:
+Uma pessoa estudando, uma StudyUnit, um requisito de evidência, uma sessão de
+autoria e um Curso sob certa condição são unidades diferentes. Declare a
+unidade, o instante do recorte, o denominador e os casos ausentes antes de
+calcular ou interpretar.
 
-- uma pessoa retomando uma Microssequência;
-- uma Unidade de estudo e suas formas explicativas;
-- um requisito de evidência e suas oportunidades de prática;
-- uma sessão de autoria e suas revisões;
-- um Curso, uma Lição ou uma Microssequência sob determinada condição;
-- uma tentativa de materialização;
-- um evento técnico de revisão ou concorrência.
+Quantidade de mudanças do GPT não é qualidade autoral. Conformidade estrutural
+de uma Unit não é desempenho do estudante. Latência, rede e Storage não são
+medidas de aprendizagem.
 
-Quantidade de mudanças feitas por um assistente não é qualidade autoral.
-Conformidade de uma Unidade não é desempenho do estudante. Egress, latência e
-Storage não são medidas de aprendizagem.
+## Fixar condições sem arquitetura paralela
 
-## Usar os parâmetros correntes
+O catálogo possui quatro parâmetros pedagógicos:
 
-O catálogo possui somente quatro operacionalizações:
+1. teto de novas AnalysisUnits por StudyUnit;
+2. formas de explicação por AnalysisUnit;
+3. oportunidades mínimas de prática por requisito;
+4. dimensões de variação da prática.
 
-1. teto de unidades de análise introduzidas por Unidade expositiva;
-2. formas explicativas requeridas;
-3. oportunidades distintas por requisito de evidência;
-4. dimensões requeridas de variação da prática.
+Direção editorial é registrada separadamente. Para comparar uma condição,
+crie um Curso privado independente, fixe a configuração e documente o que deve
+permanecer igual. Não existe entidade de Variante nem bloqueio experimental.
 
-Cada definição informa constructo, operacionalização, limitações, evidência e
-estatuto do default. Não crie uma quinta definição alterando JSON ou tabela.
-Uma nova dimensão exige nova decisão de produto, revisão conceitual, migração,
-interface, MCP, Actions e testes.
+Ao comparar teto 1 e 2, preserve o mesmo inventário semântico. O número de
+StudyUnits pode mudar; compactar AnalysisUnits para produzir tamanhos parecidos
+destrói a condição que se pretendia comparar.
 
-### Origem `research_condition`
+Configuração formal de progressão ou representação só é justificável quando uma
+diferença educacional concreta será produzida e comparada. Não crie catálogo por
+antecipação.
 
-`research_condition` identifica que um valor pertence a uma condição
-deliberada. Ele não cria bloqueio, protocolo, aleatorização, consentimento,
-atribuição de participante ou coleta. Uma pessoa autora pode substituí-lo no
-Curso vivo; o evento registra a mudança. Variantes comparáveis registram uma
-origem comum e diferenças declaradas, mas continuam sendo Cursos editáveis,
-sem constituir um experimento governado.
+## Congelar o artefato quando necessário
 
-Ao usar essa origem:
+O Curso cotidiano continua mutável. Se uma investigação precisar reproduzir o
+artefato apresentado a um grupo, exporte explicitamente o estado e a
+configuração pertinentes e guarde-os segundo o plano de dados do estudo.
 
-- declare a pergunta e a condição fora do valor;
-- registre a revisão exata do Curso;
-- mantenha invariantes e diferenças planejadas em protocolo próprio;
-- não interprete o rótulo como garantia de isolamento experimental;
-- não use o estado pessoal cotidiano como desfecho de pesquisa implícito.
+**Exportar Analytics** fornece apenas o snapshot quantitativo exibido. Ele não
+contém a composição completa do Curso e não substitui a exportação do artefato.
+Registre também a data, o escopo e quaisquer mudanças posteriores relevantes.
 
-## Orientação natural e interpretação
+## Usar Analytics com limites claros
 
-O texto original da orientação é imutável por revisão. Uma interpretação
-estruturada aponta para uma revisão exata e conserva resumo, diretivas,
-divergências e perguntas. O original continua sendo a fonte humana; a
-interpretação não pode reescrevê-lo.
+Analytics oferece duas leituras por Curso, Parte, Microssequência ou StudyUnit:
 
-Quando uma orientação for fator ou contexto de um estudo, registre:
+- **Desenho**: StudyUnits, parâmetros efetivos, AnalysisUnits, introduções,
+  formas explicativas, componentes, prática, variação e Fontes por papel;
+- **Autoria**: Observações, parâmetros definidos, Units revisadas manualmente e
+  origem observável de criação e última revisão.
 
-- UUID e versão da revisão original;
-- escopo e origem;
-- UUID e versão da interpretação efetivamente usada, quando houver;
-- divergências e perguntas ainda abertas;
-- hash do contexto selado pela materialização.
-
-Uma nova redação é outra versão. Não a descreva como equivalente sem avaliação.
-
-## Planejado e aplicado
-
-O resumo imediato compara:
-
-- parâmetros efetivos resolvidos;
-- orientações e política efetivas;
-- itens do plano explicitamente atribuídos à Microssequência;
-- fatos estruturados declarados na materialização;
-- componentes realmente persistidos.
-
-Ele pode mostrar teto excedido, forma não contabilizada na declaração,
-oportunidade declarada insuficiente, variação declarada ausente ou componente
-proibido. Esses são achados de conformidade ao desenho, não pontuações
-educacionais.
-
-Os fatos aplicados preservam identidades de Unidades de estudo e declarações
-sobre unidades de análise, requisitos de evidência, oportunidades, formas,
-dimensões e pacotes. Forma, oportunidade e variação não são inferidas
-semanticamente do conteúdo pelo banco. A reconciliação material cobre IDs das
-Unidades, pai/alvo e `componentRefs`. O registro não preserva conversa, prompt,
-conteúdo gerado ou raciocínio privado.
-
-## Caso DNS e DHCP
-
-O corpus de regressão usa sete unidades explícitas: função do DNS, exemplo
-nome–IP, hierarquia, registros e distribuição, mecanismo de resolução,
-concessão DHCP e contraste DNS/DHCP.
-
-O caso examina propriedades do artefato:
-
-- teto de introduções por Unidade expositiva;
-- cobertura das sete identidades;
-- formas explicativas declaradas como desenvolvidas ou justificadamente não
-  aplicáveis;
-- oportunidades e variações por requisito;
-- operação-alvo invariável.
-
-Essas propriedades são verificadas sobre a aplicação factual fornecida ao
-auditor. O teste delimita o esquema, a atribuição por alvo, as contagens e a
-coerência
-interna; não é uma observação semântica independente de que a explicação
-desenvolveu uma forma ou que duas práticas diferem de modo substantivo.
-
-Não há relação de dependência entre unidades de análise persistida neste marco;
-portanto o teste não a inventa. A ordem curricular de Módulos, Lições,
-Microssequências e Unidades continua verificável separadamente.
-
-Casos metamórficos impedem proxy de comprimento:
-
-- texto longo e estruturalmente claro pode passar;
-- texto curto com muitas introduções pode falhar;
-- fragmentar o mesmo texto sem desenvolver as formas continua falhando;
-- omitir uma identidade planejada falha cobertura.
-
-## Consultar fatos e comparar variantes
-
-A área **Pesquisa** projeta sete conjuntos de fatos: atividade, produção,
-desenho, Fontes, Observações, auditorias e variantes. Cada consulta fixa Curso,
-revisão, filtros e instante de corte. Gráfico, tabela, lista, CSV, JSON, MCP e
-Actions derivam da mesma resposta paginada.
-
-Use a visão para localizar o registro que sustenta uma contagem. Informe a
-definição, o denominador e as lacunas junto do número. Identidade de conta,
-texto bruto de Observação e cópias integrais de conteúdo não fazem parte da
-projeção.
-
-Uma comparação de variantes permite verificar:
-
-- o planejamento comum registrado;
-- as diferenças de parâmetros ou componentes declaradas;
-- os valores e políticas efetivos;
-- as Partes, Unidades, componentes e referências existentes;
-- mudanças posteriores que não haviam sido declaradas.
-
-Esses fatos ajudam a descrever a intervenção. Eles não informam exposição,
-aprendizagem ou efeito. Consulte [Pesquisa sobre a
-Autoria](analytics-instrucionais.md) e [Variantes
-comparáveis](experimentos-instrucionais-parametrizados.md).
+Ausência de atribuição permanece ausente. O JSON exportado deve conter os mesmos
+números da tela. Não derive score de qualidade, colaboração, autoria humana,
+aprendizagem ou atenção dessas contagens.
 
 ## Construir a cadeia de evidência
 
-Para cada estudo, registre:
-
 | Elemento | Pergunta de controle |
 | --- | --- |
-| problema | o que ocorre hoje e para quem isso é um problema? |
-| constructo | qual conceito não observável se pretende estudar? |
-| operacionalização | qual regra ou unidade do AraLearn representa parte dele? |
-| indicador | qual dado observável será usado e qual seu denominador? |
+| problema | o que ocorre e para quem isso é um problema? |
+| construto | qual conceito não observável se pretende estudar? |
+| operacionalização | que regra ou unidade representa parte dele? |
+| medida | que dado observável será usado e qual o denominador? |
 | mecanismo | por que a intervenção poderia produzir mudança? |
-| rival | que explicação alternativa produziria o mesmo resultado? |
+| explicação rival | que outra causa produziria o mesmo resultado? |
 | decisão | que resultado mudaria o desenho? |
 | limite | para quais pessoas, tarefas e contextos a interpretação vale? |
 
-Um evento de parâmetro informa ator, canal, escopo, valor anterior e novo e
-revisão. Ele demonstra que uma decisão mudou, não por que mudou nem seu efeito.
+Um parâmetro definido demonstra a condição registrada. Uma distribuição de
+Units demonstra o artefato produzido. Nenhum deles informa sozinho exposição,
+compreensão ou efeito.
 
-## Dados e privacidade
+## Observações e privacidade
 
-O AraLearn não coleta automaticamente todo rastro possível. Antes de propor
-outro dado, responda:
+Observações são manifestações protegidas entre seus participantes autorizados.
+Texto, alvo e contexto podem conter dados pessoais. Analytics conta estados
+quando atribuíveis, mas não exporta o texto como parte do snapshot.
 
-1. qual pergunta ele atende;
-2. qual constructo pode e não pode representar;
-3. que decisão legítima poderá apoiar;
-4. por quanto tempo precisa existir;
-5. quem poderá acessá-lo;
-6. qual risco de vigilância, coerção ou interpretação indevida introduz.
+Antes de coletar outro dado, declare a pergunta, a inferência permitida, a
+decisão legítima, a retenção, o acesso e o risco de vigilância ou coerção. O
+AraLearn não coleta transcript, prompt, cadeia de pensamento, clickstream,
+rolagem ou tempo em tela para Analytics.
 
-Parâmetros, orientações e fatos de materialização pertencem ao Curso e à
-Autoria. O estado pessoal v2 contém somente progresso e **Rever**. Anotações
-ancoradas são manifestações protegidas em uma relação separada, visíveis à
-própria pessoa e ao proprietário para triagem. Não una esses conjuntos só
-porque compartilham um `courseId`.
+Uma reutilização científica de conteúdo, Observações ou Fontes exige finalidade,
+minimização, governança, base adequada e avaliação de reidentificação. Dados
+pseudonimizados continuam pessoais enquanto houver possibilidade razoável de
+associação.
 
-A projeção de Pesquisa inclui somente fatos redigidos sobre Observações. Texto
-bruto e identidade da pessoa não são exportados. Quantidade, ausência,
-categoria, estado, resposta, resolução e instantes não medem aprendizagem,
-dificuldade, atenção, qualidade ou eficácia; `capturedAt` é uma pista de
-contexto, não duração. Uma coleta adicional exige protocolo explícito,
-minimizado e governado, com finalidade, retenção, acesso e inferências proibidas
-documentadas.
-
-## Estratégia de investigação
+## Estratégia e validade
 
 Pesquisa baseada em design e Design Science Research podem compartilhar
-episódios e dados, mas não são sinônimas. A primeira investiga intervenções
-educacionais situadas; a segunda organiza a construção e a avaliação do
-artefato e do conhecimento de desenho
-([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
+episódios, mas não são sinônimas. A primeira investiga intervenções educacionais
+situadas; a segunda organiza construção e avaliação do artefato e do conhecimento
+de desenho ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
 [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased);
-[Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)). Consulte o
-[protocolo de avaliação](protocolo-avaliacao-artefato.md).
+[Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)).
 
-Para alegação causal, o contrato de parâmetros é insuficiente. Desenho,
-atribuição, comparação, perdas e ameaças à validade precisam corresponder à
-inferência pretendida ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
-Ainda são necessários, conforme a pergunta:
+Para uma alegação causal, ainda são necessários população, critérios de inclusão,
+consentimento, protocolo, hipóteses, regra de atribuição, instrumentos válidos,
+controle de exposição e perdas, plano de análise e explicações rivais
+([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
 
-- população e critérios de inclusão;
-- consentimento e apreciação ética aplicável;
-- protocolo e hipóteses registrados;
-- condição de comparação;
-- regra de atribuição;
-- instrumentos e desfechos de pesquisa válidos;
-- controle de exposição, perdas e versões;
-- plano de análise e explicações rivais.
-
-No Brasil, pesquisas em Ciências Humanas e Sociais que usam dados obtidos
-diretamente de participantes, informações identificáveis ou procedimentos com
-riscos abrangidos pela norma devem observar a avaliação ética aplicável e os
-direitos de informação, consentimento ou assentimento, privacidade,
-confidencialidade e retirada previstos na Resolução CNS nº 510/2016
-([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
-Essa é uma autoridade normativa; ela não demonstra validade metodológica,
-usabilidade ou efeito educacional.
+No Brasil, pesquisas em Ciências Humanas e Sociais com participantes ou dados
+identificáveis devem observar a avaliação ética aplicável e os direitos previstos
+na Resolução CNS nº 510/2016 ([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+Essa norma não demonstra
+validade metodológica ou efeito educacional.
 
 ## Relatar
 
-O relatório deve separar:
+Separe no relatório:
 
 - o que a literatura sustentava;
 - o que foi decisão de produto;
 - qual propriedade o software verificou;
 - o que o estudo observou;
-- quais interpretações rivais permanecem;
-- quais alterações ocorreram depois da observação.
+- quais explicações rivais permanecem;
+- quais alterações ocorreram depois do recorte.
 
 Preserve resultados negativos e divergências. Não apresente valor padrão como
-evidência, conformidade como aprendizagem, `research_condition` como
-randomização nem contagem descritiva como efeito educacional.
+evidência, condição registrada como randomização nem contagem descritiva como
+efeito.
+
+Consulte o [protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md)
+e os [fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md).
 
 <!-- referências locais: início -->
 

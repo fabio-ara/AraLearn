@@ -35,25 +35,16 @@ test("rota canônica abre tarefa, objeto e detalhe humano", () => {
       kind: "didactic_microsequence", id: "micro 1"
     }],
     [{ section: "content", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
-    [{ section: "content", inspectionFocusId: UUID }, { kind: "inspection_focus", id: UUID }],
+    [{ section: "parameters", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
     [{ section: "content", unassigned: true }, { kind: "unassigned", id: null }],
     [{ section: "review", annotationId: UUID }, { kind: "anchored_annotation", id: UUID }],
-    [{ section: "review", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
-    [{ section: "review", auditRunId: UUID }, { kind: "audit_run", id: UUID }],
-    [{ section: "research", comparisonSetId: UUID }, { kind: "variant_comparison", id: UUID }]
+    [{ section: "review", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }]
   ];
   for (const [options, target] of examples) {
     assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, options)), {
       courseId: COURSE_ID, section: options.section, target
     });
   }
-  assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
-    section: "review", findingId: UUID, correctionId: COURSE_ID
-  })), {
-    courseId: COURSE_ID,
-    section: "review",
-    target: { kind: "audit_finding", id: UUID, correctionId: COURSE_ID }
-  });
   assert.deepEqual(parseCourseAuthoringRoute(buildCourseAuthoringRoute(COURSE_ID, {
     section: "sources", sourceId: "  fonte/literal-á  ", anchorId: "ancora:1"
   })), {
@@ -78,8 +69,7 @@ test("parser rejeita identidades, detalhes e combinações alheias à tarefa", (
     "#/authoring/courses/10000000-0000-0000-8000-000000000001?section=content",
     `#/authoring/courses/${COURSE_ID}`,
     `#/authoring/courses/${COURSE_ID}?section=map`,
-    `#/authoring/courses/${COURSE_ID}?section=parameters&studyUnitId=a`,
-    `#/authoring/courses/${COURSE_ID}?section=parameters&inspectionFocusId=${UUID}`,
+    `#/authoring/courses/${COURSE_ID}?section=parameters&topicId=a`,
     `#/authoring/courses/${COURSE_ID}?section=content&annotationId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=review&moduleId=a`,
     `#/authoring/courses/${COURSE_ID}?section=research&authoringPartId=${UUID}`,
@@ -106,14 +96,11 @@ test("construtor falha cedo sem reduzir silenciosamente o destino", () => {
     section: "content", moduleId: "a", lessonId: "b"
   }), /somente um alvo/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
-    section: "parameters", studyUnitId: "a"
-  }), /não pertence à seção/u);
-  assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "planning", authoringPartId: UUID, materializationId: COURSE_ID
   }), /Opções inválidas/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "review", correctionId: UUID
-  }), /correção exige um achado canônico/u);
+  }), /Opções inválidas/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "sources", anchorId: "ancora-1"
   }), /âncora exige uma Fonte literal/u);

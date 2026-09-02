@@ -16,15 +16,7 @@ const SECOND_PART_ID = "40000000-0000-4000-8000-000000000004";
 const OUTCOME_ID = "50000000-0000-4000-8000-000000000005";
 const ANALYSIS_ID = "60000000-0000-4000-8000-000000000006";
 const EVIDENCE_ID = "70000000-0000-4000-8000-000000000007";
-const MATERIALIZATION_ID = "80000000-0000-4000-8000-000000000008";
-const EVENT_ID = "9";
 const PLAN_ID = "a0000000-0000-4000-8000-00000000000a";
-const MATERIALIZATION_STEP_IDS = Object.freeze([
-  "b0000000-0000-4000-8000-00000000000b",
-  "c0000000-0000-4000-8000-00000000000c",
-  "d0000000-0000-4000-8000-00000000000d",
-  "e0000000-0000-4000-8000-00000000000e"
-]);
 
 class FakeRoot {
   constructor() {
@@ -66,37 +58,7 @@ class TrackingRoot extends FakeRoot {
   }
 }
 
-class MountedPanelRoot extends TrackingRoot {
-  constructor(selector) {
-    super();
-    this.panelSelector = selector;
-    this.panelHost = new FakeRoot();
-    this.panelHost.removeEventListener = (type) => this.panelHost.listeners.delete(type);
-    this.panelHost.querySelector = () => null;
-  }
 
-  querySelector(selector) {
-    return selector === this.panelSelector ? this.panelHost : null;
-  }
-}
-
-class FeedbackRoot extends FakeRoot {
-  constructor() {
-    super();
-    this.feedback = {
-      hidden: true,
-      textContent: "",
-      classList: { toggle() {} },
-      setAttribute() {}
-    };
-  }
-
-  querySelectorAll(selector) {
-    return selector === "[data-course-authoring-request-feedback]"
-      ? [this.feedback]
-      : [];
-  }
-}
 
 class FakeWindow {
   constructor() {
@@ -230,7 +192,7 @@ function listPage(overrides = {}) {
 
 function authoringPlanFixture(overrides = {}) {
   return {
-    contract: "aralearn.course-instructional-plan.v1",
+    contract: "aralearn.course-instructional-plan.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
     plan: {
@@ -251,7 +213,9 @@ function authoringPlanFixture(overrides = {}) {
         id: ANALYSIS_ID,
         position: 0,
         statement: "Relação entre grandezas.",
-        version: 1
+        version: 1,
+        introduced: true,
+        introducedPartPosition: 0
       }],
       evidenceRequirements: [{
         id: EVIDENCE_ID,
@@ -269,6 +233,8 @@ function authoringPlanFixture(overrides = {}) {
           id: "micro-a",
           productionPosition: 0,
           title: "Primeiro caso",
+          goal: "Explicar a primeira relação.",
+          role: "explain",
           curriculumPath: {
             moduleId: "module-a",
             moduleTitle: "Base",
@@ -280,6 +246,8 @@ function authoringPlanFixture(overrides = {}) {
           id: "micro-b",
           productionPosition: 1,
           title: "Segundo caso",
+          goal: "Praticar a relação em outro caso.",
+          role: "practice",
           curriculumPath: {
             moduleId: "module-a",
             moduleTitle: "Base",
@@ -289,34 +257,9 @@ function authoringPlanFixture(overrides = {}) {
           studyUnitCount: 3
         }],
         progress: {
-          state: "materializing",
+          state: "materialized",
           microsequenceCount: 2,
-          studyUnitCount: 7,
-          materializations: [{
-            id: MATERIALIZATION_ID,
-            status: "running",
-            progressState: "partial",
-            channel: "mcp",
-            version: 1,
-            completedStepCount: 2,
-            failedStepCount: 0,
-            totalStepCount: 4,
-            startedAt: "2026-08-17T10:00:00Z",
-            updatedAt: "2026-08-17T10:10:00Z",
-            completedAt: null,
-            summary: "2 de 4 etapas concluídas"
-          }],
-          lastMaterialization: {
-            id: MATERIALIZATION_ID,
-            status: "running",
-            version: 1,
-            completedStepCount: 2,
-            failedStepCount: 0,
-            totalStepCount: 4,
-            startedAt: "2026-08-17T10:00:00Z",
-            updatedAt: "2026-08-17T10:10:00Z",
-            completedAt: null
-          }
+          studyUnitCount: 7
         }
       }, {
         id: SECOND_PART_ID,
@@ -328,9 +271,7 @@ function authoringPlanFixture(overrides = {}) {
         progress: {
           state: "planned",
           microsequenceCount: 0,
-          studyUnitCount: 0,
-          materializations: [],
-          lastMaterialization: null
+          studyUnitCount: 0
         }
       }],
       counts: {
@@ -343,16 +284,6 @@ function authoringPlanFixture(overrides = {}) {
       },
       updatedAt: "2026-08-17T10:10:00Z"
     },
-    recentActivity: [{
-      eventId: EVENT_ID,
-      revision: 5,
-      kind: "materialization_step_recorded",
-      channel: "mcp",
-      instructionalPlanItemId: null,
-      partId: PART_ID,
-      materializationId: MATERIALIZATION_ID,
-      createdAt: "2026-08-17T10:10:00Z"
-    }],
     ...overrides
   };
 }
@@ -366,7 +297,7 @@ function courseDesignFixture({
   localPolicy = null,
   targetPlanItems = null
 } = {}) {
-  const supportedScopes = ["course", "lesson", "didactic_microsequence"];
+  const supportedScopes = ["course", "lesson", "didactic_microsequence", "study_unit"];
   const definitions = [{
     id: "new_analysis_unit_ceiling_per_expository_study_unit",
     label: "Novas unidades de análise por Unidade expositiva",
@@ -416,8 +347,7 @@ function courseDesignFixture({
     label: `Componente ${index + 1}`,
     purpose: `Finalidade acadêmica ${index + 1}.`
   }));
-  const guidanceRevision = {
-    revisionId: "91000000-0000-4000-8000-000000000019",
+  const guidanceAssignment = {
     guidance: "Explique cada termo antes de depender dele.",
     origin: "author",
     reason: "Evitar pressupostos ocultos."
@@ -425,7 +355,7 @@ function courseDesignFixture({
   const currentScope = { kind: scope.kind, ref: scope.ref };
   const inherited = scope.kind !== "course";
   return {
-    contract: "aralearn.course-design.v1",
+    contract: "aralearn.course-design.v2",
     courseId: COURSE_ID,
     courseRevision,
     parameterCatalogVersion: "1.0.0",
@@ -439,7 +369,11 @@ function courseDesignFixture({
     },
     definitions,
     parameters: definitions.map((definition, index) => {
-      const local = index === 0 ? localParameter : null;
+      const local = index === 0 && localParameter ? {
+        value: structuredClone(localParameter.value),
+        origin: localParameter.origin,
+        reason: localParameter.reason
+      } : null;
       return {
         parameterId: definition.id,
         localAssignment: local,
@@ -448,7 +382,6 @@ function courseDesignFixture({
           sourceScope: currentScope,
           inherited: false
         } : {
-          changeId: inherited ? "7" : null,
           value: structuredClone(definition.defaultValue),
           origin: inherited ? "author" : "system_default",
           reason: inherited ? "Decisão definida no Curso." : "Hipótese inicial do produto.",
@@ -458,33 +391,28 @@ function courseDesignFixture({
       };
     }),
     guidance: {
-      localRevision: scope.kind === "course" ? guidanceRevision : null,
-      effectiveRevisions: [{
-        ...guidanceRevision,
+      localAssignment: scope.kind === "course" ? guidanceAssignment : null,
+      effectiveAssignments: [{
+        ...guidanceAssignment,
         sourceScope: { kind: "course", ref: COURSE_ID },
-        currentInterpretation: {
-          interpretationId: "4",
-          guidanceRevisionId: guidanceRevision.revisionId,
-          interpretation: {
-            summary: "Definir os termos antes do uso.",
-            directives: [{ kind: "require", statement: "Definir todo termo novo." }],
-            divergences: [],
-            questions: ["Qual exemplo deve abrir a explicação?"]
-          },
-          createdAt: "2026-08-17T12:00:00Z"
-        }
+        inherited
       }]
     },
     componentCatalog: { version: "1-3e5629f8", options: componentOptions },
     targetPlanItems,
     componentPolicy: {
-      localChange: localPolicy,
-      effectiveChange: localPolicy ? {
-        ...structuredClone(localPolicy),
+      localAssignment: localPolicy ? {
+        policy: structuredClone(localPolicy.policy),
+        origin: localPolicy.origin,
+        reason: localPolicy.reason
+      } : null,
+      effectiveAssignment: localPolicy ? {
+        policy: structuredClone(localPolicy.policy),
+        origin: localPolicy.origin,
+        reason: localPolicy.reason,
         sourceScope: currentScope,
         inherited: false
       } : {
-        changeId: null,
         policy: {
           catalogVersion: "1-3e5629f8",
           availability: "all",
@@ -497,21 +425,7 @@ function courseDesignFixture({
         sourceScope: null,
         inherited: false
       }
-    },
-    recentApplications: [{
-      materializationId: MATERIALIZATION_ID,
-      stepId: MATERIALIZATION_STEP_IDS[0],
-      didacticMicrosequenceId: "micro-a",
-      recordedAt: "2026-08-17T12:10:00Z",
-      contextHash: "b".repeat(64),
-      studyUnitCount: 3,
-      modeCounts: { expository: 1, practice: 1, mixed: 1 },
-      introducedInstructionalAnalysisUnitIds: [ANALYSIS_ID],
-      developedExplanationForms: ["plain_definition", "concrete_example"],
-      practiceOpportunityCount: 2,
-      variedDimensions: ["case_or_data"],
-      componentRefs: [componentOptions[0].ref]
-    }]
+    }
   };
 }
 
@@ -569,12 +483,9 @@ function controllerFixture(overrides = {}) {
     async loadCourseDesign() {
       return courseDesignFixture();
     },
-    async mutateAuthoringPlan() {
-      return undefined;
-    },
     async mutateCourseDesign() {
       return {
-        contract: "aralearn.course-design-change.v1",
+        contract: "aralearn.course-design-change.v2",
         courseId: COURSE_ID,
         courseRevision: 5,
         requestId: "93000000-0000-4000-8000-000000000039",
@@ -840,16 +751,6 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
   let outlineReads = 0;
   let inspectionReads = 0;
   const basePlan = authoringPlanFixture();
-  basePlan.recentActivity.unshift({
-    eventId: "8",
-    revision: 4,
-    kind: "plan_changed",
-    channel: "application",
-    instructionalPlanItemId: ANALYSIS_ID,
-    partId: null,
-    materializationId: null,
-    createdAt: "2026-08-17T10:05:00Z"
-  });
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
@@ -869,10 +770,10 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
           plan: {
             ...basePlan.plan,
             objective: "Comparar <origem> e aplicação.",
-            parts: [{
-              ...basePlan.plan.parts[0],
+            parts: [basePlan.plan.parts[0], {
+              ...basePlan.plan.parts[1],
               title: "<img src=x onerror=alert(1)>"
-            }, basePlan.plan.parts[1]]
+            }]
           }
         };
       },
@@ -901,8 +802,6 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; e aplicação\./u);
   assert.doesNotMatch(root.innerHTML, /7–12|Escolha automática/u);
-  assert.match(root.innerHTML, /Resultados de aprendizagem/u);
-  assert.match(root.innerHTML, /Comparar relações essenciais\./u);
   assert.match(root.innerHTML, /Parte 1/u);
   assert.equal(
     (root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length,
@@ -910,7 +809,7 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
     "O Planejamento deve renderizar somente a Parte focal."
   );
   assert.match(root.innerHTML, /class="course-authoring-part-navigation" aria-label="Navegação entre Partes"/u);
-  assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 1 de 2:[^"]+" title="Escolher Parte"><span>Parte 1 de 2<\/span>/u);
+  assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 2 de 2:[^"]+" title="Escolher Parte"><span>Parte 2 de 2<\/span>/u);
   assert.match(
     root.innerHTML,
     new RegExp(`section=planning&amp;authoringPartId=${SECOND_PART_ID}`, "u")
@@ -918,239 +817,18 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
   assert.doesNotMatch(root.innerHTML, /<details open><summary aria-label="Escolher Parte\./u);
   assert.match(
     root.innerHTML,
-    /<div class="course-authoring-part-counts" aria-label="Planejado e produzido"><span>2 microssequências<\/span><span>7 unidades<\/span><\/div>/u
+    /<div class="course-authoring-part-counts" aria-label="Estrutura e conteúdo"><span>0 microssequências<\/span><span>0 unidades<\/span><\/div>/u
   );
   assert.doesNotMatch(
     root.innerHTML,
     /course-authoring-(?:materialization|recent-activity)|Etapas e resultados|Fatos da etapa|resultFacts|contextHash|>MCP<|>Actions</iu
   );
   assert.doesNotMatch(root.innerHTML, /materialize-part|context-chat|Trabalhar no ChatGPT|Copiar pedido/u);
-  assert.match(root.innerHTML, /<details class="course-authoring-part-tools"/u);
+  assert.doesNotMatch(root.innerHTML, /course-authoring-part-tools|Adicionar Parte|Editar Parte/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
 });
 
-test("refresh simultâneo do Planejamento mantém o conteúdo e não recompõe revisão inalterada", async () => {
-  const root = new TrackingRoot();
-  const courseRead = deferredValue();
-  const planRead = deferredValue();
-  let delayed = false;
-  let courseReads = 0;
-  let planReads = 0;
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async getCourse() {
-        courseReads += 1;
-        return delayed ? courseRead.promise : courseDetailFixture();
-      },
-      async loadAuthoringPlan() {
-        planReads += 1;
-        return delayed ? planRead.promise : authoringPlanFixture();
-      }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
-  });
-
-  assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
-
-  delayed = true;
-  root.renderWrites.length = 0;
-  const firstRefresh = surface.refresh();
-  const simultaneousRefresh = surface.refresh();
-
-  assert.equal(courseReads, 2, "Leituras simultâneas devem compartilhar a mesma releitura.");
-  assert.equal(root.renderWrites.length, 0);
-  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
-  assert.doesNotMatch(
-    root.innerHTML,
-    /Planejamento indisponível|Carregando planejamento/u
-  );
-
-  courseRead.resolve(courseDetailFixture());
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(planReads, 2, "A mesma atualização deve ler o plano apenas uma vez.");
-  assert.equal(root.renderWrites.length, 0);
-  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
-  assert.doesNotMatch(
-    root.innerHTML,
-    /Planejamento indisponível|Carregando planejamento/u
-  );
-
-  planRead.resolve(authoringPlanFixture());
-  assert.deepEqual(await Promise.all([firstRefresh, simultaneousRefresh]), [true, true]);
-  assert.equal(
-    root.renderWrites.length,
-    0,
-    "Uma revisão inalterada não deve substituir a raiz autoral."
-  );
-  assert.match(root.innerHTML, /Compreender relações essenciais\./u);
-  assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
-});
-
-test("Planejamento focaliza uma de doze Partes e reabre qualquer anterior por deep link", async () => {
-  const plan = structuredClone(authoringPlanFixture());
-  const template = plan.plan.parts[1];
-  plan.plan.parts = Array.from({ length: 12 }, (_, index) => ({
-    ...structuredClone(template),
-    id: `90000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
-    position: index,
-    title: `Parte incremental ${index + 1}`
-  }));
-  plan.plan.counts.authoringPartCount = 12;
-  plan.plan.counts.linkedDidacticMicrosequenceCount = 0;
-  plan.plan.counts.studyUnitCount = 0;
-  plan.recentActivity = [];
-  const targetId = plan.plan.parts[3].id;
-  const root = new FakeRoot();
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async loadAuthoringPlan() { return structuredClone(plan); }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, {
-        section: "planning",
-        authoringPartId: targetId
-      })
-    },
-    windowValue: new FakeWindow()
-  });
-
-  assert.equal(await surface.open(), true);
-  assert.equal((root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length, 1);
-  assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 4 de 12: Parte incremental 4" title="Escolher Parte"><span>Parte 4 de 12<\/span>/u);
-  assert.match(root.innerHTML, /<strong>Parte incremental 4<\/strong>/u);
-  assert.match(
-    root.innerHTML,
-    new RegExp(`authoringPartId=${plan.plan.parts[2].id}[^>]* aria-label="Parte anterior"`, "u")
-  );
-  assert.match(
-    root.innerHTML,
-    new RegExp(`authoringPartId=${plan.plan.parts[4].id}[^>]* aria-label="Próxima Parte"`, "u")
-  );
-  assert.equal((root.innerHTML.match(/aria-current="page"/gu) || []).length, 2,
-    "A tarefa e a Parte focal têm estados correntes independentes e acessíveis.");
-  assert.doesNotMatch(root.innerHTML, /<details open><summary aria-label="Escolher Parte\./u);
-});
-
-test("adicionar Parte abre o novo deep link sem confirmação concorrente", async () => {
-  let plan = structuredClone(authoringPlanFixture());
-  let createdPartId = "";
-  const locationValue = {
-    pathname: "/",
-    search: "",
-    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-  };
-  const root = new FakeRoot();
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async loadAuthoringPlan() { return structuredClone(plan); },
-      async mutateAuthoringPlan(command) {
-        createdPartId = command.id;
-        plan.plan.parts.push({
-          id: command.id,
-          title: command.title,
-          intent: command.intent,
-          version: 1,
-          position: command.position,
-          microsequences: [],
-          progress: {
-            state: "planned",
-            microsequenceCount: 0,
-            studyUnitCount: 0,
-            materializations: [],
-            lastMaterialization: null
-          }
-        });
-        plan.plan.version += 1;
-        plan.plan.counts.authoringPartCount += 1;
-      }
-    }),
-    locationValue,
-    windowValue: new FakeWindow()
-  });
-  await surface.open();
-
-  root.listeners.get("click")({
-    target: { closest: () => ({ dataset: { courseAuthoringAction: "add-part" } }) }
-  });
-  assert.match(root.innerHTML, /data-course-authoring-part/u);
-  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches: (selector) => selector === "[data-course-authoring-part]",
-      elements: {
-        partId: { value: "" },
-        title: { value: "Nova Parte focal" },
-        intent: { value: "Prosseguir somente após a decisão atual." }
-      }
-    }
-  });
-  for (let attempt = 0; attempt < 8 && !locationValue.hash.includes("authoringPartId="); attempt += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.match(createdPartId, /^[0-9a-f-]{36}$/u);
-  assert.equal(locationValue.hash, buildCourseAuthoringRoute(COURSE_ID, {
-    section: "planning",
-    authoringPartId: createdPartId
-  }));
-  assert.equal((root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length, 1);
-  assert.match(root.innerHTML, /Nova Parte focal/u);
-  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
-});
-
-test("Atualizar Curso usa somente o indicador fixo de sincronização", async () => {
-  const root = new FeedbackRoot();
-  let reads = 0;
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async getCourse() {
-        reads += 1;
-        return courseDetailFixture();
-      }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
-  });
-
-  assert.equal(await surface.open(), true);
-  const refreshButton = {
-    dataset: { courseAuthoringAction: "refresh-course" },
-    closest(selector) {
-      return selector === "[data-course-authoring-action]" ? this : null;
-    }
-  };
-  root.listeners.get("click")({ target: refreshButton, preventDefault() {} });
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(reads, 2);
-  assert.equal(root.feedback.hidden, true);
-  assert.equal(root.feedback.textContent, "");
-  assert.doesNotMatch(
-    root.innerHTML,
-    /Atualizando Curso|estado persistido|Não foi possível atualizar/u
-  );
-  assertAccessibleSyncIndicator(root.innerHTML, /sincron|nuvem/iu);
-});
 
 test("refresh do Planejamento aplica revisão nova uma vez sem telas intermediárias", async () => {
   const root = new TrackingRoot();
@@ -1385,65 +1063,8 @@ test("refresh de Pessoas preserva Curso e lista até aplicar o snapshot completo
   assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
 });
 
-test("refresh da área de Variantes preserva o painel e encaminha a releitura", async () => {
-  const root = new MountedPanelRoot("[data-course-variants-host]");
-  const courseRead = deferredValue();
-  const variantsRead = deferredValue();
-  let delayed = false;
-  let variantReads = 0;
-  const comparisonList = (attachedCount) => ({
-    contract: "aralearn.course-variant-comparison-list.v1",
-    sourceCourseId: COURSE_ID,
-    sourceCourseRevision: 5,
-    items: [{
-      comparisonSetId: "21000000-0000-4000-8000-000000000002",
-      attachedCount,
-      detachedCount: 2 - attachedCount
-    }]
-  });
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async getCourse() {
-        return delayed ? courseRead.promise : courseDetailFixture();
-      },
-      async listCourseVariantComparisons() {
-        variantReads += 1;
-        return delayed ? variantsRead.promise : comparisonList(2);
-      }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "research" })
-    },
-    windowValue: new FakeWindow()
-  });
 
-  assert.equal(await surface.open(), true);
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.match(root.panelHost.innerHTML, /2 variantes vinculadas/u);
-
-  delayed = true;
-  root.renderWrites.length = 0;
-  const refreshing = surface.refresh();
-  assert.equal(root.renderWrites.length, 0);
-  assert.match(root.panelHost.innerHTML, /2 variantes vinculadas/u);
-
-  courseRead.resolve(courseDetailFixture());
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(variantReads, 2);
-  assert.equal(root.renderWrites.length, 0);
-  assert.match(root.panelHost.innerHTML, /2 variantes vinculadas/u);
-  assert.doesNotMatch(root.panelHost.innerHTML, /Carregando variantes/u);
-
-  variantsRead.resolve(comparisonList(1));
-  assert.equal(await refreshing, true);
-  assert.equal(root.renderWrites.length, 0);
-  assert.match(root.panelHost.innerHTML, /Aguardando outra variante/u);
-});
-
-test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial, componentes e produção", async () => {
+test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e componentes", async () => {
   const root = new FakeRoot();
   const reads = [];
   let outlineReads = 0;
@@ -1502,12 +1123,11 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial, 
     /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*><svg/u
   );
   assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 4);
-  assert.match(root.innerHTML, /aria-label="Revisar interpretação" title="Revisar interpretação"><svg/u);
   assert.match(root.innerHTML, /aria-label="Editar direção editorial neste escopo"[^>]*><svg/u);
   assert.match(root.innerHTML, /aria-label="Ajustar componentes neste escopo"[^>]*><svg/u);
   assert.doesNotMatch(
     root.innerHTML,
-    /<summary[^>]*>(?:Ajustar|Revisar interpretação|Editar direção editorial)/u
+    /<summary[^>]*>(?:Ajustar|Editar direção editorial)/u
   );
   assert.match(
     root.innerHTML,
@@ -1515,13 +1135,12 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial, 
   );
   assert.match(root.innerHTML, /Valor vigente/u);
   assert.match(root.innerHTML, /Direção editorial/u);
-  assert.match(root.innerHTML, /Interpretação estruturada/u);
+  assert.doesNotMatch(root.innerHTML, /Interpretação estruturada|Revisar interpretação/u);
   assert.match(root.innerHTML, /<h3 id="course-design-guidance-title">Direção editorial<\/h3>/u);
   assert.match(root.innerHTML, /Nunca comprime nem remove conteúdo necessário/iu);
   assert.match(root.innerHTML, /distribui em mais StudyUnits/iu);
   assert.match(root.innerHTML, /<h3 id="course-design-policy-title">Componentes<\/h3>/u);
-  assert.match(root.innerHTML, /Planejado × aplicado/u);
-  assert.match(root.innerHTML, /não prova qualidade nem aprendizagem/iu);
+  assert.doesNotMatch(root.innerHTML, /Planejado × aplicado|materialização|contextHash/iu);
   assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 32);
   assert.doesNotMatch(root.innerHTML, /<pre|\{\s*"/u);
 });
@@ -1530,16 +1149,15 @@ test("Parâmetros recolhe texto migratório de bastidor sem perder orientação 
   const root = new FakeRoot();
   const design = courseDesignFixture();
   const imported = {
-    revisionId: "91000000-0000-4000-8000-000000000019",
     guidance: "Fixture course-design-cutover com hash 3e5629f8c0de.",
     origin: "migration",
     reason: "Orientação preservada pelo corte #122."
   };
-  design.guidance.localRevision = structuredClone(imported);
-  design.guidance.effectiveRevisions = [{
+  design.guidance.localAssignment = structuredClone(imported);
+  design.guidance.effectiveAssignments = [{
     ...structuredClone(imported),
     sourceScope: { kind: "course", ref: COURSE_ID },
-    currentInterpretation: null
+    inherited: false
   }];
   const surface = createCourseAuthoringSurface({
     root,
@@ -1561,13 +1179,10 @@ test("Parâmetros recolhe texto migratório de bastidor sem perder orientação 
   assert.doesNotMatch(root.innerHTML, /Migrada do planejamento/u);
   assert.match(
     root.innerHTML,
-    /<details class="course-design-imported-copy"><summary class="course-authoring-icon-action" aria-label="Ver direção editorial importada"[^>]*><svg[\s\S]*?<\/summary><blockquote>Fixture course-design-cutover com hash 3e5629f8c0de\.<\/blockquote><p class="course-design-reason">Orientação preservada pelo corte #122\.<\/p><\/details>/u
+    /<blockquote>Fixture course-design-cutover com hash 3e5629f8c0de\.<\/blockquote><p class="course-design-reason">Orientação preservada pelo corte #122\.<\/p>/u
   );
   assert.doesNotMatch(root.innerHTML, /Ainda não há interpretação estruturada/u);
-  assert.match(
-    root.innerHTML,
-    /aria-label="Interpretar direção editorial separadamente" title="Interpretar direção editorial separadamente"><svg/u
-  );
+  assert.doesNotMatch(root.innerHTML, /Interpretar direção editorial/u);
   assert.match(
     root.innerHTML,
     /<textarea name="guidance"[^>]*>Fixture course-design-cutover com hash 3e5629f8c0de\.<\/textarea>/u
@@ -1615,10 +1230,9 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.match(root.innerHTML, /Decisão definida no Curso/u);
 });
 
-test("Microssequência atribui itens estáveis do plano e recarrega plano e desenho", async () => {
+test("Microssequência mostra cobertura estável do planejamento somente para leitura", async () => {
   const root = new FakeRoot();
-  const calls = [];
-  let revision = 5;
+  const revision = 5;
   let planReads = 0;
   const scope = {
     kind: "didactic_microsequence",
@@ -1634,7 +1248,7 @@ test("Microssequência atribui itens estáveis do plano e recarrega plano e dese
     ref: "lesson-a",
     label: "Relações"
   }];
-  let design = courseDesignFixture({
+  const design = courseDesignFixture({
     courseRevision: revision,
     scope,
     ancestors,
@@ -1664,34 +1278,8 @@ test("Microssequência atribui itens estáveis do plano e recarrega plano e dese
       async loadCourseDesign() {
         return structuredClone(design);
       },
-      async mutateCourseDesign(request) {
-        calls.push(structuredClone(request));
-        revision += 1;
-        design = courseDesignFixture({
-          courseRevision: revision,
-          scope,
-          ancestors,
-          children: [],
-          targetPlanItems: {
-            instructionalAnalysisUnitIds: structuredClone(
-              request.command.instructionalAnalysisUnitIds
-            ),
-            evidenceRequirementIds: structuredClone(request.command.evidenceRequirementIds)
-          }
-        });
-        return {
-          contract: "aralearn.course-design-change.v1",
-          courseId: COURSE_ID,
-          courseRevision: revision,
-          requestId: request.requestId,
-          idempotent: false,
-          changed: true,
-          change: {
-            changeId: "21",
-            type: request.command.type,
-            scope: structuredClone(request.command.scope)
-          }
-        };
+      async mutateCourseDesign() {
+        assert.fail("A cobertura do planejamento não possui segundo writer visual.");
       }
     }),
     locationValue: {
@@ -1708,43 +1296,13 @@ test("Microssequência atribui itens estáveis do plano e recarrega plano e dese
   assert.equal(await surface.open(), true);
   assert.equal(planReads, 1);
   assert.match(root.innerHTML, /StudyUnits desta Microssequência usam estes valores/iu);
-  assert.match(root.innerHTML, /Cada versão preserva a configuração aplicada na produção/iu);
+  assert.match(root.innerHTML, /Cada Unidade preserva a configuração usada na produção/iu);
   assert.match(root.innerHTML, /Cobertura planejada desta Microssequência/u);
+  assert.match(root.innerHTML, /Definida no planejamento da Parte/u);
   assert.match(root.innerHTML, /Relação entre grandezas/u);
-  assert.match(root.innerHTML, /Resolver um caso novo/u);
-
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-design-target-items]"; },
-      elements: {
-        instructionalAnalysisUnitIds: [{ value: ANALYSIS_ID, checked: false }],
-        evidenceRequirementIds: [{ value: EVIDENCE_ID, checked: true }]
-      }
-    }
-  });
-  for (let attempt = 0; attempt < 8 && planReads < 2; attempt += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-
-  assert.equal(calls.length, 1);
-  assert.deepEqual({ ...calls[0], requestId: "<uuid>" }, {
-    requestId: "<uuid>",
-    courseId: COURSE_ID,
-    expectedCourseRevision: 5,
-    command: {
-      type: "set_target_plan_items",
-      scope: { kind: "didactic_microsequence", ref: "micro-a" },
-      instructionalAnalysisUnitIds: [],
-      evidenceRequirementIds: [EVIDENCE_ID]
-    }
-  });
-  assert.equal(
-    planReads,
-    2,
-    root.innerHTML.match(/course-authoring-notice[^>]*>([^<]+)/u)?.[1] || "sem aviso de desenho"
-  );
-  assert.match(root.innerHTML, /Cobertura planejada salva para esta Microssequência/u);
+  assert.doesNotMatch(root.innerHTML, /Resolver um caso novo/u);
+  assert.doesNotMatch(root.innerHTML, /data-course-design-target-items|Salvar cobertura/u);
+  assert.equal(planReads, 1);
 });
 
 test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança", async () => {
@@ -1753,7 +1311,6 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
   let revision = 5;
   let design = courseDesignFixture({
     localParameter: {
-      changeId: "8",
       value: 3,
       origin: "author",
       reason: "Decisão local anterior."
@@ -1781,7 +1338,6 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         const parameter = design.parameters[0];
         if (request.command.type === "set_parameter") {
           const assignment = {
-            changeId: String(8 + revision),
             value: request.command.value,
             origin: request.command.origin,
             reason: request.command.reason
@@ -1795,7 +1351,6 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         } else {
           parameter.localAssignment = null;
           parameter.effectiveAssignment = {
-            changeId: null,
             value: 2,
             origin: "system_default",
             reason: "Hipótese inicial do produto.",
@@ -1805,16 +1360,16 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         }
         design.courseRevision = revision;
         return {
-          contract: "aralearn.course-design-change.v1",
+          contract: "aralearn.course-design-change.v2",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
           idempotent: false,
           changed: true,
           change: {
-            changeId: String(revision + 8),
             type: request.command.type,
-            scope: structuredClone(request.command.scope)
+            scope: structuredClone(request.command.scope),
+            parameterId: request.command.parameterId ?? null
           }
         };
       }
@@ -1937,7 +1492,6 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
         }
         revision = 6;
         const assignment = {
-          changeId: "14",
           value: request.command.value,
           origin: request.command.origin,
           reason: request.command.reason
@@ -1956,16 +1510,16 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
           } : parameter)
         };
         const result = {
-          contract: "aralearn.course-design-change.v1",
+          contract: "aralearn.course-design-change.v2",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
           idempotent: false,
           changed: true,
           change: {
-            changeId: "14",
             type: request.command.type,
-            scope: structuredClone(request.command.scope)
+            scope: structuredClone(request.command.scope),
+            parameterId: request.command.parameterId ?? null
           }
         };
         confirmations.set(request.requestId, result);
@@ -2050,16 +1604,16 @@ test("desenho mantém o envelope até a releitura e não reaplica escrita já co
         mutationCalls += 1;
         revision = 6;
         return {
-          contract: "aralearn.course-design-change.v1",
+          contract: "aralearn.course-design-change.v2",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
           idempotent: false,
           changed: true,
           change: {
-            changeId: "14",
             type: request.command.type,
-            scope: structuredClone(request.command.scope)
+            scope: structuredClone(request.command.scope),
+            parameterId: request.command.parameterId ?? null
           }
         };
       }
@@ -2223,584 +1777,10 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
   assert.equal(closed, 1);
 });
 
-test("edita título canônico e plano humano sem JSON nem autoridade duplicada", async () => {
-  const root = new FakeRoot();
-  const calls = [];
-  let revision = 5;
-  let title = "Fundamentos";
-  let objective = "Objetivo anterior.";
-  let plan = {
-    ...authoringPlanFixture(),
-    plan: {
-      ...authoringPlanFixture().plan,
-      objective,
-      audience: "Público anterior.",
-      scope: "Escopo anterior."
-    }
-  };
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async getCourse(courseId) {
-        return {
-          courseId,
-          title,
-          goal: objective,
-          revision,
-          ownership: "owned",
-          canEdit: true
-        };
-      },
-      async loadAuthoringPlan() {
-        return structuredClone(plan);
-      },
-      async mutateAuthoringPlan(value) {
-        calls.push(structuredClone(value));
-        revision += 1;
-        title = value.title;
-        objective = value.objective;
-        plan = {
-          ...plan,
-          courseRevision: revision,
-          plan: {
-            ...plan.plan,
-            version: plan.plan.version + 1,
-            title,
-            objective,
-            audience: value.audience,
-            scope: value.scope
-          }
-        };
-      }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
-  });
-  await surface.open();
-  root.listeners.get("click")({
-    preventDefault() {},
-    target: {
-      closest() {
-        return { dataset: { courseAuthoringAction: "open-planning-edit" } };
-      }
-    }
-  });
-  assert.doesNotMatch(root.innerHTML, /rangeMinimum|rangeMaximum|rangeOrigin|Faixa preferencial/u);
-  assert.doesNotMatch(root.innerHTML, /JSON|authoringState|brief/iu);
 
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-authoring-planning]"; },
-      elements: {
-        title: { value: "Fundamentos revisados" },
-        objective: { value: "Novo objetivo." },
-        audience: { value: "Pesquisadores iniciantes." },
-        scope: { value: "Relações e aplicações." }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
 
-  assert.equal(calls.length, 1);
-  assert.deepEqual({ ...calls[0], requestId: "<uuid>" }, {
-    requestId: "<uuid>",
-    courseId: COURSE_ID,
-    expectedCourseRevision: 5,
-    expectedPlanVersion: 3,
-    operation: "update_plan",
-    title: "Fundamentos revisados",
-    objective: "Novo objetivo.",
-    audience: "Pesquisadores iniciantes.",
-    scope: "Relações e aplicações."
-  });
-  assert.match(root.innerHTML, /Planejamento salvo/u);
-  assert.doesNotMatch(root.innerHTML, /data-course-authoring-planning/u);
-});
 
-test("repete alteração do plano com o mesmo requestId e payload após perder a resposta", async () => {
-  const root = new FakeRoot();
-  const calls = [];
-  const confirmations = new Map();
-  let closed = 0;
-  let revision = 5;
-  let title = "Fundamentos";
-  let objective = "Objetivo anterior.";
-  let plan = {
-    ...authoringPlanFixture(),
-    plan: { ...authoringPlanFixture().plan, objective }
-  };
-  const locationValue = {
-    pathname: "/",
-    search: "",
-    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-  };
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async getCourse(courseId) {
-        return {
-          courseId,
-          title,
-          goal: objective,
-          revision,
-          ownership: "owned",
-          canEdit: true
-        };
-      },
-      async loadAuthoringPlan() {
-        return structuredClone(plan);
-      },
-      async mutateAuthoringPlan(value) {
-        calls.push(structuredClone(value));
-        if (confirmations.has(value.requestId)) return;
-        revision = 6;
-        title = value.title;
-        objective = value.objective;
-        plan = {
-          ...plan,
-          courseRevision: revision,
-          plan: {
-            ...plan.plan,
-            version: plan.plan.version + 1,
-            title,
-            objective,
-            audience: value.audience,
-            scope: value.scope,
-            preferredPartCount: value.preferredPartCount
-          }
-        };
-        confirmations.set(value.requestId, true);
-        const error = new TypeError("Failed to fetch");
-        error.code = "network_error";
-        throw error;
-      }
-    }),
-    locationValue,
-    windowValue: new FakeWindow(),
-    onClose() { closed += 1; }
-  });
-  await surface.open();
-  root.listeners.get("click")({
-    preventDefault() {},
-    target: {
-      closest() {
-        return { dataset: { courseAuthoringAction: "open-planning-edit" } };
-      }
-    }
-  });
-  const submit = {
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-authoring-planning]"; },
-      elements: {
-        title: { value: "Fundamentos revisados" },
-        objective: { value: "Novo objetivo." },
-        audience: { value: "Público." },
-        scope: { value: "Escopo." },
-        rangeMinimum: { value: "7" },
-        rangeMaximum: { value: "12" },
-        rangeOrigin: { value: "author" }
-      }
-    }
-  };
 
-  root.listeners.get("submit")(submit);
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].expectedCourseRevision, 5);
-  assert.equal(calls[0].expectedPlanVersion, 3);
-  assert.match(root.innerHTML, /confirmar a mesma operação/u);
-  assert.match(root.innerHTML, /data-course-authoring-planning/u);
-  root.listeners.get("click")({
-    preventDefault() {},
-    target: { closest: () => ({ dataset: { courseAuthoringAction: "show-list" } }) }
-  });
-  assert.equal(
-    locationValue.hash,
-    buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-  );
-  assert.equal(surface.handleBack(), true);
-  assert.equal(surface.close(), "deferred");
-  assert.equal(surface.opened, true);
-  assert.equal(closed, 0);
-
-  root.listeners.get("submit")(submit);
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(calls.length, 2);
-  assert.deepEqual(calls[1], calls[0]);
-  assert.equal(calls[1].expectedCourseRevision, 5);
-  assert.equal(calls[1].expectedPlanVersion, 3);
-  assert.equal(confirmations.size, 1);
-  assert.match(root.innerHTML, /Planejamento salvo/u);
-  assert.doesNotMatch(root.innerHTML, /data-course-authoring-planning/u);
-});
-
-test("planejamento preserva formulário e envelope até concluir a releitura confirmada", async () => {
-  const root = new FakeRoot();
-  let revision = 5;
-  let mutationCalls = 0;
-  let planReads = 0;
-  let rejectReread;
-  const reread = new Promise((resolve, reject) => { rejectReread = reject; });
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async getCourse(courseId) {
-        return {
-          courseId,
-          title: "Fundamentos",
-          goal: "Compreender relações essenciais.",
-          revision,
-          ownership: "owned",
-          canEdit: true
-        };
-      },
-      async loadAuthoringPlan() {
-        planReads += 1;
-        if (planReads > 1) return reread;
-        return authoringPlanFixture();
-      },
-      async mutateAuthoringPlan() {
-        mutationCalls += 1;
-        revision = 6;
-      }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
-  });
-  await surface.open();
-  root.listeners.get("click")({
-    preventDefault() {},
-    target: {
-      closest: () => ({ dataset: { courseAuthoringAction: "open-planning-edit" } })
-    }
-  });
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches: (selector) => selector === "[data-course-authoring-planning]",
-      elements: {
-        title: { value: "Fundamentos revisados" },
-        objective: { value: "Novo objetivo." },
-        audience: { value: "Público." },
-        scope: { value: "Escopo." },
-        rangeMinimum: { value: "7" },
-        rangeMaximum: { value: "12" },
-        rangeOrigin: { value: "author" }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(mutationCalls, 1);
-  assert.match(root.innerHTML, /data-course-authoring-planning/u);
-  assert.equal(surface.close(), "deferred", "O envelope só pode ser limpo após a releitura.");
-  rejectReread(new TypeError("Falha ao reler o planejamento"));
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(mutationCalls, 1);
-  assert.match(root.innerHTML, /gravação foi confirmada, mas a tela pode estar desatualizada/u);
-  assert.doesNotMatch(root.innerHTML, /confirmar a mesma operação/u);
-  assert.doesNotMatch(root.innerHTML, /data-course-authoring-planning/u);
-  assert.equal(surface.close(), true);
-});
-
-test("Partes oferecem operações explícitas e preservam a hierarquia didática nos vínculos", async () => {
-  const root = new FakeRoot();
-  const calls = [];
-  const locationValue = {
-    pathname: "/app",
-    search: "",
-    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-  };
-  const windowValue = new FakeWindow();
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async mutateAuthoringPlan(value) {
-        calls.push(structuredClone(value));
-      }
-    }),
-    locationValue,
-    windowValue
-  });
-  await surface.open();
-
-  for (const action of [
-    "add-part", "edit-part", "move-part-down", "split-part",
-    "remove-part", "edit-part-link"
-  ]) {
-    assert.match(root.innerHTML, new RegExp(`data-course-authoring-action="${action}"`, "u"));
-  }
-
-  root.listeners.get("click")({
-    target: {
-      closest() { return { dataset: { courseAuthoringAction: "add-part" } }; }
-    }
-  });
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-authoring-part]"; },
-      elements: {
-        partId: { value: "" },
-        title: { value: "Síntese" },
-        intent: { value: "Consolidar o que foi produzido." }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(calls[0].operation, "add_part");
-  assert.equal(calls[0].position, 2);
-  assert.match(calls[0].id, /^[0-9a-f-]{36}$/u);
-  assert.equal(calls[0].expectedCourseRevision, 5);
-  assert.equal(calls[0].expectedPlanVersion, 3);
-
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return {
-          dataset: { courseAuthoringAction: "edit-part", partId: PART_ID }
-        };
-      }
-    }
-  });
-  assert.match(
-    root.innerHTML,
-    new RegExp(`name="partId" value="${PART_ID}"`, "u")
-  );
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-authoring-part]"; },
-      elements: {
-        partId: { value: PART_ID },
-        title: { value: "Relações essenciais" },
-        intent: { value: "Materializar relações essenciais." }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual({
-    operation: calls[1].operation,
-    id: calls[1].id,
-    title: calls[1].title,
-    intent: calls[1].intent
-  }, {
-    operation: "update_part",
-    id: PART_ID,
-    title: "Relações essenciais",
-    intent: "Materializar relações essenciais."
-  });
-
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return {
-          dataset: {
-            courseAuthoringAction: "split-part",
-            partId: PART_ID,
-            afterMicrosequenceId: "micro-a"
-          }
-        };
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(calls[2].operation, "split_part");
-  assert.equal(calls[2].partId, PART_ID);
-  assert.match(calls[2].newPartId, /^[0-9a-f-]{36}$/u);
-  assert.equal(calls[2].newPartPosition, 1);
-  assert.equal(calls[2].title, "Relações iniciais: continuação");
-  assert.equal(calls[2].intent, "Materializar exemplos fundamentais.");
-  assert.deepEqual(calls[2].microsequenceIds, ["micro-b"]);
-
-  locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, {
-    section: "planning",
-    authoringPartId: SECOND_PART_ID
-  });
-  windowValue.dispatch("hashchange");
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.match(root.innerHTML, /data-course-authoring-action="join-parts"/u);
-
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return {
-          dataset: {
-            courseAuthoringAction: "join-parts",
-            partId: SECOND_PART_ID,
-            previousPartId: PART_ID
-          }
-        };
-      }
-    }
-  });
-  assert.equal(calls.length, 3, "A união não deve alterar o Curso antes da confirmação local.");
-  assert.match(root.innerHTML, /role="alertdialog"[\s\S]*Unir Partes\?/u);
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return {
-          dataset: {
-            courseAuthoringAction: "confirm-part-confirmation",
-            partId: SECOND_PART_ID
-          }
-        };
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual({
-    operation: calls[3].operation,
-    sourcePartId: calls[3].sourcePartId,
-    targetPartId: calls[3].targetPartId
-  }, {
-    operation: "join_parts",
-    sourcePartId: SECOND_PART_ID,
-    targetPartId: PART_ID
-  });
-
-  locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, {
-    section: "planning",
-    authoringPartId: PART_ID
-  });
-  windowValue.dispatch("hashchange");
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return {
-          dataset: {
-            courseAuthoringAction: "edit-part-link",
-            partId: PART_ID,
-            microsequenceId: "micro-a"
-          }
-        };
-      }
-    }
-  });
-  assert.match(root.innerHTML, /data-course-authoring-link/u);
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-authoring-link]"; },
-      elements: {
-        microsequenceId: { value: "micro-a" },
-        partId: { value: SECOND_PART_ID }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual({
-    operation: calls[4].operation,
-    microsequenceId: calls[4].microsequenceId,
-    partId: calls[4].partId
-  }, {
-    operation: "move_microsequence",
-    microsequenceId: "micro-a",
-    partId: SECOND_PART_ID
-  });
-});
-
-test("atribui microssequência existente por escolha legível somente quando solicitado", async () => {
-  const root = new FakeRoot();
-  const calls = [];
-  let outlineReads = 0;
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async loadAuthoringOutline(courseId) {
-        outlineReads += 1;
-        const value = structuredClone(outlineFixture(courseId));
-        value.counts.microsequenceCount = 2;
-        value.outline.modules[0].lessons[0].microsequences.push({
-          id: "micro-c",
-          title: "Terceiro caso",
-          studyUnitCount: 0
-        });
-        return value;
-      },
-      async mutateAuthoringPlan(value) {
-        calls.push(structuredClone(value));
-      }
-    }),
-    locationValue: {
-      pathname: "/app",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
-  });
-  await surface.open();
-  assert.equal(outlineReads, 0);
-
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return { dataset: { courseAuthoringAction: "open-microsequence-assignment" } };
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(outlineReads, 1);
-  assert.match(root.innerHTML, /Base · Relações · Terceiro caso/u);
-  assert.doesNotMatch(root.innerHTML, /value="micro-a"/u);
-
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) {
-        return selector === "[data-course-authoring-assignment]";
-      },
-      elements: {
-        microsequenceId: { value: "micro-c" },
-        partId: { value: SECOND_PART_ID }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual({
-    operation: calls[0].operation,
-    microsequenceId: calls[0].microsequenceId,
-    partId: calls[0].partId,
-    position: calls[0].position,
-    expectedCourseRevision: calls[0].expectedCourseRevision,
-    expectedPlanVersion: calls[0].expectedPlanVersion
-  }, {
-    operation: "assign_microsequence",
-    microsequenceId: "micro-c",
-    partId: SECOND_PART_ID,
-    position: 0,
-    expectedCourseRevision: 5,
-    expectedPlanVersion: 3
-  });
-});
 
 test("Planejamento sem estrutura usa vínculos persistidos e não oferece compositor de clipboard", async () => {
   const root = new FakeRoot();
@@ -2815,7 +1795,6 @@ test("Planejamento sem estrutura usa vínculos persistidos e não oferece compos
     linkedDidacticMicrosequenceCount: 0,
     studyUnitCount: 0
   };
-  emptyPlan.recentActivity = [];
   const surface = createCourseAuthoringSurface({
     root,
     controller: controllerFixture({
@@ -2833,7 +1812,8 @@ test("Planejamento sem estrutura usa vínculos persistidos e não oferece compos
   });
   await surface.open();
 
-  assert.match(root.innerHTML, /data-course-authoring-action="open-microsequence-assignment"/u);
+  assert.doesNotMatch(root.innerHTML, /open-microsequence-assignment|Adicionar Parte/u);
+  assert.match(root.innerHTML, /Conteúdo ainda não materializado/u);
   assert.doesNotMatch(root.innerHTML, /Vincule uma microssequência/u);
   assert.doesNotMatch(
     root.innerHTML,
@@ -2841,68 +1821,6 @@ test("Planejamento sem estrutura usa vínculos persistidos e não oferece compos
   );
 });
 
-test("itens estáveis do plano são editados por nome acadêmico e versão, nunca como JSON", async () => {
-  const root = new FakeRoot();
-  const calls = [];
-  const surface = createCourseAuthoringSurface({
-    root,
-    controller: controllerFixture({
-      async mutateAuthoringPlan(value) {
-        calls.push(structuredClone(value));
-      }
-    }),
-    locationValue: {
-      pathname: "/",
-      search: "",
-      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
-    },
-    windowValue: new FakeWindow()
-  });
-  await surface.open();
-  assert.match(root.innerHTML, /Resultados de aprendizagem/u);
-  assert.match(root.innerHTML, /Unidades de análise instrucional/u);
-  assert.match(root.innerHTML, /Requisitos de evidência/u);
-
-  root.listeners.get("click")({
-    target: {
-      closest() {
-        return {
-          dataset: {
-            courseAuthoringAction: "edit-plan-item",
-            planList: "intendedLearningOutcomes",
-            itemId: OUTCOME_ID
-          }
-        };
-      }
-    }
-  });
-  root.listeners.get("submit")({
-    preventDefault() {},
-    target: {
-      matches(selector) { return selector === "[data-course-authoring-plan-item]"; },
-      elements: {
-        id: { value: OUTCOME_ID },
-        listName: { value: "intendedLearningOutcomes" },
-        statement: { value: "Comparar e justificar relações essenciais." }
-      }
-    }
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.deepEqual({ ...calls[0], requestId: "<uuid>" }, {
-    requestId: "<uuid>",
-    courseId: COURSE_ID,
-    expectedCourseRevision: 5,
-    expectedPlanVersion: 3,
-    operation: "update_plan_item",
-    kind: "intended_learning_outcome",
-    id: OUTCOME_ID,
-    statement: "Comparar e justificar relações essenciais.",
-    sourceLinks: []
-  });
-  assert.doesNotMatch(root.innerHTML, /authoringState|JSON|brief/iu);
-});
 
 test("deep link compartilhado é recusado pela Autoria", async () => {
   const root = new FakeRoot();
@@ -3293,7 +2211,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   );
   assert.match(
     surfaceSource,
-    /const title = state\.section === "research" && state\.researchView === "variants"[\s\S]*?: AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1 title="\$\{escapeHtml\(course\?\.title \|\| "Curso"\)\}">[\s\S]*?course-authoring-context-title/u
+    /const title = AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1 title="\$\{escapeHtml\(course\?\.title \|\| "Curso"\)\}">[\s\S]*?course-authoring-context-title/u
   );
   assert.match(
     css,
@@ -3376,7 +2294,7 @@ test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasio
   assert.doesNotMatch(markup, /Visão geral|section=overview|course-authoring-overview/u);
   assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
   for (const label of [
-    "Parâmetros", "Fontes", "Revisão", "Variantes e Analytics", "Pessoas e acesso"
+    "Parâmetros", "Fontes", "Revisão", "Analytics", "Pessoas e acesso"
   ]) assert.match(markup, new RegExp(`<strong>${label}<\\/strong>`, "u"));
   for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {
     assert.match(markup, new RegExp(`section=${section}`, "u"));

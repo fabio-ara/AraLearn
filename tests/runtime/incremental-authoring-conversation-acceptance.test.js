@@ -70,7 +70,18 @@ test("#269 MCP e Actions usam consultar_planejamento e salvar_parte sem mecânic
   const save = {
     curso: "Redes para iniciantes",
     titulo: proposal.title,
-    intencao: proposal.intent
+    intencao: proposal.intent,
+    microssequencias: [{
+      modulo: "Fundamentos",
+      objetivoDoModulo: proposal.intent,
+      licao: proposal.title,
+      objetivoDaLicao: proposal.intent,
+      titulo: proposal.title,
+      objetivo: proposal.intent,
+      funcao: "explicar",
+      unidadesDeAnalise: proposal.focus.analysisUnits,
+      requisitosDeEvidencia: proposal.focus.evidenceRequirements
+    }]
   };
   for (const tools of [COURSE_HUMAN_TASKS, actionTools]) {
     validate(tools, "consultar_planejamento", read);
@@ -87,7 +98,18 @@ test("#269 Parte anterior e Fonte no meio do fluxo usam tarefas existentes", () 
     curso: "Redes para iniciantes",
     parte: 1,
     titulo: "Do pedido ao endereço de rede — revisto",
-    intencao: "Incorporar a nova Fonte sem alterar a Parte seguinte."
+    intencao: "Incorporar a nova Fonte sem alterar a Parte seguinte.",
+    microssequencias: [{
+      modulo: "Fundamentos",
+      objetivoDoModulo: "Explicar como pedidos encontram destinos.",
+      licao: "Endereçamento",
+      objetivoDaLicao: "Relacionar nome, endereço e destino.",
+      titulo: "Do pedido ao endereço de rede",
+      objetivo: "Explicar o percurso inicial da requisição.",
+      funcao: "explicar",
+      unidadesDeAnalise: ["Relação entre nome, endereço e destino."],
+      requisitosDeEvidencia: ["Reconhecer o destino em dois pedidos distintos."]
+    }]
   };
   const source = {
     curso: "Redes para iniciantes",

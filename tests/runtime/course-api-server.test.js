@@ -9,7 +9,6 @@ import { CourseSupabaseAdapter } from
 const ORIGIN = "https://app.example";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
-const MATERIALIZATION_ID = "30000000-0000-4000-8000-000000000003";
 const MCP_RESOURCE =
   "https://project.example/functions/v1/aralearn-authoring-mcp";
 
@@ -67,18 +66,18 @@ function pdfIngestionRequest({
   );
 }
 
-test("expõe as duas versões da inspeção por rotas explícitas", async () => {
-  const versions = [];
+test("expõe somente a inspeção focal v2", async () => {
+  let calls = 0;
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),
     adapter: {
       async resolveApplicationPrincipal() {
         return { actorId: COURSE_ID, scopes: ["authoring:read"] };
       },
-      async listCourseStudyUnits({ inspectionVersion, courseId, expectedRevision }) {
-        versions.push(inspectionVersion);
+      async listCourseStudyUnits({ courseId, expectedRevision }) {
+        calls += 1;
         return {
-          contract: `aralearn.course-study-unit-inspection-page.v${inspectionVersion}`,
+          contract: "aralearn.course-study-unit-inspection-page.v2",
           courseId,
           courseRevision: expectedRevision,
           items: []
@@ -87,13 +86,13 @@ test("expõe as duas versões da inspeção por rotas explícitas", async () => 
     }
   });
   const query = `?expectedRevision=7`;
-  assert.equal((await handler(request(`/v1/courses/${COURSE_ID}/study-units${query}`, {
-    method: "GET"
-  }))).status, 200);
   assert.equal((await handler(request(`/v2/courses/${COURSE_ID}/study-units${query}`, {
     method: "GET"
   }))).status, 200);
-  assert.deepEqual(versions, [1, 2]);
+  assert.equal((await handler(request(`/v1/courses/${COURSE_ID}/study-units${query}`, {
+    method: "GET"
+  }))).status, 404);
+  assert.equal(calls, 1);
 });
 
 test("expõe exclusão de conta somente na rota interna autenticada do aplicativo", async () => {
@@ -247,38 +246,6 @@ test("rota interna aceita sessão comum e recusa o token OAuth destinado ao MCP"
   assert.equal(operationCalls, 1);
 });
 
-test("expõe a mesma leitura retomável da materialização ao aplicativo", async () => {
-  let call = null;
-  const handler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        return { actorId: COURSE_ID, scopes: ["authoring:read"] };
-      },
-      async getCourseAuthoringPartMaterialization(value) {
-        call = value;
-        return {
-          contract: "aralearn.course-authoring-part-materialization.v1",
-          courseId: COURSE_ID,
-          courseRevision: 2,
-          authoringPartId: PART_ID,
-          materialization: { id: MATERIALIZATION_ID, steps: [] }
-        };
-      }
-    }
-  });
-  const response = await handler(request(
-    `/v1/courses/${COURSE_ID}/authoring-parts/${PART_ID}/materializations/${MATERIALIZATION_ID}`,
-    { method: "GET" }
-  ));
-  const payload = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(payload.data.materialization.id, MATERIALIZATION_ID);
-  assert.equal(call.courseId, COURSE_ID);
-  assert.equal(call.authoringPartId, PART_ID);
-  assert.equal(call.materializationId, MATERIALIZATION_ID);
-});
 
 test("não conserva endpoints OAuth ou de Workspace", async () => {
   const handler = createCourseApiHandler({
@@ -303,38 +270,6 @@ test("rejeita origem não autorizada antes de executar", async () => {
   assert.equal(response.status, 403);
 });
 
-test("autentica antes de ler o corpo e interrompe payload acima de 512 KiB", async () => {
-  let authenticationCalls = 0;
-  const handler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        authenticationCalls += 1;
-        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
-      },
-      async commitCourseInstructionalPlan() {
-        assert.fail("Um payload excedente não pode alcançar a operação.");
-      }
-    }
-  });
-  const planPath = `/v1/courses/${COURSE_ID}/instructional-plan/changes`;
-  const unauthenticated = request(planPath, {
-    body: { padding: "x".repeat(513 * 1024) },
-    token: ""
-  });
-  unauthenticated.headers.delete("Authorization");
-  const unauthorizedResponse = await handler(unauthenticated);
-  assert.equal(unauthorizedResponse.status, 401);
-  assert.equal(authenticationCalls, 0);
-
-  const oversized = request(planPath, {
-    body: { padding: "x".repeat(513 * 1024) }
-  });
-  oversized.headers.delete("content-length");
-  const oversizedResponse = await handler(oversized);
-  assert.equal(oversizedResponse.status, 413);
-  assert.equal(authenticationCalls, 1);
-});
 
 test("ingere PDF multipart autenticado sem reduzir a identidade Unicode da Fonte", async () => {
   const sourceId = "😀".repeat(2_048);
@@ -478,42 +413,6 @@ test("ingestão exige seis campos exatos e um único Blob PDF", async () => {
   assert.equal(ingestionCalls, 0);
 });
 
-test("preserva o envelope CAS do plano até o adaptador", async () => {
-  let call = null;
-  const handler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
-      },
-      async commitCourseInstructionalPlan(value) {
-        call = value;
-        return {
-          contract: "aralearn.course-instructional-plan-change.v1",
-          courseId: COURSE_ID,
-          courseRevision: 6,
-          planId: "20000000-0000-4000-8000-000000000002",
-          planVersion: 4
-        };
-      }
-    }
-  });
-  const response = await handler(request(`/v1/courses/${COURSE_ID}/instructional-plan/changes`, {
-    body: {
-      requestId: "request-course-plan-0001",
-      expectedCourseRevision: 5,
-      expectedPlanVersion: 3,
-      command: { type: "update_plan", audience: "Docentes" }
-    }
-  }));
-  const payload = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(payload.data.planVersion, 4);
-  assert.equal(call.expectedCourseRevision, 5);
-  assert.equal(call.expectedPlanVersion, 3);
-  assert.deepEqual(call.command, { type: "update_plan", audience: "Docentes" });
-});
 
 test("expõe criação da cópia pessoal somente como ação autenticada do aplicativo", async () => {
   const studyUnit = {
@@ -644,70 +543,10 @@ test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async ()
   assert.equal(calls[1][1].command.type, "clear_guidance");
 });
 
-test("aplicativo alcança audit_cycle pelas mesmas duas tools do MCP", async () => {
-  const calls = [];
-  const findingId = "60000000-0000-5000-8000-000000000006";
-  const handler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
-      },
-      async getCourseAuditCycle(value) {
-        calls.push(["read", value]);
-        return { contract: "audit-read-ok" };
-      },
-      async executeCourseAuditCycleCommand(value) {
-        calls.push(["write", value]);
-        return { contract: "audit-write-ok" };
-      }
-    }
-  });
-  const auditPath = `/v1/courses/${COURSE_ID}/audit-cycle`;
-  const readResponse = await handler(request(
-    `${auditPath}?expectedRevision=7&mode=context&targetStudyUnitId=unit-a&limit=1`,
-    { method: "GET" }
-  ));
-  assert.equal(readResponse.status, 200);
-  assert.equal((await readResponse.json()).data.contract, "audit-read-ok");
-  assert.deepEqual(calls[0][1].query, {
-    mode: "context",
-    targetStudyUnitId: "unit-a",
-    findingId: null,
-    correctionId: null,
-    auditRunId: null,
-    states: [],
-    dimensions: [],
-    severities: [],
-    annotationIds: []
-  });
-
-  const writeResponse = await handler(request(`${auditPath}/changes`, {
-    body: {
-      requestId: "request-audit-api-0001",
-      expectedCourseRevision: 7,
-      command: {
-        type: "decide_finding",
-        findingId,
-        expectedFindingVersion: 2,
-        decision: "dismiss"
-      }
-    }
-  }));
-  assert.equal(writeResponse.status, 200);
-  assert.equal((await writeResponse.json()).data.contract, "audit-write-ok");
-  assert.equal(calls[1][1].expectedCourseRevision, 7);
-  assert.deepEqual(calls[1][1].command, {
-    type: "decide_finding",
-    findingId,
-    expectedFindingVersion: 2,
-    decision: "dismiss"
-  });
-});
 
 test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
   const calls = [];
-  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const currentSourceId = "source-current";
   const handler = createCourseApiHandler({
     allowedOrigins: new Set([ORIGIN]),
     adapter: {
@@ -717,7 +556,7 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
       async getCourseSources(value) {
         calls.push(["read", value]);
         return {
-          contract: "aralearn.course-sources.v1",
+          contract: "aralearn.course-sources.v2",
           courseId: COURSE_ID,
           courseRevision: 5,
           mode: "target",
@@ -736,14 +575,14 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
           requestId: "request-course-source-0001",
           idempotent: false,
           changed: true,
-          change: { type: "retire_source", subjectId: legacySourceId, revision: 2 }
+          change: { type: "retire_source", subjectId: currentSourceId, revision: 2 }
         };
       }
     }
   });
   const sourcesPath = `/v1/courses/${COURSE_ID}/sources`;
   const readResponse = await handler(request(
-    `${sourcesPath}?expectedRevision=5&mode=target&targetKind=study_unit&targetId=unit-a&limit=12`,
+    `${sourcesPath}?expectedRevision=5&mode=target&targetKind=study_unit&targetId=unit-a&limit=1`,
     { method: "GET" }
   ));
   assert.equal(readResponse.status, 200);
@@ -754,7 +593,7 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
       expectedCourseRevision: 5,
       command: {
         type: "retire_source",
-        sourceId: legacySourceId,
+        sourceId: currentSourceId,
         expectedSourceRevision: 1
       }
     }
@@ -765,7 +604,7 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
   assert.equal(calls[1][1].expectedCourseRevision, 5);
   assert.deepEqual(calls[1][1].command, {
     type: "retire_source",
-    sourceId: legacySourceId,
+    sourceId: currentSourceId,
     expectedSourceRevision: 1
   });
 
@@ -862,46 +701,6 @@ test("aplicativo expõe observações sem confirmação MCP nem campos de autori
   assert.equal(spoofed.status, 422);
 });
 
-test("orienta reler o Curso e usar novo requestId após conflito de versão", async () => {
-  const handler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        return { actorId: COURSE_ID, scopes: ["authoring:write"] };
-      },
-      async commitCourseInstructionalPlan() {
-        throw new AuthoringApiError(
-          409,
-          "stale_course_state",
-          "A versão de estado do Curso mudou."
-        );
-      }
-    }
-  });
-  const response = await handler(request(`/v1/courses/${COURSE_ID}/instructional-plan/changes`, {
-    body: {
-      requestId: " request-course-stale-0001 ",
-      expectedCourseRevision: 1,
-      expectedPlanVersion: 1,
-      command: { type: "update_plan", title: "Curso revisto" }
-    }
-  }));
-  const payload = await response.json();
-
-  assert.equal(response.status, 409);
-  assert.equal(payload.requestId, null);
-  assert.equal(payload.error.code, "stale_course_state");
-  assert.deepEqual(payload.error.recovery, {
-    strategy: "reread_and_retry",
-    retryable: true,
-    requestIdMode: "new",
-    steps: [
-      "Releia o Curso e sua versão de estado corrente.",
-      "Reaplique somente a intenção ainda pertinente com novo requestId."
-    ]
-  });
-  assert.doesNotMatch(JSON.stringify(payload), /workspace|trilha|salvarCards/iu);
-});
 
 test("Edge da aplicação nunca reflete requestId hostil rejeitado pela rota", async () => {
   const hostileRequestId = "Bearer token-that-must-not-leak";

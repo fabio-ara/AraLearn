@@ -14,10 +14,6 @@ import {
   courseHumanTasksForPrincipal,
   executeHumanCourseTask
 } from "./courseHumanTasks.js";
-import {
-  listCourseMcpAppResources,
-  readCourseMcpAppResource
-} from "./courseMcpAppResource.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 export const ARALEARN_AUTHORING_CONTRACT_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
@@ -242,277 +238,14 @@ function assertProtocolHeader(request, method) {
   }
 }
 
-function arrayLength(value, field) {
-  return Array.isArray(value?.[field]) ? value[field].length : null;
-}
-
-function firstText(...values) {
-  return values.find((value) => typeof value === "string" && value.trim())?.trim() || null;
-}
-
-function appendPageSummary(parts, value) {
-  const candidates = [
-    ["facts", "fato nesta página", "fatos nesta página"],
-    ["items", "item nesta página", "itens nesta página"],
-    ["members", "variante comparável", "variantes comparáveis"],
-    ["parts", "Parte", "Partes"],
-    ["recentActivity", "registro de atividade recente", "registros de atividade recente"]
-  ];
-  const visible = candidates.find(([field]) => arrayLength(value, field) !== null);
-  if (visible) {
-    const count = arrayLength(value, visible[0]);
-    parts.push(`${count} ${count === 1 ? visible[1] : visible[2]}.`);
-  }
-  if (value?.nextCursor) parts.push("Há outra página disponível para este recorte.");
-}
-
-function appendLimitations(parts, value) {
-  const limitations = Array.isArray(value?.limitations)
-    ? value.limitations.filter((entry) => typeof entry === "string" && entry.trim()).slice(0, 3)
-    : [];
-  if (limitations.length) parts.push(`Limites: ${limitations.join(" ")}`);
-  const missing = Array.isArray(value?.missingData)
-    ? value.missingData.filter((entry) => typeof entry === "string" && entry.trim()).slice(0, 3)
-    : [];
-  if (missing.length) parts.push(`Dados ausentes: ${missing.join(" ")}`);
-}
-
 function exceedsMcpResponseLimit(payload) {
   return new TextEncoder().encode(JSON.stringify(payload)).byteLength > MCP_RESPONSE_LIMIT;
 }
 
-function summarizePreview(value) {
-  const preview = value?.result;
-  const parts = [preview?.structural?.valid
-    ? "A Unidade de estudo passou pela validação estrutural e está pronta para pré-visualização."
-    : "A Unidade de estudo não passou pela validação estrutural."];
-  if (preview?.accessibleText) parts.push(String(preview.accessibleText));
-  return parts.join(" ");
-}
-
-function summarizeComponentLibrary(value) {
-  const operationLabels = {
-    explore: "Exploração do catálogo",
-    search: "Busca de componentes",
-    inspect: "Inspeção de componentes",
-    contracts: "Contrato de componente",
-    validate_study_unit: "Validação de Unidade de estudo",
-    audit_representation: "Auditoria da representação"
-  };
-  const result = value?.result || {};
-  const parts = [
-    "A biblioteca de componentes didáticos foi consultada.",
-    `Operação: ${operationLabels[value?.operation] || "Consulta"}.`
-  ];
-  if (Number.isSafeInteger(result.packageCount)) {
-    parts.push(`Componentes disponíveis no recorte: ${result.packageCount}.`);
-  }
-  const candidates = Array.isArray(result.candidates) ? result.candidates.slice(0, 8) : [];
-  if (candidates.length) {
-    parts.push("Candidatos: " + candidates.map((candidate) => {
-      const identity = firstText(candidate?.label, candidate?.title) || "Componente";
-      const fit = ({ canonical: "canônico", versatile: "versátil", substitute: "substituto" })[
-        candidate?.fit
-      ];
-      return fit ? `${identity} (${fit})` : identity;
-    }).join("; ") + ".");
-  }
-  const items = Array.isArray(result.items) ? result.items.slice(0, 8) : [];
-  if (items.length) {
-    parts.push("Itens: " + items.map((item) => {
-      const identity = firstText(
-        item?.profile?.label,
-        item?.profile?.title
-      ) || "Componente";
-      return `${identity}: ${item?.status === "ok" ? "disponível" : "não encontrado"}`;
-    }).join("; ") + ".");
-  }
-  if (typeof result.valid === "boolean") {
-    parts.push(result.valid
-      ? "A Unidade de estudo satisfaz os contratos estruturais."
-      : "A Unidade de estudo não satisfaz os contratos estruturais.");
-  }
-  if (typeof result.structural?.valid === "boolean") {
-    parts.push(result.structural.valid
-      ? "A composição é estruturalmente válida."
-      : "A composição é estruturalmente inválida.");
-  }
-  const overallFit = ({ canonical: "canônico", versatile: "versátil", substitute: "substituto" })[
-    result.overallFit
-  ];
-  if (overallFit) parts.push(`Encaixe representacional: ${overallFit}.`);
-  const notices = [
-    ...(Array.isArray(result.errors) ? result.errors : []),
-    ...(Array.isArray(result.warnings) ? result.warnings : [])
-  ].filter((entry) => typeof entry === "string" && entry.trim()).slice(0, 3);
-  if (notices.length) parts.push(`Observações: ${notices.join(" ")}`);
-  return parts.join(" ");
-}
-
-function summarizeVariantComparison(value) {
-  const parts = ["A comparação de variantes foi lida."];
-  const members = Array.isArray(value?.members) ? value.members.slice(0, 8) : [];
-  const referenceId = value?.differences?.referenceCourseId;
-  const reference = members.find(({ courseId }) => courseId === referenceId) || members[0];
-  if (reference) {
-    const label = firstText(reference.label, reference.title) || "Primeira variante";
-    parts.push(`Referência: ${label}.`);
-  }
-  if (members.length) {
-    parts.push("Variantes: " + members.map((member) => {
-      const label = firstText(member?.label, member?.title) || "Variante";
-      const partCount = member?.materialization?.plannedPartCount;
-      const unitCount = member?.materialization?.studyUnitCount;
-      const partsText = Number.isSafeInteger(partCount)
-        ? `${partCount} ${partCount === 1 ? "Parte" : "Partes"}`
-        : "Partes: dados ausentes";
-      const unitsText = Number.isSafeInteger(unitCount)
-        ? `${unitCount} ${unitCount === 1 ? "Unidade" : "Unidades"}`
-        : "Unidades: dados ausentes";
-      return `${label}: ${partsText}; ${unitsText}`;
-    }).join(". ") + ".");
-  }
-  const differences = value?.differences || {};
-  const groups = [
-    ["declared", "declaradas"],
-    ["observedExpected", "observadas esperadas"],
-    ["accidentalDeviations", "desvios acidentais"],
-    ["factual", "diferenças factuais"],
-    ["missingData", "dados ausentes"]
-  ];
-  parts.push("Diferenças: " + groups.map(([field, label]) =>
-    `${label} ${Array.isArray(differences[field]) ? differences[field].length : 0}`
-  ).join("; ") + ".");
-  const explanations = groups.flatMap(([field]) => Array.isArray(differences[field])
-    ? differences[field]
-    : []).map(({ explanation }) => firstText(explanation))
-    .filter(Boolean).slice(0, 4);
-  if (explanations.length) parts.push(`Detalhes: ${explanations.join(" ")}`);
-  return parts.join(" ");
-}
-
-function materializationFactLines(resultFacts) {
-  const lines = [];
-  for (const [field, label] of [
-    ["warnings", "Avisos"],
-    ["observations", "Observações"]
-  ]) {
-    const entries = Array.isArray(resultFacts?.[field])
-      ? resultFacts[field]
-          .filter((entry) => typeof entry === "string" && entry.trim())
-          .slice(0, 3)
-          .map((entry) => entry.trim().slice(0, 240))
-      : [];
-    if (entries.length) lines.push(`${label}: ${entries.join(" ")}`);
-  }
-  return lines;
-}
-
-function summarizeMaterialization(value) {
-  const materialization = value?.materialization || {};
-  const action = value.contract === "aralearn.course-authoring-materialization-change.v1"
-    ? value.operation === "start"
-      ? "A materialização da Parte foi iniciada."
-      : value.operation === "record_step"
-        ? "Uma etapa da materialização da Parte foi registrada."
-        : materialization.status === "completed"
-          ? "A materialização da Parte foi concluída."
-          : "A materialização da Parte foi encerrada com falha."
-    : "A materialização da Parte foi lida.";
-  const parts = [action];
-  const completed = materialization.completedStepCount;
-  const failed = materialization.failedStepCount;
-  const total = materialization.totalStepCount;
-  if ([completed, failed, total].every(Number.isSafeInteger)) {
-    parts.push(`Etapas: ${completed} de ${total} concluídas; ${failed} com falha.`);
-  }
-  const entities = value.entities;
-  if (entities && [
-    entities.createdCount,
-    entities.updatedCount,
-    entities.deletedCount
-  ].every(Number.isSafeInteger)) {
-    parts.push(
-      `Entidades nesta operação: criadas ${entities.createdCount}; ` +
-      `alteradas ${entities.updatedCount}; removidas ${entities.deletedCount}.`
-    );
-  }
-  parts.push(...materializationFactLines(materialization.resultFacts));
-  return parts.join(" ");
-}
-
-function summarizeMcpAnnotations(value) {
-  const count = Array.isArray(value?.items)
-    ? value.items.length
-    : value?.annotation
-      ? 1
-      : 0;
-  const disclosure = value?.dataDisclosure || {};
-  const parts = [value?.contract === "aralearn.mcp-anchored-annotation-change.v1"
-    ? "A operação de Observação foi concluída."
-    : `${count} ${count === 1 ? "Observação foi lida" : "Observações foram lidas"}.`];
-  parts.push(disclosure.rawObservationTextIncluded === true
-    ? "Incluí o texto integral solicitado para esta triagem autoral; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
-    : "O recorte omite o texto integral, referências e rótulos pessoais, caminhos e links internos.");
-  appendPageSummary(parts, value);
-  return parts.join(" ").slice(0, 12000);
-}
-
-function summarizeToolResult(name, value) {
-  if (typeof value?.result === "string") return value.result.slice(0, 4000);
-  if (new Set([
-    "aralearn.mcp-anchored-annotation-page.v1",
-    "aralearn.mcp-anchored-annotation-change.v1"
-  ]).has(value?.contract)) {
-    return summarizeMcpAnnotations(value);
-  }
-  if (new Set([
-    "aralearn.course-authoring-materialization-change.v1",
-    "aralearn.course-authoring-part-materialization.v1"
-  ]).has(value?.contract)) {
-    return summarizeMaterialization(value).slice(0, 12000);
-  }
-  if (value?.contract === "aralearn.course-variant-comparison.v1") {
-    return summarizeVariantComparison(value).slice(0, 12000);
-  }
-  if (value?.contract === "aralearn.instructional-component-library.v1" &&
-      value?.operation === "preview_study_unit") {
-    return summarizePreview(value).slice(0, 12000);
-  }
-  if (value?.contract === "aralearn.instructional-component-library.v1") {
-    return summarizeComponentLibrary(value).slice(0, 12000);
-  }
-  const action = name === "criar_curso"
-    ? "O Curso foi criado."
-    : name === "salvar_parte"
-      ? "A Parte foi adicionada ao planejamento."
-    : new Set([
-        "materializar_parte", "ajustar_configuracao", "registrar_observacao",
-        "aplicar_correcoes", "manter_fonte"
-      ]).has(name)
-      ? "A alteração foi concluída."
-      : name === "incorporar_pdf_como_fonte"
-        ? "O documento foi mantido entre as Fontes do Curso."
-      : name === "consultar_componentes"
-        ? "A biblioteca de componentes didáticos foi consultada."
-        : "A leitura foi concluída.";
-  const parts = [action];
-  const title = firstText(value?.course?.title, value?.title, value?.source?.title);
-  if (title) parts.push(`Escopo: ${title}.`);
-  appendPageSummary(parts, value);
-  appendLimitations(parts, value);
-  const warning = firstText(value?.warning, value?.summary?.warning);
-  if (warning) parts.push(`Atenção: ${warning}`);
-  if (value?.dataDisclosure?.purpose === "author_audit_context") {
-    parts.push(value.dataDisclosure.rawObservationTextIncluded === true
-      ? "Incluí os textos das Observações selecionadas para esta auditoria autoral; referências e rótulos pessoais, caminhos e links internos continuam omitidos."
-      : "O contexto omite os textos das Observações, referências e rótulos pessoais, caminhos e links internos.");
-  }
-  return parts.join(" ").slice(0, 12000);
-}
-
-function toolSuccess(name, value) {
-  const summary = summarizeToolResult(name, value);
+function toolSuccess(value) {
+  const summary = typeof value?.result === "string"
+    ? value.result.slice(0, 4000)
+    : "A tarefa foi concluída.";
   const text = [
     summary,
     value?.deepLink ? "Abrir no AraLearn." : null,
@@ -579,7 +312,7 @@ async function executeTool({
     rawArguments,
     deadlineAt
   });
-  return toolSuccess(name, value);
+  return toolSuccess(value);
 }
 
 async function dispatchMcpRequest(envelope, context) {
@@ -660,10 +393,7 @@ async function dispatchMcpRequest(envelope, context) {
       jsonrpc: JSON_RPC_VERSION,
       id,
       result: {
-        resources: [
-          ...listCourseAuthoringKnowledgeResources(),
-          ...listCourseMcpAppResources()
-        ]
+        resources: listCourseAuthoringKnowledgeResources()
       }
     };
   }
@@ -674,8 +404,7 @@ async function dispatchMcpRequest(envelope, context) {
         Object.keys(params).some((field) => field !== "uri" && field !== "_meta")) {
       return jsonRpcError(id, -32602, "resources/read exige somente uri.");
     }
-    const resource = readCourseAuthoringKnowledgeResource(params.uri) ||
-      readCourseMcpAppResource(params.uri);
+    const resource = readCourseAuthoringKnowledgeResource(params.uri);
     if (!resource) {
       return jsonRpcError(id, -32002, "Resource MCP inexistente.");
     }

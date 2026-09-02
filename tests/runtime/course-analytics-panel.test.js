@@ -26,7 +26,7 @@ function analyticsPage({
   revision = 7,
   selected = { kind: "course", ref: null, label: "Curso inteiro" },
   studyUnitCount = 2,
-  manualEditCount = 2,
+  manuallyRevisedStudyUnitCount = 2,
   missingData = ["Uma direção editorial não informou origem."]
 } = {}) {
   const courseScope = { kind: "course", ref: null, label: "Curso inteiro" };
@@ -110,11 +110,10 @@ function analyticsPage({
     },
     authorship: {
       observations: { createdCount: 5, openCount: 2, resolvedCount: 3 },
-      explicitParameterChangeCount: 1,
-      manualEditCount,
-      repairs: { acceptedCount: 1, rejectedCount: 1 },
-      studyUnitChangesByOrigin: [{ origin: "gpt", createdCount: 2, revisedCount: 1 }, {
-        origin: "author", createdCount: 0, revisedCount: 2
+      explicitParameterOverrideCount: 1,
+      manuallyRevisedStudyUnitCount,
+      studyUnitsByOrigin: [{ origin: "gpt", createdCount: 2, lastRevisedCount: 1 }, {
+        origin: "author", createdCount: 0, lastRevisedCount: 2
       }]
     },
     missingData,
@@ -160,9 +159,9 @@ test("Analytics mostra somente Desenho e Autoria em uma leitura quantitativa est
   assert.match(root.innerHTML, /AnalysisUnits<small>Novidades semânticas inventariadas\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>3<\/dd>/u);
   assert.match(root.innerHTML, /Observações abertas<small>Pendências humanas atuais\.<\/small><\/dt><dd>2<\/dd>/u);
-  assert.match(root.innerHTML, /Parâmetros alterados[\s\S]+<dd>1<\/dd>/u);
-  assert.match(root.innerHTML, /Edições manuais[\s\S]+<dd>2<\/dd>/u);
-  assert.match(root.innerHTML, /Reparos aceitos[\s\S]+<dd>1<\/dd>/u);
+  assert.match(root.innerHTML, /Parâmetros definidos[\s\S]+<dd>1<\/dd>/u);
+  assert.match(root.innerHTML, /StudyUnits revistas manualmente[\s\S]+<dd>2<\/dd>/u);
+  assert.doesNotMatch(root.innerHTML, /Reparos aceitos|Reparos rejeitados/u);
   assert.equal((root.innerHTML.match(/<table /gu) || []).length, 4);
   assert.equal((root.innerHTML.match(/<details /gu) || []).length, 4);
   assert.doesNotMatch(root.innerHTML, new RegExp(MICRO_REF, "u"));
@@ -193,8 +192,8 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
   assert.match(root.innerHTML, /Componente · Tabela<\/th><td>1 StudyUnit · 1 uso/u);
   assert.match(root.innerHTML, /Prática 1<\/th><td>Distinguir cliente e servidor em situações novas\. · 3 oportunidades/u);
   assert.match(root.innerHTML, /Fonte · Sustentação factual<\/th><td>2 Fontes · 3 Âncoras · 2 StudyUnits/u);
-  assert.match(root.innerHTML, /GPT<\/th><td>2 StudyUnits criadas · 1 StudyUnit revisada/u);
-  assert.match(root.innerHTML, /Pessoa autora<\/th><td>0 StudyUnits criadas · 2 StudyUnits revisadas/u);
+  assert.match(root.innerHTML, /GPT<\/th><td>2 StudyUnits criadas · 1 StudyUnit com última revisão/u);
+  assert.match(root.innerHTML, /Pessoa autora<\/th><td>0 StudyUnits criadas · 2 StudyUnits com última revisão/u);
   assert.match(root.innerHTML, /<strong>Dados ausentes<\/strong>/u);
   assert.match(root.innerHTML, /Uma direção editorial não informou origem\./u);
   assert.doesNotMatch(
@@ -206,7 +205,7 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
 test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", async () => {
   const root = new FakeRoot();
   const downloads = [];
-  const expected = analyticsPage({ manualEditCount: null });
+  const expected = analyticsPage();
   const panel = createCourseAnalyticsPanel({
     root,
     course: { courseId: COURSE_ID, revision: 7 },
@@ -227,14 +226,13 @@ test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", 
   assert.equal(snapshot.design.analysisUnits.length, 2);
   assert.equal(snapshot.design.practiceByRequirement[0].opportunityCount, 3);
   assert.equal(snapshot.authorship.observations.openCount, 2);
-  assert.equal(snapshot.authorship.explicitParameterChangeCount, 1);
-  assert.equal(snapshot.authorship.manualEditCount, null);
-  assert.equal(snapshot.authorship.repairs.acceptedCount, 1);
+  assert.equal(snapshot.authorship.explicitParameterOverrideCount, 1);
+  assert.equal(snapshot.authorship.manuallyRevisedStudyUnitCount, 2);
   assert.doesNotMatch(downloads[0].content, /"facts"|"runs"|"steps"|"duration"|"hash"|"payload"/iu);
   for (const value of [2, 3, 1]) {
     assert.match(root.innerHTML, new RegExp(`<dd>${value}</dd>`, "u"));
   }
-  assert.match(root.innerHTML, /Edições manuais[\s\S]+<dd aria-label="Não disponível">—<\/dd>/u);
+  assert.match(root.innerHTML, /StudyUnits revistas manualmente[\s\S]+<dd>2<\/dd>/u);
 });
 
 test("filtro relê um escopo humano sem expor sua referência no DOM", async () => {
@@ -300,7 +298,7 @@ test("CSS e fonte do painel não restauram dashboard, segunda rolagem ou métric
   const css = fs.readFileSync(path.join(repositoryRoot, "public", "course-authoring.css"), "utf8");
   const analyticsCss = css.slice(
     css.indexOf(".course-analytics-host,"),
-    css.indexOf("/* Auditoria fecha o ciclo")
+    css.indexOf("/* Parâmetros conserva quatro decisões pedagógicas")
   );
 
   assert.match(analyticsCss, /\.course-analytics\s*\{[\s\S]+max-width: 720px/u);

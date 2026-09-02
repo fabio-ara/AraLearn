@@ -68,16 +68,15 @@ apenas estado do dispositivo. Os termos não são intercambiáveis.
 | autenticar a conta | e-mail, credencial e sessão | Supabase Auth e sessão no dispositivo |
 | apresentar a pessoa | identificador, nome opcional e referência da foto | PostgreSQL |
 | exibir a foto | JPEG, PNG ou WebP de até 512 KiB | área privada `person-avatars` |
-| manter um Curso | proprietário, plano, orientações, composição e revisões | PostgreSQL |
+| manter um Curso | proprietário, plano, configuração e composição corrente | PostgreSQL |
 | documentar proveniência | Fonte, metadados, endereço, Âncoras, trecho de verificação e atribuições | PostgreSQL privado |
 | anexar documentos de Fonte | PDF, tamanho, resumo criptográfico e vínculo com a revisão | área privada `course-source-pdfs` e PostgreSQL |
 | autorizar Estudo | Curso, conta com acesso, proprietário e data da concessão | PostgreSQL |
 | retomar Estudo | posição, conclusões e marcas **Rever** | PostgreSQL e réplica local |
-| registrar Observações | alvo, origem, texto, categoria, estado, resposta, Fontes consideradas, versões e instantes | PostgreSQL privado; cópia e fila no dispositivo |
-| auditar e corrigir | critério, evidência, vínculos, versões e estados anterior e proposto da Unidade focal | PostgreSQL privado do proprietário |
-| comparar Variantes | ponto comum, Cursos membros, diferenças declaradas e fatos observados | PostgreSQL privado do proprietário |
-| consultar Pesquisa | fatos derivados da Autoria, dicionário, métricas descritivas e paginação | PostgreSQL; projeção restrita ao proprietário |
-| repetir uma alteração com segurança | revisão esperada, identificador do pedido, evento e recibo temporário | PostgreSQL privado |
+| registrar Observações | alvo, origem, texto, categoria, estado e resposta | PostgreSQL privado; cópia e fila no dispositivo |
+| revisar e corrigir | Observações e conteúdo corrente das StudyUnits afetadas | PostgreSQL privado do proprietário |
+| consultar Analytics | configuração, desenho aplicado e intervenções correntes agregadas | projeção PostgreSQL restrita ao proprietário |
+| repetir uma alteração com segurança | revisão esperada, identificador do pedido e recibo temporário | PostgreSQL privado |
 
 ### Registro técnico das classes
 
@@ -88,11 +87,11 @@ continua aberto quando indicado.
 | --- | --- | --- | --- | --- | --- |
 | conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem dataset de pesquisa |
 | perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não em MCP nem Actions |
-| Curso e autoria | conteúdo, plano, revisões, eventos e recibos para criar e investigar o artefato | pode conter dado pessoal em texto livre; UUIDs ligados à conta e horários correlacionáveis são dados pessoais e não se tornam pseudônimos apenas pelo formato | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos de mudança expiram em 14 dias | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
-| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, evento, contador, MCP ou Actions |
+| Curso e autoria | conteúdo, plano, configuração corrente e recibos temporários | pode conter dado pessoal em texto livre; UUIDs ligados à conta continuam pessoais ou pseudonimizados | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos expiram pelo prazo técnico | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
+| acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, contador, MCP ou Actions |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
 | Observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada redige de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
-| Analytics da Autoria | IDs, hashes, canal, origem, estado, contagens e horários para descrever o processo | pessoal/pseudonimizado enquanto houver correlação; não é anonimizado por retirar o nome | PostgreSQL; proprietário do Curso | prazo institucional ainda aberto | exportável com aviso; não mede aprendizagem nem constitui dataset anônimo |
+| Analytics da Autoria | escopo, configuração aplicada e contagens de desenho e intervenção corrente | pode permanecer pessoal ou pseudonimizado por estar ligado a um Curso próprio | derivado do PostgreSQL; proprietário do Curso | acompanha o estado corrente; não cria retenção própria | snapshot JSON não mede aprendizagem nem constitui dataset anônimo |
 | PDFs e avatares | documentos de Fonte e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | PDFs não entram nas exportações correntes nem são enviados ao provedor por padrão |
 | assistência por provedor | pedido, texto editável selecionado, título, papel, tópicos e até oito turnos para produzir uma sugestão focal | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provedor escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provedor | não é dataset de pesquisa; envio exige aviso por chamada |
 | pesquisa | protocolo, pseudônimo específico, medidas e eventual tabela de reidentificação | pessoal pseudonimizado enquanto reidentificável; pode tornar-se sensível conforme a pergunta | plano de dados segregado e acesso definido pelo protocolo, ainda não implantado como infraestrutura genérica | conforme protocolo, retirada e obrigação institucional | exportação somente nos termos do protocolo; resultados publicados exigem avaliação de reidentificação |
@@ -142,8 +141,8 @@ chave nova dentro da pasta da própria conta e não cria endereço público.
 ## Propriedade e acesso ao Curso
 
 Todo Curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
-e composição, usar as ferramentas autorais, consultar Pesquisa e Variantes e
-gerir acessos. Uma pessoa com acesso recebe somente a projeção de Estudo, que
+e composição, usar as tarefas autorais, consultar Analytics e gerir acessos.
+Uma pessoa com acesso recebe somente a projeção de Estudo, que
 exclui orientações privadas e estado autoral. Na operação de cópia pessoal, essa
 projeção permite enviar uma única Unidade editada ao servidor para criar um
 Curso pessoal privado; ela não concede escrita sobre o original.
@@ -168,7 +167,7 @@ bytes.
 
 ## Fontes, Âncoras e PDFs
 
-Somente o proprietário acessa catálogo, histórico, Fontes ocultas, referências
+Somente o proprietário acessa catálogo, Fontes ocultas, referências
 pendentes de comprovação, trecho privado de verificação, PDFs e controles de
 edição. Estudo solicita a proveniência de uma Unidade quando a pessoa abre
 **Fontes** e recebe apenas a projeção autorizada:
@@ -176,25 +175,22 @@ edição. Estudo solicita a proveniência de uma Unidade quando a pessoa abre
 - **Não mostrar no Estudo** omite a Fonte;
 - **Mostrar citação** apresenta identificação e localização sem endereço;
 - **Mostrar citação e link** também pode apresentar o endereço;
-- histórico, trecho privado, identidade de quem alterou, canal, PDF e controles autorais permanecem
+- trecho privado, identidade de quem alterou, PDF e controles autorais permanecem
   ausentes.
 
 Os PDFs usam caminhos formados pela identidade do Curso e pelo resumo
 criptográfico do conteúdo. Arquivos idênticos dentro do mesmo Curso compartilham
-os bytes, enquanto os vínculos preservam as revisões de Fonte corretas. Antes de
+os bytes, enquanto os vínculos apontam à Fonte corrente. Antes de
 registrar o vínculo, a API lê o objeto privado com a credencial do servidor e
 confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivos
-vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada revisão
+vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada Fonte
 até oito anexos e o Curso até 64 MiB de conteúdo único.
 
-O preparo de envio cria uma intenção privada válida por
-dez minutos para o ator, Curso, caminho, impressão digital, tamanho, tipo, Fonte e
-revisões exatos. O navegador envia o PDF ao endpoint autenticado do Storage com
-a sessão corrente; a política também exige que o `session_id` ainda exista e
-não esteja vencido no Auth, confronta caminho, tamanho e tipo e participa do
-mesmo bloqueio usado pela exclusão da conta. A inserção consome a intenção. Não
-é emitida URL assinada de upload. Uma URL de download já emitida permanece
-independente da sessão somente até expirar; o inventário registra essa janela.
+O preparo de envio cria uma intenção privada e curta para pessoa, Curso,
+caminho, tamanho, tipo e Fonte exatos. A Edge Function envia os bytes pela
+Storage API com credencial de servidor, relê o objeto e só então confirma o
+vínculo. A URL transitória recebida do ChatGPT não é persistida. Uma URL de
+download já emitida permanece independente da sessão somente até expirar.
 
 O resumo criptográfico e o cabeçalho só podem ser confirmados depois que os
 bytes chegam. Se um objeto de mesmo tamanho e tipo não corresponder ao PDF
@@ -207,20 +203,15 @@ emitida não pode ser revogada individualmente e pode continuar funcionando até
 o fim dessa janela. Ela não deve ser persistida nem usada como identidade do
 arquivo.
 
-Criar uma variante pode reutilizar a referência ao mesmo objeto privado em vez
-de duplicar os bytes. A leitura continua condicionada à propriedade do Curso
-que participa da comparação.
-
-A exportação de proveniência contém o alvo, as relações, as revisões, as
+A exportação de proveniência contém o alvo, as relações, as versões correntes, as
 Âncoras e metadados dos anexos. Ela omite identificadores pessoais de quem
 realizou as operações. Depois de baixado, o arquivo passa a depender também dos
 cuidados adotados fora do AraLearn.
 
 Uma nota, contestação ou solicitação de reformulação pode apontar para a Fonte
 ou para uma Âncora. Esses registros seguem o mesmo controle privado das demais
-Anotações ancoradas. Quando a autoria responde com uma reformulação, a resposta
-identifica somente as revisões de Fonte e de Âncora consideradas; o PDF e seu
-conteúdo não são copiados para a Anotação. A exportação v2 dessas Observações
+Anotações ancoradas. Quando a autoria responde com uma reformulação, o PDF e seu
+conteúdo não são copiados para a Anotação. A exportação dessas Observações
 conserva texto, alvo, versões, vínculos, identificadores operacionais e horários
 necessários ao uso privado. Ela remove `contributor.ref`, o rótulo protegido da
 pessoa, os caminhos observado e corrente, links profundos e capacidades da
@@ -275,33 +266,22 @@ responsável precisa definir a retenção operacional. O AraLearn não cria uma
 cópia de pesquisa por padrão; qualquer reutilização exige finalidade,
 minimização, governança e autorização adequadas.
 
-## Auditoria, correções, Variantes e Pesquisa
+## Revisão e Analytics
 
-Somente o proprietário consulta e altera rodadas, achados, correções e
-comparações. Estudantes não recebem listas, contagens, evidências nem links
-dessas áreas.
+Somente o proprietário consulta a caixa autoral e aplica correções ao Curso.
+Uma revisão lê Observações abertas e o conteúdo corrente das StudyUnits
+afetadas. Não persiste cópia anterior e proposta apenas para formar uma história
+de auditoria.
 
-Um achado ligado a uma Observação guarda apenas identidade e versão da Anotação,
-sem copiar texto, resposta, pseudônimo ou identidade pessoal. Quando a Anotação
-é retirada, o vínculo deixa de ser navegável; depois da limpeza física, a
-relação desaparece e preserva a rodada, o achado e a correção.
+Analytics deriva configuração, desenho aplicado e intervenções que o estado
+corrente permite atribuir. O snapshot não contém texto de Observação, e-mail,
+conversa, cliques ou tempo de permanência. Retirar nomes não torna o arquivo
+automaticamente anônimo: Curso, conteúdo e combinação de valores ainda podem
+permitir associação à pessoa autora.
 
-Uma correção guarda apenas os estados anterior e proposto da Unidade focal e de
-suas atribuições de Fontes. Aplicar e reverter mudam o Curso e criam atividade;
-registrar auditoria, decidir, propor ou verificar preserva a composição.
-
-Pesquisa projeta fatos já registrados para o proprietário. Os conjuntos cobrem
-atividade do Curso, produção por Partes, desenho, Fontes, Observações, auditorias
-e Variantes. A exportação conserva códigos estáveis e limites de interpretação.
-Ela não inclui o e-mail digitado para acesso nem transforma Anotações em uma
-base de pesquisa identificada.
-
-Retirar nome e e-mail não torna esses fatos anônimos. Identificadores de Curso,
-objeto ou pedido, resumos criptográficos e horários podem permitir correlação
-com a operação ou com outros conjuntos. Enquanto essa relação for razoavelmente
-possível, Analytics e suas exportações devem ser tratados como dados pessoais
-pseudonimizados. A área **Pesquisa** é uma projeção operacional do proprietário,
-não um plano de dados de participantes autorizado por protocolo.
+**Exportar Analytics** salva os mesmos números da tela. O arquivo não é plano de
+dados de participantes nem autoriza uso em pesquisa. Essa finalidade exige
+protocolo, minimização, acesso, retenção e avaliação de reidentificação próprios.
 
 ## Integrações conversacionais
 
@@ -312,13 +292,14 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-O catálogo MCP público possui seis ferramentas canônicas e `add_part` dedicado.
+O catálogo MCP público possui dezesseis tarefas humanas, compartilhadas com
+Actions.
 Perfil,
 avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-Um GPT personalizado pode chamar as mesmas seis operações por Actions e
+Um GPT personalizado pode chamar as mesmas dezesseis tarefas por Actions e
 OpenAPI. Esse canal recebe uma credencial de acesso opaca, que identifica a
 autorização sem expor seu conteúdo ao cliente, e uma credencial de renovação
 rotativa. O servidor guarda somente resumos criptográficos dessas credenciais e
@@ -347,31 +328,20 @@ ou no Storage.
 Consentimentos e sessões OAuth do MCP encerrados não renovam acesso. Um token
 já emitido permanece criptograficamente válido somente até `exp`.
 
-A caixa de entrada e a leitura por alvo de Observações nos dois canais usam uma projeção
-fechada com síntese, estado, origem, papel, versões e identificador operacional.
-Ela omite texto integral, `contributor.ref`, rótulo protegido da pessoa,
-caminhos, links, IDs internos do alvo, horários e texto da resposta autoral. O
-detalhe e o contexto de auditoria com Observações selecionadas só incluem
-`rawText` quando o cliente declara `includeObservationText: true`. A resposta
-registra o destinatário e a finalidade desse envio; as demais omissões continuam
-valendo.
+As tarefas de Observações consultam apenas o escopo autorizado necessário à
+revisão. Texto, alvo e contexto podem conter dados pessoais; o GPT deve receber
+somente o recorte pedido e não reproduzi-lo numa resposta de coordenação.
 
-Fontes também usam uma projeção própria nos clientes conectados. Ela preserva as referências de
-domínio necessárias à autoria, mas omite UUID de ator, identidade de atribuição,
-resumo interno do alvo, Curso de origem do objeto e caminho do Storage. Preparar
-o envio de PDF exige a sessão da aplicação e não integra MCP nem Actions. Para
-abrir um anexo, o cliente precisa declarar
-`includeAttachmentDownloadUrl: true`; somente então recebe a URL assinada, com
-`dataDisclosure` que a identifica como credencial temporária de 60 segundos.
-O mesmo disclosure enumera os campos livres potencialmente pessoais incluídos
-na revisão autoral: título, autoria declarada, citação, endereço, identificador,
-edição ou versão, trecho de verificação e, quando presentes, `exact`, `prefix`,
-`suffix` ou `fragment` dos seletores de Âncora. O painel de Fontes do Estudo já
-pode mostrar título, citação, edição ou versão, endereço e o recorte representado
-pelo seletor. O detalhe solicitado pelo cliente conectado também pode receber os
-demais campos autorais enumerados; o trecho de verificação não é exibido no
-Estudo. Em Actions, o destinatário declarado é o GPT conectado; no MCP, é o
-cliente MCP conectado.
+Fontes preservam as referências necessárias à autoria, mas não expõem ator,
+caminho do Storage ou credencial administrativa. A incorporação de PDF aceita o
+arquivo temporário entregue pelo transporte, valida origem e bytes no servidor e
+grava o objeto em bucket privado. Para abrir um anexo, o serviço autoriza o alvo
+e emite uma URL assinada de curta duração. Metadados livres da Fonte, como título,
+autoria declarada, citação, endereço, identificador, edição e trecho de
+verificação, podem conter dados pessoais e exigem minimização. O painel de
+Fontes do Estudo mostra somente os metadados e a localização permitidos pela
+visibilidade escolhida. Em Actions, o destinatário é o GPT conectado; no MCP, é
+o cliente MCP conectado.
 
 Na Assistência por IA, o pedido sai do dispositivo diretamente para OpenAI,
 Gemini ou DeepSeek, conforme a escolha da pessoa. A chave efêmera segue somente
@@ -432,10 +402,10 @@ edição e um identificador de pedido. Esse recorte existe para repetição
 idempotente após falha ou reinício e é removido na confirmação ou no descarte.
 Ele não inclui conversa, endpoint, modelo ou credencial do provedor.
 
-Rodadas, achados, correções, comparações e fatos de Pesquisa permanecem no
-servidor. Limpar os dados do aplicativo pode apagar mudanças ainda não
-sincronizadas. Sair encerra a sessão, mas não equivale a excluir todos os dados
-do dispositivo ou do servidor.
+Conteúdo, Fontes, Observações e configuração do Curso permanecem no servidor.
+Limpar os dados do aplicativo pode apagar mudanças ainda não sincronizadas. Sair
+encerra a sessão, mas não equivale a excluir todos os dados do dispositivo ou
+do servidor.
 
 O logout comum tenta sincronizar as filas e preserva, por decisão de produto,
 Cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela
@@ -514,16 +484,12 @@ A operação não oferece restauração automática. Registros técnicos, cópia
 segurança e retenções do provedor podem seguir prazos próprios, que a instituição
 responsável deve declarar.
 
-O envio de PDF não usa URL assinada: exige sessão viva e
-intenção de dez minutos consumida na inserção. O download já assinado pode continuar legível
-por até 60 segundos porque o Supabase não revoga uma URL individual antes da
-expiração. A rotina administrativa inventaria, sem apagar, `avatar_owner_missing`,
+O envio de PDF é mediado pela Edge Function e usa uma intenção curta; o objeto
+é escrito pela Storage API e conferido antes do vínculo. O download já assinado
+pode continuar legível até expirar. A rotina administrativa inventaria, sem apagar, `avatar_owner_missing`,
 `avatar_profile_unlinked`, `pdf_course_missing`, `pdf_unlinked` e
 `pdf_object_missing`. Uma remoção posterior exige conferir vínculos, backups,
 retenções e a classe do objeto; inventariar não autoriza exclusão automática.
-
-O contrato v1 é emitido somente para `download`; o contrato v2 fica reservado a
-`prepare_upload` autenticado. A escolha não usa `User-Agent`.
 
 ## Proteção desde a concepção
 

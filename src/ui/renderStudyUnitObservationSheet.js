@@ -58,9 +58,8 @@ const SYNC_LABELS = Object.freeze({
 const ORIGIN_LABELS = Object.freeze({
   author: "Autoria",
   learner: "Estudante",
-  human_audit: "Auditoria humana",
-  automatic_audit: "Auditoria automática",
-  unknown_legacy: "Origem legada"
+  reviewer: "Pessoa revisora",
+  imported: "Importada"
 });
 
 function escapeHtml(value) {

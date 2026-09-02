@@ -9,15 +9,12 @@ const ORIGIN_LABELS = Object.freeze({
   migration: "Importada"
 });
 
-function quantity(value, singular, plural) {
-  return `${value} ${Number(value) === 1 ? singular : plural}`;
-}
-
 const SCOPE_LABELS = Object.freeze({
   course: "Curso",
   module: "Módulo",
   lesson: "Lição",
-  didactic_microsequence: "Microssequência didática"
+  didactic_microsequence: "Microssequência didática",
+  study_unit: "StudyUnit"
 });
 
 const VALUE_LABELS = Object.freeze({
@@ -36,12 +33,6 @@ const VALUE_LABELS = Object.freeze({
   support_level: "Nível de apoio"
 });
 
-const DIRECTIVE_LABELS = Object.freeze({
-  require: "Exigir",
-  avoid: "Evitar",
-  prefer: "Preferir"
-});
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -58,6 +49,7 @@ function scopeRoute(courseId, scope) {
   if (scope.kind === "didactic_microsequence") {
     options.didacticMicrosequenceId = scope.ref;
   }
+  if (scope.kind === "study_unit") options.studyUnitId = scope.ref;
   return buildCourseAuthoringRoute(courseId, options);
 }
 
@@ -116,8 +108,8 @@ function renderScopeContext(design) {
       ' data-course-authoring-action="load-more-design-scopes" aria-label="Carregar mais escopos"' +
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
-  const contextualNote = context.current.kind === "didactic_microsequence"
-    ? "As StudyUnits desta Microssequência usam estes valores. Cada versão preserva a configuração aplicada na produção."
+  const contextualNote = ["didactic_microsequence", "study_unit"].includes(context.current.kind)
+    ? "As StudyUnits desta Microssequência usam estes valores. Cada Unidade preserva a configuração usada na produção."
     : "Escolha um escopo para consultar o valor vigente e, quando necessário, sobrescrever ou restaurar a herança.";
   return '<section class="course-design-scope" aria-labelledby="course-design-scope-title">' +
     '<div><p id="course-design-scope-title">Escopo atual</p>' +
@@ -196,81 +188,21 @@ function renderParameterCard(design, definition, resolution, busy) {
     `<p><strong>Limite:</strong> ${escapeHtml(definition.limitations)}</p></div>${editor}</details></article>`;
 }
 
-function renderInterpretation(interpretation) {
-  if (!interpretation) return "";
-  const value = interpretation.interpretation;
-  const directives = value.directives.length
-    ? '<ul class="course-design-directives">' + value.directives.map((directive) =>
-      `<li><strong>${escapeHtml(DIRECTIVE_LABELS[directive.kind])}:</strong> ` +
-      `${escapeHtml(directive.statement)}</li>`).join("") + "</ul>"
-    : "";
-  const divergences = value.divergences.length
-    ? '<div><h5>Divergências</h5><ul>' + value.divergences.map((item) =>
-      `<li>${escapeHtml(item)}</li>`).join("") + "</ul></div>"
-    : "";
-  const questions = value.questions.length
-    ? '<div><h5>Perguntas em aberto</h5><ul>' + value.questions.map((item) =>
-      `<li>${escapeHtml(item)}</li>`).join("") + "</ul></div>"
-    : "";
-  return '<div class="course-design-interpretation"><h5>Interpretação estruturada</h5>' +
-    `<p>${escapeHtml(value.summary)}</p>${directives}${divergences}${questions}</div>`;
-}
-
-function directiveLines(interpretation, kind) {
-  return interpretation?.interpretation.directives
-    .filter((directive) => directive.kind === kind)
-    .map((directive) => directive.statement)
-    .join("\n") || "";
-}
-
-function renderInterpretationForm(revision, busy) {
-  const current = revision.currentInterpretation;
-  const value = current?.interpretation;
-  const label = current ? "Revisar interpretação" : "Interpretar direção editorial separadamente";
-  return '<details class="course-design-interpretation-editor"><summary class="course-authoring-icon-action"' +
-    ` aria-label="${label}" title="${label}">` +
-    renderUiIcon(current ? "edit" : "add", "course-authoring-button-icon") + "</summary>" +
-    '<form data-course-design-interpretation>' +
-    `<input type="hidden" name="guidanceRevisionId" value="${escapeHtml(revision.revisionId)}">` +
-    '<label>Resumo estruturado<textarea name="summary" maxlength="1000" rows="3" required>' +
-    `${escapeHtml(value?.summary || "")}</textarea></label>` +
-    '<label>Exigir<textarea name="requireDirectives" maxlength="8015" rows="3">' +
-    `${escapeHtml(directiveLines(current, "require"))}</textarea></label>` +
-    '<label>Evitar<textarea name="avoidDirectives" maxlength="8015" rows="3">' +
-    `${escapeHtml(directiveLines(current, "avoid"))}</textarea></label>` +
-    '<label>Preferir<textarea name="preferDirectives" maxlength="8015" rows="3">' +
-    `${escapeHtml(directiveLines(current, "prefer"))}</textarea></label>` +
-    '<label>Divergências<textarea name="divergences" maxlength="8015" rows="3">' +
-    `${escapeHtml(value?.divergences.join("\n") || "")}</textarea></label>` +
-    '<label>Perguntas em aberto<textarea name="questions" maxlength="8015" rows="3">' +
-    `${escapeHtml(value?.questions.join("\n") || "")}</textarea></label>` +
-    `<button type="submit" aria-label="Salvar interpretação" title="Salvar interpretação"${busy ? " disabled" : ""}>` +
-    `${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
-    "</form></details>";
-}
-
-function renderGuidanceRevisionCopy(revision) {
-  const copy = `<blockquote>${escapeHtml(revision.guidance)}</blockquote>` +
-    `<p class="course-design-reason">${escapeHtml(revision.reason)}</p>`;
-  if (revision.origin !== "migration") return copy;
-  const label = "Ver direção editorial importada";
-  return '<details class="course-design-imported-copy"><summary class="course-authoring-icon-action"' +
-    ` aria-label="${label}" title="${label}">` +
-    renderUiIcon("preview", "course-authoring-button-icon") + `</summary>${copy}</details>`;
+function renderGuidanceAssignmentCopy(assignment) {
+  return `<blockquote>${escapeHtml(assignment.guidance)}</blockquote>` +
+    `<p class="course-design-reason">${escapeHtml(assignment.reason)}</p>`;
 }
 
 function renderGuidance(design, busy) {
   const guidance = design.guidance;
-  const stack = guidance.effectiveRevisions.length
-    ? '<ol class="course-design-guidance-stack">' + guidance.effectiveRevisions.map((revision) =>
+  const stack = guidance.effectiveAssignments.length
+    ? '<ol class="course-design-guidance-stack">' + guidance.effectiveAssignments.map((assignment) =>
       '<li><article><header><span>' +
-      `${escapeHtml(sourceScopeLabel(design, revision.sourceScope))}</span>` +
-      `<small>${escapeHtml(originLabel(revision.origin))}</small></header>` +
-      renderGuidanceRevisionCopy(revision) +
-      renderInterpretation(revision.currentInterpretation) +
-      renderInterpretationForm(revision, busy) + "</article></li>").join("") + "</ol>"
+      `${escapeHtml(sourceScopeLabel(design, assignment.sourceScope))}</span>` +
+      `<small>${escapeHtml(originLabel(assignment.origin))}</small></header>` +
+      renderGuidanceAssignmentCopy(assignment) + "</article></li>").join("") + "</ol>"
     : '<p class="course-design-empty-copy">Nenhuma direção editorial foi definida no caminho deste escopo.</p>';
-  const local = guidance.localRevision;
+  const local = guidance.localAssignment;
   return '<section class="course-design-guidance" aria-labelledby="course-design-guidance-title">' +
     '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Direção editorial</h3>' +
     '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais StudyUnits.</p></div></header>' + stack +
@@ -296,8 +228,8 @@ function renderGuidance(design, busy) {
 
 function renderComponentPolicy(design, busy) {
   const catalog = design.componentCatalog;
-  const local = design.componentPolicy.localChange;
-  const effective = design.componentPolicy.effectiveChange;
+  const local = design.componentPolicy.localAssignment;
+  const effective = design.componentPolicy.effectiveAssignment;
   const draft = local?.policy || effective.policy;
   const allowed = new Set(draft.allowedRefs);
   const excluded = new Set(draft.excludedRefs);
@@ -345,69 +277,14 @@ function renderComponentPolicy(design, busy) {
       : "") + "</div></form></details></section>";
 }
 
-function plannedParameter(design, parameterId) {
-  return design.parameters.find((parameter) => parameter.parameterId === parameterId)
-    ?.effectiveAssignment.value;
-}
 
-function labels(values) {
-  return values.length ? values.map((value) => VALUE_LABELS[value] || value).join("; ") : "Nenhum";
-}
-
-function renderApplicationComparison(design) {
-  const application = design.recentApplications[0];
-  if (!application) {
-    return '<section class="course-design-comparison" aria-labelledby="course-design-comparison-title">' +
-      '<header class="course-design-subheading"><div><h3 id="course-design-comparison-title">Planejado × aplicado</h3></div></header>' +
-      '<p class="course-design-empty-copy">Nenhuma aplicação factual foi registrada neste escopo.</p></section>';
-  }
-  const componentLabels = new Map(design.componentCatalog.options.map((option) => [option.ref, option.label]));
-  const ceiling = plannedParameter(
-    design,
-    "new_analysis_unit_ceiling_per_expository_study_unit"
-  );
-  const explanationForms = plannedParameter(design, "required_explanation_forms");
-  const practiceMinimum = plannedParameter(
-    design,
-    "minimum_distinct_practice_opportunities_per_evidence_requirement"
-  );
-  const variationDimensions = plannedParameter(design, "required_practice_variation_dimensions");
-  return '<section class="course-design-comparison" aria-labelledby="course-design-comparison-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-comparison-title">Planejado × aplicado</h3></div></header>' +
-    '<p class="course-design-comparison-warning">Dados registrados, não medida de aprendizagem.</p>' +
-    '<dl><div><dt>Unidades de análise</dt><dd><span>Planejado: até ' +
-    escapeHtml(quantity(ceiling, "nova por Unidade expositiva", "novas por Unidade expositiva")) +
-    ".</span><span>Registrado: " +
-    `${quantity(application.introducedInstructionalAnalysisUnitIds.length, "identidade introduzida", "identidades introduzidas")} em ` +
-    `${quantity(application.studyUnitCount, "Unidade", "Unidades")}; ` +
-    `${quantity(application.modeCounts.expository, "expositiva", "expositivas")}, ` +
-    `${application.modeCounts.practice} de prática e ` +
-    `${quantity(application.modeCounts.mixed, "mista", "mistas")}.</span></dd></div>` +
-    '<div><dt>Formas de explicação</dt><dd><span>Planejado: ' +
-    `${escapeHtml(labels(explanationForms))}.</span><span>Registrado: ` +
-    `${escapeHtml(labels(application.developedExplanationForms))}.</span></dd></div>` +
-    '<div><dt>Prática</dt><dd><span>Planejado: ao menos ' +
-    escapeHtml(quantity(practiceMinimum, "oportunidade distinta", "oportunidades distintas")) +
-    " por requisito de evidência.</span><span>Registrado: " +
-    `${quantity(application.practiceOpportunityCount, "oportunidade", "oportunidades")}; variação em ` +
-    `${escapeHtml(labels(application.variedDimensions))}. Dimensões planejadas: ` +
-    `${escapeHtml(labels(variationDimensions))}.</span></dd></div>` +
-    '<div><dt>Componentes</dt><dd><span>Registrado: ' +
-    `${escapeHtml(application.componentRefs.length
-      ? application.componentRefs.map((ref) => componentLabels.get(ref) || ref).join("; ")
-      : "Nenhum")}.</span></dd></div></dl>` +
-    "</section>";
-}
-
-function renderTargetPlanItemChoices(label, name, items, selected, disabled) {
-  return `<fieldset><legend>${escapeHtml(label)}</legend>` +
+function renderTargetPlanItemList(label, items) {
+  return '<section class="course-design-target-group">' +
+    `<h4>${escapeHtml(label)}</h4>` +
     (items.length
-      ? `<div class="course-design-target-options">${items.map((item) => (
-        `<label><input type="checkbox" name="${escapeHtml(name)}" value="${escapeHtml(item.id)}"` +
-        `${selected.has(item.id) ? " checked" : ""}${disabled ? " disabled" : ""}>` +
-        `<span>${escapeHtml(item.statement)}</span></label>`
-      )).join("")}</div>`
-      : "<p>Nenhum item deste tipo foi definido no Planejamento.</p>") + "</fieldset>";
+      ? `<ul>${items.map((item) => `<li>${escapeHtml(item.statement)}</li>`).join("")}</ul>`
+      : "<p>Nenhum item deste tipo foi definido no Planejamento.</p>") +
+    "</section>";
 }
 
 function renderTargetPlanItems(state, design) {
@@ -428,28 +305,21 @@ function renderTargetPlanItems(state, design) {
   const targets = design.targetPlanItems;
   const analysis = new Set(targets.instructionalAnalysisUnitIds);
   const evidence = new Set(targets.evidenceRequirementIds);
-  const disabled = state.designBusy === true;
+  const assignedAnalysis = plan.instructionalAnalysisUnits.filter(({ id }) => analysis.has(id));
+  const assignedEvidence = plan.evidenceRequirements.filter(({ id }) => evidence.has(id));
   return '<section class="course-design-targets" aria-labelledby="course-design-targets-title">' +
     '<header class="course-design-subheading"><div><h3 id="course-design-targets-title">' +
     'Cobertura planejada desta Microssequência</h3>' +
-    "</div></header>" +
-    '<form data-course-design-target-items>' +
-    renderTargetPlanItemChoices(
+    '<p>Definida no planejamento da Parte.</p></div></header>' +
+    '<div class="course-design-target-groups">' +
+    renderTargetPlanItemList(
       "Unidades de análise instrucional",
-      "instructionalAnalysisUnitIds",
-      plan.instructionalAnalysisUnits,
-      analysis,
-      disabled
+      assignedAnalysis
     ) +
-    renderTargetPlanItemChoices(
+    renderTargetPlanItemList(
       "Requisitos de evidência",
-      "evidenceRequirementIds",
-      plan.evidenceRequirements,
-      evidence,
-      disabled
-    ) +
-    `<button type="submit" aria-label="Salvar cobertura" title="Salvar cobertura"${disabled ? " disabled" : ""}>` +
-    `${renderUiIcon("save", "course-authoring-button-icon")}</button></form></section>`;
+      assignedEvidence
+    ) + "</div></section>";
 }
 
 function renderDesignStatus({ kind, title, message, retry = false }) {
@@ -502,5 +372,5 @@ export function renderCourseDesignPanel(state) {
     renderTargetPlanItems(state, design) +
     renderGuidance(design, state.designBusy) +
     renderComponentPolicy(design, state.designBusy) +
-    renderApplicationComparison(design) + "</section>";
+    "</section>";
 }

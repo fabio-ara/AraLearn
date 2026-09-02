@@ -147,17 +147,16 @@ function snapshot({
     },
     authorship: {
       observations: { createdCount: 4, openCount: 1, resolvedCount: 2 },
-      explicitParameterChangeCount: 3,
-      manualEditCount: 1,
-      repairs: { acceptedCount: 2, rejectedCount: 1 },
-      studyUnitChangesByOrigin: [{
+      explicitParameterOverrideCount: 3,
+      manuallyRevisedStudyUnitCount: 1,
+      studyUnitsByOrigin: [{
         origin: "authoring_chat",
         createdCount: studyUnits.length,
-        revisedCount: 1
+        lastRevisedCount: 1
       }, {
         origin: "manual",
         createdCount: 0,
-        revisedCount: 1
+        lastRevisedCount: 1
       }]
     },
     missingData: ["Uma Observação retirada não é classificada como resolvida."],
@@ -205,9 +204,9 @@ test("#273 snapshot responde desenho e autoria somente com contagens observávei
     openCount: 1,
     resolvedCount: 2
   });
-  assert.equal(normalized.authorship.explicitParameterChangeCount, 3);
-  assert.equal(normalized.authorship.manualEditCount, 1);
-  assert.deepEqual(normalized.authorship.repairs, { acceptedCount: 2, rejectedCount: 1 });
+  assert.equal(normalized.authorship.explicitParameterOverrideCount, 3);
+  assert.equal(normalized.authorship.manuallyRevisedStudyUnitCount, 1);
+  assert.equal(normalized.authorship.studyUnitsByOrigin[0].lastRevisedCount, 1);
 });
 
 test("#273 teto 1 e 2 preservam o inventário e mudam somente a distribuição", () => {
@@ -259,16 +258,6 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
     [1, 2]);
   assert.deepEqual(normalized.missingData,
     ["Uma Observação retirada não é classificada como resolvida."]);
-
-  const localScope = snapshot({
-    scope: { kind: "didactic_microsequence", ref: "micro-dns", label: "DNS" }
-  });
-  localScope.authorship.manualEditCount = null;
-  assert.equal(normalizeCourseAuthoringAnalyticsPage(localScope, {
-    expectedQuery: { scope: { kind: "didactic_microsequence", ref: "micro-dns" } }
-  }).authorship.manualEditCount, null);
-  localScope.missingData = [];
-  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(localScope), /missingData/u);
 
   const overflow = snapshot();
   overflow.design.parameters[0].effectiveValues[0].studyUnitCount = 3;

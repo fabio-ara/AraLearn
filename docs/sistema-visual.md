@@ -77,11 +77,10 @@ para reconhecer os Cursos próprios sem baixar a composição inteira. Cursos
 compartilhados aparecem somente em Estudo. Um toque abre o Curso; a ação de
 voltar retorna à lista sem criar uma identidade intermediária.
 
-No Curso próprio, a **Visão geral** mostra identidade, estado e próxima ação.
-Uma grade compacta oferece, em um único nível, **Planejamento**, **Conteúdo**,
-**Parâmetros e componentes**, **Fontes**, **Revisão**, **Variantes e pesquisa**
-e **Pessoas e acesso**. Esses nomes expressam tarefas humanas; não expõem grupos
-históricos ou módulos internos que a pessoa precisaria memorizar.
+O Curso próprio abre diretamente em **Conteúdo**. A barra mantém atalhos por
+ícone para Conteúdo e Planejamento. **Parâmetros**, **Fontes**, **Revisão**,
+**Analytics** e **Pessoas e acesso** ficam no menu compacto. Esses nomes
+expressam tarefas humanas e não expõem módulos internos.
 
 A barra superior permanece compacta, com voltar, título do objeto, indicador de
 sincronização e menu de tarefas. O indicador compartilha a linguagem de Estudo,
@@ -98,8 +97,8 @@ Uma ação frequente, reconhecível e situada prefere ícone conhecido, nome
 acessível e dica. Texto visível permanece quando evita ambiguidade real; a ação
 principal de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
 em controles progressivos, sem desaparecer do produto. Planejamento não cria um
-card textual de próxima ação: objetivo, faixa preferencial e materialização
-permanecem visíveis, enquanto ações ficam junto do objeto e priorizam ícones.
+card textual de próxima ação: objetivo e Parte focal permanecem visíveis,
+enquanto ações ficam junto do objeto e priorizam ícones.
 Partes, contexto e referências sem conteúdo não acrescentam mensagens de
 ausência; detalhes e organização avançada são abertos quando necessários.
 
@@ -145,8 +144,8 @@ conclua ou cancele o rascunho. Os campos preenchidos permanecem no documento, e
 uma mensagem explica por que a atualização foi adiada. Preservar o trabalho em
 curso tem precedência sobre substituir a área por uma revisão recém-lida.
 
-Recomposições internas seguem a mesma regra. Parâmetros, Fontes, Variantes,
-Observações, Conteúdo e Auditoria conservam valores, detalhes progressivos e
+Recomposições internas seguem a mesma regra. Parâmetros, Fontes, Observações,
+Conteúdo e Analytics conservam valores, detalhes progressivos e
 foco após validação local, atualização assíncrona ou falha de rede ambígua. Uma
 nova tentativa sem edição parte do formulário novamente apresentado e conserva
 o mesmo envelope idempotente; cancelar ou descartar limpa esse estado
@@ -187,35 +186,22 @@ restaura o ponto exato conhecido. Estados vazio, parcial, carregando, sem
 conexão e erro ocupam o espaço do conteúdo e oferecem uma ação compatível, sem
 cobrir a navegação global.
 
-## Auditoria, Fontes, Variantes e Pesquisa
+## Revisão, Fontes e Analytics
 
-Auditoria organiza informação em camadas. A lista apresenta alvo, critério,
-estado e prioridade. O detalhe mostra evidência, Fonte, Âncora, proposta de
-correção e comparação entre antes e depois. **Não verificado**, **incerto** e
-**resolvido** mantêm rótulos próprios; gravidade não funciona como nota de
-qualidade.
-
-Uma correção exige confirmação antes de alterar a Unidade. A verificação
-posterior informa critérios atendidos e incertezas restantes. Reverter também
-exige confirmação e conserva a identidade do Curso.
+Revisão parte das Observações abertas e da StudyUnit focal. Seleção em lote
+aparece somente quando a ação exige vários alvos. Detalhes e decisões ficam
+próximos do conteúdo; não existe uma tela de execuções ou console de auditoria.
 
 Fontes apresentam primeiro os dados que ajudam a reconhecer o documento. O
-detalhe revela revisão, disponibilidade, relações e Âncoras. O envio de PDF
-mostra progresso, repetição segura por conteúdo, falha recuperável e uso da
-cota do Curso. A opção de baixar só aparece quando o servidor confirma acesso à
-revisão exata.
+detalhe revela disponibilidade, papel e Âncoras. O envio de PDF mostra
+progresso, repetição segura por conteúdo, falha recuperável e uso da cota. A
+opção de baixar só aparece quando o servidor confirma um vínculo ativo e o
+acesso da pessoa ao Curso.
 
-Variantes usam a mesma composição estreita em qualquer largura. A pessoa alterna
-entre membros e seções sem abrir uma segunda coluna; tabelas comparativas que
-precisam conservar colunas possuem rolagem horizontal apenas dentro do próprio
-quadro. Diferenças declaradas, observadas, imprevistas e factuais recebem nomes
-distintos, assim como dados ausentes e revisões que mudaram desde o ponto comum.
-
-Pesquisa começa pela síntese do recorte consultado. O gráfico sempre possui
-tabela com os mesmos valores, descrição textual, denominador, revisão e
-indicação de ausência.
-Filtros permanecem visíveis, e cada fato pode levar ao Curso, Parte, Unidade,
-Fonte, Observação, auditoria ou comparação correspondente. A superfície não
+Analytics usa um seletor de escopo e duas áreas: **Desenho** e **Autoria**. Cada
+área mostra quatro números com definições curtas. Tabelas simples permanecem
+recolhidas até serem solicitadas. Não há gráfico redundante, segunda coluna ou
+rolador interno. Dado ausente recebe estado acessível próprio e a superfície não
 resume o Curso numa nota.
 
 ## Tipografia, espaço e forma
@@ -344,11 +330,10 @@ focais cobrem textos extensos, duas abas, perda e retorno de conexão, endereço
 diretos, área segura, clique externo, Esc e restauração de foco.
 
 O teste ponta a ponta da Autoria fica em
-`tests/e2e/course-authoring-cutover.spec.js`; os cenários de auditoria usam
-`tests/e2e/course-audit-panel.spec.js`. A galeria dos componentes é reconstruída
-por `npm run resources:gallery:visual`. Resultados e casos condicionados ficam
-nos checks da revisão executada. A compreensão por pessoas leigas depende de
-avaliação com participantes.
+`tests/e2e/course-authoring-cutover.spec.js`. A galeria dos componentes é
+reconstruída por `npm run resources:gallery:visual`. Resultados e casos
+condicionados ficam nos checks da revisão executada. A compreensão por pessoas
+leigas depende de avaliação com participantes.
 
 O aceite da entrada percorre as combinações de largura e tema, confirma shell
 centralizado de no máximo 430 px e ausência de corte ou overflow global. A

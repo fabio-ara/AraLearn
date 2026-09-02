@@ -52,7 +52,18 @@ const samples = {
   salvar_parte: {
     curso: "Redes para iniciantes",
     titulo: "Sockets",
-    intencao: "Relacionar processos e comunicação em rede."
+    intencao: "Relacionar processos e comunicação em rede.",
+    microssequencias: [{
+      modulo: "Comunicação",
+      objetivoDoModulo: "Explicar a comunicação entre processos.",
+      licao: "Sockets",
+      objetivoDaLicao: "Relacionar endereço, porta e processo.",
+      titulo: "Socket e processo",
+      objetivo: "Explicar a função do socket.",
+      funcao: "explicar",
+      unidadesDeAnalise: ["Socket relaciona processo e transporte."],
+      requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
+    }]
   },
   materializar_parte: {
     curso: "Redes para iniciantes",

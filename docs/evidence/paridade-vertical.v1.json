@@ -32,29 +32,61 @@
         ]
       },
       "ui": [
-        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-course\"" },
-        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"open-review-item\"" }
+        {
+          "path": "src/ui/renderHomeScreen.js",
+          "token": "data-action=\"open-course\""
+        },
+        {
+          "path": "src/ui/renderHomeScreen.js",
+          "token": "data-action=\"open-review-item\""
+        }
       ],
       "visibleEffects": [
-        { "path": "src/study/CourseStudyApplication.js", "token": "renderCourseStudyScreen" },
-        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"study-manual-edit\"" },
-        { "path": "src/ui/renderHomeScreen.js", "token": "data-action=\"reset-course-progress\"" }
+        {
+          "path": "src/study/CourseStudyApplication.js",
+          "token": "renderCourseStudyScreen"
+        },
+        {
+          "path": "src/study/CourseStudyScreen.js",
+          "token": "data-action=\"study-manual-edit\""
+        },
+        {
+          "path": "src/ui/renderHomeScreen.js",
+          "token": "data-action=\"reset-course-progress\""
+        }
       ],
       "persistence": [
-        { "path": "src/persistence/CoursePersonalStateRepository.js", "token": "class CoursePersonalStateRepository" },
-        { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" },
-        { "path": "src/supabase/CourseController.js", "token": "commitPersonalCourseCopyEdit" }
+        {
+          "path": "src/persistence/CoursePersonalStateRepository.js",
+          "token": "class CoursePersonalStateRepository"
+        },
+        {
+          "path": "src/persistence/CourseLocalStore.js",
+          "token": "class CourseLocalStore"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "commitPersonalCourseCopyEdit"
+        }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "load_course_personal_state_v2" },
-        { "path": "src/supabase/CourseApiClient.js", "token": "mutate_course_personal_state_v2" },
-        { "path": "src/supabase/CourseApiClient.js", "token": "commitPersonalCourseCopyEdit" }
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "load_course_personal_state_v2"
+        },
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "mutate_course_personal_state_v2"
+        },
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "commitPersonalCourseCopyEdit"
+        }
       ],
       "tests": [
         "tests/runtime/course-study-repository.test.js",
         "tests/runtime/course-personal-state-repository.test.js",
         "tests/runtime/course-personal-copy-client.test.js",
-        "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/manual-study-unit-edit.spec.js",
         "tests/e2e/course-study-cutover.spec.js"
       ],
@@ -81,50 +113,92 @@
           "single-live-course-identity-v1",
           "paged-live-course-composition-v1",
           "course-cas-idempotency-v1",
-          "course-instructional-plan-v1",
-          "course-authoring-part-materialization-v1",
-          "course-authoring-part-materialization-history-v1",
-          "course-study-unit-inspection-v1",
-          "continuous-authoring-inspection-v1",
-          "course-inspection-focus-v1",
-          "course-design-parameters-v1",
-          "course-authoring-guidance-v1",
-          "course-component-policy-v1",
-          "contextual-study-unit-edit-v1"
+          "course-instructional-plan-v2",
+          "course-authoring-part-save-v1",
+          "course-authoring-part-materialization-atomic-v1",
+          "course-study-unit-inspection-v2",
+          "course-authoring-configuration-v2",
+          "contextual-study-unit-edit-v1",
+          "single-authoring-runtime-v1"
         ],
         "databasePatterns": [
-          "^table:(?:public\\.courses|private\\.course_entities|private\\.course_events|private\\.course_change_receipts|private\\.course_inspection_focuses|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_authoring_part_materializations|private\\.course_authoring_part_materialization_steps|private\\.course_design_parameter_definitions|private\\.course_design_parameter_changes|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_revisions|private\\.course_authoring_guidance_interpretations|private\\.course_component_policy_changes)$",
-          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|list_course_study_units_for_actor_v1|list_course_study_units_for_actor_continuous_v2|decorate_course_inspection_page_v2|list_course_inspection_focus_units_for_actor_v1|course_relevant_design_fingerprint_v[12]|course_design_target_human_snapshot_v1|assert_course_lesson_dependencies_v1|course_instructional_plan_command_document_v1|course_authoring_part_progress_v1|get_course_instructional_plan_for_actor_v1|delete_course_authoring_relations_before_course_v1|course_component_catalog_v1|reject_course_design_update_v1|course_design_json_hash_v1|valid_course_design_parameter_value_v1|canonical_course_design_parameter_value_v1|valid_course_guidance_interpretation_v1|valid_course_component_policy_v1|course_design_scope_path_v1|course_design_scope_context_v1|course_component_refs_from_content_v1|valid_course_component_refs_in_content_v1|course_component_policy_allows_v1|course_design_parameters_for_scope_v1|course_authoring_guidance_for_scope_v1|course_component_policy_for_scope_v1|course_design_application_summary_v1|recent_course_design_applications_v1|course_materialization_design_context_v1|valid_course_design_application_v1|assert_course_design_application_materialized_v1|get_owned_course_authoring_part_materialization_core_v1|advance_course_authoring_part_materialization_core_v1)\\(.*\\)$",
-          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|create_course_inspection_focus_for_actor_v1|get_course_inspection_focus_for_actor_v1|list_owned_course_inspection_focus_units_for_actor_v1|commit_course_composition_for_actor_v1|commit_course_instructional_plan_for_actor_v1|advance_course_authoring_part_materialization_for_actor_v[12]|get_owned_course_instructional_plan_for_actor_v1|get_owned_course_instructional_plan_v1|get_owned_course_authoring_part_materialization_for_actor_v1|get_owned_course_design_for_actor_v1|apply_course_design_command_for_actor_v1|list_owned_course_study_units_for_actor_v[12]|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
+          "^table:(?:public\\.courses|private\\.course_entities|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_design_parameter_definitions|private\\.course_design_parameter_assignments|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_assignments|private\\.course_component_policy_assignments)$",
+          "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|list_course_study_units_for_actor_v1|list_course_study_units_for_actor_continuous_v2|decorate_course_inspection_page_v2|assert_course_lesson_dependencies_v1|delete_course_authoring_relations_before_course_v1|delete_course_design_assignments_before_entity_v1|commit_course_composition_core_v1|course_authoring_part_progress_v1|course_component_catalog_v1|reject_course_design_parameter_definition_change_v1|course_design_json_hash_v1|valid_course_design_parameter_value_v1|canonical_course_design_parameter_value_v1|valid_course_component_policy_v1|course_design_scope_path_v1|course_design_scope_context_v1|course_component_refs_from_content_v1|valid_course_component_refs_in_content_v1|course_component_policy_allows_v1|course_current_design_parameters_v1|course_current_authoring_guidance_v1|course_current_component_policy_v1|get_course_instructional_plan_for_actor_v2|assert_course_materialization_pedagogy_v1)\\(.*\\)$",
+          "^trigger:private\\.course_entities/course_entities_delete_design_assignments_v1$",
+          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|save_course_authoring_part_for_actor_v1|materialize_course_authoring_part_for_actor_v1|get_owned_course_instructional_plan_for_actor_v2|get_owned_course_design_for_actor_v2|apply_course_design_command_for_actor_v2|list_owned_course_study_units_for_actor_v[12]|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
         ]
       },
       "ui": [
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-action=\"open-course\"" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-create" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-action=\"open-planning-edit\"" },
-        { "path": "src/ui/CourseDesignPanel.js", "token": "renderCourseDesignPanel" }
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "data-course-authoring-action=\"open-course\""
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "data-course-authoring-create"
+        },
+        {
+          "path": "src/ui/CourseDesignPanel.js",
+          "token": "renderCourseDesignPanel"
+        }
       ],
       "visibleEffects": [
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPlanningSection" },
-        { "path": "src/ui/CourseInspectionSequence.js", "token": "createCourseInspectionSequence" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPart" },
-        { "path": "src/ui/CourseInspectionSequence.js", "token": "onSaveManualEdit" },
-        { "path": "src/ui/CourseDesignPanel.js", "token": "effectiveRevisions" },
-        { "path": "src/ui/CourseDesignPanel.js", "token": "data-course-design-target-items" }
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "renderPlanningSection"
+        },
+        {
+          "path": "src/ui/CourseInspectionSequence.js",
+          "token": "createCourseInspectionSequence"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "renderPart"
+        },
+        {
+          "path": "src/ui/CourseInspectionSequence.js",
+          "token": "onSaveManualEdit"
+        },
+        {
+          "path": "src/ui/CourseDesignPanel.js",
+          "token": "course-design-target-groups"
+        }
       ],
       "persistence": [
-        { "path": "src/persistence/CourseLocalStore.js", "token": "class CourseLocalStore" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateAuthoringPlan" },
-        { "path": "src/supabase/CourseController.js", "token": "loadAuthoringStudyUnits" },
-        { "path": "src/supabase/CourseController.js", "token": "loadPartMaterialization" },
-        { "path": "src/supabase/CourseController.js", "token": "loadCourseDesign" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateCourseDesign" },
-        { "path": "src/supabase/CourseController.js", "token": "commitCourseComposition" }
+        {
+          "path": "src/persistence/CourseLocalStore.js",
+          "token": "class CourseLocalStore"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "loadAuthoringStudyUnits"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "loadCourseDesign"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "mutateCourseDesign"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "commitCourseComposition"
+        }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "executeHumanCourseTask" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "executeCourseRoute" },
-        { "path": "src/supabase/CourseApiClient.js", "token": "commitCourseComposition" }
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+          "token": "executeHumanCourseTask"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
+          "token": "executeCourseRoute"
+        },
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "commitCourseComposition"
+        }
       ],
       "tests": [
         "tests/runtime/course-human-mcp.test.js",
@@ -137,14 +211,13 @@
         "tests/runtime/course-router.test.js",
         "tests/runtime/course-supabase-adapter.test.js",
         "tests/runtime/manual-study-unit-edit.test.js",
-        "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js"
       ],
-      "justification": "A interface e o MCP operam a mesma identidade, versão e composição. Uma mutação por ferramenta só é completa quando a releitura a torna visível na Autoria."
+      "justification": "A interface e os dois transportes operam a mesma identidade e o mesmo Curso vivo. Planejamento por Parte, configuração corrente e materialização atômica formam um único caminho; CAS, recibos e paginação permanecem detalhes internos."
     },
     {
       "id": "course-source-provenance",
-      "intent": "Identificar Fontes versionadas, localizar Âncoras exatas, atribuí-las a itens e Unidades e mostrar no Estudo somente a citação autorizada.",
+      "intent": "Manter Fontes e Âncoras correntes, atribuí-las a itens e Unidades e mostrar no Estudo somente a citação autorizada.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
@@ -161,61 +234,119 @@
           "course-source-pdf-ingestion-v1",
           "course-source-pdf-ingestion-receipt-v1",
           "course-source-human-locators-v1",
-          "authenticated-course-source-pdf-upload-v1",
-          "course-source-pdf-access-lifecycle-v1"
+          "course-source-pdf-access-lifecycle-v1",
+          "course-source-current-state-v1"
         ],
         "databasePatterns": [
-          "^table:private\\.course_source_(?:revisions|anchor_revisions|attributions|attribution_sources|attribution_anchors|attachments|pdf_upload_intents|pdf_delete_intents)$",
-          "^function:private\\.(?:advance_course_authoring_part_materialization_design_core_v1|apply_course_source_attribution_v1|assert_course_source_target_citation_budget_v1|commit_course_composition_core_v1|commit_course_instructional_plan_core_v1|commit_course_instructional_plan_sources_core_v1|course_design_context_with_sources_v1|course_effective_source_attribution_v1|course_effective_source_links_v1|course_instructional_plan_command_document_core_v1|course_materialization_design_context_core_v1|course_plan_item_sources_projection_v1|course_plan_sources_projection_v1|course_plan_without_sources_v1|course_source_context_plan_items_v1|course_source_cursor_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|execute_course_source_command_core_v1|get_course_instructional_plan_for_actor_core_v1|get_course_study_citations_core_v1|get_owned_course_authoring_part_materialization_design_core_v1|get_owned_course_sources_core_v1|get_owned_course_sources_with_attachments_v1|reject_course_source_fact_change_v1|valid_course_design_application_v2|valid_course_source_links_shape_v1|valid_course_source_materialization_application_v1|valid_course_source_publication_date_v1)\\(.*\\)$",
-          "^function:private\\.(?:attach_course_source_pdf_before_lifecycle_v1|can_read_course_source_pdf_v1|can_upload_course_source_pdf_v1|consume_course_source_pdf_upload_intent_v1|course_source_pdf_unique_bytes_v1|get_owned_course_sources_before_pdf_lifecycle_v1|guard_course_source_attachment_lifecycle_v1|ingest_course_source_pdf_core_v1|prepare_course_source_pdf_ingestion_before_lifecycle_v1|valid_course_source_pdf_file_identity_v1|valid_course_source_pdf_ingestion_intent_v1|valid_course_source_pdf_object_v1)\\(.*\\)$",
-          "^function:public\\.(?:attach_course_source_pdf_for_actor_v1|cancel_course_source_pdf_ingestion_for_actor_v1|claim_course_source_pdf_delete_for_actor_v1|complete_course_source_pdf_delete_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_attachment_access_for_actor_v1|get_course_source_pdf_ingestion_receipt_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1|ingest_course_source_pdf_for_actor_v1|prepare_course_source_pdf_ingestion_for_actor_v1|remove_course_source_pdf_for_actor_v1)\\(.*\\)$",
+          "^table:private\\.(?:course_sources|course_source_(?:anchors|attributions|attribution_sources|attribution_anchors|attachments|pdf_upload_intents|pdf_delete_intents))$",
+          "^function:private\\.(?:apply_course_source_attribution_v2|assert_course_source_target_citation_budget_v1|course_effective_source_attribution_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|execute_course_source_command_core_v1|get_course_study_citations_core_v1|invalidate_course_source_attribution_after_target_v1|valid_course_source_links_shape_v2|valid_course_source_publication_date_v1)\\(.*\\)$",
+          "^function:private\\.(?:consume_course_source_pdf_upload_intent_v1|course_source_pdf_reserved_bytes_v1|course_source_pdf_unique_bytes_v1|guard_course_source_attachment_lifecycle_v1|ingest_course_source_pdf_core_v1|prepare_course_source_pdf_ingestion_core_v1|valid_course_source_pdf_file_identity_v1|valid_course_source_pdf_ingestion_intent_v2|valid_course_source_pdf_object_v1)\\(.*\\)$",
+          "^function:public\\.(?:cancel_course_source_pdf_ingestion_for_actor_v1|claim_course_source_pdf_delete_for_actor_v1|complete_course_source_pdf_delete_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_pdf_download_for_actor_v1|get_course_source_pdf_ingestion_receipt_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1|ingest_course_source_pdf_for_actor_v1|prepare_course_source_pdf_ingestion_for_actor_v1|remove_course_source_pdf_for_actor_v1)\\(.*\\)$",
+          "^trigger:private\\.course_entities/course_entities_invalidate_source_attribution_v1$",
+          "^trigger:private\\.course_instructional_plan_items/course_plan_items_invalidate_source_attribution_v1$",
           "^bucket:storage\\.course-source-pdfs$"
         ]
       },
       "ui": [
-        { "path": "src/ui/CourseSourcesPanel.js", "token": "data-source-action=\"add-source\"" },
-        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"toggle-citations\"" }
+        {
+          "path": "src/ui/CourseSourcesPanel.js",
+          "token": "data-source-action=\"add-source\""
+        },
+        {
+          "path": "src/study/CourseStudyScreen.js",
+          "token": "data-action=\"toggle-citations\""
+        }
       ],
       "visibleEffects": [
-        { "path": "src/ui/CourseSourcesPanel.js", "token": "renderCourseSourcesPanel" },
-        { "path": "src/ui/CourseSourcesPanel.js", "token": "data-source-pdf-input" },
-        { "path": "src/study/CourseStudyScreen.js", "token": "study-citations-panel" }
+        {
+          "path": "src/ui/CourseSourcesPanel.js",
+          "token": "renderCourseSourcesPanel"
+        },
+        {
+          "path": "src/ui/CourseSourcesPanel.js",
+          "token": "data-source-pdf-input"
+        },
+        {
+          "path": "src/study/CourseStudyScreen.js",
+          "token": "study-citations-panel"
+        }
       ],
       "persistence": [
-        { "path": "src/supabase/CourseController.js", "token": "loadCourseSources" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateCourseSources" },
-        { "path": "src/supabase/CourseController.js", "token": "uploadCourseSourcePdf" },
-        { "path": "src/study/CourseStudyRepository.js", "token": "getStudyUnitCitations" },
-        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "course_source_pdf_upload_intents" },
-        { "path": "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql", "token": "ingest_course_source_pdf_for_actor_v1" },
-        { "path": "supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql", "token": "get_course_source_pdf_ingestion_receipt_for_actor_v1" },
-        { "path": "supabase/migrations/20260831000829_source_pdf_access_lifecycle.sql", "token": "remove_course_source_pdf_for_actor_v1" },
-        { "path": "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql", "token": "v_already_linked:=v_attachment_found and v_attachment.status='active'" },
-        { "path": "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql", "token": "from storage.objects object_value" }
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "loadCourseSources"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "mutateCourseSources"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "uploadCourseSourcePdf"
+        },
+        {
+          "path": "src/study/CourseStudyRepository.js",
+          "token": "getStudyUnitCitations"
+        },
+        {
+          "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql",
+          "token": "course_source_pdf_upload_intents"
+        },
+        {
+          "path": "supabase/migrations/20260829043629_course_source_pdf_ingestion.sql",
+          "token": "ingest_course_source_pdf_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20260829205000_course_source_pdf_ingestion_receipt_replay.sql",
+          "token": "get_course_source_pdf_ingestion_receipt_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20260831000829_source_pdf_access_lifecycle.sql",
+          "token": "remove_course_source_pdf_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20260831005116_filter_removed_source_pdf_attachment_access.sql",
+          "token": "v_already_linked:=v_attachment_found and v_attachment.status='active'"
+        },
+        {
+          "path": "supabase/migrations/20260831012600_preserve_unlinked_source_pdf_quota.sql",
+          "token": "from storage.objects object_value"
+        }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseSources" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "ingerirPdfDaFonte" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseProtocol.js", "token": "name: \"getCourseSources\"" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "courseSourcesQuery" }
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "loadCourseSources"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
+          "token": "ingerirPdfDaFonte"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseProtocol.js",
+          "token": "name: \"getCourseSources\""
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
+          "token": "courseSourcesQuery"
+        }
       ],
       "tests": [
         "tests/runtime/course-sources.test.js",
         "tests/runtime/course-sources-panel.test.js",
         "tests/runtime/course-api-client.test.js",
         "tests/runtime/course-api-server.test.js",
-        "tests/runtime/course-source-attachments-pglite.test.js",
-        "tests/runtime/course-source-pdf-ingestion-pglite.test.js",
+        "tests/runtime/course-storage-lifecycle-smoke.test.js",
+        "tests/runtime/backup-restore-upgrade.test.js",
         "tests/runtime/course-human-materialization.test.js",
         "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-action-server.test.js",
         "tests/runtime/openai-temporary-pdf.test.js",
         "tests/runtime/course-data-lifecycle-pglite.test.js",
-        "tests/runtime/course-authoring-plan-pglite.test.js",
         "tests/e2e/course-authoring-cutover.spec.js",
         "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "Catálogo, Âncora, atribuição append-only e projeção redigida são uma única cadeia observável. A relação só é completa quando a mesma autoridade sustenta o planejamento, a composição atômica, a materialização e a citação lazy no Estudo. A ingestão recebe o arquivo na API autenticada, deriva identidade binária e path no servidor, aplica cota e deduplicação e confirma Fonte e vínculo atomicamente; compensação só alcança o blob criado pelo pedido e ainda sem vínculo global."
+      "justification": "Catálogo, Âncora, atribuição e anexo conservam somente o estado corrente necessário à citação. A ingestão autenticada recebe o arquivo no servidor, deriva identidade e path, aplica cota e deduplicação e confirma Fonte e vínculo atomicamente; o bucket é privado e nenhuma política autoriza acesso direto do navegador."
     },
     {
       "id": "course-anchored-annotations",
@@ -226,145 +357,96 @@
       "objects": {
         "mcpTools": [
           "consultar_observacoes",
-          "registrar_observacao"
-        ],
-        "manifestFeatures": [
-          "course-anchored-annotations-v1",
-          "course-annotation-subject-classification-v1"
-        ],
-        "databasePatterns": [
-          "^table:private\\.course_anchored_annotation(?:s|_events|_receipts|_viewer_versions)$",
-          "^constraint:public\\.courses/courses_annotation_set_version_v1\\[check\\]$",
-          "^function:private\\.(?:bump_course_annotation_viewer_version_v1|cleanup_course_anchored_annotations_v1|course_anchored_annotation_.+_v1|course_annotation_.+_v1|execute_course_anchored_annotation_command_core_v1|get_course_anchored_annotations_core_v1|preserve_course_annotation_event_v1|raise_course_anchored_annotation_.+_v1|record_course_annotation_event_v1|redact_course_annotations_before_account_deletion_v1|valid_course_annotation_.+_v1)\\(.*\\)$",
-          "^function:public\\.(?:execute_course_anchored_annotation_command_for_actor_v1|execute_my_course_anchored_annotation_command_v1|get_my_course_anchored_annotations_v1|get_owned_course_anchored_annotations_for_actor_v1)\\(.*\\)$"
-        ]
-      },
-      "ui": [
-        { "path": "src/ui/CourseObservationsPanel.js", "token": "data-course-observations-filters" },
-        { "path": "src/study/CourseStudyScreen.js", "token": "data-action=\"open-observation\"" }
-      ],
-      "visibleEffects": [
-        { "path": "src/ui/CourseObservationsPanel.js", "token": "data-observations-action=\"open-target\"" },
-        { "path": "src/ui/renderStudyUnitObservationSheet.js", "token": "data-observation-composer" }
-      ],
-      "persistence": [
-        { "path": "src/persistence/CourseAnnotationRepository.js", "token": "class CourseAnnotationRepository" },
-        { "path": "src/supabase/CourseController.js", "token": "loadCourseAnchoredAnnotations" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateCourseAnchoredAnnotations" }
-      ],
-      "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "getMyCourseAnchoredAnnotations" },
-        { "path": "src/supabase/CourseApiClient.js", "token": "executeMyCourseAnchoredAnnotationCommand" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "registrar_observacao" }
-      ],
-      "tests": [
-        "tests/runtime/course-human-mcp.test.js",
-        "tests/runtime/course-anchored-annotations-pglite.test.js",
-        "tests/runtime/course-annotation-repository.test.js",
-        "tests/runtime/course-observations-panel.test.js",
-        "tests/e2e/course-authoring-cutover.spec.js",
-        "tests/e2e/course-study-cutover.spec.js"
-      ],
-      "justification": "Inbox, alvo, texto bruto, proveniência protegida, classificação de assunto e ciclo de triagem formam uma única capacidade. O contador privado por pessoa apenas invalida o cache próprio sem revelar a atividade de outras pessoas. O registro só é completo quando a pessoa que o criou o reencontra no Estudo e a pessoa proprietária o trata no alvo exato pela Autoria ou pelo MCP, cuja projeção comum omite texto integral, rótulo e referência protegidos, caminhos e links internos."
-    },
-    {
-      "id": "course-audit-corrections",
-      "intent": "Auditar uma Unidade de estudo nas quatro dimensões instrucionais, transformar um achado em correção autoral focal e verificar ou reabrir o resultado sem confundir observação humana com prova de conformidade.",
-      "classification": "ui",
-      "status": "current",
-      "terminologyReview": "#125",
-      "objects": {
-        "mcpTools": [
+          "registrar_observacao",
           "preparar_revisao",
           "aplicar_correcoes"
         ],
         "manifestFeatures": [
-          "course-audit-cycle-v1",
-          "course-authoring-corrections-v1",
-          "course-audit-annotation-links-v1"
+          "course-anchored-annotations-v1",
+          "course-anchored-annotations-atomic-create-v1",
+          "course-annotation-subject-classification-v1"
         ],
         "databasePatterns": [
-          "^table:private\\.course_(?:instructional_audit_runs|audit_findings|audit_finding_annotations|authoring_corrections)$",
-          "^constraint:public\\.courses/courses_audit_set_version_v1\\[check\\]$",
-          "^function:private\\.(?:apply_course_audit_source_snapshot_v1|course_audit_.+_v1|execute_course_audit_cycle_command_core_v1|execute_course_audit_cycle_command_pre_continuous_inspection_v1|get_course_audit_cycle_v1|guard_course_audit_.+_v1|valid_course_audit_.+_v1)\\(.*\\)$",
-          "^function:public\\.(?:execute_course_audit_cycle_command_for_actor_v1|get_owned_course_audit_cycle_for_actor_v1)\\(.*\\)$"
+          "^table:private\\.course_anchored_annotation(?:s|_viewer_versions)$",
+          "^constraint:public\\.courses/courses_annotation_set_version_v1\\[check\\]$",
+          "^function:private\\.(?:bump_course_annotation_viewer_version_v1|cleanup_course_anchored_annotations_v1|course_anchored_annotation_.+_v1|course_annotation_.+_v1|execute_course_anchored_annotation_command_core_v1|get_course_anchored_annotations_core_v1|raise_course_anchored_annotation_.+_v1|redact_course_annotations_before_account_deletion_v1|valid_course_annotation_.+_v[12])\\(.*\\)$",
+          "^function:public\\.(?:create_course_anchored_annotations_for_actor_v1|execute_course_anchored_annotation_command_for_actor_v1|execute_my_course_anchored_annotation_command_v1|get_my_course_anchored_annotations_v1|get_owned_course_anchored_annotations_for_actor_v1)\\(.*\\)$"
         ]
       },
       "ui": [
-        { "path": "src/ui/CourseAuditPanel.js", "token": "course-audit-panel" },
-        { "path": "src/ui/CourseAuditPanel.js", "token": "Auditoria e correções" }
+        {
+          "path": "src/ui/CourseObservationsPanel.js",
+          "token": "data-course-observations-filters"
+        },
+        {
+          "path": "src/study/CourseStudyScreen.js",
+          "token": "data-action=\"open-observation\""
+        }
       ],
       "visibleEffects": [
-        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"show-runs\"" },
-        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"apply-correction\"" },
-        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"open-verification\"" },
-        { "path": "src/ui/CourseAuditPanel.js", "token": "data-audit-action=\"rollback-correction\"" }
+        {
+          "path": "src/ui/CourseObservationsPanel.js",
+          "token": "data-observations-action=\"open-target\""
+        },
+        {
+          "path": "src/ui/CourseInspectionSequence.js",
+          "token": "onSaveManualEdit"
+        },
+        {
+          "path": "src/ui/renderStudyUnitObservationSheet.js",
+          "token": "data-observation-composer"
+        }
       ],
       "persistence": [
-        { "path": "src/supabase/CourseController.js", "token": "loadCourseAuditCycle" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateCourseAuditCycle" },
-        { "path": "supabase/migrations/20260817210000_course_audit_corrections.sql", "token": "course_instructional_audit_runs" }
+        {
+          "path": "src/persistence/CourseAnnotationRepository.js",
+          "token": "class CourseAnnotationRepository"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "loadCourseAnchoredAnnotations"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "mutateCourseAnchoredAnnotations"
+        }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "aplicar_correcoes" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuditCycle" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js", "token": "executeCourseAuditCycleCommand" }
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "getMyCourseAnchoredAnnotations"
+        },
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "executeMyCourseAnchoredAnnotationCommand"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+          "token": "registrar_observacao"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
+          "token": "createCourseAnchoredAnnotations"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+          "token": "preparar_revisao"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+          "token": "aplicar_correcoes"
+        }
       ],
       "tests": [
         "tests/runtime/course-human-mcp.test.js",
-        "tests/runtime/course-audit-cycle.test.js",
-        "tests/runtime/course-audit-corrections-pglite.test.js",
-        "tests/runtime/course-audit-panel.test.js",
+        "tests/runtime/course-annotation-repository.test.js",
+        "tests/runtime/course-observations-panel.test.js",
         "tests/runtime/course-human-corrections.test.js",
-        "tests/e2e/course-audit-panel.spec.js"
+        "tests/runtime/course-authoring-current-smoke.test.js",
+        "tests/e2e/course-authoring-cutover.spec.js",
+        "tests/e2e/course-study-cutover.spec.js"
       ],
-      "justification": "Rodadas imutáveis, achados versionados, vínculos redigíveis com Observações e checkpoints focais de correção formam um único ciclo verificável. A correção só altera a Unidade em transação com CAS e checkpoint; a verificação posterior preserva evidência e pode sugerir, mas nunca executar silenciosamente, ações no ciclo independente de Observações. Rodadas limpas continuam enumeráveis e auditáveis pela mesma leitura paginada."
-    },
-    {
-      "id": "course-variant-comparisons",
-      "intent": "Criar Cursos independentes a partir do mesmo planejamento e comparar diferenças declaradas, observadas e acidentais sem misturar conteúdo, acesso ou estado de estudo.",
-      "classification": "ui",
-      "status": "current",
-      "terminologyReview": "#126",
-      "objects": {
-        "manifestFeatures": [
-          "course-variant-comparisons-v1",
-          "course-variant-comparison-list-v1",
-          "course-variant-factual-comparison-v1"
-        ],
-        "databasePatterns": [
-          "^table:private\\.course_variant_(?:plan_checkpoints|comparison_sets|comparison_members)$",
-          "^function:private\\.(?:clone_course_variant_from_source_v1|course_variant_comparison_differences_v1|course_variant_member_facts_v1|course_variant_plan_checkpoint_snapshot_v1|course_variant_plan_snapshot_hash_v1|reject_course_variant_history_change_v1)\\(.*\\)$",
-          "^function:public\\.(?:create_course_variants_for_actor_v1|detach_course_variant_for_actor_v1|get_owned_course_variant_comparison_for_actor_v1|list_owned_course_variant_comparisons_for_actor_v1)\\(.*\\)$"
-        ]
-      },
-      "ui": [
-        { "path": "src/ui/CourseVariantsPanel.js", "token": "createCourseVariantsPanel" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"research\"" }
-      ],
-      "visibleEffects": [
-        { "path": "src/ui/CourseVariantsPanel.js", "token": "Desvios não declarados" },
-        { "path": "src/ui/CourseVariantsPanel.js", "token": "Diferenças factuais" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "renderVariantComparison" }
-      ],
-      "persistence": [
-        { "path": "src/supabase/CourseController.js", "token": "loadCourseVariantComparison" },
-        { "path": "src/supabase/CourseController.js", "token": "mutateCourseVariants" },
-        { "path": "supabase/migrations/20260818042341_course_variant_comparisons.sql", "token": "course_variant_plan_checkpoints" }
-      ],
-      "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseVariantComparison" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseVariantComparison" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "COURSE_MCP_APP_RESOURCE_URI" }
-      ],
-      "tests": [
-        "tests/runtime/course-variants.test.js",
-        "tests/runtime/course-variants-pglite.test.js",
-        "tests/runtime/course-variants-panel.test.js",
-        "tests/runtime/course-mcp-app-resource.test.js",
-        "tests/e2e/course-authoring-cutover.spec.js"
-      ],
-      "justification": "O planejamento preservado, os Cursos derivados, suas materializações e a comparação factual formam uma capacidade única. Cada Curso continua autônomo; o vínculo serve apenas para explicar a origem comum e distinguir a diferença pretendida de alterações posteriores."
+      "justification": "Observações correntes, alvo, texto, resposta e estado de triagem sustentam revisão e correção coerentes; não há run, finding, snapshot before/after nem ledger narrativo."
     },
     {
       "id": "course-authoring-research",
@@ -381,25 +463,51 @@
         ]
       },
       "ui": [
-        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "createCourseAnalyticsPanel" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"research\"" }
+        {
+          "path": "src/ui/CourseAnalyticsPanel.js",
+          "token": "createCourseAnalyticsPanel"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "section === \"research\""
+        }
       ],
       "visibleEffects": [
-        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "data-course-analytics-action=\"export-json\"" },
-        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "course-analytics-metrics" },
-        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "course-analytics-missing" }
+        {
+          "path": "src/ui/CourseAnalyticsPanel.js",
+          "token": "data-course-analytics-action=\"export-json\""
+        },
+        {
+          "path": "src/ui/CourseAnalyticsPanel.js",
+          "token": "course-analytics-metrics"
+        },
+        {
+          "path": "src/ui/CourseAnalyticsPanel.js",
+          "token": "course-analytics-missing"
+        }
       ],
       "persistence": [
-        { "path": "src/supabase/CourseController.js", "token": "loadCourseAuthoringAnalytics" },
-        { "path": "supabase/migrations/20260902040050_simplify_course_authoring_analytics.sql", "token": "get_owned_course_authoring_analytics_for_actor_v2" }
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "loadCourseAuthoringAnalytics"
+        },
+        {
+          "path": "supabase/migrations/20260902040050_simplify_course_authoring_analytics.sql",
+          "token": "get_owned_course_authoring_analytics_for_actor_v2"
+        }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseAuthoringAnalytics" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuthoringAnalytics" }
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "loadCourseAuthoringAnalytics"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
+          "token": "getCourseAuthoringAnalytics"
+        }
       ],
       "tests": [
         "tests/runtime/course-authoring-analytics-domain.test.js",
-        "tests/runtime/course-authoring-analytics-pglite.test.js",
         "tests/runtime/course-analytics-panel.test.js"
       ],
       "justification": "O snapshot deriva do Curso corrente, da aplicação pedagógica selada e de intervenções humanas já explícitas no fluxo. A exportação JSON é deliberada e pontual; não cria histórico, ledger, telemetria ou estado de pesquisa paralelo."
@@ -417,20 +525,35 @@
         ],
         "databasePatterns": [
           "^table:private\\.course_access_grant_rate_limits$",
-          "^function:private\\.(?:course_source_pdf_reserved_bytes_v1|current_auth_session_is_active_v1|inventory_current_data_orphans_v1|lock_current_account_storage_write_v1|require_aralearn_administrator_v1|run_current_data_retention_v1)\\(.*\\)$",
+          "^function:private\\.(?:current_auth_session_is_active_v1|inventory_current_data_orphans_v1|lock_current_account_storage_write_v1|require_aralearn_administrator_v1|run_current_data_retention_v1)\\(.*\\)$",
           "^function:public\\.(?:authorize_current_orphan_removal_for_actor_v1|derive_mcp_oauth_pairwise_id_v1|enforce_aralearn_data_api_token_v1|get_current_maintenance_for_actor_v1|maintain_course_for_actor_v1|resolve_mcp_oauth_principal_v1|run_current_retention_for_actor_v1)\\(.*\\)$"
         ]
       },
       "ui": [
-        { "path": "public/main.js", "token": "data-settings-maintenance" }
+        {
+          "path": "public/main.js",
+          "token": "data-settings-maintenance"
+        }
       ],
       "visibleEffects": [
-        { "path": "public/main.js", "token": "executeCurrentMaintenance" }
+        {
+          "path": "public/main.js",
+          "token": "executeCurrentMaintenance"
+        }
       ],
       "persistence": [
-        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "run_current_data_retention_v1" },
-        { "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql", "token": "inventory_current_data_orphans_v1" },
-        { "path": "supabase/migrations/20260824120000_product_operations_and_maintenance.sql", "token": "get_current_maintenance_for_actor_v1" }
+        {
+          "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql",
+          "token": "run_current_data_retention_v1"
+        },
+        {
+          "path": "supabase/migrations/20260821191340_harden_current_data_lifecycle.sql",
+          "token": "inventory_current_data_orphans_v1"
+        },
+        {
+          "path": "supabase/migrations/20260824120000_product_operations_and_maintenance.sql",
+          "token": "get_current_maintenance_for_actor_v1"
+        }
       ],
       "tests": [
         "tests/runtime/course-data-lifecycle-pglite.test.js",
@@ -461,21 +584,48 @@
         ]
       },
       "ui": [
-        { "path": "public/main.js", "token": "data-profile-form" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "renderPeopleSection" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "data-course-authoring-action=\"open-grant\"" }
+        {
+          "path": "public/main.js",
+          "token": "data-profile-form"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "renderPeopleSection"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "data-course-authoring-action=\"open-grant\""
+        }
       ],
       "visibleEffects": [
-        { "path": "public/main.js", "token": "updatePersonProfile" },
-        { "path": "src/ui/CourseAuthoringSurface.js", "token": "revokeCourseAccess" }
+        {
+          "path": "public/main.js",
+          "token": "updatePersonProfile"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "revokeCourseAccess"
+        }
       ],
       "persistence": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "person-avatars" },
-        { "path": "supabase/migrations/20260817150000_course_profiles_access.sql", "token": "create table public.person_profiles" }
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "person-avatars"
+        },
+        {
+          "path": "supabase/migrations/20260817150000_course_profiles_access.sql",
+          "token": "create table public.person_profiles"
+        }
       ],
       "routes": [
-        { "path": "src/supabase/CourseApiClient.js", "token": "grantCourseAccess" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "manageCourseAccess" }
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "grantCourseAccess"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
+          "token": "manageCourseAccess"
+        }
       ],
       "tests": [
         "tests/runtime/course-api-client.test.js",
@@ -503,16 +653,28 @@
         ]
       },
       "ui": [
-        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageStudyUnitBlocksWithDock" }
+        {
+          "path": "src/study/CourseStudyScreen.js",
+          "token": "renderPackageStudyUnitBlocksWithDock"
+        }
       ],
       "visibleEffects": [
-        { "path": "src/study/CourseStudyScreen.js", "token": "renderPackageStudyUnitFeedback" }
+        {
+          "path": "src/study/CourseStudyScreen.js",
+          "token": "renderPackageStudyUnitFeedback"
+        }
       ],
       "persistence": [
-        { "path": "src/resources/packages/generated.js", "token": "RESOURCE_PACKAGE_DEFINITIONS" }
+        {
+          "path": "src/resources/packages/generated.js",
+          "token": "RESOURCE_PACKAGE_DEFINITIONS"
+        }
       ],
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js", "token": "consultar_componentes" }
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+          "token": "consultar_componentes"
+        }
       ],
       "tests": [
         "tests/runtime/course-human-mcp.test.js",
@@ -545,9 +707,18 @@
         ]
       },
       "routes": [
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js", "token": "createCourseApiHandler" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js", "token": "createAuthoringMcpHandler" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseActionServer.js", "token": "createAuthoringActionHandler" }
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
+          "token": "createCourseApiHandler"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/mcpServer.js",
+          "token": "createAuthoringMcpHandler"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseActionServer.js",
+          "token": "createAuthoringActionHandler"
+        }
       ],
       "tests": [
         "tests/runtime/course-api-server.test.js",

@@ -362,6 +362,7 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /test:authoring:mcp:local/u);
   assert.match(source, /aralearn-course-api/u);
   assert.match(source, /test:supabase:smoke/u);
+  assert.match(source, /test:storage:lifecycle:local/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /supabase@2\.115\.0', 'test', 'db'/u);
@@ -440,15 +441,26 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260902040050");
-  assert.equal(manifest.requiredFeatures.includes("continuous-authoring-inspection-v1"), true);
+  assert.equal(manifest.schemaRevision, "20260902044404");
+  assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-part-save-v1"), true);
+  assert.equal(
+    manifest.requiredFeatures.includes("course-authoring-part-materialization-atomic-v1"),
+    true
+  );
+  assert.equal(manifest.requiredFeatures.includes("course-study-unit-inspection-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-configuration-v2"), true);
+  assert.equal(
+    manifest.requiredFeatures.includes("course-anchored-annotations-atomic-create-v1"),
+    true
+  );
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("current-data-lifecycle-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("isolated-mcp-oauth-principal-v1"), true);
   assert.equal(
     manifest.requiredFeatures.includes("authenticated-course-source-pdf-upload-v1"),
-    true
+    false
   );
   assert.equal(manifest.requiredFeatures.includes("course-source-pdf-ingestion-v1"), true);
   assert.equal(
@@ -461,20 +473,23 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   );
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-personal-state-v2"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-authoring-corrections-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-audit-cycle-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-corrections-v1"), false);
   assert.equal(
     manifest.requiredFeatures.includes("course-authoring-part-materialization-history-v1"),
-    true
+    false
   );
-  assert.equal(manifest.requiredFeatures.includes("course-audit-annotation-links-v1"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-variant-comparisons-v1"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-variant-comparison-list-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-audit-annotation-links-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-variant-comparisons-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-variant-comparison-list-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-source-pdf-attachments-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-human-locators-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v2"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-source-current-state-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("single-authoring-runtime-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-product-operations-v1"), true);
 });
 
 test("manifesto estático acompanha a última migration que avança o runtime", async (context) => {
@@ -485,8 +500,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260902040050_simplify_course_authoring_analytics.sql",
-    revision: "20260902040050"
+    fileName: "20260902044404_cut_legacy_authoring_runtime.sql",
+    revision: "20260902044404"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
@@ -861,6 +876,7 @@ test("validação local atravessa MCP OAuth, API direta e Supabase real", () => 
   );
   assert.match(source, /npm run test:authoring:mcp:local:oauth/u);
   assert.match(source, /npm run test:supabase:smoke/u);
+  assert.match(source, /npm run test:storage:lifecycle:local/u);
   assert.doesNotMatch(source, /test:authoring:supabase:e2e/u);
 });
 

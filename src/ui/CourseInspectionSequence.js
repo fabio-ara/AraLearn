@@ -52,22 +52,10 @@ const SEARCH_KIND_LABELS = Object.freeze({
 const INSPECTION_MENU_SELECTOR =
   "details.course-inspection-context-selector, details.course-inspection-item-details";
 const PART_STATES = new Set([
-  "planned", "materializing", "attention_required", "partially_materialized", "materialized"
+  "planned", "partially_materialized", "materialized"
 ]);
 const SCOPE_KINDS = new Set([
   "course", "authoring_part", "unassigned", "module", "lesson", "didactic_microsequence"
-]);
-const DESIGN_SNAPSHOT_ORIGINS = new Set([
-  "automatic", "author", "research_condition", "migration", "system_default"
-]);
-const DESIGN_SNAPSHOT_SCOPES = new Set([
-  "course", "module", "lesson", "didactic_microsequence"
-]);
-const DESIGN_PARAMETER_IDS = new Set([
-  "new_analysis_unit_ceiling_per_expository_study_unit",
-  "required_explanation_forms",
-  "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  "required_practice_variation_dimensions"
 ]);
 
 export const COURSE_INSPECTION_PAGE_SIZE = PAGE_SIZE;
@@ -207,107 +195,22 @@ function normalizeStudyUnit(value) {
 function normalizeAuthorship(value) {
   exactRecord(
     value,
-    ["pendingObservationCount", "production", "design"],
+    ["createdOrigin", "lastRevisionOrigin", "design"],
     "O estado autoral da Unidade é inválido."
   );
-  const pendingObservationCount = natural(
-    value.pendingObservationCount,
-    "A quantidade de Observações pendentes",
-    { maximum: 512 }
-  );
-  if (value.production !== null) {
-    exactRecord(
-      value.production,
-      ["materializationId", "recordedAt", "state", "currentMaterialization"],
-      "A proveniência de produção é inválida."
-    );
-    const recordedAt = String(value.production.recordedAt || "");
-    if (!UUID_PATTERN.test(String(value.production.materializationId || "")) ||
-        Number.isNaN(Date.parse(recordedAt)) ||
-        !new Set(["produced", "changed"]).has(value.production.state) ||
-        typeof value.production.currentMaterialization !== "boolean") {
-      throw new TypeError("A proveniência de produção é inválida.");
-    }
+  if (![null, "human", "gpt"].includes(value.createdOrigin) ||
+      ![null, "human", "gpt"].includes(value.lastRevisionOrigin)) {
+    throw new TypeError("A origem autoral da Unidade é inválida.");
   }
-  let design = null;
-  if (value.design !== null) {
-    exactRecord(
-      value.design,
-      ["used", "current", "state"],
-      "A comparação de desenho é inválida."
-    );
-    if (!new Set(["current", "changed", "verified"]).has(value.design.state)) {
-      throw new TypeError("A comparação de desenho é inválida.");
-    }
-    normalizeDesignSnapshot(value.design.used);
-    normalizeDesignSnapshot(value.design.current);
-    design = Object.freeze({ state: value.design.state });
+  exactRecord(value.design, ["snapshot", "application"], "O desenho aplicado é inválido.");
+  if ((value.design.snapshot === null) !== (value.design.application === null)) {
+    throw new TypeError("O desenho aplicado é inconsistente.");
   }
-  return Object.freeze({ pendingObservationCount, design });
-}
-
-function normalizeDesignSnapshot(value) {
-  exactRecord(
-    value,
-    ["parameters", "guidance", "componentPolicy"],
-    "O desenho contextual da Unidade é inválido."
-  );
-  if (!Array.isArray(value.parameters) || value.parameters.length !== 4 ||
-      !Array.isArray(value.guidance) || value.guidance.length > 4) {
-    throw new TypeError("O desenho contextual da Unidade é inválido.");
-  }
-  const parameters = value.parameters.map((parameter) => {
-    exactRecord(
-      parameter,
-      ["parameterId", "value", "origin", "sourceScopeKind"],
-      "Um parâmetro contextual da Unidade é inválido."
-    );
-    const parameterId = String(parameter.parameterId || "");
-    const normalizedValue = structuredClone(parameter.value);
-    if (!DESIGN_PARAMETER_IDS.has(parameterId) ||
-        !(Number.isSafeInteger(normalizedValue) ||
-          Array.isArray(normalizedValue) && normalizedValue.length <= 16 &&
-          normalizedValue.every((item) => typeof item === "string" && item.length <= 80)) ||
-        !DESIGN_SNAPSHOT_ORIGINS.has(parameter.origin) ||
-        !(parameter.sourceScopeKind === null ||
-          DESIGN_SNAPSHOT_SCOPES.has(parameter.sourceScopeKind))) {
-      throw new TypeError("Um parâmetro contextual da Unidade é inválido.");
-    }
-    return Object.freeze({ ...parameter, value: normalizedValue });
+  return Object.freeze({
+    createdOrigin: value.createdOrigin,
+    lastRevisionOrigin: value.lastRevisionOrigin,
+    hasAppliedDesign: value.design.snapshot !== null
   });
-  if (new Set(parameters.map(({ parameterId }) => parameterId)).size !== 4) {
-    throw new TypeError("O desenho contextual repete ou omite parâmetros.");
-  }
-  value.guidance.forEach((revision) => {
-    exactRecord(
-      revision,
-      ["guidance", "origin", "sourceScopeKind"],
-      "Uma orientação contextual da Unidade é inválida."
-    );
-    if (typeof revision.guidance !== "string" || revision.guidance.length > 16_384 ||
-        containsControlCharacters(revision.guidance.replace(/[\n\r\t]/gu, "")) ||
-        !DESIGN_SNAPSHOT_ORIGINS.has(revision.origin) ||
-        !DESIGN_SNAPSHOT_SCOPES.has(revision.sourceScopeKind)) {
-      throw new TypeError("Uma orientação contextual da Unidade é inválida.");
-    }
-  });
-  exactRecord(
-    value.componentPolicy,
-    [
-      "availability", "allowedCount", "excludedCount", "preferredCount",
-      "origin", "sourceScopeKind"
-    ],
-    "A política contextual da Unidade é inválida."
-  );
-  const policy = value.componentPolicy;
-  if (!new Set(["all", "allow_only"]).has(policy.availability) ||
-      ![policy.allowedCount, policy.excludedCount, policy.preferredCount].every(
-        (count) => Number.isSafeInteger(count) && count >= 0 && count <= 128
-      ) || !DESIGN_SNAPSHOT_ORIGINS.has(policy.origin) ||
-      !(policy.sourceScopeKind === null || DESIGN_SNAPSHOT_SCOPES.has(policy.sourceScopeKind))) {
-    throw new TypeError("A política contextual da Unidade é inválida.");
-  }
-  return true;
 }
 
 function normalizeInspectionItem(value, totalCount) {
@@ -368,13 +271,12 @@ function normalizeCursor(value, expected) {
 export function normalizeCourseInspectionPage(value, {
   expectedCourseId = "",
   expectedRevision = null,
-  expectedScope = null,
-  expectedInspectionFocusId = null
+  expectedScope = null
 } = {}) {
   const topLevelFields = [
     "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions", "items",
     "hasPrevious", "hasMore", "previousCursor", "nextCursor", "pageBytes",
-    "inspectionFocus", "offline", "stale", "offlineKnown"
+    "offline", "stale", "offlineKnown"
   ];
   exactRecord(value, topLevelFields, "A página de Conteúdo é inválida.");
   if (value.contract !== PAGE_CONTRACT || !Array.isArray(value.items) ||
@@ -398,41 +300,6 @@ export function normalizeCourseInspectionPage(value, {
       items.some((item, index) => index > 0 && item.ordinal !== items[index - 1].ordinal + 1)) {
     throw new TypeError("A ordem da página de Conteúdo é inválida.");
   }
-  let inspectionFocus = null;
-  if (value.inspectionFocus != null) {
-    exactRecord(value.inspectionFocus, [
-      "id", "title", "deepLink", "requestedCount", "availableCount", "missingStudyUnitIds"
-    ], "O foco de inspeção é inválido.");
-    const id = canonicalId(value.inspectionFocus.id, "O foco de inspeção", { uuid: true });
-    const requestedCount = natural(
-      value.inspectionFocus.requestedCount,
-      "A quantidade solicitada pelo foco",
-      { minimum: 1, maximum: 64 }
-    );
-    const availableCount = natural(
-      value.inspectionFocus.availableCount,
-      "A quantidade disponível no foco",
-      { maximum: requestedCount }
-    );
-    if (!Array.isArray(value.inspectionFocus.missingStudyUnitIds) ||
-        value.inspectionFocus.missingStudyUnitIds.length !== requestedCount - availableCount) {
-      throw new TypeError("O foco de inspeção é inválido.");
-    }
-    inspectionFocus = Object.freeze({
-      id,
-      title: requiredText(value.inspectionFocus.title, "O título do foco", 160),
-      deepLink: requiredText(value.inspectionFocus.deepLink, "O link do foco", DEEP_LINK_MAX_LENGTH),
-      requestedCount,
-      availableCount,
-      missingStudyUnitIds: Object.freeze(value.inspectionFocus.missingStudyUnitIds.map((studyUnitId) =>
-        canonicalId(studyUnitId, "Uma Unidade ausente do foco")
-      ))
-    });
-  }
-  if ((expectedInspectionFocusId !== null) !== (inspectionFocus !== null) ||
-      expectedInspectionFocusId !== null && inspectionFocus.id !== expectedInspectionFocusId) {
-    throw new TypeError("O foco de inspeção não corresponde ao pedido.");
-  }
   return Object.freeze({
     contract: PAGE_CONTRACT,
     courseId,
@@ -446,20 +313,12 @@ export function normalizeCourseInspectionPage(value, {
     previousCursor: normalizeCursor(value.previousCursor, value.hasPrevious),
     nextCursor: normalizeCursor(value.nextCursor, value.hasMore),
     pageBytes: natural(value.pageBytes, "O tamanho da página", { maximum: MAX_PAGE_BYTES }),
-    inspectionFocus,
     offlineKnown: value.offline === true || value.stale === true || value.offlineKnown === true
   });
 }
 
 export function inspectionRequestFromTarget(target) {
   if (!target) return Object.freeze({ scope: Object.freeze({ kind: "course", id: null }), anchorStudyUnitId: null });
-  if (target.kind === "inspection_focus") {
-    return Object.freeze({
-      scope: Object.freeze({ kind: "course", id: null }),
-      anchorStudyUnitId: null,
-      inspectionFocusId: canonicalId(target.id, "O foco de inspeção", { uuid: true })
-    });
-  }
   if (target.kind === "study_unit") {
     return Object.freeze({
       scope: Object.freeze({ kind: "course", id: null }),
@@ -619,7 +478,7 @@ function renderManualModeActions(item, state, editing, observationCount) {
   const selectedForBatch = state.selectedStudyUnitIds.has(item.studyUnit.id);
   const designRoute = buildCourseAuthoringRoute(state.courseId, {
     section: "parameters",
-    didacticMicrosequenceId: item.curriculumPath.didacticMicrosequence.id
+    studyUnitId: item.studyUnit.id
   });
   const canUndo = state.manualUndo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   const canRedo = state.manualRedo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
@@ -632,7 +491,7 @@ function renderManualModeActions(item, state, editing, observationCount) {
       ? `<a href="${escapeHtml(designRoute)}" data-inspection-route` +
         ` data-inspection-control-key="design:${id}" aria-label="Parâmetros aplicáveis a ${escapeHtml(
           item.studyUnit.title
-        )}" title="Parâmetros da Microssequência">` +
+        )}" title="Parâmetros da StudyUnit">` +
         `${renderUiIcon("tags", "course-authoring-button-icon")}</a>`
       : "") +
     `<button type="button" data-inspection-observations data-study-unit-id="${id}"` +
@@ -651,7 +510,7 @@ function renderManualModeActions(item, state, editing, observationCount) {
     `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
       section: "review",
       studyUnitId: item.studyUnit.id
-    }))}" data-inspection-route data-inspection-control-key="audit:${id}"` +
+    }))}" data-inspection-route data-inspection-control-key="review:${id}"` +
     ` aria-label="Revisar ${escapeHtml(item.studyUnit.title)}" title="Revisar">` +
     `${renderUiIcon("review", "course-authoring-button-icon")}</a>` +
     `<button type="button" data-inspection-selection-action="toggle-current"` +
@@ -1038,9 +897,8 @@ function renderStudyUnit(
 }
 
 function renderAuthorshipState(item, observationCount = null) {
-  const design = item.authorship.design;
   const states = [];
-  const pendingObservations = observationCount ?? item.authorship.pendingObservationCount;
+  const pendingObservations = observationCount ?? 0;
   if (pendingObservations > 0) {
     states.push({
       kind: "observations",
@@ -1048,20 +906,6 @@ function renderAuthorshipState(item, observationCount = null) {
       label: `${pendingObservations} ${pendingObservations === 1
         ? "observação pendente"
         : "observações pendentes"}`
-    });
-  }
-  if (design?.state === "changed") {
-    states.push({
-      kind: "design",
-      icon: "edit",
-      label: "Desenho vigente diferente — revisar"
-    });
-  }
-  if (design?.state === "verified") {
-    states.push({
-      kind: "verified",
-      icon: "ready-state",
-      label: "Reparo verificado no desenho vigente"
     });
   }
   return states.length
@@ -1204,25 +1048,6 @@ function renderInspectionSyncState(state) {
     )}</span>`;
 }
 
-function renderInspectionFocus(state, active) {
-  const focus = state.inspectionFocus;
-  if (!focus) return "";
-  const available = focus.availableCount;
-  const missing = focus.requestedCount - available;
-  const route = buildCourseAuthoringRoute(state.courseId, {
-    section: "content",
-    ...(active ? { studyUnitId: active.studyUnit.id } : {})
-  });
-  return '<section class="course-inspection-focus" aria-label="Filtro de inspeção ativo">' +
-    '<div><small>Foco de inspeção</small>' +
-    `<strong>${escapeHtml(focus.title)}</strong>` +
-    `<span>${available} ${available === 1 ? "Unidade" : "Unidades"}${missing
-      ? ` · ${missing} ${missing === 1 ? "indisponível" : "indisponíveis"}`
-      : ""}</span></div>` +
-    `<a href="${escapeHtml(route)}" data-inspection-route data-inspection-exit-focus` +
-    ' aria-label="Remover o filtro e ver o Curso">' +
-    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Ver no Curso</span></a></section>`;
-}
 
 function renderTemporarySelection(state) {
   if (!state.selectionMode) return "";
@@ -1307,7 +1132,7 @@ function renderSequence(state) {
     ` aria-label="Próxima Unidade">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>` +
     '<div class="course-inspection-navigation-tools">' +
     renderInspectionSearch(state) + renderInspectionSyncState(state) + "</div></nav>" +
-    renderInspectionFocus(state, active) + renderTemporarySelection(state) + notice +
+    renderTemporarySelection(state) + notice +
     (navigationFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(navigationFailure)}</p>`
       : "") + body +
@@ -1405,8 +1230,6 @@ export function createCourseInspectionSequence({
       typeof onSaveManualEdit === "function" &&
       typeof controller.loadCourseDocument === "function",
     scope: requested.scope,
-    inspectionFocusId: requested.inspectionFocusId ?? null,
-    inspectionFocus: null,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
     requestedAnchorStudyUnitId: requested.anchorStudyUnitId,
@@ -1776,7 +1599,9 @@ export function createCourseInspectionSequence({
     const items = new Map(state.items.map((item) => [item.studyUnit.id, item]));
     page.items.forEach((item) => {
       items.set(item.studyUnit.id, item);
-      state.observationCounts[item.studyUnit.id] = item.authorship.pendingObservationCount;
+      if (!Object.hasOwn(state.observationCounts, item.studyUnit.id)) {
+        state.observationCounts[item.studyUnit.id] = 0;
+      }
     });
     const ordered = [...items.values()].sort((left, right) => left.ordinal - right.ordinal);
     if (ordered.some((item, index) => index > 0 && item.ordinal !== ordered[index - 1].ordinal + 1)) {
@@ -1801,7 +1626,6 @@ export function createCourseInspectionSequence({
     state.items = ordered;
     state.totalCount = page.totalCount;
     state.scopeOptions = page.scopeOptions;
-    state.inspectionFocus = page.inspectionFocus;
     state.offlineKnown = page.offlineKnown;
     if (direction === "backward") {
       state.hasPrevious = page.hasPrevious;
@@ -1825,7 +1649,6 @@ export function createCourseInspectionSequence({
     return {
       expectedRevision: state.pinnedRevision,
       scope: state.scope,
-      ...(state.inspectionFocusId === null ? {} : { inspectionFocusId: state.inspectionFocusId }),
       ...(anchorStudyUnitId ? { anchorStudyUnitId } : {}),
       cursor,
       direction,
@@ -1840,8 +1663,7 @@ export function createCourseInspectionSequence({
       {
         expectedCourseId: state.courseId,
         expectedRevision: state.pinnedRevision,
-        expectedScope: state.scope,
-        expectedInspectionFocusId: state.inspectionFocusId
+        expectedScope: state.scope
       }
     );
   }
@@ -3343,7 +3165,7 @@ export function createCourseInspectionSequence({
     const signal = event?.data;
     if (!isPlainObject(signal) || Object.keys(signal).length !== 3 ||
         signal.courseId !== state.courseId || signal.revision !== state.pinnedRevision ||
-        typeof signal.studyUnitId !== "string" || state.inspectionFocusId !== null ||
+        typeof signal.studyUnitId !== "string" ||
         Date.now() - lastInteractionAt < 1_500 || state.initialLoading || state.loadingDirection ||
         state.manualStudyUnitId) {
       return;

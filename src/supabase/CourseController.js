@@ -8,26 +8,11 @@ import {
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
 import {
-  normalizeCourseAuditCycleChange,
-  normalizeCourseAuditCycleCommand,
-  normalizeCourseAuditCyclePage,
-  normalizeCourseAuditCycleQuery,
-  normalizeCourseAuditCycleReadOptions
-} from "../domain/courseAuditCycle.js";
-import {
-  normalizeCourseVariantChange,
-  normalizeCourseVariantCommand,
-  normalizeCourseVariantComparison,
-  normalizeCourseVariantComparisonList,
-  normalizeCourseVariantDetachCommand,
-  normalizeCourseVariantRead
-} from "../domain/courseVariants.js";
-import {
   normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../domain/courseAuthoringAnalytics.js";
 import {
-  normalizeCourseSourceAttachmentAccess,
+  normalizeCourseSourcePdfDownload,
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcesRead,
@@ -173,26 +158,19 @@ function courseSourcesReadOptions(courseId, options = {}) {
   const targetKind = options.targetKind ?? null;
   const targetId = options.targetId ?? null;
   const cursor = options.cursor ?? null;
-  const limit = options.limit ?? 10;
+  const limit = options.limit ?? (mode === "catalog" ? 10 : 1);
   const hasTargetContext = targetKind !== null || targetId !== null;
   const validTargetContext = targetKind !== null && targetId !== null;
-  const legacySourceId = (value) => typeof value === "string" &&
-    value.length >= 1 && value.length <= 4_096 && [...value].length <= 2_048 &&
-    new TextEncoder().encode(value).byteLength <= 8_192 &&
-    ![...value].some((character) => {
-      const point = character.codePointAt(0);
-      return point < 32 || point >= 127 && point <= 159;
-    });
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1 ||
       !new Set(["catalog", "source", "target"]).has(mode) ||
-      (mode === "source") !== legacySourceId(sourceId) ||
+      (mode === "source") !== courseSourceOpaqueId(sourceId) ||
       mode === "catalog" && hasTargetContext ||
       mode === "target" && (sourceId !== null || !validTargetContext) ||
       mode === "source" && hasTargetContext && !validTargetContext ||
       (targetKind !== null && !new Set(["plan_item", "study_unit"]).has(targetKind)) ||
       (targetId !== null && !courseSourceOpaqueId(targetId)) ||
       (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
-      (mode === "source" && hasTargetContext && cursor !== null) ||
+      (mode !== "catalog" && (cursor !== null || limit !== 1)) ||
       cursor !== null && (typeof cursor !== "string" || cursor !== cursor.trim() ||
         cursor.length < 1 || cursor.length > 240 ||
         !/^[A-Za-z0-9+/_-]+={0,2}$/u.test(cursor)) ||
@@ -239,38 +217,9 @@ function courseAnchoredAnnotationReadOptions(courseId, value = {}) {
   });
 }
 
-function courseAuditCycleReadOptions(courseId, value = {}) {
-  const allowed = new Set([
-    "expectedCourseRevision", "auditSetVersion", "query", "cursor", "limit"
-  ]);
-  const normalizedCourseId = String(courseId || "").trim().toLowerCase();
-  if (!value || typeof value !== "object" || Array.isArray(value) ||
-      Object.keys(value).some((field) => !allowed.has(field)) ||
-      !UUID_PATTERN.test(normalizedCourseId)) {
-    throw new TypeError("Leitura de auditoria inválida.");
-  }
-  return normalizeCourseAuditCycleReadOptions({
-    expectedCourseRevision: value.expectedCourseRevision,
-    auditSetVersion: value.auditSetVersion ?? null,
-    query: value.query ?? {
-      mode: "findings",
-      targetStudyUnitId: null,
-      findingId: null,
-      correctionId: null,
-      auditRunId: null,
-      states: [],
-      dimensions: [],
-      severities: [],
-      annotationIds: []
-    },
-    cursor: value.cursor ?? null,
-    limit: value.limit ?? 12
-  });
-}
-
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source" ||
-    command.type === "attach_pdf" || command.type === "remove_pdf"
+    command.type === "remove_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -671,7 +620,6 @@ function normalizeInspectionPosition(courseId, value) {
 function inspectionRequestOptions({
   expectedRevision,
   scope = { kind: "course", id: null },
-  inspectionFocusId = null,
   anchorStudyUnitId = null,
   cursor = null,
   direction = "forward",
@@ -680,9 +628,6 @@ function inspectionRequestOptions({
 } = {}) {
   const revision = Number(expectedRevision);
   const normalizedDirection = String(direction || "").trim();
-  const normalizedInspectionFocusId = inspectionFocusId == null
-    ? null
-    : String(inspectionFocusId).trim().toLowerCase();
   const normalizedAnchor = anchorStudyUnitId == null
     ? null
     : String(anchorStudyUnitId).trim();
@@ -693,7 +638,6 @@ function inspectionRequestOptions({
   const normalizedMaxBytes = Number(maxBytes);
   if (!Number.isSafeInteger(revision) || revision < 1 ||
       !new Set(["forward", "backward"]).has(normalizedDirection) ||
-      normalizedInspectionFocusId !== null && !UUID_PATTERN.test(normalizedInspectionFocusId) ||
       (normalizedAnchor != null && (!normalizedAnchor || normalizedAnchor.length > 240)) ||
       (normalizedCursor != null && (
         !normalizedCursor.studyUnitId || normalizedCursor.studyUnitId.length > 240 ||
@@ -706,15 +650,9 @@ function inspectionRequestOptions({
     throw new TypeError("Paginação da inspeção inválida.");
   }
   const normalizedScope = normalizedInspectionScope(scope);
-  if (normalizedInspectionFocusId !== null && (
-    normalizedScope.kind !== "course" || normalizedScope.id !== null || normalizedAnchor !== null
-  )) {
-    throw new TypeError("Paginação da inspeção inválida.");
-  }
   return {
     expectedRevision: revision,
     scope: normalizedScope,
-    ...(normalizedInspectionFocusId === null ? {} : { inspectionFocusId: normalizedInspectionFocusId }),
     anchorStudyUnitId: normalizedAnchor,
     cursor: normalizedCursor,
     direction: normalizedDirection,
@@ -2200,6 +2138,8 @@ export class CourseController {
           result.query.targetId !== expectedQuery.targetId ||
           result.nextCursor !== null &&
             !/^[A-Za-z0-9+/_-]+={0,2}$/u.test(result.nextCursor) ||
+          normalizedOptions.mode !== "catalog" && (result.items.length > 1 ||
+            result.nextCursor !== null) ||
           normalizedOptions.mode === "source" && result.items.some(({ sourceId }) =>
             sourceId !== normalizedOptions.sourceId) ||
           normalizedOptions.mode === "target" &&
@@ -2230,7 +2170,7 @@ export class CourseController {
     }
     const courseId = String(value.courseId || "").trim().toLowerCase();
     try {
-      const result = normalizeCourseSourceAttachmentAccess(
+      const result = normalizeCourseSourcePdfDownload(
         await this.api.getCourseSourceAttachmentDownload({
           courseId,
           expectedRevision: value.expectedCourseRevision,
@@ -2239,7 +2179,7 @@ export class CourseController {
           contentHash: value.contentHash
         })
       );
-      if (result.operation !== "download" || result.courseId !== courseId ||
+      if (result.courseId !== courseId ||
           result.courseRevision !== value.expectedCourseRevision ||
           result.sourceId !== value.sourceId ||
           result.sourceRevision !== value.sourceRevision ||
@@ -2281,75 +2221,6 @@ export class CourseController {
       }
       throw error;
     }
-  }
-
-  async loadCourseAuditCycle(courseId, value = {}) {
-    if (!this.ownerOnly || typeof this.api.loadCourseAuditCycle !== "function") {
-      throw new TypeError("A API de Autoria não oferece auditoria e correções.");
-    }
-    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
-    const options = courseAuditCycleReadOptions(normalizedCourseId, value);
-    try {
-      const page = normalizeCourseAuditCyclePage(
-        await this.api.loadCourseAuditCycle(normalizedCourseId, options)
-      );
-      if (page.courseId !== normalizedCourseId ||
-          page.courseRevision !== options.expectedCourseRevision ||
-          options.auditSetVersion !== null &&
-            page.auditSetVersion !== options.auditSetVersion ||
-          JSON.stringify(normalizeCourseAuditCycleQuery(page.query)) !==
-            JSON.stringify(options.query)) {
-        throw new TypeError("A leitura de auditoria não corresponde ao pedido.");
-      }
-      return page;
-    } catch (error) {
-      if (accessWasRevoked(error)) {
-        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
-      }
-      throw error;
-    }
-  }
-
-  async loadCourseVariantComparison(courseId, value = {}) {
-    if (!this.ownerOnly || typeof this.api.loadCourseVariantComparison !== "function") {
-      throw new TypeError("A API de Autoria não oferece variantes comparáveis.");
-    }
-    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
-    const options = normalizeCourseVariantRead(value);
-    try {
-      const comparison = normalizeCourseVariantComparison(
-        await this.api.loadCourseVariantComparison(normalizedCourseId, options)
-      );
-      if (comparison.comparisonSetId !== options.comparisonSetId ||
-          comparison.source.courseId !== normalizedCourseId ||
-          comparison.source.currentCourseRevision !== options.expectedCourseRevision) {
-        throw new TypeError("A comparação de variantes não corresponde ao pedido.");
-      }
-      return comparison;
-    } catch (error) {
-      if (accessWasRevoked(error)) {
-        await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
-      }
-      throw error;
-    }
-  }
-
-  async listCourseVariantComparisons(courseId, expectedCourseRevision) {
-    if (!this.ownerOnly || typeof this.api.listCourseVariantComparisons !== "function") {
-      throw new TypeError("A API de Autoria não oferece variantes comparáveis.");
-    }
-    const normalizedCourseId = String(courseId || "").trim().toLowerCase();
-    const revision = Number(expectedCourseRevision);
-    if (!UUID_PATTERN.test(normalizedCourseId) || !Number.isSafeInteger(revision) || revision < 1) {
-      throw new TypeError("Leitura de variantes inválida.");
-    }
-    const list = normalizeCourseVariantComparisonList(
-      await this.api.listCourseVariantComparisons(normalizedCourseId, revision)
-    );
-    if (list.sourceCourseId !== normalizedCourseId || list.sourceCourseRevision !== revision) {
-      throw new TypeError("A lista de variantes não corresponde ao Curso solicitado.");
-    }
-    return list;
   }
 
   async loadCourseAuthoringAnalytics(courseId, value = {}) {
@@ -2551,43 +2422,6 @@ export class CourseController {
     return structuredClone(normalized);
   }
 
-  loadPartMaterialization(courseId, authoringPartId, materializationId) {
-    if (typeof this.api.loadPartMaterialization !== "function") {
-      throw new TypeError("A API de Cursos não oferece a leitura da materialização.");
-    }
-    return this.api.loadPartMaterialization(
-      courseId,
-      authoringPartId,
-      materializationId
-    );
-  }
-
-  async mutateAuthoringPlan({
-    requestId,
-    courseId,
-    expectedCourseRevision,
-    expectedPlanVersion,
-    operation,
-    ...payload
-  } = {}) {
-    const result = await this.api.mutateAuthoringPlan({
-      requestId,
-      courseId,
-      expectedRevision: expectedCourseRevision,
-      expectedPlanVersion,
-      planCommand: { type: operation, ...payload }
-    });
-    await Promise.all([
-      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
-      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
-      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
-    ]);
-    return result;
-  }
 
   async commitCourseComposition(value = {}) {
     if (!this.ownerOnly || typeof this.api.commitCourseComposition !== "function") {
@@ -2606,17 +2440,17 @@ export class CourseController {
           mode: "target",
           targetKind: "study_unit",
           targetId: intent.studyUnit.id,
-          limit: 10
+          limit: 1
         });
-        const effective = sources.items.filter(({ effective: active }) => active === true);
-        if (effective.length > 1 || effective.length === 1 &&
-            effective[0].targetVersion !== intent.expectedStudyUnitVersion) {
-          throw new TypeError("A proveniência efetiva não corresponde à Unidade editada.");
+        const attribution = sources.items[0] || null;
+        if (sources.items.length > 1 || attribution &&
+            attribution.targetVersion !== intent.expectedStudyUnitVersion) {
+          throw new TypeError("A proveniência corrente não corresponde à Unidade editada.");
         }
         sourceSnapshot = {
           courseId: intent.courseId,
           signature,
-          sourceLinks: structuredClone(effective[0]?.sourceLinks ?? [])
+          sourceLinks: structuredClone(attribution?.sourceLinks ?? [])
         };
         if (this.compositionSourceSnapshots.size >= 16) {
           this.compositionSourceSnapshots.delete(
@@ -2765,15 +2599,15 @@ export class CourseController {
           mode: "target",
           targetKind: "study_unit",
           targetId: studyUnitId,
-          limit: 10
+          limit: 1
         });
-        const effective = sources.items.filter(({ effective: active }) => active === true);
-        if (effective.length > 1) {
-          throw new TypeError("A proveniência efetiva da Unidade é ambígua.");
+        const attribution = sources.items[0] || null;
+        if (sources.items.length > 1) {
+          throw new TypeError("A proveniência corrente da Unidade é ambígua.");
         }
         sourceAttributionApplications.push({
           studyUnitId,
-          sourceLinks: structuredClone(effective[0]?.sourceLinks ?? [])
+          sourceLinks: structuredClone(attribution?.sourceLinks ?? [])
         });
       }
       const result = await this.api.commitCourseStructuralComposition({
@@ -3173,7 +3007,7 @@ export class CourseController {
     if (result.courseId !== courseId || result.requestId !== requestId ||
         result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
         result.change != null && (
-          result.change.type !== "attach_pdf" ||
+          result.change.type !== "ingest_pdf" ||
           result.change.subjectId !== value.sourceId ||
           result.change.revision !== value.sourceRevision
         )) {
@@ -3254,124 +3088,6 @@ export class CourseController {
       }
       throw error;
     }
-  }
-
-  async mutateCourseAuditCycle(value = {}) {
-    if (!this.ownerOnly || typeof this.api.mutateCourseAuditCycle !== "function") {
-      throw new TypeError("A API de Autoria não oferece alterações de auditoria.");
-    }
-    if (!value || typeof value !== "object" || Array.isArray(value) ||
-        Object.keys(value).some((field) => !new Set([
-          "requestId", "courseId", "expectedCourseRevision", "command"
-        ]).has(field))) {
-      throw new TypeError("Alteração de auditoria inválida.");
-    }
-    const requestId = String(value.requestId || "");
-    const courseId = String(value.courseId || "").trim().toLowerCase();
-    const expectedCourseRevision = Number(value.expectedCourseRevision);
-    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
-        !UUID_PATTERN.test(courseId) ||
-        !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1) {
-      throw new TypeError("Alteração de auditoria inválida.");
-    }
-    const command = normalizeCourseAuditCycleCommand(value.command);
-    try {
-      const result = normalizeCourseAuditCycleChange(
-        await this.api.mutateCourseAuditCycle({
-          requestId,
-          courseId,
-          expectedCourseRevision,
-          command
-        })
-      );
-      const changesCourseContent = new Set([
-        "apply_authoring_correction",
-        "rollback_authoring_correction"
-      ]).has(command.type);
-      const expectedResultRevision = expectedCourseRevision +
-        (changesCourseContent && result.changed && !result.idempotent ? 1 : 0);
-      if (result.courseId !== courseId || result.requestId !== requestId ||
-          result.change !== null && result.change.type !== command.type ||
-          (result.idempotent
-            ? result.courseRevision < expectedCourseRevision
-            : result.courseRevision !== expectedResultRevision) ||
-          command.findingId != null && result.finding != null &&
-            result.finding.findingId !== command.findingId ||
-          command.correctionId != null && result.correction != null &&
-            result.correction.correctionId !== command.correctionId) {
-        throw new TypeError("A confirmação da auditoria não corresponde ao comando.");
-      }
-      if (changesCourseContent && result.changed) {
-        await Promise.all([
-          this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
-          this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
-          this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
-          this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
-          this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
-          this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
-          this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
-          this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
-        ]);
-      }
-      return result;
-    } catch (error) {
-      if (accessWasRevoked(error)) {
-        await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
-      }
-      throw error;
-    }
-  }
-
-  async mutateCourseVariants(value = {}) {
-    if (!this.ownerOnly || typeof this.api.mutateCourseVariants !== "function") {
-      throw new TypeError("A API de Autoria não oferece variantes comparáveis.");
-    }
-    const source = value && typeof value === "object" && !Array.isArray(value)
-      ? value : null;
-    const requestId = String(source?.requestId || "");
-    const courseId = String(source?.courseId || "").trim().toLowerCase();
-    const command = source?.command?.type === "create_comparison_variants"
-      ? normalizeCourseVariantCommand(source.command)
-      : normalizeCourseVariantDetachCommand(source?.command);
-    if (!source || Object.keys(source).some((field) => !new Set([
-      "requestId", "courseId", "expectedCourseRevision", "command"
-    ]).has(field)) || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
-        !UUID_PATTERN.test(courseId) ||
-        command.type === "create_comparison_variants" &&
-          source.expectedCourseRevision !== command.expectedCourseRevision ||
-        command.type === "detach_comparison_variant" &&
-          source.expectedCourseRevision != null) {
-      throw new TypeError("Alteração de variantes inválida.");
-    }
-    const result = normalizeCourseVariantChange(await this.api.mutateCourseVariants({
-      requestId, courseId,
-      ...(command.type === "create_comparison_variants"
-        ? { expectedCourseRevision: command.expectedCourseRevision }
-        : {}),
-      command
-    }));
-    if (result.sourceCourseId !== courseId ||
-        result.comparisonSetId !== command.comparisonSetId ||
-        command.type === "detach_comparison_variant" && result.courseId !== command.courseId) {
-      throw new TypeError("A confirmação de variantes não corresponde ao comando.");
-    }
-    return result;
-  }
-
-  async advanceAuthoringPartMaterialization(values = {}) {
-    const result = await this.api.advanceAuthoringPartMaterialization(values);
-    const courseId = values.courseId;
-    await Promise.all([
-      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
-      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
-      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
-      this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
-    ]);
-    return result;
   }
 
   createCourse(values) {

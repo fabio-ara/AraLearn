@@ -2,8 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
-import { courseVariantComparisonFixture } from
-  "../support/courseVariantComparisonFixture.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const USER_ID = "20000000-0000-4000-8000-000000000002";
@@ -65,10 +63,9 @@ function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
-      explicitParameterChangeCount: 0,
-      manualEditCount: 0,
-      repairs: { acceptedCount: 0, rejectedCount: 0 },
-      studyUnitChangesByOrigin: []
+      explicitParameterOverrideCount: 0,
+      manuallyRevisedStudyUnitCount: 0,
+      studyUnitsByOrigin: []
     },
     missingData: [],
     deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=research`
@@ -164,14 +161,8 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
   let request = null;
   const updatedAt = "2026-08-20T22:45:00.000Z";
   const sourceLinks = [{
-    sourceId: "fonte retirada",
-    sourceRevision: 1,
-    relation: "legacy_reference",
-    anchors: []
-  }, {
-    sourceId: "fonte retirada",
-    sourceRevision: 1,
-    relation: "legacy_reference",
+    sourceId: "source-current",
+    relation: "needs_verification",
     anchors: []
   }];
   const { client } = clientWithFetch(async (url, init) => {
@@ -473,145 +464,7 @@ test("Autoria usa RPCs owner-only sem mudar a leitura compartilhada do Estudo", 
   ]);
 });
 
-test("plano instrucional e materialização usam rotas canônicas diretas", async () => {
-  const calls = [];
-  const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: parsedBody(init) });
-    return jsonResponse({ ok: true, data: { changed: true } });
-  });
 
-  await client.createCourse({
-    requestId: AVATAR_ID,
-    title: "Curso novo",
-    objective: "Aprender com evidência"
-  });
-  await client.loadAuthoringPlan(COURSE_ID);
-  await client.loadPartMaterialization(COURSE_ID, AVATAR_ID, USER_ID);
-  await client.mutateAuthoringPlan({
-    requestId: AVATAR_ID,
-    courseId: COURSE_ID,
-    expectedRevision: 4,
-    expectedPlanVersion: 2,
-    planCommand: { type: "update_plan", audience: "Docentes" }
-  });
-  await client.advanceAuthoringPartMaterialization({
-    requestId: AVATAR_ID,
-    courseId: COURSE_ID,
-    expectedRevision: 5,
-    materializationCommand: {
-      authoringPartId: AVATAR_ID,
-      materializationId: USER_ID,
-      expectedMaterializationVersion: 0,
-      operation: "start",
-      authoringPartVersion: 1,
-      steps: [{
-        id: COURSE_ID,
-        position: 0,
-        kind: "context_load",
-        targetDidacticMicrosequenceId: null,
-        productionPosition: null
-      }]
-    }
-  });
-
-  assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
-    "/functions/v1/aralearn-course-api/v1/courses",
-    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/instructional-plan`,
-    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/authoring-parts/` +
-      `${AVATAR_ID}/materializations/${USER_ID}`,
-    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/instructional-plan/changes`,
-    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/authoring-parts/` +
-      `${AVATAR_ID}/materializations/${USER_ID}/changes`
-  ]);
-  assert.deepEqual(calls[0].body, {
-    requestId: AVATAR_ID,
-    title: "Curso novo",
-    objective: "Aprender com evidência"
-  });
-  assert.equal(calls[2].body, null);
-  assert.equal(calls[3].body.expectedPlanVersion, 2);
-  assert.equal(calls[3].body.expectedCourseRevision, 4);
-  assert.deepEqual(calls[3].body.command, {
-    type: "update_plan",
-    audience: "Docentes"
-  });
-  assert.equal(calls[4].body.operation, "start");
-  assert.equal(calls[4].body.payload.authoringPartVersion, 1);
-  assert.throws(
-    () => client.advanceAuthoringPartMaterialization({
-      courseId: COURSE_ID,
-      expectedRevision: 5,
-      materializationCommand: {
-        authoringPartId: AVATAR_ID,
-        materializationId: USER_ID,
-        expectedMaterializationVersion: 0,
-        operation: "start",
-        authoringPartVersion: 1,
-        designContext: {},
-        steps: [{
-          id: COURSE_ID,
-          position: 0,
-          kind: "context_load",
-          targetDidacticMicrosequenceId: null,
-          productionPosition: null
-        }]
-      }
-    }),
-    /Comando de materialização inválido/u
-  );
-});
-
-test("materialização normaliza fatos omitidos e rejeita null", async () => {
-  const calls = [];
-  const { client } = clientWithFetch(async (url, init) => {
-    calls.push({ url, body: parsedBody(init) });
-    return jsonResponse({ ok: true, data: { changed: true } });
-  });
-  const finish = {
-    authoringPartId: AVATAR_ID,
-    materializationId: USER_ID,
-    expectedMaterializationVersion: 2,
-    operation: "finish",
-    status: "completed"
-  };
-  const recordStep = {
-    authoringPartId: AVATAR_ID,
-    materializationId: USER_ID,
-    expectedMaterializationVersion: 1,
-    operation: "record_step",
-    stepId: COURSE_ID,
-    expectedStepVersion: 1,
-    status: "completed",
-    entityChanges: { upserts: [], deletes: [] },
-    designApplication: null,
-    sourceAttributionApplication: null
-  };
-
-  await client.advanceAuthoringPartMaterialization({
-    requestId: AVATAR_ID,
-    courseId: COURSE_ID,
-    expectedRevision: 5,
-    materializationCommand: recordStep
-  });
-  await client.advanceAuthoringPartMaterialization({
-    requestId: USER_ID,
-    courseId: COURSE_ID,
-    expectedRevision: 6,
-    materializationCommand: finish
-  });
-  assert.deepEqual(calls[0].body.payload.resultFacts, {});
-  assert.deepEqual(calls[1].body.payload.resultFacts, {});
-
-  assert.throws(
-    () => client.advanceAuthoringPartMaterialization({
-      requestId: AVATAR_ID,
-      courseId: COURSE_ID,
-      expectedRevision: 5,
-      materializationCommand: { ...finish, resultFacts: null }
-    }),
-    /Fatos da materialização inválido/u
-  );
-});
 
 test("repete uma vez a operação idempotente quando a Edge reinicia", async () => {
   const requests = [];
@@ -741,9 +594,9 @@ test("parâmetros usam rota própria com escopo concreto e CAS", async () => {
 
 test("Fontes e citações usam contratos estritos, redigidos e vinculados ao pedido", async () => {
   const calls = [];
-  const legacySourceId = ` legacy-${"s".repeat(300)} `;
+  const currentSourceId = "source-current";
   const read = {
-    contract: "aralearn.course-sources.v1",
+    contract: "aralearn.course-sources.v2",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "target",
@@ -759,7 +612,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     requestId: "request-source-client-1",
     idempotent: false,
     changed: true,
-    change: { type: "set_target_sources", subjectId: "unit-a", revision: 2 }
+    change: { type: "set_target_sources", subjectId: "unit-a", targetVersion: 1 }
   };
   const citations = {
     contract: "aralearn.course-study-citations.v1",
@@ -767,15 +620,13 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
-      sourceId: legacySourceId,
-      sourceRevision: 1,
+      sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
       url: "https://example.test/fonte-a",
       editionOrVersion: null,
       anchors: [{
         anchorId: "anchor-a",
-        anchorRevision: 1,
         selector: { kind: "page_range", startPage: 3, endPage: 4 }
       }]
     }]
@@ -806,10 +657,9 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     targetId: "unit-a",
     expectedTargetVersion: 1,
     sourceLinks: [{
-      sourceId: legacySourceId,
-      sourceRevision: 1,
+      sourceId: currentSourceId,
       relation: "quoted_from",
-      anchors: [{ anchorId: "anchor-a", anchorRevision: 1 }]
+      anchors: [{ anchorId: "anchor-a" }]
     }]
   };
   assert.deepEqual(await client.mutateCourseSources({
@@ -829,7 +679,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     mode: "target",
     targetKind: "study_unit",
     targetId: "unit-a",
-    limit: "10"
+    limit: "1"
   });
   assert.deepEqual(calls[1].body.command, sourceCommand);
   assert.deepEqual(calls[2].body, {
@@ -853,15 +703,15 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
       !(error instanceof TypeError)
   );
 
-  const astralSourceId = "🔎".repeat(1_500);
+  const contextualSourceId = "source-current-context";
   let contextualRequest = null;
   const contextualRead = {
-    contract: "aralearn.course-sources.v1",
+    contract: "aralearn.course-sources.v2",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "source",
     query: {
-      sourceId: astralSourceId,
+      sourceId: contextualSourceId,
       targetKind: "study_unit",
       targetId: "unit-a"
     },
@@ -876,7 +726,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   assert.deepEqual(await contextualClient.loadCourseSources(COURSE_ID, {
     expectedRevision: 4,
     mode: "source",
-    sourceId: astralSourceId,
+    sourceId: contextualSourceId,
     targetKind: "study_unit",
     targetId: "unit-a"
   }), contextualRead);
@@ -884,23 +734,23 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   assert.deepEqual(Object.fromEntries(new URL(contextualRequest.url).searchParams), {
     expectedRevision: "4",
     mode: "source",
-    sourceId: astralSourceId,
+    sourceId: contextualSourceId,
     targetKind: "study_unit",
     targetId: "unit-a",
-    limit: "10"
+    limit: "1"
   });
   await assert.rejects(
     () => contextualClient.loadCourseSources(COURSE_ID, {
       expectedRevision: 4,
       mode: "source",
-      sourceId: "界".repeat(2_049)
+      sourceId: "x".repeat(241)
     }),
     /Identidade da Fonte inválida/u
   );
 
   const astralTargetId = "🔎".repeat(240);
   const astralTargetRead = {
-    contract: "aralearn.course-sources.v1",
+    contract: "aralearn.course-sources.v2",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "target",
@@ -1100,7 +950,7 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
       requestId: "request-pdf-client-1",
       idempotent: true,
       changed: true,
-      change: { type: "attach_pdf", subjectId: sourceId, revision: 1 },
+      change: { type: "ingest_pdf", subjectId: sourceId, revision: 1 },
       source: { sourceId, sourceRevision: 1, bibliographyChanged: false },
       attachment: {
         contentHash,
@@ -1133,7 +983,7 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
     requestId: "request-pdf-client-1",
     idempotent: true,
     changed: true,
-    change: { type: "attach_pdf", subjectId: sourceId, revision: 1 }
+    change: { type: "ingest_pdf", subjectId: sourceId, revision: 1 }
   });
   assert.equal(calls.length, 2);
   assert.equal(calls[0].init.body, calls[1].init.body);
@@ -1144,16 +994,19 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
   const downloadClient = clientWithFetch(async (url, init) => {
     downloadRequest = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, data: {
-      contract: "aralearn.course-source-attachment-access.v1",
+      contract: "aralearn.course-source-pdf-download.v1",
       courseId: COURSE_ID,
       courseRevision: 5,
-      operation: "download",
       sourceId,
       sourceRevision: 1,
       storageOriginCourseId: COURSE_ID,
-      attachment: { contentHash, byteSize: pdf.size, mediaType: "application/pdf", storagePath },
-      uploadRequired: false,
-      alreadyLinked: true,
+      attachment: {
+        contentHash,
+        byteSize: pdf.size,
+        mediaType: "application/pdf",
+        storagePath,
+        createdAt: "2026-08-20T12:00:00.000Z"
+      },
       signedUrl: "https://project.invalid/storage/v1/object/sign/path?token=download-token",
       expiresAt: "2026-08-20T12:01:00.000Z"
     }});
@@ -1165,11 +1018,10 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
     sourceRevision: 1,
     contentHash
   });
-  assert.equal(download.operation, "download");
-  assert.equal(download.contract, "aralearn.course-source-attachment-access.v1");
+  assert.equal(download.contract, "aralearn.course-source-pdf-download.v1");
+  assert.match(downloadRequest.url, /\/source-pdf\/download\?/u);
   assert.equal(downloadRequest.body, null);
   assert.deepEqual(Object.fromEntries(new URL(downloadRequest.url).searchParams), {
-    operation: "download",
     expectedRevision: "5",
     sourceId,
     sourceRevision: "1",
@@ -1199,57 +1051,6 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
   assert.equal(invalidCalls, 0);
 });
 
-test("cliente usa o DTO factual de variantes e o nome canônico ao desvincular", async () => {
-  const comparisonSetId = "81000000-0000-4000-8000-000000000008";
-  const memberCourseId = "82000000-0000-4000-8000-000000000009";
-  const expected = courseVariantComparisonFixture({
-    sourceCourseId: COURSE_ID,
-    comparisonSetId,
-    memberCourseId,
-    courseRevision: 7
-  });
-  const calls = [];
-  const { client } = clientWithFetch(async (url, init) => {
-    const body = parsedBody(init);
-    calls.push({ url, body });
-    if (new URL(url).pathname.endsWith(`/variant-comparisons/${comparisonSetId}`)) {
-      return jsonResponse({ ok: true, data: expected });
-    }
-    if (new URL(url).pathname.endsWith("/variant-comparisons/changes")) {
-      return jsonResponse({ ok: true, data: {
-        contract: "aralearn.course-variant-comparison-change.v1",
-        comparisonSetId,
-        sourceCourseId: COURSE_ID,
-        courseId: memberCourseId,
-        detachedAt: "2026-08-20T15:00:00.000Z",
-        changed: true,
-        idempotent: false
-      }});
-    }
-    assert.fail("Operação de variante inesperada.");
-  });
-
-  assert.deepEqual(await client.loadCourseVariantComparison(COURSE_ID, {
-    comparisonSetId,
-    expectedCourseRevision: 7
-  }), expected);
-  const detached = await client.mutateCourseVariants({
-    requestId: "request-variant-client-1",
-    courseId: COURSE_ID,
-    command: {
-      type: "detach_comparison_variant",
-      comparisonSetId,
-      courseId: memberCourseId
-    }
-  });
-  assert.equal(detached.courseId, memberCourseId);
-  assert.deepEqual(calls[1].body.command, {
-    type: "detach_comparison_variant",
-    comparisonSetId,
-    courseId: memberCourseId
-  });
-  assert.equal(calls[1].body.expectedCourseRevision, null);
-});
 
 test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", async () => {
   const calls = [];
@@ -1267,12 +1068,6 @@ test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", 
     limit: 12,
     maxBytes: 262144
   });
-  await client.loadAuthoringStudyUnits(COURSE_ID, {
-    expectedRevision: 9,
-    inspectionFocusId: AVATAR_ID,
-    limit: 24
-  });
-
   assert.equal(calls.every(({ body }) => body === null), true);
   assert.equal(new URL(calls[0].url).searchParams.get("view"), "outline");
   assert.equal(new URL(calls[1].url).pathname,
@@ -1285,16 +1080,6 @@ test("inspeção envia escopo, âncora e cursor canônicos à operação Edge", 
     direction: "backward",
     limit: "12",
     maxBytes: "262144"
-  });
-  assert.equal(new URL(calls[2].url).pathname,
-    `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/inspection-focuses/` +
-      `${AVATAR_ID}/study-units`);
-  assert.deepEqual(Object.fromEntries(new URL(calls[2].url).searchParams), {
-    expectedRevision: "9",
-    scopeKind: "course",
-    direction: "forward",
-    limit: "24",
-    maxBytes: String(512 * 1024)
   });
   assert.throws(
     () => client.loadAuthoringStudyUnits(COURSE_ID, {
@@ -1730,286 +1515,6 @@ test("observações owner e Study usam contratos ligados e não aceitam spoof de
   );
 });
 
-test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estrutural", async () => {
-  const calls = [];
-  const findingId = "60000000-0000-5000-8000-000000000006";
-  const auditRunId = "50000000-0000-5000-8000-000000000005";
-  const query = {
-    mode: "findings",
-    targetStudyUnitId: "unit-a",
-    findingId: null,
-    correctionId: null,
-    auditRunId: null,
-    states: ["open"],
-    dimensions: ["factual_quality"],
-    severities: ["high"],
-    annotationIds: []
-  };
-  const page = {
-    contract: "aralearn.course-audit-cycle-page.v1",
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    auditSetVersion: 4,
-    query,
-    summary: {
-      matchingTotal: 0,
-      byState: { open: 0, awaiting_verification: 0, resolved: 0, dismissed: 0 },
-      byDimension: {
-        structural_conformance: 0,
-        pedagogical_quality: 0,
-        factual_quality: 0,
-        editorial_quality: 0
-      },
-      bySeverity: { low: 0, medium: 0, high: 0, critical: 0 }
-    },
-    context: null,
-    items: [],
-    runs: [],
-    detail: null,
-    runDetail: null,
-    hasMore: false,
-    nextCursor: null
-  };
-  const requestId = "request-audit-client-0001";
-  const { client } = clientWithFetch(async (url, init) => {
-    const body = parsedBody(init);
-    calls.push({ url, body });
-    const requestUrl = new URL(url);
-    if (requestUrl.pathname.endsWith("/audit-cycle")) {
-      if (requestUrl.searchParams.get("mode") === "detail" &&
-          requestUrl.searchParams.get("auditRunId") === auditRunId) {
-        const check = (dimension, result, index) => ({
-          checkId: `50000000-0000-5000-8000-${String(index).padStart(12, "0")}`,
-          dimension,
-          criterion: {
-            code: `${dimension}.review`,
-            version: "1",
-            statement: `Critério público de ${dimension}.`
-          },
-          result,
-          publicEvidence: `Evidência pública de ${dimension}.`,
-          adequacy: result === "passed" ? "sufficient" : "not_assessed",
-          planItemRefs: [],
-          parameterRefs: [],
-          sourceLinks: []
-        });
-        const checks = [
-          check("structural_conformance", "passed", 1),
-          check("pedagogical_quality", "not_checked", 2),
-          check("factual_quality", "not_checked", 3),
-          check("editorial_quality", "not_checked", 4)
-        ];
-        return jsonResponse({ ok: true, data: {
-          ...page,
-          query: {
-            mode: "detail",
-            targetStudyUnitId: null,
-            findingId: null,
-            correctionId: null,
-            auditRunId,
-            states: [],
-            dimensions: [],
-            severities: [],
-            annotationIds: []
-          },
-          runDetail: {
-            contract: "aralearn.course-instructional-audit-run.v1",
-            auditRunId,
-            runKind: "audit",
-            origin: "human_audit",
-            method: { id: "manual-review", version: "1" },
-            courseRevision: 7,
-            contextHash: "b".repeat(64),
-            target: {
-              studyUnitId: "unit-a",
-              version: 2,
-              hash: "a".repeat(64),
-              path: [
-                { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
-                { kind: "module", id: "module-a", label: "Módulo", version: 1 },
-                { kind: "lesson", id: "lesson-a", label: "Lição", version: 1 },
-                { kind: "didactic_microsequence", id: "micro-a", label: "Micro", version: 1 },
-                { kind: "study_unit", id: "unit-a", label: "Unidade", version: 2 }
-              ]
-            },
-            checks,
-            metrics: {
-              checksTotal: 4,
-              byResult: {
-                passed: 1, failed: 0, uncertain: 0, not_applicable: 0, not_checked: 3
-              },
-              findingsCreated: 0
-            },
-            createdAt: "2026-08-17T12:00:00.000Z"
-          }
-        } });
-      }
-      if (requestUrl.searchParams.get("mode") === "runs") {
-        return jsonResponse({ ok: true, data: {
-          ...page,
-          query: {
-            mode: "runs",
-            targetStudyUnitId: "unit-a",
-            findingId: null,
-            correctionId: null,
-            auditRunId: null,
-            states: [],
-            dimensions: [],
-            severities: [],
-            annotationIds: []
-          },
-          runs: [{
-            auditRunId,
-            runKind: "audit",
-            origin: "human_audit",
-            method: { id: "manual-review", version: "1" },
-            courseRevision: 7,
-            target: { studyUnitId: "unit-a", version: 2, hash: "a".repeat(64) },
-            resultCounts: {
-              passed: 1, failed: 0, uncertain: 0, not_applicable: 0, not_checked: 3
-            },
-            findingsCreated: 0,
-            createdAt: "2026-08-17T12:00:00.000Z",
-            deepLink: "https://app.example/#/authoring/courses/" + COURSE_ID +
-              `?section=review&auditRunId=${auditRunId}`
-          }]
-        } });
-      }
-      return jsonResponse({ ok: true, data: page });
-    }
-    if (requestUrl.pathname.endsWith("/audit-cycle/changes")) {
-      return jsonResponse({ ok: true, data: {
-        contract: "aralearn.course-audit-cycle-change.v1",
-        courseId: COURSE_ID,
-        courseRevision: 7,
-        auditSetVersion: 5,
-        requestId,
-        idempotent: false,
-        changed: false,
-        change: null,
-        finding: null,
-        correction: null,
-        suggestedAnnotationActions: []
-      } });
-    }
-    assert.fail(`Requisição inesperada: ${url}`);
-  });
-
-  assert.deepEqual(await client.loadCourseAuditCycle(COURSE_ID, {
-    expectedCourseRevision: 7,
-    auditSetVersion: 4,
-    query,
-    cursor: "YWZ0ZXI=",
-    limit: 12
-  }), page);
-  assert.equal(calls[0].body, null);
-  assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), {
-    expectedRevision: "7",
-    auditSetVersion: "4",
-    mode: "findings",
-    limit: "12",
-    targetStudyUnitId: "unit-a",
-    state: "open",
-    dimension: "factual_quality",
-    severity: "high",
-    cursor: "YWZ0ZXI="
-  });
-
-  const changed = await client.mutateCourseAuditCycle({
-    requestId,
-    courseId: COURSE_ID,
-    expectedCourseRevision: 7,
-    command: {
-      type: "decide_finding",
-      findingId,
-      expectedFindingVersion: 2,
-      decision: "dismiss"
-    }
-  });
-  assert.equal(changed.changed, false);
-  assert.deepEqual(calls[1].body, {
-    requestId,
-    expectedCourseRevision: 7,
-    command: {
-      type: "decide_finding",
-      findingId,
-      expectedFindingVersion: 2,
-      decision: "dismiss"
-    }
-  });
-
-  const runs = await client.loadCourseAuditCycle(COURSE_ID, {
-    expectedCourseRevision: 7,
-    auditSetVersion: 4,
-    query: {
-      mode: "runs",
-      targetStudyUnitId: "unit-a",
-      findingId: null,
-      correctionId: null,
-      auditRunId: null,
-      states: [],
-      dimensions: [],
-      severities: [],
-      annotationIds: []
-    },
-    cursor: "cnVuLTI=",
-    limit: 6
-  });
-  assert.equal(runs.runs[0].findingsCreated, 0);
-  assert.equal(calls[2].body, null);
-  assert.deepEqual(Object.fromEntries(new URL(calls[2].url).searchParams), {
-    expectedRevision: "7",
-    auditSetVersion: "4",
-    mode: "runs",
-    limit: "6",
-    targetStudyUnitId: "unit-a",
-    cursor: "cnVuLTI="
-  });
-
-  const runDetail = await client.loadCourseAuditCycle(COURSE_ID, {
-    expectedCourseRevision: 7,
-    auditSetVersion: 4,
-    query: {
-      mode: "detail",
-      targetStudyUnitId: null,
-      findingId: null,
-      correctionId: null,
-      auditRunId,
-      states: [],
-      dimensions: [],
-      severities: [],
-      annotationIds: []
-    },
-    cursor: null,
-    limit: 1
-  });
-  assert.equal(runDetail.runDetail.target.path.at(-1).id, "unit-a");
-  assert.equal(calls[3].body, null);
-  assert.deepEqual(Object.fromEntries(new URL(calls[3].url).searchParams), {
-    expectedRevision: "7",
-    auditSetVersion: "4",
-    mode: "detail",
-    limit: "1",
-    auditRunId
-  });
-
-  await assert.rejects(() => client.mutateCourseAuditCycle({
-    requestId: "request-audit-client-0002",
-    courseId: COURSE_ID,
-    expectedCourseRevision: 7,
-    command: {
-      type: "record_audit",
-      auditRunId: "70000000-0000-5000-8000-000000000007",
-      targetStudyUnitId: "unit-a",
-      contextHash: "a".repeat(64),
-      origin: "human_audit",
-      method: { id: "manual-review", version: "1" },
-      checks: [],
-      findings: []
-    }
-  }), /checks/u);
-  assert.equal(calls.length, 4);
-});
 
 test("cliente owner lê Analytics pela rota quantitativa", async () => {
   const calls = [];

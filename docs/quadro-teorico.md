@@ -86,7 +86,7 @@ O mesmo dado não responde a perguntas de todos os níveis:
 | Unidade de estudo | função didática e representação local | texto, representação e interação preservam o objetivo? | análise de conteúdo, auditoria representacional e teste de jornada |
 | microssequência | progressão de teoria e prática | há base suficiente, coerência e retirada adequada de apoio? | rubrica, explicação, prática imediata e tarefa posterior |
 | percurso | lição, módulo e curso | dependências e retomadas mantêm continuidade? | auditoria curricular e acompanhamento longitudinal |
-| autoria | pessoa, modelo, contrato e revisão | escopo, qualidade e responsabilidade são compreendidos? | tarefa de autoria, rubrica, reversão e entrevista |
+| autoria | pessoa, modelo, contrato e revisão | escopo, qualidade e responsabilidade são compreendidos? | tarefa de autoria, rubrica, revisão de ponto anterior e entrevista |
 | governança do Curso | propriedade, acesso e mudanças | responsabilidade e acesso são compreensíveis e seguros? | tarefas de compartilhamento e revogação, análise qualitativa e auditoria de acesso |
 | infraestrutura | núcleo comum, pacotes de componente, armazenamento e sincronização | o artefato é correto, resiliente e proporcional? | testes, medições técnicas, custos e incidentes |
 
@@ -143,7 +143,7 @@ compreendam o modelo nem que ele melhore resultados educacionais.
 | transferência | aplicação a situação estruturalmente nova | solução e justificativa em problema novo | troca superficial de valores |
 | qualidade pedagógica | alinhamento entre objetivo, pré-requisitos, explicação, prática e retorno | rubrica, ausência de saltos e prática pertinente | quantidade de Unidades ou fluência textual |
 | qualidade representacional | fidelidade disciplinar e apoio à operação sem ambiguidade evitável | julgamento de especialista e interpretação em tarefa | ausência de conteúdo excedente fora do contêiner ou uso de biblioteca gráfica |
-| controle humano da IA | autoridade efetiva sobre intenção, escopo, revisão e consequência | rejeitar, iterar, reverter e justificar | botão de confirmação isolado |
+| controle humano da IA | autoridade efetiva sobre intenção, escopo, revisão e consequência | rejeitar, iterar, reabrir, corrigir e justificar | botão de confirmação isolado |
 | frugalidade | proporcionalidade de custo, armazenamento, volume transferido e manutenção | bytes, latência, custo e crescimento | redução de qualidade ou segurança |
 
 As definições ampliadas estão no [Glossário de
@@ -285,7 +285,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   precoce ou dependência de ajuda enfraquecem a proposição. Redução de ansiedade
   não é alegada sem medida.
 
-### P7: correção focal e reversível
+### P7: correção contextual e revisável
 
 - **Problema e contexto:** corrigir sem manter a Unidade e seu contexto pode
   ocultar o alvo e alterar estrutura indevida.
@@ -296,13 +296,15 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Fundamentação:** controle humano exige comunicação de capacidade, correção e
   ação compreensível ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)); interpretação e uso do retorno são
   processos, não entrega isolada ([Wood (2021)](referencias.md#ref-wood2021dialogic)).
-- **Operacionalização:** rodada imutável, achado, proposta versionada, aplicação
-  confirmada, nova auditoria e reversão preservam estados diferentes.
+- **Operacionalização:** Observações abertas identificam os alvos; o contexto
+  preparado inclui Units pedagogicamente afetadas; a correção atualiza o Curso
+  corrente e a rematerialização comprova novamente parâmetros e conteúdo.
 - **Consequência esperada:** menos erros de alvo e maior compreensão do escopo.
 - **Explicações rivais:** edição mais curta, experiência técnica ou tarefa
   trivial.
 - **Limite e evidência de enfraquecimento:** estrutura exposta como texto,
-  alteração lateral ou reversão incompreensível exigem bloquear e revisar.
+  alteração lateral ou conjunto de reparos incompreensível exigem bloquear e
+  revisar.
 
 ### P8: observação situada e ciclo de retorno
 

@@ -23,9 +23,9 @@ investigação de uma dimensão, mas não estabelece automaticamente o melhor va
 para toda população, conteúdo ou tarefa.
 
 Limites de caracteres, bytes, elementos de página e tamanho de lote continuam
-relevantes para ergonomia e segurança. Faixa de Partes e etapas de execução
-organizam a produção. Esses controles não integram a herança dos parâmetros
-pedagógicos.
+relevantes para ergonomia e segurança. A quantidade de Partes organiza a
+produção, mas não é meta pedagógica. Esses controles não integram a herança dos
+parâmetros pedagógicos.
 
 ## Catálogo corrente
 
@@ -33,10 +33,10 @@ O catálogo aceita quatro parâmetros. Comandos não criam definições livres.
 
 | Parâmetro | Forma e valor-padrão | Escopos | Decisão representada |
 | --- | --- | --- | --- |
-| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; padrão `2` | Curso, Lição e Microssequência | teto de unidades de análise apresentadas pela primeira vez numa Unidade expositiva |
-| `required_explanation_forms` | conjunto; padrão definição simples, exemplo concreto, mecanismo e contraste | Curso, Lição e Microssequência | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
-| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; padrão `2` | Curso, Lição e Microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
-| `required_practice_variation_dimensions` | conjunto; padrão caso ou dados | Curso, Lição e Microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
+| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; padrão `2` | Curso e Microssequência | teto de unidades de análise apresentadas pela primeira vez numa Unidade expositiva |
+| `required_explanation_forms` | conjunto; padrão definição simples, exemplo concreto, mecanismo e contraste | Curso e Microssequência | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
+| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; padrão `2` | Curso e Microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
+| `required_practice_variation_dimensions` | conjunto; padrão caso ou dados | Curso e Microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
 
 Uma unidade de análise instrucional identifica a menor novidade que precisa ser
 acompanhada separadamente no desenho corrente. Antes de agregar um enunciado, a
@@ -92,7 +92,7 @@ controles globais.
 
 Algumas relações podem ser examinadas por meios mais precisos:
 
-- cobertura compara itens planejados, alvos atribuídos e fatos aplicados;
+- cobertura compara o inventário planejado e as introduções correntes;
 - progressão depende de ordem curricular e pré-requisitos;
 - teoria e prática aparecem nas Unidades e em suas operações;
 - extensão editorial usa contagens observáveis, sem equivaler a complexidade;
@@ -104,39 +104,19 @@ indevido a números fáceis de calcular.
 
 ## Escopo, origem e precedência
 
-Parâmetros pedagógicos podem ser atribuídos ao Curso, à Lição ou à
-Microssequência. Um Módulo mostra os valores herdados, mas não recebe uma
-atribuição pedagógica própria. Orientações e políticas de componentes podem
-usar Curso, Módulo, Lição ou Microssequência.
+Parâmetros pedagógicos podem ser definidos no Curso ou numa Microssequência.
+Uma StudyUnit consulta o valor efetivo da Microssequência a que pertence. Sem
+definição local, vale o Curso; sem definição no Curso, vale o padrão do produto.
 
-Cada atribuição registra uma origem:
-
-| Origem | Significado |
-| --- | --- |
-| `author` | decisão explícita da pessoa autora |
-| `research_condition` | decisão identificada para comparação ou pesquisa |
-| `automatic` | proposta automática gravada com valor e justificativa |
-| `system_default` | valor-padrão calculado, sem linha de atribuição |
-
-A resolução segue uma regra única:
-
-1. entre `author` e `research_condition`, vale a atribuição aplicável mais
-   próxima do alvo;
-2. na ausência de decisão explícita aplicável, vale a atribuição `automatic`
-   mais próxima;
-3. sem atribuição, vale `system_default`.
-
-Uma decisão automática numa Lição, portanto, não substitui uma decisão
-explícita no Curso. `research_condition` registra proveniência e continua
-editável. Remover uma atribuição atua somente no parâmetro e no escopo
-selecionados; a leitura seguinte mostra o valor restaurado, a origem e o escopo
-de onde veio.
+O uso comum permite calibração automática a partir do público, da tarefa e do
+contexto mínimo já conhecido. Quando uma pessoa fixa uma condição, essa decisão
+explícita prevalece no escopo pertinente. Remover a definição restaura a
+herança; não cria uma narrativa histórica de alteração.
 
 ### Exemplo de herança
 
-Considere o teto `2` definido pela autoria no Curso e o teto `1` definido na
-Lição A. Uma Microssequência dessa Lição recebe `1`, com origem `author` e
-proveniência na Lição A. Ao limpar a atribuição da Lição, a mesma
+Considere o teto `2` definido no Curso e o teto `1` definido na
+Microssequência A. Suas StudyUnits recebem `1`. Ao limpar essa definição, a
 Microssequência volta a receber `2` do Curso. Interface, MCP e Actions apresentam
 a mesma resolução.
 
@@ -147,33 +127,21 @@ Microssequências concretas. A relação admite vários itens em cada alvo e vá
 alvos para o mesmo item. Resultados de aprendizagem pretendidos permanecem no
 plano geral e não são copiados para essa atribuição operacional.
 
-Ao ler `course_design` numa Microssequência, `targetPlanItems` devolve duas
-listas ordenadas:
+Ao salvar a Parte, cada Microssequência registra suas AnalysisUnits e requisitos
+de evidência em linguagem humana. A camada confiável resolve identidades,
+preserva a ordem e recusa itens repetidos, de outro tipo ou de outro Curso.
 
-- `instructionalAnalysisUnitIds`;
-- `evidenceRequirementIds`.
+## Direção editorial
 
-Nos demais escopos, `targetPlanItems` é `null`. O comando
-`set_target_plan_items` substitui as duas listas na mesma transação. Identidades
-repetidas, de outro tipo ou de outro Curso são recusadas.
+Direção editorial é um texto curto e explícito no Curso ou na Microssequência.
+Ela orienta extensão, estilo, títulos e organização da próxima geração ou
+revisão. O valor efetivo segue a mesma herança do escopo: a Microssequência usa
+sua direção local ou, na ausência dela, a direção do Curso.
 
-## Orientações autorais
-
-Uma orientação conserva seu texto original numa revisão imutável, com escopo,
-origem, canal e revisão do Curso. A orientação efetiva acumula as revisões do
-Curso até o alvo, em ordem estrutural. Limpar a orientação local retira somente
-aquela contribuição.
-
-Uma interpretação automatizada é outro registro. Ela aponta para a revisão
-exata do texto e pode conter:
-
-- resumo;
-- diretivas `require`, `avoid` e `prefer`;
-- divergências;
-- perguntas de esclarecimento.
-
-A interpretação auxilia a execução e a auditoria, mantendo o texto da pessoa
-como referência. Uma nova revisão da orientação exige interpretação própria.
+Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
+de interpretações. O GPT aplica a direção na fase editorial pertinente sem
+alterar o inventário semântico. Se o conteúdo necessário não couber no formato
+preferido, cria mais StudyUnits.
 
 ## Política de componentes didáticos
 
@@ -196,16 +164,15 @@ preferência e uso materializado são fatos diferentes.
 O catálogo apresentado pela interface, pelo MCP e por Actions vem da mesma fonte
 usada na função remota. Na produção seguinte, o servidor sela a revisão do
 catálogo e a política efetiva de cada Microssequência. Componente desconhecido,
-bloqueado ou fora de uma lista restrita faz a etapa inteira ser revertida.
+bloqueado ou fora de uma lista restrita faz a gravação inteira ser revertida.
 
-## Contexto efetivo e fatos de aplicação
+## Contexto efetivo e aplicação corrente
 
-Ao iniciar a produção de uma Parte, o servidor deriva o contexto de cada
-Microssequência. Ele reúne parâmetros, orientações, interpretações, política de
-componentes e itens do plano atribuídos. A impressão digital canônica abrange enunciados,
-versões e vínculos e protege as etapas posteriores.
+Ao preparar a produção de uma Parte, o servidor reúne para cada Microssequência
+os parâmetros, a direção editorial, a política de componentes, as AnalysisUnits,
+os requisitos de evidência e as Fontes pertinentes.
 
-Cada etapa registra fatos delimitados sobre o que foi aplicado:
+A gravação conserva com as StudyUnits a aplicação instrucional corrente:
 
 - identidades das Unidades do lote;
 - unidades de análise declaradas como introduzidas;
@@ -214,9 +181,9 @@ Cada etapa registra fatos delimitados sobre o que foi aplicado:
 - operação mantida e dimensões variadas;
 - componentes usados.
 
-`introducedInstructionalAnalysisUnitIds` marca somente a primeira apresentação
-de cada unidade de análise. O desenvolvimento pode continuar em duas ou mais
-Unidades por `explanationApplications`, sem repetir a introdução; as formas
+Uma introdução marca somente a primeira apresentação de cada AnalysisUnit. O
+desenvolvimento pode continuar em duas ou mais StudyUnits sem repetir a
+introdução; as formas
 requeridas são verificadas sobre o conjunto dessas aplicações. No sentido
 inverso, uma Unidade pode desenvolver várias unidades de análise quando as
 relações forem intencionais e a quantidade de introduções novas respeitar o
@@ -225,15 +192,15 @@ nem quantidade de telas.
 
 Uma Unidade de prática também pode fazer consolidação formativa sem se dirigir
 a um requisito de evidência: por exemplo, recuperar uma relação recém-explicada
-antes de introduzir a próxima. Nesse caso, `practiceApplications` fica vazio e
-a Unidade não entra na contagem mínima de oportunidades de evidência. Isso
+antes de introduzir a próxima. Nesse caso, ela não se liga a um requisito e não
+entra na contagem mínima de oportunidades de evidência. Isso
 permite composições como explicação, pequena consolidação, nova explicação,
 aplicação e prática de evidência, sem transformar essa ordem em roteiro
 universal nem inventar um requisito de evidência.
 
 O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
-e política de componentes. O PostgreSQL também confere se as Unidades, os pais,
-as Microssequências e os componentes correspondem ao conteúdo gravado.
+e política de componentes. O PostgreSQL também confere se Units, pais,
+Microssequências e componentes correspondem ao conteúdo gravado.
 
 Essa verificação preserva rastreabilidade. Ela não substitui leitura
 disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
@@ -241,29 +208,26 @@ mecanismo ou se duas práticas são substantivamente distintas.
 
 ## Interface, MCP e Actions
 
-A área **Parâmetros** percorre Curso, Módulo, Lição e Microssequência. Para o
-alvo selecionado, mostra:
+A subvisão **Parâmetros** abre no Curso ou no contexto da Microssequência e
+mostra:
 
-- valor efetivo, origem e escopo de proveniência;
-- atribuição local e ação para restaurar a herança;
-- orientação original e interpretação em registros separados;
+- valor efetivo e escopo que o definiu;
+- definição local e ação para restaurar a herança;
+- direção editorial separada;
 - política de componentes com nomes legíveis;
-- itens do plano atribuídos à Microssequência;
-- confronto entre o planejado e os fatos aplicados;
-- limites de produção quando forem pertinentes.
+- AnalysisUnits e requisitos atribuídos à Microssequência;
+- aplicação corrente nas StudyUnits.
 
-`lerCurso` usa a vista `course_design`; `alterarCurso` usa
-`update_course_design`. Interface, MCP e Actions chegam ao mesmo domínio. Uma
-mudança informa escopo, revisão esperada, origem, motivo e `requestId`. Repetir
-o mesmo pedido recupera o mesmo resultado; uma operação sem alteração conserva
-a revisão.
+`consultar_configuracao` lê valores efetivos e `ajustar_configuracao` define ou
+restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
+indica Curso ou Microssequência; a camada confiável resolve os controles de
+concorrência e repetição segura.
 
 ## Limites operacionais
 
-Valores individuais ocupam até 4 KiB. Orientação e interpretação ocupam até
-8 KiB cada. Uma política contém até 32 referências. A leitura de um escopo
-possui teto de 256 KiB. O contexto de materialização ocupa até 64 KiB e os fatos
-de aplicação de uma etapa, até 16 KiB.
+Valores e textos possuem limites de transporte e persistência. Uma leitura muito
+ampla deve usar um escopo mais específico; uma direção editorial extensa deve
+ser dividida conforme sua função.
 
 Esses valores protegem transporte, memória e transação. Eles não possuem
 significado pedagógico.

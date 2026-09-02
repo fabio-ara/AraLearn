@@ -382,8 +382,8 @@ function normalizeDesign(value) {
 
 function normalizeAuthorship(value) {
   const source = exact(value, [
-    "observations", "explicitParameterChangeCount", "manualEditCount", "repairs",
-    "studyUnitChangesByOrigin"
+    "observations", "explicitParameterOverrideCount", "manuallyRevisedStudyUnitCount",
+    "studyUnitsByOrigin"
   ], "A autoria quantitativa");
   const observations = exact(source.observations, [
     "createdCount", "openCount", "resolvedCount"
@@ -397,31 +397,34 @@ function normalizeAuthorship(value) {
       normalizedObservations.createdCount) {
     fail("invalid_course_authoring_analytics", "Os estados das Observações excedem as criações.");
   }
-  const repairs = exact(source.repairs, ["acceptedCount", "rejectedCount"], "As decisões de reparo");
   return {
     observations: normalizedObservations,
-    explicitParameterChangeCount: nonnegativeInteger(
-      source.explicitParameterChangeCount,
-      "As alterações explícitas de parâmetros"
+    explicitParameterOverrideCount: nonnegativeInteger(
+      source.explicitParameterOverrideCount,
+      "Os overrides explícitos de parâmetros"
     ),
-    manualEditCount: source.manualEditCount === null
-      ? null
-      : nonnegativeInteger(source.manualEditCount, "As edições manuais"),
-    repairs: {
-      acceptedCount: nonnegativeInteger(repairs.acceptedCount, "Os reparos aceitos"),
-      rejectedCount: nonnegativeInteger(repairs.rejectedCount, "Os reparos rejeitados")
-    },
-    studyUnitChangesByOrigin: uniqueRows(
-      source.studyUnitChangesByOrigin,
+    manuallyRevisedStudyUnitCount: nonnegativeInteger(
+      source.manuallyRevisedStudyUnitCount,
+      "As StudyUnits cuja última revisão é humana"
+    ),
+    studyUnitsByOrigin: uniqueRows(
+      source.studyUnitsByOrigin,
       16,
       (entry) => entry.origin,
       "As mudanças de StudyUnit por origem",
       (entry) => {
-        const row = exact(entry, ["origin", "createdCount", "revisedCount"], "Uma origem de mudança");
+        const row = exact(
+          entry,
+          ["origin", "createdCount", "lastRevisedCount"],
+          "Uma origem de mudança"
+        );
         return {
           origin: identifier(row.origin, "A origem da mudança"),
           createdCount: nonnegativeInteger(row.createdCount, "As Units criadas pela origem"),
-          revisedCount: nonnegativeInteger(row.revisedCount, "As Units revistas pela origem")
+          lastRevisedCount: nonnegativeInteger(
+            row.lastRevisedCount,
+            "As Units cuja última revisão tem esta origem"
+          )
         };
       }
     )
@@ -481,12 +484,6 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
     fail(
       "invalid_course_authoring_analytics",
       "Condições efetivas ausentes precisam permanecer indicadas em missingData."
-    );
-  }
-  if (authorship.manualEditCount === null && missingData.length === 0) {
-    fail(
-      "invalid_course_authoring_analytics",
-      "Edições manuais não atribuíveis precisam permanecer indicadas em missingData."
     );
   }
   return {

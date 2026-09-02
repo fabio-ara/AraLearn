@@ -47,11 +47,12 @@ async function currentSourceLinks({ adapter, principal, course, unit, deadlineAt
     targetKind: "study_unit",
     targetId: unit.studyUnit.id,
     cursor: null,
-    limit: 24,
+    limit: 1,
     deadlineAt
   });
-  const items = Array.isArray(page?.items) ? page.items : [];
-  const current = items.find((item) => item.effective === true) ?? null;
+  const current = Array.isArray(page?.items) && page.items.length === 1
+    ? page.items[0]
+    : null;
   return Array.isArray(current?.sourceLinks) ? structuredClone(current.sourceLinks) : [];
 }
 
@@ -163,7 +164,7 @@ export async function applyHumanCourseCorrections({
       ? "A correção foi aplicada à Unidade afetada."
       : `As ${corrections.length} correções coerentes foram aplicadas às Unidades afetadas.`,
     deepLink: receipt.deepLink ?? null,
-    nextDecision: "Quer reinspecionar as Unidades e verificar se os achados foram resolvidos?",
+    nextDecision: "Quer reinspecionar o reparo ou rematerializar a Parte para aplicar uma configuração alterada?",
     context: {
       correctionCount: corrections.length,
       sourceMode: corrections.some(({ fontes }) => fontes !== undefined)

@@ -19,9 +19,6 @@ import {
   COURSE_ANCHORED_ANNOTATION_CATEGORIES,
   normalizeCourseAnchoredAnnotationCommand
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
-import {
-  normalizeCourseAuthoringPlanCommand
-} from "../aralearn/runtime/domain/courseAuthoringPlan.js";
 import { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
@@ -84,6 +81,48 @@ const PEDAGOGICAL_PARAMETERS_SCHEMA = Object.freeze({
       items: Object.freeze({ type: "string", enum: PRACTICE_VARIATION_DIMENSIONS })
     })
   })
+});
+
+const AUTHORING_PART_MICROSEQUENCE_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze([
+    "modulo", "objetivoDoModulo", "licao", "objetivoDaLicao",
+    "titulo", "objetivo", "funcao",
+    "unidadesDeAnalise", "requisitosDeEvidencia"
+  ]),
+  properties: Object.freeze({
+    modulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+    objetivoDoModulo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+    licao: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+    objetivoDaLicao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+    titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+    objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+    funcao: Object.freeze({
+      type: "string", enum: Object.freeze(["explicar", "praticar", "revisar", "apoiar"])
+    }),
+    unidadesDeAnalise: Object.freeze({
+      type: "array", maxItems: 64, uniqueItems: true,
+      items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
+    }),
+    requisitosDeEvidencia: Object.freeze({
+      type: "array", maxItems: 64, uniqueItems: true,
+      items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
+    })
+  }),
+  allOf: Object.freeze([Object.freeze({
+    if: Object.freeze({
+      properties: Object.freeze({
+        funcao: Object.freeze({ const: "explicar" })
+      }),
+      required: Object.freeze(["funcao"])
+    }),
+    then: Object.freeze({
+      properties: Object.freeze({
+        unidadesDeAnalise: Object.freeze({ minItems: 1 })
+      })
+    })
+  })])
 });
 
 const SOURCE_SELECTOR_SCHEMA = Object.freeze({
@@ -165,7 +204,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
             properties: Object.freeze({
               novidade: HUMAN_REFERENCE_SCHEMA,
               formas: Object.freeze({
-                type: "array", minItems: 1, maxItems: EXPLANATION_FORMS.length,
+                type: "array", maxItems: EXPLANATION_FORMS.length,
                 uniqueItems: true,
                 items: Object.freeze({ type: "string", enum: EXPLANATION_FORMS })
               }),
@@ -182,7 +221,20 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
                   })
                 })
               })
-            })
+            }),
+            anyOf: Object.freeze([
+              Object.freeze({
+                properties: Object.freeze({
+                  formas: Object.freeze({ minItems: 1 })
+                })
+              }),
+              Object.freeze({
+                required: Object.freeze(["formasNaoAplicaveis"]),
+                properties: Object.freeze({
+                  formasNaoAplicaveis: Object.freeze({ minItems: 1 })
+                })
+              })
+            ])
           })
         }),
         praticas: Object.freeze({
@@ -319,14 +371,14 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use antes de escrever Unidades de estudo de uma Parte aprovada. Traz somente inventário semântico, conhecimentos estabelecidos, configuração e Fontes do recorte. Não grava conteúdo.",
+    "Use antes de escrever Unidades de estudo de uma Parte aprovada. Traz somente inventário semântico, conhecimentos estabelecidos e configuração do recorte; consulte Fontes separadamente quando forem pertinentes. Não grava conteúdo.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Use para ler valores pedagógicos efetivos, herança, aplicação factual e direção editorial no Curso ou na Microssequência da Unidade. Não use para mudar valores.",
+    "Use para ler valores pedagógicos efetivos, herança, aplicação factual e direção editorial no Curso, Microssequência ou StudyUnit. Não use para mudar valores.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -403,8 +455,12 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
-    }, ["curso", "titulo", "intencao"]),
+      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+      microssequencias: Object.freeze({
+        type: "array", minItems: 1, maxItems: 32,
+        items: AUTHORING_PART_MICROSEQUENCE_SCHEMA
+      })
+    }, ["curso", "titulo", "intencao", "microssequencias"]),
     { readOnly: false }
   ),
   task(
@@ -423,12 +479,18 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "ajustar_configuracao",
     "Ajustar a configuração autoral",
-    "Use para definir ou restaurar herança dos quatro parâmetros pedagógicos e/ou da direção editorial no Curso ou Microssequência. Valor null restaura herança. Não use direção editorial para comprimir ou eliminar conteúdo necessário.",
+    "Use para calibrar ou fixar os quatro parâmetros pedagógicos e/ou a direção editorial no Curso, Microssequência ou StudyUnit. A condição é automática por padrão; valor null restaura herança. Não use direção editorial para comprimir ou eliminar conteúdo necessário.",
     Object.freeze({
       ...inputSchema({
-        curso: COURSE_SCHEMA,
-        microssequencia: HUMAN_REFERENCE_SCHEMA,
-        parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
+      curso: COURSE_SCHEMA,
+      microssequencia: HUMAN_REFERENCE_SCHEMA,
+      unidade: HUMAN_REFERENCE_SCHEMA,
+      condicao: Object.freeze({
+        type: "string",
+        enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"]),
+        default: "automatica"
+      }),
+      parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
       }, ["curso"]),
       anyOf: Object.freeze([
@@ -458,7 +520,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Use somente depois de preparar a revisão e definir o conjunto coerente de Unidades afetadas. Não limite a correção à Unidade anotada quando progressão, pré-requisitos, exemplos, prática ou transições forem afetados.",
+    "Use somente depois de preparar a revisão e definir o conjunto coerente de Unidades afetadas. Não use para comprovar aplicação de configuração alterada: rematerialize a Parte quando novidade, explicação, prática, representação ou distribuição precisarem mudar.",
     inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -563,7 +625,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:06f7ada6ce6bb2282298a4175291c3a3ed866fef80fcc7277e281d9582dae23b";
+  "sha256:e876aa75459717f10a63ceab3eba83655a54f9d5bfb6c9a23f8cfa5b5f2cd925";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -840,6 +902,332 @@ function planVersion(read) {
   return value;
 }
 
+const MICROSEQUENCE_ROLE_BY_HUMAN_FUNCTION = Object.freeze({
+  explicar: "explain",
+  praticar: "practice",
+  revisar: "review",
+  apoiar: "support"
+});
+const HUMAN_FUNCTION_BY_MICROSEQUENCE_ROLE = Object.freeze(Object.fromEntries(
+  Object.entries(MICROSEQUENCE_ROLE_BY_HUMAN_FUNCTION).map(([human, role]) => [role, human])
+));
+
+function matchingText(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function statementList(value, field) {
+  if (!Array.isArray(value) || value.length > 64) {
+    fail("invalid_human_task_argument", `${field} precisa conter até 64 itens.`, { field });
+  }
+  const items = value.map((item, index) => text(item, `${field}[${index}]`, 2000));
+  if (new Set(items.map(matchingText)).size !== items.length) {
+    fail("duplicate_human_reference", `${field} não pode repetir a mesma novidade.`, { field });
+  }
+  return items;
+}
+
+function normalizeApprovedPartMicrosequences(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 32) {
+    fail(
+      "invalid_human_task_argument",
+      "microssequencias precisa conter de 1 a 32 recortes aprovados.",
+      { field: "microssequencias" }
+    );
+  }
+  return value.map((raw, index) => {
+    const field = `microssequencias[${index}]`;
+    const item = plainObject(raw, field);
+    exactFields(item, new Set([
+      "modulo", "objetivoDoModulo", "licao", "objetivoDaLicao",
+      "titulo", "objetivo", "funcao", "unidadesDeAnalise",
+      "requisitosDeEvidencia"
+    ]));
+    const humanFunction = text(item.funcao, `${field}.funcao`, 20);
+    const role = MICROSEQUENCE_ROLE_BY_HUMAN_FUNCTION[humanFunction];
+    if (!role) {
+      fail("invalid_human_task_argument", `${field}.funcao é inválida.`, {
+        field: `${field}.funcao`
+      });
+    }
+    const analysisUnitStatements = statementList(
+      item.unidadesDeAnalise,
+      `${field}.unidadesDeAnalise`
+    );
+    if (role === "explain" && analysisUnitStatements.length === 0) {
+      fail(
+        "missing_instructional_analysis_unit",
+        `${field}.unidadesDeAnalise exige ao menos uma novidade para explicar.`,
+        { field: `${field}.unidadesDeAnalise` }
+      );
+    }
+    return {
+      moduleTitle: text(item.modulo, `${field}.modulo`, 300),
+      moduleGoal: text(item.objetivoDoModulo, `${field}.objetivoDoModulo`, 2000),
+      lessonTitle: text(item.licao, `${field}.licao`, 300),
+      lessonGoal: text(item.objetivoDaLicao, `${field}.objetivoDaLicao`, 2000),
+      title: text(item.titulo, `${field}.titulo`, 300),
+      goal: text(item.objetivo, `${field}.objetivo`, 2000),
+      role,
+      analysisUnitStatements,
+      evidenceRequirementStatements: statementList(
+        item.requisitosDeEvidencia,
+        `${field}.requisitosDeEvidencia`
+      )
+    };
+  });
+}
+
+async function loadAllCourseEntities(adapter, principal, course, deadlineAt) {
+  const items = [];
+  let afterEntityType = null;
+  let afterEntityId = null;
+  for (let pageNumber = 0; pageNumber < MAX_CONTEXT_PAGES; pageNumber += 1) {
+    const page = await adapter.listCourseEntities({
+      principal,
+      courseId: course.id,
+      expectedRevision: course.revision,
+      limit: 1000,
+      afterEntityType,
+      afterEntityId,
+      deadlineAt
+    });
+    if (!Array.isArray(page?.items)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A estrutura corrente do Curso é inválida."
+      );
+    }
+    items.push(...page.items);
+    if (!page.hasMore) return items;
+    afterEntityType = page.nextCursor?.entityType ?? null;
+    afterEntityId = page.nextCursor?.entityId ?? null;
+    if (!afterEntityType || !afterEntityId) break;
+  }
+  throw new AuthoringApiError(
+    413,
+    "course_structure_too_large",
+    "A estrutura do Curso excede o limite; reduza o recorte antes de salvar a Parte."
+  );
+}
+
+function existingEntityByTitle(rows, entityType, parentId, title) {
+  const wanted = matchingText(title);
+  const matches = rows.filter((row) => row?.entityType === entityType &&
+    (row.parentId ?? null) === parentId && matchingText(row.content?.title) === wanted);
+  if (matches.length > 1) {
+    fail(
+      "ambiguous_human_reference",
+      `Há mais de um ${entityType} chamado “${title}” no mesmo contexto.`,
+      { entityType, title },
+      409
+    );
+  }
+  return matches[0] ?? null;
+}
+
+function consistentHierarchyGoal(goals, identity, goal, label) {
+  const previous = goals.get(identity);
+  if (previous !== undefined && previous !== goal) {
+    fail(
+      "inconsistent_authoring_part_hierarchy",
+      `${label} recebeu objetivos diferentes na mesma Parte.`,
+      { label },
+      409
+    );
+  }
+  goals.set(identity, goal);
+}
+
+function currentPartMicrosequenceIds(part) {
+  if (!part) return [];
+  if (Array.isArray(part.microsequences)) {
+    return part.microsequences.map((item) => item?.id).filter(Boolean);
+  }
+  return Array.isArray(part.microsequenceIds) ? [...part.microsequenceIds] : [];
+}
+
+async function buildApprovedPart({ state, definitions, title, intent, newId }) {
+  const rows = [...state.entities];
+  const partId = state.part?.id ?? await newId("part");
+  const partPosition = state.part?.position ?? state.plan.plan.parts.length;
+  const currentMicrosequenceIds = currentPartMicrosequenceIds(state.part);
+  const assignedElsewhere = new Set((state.plan.plan.parts || [])
+    .filter((part) => part.id !== partId)
+    .flatMap(currentPartMicrosequenceIds));
+  const moduleGoals = new Map();
+  const lessonGoals = new Map();
+  const selectedMicrosequenceIds = new Set();
+  const analysisTargetById = new Map();
+  const planItemRows = {
+    instructional_analysis_unit: Array.isArray(state.plan.plan.instructionalAnalysisUnits)
+      ? [...state.plan.plan.instructionalAnalysisUnits]
+      : [],
+    evidence_requirement: Array.isArray(state.plan.plan.evidenceRequirements)
+      ? [...state.plan.plan.evidenceRequirements]
+      : []
+  };
+
+  const resolvePlanItem = async (kind, statement) => {
+    const collection = planItemRows[kind];
+    const matches = collection.filter((item) => matchingText(item.statement) === matchingText(statement));
+    if (matches.length > 1) {
+      fail(
+        "ambiguous_semantic_inventory_item",
+        `O inventário contém mais de um item equivalente a “${statement}”.`,
+        { kind, statement },
+        409
+      );
+    }
+    if (matches[0]) {
+      return {
+        id: matches[0].id,
+        position: matches[0].position,
+        statement: matches[0].statement
+      };
+    }
+    const created = {
+      id: await newId(`${kind}:${collection.length}`),
+      position: collection.reduce((maximum, item) => Math.max(maximum, item.position), -1) + 1,
+      statement
+    };
+    collection.push(created);
+    return created;
+  };
+
+  const microsequences = [];
+  for (const [index, definition] of definitions.entries()) {
+    let moduleRow = existingEntityByTitle(rows, "module", null, definition.moduleTitle);
+    if (!moduleRow) {
+      moduleRow = {
+        entityType: "module",
+        entityId: await newId(`module:${matchingText(definition.moduleTitle)}`),
+        parentId: null,
+        content: { title: definition.moduleTitle }
+      };
+      rows.push(moduleRow);
+    }
+    consistentHierarchyGoal(
+      moduleGoals,
+      moduleRow.entityId,
+      definition.moduleGoal,
+      `O Módulo “${definition.moduleTitle}”`
+    );
+
+    let lessonRow = existingEntityByTitle(
+      rows,
+      "lesson",
+      moduleRow.entityId,
+      definition.lessonTitle
+    );
+    if (!lessonRow) {
+      lessonRow = {
+        entityType: "lesson",
+        entityId: await newId(`lesson:${moduleRow.entityId}:${matchingText(definition.lessonTitle)}`),
+        parentId: moduleRow.entityId,
+        content: { title: definition.lessonTitle }
+      };
+      rows.push(lessonRow);
+    }
+    consistentHierarchyGoal(
+      lessonGoals,
+      lessonRow.entityId,
+      definition.lessonGoal,
+      `A Lição “${definition.lessonTitle}”`
+    );
+
+    let microsequenceRow = existingEntityByTitle(
+      rows,
+      "microsequence",
+      lessonRow.entityId,
+      definition.title
+    );
+    if (microsequenceRow && assignedElsewhere.has(microsequenceRow.entityId)) {
+      fail(
+        "authoring_microsequence_already_assigned",
+        `A Microssequência “${definition.title}” já pertence a outra Parte; use outro título ou revise a Parte existente.`,
+        { title: definition.title },
+        409
+      );
+    }
+    if (!microsequenceRow) {
+      const indexedCurrentId = currentMicrosequenceIds[index] ?? null;
+      const indexedCurrent = rows.find((row) => row?.entityType === "microsequence" &&
+        row.entityId === indexedCurrentId && row.parentId === lessonRow.entityId);
+      microsequenceRow = indexedCurrent || {
+        entityType: "microsequence",
+        entityId: await newId(`microsequence:${index}`),
+        parentId: lessonRow.entityId,
+        content: { title: definition.title }
+      };
+      if (!indexedCurrent) rows.push(microsequenceRow);
+    }
+    if (selectedMicrosequenceIds.has(microsequenceRow.entityId)) {
+      fail(
+        "duplicate_authoring_part_microsequence",
+        `A Parte repete a Microssequência “${definition.title}”.`,
+        { title: definition.title },
+        409
+      );
+    }
+    selectedMicrosequenceIds.add(microsequenceRow.entityId);
+
+    const analysisUnits = await Promise.all(
+      definition.analysisUnitStatements.map((statement) =>
+        resolvePlanItem("instructional_analysis_unit", statement))
+    );
+    for (const analysisUnit of analysisUnits) {
+      const previousMicrosequenceId = analysisTargetById.get(analysisUnit.id);
+      if (previousMicrosequenceId && previousMicrosequenceId !== microsequenceRow.entityId) {
+        fail(
+          "analysis_unit_assigned_to_multiple_microsequences",
+          `A novidade “${analysisUnit.statement}” aparece em duas Microssequências; mantenha-a somente onde será introduzida.`,
+          { statement: analysisUnit.statement },
+          409
+        );
+      }
+      analysisTargetById.set(analysisUnit.id, microsequenceRow.entityId);
+    }
+    microsequences.push({
+      moduleId: moduleRow.entityId,
+      moduleTitle: definition.moduleTitle,
+      moduleGoal: definition.moduleGoal,
+      lessonId: lessonRow.entityId,
+      lessonTitle: definition.lessonTitle,
+      lessonGoal: definition.lessonGoal,
+      microsequenceId: microsequenceRow.entityId,
+      title: definition.title,
+      goal: definition.goal,
+      role: definition.role,
+      position: index,
+      analysisUnits,
+      evidenceRequirements: await Promise.all(
+        definition.evidenceRequirementStatements.map((statement) =>
+          resolvePlanItem("evidence_requirement", statement))
+      )
+    });
+  }
+
+  return {
+    courseId: state.course.id,
+    expectedCourseRevision: state.course.revision,
+    expectedPlanVersion: planVersion(state.plan),
+    part: {
+      partId,
+      position: partPosition,
+      title,
+      intent,
+      microsequences
+    }
+  };
+}
+
 async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [] }) {
   return await resolveHumanCourseContext({
     adapter,
@@ -1043,6 +1431,7 @@ function projectConfiguration(read) {
     definition.id,
     definition
   ]));
+  const effectivePolicy = read?.componentPolicy?.effectiveAssignment ?? null;
   return {
     scope: read?.scopeContext?.current?.label ?? null,
     parameters: Array.isArray(read?.parameters)
@@ -1057,17 +1446,123 @@ function projectConfiguration(read) {
         }))
       : [],
     editorialDirection: {
-      local: read?.guidance?.localRevision?.guidance ?? null,
-      effective: Array.isArray(read?.guidance?.effectiveRevisions)
-        ? read.guidance.effectiveRevisions.map((revision) => ({
-            guidance: revision.guidance,
-            origin: revision.origin,
-            reason: revision.reason,
-            sourceScope: revision.sourceScope?.kind ?? null
+      local: read?.guidance?.localAssignment?.guidance ?? null,
+      effective: Array.isArray(read?.guidance?.effectiveAssignments)
+        ? read.guidance.effectiveAssignments.map((assignment) => ({
+            guidance: assignment.guidance,
+            origin: assignment.origin,
+            reason: assignment.reason,
+            sourceScope: assignment.sourceScope?.kind ?? null
           }))
         : []
     },
+    componentPolicy: effectivePolicy == null ? null : {
+      policy: withoutTechnicalState(effectivePolicy.policy),
+      inherited: effectivePolicy.inherited ?? false,
+      origin: effectivePolicy.origin ?? null,
+      reason: effectivePolicy.reason ?? null,
+      sourceScope: effectivePolicy.sourceScope?.kind ?? null
+    },
     targets: read?.targetPlanItems == null ? null : withoutTechnicalState(read.targetPlanItems)
+  };
+}
+
+function projectFocalPlanItems(items, targetIds, label) {
+  if (!Array.isArray(items) || !Array.isArray(targetIds)) {
+    fail("course_service_unavailable", `O inventário focal de ${label} está incompleto.`, null, 503);
+  }
+  const itemById = new Map(items.map((item) => [item?.id, item]));
+  return targetIds.map((targetId) => {
+    const item = itemById.get(targetId);
+    const position = Number(item?.position);
+    if (!item || !Number.isSafeInteger(position) || position < 0 ||
+        typeof item.statement !== "string" || !item.statement.trim()) {
+      fail("course_service_unavailable", `O inventário focal de ${label} divergiu do plano.`, null, 503);
+    }
+    return { position: position + 1, statement: item.statement };
+  });
+}
+
+function hasEffectiveStudyUnitOverride(read) {
+  return (Array.isArray(read?.parameters) && read.parameters.some((parameter) =>
+    parameter?.effectiveAssignment?.sourceScope?.kind === "study_unit")) ||
+    (Array.isArray(read?.guidance?.effectiveAssignments) &&
+      read.guidance.effectiveAssignments.some((assignment) =>
+        assignment?.sourceScope?.kind === "study_unit")) ||
+    read?.componentPolicy?.effectiveAssignment?.sourceScope?.kind === "study_unit";
+}
+
+function projectMaterializationPart(planRead, part, designReads, unitDesignReads = []) {
+  const plan = planRead?.plan ?? {};
+  const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
+  const partPosition = Number(part?.position);
+  if (!microsequences.length || !Array.isArray(designReads) ||
+      designReads.length !== microsequences.length ||
+      !Number.isSafeInteger(partPosition) || partPosition < 0) {
+    fail("course_service_unavailable", "O recorte focal da Parte está incompleto.", null, 503);
+  }
+  return {
+    position: partPosition + 1,
+    title: part.title,
+    intent: part.intent,
+    establishedAnalysisUnits: (Array.isArray(plan.instructionalAnalysisUnits)
+      ? plan.instructionalAnalysisUnits
+      : []).filter((item) => item?.introduced === true &&
+        item.introducedPartPosition !== null &&
+        Number.isSafeInteger(item.introducedPartPosition) &&
+        item.introducedPartPosition < partPosition)
+      .map((item) => ({ position: Number(item.position) + 1, statement: item.statement })),
+    microsequences: microsequences.map((microsequence, index) => {
+      const design = designReads[index];
+      const targets = design?.targetPlanItems;
+      const configuration = projectConfiguration(design);
+      const humanFunction = HUMAN_FUNCTION_BY_MICROSEQUENCE_ROLE[microsequence.role];
+      if (typeof microsequence.goal !== "string" || !microsequence.goal.trim() ||
+          !humanFunction) {
+        fail(
+          "course_service_unavailable",
+          "A finalidade de uma Microssequência divergiu do planejamento.",
+          null,
+          503
+        );
+      }
+      delete configuration.targets;
+      const existingStudyUnitOverrides = unitDesignReads
+        .filter((entry) => entry.microsequenceId === microsequence.id &&
+          hasEffectiveStudyUnitOverride(entry.design))
+        .map((entry) => {
+          const unitConfiguration = projectConfiguration(entry.design);
+          delete unitConfiguration.targets;
+          return {
+            position: Number(entry.unit.studyUnit.position),
+            title: entry.unit.studyUnit.title,
+            configuration: unitConfiguration
+          };
+        })
+        .sort((left, right) => left.position - right.position);
+      return {
+        position: Number(microsequence.productionPosition ?? microsequence.position ?? index) + 1,
+        title: microsequence.title,
+        objective: microsequence.goal,
+        function: humanFunction,
+        curriculum: {
+          module: microsequence.curriculumPath?.moduleTitle ?? null,
+          lesson: microsequence.curriculumPath?.lessonTitle ?? null
+        },
+        instructionalAnalysisUnits: projectFocalPlanItems(
+          plan.instructionalAnalysisUnits,
+          targets?.instructionalAnalysisUnitIds,
+          "unidades de análise"
+        ),
+        evidenceRequirements: projectFocalPlanItems(
+          plan.evidenceRequirements,
+          targets?.evidenceRequirementIds,
+          "requisitos de evidência"
+        ),
+        configuration,
+        existingStudyUnitOverrides
+      };
+    })
   };
 }
 
@@ -1133,9 +1628,9 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
   const part = resolved.part;
-  const design = [];
-  for (const microsequence of Array.isArray(part?.microsequences) ? part.microsequences : []) {
-    design.push(await adapter.getCourseDesign({
+  const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
+  const [design, existingPage] = await Promise.all([
+    Promise.all(microsequences.map((microsequence) => adapter.getCourseDesign({
       principal,
       courseId: resolved.course.id,
       scopeKind: "didactic_microsequence",
@@ -1143,14 +1638,35 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
       childLimit: 32,
       childCursor: null,
       deadlineAt
-    }));
+    }))),
+    listUnitsForContext({ adapter, principal, resolved, deadlineAt })
+  ]);
+  if (existingPage.items.length > 64) {
+    fail(
+      "human_materialization_part_too_large",
+      "A Parte excede 64 Unidades e não cabe numa materialização atômica.",
+      null,
+      413
+    );
   }
+  const unitDesign = await Promise.all(existingPage.items.map(async (unit) => ({
+    unit,
+    microsequenceId: unit?.curriculumPath?.didacticMicrosequence?.id,
+    design: await adapter.getCourseDesign({
+      principal,
+      courseId: resolved.course.id,
+      scopeKind: "study_unit",
+      scopeRef: unit.studyUnit.id,
+      childLimit: 1,
+      childCursor: null,
+      deadlineAt
+    })
+  })));
   return result(`Preparei o recorte focal da Parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning", [["authoringPartId", part.id]]),
     nextDecision: "Gere as Unidades necessárias sem mudar o inventário semântico.",
     context: {
-      ...projectedPlanContext(resolved.plan, part),
-      configuration: design.map(projectConfiguration)
+      part: projectMaterializationPart(resolved.plan, part, design, unitDesign)
     }
   });
 };
@@ -1165,11 +1681,10 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
     adapter, principal, args, deadlineAt, units: unitRefs
   });
   const unit = resolved.studyUnits[0] ?? null;
-  const scopeRef = resolved.microsequence?.id ??
-    unit?.curriculumPath?.didacticMicrosequence?.id ??
-    unit?.didacticMicrosequenceId ?? unit?.microsequenceId ??
-    unit?.studyUnit?.didacticMicrosequenceId ?? resolved.course.id;
-  const scopeKind = scopeRef === resolved.course.id ? "course" : "didactic_microsequence";
+  const scopeRef = unit?.studyUnit?.id ?? resolved.microsequence?.id ?? resolved.course.id;
+  const scopeKind = unit ? "study_unit" : resolved.microsequence
+    ? "didactic_microsequence"
+    : "course";
   const configuration = await adapter.getCourseDesign({
     principal,
     courseId: resolved.course.id,
@@ -1181,11 +1696,15 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
   });
   return result("Li a configuração pedagógica e a direção editorial vigentes.", {
     deepLink: courseDeepLink(adapter, resolved.course, "parameters",
-      scopeKind === "didactic_microsequence" ? [["didacticMicrosequenceId", scopeRef]] : []),
+      scopeKind === "study_unit"
+        ? [["studyUnitId", scopeRef]]
+        : scopeKind === "didactic_microsequence"
+          ? [["didacticMicrosequenceId", scopeRef]]
+          : []),
     nextDecision: "Quer manter a herança ou fixar alguma condição?",
     context: {
       configuration: projectConfiguration(configuration),
-      appliedToUnit: unit?.authorship?.designApplication ?? unit?.designApplication ?? null
+      appliedToUnit: unit?.authorship?.design?.application ?? null
     }
   });
 };
@@ -1249,7 +1768,7 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     targetKind: unit ? "study_unit" : null,
     targetId: unit?.id ?? null,
     cursor: null,
-    limit: 24,
+    limit: mode === "catalog" ? 24 : 1,
     deadlineAt
   });
   const context = args.busca === undefined || !Array.isArray(sources?.items)
@@ -1313,6 +1832,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   const partReference = optionalReference(args.parte, "parte");
   const title = text(args.titulo, "titulo", 300);
   const intent = text(args.intencao, "intencao", 2000);
+  const definitions = normalizeApprovedPartMicrosequences(args.microssequencias);
   let savedPartId = null;
   let savedCourse = null;
   const receipt = await executeTrustedCourseWrite({
@@ -1321,35 +1841,35 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
         adapter, principal, course, part: partReference ?? null, deadlineAt
       });
       savedCourse = resolved.course;
+      const plan = resolved.plan || await loadPlan(
+        adapter,
+        principal,
+        resolved.course,
+        deadlineAt
+      );
+      const currentCourse = {
+        ...resolved.course,
+        revision: Number(plan.courseRevision)
+      };
       return {
         ...resolved,
-        plan: resolved.plan || await loadPlan(adapter, principal, resolved.course, deadlineAt)
+        course: currentCourse,
+        plan,
+        entities: await loadAllCourseEntities(
+          adapter,
+          principal,
+          currentCourse,
+          deadlineAt
+        )
       };
     },
     build: async (state, { newId }) => {
-      savedPartId = partReference === undefined ? await newId("part") : state.part.id;
-      return {
-        courseId: state.course.id,
-        expectedCourseRevision: state.course.revision,
-        expectedPlanVersion: planVersion(state.plan),
-        command: normalizeCourseAuthoringPlanCommand(partReference === undefined
-          ? {
-            type: "add_part",
-            id: savedPartId,
-            position: state.plan.plan.parts.length,
-            title,
-            intent
-          }
-          : {
-            type: "update_part",
-            id: savedPartId,
-            title,
-            intent
-          })
-      };
+      const built = await buildApprovedPart({ state, definitions, title, intent, newId });
+      savedPartId = built.part.partId;
+      return built;
     },
-    commit: async ({ requestId, courseId, ...value }) => await adapter.commitCourseInstructionalPlan({
-      principal, courseId, ...value, requestId, deadlineAt
+    commit: async ({ requestId, ...value }) => await adapter.saveCourseAuthoringPart({
+      principal, ...value, requestId, deadlineAt
     })
   });
   return result(partReference === undefined
@@ -1357,7 +1877,10 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     : `Revisei a Parte: ${title}.`, {
     deepLink: courseDeepLink(adapter, savedCourse, "planning", [["authoringPartId", savedPartId]]),
     nextDecision: "Quer revisar esta Parte ou propor somente a próxima?",
-    context: { part: { title, intent }, changed: receipt.changed !== false }
+    context: {
+      part: { title, intent, microsequenceCount: definitions.length },
+      changed: receipt.changed !== false
+    }
   });
 };
 
@@ -1392,18 +1915,24 @@ const PARAMETER_FIELD_TO_ID = Object.freeze({
 });
 
 function designScope(resolved) {
-  return resolved.microsequence
+  const unitId = resolved.studyUnits?.[0]?.studyUnit?.id ?? null;
+  return unitId
+    ? { kind: "study_unit", ref: unitId }
+    : resolved.microsequence
     ? { kind: "didactic_microsequence", ref: resolved.microsequence.id }
     : { kind: "course", ref: resolved.course.id };
 }
 
-async function applyDesignCommand({ adapter, principal, course, microsequence, command, deadlineAt }) {
+async function applyDesignCommand({
+  adapter, principal, course, microsequence, studyUnit, command, deadlineAt
+}) {
   return await executeTrustedCourseWrite({
     load: async () => await resolveHumanCourseContext({
       adapter,
       principal,
       course,
       microsequence: microsequence ?? null,
+      studyUnits: studyUnit == null ? [] : [studyUnit],
       deadlineAt
     }),
     build: async (resolved) => ({
@@ -1425,6 +1954,23 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
 }) => {
   const course = humanCourseTitle(args);
   const microsequence = optionalReference(args.microssequencia, "microssequencia");
+  const studyUnit = optionalReference(args.unidade, "unidade");
+  const origin = {
+    automatica: "automatic",
+    fixada_pelo_autor: "author",
+    pesquisa: "research_condition"
+  }[args.condicao ?? "automatica"];
+  if (!origin) {
+    fail("invalid_human_task_argument", "condicao é inválida.", { field: "condicao" });
+  }
+  if (microsequence !== undefined && studyUnit !== undefined) {
+    fail(
+      "ambiguous_human_scope",
+      "Informe Microssequência ou StudyUnit, não os dois escopos ao mesmo tempo.",
+      null,
+      409
+    );
+  }
   const parameters = args.parametrosPedagogicos === undefined
     ? null
     : plainObject(args.parametrosPedagogicos, "parametrosPedagogicos");
@@ -1444,6 +1990,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     principal,
     course,
     microsequence: microsequence ?? null,
+    studyUnits: studyUnit == null ? [] : [studyUnit],
     deadlineAt
   });
   const knownComponentRefs = RESOURCE_PACKAGE_REGISTRY.listCatalog()
@@ -1466,8 +2013,12 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
               scope: designScope(preflightState),
               parameterId,
               value: safeClone(value, field, 16 * 1024),
-              origin: "author",
-              reason: "Condição definida explicitamente pela pessoa autora."
+              origin,
+              reason: origin === "automatic"
+                ? "Valor calibrado automaticamente para o contexto corrente."
+                : origin === "research_condition"
+                  ? "Condição de pesquisa fixada explicitamente."
+                  : "Condição fixada explicitamente pela pessoa autora."
             }, { knownComponentRefs }));
     }
   }
@@ -1478,8 +2029,12 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
           type: "set_guidance",
           scope: designScope(preflightState),
           guidance,
-          origin: "author",
-          reason: "Direção editorial definida explicitamente pela pessoa autora."
+          origin,
+          reason: origin === "automatic"
+            ? "Direção editorial calibrada automaticamente para o contexto corrente."
+            : origin === "research_condition"
+              ? "Direção editorial fixada como condição de pesquisa."
+              : "Direção editorial fixada explicitamente pela pessoa autora."
         }, { knownComponentRefs }));
   }
   for (const normalizedCommand of commands) {
@@ -1488,6 +2043,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
       principal,
       course,
       microsequence,
+      studyUnit,
       deadlineAt,
       command: (resolved) => ({
         ...normalizedCommand,
@@ -1500,20 +2056,25 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     principal,
     course,
     microsequence: microsequence ?? null,
+    studyUnits: studyUnit == null ? [] : [studyUnit],
     deadlineAt
   });
   const configuration = await adapter.getCourseDesign({
     principal,
     courseId: resolved.course.id,
-    scopeKind: resolved.microsequence ? "didactic_microsequence" : "course",
-    scopeRef: resolved.microsequence?.id ?? resolved.course.id,
+    scopeKind: designScope(resolved).kind,
+    scopeRef: designScope(resolved).ref,
     childLimit: 32,
     childCursor: null,
     deadlineAt
   });
   return result("Atualizei a configuração autoral e reli os valores efetivos.", {
     deepLink: courseDeepLink(adapter, resolved.course, "parameters",
-      resolved.microsequence ? [["didacticMicrosequenceId", resolved.microsequence.id]] : []),
+      resolved.studyUnits?.[0]
+        ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
+        : resolved.microsequence
+          ? [["didacticMicrosequenceId", resolved.microsequence.id]]
+          : []),
     nextDecision: "Quer comparar esta condição com outra configuração?",
     context: { configuration: projectConfiguration(configuration) }
   });
@@ -1525,6 +2086,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
   const course = humanCourseTitle(args);
   const units = humanReferenceList(args.unidades, "unidades");
   const rawText = text(args.texto, "texto", 2000);
+  const capturedAt = new Date().toISOString();
   const category = args.categoria === undefined || args.categoria === null
     ? null
     : text(args.categoria, "categoria", 120);
@@ -1533,51 +2095,41 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
       field: "categoria"
     });
   }
-  await resolveHumanCourseContext({
-    adapter,
-    principal,
-    course,
-    studyUnits: units,
-    deadlineAt
-  });
-  for (let index = 0; index < units.length; index += 1) {
-    const unitReference = units[index];
-    await executeTrustedCourseWrite({
-      load: async () => await resolveHumanCourseContext({
-        adapter,
-        principal,
-        course,
-        studyUnits: [unitReference],
-        deadlineAt
-      }),
-      build: async (resolved, { newId }) => ({
-        courseId: resolved.course.id,
-        expectedCourseRevision: resolved.course.revision,
-        command: normalizeCourseAnchoredAnnotationCommand({
+  let savedCourse = null;
+  await executeTrustedCourseWrite({
+    load: async () => {
+      const resolved = await resolveHumanCourseContext({
+        adapter, principal, course, studyUnits: units, deadlineAt
+      });
+      savedCourse = resolved.course;
+      return resolved;
+    },
+    build: async (resolved, { newId }) => ({
+      courseId: resolved.course.id,
+      expectedCourseRevision: resolved.course.revision,
+      commands: await Promise.all(resolved.studyUnits.map(async (unit, index) =>
+        normalizeCourseAnchoredAnnotationCommand({
           type: "create_anchored_annotation",
           annotationId: await newId(`observation:${index}`),
-          target: { kind: "study_unit", id: resolved.studyUnits[0].studyUnit.id },
+          target: { kind: "study_unit", id: unit.studyUnit.id },
           rawText,
           category,
-          capturedAt: new Date().toISOString(),
+          capturedAt,
           briefSummary: null
         })
-      }),
-      commit: async ({ requestId, courseId, ...value }) =>
-        await adapter.executeCourseAnchoredAnnotationCommand({
-          principal, courseId, ...value, requestId, deadlineAt
-        })
-    });
-  }
-  const resolved = await resolveHumanCourseContext({
-    adapter, principal, course, studyUnits: units, deadlineAt
+      ))
+    }),
+    commit: async ({ requestId, courseId, ...value }) =>
+      await adapter.createCourseAnchoredAnnotations({
+        principal, courseId, ...value, requestId, deadlineAt
+      })
   });
   return result(
     units.length === 1
       ? "Registrei a Observação na Unidade selecionada."
       : `Registrei a Observação separadamente em ${units.length} Unidades.`,
     {
-      deepLink: courseDeepLink(adapter, resolved.course, "review"),
+      deepLink: courseDeepLink(adapter, savedCourse, "review"),
       nextDecision: "Quer registrar outra Observação ou preparar a revisão das abertas?",
       context: { observationCount: units.length }
     }
@@ -1670,10 +2222,10 @@ async function detailedSource(adapter, principal, resolved, deadlineAt) {
     targetKind: null,
     targetId: null,
     cursor: null,
-    limit: 24,
+    limit: 1,
     deadlineAt
   });
-  return read.source ?? read.items?.[0] ?? resolved.source;
+  return read.items?.[0] ?? resolved.source;
 }
 
 async function executeSourceWrite({
@@ -1812,7 +2364,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           if (!matched) {
             throw new AuthoringApiError(404, "human_reference_not_found", "A Âncora não foi localizada.");
           }
-          return { anchorId: matched.anchorId, anchorRevision: matched.revision };
+          return { anchorId: matched.anchorId };
         });
         const targetRead = await adapter.getCourseSources({
           principal,
@@ -1823,17 +2375,14 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           targetKind: "study_unit",
           targetId: unit.studyUnit.id,
           cursor: null,
-          limit: 24,
+          limit: 1,
           deadlineAt
         });
-        const effectiveAttribution = Array.isArray(targetRead?.items)
-          ? targetRead.items.find((item) => item?.effective === true)
-          : null;
-        const currentLinks = targetRead?.attribution?.sourceLinks ??
-          targetRead?.sourceLinks ?? effectiveAttribution?.sourceLinks ?? [];
+        const currentAttribution = Array.isArray(targetRead?.items) &&
+          targetRead.items.length === 1 ? targetRead.items[0] : null;
+        const currentLinks = currentAttribution?.sourceLinks ?? [];
         const requestedLink = {
           sourceId: state.source.sourceId,
-          sourceRevision: Number(state.sourceDetail?.revision ?? state.source.revision),
           relation: text(binding.relacao, "vinculos.relacao", 80),
           anchors: selectedAnchors
         };

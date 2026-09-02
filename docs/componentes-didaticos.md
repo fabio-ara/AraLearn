@@ -97,16 +97,15 @@ curadoria confronta a justificativa de cada escolha.
 3. `inspect` compara até oito perfis;
 4. `contracts` entrega exatamente um contrato versionado por chamada;
 5. `validate_study_unit` verifica estrutura e composição a partir de `studyUnitJson`;
-6. `audit_representation` examina adequação e legibilidade;
-7. `preview_study_unit` informa se a aplicação pode abrir a composição.
+6. `preview_study_unit` informa se a aplicação pode abrir a composição.
 
 A ferramenta não envia todo o catálogo nem todos os esquemas ao modelo. A
 Autoria planeja primeiro, busca depois e carrega uma lista de até oito
 candidatos. Ampliar a biblioteca altera os dados catalográficos e os pacotes,
 preservando a interface da ferramenta.
 
-Em `search` e `audit_representation`, a Autoria pode declarar, além da frase de
-intenção, papel da Unidade, disciplina, estrutura, operação-alvo, modalidade de
+Em `search`, a Autoria pode declarar, além da frase de intenção, papel da
+Unidade, disciplina, estrutura, operação-alvo, modalidade de
 prática, objetos de conhecimento, relações que precisam ser preservadas e se a
 notação é objeto de aprendizagem. Essas facetas já pertencem ao catálogo e
 evitam que uma frase livre esconda o contraste entre, por exemplo, explicar em
@@ -366,7 +365,7 @@ Um equivalente textual oferece acesso ao conteúdo e base para tecnologia
 assistiva, mas ainda precisa de ordem de leitura e nomes de relações adequados.
 Pacotes complexos também devem apresentar retorno contextualizado.
 
-## 13. Validação e auditoria
+## 13. Validação e escolha
 
 `validate_study_unit` verifica:
 
@@ -376,15 +375,10 @@ Pacotes complexos também devem apresentar retorno contextualizado.
 - identificadores e caminhos de prática;
 - compatibilidades entre conteúdo e resposta.
 
-`audit_representation` acrescenta:
-
-- `semantic_fit`: a forma preserva a intenção;
-- `response_affordance`: a interação exercita a operação planejada;
-- `feedback_legibility`: o retorno pode ser relacionado à resposta.
-
-O resultado compara as facetas declaradas com metadados determinísticos do
-catálogo; não prova que o texto realmente cumpre a intenção. O GPT confronta o
-conteúdo produzido com essa declaração e a pessoa autora decide ambiguidades.
+`search` e `inspect` comparam as facetas declaradas com metadados determinísticos
+do catálogo. Essa comparação ajuda a escolher candidatos, mas não prova que o
+texto, a interação ou o feedback cumpram a intenção. O GPT confronta o conteúdo
+produzido com a função instrucional e a pessoa autora decide ambiguidades.
 
 A apresentação real e os testes de navegador verificam geometria e
 comportamento. Essas etapas fornecem evidência técnica; correção científica e

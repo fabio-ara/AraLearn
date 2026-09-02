@@ -1,5 +1,4 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
-import { normalizeCourseAuthoringPlanCommand } from "../domain/courseAuthoringPlan.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
@@ -7,21 +6,6 @@ import {
   normalizeCourseAnchoredAnnotationQuery,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
-import {
-  normalizeCourseAuditCycleChange,
-  normalizeCourseAuditCycleCommand,
-  normalizeCourseAuditCyclePage,
-  normalizeCourseAuditCycleQuery,
-  normalizeCourseAuditCycleReadOptions
-} from "../domain/courseAuditCycle.js";
-import {
-  normalizeCourseVariantChange,
-  normalizeCourseVariantCommand,
-  normalizeCourseVariantComparison,
-  normalizeCourseVariantComparisonList,
-  normalizeCourseVariantDetachCommand,
-  normalizeCourseVariantRead
-} from "../domain/courseVariants.js";
 import {
   normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
@@ -37,8 +21,7 @@ import {
   COURSE_SOURCE_PDF_MAX_BYTES,
   COURSE_SOURCE_PDF_MEDIA_TYPE,
   COURSE_SOURCE_CHANGE_CONTRACT,
-  normalizeCourseSourceAttachmentAccess,
-  normalizeCourseSourceAttributionApplication,
+  normalizeCourseSourcePdfDownload,
   normalizeCourseSourcePdfIngestion,
   normalizeSourceAttributionApplications,
   normalizeCourseSourceChange,
@@ -136,15 +119,6 @@ function boundedIdentifier(value, label, { maximum = 240 } = {}) {
   return normalized;
 }
 
-function boundedLegacySourceId(value, label) {
-  if (typeof value !== "string" || value.length < 1 || value.length > 4_096 ||
-      [...value].length > 2_048 || new TextEncoder().encode(value).byteLength > 8_192 ||
-      hasControlCharacter(value)) {
-    throw new TypeError(`${label} inválida.`);
-  }
-  return value;
-}
-
 function boundedCourseSourceIdentifier(value, label, { maximum = 240 } = {}) {
   const normalized = typeof value === "string" ? value.trim() : "";
   if (!normalized || normalized !== value || normalized.length > maximum * 2 ||
@@ -166,7 +140,7 @@ function requestIdentity(value) {
 
 function courseSourceCommandSubjectId(command) {
   return command.type === "save_source" || command.type === "retire_source" ||
-    command.type === "attach_pdf" || command.type === "remove_pdf"
+    command.type === "remove_pdf"
     ? command.sourceId
     : command.type === "save_anchor" || command.type === "retire_anchor"
       ? command.anchorId
@@ -224,14 +198,14 @@ function courseSourcesReadOptions(value = {}) {
   const mode = source.mode == null ? "catalog" : String(source.mode).trim();
   const sourceId = source.sourceId == null
     ? null
-    : boundedLegacySourceId(source.sourceId, "Identidade da Fonte");
+    : boundedCourseSourceIdentifier(source.sourceId, "Identidade da Fonte");
   const targetKind = source.targetKind == null ? null : String(source.targetKind).trim();
   const targetId = source.targetId == null
     ? null
     : boundedCourseSourceIdentifier(source.targetId, "Identidade do alvo");
   const cursor = source.cursor == null ? null : String(source.cursor).trim();
   const limit = source.limit == null
-    ? 10
+    ? mode === "catalog" ? 10 : 1
     : positiveInteger(source.limit, "Limite de Fontes", { maximum: 24 });
   const hasTargetContext = targetKind !== null || targetId !== null;
   const validTargetContext = targetKind !== null && targetId !== null;
@@ -242,7 +216,7 @@ function courseSourcesReadOptions(value = {}) {
       mode === "source" && hasTargetContext && !validTargetContext ||
       (targetKind !== null && !COURSE_SOURCE_TARGET_KINDS.has(targetKind)) ||
       (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
-      (mode === "source" && hasTargetContext && cursor !== null) ||
+      (mode !== "catalog" && (cursor !== null || limit !== 1)) ||
       (source.cursor != null && (
         cursor !== source.cursor || cursor.length > 240 || !SOURCE_CURSOR_PATTERN.test(cursor)
       ))) {
@@ -259,51 +233,33 @@ function courseSourcesReadOptions(value = {}) {
   };
 }
 
-function courseSourceAttachmentIdentity(value = {}, {
-  operation,
-  requireSize = false
-} = {}) {
-  const allowed = new Set([
-    "courseId", "expectedRevision", "sourceId", "sourceRevision",
-    "contentHash", "byteSize", "mediaType"
-  ]);
-  const source = exactObject(value, allowed, "Acesso ao anexo de Fonte");
+function courseSourcePdfDownloadIdentity(value = {}) {
+  const source = exactObject(value, new Set([
+    "courseId", "expectedRevision", "sourceId", "sourceRevision", "contentHash"
+  ]), "Download do PDF de Fonte");
   const normalized = {
     courseId: uuid(source.courseId, "Curso"),
     expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
-    sourceId: boundedLegacySourceId(source.sourceId, "Identidade da Fonte"),
+    sourceId: boundedCourseSourceIdentifier(source.sourceId, "Identidade da Fonte"),
     sourceRevision: positiveInteger(source.sourceRevision, "Revisão da Fonte"),
-    contentHash: String(source.contentHash || "").trim().toLowerCase(),
-    byteSize: source.byteSize == null ? null : positiveInteger(
-      source.byteSize,
-      "Tamanho do anexo",
-      { maximum: COURSE_SOURCE_PDF_MAX_BYTES }
-    ),
-    mediaType: source.mediaType == null
-      ? null
-      : String(source.mediaType).trim().toLowerCase()
+    contentHash: String(source.contentHash || "").trim().toLowerCase()
   };
-  if (!SHA256_PATTERN.test(normalized.contentHash) ||
-      requireSize && normalized.byteSize === null ||
-      requireSize && normalized.mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE ||
-      !requireSize && (normalized.byteSize !== null || normalized.mediaType !== null)) {
-    throw new TypeError("Acesso ao anexo de Fonte inválido.");
+  if (!SHA256_PATTERN.test(normalized.contentHash)) {
+    throw new TypeError("Download do PDF de Fonte inválido.");
   }
-  return { operation, ...normalized };
+  return normalized;
 }
 
-function boundCourseSourceAttachmentAccess(value, request) {
-  const access = normalizeCourseSourceAttachmentAccess(value);
-  if (access.operation !== request.operation || access.courseId !== request.courseId ||
-      access.courseRevision !== request.expectedRevision ||
-      access.sourceId !== request.sourceId ||
-      access.sourceRevision !== request.sourceRevision ||
-      access.attachment.contentHash !== request.contentHash ||
-      request.byteSize !== null && access.attachment.byteSize !== request.byteSize ||
-      request.mediaType !== null && access.attachment.mediaType !== request.mediaType) {
-    throw new TypeError("O acesso ao anexo não corresponde ao pedido.");
+function boundCourseSourcePdfDownload(value, request) {
+  const download = normalizeCourseSourcePdfDownload(value);
+  if (download.courseId !== request.courseId ||
+      download.courseRevision !== request.expectedRevision ||
+      download.sourceId !== request.sourceId ||
+      download.sourceRevision !== request.sourceRevision ||
+      download.attachment.contentHash !== request.contentHash) {
+    throw new TypeError("O download do PDF não corresponde ao pedido.");
   }
-  return access;
+  return download;
 }
 
 function timestamp(value, label) {
@@ -430,46 +386,6 @@ function boundedJsonObject(value, label, maximumBytes) {
     throw new TypeError(`${label} excede o limite.`);
   }
   return normalized;
-}
-
-function normalizedMaterializationCommand(value) {
-  const command = boundedJsonObject(value, "Comando de materialização", 512 * 1024);
-  const operation = String(command.operation || "").trim();
-  const base = [
-    "operation", "authoringPartId", "materializationId",
-    "expectedMaterializationVersion"
-  ];
-  const operationFields = operation === "start"
-    ? ["authoringPartVersion", "steps"]
-    : operation === "record_step"
-      ? [
-          "stepId", "expectedStepVersion", "status",
-          "entityChanges", "designApplication", "sourceAttributionApplication"
-        ]
-      : operation === "finish"
-        ? ["status"]
-        : [];
-  const fields = new Set([
-    ...base,
-    ...operationFields,
-    ...(operation === "record_step" || operation === "finish" ? ["resultFacts"] : [])
-  ]);
-  const requiredFields = new Set([...base, ...operationFields]);
-  if (!operationFields.length || [...requiredFields].some((field) => !Object.hasOwn(command, field)) ||
-      Object.keys(command).some((field) => !fields.has(field))) {
-    throw new TypeError("Comando de materialização inválido.");
-  }
-  if (operation === "record_step") {
-    command.sourceAttributionApplication = command.sourceAttributionApplication == null
-      ? null
-      : normalizeCourseSourceAttributionApplication(command.sourceAttributionApplication);
-  }
-  if (operation === "record_step" || operation === "finish") {
-    command.resultFacts = Object.hasOwn(command, "resultFacts")
-      ? boundedJsonObject(command.resultFacts, "Fatos da materialização", 16 * 1024)
-      : {};
-  }
-  return command;
 }
 
 function authenticationFailure(error) {
@@ -653,84 +569,6 @@ function boundAnchoredAnnotationChange(value, mutation, {
         expectedChannel !== null && annotation.provenance.channel !== expectedChannel
       )) {
     throw new TypeError("A confirmação da observação não corresponde ao comando.");
-  }
-  return change;
-}
-
-function defaultAuditCycleQuery() {
-  return {
-    mode: "findings",
-    targetStudyUnitId: null,
-    findingId: null,
-    correctionId: null,
-    auditRunId: null,
-    states: [],
-    dimensions: [],
-    severities: [],
-    annotationIds: []
-  };
-}
-
-function auditCycleReadOptions(value = {}) {
-  const source = exactObject(value, new Set([
-    "expectedCourseRevision", "auditSetVersion", "query", "cursor", "limit"
-  ]), "Leitura de auditoria");
-  return normalizeCourseAuditCycleReadOptions({
-    expectedCourseRevision: source.expectedCourseRevision,
-    auditSetVersion: source.auditSetVersion ?? null,
-    query: source.query ?? defaultAuditCycleQuery(),
-    cursor: source.cursor ?? null,
-    limit: source.limit ?? 12
-  });
-}
-
-function auditCycleMutation(value = {}) {
-  const source = exactObject(value, new Set([
-    "requestId", "courseId", "expectedCourseRevision", "command"
-  ]), "Alteração de auditoria");
-  return {
-    requestId: requestIdentity(source.requestId ?? createUuid()),
-    courseId: uuid(source.courseId, "Curso"),
-    expectedCourseRevision: positiveInteger(
-      source.expectedCourseRevision,
-      "Versão do Curso"
-    ),
-    command: normalizeCourseAuditCycleCommand(source.command)
-  };
-}
-
-function boundAuditCyclePage(value, { courseId, options }) {
-  const page = normalizeCourseAuditCyclePage(value);
-  if (page.courseId !== courseId ||
-      page.courseRevision !== options.expectedCourseRevision ||
-      options.auditSetVersion !== null &&
-        page.auditSetVersion !== options.auditSetVersion ||
-      JSON.stringify(normalizeCourseAuditCycleQuery(page.query)) !==
-        JSON.stringify(options.query)) {
-    throw new TypeError("A leitura de auditoria não corresponde ao pedido.");
-  }
-  return page;
-}
-
-function boundAuditCycleChange(value, mutation) {
-  const change = normalizeCourseAuditCycleChange(value);
-  const changesCourseContent = new Set([
-    "apply_authoring_correction",
-    "rollback_authoring_correction"
-  ]).has(mutation.command.type);
-  const expectedRevision = mutation.expectedCourseRevision +
-    (changesCourseContent && change.changed && !change.idempotent ? 1 : 0);
-  if (change.courseId !== mutation.courseId ||
-      change.requestId !== mutation.requestId ||
-      change.change !== null && change.change.type !== mutation.command.type ||
-      (change.idempotent
-        ? change.courseRevision < mutation.expectedCourseRevision
-        : change.courseRevision !== expectedRevision) ||
-      mutation.command.findingId != null && change.finding != null &&
-        change.finding.findingId !== mutation.command.findingId ||
-      mutation.command.correctionId != null && change.correction != null &&
-        change.correction.correctionId !== mutation.command.correctionId) {
-    throw new TypeError("A confirmação da auditoria não corresponde ao comando.");
   }
   return change;
 }
@@ -1080,6 +918,8 @@ export class CourseApiClient {
         result.query.targetKind !== normalized.targetKind ||
         result.query.targetId !== normalized.targetId ||
         result.nextCursor !== null && !SOURCE_CURSOR_PATTERN.test(result.nextCursor) ||
+        normalized.mode !== "catalog" && (result.items.length > 1 ||
+          result.nextCursor !== null) ||
         normalized.mode === "source" && result.items.some(({ sourceId }) =>
           sourceId !== normalized.sourceId) ||
         normalized.mode === "target" && result.items.some(({ targetKind, targetId }) =>
@@ -1090,13 +930,10 @@ export class CourseApiClient {
   }
 
   async getCourseSourceAttachmentDownload(value = {}) {
-    const request = courseSourceAttachmentIdentity(value, {
-      operation: "download"
-    });
-    return boundCourseSourceAttachmentAccess(
-      await this.requestCourseApi(`${courseResourcePath(request.courseId)}/source-attachments/access`, {
+    const request = courseSourcePdfDownloadIdentity(value);
+    return boundCourseSourcePdfDownload(
+      await this.requestCourseApi(`${courseResourcePath(request.courseId)}/source-pdf/download`, {
         query: {
-          operation: request.operation,
           expectedRevision: request.expectedRevision,
           sourceId: request.sourceId,
           sourceRevision: request.sourceRevision,
@@ -1126,7 +963,7 @@ export class CourseApiClient {
       requestId: requestIdentity(requestId),
       courseId: uuid(courseId, "Curso"),
       expectedRevision: positiveInteger(expectedRevision, "Versão de estado"),
-      sourceId: boundedLegacySourceId(sourceId, "Identidade da Fonte"),
+      sourceId: boundedCourseSourceIdentifier(sourceId, "Identidade da Fonte"),
       sourceRevision: positiveInteger(sourceRevision, "Revisão da Fonte")
     };
     try {
@@ -1176,7 +1013,7 @@ export class CourseApiClient {
           result.requestId !== normalized.requestId ||
           result.courseRevision !== normalized.expectedRevision + (result.changed ? 1 : 0) ||
           result.change !== null && (
-            result.change.type !== "attach_pdf" ||
+            result.change.type !== "ingest_pdf" ||
             result.change.subjectId !== normalized.sourceId ||
             result.change.revision !== normalized.sourceRevision
           )) {
@@ -1229,83 +1066,6 @@ export class CourseApiClient {
     });
   }
 
-  async loadCourseAuditCycle(courseId, value = {}) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const options = auditCycleReadOptions(value);
-    const query = options.query;
-    const queryValue = {
-      expectedRevision: options.expectedCourseRevision,
-      auditSetVersion: options.auditSetVersion,
-      mode: query.mode,
-      limit: options.limit
-    };
-    if (query.mode === "context") {
-      queryValue.targetStudyUnitId = query.targetStudyUnitId;
-      queryValue.annotationId = query.annotationIds;
-    } else if (query.mode === "findings") {
-      if (query.targetStudyUnitId !== null) {
-        queryValue.targetStudyUnitId = query.targetStudyUnitId;
-      }
-      queryValue.state = query.states;
-      queryValue.dimension = query.dimensions;
-      queryValue.severity = query.severities;
-      queryValue.cursor = options.cursor;
-    } else if (query.mode === "runs") {
-      if (query.targetStudyUnitId !== null) {
-        queryValue.targetStudyUnitId = query.targetStudyUnitId;
-      }
-      queryValue.cursor = options.cursor;
-    } else if (query.findingId !== null) {
-      queryValue.findingId = query.findingId;
-      if (query.correctionId !== null) {
-        queryValue.correctionId = query.correctionId;
-      }
-    } else {
-      queryValue.auditRunId = query.auditRunId;
-    }
-    const result = await this.requestCourseApi(
-      `${courseResourcePath(normalizedCourseId)}/audit-cycle`,
-      { query: queryValue }
-    );
-    return boundAuditCyclePage(result, {
-      courseId: normalizedCourseId,
-      options
-    });
-  }
-
-  async loadCourseVariantComparison(courseId, value = {}) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const options = normalizeCourseVariantRead(exactObject(
-      value,
-      new Set(["comparisonSetId", "expectedCourseRevision"]),
-      "Leitura de variantes"
-    ));
-    const result = normalizeCourseVariantComparison(await this.requestCourseApi(
-      `${courseResourcePath(normalizedCourseId)}/variant-comparisons/` +
-        encodeURIComponent(options.comparisonSetId),
-      { query: { expectedRevision: options.expectedCourseRevision } }
-    ));
-    if (result.comparisonSetId !== options.comparisonSetId ||
-        result.source.courseId !== normalizedCourseId ||
-        result.source.currentCourseRevision !== options.expectedCourseRevision) {
-      throw new TypeError("A comparação de variantes não corresponde ao pedido.");
-    }
-    return result;
-  }
-
-  async listCourseVariantComparisons(courseId, expectedCourseRevision) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const revision = positiveInteger(expectedCourseRevision, "Versão do Curso");
-    const result = normalizeCourseVariantComparisonList(await this.requestCourseApi(
-      `${courseResourcePath(normalizedCourseId)}/variant-comparisons`,
-      { query: { expectedRevision: revision } }
-    ));
-    if (result.sourceCourseId !== normalizedCourseId || result.sourceCourseRevision !== revision) {
-      throw new TypeError("A lista de variantes não corresponde ao Curso solicitado.");
-    }
-    return result;
-  }
-
   async loadCourseAuthoringAnalytics(courseId, value = {}) {
     const normalizedCourseId = uuid(courseId, "Curso");
     const source = exactObject(
@@ -1343,7 +1103,6 @@ export class CourseApiClient {
   loadAuthoringStudyUnits(courseId, {
     expectedRevision,
     scope = { kind: "course", id: null },
-    inspectionFocusId = null,
     anchorStudyUnitId = null,
     cursor: cursorValue = null,
     direction = "forward",
@@ -1351,27 +1110,18 @@ export class CourseApiClient {
     maxBytes = 512 * 1024
   } = {}) {
     const normalizedScope = authoringInspectionScope(scope);
-    const normalizedInspectionFocusId = inspectionFocusId == null
-      ? null
-      : uuid(inspectionFocusId, "Foco de inspeção");
     const normalizedCursor = authoringStudyUnitCursor(cursorValue);
     const normalizedAnchor = anchorStudyUnitId == null
       ? null
       : boundedIdentifier(anchorStudyUnitId, "Unidade de âncora");
     const normalizedDirection = String(direction || "").trim();
     if (!new Set(["forward", "backward"]).has(normalizedDirection) ||
-        (normalizedAnchor && normalizedCursor) ||
-        normalizedInspectionFocusId !== null && (
-          normalizedScope.kind !== "course" || normalizedScope.id !== null || normalizedAnchor !== null
-        )) {
+        (normalizedAnchor && normalizedCursor)) {
       throw new TypeError("Paginação da inspeção inválida.");
     }
     const normalizedCourseId = uuid(courseId, "Curso");
-    const pathname = normalizedInspectionFocusId === null
-      ? `/v2/courses/${encodeURIComponent(normalizedCourseId)}/study-units`
-      : `${courseResourcePath(normalizedCourseId)}/inspection-focuses/` +
-        `${encodeURIComponent(normalizedInspectionFocusId)}/study-units`;
-    return this.requestCourseApi(pathname, {
+    return this.requestCourseApi(
+      `/v2/courses/${encodeURIComponent(normalizedCourseId)}/study-units`, {
       query: {
         expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
         scopeKind: normalizedScope.kind,
@@ -1385,14 +1135,7 @@ export class CourseApiClient {
           maximum: 1_500_000
         })
       }
-    });
-  }
-
-  loadPartMaterialization(courseId, authoringPartId, materializationId) {
-    return this.requestCourseApi(
-      `${courseResourcePath(courseId)}/authoring-parts/` +
-        `${encodeURIComponent(uuid(authoringPartId, "Parte de autoria"))}/materializations/` +
-        encodeURIComponent(uuid(materializationId, "Materialização"))
+      }
     );
   }
 
@@ -1505,26 +1248,6 @@ export class CourseApiClient {
     return normalizePersonalCourseCopyEditReceipt(result, command);
   }
 
-  mutateAuthoringPlan({
-    requestId = createUuid(),
-    courseId,
-    expectedRevision,
-    expectedPlanVersion,
-    planCommand
-  } = {}) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    return this.requestCourseApi(`${courseResourcePath(normalizedCourseId)}/instructional-plan/changes`, {
-      method: "POST",
-      body: {
-        requestId: uuid(requestId, "Identidade da alteração"),
-        expectedCourseRevision: positiveInteger(expectedRevision, "Versão de estado"),
-        expectedPlanVersion: positiveInteger(expectedPlanVersion, "Versão do plano"),
-        command: normalizeCourseAuthoringPlanCommand(
-          plainObject(planCommand, "Comando do plano")
-        )
-      }
-    });
-  }
 
   mutateCourseDesign(value = {}) {
     const source = exactObject(
@@ -1602,86 +1325,6 @@ export class CourseApiClient {
       expectedOrigin: "author",
       expectedChannel: "authoring_interface"
     });
-  }
-
-  async mutateCourseAuditCycle(value = {}) {
-    const mutation = auditCycleMutation(value);
-    const result = await this.requestCourseApi(`${courseResourcePath(mutation.courseId)}/audit-cycle/changes`, {
-      method: "POST",
-      body: {
-        requestId: mutation.requestId,
-        expectedCourseRevision: mutation.expectedCourseRevision,
-        command: mutation.command
-      }
-    });
-    return boundAuditCycleChange(result, mutation);
-  }
-
-  async mutateCourseVariants(value = {}) {
-    const source = exactObject(value, new Set([
-      "requestId", "courseId", "expectedCourseRevision", "command"
-    ]), "Alteração de variantes");
-    const requestId = requestIdentity(source.requestId ?? createUuid());
-    const courseId = uuid(source.courseId, "Curso");
-    const command = source.command?.type === "create_comparison_variants"
-      ? normalizeCourseVariantCommand(source.command)
-      : normalizeCourseVariantDetachCommand(source.command);
-    if (command.type === "create_comparison_variants" &&
-        source.expectedCourseRevision !== command.expectedCourseRevision) {
-      throw new TypeError("A revisão da variante não corresponde ao invólucro.");
-    }
-    if (command.type === "detach_comparison_variant" &&
-        source.expectedCourseRevision !== undefined && source.expectedCourseRevision !== null) {
-      throw new TypeError("A desvinculação não recebe revisão de Curso.");
-    }
-    const result = normalizeCourseVariantChange(await this.requestCourseApi(
-      `${courseResourcePath(courseId)}/variant-comparisons/changes`,
-      {
-        method: "POST",
-        body: {
-          requestId,
-          expectedCourseRevision: command.type === "create_comparison_variants"
-            ? command.expectedCourseRevision
-            : null,
-          command
-        }
-      }
-    ));
-    if (result.sourceCourseId !== courseId ||
-        result.comparisonSetId !== command.comparisonSetId ||
-        command.type === "create_comparison_variants" &&
-          result.members.length !== command.variants.length ||
-        command.type === "detach_comparison_variant" && result.courseId !== command.courseId) {
-      throw new TypeError("A confirmação de variantes não corresponde ao comando.");
-    }
-    return result;
-  }
-
-  advanceAuthoringPartMaterialization({
-    requestId = createUuid(),
-    courseId,
-    expectedRevision,
-    materializationCommand
-  } = {}) {
-    const normalizedCourseId = uuid(courseId, "Curso");
-    const command = normalizedMaterializationCommand(materializationCommand);
-    return this.requestCourseApi(
-      `${courseResourcePath(normalizedCourseId)}/authoring-parts/` +
-        `${encodeURIComponent(command.authoringPartId)}/materializations/` +
-        `${encodeURIComponent(command.materializationId)}/changes`,
-      {
-        method: "POST",
-        body: {
-          requestId: uuid(requestId, "Identidade da alteração"),
-          expectedCourseRevision: positiveInteger(expectedRevision, "Versão de estado"),
-          expectedMaterializationVersion: command.expectedMaterializationVersion,
-          operation: command.operation,
-          payload: Object.fromEntries(Object.entries(command).filter(([field]) => !new Set([
-            "operation", "authoringPartId", "materializationId", "expectedMaterializationVersion"
-          ]).has(field)))
-        }
-      }
-    );
   }
 
   getPersonProfile() {

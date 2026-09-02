@@ -62,7 +62,7 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário exato cobre os onze casos correntes", async () => {
+test("o inventário exato cobre os nove casos correntes", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
@@ -70,16 +70,14 @@ test("o inventário exato cobre os onze casos correntes", async () => {
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 815);
+  assert.equal(inventory.objects.length, 511);
   assert.deepEqual(counts, {
     "study-course-experience": 40,
-    "course-authoring-experience": 294,
-    "course-source-provenance": 152,
-    "course-anchored-annotations": 86,
-    "course-audit-corrections": 91,
-    "course-variant-comparisons": 51,
+    "course-authoring-experience": 192,
+    "course-source-provenance": 123,
+    "course-anchored-annotations": 56,
     "course-authoring-research": 1,
-    "current-data-lifecycle": 20,
+    "current-data-lifecycle": 19,
     "person-profile-and-course-access": 31,
     "didactic-component-runtime": 1,
     "course-shared-transports": 48
@@ -87,14 +85,14 @@ test("o inventário exato cobre os onze casos correntes", async () => {
   const currentCaseIds = current.cases
     .filter(({ status }) => status === "current")
     .map(({ id }) => id);
-  assert.equal(currentCaseIds.length, 11);
+  assert.equal(currentCaseIds.length, 9);
   assert.deepEqual(
     new Set(inventory.objects.map(({ caseId }) => caseId)),
     new Set(currentCaseIds)
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
   assert.equal(
-    assignments.get("table:private.course_source_revisions"),
+    assignments.get("table:private.course_sources"),
     "course-source-provenance"
   );
   assert.equal(
@@ -103,7 +101,7 @@ test("o inventário exato cobre os onze casos correntes", async () => {
   );
   assert.equal(
     assignments.get(
-      "function:private.commit_course_instructional_plan_sources_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_expected_plan_version bigint, p_command jsonb, p_plan jsonb, p_channel text, p_request_id text)"
+      "function:private.apply_course_source_attribution_v2(p_course_id uuid, p_target_kind text, p_target_id text, p_expected_target_version bigint, p_links jsonb, p_explicit_target_hash text)"
     ),
     "course-source-provenance"
   );

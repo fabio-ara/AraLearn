@@ -18,8 +18,8 @@ O AraLearn oferece três integrações relacionadas, mas distintas:
   Lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
   canônicas de Curso;
-- **Actions/OpenAPI** conecta um GPT personalizado a seis operações canônicas
-  e três projeções HTTP dedicadas a itens do plano e à criação de Parte.
+- **Actions/OpenAPI** conecta um GPT personalizado às mesmas dezesseis tarefas
+  humanas projetadas como caminhos HTTP.
 
 Os três caminhos chegam às mesmas regras de Curso. Eles não compartilham
 credencial, sessão ou protocolo. Perfil, acesso, cópia pessoal, ciclo de vida do
@@ -137,53 +137,40 @@ ensaios de desenvolvimento usam stubs determinísticos, nunca uma chamada paga.
 
 ## MCP e Actions
 
-O MCP e Actions oferecem as mesmas seis funções de alto nível:
+MCP e Actions expõem as mesmas dezesseis tarefas humanas. O catálogo separa
+leituras de escritas e distingue planejamento, materialização, configuração,
+Observações, revisão, Fontes e componentes.
 
-- localizar Cursos próprios;
-- ler um recorte corrente;
-- criar a raiz privada de um Curso;
-- executar alterações autorais tipadas;
-- manter um PDF entre as Fontes do Curso;
-- descobrir, validar e visualizar componentes didáticos.
+O GPT localiza objetos por título, posição ou referência humana. A camada
+confiável resolve identidades e concorrência. Assim, a conversa pode coordenar
+uma mudança e um próximo passo sem transformar detalhes do banco em trabalho da
+pessoa autora.
 
-No MCP, essas funções aparecem como `listarCursos`, `lerCurso`, `criarCurso`,
-`alterarCurso`, `incorporarPdfComoFonte` e `consultarComponentesDidaticos`.
-Leituras especializadas usam vistas, como Planejamento, Fontes, Observações,
-Auditoria, Variantes e Pesquisa. Escritas especializadas usam comandos fechados
-de `alterarCurso`.
-
-Actions publica as seis operações canônicas e três projeções HTTP dedicadas a
-itens do plano e à criação de Parte em uma descrição OpenAPI. Seu cliente OAuth
-é confidencial e separado do principal OAuth do MCP.
-A [Autoria por MCP](autoria-mcp.md) documenta o primeiro canal; [GPT
-personalizado com Actions](autoria-actions.md) documenta o segundo.
+MCP usa OAuth 2.1 e descoberta de ferramentas. Actions projeta o mesmo catálogo
+num OpenAPI com OAuth próprio. Os dois canais chegam ao mesmo Curso e obedecem à
+mesma autorização. A [Autoria por MCP](autoria-mcp.md) e o guia de [Autoria por
+Actions](autoria-actions.md) desenvolvem as diferenças de transporte.
 
 ## Planejamento, Fontes e revisão
 
-Planejamento por Partes é persistido e editável. Cada etapa de materialização
-confirma composição, aplicação de parâmetros e proveniência numa operação
-retomável. A conversa não pode declarar uma etapa concluída sem o recibo do
-servidor.
+Planejamento por Partes é persistido e editável. O fluxo padrão propõe uma Parte
+por vez, recebe a decisão da pessoa, salva e relê o plano antes de continuar.
+Parte é lote operacional; não substitui a estrutura didática.
 
-Fontes possuem revisões e Âncoras exatas. URLs temporárias de PDF e o texto
-integral de Observações só são enviados ao cliente conectado depois de uma
-solicitação explícita. Uma citação torna a origem localizável; não garante a
-verdade da afirmação nem a qualidade da Fonte.
+Antes de produzir conteúdo, o GPT reúne o inventário de novidades, configuração
+e Fontes do recorte. A gravação de uma Parte confirma StudyUnits e aplicações de
+desenho numa operação retomável. A resposta coordenadora informa o resultado,
+abre o destino pertinente e formula no máximo uma decisão seguinte.
 
-Um arquivo anexado à conversa só se torna Fonte persistente quando sua função
-no Curso é clara ou confirmada. Uma vez incorporado, ele pertence ao Curso vivo
-e não depende da sessão anterior; uso declarado como temporário permanece fora
-das Fontes.
+Fontes e Âncoras ficam no Curso vivo. Um arquivo anexado à conversa só se torna
+Fonte persistente quando essa intenção está clara. Em outra sessão, a
+assistência pode localizar a Fonte pelo título e reler suas Âncoras; memória da
+conversa e novo upload não substituem esse estado.
 
-Em outra sessão, a assistência retoma essas Fontes a partir do Curso vivo,
-resume referências e localizadores humanos e abre somente o PDF necessário à
-verificação focal. A memória da conversa e um novo upload não substituem essa
-base persistente.
-
-Na Auditoria, contexto, achado, proposta, aplicação, verificação e reversão são
-estados distintos. Uma correção focal preserva o restante da estrutura e exige
-confirmação. Pesquisa e Variantes apresentam fatos e diferenças, sem converter
-contagens em conclusão causal.
+Uma revisão começa pelas Observações abertas e inclui outras StudyUnits quando a
+mudança afeta progressão, pré-requisitos, exemplos, prática ou transições. O GPT
+propõe um conjunto coerente, a pessoa decide, as correções são aplicadas e o
+resultado volta a ser inspecionado.
 
 ## Limites de interpretação
 

@@ -44,18 +44,18 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Aplique à candidata somente a configuração efetiva pertinente: o teto governa suas introduções; as formas requeridas governam o desenvolvimento das unidades de análise; mínimo e dimensões de variação governam apenas a prática ligada a requisito de evidência. Não entregue à escrita o catálogo inteiro, histórico de mudanças ou parâmetros de outra Microssequência.",
       "Faça a condição produzir diferença observável: teto menor distribui o mesmo inventário por mais StudyUnits; formas requeridas mudam o desenvolvimento explicativo; mínimo de prática muda a quantidade real de oportunidades; dimensões requeridas mudam a variação mantendo a operação-alvo. Preserve sem reinterpretar valores explícitos de autoria ou pesquisa.",
       "Aplique extensão, tamanho de parágrafo, títulos e estilo como orientação editorial focal e separada. Editorial organiza a apresentação, nunca elimina novidade, explicação, prática ou representação necessárias; quando faltar espaço, crie mais StudyUnits.",
-      "Antes de gravar a candidata, audite semanticamente se apareceu novidade material não inventariada, empilhamento sob poucos ids ou conhecimento especializado tratado como prévio. Um termo geral incidental não vira unidade de análise; se a falha for real, corrija o planejamento ou a candidata antes de continuar.",
+      "Antes de gravar a candidata, avalie se apareceu novidade material não inventariada, empilhamento sob poucos ids ou conhecimento especializado tratado como prévio. Um termo geral incidental não vira unidade de análise; se a falha for real, corrija o planejamento ou a candidata antes de continuar.",
       "Em cada Microssequência, produza somente as novidades e requisitos de evidência devolvidos no recorte preparado. O teto limita apenas as introduções; conhecimentos estabelecidos podem apoiar definição, mecanismo, exemplo, contraste, consolidação e prática.",
       "Depois da aprovação da Parte e das Units propostas, use materializar_parte uma vez e releia o resultado; não peça confirmações mecânicas intermediárias.",
       "Recupere autonomamente schema, identidades, releitura e retry seguro. Interrompa somente diante de divergência material, contradição pedagógica, decisão autoral real, concorrência relevante ou falha irrecuperável sem mudar a intenção.",
-      "Use somente o contexto focal devolvido por preparar_materializacao e envie Units completas com sua aplicação pedagógica e Fontes humanas pertinentes.",
+      "Use somente o contexto focal devolvido por preparar_materializacao. Quando houver apoio factual ou Fonte já planejada, use consultar_fontes para ler apenas os vínculos pertinentes antes de enviar Units completas.",
       "A camada confiável confere pertencimento, unicidade, cobertura e mínimos quantitativos; trate a falha humana localizada antes de repetir.",
       "Distribua profundidade: introduza cada unidade de análise uma vez e continue seu desenvolvimento em outras Unidades quando necessário, repartindo as formas de explicação sem transformar cada card em capítulo nem reduzir o conteúdo a resumo. Não há meta de quantidade total de StudyUnits; teto menor ou limite editorial produz mais Unidades, nunca AnalysisUnits maiores nem conteúdo necessário comprimido.",
       "Quando for didaticamente útil, intercale pequena consolidação entre explicações. Consolidação formativa sem finalidade de evidência usa Unidade de prática sem practiceApplications; não invente evidence_requirement. Prática que sustenta evidência continua vinculada ao requisito e à oportunidade correspondentes.",
-      "Escolha componentes pela função do objeto. Use prosa quando ela for a melhor forma; para contraste, sequência, estrutura, código, tabela, classificação ou representação visual, consulte e audite a alternativa pertinente em vez de condensar tudo em paragraph.",
+      "Escolha componentes pela função do objeto. Use prosa quando ela for a melhor forma; para contraste, sequência, estrutura, código, tabela, classificação ou representação visual, consulte e avalie a alternativa pertinente em vez de condensar tudo em paragraph.",
       "Retome pelo Curso persistido e não repita Units já gravadas.",
-      "Na resposta final, não descreva novamente o conteúdo visível dos cards. Escreva uma nota editorial curta: intenção e progressão didática, como os parâmetros efetivos orientaram as escolhas, quais Fontes e Âncoras verificadas sustentaram as decisões, por que os componentes foram escolhidos e que incerteza permanece.",
-      "Ao concluir a Parte aprovada, faça uma síntese curta, reúna pelos fatos relidos as Unidades produzidas, crie um único foco coerente, leia esse foco uma vez e devolva proativamente seu deep link com rótulo humano. Se a Parte abrange muitas Microssequências, use no foco o primeiro subconjunto útil e ofereça os demais sob demanda."
+      "Na resposta final, não descreva novamente o conteúdo visível. Informe em poucas linhas o resultado, um deep link para a primeira Unidade pertinente e no máximo uma próxima decisão; detalhe parâmetros, Fontes ou componentes somente quando isso mudar a decisão.",
+      "Ao concluir a Parte aprovada, releia as Unidades produzidas e devolva o deep link direto da primeira Unidade útil. Se houver mais de uma Microssequência, mencione o restante sem criar nem persistir um agrupamento paralelo."
     ])
   }),
   sources: Object.freeze({
@@ -63,14 +63,14 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Numa nova sessão, localize primeiro o Curso pelo título humano, releia o planejamento corrente e percorra o catálogo de Fontes; preserve as identidades estruturadas internamente sem mostrá-las como referências para a pessoa.",
       "Fontes podem ser acrescentadas, corrigidas, questionadas ou aposentadas em qualquer fase. Faça a mudança focal e depois retome o planejamento ou a produção pelo estado persistido; não bloqueie nem reinicie o Curso porque uma Parte já foi aprovada ou materializada.",
-      "Leia o catálogo, a edição pertinente da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência. Aprofunde somente as Fontes relevantes; não carregue nem abra todos os PDFs por padrão.",
+      "Leia a Fonte corrente, suas Âncoras e os vínculos do alvo antes de atribuir proveniência. Aprofunde somente as Fontes relevantes; não carregue nem abra todos os PDFs por padrão.",
       "Registre somente metadados fornecidos ou verificados; explicite lacunas e pergunte em vez de completar por plausibilidade.",
       "Use a referência humana da Fonte e o local legível da Âncora. Na conversa, cite a referência e o trecho pertinente, sem narrar controles internos.",
       "Ao apresentar uma Fonte no contexto, mostre somente a referência humana, o papel efetivo no uso e a Âncora ou trecho pertinente. Escopo curricular, calibração, exemplo e orientação de prova não viram apoio factual automaticamente; diga qual papel foi realmente atribuído.",
       "Fonte e Âncora continuam contestáveis depois do uso. Se a pessoa questionar, releia a edição e o local vinculados, registre a dúvida como Observação quando útil e proponha manter, substituir, corrigir ou retirar a atribuição sem reescrever silenciosamente o conteúdo.",
-      "Para explicar a proveniência de um alvo, leia seus vínculos e depois abra cada Fonte necessária no contexto desse alvo; assim a citação usa a edição e a Âncora historicamente pinadas.",
-      "Crie uma Âncora nova somente na edição ativa e com localização verificada. Uma nova edição, errata ou norma substituta exige Âncoras próprias; nunca recicle silenciosamente seletores de outra edição.",
-      "Aposentar uma Fonte ou Âncora impede novos usos, mas não apaga a proveniência histórica. Não atualize conteúdo antigo apenas para fazê-lo apontar à edição mais recente.",
+      "Para explicar a proveniência de um alvo, leia seus vínculos correntes e abra cada Fonte necessária no contexto desse alvo.",
+      "Crie ou ajuste uma Âncora somente com localização verificada. Se Fonte, errata ou norma mudar, revise também os vínculos e conteúdos afetados; não preserve atribuição obsoleta como histórico válido.",
+      "Ao retirar uma Fonte ou Âncora, repare ou remova os vínculos afetados no estado corrente sem apagar conteúdo pedagógico não relacionado.",
       "Solicite o acesso temporário a um PDF somente quando uma verificação focal realmente exigir seus bytes e somente após a divulgação explícita exigida pelo contrato.",
       "Mantenha a proveniência pela tarefa manter_fonte e seus vínculos humanos; não grave uma cópia da Fonte dentro do conteúdo da Unit."
     ])
@@ -80,42 +80,38 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Inspecione Unidades pela vista paginada no menor escopo curricular pertinente e preserve os deep links internamente; ofereça uma ação rotulada somente quando útil à pessoa.",
       "Use preparar_revisao para reunir as Units escolhidas e o contexto pedagógico suficiente sem despejar o Curso inteiro na conversa.",
-      "Para explicar a configuração usada por uma StudyUnit, use consultar_configuracao no escopo de sua Microssequência e confronte o valor efetivo com a aplicação registrada.",
+      "Para explicar a configuração usada por uma StudyUnit, use consultar_configuracao na própria Unit; use a Microssequência quando a pergunta abranger várias Units.",
       "Ao revisar Observações abertas, consulte a inbox no escopo selecionado e leia o texto integral somente das Observações escolhidas. Seleção e consulta bastam para uma ou várias StudyUnits; não crie entidade persistente de lote.",
       "Antes de propor reparo, amplie o foco para as StudyUnits que possam ser afetadas por progressão, pré-requisitos, transições, exemplos ou prática. Inspecione esse conjunto coerente; não limite a análise às Units originalmente anotadas.",
-      "Uma alteração de parâmetro rege a próxima geração ou revisão. Releia o valor efetivo no escopo da Microssequência e confronte-o depois com a aplicação registrada; não trate a aparência do conteúdo anterior como configuração vigente.",
+      "Uma alteração de parâmetro rege a próxima geração ou rematerialização no escopo escolhido. Releia o valor efetivo da StudyUnit ou Microssequência pertinente; aplicar_correcoes mantém o reparo de conteúdo honesto e limpa a comprovação factual anterior, enquanto materializar_parte sela novamente configuração e aplicação pedagógica.",
       "Prefira a Microssequência inteira a pedidos sucessivos de uma Unidade, mas aceite uma Unidade ou um conjunto arbitrário quando a pergunta exigir comparação localizada. Não renderize cards em respostas rotineiras sem finalidade de inspeção.",
-      "Ao comentar um foco, interprete-o editorialmente à luz do desenho vigente e das Fontes/Âncoras lidas para o alvo; não substitua a inspeção por uma paráfrase das Unidades já visíveis.",
-      "Corrija somente a Unidade ou o segmento que mudou; identidades e posições alheias permanecem estáveis.",
-      "Um marcador de desenho só volta ao estado verificado depois de prova focal sobre a revisão e a versão correntes."
+      "Ao comentar o conjunto selecionado, interprete-o editorialmente à luz do desenho vigente e das Fontes/Âncoras lidas; não substitua a inspeção por uma paráfrase das Unidades já visíveis.",
+      "Corrija o conjunto coerente de Units afetadas, preservando identidades, posições e conteúdo alheios à mudança."
     ])
   }),
-  audit_repair: Object.freeze({
-    title: "Auditoria e reparo",
+  review_repair: Object.freeze({
+    title: "Revisão e reparo",
     instructions: Object.freeze([
-      "Use preparar_revisao para ler Observações e contexto; use aplicar_correcoes somente depois que a pessoa aprovar um conjunto coerente de reparos.",
-      "Siga o ciclo focal completo: inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, obter uma decisão, aplicar e reinspecionar. Use Observações abertas selecionadas como evidência pública, não como autorização automática para alterar.",
-      "Se uma Observação atingir progressão, pré-requisito, transição, exemplo ou prática, leia também as Units anteriores ou posteriores pertinentes e registre findings e propostas para todo o conjunto que realmente precise mudar. Não crie batch permanente nem restrinja o reparo ao alvo anotado.",
-      "Checks, achados e propostas são conclusões públicas, localizadas e limitadas; alegação factual exige sourceLinks e incerteza explícita.",
-      "Resultado inadequado ou overallFit substitute de audit_representation por condensação evitável exige finding de qualidade pedagógica ou editorial e uma proposta concreta de correção. Validade estrutural não resolve o achado; paragraph e choice continuam corretos quando cumprem a função, sem quota de diversidade.",
-      "Mostre a proposta e o antes/depois. Uma aprovação da proposta concreta cobre a aplicação e sua verificação mecânica enquanto a intenção não mudar. Aplicação não prova resolução: somente verificação posterior pode resolver ou reabrir pendências vinculadas.",
-      "Depois de aplicar, reinspecione o conjunto afetado com o parâmetro efetivo e as Fontes pertinentes, então registre verify_finding como resolved ou still_open. Ao concluir, devolva o deep link rotulado e uma única próxima decisão; não reproduza no chat o conteúdo ou a lista inteira de reparos.",
-      "Ao concluir auditoria, reparo ou verificação, crie um foco das Unidades afetadas, leia-o uma vez e devolva proativamente seu deep link com rótulo humano; use a Microssequência inteira quando a relação entre elas fizer parte do julgamento e não repita o mesmo conjunto sem mudança material."
+      "Use preparar_revisao para ler as Observações abertas e o contexto pedagógico suficiente; use aplicar_correcoes somente depois que a pessoa aprovar o conjunto coerente de mudanças.",
+      "Uma Observação não autoriza mudança automática. Considere progressão, pré-requisitos, transições, exemplos, prática, parâmetros e Fontes antes de propor a correção.",
+      "Quando o efeito ultrapassar a Unit anotada, inclua somente as Units anteriores ou posteriores realmente afetadas. Seleção e consulta bastam; não crie entidade permanente de lote.",
+      "Alegação factual precisa permanecer apoiada pelas Fontes e Âncoras pertinentes, com incerteza explícita quando necessário.",
+      "Depois de aplicar, releia as Units alteradas no AraLearn e devolva um deep link rotulado com no máximo uma próxima decisão. Não reproduza no chat o conteúdo já visível."
     ])
   }),
   linguistic_didactic_review: Object.freeze({
     title: "Revisão linguístico-didática focal",
     instructions: Object.freeze([
-      "Siga o ciclo completo: inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, obter uma decisão, aplicar e reinspecionar. Aplicação não prova resolução; verifique o finding depois da nova inspeção.",
-      "Quando houver Observações abertas selecionadas, leia também as Units afetadas por progressão, pré-requisitos, transições, exemplos e prática. Findings e propostas cobrem o conjunto que realmente precise mudar, não apenas os alvos anotados; seleção e consulta bastam, sem batch permanente.",
+      "Siga o ciclo completo: inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, obter uma decisão, aplicar e reinspecionar.",
+      "Quando houver Observações abertas selecionadas, leia também as Units afetadas por progressão, pré-requisitos, transições, exemplos e prática. A proposta cobre o conjunto que realmente precise mudar, não apenas os alvos anotados; seleção e consulta bastam.",
       "Revise pedagogical_quality e editorial_quality na Microssequência recém-produzida, usando conteúdo renderizável, público e contexto curricular mínimo.",
       "Examine se a microteoria explica em vez de apenas resumir e se novos conceitos progridem de modo compreensível; reduza ou distribua o escopo quando falta desenvolvimento.",
       "Compare o conteúdo com as unidades de análise declaradas: sinalize novidades independentes escondidas em tópico amplo, uso de conhecimentos não estabelecidos como se fossem prévios e continuação que apenas repete a introdução.",
       "Confira se a representação preserva a função instrucional e se consolidação local foi distinguida de prática de evidência; uma forma alternativa só é preferível quando representa melhor o objeto, nunca para cumprir variedade.",
-      "Quando audit_representation apontar inadequação ou overallFit substitute por condensação evitável, não marque a Unit como suficiente só porque o schema é válido: registre finding e proposta de representação funcionalmente melhor. Não fabrique finding para obter variedade.",
+      "Quando a análise da representação apontar condensação evitável, não trate a Unit como suficiente só porque o schema é válido: proponha uma representação funcionalmente melhor. Não force variedade.",
       "Procure usos artificiais de curto/curta, negativas defensivas, metadiscurso, autorreferência e fórmulas como ‘X combina/reúne Y, Z’ usadas no lugar de relações explicadas.",
       "Procure enumerações extensas, empilhamento de conceitos, anglicismos ou decalques, metáforas técnicas inadequadas e terminologia ou sigla sem referente suficiente.",
-      "Esses focos não são proibições mecânicas: preserve usos legítimos, registre achados concretos e use o ciclo canônico de proposta, aplicação e verificação."
+      "Esses critérios não são proibições mecânicas: preserve usos legítimos e corrija somente problemas concretos."
     ])
   }),
   components: Object.freeze({
@@ -123,8 +119,8 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Parta da função instrucional e do objeto que precisa permanecer legível; não escolha por variedade estética nem crie quota. Paragraph continua correto quando prosa progressiva representa melhor a relação.",
       "Para contraste, sequência, estrutura, código, tabela, classificação, correspondência ou representação visual, explore ou pesquise candidatos antes de assumir paragraph; para prática, escolha a operação de resposta que produz a evidência pretendida em vez de assumir choice.",
-      "Na busca e em audit_representation, declare papel da Unidade e, quando pertinentes, estrutura, operação, objetos de conhecimento e o que precisa ser preservado. Essas facetas e os metadados do catálogo orientam o encaixe; a adequação semântica final continua sendo julgamento do GPT ou da pessoa.",
-      "Inspecione somente os candidatos pertinentes devolvidos por consultar_componentes. Valide a estrutura e a função antes de gravar; se houver inadequação ou substituição por condensação evitável, leve um achado e proposta concreta à revisão. Repare a função, não uma quota de diversidade."
+      "Na consulta e na avaliação da representação, declare papel da Unidade e, quando pertinentes, estrutura, operação, objetos de conhecimento e o que precisa ser preservado. Essas facetas e os metadados do catálogo orientam o encaixe; a adequação semântica final continua sendo julgamento do GPT ou da pessoa.",
+      "Inspecione somente os candidatos pertinentes devolvidos por consultar_componentes. Valide a estrutura e a função antes de gravar; se houver condensação evitável, leve uma proposta concreta à revisão. Repare a função, não uma quota de diversidade."
     ])
   })
 });
@@ -170,7 +166,7 @@ export function courseAuthoringGuidanceForCall(name) {
     return projectedGuide("inspection");
   }
   if (name === "preparar_revisao") return projectedGuide("linguistic_didactic_review");
-  if (name === "aplicar_correcoes") return projectedGuide("audit_repair");
+  if (name === "aplicar_correcoes") return projectedGuide("review_repair");
   return null;
 }
 

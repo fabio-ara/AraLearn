@@ -8,15 +8,11 @@ const PARTIAL_ISO_DATE_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/u;
 const BCP47_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
 const encoder = new TextEncoder();
 
-export const COURSE_SOURCES_CONTRACT = "aralearn.course-sources.v1";
+export const COURSE_SOURCES_CONTRACT = "aralearn.course-sources.v2";
 export const COURSE_SOURCE_CHANGE_CONTRACT = "aralearn.course-source-change.v1";
 export const COURSE_STUDY_CITATIONS_CONTRACT = "aralearn.course-study-citations.v1";
-export const COURSE_SOURCE_CONTEXT_CONTRACT = "aralearn.course-source-context.v1";
-export const COURSE_DESIGN_CONTEXT_V2_CONTRACT = "aralearn.course-design-context.v2";
-export const COURSE_SOURCE_ATTACHMENT_ACCESS_V1_CONTRACT =
-  "aralearn.course-source-attachment-access.v1";
-export const COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT =
-  "aralearn.course-source-attachment-access.v2";
+export const COURSE_SOURCE_PDF_DOWNLOAD_CONTRACT =
+  "aralearn.course-source-pdf-download.v1";
 export const COURSE_SOURCE_PDF_INGESTION_PREPARATION_CONTRACT =
   "aralearn.course-source-pdf-ingestion-preparation.v1";
 export const COURSE_SOURCE_PDF_INGESTION_CONTRACT =
@@ -29,13 +25,13 @@ export const COURSE_SOURCE_KINDS = Object.freeze([
   "web_page", "article", "book", "document", "media", "other"
 ]);
 export const COURSE_SOURCE_STATUSES = Object.freeze([
-  "active", "retired", "unresolved_legacy"
+  "active", "retired"
 ]);
 export const COURSE_SOURCE_STUDY_VISIBILITIES = Object.freeze([
   "hidden", "citation", "citation_and_link"
 ]);
 export const COURSE_SOURCE_ORIGINS = Object.freeze([
-  "external", "author_provided", "imported_legacy"
+  "external", "author_provided", "imported"
 ]);
 export const COURSE_SOURCE_AVAILABILITIES = Object.freeze([
   "open_access", "restricted", "private", "unknown"
@@ -50,11 +46,13 @@ export const COURSE_SOURCE_RELATIONS = Object.freeze([
   "informed_by", "supported_by", "adapted_from", "quoted_from",
   "contrasted_with", "exemplified_by", "inspired_by", "needs_verification"
 ]);
-export const COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT =
-  "aralearn.course-source-attribution-application.v1";
 export const COURSE_SOURCE_COMMAND_TYPES = Object.freeze([
   "save_source", "retire_source", "save_anchor", "retire_anchor",
-  "attach_pdf", "remove_pdf", "set_target_sources"
+  "remove_pdf", "set_target_sources"
+]);
+const COURSE_SOURCE_CHANGE_TYPES = Object.freeze([
+  ...COURSE_SOURCE_COMMAND_TYPES,
+  "ingest_pdf"
 ]);
 
 export class CourseSourcesError extends Error {
@@ -227,11 +225,11 @@ function byteBound(value, maximum, code, label) {
   }
 }
 
-function legacySourceId(value) {
-  if (typeof value !== "string" || value.length < 1 || value.length > 4_096 ||
-      [...value].length > 2_048 || encoder.encode(value).byteLength > 8_192 ||
+function sourceId(value) {
+  if (typeof value !== "string" || value.length < 1 || [...value].length > 240 ||
+      encoder.encode(value).byteLength > 960 || value !== value.trim() ||
       hasControl(value, false)) {
-    fail("invalid_course_source_id", "A identidade legada da Fonte é inválida.");
+    fail("invalid_course_source_id", "A identidade da Fonte é inválida.");
   }
   return value;
 }
@@ -265,7 +263,7 @@ function pdfStoragePath(value, expectedHash = null, code = "invalid_course_sourc
 export function normalizeCourseSourceAttachment(value, { persisted = false } = {}) {
   const attachment = clone(value);
   const fields = ["contentHash", "byteSize", "mediaType", "storagePath"];
-  if (persisted) fields.push("actorId", "createdAt");
+  if (persisted) fields.push("createdAt");
   exact(attachment, fields, "invalid_course_source_attachment", "O anexo PDF");
   const hash = contentHash(attachment.contentHash);
   const normalized = {
@@ -284,11 +282,6 @@ export function normalizeCourseSourceAttachment(value, { persisted = false } = {
     fail("invalid_course_source_attachment", "O anexo precisa ser um PDF.");
   }
   if (persisted) {
-    normalized.actorId = attachment.actorId === null ? null : uuid(
-      attachment.actorId,
-      "invalid_course_source_attachment",
-      "A identidade do ator do anexo"
-    );
     normalized.createdAt = timestamp(
       attachment.createdAt,
       "invalid_course_source_attachment",
@@ -301,92 +294,72 @@ export function normalizeCourseSourceAttachment(value, { persisted = false } = {
 function signedStorageUrl(value, { nullable = false } = {}) {
   if (nullable && value === null) return null;
   if (typeof value !== "string" || value.length > 8_192 || hasControl(value, false)) {
-    fail("invalid_course_source_attachment_access", "A URL assinada do anexo é inválida.");
+    fail("invalid_course_source_pdf_download", "A URL assinada do PDF é inválida.");
   }
   let parsed;
   try {
     parsed = new URL(value);
   } catch {
-    fail("invalid_course_source_attachment_access", "A URL assinada do anexo é inválida.");
+    fail("invalid_course_source_pdf_download", "A URL assinada do PDF é inválida.");
   }
   const localHttp = parsed.protocol === "http:" &&
     ["127.0.0.1", "localhost", "10.0.2.2"].includes(parsed.hostname);
   if (parsed.protocol !== "https:" && !localHttp || !parsed.searchParams.has("token")) {
-    fail("invalid_course_source_attachment_access", "A URL assinada do anexo é inválida.");
+    fail("invalid_course_source_pdf_download", "A URL assinada do PDF é inválida.");
   }
   return value;
 }
 
-export function normalizeCourseSourceAttachmentAccess(value) {
-  const access = clone(value);
-  exact(access, [
-    "contract", "courseId", "courseRevision", "operation", "sourceId",
-    "sourceRevision", "storageOriginCourseId", "attachment", "uploadRequired",
-    "alreadyLinked", "signedUrl", "expiresAt"
-  ], "invalid_course_source_attachment_access", "O acesso ao anexo PDF");
-  const compatibleDownload = access.operation === "download" &&
-    access.contract === COURSE_SOURCE_ATTACHMENT_ACCESS_V1_CONTRACT;
-  const supportedContract = access.contract === COURSE_SOURCE_ATTACHMENT_ACCESS_CONTRACT ||
-    compatibleDownload;
-  if (!supportedContract ||
-      !["prepare_upload", "download"].includes(access.operation) ||
-      typeof access.uploadRequired !== "boolean" ||
-      typeof access.alreadyLinked !== "boolean") {
-    fail("invalid_course_source_attachment_access", "O contrato de acesso ao anexo é inválido.");
+export function normalizeCourseSourcePdfDownload(value) {
+  const download = clone(value);
+  exact(download, [
+    "contract", "courseId", "courseRevision", "sourceId", "sourceRevision",
+    "storageOriginCourseId", "attachment", "signedUrl", "expiresAt"
+  ], "invalid_course_source_pdf_download", "O download do PDF");
+  if (download.contract !== COURSE_SOURCE_PDF_DOWNLOAD_CONTRACT) {
+    fail("invalid_course_source_pdf_download", "O contrato de download do PDF é inválido.");
   }
   const courseId = uuid(
-    access.courseId,
-    "invalid_course_source_attachment_access",
+    download.courseId,
+    "invalid_course_source_pdf_download",
     "A identidade do Curso"
   );
-  const attachment = normalizeCourseSourceAttachment(access.attachment);
   const storageOriginCourseId = uuid(
-    access.storageOriginCourseId,
-    "invalid_course_source_attachment_access",
-    "A identidade do Curso de origem do objeto"
+    download.storageOriginCourseId,
+    "invalid_course_source_pdf_download",
+    "A identidade do Curso de origem do PDF"
   );
+  const attachment = normalizeCourseSourceAttachment(download.attachment, { persisted: true });
   const pathCourseId = COURSE_SOURCE_PDF_PATH_PATTERN.exec(attachment.storagePath)?.[1];
-  if (pathCourseId !== storageOriginCourseId ||
-      !access.alreadyLinked && storageOriginCourseId !== courseId ||
-      access.operation === "download" && (access.uploadRequired || !access.alreadyLinked) ||
-      access.alreadyLinked && access.uploadRequired ||
-      access.operation === "prepare_upload" &&
-        (access.signedUrl !== null || access.expiresAt !== null) ||
-      access.operation === "download" && access.signedUrl === null ||
-      access.operation === "download" && access.expiresAt === null) {
-    fail("invalid_course_source_attachment_access", "O acesso ao anexo é inconsistente.");
+  if (pathCourseId !== storageOriginCourseId) {
+    fail("invalid_course_source_pdf_download", "O PDF não corresponde à origem armazenada.");
   }
   return {
-    contract: access.contract,
+    contract: download.contract,
     courseId,
     courseRevision: integer(
-      access.courseRevision,
+      download.courseRevision,
       1,
       Number.MAX_SAFE_INTEGER,
-      "invalid_course_source_attachment_access",
+      "invalid_course_source_pdf_download",
       "A revisão do Curso"
     ),
-    operation: access.operation,
-    sourceId: legacySourceId(access.sourceId),
+    sourceId: sourceId(download.sourceId),
     sourceRevision: integer(
-      access.sourceRevision,
+      download.sourceRevision,
       1,
       Number.MAX_SAFE_INTEGER,
-      "invalid_course_source_attachment_access",
+      "invalid_course_source_pdf_download",
       "A revisão da Fonte"
     ),
     storageOriginCourseId,
     attachment,
-    uploadRequired: access.uploadRequired,
-    alreadyLinked: access.alreadyLinked,
-    signedUrl: signedStorageUrl(access.signedUrl, { nullable: true }),
-    expiresAt: access.expiresAt === null
-      ? null
-      : timestamp(
-          access.expiresAt,
-          "invalid_course_source_attachment_access",
-          "A expiração do acesso ao anexo"
-        )
+    signedUrl: signedStorageUrl(download.signedUrl),
+    expiresAt: timestamp(
+      download.expiresAt,
+      "invalid_course_source_pdf_download",
+      "A expiração do download"
+    )
   };
 }
 
@@ -427,50 +400,43 @@ export function normalizeCourseSourceSelector(value) {
   return normalized;
 }
 
-export function normalizeCourseSourceLinks(value, { allowLegacyIds = false } = {}) {
-  const maximumLinks = allowLegacyIds ? 128 : 32;
+export function normalizeCourseSourceLinks(value) {
+  const maximumLinks = 32;
   if (!Array.isArray(value) || value.length > maximumLinks) {
     fail("invalid_course_source_links", `Os vínculos de Fonte precisam formar uma lista de até ${maximumLinks} itens.`);
   }
   const seenSources = new Set();
   const seenAnchors = new Set();
   const links = value.map((candidate) => {
-    exact(candidate, ["sourceId", "sourceRevision", "relation", "anchors"], "invalid_course_source_link", "O vínculo de Fonte");
-    const normalizedSourceId = legacySourceId(candidate.sourceId);
-    if (!allowLegacyIds && seenSources.has(normalizedSourceId)) {
+    exact(candidate, ["sourceId", "relation", "anchors"], "invalid_course_source_link", "O vínculo de Fonte");
+    const normalizedSourceId = sourceId(candidate.sourceId);
+    if (seenSources.has(normalizedSourceId)) {
       fail("duplicate_course_source_link", "Uma atribuição não pode repetir a mesma Fonte.");
     }
     seenSources.add(normalizedSourceId);
-    const allowedRelations = allowLegacyIds
-      ? [...COURSE_SOURCE_RELATIONS, "legacy_reference"]
-      : COURSE_SOURCE_RELATIONS;
-    if (!allowedRelations.includes(candidate.relation)) {
+    if (!COURSE_SOURCE_RELATIONS.includes(candidate.relation)) {
       fail("invalid_course_source_link", "A relação de proveniência é inválida.");
     }
     if (!Array.isArray(candidate.anchors) || candidate.anchors.length > 8) {
       fail("invalid_course_source_link", "As Âncoras da Fonte precisam formar uma lista de até 8 itens.");
     }
     const anchors = candidate.anchors.map((anchor) => {
-      exact(anchor, ["anchorId", "anchorRevision"], "invalid_course_source_link", "A Âncora atribuída");
+      exact(anchor, ["anchorId"], "invalid_course_source_link", "A Âncora atribuída");
       const normalizedAnchorId = anchorId(anchor.anchorId);
-      if (!allowLegacyIds && seenAnchors.has(normalizedAnchorId)) {
+      if (seenAnchors.has(normalizedAnchorId)) {
         fail("duplicate_course_source_anchor_link", "Uma atribuição não pode repetir a mesma Âncora.");
       }
       seenAnchors.add(normalizedAnchorId);
-      return {
-        anchorId: normalizedAnchorId,
-        anchorRevision: integer(anchor.anchorRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_link", "A revisão da Âncora")
-      };
+      return { anchorId: normalizedAnchorId };
     });
-    if (anchors.length === 0 && !allowLegacyIds) {
-      fail("invalid_course_source_link", "Um vínculo novo exige ao menos uma Âncora verificada.");
+    if (anchors.length === 0 && candidate.relation !== "needs_verification") {
+      fail("invalid_course_source_link", "Um vínculo exige Âncora, salvo quando aguarda verificação.");
     }
     if (candidate.relation === "quoted_from" && anchors.length === 0) {
       fail("invalid_course_source_link", "quoted_from exige ao menos uma Âncora.");
     }
     return {
       sourceId: normalizedSourceId,
-      sourceRevision: integer(candidate.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_link", "A revisão da Fonte"),
       relation: candidate.relation,
       anchors
     };
@@ -562,7 +528,7 @@ export function normalizeCourseSourcePdfSourceIntent(value) {
     );
     return {
       mode: intent.mode,
-      sourceId: legacySourceId(intent.sourceId),
+      sourceId: sourceId(intent.sourceId),
       sourceRevision: integer(
         intent.sourceRevision,
         1,
@@ -578,7 +544,7 @@ export function normalizeCourseSourcePdfSourceIntent(value) {
     "invalid_course_source_pdf_ingestion",
     "A intenção de salvar a Fonte e seu PDF"
   );
-  const sourceId = intent.sourceId === null ? null : legacySourceId(intent.sourceId);
+  const normalizedSourceId = intent.sourceId === null ? null : sourceId(intent.sourceId);
   const expectedSourceRevision = integer(
     intent.expectedSourceRevision,
     0,
@@ -586,7 +552,7 @@ export function normalizeCourseSourcePdfSourceIntent(value) {
     "invalid_course_source_pdf_ingestion",
     "A revisão esperada da Fonte"
   );
-  if (sourceId === null && expectedSourceRevision !== 0) {
+  if (normalizedSourceId === null && expectedSourceRevision !== 0) {
     fail(
       "invalid_course_source_pdf_ingestion",
       "Uma Fonte nova precisa começar sem revisão anterior."
@@ -594,7 +560,7 @@ export function normalizeCourseSourcePdfSourceIntent(value) {
   }
   const normalized = {
     mode: intent.mode,
-    sourceId,
+    sourceId: normalizedSourceId,
     expectedSourceRevision,
     source: normalizePdfSourceDocument(intent.source, expectedSourceRevision)
   };
@@ -676,7 +642,7 @@ export function normalizeCourseSourcePdfIngestionPreparation(value) {
       "invalid_course_source_pdf_ingestion_preparation",
       "A identidade da requisição"
     ),
-    sourceId: legacySourceId(preparation.sourceId),
+    sourceId: sourceId(preparation.sourceId),
     sourceRevision: integer(
       preparation.sourceRevision,
       1,
@@ -719,7 +685,7 @@ export function normalizeCourseSourcePdfIngestion(value) {
     "A Fonte ingerida"
   );
   const source = {
-    sourceId: legacySourceId(ingestion.source.sourceId),
+    sourceId: sourceId(ingestion.source.sourceId),
     sourceRevision: integer(
       ingestion.source.sourceRevision,
       1,
@@ -737,7 +703,7 @@ export function normalizeCourseSourcePdfIngestion(value) {
   }
   const attachment = normalizeCourseSourceAttachment(ingestion.attachment);
   if (change.change !== null && (
-    change.change.type !== "attach_pdf" ||
+    change.change.type !== "ingest_pdf" ||
     change.change.subjectId !== source.sourceId ||
     change.change.revision !== source.sourceRevision
   )) {
@@ -769,7 +735,7 @@ export function normalizeCourseSourceCommand(value) {
     exact(command, ["type", "sourceId", "expectedSourceRevision", "source"], "invalid_course_source_command", "O comando save_source");
     const normalized = {
       type: command.type,
-      sourceId: legacySourceId(command.sourceId),
+      sourceId: sourceId(command.sourceId),
       expectedSourceRevision: integer(command.expectedSourceRevision, 0, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Fonte"),
       source: normalizeSourceDocument(command.source)
     };
@@ -780,7 +746,7 @@ export function normalizeCourseSourceCommand(value) {
     exact(command, ["type", "sourceId", "expectedSourceRevision"], "invalid_course_source_command", "O comando retire_source");
     return {
       type: command.type,
-      sourceId: legacySourceId(command.sourceId),
+      sourceId: sourceId(command.sourceId),
       expectedSourceRevision: integer(command.expectedSourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Fonte")
     };
   }
@@ -790,7 +756,7 @@ export function normalizeCourseSourceCommand(value) {
     const normalized = {
       type: command.type,
       anchorId: anchorId(command.anchorId),
-      sourceId: legacySourceId(command.sourceId),
+      sourceId: sourceId(command.sourceId),
       sourceRevision: integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte"),
       expectedAnchorRevision: integer(command.expectedAnchorRevision, 0, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Âncora"),
       selector: normalizeCourseSourceSelector(command.selector),
@@ -813,20 +779,11 @@ export function normalizeCourseSourceCommand(value) {
       expectedAnchorRevision: integer(command.expectedAnchorRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Âncora")
     };
   }
-  if (command.type === "attach_pdf") {
-    exact(command, ["type", "sourceId", "sourceRevision", "attachment"], "invalid_course_source_command", "O comando attach_pdf");
-    return {
-      type: command.type,
-      sourceId: legacySourceId(command.sourceId),
-      sourceRevision: integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte"),
-      attachment: normalizeCourseSourceAttachment(command.attachment)
-    };
-  }
   if (command.type === "remove_pdf") {
     exact(command, ["type", "sourceId", "expectedSourceRevision", "contentHash"], "invalid_course_source_command", "O comando remove_pdf");
     return {
       type: command.type,
-      sourceId: legacySourceId(command.sourceId),
+      sourceId: sourceId(command.sourceId),
       expectedSourceRevision: integer(command.expectedSourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Fonte"),
       contentHash: contentHash(command.contentHash, "invalid_course_source_command")
     };
@@ -846,9 +803,7 @@ export function normalizeCourseSourceCommand(value) {
   };
 }
 
-export function normalizeSourceAttributionApplications(value, {
-  allowLegacyCarry = false
-} = {}) {
+export function normalizeSourceAttributionApplications(value) {
   if (!Array.isArray(value) || value.length > 64) {
     fail("invalid_course_source_attribution_applications", "As aplicações de proveniência precisam formar uma lista de até 64 itens.");
   }
@@ -862,291 +817,111 @@ export function normalizeSourceAttributionApplications(value, {
     ids.add(studyUnitId);
     return {
       studyUnitId,
-      sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks, {
-        allowLegacyIds: allowLegacyCarry
-      })
+      sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks)
     };
   });
   byteBound(applications, 196608, "course_source_attribution_applications_too_large", "As aplicações de proveniência");
   return applications;
 }
 
-export function normalizeCourseSourceAttributionApplication(value) {
-  const application = clone(value);
-  exact(
-    application,
-    ["contract", "contextHash", "didacticMicrosequenceId", "studyUnits"],
-    "invalid_course_source_attribution_application",
-    "A aplicação de proveniência da materialização"
-  );
-  if (application.contract !== COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT ||
-      typeof application.contextHash !== "string" ||
-      !SHA256_PATTERN.test(application.contextHash)) {
-    fail("invalid_course_source_attribution_application", "O hash do contexto de proveniência é inválido.");
-  }
-  const didacticMicrosequenceId = opaqueId(
-    application.didacticMicrosequenceId,
-    240,
-    "invalid_course_source_attribution_application",
-    "A identidade da microssequência didática"
-  );
-  if (!Array.isArray(application.studyUnits)) {
-    fail("invalid_course_source_attribution_application", "As Unidades da aplicação precisam formar uma lista.");
-  }
-  const studyUnits = normalizeSourceAttributionApplications(
-    application.studyUnits.map((studyUnit) => ({
-      studyUnitId: studyUnit.studyUnitId,
-      sourceLinks: studyUnit.sourceLinks
-    }))
-  );
-  const normalized = {
-    contract: COURSE_SOURCE_ATTRIBUTION_APPLICATION_CONTRACT,
-    contextHash: application.contextHash,
-    didacticMicrosequenceId,
-    studyUnits
-  };
-  byteBound(normalized, 196608, "course_source_attribution_application_too_large", "A aplicação de proveniência");
-  return normalized;
-}
 
-function normalizeCompactContextSources(value) {
-  if (!Array.isArray(value) || value.length > 128) {
-    fail("invalid_course_source_context", "As Fontes seladas precisam formar uma lista limitada.");
-  }
-  const sourceKeys = new Set();
-  return value.map((source) => {
-    exact(source, ["sourceId", "sourceRevision", "relation", "sourceHash", "anchors"], "invalid_course_source_context", "Uma Fonte selada");
-    const normalizedSourceId = legacySourceId(source.sourceId);
-    const sourceRevision = integer(source.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_context", "A revisão da Fonte selada");
-    const key = `${normalizedSourceId}\0${sourceRevision}`;
-    if (sourceKeys.has(key) || typeof source.sourceHash !== "string" || !SHA256_PATTERN.test(source.sourceHash)) {
-      fail("invalid_course_source_context", "A Fonte selada é repetida ou possui hash inválido.");
-    }
-    sourceKeys.add(key);
-    if (![...COURSE_SOURCE_RELATIONS, "legacy_reference"].includes(source.relation)) {
-      fail("invalid_course_source_context", "A relação da Fonte selada é inválida.");
-    }
-    if (!Array.isArray(source.anchors) || source.anchors.length > 8) {
-      fail("invalid_course_source_context", "As Âncoras seladas precisam formar uma lista limitada.");
-    }
-    const anchorKeys = new Set();
-    const anchors = source.anchors.map((anchor) => {
-      exact(anchor, ["anchorId", "anchorRevision", "anchorHash"], "invalid_course_source_context", "Uma Âncora selada");
-      const normalizedAnchorId = anchorId(anchor.anchorId);
-      const anchorRevision = integer(anchor.anchorRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_context", "A revisão da Âncora selada");
-      const anchorKey = `${normalizedAnchorId}\0${anchorRevision}`;
-      if (anchorKeys.has(anchorKey) || typeof anchor.anchorHash !== "string" || !SHA256_PATTERN.test(anchor.anchorHash)) {
-        fail("invalid_course_source_context", "A Âncora selada é repetida ou possui hash inválido.");
-      }
-      anchorKeys.add(anchorKey);
-      return { anchorId: normalizedAnchorId, anchorRevision, anchorHash: anchor.anchorHash };
-    });
-    return {
-      sourceId: normalizedSourceId,
-      sourceRevision,
-      relation: source.relation,
-      sourceHash: source.sourceHash,
-      anchors
-    };
-  });
-}
-
-function normalizeContextPlanItemAttributions(value, label) {
-  if (!Array.isArray(value) || value.length > 256) {
-    fail("invalid_course_source_context", `${label} precisa formar uma lista limitada.`);
-  }
-  const itemIds = new Set();
-  return value.map((item) => {
-    exact(
-      item,
-      ["planItemId", "planItemVersion", "targetHash", "attributionRevision", "attributionHash", "sources"],
-      "invalid_course_source_context",
-      "Uma atribuição de item de plano selada"
-    );
-    const planItemId = uuid(item.planItemId, "invalid_course_source_context", "A identidade do item de plano");
-    if (itemIds.has(planItemId) || typeof item.targetHash !== "string" ||
-        !SHA256_PATTERN.test(item.targetHash) || typeof item.attributionHash !== "string" ||
-        !SHA256_PATTERN.test(item.attributionHash)) {
-      fail("invalid_course_source_context", "A atribuição selada é repetida ou possui hash inválido.");
-    }
-    itemIds.add(planItemId);
-    return {
-      planItemId,
-      planItemVersion: integer(item.planItemVersion, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_context", "A versão do item de plano"),
-      targetHash: item.targetHash,
-      attributionRevision: integer(item.attributionRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_context", "A revisão da atribuição"),
-      attributionHash: item.attributionHash,
-      sources: normalizeCompactContextSources(item.sources)
-    };
-  });
-}
-
-export function normalizeCourseSourceContext(value) {
-  const context = clone(value);
-  exact(
-    context,
-    [
-      "contract", "courseId", "courseRevision", "authoringPartId",
-      "componentCatalogVersion", "instructionalAnalysisUnits",
-      "evidenceRequirements", "guidanceRevisions", "targets"
-    ],
-    "invalid_course_source_context",
-    "O contexto de materialização"
-  );
-  if (context.contract !== COURSE_DESIGN_CONTEXT_V2_CONTRACT) {
-    fail("invalid_course_source_context", "O contexto não usa o contrato de desenho v2.");
-  }
-  uuid(context.courseId, "invalid_course_source_context", "A identidade do Curso");
-  uuid(context.authoringPartId, "invalid_course_source_context", "A identidade da Parte");
-  integer(context.courseRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_context", "A revisão do Curso");
-  if (!Array.isArray(context.targets) || context.targets.length > 64) {
-    fail("invalid_course_source_context", "Os alvos do contexto precisam formar uma lista limitada.");
-  }
-  const targetIds = new Set();
-  context.targets.forEach((target) => {
-    if (!isObject(target) || !Object.hasOwn(target, "sourceAttributions")) {
-      fail("invalid_course_source_context", "Um alvo não contém atribuições de proveniência.");
-    }
-    const targetId = opaqueId(target.didacticMicrosequenceId, 240, "invalid_course_source_context", "A identidade da microssequência");
-    if (targetIds.has(targetId)) fail("invalid_course_source_context", "O contexto repete uma microssequência.");
-    targetIds.add(targetId);
-    exact(
-      target.sourceAttributions,
-      ["instructionalAnalysisUnits", "evidenceRequirements"],
-      "invalid_course_source_context",
-      "As atribuições de proveniência do alvo"
-    );
-    normalizeContextPlanItemAttributions(
-      target.sourceAttributions.instructionalAnalysisUnits,
-      "As atribuições das unidades de análise"
-    );
-    normalizeContextPlanItemAttributions(
-      target.sourceAttributions.evidenceRequirements,
-      "As atribuições dos requisitos de evidência"
-    );
-  });
-  byteBound(context, 65536, "course_source_context_too_large", "O contexto de materialização");
-  return context;
-}
-
-function nullableActor(value) {
-  return value === null ? null : uuid(value, "invalid_course_sources_read", "A identidade do ator");
-}
-
-function validateSourceRevision(value, { detailed = false } = {}) {
+function validateSource(value, { detailed = false } = {}) {
   const fields = [
     "sourceId", "revision", "status", "kind", "title", "authorship",
     "publicationDate", "identifier", "language", "citationText", "url",
     "editionOrVersion", "origin", "availability", "verificationStatus",
     "studyVisibility", "anchorCount", "createdAt"
   ];
-  if (detailed) fields.push("actorId", "anchors", "attachments");
-  exact(value, fields, "invalid_course_sources_read", "A revisão de Fonte");
-  legacySourceId(value.sourceId);
+  if (detailed) fields.push("anchors", "attachments");
+  exact(value, fields, "invalid_course_sources_read", "A Fonte");
+  sourceId(value.sourceId);
   integer(value.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Fonte");
   if (!COURSE_SOURCE_STATUSES.includes(value.status) ||
-      value.status === "unresolved_legacy" && value.kind !== null ||
-      value.status !== "unresolved_legacy" && !COURSE_SOURCE_KINDS.includes(value.kind) ||
+      !COURSE_SOURCE_KINDS.includes(value.kind) ||
       !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility)) {
-    fail("invalid_course_sources_read", "A revisão de Fonte possui enumeração inválida.");
+    fail("invalid_course_sources_read", "A Fonte possui enumeração inválida.");
   }
   sourceMetadataEnums(value, "invalid_course_sources_read");
-  if (value.status === "unresolved_legacy") {
-    if (value.title !== null || value.authorship !== null || value.publicationDate !== null ||
-        value.identifier !== null || value.language !== null || value.citationText !== null ||
-        value.url !== null || value.editionOrVersion !== null || value.origin !== "imported_legacy" ||
-        value.availability !== "unknown" || value.verificationStatus !== "unverified") {
-      fail("invalid_course_sources_read", "Uma Fonte legada não resolvida não pode inventar metadados.");
-    }
-    if (value.studyVisibility !== "hidden") {
-      fail("invalid_course_sources_read", "Uma Fonte legada não resolvida precisa permanecer oculta.");
-    }
-  } else {
-    text(value.title, 300, "invalid_course_sources_read", "O título da Fonte", {
-      allowLayoutWhitespace: false
-    });
-    optionalText(value.authorship, 500, "invalid_course_sources_read", "A autoria", {
-      allowLayoutWhitespace: false
-    });
-    partialIsoDate(value.publicationDate, "invalid_course_sources_read");
-    optionalText(value.identifier, 240, "invalid_course_sources_read", "O identificador", {
-      allowLayoutWhitespace: false
-    });
-    languageTag(value.language, "invalid_course_sources_read");
-    optionalText(value.citationText, 2048, "invalid_course_sources_read", "O texto de citação");
-    const url = optionalText(value.url, 2048, "invalid_course_sources_read", "A URL da Fonte");
-    if (url !== null && !HTTPS_PATTERN.test(url)) fail("invalid_course_sources_read", "A URL da Fonte precisa usar HTTPS.");
-    optionalText(value.editionOrVersion, 120, "invalid_course_sources_read", "A edição ou versão", {
-      allowLayoutWhitespace: false
-    });
-    if (value.studyVisibility !== "hidden" && value.citationText === null) {
-      fail("invalid_course_sources_read", "Uma Fonte visível não contém texto de citação.");
-    }
+  text(value.title, 300, "invalid_course_sources_read", "O título da Fonte", {
+    allowLayoutWhitespace: false
+  });
+  optionalText(value.authorship, 500, "invalid_course_sources_read", "A autoria", {
+    allowLayoutWhitespace: false
+  });
+  partialIsoDate(value.publicationDate, "invalid_course_sources_read");
+  optionalText(value.identifier, 240, "invalid_course_sources_read", "O identificador", {
+    allowLayoutWhitespace: false
+  });
+  languageTag(value.language, "invalid_course_sources_read");
+  optionalText(value.citationText, 2048, "invalid_course_sources_read", "O texto de citação");
+  const sourceUrl = optionalText(value.url, 2048, "invalid_course_sources_read", "A URL da Fonte");
+  if (sourceUrl !== null && !HTTPS_PATTERN.test(sourceUrl)) {
+    fail("invalid_course_sources_read", "A URL da Fonte precisa usar HTTPS.");
   }
-  integer(value.anchorCount, 0, 1000000, "invalid_course_sources_read", "A contagem de Âncoras");
+  optionalText(value.editionOrVersion, 120, "invalid_course_sources_read", "A edição ou versão", {
+    allowLayoutWhitespace: false
+  });
+  if (value.studyVisibility !== "hidden" && value.citationText === null) {
+    fail("invalid_course_sources_read", "Uma Fonte visível não contém texto de citação.");
+  }
+  integer(value.anchorCount, 0, 1_000_000, "invalid_course_sources_read", "A contagem de Âncoras");
   timestamp(value.createdAt, "invalid_course_sources_read", "A criação da Fonte");
-  if (detailed) {
-    nullableActor(value.actorId);
-    if (!Array.isArray(value.anchors) || value.anchors.length > 8) {
-      fail("invalid_course_sources_read", "A lista de Âncoras é inválida.");
-    }
-    value.anchors.forEach((anchor) => {
-      const anchorFields = ["anchorId", "revision", "sourceRevision", "status", "selector", "verificationExcerpt", "actorId", "createdAt"];
-      if (Object.hasOwn(anchor, "humanLocator")) anchorFields.push("humanLocator");
-      if (Object.hasOwn(anchor, "needsReverification")) anchorFields.push("needsReverification");
-      exact(anchor, anchorFields, "invalid_course_sources_read", "A revisão da Âncora");
-      anchorId(anchor.anchorId);
-      integer(anchor.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Âncora");
-      integer(anchor.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão de Fonte da Âncora");
-      if (!["active", "retired"].includes(anchor.status)) fail("invalid_course_sources_read", "O estado da Âncora é inválido.");
-      normalizeCourseSourceSelector(anchor.selector);
-      if (Object.hasOwn(anchor, "humanLocator")) {
-        optionalText(anchor.humanLocator, 500, "invalid_course_sources_read", "O localizador humano", {
-          allowLayoutWhitespace: false
-        });
-      }
-      if (anchor.verificationExcerpt !== null) {
-        text(anchor.verificationExcerpt, 2000, "invalid_course_sources_read", "O trecho de verificação", {
-          preserveWhitespace: true
-        });
-      }
-      if (Object.hasOwn(anchor, "needsReverification") &&
-          typeof anchor.needsReverification !== "boolean") {
-        fail("invalid_course_sources_read", "A necessidade de reverificação da Âncora é inválida.");
-      }
-      nullableActor(anchor.actorId);
-      timestamp(anchor.createdAt, "invalid_course_sources_read", "A criação da Âncora");
-    });
-    if (!Array.isArray(value.attachments) || value.attachments.length > 8) {
-      fail("invalid_course_sources_read", "A lista de anexos PDF é inválida.");
-    }
-    const hashes = new Set();
-    value.attachments.forEach((attachment) => {
-      const normalized = normalizeCourseSourceAttachment(attachment, { persisted: true });
-      if (hashes.has(normalized.contentHash)) {
-        fail("invalid_course_sources_read", "A revisão da Fonte repete um anexo PDF.");
-      }
-      hashes.add(normalized.contentHash);
-    });
+  if (!detailed) return;
+
+  if (!Array.isArray(value.anchors) || value.anchors.length > 128 ||
+      !Array.isArray(value.attachments) || value.attachments.length > 8) {
+    fail("invalid_course_sources_read", "Os detalhes da Fonte são inválidos.");
   }
+  value.anchors.forEach((anchor) => {
+    exact(anchor, [
+      "anchorId", "revision", "sourceRevision", "status", "selector",
+      "humanLocator", "verificationExcerpt", "needsReverification", "createdAt"
+    ], "invalid_course_sources_read", "A Âncora");
+    anchorId(anchor.anchorId);
+    integer(anchor.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Âncora");
+    if (anchor.sourceRevision !== value.revision ||
+        !["active", "retired"].includes(anchor.status) ||
+        typeof anchor.needsReverification !== "boolean") {
+      fail("invalid_course_sources_read", "A Âncora não corresponde à Fonte corrente.");
+    }
+    normalizeCourseSourceSelector(anchor.selector);
+    optionalText(anchor.humanLocator, 500, "invalid_course_sources_read", "O localizador humano", {
+      allowLayoutWhitespace: false
+    });
+    optionalText(
+      anchor.verificationExcerpt,
+      2000,
+      "invalid_course_sources_read",
+      "O trecho de verificação",
+      { preserveWhitespace: true }
+    );
+    timestamp(anchor.createdAt, "invalid_course_sources_read", "A criação da Âncora");
+  });
+  const hashes = new Set();
+  value.attachments.forEach((attachment) => {
+    const normalized = normalizeCourseSourceAttachment(attachment, { persisted: true });
+    if (hashes.has(normalized.contentHash)) {
+      fail("invalid_course_sources_read", "A Fonte repete um anexo PDF.");
+    }
+    hashes.add(normalized.contentHash);
+  });
 }
 
 function validateAttribution(value) {
-  exact(value, ["attributionId", "targetKind", "targetId", "targetVersion", "targetHash", "revision", "sourceLinks", "actorId", "createdAt", "effective"], "invalid_course_sources_read", "A atribuição de proveniência");
-  uuid(value.attributionId, "invalid_course_sources_read", "A identidade da atribuição");
-  if (!["plan_item", "study_unit"].includes(value.targetKind)) fail("invalid_course_sources_read", "O tipo do alvo é inválido.");
+  exact(value, [
+    "targetKind", "targetId", "targetVersion", "sourceLinks", "createdAt"
+  ], "invalid_course_sources_read", "A atribuição de proveniência");
+  if (!["plan_item", "study_unit"].includes(value.targetKind)) {
+    fail("invalid_course_sources_read", "O tipo do alvo é inválido.");
+  }
   if (value.targetKind === "plan_item") {
     uuid(value.targetId, "invalid_course_sources_read", "A identidade do item de plano");
   } else {
     opaqueId(value.targetId, 240, "invalid_course_sources_read", "A identidade da Unidade de estudo");
   }
   integer(value.targetVersion, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A versão do alvo");
-  if (typeof value.targetHash !== "string" || !SHA256_PATTERN.test(value.targetHash)) fail("invalid_course_sources_read", "O hash semântico do alvo é inválido.");
-  integer(value.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da atribuição");
-  normalizeCourseSourceLinks(value.sourceLinks, { allowLegacyIds: true });
-  nullableActor(value.actorId);
+  normalizeCourseSourceLinks(value.sourceLinks);
   timestamp(value.createdAt, "invalid_course_sources_read", "A criação da atribuição");
-  if (typeof value.effective !== "boolean") fail("invalid_course_sources_read", "A efetividade da atribuição é inválida.");
 }
 
 export function normalizeCourseSourcesRead(value) {
@@ -1155,7 +930,8 @@ export function normalizeCourseSourcesRead(value) {
     "contract", "courseId", "courseRevision", "mode", "query", "pdfStorage",
     "items", "nextCursor"
   ], "invalid_course_sources_read", "A leitura de Fontes");
-  if (read.contract !== COURSE_SOURCES_CONTRACT || !["catalog", "source", "target"].includes(read.mode)) {
+  if (read.contract !== COURSE_SOURCES_CONTRACT ||
+      !["catalog", "source", "target"].includes(read.mode)) {
     fail("invalid_course_sources_read", "O contrato ou modo da leitura de Fontes é inválido.");
   }
   uuid(read.courseId, "invalid_course_sources_read", "A identidade do Curso");
@@ -1163,43 +939,39 @@ export function normalizeCourseSourcesRead(value) {
   normalizePdfStorage(read.pdfStorage);
   exact(read.query, ["sourceId", "targetKind", "targetId"], "invalid_course_sources_read", "A consulta de Fontes");
   if (read.mode === "catalog") {
-    if (read.query.sourceId !== null || read.query.targetKind !== null || read.query.targetId !== null) {
+    if (read.query.sourceId !== null || read.query.targetKind !== null ||
+        read.query.targetId !== null) {
       fail("invalid_course_sources_read", "A consulta do catálogo não aceita alvo.");
     }
   } else if (read.mode === "source") {
-    legacySourceId(read.query.sourceId);
+    sourceId(read.query.sourceId);
     if ((read.query.targetKind === null) !== (read.query.targetId === null) ||
         read.query.targetKind !== null &&
           !["plan_item", "study_unit"].includes(read.query.targetKind)) {
-      fail("invalid_course_sources_read", "O contexto da revisão de Fonte é inválido.");
+      fail("invalid_course_sources_read", "O contexto da Fonte é inválido.");
     }
-    if (read.query.targetKind === "plan_item") {
-      uuid(read.query.targetId, "invalid_course_sources_read", "A identidade do item de plano");
-    } else if (read.query.targetKind === "study_unit") {
-      opaqueId(read.query.targetId, 240, "invalid_course_sources_read", "A identidade da Unidade de estudo");
-    }
-  } else {
-    if (read.query.sourceId !== null || !["plan_item", "study_unit"].includes(read.query.targetKind)) {
-      fail("invalid_course_sources_read", "A consulta do alvo é inválida.");
-    }
-    if (read.query.targetKind === "plan_item") {
-      uuid(read.query.targetId, "invalid_course_sources_read", "A identidade do item de plano");
-    } else {
-      opaqueId(read.query.targetId, 240, "invalid_course_sources_read", "A identidade da Unidade de estudo");
-    }
+  } else if (read.query.sourceId !== null ||
+      !["plan_item", "study_unit"].includes(read.query.targetKind)) {
+    fail("invalid_course_sources_read", "A consulta do alvo é inválida.");
+  }
+  if (read.query.targetKind === "plan_item") {
+    uuid(read.query.targetId, "invalid_course_sources_read", "A identidade do item de plano");
+  } else if (read.query.targetKind === "study_unit") {
+    opaqueId(read.query.targetId, 240, "invalid_course_sources_read", "A identidade da Unidade de estudo");
   }
   if (!Array.isArray(read.items) || read.items.length > 24 ||
-      read.nextCursor !== null && (typeof read.nextCursor !== "string" ||
-        !CURSOR_PATTERN.test(read.nextCursor) || read.nextCursor.length > 240)) {
+      read.nextCursor !== null && (
+        typeof read.nextCursor !== "string" || read.nextCursor.length > 240 ||
+        !CURSOR_PATTERN.test(read.nextCursor)
+      )) {
     fail("invalid_course_sources_read", "A página de Fontes é inválida.");
   }
-  if (read.mode === "source" && read.query.targetKind !== null &&
-      (read.items.length > 1 || read.nextCursor !== null)) {
-    fail("invalid_course_sources_read", "A revisão contextual de Fonte não é singular.");
+  if (read.mode === "source" && (read.items.length > 1 || read.nextCursor !== null)) {
+    fail("invalid_course_sources_read", "A leitura de uma Fonte precisa ser singular.");
   }
   read.items.forEach((item) => {
-    if (read.mode === "catalog") validateSourceRevision(item);
-    else if (read.mode === "source") validateSourceRevision(item, { detailed: true });
+    if (read.mode === "catalog") validateSource(item);
+    else if (read.mode === "source") validateSource(item, { detailed: true });
     else validateAttribution(item);
   });
   byteBound(read, 262144, "course_sources_read_too_large", "A leitura de Fontes");
@@ -1218,14 +990,26 @@ export function normalizeCourseSourceChange(value) {
   uuid(change.courseId, "invalid_course_source_change", "A identidade do Curso");
   integer(change.courseRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_change", "A revisão do Curso");
   if (change.change !== null) {
-    exact(change.change, ["type", "subjectId", "revision"], "invalid_course_source_change", "O fato da mudança");
-    if (!COURSE_SOURCE_COMMAND_TYPES.includes(change.change.type)) fail("invalid_course_source_change", "O tipo da mudança é inválido.");
-    if (["save_source", "retire_source", "remove_pdf"].includes(change.change.type)) {
-      legacySourceId(change.change.subjectId);
+    if (!COURSE_SOURCE_CHANGE_TYPES.includes(change.change.type)) fail("invalid_course_source_change", "O tipo da mudança é inválido.");
+    const isTargetChange = change.change.type === "set_target_sources";
+    exact(
+      change.change,
+      isTargetChange ? ["type", "subjectId", "targetVersion"] : ["type", "subjectId", "revision"],
+      "invalid_course_source_change",
+      "O fato da mudança"
+    );
+    if (["save_source", "retire_source", "remove_pdf", "ingest_pdf"].includes(change.change.type)) {
+      sourceId(change.change.subjectId);
     } else {
       opaqueId(change.change.subjectId, 240, "invalid_course_source_change", "A identidade alterada");
     }
-    integer(change.change.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_change", "A revisão da mudança");
+    integer(
+      isTargetChange ? change.change.targetVersion : change.change.revision,
+      1,
+      Number.MAX_SAFE_INTEGER,
+      "invalid_course_source_change",
+      isTargetChange ? "A versão do alvo" : "A revisão da mudança"
+    );
   }
   return change;
 }
@@ -1239,9 +1023,8 @@ export function normalizeCourseStudyCitationsRead(value) {
   opaqueId(read.studyUnitId, 240, "invalid_course_study_citations", "A identidade da Unidade de estudo");
   if (!Array.isArray(read.citations) || read.citations.length > 128) fail("invalid_course_study_citations", "A lista de citações é inválida.");
   read.citations.forEach((citation) => {
-    exact(citation, ["sourceId", "sourceRevision", "title", "citationText", "url", "editionOrVersion", "anchors"], "invalid_course_study_citations", "A citação");
-    legacySourceId(citation.sourceId);
-    integer(citation.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_study_citations", "A revisão da Fonte");
+    exact(citation, ["sourceId", "title", "citationText", "url", "editionOrVersion", "anchors"], "invalid_course_study_citations", "A citação");
+    sourceId(citation.sourceId);
     text(citation.title, 300, "invalid_course_study_citations", "O título da Fonte", {
       allowLayoutWhitespace: false
     });
@@ -1253,11 +1036,10 @@ export function normalizeCourseStudyCitationsRead(value) {
     });
     if (!Array.isArray(citation.anchors) || citation.anchors.length > 8) fail("invalid_course_study_citations", "As Âncoras da citação são inválidas.");
     citation.anchors.forEach((anchor) => {
-      const anchorFields = ["anchorId", "anchorRevision", "selector"];
+      const anchorFields = ["anchorId", "selector"];
       if (Object.hasOwn(anchor, "humanLocator")) anchorFields.push("humanLocator");
       exact(anchor, anchorFields, "invalid_course_study_citations", "A Âncora redigida");
       anchorId(anchor.anchorId);
-      integer(anchor.anchorRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_study_citations", "A revisão da Âncora");
       normalizeCourseSourceSelector(anchor.selector);
       if (Object.hasOwn(anchor, "humanLocator")) {
         optionalText(anchor.humanLocator, 500, "invalid_course_study_citations", "O localizador humano", {

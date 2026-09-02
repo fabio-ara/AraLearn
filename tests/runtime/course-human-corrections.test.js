@@ -9,9 +9,8 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 function sourceLink(suffix) {
   return {
     sourceId: `source-${suffix}`,
-    sourceRevision: 1,
     relation: "supported_by",
-    anchors: [{ anchorId: `anchor-${suffix}`, anchorRevision: 1 }]
+    anchors: [{ anchorId: `anchor-${suffix}` }]
   };
 }
 
@@ -143,6 +142,7 @@ test("#272 correções MCP multi-Unit preservam Fontes e usam composição gené
   assert.match(commit.requestId, /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u);
   assert.equal(receipt.context.correctionCount, 2);
   assert.equal(receipt.context.sourceMode, "preserved");
+  assert.match(receipt.nextDecision, /rematerializar a Parte/u);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes("unit-"), false);
 });
 
@@ -172,20 +172,18 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
   assert.equal(commit.applicationOrigin, "provider_assistance");
   assert.deepEqual(commit.sourceAttributionApplications[0].sourceLinks, [{
     sourceId: "source-rfc",
-    sourceRevision: 2,
     relation: "supported_by",
-    anchors: [{ anchorId: "anchor-rfc-section-2", anchorRevision: 3 }]
+    anchors: [{ anchorId: "anchor-rfc-section-2" }]
   }]);
   assert.equal(receipt.context.sourceMode, "explicit");
 });
 
-test("#272 correção não reanexa atribuição histórica sem versão efetiva", async () => {
+test("#274 correção preserva a atribuição corrente quando Fontes não foram alteradas", async () => {
   const adapter = adapterFixture();
   adapter.getCourseSources = async ({ mode }) => {
     assert.equal(mode, "target");
     return {
       items: [{
-        effective: false,
         sourceLinks: [sourceLink("retired")]
       }]
     };
@@ -205,6 +203,6 @@ test("#272 correção não reanexa atribuição histórica sem versão efetiva",
   });
   assert.deepEqual(adapter.commits[0].sourceAttributionApplications, [{
     studyUnitId: "unit-1",
-    sourceLinks: []
+    sourceLinks: [sourceLink("retired")]
   }]);
 });

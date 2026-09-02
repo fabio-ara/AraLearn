@@ -322,7 +322,7 @@ async function resolveSource({ adapter, principal, course, source, deadlineAt })
 
 async function resolveInternalSource({ adapter, principal, course, sourceId, deadlineAt }) {
   if (typeof sourceId !== "string" || sourceId !== sourceId.trim() || !sourceId ||
-      [...sourceId].length > 2048) {
+      [...sourceId].length > 240) {
     throw new TypeError("A identidade interna da Fonte é inválida.");
   }
   const read = await adapter.getCourseSources({
@@ -334,13 +334,13 @@ async function resolveInternalSource({ adapter, principal, course, sourceId, dea
     targetKind: null,
     targetId: null,
     cursor: null,
-    limit: 24,
+    limit: 1,
     deadlineAt
   });
-  const candidates = [read?.source, ...(Array.isArray(read?.items) ? read.items : [])]
-    .filter((item) => plainObject(item) && item.sourceId === sourceId);
-  const source = uniqueBy(candidates, (item) => `${item.sourceId}\0${item.revision ?? 0}`)
-    .sort((left, right) => Number(right.revision ?? 0) - Number(left.revision ?? 0))[0];
+  const source = Array.isArray(read?.items) && read.items.length === 1 &&
+    plainObject(read.items[0]) && read.items[0].sourceId === sourceId
+    ? read.items[0]
+    : null;
   if (!source) {
     throw new AuthoringApiError(
       503,
