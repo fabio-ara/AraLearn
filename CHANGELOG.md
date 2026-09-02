@@ -4,6 +4,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.51] - 2026-09-02
+
+### Corrigido
+
+- Analytics conta o teto de novas AnalysisUnits somente nas StudyUnits
+  expositivas ou mistas, sem tratar prática como aplicação do teto nem como
+  condição ausente.
+
 ## [0.0.50] - 2026-09-02
 
 ### Corrigido
