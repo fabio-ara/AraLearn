@@ -512,6 +512,13 @@ function validatePedagogicalGroup(group) {
       fail("course_service_unavailable", "Os quatro parâmetros efetivos são inválidos.", 503);
     }
     const mode = MODE[unit.source.aplicacaoPedagogica.modo];
+    if (mode === "expository" && unit.content.role !== "theory" ||
+        mode !== "expository" && unit.content.role !== "practice") {
+      fail(
+        "human_materialization_mode_mismatch",
+        "O papel da StudyUnit não corresponde ao modo da aplicação pedagógica."
+      );
+    }
     if (new Set(unit.noveltyIds).size !== unit.noveltyIds.length ||
         new Set(unit.explanations.map((entry) => entry.instructionalAnalysisUnitId)).size !==
           unit.explanations.length) {

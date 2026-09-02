@@ -580,6 +580,10 @@ test("StudyUnit é escopo corrente de configuração com herança e override pr�
   };
   unit.guidance.localAssignment = null;
   unit.guidance.effectiveAssignments[0].inherited = true;
+  unit.targetPlanItems = {
+    instructionalAnalysisUnitIds: [ITEM_ID],
+    evidenceRequirementIds: []
+  };
   const normalized = normalizeCourseDesign(unit, {
     expectedCourseId: COURSE_ID,
     expectedCourseRevision: 3,
@@ -588,6 +592,7 @@ test("StudyUnit é escopo corrente de configuração com herança e override pr�
   assert.equal(normalized.scopeContext.current.kind, "study_unit");
   assert.equal(normalized.parameters[0].effectiveAssignment.value, 1);
   assert.equal(normalized.parameters[0].effectiveAssignment.inherited, false);
+  assert.deepEqual(normalized.targetPlanItems.instructionalAnalysisUnitIds, [ITEM_ID]);
 });
 
 test("desenho rejeita contrato singular legado, campo extra e política preferida excluída", () => {

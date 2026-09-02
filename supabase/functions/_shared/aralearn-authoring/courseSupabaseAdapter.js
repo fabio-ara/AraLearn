@@ -1004,7 +1004,7 @@ function normalizeCourseSourcesDatabaseValue(normalize) {
     throw new AuthoringApiError(
       503,
       "course_service_unavailable",
-      "O Supabase devolveu um contrato de Fontes inválido."
+      "O serviço devolveu dados de Fontes inválidos."
     );
   }
 }
@@ -1026,7 +1026,7 @@ function normalizeCourseAnchoredAnnotationsDatabaseValue(normalize) {
     throw new AuthoringApiError(
       503,
       "course_service_unavailable",
-      "O Supabase devolveu um contrato de observações inválido."
+      "O serviço devolveu dados de Observações inválidos."
     );
   }
 }
@@ -1212,10 +1212,10 @@ export class CourseSupabaseAdapter {
         if (!retry || !retryableStatus(error.status) || attempt === this.attempts) throw error;
       } catch (error) {
         const normalized = controller.signal.aborted
-          ? new AuthoringApiError(503, "service_timeout", "O Supabase não respondeu a tempo.")
+          ? new AuthoringApiError(503, "service_timeout", "O serviço não respondeu a tempo.")
           : error instanceof AuthoringApiError
             ? error
-            : new AuthoringApiError(503, "course_service_unavailable", "Não foi possível alcançar o Supabase.");
+            : new AuthoringApiError(503, "course_service_unavailable", "Não foi possível alcançar o serviço.");
         lastError = normalized;
         if (!retry || !new Set(["service_timeout", "course_service_unavailable"]).has(normalized.code) ||
             attempt === this.attempts) throw normalized;

@@ -15,12 +15,12 @@ As dezesseis tarefas formam o catálogo público `aralearn.human-authoring-tasks
 | --- | --- |
 | `retomar_curso` | localizar ou continuar um Curso pelo título |
 | `consultar_planejamento` | ler a próxima Parte ou reabrir uma Parte anterior |
-| `preparar_materializacao` | reunir inventário semântico, configuração e Fontes antes de produzir conteúdo |
+| `preparar_materializacao` | reunir inventário semântico, conhecimentos estabelecidos e configuração antes de produzir conteúdo |
 | `consultar_configuracao` | ler parâmetros pedagógicos efetivos e direção editorial |
 | `consultar_observacoes` | localizar Observações, geralmente as abertas |
 | `preparar_revisao` | reunir também as StudyUnits afetadas por progressão, exemplos ou prática |
 | `consultar_fontes` | localizar Fontes, Âncoras e proveniência |
-| `consultar_componentes` | escolher representação quando a função instrucional ainda não indicar um componente claro |
+| `consultar_componentes` | buscar por função e filtros focais — estrutura, operação, papel e lugar — e ler o contrato exato do componente escolhido |
 
 | Escrita | Quando usar |
 | --- | --- |
@@ -119,8 +119,30 @@ volta a conferir pessoa, sessão, cliente e consentimento em cada chamada. Taref
 de leitura e escrita são filtradas pelos escopos concedidos. Tokens do MCP não
 são aceitos como sessão comum da interface.
 
-O servidor anuncia metadata de autorização no próprio recurso protegido. Uma
-conexão nova deve ser criada depois de uma mudança incompatível no catálogo.
+O servidor anuncia metadata de autorização no próprio recurso protegido. Depois
+de uma mudança incompatível no catálogo, atualize o app e abra uma conversa nova.
+Renovar o login OAuth é uma operação separada.
+
+### Atualizar o catálogo e a conexão no ChatGPT
+
+O endereço hospedado do servidor é:
+
+`https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-mcp`
+
+Depois de uma publicação que altere o catálogo:
+
+1. abra as configurações de Apps do ChatGPT e use **Refresh** no AraLearn;
+2. revise as mudanças e habilite as dezesseis tarefas correntes;
+3. abra uma conversa nova, selecione o AraLearn e retome o Curso pelo título;
+4. use **Reconnect** — ou desconecte e conecte novamente — somente quando a
+   autorização estiver expirada ou revogada, ou quando for preciso trocar a conta.
+
+**Refresh** busca a lista corrente de tarefas; **Reconnect** refaz a autorização
+OAuth. Atualizar o catálogo, por si só, não exige novo login.
+
+O login no site do AraLearn, a conexão OAuth do MCP e a conexão OAuth de Actions
+são sessões independentes. Entrar no AraLearn no navegador do ChatGPT Work não
+conecta automaticamente o MCP nem Actions; cada canal pede sua própria conexão.
 
 ## Verificação local
 

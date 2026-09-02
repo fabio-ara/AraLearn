@@ -312,7 +312,15 @@ function renderPanel(state) {
       ? '<p class="course-authoring-loading" role="status">Atualizando o escopo…</p>'
       : "") +
     (state.failure
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>`
+      ? '<div class="course-authoring-notice is-error" role="alert"><p>' +
+        `${escapeHtml(state.failure)}</p>` + (state.reloadQuery
+          ? '<button type="button" class="course-authoring-icon-action"' +
+            ' data-course-analytics-action="reload" aria-label="Tentar novamente"' +
+            ` title="Tentar novamente">${renderUiIcon(
+              "rotate",
+              "course-authoring-button-icon"
+            )}</button>`
+          : "") + "</div>"
       : "") + "</section>";
 }
 
@@ -331,14 +339,17 @@ export function createCourseAnalyticsPanel({
     query: normalizeCourseAuthoringAnalyticsQuery(),
     page: null,
     loading: false,
-    failure: ""
+    failure: "",
+    reloadQuery: null
   };
 
   const render = () => { root.innerHTML = renderPanel(state); };
 
   const load = async () => {
+    const requestedQuery = state.query;
     state.loading = true;
     state.failure = "";
+    state.reloadQuery = null;
     render();
     try {
       const incoming = normalizeCourseAuthoringAnalyticsPage(
@@ -357,6 +368,7 @@ export function createCourseAnalyticsPanel({
       });
     } catch (error) {
       state.failure = errorText(error);
+      state.reloadQuery = requestedQuery;
       if (state.page) {
         state.query = normalizeCourseAuthoringAnalyticsQuery({
           scope: {
@@ -388,6 +400,7 @@ export function createCourseAnalyticsPanel({
     if (!state.page) return null;
     try {
       state.failure = "";
+      state.reloadQuery = null;
       const result = download({
         name: `aralearn-analytics-snapshot-r${state.page.course.revision}.json`,
         type: "application/json;charset=utf-8",
@@ -397,6 +410,7 @@ export function createCourseAnalyticsPanel({
       return result;
     } catch (error) {
       state.failure = errorText(error);
+      state.reloadQuery = null;
       render();
       return null;
     }
@@ -405,6 +419,10 @@ export function createCourseAnalyticsPanel({
   const onClick = (event) => {
     const node = event.target?.closest?.("[data-course-analytics-action]");
     if (node?.dataset.courseAnalyticsAction === "export-json") exportSnapshot();
+    if (node?.dataset.courseAnalyticsAction === "reload" && !state.loading && state.reloadQuery) {
+      state.query = state.reloadQuery;
+      void load();
+    }
   };
 
   root.addEventListener("submit", onSubmit);

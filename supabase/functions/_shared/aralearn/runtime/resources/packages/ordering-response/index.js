@@ -368,7 +368,9 @@ export const orderingResponsePackage = Object.freeze({
   },
   prepareContentInstance(instance, response, options = {}) {
     const data = structuredClone(instance.data || {});
-    const order = normalizedOrder(response, options.responseState);
+    const order = options.revealPracticeAnswers === true
+      ? response.targets.map(({ id }) => id)
+      : normalizedOrder(response, options.responseState);
     groupedTargets(response, instance.id).forEach((targets, path) => {
       const source = String(readPath(data, path) ?? "");
       const locations = locateTargetAnswers(source, targets);

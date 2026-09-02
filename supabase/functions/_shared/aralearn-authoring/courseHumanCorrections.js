@@ -117,14 +117,21 @@ export async function applyHumanCourseCorrections({
   deadlineAt = null
 }) {
   validateCorrections(corrections);
+  let correctedCourseId = null;
+  let firstCorrectedStudyUnitId = null;
   const receipt = await executeTrustedCourseWrite({
-    load: () => loadCorrectionState({
-      adapter,
-      principal,
-      course,
-      corrections,
-      deadlineAt
-    }),
+    load: async () => {
+      const state = await loadCorrectionState({
+        adapter,
+        principal,
+        course,
+        corrections,
+        deadlineAt
+      });
+      correctedCourseId = state.course.id;
+      firstCorrectedStudyUnitId = state.prepared[0].unit.studyUnit.id;
+      return state;
+    },
     build(state) {
       const contextualApplication = principal.authenticationKind === "application" &&
         state.prepared.length === 1;
@@ -163,7 +170,11 @@ export async function applyHumanCourseCorrections({
     result: corrections.length === 1
       ? "A correção foi aplicada à Unidade afetada."
       : `As ${corrections.length} correções coerentes foram aplicadas às Unidades afetadas.`,
-    deepLink: receipt.deepLink ?? null,
+    deepLink: correctedCourseId && firstCorrectedStudyUnitId && adapter.publicAppUrl
+      ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
+        `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}` +
+        `?section=content&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
+      : receipt.deepLink ?? null,
     nextDecision: "Quer reinspecionar o reparo ou rematerializar a Parte para aplicar uma configuração alterada?",
     context: {
       correctionCount: corrections.length,

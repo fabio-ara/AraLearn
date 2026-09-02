@@ -1051,13 +1051,15 @@ function normalizeComponentPolicy(value, catalog, context) {
 }
 
 function normalizeTargetPlanItems(value, currentScope) {
-  if (currentScope.kind !== "didactic_microsequence") {
-    if (value !== null) designFail("Somente uma Microssequência pode expor itens-alvo locais.");
+  if (!["didactic_microsequence", "study_unit"].includes(currentScope.kind)) {
+    if (value !== null) {
+      designFail("Somente uma Microssequência ou StudyUnit pode expor itens-alvo locais.");
+    }
     return null;
   }
   designRecord(value, [
     "instructionalAnalysisUnitIds", "evidenceRequirementIds"
-  ], "Os itens-alvo da Microssequência");
+  ], "Os itens-alvo do escopo didático");
   const normalizeIds = (items, label) => {
     if (!Array.isArray(items) || items.length > 256) {
       designFail(`${label} excedem o limite do escopo.`);

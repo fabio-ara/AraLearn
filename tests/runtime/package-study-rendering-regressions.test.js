@@ -33,7 +33,7 @@ test("artigos independentes isolam a memória visual pela identidade da Unidade 
   assert.match(second, /data-package-render-key="study-unit:second-card::content:shared-instance"/u);
 });
 
-test("inspeção revela Choice, Gap e feedback sem controles de resolução", () => {
+test("inspeção revela Choice, Gap, Ordering e feedback sem controles de resolução", () => {
   const choice = {
     ...studyUnitWith({
       id: "choice-context",
@@ -105,6 +105,41 @@ test("inspeção revela Choice, Gap e feedback sem controles de resolução", ()
   assert.match(gapHtml, /Resposta esperada: DNS/u);
   assert.match(gapHtml, /Respostas esperadas exibidas\./u);
   assert.doesNotMatch(gapHtml, /contenteditable="true"|text-gap-open-choice/u);
+
+  const ordering = {
+    ...studyUnitWith({
+      id: "ordering-context",
+      package: "aralearn.resource.paragraph",
+      version: "1.0.0",
+      data: { text: "Preparar. Executar." }
+    }),
+    role: "practice",
+    response: {
+      id: "ordering-answer",
+      package: "aralearn.response.ordering",
+      version: "3.0.0",
+      data: {
+        targets: [{
+          id: "prepare",
+          targetInstanceId: "ordering-context",
+          targetPath: "text:prepare",
+          answer: "Preparar"
+        }, {
+          id: "execute",
+          targetInstanceId: "ordering-context",
+          targetPath: "text:execute",
+          answer: "Executar"
+        }]
+      }
+    }
+  };
+  const orderingHtml = renderPackageStudyUnitArticle(ordering, {
+    revealPracticeAnswers: true
+  });
+  assert.match(
+    orderingHtml,
+    /data-ordering-slot-index="0"[^>]*>[\s\S]*?runtime-ordering-value">Preparar[\s\S]*?data-ordering-slot-index="1"[^>]*>[\s\S]*?runtime-ordering-value">Executar/u
+  );
 });
 
 test("edição manual preserva o resource e publica somente o mapa textual invisível", () => {

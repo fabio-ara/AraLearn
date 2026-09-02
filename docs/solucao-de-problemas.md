@@ -248,9 +248,10 @@ o bearer funcionar no MCP, mas for recusado diretamente no GoTrue, na API de
 dados ou no Storage, essa recusa é o comportamento esperado: ele é uma
 credencial exclusiva do recurso MCP, não uma sessão da aplicação.
 
-No MCP, atualize a conexão e abra uma conversa nova depois de uma mudança no
-catálogo; a conversa anterior pode conservar a lista antiga. As leituras vão de
-`retomar_curso` a `consultar_componentes`; as escritas vão de `criar_curso` a
+No MCP, use **Refresh** no app e abra uma conversa nova depois de uma mudança no
+catálogo; a conversa anterior pode conservar a lista antiga. Use **Reconnect**
+se o problema for autorização ou conta, não apenas lista de tarefas. As leituras
+vão de `retomar_curso` a `consultar_componentes`; as escritas vão de `criar_curso` a
 `incorporar_pdf_como_fonte`. Se uma ferramenta pedir IDs, versões, caminhos ou
 outros detalhes do banco, a conexão ainda não recebeu o catálogo corrente.
 
@@ -270,6 +271,10 @@ outro cliente; se o GPT já estava vinculado e precisa substituir a credencial,
 vincular um novo cliente ao mesmo identificador desativa o anterior e revoga
 seus tokens. A execução corrente não possui uma ação separada para revogar uma
 concessão já vinculada.
+
+No corte que retirou a origem antiga do ChatGPT, os tokens Actions de clientes
+já vinculados foram revogados uma vez. Reimporte o OpenAPI e conclua novamente
+o OAuth numa conversa nova, mesmo que a conexão anterior ainda apareça no GPT.
 
 Se a Action pedir outra coisa além de referências humanas do Curso, reimporte o
 OpenAPI, salve a configuração e abra uma conversa nova. Publicar o arquivo não

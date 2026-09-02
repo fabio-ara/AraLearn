@@ -896,7 +896,7 @@ function renderStudyUnit(
     renderManualModeActions(item, state, editing, observationCount) +
     "</div>" +
     renderAuthorshipState(item, observationCount) +
-    (runtime.dockHtml
+    (item.studyUnit.response && !editing
       ? '<p class="course-inspection-response-notice">Prática exibida com as respostas esperadas.</p>'
       : "") +
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
@@ -1197,6 +1197,7 @@ export function createCourseInspectionSequence({
   initialPosition = null,
   initialFocusKey = "",
   onNavigate = () => {},
+  onStudyUnitChange = () => true,
   onEditSources = () => {},
   onEditContent = null,
   onSaveManualEdit = null,
@@ -1211,7 +1212,8 @@ export function createCourseInspectionSequence({
       typeof controller?.saveAuthoringInspectionPosition !== "function" ||
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
-      typeof onNavigate !== "function" || typeof onEditSources !== "function" ||
+      typeof onNavigate !== "function" || typeof onStudyUnitChange !== "function" ||
+      typeof onEditSources !== "function" ||
       (onEditContent !== null && typeof onEditContent !== "function") ||
       (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") ||
       (providerAssistanceSession !== null &&
@@ -1508,7 +1510,16 @@ export function createCourseInspectionSequence({
     const control = controlForKey(snapshot?.controlKey);
     const details = control?.closest?.("details");
     if (details) details.open = true;
-    if (focus) control?.focus?.({ preventScroll: true });
+    let focusControl = control;
+    if (focus && control?.disabled) {
+      const fallbackKey = snapshot?.controlKey === "next"
+        ? "previous"
+        : snapshot?.controlKey === "previous"
+          ? "next"
+          : "";
+      focusControl = controlForKey(fallbackKey) || control;
+    }
+    if (focus) focusControl?.focus?.({ preventScroll: true });
     return Boolean(control);
   }
 
@@ -2224,6 +2235,7 @@ export function createCourseInspectionSequence({
       pendingInitialFocusKey = "search";
       if (!await loadInitial({ anchorStudyUnitId: result.id, allowRebase: false })) return false;
     }
+    await Promise.resolve(onStudyUnitChange(result.id));
     scheduleSave();
     return true;
   }
@@ -2282,6 +2294,7 @@ export function createCourseInspectionSequence({
     };
     if (!selectStudyUnit(target.studyUnit.id, { anchor: targetAnchor })) return false;
     restoreAnchor(targetAnchor, { initial: true });
+    await Promise.resolve(onStudyUnitChange(target.studyUnit.id));
     scheduleSave();
     return true;
   }

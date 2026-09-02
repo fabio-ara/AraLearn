@@ -910,7 +910,7 @@ async function mountCourseAuthoring(page, {
           effectiveAssignments
         },
         componentCatalog: { version: "1-3e5629f8", options: structuredClone(componentOptions) },
-        targetPlanItems: current.kind === "didactic_microsequence" ? {
+        targetPlanItems: ["didactic_microsequence", "study_unit"].includes(current.kind) ? {
           instructionalAnalysisUnitIds: ["79000000-0000-4000-8000-000000000019"],
           evidenceRequirementIds: []
         } : null,
@@ -2674,6 +2674,12 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
     name: "Fontes de Exemplo guiado com diagrama"
   });
   await expectModalDialogOwnsTopLayer(targetDialog);
+  await page.keyboard.press("Escape");
+  await expect(targetDialog).toHaveCount(0);
+  await expect(sourcesAction).toBeFocused();
+
+  await sourcesAction.click();
+  await expectModalDialogOwnsTopLayer(targetDialog);
   await page.getByRole("button", {
     name: "Vincular fonte: Fonte verificável 1",
     exact: true
@@ -3061,6 +3067,9 @@ test("Inspeção mantém o foco no localizador e na navegação ao trocar de Uni
   )).toBeVisible();
   await search.press("Enter");
   await expect(page.locator("[data-inspection-context-position]")).toHaveText("12/60");
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12`
+  );
   await expect(search).toBeFocused();
 
   const next = page.getByRole("button", { name: "Próxima Unidade" });
@@ -3071,7 +3080,103 @@ test("Inspeção mantém o foco no localizador e na navegação ao trocar de Uni
     nextBox.y + nextBox.height / 2
   );
   await expect(page.locator("[data-inspection-context-position]")).toHaveText("13/60");
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-13`
+  );
   await expect(next).toBeFocused();
+
+  await page.goBack();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12`
+  );
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("12/60");
+  await expect(page.locator('[data-inspection-study-unit="study-unit-12"]')).toHaveCount(1);
+
+  await page.goForward();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-13`
+  );
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("13/60");
+  await expect(page.locator('[data-inspection-study-unit="study-unit-13"]')).toHaveCount(1);
+
+  const previous = page.getByRole("button", { name: "Unidade anterior" });
+  await previous.click();
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("12/60");
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12`
+  );
+  await expect(previous).toBeFocused();
+});
+
+test("navegação interna genérica mantém Voltar aos Cursos apesar do deep link corrente", async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+  await page.getByRole("button", { name: "Próxima Unidade" }).click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toMatch(
+    /section=content&studyUnitId=study-unit-\d+$/u
+  );
+  const back = page.getByRole("button", { name: "Voltar aos Cursos", exact: true });
+  await expect(back).toBeVisible();
+  await back.click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("");
+  await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
+});
+
+test("navegação extrema mantém foco útil quando a ação usada fica indisponível", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 820 });
+  const lastHash = `#/authoring/courses/${COURSE_IDS[0]}` +
+    "?section=content&studyUnitId=study-unit-59";
+  await mountCourseAuthoring(page, { cardinality: "many", hash: lastHash });
+
+  const next = page.getByRole("button", { name: "Próxima Unidade" });
+  const previous = page.getByRole("button", { name: "Unidade anterior" });
+  await next.click();
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("60/60");
+  await expect(next).toBeDisabled();
+  await expect(previous).toBeFocused();
+
+  await page.evaluate((courseId) => {
+    window.location.hash = `#/authoring/courses/${courseId}` +
+      "?section=content&studyUnitId=study-unit-02";
+  }, COURSE_IDS[0]);
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("2/60");
+  await previous.click();
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("1/60");
+  await expect(previous).toBeDisabled();
+  await expect(next).toBeFocused();
+});
+
+test("deep link para outra Unit do mesmo Curso relê a revisão externa", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 820 });
+  const firstHash = `#/authoring/courses/${COURSE_IDS[0]}` +
+    "?section=content&studyUnitId=study-unit-12";
+  await mountCourseAuthoring(page, { cardinality: "many", hash: firstHash });
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("12/60");
+
+  const revised = await page.evaluate(() => {
+    const nextRevision = globalThis.__courseAuthoringHarness.updateInspectionStudyUnit(
+      "study-unit-13",
+      "Unidade 13 revisada fora desta tela"
+    );
+    window.location.hash = window.location.hash.replace("study-unit-12", "study-unit-13");
+    return nextRevision;
+  });
+
+  await expect(page.getByRole("heading", {
+    name: "Unidade 13 revisada fora desta tela"
+  })).toBeVisible();
+  await expect(page.locator("[data-inspection-context-position]")).toHaveText("13/60");
+  await expect(page.locator('[data-inspection-study-unit="study-unit-13"]')).toHaveCount(1);
+  const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
+  expect(probe.headerReads).toBe(2);
+  expect(probe.inspectionReads.at(-1)).toMatchObject({
+    expectedRevision: revised,
+    anchorStudyUnitId: "study-unit-13"
+  });
 });
 
 test("Inspeção atualiza só o trecho ancorado e conserva posição, foco e detalhe", async ({

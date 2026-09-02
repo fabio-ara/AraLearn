@@ -61,7 +61,13 @@ test("#269 guidance exige propor, persistir, reler e decidir Parte por Parte", (
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
     /Antes de escrever, apresente a mudança concreta.*uma única decisão/iu
   );
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /resultado, link pertinente.*uma próxima decisão/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /resultado, deep link.*uma próxima decisão/iu);
+  const primaryInstructions = COURSE_AUTHORING_SERVER_INSTRUCTIONS.slice(0, 512);
+  assert.match(primaryInstructions, /uma Parte por vez/iu);
+  assert.match(primaryInstructions, /AnalysisUnit.*novidade material independente/iu);
+  assert.match(primaryInstructions, /fundamento ainda não estabelecido/iu);
+  assert.match(primaryInstructions, /configuração focal antes de decidir ou materializar/iu);
+  assert.match(primaryInstructions, /resultado, deep link.*uma próxima decisão/iu);
 });
 
 test("#269 MCP e Actions usam consultar_planejamento e salvar_parte sem mecânica", () => {

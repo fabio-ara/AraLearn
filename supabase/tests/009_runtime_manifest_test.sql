@@ -1,11 +1,11 @@
 begin;
 
-select plan(21);
+select plan(23);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260902044404','o manifesto identifica o corte final');
+  '20260902123759','o manifesto identifica o corte final');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),38,
@@ -27,6 +27,35 @@ select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
   'course-authoring-part-materialization-history-v1',
   'course-design-parameters-v1','course-variant-comparisons-v1'
 ]),'o manifesto não anuncia mecanismos substituídos');
+
+select ok(
+  pg_get_functiondef(
+    'public.link_authoring_action_oauth_client_v4(uuid,uuid,text)'::regprocedure
+  ) not like '%chat.openai.com%'
+  and pg_get_functiondef(
+    'public.create_authoring_action_oauth_authorization_v4(uuid,text,text,text)'::regprocedure
+  ) not like '%chat.openai.com%'
+  and pg_get_functiondef(
+    'public.create_authoring_action_oauth_authorization_v4(uuid,text,text,text)'::regprocedure
+  ) like '%https://chatgpt[.]com/%'
+  and pg_get_functiondef(
+    'public.create_authoring_action_oauth_authorization_v4(uuid,text,text,text)'::regprocedure
+  ) ~ 'p_redirect_uri\s*<>\s*v_client.redirect_uris\[1\]',
+  'OAuth de Actions oferece somente o host atual do ChatGPT');
+
+select is((select count(*) from pg_constraint constraint_value
+  join pg_class relation on relation.oid=constraint_value.conrelid
+  join pg_namespace namespace_value on namespace_value.oid=relation.relnamespace
+  where namespace_value.nspname='private'
+    and constraint_value.conname in(
+      'authoring_action_oauth_clients_redirects',
+      'authoring_action_oauth_clients_link_state'
+    )
+    and (
+      constraint_value.conname='authoring_action_oauth_clients_redirects'
+      or pg_get_constraintdef(constraint_value.oid) like '%chatgpt.com%'
+    )),2::bigint,
+  'constraints conservam apenas vínculos ativos com chatgpt.com');
 
 select is(array(
   select name from unnest(array[

@@ -30,6 +30,7 @@ function adapterFixture() {
   }));
   return {
     commits,
+    publicAppUrl: "https://app.example/",
     async listCourses() {
       return {
         items: [{ courseId: COURSE_ID, title: "Curso de Redes" }],
@@ -143,6 +144,11 @@ test("#272 correções MCP multi-Unit preservam Fontes e usam composição gené
   assert.equal(receipt.context.correctionCount, 2);
   assert.equal(receipt.context.sourceMode, "preserved");
   assert.match(receipt.nextDecision, /rematerializar a Parte/u);
+  assert.equal(
+    receipt.deepLink,
+    `https://app.example/#/authoring/courses/${COURSE_ID}` +
+      "?section=content&studyUnitId=unit-1"
+  );
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes("unit-"), false);
 });
 

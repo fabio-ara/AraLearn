@@ -53,17 +53,14 @@ function Assert-LocalProjectUrl {
   }
 }
 
-function Start-LocalEdgeFunction {
-  param([Parameter(Mandatory)][string]$Name)
-
-  $stdout = Join-Path $temporaryRoot "$Name.stdout.log"
-  $stderr = Join-Path $temporaryRoot "$Name.stderr.log"
+function Start-LocalEdgeFunctions {
+  $stdout = Join-Path $temporaryRoot 'edge-functions.stdout.log'
+  $stderr = Join-Path $temporaryRoot 'edge-functions.stderr.log'
   $arguments = @(
     '--yes',
     'supabase@2.115.0',
     'functions',
     'serve',
-    $Name,
     '--no-verify-jwt'
   )
   $parameters = @{
@@ -111,7 +108,14 @@ function Stop-LocalEdgeFunction {
   param([Diagnostics.Process]$Process)
 
   if ($Process -and -not $Process.HasExited) {
-    Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+    if ($IsWindows) {
+      # Start-Process abre npx.cmd por um wrapper; encerrar somente o wrapper
+      # deixa a CLI do Supabase viva e segurando os logs redirecionados.
+      & taskkill.exe /PID $Process.Id /T /F 2>$null | Out-Null
+    }
+    else {
+      Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+    }
     $Process.WaitForExit(5000)
   }
 }
@@ -175,45 +179,39 @@ try {
     '--level', 'warning', '--fail-on', 'warning'
   )
 
-  $courseApiHandle = Start-LocalEdgeFunction -Name 'aralearn-course-api'
+  # A stack possui um único Edge Runtime. Mantê-lo vivo durante toda a prova
+  # evita reinicializar o upstream entre a API de Curso e o refresh OAuth MCP.
+  $edgeHandle = Start-LocalEdgeFunctions
   try {
     Wait-LocalEdgeFunction `
       -Url "$apiUrl/functions/v1/aralearn-course-api/v1/courses" `
-      -Process $courseApiHandle.Process
+      -Process $edgeHandle.Process
+    Wait-LocalEdgeFunction `
+      -Url "$apiUrl/functions/v1/aralearn-authoring-mcp" `
+      -Process $edgeHandle.Process
     Invoke-CheckedCommand 'Smoke da API, do PostgREST e do RLS de Curso' 'npm.cmd' @(
       'run',
       'test:supabase:smoke'
     )
-  }
-  catch {
-    Show-EdgeFailureLog -Handle $courseApiHandle
-    throw
-  }
-  finally {
-    Stop-LocalEdgeFunction -Process $courseApiHandle.Process
-  }
 
-  Invoke-CheckedCommand 'Ciclo de vida de PDFs pela Storage API' 'npm.cmd' @(
-    'run',
-    'test:storage:lifecycle:local'
-  )
+    Invoke-CheckedCommand 'Ciclo de vida de PDFs pela Storage API' 'npm.cmd' @(
+      'run',
+      'test:storage:lifecycle:local'
+    )
 
-  Invoke-CheckedCommand 'Smoke dos e-mails de Auth' 'node' @('.\supabase\tests\auth-email-smoke.mjs')
+    Invoke-CheckedCommand 'Smoke dos e-mails de Auth' 'node' @('.\supabase\tests\auth-email-smoke.mjs')
 
-  $mcpHandle = Start-LocalEdgeFunction -Name 'aralearn-authoring-mcp'
-  try {
-    Wait-LocalEdgeFunction -Url "$apiUrl/functions/v1/aralearn-authoring-mcp" -Process $mcpHandle.Process
     Invoke-CheckedCommand 'Smoke OAuth do gateway MCP de autoria' 'npm.cmd' @(
       'run',
       'test:authoring:mcp:local:oauth'
     )
   }
   catch {
-    Show-EdgeFailureLog -Handle $mcpHandle
+    Show-EdgeFailureLog -Handle $edgeHandle
     throw
   }
   finally {
-    Stop-LocalEdgeFunction -Process $mcpHandle.Process
+    Stop-LocalEdgeFunction -Process $edgeHandle.Process
   }
 
   Write-Host "`nSupabase local validado sem falhas."

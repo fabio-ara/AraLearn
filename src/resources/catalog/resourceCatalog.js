@@ -203,7 +203,9 @@ function searchCandidate(profile, intent) {
 
   const avoid = avoidanceText(profile);
   const contraindicationHits = queryTokens.filter((token) => avoid.includes(token));
-  if (intent.notationIsLearningObject && contraindicationHits.length) score -= 40;
+  const decisiveContraindication = intent.notationIsLearningObject &&
+    contraindicationHits.length > 0;
+  if (decisiveContraindication) score -= 40;
 
   const missingStructural = missing.some((entry) => (
     entry.startsWith("structure:") || entry.startsWith("taskOperation:")
@@ -214,17 +216,17 @@ function searchCandidate(profile, intent) {
   const queryExact = queryTokens.length > 0 && queryHits.length === queryTokens.length;
   let fit;
   if (!missingStructural && (!disciplineRequested || disciplineMatched)
-      && contraindicationHits.length === 0
+      && !decisiveContraindication
       && (intent.structureIds.length || intent.taskOperationIds.length || queryExact)) {
     fit = "canonical";
-  } else if (!missingStructural && contraindicationHits.length === 0
+  } else if (!missingStructural && !decisiveContraindication
       && (!disciplineRequested || disciplineMatched || !intent.notationIsLearningObject)
       && (matched.length || (!intent.query && !disciplineRequested))) {
     fit = "versatile";
   } else {
     fit = "substitute";
   }
-  if (intent.notationIsLearningObject && contraindicationHits.length) fit = "substitute";
+  if (decisiveContraindication) fit = "substitute";
 
   const reason = fit === "canonical"
     ? "Os metadados do package cobrem os sinais estruturados e lexicais informados."

@@ -9,6 +9,9 @@ import {
   COURSE_HUMAN_TASKS
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
+import {
   HUMAN_ACTION_FILE_FIELD,
   projectHumanAuthoringTasksForActions
 } from "../../scripts/projectHumanAuthoringActions.mjs";
@@ -23,6 +26,20 @@ const golden = JSON.parse(await fs.readFile(new URL(
   "../fixtures/human-authoring-golden-prompts.v2.json",
   import.meta.url
 ), "utf8"));
+
+const SAMPLE_THEORY_CONTENT = Object.freeze({
+  title: "O papel do socket",
+  role: "theory",
+  content: Object.freeze([Object.freeze({
+    id: "body",
+    package: "aralearn.resource.paragraph",
+    version: "1.0.0",
+    data: Object.freeze({ text: "Um socket liga o processo ao transporte." })
+  })]),
+  response: null,
+  feedback: Object.freeze([]),
+  topics: Object.freeze(["socket"])
+});
 
 const samples = {
   retomar_curso: { titulo: "Redes para iniciantes" },
@@ -43,7 +60,11 @@ const samples = {
   },
   consultar_fontes: { curso: "Redes para iniciantes", fonte: "Manual do proxy" },
   consultar_componentes: {
-    funcao: "Representar uma sequência de decisões sem perder a ordem."
+    funcao: "Representar uma sequência de decisões sem perder a ordem.",
+    estrutura: "processo",
+    operacao: "acompanhar",
+    papel: "teoria",
+    lugar: "conteudo"
   },
   criar_curso: {
     titulo: "Redes para iniciantes",
@@ -71,7 +92,7 @@ const samples = {
     unidades: [{
       microssequencia: "Sockets",
       posicao: 1,
-      conteudo: { title: "O papel do socket", role: "theory", content: [] },
+      conteudo: SAMPLE_THEORY_CONTENT,
       aplicacaoPedagogica: {
         modo: "expositiva",
         novidadesIntroduzidas: ["Socket como interface"],
@@ -99,7 +120,7 @@ const samples = {
     curso: "Redes para iniciantes",
     correcoes: [{
       unidade: 4,
-      conteudo: { title: "Regra revista", role: "theory", content: [] },
+      conteudo: { ...SAMPLE_THEORY_CONTENT, title: "Regra revista" },
       fontes: []
     }]
   },
@@ -169,6 +190,10 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     visit(schema, (entry, path) => {
       for (const name of Object.keys(entry.properties || {})) {
         if (name === "file_id") continue;
+        const localComponentIdentity = ["id", "version"].includes(name) &&
+          /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
+            .test(path);
+        if (localComponentIdentity) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
     });
@@ -177,6 +202,24 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     openApi.info.description,
     /\bCAS\b|requestId|expectedRevision|expectedPlanVersion|\bhashes\b|\bpaths\b|\bpayloads\b/iu
   );
+  assert.equal(
+    openApi.info.description,
+    "Opera Cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
+      COURSE_AUTHORING_SERVER_INSTRUCTIONS
+  );
+  assert.match(openApi.info.description, /planejamento e configuração focal/iu);
+  assert.match(openApi.info.description, /fundamento ainda não estabelecido/iu);
+  assert.match(openApi.info.description, /contrato exato de cada componente/iu);
+  assert.ok(Object.hasOwn(
+    operation("consultar_componentes").requestBody.content["application/json"]
+      .schema.properties,
+    "estrutura"
+  ));
+  assert.ok(Object.hasOwn(
+    operation("consultar_componentes").requestBody.content["application/json"]
+      .schema.properties,
+    "operacao"
+  ));
 });
 
 test("#272 os dezesseis inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
@@ -190,8 +233,23 @@ test("#272 os dezesseis inputs importáveis aceitam exemplos humanos e recusam m
   }
   const adjust = validatorFor("ajustar_configuracao");
   const source = validatorFor("manter_fonte");
+  const materialization = validatorFor("materializar_parte");
   assert.equal(adjust({ curso: "Redes para iniciantes" }), false);
   assert.equal(source({ curso: "Redes para iniciantes" }), false);
+  assert.equal(materialization({
+    ...samples.materializar_parte,
+    unidades: [{
+      ...samples.materializar_parte.unidades[0],
+      conteudo: { ...SAMPLE_THEORY_CONTENT, content: [] }
+    }]
+  }), false);
+  assert.equal(materialization({
+    ...samples.materializar_parte,
+    unidades: [{
+      ...samples.materializar_parte.unidades[0],
+      conteudo: { ...SAMPLE_THEORY_CONTENT, role: "practice", response: null }
+    }]
+  }), false);
 });
 
 function validatorFor(name) {

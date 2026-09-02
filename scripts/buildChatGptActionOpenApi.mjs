@@ -7,6 +7,9 @@ import {
   COURSE_HUMAN_TASKS
 } from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+} from "../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
+import {
   projectHumanAuthoringTasksForActions
 } from "./projectHumanAuthoringActions.mjs";
 
@@ -36,13 +39,6 @@ const errorSchema = {
   }
 };
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 96_000;
-const HUMAN_ACTION_INSTRUCTIONS = [
-  "Escolha a tarefa pela seção ‘Use quando’ e respeite ‘Não use’ para desambiguar.",
-  "Identifique Cursos e objetos por títulos, posições e referências humanas já vistas; não invente referências.",
-  "Faça leituras necessárias autonomamente. Antes de uma escrita, apresente a mudança concreta e obtenha uma única decisão humana; depois aplique e releia sem confirmações mecânicas.",
-  "Planeje uma Parte por vez. Em revisão, considere também progressão, pré-requisitos, transições, exemplos e prática afetados.",
-  "Responda com o resultado, o link oferecido e no máximo uma próxima decisão. Não reproduza o conteúdo já aberto no AraLearn."
-].join("\n");
 
 if (!resultSchema || actionTools.some(({ outputSchema }) => (
   JSON.stringify(outputSchema) !== JSON.stringify(resultSchema)
@@ -80,7 +76,7 @@ const document = {
     "x-aralearn-task-catalog-fingerprint": COURSE_HUMAN_TASK_CATALOG_METADATA.hash,
     description: [
       "Opera Cursos privados por tarefas humanas, sem exigir controles internos do banco.",
-      HUMAN_ACTION_INSTRUCTIONS
+      COURSE_AUTHORING_SERVER_INSTRUCTIONS
     ].join("\n\n")
   },
   servers: [{ url: baseUrl }],

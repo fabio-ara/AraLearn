@@ -51,6 +51,13 @@ Exemplos:
 - `manter_fonte` recebe somente as alterações bibliográficas, Âncoras ou
   vínculos realmente solicitados.
 
+Para produzir conteúdo, `consultar_componentes` funciona em duas etapas: busca
+os candidatos pela função instrucional e, quando conhecidos, pela estrutura,
+operação, papel e lugar na StudyUnit; depois lê o contrato exato apenas do
+componente escolhido.
+`materializar_parte` recebe o envelope completo da StudyUnit; o GPT usa o schema
+lido para cada instância em vez de supor campos de uma representação.
+
 Uma referência ambígua não é resolvida por acaso. A resposta orienta o GPT a
 pedir um título ou posição mais específica.
 
@@ -73,9 +80,14 @@ escopo em cada operação; a descrição OpenAPI não é a autoridade de autoriz
 Uma Action de escrita é marcada como consequencial, enquanto leituras recebem o
 hint de somente leitura.
 
-Depois de trocar o contrato, salve novamente o OpenAPI no GPT e conecte uma
-conta em conversa nova. Essa importação real pertence ao corte publicado, não a
-cada mudança local.
+Depois de trocar o contrato, substitua integralmente o OpenAPI no editor e salve
+o GPT. A importação do schema e o login OAuth são estados separados: numa
+conversa nova, conecte ou renove a conta de Actions somente quando necessário.
+Essa importação real pertence ao corte publicado, não a cada mudança local.
+
+A atualização que retirou a origem antiga do ChatGPT revoga uma vez os tokens
+Actions já vinculados. Depois desse corte, importe o contrato corrente e conclua
+novamente o OAuth numa conversa nova.
 
 ## PDF anexado pelo ChatGPT
 
@@ -120,12 +132,14 @@ negativas.
 1. Gere e confira o arquivo.
 2. Abra a configuração de Actions do GPT.
 3. Substitua integralmente o OpenAPI anterior pelo arquivo corrente.
-4. Salve a Action.
-5. Crie uma conversa nova e refaça o OAuth.
+4. Confira no editor as dezesseis operações e salve a Action.
+5. Crie uma conversa nova e conclua ou renove o OAuth de Actions quando a conta
+   ainda não estiver conectada ou a autorização não estiver vigente.
 6. Comece por `retomar_curso` ou `criar_curso`, conforme a intenção.
 7. Execute uma jornada completa antes de considerar o contrato publicado.
 
-Não mantenha duas versões importadas para o mesmo GPT.
+Publicar um arquivo novo não atualiza o schema já importado. Não mantenha duas
+versões importadas para o mesmo GPT.
 
 ## Referências técnicas
 

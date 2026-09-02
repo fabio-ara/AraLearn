@@ -1,16 +1,17 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const defaultMigration = path.join(
-  repositoryRoot,
-  "supabase",
-  "migrations",
-  "20260902044404_cut_legacy_authoring_runtime.sql"
-);
+const migrationDirectory = path.join(repositoryRoot, "supabase", "migrations");
+const migrationFilePattern = /^(?:001|\d{14})_[a-z0-9_]+\.sql$/u;
+const defaultMigrations = Object.freeze([
+  "20260902044404_cut_legacy_authoring_runtime.sql",
+  "20260902123759_drop_legacy_chat_openai_action_origin.sql"
+].map((name) => path.join(migrationDirectory, name)));
 const defaultFixture = path.join(
   repositoryRoot,
   "tests",
@@ -48,28 +49,33 @@ function insideRepository(candidate, expectedDirectory, pattern) {
 }
 
 function argumentsFrom(argv) {
-  const values = { migration: defaultMigration, fixture: defaultFixture,
+  const values = { migrations: [], fixture: defaultFixture,
     sourceContainer: DEFAULT_SOURCE_CONTAINER };
   for (let index = 0; index < argv.length; index += 2) {
     const name = argv[index];
     const value = argv[index + 1];
     if (!value || !new Set(["--migration", "--fixture", "--source-container"]).has(name)) {
       throw new TypeError(
-        "Use --migration <arquivo>, --fixture <arquivo> ou --source-container <nome>."
+        "Use --migration <arquivo> (repetível), --fixture <arquivo> ou " +
+        "--source-container <nome>."
       );
     }
-    if (name === "--migration") values.migration = value;
+    if (name === "--migration") values.migrations.push(value);
     if (name === "--fixture") values.fixture = value;
     if (name === "--source-container") values.sourceContainer = value;
   }
   if (!/^supabase_db_[a-z0-9_-]+$/u.test(values.sourceContainer)) {
     throw new TypeError("O contêiner de origem precisa ser uma stack Supabase local.");
   }
-  values.migration = insideRepository(
-    values.migration,
-    "supabase/migrations",
-    /^\d{14}_[a-z0-9_]+\.sql$/u
-  );
+  if (values.migrations.length === 0) values.migrations.push(...defaultMigrations);
+  values.migrations = values.migrations.map((migration) => insideRepository(
+    migration, "supabase/migrations", migrationFilePattern
+  ));
+  const migrationNames = values.migrations.map((migration) => path.basename(migration));
+  if (migrationNames.some((name, index) => index > 0 &&
+      name <= migrationNames[index - 1])) {
+    throw new TypeError("As migrations precisam estar em ordem estritamente crescente.");
+  }
   values.fixture = insideRepository(
     values.fixture,
     "tests/fixtures/restore",
@@ -206,6 +212,58 @@ async function cloneDatabase(source, target) {
   );
 }
 
+function resetDisposableApplicationState(container, firstFinalMigration) {
+  const finalBoundary = path.basename(firstFinalMigration).slice(0, 14);
+  const sql = `
+    begin;
+    do $drop_storage_policies$
+    declare policy_value record;
+    begin
+      for policy_value in
+        select schemaname,tablename,policyname from pg_policies where schemaname='storage'
+      loop
+        execute format(
+          'drop policy %I on %I.%I',
+          policy_value.policyname,policy_value.schemaname,policy_value.tablename
+        );
+      end loop;
+    end;
+    $drop_storage_policies$;
+    drop schema if exists private cascade;
+    drop schema if exists public cascade;
+    create schema public authorization pg_database_owner;
+    grant usage on schema public to public;
+    truncate table auth.users cascade;
+    delete from supabase_migrations.schema_migrations
+    where version >= '${finalBoundary}';
+    commit;
+  `;
+  command("docker", [
+    "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
+    "-X", "-v", "ON_ERROR_STOP=1", "-c", sql
+  ]);
+}
+
+function migrationsBefore(firstMigration) {
+  const boundary = path.basename(firstMigration);
+  const names = readdirSync(migrationDirectory)
+    .filter((name) => migrationFilePattern.test(name) && name < boundary)
+    .sort();
+  if (names.length === 0) {
+    throw new Error(`Não há migrations anteriores a ${boundary}.`);
+  }
+  return names;
+}
+
+function applyMigrationFiles(container, migrationNames, containerDirectory) {
+  command("docker", ["cp", migrationDirectory, `${container}:${containerDirectory}`]);
+  command("docker", [
+    "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
+    "-X", "-v", "ON_ERROR_STOP=1",
+    ...migrationNames.flatMap((name) => ["-f", `${containerDirectory}/${name}`])
+  ], { timeout: 15 * 60_000 });
+}
+
 async function restoreBackupFile(source, backupPath, target) {
   await resetPostgresDatabase(target);
   await pipeProcesses(
@@ -222,6 +280,18 @@ function copyAndApply(container, localPath, containerPath) {
   command("docker", [
     "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
     "-X", "-v", "ON_ERROR_STOP=1", "-f", containerPath
+  ]);
+}
+
+function recordAppliedMigration(container, migration) {
+  const match = /^(\d{14})_([a-z0-9_]+)\.sql$/u.exec(path.basename(migration));
+  if (!match) throw new TypeError(`Migration final inválida: ${migration}`);
+  command("docker", [
+    "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
+    "-X", "-v", "ON_ERROR_STOP=1", "-c",
+    `insert into supabase_migrations.schema_migrations(version,statements,name) ` +
+    `values('${match[1]}',null,'${match[2]}') on conflict(version) do update ` +
+    `set name=excluded.name`
   ]);
 }
 
@@ -278,6 +348,7 @@ const technicalMeasureSql = `
 
 const beforeStateSql = `
   select jsonb_build_object(
+    'migrationRevision',(select max(version) from supabase_migrations.schema_migrations),
     'course',(select jsonb_build_object('title',title,'revision',revision)
       from public.courses where id='${COURSE_ID}'),
     'planItems',(select jsonb_object_agg(item_kind,value) from(
@@ -333,6 +404,7 @@ const beforeStateSql = `
 const afterStateSql = `
   select jsonb_build_object(
     'manifestRevision',public.get_aralearn_runtime_manifest()->>'schemaRevision',
+    'migrationRevision',(select max(version) from supabase_migrations.schema_migrations),
     'course',(select jsonb_build_object('title',title,'revision',revision)
       from public.courses where id='${COURSE_ID}'),
     'structure',(select jsonb_object_agg(entity_type,value) from(
@@ -480,8 +552,9 @@ const afterStateSql = `
   )
 `;
 
-function assertBeforeState(state) {
+function assertBeforeState(state, expectedMigrationRevision) {
   assert.deepEqual(state, {
+    migrationRevision: expectedMigrationRevision,
     course: { title: "Curso descartável de restauração", revision: 4 },
     planItems: {
       evidence_requirement: 1,
@@ -513,6 +586,7 @@ function assertBeforeState(state) {
 
 function assertAfterState(state, expectedManifestRevision) {
   assert.equal(state.manifestRevision, expectedManifestRevision);
+  assert.equal(state.migrationRevision, expectedManifestRevision);
   assert.deepEqual(state.course, {
     title: "Curso descartável de restauração",
     revision: 4
@@ -610,12 +684,12 @@ function assertAfterState(state, expectedManifestRevision) {
 }
 
 export async function verifyBackupRestoreUpgrade({
-  migration = defaultMigration,
+  migrations = defaultMigrations,
   fixture = defaultFixture,
   sourceContainer = DEFAULT_SOURCE_CONTAINER
 } = {}) {
   const resolved = argumentsFrom([
-    "--migration", migration,
+    ...migrations.flatMap((migration) => ["--migration", migration]),
     "--fixture", fixture,
     "--source-container", sourceContainer
   ]);
@@ -631,12 +705,19 @@ export async function verifyBackupRestoreUpgrade({
     command("docker", ["commit", "--pause=false", resolved.sourceContainer, image]);
     await startDisposableContainer(source, image);
     await cloneDatabase(resolved.sourceContainer, source);
+    resetDisposableApplicationState(source, resolved.migrations[0]);
+    const preCutMigrations = migrationsBefore(resolved.migrations[0]);
+    applyMigrationFiles(
+      source,
+      preCutMigrations,
+      `/tmp/pre-cut-migrations-${token}`
+    );
     copyAndApply(source, resolved.fixture, `/tmp/fixture-${token}.sql`);
     const before = {
       technical: queryJson(source, technicalMeasureSql),
       state: queryJson(source, beforeStateSql)
     };
-    assertBeforeState(before.state);
+    assertBeforeState(before.state, preCutMigrations.at(-1).slice(0, 14));
     command("docker", [
       "exec", source, "pg_dump", "-U", "supabase_admin", "-d", "postgres",
       "-Fc", "--no-owner", "-f", backupPath
@@ -644,13 +725,17 @@ export async function verifyBackupRestoreUpgrade({
 
     await startDisposableContainer(restored, image);
     await restoreBackupFile(source, backupPath, restored);
-    copyAndApply(restored, resolved.migration, `/tmp/migration-${token}.sql`);
+    for (const [index, migration] of resolved.migrations.entries()) {
+      copyAndApply(restored, migration, `/tmp/migration-${index + 1}-${token}.sql`);
+      recordAppliedMigration(restored, migration);
+    }
 
     const after = {
       technical: queryJson(restored, technicalMeasureSql),
       state: queryJson(restored, afterStateSql)
     };
-    assertAfterState(after.state, path.basename(resolved.migration).slice(0, 14));
+    const migrationNames = resolved.migrations.map((migration) => path.basename(migration));
+    assertAfterState(after.state, migrationNames.at(-1).slice(0, 14));
     assert.ok(
       after.technical.sourceTriggers < before.technical.sourceTriggers,
       "O corte não reduziu os triggers técnicos de Fontes."
@@ -661,8 +746,8 @@ export async function verifyBackupRestoreUpgrade({
     );
 
     return Object.freeze({
-      contract: "aralearn.backup-restore-upgrade-proof.v1",
-      migration: path.basename(resolved.migration),
+      contract: "aralearn.backup-restore-upgrade-proof.v2",
+      migrations: Object.freeze(migrationNames),
       before,
       after,
       storage: Object.freeze({
