@@ -381,7 +381,7 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
     assert.equal(payload.data.phaseGuidance.phase, "planning_design");
     assert.match(
       payload.data.phaseGuidance.instructions.join(" "),
-      /mais de uma mudança independente.*teto conta identidades novas declaradas/iu
+      /inventarie toda novidade.*preserve o mesmo inventário.*altere somente a distribuição/iu
     );
     return payload.data;
   };
@@ -592,6 +592,47 @@ test("Actions lê, altera e relê o plano com operações dedicadas, CAS e repla
   assert.notEqual(invalidPayload.error.code, "internal_error");
   assert.equal(commitCalls, 6);
   assert.equal((await readPlan()).plan.version, 7);
+});
+
+test("Actions recebe a mesma orientação focal de geração e auditoria da materialização", async () => {
+  const authoringPartId = "40000000-0000-4000-8000-000000000004";
+  const materializationId = "50000000-0000-4000-8000-000000000005";
+  const response = await createHandler({
+    async getCourseAuthoringPartMaterialization(value) {
+      assert.equal(value.authoringPartId, authoringPartId);
+      assert.equal(value.materializationId, materializationId);
+      return {
+        contract: "aralearn.course-authoring-part-materialization.v1",
+        courseId: ACTOR_ID,
+        courseRevision: 2,
+        authoringPartId,
+        materialization: {
+          id: materializationId,
+          version: 1,
+          resultFacts: {},
+          steps: []
+        }
+      };
+    }
+  })(request("lerCurso", {
+    courseId: ACTOR_ID,
+    view: "part_materialization",
+    authoringPartId,
+    materializationId
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.data.phaseGuidance.phase, "materialization");
+  const guidance = payload.data.phaseGuidance.instructions.join(" ");
+  assert.match(guidance, /inventário necessário.*completo e granular/iu);
+  assert.match(
+    guidance,
+    /recorte focal.*novidades que ela pode introduzir.*conhecimentos explicitamente estabelecidos/iu
+  );
+  assert.match(guidance, /Antes de gravar.*novidade material não inventariada/iu);
+  assert.equal(payload.conversation.message.includes(authoringPartId), false);
+  assert.equal(payload.conversation.message.includes(materializationId), false);
 });
 
 test("Actions não aceita o bearer sem passar pelo resolvedor específico", async () => {

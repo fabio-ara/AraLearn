@@ -785,7 +785,7 @@ test("MCP publica conhecimento e componente opcional e lê o plano pela rota com
   assert.equal(payload.result.structuredContent.data.phaseGuidance.phase, "planning_design");
   assert.match(
     payload.result.structuredContent.data.phaseGuidance.instructions.join(" "),
-    /mais de uma mudança independente.*teto conta identidades novas declaradas/iu
+    /inventarie toda novidade.*preserve o mesmo inventário.*altere somente a distribuição/iu
   );
   assert.match(payload.result.content[0].text, /A leitura foi concluída\./u);
   assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision|plan\.version/iu);
@@ -853,6 +853,14 @@ test("MCP lê a materialização retomável sem duplicar o DTO no texto", async 
     MATERIALIZATION_ID);
   assert.equal(call.authoringPartId, PART_ID);
   assert.equal(call.materializationId, MATERIALIZATION_ID);
+  assert.equal(payload.result.structuredContent.data.phaseGuidance.phase, "materialization");
+  const guidance = payload.result.structuredContent.data.phaseGuidance.instructions.join(" ");
+  assert.match(guidance, /inventário necessário.*completo e granular/iu);
+  assert.match(
+    guidance,
+    /recorte focal.*novidades que ela pode introduzir.*conhecimentos explicitamente estabelecidos/iu
+  );
+  assert.match(guidance, /Antes de gravar.*novidade material não inventariada/iu);
   assert.equal(payload.result.content[0].text.includes(MATERIALIZATION_ID), false);
   assert.equal(payload.result.content[0].text.includes(PART_ID), false);
   assert.doesNotMatch(payload.result.content[0].text, /Revisão do Curso|courseRevision/iu);

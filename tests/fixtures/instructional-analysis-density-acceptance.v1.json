@@ -1,0 +1,183 @@
+{
+  "format": "aralearn.instructional-analysis-density-acceptance.v1",
+  "epistemicStatus": "synthetic_semantic_declarations_for_model_and_human_review_not_backend_verdicts",
+  "courseBrief": {
+    "audience": "Pessoas iniciantes que usam a web, mas ainda não estudaram redes nem servidores.",
+    "objective": "Explicar como um processo servidor recebe uma requisição de rede sem esconder conceitos auxiliares.",
+    "scopeNote": "Fixture focal de aceitação; não é um plano completo de Curso."
+  },
+  "analysisInventory": [
+    {
+      "id": "61000000-0000-4000-8000-000000000001",
+      "statement": "Um processo é uma instância em execução de um programa."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000002",
+      "statement": "Um socket é a interface que um processo usa para trocar dados pela rede."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000003",
+      "statement": "Uma porta é um número que permite ao sistema operacional distinguir qual processo deve receber dados vindos da rede."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000004",
+      "statement": "Um processo servidor associa um socket a uma porta para receber requisições destinadas ao serviço."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000005",
+      "statement": "O sistema operacional entrega ao socket associado à porta os dados de uma requisição recebida."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000006",
+      "statement": "Um proxy reverso é um intermediário que recebe requisições antes do serviço de destino."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000007",
+      "statement": "Um proxy reverso encaminha cada requisição ao serviço de destino escolhido por sua regra de roteamento."
+    },
+    {
+      "id": "61000000-0000-4000-8000-000000000008",
+      "statement": "Uma requisição do cliente percorre a rede até o servidor antes de alcançar o processo que oferece o serviço."
+    }
+  ],
+  "semanticCases": [
+    {
+      "id": "aggregated_networks_and_servers",
+      "candidateStatement": "Redes e servidores: sistema operacional, processos, sockets, portas e requisições.",
+      "assumedPriorKnowledge": [],
+      "expectedNewAnalysisUnitIds": [
+        "61000000-0000-4000-8000-000000000001",
+        "61000000-0000-4000-8000-000000000002",
+        "61000000-0000-4000-8000-000000000003",
+        "61000000-0000-4000-8000-000000000004",
+        "61000000-0000-4000-8000-000000000005"
+      ],
+      "producerDeclaration": "decompose_before_materialization"
+    },
+    {
+      "id": "many_established_items_one_new_relation",
+      "candidateStatement": "Dados processo servidor, socket, porta, requisição e serviço, o processo associa o socket à porta para receber as requisições do serviço.",
+      "assumedPriorKnowledge": [
+        "processo servidor",
+        "socket",
+        "porta",
+        "requisição",
+        "serviço"
+      ],
+      "expectedNewAnalysisUnitIds": [
+        "61000000-0000-4000-8000-000000000004"
+      ],
+      "producerDeclaration": "accept_one_new_relation"
+    },
+    {
+      "id": "hidden_auxiliary_concept",
+      "candidateStatement": "O proxy reverso encaminha a requisição ao serviço escolhido.",
+      "assumedPriorKnowledge": [
+        "requisição",
+        "serviço"
+      ],
+      "hiddenAuxiliaryTerm": "proxy reverso",
+      "expectedNewAnalysisUnitIds": [
+        "61000000-0000-4000-8000-000000000006",
+        "61000000-0000-4000-8000-000000000007"
+      ],
+      "producerDeclaration": "inventory_auxiliary_before_first_use"
+    },
+    {
+      "id": "incidental_term",
+      "candidateStatement": "No diagrama, uma seta azul representa o percurso da requisição do cliente até o servidor.",
+      "assumedPriorKnowledge": [
+        "cliente",
+        "servidor",
+        "requisição"
+      ],
+      "incidentalTerms": [
+        "azul"
+      ],
+      "expectedNewAnalysisUnitIds": [
+        "61000000-0000-4000-8000-000000000008"
+      ],
+      "producerDeclaration": "do_not_atomize_incidental_term"
+    }
+  ],
+  "ceilingComparison": {
+    "invariantInventoryIds": [
+      "61000000-0000-4000-8000-000000000001",
+      "61000000-0000-4000-8000-000000000002",
+      "61000000-0000-4000-8000-000000000003",
+      "61000000-0000-4000-8000-000000000004"
+    ],
+    "allowedDifference": "distribution_only",
+    "variants": [
+      {
+        "ceiling": 1,
+        "introducedByStudyUnit": [
+          ["61000000-0000-4000-8000-000000000001"],
+          ["61000000-0000-4000-8000-000000000002"],
+          ["61000000-0000-4000-8000-000000000003"],
+          ["61000000-0000-4000-8000-000000000004"]
+        ]
+      },
+      {
+        "ceiling": 2,
+        "introducedByStudyUnit": [
+          [
+            "61000000-0000-4000-8000-000000000001",
+            "61000000-0000-4000-8000-000000000002"
+          ],
+          [
+            "61000000-0000-4000-8000-000000000003",
+            "61000000-0000-4000-8000-000000000004"
+          ]
+        ]
+      }
+    ]
+  },
+  "oneToManyDevelopment": {
+    "analysisUnitId": "61000000-0000-4000-8000-000000000004",
+    "studyUnitContributions": [
+      {
+        "introduces": true,
+        "developedForms": ["plain_definition"]
+      },
+      {
+        "introduces": false,
+        "developedForms": ["concrete_example", "mechanism"]
+      },
+      {
+        "introduces": false,
+        "developedForms": [],
+        "notApplicable": [
+          {
+            "form": "contrast",
+            "reason": "Este recorte acompanha uma única relação de associação; uma alternativa concorrente não faz parte do objetivo focal."
+          }
+        ]
+      }
+    ]
+  },
+  "consolidationAndPractice": {
+    "evidenceRequirement": {
+      "id": "62000000-0000-4000-8000-000000000001",
+      "statement": "Identificar como uma requisição chega ao processo servidor em situações distintas."
+    },
+    "consolidation": {
+      "mode": "practice",
+      "introducedInstructionalAnalysisUnitIds": [],
+      "explanationApplications": [],
+      "practiceApplications": []
+    },
+    "evidenceOpportunities": [
+      {
+        "opportunityId": "request-path-case-a",
+        "invariantTaskOperation": "identificar o percurso da requisição até o processo servidor",
+        "variedDimensions": ["case_or_data"]
+      },
+      {
+        "opportunityId": "request-path-case-b",
+        "invariantTaskOperation": "identificar o percurso da requisição até o processo servidor",
+        "variedDimensions": ["case_or_data", "external_representation"]
+      }
+    ]
+  }
+}
