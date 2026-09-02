@@ -1311,7 +1311,7 @@ export class CourseApiClient {
     const source = exactObject(
       value,
       new Set(["expectedCourseRevision", "query"]),
-      "Leitura de Pesquisa"
+      "Leitura de Analytics"
     );
     const normalizedQuery = normalizeCourseAuthoringAnalyticsQuery(source.query ?? {});
     const expectedRevision = positiveInteger(
@@ -1322,20 +1322,14 @@ export class CourseApiClient {
       await this.requestCourseApi(`${courseResourcePath(normalizedCourseId)}/research`, {
         query: {
           expectedRevision,
-          dataset: normalizedQuery.datasets,
-          channel: normalizedQuery.channels,
-          origin: normalizedQuery.origins,
-          state: normalizedQuery.states,
-          from: normalizedQuery.from,
-          to: normalizedQuery.to,
-          limit: normalizedQuery.limit,
-          cursor: normalizedQuery.cursor
+          scopeKind: normalizedQuery.scope.kind,
+          scopeRef: normalizedQuery.scope.ref
         }
       }),
       { expectedCourseId: normalizedCourseId, expectedQuery: normalizedQuery }
     );
-    if (result.courseRevision !== expectedRevision) {
-      throw new TypeError("A página de Pesquisa não corresponde ao Curso solicitado.");
+    if (result.course.revision !== expectedRevision) {
+      throw new TypeError("O snapshot de Analytics não corresponde ao Curso solicitado.");
     }
     return result;
   }

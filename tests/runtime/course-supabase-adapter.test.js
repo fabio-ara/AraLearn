@@ -28,6 +28,43 @@ const AUDIT_ANNOTATION_ID = "44444444-4444-5444-8444-444444444444";
 const MCP_RESOURCE =
   "https://project.example/functions/v1/aralearn-authoring-mcp";
 const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
+
+function analyticsSnapshot() {
+  const scope = { kind: "course", ref: null, label: "Curso" };
+  return {
+    contract: "aralearn.course-authoring-analytics.v2",
+    course: { id: COURSE_ID, revision: 7, title: "Curso" },
+    scope: { selected: scope, options: [scope] },
+    design: {
+      studyUnitCount: 0,
+      parameters: [[
+        "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
+      ], ["required_explanation_forms", "Formas", "string_list"], [
+        "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
+      ], ["required_practice_variation_dimensions", "Variação", "string_list"]]
+        .map(([parameterId, label, valueKind]) => ({
+          parameterId, label, valueKind, effectiveValues: []
+        })),
+      editorialDirections: [],
+      analysisUnits: [],
+      introductionsByStudyUnit: [],
+      explanationForms: [],
+      components: [],
+      practiceByRequirement: [],
+      practiceVariationDimensions: [],
+      sourcesByRole: []
+    },
+    authorship: {
+      observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
+      explicitParameterChangeCount: 0,
+      manualEditCount: 0,
+      repairs: { acceptedCount: 0, rejectedCount: 0 },
+      studyUnitChangesByOrigin: []
+    },
+    missingData: [],
+    deepLink: null
+  };
+}
 const MCP_PAIRWISE_SUBJECT = "91000000-0000-5000-8000-000000000009";
 const MCP_PAIRWISE_SESSION_ID = "92000000-0000-5000-8000-000000000009";
 const MCP_SOURCE_SESSION_ID = "93000000-0000-4000-8000-000000000009";
@@ -307,54 +344,14 @@ test("configuração de serviço recusa schemes executáveis nos deep links", ()
   }));
 });
 
-test("Pesquisa usa uma RPC limitada e acrescenta dicionário e links fora do banco", async () => {
+test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do banco", async () => {
   const calls = [];
   const query = {
-    datasets: ["sources"],
-    channels: [],
-    origins: [],
-    states: [],
-    from: null,
-    to: null,
-    limit: 40,
-    cursor: null
+    scope: { kind: "course", ref: null }
   };
   const value = adapter(async (url, init) => {
     calls.push({ url, body: JSON.parse(init.body) });
-    return json({
-      contract: "aralearn.course-authoring-analytics-rows.v1",
-      courseId: COURSE_ID,
-      courseRevision: 7,
-      generatedAt: "2026-08-20T09:00:00.000Z",
-      query,
-      facts: [{
-        factId: "source:source-a:1",
-        dataset: "sources",
-        kind: "source_revision_created",
-        occurredAt: "2026-08-20T08:30:00.000Z",
-        courseRevision: 7,
-        channel: "authoring_interface",
-        origin: "author",
-        state: "active",
-        subject: { kind: "source", id: "source-a", label: "Fonte A" },
-        related: null,
-        values: { source_revision: 1 },
-        missingData: [],
-        deepLink: null
-      }],
-      summary: {
-        factCount: 1,
-        missingCourseRevisionCount: 0,
-        byDataset: [{ key: "sources", value: 1 }],
-        byKind: [{
-          dataset: "sources",
-          kind: "source_revision_created",
-          state: "active",
-          value: 1
-        }]
-      },
-      nextCursor: null
-    });
+    return json(analyticsSnapshot());
   });
   const page = await value.getCourseAuthoringAnalytics({
     principal: { actorId: USER_ID },
@@ -363,22 +360,19 @@ test("Pesquisa usa uma RPC limitada e acrescenta dicionário e links fora do ban
     query
   });
 
-  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v1$/u);
+  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v2$/u);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
     p_course_id: COURSE_ID,
     p_expected_course_revision: 7,
     p_query: query
   });
-  assert.equal(page.contract, "aralearn.course-authoring-analytics.v1");
-  assert.equal(page.metrics[0].id, "facts_by_kind");
-  assert.equal(
-    page.facts[0].deepLink,
-    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      "?section=sources"
-  );
+  assert.equal(page.contract, "aralearn.course-authoring-analytics.v2");
+  assert.equal(page.design.studyUnitCount, 0);
+  assert.equal(Object.hasOwn(page, "facts"), false);
   assert.equal(page.deepLink,
-    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}?section=research`);
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
+      "?section=research&analyticsScopeKind=course");
 });
 
 function auditCheck(dimension = "factual_quality", result = "failed", checkId =

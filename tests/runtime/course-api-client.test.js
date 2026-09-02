@@ -38,6 +38,43 @@ function parsedBody(init) {
   return init.body == null ? null : JSON.parse(init.body);
 }
 
+function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }) {
+  const parameters = [[
+    "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
+  ], ["required_explanation_forms", "Formas", "string_list"], [
+    "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
+  ], ["required_practice_variation_dimensions", "Variação", "string_list"]]
+    .map(([parameterId, label, valueKind]) => ({
+      parameterId, label, valueKind, effectiveValues: []
+    }));
+  return {
+    contract: "aralearn.course-authoring-analytics.v2",
+    course: { id: COURSE_ID, revision: 7, title: "Curso" },
+    scope: { selected: scope, options: [scope] },
+    design: {
+      studyUnitCount: 0,
+      parameters,
+      editorialDirections: [],
+      analysisUnits: [],
+      introductionsByStudyUnit: [],
+      explanationForms: [],
+      components: [],
+      practiceByRequirement: [],
+      practiceVariationDimensions: [],
+      sourcesByRole: []
+    },
+    authorship: {
+      observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
+      explicitParameterChangeCount: 0,
+      manualEditCount: 0,
+      repairs: { acceptedCount: 0, rejectedCount: 0 },
+      studyUnitChangesByOrigin: []
+    },
+    missingData: [],
+    deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=research`
+  };
+}
+
 function clientWithFetch(fetchImpl, { accessToken = "token", userId = USER_ID } = {}) {
   const events = [];
   let cleared = false;
@@ -1974,54 +2011,16 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
   assert.equal(calls.length, 4);
 });
 
-test("cliente owner lê o recorte de Pesquisa pela rota quantitativa", async () => {
+test("cliente owner lê Analytics pela rota quantitativa", async () => {
   const calls = [];
   const query = {
-    datasets: ["design"],
-    channels: [],
-    origins: [],
-    states: [],
-    from: null,
-    to: null,
-    limit: 25,
-    cursor: null
+    scope: { kind: "didactic_microsequence", ref: "micro-dns" }
   };
-  const page = {
-    contract: "aralearn.course-authoring-analytics.v1",
-    dictionaryVersion: "aralearn.course-authoring-analytics-dictionary.v1",
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    generatedAt: "2026-08-20T09:00:00.000Z",
-    query,
-    metrics: [{
-      id: "facts_by_kind",
-      version: 1,
-      label: "Fatos por tipo e estado",
-      question: "Quais fatos e estados aparecem no conjunto selecionado?",
-      definition: "Conta cada fato uma vez.",
-      unit: "count",
-      denominator: "Todos os fatos do recorte.",
-      missingData: "A ausência permanece indicada.",
-      prohibitedInferences: ["Não mede aprendizagem."]
-    }],
-    overview: {
-      metricId: "facts_by_kind",
-      title: "Fatos por tipo e estado",
-      question: "Quais fatos e estados aparecem no conjunto selecionado?",
-      series: [{
-        key: "no_facts",
-        label: "Nenhum fato",
-        value: 0,
-        unit: "count",
-        denominator: 0,
-        missing: false
-      }]
-    },
-    facts: [],
-    nextCursor: null,
-    limitations: ["Não mede aprendizagem."],
-    deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=research`
-  };
+  const page = analyticsSnapshot({
+    kind: "didactic_microsequence",
+    ref: "micro-dns",
+    label: "DNS"
+  });
   const { client } = clientWithFetch(async (url, init) => {
     calls.push({ url, body: parsedBody(init) });
     return jsonResponse({ ok: true, data: page });
@@ -2037,8 +2036,8 @@ test("cliente owner lê o recorte de Pesquisa pela rota quantitativa", async () 
   assert.equal(calls[0].body, null);
   assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), {
     expectedRevision: "7",
-    dataset: "design",
-    limit: "25"
+    scopeKind: "didactic_microsequence",
+    scopeRef: "micro-dns"
   });
 });
 

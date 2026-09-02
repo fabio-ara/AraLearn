@@ -42,10 +42,6 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
     .mcp-app-notice { border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: .75rem; padding: .75rem; line-height: 1.45; }
     .mcp-app-notice[role="alert"] { border-color: #b42318; }
     .mcp-app-section { display: grid; gap: .75rem; min-width: 0; }
-    .mcp-app-bars { display: grid; gap: .55rem; margin: 0; padding: 0; list-style: none; }
-    .mcp-app-bar { display: grid; grid-template-columns: minmax(7rem, 1fr) minmax(5rem, 2fr) auto; gap: .5rem; align-items: center; }
-    .mcp-app-bar-track { height: .75rem; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, currentColor 12%, transparent); }
-    .mcp-app-bar-value { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--action-primary, #3b63dd); }
     .mcp-app-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: .75rem; }
     table { width: 100%; border-collapse: collapse; font-size: .875rem; }
     th, td { padding: .55rem .65rem; text-align: left; vertical-align: top; border-block-end: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
@@ -75,7 +71,6 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
     .mcp-app-empty { color: var(--text-secondary, #5f6368); }
     @media (max-width: 430px) {
       main { padding-inline: max(.625rem, env(safe-area-inset-left), var(--mcp-host-safe-left)) max(.625rem, env(safe-area-inset-right), var(--mcp-host-safe-right)); }
-      .mcp-app-bar { grid-template-columns: minmax(6.5rem, 1fr) minmax(3.5rem, 1.4fr) auto; font-size: .82rem; }
       th, td { padding: .5rem; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
@@ -246,15 +241,6 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
       return ({ canonical: "Canônico", versatile: "Versátil", substitute: "Substituto" })[value] || "Não informado";
     }
 
-    function unitLabel(value) {
-      return ({
-        count: "Contagem",
-        milliseconds: "Milissegundos",
-        ratio: "Proporção",
-        percentage: "Porcentagem"
-      })[value] || "Não informada";
-    }
-
     const DESIGN_PARAMETER_LABELS = Object.freeze({
       new_analysis_unit_ceiling_per_expository_study_unit: "Novas unidades de análise por Unidade expositiva",
       required_explanation_forms: "Formas de explicação requeridas",
@@ -366,26 +352,6 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
       table.append(body);
       wrapper.append(table);
       app.append(wrapper);
-    }
-
-    function renderBars(series) {
-      const values = boundedArray(series, 32).map((entry) => ({
-        label: String(entry?.label || "Sem rótulo"),
-        value: safeCount(entry?.value)
-      }));
-      const maximum = Math.max(1, ...values.map(({ value }) => value ?? 0));
-      const list = element("ul", null, "mcp-app-bars");
-      values.forEach(({ label, value }) => {
-        const item = element("li", null, "mcp-app-bar");
-        item.append(element("span", label));
-        const track = element("span", null, "mcp-app-bar-track");
-        const bar = element("span", null, "mcp-app-bar-value");
-        bar.style.width = value === null ? "0" : String((value / maximum) * 100) + "%";
-        track.append(bar);
-        item.append(track, element("span", value === null ? "Ausente" : value));
-        list.append(item);
-      });
-      app.append(list);
     }
 
     function appendDesignSnapshot(container, snapshot, title) {
@@ -586,42 +552,6 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
       appendLink(preview?.deepLink);
     }
 
-    function renderAnalytics(data) {
-      clear();
-      appendHeader("Pesquisa na Autoria", "Revisão " + String(data.courseRevision ?? "não informada"));
-      const overview = data.overview || {};
-      const question = String(overview.question || data.question || "Fatos observáveis do processo de Autoria");
-      app.append(element("p", question, "mcp-app-context"));
-      const series = boundedArray(overview.series, 32);
-      if (series.length) {
-        app.append(element("h2", String(overview.title || "Distribuição")));
-        renderBars(series);
-        appendTable([
-          { key: "label", label: "Categoria" },
-          { key: "value", label: "Valor" },
-          { key: "unit", label: "Unidade" },
-          { key: "denominator", label: "Denominador" }
-        ], series.map((entry) => ({
-          label: entry?.label,
-          value: safeCount(entry?.value),
-          unit: unitLabel(entry?.unit),
-          denominator: entry?.denominator ?? "Não se aplica"
-        })), "Dados equivalentes à visualização");
-      } else {
-        app.append(element("p", "Não há linhas para este recorte. A ausência foi preservada e não foi convertida em zero.", "mcp-app-empty"));
-      }
-      const limitations = boundedArray(data.limitations, 12).map(String).filter(Boolean);
-      if (limitations.length) {
-        const section = element("section", null, "mcp-app-section");
-        section.append(element("h2", "Limites de interpretação"));
-        const list = element("ul");
-        limitations.forEach((item) => list.append(element("li", item)));
-        section.append(list);
-        app.append(section);
-      }
-      appendLink(data.deepLink);
-    }
-
     function renderVariantComparison(data) {
       clear();
       const planning = data.planning || {};
@@ -768,8 +698,6 @@ const COURSE_MCP_APP_HTML = `<!doctype html>
         await renderStudyUnit(data, version);
       } else if (data?.contract === "aralearn.instructional-component-library.v1") {
         renderComponentLibrary(data);
-      } else if (data?.contract === "aralearn.course-authoring-analytics.v1") {
-        renderAnalytics(data);
       } else if (data?.contract === "aralearn.course-study-unit-inspection-page.v2" &&
           data?.inspectionFocus) {
         await renderInspectionFocus(data, version);

@@ -440,7 +440,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260831183106");
+  assert.equal(manifest.schemaRevision, "20260902040050");
   assert.equal(manifest.requiredFeatures.includes("continuous-authoring-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
@@ -472,7 +472,8 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-comparison-list-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-pdf-attachments-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-human-locators-v1"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), true);
 });
 
@@ -484,8 +485,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260831183106_fix_analysis_unit_study_unit_decomposition.sql",
-    revision: "20260831183106"
+    fileName: "20260902040050_simplify_course_authoring_analytics.sql",
+    revision: "20260902040050"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

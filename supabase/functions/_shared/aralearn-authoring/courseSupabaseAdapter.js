@@ -1557,7 +1557,7 @@ function normalizeCourseAuthoringAnalyticsDatabaseValue(callback) {
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "O serviço devolveu fatos de Pesquisa inválidos."
+        "O serviço devolveu um snapshot de Analytics inválido."
       );
     }
     throw error;
@@ -3711,7 +3711,7 @@ export class CourseSupabaseAdapter {
     let raw;
     try {
       raw = first(await this.rpc(
-        "get_owned_course_authoring_analytics_for_actor_v1",
+        "get_owned_course_authoring_analytics_for_actor_v2",
         {
           p_actor_id: principal.actorId,
           p_course_id: courseId,
@@ -3730,7 +3730,7 @@ export class CourseSupabaseAdapter {
         throw new AuthoringApiError(
           413,
           "course_authoring_analytics_response_too_large",
-          "A página de Pesquisa excedeu 512 KiB. Use um recorte menor."
+          "O snapshot de Analytics excedeu 512 KiB. Use um escopo menor."
         );
       }
       throw error;

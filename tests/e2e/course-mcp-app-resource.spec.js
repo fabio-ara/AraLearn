@@ -414,35 +414,6 @@ test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", 
       structuredContent: {
         ok: true,
         data: {
-          contract: "aralearn.course-authoring-analytics.v1",
-          courseRevision: 7,
-          overview: {
-            title: "Fatos por estado",
-            question: "Quais estados aparecem?",
-            series: [{
-              key: "open",
-              label: "Em aberto",
-              value: 2,
-              unit: "count",
-              denominator: 3,
-              missing: false
-            }]
-          },
-          limitations: [],
-          deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=research"
-        }
-      }
-    }
-  });
-  await expect(appFrame.getByRole("cell", { name: "Contagem" })).toBeVisible();
-
-  await postToResource(page, {
-    jsonrpc: "2.0",
-    method: "ui/notifications/tool-result",
-    params: {
-      structuredContent: {
-        ok: true,
-        data: {
           contract: "aralearn.course-variant-comparison.v1",
           planning: { courseRevision: 7, planVersion: 2 },
           members: [{

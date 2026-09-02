@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260831183106',
+  '20260902040050',
   'o manifesto identifica a revisão final do esquema'
 );
 
@@ -65,7 +65,7 @@ select ok(
     "course-audit-annotation-links-v1",
     "course-variant-comparisons-v1",
     "course-variant-comparison-list-v1",
-    "course-authoring-analytics-v1",
+    "course-authoring-analytics-v2",
     "course-variant-factual-comparison-v1",
     "contextual-study-unit-edit-v1",
     "personal-course-copy-edit-v1",
@@ -266,9 +266,9 @@ select has_function(
   'a comparação expõe diferenças factuais entre variantes'
 );
 select has_function(
-  'public', 'get_owned_course_authoring_analytics_for_actor_v1',
+  'public', 'get_owned_course_authoring_analytics_for_actor_v2',
   array['uuid', 'uuid', 'bigint', 'jsonb'],
-  'Pesquisa lê fatos brutos por consulta estável'
+  'Analytics deriva um snapshot quantitativo do Curso corrente'
 );
 select has_function(
   'public', 'load_course_personal_state_v2',
@@ -327,10 +327,10 @@ select function_privs_are(
   'o núcleo legado da composição não permanece executável pelo serviço'
 );
 select function_privs_are(
-  'public', 'get_owned_course_authoring_analytics_for_actor_v1',
+  'public', 'get_owned_course_authoring_analytics_for_actor_v2',
   array['uuid', 'uuid', 'bigint', 'jsonb'],
   'service_role', array['EXECUTE'],
-  'somente o serviço consulta fatos autorais em nome do proprietário'
+  'somente o serviço consulta Analytics em nome do proprietário'
 );
 select function_privs_are(
   'public', 'advance_course_authoring_part_materialization_for_actor_v2',
@@ -345,10 +345,10 @@ select function_privs_are(
   'o cliente autenticado não escolhe ator nem canal de materialização'
 );
 select function_privs_are(
-  'public', 'get_owned_course_authoring_analytics_for_actor_v1',
+  'public', 'get_owned_course_authoring_analytics_for_actor_v2',
   array['uuid', 'uuid', 'bigint', 'jsonb'],
   'authenticated', array[]::text[],
-  'o cliente não contorna a filtragem da Pesquisa'
+  'o cliente não contorna o escopo de Analytics'
 );
 select function_privs_are(
   'public', 'get_course_source_attachment_access_for_actor_v1',

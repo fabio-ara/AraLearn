@@ -653,42 +653,30 @@ function courseAuthoringAnalyticsQuery(request) {
       AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES) {
     fail(
       "course_authoring_analytics_query_too_large",
-      "Os filtros de Pesquisa excedem o limite transportável de 8 KiB.",
+      "O escopo de Analytics excede o limite transportável de 8 KiB.",
       null,
       414
     );
   }
   const fields = [...url.searchParams.keys()];
-  const listFields = new Set(["dataset", "channel", "origin", "state"]);
-  const allowed = new Set([
-    "expectedRevision", ...listFields, "from", "to", "limit", "cursor"
-  ]);
+  const allowed = new Set(["expectedRevision", "scopeKind", "scopeRef"]);
   const unknown = fields.find((field) => !allowed.has(field));
   const duplicatedScalar = [...new Set(fields)].find((field) =>
-    !listFields.has(field) && url.searchParams.getAll(field).length > 1
-  );
+    url.searchParams.getAll(field).length > 1);
   if (unknown || duplicatedScalar ||
       url.searchParams.getAll("expectedRevision").length !== 1) {
     fail(
       "invalid_course_authoring_analytics_query",
-      "A leitura de Pesquisa recebeu filtros incompatíveis.",
+      "A leitura de Analytics recebeu um escopo incompatível.",
       { field: unknown || duplicatedScalar || "expectedRevision" }
     );
   }
-  const datasets = url.searchParams.getAll("dataset");
   const query = normalizeCourseAuthoringAnalyticsDomain(() =>
     normalizeCourseAuthoringAnalyticsQuery({
-      ...(datasets.length ? { datasets } : {}),
-      channels: url.searchParams.getAll("channel"),
-      origins: url.searchParams.getAll("origin"),
-      states: url.searchParams.getAll("state"),
-      from: url.searchParams.get("from"),
-      to: url.searchParams.get("to"),
-      limit: positiveInteger(url.searchParams.get("limit"), "limit", {
-        defaultValue: 100,
-        maximum: 200
-      }),
-      cursor: url.searchParams.get("cursor")
+      scope: {
+        kind: url.searchParams.get("scopeKind") || "course",
+        ref: url.searchParams.get("scopeRef")
+      }
     })
   );
   return {

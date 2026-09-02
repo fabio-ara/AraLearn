@@ -43,7 +43,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-audit-annotation-links-v1",
   "course-variant-comparisons-v1",
   "course-variant-comparison-list-v1",
-  "course-authoring-analytics-v1",
+  "course-authoring-analytics-v2",
   "course-variant-factual-comparison-v1",
   "contextual-study-unit-edit-v1",
   "personal-course-copy-edit-v1",
@@ -419,6 +419,9 @@ async function validateManifest() {
   const analysisUnitDecompositionMigration = await read(
     "supabase/migrations/20260831183106_fix_analysis_unit_study_unit_decomposition.sql"
   );
+  const simplifiedAuthoringAnalyticsMigration = await read(
+    "supabase/migrations/20260902040050_simplify_course_authoring_analytics.sql"
+  );
   if (!courseMigration.includes("$advance_course_runtime_manifest$") ||
       !courseMigration.includes("'schemaRevision', '20260817140000'") ||
       !profileMigration.includes("$advance_profile_access_runtime_manifest$") ||
@@ -623,6 +626,12 @@ async function validateManifest() {
       ) ||
       !analysisUnitDecompositionMigration.includes(
         "to_jsonb('20260831183106'::text)"
+      ) ||
+      !simplifiedAuthoringAnalyticsMigration.includes(
+        "$advance_course_authoring_analytics_v2_manifest$"
+      ) ||
+      !simplifiedAuthoringAnalyticsMigration.includes(
+        "'schemaRevision','20260902040050'"
       )) {
     fail("A migration de Curso não avança o manifesto remoto.");
   }
@@ -654,7 +663,8 @@ async function validateManifest() {
         !sourcePdfIngestionMigration.includes(`'${feature}'`) &&
         !sourcePdfReceiptReplayMigration.includes(`'${feature}'`) &&
         !sourcePdfAccessLifecycleMigration.includes(`'${feature}'`) &&
-        !sourcePdfAttachmentAccessMigration.includes(`'${feature}'`)) {
+        !sourcePdfAttachmentAccessMigration.includes(`'${feature}'`) &&
+        !simplifiedAuthoringAnalyticsMigration.includes(`'${feature}'`)) {
       fail(`A migration de Curso não declara ${feature}.`);
     }
   }

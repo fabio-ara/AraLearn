@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260831183106",
+  "schemaRevision": "20260902040050",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -39,7 +39,7 @@
     "course-audit-annotation-links-v1",
     "course-variant-comparisons-v1",
     "course-variant-comparison-list-v1",
-    "course-authoring-analytics-v1",
+    "course-authoring-analytics-v2",
     "course-variant-factual-comparison-v1",
     "contextual-study-unit-edit-v1",
     "personal-course-copy-edit-v1",

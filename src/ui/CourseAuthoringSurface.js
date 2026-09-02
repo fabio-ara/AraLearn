@@ -51,13 +51,13 @@ const AUTHORING_TASKS = Object.freeze([
   Object.freeze({ key: "parameters", label: "Parâmetros", icon: "tags", ownerOnly: true }),
   Object.freeze({ key: "sources", label: "Fontes", icon: "study", ownerOnly: true }),
   Object.freeze({ key: "review", label: "Revisão", icon: "preview" }),
-  Object.freeze({ key: "research", label: "Variantes e pesquisa", icon: "experiment" }),
+  Object.freeze({ key: "research", label: "Variantes e Analytics", icon: "experiment" }),
   Object.freeze({ key: "people", label: "Pessoas e acesso", icon: "account-add" })
 ]);
 const AUTHORING_SECTION_LABELS = Object.freeze({
   ...Object.fromEntries(AUTHORING_TASKS.map(({ key, label }) => [key, label])),
   parameters: "Parâmetros",
-  research: "Pesquisa"
+  research: "Analytics"
 });
 
 function escapeHtml(value) {
@@ -903,11 +903,11 @@ function renderResearchSection(state) {
   const active = state.researchView === "analytics" && analyticsAllowed ? "analytics" : "variants";
   return '<section class="course-authoring-section course-authoring-research-workspace"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Variantes e pesquisa</h2>' +
-    '<nav class="course-authoring-task-switch" aria-label="Tarefa de variantes e pesquisa">' +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Variantes e Analytics</h2>' +
+    '<nav class="course-authoring-task-switch" aria-label="Tarefa de variantes e Analytics">' +
     `<button type="button" data-course-authoring-action="show-research-variants" aria-pressed="${active === "variants"}">Variantes</button>` +
     (analyticsAllowed
-      ? `<button type="button" data-course-authoring-action="show-research-analytics" aria-pressed="${active === "analytics"}">Pesquisa</button>`
+      ? `<button type="button" data-course-authoring-action="show-research-analytics" aria-pressed="${active === "analytics"}">Analytics</button>`
       : "") + "</nav>" +
     (active === "variants"
       ? '<div class="course-variants-host" data-course-variants-host></div>'
@@ -1593,7 +1593,7 @@ export function createCourseAuthoringSurface({
     } catch (error) {
       host.innerHTML = statusPanel({
         kind: "error",
-        title: "Pesquisa indisponível",
+        title: "Analytics indisponível",
         message: writeFailureMessage(error)
       });
     }

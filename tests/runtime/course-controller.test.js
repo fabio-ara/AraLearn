@@ -27,6 +27,43 @@ import { courseVariantComparisonFixture } from
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_B = "20000000-0000-4000-8000-000000000002";
 
+function analyticsSnapshot() {
+  const scope = { kind: "course", ref: null, label: "Curso" };
+  return {
+    contract: "aralearn.course-authoring-analytics.v2",
+    course: { id: COURSE_ID, revision: 7, title: "Curso" },
+    scope: { selected: scope, options: [scope] },
+    design: {
+      studyUnitCount: 0,
+      parameters: [[
+        "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
+      ], ["required_explanation_forms", "Formas", "string_list"], [
+        "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
+      ], ["required_practice_variation_dimensions", "Variação", "string_list"]]
+        .map(([parameterId, label, valueKind]) => ({
+          parameterId, label, valueKind, effectiveValues: []
+        })),
+      editorialDirections: [],
+      analysisUnits: [],
+      introductionsByStudyUnit: [],
+      explanationForms: [],
+      components: [],
+      practiceByRequirement: [],
+      practiceVariationDimensions: [],
+      sourcesByRole: []
+    },
+    authorship: {
+      observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
+      explicitParameterChangeCount: 0,
+      manualEditCount: 0,
+      repairs: { acceptedCount: 0, rejectedCount: 0 },
+      studyUnitChangesByOrigin: []
+    },
+    missingData: [],
+    deepLink: null
+  };
+}
+
 class MemoryStateStore {
   values = new Map();
 
@@ -1500,26 +1537,12 @@ test("Controller preserva o DTO factual e encaminha a desvinculação canônica"
   assert.equal(Object.hasOwn(calls[1][1], "expectedCourseRevision"), false);
 });
 
-test("Pesquisa é owner-only, remota e ligada à revisão solicitada", async () => {
-  const query = normalizeCourseAuthoringAnalyticsQuery({
-    datasets: ["materializations"],
-    limit: 20
+test("Analytics é owner-only, remoto e ligado à revisão solicitada", async () => {
+  const query = normalizeCourseAuthoringAnalyticsQuery();
+  const page = assembleCourseAuthoringAnalyticsPage(analyticsSnapshot(), {
+    publicAppUrl: "https://app.example",
+    expectedQuery: query
   });
-  const page = assembleCourseAuthoringAnalyticsPage({
-    contract: "aralearn.course-authoring-analytics-rows.v1",
-    courseId: COURSE_ID,
-    courseRevision: 7,
-    generatedAt: "2026-08-20T09:00:00.000Z",
-    query,
-    facts: [],
-    summary: {
-      factCount: 0,
-      missingCourseRevisionCount: 0,
-      byDataset: [],
-      byKind: []
-    },
-    nextCursor: null
-  }, { publicAppUrl: "https://app.example", expectedQuery: query });
   const calls = [];
   const api = {
     async listCourses() { return courseListPage([]); },
@@ -1551,7 +1574,7 @@ test("Pesquisa é owner-only, remota e ligada à revisão solicitada", async () 
   await assert.rejects(() => reader.loadCourseAuthoringAnalytics(COURSE_ID, {
     expectedCourseRevision: 7,
     query
-  }), /não oferece os fatos de Pesquisa/u);
+  }), /não oferece (?:Analytics|Pesquisa)/u);
 });
 
 test("ciclo de auditoria é owner-only, remoto e invalida conteúdo somente ao aplicar", async () => {

@@ -277,39 +277,6 @@ function appendLimitations(parts, value) {
   if (missing.length) parts.push(`Dados ausentes: ${missing.join(" ")}`);
 }
 
-function summarizeAnalytics(value) {
-  const parts = ["Os fatos de pesquisa da Autoria foram lidos."];
-  if (value.overview?.question) parts.push(String(value.overview.question));
-  const completeSeries = Array.isArray(value.overview?.series) ? value.overview.series : [];
-  const series = completeSeries.slice(0, 12);
-  if (series.length) {
-    const unitLabels = {
-      count: "contagem",
-      milliseconds: "milissegundos",
-      ratio: "proporção",
-      percentage: "porcentagem"
-    };
-    parts.push(series.map((entry) => {
-      const valueText = entry?.value === null ? "dado ausente" : entry?.value;
-      const unit = unitLabels[entry?.unit] || entry?.unit || "não informada";
-      const denominator = entry?.denominator === null || entry?.denominator === undefined
-        ? "ausente"
-        : entry.denominator;
-      return `${entry?.label || "Indicador"}: ${valueText} ` +
-        `(unidade: ${unit}; denominador: ${denominator})`;
-    }).join("; ") + ".");
-  }
-  if (completeSeries.length > series.length) {
-    parts.push(
-      `A síntese apresenta ${series.length} de ${completeSeries.length} categorias; ` +
-      "As demais categorias continuam disponíveis se forem necessárias."
-    );
-  }
-  appendPageSummary(parts, value);
-  appendLimitations(parts, value);
-  return parts.join(" ");
-}
-
 function exceedsMcpResponseLimit(payload) {
   return new TextEncoder().encode(JSON.stringify(payload)).byteLength > MCP_RESPONSE_LIMIT;
 }
@@ -504,9 +471,6 @@ function summarizeToolResult(name, value) {
     "aralearn.course-authoring-part-materialization.v1"
   ]).has(value?.contract)) {
     return summarizeMaterialization(value).slice(0, 12000);
-  }
-  if (value?.contract === "aralearn.course-authoring-analytics.v1") {
-    return summarizeAnalytics(value).slice(0, 12000);
   }
   if (value?.contract === "aralearn.course-variant-comparison.v1") {
     return summarizeVariantComparison(value).slice(0, 12000);

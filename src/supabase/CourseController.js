@@ -2354,19 +2354,19 @@ export class CourseController {
 
   async loadCourseAuthoringAnalytics(courseId, value = {}) {
     if (!this.ownerOnly || typeof this.api.loadCourseAuthoringAnalytics !== "function") {
-      throw new TypeError("A API de Autoria não oferece os fatos de Pesquisa.");
+      throw new TypeError("A API de Autoria não oferece Analytics.");
     }
     if (!value || typeof value !== "object" || Array.isArray(value) ||
         Object.keys(value).some((field) => !new Set([
           "expectedCourseRevision", "query"
         ]).has(field))) {
-      throw new TypeError("Leitura de Pesquisa inválida.");
+      throw new TypeError("Leitura de Analytics inválida.");
     }
     const normalizedCourseId = String(courseId || "").trim().toLowerCase();
     const expectedCourseRevision = Number(value.expectedCourseRevision);
     if (!UUID_PATTERN.test(normalizedCourseId) ||
         !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1) {
-      throw new TypeError("Leitura de Pesquisa inválida.");
+      throw new TypeError("Leitura de Analytics inválida.");
     }
     const query = normalizeCourseAuthoringAnalyticsQuery(value.query ?? {});
     try {
@@ -2377,8 +2377,8 @@ export class CourseController {
         }),
         { expectedCourseId: normalizedCourseId, expectedQuery: query }
       );
-      if (page.courseRevision !== expectedCourseRevision) {
-        throw new TypeError("A página de Pesquisa não corresponde ao pedido.");
+      if (page.course.revision !== expectedCourseRevision) {
+        throw new TypeError("O snapshot de Analytics não corresponde ao pedido.");
       }
       return page;
     } catch (error) {

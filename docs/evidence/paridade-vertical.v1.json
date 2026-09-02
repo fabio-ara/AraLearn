@@ -368,16 +368,16 @@
     },
     {
       "id": "course-authoring-research",
-      "intent": "Investigar fatos da Autoria com definições, denominadores, lacunas, filtros, tabelas, gráficos e exportações reproduzíveis no aplicativo e no MCP.",
+      "intent": "Caracterizar quantitativamente o desenho instrucional e as intervenções humanas explícitas no Curso corrente.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#127",
       "objects": {
         "manifestFeatures": [
-          "course-authoring-analytics-v1"
+          "course-authoring-analytics-v2"
         ],
         "databasePatterns": [
-          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v1\\(.*\\)$"
+          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v2\\(.*\\)$"
         ]
       },
       "ui": [
@@ -385,26 +385,24 @@
         { "path": "src/ui/CourseAuthoringSurface.js", "token": "section === \"research\"" }
       ],
       "visibleEffects": [
-        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "data-course-analytics-action=\"export-csv\"" },
         { "path": "src/ui/CourseAnalyticsPanel.js", "token": "data-course-analytics-action=\"export-json\"" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "renderAnalytics" }
+        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "course-analytics-metrics" },
+        { "path": "src/ui/CourseAnalyticsPanel.js", "token": "course-analytics-missing" }
       ],
       "persistence": [
         { "path": "src/supabase/CourseController.js", "token": "loadCourseAuthoringAnalytics" },
-        { "path": "supabase/migrations/20260820063156_course_authoring_analytics.sql", "token": "get_owned_course_authoring_analytics_for_actor_v1" }
+        { "path": "supabase/migrations/20260902040050_simplify_course_authoring_analytics.sql", "token": "get_owned_course_authoring_analytics_for_actor_v2" }
       ],
       "routes": [
         { "path": "src/supabase/CourseApiClient.js", "token": "loadCourseAuthoringAnalytics" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuthoringAnalytics" },
-        { "path": "supabase/functions/_shared/aralearn-authoring/courseMcpAppResource.js", "token": "COURSE_MCP_APP_RESOURCE_URI" }
+        { "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js", "token": "getCourseAuthoringAnalytics" }
       ],
       "tests": [
         "tests/runtime/course-authoring-analytics-domain.test.js",
         "tests/runtime/course-authoring-analytics-pglite.test.js",
-        "tests/runtime/course-analytics-panel.test.js",
-        "tests/runtime/course-mcp-app-resource.test.js"
+        "tests/runtime/course-analytics-panel.test.js"
       ],
-      "justification": "Os fatos brutos, o dicionário, a síntese visual e os arquivos exportados derivam do mesmo recorte versionado. A interface e o MCP acrescentam apenas apresentação e navegação; não mantêm telemetria, autenticação ou estado de pesquisa paralelos."
+      "justification": "O snapshot deriva do Curso corrente, da aplicação pedagógica selada e de intervenções humanas já explícitas no fluxo. A exportação JSON é deliberada e pontual; não cria histórico, ledger, telemetria ou estado de pesquisa paralelo."
     },
     {
       "id": "current-data-lifecycle",

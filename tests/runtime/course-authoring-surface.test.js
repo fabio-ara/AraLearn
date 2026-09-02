@@ -3376,7 +3376,7 @@ test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasio
   assert.doesNotMatch(markup, /Visão geral|section=overview|course-authoring-overview/u);
   assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
   for (const label of [
-    "Parâmetros", "Fontes", "Revisão", "Variantes e pesquisa", "Pessoas e acesso"
+    "Parâmetros", "Fontes", "Revisão", "Variantes e Analytics", "Pessoas e acesso"
   ]) assert.match(markup, new RegExp(`<strong>${label}<\\/strong>`, "u"));
   for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {
     assert.match(markup, new RegExp(`section=${section}`, "u"));

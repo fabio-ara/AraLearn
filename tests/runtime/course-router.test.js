@@ -471,7 +471,7 @@ test("observações chegam ao Adapter com query canônica e sem autoridade do cl
     consideredSourceLinks);
 });
 
-test("Pesquisa chega ao Adapter com filtros explícitos e limite server-side", async () => {
+test("Analytics chega ao Adapter somente com o escopo atual", async () => {
   const calls = [];
   const adapter = {
     async getCourseAuthoringAnalytics(value) {
@@ -481,9 +481,7 @@ test("Pesquisa chega ao Adapter com filtros explícitos e limite server-side", a
   };
   const read = request(
     `/v1/courses/${COURSE_ID}/research?expectedRevision=7&` +
-      "dataset=annotations&dataset=audits&channel=study_interface&" +
-      "origin=learner&state=open&from=2026-08-01T00%3A00%3A00.000Z&" +
-      "to=2026-08-20T23%3A59%3A59.000Z&limit=40&cursor=cGFnZS0y"
+      "scopeKind=didactic_microsequence&scopeRef=micro-dns"
   );
   const result = await executeCourseRoute({
     request: read,
@@ -496,20 +494,14 @@ test("Pesquisa chega ao Adapter com filtros explícitos e limite server-side", a
   assert.equal(calls[0].courseId, COURSE_ID);
   assert.equal(calls[0].expectedCourseRevision, 7);
   assert.deepEqual(calls[0].query, {
-    datasets: ["annotations", "audits"],
-    channels: ["study_interface"],
-    origins: ["learner"],
-    states: ["open"],
-    from: "2026-08-01T00:00:00.000Z",
-    to: "2026-08-20T23:59:59.000Z",
-    limit: 40,
-    cursor: "cGFnZS0y"
+    scope: { kind: "didactic_microsequence", ref: "micro-dns" }
   });
 
   for (const invalid of [
-    `expectedRevision=7&expectedRevision=8&dataset=annotations`,
-    `expectedRevision=7&dataset=unknown`,
-    `expectedRevision=7&dataset=annotations&limit=201`
+    "expectedRevision=7&expectedRevision=8",
+    "expectedRevision=7&scopeKind=unknown&scopeRef=micro-dns",
+    `expectedRevision=7&scopeKind=course&scopeRef=${COURSE_ID}`,
+    "expectedRevision=7&dataset=annotations"
   ]) {
     const invalidRead = request(`/v1/courses/${COURSE_ID}/research?${invalid}`);
     await assert.rejects(() => executeCourseRoute({

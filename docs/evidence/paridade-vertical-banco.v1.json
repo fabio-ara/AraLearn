@@ -2143,7 +2143,7 @@
       "caseId": "course-audit-corrections"
     },
     {
-      "object": "function:public.get_owned_course_authoring_analytics_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_query jsonb)",
+      "object": "function:public.get_owned_course_authoring_analytics_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_query jsonb)",
       "caseId": "course-authoring-research"
     },
     {
@@ -2556,10 +2556,6 @@
     },
     {
       "object": "index:private.course_entities/course_entities_sibling_position_v1",
-      "caseId": "course-authoring-experience"
-    },
-    {
-      "object": "index:private.course_events/course_events_analytics_v1_idx",
       "caseId": "course-authoring-experience"
     },
     {

@@ -219,18 +219,15 @@ async function expectResponsiveAuthoringNavigation(page, width) {
     [...new Set(links.map((link) => link.dataset.section))].sort()
   );
   expect(sections).toEqual([
-    "content",
-    "overview",
     "parameters",
     "people",
-    "planning",
     "research",
     "review",
     "sources"
   ]);
   await expect(menu).toBeVisible();
   await expect(menu.locator(":scope > summary")).toHaveCount(1);
-  await expect(menu.locator(":scope > nav > a")).toHaveCount(8);
+  await expect(menu.locator(":scope > nav > a")).toHaveCount(5);
   await expect(menu.locator(":scope > summary")).toHaveAccessibleName("Abrir tarefas do Curso");
   await menu.locator(":scope > summary").click();
   await expect(menu.getByRole("button", { name: "Atualizar Curso" })).toBeVisible();
@@ -240,7 +237,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
   await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" })).toHaveCount(0);
   await menu.locator(":scope > summary").click();
   await expect(page.locator(".course-authoring-sidebar-navigation")).toHaveCount(0);
-  await expect(page.locator(".course-authoring-primary-navigation")).toHaveCount(0);
+  await expect(page.locator(".course-authoring-primary-navigation")).toHaveCount(1);
+  await expect(page.locator(".course-authoring-primary-navigation > a")).toHaveCount(2);
   const geometry = await page.locator(".course-authoring-surface").evaluate((surface) => {
     const frame = surface.querySelector(".course-authoring-frame");
     const layout = surface.querySelector(".course-authoring-layout");
@@ -253,8 +251,6 @@ async function expectResponsiveAuthoringNavigation(page, width) {
     const frameRect = frame.getBoundingClientRect();
     const layoutRect = layout.getBoundingClientRect();
     const mainRect = main.getBoundingClientRect();
-    const headerRect = header?.getBoundingClientRect();
-    const headingRect = heading?.getBoundingClientRect();
     return {
       surfaceWidth: surfaceRect.width,
       frameWidth: frameRect.width,
@@ -263,12 +259,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
       layoutColumns: getComputedStyle(layout).gridTemplateColumns,
       mainAligned: Math.abs(mainRect.left - layoutRect.left) <= 1 &&
         Math.abs(mainRect.width - layoutRect.width) <= 1,
-      headerTitleCentered: Boolean(headerRect && headingRect &&
-        Math.abs(
-          headingRect.left + headingRect.width / 2 -
-          (headerRect.left + headerRect.width / 2)
-        ) <= 1),
-      titleFits: Boolean(title && title.scrollWidth <= title.clientWidth + 1),
+      titleHasFullLabel: Boolean(title &&
+        title.getAttribute("title") === title.textContent.trim()),
       titleTransform: title ? getComputedStyle(title).textTransform : null,
       contextTitle: contextTitle?.textContent?.trim() || "",
       contextTransform: contextTitle ? getComputedStyle(contextTitle).textTransform : null
@@ -278,8 +270,7 @@ async function expectResponsiveAuthoringNavigation(page, width) {
   expect(geometry.frameWidth).toBeLessThanOrEqual(430);
   expect(geometry.layoutColumns.trim().split(/\s+/u)).toHaveLength(1);
   expect(geometry.mainAligned).toBe(true);
-  expect(geometry.headerTitleCentered).toBe(true);
-  expect(geometry.titleFits).toBe(true);
+  expect(geometry.titleHasFullLabel).toBe(true);
   expect(geometry.titleTransform).toBe("none");
   expect(geometry.contextTitle.length).toBeGreaterThan(0);
   expect(geometry.contextTransform).toBe("none");
@@ -292,7 +283,7 @@ async function expectResponsiveAuthoringNavigation(page, width) {
     ".course-audit-preview-grid",
     ".course-observations-filter-grid",
     ".course-variants-comparison-differences",
-    ".course-analytics-filters"
+    ".course-analytics-scope"
   ]) {
     const grid = page.locator(selector).first();
     if (await grid.count() && await grid.isVisible()) {
@@ -1449,117 +1440,152 @@ async function mountCourseAuthoring(page, {
       hasMore: false,
       nextCursor: null
     });
-    const analyticsFacts = (courseId) => [{
-      factId: "annotation:open:1",
-      dataset: "annotations",
-      kind: "annotation_reopened",
-      occurredAt: "2026-08-18T14:30:00.000Z",
-      courseRevision: 5,
-      channel: "study_interface",
-      origin: "learner",
-      state: "open",
-      subject: {
-        kind: "anchored_annotation",
-        id: "81000000-0000-4000-8000-000000000081",
-        label: "Observação sobre a comparação"
-      },
-      related: {
-        kind: "study_unit",
-        id: "study-unit-01",
-        label: "Exemplo guiado com diagrama"
-      },
-      values: {
-        annotation_version: 3,
-        event_type: "reopened",
-        target_kind: "study_unit",
-        subject_count: 1
-      },
-      missingData: [],
-      deepLink: `${window.location.origin}/#/authoring/courses/${courseId}` +
-        "?section=content&studyUnitId=study-unit-01"
-    }, {
-      factId: "annotation:resolved:2",
-      dataset: "annotations",
-      kind: "annotation_resolved",
-      occurredAt: "2026-08-19T16:45:00.000Z",
-      courseRevision: null,
-      channel: "study_interface",
-      origin: "learner",
-      state: "resolved",
-      subject: {
-        kind: "anchored_annotation",
-        id: "82000000-0000-4000-8000-000000000082",
-        label: "Observação resolvida sem revisão registrada"
-      },
-      related: null,
-      values: {
-        annotation_version: 4,
-        event_type: "resolved",
-        target_kind: "study_unit",
-        subject_count: null
-      },
-      missingData: [
-        "A revisão do Curso e a quantidade de assuntos não foram registradas neste fato."
-      ],
-      deepLink: `${window.location.origin}/#/authoring/courses/${courseId}` +
-        "?section=review"
-    }];
     const analyticsPage = (courseId, options) => {
-      const { query } = options;
-      const matching = analyticsFacts(courseId).filter((fact) =>
-        query.datasets.includes(fact.dataset) &&
-        (!query.channels.length || query.channels.includes(fact.channel)) &&
-        (!query.origins.length || query.origins.includes(fact.origin)) &&
-        (!query.states.length || query.states.includes(fact.state)) &&
-        (query.from === null || Date.parse(fact.occurredAt) >= Date.parse(query.from)) &&
-        (query.to === null || Date.parse(fact.occurredAt) <= Date.parse(query.to))
-      );
-      const secondPage = query.cursor === "pagina_2";
+      const selected = options.query.scope.kind === "course"
+        ? { kind: "course", ref: null, label: "Curso inteiro" }
+        : {
+          kind: "didactic_microsequence",
+          ref: "microsequence-a",
+          label: "Microssequência · Comparação orientada"
+        };
+      const studyUnitCount = selected.kind === "course" ? 2 : 1;
       return {
-        contract: "aralearn.course-authoring-analytics.v1",
-        dictionaryVersion: "aralearn.course-authoring-analytics-dictionary.v1",
-        courseId,
-        courseRevision: options.expectedCourseRevision,
-        generatedAt: "2026-08-20T09:00:00.000Z",
-        query: structuredClone(query),
-        metrics: [{
-          id: "annotations_by_state",
-          version: 1,
-          label: "Observações por estado",
-          question: "Qual é o estado corrente das observações do recorte?",
-          definition: "Conta cada observação corrente uma vez pelo estado registrado.",
-          unit: "count",
-          denominator: "Quatro observações correntes no recorte.",
-          missingData: "A ausência de uma contagem permanece indicada como dado ausente.",
-          prohibitedInferences: [
-            "A contagem não mede aprendizagem, atenção ou dificuldade."
-          ]
-        }],
-        overview: {
-          metricId: "annotations_by_state",
-          title: "Estado das observações",
-          question: "Qual é o estado corrente das observações do recorte?",
-          series: [{
-            key: "open",
-            label: "Aberta",
-            value: 3,
-            unit: "count",
-            denominator: 4,
-            missing: false
+        contract: "aralearn.course-authoring-analytics.v2",
+        course: {
+          id: courseId,
+          revision: options.expectedCourseRevision,
+          title: "Fundamentos de relações"
+        },
+        scope: {
+          selected,
+          options: [{
+            kind: "course",
+            ref: null,
+            label: "Curso inteiro"
           }, {
-            key: "resolved",
-            label: "Resolvida",
-            value: null,
-            unit: "count",
-            denominator: 4,
-            missing: true
+            kind: "didactic_microsequence",
+            ref: "microsequence-a",
+            label: "Microssequência · Comparação orientada"
           }]
         },
-        facts: structuredClone(secondPage ? matching.slice(1, 2) : matching.slice(0, 1)),
-        nextCursor: !secondPage && matching.length > 1 ? "pagina_2" : null,
-        limitations: [
-          "O estado da observação não mede a aprendizagem da pessoa estudante.",
-          "Os números descrevem este recorte e não demonstram relação causal."
+        design: {
+          studyUnitCount,
+          parameters: [{
+            parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+            label: "Novidades por StudyUnit expositiva",
+            valueKind: "integer",
+            effectiveValues: [{
+              value: 1,
+              origin: "research_condition",
+              studyUnitCount
+            }]
+          }, {
+            parameterId: "required_explanation_forms",
+            label: "Formas de explicação requeridas",
+            valueKind: "string_list",
+            effectiveValues: [{
+              value: ["definition", "contrast"],
+              origin: "automatic",
+              studyUnitCount
+            }]
+          }, {
+            parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
+            label: "Práticas distintas por requisito",
+            valueKind: "integer",
+            effectiveValues: [{
+              value: 3,
+              origin: "author",
+              studyUnitCount
+            }]
+          }, {
+            parameterId: "required_practice_variation_dimensions",
+            label: "Dimensões de variação requeridas",
+            valueKind: "string_list",
+            effectiveValues: [{
+              value: ["context", "representation"],
+              origin: "automatic",
+              studyUnitCount
+            }]
+          }],
+          editorialDirections: [{
+            direction: "Títulos diretos e parágrafos breves.",
+            origin: "author",
+            studyUnitCount
+          }],
+          analysisUnits: Array.from({ length: studyUnitCount }, (_, index) => ({
+            position: index + 1,
+            statement: index === 0
+              ? "Comparação exige um critério comum."
+              : "Contraste explicita uma diferença relevante.",
+            introductionCount: 1
+          })),
+          introductionsByStudyUnit: Array.from({ length: studyUnitCount }, (_, index) => ({
+            studyUnitRef: `study-unit-${String(index + 1).padStart(2, "0")}`,
+            position: index + 1,
+            title: index === 0 ? "Exemplo guiado com diagrama" : "Contraste aplicado",
+            introducedCount: 1
+          })),
+          explanationForms: [{
+            form: "definition",
+            studyUnitCount,
+            applicationCount: studyUnitCount
+          }, {
+            form: "contrast",
+            studyUnitCount: 1,
+            applicationCount: 1
+          }],
+          components: [{
+            componentRef: "aralearn.resource.paragraph@1.0.0",
+            studyUnitCount,
+            instanceCount: studyUnitCount + 1
+          }, {
+            componentRef: "aralearn.resource.relation_map@1.0.0",
+            studyUnitCount: 1,
+            instanceCount: 1
+          }],
+          practiceByRequirement: [{
+            position: 1,
+            statement: "Comparar explicações com um critério explícito.",
+            opportunityCount: 3
+          }],
+          practiceVariationDimensions: [{
+            dimension: "context",
+            opportunityCount: 2
+          }, {
+            dimension: "representation",
+            opportunityCount: 1
+          }],
+          sourcesByRole: [{
+            role: "factual_support",
+            sourceCount: 2,
+            anchorCount: 3,
+            studyUnitCount
+          }]
+        },
+        authorship: {
+          observations: {
+            createdCount: 4,
+            openCount: 1,
+            resolvedCount: 3
+          },
+          explicitParameterChangeCount: 1,
+          manualEditCount: 2,
+          repairs: {
+            acceptedCount: 1,
+            rejectedCount: 1
+          },
+          studyUnitChangesByOrigin: [{
+            origin: "gpt",
+            createdCount: studyUnitCount,
+            revisedCount: 1
+          }, {
+            origin: "author",
+            createdCount: 0,
+            revisedCount: 2
+          }]
+        },
+        missingData: [
+          "Uma direção editorial antiga não informou origem."
         ],
         deepLink: `${window.location.origin}/#/authoring/courses/${courseId}?section=research`
       };
@@ -3087,8 +3113,6 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     { width: 1280, height: 900 }
   ];
   const remainingAreas = [
-    { section: "overview", heading: "Visão geral", ready: "[data-course-authoring-task-list]" },
-    { section: "content", heading: "Conteúdo", ready: "[data-inspection-study-unit]" },
     {
       section: "parameters",
       heading: "Parâmetros",
@@ -3129,21 +3153,6 @@ test.describe("aceite focal do shell simples da Autoria", () => {
         await expect.poll(() => page.locator(".course-authoring-root").evaluate(
           (element) => element.scrollTop
         )).toBeLessThanOrEqual(1);
-        const planningCounts = page.locator(
-          ".course-authoring-planning-metric-counts > span"
-        );
-        await expect(planningCounts).toHaveText(["1 microssequência", "2 unidades"]);
-        expect(await planningCounts.evaluateAll((nodes) => nodes.map((node) => {
-          const style = getComputedStyle(node);
-          return {
-            text: node.textContent.trim(),
-            whiteSpace: style.whiteSpace,
-            fits: node.scrollWidth <= node.clientWidth + 1
-          };
-        }))).toEqual([
-          { text: "1 microssequência", whiteSpace: "nowrap", fits: true },
-          { text: "2 unidades", whiteSpace: "nowrap", fits: true }
-        ]);
         const stableHeaderHeight = await page.locator(".course-authoring-course-header")
           .evaluate((element) => element.getBoundingClientRect().height);
         if ((width === 390 && colorScheme === "light") ||
@@ -3165,7 +3174,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             "aria-busy",
             "false"
           );
-          await expect(page.locator(".course-authoring-course-header h1")).toHaveText(
+          await expect(page.locator(".course-authoring-context-title")).toHaveText(
             area.heading
           );
           await expect(page.locator(area.ready).first()).toBeVisible();
@@ -3186,9 +3195,9 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             });
           }
           if (area.section === "research") {
-            await page.getByRole("button", { name: "Pesquisa", exact: true }).click();
-            await expect(page.locator(".course-authoring-course-header h1"))
-              .toHaveText("Pesquisa");
+            await page.getByRole("button", { name: "Analytics", exact: true }).click();
+            await expect(page.locator(".course-authoring-context-title"))
+              .toHaveText("Analytics");
             await expect(page.locator(".course-analytics")).toBeVisible();
           }
           if (area.section === "research" && width === 1280 && colorScheme === "dark") {
@@ -5254,7 +5263,7 @@ test("criação e edição persistem pelo controlador compartilhado", async ({ p
   expect(clientErrors).toEqual([]);
 });
 
-test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exportações", async ({
+test("Analytics em 390 px preserva escopo, números e exportação do snapshot", async ({
   page
 }, testInfo) => {
   const clientErrors = captureClientErrors(page);
@@ -5272,219 +5281,107 @@ test("Pesquisa em 390 px preserva o recorte no gráfico, nos fatos e nas exporta
   const researchHash = `#/authoring/courses/${COURSE_IDS[0]}?section=research`;
   await mountCourseAuthoring(page, { cardinality: "many", hash: researchHash });
 
-  await page.getByRole("button", { name: "Pesquisa", exact: true }).click();
-  const research = page.getByRole("region", { name: "Pesquisa", exact: true });
-  const datasetFilter = research.getByRole("combobox", { name: "Fatos", exact: true });
-  const channelFilter = research.getByRole("combobox", {
-    name: "Origem da interação",
-    exact: true
-  });
-  await expect(research).toBeVisible();
-  await expect(datasetFilter).toHaveValue("all");
-  await expect(channelFilter).toHaveValue("all");
-  await expect(research.getByLabel("Desde")).toHaveValue("");
-  await expect(research.getByLabel("Até")).toHaveValue("");
-
-  const chart = research.getByRole("img", { name: /Estado das observações/u });
-  await expect(chart).toHaveAccessibleName(
-    "Estado das observações. Em aberto: 3; Resolução registrada: Dado ausente"
-  );
-  await expect(research.getByRole("table")).toHaveCount(0);
-  await expect(research.getByText("Métrica", { exact: true })).toHaveCount(0);
-  const factsTop = await research.locator(".course-analytics-facts").evaluate((element) =>
-    element.getBoundingClientRect().top);
-  const metricTrigger = research.getByRole("button", { name: "Detalhes da pesquisa" });
-  await metricTrigger.click();
-  const metricSheet = page.getByRole("dialog", { name: "Detalhes da pesquisa" });
-  await expect(metricSheet).toBeVisible();
-  const metricClose = metricSheet.getByRole("button", { name: "Fechar" });
-  await expect(metricClose).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(metricClose).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
-  await expect(metricClose).toBeFocused();
-  await expect(metricSheet.getByRole("table")).toHaveCount(0);
-  await expect(metricSheet.getByText("Mede", { exact: true })).toBeVisible();
-  await expect(metricSheet.getByText("Unidade", { exact: true })).toBeVisible();
-  await expect(metricSheet.getByText("Base", { exact: true })).toBeVisible();
-  await expect(metricSheet.getByText("Definição", { exact: true })).toHaveCount(0);
-  await expect(research.getByText("Revisão 5", { exact: true })).toBeVisible();
-  await expect(metricSheet.getByText("Quatro observações correntes no recorte.", {
-    exact: true
+  await page.getByRole("button", { name: "Analytics", exact: true }).click();
+  const analytics = page.getByRole("region", { name: "Analytics", exact: true });
+  const scope = analytics.getByRole("combobox", { name: "Escopo", exact: true });
+  await expect(analytics).toBeVisible();
+  await expect(scope).toHaveValue("0");
+  await expect(analytics.getByRole("heading", { name: "Desenho", exact: true })).toBeVisible();
+  await expect(analytics.getByRole("heading", { name: "Autoria", exact: true })).toBeVisible();
+  await expect(analytics.getByRole("heading", { level: 3 })).toHaveCount(2);
+  await expect(analytics.locator(".course-analytics-metrics")).toHaveCount(2);
+  await expect(analytics.locator(".course-analytics-metrics dt", {
+    hasText: "StudyUnits"
   })).toBeVisible();
-  await expect(metricSheet).not.toContainText(
-    "Conta cada observação corrente uma vez pelo estado registrado."
+  await expect(analytics.locator(".course-analytics-metrics dt", {
+    hasText: "AnalysisUnits"
+  })).toBeVisible();
+  await expect(analytics.locator(".course-analytics-metrics dt", {
+    hasText: "Observações abertas"
+  })).toBeVisible();
+  await expect(analytics).toContainText("Unidades no escopo.");
+  await expect(analytics).toContainText("Intervenções explícitas observáveis");
+  await expect(analytics).not.toContainText(
+    /Fatos do recorte|execução|etapa|duração|hash|payload|percentual de autoria/iu
   );
-  await expect(metricSheet).not.toContainText(
-    "A ausência de uma contagem permanece indicada como dado ausente."
+
+  const details = analytics.locator("details.course-analytics-details");
+  await expect(details).toHaveCount(4);
+  await expect(details.filter({ hasText: "Configuração aplicada" })).not.toHaveAttribute("open", "");
+  await details.filter({ hasText: "Configuração aplicada" }).locator("summary").click();
+  const configuration = analytics.getByRole("table", { name: "Configuração aplicada" });
+  await expect(configuration).toBeVisible();
+  await expect(configuration).toContainText("Novidades por StudyUnit expositiva");
+  await expect(configuration).toContainText("1 · 2 StudyUnits · Condição de pesquisa");
+  await expect(configuration).toContainText("Definição, Contraste");
+  await expect(analytics).not.toContainText(
+    /new_analysis_unit_ceiling|provider_assistance|componentRef|studyUnitRef|aralearn\.resource/iu
   );
-  await expect(metricSheet).not.toContainText(
-    "A contagem não mede aprendizagem, atenção ou dificuldade."
-  );
-  await expect(metricSheet).not.toContainText(
-    "O estado da observação não mede a aprendizagem da pessoa estudante."
-  );
-  await expect(metricSheet).not.toContainText(
-    "Os números descrevem este recorte e não demonstram relação causal."
-  );
-  expect(await metricSheet.evaluate((element) => ({
-    position: getComputedStyle(element.parentElement).position,
-    overflow: getComputedStyle(element).overflow,
-    bodyOverflow: getComputedStyle(
-      element.querySelector(".course-analytics-sheet-body")
-    ).overflowY
-  }))).toEqual({ position: "fixed", overflow: "hidden", bodyOverflow: "auto" });
-  expect(await research.locator(".course-analytics-facts").evaluate((element) =>
-    element.getBoundingClientRect().top)).toBe(factsTop);
-  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh()))
-    .not.toBe("deferred");
+
+  await scope.selectOption("1");
+  await analytics.getByRole("button", { name: "Aplicar escopo" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
-  await expect(metricSheet).toBeVisible();
-  await expect(metricClose).toBeFocused();
-  expect(await research.locator(".course-analytics-facts").evaluate((element) =>
-    element.getBoundingClientRect().top)).toBe(factsTop);
-  await page.keyboard.press("Escape");
-  await expect(metricSheet).toHaveCount(0);
-  await expect(metricTrigger).toBeFocused();
-
-  await datasetFilter.selectOption("annotations");
-  await channelFilter.selectOption("study_interface");
-  await research.getByLabel("Desde").fill("2026-08-18");
-  await research.getByLabel("Até").fill("2026-08-19");
-  await research.getByRole("button", { name: "Aplicar filtros" }).click();
-  await expect.poll(() => page.evaluate(() =>
-    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(3);
-  const filteredQuery = await page.evaluate(() =>
+  const scopedRead = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.at(-1));
-  expect(filteredQuery).toEqual({
+  expect(scopedRead).toEqual({
     courseId: COURSE_IDS[0],
     options: {
       expectedCourseRevision: 5,
       query: {
-        datasets: ["annotations"],
-        channels: ["study_interface"],
-        origins: [],
-        states: [],
-        from: "2026-08-18T00:00:00.000Z",
-        to: "2026-08-19T23:59:59.999Z",
-        limit: 100,
-        cursor: null
+        scope: {
+          kind: "didactic_microsequence",
+          ref: "microsequence-a"
+        }
       }
     }
   });
+  await expect(scope).toHaveValue("1");
+  await expect(analytics.locator(
+    '.course-analytics-metrics[aria-label="Resumo do desenho"] dd'
+  )).toHaveText(["1", "1", "3", "2"]);
 
-  const facts = research.locator(".course-analytics-facts > ol > li");
-  await expect(facts).toHaveCount(1);
-  await expect(facts.first()).toContainText("Observação sobre a comparação");
-  await expect(facts.first()).toContainText("Observação reaberta");
-  await expect(facts.first()).not.toContainText("Versão da Observação");
-  await facts.first().getByRole("button", { name: "Detalhes de Observação reaberta" }).click();
-  const factSheet = page.getByRole("dialog", { name: "Observação reaberta" });
-  await expect(factSheet).toContainText("Versão da Observação: 3");
-  await expect(factSheet).toContainText("Tipo do evento: Reabertura");
-  await expect(factSheet).toContainText("Tipo do objeto: Unidade de estudo");
-  await expect(factSheet).toContainText("OrigemPessoa estudante");
-  await expect(factSheet).toContainText("EstadoEm aberto");
-  await factSheet.getByRole("button", { name: "Fechar" }).click();
-  await research.getByRole("button", { name: "Carregar mais fatos" }).click();
-  await expect(facts).toHaveCount(2);
-  await expect(research.getByRole("button", { name: "Carregar mais fatos" })).toHaveCount(0);
-  await expect(facts.nth(1)).not.toContainText("Assuntos: ausente");
-  await facts.nth(1).getByRole("button", { name: "Detalhes de Observação resolvida" }).click();
-  const missingSheet = page.getByRole("dialog", { name: "Observação resolvida" });
-  await expect(missingSheet).toContainText("EstadoResolução registrada");
-  await expect(missingSheet).toContainText(
-    "A revisão do Curso e a quantidade de assuntos não foram registradas neste fato."
+  const jsonStarted = page.waitForEvent("download");
+  await analytics.getByRole("button", { name: "Exportar Analytics em JSON" }).click();
+  const jsonDownload = await jsonStarted;
+  const jsonPath = await jsonDownload.path();
+  const exported = JSON.parse(await readFile(jsonPath, "utf8"));
+  expect(jsonDownload.suggestedFilename()).toBe("aralearn-analytics-snapshot-r5.json");
+  expect(exported.contract).toBe("aralearn.course-authoring-analytics.v2");
+  expect(exported.scope.selected).toEqual({
+    kind: "didactic_microsequence",
+    ref: "microsequence-a",
+    label: "Microssequência · Comparação orientada"
+  });
+  expect(exported.design.studyUnitCount).toBe(1);
+  expect(exported.design.analysisUnits).toHaveLength(1);
+  expect(exported.design.practiceByRequirement[0].opportunityCount).toBe(3);
+  expect(exported.design.sourcesByRole[0].sourceCount).toBe(2);
+  expect(exported.authorship).toMatchObject({
+    observations: { createdCount: 4, openCount: 1, resolvedCount: 3 },
+    explicitParameterChangeCount: 1,
+    manualEditCount: 2,
+    repairs: { acceptedCount: 1, rejectedCount: 1 }
+  });
+  expect(JSON.stringify(exported)).not.toMatch(
+    /"facts"|"runs"|"steps"|"duration"|"hash"|"payload"/iu
   );
-  await missingSheet.getByRole("button", { name: "Fechar" }).click();
-  await expect(research).not.toContainText(/annotation_(?:reopened|resolved)|learner|study_unit/u);
 
-  const interactiveTargets = await research.locator(
-    ":is(button, select, input, summary, a)"
-  ).evaluateAll((nodes) => nodes.filter((node) => {
-    const style = getComputedStyle(node);
-    const rect = node.getBoundingClientRect();
-    return style.display !== "none" && rect.width > 0 && rect.height > 0 && rect.height < 43;
-  }).map((node) => ({
-    element: node.tagName,
-    label: node.getAttribute("aria-label") || node.textContent.trim(),
-    height: node.getBoundingClientRect().height
-  })));
-  expect(interactiveTargets).toEqual([]);
+  const nestedVerticalScrollers = await analytics.evaluate((root) =>
+    [...root.querySelectorAll("*")].filter((element) => {
+      const overflow = getComputedStyle(element).overflowY;
+      return ["auto", "scroll"].includes(overflow) &&
+        element.scrollHeight > element.clientHeight + 1;
+    }).map((element) => element.className));
+  expect(nestedVerticalScrollers).toEqual([]);
   await expectNoHorizontalOverflow(page);
+  await expectVisibleTouchTargets(page);
   await page.screenshot({
-    path: testInfo.outputPath("course-authoring-research-390.png"),
+    path: testInfo.outputPath("course-authoring-analytics-390.png"),
     fullPage: true,
     animations: "disabled"
   });
 
-  const csvStarted = page.waitForEvent("download");
-  await research.locator('summary[aria-label="Exportar fatos"]').click();
-  await research.getByRole("button", { name: "CSV", exact: true }).click();
-  const csvDownload = await csvStarted;
-  const csvPath = await csvDownload.path();
-  const csv = await readFile(csvPath, "utf8");
-  expect(csvDownload.suggestedFilename()).toBe(
-    `aralearn-analytics-${COURSE_IDS[0]}-r5.csv`
-  );
-  expect(csv).toContain("annotation:open:1");
-  expect(csv).toContain("annotation:resolved:2");
-
-  const jsonStarted = page.waitForEvent("download");
-  await research.locator('summary[aria-label="Exportar fatos"]').click();
-  await research.getByRole("button", { name: "JSON", exact: true }).click();
-  const jsonDownload = await jsonStarted;
-  const jsonPath = await jsonDownload.path();
-  const exported = JSON.parse(await readFile(jsonPath, "utf8"));
-  expect(jsonDownload.suggestedFilename()).toBe(
-    `aralearn-analytics-${COURSE_IDS[0]}-r5.json`
-  );
-  expect(exported.query).toEqual(filteredQuery.options.query);
-  expect(exported.facts.map(({ factId }) => factId)).toEqual([
-    "annotation:open:1",
-    "annotation:resolved:2"
-  ]);
-  expect(exported.facts.map(({ kind, origin, state, values }) => ({
-    kind,
-    origin,
-    state,
-    values
-  }))).toEqual([{
-    kind: "annotation_reopened",
-    origin: "learner",
-    state: "open",
-    values: {
-      annotation_version: 3,
-      event_type: "reopened",
-      target_kind: "study_unit",
-      subject_count: 1
-    }
-  }, {
-    kind: "annotation_resolved",
-    origin: "learner",
-    state: "resolved",
-    values: {
-      annotation_version: 4,
-      event_type: "resolved",
-      target_kind: "study_unit",
-      subject_count: null
-    }
-  }]);
-  expect(csv).toContain("annotation_reopened");
-  expect(csv).toContain("learner");
-  expect(csv.trim().split(/\r?\n/u)).toHaveLength(exported.facts.length + 1);
-
-  await facts.first().getByRole("link", {
-    name: "Abrir Observação sobre a comparação",
-    exact: true
-  }).click();
-  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
-    `#/authoring/courses/${COURSE_IDS[0]}` +
-      "?section=content&studyUnitId=study-unit-01"
-  );
-  await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
-  await expect(page.locator('[data-inspection-study-unit="study-unit-01"]')).toHaveCount(1);
   expect(clientErrors).toEqual([]);
   expect(networkErrors).toEqual([]);
 });
