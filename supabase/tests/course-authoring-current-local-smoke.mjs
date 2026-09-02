@@ -441,8 +441,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       ceiling.effectiveValues.map(({ value, origin, studyUnitCount }) => ({
         value, origin, studyUnitCount
       })),
-      [{ value: 1, origin: "author", studyUnitCount: 1 },
-        { value: 2, origin: "system_default", studyUnitCount: 1 }]
+      [{ value: 1, origin: "author", studyUnitCount: 1 }]
     );
     assert.equal(analytics.authorship.explicitParameterOverrideCount, 1);
     assert.equal(analytics.authorship.studyUnitsByOrigin.find(

@@ -163,8 +163,11 @@ somente suas origens HTTPS exatas. Actions admite também apenas
 do MCP hospedado e o fluxo autenticado de PDF antes de encerrar.
 
 O manifesto corrente termina em
-`20260902160602_preserve_course_design_on_focal_mcp_corrections.sql`. A migration
-imediatamente anterior corta a origem antiga de Actions. Depois da aplicação:
+`20260902180219_count_expository_parameter_usage_in_analytics.sql`, que conta o
+teto de novas unidades de análise somente onde ele se aplica: StudyUnits
+expositivas ou mistas. As migrations imediatamente anteriores preservam o
+desenho corrente durante correções focais e cortam a origem antiga de Actions.
+Quando esse corte ainda não tiver sido aplicado:
 
 - tokens Actions de clientes já vinculados ficam revogados uma vez;
 - reimporte o OpenAPI corrente no GPT e conclua novamente o OAuth numa conversa
