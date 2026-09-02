@@ -33,7 +33,10 @@ test("#275 restauração aplica toda a cadeia final em ordem", () => {
   const actionOrigin = script.indexOf(
     "20260902123759_drop_legacy_chat_openai_action_origin.sql"
   );
-  assert.ok(cut >= 0 && actionOrigin > cut);
+  const focalCorrection = script.indexOf(
+    "20260902160602_preserve_course_design_on_focal_mcp_corrections.sql"
+  );
+  assert.ok(cut >= 0 && actionOrigin > cut && focalCorrection > actionOrigin);
   assert.match(script, /values\.migrations\.push\(\.\.\.defaultMigrations\)/u);
   assert.match(script, /const preCutMigrations = migrationsBefore\(resolved\.migrations\[0\]\)/u);
   assert.match(script, /applyMigrationFiles\([\s\S]+pre-cut-migrations-/u);

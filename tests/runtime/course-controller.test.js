@@ -1033,6 +1033,13 @@ test("desenho exige leitura corrente, mantém DTO exato e mutação limpa o Curs
   const options = { scope: { kind: "lesson", ref: "lesson-a" }, limit: 16 };
 
   assert.deepEqual(await controller.loadCourseDesign(COURSE_ID, options), design);
+  const studyUnitOptions = {
+    scope: { kind: "study_unit", ref: "study-unit-a" },
+    limit: 16,
+    cursor: null
+  };
+  assert.deepEqual(await controller.loadCourseDesign(COURSE_ID, studyUnitOptions), design);
+  assert.deepEqual(calls[1], ["read", COURSE_ID, studyUnitOptions]);
   online = false;
   await assert.rejects(
     () => controller.loadCourseDesign(COURSE_ID, options),

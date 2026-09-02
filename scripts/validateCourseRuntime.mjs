@@ -288,7 +288,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260902123759" ||
+  if (manifest.schemaRevision !== "20260902160602" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -326,6 +326,23 @@ async function validateManifest() {
   if (/drop\s+[^;]+\s+cascade\s*;/iu.test(cut) ||
       cut.includes("execute v_definition")) {
     fail("A migration final usa corte implícito ou restaura capacidade removida.");
+  }
+  const focalCorrection = await read(
+    "supabase/migrations/20260902160602_preserve_course_design_on_focal_mcp_corrections.sql"
+  );
+  for (const token of [
+    "v_design_preservable_study_unit_ids",
+    "p_channel='mcp'",
+    "p_application_origin='provider_assistance'",
+    "'{appliedAt}'",
+    "to_jsonb(entity.updated_at)",
+    "private.course_component_refs_from_content_v1(entity.content)",
+    "private.course_component_policy_allows_v1(",
+    "to_jsonb('20260902160602'::text)"
+  ]) {
+    if (!focalCorrection.includes(token)) {
+      fail(`A preservação do desenho na correção MCP não demonstra ${token}.`);
+    }
   }
   for (const removed of [
     "src/domain/courseAuditCycle.js",

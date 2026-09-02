@@ -1252,7 +1252,7 @@ test("Microssequência mostra cobertura estável do planejamento somente para le
     courseRevision: revision,
     scope,
     ancestors,
-    children: [],
+    children: [{ kind: "study_unit", ref: "unit-a", label: "Unidade A", position: 0 }],
     targetPlanItems: {
       instructionalAnalysisUnitIds: [ANALYSIS_ID],
       evidenceRequirementIds: []
@@ -1297,6 +1297,8 @@ test("Microssequência mostra cobertura estável do planejamento somente para le
   assert.equal(planReads, 1);
   assert.match(root.innerHTML, /StudyUnits desta Microssequência usam estes valores/iu);
   assert.match(root.innerHTML, /Cada Unidade preserva a configuração usada na produção/iu);
+  assert.match(root.innerHTML, /Abrir StudyUnit/u);
+  assert.doesNotMatch(root.innerHTML, /Abrir studyunit/u);
   assert.match(root.innerHTML, /Cobertura planejada desta Microssequência/u);
   assert.match(root.innerHTML, /Definida no planejamento da Parte/u);
   assert.match(root.innerHTML, /Relação entre grandezas/u);

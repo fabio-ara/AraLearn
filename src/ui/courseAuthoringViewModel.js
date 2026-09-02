@@ -456,10 +456,13 @@ function normalizePlanItemList(value, label, normalizeItem = normalizePlanItem) 
   const items = value.map((item) => normalizeItem(item, label))
     .sort((left, right) => left.position - right.position);
   if (new Set(items.map((item) => item.id)).size !== items.length ||
-      items.some((item, position) => item.position !== position)) {
+      new Set(items.map((item) => item.position)).size !== items.length) {
     fail("invalid_authoring_plan", `A ordem de ${label.toLowerCase()} é inconsistente.`);
   }
-  return Object.freeze(items);
+  return Object.freeze(items.map((item, position) => Object.freeze({
+    ...item,
+    position
+  })));
 }
 
 

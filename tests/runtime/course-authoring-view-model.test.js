@@ -307,7 +307,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [{
         id: ITEM_ID,
-        position: 0,
+        position: 8,
         statement: "Comparar relações.",
         version: 1
       }],
@@ -366,6 +366,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
   const projection = projectCoursePlanning(course, plan);
   assert.equal(Object.isFrozen(plan.plan.parts[0]), true);
   assert.equal(Object.isFrozen(plan.plan.intendedLearningOutcomes[0]), true);
+  assert.equal(plan.plan.intendedLearningOutcomes[0].position, 0);
   assert.deepEqual({
     objective: projection.objective,
     audience: projection.audience,

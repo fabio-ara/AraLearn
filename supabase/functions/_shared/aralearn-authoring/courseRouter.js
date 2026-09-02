@@ -302,7 +302,7 @@ function courseDesignScopeQuery(request, courseId) {
     ? courseId
     : String(scopeRefSource || "").trim();
   if (!new Set([
-    "course", "module", "lesson", "didactic_microsequence"
+    "course", "module", "lesson", "didactic_microsequence", "study_unit"
   ]).has(scopeKind) ||
       (url.searchParams.has("scopeKind") && scopeKind !== url.searchParams.get("scopeKind")) ||
       !scopeRef || scopeRef.length > 240 ||

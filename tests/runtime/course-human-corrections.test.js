@@ -22,7 +22,8 @@ function adapterFixture() {
     studyUnit: {
       id: `unit-${position}`,
       position,
-      title: `Unidade ${position}`
+      title: `Unidade ${position}`,
+      role: "theory"
     },
     curriculumPath: {
       didacticMicrosequence: { id: "micro-a", title: "Microssequência A" }
@@ -211,4 +212,47 @@ test("#274 correção preserva a atribuição corrente quando Fontes não foram 
     studyUnitId: "unit-1",
     sourceLinks: [sourceLink("retired")]
   }]);
+});
+
+test("#275 correção focal exige rematerialização para mudar teoria em prática", async () => {
+  const adapter = adapterFixture();
+  await assert.rejects(() => applyHumanCourseCorrections({
+    adapter,
+    principal: {
+      actorId: "20000000-0000-4000-8000-000000000001",
+      authenticationKind: "oauth",
+      scopes: ["authoring:read", "authoring:write"]
+    },
+    course: "Curso de Redes",
+    corrections: [{
+      unidade: 1,
+      conteudo: {
+        ...correctedContent("Unidade transformada em prática"),
+        role: "practice",
+        response: {
+          id: "choice-a",
+          package: "aralearn.response.choice",
+          version: "1.0.0",
+          data: {
+            question: "Qual alternativa aplica o conceito?",
+            selectionMode: "single",
+            selectionCriterion: "correct",
+            options: [
+              { id: "a", text: "Alternativa adequada", feedback: "Aplica o conceito." },
+              { id: "b", text: "Alternativa inadequada", feedback: "Não aplica o conceito." }
+            ],
+            answerIds: ["a"]
+          }
+        },
+        feedback: [{
+          id: "feedback-a",
+          package: "aralearn.resource.paragraph",
+          version: "1.0.0",
+          data: { text: "Compare a alternativa com o conceito explicado." }
+        }]
+      }
+    }]
+  }), (error) => error.code === "invalid_human_study_unit" &&
+    /rematerialize a Parte/iu.test(error.message));
+  assert.equal(adapter.commits.length, 0);
 });

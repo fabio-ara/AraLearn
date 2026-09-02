@@ -101,6 +101,21 @@ async function loadCorrectionState({
         `A correção da Unidade ${index + 1} é inválida: ${validation.errors.join(" ")}`
       );
     }
+    const currentRole = unit.studyUnit?.role;
+    if (!new Set(["theory", "practice"]).has(currentRole)) {
+      fail(
+        "course_service_unavailable",
+        "A Unidade não informa sua função instrucional corrente.",
+        503
+      );
+    }
+    if (validation.normalized.role !== currentRole) {
+      fail(
+        "invalid_human_study_unit",
+        "Uma correção focal não pode mudar a função instrucional da Unidade; " +
+          "rematerialize a Parte para redistribuir teoria e prática."
+      );
+    }
     const content = structuredClone(validation.normalized);
     delete content.id;
     delete content.position;

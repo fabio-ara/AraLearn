@@ -2864,17 +2864,27 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await expect(details).not.toHaveAttribute("open", "");
   const observationDialog = page.getByRole("dialog", { name: "Observações da Unidade" });
   await expectModalDialogOwnsTopLayer(observationDialog);
+  const observationText = page.getByRole("textbox", { name: "Observação" });
+  await expect(observationText).toBeFocused();
+  await observationText.press("Escape");
+  await expect(observationDialog).toHaveCount(0);
+  const reopenedObservationsAction = page.locator("[data-inspection-observations]");
+  await expect(reopenedObservationsAction).toBeFocused();
+  await reopenedObservationsAction.click();
+  await expectModalDialogOwnsTopLayer(observationDialog);
+  await expect(observationText).toBeFocused();
   await expect(page.getByText(
     "A relação entre os conjuntos precisa de mais contexto.",
     { exact: true }
   )).toBeVisible();
   expect(await page.evaluate(() =>
-    globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(1);
+    globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(2);
   await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
   await expect(page.locator("#study-observation-counter"))
     .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
   await page.getByRole("button", { name: "Enviar observação" }).click();
   await expect(page.getByText("😀a", { exact: true })).toBeVisible();
+  await expect(observationText).toBeFocused();
   await observationDialog
     .getByRole("button", { name: "Fechar" }).click();
   const observationsWithCount = page.getByRole("button", {
@@ -2919,6 +2929,38 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await expect.poll(() => page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   expect(clientErrors).toEqual([]);
+});
+
+test("Observação em lote contém o foco, fecha com Escape e retorna à seleção", async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 390, height: 820 });
+  const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+  await mountCourseAuthoring(page, { cardinality: "many", hash });
+
+  await page.locator('[data-inspection-selection-action="toggle-current"]').click();
+  await page.getByRole("button", { name: "Próxima Unidade" }).click();
+  await page.locator('[data-inspection-selection-action="toggle-current"]').click();
+  const batchTrigger = page.getByRole("button", {
+    name: "Registrar Observação nas Unidades selecionadas"
+  });
+  await batchTrigger.click();
+
+  const dialog = page.getByRole("dialog", { name: "Observação em 2 Unidades" });
+  const close = dialog.getByRole("button", { name: "Fechar" });
+  const text = dialog.getByRole("textbox", { name: "Observação" });
+  const send = dialog.getByRole("button", { name: "Enviar observação" });
+  await expectModalDialogOwnsTopLayer(dialog);
+  await expect(text).toBeFocused();
+  await close.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(send).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(close).toBeFocused();
+  await text.focus();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(batchTrigger).toBeFocused();
 });
 
 test("Inspeção abre os Parâmetros da StudyUnit e retorna pelo cabeçalho", async ({

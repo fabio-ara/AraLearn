@@ -10,7 +10,8 @@ const migrationDirectory = path.join(repositoryRoot, "supabase", "migrations");
 const migrationFilePattern = /^(?:001|\d{14})_[a-z0-9_]+\.sql$/u;
 const defaultMigrations = Object.freeze([
   "20260902044404_cut_legacy_authoring_runtime.sql",
-  "20260902123759_drop_legacy_chat_openai_action_origin.sql"
+  "20260902123759_drop_legacy_chat_openai_action_origin.sql",
+  "20260902160602_preserve_course_design_on_focal_mcp_corrections.sql"
 ].map((name) => path.join(migrationDirectory, name)));
 const defaultFixture = path.join(
   repositoryRoot,

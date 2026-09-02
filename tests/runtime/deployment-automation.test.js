@@ -450,7 +450,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260902123759");
+  assert.equal(manifest.schemaRevision, "20260902160602");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-part-save-v1"), true);
   assert.equal(
@@ -509,8 +509,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260902123759_drop_legacy_chat_openai_action_origin.sql",
-    revision: "20260902123759"
+    fileName: "20260902160602_preserve_course_design_on_focal_mcp_corrections.sql",
+    revision: "20260902160602"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
