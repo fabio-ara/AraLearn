@@ -476,6 +476,8 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
   const authorship = normalizeAuthorship(source.authorship);
   const missingData = uniqueTexts(source.missingData, 64, 500, "Os dados ausentes");
   const incompleteConditions = design.parameters.some((parameter) =>
+    parameter.parameterId !==
+      "new_analysis_unit_ceiling_per_expository_study_unit" &&
     parameter.effectiveValues.reduce((sum, entry) => sum + entry.studyUnitCount, 0) <
       design.studyUnitCount) ||
     design.editorialDirections.reduce((sum, entry) => sum + entry.studyUnitCount, 0) <

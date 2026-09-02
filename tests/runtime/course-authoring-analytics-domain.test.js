@@ -263,8 +263,17 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
   overflow.design.parameters[0].effectiveValues[0].studyUnitCount = 3;
   assert.throws(() => normalizeCourseAuthoringAnalyticsPage(overflow), /mais Units/u);
 
+  const ceilingOnlyWhereApplicable = snapshot();
+  ceilingOnlyWhereApplicable.design.parameters[0].effectiveValues[0].studyUnitCount = 1;
+  ceilingOnlyWhereApplicable.missingData = [];
+  assert.equal(
+    normalizeCourseAuthoringAnalyticsPage(ceilingOnlyWhereApplicable)
+      .design.parameters[0].effectiveValues[0].studyUnitCount,
+    1
+  );
+
   const silentlyMissing = snapshot();
-  silentlyMissing.design.parameters[0].effectiveValues[0].studyUnitCount = 1;
+  silentlyMissing.design.parameters[1].effectiveValues[0].studyUnitCount = 1;
   silentlyMissing.missingData = [];
   assert.throws(() => normalizeCourseAuthoringAnalyticsPage(silentlyMissing), /missingData/u);
 });

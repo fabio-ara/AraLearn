@@ -288,7 +288,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260902160602" ||
+  if (manifest.schemaRevision !== "20260902180219" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -322,6 +322,18 @@ async function validateManifest() {
     "commit;"
   ]) {
     if (!cut.includes(token)) fail(`A migration final não demonstra ${token}.`);
+  }
+  const analyticsApplicability = await read(
+    "supabase/migrations/20260902180219_count_expository_parameter_usage_in_analytics.sql"
+  );
+  for (const token of [
+    "new_analysis_unit_ceiling_per_expository_study_unit",
+    "design.application->>'mode' in('expository','mixed')",
+    "to_jsonb('20260902180219'::text)"
+  ]) {
+    if (!analyticsApplicability.includes(token)) {
+      fail(`A aplicabilidade de parâmetros em Analytics não demonstra ${token}.`);
+    }
   }
   if (/drop\s+[^;]+\s+cascade\s*;/iu.test(cut) ||
       cut.includes("execute v_definition")) {
