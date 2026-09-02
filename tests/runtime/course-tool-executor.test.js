@@ -64,7 +64,7 @@ function protectedAnnotationPage() {
         observedPath: path,
         currentAvailable: true,
         currentPath: path,
-        deepLink: "https://app.example/#/authoring?section=observations"
+        deepLink: "https://app.example/#/authoring?section=review"
       },
       observedRevision: { certainty: "known", courseRevision: 7, targetVersion: 3 },
       rawText,

@@ -661,6 +661,93 @@ test("#194 aceita Observação direta em Unidade materializada com tópicos leg�
   assert.deepEqual(changed.annotation.subjectClassification.automatic.subjects, []);
 });
 
+test("#271 repete a mesma Observação por alvo e consulta o conjunto aberto sem batch", async (t) => {
+  const database = await legacyDatabase();
+  t.after(() => database.close());
+  await installMigration(database);
+  await installUnitAnnotationScopeMigration(database);
+  await database.exec(`
+    insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content,version
+    ) values(
+      '${COURSE}','study_unit','unit-b','microsequence','micro-a',2,
+      '{"title":"Unidade B","topics":["topic-dns"]}',1
+    );
+  `);
+  const rawText = "A transição pressupõe a relação DNS antes de ensiná-la.";
+  const ids = [
+    "40000000-0000-4000-8000-000000000271",
+    "40000000-0000-4000-8000-000000000272"
+  ];
+  await actor(database, LEARNER_B);
+  for (const [index, targetId] of ["unit-a", "unit-b"].entries()) {
+    const changed = await scalar(database, `
+      select public.execute_my_course_anchored_annotation_command_v1(
+        $1,7,$2::jsonb,$3
+      ) value
+    `, [COURSE, JSON.stringify({
+      type: "create_anchored_annotation",
+      annotationId: ids[index],
+      target: { kind: "study_unit", id: targetId },
+      rawText,
+      category: "confusing",
+      capturedAt: null,
+      briefSummary: "Pré-requisito não estabelecido."
+    }), `request.issue-271.multi-${index + 1}`]);
+    normalizeCourseAnchoredAnnotationChange(changed);
+    assert.equal(changed.annotation.target.id, targetId);
+    assert.equal(changed.annotation.rawText, rawText);
+  }
+
+  await actor(database, OWNER, "service_role");
+  for (const [index, annotationId] of ids.entries()) {
+    const corrected = await scalar(database, `
+      select public.execute_course_anchored_annotation_command_for_actor_v1(
+        $1,$2,7,$3::jsonb,'authoring_interface',$4
+      ) value
+    `, [OWNER, COURSE, JSON.stringify({
+      type: "correct_anchored_annotation_subjects",
+      annotationId,
+      expectedAnnotationVersion: 1,
+      subjectIds: ["topic-dns"]
+    }), `request.issue-271.subject-${index + 1}`]);
+    assert.deepEqual(corrected.annotation.subjectClassification.effective.subjects.map(
+      ({ topicId }) => topicId
+    ), ["topic-dns"]);
+  }
+
+  const openScope = await scalar(database, `
+    select public.get_owned_course_anchored_annotations_for_actor_v1(
+      $1,$2,7,null,'target','{}','{}',array['open'],'{}',true,
+      array['topic-dns'],'didactic_microsequence','micro-a',true,null,null,24
+    ) value
+  `, [OWNER, COURSE]);
+  normalizeCourseAnchoredAnnotationPage(openScope);
+  assert.equal(openScope.summary.matchingTotal, 2);
+  assert.deepEqual(openScope.items.map(({ annotationId }) => annotationId).sort(), [...ids].sort());
+  assert.deepEqual(new Set(openScope.items.map(({ target }) => target.id)),
+    new Set(["unit-a", "unit-b"]));
+  assert.equal(await scalar(database, `
+    select not exists(
+      select 1 from information_schema.tables
+      where table_schema='private'
+        and table_name ~ '(annotation.*batch|batch.*annotation)'
+    ) and not exists(
+      select 1 from information_schema.columns
+      where table_schema='private' and table_name='course_anchored_annotations'
+        and column_name='batch_id'
+    ) value
+  `), true);
+
+  await actor(database, OUTSIDER, "service_role");
+  await assert.rejects(() => database.query(`
+    select public.get_owned_course_anchored_annotations_for_actor_v1(
+      $1,$2,7,null,'target','{}','{}',array['open'],'{}',true,
+      array['topic-dns'],'didactic_microsequence','micro-a',true,null,null,24
+    ) value
+  `, [OUTSIDER, COURSE]), (error) => error.code === "PT404");
+});
+
 test("#124 aplica classificação conservadora, privacidade, CAS e redação", async (t) => {
   const database = await legacyDatabase();
   t.after(() => database.close());

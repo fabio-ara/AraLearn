@@ -187,12 +187,18 @@ export function renderStudyUnitObservationSheet({
   loading = false,
   stale = false,
   title = "Observações da Unidade",
+  ariaLabel = "Observações da Unidade de estudo",
   listLabel = "Suas observações",
   emptyLabel = "Nenhuma observação nesta Unidade.",
   showContributor = false,
   collectionSummary = null,
   canonicalHref = "",
-  showComposer = true
+  showComposer = true,
+  composerStudyUnitId = "",
+  contextMessage = "",
+  actionHref = "",
+  actionLabel = "",
+  actionControlKey = ""
 } = {}) {
   const visibleItems = items.filter((item) => item && typeof item === "object");
   const matchingTotal = Number.isSafeInteger(collectionSummary?.matchingTotal)
@@ -202,7 +208,7 @@ export function renderStudyUnitObservationSheet({
     ? collectionSummary.activeTotal
     : visibleItems.filter(({ state }) => state !== "withdrawn").length;
   const truncated = collectionSummary?.truncated === true && matchingTotal > visibleItems.length;
-  return '<section class="editor-overlay study-observation-overlay" aria-label="Observações da Unidade de estudo">' +
+  return `<section class="editor-overlay study-observation-overlay" aria-label="${escapeHtml(ariaLabel)}">` +
     '<article class="editor-sheet study-observation-sheet" role="dialog" aria-modal="true"' +
     ' aria-labelledby="study-observation-title">' +
     '<header class="editor-head"><button class="icon-ghost" type="button"' +
@@ -219,6 +225,15 @@ export function renderStudyUnitObservationSheet({
       : "") +
     (loading
       ? '<p class="study-observation-loading" role="status">Atualizando observações…</p>'
+      : "") +
+    (contextMessage
+      ? `<p class="study-observation-stale" role="status">${escapeHtml(contextMessage)}</p>`
+      : "") +
+    (actionHref && actionLabel
+      ? `<p class="study-observation-limited"><a href="${escapeHtml(actionHref)}"` +
+        ` data-inspection-route${actionControlKey
+          ? ` data-inspection-control-key="${escapeHtml(actionControlKey)}"`
+          : ""}>${escapeHtml(actionLabel)}</a></p>`
       : "") +
     (!showComposer && error
       ? '<p class="field-error" role="alert">' + escapeHtml(error) + "</p>"
@@ -239,6 +254,6 @@ export function renderStudyUnitObservationSheet({
           : '<p class="study-observation-empty">' + escapeHtml(emptyLabel) + "</p>") + "</div>"
       : "") +
     (showComposer ? renderStudyUnitObservationComposer({
-      draft, editingId, error, saving
+      draft, editingId, error, saving, studyUnitId: composerStudyUnitId
     }) : "") + "</div></article></section>";
 }

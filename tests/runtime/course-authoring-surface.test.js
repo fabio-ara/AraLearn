@@ -191,7 +191,7 @@ function outlineFixture(courseId = COURSE_ID) {
         }]
       }]
     },
-    deepLink: `#/authoring/courses/${courseId}?section=structure`
+    deepLink: `#/authoring/courses/${courseId}?section=content`
   };
 }
 

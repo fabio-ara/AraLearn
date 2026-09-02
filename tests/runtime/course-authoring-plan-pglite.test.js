@@ -3705,6 +3705,55 @@ test("#122 e #131 percorrem plano, descoberta, contrato, materialização, prév
   await database.close();
 });
 
+test("#271 override da Microssequência chega selado às Units da próxima produção", async () => {
+  const database = await databaseFixture();
+  await applyMigration(database);
+  await applyStudyUnitInspectionMigration(database);
+  await applyCourseDesignMigration(database);
+  await actor(database, OWNER, "service_role");
+
+  const parameterId = "new_analysis_unit_ceiling_per_expository_study_unit";
+  const changed = await applyDesignCommand(database, 4, {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    parameterId,
+    value: 1,
+    origin: "author",
+    reason: "Revisão contextual com uma novidade por Unidade."
+  }, "contextual-review-parameter");
+  assert.equal(changed.courseRevision, 5);
+  const part = await scalar(database, `
+    select jsonb_build_object('id',id,'version',version) as value
+    from private.course_authoring_parts
+    where course_id=$1 and retired_at is null order by position limit 1
+  `, [COURSE]);
+  const started = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,5,0,'start',$5::jsonb,'application','contextual-review-start'
+    ) as value
+  `, [OWNER, COURSE, part.id, "53000000-0000-4000-8000-000000000271", {
+    authoringPartVersion: part.version,
+    steps: [{
+      id: "53000000-0000-4000-8000-000000000272",
+      position: 0,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }]
+  }]);
+  const parameter = started.materialization.designContext.targets[0].parameters
+    .find((entry) => entry.parameterId === parameterId);
+  assert.deepEqual(parameter, {
+    parameterId,
+    value: 1,
+    origin: "author",
+    reason: "Revisão contextual com uma novidade por Unidade.",
+    sourceScope: { kind: "didactic_microsequence", ref: "micro-a" }
+  });
+  assert.match(started.materialization.contextHash, /^[a-f0-9]{64}$/u);
+  await database.close();
+});
+
 test("#122 audita somente os itens atribuídos a cada uma de duas microssequências", async () => {
   const database = await databaseFixture();
   await applyMigration(database);

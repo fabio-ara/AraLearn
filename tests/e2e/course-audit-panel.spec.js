@@ -247,7 +247,7 @@ async function mountAuditPanel(page, {
       },
       findingsCreated: 0,
       createdAt: "2026-08-17T13:00:00Z",
-      deepLink: `#/authoring/courses/${seed.ids.course}?section=observations&auditRunId=${seed.ids.cleanRun}`
+      deepLink: `#/authoring/courses/${seed.ids.course}?section=review&auditRunId=${seed.ids.cleanRun}`
     });
     const runDetail = () => ({
       contract: "aralearn.course-instructional-audit-run.v1",
@@ -330,8 +330,8 @@ async function mountAuditPanel(page, {
       },
       capabilities: findingCapabilities(),
       deepLinks: {
-        detail: `#/authoring/courses/${seed.ids.course}?section=observations&findingId=${seed.ids.finding}`,
-        target: `#/authoring/courses/${seed.ids.course}?section=inspection&studyUnitId=unit-a`
+        detail: `#/authoring/courses/${seed.ids.course}?section=review&findingId=${seed.ids.finding}`,
+        target: `#/authoring/courses/${seed.ids.course}?section=content&studyUnitId=unit-a`
       }
     });
     const rationale = () => state.correctionHistory.at(-1).rationale;
@@ -368,7 +368,7 @@ async function mountAuditPanel(page, {
         updatedAt: "2026-08-17T12:10:00Z"
       },
       capabilities: correctionCapabilities(),
-      deepLink: `#/authoring/courses/${seed.ids.course}?section=observations&findingId=${seed.ids.finding}&correctionId=${seed.ids.correction}`
+      deepLink: `#/authoring/courses/${seed.ids.course}?section=review&findingId=${seed.ids.finding}&correctionId=${seed.ids.correction}`
     });
     const context = () => ({
       contract: "aralearn.course-audit-context.v1",
@@ -762,7 +762,7 @@ for (const width of [360, 390, 430, 1280]) {
     await expect(page.getByText("Nenhum achado criado", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Abrir rodada" })).toHaveAttribute(
       "href",
-      `#/authoring/courses/${IDS.course}?section=observations&auditRunId=${IDS.cleanRun}`
+      `#/authoring/courses/${IDS.course}?section=review&auditRunId=${IDS.cleanRun}`
     );
 
     await page.getByRole("button", { name: "Achados", exact: true }).focus();

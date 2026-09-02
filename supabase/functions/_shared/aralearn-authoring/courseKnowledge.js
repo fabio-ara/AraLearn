@@ -76,6 +76,8 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Leia o catálogo, a edição pertinente da Fonte, as Âncoras e os vínculos do alvo antes de atribuir proveniência. Aprofunde somente as Fontes relevantes; não carregue nem abra todos os PDFs por padrão.",
       "Registre somente metadados fornecidos ou verificados; explicite lacunas e pergunte em vez de completar por plausibilidade.",
       "citationText identifica a Fonte para pessoas, humanLocator nomeia o local declarado e selector preserva a localização exata. Em texto humano, cite a referência e o local, nunca sourceId, anchorId, revisão, hash ou caminho.",
+      "Ao apresentar uma Fonte no contexto, mostre somente a referência humana, o papel efetivo no uso e a Âncora ou trecho pertinente. Escopo curricular, calibração, exemplo e orientação de prova não viram apoio factual automaticamente; diga qual papel foi realmente atribuído.",
+      "Fonte e Âncora continuam contestáveis depois do uso. Se a pessoa questionar, releia a edição e o local vinculados, registre a dúvida como Observação quando útil e proponha manter, substituir, corrigir ou retirar a atribuição sem reescrever silenciosamente o conteúdo.",
       "Para explicar a proveniência de um alvo, leia seus vínculos e depois abra cada Fonte necessária no contexto desse alvo; assim a citação usa a edição e a Âncora historicamente pinadas.",
       "Crie uma Âncora nova somente na edição ativa e com localização verificada. Uma nova edição, errata ou norma substituta exige Âncoras próprias; nunca recicle silenciosamente seletores de outra edição.",
       "Aposentar uma Fonte ou Âncora impede novos usos, mas não apaga a proveniência histórica. Não atualize conteúdo antigo apenas para fazê-lo apontar à edição mais recente.",
@@ -89,6 +91,9 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Inspecione Unidades pela vista paginada no menor escopo curricular pertinente e preserve os deep links internamente; ofereça uma ação rotulada somente quando útil à pessoa.",
       "Para apresentar material no chat, crie inspection_focus com as Unidades escolhidas e depois leia study_units com inspectionFocusId. O componente agrupa o conjunto por Microssequência e fornece referências curtas para comentários na conversa.",
       "Para explicar a configuração usada por uma StudyUnit, consulte o desenho no escopo de sua Microssequência e confronte os valores efetivos com a aplicação registrada na produção; não reconstrua a decisão por run, payload ou aparência do texto.",
+      "Ao revisar Observações abertas, consulte a inbox no escopo selecionado e leia o texto integral somente das Observações escolhidas. Seleção e consulta bastam para uma ou várias StudyUnits; não crie entidade persistente de lote.",
+      "Antes de propor reparo, amplie o foco para as StudyUnits que possam ser afetadas por progressão, pré-requisitos, transições, exemplos ou prática. Inspecione esse conjunto coerente; não limite a análise às Units originalmente anotadas.",
+      "Uma alteração de parâmetro rege a próxima geração ou revisão. Releia o valor efetivo no escopo da Microssequência e confronte-o depois com a aplicação registrada; não trate a aparência do conteúdo anterior como configuração vigente.",
       "Prefira a Microssequência inteira a pedidos sucessivos de uma Unidade, mas aceite uma Unidade ou um conjunto arbitrário quando a pergunta exigir comparação localizada. Não renderize cards em respostas rotineiras sem finalidade de inspeção.",
       "Ao comentar um foco, interprete-o editorialmente à luz do desenho vigente e das Fontes/Âncoras lidas para o alvo; não substitua a inspeção por uma paráfrase das Unidades já visíveis.",
       "Corrija somente a Unidade ou o segmento que mudou; identidades e posições alheias permanecem estáveis.",
@@ -99,18 +104,25 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Auditoria e reparo",
     instructions: Object.freeze([
       "Abra audit_cycle em mode context para o alvo exato; use mode runs para rodadas inclusive limpas e detail para uma rodada, achado ou correção.",
+      "Siga o ciclo focal completo: inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, obter uma decisão, aplicar e reinspecionar. Use Observações abertas selecionadas como evidência pública, não como autorização automática para alterar.",
+      "Se uma Observação atingir progressão, pré-requisito, transição, exemplo ou prática, leia também as Units anteriores ou posteriores pertinentes e registre findings e propostas para todo o conjunto que realmente precise mudar. Não crie batch permanente nem restrinja o reparo ao alvo anotado.",
       "Checks, achados e propostas são conclusões públicas, localizadas e limitadas; alegação factual exige sourceLinks e incerteza explícita.",
+      "Resultado inadequado ou overallFit substitute de audit_representation por condensação evitável exige finding de qualidade pedagógica ou editorial e uma proposta concreta de correção. Validade estrutural não resolve o achado; paragraph e choice continuam corretos quando cumprem a função, sem quota de diversidade.",
       "Mostre a proposta e o antes/depois. Uma aprovação da proposta concreta cobre a aplicação e sua verificação mecânica enquanto a intenção não mudar. Aplicação não prova resolução: somente verificação posterior pode resolver ou reabrir pendências vinculadas.",
+      "Depois de aplicar, reinspecione o conjunto afetado com o parâmetro efetivo e as Fontes pertinentes, então registre verify_finding como resolved ou still_open. Ao concluir, devolva o deep link rotulado e uma única próxima decisão; não reproduza no chat o conteúdo ou a lista inteira de reparos.",
       "Ao concluir auditoria, reparo ou verificação, crie um foco das Unidades afetadas, leia-o uma vez e devolva proativamente seu deep link com rótulo humano; use a Microssequência inteira quando a relação entre elas fizer parte do julgamento e não repita o mesmo conjunto sem mudança material."
     ])
   }),
   linguistic_didactic_review: Object.freeze({
     title: "Revisão linguístico-didática focal",
     instructions: Object.freeze([
+      "Siga o ciclo completo: inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, obter uma decisão, aplicar e reinspecionar. Aplicação não prova resolução; verifique o finding depois da nova inspeção.",
+      "Quando houver Observações abertas selecionadas, leia também as Units afetadas por progressão, pré-requisitos, transições, exemplos e prática. Findings e propostas cobrem o conjunto que realmente precise mudar, não apenas os alvos anotados; seleção e consulta bastam, sem batch permanente.",
       "Revise pedagogical_quality e editorial_quality na Microssequência recém-produzida, usando conteúdo renderizável, público e contexto curricular mínimo.",
       "Examine se a microteoria explica em vez de apenas resumir e se novos conceitos progridem de modo compreensível; reduza ou distribua o escopo quando falta desenvolvimento.",
       "Compare o conteúdo com as unidades de análise declaradas: sinalize novidades independentes escondidas em tópico amplo, uso de conhecimentos não estabelecidos como se fossem prévios e continuação que apenas repete a introdução.",
       "Confira se a representação preserva a função instrucional e se consolidação local foi distinguida de prática de evidência; uma forma alternativa só é preferível quando representa melhor o objeto, nunca para cumprir variedade.",
+      "Quando audit_representation apontar inadequação ou overallFit substitute por condensação evitável, não marque a Unit como suficiente só porque o schema é válido: registre finding e proposta de representação funcionalmente melhor. Não fabrique finding para obter variedade.",
       "Procure usos artificiais de curto/curta, negativas defensivas, metadiscurso, autorreferência e fórmulas como ‘X combina/reúne Y, Z’ usadas no lugar de relações explicadas.",
       "Procure enumerações extensas, empilhamento de conceitos, anglicismos ou decalques, metáforas técnicas inadequadas e terminologia ou sigla sem referente suficiente.",
       "Esses focos não são proibições mecânicas: preserve usos legítimos, registre achados concretos e use o ciclo canônico de proposta, aplicação e verificação."
@@ -122,7 +134,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Parta da função instrucional e do objeto que precisa permanecer legível; não escolha por variedade estética nem crie quota. Paragraph continua correto quando prosa progressiva representa melhor a relação.",
       "Para contraste, sequência, estrutura, código, tabela, classificação, correspondência ou representação visual, explore ou pesquise candidatos antes de assumir paragraph; para prática, escolha a operação de resposta que produz a evidência pretendida em vez de assumir choice.",
       "Na busca e em audit_representation, declare papel da Unidade e, quando pertinentes, estrutura, operação, objetos de conhecimento e o que precisa ser preservado. Essas facetas e os metadados do catálogo orientam o encaixe; a adequação semântica final continua sendo julgamento do GPT ou da pessoa.",
-      "Inspecione candidatos e carregue somente o contrato package@version escolhido. Valide a estrutura, audite com a mesma intenção e visualize a Unidade antes de gravá-la; repare substituição evitável ou explicite a limitação, mantendo a política efetiva sob conferência do servidor."
+      "Inspecione candidatos e carregue somente o contrato package@version escolhido. Valide a estrutura, audite com a mesma intenção e visualize a Unidade antes de gravá-la; se houver inadequação ou overallFit substitute por condensação evitável, leve finding e proposta concreta ao ciclo de revisão. Repare a função, não uma quota de diversidade, mantendo a política efetiva sob conferência do servidor."
     ])
   })
 });

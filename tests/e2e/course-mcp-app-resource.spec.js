@@ -315,7 +315,7 @@ test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", 
               structural: { valid: true },
               studyUnit: setDiagramStudyUnit,
               accessibleText: "Diagrama de Venn dos grupos A e B.",
-              deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+              deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=content"
             }
           }
         }
@@ -330,7 +330,7 @@ test("o recurso MCP hidrata set_diagram a partir da folha versionada do Pages", 
   await expect.poll(() => page.evaluate(() => window.__mcpMessages.find(
     ({ method }) => method === "ui/open-link"
   )?.params)).toEqual({
-    url: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+    url: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=content"
   });
 
   await postToResource(page, {
@@ -625,7 +625,7 @@ test("o recurso omite o endereço quando o host não oferece abertura de links",
             structural: { valid: true },
             studyUnit: setDiagramStudyUnit,
             accessibleText: "Diagrama de conjuntos.",
-            deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+            deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=content"
           }
         }
       }
@@ -684,7 +684,7 @@ test("a política estável usa descrição textual para componente dependente de
               response: null
             },
             accessibleText: "Fluxo textual: início, decisão e término.",
-            deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=inspection"
+            deepLink: "https://fabio-ara.github.io/AraLearn/#/authoring/courses/course-a?section=content"
           }
         }
       }

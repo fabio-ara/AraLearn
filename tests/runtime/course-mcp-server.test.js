@@ -889,7 +889,7 @@ test("MCP minimiza Observações e sinaliza quando o detalhe envia texto bruto",
       currentPath: [{ kind: "course", id: COURSE_ID, label: "Curso", version: 3 }, {
         kind: "study_unit", id: "internal-study-unit", label: "Unidade", version: 2
       }],
-      deepLink: "https://app.example/#/authoring?section=observations"
+      deepLink: "https://app.example/#/authoring?section=review"
     },
     observedRevision: { certainty: "known", courseRevision: 3, targetVersion: 2 },
     rawText,

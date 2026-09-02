@@ -35,7 +35,7 @@ function annotation(command, version, now, state = "open") {
         { kind: "course", id: COURSE_ID, label: "Curso", version: 7 },
         { kind: "study_unit", id: UNIT_ID, label: "Unidade", version: 2 }
       ],
-      deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=${UNIT_ID}`
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=${UNIT_ID}`
     },
     observedRevision: { certainty: "known", courseRevision: 7, targetVersion: 2 },
     rawText: withdrawn ? null : command.rawText,
@@ -77,7 +77,7 @@ function annotation(command, version, now, state = "open") {
       canReopen: false,
       canCorrectSubjects: false
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${command.annotationId}`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=review&annotationId=${command.annotationId}`
   };
 }
 

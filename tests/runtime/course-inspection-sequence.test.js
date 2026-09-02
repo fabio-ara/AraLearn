@@ -219,7 +219,7 @@ function anchoredAnnotation(index) {
         { kind: "course", id: COURSE_ID, label: "Curso", version: REVISION },
         { kind: "study_unit", id: "unit-01", label: "Unidade 1", version: 1 }
       ],
-      deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-01`
+      deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-01`
     },
     observedRevision: { certainty: "known", courseRevision: REVISION, targetVersion: 1 },
     rawText: `Observação da página ${index}.`,
@@ -261,7 +261,7 @@ function anchoredAnnotation(index) {
       canReopen: false,
       canCorrectSubjects: true
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${annotationId}`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=review&annotationId=${annotationId}`
   };
 }
 
@@ -496,7 +496,7 @@ test("foco mostra somente o conjunto e oferece saída para o Curso no ponto corr
   sequence.destroy();
 });
 
-test("Unit oferece parâmetros contextuais; configuração mostra usado versus vigente sem hashes", async () => {
+test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações imediatas", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
@@ -524,19 +524,16 @@ test("Unit oferece parâmetros contextuais; configuração mostra usado versus v
   assert.equal(await sequence.open(), true);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
   assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
-  assert.match(root.innerHTML, /<span>Observações · 2<\/span>/u);
   assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
   assert.match(root.innerHTML, /data-inspection-review-state="design"[^>]*aria-label="Desenho vigente diferente — revisar"/u);
-  assert.match(root.innerHTML, /Configuração usada nesta versão × vigente agora/u);
-  assert.match(root.innerHTML, /Usado nesta versão/u);
-  assert.match(root.innerHTML, /Vigente agora/u);
-  assert.match(root.innerHTML, /<strong>Direção editorial<\/strong>/u);
-  assert.match(root.innerHTML, />2<\/span>/u);
-  assert.match(root.innerHTML, />3<\/span>/u);
   assert.match(
     root.innerHTML,
     /<a href="[^"]*section=parameters&amp;didacticMicrosequenceId=micro-a" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da Microssequência"><svg[\s\S]*?<\/svg><\/a>/u
   );
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 2 pendentes" title="Observações"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Fontes e Âncoras de Unidade 1" title="Fontes e Âncoras"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Revisar Unidade 1" title="Revisar"><svg/u);
+  assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
   assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
   sequence.destroy();
@@ -1486,11 +1483,10 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"/u);
-  assert.match(root.innerHTML, /<span>Observações<\/span>/u);
-  assert.doesNotMatch(root.innerHTML, /Observar esta Unidade/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1"/u);
   assert.match(root.innerHTML, /aria-label="Visualizar"/u);
   assert.doesNotMatch(root.innerHTML, /<span>Visualizar<\/span>/u);
-  assert.doesNotMatch(root.innerHTML, /data-inspection-select-button/u);
+  assert.match(root.innerHTML, /data-inspection-selection-action="toggle-current"[^>]*aria-pressed="false"/u);
   assert.equal(annotationCalls.length, 0);
 
   await root.listeners.get("click")({
@@ -1520,6 +1516,121 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
     }
   });
   assert.equal(counter.textContent, "2/2.000 caracteres · 5 B/16 KiB");
+  sequence.destroy();
+});
+
+test("seleção temporária registra Observação em lote por chamadas individuais e permite repetir", async () => {
+  const root = new FakeRoot();
+  const requests = [];
+  let failedSecondTarget = false;
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) { return pageFor(options, 2); },
+      async loadCourseAnchoredAnnotations() {
+        throw new Error("O lote não deve criar consulta ou entidade intermediária.");
+      },
+      async mutateCourseAnchoredAnnotations(input) {
+        requests.push(structuredClone(input));
+        if (input.command.target.id === "unit-02" && !failedSecondTarget) {
+          failedSecondTarget = true;
+          const error = new Error("A conexão caiu depois do envio.");
+          error.code = "network_error";
+          throw error;
+        }
+        return {
+          contract: "aralearn.course-anchored-annotation-change.v1",
+          courseId: COURSE_ID,
+          courseRevision: REVISION,
+          annotationSetVersion: requests.length + 3,
+          requestId: input.requestId,
+          idempotent: false,
+          changed: true,
+          annotation: null
+        };
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  const clickSelection = (action, studyUnitId = "") => root.listeners.get("click")({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspection-selection-action]"
+          ? { dataset: { inspectionSelectionAction: action, studyUnitId } }
+          : selector === "[data-inspection-action]" && action === "next"
+            ? { dataset: { inspectionAction: "next" } }
+            : null;
+      }
+    }
+  });
+  assert.equal(await clickSelection("toggle-current", "unit-01"), true);
+  assert.equal(await clickSelection("next"), true);
+  assert.equal(await clickSelection("toggle-current", "unit-02"), true);
+  assert.match(root.innerHTML, /2 Unidades selecionadas/u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /data-inspection-selection-action="observe-selected"[^>]*disabled/iu
+  );
+
+  assert.equal(await clickSelection("observe-selected"), true);
+  assert.match(root.innerHTML, /Observação em 2 Unidades/u);
+  assert.match(root.innerHTML, /registrado separadamente em cada Unidade selecionada/iu);
+  root.listeners.get("input")({
+    target: {
+      value: "Rever a transição entre as duas Unidades.",
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; },
+      closest() { return null; }
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  for (let attempt = 0; attempt < 8 && requests.length < 2; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(requests.map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
+  assert.match(root.innerHTML, /1 de 2 Observações foram registradas/iu);
+  const failedRequestId = requests[1].requestId;
+
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  for (let attempt = 0; attempt < 8 && requests.length < 3; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(requests[2].command.target.id, "unit-02");
+  assert.equal(requests[2].requestId, failedRequestId, "retry precisa reutilizar a chamada individual incerta");
+  assert.match(root.innerHTML, /registrada separadamente em 2 Unidades/iu);
+  assert.match(root.innerHTML, /Você pode registrar outra/iu);
+  assert.match(
+    root.innerHTML,
+    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar Observações abertas no Curso/u
+  );
+  assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
+
+  root.listeners.get("input")({
+    target: {
+      value: "Adicionar uma segunda Observação ao mesmo conjunto.",
+      matches(selector) { return selector === "[data-field='study-unit-observation']"; },
+      closest() { return null; }
+    }
+  });
+  root.listeners.get("submit")({
+    preventDefault() {},
+    target: { matches(selector) { return selector === "[data-observation-composer]"; } }
+  });
+  for (let attempt = 0; attempt < 8 && requests.length < 5; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.deepEqual(requests.slice(3).map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
+  assert.notEqual(requests[3].command.annotationId, requests[0].command.annotationId);
   sequence.destroy();
 });
 
@@ -1747,7 +1858,7 @@ test("Inspeção agrega sete páginas byte-limited antes de renderizar o context
   });
 
   assert.deepEqual(cursors, [null, "cursor1", "cursor2", "cursor3", "cursor4", "cursor5", "cursor6"]);
-  assert.match(root.innerHTML, /Observações · 7/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 7 pendentes"/u);
   assert.match(root.innerHTML, /Observação da página 7\./u);
   sequence.destroy();
 });
@@ -1807,7 +1918,7 @@ test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", as
 
   assert.equal(cursors.length, 128);
   assert.equal(cursors.at(-1), "cursor127");
-  assert.match(root.innerHTML, /Observações · 129/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 129 pendentes"/u);
   assert.match(root.innerHTML, /Exibindo 128 de 129 observações correspondentes; 129 ativas/u);
   assert.match(root.innerHTML, /Abrir todas na área Observações/u);
   assert.match(root.innerHTML, /section=review/u);

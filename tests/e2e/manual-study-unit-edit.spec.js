@@ -545,7 +545,7 @@ async function openInspectionUnit(page, ownership) {
               production: null,
               design: null
             },
-            deepLink: `#/authoring/courses/${courseId}?section=inspection&studyUnitId=${studyUnit.id}`
+            deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=${studyUnit.id}`
           }],
           hasPrevious: false,
           hasMore: false,

@@ -83,7 +83,7 @@ function outlineFixture() {
         }]
       }]
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=content`
   };
 }
 

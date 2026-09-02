@@ -1823,7 +1823,7 @@ test("cliente owner lê e altera audit_cycle sem cache, alias ou autoridade estr
             findingsCreated: 0,
             createdAt: "2026-08-17T12:00:00.000Z",
             deepLink: "https://app.example/#/authoring/courses/" + COURSE_ID +
-              `?section=observations&auditRunId=${auditRunId}`
+              `?section=review&auditRunId=${auditRunId}`
           }]
         } });
       }

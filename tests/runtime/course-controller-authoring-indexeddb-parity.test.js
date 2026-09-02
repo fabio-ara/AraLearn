@@ -131,7 +131,7 @@ function inspectionItem(studyUnit, version, updatedAt) {
       }
     },
     authoringPart: null,
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-a`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`
   };
 }
 

@@ -296,7 +296,7 @@ function sourceObservation(annotationId, {
       canReopen: false,
       canCorrectSubjects: true
     },
-    deepLink: `?section=observations&annotationId=${annotationId}`
+    deepLink: `?section=review&annotationId=${annotationId}`
   };
 }
 

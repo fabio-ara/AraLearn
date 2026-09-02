@@ -179,9 +179,9 @@ function finding({ correctionStatus = "proposed", courseRevision = 7, currentAva
       canVerify: correctionStatus === "applied"
     },
     deepLinks: {
-      detail: `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}`,
+      detail: `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}`,
       target: currentAvailable
-        ? `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-a`
+        ? `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`
         : null
     }
   };
@@ -195,7 +195,7 @@ function findingAt(index) {
   item.correctionRef = null;
   item.capabilities.canVerify = false;
   item.deepLinks.detail =
-    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${item.findingId}`;
+    `#/authoring/courses/${COURSE_ID}?section=review&findingId=${item.findingId}`;
   return item;
 }
 
@@ -232,7 +232,7 @@ function correction({ status = "proposed", courseRevision = 7 } = {}) {
       canVerify: status === "applied",
       canRollback: status === "applied"
     },
-    deepLink: `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}&correctionId=${CORRECTION_ID}`
+    deepLink: `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}&correctionId=${CORRECTION_ID}`
   };
 }
 
@@ -753,7 +753,7 @@ function observationSupportController() {
           goal: "Auditar o Curso.",
           modules: []
         },
-        deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+        deepLink: `#/authoring/courses/${COURSE_ID}?section=content`
       };
     },
     async loadCourseAnchoredAnnotations(_courseId, options) {
@@ -984,7 +984,7 @@ test("apply usa comando versionado, atualiza revisão e nunca cai em audit offli
   });
   assert.deepEqual(revisions, [8]);
   assert.match(root.audit.innerHTML, /Aplicada/u);
-  const suggestionRoute = `#/authoring/courses/${COURSE_ID}?section=observations&annotationId=${ANNOTATION_ID}`;
+  const suggestionRoute = `#/authoring/courses/${COURSE_ID}?section=review&annotationId=${ANNOTATION_ID}`;
   assert.match(root.audit.innerHTML, /Revisar sugestão de resolução/u);
   assert.doesNotMatch(root.audit.innerHTML, /Observação v3/u);
   assert.equal(deepLinkClick(root, suggestionRoute), true);
@@ -1251,7 +1251,7 @@ test("registro de rodada preserva rascunho e foco nas recomposições online e o
             goal: "Auditar o Curso.",
             modules: []
           },
-          deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+          deepLink: `#/authoring/courses/${COURSE_ID}?section=content`
         };
       },
       async loadCourseAnchoredAnnotations(_courseId, options) {
@@ -1577,8 +1577,8 @@ test("nova correção reaberta após ambiguidade conserva editor, correctionId, 
 test("deep links externos ou javascript são reduzidos ao hash interno validado", async () => {
   const navigations = [];
   const root = new FakeRoot();
-  const canonicalFinding = `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${FINDING_ID}`;
-  const canonicalTarget = `#/authoring/courses/${COURSE_ID}?section=inspection&studyUnitId=unit-a`;
+  const canonicalFinding = `#/authoring/courses/${COURSE_ID}?section=review&findingId=${FINDING_ID}`;
+  const canonicalTarget = `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`;
   const canonicalCorrection = `${canonicalFinding}&correctionId=${CORRECTION_ID}`;
   const canonicalSource = `#/authoring/courses/${COURSE_ID}?section=sources&sourceId=fonte-literal`;
   const canonicalAnchor = `${canonicalSource}&anchorId=anchor-a`;
@@ -1714,7 +1714,7 @@ test("paginação de achados falha fechada quando o cursor se repete", async () 
   const secondFinding = finding();
   secondFinding.findingId = "70000000-0000-4000-8000-000000000007";
   secondFinding.deepLinks.detail =
-    `#/authoring/courses/${COURSE_ID}?section=observations&findingId=${secondFinding.findingId}`;
+    `#/authoring/courses/${COURSE_ID}?section=review&findingId=${secondFinding.findingId}`;
   const panel = createCourseAuditPanel({
     root,
     course: { courseId: COURSE_ID, revision: 7 },
@@ -2083,7 +2083,7 @@ test("Auditoria embute Observações sem reintroduzir fluxo de cópia", async ()
             goal: "Auditar o Curso.",
             modules: []
           },
-          deepLink: `#/authoring/courses/${COURSE_ID}?section=structure`
+          deepLink: `#/authoring/courses/${COURSE_ID}?section=content`
         };
       },
       async loadCourseAnchoredAnnotations(_courseId, options) {

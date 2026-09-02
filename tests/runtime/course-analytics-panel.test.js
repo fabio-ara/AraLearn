@@ -92,7 +92,7 @@ function fact(id, label, value = 1) {
     related: { kind: "study_unit", id: "unit-a", label: "Unidade A" },
     values: { annotation_version: value, event_type: "reopened", target_kind: "study_unit" },
     missingData: value === null ? ["A contagem não foi registrada."] : [],
-    deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=observations`
+    deepLink: `https://fabio-ara.github.io/AraLearn/#/authoring/courses/${COURSE_ID}?section=review`
   };
 }
 
