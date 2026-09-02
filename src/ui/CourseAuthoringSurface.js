@@ -59,7 +59,7 @@ const ACTIVITY_LABELS = Object.freeze({
 const AUTHORING_TASKS = Object.freeze([
   Object.freeze({ key: "planning", label: "Planejamento", icon: "intent", ownerOnly: true }),
   Object.freeze({ key: "content", label: "Conteúdo", icon: "module" }),
-  Object.freeze({ key: "parameters", label: "Parâmetros e componentes", icon: "tags", ownerOnly: true }),
+  Object.freeze({ key: "parameters", label: "Parâmetros", icon: "tags", ownerOnly: true }),
   Object.freeze({ key: "sources", label: "Fontes", icon: "study", ownerOnly: true }),
   Object.freeze({ key: "review", label: "Revisão", icon: "preview" }),
   Object.freeze({ key: "research", label: "Variantes e pesquisa", icon: "experiment" }),
@@ -4058,7 +4058,7 @@ export function createCourseAuthoringSurface({
           new TextEncoder().encode(JSON.stringify(guidance)).byteLength > 8_192 ||
           !new Set(["automatic", "author", "research_condition"]).has(origin) ||
           !reason || reason.length > 1_000) {
-        state.designFailure = "Revise o texto original, a origem e a justificativa.";
+        state.designFailure = "Revise a direção editorial, a origem e a justificativa.";
         render();
         return;
       }
@@ -4067,8 +4067,8 @@ export function createCourseAuthoringSurface({
         draft: command,
         command,
         formKey: submittedDesignFormKey,
-        startedMessage: "Salvando orientação…",
-        successMessage: "Texto original salvo; interpretações anteriores não foram sobrescritas."
+        startedMessage: "Salvando direção editorial…",
+        successMessage: "Direção editorial salva; interpretações anteriores não foram sobrescritas."
       });
       return;
     }
@@ -4479,14 +4479,14 @@ export function createCourseAuthoringSurface({
     } else if (action === "clear-design-guidance" && state.courseDesign?.guidance.localRevision &&
         !state.designBusy) {
       openActionConfirmation({
-        message: "Remover esta orientação local e restaurar a orientação herdada?",
+        message: "Remover esta direção editorial local e restaurar a herdada?",
         confirmLabel: "Restaurar herança",
         tone: "secondary",
         icon: "reset",
         execute: () => runDirectDesignCommand({
           type: "clear_guidance",
           scope: activeDesignScope()
-        }, "A orientação local foi removida; a pilha ancestral permanece.",
+        }, "A direção editorial local foi removida; a pilha ancestral permanece.",
         `${designDraftScopeKey()}:guidance`)
       });
     } else if (action === "clear-design-policy" && state.courseDesign?.componentPolicy.localChange &&

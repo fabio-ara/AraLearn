@@ -2707,6 +2707,68 @@ test("#122 instala catálogo fechado, migra guidance e resolve set/clear no PGli
   assert.deepEqual(normalizeCourseDesignRead(after), after);
   assert.equal(after.parameters[0].localAssignment, null);
   assert.equal(after.parameters[0].effectiveAssignment.value, 2);
+  const parameterFactCount = await scalar(database, `
+    select count(*)::integer as value
+    from private.course_design_parameter_changes where course_id=$1
+  `, [COURSE]);
+  const editorialGuidance = [
+    "Footprint: mantenha uma rolagem focal sem comprimir conteúdo necessário.",
+    "Parágrafos: distribua blocos longos em mais Unidades.",
+    "Títulos: use títulos informativos e curtos.",
+    "Estilo: direto, sóbrio e adequado ao público."
+  ].join("\n");
+  const editorialChanged = await applyDesignCommand(database, 6, {
+    type: "set_guidance",
+    scope: { kind: "didactic_microsequence", ref: "micro-a" },
+    guidance: editorialGuidance,
+    origin: "author",
+    reason: "Direção editorial explícita da Microssequência."
+  }, "editorial-guidance-01");
+  assert.equal(editorialChanged.courseRevision, 7);
+  const afterEditorial = await readCourseDesign(
+    database,
+    "didactic_microsequence",
+    "micro-a"
+  );
+  assert.equal(afterEditorial.guidance.localRevision.guidance, editorialGuidance);
+  assert.deepEqual(
+    afterEditorial.parameters.map(({ effectiveAssignment }) => effectiveAssignment.value),
+    after.parameters.map(({ effectiveAssignment }) => effectiveAssignment.value)
+  );
+  assert.equal(await scalar(database, `
+    select count(*)::integer as value
+    from private.course_design_parameter_changes where course_id=$1
+  `, [COURSE]), parameterFactCount);
+  const editorialPartId = await scalar(database, `
+    select id as value from private.course_authoring_parts
+    where course_id=$1 and retired_at is null order by position limit 1
+  `, [COURSE]);
+  const editorialMaterialization = await scalar(database, `
+    select public.advance_course_authoring_part_materialization_for_actor_v1(
+      $1,$2,$3,$4,7,0,'start',$5,'application','editorial-snapshot-01'
+    ) as value
+  `, [OWNER, COURSE, editorialPartId, "54000000-0000-4000-8000-000000000001", {
+    authoringPartVersion: 1,
+    steps: [{
+      id: "54000000-0000-4000-8000-000000000002",
+      position: 0,
+      kind: "didactic_microsequence_materialization",
+      targetDidacticMicrosequenceId: "micro-a",
+      productionPosition: 0
+    }]
+  }]);
+  const sealedEditorialRevision = editorialMaterialization.materialization.designContext
+    .guidanceRevisions.find(({ revisionId }) => (
+      revisionId === afterEditorial.guidance.localRevision.revisionId
+    ));
+  assert.equal(sealedEditorialRevision.guidance, editorialGuidance);
+  assert.ok(editorialMaterialization.materialization.designContext.targets[0]
+    .guidanceRevisionIds.includes(sealedEditorialRevision.revisionId));
+  assert.deepEqual(
+    editorialMaterialization.materialization.designContext.targets[0]
+      .parameters.map(({ value }) => value),
+    after.parameters.map(({ effectiveAssignment }) => effectiveAssignment.value)
+  );
   assert.equal(await scalar(database, `
     select not exists(
       select 1 from information_schema.columns
@@ -3175,6 +3237,13 @@ test("#122 e #131 percorrem plano, descoberta, contrato, materialização, prév
     [DESIGN_EVIDENCE_ID]
   );
   assert.equal(start.materialization.designContext.targets[0].guidanceRevisionIds.length, 1);
+  const sealedParameterSnapshot = structuredClone(
+    start.materialization.designContext.targets[0].parameters
+  );
+  assert.equal(sealedParameterSnapshot.length, 4);
+  assert.deepEqual(Object.keys(sealedParameterSnapshot[0]).sort(), [
+    "origin", "parameterId", "reason", "sourceScope", "value"
+  ]);
   assert.match(start.materialization.contextHash, /^[a-f0-9]{64}$/u);
 
   const resumed = await scalar(database, `
@@ -3321,11 +3390,20 @@ test("#122 e #131 percorrem plano, descoberta, contrato, materialização, prév
   });
   assert.equal(representationAudit.structural.valid, true);
   assert.equal(representationAudit.overallFit, "canonical");
-  assert.equal(await scalar(database, `
-    select result_facts->'designApplication' = $3::jsonb as value
+  const persistedApplication = await scalar(database, `
+    select result_facts->'designApplication' as value
     from private.course_authoring_part_materialization_steps
     where materialization_id=$1 and id=$2
-  `, [materializationId, stepId, application]), true);
+  `, [materializationId, stepId]);
+  assert.deepEqual(persistedApplication, application);
+  const parametersUsedByStudyUnit = Object.fromEntries(
+    persistedApplication.studyUnits.map(({ studyUnitId }) => [
+      studyUnitId,
+      sealedParameterSnapshot
+    ])
+  );
+  assert.equal(Object.keys(parametersUsedByStudyUnit).length, application.studyUnits.length);
+  assert.equal(parametersUsedByStudyUnit[application.studyUnits[0].studyUnitId].length, 4);
 
   await scalar(database, `
     select public.advance_course_authoring_part_materialization_for_actor_v1(

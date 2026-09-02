@@ -1,0 +1,173 @@
+{
+  "format": "aralearn.authoring-parameter-calibration-eval.v1",
+  "epistemicStatus": "synthetic_producer_resolutions_for_contract_and_human_review_not_learning_claims",
+  "calibrationInputs": [
+    "audience",
+    "explicitPrerequisites",
+    "objective",
+    "sources",
+    "studyConstraints",
+    "authorIntent"
+  ],
+  "pedagogicalParameterIds": [
+    "new_analysis_unit_ceiling_per_expository_study_unit",
+    "required_explanation_forms",
+    "minimum_distinct_practice_opportunities_per_evidence_requirement",
+    "required_practice_variation_dimensions"
+  ],
+  "editorialDimensions": [
+    "footprint",
+    "paragraphSize",
+    "titleStyle",
+    "writingStyle"
+  ],
+  "automaticScenarios": [
+    {
+      "id": "novice_short_mobile_sessions",
+      "context": {
+        "audience": "Pessoas iniciantes sem formação em redes.",
+        "explicitPrerequisites": [],
+        "objective": "Explicar e aplicar o percurso de uma requisição até um processo servidor.",
+        "sources": ["Uma referência introdutória verificada sobre processos e sockets."],
+        "studyConstraints": ["Sessões curtas", "Leitura predominante em celular"],
+        "authorIntent": "Curso autossuficiente com apoio progressivo."
+      },
+      "resolvedParameters": [
+        {
+          "parameterId": "new_analysis_unit_ceiling_per_expository_study_unit",
+          "value": 1,
+          "reason": "O público ainda precisa estabelecer os conceitos auxiliares separadamente."
+        },
+        {
+          "parameterId": "required_explanation_forms",
+          "value": ["plain_definition", "concrete_example", "mechanism", "representation_link"],
+          "reason": "Definição, exemplo, mecanismo e representação apoiam a primeira aprendizagem."
+        },
+        {
+          "parameterId": "minimum_distinct_practice_opportunities_per_evidence_requirement",
+          "value": 3,
+          "reason": "Três oportunidades permitem reduzir apoio sem trocar a operação-alvo."
+        },
+        {
+          "parameterId": "required_practice_variation_dimensions",
+          "value": ["case_or_data", "support_level"],
+          "reason": "Os casos e o apoio variam enquanto a tarefa permanece reconhecível."
+        }
+      ],
+      "interactionPolicy": "ask_one_material_question_only_if_context_cannot_support_a_choice"
+    },
+    {
+      "id": "experienced_transfer_across_contexts",
+      "context": {
+        "audience": "Pessoas que já administram processos e portas em um único servidor.",
+        "explicitPrerequisites": ["processo", "socket", "porta", "requisição"],
+        "objective": "Escolher e justificar o encaminhamento de requisições em contextos distintos.",
+        "sources": ["Uma referência técnica verificada sobre encaminhamento de requisições."],
+        "studyConstraints": ["Estudo deliberado", "Exemplos próximos da prática profissional"],
+        "authorIntent": "Comparar decisões e limites de aplicação."
+      },
+      "resolvedParameters": [
+        {
+          "parameterId": "new_analysis_unit_ceiling_per_expository_study_unit",
+          "value": 2,
+          "reason": "Os pré-requisitos explícitos permitem relacionar duas novidades sem redefini-los."
+        },
+        {
+          "parameterId": "required_explanation_forms",
+          "value": ["mechanism", "contrast", "application_condition", "limit_or_exception"],
+          "reason": "O objetivo exige mecanismo, contraste e fronteiras de aplicação."
+        },
+        {
+          "parameterId": "minimum_distinct_practice_opportunities_per_evidence_requirement",
+          "value": 4,
+          "reason": "Quatro oportunidades sustentam comparação entre contextos sem trocar a decisão-alvo."
+        },
+        {
+          "parameterId": "required_practice_variation_dimensions",
+          "value": ["context", "task_feature", "external_representation"],
+          "reason": "Contexto, condição da tarefa e representação são as diferenças relevantes neste objetivo."
+        }
+      ],
+      "interactionPolicy": "ask_one_material_question_only_if_context_cannot_support_a_choice"
+    }
+  ],
+  "explicitComparison": {
+    "sharedContextId": "same-audience-objective-sources-and-inventory",
+    "invariantAnalysisUnitIds": [
+      "71000000-0000-4000-8000-000000000001",
+      "71000000-0000-4000-8000-000000000002",
+      "71000000-0000-4000-8000-000000000003",
+      "71000000-0000-4000-8000-000000000004"
+    ],
+    "conditions": [
+      {
+        "id": "ceiling_one",
+        "origin": "research_condition",
+        "parameters": {
+          "new_analysis_unit_ceiling_per_expository_study_unit": 1,
+          "required_explanation_forms": ["plain_definition", "concrete_example", "mechanism"],
+          "minimum_distinct_practice_opportunities_per_evidence_requirement": 2,
+          "required_practice_variation_dimensions": ["case_or_data"]
+        },
+        "introducedByStudyUnit": [
+          ["71000000-0000-4000-8000-000000000001"],
+          ["71000000-0000-4000-8000-000000000002"],
+          ["71000000-0000-4000-8000-000000000003"],
+          ["71000000-0000-4000-8000-000000000004"]
+        ]
+      },
+      {
+        "id": "ceiling_two",
+        "origin": "research_condition",
+        "parameters": {
+          "new_analysis_unit_ceiling_per_expository_study_unit": 2,
+          "required_explanation_forms": ["plain_definition", "concrete_example", "mechanism"],
+          "minimum_distinct_practice_opportunities_per_evidence_requirement": 2,
+          "required_practice_variation_dimensions": ["case_or_data"]
+        },
+        "introducedByStudyUnit": [
+          [
+            "71000000-0000-4000-8000-000000000001",
+            "71000000-0000-4000-8000-000000000002"
+          ],
+          [
+            "71000000-0000-4000-8000-000000000003",
+            "71000000-0000-4000-8000-000000000004"
+          ]
+        ]
+      }
+    ]
+  },
+  "editorialComparison": {
+    "invariantAnalysisUnitIds": [
+      "71000000-0000-4000-8000-000000000001",
+      "71000000-0000-4000-8000-000000000002",
+      "71000000-0000-4000-8000-000000000003",
+      "71000000-0000-4000-8000-000000000004"
+    ],
+    "invariantPedagogicalConditionId": "ceiling_one",
+    "variants": [
+      {
+        "id": "shorter_paragraphs",
+        "guidance": {
+          "footprint": "compact",
+          "paragraphSize": "shorter",
+          "titleStyle": "direct",
+          "writingStyle": "plain"
+        },
+        "expectedStudyUnitCount": 6
+      },
+      {
+        "id": "roomier_paragraphs",
+        "guidance": {
+          "footprint": "roomy",
+          "paragraphSize": "longer",
+          "titleStyle": "descriptive",
+          "writingStyle": "plain"
+        },
+        "expectedStudyUnitCount": 4
+      }
+    ],
+    "invariantRule": "editorial_changes_presentation_never_semantic_inventory_or_required_coverage"
+  }
+}

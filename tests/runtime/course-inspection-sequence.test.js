@@ -541,7 +541,7 @@ test("foco mostra somente o conjunto e oferece saída para o Curso no ponto corr
   sequence.destroy();
 });
 
-test("menu situado preserva observações e produção; desenho mostra usado versus vigente sem hashes", async () => {
+test("Unit oferece parâmetros contextuais; configuração mostra usado versus vigente sem hashes", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
@@ -555,7 +555,12 @@ test("menu situado preserva observações e produção; desenho mostra usado ver
   const sequence = createCourseInspectionSequence({
     root,
     controller,
-    course: { courseId: COURSE_ID, revision: REVISION },
+    course: {
+      courseId: COURSE_ID,
+      revision: REVISION,
+      ownership: "owned",
+      canEdit: true
+    },
     windowValue: new FakeWindow(),
     documentValue: { activeElement: null },
     navigatorValue: null
@@ -563,15 +568,21 @@ test("menu situado preserva observações e produção; desenho mostra usado ver
 
   assert.equal(await sequence.open(), true);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
+  assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
   assert.match(root.innerHTML, /<span>Observações · 2<\/span>/u);
   assert.match(root.innerHTML, /data-inspection-review-state="observations"[^>]*aria-label="2 observações pendentes"/u);
   assert.match(root.innerHTML, /data-inspection-review-state="design"[^>]*aria-label="Desenho vigente diferente — revisar"/u);
   assert.match(root.innerHTML, /data-inspection-review-state="materialization"[^>]*aria-label="Materialização atual — revisar"/u);
-  assert.match(root.innerHTML, /Desenho usado nesta versão × vigente agora/u);
+  assert.match(root.innerHTML, /Configuração usada nesta versão × vigente agora/u);
   assert.match(root.innerHTML, /Usado nesta versão/u);
   assert.match(root.innerHTML, /Vigente agora/u);
+  assert.match(root.innerHTML, /<strong>Direção editorial<\/strong>/u);
   assert.match(root.innerHTML, />2<\/span>/u);
   assert.match(root.innerHTML, />3<\/span>/u);
+  assert.match(
+    root.innerHTML,
+    /<a href="[^"]*section=parameters&amp;didacticMicrosequenceId=micro-a" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da Microssequência"><svg[\s\S]*?<\/svg><\/a>/u
+  );
   assert.match(root.innerHTML, /data-inspection-control-key="production:unit-01"/u);
   assert.match(root.innerHTML, /section=planning&amp;authoringPartId=20000000-0000-4000-8000-000000000002&amp;materializationId=30000000-0000-4000-8000-000000000003/u);
   assert.match(root.innerHTML, /<span>Produção<\/span>/u);
@@ -2149,7 +2160,7 @@ test("revisão nova cancela paginação antiga e mantém somente o trecho ancora
   sequence.destroy();
 });
 
-test("troca de escopo salva a posição e preserva no histórico o deep link exato", async () => {
+test("ação contextual de parâmetros abre a Microssequência e preserva retorno à Unit", async () => {
   const root = new FakeRoot();
   const events = [];
   const activeElement = {
@@ -2185,9 +2196,9 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
   await sequence.open();
 
   const microsequenceRoute = `#/authoring/courses/${COURSE_ID}` +
-    "?section=content&didacticMicrosequenceId=micro-a";
+    "?section=parameters&didacticMicrosequenceId=micro-a";
   const routeNode = {
-    dataset: { inspectionControlKey: "production:unit-02" },
+    dataset: { inspectionControlKey: "design:unit-02" },
     getAttribute: () => microsequenceRoute,
     closest(selector) {
       return selector === "[data-inspection-study-unit]"
@@ -2219,7 +2230,7 @@ test("troca de escopo salva a posição e preserva no histórico o deep link exa
         offsetFromStickyTop: 0,
         courseRevision: REVISION
       },
-      returnFocusKey: "production:unit-02"
+      returnFocusKey: "design:unit-02"
     }
   ]);
   sequence.destroy();

@@ -1399,7 +1399,7 @@ test("refresh da área de Variantes preserva o painel e encaminha a releitura", 
   assert.match(root.panelHost.innerHTML, /Aguardando outra variante/u);
 });
 
-test("Parâmetros lê somente o escopo e separa pedagogia, orientação, componentes e produção", async () => {
+test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial, componentes e produção", async () => {
   const root = new FakeRoot();
   const reads = [];
   let outlineReads = 0;
@@ -1446,7 +1446,7 @@ test("Parâmetros lê somente o escopo e separa pedagogia, orientação, compone
   );
   assert.match(
     root.innerHTML,
-    /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros e componentes<\/h2>/u
+    /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros, direção editorial e componentes<\/h2>/u
   );
   assert.doesNotMatch(root.innerHTML, /Os valores iniciais são hipóteses operacionais/iu);
   assert.match(
@@ -1455,22 +1455,26 @@ test("Parâmetros lê somente o escopo e separa pedagogia, orientação, compone
   );
   assert.match(
     root.innerHTML,
-    /<summary class="course-authoring-icon-action" aria-label="Entender e ajustar [^"]+"[^>]*><svg/u
+    /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*><svg/u
   );
+  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 4);
   assert.match(root.innerHTML, /aria-label="Revisar interpretação" title="Revisar interpretação"><svg/u);
-  assert.match(root.innerHTML, /aria-label="Editar orientação neste escopo"[^>]*><svg/u);
+  assert.match(root.innerHTML, /aria-label="Editar direção editorial neste escopo"[^>]*><svg/u);
   assert.match(root.innerHTML, /aria-label="Ajustar componentes neste escopo"[^>]*><svg/u);
   assert.doesNotMatch(
     root.innerHTML,
-    /<summary[^>]*>(?:Entender e ajustar|Revisar interpretação|Editar orientação|Ajustar componentes)/u
+    /<summary[^>]*>(?:Ajustar|Revisar interpretação|Editar direção editorial)/u
   );
   assert.match(
     root.innerHTML,
-    /<summary class="course-authoring-icon-action" aria-label="Entender e ajustar [^"]+"[^>]*>[\s\S]*?<\/summary><p class="course-design-reason">Hipótese inicial do produto\.<\/p>/u
+    /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*>[\s\S]*?<\/summary><p class="course-design-reason">Hipótese inicial do produto\.<\/p>/u
   );
-  assert.match(root.innerHTML, /Texto original/u);
+  assert.match(root.innerHTML, /Valor vigente/u);
+  assert.match(root.innerHTML, /Direção editorial/u);
   assert.match(root.innerHTML, /Interpretação estruturada/u);
-  assert.match(root.innerHTML, /<h3 id="course-design-guidance-title">Orientação<\/h3>/u);
+  assert.match(root.innerHTML, /<h3 id="course-design-guidance-title">Direção editorial<\/h3>/u);
+  assert.match(root.innerHTML, /Nunca comprime nem remove conteúdo necessário/iu);
+  assert.match(root.innerHTML, /distribui em mais StudyUnits/iu);
   assert.match(root.innerHTML, /<h3 id="course-design-policy-title">Componentes<\/h3>/u);
   assert.match(root.innerHTML, /Planejado × aplicado/u);
   assert.match(root.innerHTML, /não prova qualidade nem aprendizagem/iu);
@@ -1513,12 +1517,12 @@ test("Parâmetros recolhe texto migratório de bastidor sem perder orientação 
   assert.doesNotMatch(root.innerHTML, /Migrada do planejamento/u);
   assert.match(
     root.innerHTML,
-    /<details class="course-design-imported-copy"><summary class="course-authoring-icon-action" aria-label="Ver orientação importada"[^>]*><svg[\s\S]*?<\/summary><blockquote>Fixture course-design-cutover com hash 3e5629f8c0de\.<\/blockquote><p class="course-design-reason">Orientação preservada pelo corte #122\.<\/p><\/details>/u
+    /<details class="course-design-imported-copy"><summary class="course-authoring-icon-action" aria-label="Ver direção editorial importada"[^>]*><svg[\s\S]*?<\/summary><blockquote>Fixture course-design-cutover com hash 3e5629f8c0de\.<\/blockquote><p class="course-design-reason">Orientação preservada pelo corte #122\.<\/p><\/details>/u
   );
   assert.doesNotMatch(root.innerHTML, /Ainda não há interpretação estruturada/u);
   assert.match(
     root.innerHTML,
-    /aria-label="Interpretar orientação separadamente" title="Interpretar orientação separadamente"><svg/u
+    /aria-label="Interpretar direção editorial separadamente" title="Interpretar direção editorial separadamente"><svg/u
   );
   assert.match(
     root.innerHTML,
@@ -1560,6 +1564,7 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls[0].options.scope, { kind: "module", ref: "module-a" });
   assert.match(root.innerHTML, /Módulo: Base/u);
+  assert.match(root.innerHTML, /Herdado de Fundamentos · Definido pelo autor/u);
   assert.match(root.innerHTML, /não são definidos em Módulo/u);
   assert.match(root.innerHTML, /<fieldset disabled>/u);
   assert.doesNotMatch(root.innerHTML, /data-course-design-parameter/u);
@@ -1658,6 +1663,8 @@ test("Microssequência atribui itens estáveis do plano e recarrega plano e dese
 
   assert.equal(await surface.open(), true);
   assert.equal(planReads, 1);
+  assert.match(root.innerHTML, /StudyUnits desta Microssequência usam estes valores/iu);
+  assert.match(root.innerHTML, /Cada versão preserva a configuração aplicada na produção/iu);
   assert.match(root.innerHTML, /Cobertura planejada desta Microssequência/u);
   assert.match(root.innerHTML, /Relação entre grandezas/u);
   assert.match(root.innerHTML, /Resolver um caso novo/u);
@@ -3524,7 +3531,7 @@ test("Visão geral revela as sete tarefas humanas em um único nível", () => {
   assert.doesNotMatch(markup, /class="course-authoring-sections"|course-authoring-primary-navigation/u);
   assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
   for (const label of [
-    "Planejamento", "Conteúdo", "Parâmetros e componentes", "Fontes", "Revisão",
+    "Planejamento", "Conteúdo", "Parâmetros", "Fontes", "Revisão",
     "Variantes e pesquisa", "Pessoas e acesso"
   ]) assert.match(markup, new RegExp(`<strong>${label}<\\/strong>`, "u"));
   for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {

@@ -30,7 +30,10 @@ export const PRACTICE_VARIATION_DIMENSIONS = Object.freeze([
   "support_level"
 ]);
 
-const PARAMETER_SCOPES = Object.freeze([
+// O catálogo estruturado contém somente decisões pedagógicas. Restrições de
+// footprint, parágrafos, títulos e estilo pertencem à orientação autoral
+// escopada, que é selada separadamente na materialização.
+const PEDAGOGICAL_PARAMETER_SCOPES = Object.freeze([
   "course",
   "lesson",
   "didactic_microsequence"
@@ -66,7 +69,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     limitations: "A contagem orienta granularidade de desenho e não mede carga cognitiva, dificuldade, aprendizagem ou qualidade da explicação.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: Object.freeze(["koedinger2012kli", "chen2023elementinteractivity"]),
-    supportedScopes: PARAMETER_SCOPES,
+    supportedScopes: PEDAGOGICAL_PARAMETER_SCOPES,
     valueSchema: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
     defaultValue: 2
   }),
@@ -78,7 +81,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     limitations: "As formas não são uma escala de qualidade nem uma lista universal; adequação depende do objeto, público, tarefa e representação.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: Object.freeze(["wittwer2008explanations", "ainsworth2006deft"]),
-    supportedScopes: PARAMETER_SCOPES,
+    supportedScopes: PEDAGOGICAL_PARAMETER_SCOPES,
     valueSchema: Object.freeze({
       type: "set",
       allowedValues: EXPLANATION_FORMS,
@@ -100,7 +103,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     limitations: "Quantidade de oportunidades não demonstra domínio, eficácia ou equivalência entre tarefas; a pertinência da evidência permanece uma hipótese de desenho.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: Object.freeze(["karpicke2008retrieval", "mislevy2003ecd"]),
-    supportedScopes: PARAMETER_SCOPES,
+    supportedScopes: PEDAGOGICAL_PARAMETER_SCOPES,
     valueSchema: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
     defaultValue: 2
   }),
@@ -112,7 +115,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     limitations: "Variação declarada não prova transferência nem aprendizagem e precisa preservar a operação-alvo pertinente ao requisito.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: Object.freeze(["taylor2010interleaved", "ainsworth2006deft"]),
-    supportedScopes: PARAMETER_SCOPES,
+    supportedScopes: PEDAGOGICAL_PARAMETER_SCOPES,
     valueSchema: Object.freeze({
       type: "set",
       allowedValues: PRACTICE_VARIATION_DIMENSIONS,
@@ -123,7 +126,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   })
 ]);
 
-const DEFINITION_BY_ID = new Map(
+const PEDAGOGICAL_PARAMETER_BY_ID = new Map(
   COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => [definition.id, definition])
 );
 
@@ -249,7 +252,7 @@ function uniqueUuidList(value, maximumItems, code, label) {
 
 export function normalizeCourseDesignScope(value, { parameter = false } = {}) {
   exact(value, ["kind", "ref"], "invalid_course_design_scope", "O escopo de desenho");
-  const allowed = parameter ? PARAMETER_SCOPES : DESIGN_SCOPES;
+  const allowed = parameter ? PEDAGOGICAL_PARAMETER_SCOPES : DESIGN_SCOPES;
   if (!allowed.includes(value.kind)) {
     fail("invalid_course_design_scope", "O tipo do escopo de desenho é inválido.");
   }
@@ -260,8 +263,8 @@ export function normalizeCourseDesignScope(value, { parameter = false } = {}) {
 }
 
 export function normalizeCourseDesignParameterValue(parameterId, value) {
-  const definition = DEFINITION_BY_ID.get(parameterId);
-  if (!definition) fail("unknown_course_design_parameter", "O parâmetro de desenho não pertence ao catálogo.");
+  const definition = PEDAGOGICAL_PARAMETER_BY_ID.get(parameterId);
+  if (!definition) fail("unknown_course_design_parameter", "O parâmetro pedagógico não pertence ao catálogo.");
   if (definition.valueSchema.type === "integer") {
     if (!Number.isSafeInteger(value) || value < definition.valueSchema.minimum ||
         value > definition.valueSchema.maximum) {
@@ -475,7 +478,9 @@ export function normalizeCourseDesignCommand(value, { knownComponentRefs = null 
   if (command.type === "clear_parameter") {
     exact(command, ["type", "scope", "parameterId"], "invalid_course_design_command", "O comando");
     const parameterId = identity(command.parameterId, 160, "unknown_course_design_parameter", "A identidade do parâmetro");
-    if (!DEFINITION_BY_ID.has(parameterId)) fail("unknown_course_design_parameter", "O parâmetro não pertence ao catálogo.");
+    if (!PEDAGOGICAL_PARAMETER_BY_ID.has(parameterId)) {
+      fail("unknown_course_design_parameter", "O parâmetro pedagógico não pertence ao catálogo.");
+    }
     return {
       type: command.type,
       scope: normalizeCourseDesignScope(command.scope, { parameter: true }),

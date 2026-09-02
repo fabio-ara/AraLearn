@@ -2757,7 +2757,7 @@
   }
 }
 
-/* Parâmetros conserva quatro decisões pedagógicas, orientação acumulada e política editorial. */
+/* Parâmetros conserva quatro decisões pedagógicas, direção editorial e componentes. */
 .course-authoring-surface[data-section="parameters"] {
   width: min(100%, 430px);
 }
@@ -2840,6 +2840,14 @@
 .course-design-scope > div:first-child strong {
   overflow-wrap: anywhere;
   font-size: var(--type-sm);
+}
+
+.course-design-context-note {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
 }
 
 .course-design-scope > nav {
@@ -4854,7 +4862,7 @@
   gap: 4px;
 }
 
-.course-inspection-item-actions .course-inspection-mode-actions button {
+.course-inspection-item-actions .course-inspection-mode-actions :is(button, a) {
   width: var(--tap);
   min-width: var(--tap);
   min-height: var(--tap);
@@ -4866,6 +4874,7 @@
   color: var(--action-primary-hover);
   background: transparent;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .course-inspection-item-actions .course-inspection-mode-actions button[aria-pressed="true"] {

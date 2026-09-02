@@ -199,7 +199,7 @@ function decomposedExplanationApplication({ unitCount, analysisId = ANALYSIS_IDS
   };
 }
 
-test("catálogo v1 contém somente quatro hipóteses operacionais sem proxy de caracteres", () => {
+test("catálogo v1 contém somente quatro hipóteses pedagógicas sem proxy editorial", () => {
   assert.deepEqual(
     COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultStatus }) => [id, defaultStatus]),
     [
@@ -213,7 +213,65 @@ test("catálogo v1 contém somente quatro hipóteses operacionais sem proxy de c
   assert.ok(COURSE_DESIGN_PARAMETER_DEFINITIONS.every(({ valueSchema }) => (
     ["integer", "set"].includes(valueSchema.type)
   )));
+  assert.equal(
+    COURSE_DESIGN_PARAMETER_DEFINITIONS.some(({ id }) => (
+      /editorial|footprint|paragraph|title|style/u.test(id)
+    )),
+    false
+  );
   assert.match(catalogText, /não mede|não demonstra|não prova/iu);
+});
+
+test("#268 orientação editorial permanece separada dos quatro parâmetros pedagógicos", () => {
+  const scope = { kind: "didactic_microsequence", ref: MICROSEQUENCE };
+  const editorial = normalizeCourseDesignCommand({
+    type: "set_guidance",
+    scope,
+    guidance: [
+      "Footprint: prefira uma rolagem focal sem comprimir conteúdo necessário.",
+      "Parágrafos: distribua blocos longos entre Unidades quando necessário.",
+      "Títulos: use títulos informativos e curtos.",
+      "Estilo: direto, sóbrio e adequado ao público."
+    ].join("\n"),
+    origin: "author",
+    reason: "Direção editorial explícita para esta Microssequência."
+  });
+  assert.equal(Object.hasOwn(editorial, "parameterId"), false);
+  assert.equal(Object.hasOwn(editorial, "value"), false);
+  assert.match(editorial.guidance, /Footprint.*Parágrafos.*Títulos.*Estilo/isu);
+
+  const parameterChange = {
+    changeId: "1",
+    action: "set",
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    scope,
+    value: 1,
+    origin: "author",
+    reason: "Condição pedagógica explícita."
+  };
+  const path = [
+    { kind: "course", ref: COURSE },
+    { kind: "module", ref: "module-a" },
+    { kind: "lesson", ref: LESSON },
+    scope
+  ];
+  const beforeEditorial = resolveCourseDesignParameters([parameterChange], path);
+  const afterEditorial = resolveCourseDesignParameters([
+    parameterChange,
+    { changeId: "2", action: "set", scope, guidance: editorial.guidance }
+  ], path);
+  assert.deepEqual(afterEditorial, beforeEditorial);
+  assert.throws(() => normalizeCourseDesignCommand({
+    type: "set_parameter",
+    scope,
+    parameterId: "editorial_study_unit_footprint",
+    value: 1,
+    origin: "author",
+    reason: "Editorial não pertence ao catálogo pedagógico."
+  }), (error) => (
+    error instanceof CourseDesignParametersError &&
+    error.code === "unknown_course_design_parameter"
+  ));
 });
 
 test("comandos são fechados e preservam paridade exata com o mirror Edge", () => {
@@ -439,6 +497,57 @@ test("#235 distribui uma AnalysisUnit por duas ou três StudyUnits sem contar co
     justifiedNotApplicable.studyUnits[1].explanationApplications[0].notApplicable[0].form,
     "contrast"
   );
+});
+
+test("#268 snapshot da Microssequência reconstrói os valores usados por cada StudyUnit", () => {
+  const designContext = analysisOnlyContext([ANALYSIS_IDS[0]], { ceiling: 1 });
+  designContext.targets[0].parameters = designContext.targets[0].parameters.map((parameter) => (
+    parameter.parameterId === "new_analysis_unit_ceiling_per_expository_study_unit"
+      ? {
+        ...parameter,
+        origin: "research_condition",
+        reason: "Condição teto 1 fixada antes da produção.",
+        sourceScope: { kind: "didactic_microsequence", ref: MICROSEQUENCE }
+      }
+      : parameter
+  ));
+  const application = decomposedExplanationApplication({ unitCount: 3 });
+  const audit = auditDesignApplication(designContext, application, {
+    contextHash: CONTEXT_HASH
+  });
+  assert.deepEqual(audit.issues, []);
+
+  const target = designContext.targets.find(({ didacticMicrosequenceId }) => (
+    didacticMicrosequenceId === application.didacticMicrosequenceId
+  ));
+  const usedByStudyUnit = Object.fromEntries(application.studyUnits.map(({ studyUnitId }) => [
+    studyUnitId,
+    structuredClone(target.parameters)
+  ]));
+  assert.equal(Object.keys(usedByStudyUnit).length, 3);
+  for (const parameters of Object.values(usedByStudyUnit)) {
+    assert.equal(parameters.length, 4);
+    assert.deepEqual(Object.keys(parameters[0]).sort(), [
+      "origin", "parameterId", "reason", "sourceScope", "value"
+    ]);
+    assert.equal(parameters[0].value, 1);
+    assert.equal(parameters[0].origin, "research_condition");
+    assert.deepEqual(parameters[0].sourceScope, {
+      kind: "didactic_microsequence",
+      ref: MICROSEQUENCE
+    });
+  }
+  assert.throws(() => normalizeCourseDesignCommand({
+    type: "set_parameter",
+    scope: { kind: "study_unit", ref: application.studyUnits[0].studyUnitId },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 2,
+    origin: "author",
+    reason: "Escopo por Unit duplicaria o contexto para conteúdo ainda inexistente."
+  }), (error) => (
+    error instanceof CourseDesignParametersError &&
+    error.code === "invalid_course_design_scope"
+  ));
 });
 
 test("#264 intercala consolidação formativa sem fabricar requisito de evidência", () => {

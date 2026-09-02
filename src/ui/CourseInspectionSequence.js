@@ -650,13 +650,24 @@ function renderManualTitle(item, state, editing, targetId) {
 
 function renderManualModeActions(item, state, editing) {
   const id = escapeHtml(item.studyUnit.id);
+  const designRoute = buildCourseAuthoringRoute(state.courseId, {
+    section: "parameters",
+    didacticMicrosequenceId: item.curriculumPath.didacticMicrosequence.id
+  });
   const canUndo = state.manualUndo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   const canRedo = state.manualRedo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
-  return '<nav class="course-inspection-mode-actions" role="group" aria-label="Modo da Unidade de estudo">' +
+  return '<nav class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo">' +
     `<button type="button" data-inspection-unit-mode="view" data-study-unit-id="${id}"` +
     ` aria-pressed="${editing ? "false" : "true"}" aria-label="Visualizar" title="Visualizar"` +
     `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
     `${renderUiIcon("preview", "course-authoring-button-icon")}</button>` +
+    (state.canAccessDesign
+      ? `<a href="${escapeHtml(designRoute)}" data-inspection-route` +
+        ` data-inspection-control-key="design:${id}" aria-label="Parâmetros aplicáveis a ${escapeHtml(
+          item.studyUnit.title
+        )}" title="Parâmetros da Microssequência">` +
+        `${renderUiIcon("tags", "course-authoring-button-icon")}</a>`
+      : "") +
     (state.canEditManually
       ? `<button type="button" data-inspection-unit-mode="edit" data-study-unit-id="${id}"` +
         ` aria-pressed="${editing ? "true" : "false"}" aria-label="Editar" title="Editar"` +
@@ -934,7 +945,6 @@ export function searchCourseInspectionIndex(index, query, limit = SEARCH_RESULT_
 
 function renderStudyUnitContextActions(item, state, observationCount) {
   const studyUnitId = escapeHtml(item.studyUnit.id);
-  const path = item.curriculumPath;
   const part = item.authoringPart;
   return `<nav class="course-inspection-item-menu" aria-label="Mais ações para ${escapeHtml(item.studyUnit.title)}">` +
     `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
@@ -945,11 +955,6 @@ function renderStudyUnitContextActions(item, state, observationCount) {
     `${renderUiIcon("prompt", "course-authoring-button-icon")}<span>Observações${
       Number(observationCount) > 0 ? ` · ${Number(observationCount)}` : ""
     }</span></button>` +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
-      section: "parameters",
-      didacticMicrosequenceId: path.didacticMicrosequence.id
-    }))}" data-inspection-route data-inspection-control-key="design:${studyUnitId}">` +
-    `${renderUiIcon("tags", "course-authoring-button-icon")}<span>Desenho</span></a>` +
     (part && item.authorship.production
       ? `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
           section: "planning",
@@ -1210,13 +1215,13 @@ function renderDesignSnapshot(snapshot, title) {
         designOriginLabel(revision.origin)
       )} · ${escapeHtml(designScopeLabel(revision.sourceScopeKind))}</footer></blockquote>`
     ).join("")
-    : "<p>Nenhuma orientação adicional.</p>";
+    : "<p>Nenhuma direção editorial adicional.</p>";
   const policy = snapshot.componentPolicy;
   const availability = policy.availability === "all"
     ? "Todos os componentes instalados"
     : `${policy.allowedCount} componentes permitidos`;
   return `<section><h4>${escapeHtml(title)}</h4><ul>${parameters}</ul>` +
-    `<div><strong>Orientação</strong>${guidance}</div>` +
+    `<div><strong>Direção editorial</strong>${guidance}</div>` +
     `<p><strong>Política de componentes</strong><span>${escapeHtml(availability)}; ` +
     `${policy.excludedCount} excluídos; ${policy.preferredCount} preferidos.</span>` +
     `<small>${escapeHtml(designOriginLabel(policy.origin))} · ${escapeHtml(
@@ -1228,7 +1233,7 @@ function renderDesignComparison(item) {
   const design = item.authorship.design;
   if (!design) return "";
   return '<details class="course-inspection-design-comparison">' +
-    '<summary>Desenho usado nesta versão × vigente agora</summary>' +
+    '<summary>Configuração usada nesta versão × vigente agora</summary>' +
     `<p>${design.state === "current"
       ? "O desenho relevante permanece igual ao usado na produção."
       : design.state === "verified"
@@ -1537,6 +1542,7 @@ export function createCourseInspectionSequence({
     courseTitle: typeof course.title === "string" ? course.title.trim() : "",
     pinnedRevision: course.revision,
     canEditSources: course.ownership === "owned" && course.canEdit === true,
+    canAccessDesign: course.ownership === "owned" && course.canEdit === true,
     canEditContent: course.ownership === "owned" && course.canEdit === true &&
       typeof onEditContent === "function",
     canEditManually: course.ownership === "owned" && course.canEdit === true &&

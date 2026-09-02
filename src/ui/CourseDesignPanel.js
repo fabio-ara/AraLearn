@@ -116,10 +116,14 @@ function renderScopeContext(design) {
       ' data-course-authoring-action="load-more-design-scopes" aria-label="Carregar mais escopos"' +
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
+  const contextualNote = context.current.kind === "didactic_microsequence"
+    ? "As StudyUnits desta Microssequência usam estes valores. Cada versão preserva a configuração aplicada na produção."
+    : "Escolha um escopo para consultar o valor vigente e, quando necessário, sobrescrever ou restaurar a herança.";
   return '<section class="course-design-scope" aria-labelledby="course-design-scope-title">' +
     '<div><p id="course-design-scope-title">Escopo atual</p>' +
     `<strong>${escapeHtml(SCOPE_LABELS[context.current.kind])}: ` +
-    `${escapeHtml(context.current.label)}</strong></div>` +
+    `${escapeHtml(context.current.label)}</strong>` +
+    `<span class="course-design-context-note">${escapeHtml(contextualNote)}</span></div>` +
     `<nav aria-label="Caminho do escopo">${breadcrumbs}</nav>${selector}${more}</section>`;
 }
 
@@ -144,6 +148,11 @@ function renderParameterCard(design, definition, resolution, busy) {
   const supported = definition.supportedScopes.includes(design.scopeContext.current.kind);
   const draftValue = local?.value ?? effective.value;
   const source = sourceScopeLabel(design, effective.sourceScope);
+  const resolutionLabel = local
+    ? `${originLabel(effective.origin)} · sobrescrito neste escopo`
+    : effective.inherited
+      ? `Herdado de ${source} · ${originLabel(effective.origin)}`
+      : `${originLabel(effective.origin)} · ${source}`;
   const editor = supported
     ? '<form class="course-design-parameter-form" data-course-design-parameter>' +
       `<input type="hidden" name="parameterId" value="${escapeHtml(definition.id)}">` +
@@ -172,14 +181,14 @@ function renderParameterCard(design, definition, resolution, busy) {
       renderParameterInput(definition, effective.value, { disabled: true }) + "</fieldset></div>";
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
     '<header><div>' +
-    `<h3>${escapeHtml(definition.label)}</h3></div>` +
+    `<h3>${escapeHtml(definition.label)}</h3><p>Valor vigente</p></div>` +
     `<strong>${escapeHtml(formatValue(effective.value))}</strong></header>` +
     '<dl class="course-design-resolution"><div>' +
     '<dt class="course-authoring-visually-hidden">Origem e escopo</dt>' +
-    `<dd>${escapeHtml(originLabel(effective.origin))} · ${escapeHtml(source)}</dd></div></dl>` +
-    `<details><summary class="course-authoring-icon-action" aria-label="Entender e ajustar ${escapeHtml(
+    `<dd>${escapeHtml(resolutionLabel)}</dd></div></dl>` +
+    `<details><summary class="course-authoring-icon-action" aria-label="Ajustar ${escapeHtml(
       definition.label
-    )}" title="Entender e ajustar ${escapeHtml(definition.label)}">` +
+    )}" title="Ajustar ${escapeHtml(definition.label)}">` +
     renderUiIcon("edit", "course-authoring-button-icon") + "</summary>" +
     `<p class="course-design-reason">${escapeHtml(effective.reason)}</p>` +
     `<div class="course-design-parameter-explanation"><p>${escapeHtml(definition.construct)}</p>` +
@@ -217,7 +226,7 @@ function directiveLines(interpretation, kind) {
 function renderInterpretationForm(revision, busy) {
   const current = revision.currentInterpretation;
   const value = current?.interpretation;
-  const label = current ? "Revisar interpretação" : "Interpretar orientação separadamente";
+  const label = current ? "Revisar interpretação" : "Interpretar direção editorial separadamente";
   return '<details class="course-design-interpretation-editor"><summary class="course-authoring-icon-action"' +
     ` aria-label="${label}" title="${label}">` +
     renderUiIcon(current ? "edit" : "add", "course-authoring-button-icon") + "</summary>" +
@@ -244,7 +253,7 @@ function renderGuidanceRevisionCopy(revision) {
   const copy = `<blockquote>${escapeHtml(revision.guidance)}</blockquote>` +
     `<p class="course-design-reason">${escapeHtml(revision.reason)}</p>`;
   if (revision.origin !== "migration") return copy;
-  const label = "Ver orientação importada";
+  const label = "Ver direção editorial importada";
   return '<details class="course-design-imported-copy"><summary class="course-authoring-icon-action"' +
     ` aria-label="${label}" title="${label}">` +
     renderUiIcon("preview", "course-authoring-button-icon") + `</summary>${copy}</details>`;
@@ -260,22 +269,23 @@ function renderGuidance(design, busy) {
       renderGuidanceRevisionCopy(revision) +
       renderInterpretation(revision.currentInterpretation) +
       renderInterpretationForm(revision, busy) + "</article></li>").join("") + "</ol>"
-    : '<p class="course-design-empty-copy">Nenhuma orientação foi definida no caminho deste escopo.</p>';
+    : '<p class="course-design-empty-copy">Nenhuma direção editorial foi definida no caminho deste escopo.</p>';
   const local = guidance.localRevision;
   return '<section class="course-design-guidance" aria-labelledby="course-design-guidance-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Orientação</h3></div></header>' + stack +
+    '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Direção editorial</h3>' +
+    '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais StudyUnits.</p></div></header>' + stack +
     '<details class="course-design-local-editor"><summary class="course-authoring-icon-action"' +
-    ` aria-label="${local ? "Editar" : "Adicionar"} orientação neste escopo"` +
-    ` title="${local ? "Editar" : "Adicionar"} orientação neste escopo">` +
+    ` aria-label="${local ? "Editar" : "Adicionar"} direção editorial neste escopo"` +
+    ` title="${local ? "Editar" : "Adicionar"} direção editorial neste escopo">` +
     renderUiIcon(local ? "edit" : "add", "course-authoring-button-icon") + "</summary>" +
     '<form data-course-design-guidance>' +
-    '<label>Texto original<textarea name="guidance" maxlength="8192" rows="5" required>' +
+    '<label>Direção editorial<textarea name="guidance" maxlength="8192" rows="5" required>' +
     `${escapeHtml(local?.guidance || "")}</textarea></label>` +
     '<label>Origem da decisão<select name="origin" required>' +
     formOriginOptions(local && local.origin !== "migration" ? local.origin : "author") + "</select></label>" +
     '<label>Justificativa<textarea name="reason" maxlength="1000" rows="3" required>' +
     `${escapeHtml(local?.reason || "")}</textarea></label>` +
-    '<div class="course-design-form-actions"><button type="submit" aria-label="Salvar orientação" title="Salvar orientação"' +
+    '<div class="course-design-form-actions"><button type="submit" aria-label="Salvar direção editorial" title="Salvar direção editorial"' +
     `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
     (local
       ? `<button type="button" class="is-secondary" data-course-authoring-action="clear-design-guidance"` +
@@ -472,7 +482,7 @@ export function renderCourseDesignPanel(state) {
   const design = state.courseDesign;
   return '<section class="course-authoring-section course-design"' +
     ' aria-labelledby="course-authoring-section-title">' +
-    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros e componentes</h2>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros, direção editorial e componentes</h2>' +
     (state.designMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.designMessage)}</p>`
       : "") +
@@ -481,7 +491,8 @@ export function renderCourseDesignPanel(state) {
       : "") +
     renderScopeContext(design) +
     '<section class="course-design-parameters" aria-labelledby="course-design-parameters-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-parameters-title">Parâmetros pedagógicos</h3></div></header>' +
+    '<header class="course-design-subheading"><div><h3 id="course-design-parameters-title">Parâmetros pedagógicos</h3>' +
+    '<p>Quatro decisões educacionais, separadas da direção editorial.</p></div></header>' +
     design.definitions.map((definition, index) => renderParameterCard(
       design,
       definition,
