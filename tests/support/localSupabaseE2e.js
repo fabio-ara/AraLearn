@@ -5,9 +5,10 @@ export const LOCAL_APPLICATION_ORIGIN = "http://127.0.0.1:4182";
 export const CHATGPT_ACTION_ORIGIN = "https://chatgpt.com";
 const MCP_PROTOCOL_VERSION = "2025-11-25";
 const MCP_REDIRECT_URI = "https://mcp-e2e.aralearn.invalid/callback";
-const ACTION_GPT_ID = "g-aralearn-e2e";
+const ACTION_GPT_ID = "g-aralearn-e2e-metadata";
+const ACTION_CALLBACK_ID = "g-aralearn-e2e-callback";
 const ACTION_REDIRECT_URI =
-  `https://chatgpt.com/aip/${ACTION_GPT_ID}/oauth/callback`;
+  `https://chat.openai.com/aip/${ACTION_CALLBACK_ID}/oauth/callback`;
 
 export function localSupabaseConfiguration(environment = process.env) {
   const projectUrl = String(environment.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");

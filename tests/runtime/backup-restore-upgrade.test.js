@@ -39,8 +39,11 @@ test("#275 restauração aplica toda a cadeia final em ordem", () => {
   const analyticsApplicability = script.indexOf(
     "20260902180219_count_expository_parameter_usage_in_analytics.sql"
   );
+  const actionCallback = script.indexOf(
+    "20260902234800_bind_real_chatgpt_action_callback.sql"
+  );
   assert.ok(cut >= 0 && actionOrigin > cut && focalCorrection > actionOrigin &&
-    analyticsApplicability > focalCorrection);
+    analyticsApplicability > focalCorrection && actionCallback > analyticsApplicability);
   assert.match(script, /values\.migrations\.push\(\.\.\.defaultMigrations\)/u);
   assert.match(script, /const preCutMigrations = migrationsBefore\(resolved\.migrations\[0\]\)/u);
   assert.match(script, /applyMigrationFiles\([\s\S]+pre-cut-migrations-/u);

@@ -677,6 +677,39 @@ function databaseError(status, body) {
   );
 }
 
+function actionOAuthDatabaseError(status, body, phase) {
+  const code = String(body?.code || "");
+  if (status === 429 || code === "P0001") {
+    return new AuthoringApiError(
+      429,
+      "temporarily_unavailable",
+      "O serviço OAuth atingiu um limite temporário."
+    );
+  }
+  if (status >= 500 || status === 408 || code === "42501") {
+    return new AuthoringApiError(
+      503,
+      "temporarily_unavailable",
+      "O serviço OAuth está temporariamente indisponível."
+    );
+  }
+  if (status >= 400 && status < 500) {
+    const grant = phase === "grant";
+    return new AuthoringApiError(
+      400,
+      grant ? "invalid_grant" : "invalid_request",
+      grant
+        ? "As credenciais ou a concessão OAuth são inválidas."
+        : "A solicitação OAuth é inválida."
+    );
+  }
+  return new AuthoringApiError(
+    503,
+    "temporarily_unavailable",
+    "O serviço OAuth está temporariamente indisponível."
+  );
+}
+
 function responseTooLarge() {
   return new AuthoringApiError(
     413,
@@ -1187,13 +1220,21 @@ export class CourseSupabaseAdapter {
     retry = true,
     deadlineAt = null,
     timeoutMs = this.requestTimeoutMs,
-    responseLimitBytes = this.responseLimitBytes
+    responseLimitBytes = this.responseLimitBytes,
+    errorDomain = "course"
   } = {}) {
+    const oauthRequest = errorDomain === "oauth_request" || errorDomain === "oauth_grant";
     let lastError = null;
     for (let attempt = 1; attempt <= this.attempts; attempt += 1) {
       const remaining = deadlineAt == null ? timeoutMs : deadlineAt - Date.now();
       if (remaining <= 0) {
-        throw new AuthoringApiError(503, "service_timeout", "O prazo da operação terminou.");
+        throw oauthRequest
+          ? new AuthoringApiError(
+              503,
+              "temporarily_unavailable",
+              "O serviço OAuth está temporariamente indisponível."
+            )
+          : new AuthoringApiError(503, "service_timeout", "O prazo da operação terminou.");
       }
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), Math.max(1, Math.min(timeoutMs, remaining)));
@@ -1207,17 +1248,35 @@ export class CourseSupabaseAdapter {
           body = source;
         }
         if (response.ok) return body;
-        const error = databaseError(response.status, body);
+        const error = errorDomain === "oauth_request"
+          ? actionOAuthDatabaseError(response.status, body, "request")
+          : errorDomain === "oauth_grant"
+            ? actionOAuthDatabaseError(response.status, body, "grant")
+            : databaseError(response.status, body);
         lastError = error;
         if (!retry || !retryableStatus(error.status) || attempt === this.attempts) throw error;
       } catch (error) {
         const normalized = controller.signal.aborted
-          ? new AuthoringApiError(503, "service_timeout", "O serviço não respondeu a tempo.")
+          ? oauthRequest
+            ? new AuthoringApiError(
+                503,
+                "temporarily_unavailable",
+                "O serviço OAuth está temporariamente indisponível."
+              )
+            : new AuthoringApiError(503, "service_timeout", "O serviço não respondeu a tempo.")
           : error instanceof AuthoringApiError
             ? error
-            : new AuthoringApiError(503, "course_service_unavailable", "Não foi possível alcançar o serviço.");
+            : new AuthoringApiError(
+                503,
+                oauthRequest ? "temporarily_unavailable" : "course_service_unavailable",
+                oauthRequest
+                  ? "O serviço OAuth está temporariamente indisponível."
+                  : "Não foi possível alcançar o serviço."
+              );
         lastError = normalized;
-        if (!retry || !new Set(["service_timeout", "course_service_unavailable"]).has(normalized.code) ||
+        if (!retry || !new Set([
+          "service_timeout", "course_service_unavailable", "temporarily_unavailable"
+        ]).has(normalized.code) ||
             attempt === this.attempts) throw normalized;
       } finally {
         clearTimeout(timer);
@@ -1726,7 +1785,7 @@ export class CourseSupabaseAdapter {
       p_creator_user_id: creatorUserId,
       p_client_name: clientName,
       p_client_secret_hash: clientSecretHash
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_request" }));
   }
 
   async linkActionOAuthClient({
@@ -1738,7 +1797,7 @@ export class CourseSupabaseAdapter {
       p_creator_user_id: creatorUserId,
       p_client_id: clientId,
       p_gpt_id: gptId
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_request" }));
   }
 
   async createActionOAuthAuthorization({
@@ -1752,7 +1811,7 @@ export class CourseSupabaseAdapter {
       p_redirect_uri: redirectUri,
       p_state: state,
       p_scope: scope
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_request" }));
   }
 
   async getActionOAuthAuthorization({
@@ -1762,7 +1821,7 @@ export class CourseSupabaseAdapter {
     return first(await this.rpc("get_authoring_action_oauth_authorization_v4", {
       p_authorization_id: authorizationId,
       p_user_id: userId
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_request" }));
   }
 
   async decideActionOAuthAuthorization({
@@ -1778,7 +1837,7 @@ export class CourseSupabaseAdapter {
       p_authorization_id: authorizationId,
       p_user_id: userId,
       ...(action === "approve" ? { p_code_hash: codeHash } : {})
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_request" }));
   }
 
   async exchangeActionOAuthCode({
@@ -1798,7 +1857,7 @@ export class CourseSupabaseAdapter {
       p_access_token_hash: accessTokenHash,
       p_refresh_token_hash: refreshTokenHash,
       p_grant_id: grantId
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_grant" }));
   }
 
   async exchangeActionOAuthRefresh({
@@ -1814,7 +1873,7 @@ export class CourseSupabaseAdapter {
       p_refresh_token_hash: refreshTokenHash,
       p_access_token_hash: accessTokenHash,
       p_new_refresh_token_hash: newRefreshTokenHash
-    }, { deadlineAt }));
+    }, { deadlineAt, errorDomain: "oauth_grant" }));
   }
 
   async resolveActionPrincipal(accessTokenHash, { deadlineAt = null } = {}) {

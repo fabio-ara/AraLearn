@@ -159,19 +159,22 @@ origens e publica:
 As origens mínimas da aplicação são o servidor local, GitHub Pages e
 `https://appassets.androidplatform.net`. Uma instalação alternativa acrescenta
 somente suas origens HTTPS exatas. Actions admite também apenas
-`https://chatgpt.com`. O script verifica preflight da API e de Actions, OAuth
-do MCP hospedado e o fluxo autenticado de PDF antes de encerrar.
+`https://chatgpt.com` e `https://chat.openai.com`. O script verifica o preflight
+da API e de cada origem oficial de Actions, o OAuth do MCP hospedado e o fluxo
+autenticado de PDF antes de encerrar.
+
+O callback de Actions precisa usar HTTPS, um desses dois hosts e o formato
+`/aip/g-.../oauth/callback`. O redirect efetivamente apresentado pelo cliente é
+registrado e precisa coincidir nas etapas seguintes do OAuth; o caminho não é
+reconstruído a partir de outro identificador do GPT.
 
 O manifesto corrente termina em
-`20260902180219_count_expository_parameter_usage_in_analytics.sql`, que conta o
-teto de novas unidades de análise somente onde ele se aplica: StudyUnits
-expositivas ou mistas. As migrations imediatamente anteriores preservam o
-desenho corrente durante correções focais e cortam a origem antiga de Actions.
-Quando esse corte ainda não tiver sido aplicado:
-
-- tokens Actions de clientes já vinculados ficam revogados uma vez;
-- reimporte o OpenAPI corrente no GPT e conclua novamente o OAuth numa conversa
-  nova.
+`20260902234800_bind_real_chatgpt_action_callback.sql`, que registra o callback
+real comprovado pela troca confidencial do código. A migration anterior de
+Analytics continua contando o teto de novas unidades de análise somente onde
+ele se aplica: StudyUnits expositivas ou mistas. Reimporte o OpenAPI no GPT
+somente quando o próprio documento mudar; uma correção interna do vínculo OAuth
+não exige reimportação.
 
 ```powershell
 npm.cmd run deployment:verify-hosted

@@ -5,7 +5,7 @@ select plan(24);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260902180219','o manifesto identifica o corte final');
+  '20260902234800','o manifesto identifica a hotfix do callback real');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),38,
@@ -50,17 +50,23 @@ select ok(
 select ok(
   pg_get_functiondef(
     'public.link_authoring_action_oauth_client_v4(uuid,uuid,text)'::regprocedure
-  ) not like '%chat.openai.com%'
+  ) not like '%format(''https://chatgpt.com/aip/%'
   and pg_get_functiondef(
     'public.create_authoring_action_oauth_authorization_v4(uuid,text,text,text)'::regprocedure
-  ) not like '%chat.openai.com%'
+  ) like '%chat[.]openai[.]com%'
   and pg_get_functiondef(
     'public.create_authoring_action_oauth_authorization_v4(uuid,text,text,text)'::regprocedure
-  ) like '%https://chatgpt[.]com/%'
+  ) like '%chatgpt%'
   and pg_get_functiondef(
     'public.create_authoring_action_oauth_authorization_v4(uuid,text,text,text)'::regprocedure
-  ) ~ 'p_redirect_uri\s*<>\s*v_client.redirect_uris\[1\]',
-  'OAuth de Actions oferece somente o host atual do ChatGPT');
+  ) like '%any(v_client.redirect_uris)%'
+  and pg_get_functiondef(
+    'public.exchange_authoring_action_oauth_code_v4(uuid,text,text,text,text,text,uuid)'::regprocedure
+  ) like '%v_authorization.redirect_uri <> p_redirect_uri%'
+  and pg_get_functiondef(
+    'public.exchange_authoring_action_oauth_code_v4(uuid,text,text,text,text,text,uuid)'::regprocedure
+  ) like '%cardinality(v_client.redirect_uris) = 0%',
+  'OAuth vincula o callback real e aceita somente os dois hosts oficiais');
 
 select is((select count(*) from pg_constraint constraint_value
   join pg_class relation on relation.oid=constraint_value.conrelid
@@ -71,10 +77,10 @@ select is((select count(*) from pg_constraint constraint_value
       'authoring_action_oauth_clients_link_state'
     )
     and (
-      constraint_value.conname='authoring_action_oauth_clients_redirects'
-      or pg_get_constraintdef(constraint_value.oid) like '%chatgpt.com%'
+      constraint_value.conname='authoring_action_oauth_clients_link_state'
+      or pg_get_constraintdef(constraint_value.oid) like '%chat.openai.com%'
     )),2::bigint,
-  'constraints conservam apenas vínculos ativos com chatgpt.com');
+  'constraints aceitam vínculo vazio ou os dois aliases do mesmo callback');
 
 select is(array(
   select name from unnest(array[

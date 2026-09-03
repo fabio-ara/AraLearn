@@ -294,6 +294,9 @@ test("executor de implantação verifica cada comando nativo antes de avançar",
 
 test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do contrato", () => {
   const source = fs.readFileSync(path.join(repositoryRoot, "scripts", "deploySupabase.ps1"), "utf8");
+  const actionIndex = fs.readFileSync(path.join(
+    repositoryRoot, "supabase", "functions", "aralearn-authoring-action", "index.ts"
+  ), "utf8");
   assert.match(source, /DeployAuthoringFunctions/u);
   assert.match(source, /functions deploy aralearn-authoring-mcp/u);
   assert.match(source, /functions deploy aralearn-course-api/u);
@@ -320,8 +323,29 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   );
   assert.match(source, /ARALEARN_COURSE_API_ALLOWED_ORIGINS=\$origins/u);
   assert.match(source, /ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=\$actionOrigins/u);
-  assert.match(source, /\$RequiredActionOrigins\s*=\s*@\([\s\S]+https:\/\/chatgpt\.com[\s\S]+\)/u);
-  assert.doesNotMatch(source, /chat\.openai\.com/u);
+  const requiredActionOrigins = source.match(
+    /\$RequiredActionOrigins\s*=\s*@\(([\s\S]*?)\r?\n\)/u
+  )?.[1];
+  assert.ok(requiredActionOrigins);
+  assert.deepEqual([...requiredActionOrigins.matchAll(/'([^']+)'/gu)].map((match) => match[1]), [
+    "https://chatgpt.com",
+    "https://chat.openai.com"
+  ]);
+  const fallbackActionOrigins = actionIndex.match(
+    /Deno\.env\.get\("ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS"\) \|\| \[([\s\S]*?)\]\.join\(","\)/u
+  )?.[1];
+  assert.ok(fallbackActionOrigins);
+  assert.deepEqual([...fallbackActionOrigins.matchAll(/"([^"]+)"/gu)].map((match) => match[1]), [
+    "https://chatgpt.com",
+    "https://chat.openai.com",
+    "http://127.0.0.1:4182",
+    "http://localhost:4182",
+    "https://fabio-ara.github.io",
+    "https://appassets.androidplatform.net"
+  ]);
+  assert.doesNotMatch(requiredActionOrigins, /[*]/u);
+  assert.match(source, /foreach \(\$actionOrigin in \$RequiredActionOrigins\)/u);
+  assert.match(source, /Origin = \$actionOrigin/u);
   assert.match(source, /runHostedMcpOAuthSmoke\.mjs/u);
   assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-course-api\/v1\/courses/u);
   assert.match(source, /Invoke-WebRequest[\s\S]+aralearn-authoring-action\/retomar_curso/u);
@@ -450,7 +474,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260902180219");
+  assert.equal(manifest.schemaRevision, "20260902234800");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-part-save-v1"), true);
   assert.equal(
@@ -509,8 +533,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260902180219_count_expository_parameter_usage_in_analytics.sql",
-    revision: "20260902180219"
+    fileName: "20260902234800_bind_real_chatgpt_action_callback.sql",
+    revision: "20260902234800"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

@@ -4,6 +4,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.52] - 2026-09-02
+
+### Corrigido
+
+- OAuth de Actions aceita os dois hosts oficiais do ChatGPT, registra o
+  callback real comprovado pela troca de código e mantém erros OAuth separados
+  de comandos de Curso;
+- validação de implantação cobre ambas as origens exatas sem restaurar
+  ferramentas ou templates MCP antigos.
+
 ## [0.0.51] - 2026-09-02
 
 ### Corrigido
