@@ -154,9 +154,10 @@ O mesmo Curso pode ser observado em dois contextos complementares:
   Unidade; quando o Curso é
   compartilhado, a primeira gravação cria um Curso pessoal privado sem alterar o
   original;
-- na **Autoria**, a pessoa proprietária abre diretamente o Conteúdo, planeja uma
-  Parte por vez, inspeciona StudyUnits, define parâmetros, mantém Fontes, registra
-  Observações e consulta Analytics. O fluxo conectado pode planejar, produzir e
+- na **Autoria**, a pessoa proprietária abre diretamente o Conteúdo, inspeciona
+  o mapa curricular global antes de produzir por partes, lê unidades de estudo,
+  define parâmetros, mantém fontes, registra observações e consulta Analytics.
+  O fluxo conectado pode planejar, produzir e
   revisar; a responsabilidade humana permanece em conferir o objeto e decidir o
   que deve mudar.
 

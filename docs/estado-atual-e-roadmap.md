@@ -12,9 +12,9 @@ Evidência corrente revisada em **2026-09-02**.
 | Editar Unidade no Estudo | sim | para gravar | proprietário ou pessoa apta a criar cópia | sim | sim | sim | produto | acesso compartilhado grava somente numa cópia pessoal |
 | Planejar, materializar e revisar Curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
 | Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
-| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | dezesseis tarefas humanas; não inclui perfil ou Manutenção |
+| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | dezessete tarefas humanas; não inclui perfil ou manutenção |
 | Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
-| Inspecionar Unidades focadas no chat ou na Autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | a resposta traz um endereço direto; a Autoria abre a mesma StudyUnit em foco |
+| Inspecionar unidades focadas no chat ou na autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | a resposta traz um endereço direto; a autoria abre a mesma unidade em foco |
 | Excluir Curso próprio ou sair de Curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
 | Executar Manutenção | sim | sim | identidade administrativa | sim | sim | sim | operação | inventário classificado e revalidação por objeto; sem consulta genérica |
 | Medir efeito educacional | não automaticamente | não se aplica | pesquisa autorizada | não como inferência do produto | depende de estudo | quando houver pergunta empírica | pesquisa | requer desenho, participantes, instrumentos e análise |
@@ -61,20 +61,25 @@ definir título, objetivo, público e alcance e organizar sua estrutura. Ao abri
 o Curso, **Conteúdo** recebe o foco; Planejamento fica no cabeçalho e
 Parâmetros, Fontes, Revisão, Analytics e Pessoas ficam no menu compacto.
 
-O Planejamento organiza uma Parte por vez em linguagem natural e a liga a
-Microssequências reais. A produção confirmada aparece como StudyUnits em
-Conteúdo, sem expor passos técnicos.
+O planejamento mostra primeiro o mapa curricular completo de módulos, lições e
+microssequências, com cobertura do escopo. A aprovação se refere ao mapa
+inspecionável e não materializa conteúdo. Depois, partes agrupam
+microssequências existentes apenas como lotes operacionais. A produção
+confirmada aparece como unidades de estudo em Conteúdo, sem expor passos
+técnicos.
 
 Parâmetros pedagógicos, orientações e política de componentes podem ser
-definidos no Curso ou em um escopo didático mais específico. A interface mostra
-de onde veio cada decisão e o valor efetivo herdado.
+definidos no curso ou em um escopo didático mais específico. No estado
+`default`, o GPT calibra o desenho pelo conteúdo e pela função; uma condição
+fixada pelo pesquisador prevalece. A interface mostra de onde veio cada decisão
+e o valor efetivamente aplicado.
 
 Fontes e Âncoras possuem estado corrente; PDFs são privados. Uma
 atribuição liga a Unidade à Fonte e às Âncoras exatas usadas. Referências sem
 prova suficiente não aparecem como citação comprovada no Estudo.
 
 Conteúdo percorre a composição sem ativar respostas. Revisão parte das
-Observações abertas e alcança outras StudyUnits quando a coerência do percurso
+Observações abertas e alcança outras unidades quando a coerência do percurso
 exigir. Analytics apresenta desenho e intervenções correntes em números simples,
 sem inferir eficácia ou causalidade.
 
@@ -107,13 +112,13 @@ gravação explícita e as cercas de versão do Curso.
 
 O AraLearn oferece dois canais conversacionais distintos.
 
-O **Model Context Protocol (MCP)** conecta um cliente compatível às dezesseis
+O **Model Context Protocol (MCP)** conecta um cliente compatível às dezessete
 tarefas humanas de Curso. Ele permite retomar, planejar, materializar, configurar,
 tratar Observações, revisar, operar Fontes e consultar componentes didáticos.
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
-autorizadas. Ele projeta as mesmas dezesseis tarefas, com OAuth confidencial
+autorizadas. Ele projeta as mesmas dezessete tarefas, com OAuth confidencial
 próprio.
 Actions não é um nome alternativo para
 MCP e não compartilha sua sessão ou seu protocolo.

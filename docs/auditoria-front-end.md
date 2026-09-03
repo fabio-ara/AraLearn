@@ -13,7 +13,7 @@ confirma o efeito na camada canônica correspondente.
 Em **Estudo**, percorra:
 
 ```text
-Home → Curso → Módulo → Lição → Microssequência → Unidade
+Home → curso → módulo → lição → microssequência → unidade
 ```
 
 Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que
@@ -23,20 +23,56 @@ aparecer quando houver ação contextual própria. Na Unidade, **Visualizar**,
 sem deslocar elementos cuja função não mudou. Verifique resposta, retorno, Fontes, Observações,
 marcação para rever, zeragem de progresso e retomada.
 
-Em **Autoria**, abra o Curso diretamente em **Conteúdo**. Confirme que uma
-StudyUnit domina o leitor e que índice, pesquisa, endereços diretos, anterior e
-próxima permitem chegar também a Units antigas sem renderizar o Curso inteiro.
-Percorra **Planejamento**, uma Parte por vez, e as subvisões contextuais de
-Parâmetros, Fontes e Observações. Registre uma Observação numa Unit e outra em
-várias Units, peça revisão, aplique uma proposta aprovada e reinspecione o
-conjunto afetado. Abra **Analytics** em mais de um escopo e confira que seus
-números coincidem com o JSON exportado. Inclua criação, edição e exclusão segura
-de um Curso descartável.
+Em **Autoria**, abra o curso diretamente em **Conteúdo**. Confirme que uma
+unidade de estudo domina o leitor e que índice, pesquisa, endereços diretos,
+anterior e próxima permitem chegar também a unidades antigas sem renderizar o
+curso inteiro.
+
+Em **Planejamento**, comece com um curso descartável ainda sem conteúdo e
+confirme, nesta ordem:
+
+1. o mapa curricular completo apresenta módulos, lições e microssequências;
+2. a cobertura relaciona todo item obrigatório aos pontos previstos do mapa;
+3. nenhuma unidade de estudo existe antes da aprovação e da materialização;
+4. a aprovação se refere exatamente ao mapa que estava inspecionável;
+5. lotes de produção aparecem depois e separados da hierarquia curricular;
+6. mudar os limites de um lote não reorganiza módulos, lições ou
+   microssequências;
+7. após a produção, a cobertura mostra também as unidades em que o item foi
+   desenvolvido.
+
+Materialize ao menos duas partes. Percorra o conteúdo real na ordem e abra os
+detalhes de desenho. Quando existirem, confira os rótulos humanos **Ideias
+introduzidas aqui**, **Ideias já estabelecidas usadas aqui** e **Ideias
+retomadas**. A interface normal não deve exibir nomes de campos, termos internos,
+identificadores ou contagens apresentadas como julgamento pedagógico.
+
+Registre uma observação numa unidade e outra em várias unidades, peça revisão,
+aplique uma proposta aprovada e reinspecione o conjunto afetado. Abra
+**Analytics** em mais de um escopo e confira que os números coincidem com o JSON
+exportado. Inclua criação, edição e exclusão segura do curso descartável.
+
+A conversa que acompanha essa jornada deve ser curta: síntese do mapa, decisão
+curricular, progressão focal do lote, resultado e link. Ela não deve presumir
+que a pessoa autora é estudante nem explicar o mecanismo do AraLearn.
 
 A Assistência por IA precisa demonstrar conversa, uma proposta concreta em cada
 resposta, revisão multiturmo, aceite explícito, descoberta progressiva de
 componentes, validação no renderer real, aplicação ao rascunho e gravação
 separada. Uma proposta recusada deve deixar o conteúdo corrente intacto.
+
+## Revisão do percurso materializado
+
+Não encerre a verificação ao conferir cartões isolados. Leia uma microssequência
+inteira como alguém que possui somente os pré-requisitos declarados. Confirme
+que dependências aparecem antes do uso, relações essenciais são ensinadas e as
+práticas exigem operações já preparadas.
+
+Procure os dois extremos: uma unidade densa que apenas enumera conceitos e uma
+sequência fragmentada em telas sem progressão perceptível. Registre pelo menos
+um caso em que a primeira precisou ser dividida e outro em que fragmentos
+precisaram ser fundidos. Componentes devem tornar a relação pertinente
+observável, não apenas variar a aparência.
 
 ## Tamanhos e temas
 

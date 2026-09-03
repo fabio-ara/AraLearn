@@ -74,14 +74,18 @@ réplica compartilhada.
 
 ## Planejamento e produção
 
-**Plano instrucional vivo.** Planejamento revisável com público, escopo,
-resultados pretendidos, AnalysisUnits, requisitos de evidência e Partes.
+**Plano instrucional vivo.** Planejamento revisável com público, pré-requisitos,
+escopo, mapa curricular completo, repertório de unidades de análise, requisitos
+de evidência e partes operacionais. O mapa pode ser rascunho ou aprovado sem
+materializar conteúdo.
 
 **Parte de autoria.** Lote operacional para planejar e produzir uma ou mais
-Microssequências. Parte não pertence à hierarquia didática e pode ser reaberta.
+microssequências já existentes no mapa. Parte não pertence à hierarquia didática
+e pode ser redimensionada sem mudar o currículo.
 
-**AnalysisUnit (`instructional_analysis_unit`).** Novidade semanticamente
-independente para o público, tarefa e contexto. Não é sinônimo de tópico amplo.
+**Unidade de análise (`instructional_analysis_unit`).** Ideia, relação,
+condição, procedimento ou operação que vale acompanhar no repertório do
+percurso. Pode ser introduzida, usada depois de estabelecida ou retomada.
 
 **Requisito de evidência.** Evidência de desempenho que o plano considera
 necessária. Uma atividade de consolidação não cria um requisito apenas por
@@ -91,9 +95,9 @@ existir.
 aplicação da configuração e da proveniência pertinente. Preparação e validação
 intermediárias não se tornam um histórico de produto.
 
-**Inventário semântico.** Conjunto de novidades necessárias antes da produção.
-Ao comparar tetos diferentes, o inventário permanece equivalente e muda apenas
-a distribuição pelas StudyUnits.
+**Repertório semântico.** Conjunto acumulado de conhecimentos necessários ao
+percurso, com introduções, usos e retomadas. Ao comparar tetos diferentes, o
+repertório permanece equivalente e muda apenas a distribuição pelas unidades.
 
 ## Configuração autoral
 
@@ -101,9 +105,9 @@ a distribuição pelas StudyUnits.
 novidade, formas de explicação, oportunidades mínimas de prática e dimensões de
 variação.
 
-**Valor efetivo.** Resultado corrente da precedência entre Curso e
-Microssequência para uma StudyUnit. A leitura informa o valor e o escopo que o
-definiu.
+**Valor efetivo.** Valor selado na materialização de uma unidade. No estado
+`default`, o GPT o calibra pelo contexto; definições deliberadas no curso ou na
+microssequência prevalecem. A leitura informa o valor, a origem e o escopo.
 
 **Herança.** Uso do valor do escopo mais amplo quando o escopo focal não possui
 uma definição. Limpar uma definição restaura essa relação.

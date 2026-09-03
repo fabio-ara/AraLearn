@@ -1,8 +1,8 @@
 # Desenho instrucional parametrizado
 
 O AraLearn representa um conjunto pequeno de decisões pedagógicas que a pessoa
-autora pode compreender, revisar e aplicar a um Curso. A interface, o MCP e a
-produção por Partes usam a mesma resolução. O propósito é tornar uma intenção
+autora pode compreender, revisar e aplicar a um curso. A interface, o MCP e a
+produção em partes usam a mesma resolução. O propósito é tornar uma intenção
 examinável, sem converter preferência editorial em resultado científico ou
 conformidade técnica em prova de aprendizagem.
 
@@ -14,16 +14,18 @@ Um parâmetro de desenho instrucional possui:
 - definição operacional;
 - forma do valor e domínio permitido;
 - escopos em que pode ser atribuído;
-- valor-padrão do produto;
+- estado contextual ou valor deliberadamente definido;
 - limites de interpretação;
 - referências que fundamentam a dimensão investigada.
 
-O valor-padrão é uma hipótese de produto. Evidência externa pode justificar a
-investigação de uma dimensão, mas não estabelece automaticamente o melhor valor
-para toda população, conteúdo ou tarefa.
+No estado `default`, o GPT calibra o valor para cada microssequência ou unidade
+conforme público, conteúdo e função. Esse estado não é um preset fixo. Evidência
+externa pode justificar a investigação de uma dimensão, mas não estabelece
+automaticamente o melhor valor para toda população, conteúdo ou tarefa. Uma
+definição deliberadamente fixada pelo pesquisador prevalece no escopo pertinente.
 
 Limites de caracteres, bytes, elementos de página e tamanho de lote continuam
-relevantes para ergonomia e segurança. A quantidade de Partes organiza a
+relevantes para ergonomia e segurança. A quantidade de partes organiza a
 produção, mas não é meta pedagógica. Esses controles não integram a herança dos
 parâmetros pedagógicos.
 
@@ -31,16 +33,16 @@ parâmetros pedagógicos.
 
 O catálogo aceita quatro parâmetros. Comandos não criam definições livres.
 
-| Parâmetro | Forma e valor-padrão | Escopos | Decisão representada |
+| Parâmetro | Forma e exemplos de valores | Escopos | Decisão representada |
 | --- | --- | --- | --- |
-| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; padrão `2` | Curso e Microssequência | teto de unidades de análise apresentadas pela primeira vez numa Unidade expositiva |
-| `required_explanation_forms` | conjunto; padrão definição simples, exemplo concreto, mecanismo e contraste | Curso e Microssequência | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
-| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; padrão `2` | Curso e Microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
-| `required_practice_variation_dimensions` | conjunto; padrão caso ou dados | Curso e Microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
+| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; por exemplo, `1` ou `2` | curso e microssequência | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
+| `required_explanation_forms` | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso e microssequência | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
+| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; por exemplo, `1` ou `2` | curso e microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
+| `required_practice_variation_dimensions` | conjunto; por exemplo, caso, contexto, representação ou apoio | curso e microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
 
-Uma unidade de análise instrucional identifica a menor novidade que precisa ser
-acompanhada separadamente no desenho corrente. Antes de agregar um enunciado, a
-Autoria verifica se suas partes podem ser ensinadas, aplicadas ou confundidas de
+Uma unidade de análise instrucional identifica uma mudança de conhecimento que
+vale acompanhar separadamente no desenho corrente. Antes de agregar um enunciado,
+a autoria verifica se suas partes podem ser ensinadas, aplicadas ou confundidas de
 modo independente. Se puderem, recebem identidades distintas; relações entre
 elas ficam explícitas no plano. Conhecimento já ensinado pode ser reutilizado
 sem contar como nova introdução.
@@ -63,10 +65,10 @@ O conjunto fechado admite:
 - exemplo resolvido;
 - ligação entre representações.
 
-Definição simples é a base do valor-padrão. Exemplo, mecanismo e contraste são
-condicionais ao objeto tratado. Quando uma forma exigida não se aplica, a
+Definição, exemplo, mecanismo e contraste podem ser escolhidos conforme o objeto
+tratado. Quando uma forma deliberadamente exigida não se aplica, a
 produção registra a forma e uma justificativa breve. A lista completa não é um
-roteiro obrigatório para toda Unidade.
+roteiro obrigatório para toda unidade.
 
 ### Oportunidades e variação da prática
 
@@ -84,6 +86,12 @@ distinção entre oportunidades depende do requisito de evidência e da estrutur
 semântica, não de diferença cosmética.
 
 ## Dimensões mantidas fora do catálogo
+
+Planejamento curricular global antes dos lotes, aprovação apenas do que estava
+inspecionável e fronteira pública em linguagem humana são invariantes do fluxo,
+não parâmetros de uma condição. Distribuição editorial, explicações e prática
+podem variar pela configuração existente. Uma heurística pedagógica não se torna
+automaticamente entidade ou controle novo.
 
 Rótulos como densidade conceitual, dificuldade, carga cognitiva, profundidade,
 teoria e prática, cobertura, progressão ou qualidade abrangem fenômenos
@@ -104,44 +112,45 @@ indevido a números fáceis de calcular.
 
 ## Escopo, origem e precedência
 
-Parâmetros pedagógicos podem ser definidos no Curso ou numa Microssequência.
-Uma StudyUnit consulta o valor efetivo da Microssequência a que pertence. Sem
-definição local, vale o Curso; sem definição no Curso, vale o padrão do produto.
-
-O uso comum permite calibração automática a partir do público, da tarefa e do
-contexto mínimo já conhecido. Quando uma pessoa fixa uma condição, essa decisão
-explícita prevalece no escopo pertinente. Remover a definição restaura a
-herança; não cria uma narrativa histórica de alteração.
+Parâmetros pedagógicos podem ser definidos no curso ou numa microssequência.
+Uma unidade de estudo recebe o valor efetivo de seu contexto. Sem definição
+deliberada, o GPT calibra o desenho conforme público, tarefa, conteúdo e função.
+Quando uma pessoa fixa uma condição, essa decisão explícita prevalece no escopo
+pertinente. Remover a definição restaura o estado `default`; não cria uma
+narrativa histórica de alteração.
 
 ### Exemplo de herança
 
-Considere o teto `2` definido no Curso e o teto `1` definido na
-Microssequência A. Suas StudyUnits recebem `1`. Ao limpar essa definição, a
-Microssequência volta a receber `2` do Curso. Interface, MCP e Actions apresentam
-a mesma resolução.
+Considere o teto `2` definido no curso e o teto `1` definido na
+microssequência A. Suas unidades recebem `1`. Ao limpar essa definição, a
+microssequência volta a herdar `2` do curso. Se também não houver definição no
+curso, volta ao estado contextual. Interface, MCP e Actions apresentam a mesma
+precedência.
 
-## Itens do plano por Microssequência
+## Repertório por microssequência
 
-Unidades de análise instrucional e requisitos de evidência são atribuídos a
-Microssequências concretas. A relação admite vários itens em cada alvo e vários
-alvos para o mesmo item. Resultados de aprendizagem pretendidos permanecem no
-plano geral e não são copiados para essa atribuição operacional.
+Unidades de análise instrucional e requisitos de evidência podem ser associados
+a microssequências concretas durante a preparação e a materialização. A relação
+admite vários itens em cada alvo e vários alvos para a mesma ideia. Resultados de
+aprendizagem pretendidos permanecem no plano geral.
 
-Ao salvar a Parte, cada Microssequência registra suas AnalysisUnits e requisitos
-de evidência em linguagem humana. A camada confiável resolve identidades,
-preserva a ordem e recusa itens repetidos, de outro tipo ou de outro Curso.
+Salvar uma parte apenas agrupa microssequências já previstas no mapa curricular.
+O refinamento interno do repertório não altera silenciosamente cobertura, ordem
+ou profundidade aprovadas. A camada confiável resolve identidades e evita
+duplicação; o GPT distingue introdução, uso de conhecimento estabelecido e
+retomada.
 
 ## Direção editorial
 
-Direção editorial é um texto curto e explícito no Curso ou na Microssequência.
+Direção editorial é um texto curto e explícito no curso ou na microssequência.
 Ela orienta extensão, estilo, títulos e organização da próxima geração ou
 revisão. O valor efetivo segue a mesma herança do escopo: a Microssequência usa
 sua direção local ou, na ausência dela, a direção do Curso.
 
 Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
 de interpretações. O GPT aplica a direção na fase editorial pertinente sem
-alterar o inventário semântico. Se o conteúdo necessário não couber no formato
-preferido, cria mais StudyUnits.
+alterar o repertório semântico. Se o conteúdo necessário não couber no formato
+preferido, cria mais unidades de estudo.
 
 ## Política de componentes didáticos
 
@@ -163,34 +172,35 @@ preferência e uso materializado são fatos diferentes.
 
 O catálogo apresentado pela interface, pelo MCP e por Actions vem da mesma fonte
 usada na função remota. Na produção seguinte, o servidor sela a revisão do
-catálogo e a política efetiva de cada Microssequência. Componente desconhecido,
+catálogo e a política efetiva de cada microssequência. Componente desconhecido,
 bloqueado ou fora de uma lista restrita faz a gravação inteira ser revertida.
 
 ## Contexto efetivo e aplicação corrente
 
-Ao preparar a produção de uma Parte, o servidor reúne para cada Microssequência
-os parâmetros, a direção editorial, a política de componentes, as AnalysisUnits,
-os requisitos de evidência e as Fontes pertinentes.
+Ao preparar a produção de uma parte, o servidor reúne para cada microssequência
+os parâmetros, a direção editorial, a política de componentes, o repertório,
+os requisitos de evidência e as fontes pertinentes.
 
-A gravação conserva com as StudyUnits a aplicação instrucional corrente:
+A gravação conserva com as unidades de estudo a aplicação instrucional corrente:
 
-- identidades das Unidades do lote;
+- identidades das unidades do lote;
 - unidades de análise declaradas como introduzidas;
+- unidades de análise estabelecidas que foram utilizadas;
 - formas de explicação desenvolvidas ou justificadamente inaplicáveis;
 - oportunidades dirigidas aos requisitos de evidência;
 - operação mantida e dimensões variadas;
 - componentes usados.
 
-Uma introdução marca somente a primeira apresentação de cada AnalysisUnit. O
-desenvolvimento pode continuar em duas ou mais StudyUnits sem repetir a
+Uma introdução marca somente a primeira apresentação de cada unidade de análise. O
+desenvolvimento pode continuar em duas ou mais unidades de estudo sem repetir a
 introdução; as formas
 requeridas são verificadas sobre o conjunto dessas aplicações. No sentido
-inverso, uma Unidade pode desenvolver várias unidades de análise quando as
+inverso, uma unidade pode desenvolver várias unidades de análise quando as
 relações forem intencionais e a quantidade de introduções novas respeitar o
 teto efetivo. Assim, o teto mede novidade no desenho, não comprimento de texto
 nem quantidade de telas.
 
-Uma Unidade de prática também pode fazer consolidação formativa sem se dirigir
+Uma unidade de prática também pode fazer consolidação formativa sem se dirigir
 a um requisito de evidência: por exemplo, recuperar uma relação recém-explicada
 antes de introduzir a próxima. Nesse caso, ela não se liga a um requisito e não
 entra na contagem mínima de oportunidades de evidência. Isso
@@ -199,8 +209,8 @@ aplicação e prática de evidência, sem transformar essa ordem em roteiro
 universal nem inventar um requisito de evidência.
 
 O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
-e política de componentes. O PostgreSQL também confere se Units, pais,
-Microssequências e componentes correspondem ao conteúdo gravado.
+e política de componentes. O PostgreSQL também confere se unidades, pais,
+microssequências e componentes correspondem ao conteúdo gravado.
 
 Essa verificação preserva rastreabilidade. Ela não substitui leitura
 disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
@@ -208,19 +218,19 @@ mecanismo ou se duas práticas são substantivamente distintas.
 
 ## Interface, MCP e Actions
 
-A subvisão **Parâmetros** abre no Curso ou no contexto da Microssequência e
+A subvisão **Parâmetros** abre no curso ou no contexto da microssequência e
 mostra:
 
 - valor efetivo e escopo que o definiu;
 - definição local e ação para restaurar a herança;
 - direção editorial separada;
 - política de componentes com nomes legíveis;
-- AnalysisUnits e requisitos atribuídos à Microssequência;
-- aplicação corrente nas StudyUnits.
+- unidades de análise e requisitos atribuídos à microssequência;
+- aplicação corrente nas unidades de estudo.
 
 `consultar_configuracao` lê valores efetivos e `ajustar_configuracao` define ou
 restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
-indica Curso ou Microssequência; a camada confiável resolve os controles de
+indica curso ou microssequência; a camada confiável resolve os controles de
 concorrência e repetição segura.
 
 ## Limites operacionais
@@ -250,8 +260,8 @@ oportunidades e variações, sem fixar uma dosagem universal ([Karpicke e Roedig
 precisam ser escolhidas segundo sua função e a tarefa de coordenação
 ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)).
 
-Essas fontes sustentam as dimensões examinadas. Os valores-padrão continuam
-hipóteses revisáveis. Para o funcionamento conversacional, consulte [Fluxos,
+Essas fontes sustentam as dimensões examinadas. Calibrações contextuais e valores
+fixados continuam hipóteses revisáveis. Para o funcionamento conversacional, consulte [Fluxos,
 instruções e contratos](fluxos-prompts-e-contratos.md).
 
 <!-- referências locais: início -->

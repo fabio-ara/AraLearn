@@ -1,9 +1,9 @@
 # Assistência por modelo de linguagem
 
-O AraLearn usa modelos de linguagem para apoiar decisões de Autoria sem tratar
+O AraLearn usa modelos de linguagem para apoiar decisões de autoria sem tratar
 uma resposta provável como comando autorizado. A pessoa conversa, discute uma
 proposta concreta e autoriza sua aplicação ao rascunho; gravar o resultado no
-Curso continua sendo uma decisão separada.
+curso continua sendo uma decisão separada.
 
 Um documento JSON bem formado ainda pode apontar para o alvo errado, violar um
 contrato de componente ou produzir uma composição impossível de apresentar.
@@ -14,18 +14,18 @@ do mesmo percurso.
 
 O AraLearn oferece três integrações relacionadas, mas distintas:
 
-- **Assistência por IA** aparece dentro da Unidade, da Microssequência e da
-  Lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
+- **Assistência por IA** aparece dentro da unidade, da microssequência e da
+  lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
-  canônicas de Curso;
-- **Actions/OpenAPI** conecta um GPT personalizado às mesmas dezesseis tarefas
+  canônicas de curso;
+- **Actions/OpenAPI** conecta um GPT personalizado às mesmas dezessete tarefas
   humanas projetadas como caminhos HTTP.
 
-Os três caminhos chegam às mesmas regras de Curso. Eles não compartilham
+Os três caminhos chegam às mesmas regras de curso. Eles não compartilham
 credencial, sessão ou protocolo. Perfil, acesso, cópia pessoal, ciclo de vida do
-Curso e Manutenção continuam ações do aplicativo autenticado.
+curso e manutenção continuam ações do aplicativo autenticado.
 
-## A sessão de Assistência por IA
+## A sessão de assistência por IA
 
 Assistência por IA é uma sessão contextual, não uma chamada isolada para
 substituir texto. O alvo é fixado ao abrir o modo, e a conversa progride assim:
@@ -41,23 +41,23 @@ substituir texto. O alvo é fixado ao abrir o modo, e a conversa progride assim:
 
 Fechar a sessão apaga mensagens, configuração e qualquer proposta ainda não
 aplicada. Um resultado já aceito permanece no rascunho; a conversa não entra no
-conteúdo do Curso, no PostgreSQL, no IndexedDB nem nos recibos de escrita.
+conteúdo do curso, no PostgreSQL, no IndexedDB nem nos recibos de escrita.
 
 ### Escopos de escrita
 
 A sessão pode trabalhar com:
 
-- composição e conteúdo da **Unidade de estudo**;
-- estrutura e conteúdo da **Microssequência didática**;
-- criação, remoção e reordenação de Microssequências no escopo da **Lição**.
+- composição e conteúdo da unidade de estudo;
+- estrutura e conteúdo da microssequência didática;
+- criação, remoção e reordenação de microssequências no escopo da lição.
 
 O alvo corrente permanece visível durante edição e prévia. Uma proposta para
-Microssequência não recebe autoridade sobre outra Microssequência; uma proposta
-para Lição não altera Módulos, outras Lições ou dados pessoais.
+microssequência não recebe autoridade sobre outra microssequência; uma proposta
+para lição não altera módulos, outras lições ou dados pessoais.
 
-Para um Curso compartilhado, a edição focal de Unidade pode ser salva numa
-cópia pessoal privada. O original, as Fontes, PDFs, Planejamento, progresso e
-Observações não são copiados. Escritas estruturais de Microssequência e Lição
+Para um curso compartilhado, a edição focal de unidade pode ser salva numa
+cópia pessoal privada. O original, as fontes, PDFs, planejamento, progresso e
+observações não são copiados. Escritas estruturais de microssequência e lição
 permanecem exclusivas do proprietário.
 
 ## Contexto enviado
@@ -65,9 +65,9 @@ permanecem exclusivas do proprietário.
 O envelope inclui a instrução da pessoa, as mensagens da sessão, a proposta
 corrente, o caminho didático, a revisão corrente e a composição necessária para
 compreender o alvo.
-Para a Unidade, inclui os componentes e campos editáveis. Para a
-Microssequência, inclui sua ordem e suas Unidades. Para a Lição, inclui as
-Microssequências e o contexto curricular suficiente para criar, remover ou
+Para a unidade, inclui os componentes e campos editáveis. Para a
+microssequência, inclui sua ordem e suas unidades. Para a lição, inclui as
+microssequências e o contexto curricular suficiente para criar, remover ou
 reordenar sem perder relações.
 
 O contexto é somente leitura. Identificadores de autorização, credenciais,
@@ -104,12 +104,12 @@ prévia renderizável nunca constitui aceite.
 ## Aplicação ao rascunho e concorrência
 
 Antes de alterar o rascunho, o AraLearn exige o aceite explícito da proposta,
-gera a candidata e a verifica com o mesmo renderer da Unidade estudável. Falha
+gera a candidata e a verifica com o mesmo renderer da unidade estudável. Falha
 de geração, validação ou renderização preserva o conteúdo corrente. Uma
 candidata aceita e válida substitui somente o rascunho do alvo; a gravação é
 uma operação separada.
 
-Cada escrita informa a revisão esperada do Curso e as versões focais
+Cada escrita informa a revisão esperada do curso e as versões focais
 necessárias. Se outra sessão alterar o alvo entre leitura e gravação, o servidor
 recusa a proposta. A interface relê o estado e não reaplica silenciosamente uma
 candidata antiga.
@@ -123,7 +123,7 @@ conflito. Essa repetição segura não amplia o escopo confirmado.
 A pessoa escolhe OpenAI, Gemini ou DeepSeek, informa o modelo quando necessário
 e fornece a própria chave. A chave permanece apenas em memória durante a sessão,
 segue somente no cabeçalho da chamada ao provider escolhido e não entra no
-Curso, PostgreSQL, IndexedDB, Storage, logs ou artefatos.
+curso, PostgreSQL, IndexedDB, Storage, logs ou artefatos.
 
 Sair, recarregar ou encerrar a superfície cancela a chamada pendente e apaga
 provider, modelo, chave, conversa e qualquer candidata ainda não aplicada. Uma
@@ -137,9 +137,9 @@ ensaios de desenvolvimento usam stubs determinísticos, nunca uma chamada paga.
 
 ## MCP e Actions
 
-MCP e Actions expõem as mesmas dezesseis tarefas humanas. O catálogo separa
-leituras de escritas e distingue planejamento, materialização, configuração,
-Observações, revisão, Fontes e componentes.
+MCP e Actions expõem as mesmas dezessete tarefas humanas. O catálogo separa
+leituras de escritas e distingue mapa curricular, produção em lotes,
+materialização, configuração, observações, revisão, fontes e componentes.
 
 O GPT localiza objetos por título, posição ou referência humana. A camada
 confiável resolve identidades e concorrência. Assim, a conversa pode coordenar
@@ -147,27 +147,40 @@ uma mudança e um próximo passo sem transformar detalhes do banco em trabalho d
 pessoa autora.
 
 MCP usa OAuth 2.1 e descoberta de ferramentas. Actions projeta o mesmo catálogo
-num OpenAPI com OAuth próprio. Os dois canais chegam ao mesmo Curso e obedecem à
+num OpenAPI com OAuth próprio. Os dois canais chegam ao mesmo curso e obedecem à
 mesma autorização. A [Autoria por MCP](autoria-mcp.md) e o guia de [Autoria por
 Actions](autoria-actions.md) desenvolvem as diferenças de transporte.
 
-## Planejamento, Fontes e revisão
+## Planejamento, fontes e revisão
 
-Planejamento por Partes é persistido e editável. O fluxo padrão propõe uma Parte
-por vez, recebe a decisão da pessoa, salva e relê o plano antes de continuar.
-Parte é lote operacional; não substitui a estrutura didática.
+O planejamento começa por um mapa curricular global de módulos, lições e
+microssequências. O chat apresenta uma síntese, e o mapa inteiro permanece
+inspecionável no AraLearn. A aprovação confirma apenas cobertura, organização,
+ordem e ênfases que estavam visíveis; não confirma silenciosamente conteúdo
+futuro.
 
-Antes de produzir conteúdo, o GPT reúne o inventário de novidades, configuração
-e Fontes do recorte. A gravação de uma Parte confirma StudyUnits e aplicações de
-desenho numa operação retomável. A resposta coordenadora informa o resultado,
-abre o destino pertinente e formula no máximo uma decisão seguinte.
+Partes são lotes operacionais definidos depois do mapa. Para cada lote, o GPT
+apresenta a progressão local, recebe eventuais correções substantivas e só então
+materializa as unidades de estudo. Mudar a fronteira de uma parte não muda, por
+si só, o currículo.
 
-Fontes e Âncoras ficam no Curso vivo. Um arquivo anexado à conversa só se torna
-Fonte persistente quando essa intenção está clara. Em outra sessão, a
-assistência pode localizar a Fonte pelo título e reler suas Âncoras; memória da
+Antes de produzir, o GPT reúne configuração, fontes e repertório acumulado do
+recorte. Ele diferencia ideias introduzidas, ideias estabelecidas apenas usadas
+e retomadas deliberadas. A resposta coordenadora informa o resultado, abre o
+destino pertinente e formula no máximo uma decisão seguinte.
+
+O estado `default` dos parâmetros significa calibração contextual pelo GPT para
+cada microssequência ou unidade, conforme conteúdo e função; não é um preset
+fixo. Valores deliberadamente fixados pelo pesquisador prevalecem. Assim, o
+AraLearn continua geral para pesquisa em design instrucional, sem tomar uma
+finalidade específica, como concurso, por padrão pedagógico universal.
+
+Fontes e âncoras ficam no curso vivo. Um arquivo anexado à conversa só se torna
+fonte persistente quando essa intenção está clara. Em outra sessão, a
+assistência pode localizar a fonte pelo título e reler suas âncoras; memória da
 conversa e novo upload não substituem esse estado.
 
-Uma revisão começa pelas Observações abertas e inclui outras StudyUnits quando a
+Uma revisão começa pelas observações abertas e inclui outras unidades quando a
 mudança afeta progressão, pré-requisitos, exemplos, prática ou transições. O GPT
 propõe um conjunto coerente, a pessoa decide, as correções são aplicadas e o
 resultado volta a ser inspecionado.
@@ -186,7 +199,7 @@ garante o mesmo efeito na autoria educacional
 educacional de modelos generativos, a responsabilidade factual e pedagógica permanece humana
 ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
-Consulte [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) para o percurso
+Consulte [Criar cursos pelo chat](criar-cursos-pelo-chat.md) para o percurso
 conversacional e [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md)
 para a relação entre intenção, confirmação e escrita tipada.
 

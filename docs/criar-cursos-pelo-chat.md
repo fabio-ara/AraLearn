@@ -1,187 +1,209 @@
-# Criar e revisar Cursos por conversa
+# Criar e revisar cursos por conversa
 
 Um cliente conectado por MCP ou um GPT com Actions pode trabalhar no mesmo
-Curso que a interface visual. A conversa serve para propor e coordenar; o
-AraLearn guarda plano, conteúdo, configuração, Fontes e Observações.
+curso que a interface visual. A conversa coordena decisões; o AraLearn mantém
+o mapa curricular, o conteúdo, os parâmetros, as fontes e as observações.
 
-## Fale sobre o Curso
-
-Descreva a mudança em linguagem de autoria. Você não precisa fornecer
-identificadores do banco, versões ou dados de transporte. O GPT localiza objetos
-por título, posição e referência humana e pede esclarecimento somente quando há
-ambiguidade real.
-
-Uma resposta coordenadora costuma ter:
-
-- uma proposta ou resultado;
-- um link para o contexto no AraLearn;
-- uma decisão seguinte, quando necessária.
-
-Conteúdo pedagógico pode ser profundo. A coordenação não precisa repetir o que
-já está aberto na interface.
-
-## Comece com o contexto que muda o desenho
+## Comece pelo contexto que muda o desenho
 
 Um briefing útil informa:
 
 - quem deverá aprender;
 - o que deverá compreender ou conseguir fazer;
-- conhecimentos prévios relevantes;
-- conteúdo e Fontes disponíveis;
+- quais conhecimentos prévios podem ser assumidos;
+- o escopo obrigatório e as fontes disponíveis;
+- o nível de domínio esperado;
 - idioma, dispositivo, acessibilidade e outras restrições reais;
-- condições que você deseja fixar para comparação.
+- condições pedagógicas ou editoriais que você deseja fixar para pesquisa.
 
-No uso comum, o GPT calibra os parâmetros pedagógicos a partir desse contexto.
-Ele não transforma a conversa num questionário. Se faltar uma decisão material,
-faz uma pergunta por vez.
+O GPT não deve presumir que a pessoa autora é estudante. Se o curso se destina
+a iniciantes, a conversa dirá que o público é iniciante, sem atribuir esse nível
+à pessoa que está criando o material.
 
-## Localize ou crie o Curso
+No uso comum, o estado `default` permite ao GPT calibrar os parâmetros para cada
+microssequência ou unidade conforme conteúdo, função e público; não é um preset
+fixo. Numa pesquisa, valores deliberadamente fixados prevalecem e tornam a
+condição auditável. Finalidade de concurso, treinamento corporativo ou outra
+aplicação pode mudar vocabulário, precisão e tipos de prática, mas não é o
+princípio organizador universal do AraLearn.
 
-Para continuar algo existente, peça que o GPT retome pelo título. A tarefa
-`retomar_curso` devolve o Curso e um link. Se houver homônimos, acrescente
-objetivo ou outro traço humano.
+O mapa global antes dos lotes, a aprovação apenas do que estava inspecionável e
+a conversa em linguagem humana são invariantes. Distribuição editorial, formas
+de explicação e prática pertencem às dimensões que podem ser calibradas pela
+configuração existente; isso não exige uma entidade para cada princípio
+pedagógico.
 
-Para começar do zero, confirme título e objetivo. `criar_curso` cria um Curso
-privado. Depois, a próxima decisão é planejar a primeira Parte; não é necessário
-preencher toda a estrutura numa única resposta.
+## Planeje o mapa curricular completo
 
-## Planeje uma Parte por vez
+Antes de produzir conteúdo, o GPT propõe a arquitetura curricular de todo o
+curso:
 
-O ciclo padrão é:
+```text
+curso
+→ módulos
+→ lições
+→ microssequências
+```
 
-1. o GPT propõe a próxima Parte;
-2. você aprova ou pede uma mudança;
-3. `salvar_parte` grava a Parte completa;
-4. `consultar_planejamento` relê o estado;
-5. o GPT propõe a Parte seguinte.
+O mapa mostra todos os módulos, as lições de cada módulo, as microssequências
+previstas, a progressão geral e as dependências importantes. Quando o curso
+parte de uma ementa, currículo ou especificação, cada item obrigatório fica
+associado ao ponto em que será ensinado.
 
-Uma Parte salva contém uma ou mais Microssequências. Para cada uma, a proposta
-declara:
+No chat, uma síntese curta pode bastar. Um link abre o planejamento completo no
+AraLearn para conferir cobertura, lacunas, redundâncias, ordem e profundidade.
+Nenhuma unidade de estudo precisa existir nessa etapa.
 
-- Módulo e objetivo do Módulo;
-- Lição e objetivo da Lição;
-- título e objetivo da Microssequência;
-- função de explicar, praticar, revisar ou apoiar;
-- AnalysisUnits que ela deverá desenvolver;
-- requisitos de evidência pertinentes.
+Exemplo resumido:
 
-Essa informação cria a estrutura necessária sem pedir IDs. AnalysisUnit é uma
-novidade semântica materialmente independente, não um tópico amplo. Inclua
-conceitos auxiliares, relações, condições, procedimentos e operações
-intelectuais quando também precisarem ser aprendidos.
+> Módulo 1 — Fundamentos da comunicação em rede \
+> Lição 1 — O problema da comunicação \
+> • Dispositivos, dados e sinais \
+> • Meios de transmissão \
+> Lição 2 — Organização das redes \
+> • LAN, WAN e redes sem fio \
+> • Topologias
 
-Sete a doze Partes são uma heurística possível. Não existe meta de Partes ou de
-StudyUnits. Se o conteúdo exigir mais Unidades para permanecer autossuficiente,
-o plano deve acomodá-las.
+A pessoa autora pode mudar cobertura, ordem ou ênfase antes de aprovar. A
+aprovação vale para o mapa que estava visível e inspecionável; não aprova
+silenciosamente exercícios, componentes, formulações ou a estrutura interna de
+unidades futuras.
 
-## Configure pedagogia e edição
+## Produza em lotes manejáveis
 
-`consultar_configuracao` mostra valores efetivos e direção editorial no Curso
-ou numa Microssequência. `ajustar_configuracao` permite definir ou restaurar a
-herança de:
+Depois da aprovação do mapa, o GPT divide o trabalho em partes operacionais.
+Uma parte pode corresponder a uma lição, reunir várias microssequências ou
+atravessar mais de uma lição quando isso facilitar produção e revisão. Ela não
+é nível curricular: mudar seus limites não muda o mapa do curso.
 
-- teto de novas AnalysisUnits por StudyUnit expositiva;
-- formas de explicação requeridas;
-- mínimo de práticas distintas por requisito de evidência;
-- dimensões de variação da prática;
-- direção editorial separada.
+O ciclo de produção é:
 
-Uma direção sobre extensão, títulos ou estilo organiza a apresentação. Ela não
-autoriza eliminar explicação, exemplo ou prática necessária; crie mais
-StudyUnits quando faltar espaço.
+1. o GPT apresenta brevemente a progressão local da próxima parte;
+2. a pessoa autora corrige apenas decisões substantivas, quando necessário;
+3. depois da aprovação local, o GPT prepara e materializa o conteúdo;
+4. a pessoa abre o resultado no AraLearn e o inspeciona;
+5. o GPT segue para a próxima parte.
 
-## Produza uma Parte
+Uma conversa adequada permanece no nível da decisão presente. Por exemplo:
 
-Antes de escrever Unidades, o GPT chama `preparar_materializacao`. A leitura
-traz apenas a Parte aprovada, inventário semântico, conhecimentos estabelecidos,
-configuração e Fontes pertinentes.
+> Para a primeira parte, proponho começar por situações concretas de
+> comunicação, distinguir dados de sinais e então comparar meios guiados e não
+> guiados. Quer mudar alguma ênfase antes de eu produzir?
 
-Ao propor as StudyUnits, confira:
+Depois da produção:
 
-- qual novidade cada Unidade introduz;
-- que novidades já estavam estabelecidas;
-- definição, contexto, mecanismo, relações, exemplos e contrastes necessários;
-- forma explicativa e componente adequados;
-- oportunidades de prática e dimensões de variação;
-- Fontes e Âncoras usadas.
+> Primeira parte produzida. [Abrir conteúdo] \
+> Posso preparar a segunda parte.
 
-`materializar_parte` grava as StudyUnits. Um teto 1 não permite esconder quatro
-novidades dentro de uma AnalysisUnit; um teto 2 não exige compactar novidades
-que continuam independentes. Mudar o teto preserva o inventário e muda sua
-distribuição.
+O chat não precisa mostrar contagens, nomes de campos ou detalhes do mecanismo.
 
-## Escolha componentes pela função
+## Preserve um repertório de conhecimentos
 
-Use `consultar_componentes` quando a função instrucional pedir uma representação
-e o componente adequado ainda não estiver claro. Parágrafo e escolha continuam
-válidos quando cumprem a função. Tabela, sequência, classificação, código,
-diagrama ou outra forma devem ser usados quando tornam a relação ensinada mais
-legível.
+Ao produzir cada parte, o AraLearn mantém um repertório acumulado do que o
+percurso exige. Uma ideia pode ser um conceito, uma relação, uma condição, um
+procedimento ou uma operação necessária, mesmo que não apareça literalmente no
+escopo original.
 
-Não consulte o catálogo apenas para variar a aparência.
+O GPT distingue:
 
-## Trabalhe com Fontes e PDFs
+- ideias novas introduzidas naquela unidade;
+- ideias já estabelecidas e apenas utilizadas;
+- ideias estabelecidas que são deliberadamente retomadas.
 
-`consultar_fontes` localiza uma Fonte, suas Âncoras ou a proveniência de uma
-StudyUnit. `manter_fonte` salva metadados, verificação, Âncoras e vínculos. Uma
-Fonte pode ser adotada, contestada e revista.
+Uma retomada útil não volta a contar como introdução. Isso permite mobilizar o
+que já foi ensinado, recuperar algo após um intervalo e evitar tanto conceitos
+usados cedo demais quanto a repetição integral de definições.
 
-Use `incorporar_pdf_como_fonte` somente quando o arquivo anexado deve permanecer
-no Curso. Informe se ele cria uma Fonte ou se pertence a uma Fonte existente.
-Uma leitura descartável não deve gravar o PDF.
+O teto padrão de duas novidades significa no máximo duas ideias semanticamente
+novas numa unidade expositiva. Uma unidade pode introduzir zero, uma ou duas;
+prática e consolidação não precisam introduzir nenhuma. O limite organiza a
+novidade no tempo, sem transformar cada ideia em uma tela separada.
 
-Depois da incorporação, o arquivo pode ser retomado por título em outra
-conversa; a memória do chat não é sua autoridade.
+## Produza um percurso suficiente para o objetivo
 
-## Registre Observações e revise
+Uma unidade de estudo é uma experiência didática focalizada, não uma frase nem
+uma cota de conteúdo. A materialização deve evitar dois extremos:
 
-Você pode registrar Observações na interface ou pedir
-`registrar_observacao`. Várias StudyUnits podem receber o mesmo apontamento, mas
-cada Observação permanece um registro próprio.
+- compactação, quando um único bloco apenas nomeia muitos conceitos, salta
+  relações ou omite exemplos e prática;
+- atomização, quando uma ideia simples vira telas demais e a pessoa estudante
+  precisa reconstruir sozinha a conexão entre fragmentos.
 
-Para tratar pendências:
+O percurso mínimo adequado é aquele que ainda ensina tudo que o objetivo exige.
+Se um conhecimento não foi declarado como pré-requisito e é necessário para o
+passo seguinte, ele precisa ser desenvolvido antes do uso. Relações importantes
+também precisam ser ensinadas, não apenas os conceitos em separado.
 
-1. use `consultar_observacoes` no escopo desejado;
-2. peça `preparar_revisao`;
-3. confira também StudyUnits afetadas por progressão, pré-requisitos,
-   transições, exemplos ou prática;
-4. discuta um conjunto coerente de mudanças;
-5. depois da decisão, use `aplicar_correcoes`;
-6. volte ao link e reinspecione.
+Quando o conteúdo justificar, a sequência pode combinar situação-problema,
+explicação focal, exemplo, previsão, aplicação, comparação, prática com apoio
+reduzido e integração. Essa é uma possibilidade, não um molde obrigatório.
 
-Resolver apenas a Unit anotada pode deixar o percurso incoerente. A revisão
-deve alcançar todos os pontos materialmente afetados, sem expandir para uma
-reescrita sem necessidade.
+## Escolha representações pela função
 
-## Consulte Analytics
+Componentes servem ao que precisa ficar observável:
 
-Na interface, Analytics permite escolher Curso, Parte, Microssequência ou
-StudyUnit. Desenho mostra configuração aplicada, AnalysisUnits, formas,
-componentes, prática e Fontes. Autoria mostra parâmetros definidos e a origem
-observável da criação e da última revisão das StudyUnits.
+- diagrama para relações espaciais;
+- tabela para estado;
+- linha do tempo para mudança temporal;
+- comparação lado a lado para discriminar casos;
+- exemplo parcialmente resolvido para retirar apoio aos poucos;
+- resposta aberta para explicar ou justificar;
+- escolha ou identificação para uma previsão rápida.
 
-O JSON exportado contém os mesmos números da tela. Ele não mede aprendizagem e
-não substitui a cópia do artefato exigida por um protocolo de pesquisa.
+Parágrafo e escolha continuam adequados quando cumprem a função. Não se troca de
+componente apenas para variar a aparência.
 
-## Retome em outra conversa
+## Trate prática como parte da aprendizagem
 
-Uma conversa nova começa com `retomar_curso`. O GPT relê o planejamento e o
-escopo necessário em vez de depender do resumo da conversa anterior. Uma Parte
-antiga pode ser aberta por posição ou título; Fontes e Observações também podem
-ser consultadas a qualquer momento.
+Sempre que fizer sentido, intercale explicação e prática. A prática pode servir
+para prever antes de uma explicação, identificar depois de uma distinção,
+aplicar imediatamente, comparar casos, diagnosticar, justificar, completar um
+estado ou integrar conhecimentos anteriores.
 
-## Quando algo falhar
+Tarefas de vários passos podem avançar de exemplo resolvido para exemplo
+parcial, prática com pistas, prática sem pistas e situação nova. Essa redução de
+apoio deve ser usada quando a complexidade justificar, não por obrigação.
 
-- **Curso ou Parte ambíguos:** forneça título ou posição mais específica.
-- **Curso mudou:** deixe o GPT reler e reconstruir a mesma intenção.
-- **Objeto não encontrado:** abra o link ou consulte o escopo pai antes de
-  decidir se deve recriá-lo.
-- **Falha transitória:** repita a tarefa sem alterar a proposta.
-- **Acesso negado:** conecte a conta proprietária; repetição não amplia
-  permissão.
-- **PDF recusado:** confira tipo, integridade, tamanho e intenção de
-  armazenamento.
+## Use fontes segundo seu papel
+
+Fontes podem entrar em qualquer fase. Diferencie:
+
+- fonte de escopo, que define o que precisa ser coberto;
+- evidência de avaliação, que ajuda a calibrar cobrança e distinções relevantes;
+- fonte técnica ou conceitual, que sustenta explicações e precisão.
+
+Uma ementa ou prova não se torna automaticamente autoridade conceitual. O curso
+pode ser autocontido para quem estuda e, ao mesmo tempo, apoiar sua produção em
+fontes técnicas verificáveis. Um PDF anexado só deve ser guardado quando essa
+intenção estiver clara.
+
+## Revise como estudante
+
+Antes de encerrar uma parte, percorra as unidades na ordem e confira:
+
+- se a primeira começa com os conhecimentos assumidos;
+- se cada novidade recebeu preparação suficiente;
+- se há saltos, repetições improdutivas ou densidade excessiva;
+- se a sequência foi fragmentada demais;
+- se exemplos tornam o mecanismo observável;
+- se as práticas pedem somente o que já foi ensinado;
+- se há progressão de reconhecimento para aplicação e integração.
+
+Unidades podem ser movidas, divididas, fundidas ou reescritas antes da conclusão.
+A inspeção no AraLearn mostra o conteúdo real e, quando pertinente, as ideias
+introduzidas, usadas e retomadas em linguagem humana.
+
+## Retome e revise depois
+
+Uma conversa nova relê o estado do curso; não depende do resumo da conversa
+anterior. Qualquer parte, microssequência ou unidade pode ser reaberta por uma
+referência humana. Observações e fontes também podem ser consultadas a qualquer
+momento.
+
+Ao revisar, considere os pontos afetados por progressão, pré-requisitos,
+transições, exemplos ou prática. A pessoa autora aprova a correção concreta; a
+revisão não ganha autoridade automática para reescrever o restante do curso.
 
 Veja [Autoria pelo MCP](autoria-mcp.md), [Autoria por Actions](autoria-actions.md)
-e [Analytics da Autoria](analytics-instrucionais.md) para os contratos e limites
-de cada superfície.
+e [Analytics da autoria](analytics-instrucionais.md) para os detalhes de cada
+superfície.

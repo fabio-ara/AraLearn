@@ -78,14 +78,17 @@ npm.cmd run resources:sync-edge
 
 ## Hierarquia e análise instrucional
 
-A composição usa Curso, Módulo, Lição, Microssequência e StudyUnit. Parte é o
-lote operacional do planejamento, não um nível dessa árvore.
+A composição usa curso, módulo, lição, microssequência e unidade de estudo. O
+mapa curricular completo existe antes da produção. Parte é apenas o lote
+operacional que referencia microssequências já previstas, não um nível dessa
+árvore.
 
-Uma `instructional_analysis_unit` representa novidade semanticamente
-independente para o público e a tarefa. O backend pode conferir identidade,
-ordem, referência e limites, mas não alegar que duas formulações são equivalentes
-semanticamente. Fixtures pedagógicas devem tornar esse julgamento inspecionável
-sem fingir um validador automático.
+Uma `instructional_analysis_unit` representa uma ideia, relação, condição,
+procedimento ou operação que vale acompanhar no repertório do percurso. A
+aplicação distingue introdução, uso de conhecimento estabelecido e retomada. O
+backend pode conferir identidade, ordem, referência e limites, mas não alegar
+que duas formulações são equivalentes semanticamente. Fixtures pedagógicas
+devem tornar esse julgamento inspecionável sem fingir um validador automático.
 
 Uma instância didática escolhe um pacote por `package@version` e passa pelo
 schema desse pacote antes de ser persistida ou renderizada.
@@ -110,7 +113,7 @@ existentes.
 
 ## MCP e Actions
 
-`COURSE_HUMAN_TASKS` é a lista canônica das dezesseis tarefas humanas. O MCP
+`COURSE_HUMAN_TASKS` é a lista canônica das dezessete tarefas humanas. O MCP
 publica cada tarefa com metadados próprios; Actions cria um caminho HTTP para
 cada uma. Os schemas podem receber adaptações de transporte, como a referência
 de arquivo gerida pelo ChatGPT, mas os casos de uso e efeitos permanecem iguais.

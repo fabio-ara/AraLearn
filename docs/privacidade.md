@@ -292,14 +292,14 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-O catálogo MCP público possui dezesseis tarefas humanas, compartilhadas com
+O catálogo MCP público possui dezessete tarefas humanas, compartilhadas com
 Actions.
 Perfil,
 avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-Um GPT personalizado pode chamar as mesmas dezesseis tarefas por Actions e
+Um GPT personalizado pode chamar as mesmas dezessete tarefas por Actions e
 OpenAPI. Esse canal recebe uma credencial de acesso opaca, que identifica a
 autorização sem expor seu conteúdo ao cliente, e uma credencial de renovação
 rotativa. O servidor guarda somente resumos criptográficos dessas credenciais e

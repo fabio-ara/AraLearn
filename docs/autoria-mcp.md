@@ -1,137 +1,152 @@
 # Autoria pelo MCP
 
-O servidor MCP do AraLearn permite criar e revisar Cursos numa conversa. O GPT
-trabalha com tarefas humanas, enquanto o servidor resolve identidades, versões
-e repetição segura internamente.
+O servidor MCP do AraLearn permite criar e revisar cursos numa conversa. O GPT
+trabalha com tarefas humanas; o servidor resolve identidades, concorrência e
+repetição segura internamente.
 
-O Curso vivo é a autoridade. A interface de Autoria, o MCP e Actions leem e
-alteram o mesmo estado; não mantêm uma cópia paralela da conversa.
+O curso vivo é a autoridade. A interface de autoria, o MCP e Actions leem e
+alteram o mesmo estado, sem manter uma cópia paralela da conversa.
 
 ## Tarefas disponíveis
 
-As dezesseis tarefas formam o catálogo público `aralearn.human-authoring-tasks`.
+As dezessete tarefas formam o catálogo público
+`aralearn.human-authoring-tasks`.
 
 | Leitura | Quando usar |
 | --- | --- |
-| `retomar_curso` | localizar ou continuar um Curso pelo título |
-| `consultar_planejamento` | ler a próxima Parte ou reabrir uma Parte anterior |
-| `preparar_materializacao` | reunir inventário semântico, conhecimentos estabelecidos e configuração antes de produzir conteúdo |
+| `retomar_curso` | localizar ou continuar um curso pelo título |
+| `consultar_planejamento` | ler o mapa curricular completo e, quando pertinente, uma parte operacional |
+| `preparar_materializacao` | reunir o recorte aprovado, o repertório acumulado e a configuração antes de produzir conteúdo |
 | `consultar_configuracao` | ler parâmetros pedagógicos efetivos e direção editorial |
-| `consultar_observacoes` | localizar Observações, geralmente as abertas |
-| `preparar_revisao` | reunir também as StudyUnits afetadas por progressão, exemplos ou prática |
-| `consultar_fontes` | localizar Fontes, Âncoras e proveniência |
-| `consultar_componentes` | buscar por função e filtros focais — estrutura, operação, papel e lugar — e ler o contrato exato do componente escolhido |
+| `consultar_observacoes` | localizar observações, geralmente as abertas |
+| `preparar_revisao` | reunir também unidades afetadas por progressão, exemplos ou prática |
+| `consultar_fontes` | localizar fontes, âncoras e proveniência |
+| `consultar_componentes` | buscar representações pela função e ler o contrato exato do componente escolhido |
 
 | Escrita | Quando usar |
 | --- | --- |
-| `criar_curso` | criar um Curso privado após confirmar título e objetivo |
-| `salvar_parte` | adicionar a próxima Parte aprovada ou revisar uma Parte anterior |
-| `materializar_parte` | gravar as StudyUnits de uma Parte preparada e aprovada |
-| `ajustar_configuracao` | definir valores pedagógicos ou direção editorial, ou restaurar herança |
-| `registrar_observacao` | registrar o mesmo apontamento em uma ou várias StudyUnits |
+| `criar_curso` | criar um curso privado após confirmar título e objetivo |
+| `salvar_mapa_curricular` | salvar ou aprovar o mapa completo, sem produzir unidades de estudo |
+| `salvar_parte` | agrupar microssequências já previstas num lote operacional e registrar sua progressão local |
+| `materializar_parte` | gravar as unidades de estudo de uma parte preparada |
+| `ajustar_configuracao` | definir parâmetros ou direção editorial, ou restaurar herança |
+| `registrar_observacao` | registrar o mesmo apontamento em uma ou várias unidades |
 | `aplicar_correcoes` | aplicar o conjunto coerente de correções já revisado |
-| `manter_fonte` | salvar ou retirar Fonte, PDFs, Âncoras, verificação e vínculos de proveniência |
-| `incorporar_pdf_como_fonte` | guardar um PDF anexado como Fonte ou vinculá-lo a uma Fonte existente |
+| `manter_fonte` | salvar ou retirar fonte, PDFs, âncoras, verificação e vínculos de proveniência |
+| `incorporar_pdf_como_fonte` | guardar um PDF anexado como fonte ou vinculá-lo a uma fonte existente |
 
-Os nomes e schemas vêm de um único catálogo compartilhado com Actions. Não há
-aliases para ferramentas antigas nem mega-comando que exponha a estrutura do
-banco.
+Os schemas vêm do mesmo catálogo projetado para Actions. Não há aliases para
+ferramentas antigas nem um comando genérico que exponha a estrutura do banco.
 
-No MCP, o PDF anexado chega em `pdf` como o objeto oficial de arquivo gerido pelo
+No MCP, o PDF anexado chega como o objeto oficial de arquivo gerido pelo
 ChatGPT. Nome, caminho local ou URL digitada não substituem esse objeto; o
 servidor aceita somente a origem temporária autorizada e valida os bytes antes
-de persistir a Fonte.
+de persistir a fonte.
 
 ## Fluxo de conversa
 
-Uma conversa de autoria normalmente segue este ciclo:
+Uma conversa de autoria normalmente segue esta ordem:
 
-1. o GPT recolhe objetivo, público, conhecimentos prévios e restrições que
+1. o GPT reúne objetivo, público, conhecimentos prévios, escopo e fontes que
    realmente mudam a proposta;
-2. consulta o Curso quando ele já existe;
-3. propõe apenas a próxima Parte;
-4. após a decisão da pessoa, salva essa Parte;
-5. repete até o planejamento estar suficiente;
-6. prepara e materializa uma Parte por vez;
-7. devolve resultado, um link pertinente e no máximo uma próxima decisão.
+2. propõe o mapa curricular completo: módulos, lições e microssequências;
+3. oferece uma síntese curta e um link para inspecionar o mapa inteiro;
+4. salva ajustes como rascunho e só marca o mapa como aprovado após a decisão
+   sobre aquela versão inspecionável;
+5. define uma parte apenas como lote de produção, sem mudar o currículo;
+6. apresenta a progressão focal desse lote;
+7. após a decisão local, prepara e materializa as unidades;
+8. devolve o resultado, um link pertinente e no máximo uma próxima decisão;
+9. repete o ciclo focal para o lote seguinte.
 
-Sete a doze Partes são uma heurística comum, não mínimo, máximo ou estrutura
-curricular. Uma Parte é um lote operacional; Microssequência e StudyUnit são
-objetos pedagógicos.
+A aprovação do mapa não aprova conteúdo futuro. A aprovação da progressão de uma
+parte não aprova automaticamente cada formulação ou exercício. Decisões
+rotineiras de redação e representação não exigem nova pergunta; mudanças
+substantivas de cobertura, ordem ou profundidade voltam à pessoa autora.
 
-O GPT faz leituras necessárias sem pedir confirmação mecânica. Uma escrita
-exige que a mudança concreta esteja compreensível e que haja uma decisão humana
-quando ela ainda não foi dada.
+Uma parte é um lote operacional. Módulo, lição e microssequência formam a
+arquitetura curricular. Alterar limites de uma parte não deve, por si só, alterar
+essa arquitetura.
 
-## Análise instrucional e materialização
+## Repertório e materialização
 
-Antes de criar StudyUnits, `preparar_materializacao` traz somente o recorte
-pertinente. O GPT inventaria cada novidade semântica que precisa ser aprendida,
-incluindo conceitos auxiliares, relações, condições e operações intelectuais.
+Antes de produzir unidades, `preparar_materializacao` traz somente o recorte
+pertinente e o repertório acumulado do percurso. O GPT distingue ideias novas,
+ideias já estabelecidas que serão utilizadas e ideias deliberadamente retomadas.
+Conceitos auxiliares, relações, condições, procedimentos e operações também
+entram no repertório quando forem necessários para aprender o percurso.
 
-O teto de novas AnalysisUnits controla a distribuição, não o tamanho artificial
-de cada unidade. Um teto menor pode exigir mais StudyUnits; conteúdo necessário
-não é eliminado para atender extensão editorial.
+O teto de novidades controla quantas ideias semanticamente novas uma unidade
+expositiva introduz. Ele não exige uma quantidade exata, não transforma prática
+em exposição e não autoriza alterar artificialmente a granularidade das ideias.
 
-`materializar_parte` recebe StudyUnits completas e suas aplicações de desenho.
-O servidor valida propriedades determinísticas. Adequação semântica continua
-dependendo de revisão pelo GPT ou pela pessoa autora.
+`materializar_parte` recebe unidades completas e sua aplicação de desenho. O
+servidor valida propriedades determinísticas. Suficiência, progressão, ausência
+de saltos e adequação das representações continuam dependendo da produção e da
+revisão pedagógica.
 
-## Configuração
+O GPT deve fazer uma leitura sequencial antes de concluir o lote. Uma sequência
+pode ser dividida quando estiver densa demais ou fundida quando a navegação tiver
+virado fragmentação textual. Não existe quantidade-alvo de unidades.
 
-Os quatro parâmetros pedagógicos são:
+## Configuração para uso e pesquisa
 
-- teto de novas AnalysisUnits por StudyUnit expositiva;
+Os quatro parâmetros pedagógicos correntes controlam:
+
+- teto de ideias novas por unidade expositiva;
 - formas de explicação requeridas;
-- mínimo de oportunidades distintas de prática por requisito de evidência;
+- mínimo de oportunidades distintas de prática por requisito;
 - dimensões de variação requeridas para a prática.
 
-O GPT os calibra a partir do contexto disponível no uso comum. Condições
-explícitas continuam possíveis para comparação. Direção editorial é separada e
-nunca autoriza comprimir conteúdo necessário.
+No estado `default`, o GPT calibra esses valores para cada microssequência ou
+unidade conforme conteúdo, função e público; não aplica um preset fixo.
+Pesquisadores podem fixar condições explícitas para comparação, e essas
+definições prevalecem. Direção editorial permanece separada e nunca autoriza
+comprimir conhecimento necessário.
 
-## Observações, revisão e Fontes
+A ordem global do fluxo, a aprovação somente do que estava inspecionável e a
+fronteira pública em linguagem humana são invariantes, não parâmetros. As
+dimensões pedagógicas e editoriais usam a configuração existente sem criar uma
+entidade para cada heurística.
 
-`registrar_observacao` cria uma Observação por StudyUnit selecionada. Não existe
-entidade permanente de lote. `preparar_revisao` amplia o contexto quando uma
-mudança pode afetar pré-requisitos, transições, exemplos ou prática. Depois da
-decisão, `aplicar_correcoes` grava as alterações e o GPT reinspeciona o resultado.
+Esses parâmetros são mecanismos de calibração geral de design instrucional.
+Uma finalidade específica, como concurso, pode orientar o conteúdo e a prática
+de um curso sem se tornar padrão global do AraLearn.
 
-Fontes e Âncoras podem ser consultadas em qualquer fase. Uma Fonte permanece
-contestável. O arquivo PDF só é persistido quando a intenção de guardá-lo está
-inequívoca; leitura descartável não usa `incorporar_pdf_como_fonte`. Para retirar
-acesso ao arquivo e preservar a referência bibliográfica, use `manter_fonte` com
-`retirar: pdfs`; `retirar: fonte` remove antes os PDFs ativos e então retira a
-própria Fonte.
+## Fontes, observações e revisão
+
+Fontes podem entrar em qualquer fase. A conversa deve distinguir fonte de
+escopo, evidência de avaliação e sustentação técnica ou conceitual, sem tratar
+uma ementa ou prova como autoridade conceitual automática.
+
+`registrar_observacao` cria uma observação por unidade selecionada.
+`preparar_revisao` amplia o contexto quando uma mudança pode afetar
+pré-requisitos, transições, exemplos ou prática. Depois da decisão,
+`aplicar_correcoes` grava as alterações e o GPT reinspeciona o resultado.
+
+O arquivo PDF só é persistido quando a intenção de guardá-lo está inequívoca.
+Uma leitura descartável não usa `incorporar_pdf_como_fonte`.
 
 ## Respostas e erros
 
-Uma tarefa bem-sucedida devolve três campos de coordenação:
+Uma tarefa bem-sucedida devolve:
 
 - `result`: o que aconteceu;
 - `deepLink`: o destino útil no AraLearn, quando houver;
 - `nextDecision`: uma única decisão seguinte, quando necessária.
 
-Contexto estruturado pode acompanhar leituras sem ser repetido como dissertação
-na conversa. Identidades do banco e controles de concorrência não fazem parte
-dos argumentos públicos.
+O contexto estruturado pode acompanhar leituras sem ser despejado no chat.
+Identidades do banco, nomes de campos e controles de concorrência não fazem
+parte da conversa normal.
 
 Ambiguidade entre títulos pede uma referência humana mais específica. Falhas
 transitórias permitem retomar; recusa de autorização não é repetida como se
 fosse indisponibilidade.
 
-## Autenticação e autorização
+## Autenticação e atualização
 
 O MCP usa OAuth 2.1. A conexão solicita o escopo autoral necessário e o servidor
-volta a conferir pessoa, sessão, cliente e consentimento em cada chamada. Tarefas
-de leitura e escrita são filtradas pelos escopos concedidos. Tokens do MCP não
-são aceitos como sessão comum da interface.
-
-O servidor anuncia metadata de autorização no próprio recurso protegido. Depois
-de uma mudança incompatível no catálogo, atualize o app e abra uma conversa nova.
-Renovar o login OAuth é uma operação separada.
-
-### Atualizar o catálogo e a conexão no ChatGPT
+volta a conferir pessoa, sessão, cliente e consentimento em cada chamada.
 
 O endereço hospedado do servidor é:
 
@@ -139,18 +154,15 @@ O endereço hospedado do servidor é:
 
 Depois de uma publicação que altere o catálogo:
 
-1. abra as configurações de Apps do ChatGPT e use **Refresh** no AraLearn;
-2. revise as mudanças e habilite as dezesseis tarefas correntes;
-3. abra uma conversa nova, selecione o AraLearn e retome o Curso pelo título;
-4. use **Reconnect** — ou desconecte e conecte novamente — somente quando a
-   autorização estiver expirada ou revogada, ou quando for preciso trocar a conta.
+1. use **Refresh** no app AraLearn nas configurações do ChatGPT;
+2. revise e habilite as dezessete tarefas correntes;
+3. abra uma conversa nova e retome um curso pelo título;
+4. use **Reconnect** somente se a autorização estiver expirada, revogada ou
+   vinculada à conta errada.
 
-**Refresh** busca a lista corrente de tarefas; **Reconnect** refaz a autorização
-OAuth. Atualizar o catálogo, por si só, não exige novo login.
-
-O login no site do AraLearn, a conexão OAuth do MCP e a conexão OAuth de Actions
-são sessões independentes. Entrar no AraLearn no navegador do ChatGPT Work não
-conecta automaticamente o MCP nem Actions; cada canal pede sua própria conexão.
+Atualizar o catálogo e refazer o login OAuth são operações distintas. O login
+no site, a conexão OAuth do MCP e a conexão OAuth de Actions também são sessões
+independentes.
 
 ## Verificação local
 
@@ -161,9 +173,9 @@ deno test --config supabase/functions/deno.json `
   supabase/functions/tests/aralearn-authoring-mcp.test.ts
 ```
 
-Essas verificações conferem o catálogo exato, seleção por intenção,
-desambiguação, autorização e paridade com Actions. A jornada em cliente real é
-executada depois da publicação deliberada.
+Essas verificações conferem catálogo, seleção por intenção, desambiguação,
+autorização e paridade com Actions. A jornada em cliente real é executada depois
+da publicação deliberada.
 
 ## Referências técnicas
 
