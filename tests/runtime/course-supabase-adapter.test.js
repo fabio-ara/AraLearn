@@ -1846,7 +1846,7 @@ test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bib
       return json({
         contract: "aralearn.course-source-pdf-ingestion.v1",
         courseId: COURSE_ID,
-        courseRevision: 7,
+        courseRevision: 6,
         requestId: "request-ingest-save-1",
         idempotent: false,
         changed: true,
@@ -1878,7 +1878,7 @@ test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bib
     mediaType: "application/pdf"
   });
   assert.equal(result.stored, true);
-  assert.equal(result.courseRevision, 7);
+  assert.equal(result.courseRevision, 6);
   assert.match(derivedSourceId, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
   const upload = calls.find(({ url, init }) => init.method === "POST" &&
     url.includes("/storage/v1/object/course-source-pdfs/"));
@@ -1950,6 +1950,78 @@ test("adapter recupera recibo de ingestão pelo arquivo público e reverifica o 
   assert.equal(result.stored, true);
   assert.equal(calls.length, 2);
   assert.equal(calls[1].method, "GET");
+});
+
+test("recibo de Fonte nova aceita uma revisão única e rejeita a contagem dupla antiga", async () => {
+  const pdfBytes = syntheticPdf("new-source-receipt");
+  const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const sourceId = "source-new-receipt";
+  const requestId = "request-ingest-new-receipt-1";
+  const sourceIntent = {
+    mode: "save",
+    sourceId,
+    expectedSourceRevision: 0,
+    source: pdfSourceDocument()
+  };
+  const fileIdentity = {
+    fileId: "file-new-source-receipt-0001",
+    fileName: "edital.pdf",
+    mediaType: "application/pdf"
+  };
+  const receipt = (courseRevision) => ({
+    contract: "aralearn.course-source-pdf-ingestion.v1",
+    courseId: COURSE_ID,
+    courseRevision,
+    requestId,
+    idempotent: true,
+    changed: true,
+    change: { type: "ingest_pdf", subjectId: sourceId, revision: 1 },
+    source: { sourceId, sourceRevision: 1, bibliographyChanged: true },
+    attachment: {
+      contentHash,
+      byteSize: pdfBytes.byteLength,
+      mediaType: "application/pdf",
+      storagePath
+    },
+    stored: true
+  });
+  const input = {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId,
+    sourceIntent,
+    fileIdentity
+  };
+
+  const valid = adapter(async (url) => {
+    if (url.endsWith("/get_course_source_pdf_ingestion_receipt_for_actor_v1")) {
+      return json(receipt(6));
+    }
+    if (url.includes("/storage/v1/object/authenticated/course-source-pdfs/")) {
+      return new Response(pdfBytes, {
+        headers: { "Content-Length": String(pdfBytes.byteLength) }
+      });
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+  assert.equal((await valid.getCourseSourcePdfIngestionReceipt(input)).courseRevision, 6);
+
+  let storageReads = 0;
+  const doubleCounted = adapter(async (url) => {
+    if (url.endsWith("/get_course_source_pdf_ingestion_receipt_for_actor_v1")) {
+      return json(receipt(7));
+    }
+    storageReads += 1;
+    assert.fail(`A revisão inválida não pode alcançar o Storage: ${url}`);
+  });
+  await assert.rejects(
+    () => doubleCounted.getCourseSourcePdfIngestionReceipt(input),
+    (error) => error.status === 409 && error.code === "course_source_pdf_write_uncertain" &&
+      /pode ter sido concluída/iu.test(error.message)
+  );
+  assert.equal(storageReads, 0);
 });
 
 test("reanexo idempotente reutiliza o mesmo objeto e caminho", async () => {
@@ -2306,7 +2378,7 @@ test("replay pós-timeout recupera receipt e o mesmo caminho antes de confirmar 
   )), true);
 });
 
-test("replay não confirma stored quando o objeto está ausente ou corrompido", async () => {
+test("receipt com objeto ausente ou corrompido vira escrita incerta não repetível", async () => {
   const cases = [
     { label: "ausente", objectResponse: () => new Response(null, { status: 404 }) },
     {
@@ -2371,7 +2443,9 @@ test("replay não confirma stored quando o objeto está ausente ou corrompido", 
         bytes: pdfBytes,
         mediaType: "application/pdf"
       }),
-      (error) => error.status === 422 && error.code === "invalid_course_source_pdf",
+      (error) => error.status === 409 &&
+        error.code === "course_source_pdf_write_uncertain" &&
+        /pode ter sido concluída/iu.test(error.message),
       current.label
     );
     assert.equal(cancels, 1, current.label);
@@ -2597,6 +2671,57 @@ test("remove_pdf apaga via Storage somente após claim global e confirma a inten
     }
   });
   assert.equal(storageDelete, false);
+});
+
+test("retomada por Fonte conclui delete físico pendente com a identidade original", async () => {
+  const contentHash = "c".repeat(64);
+  const storagePath = `${COURSE_ID}/${contentHash}.pdf`;
+  const requestId = "request-source-pdf-pending-1";
+  const calls = [];
+  let claims = 0;
+  const value = adapter(async (url, init) => {
+    const body = init.body == null ? null : JSON.parse(init.body);
+    calls.push({ url, method: init.method, body });
+    if (url.endsWith(
+      "/claim_pending_course_source_pdf_delete_for_source_for_actor_v1"
+    )) {
+      claims += 1;
+      assert.deepEqual(body, {
+        p_actor_id: USER_ID,
+        p_course_id: COURSE_ID,
+        p_source_id: "source-pdf"
+      });
+      return json(claims === 1 ? { requestId, storagePath } : null);
+    }
+    if (init.method === "DELETE" &&
+        url.endsWith("/storage/v1/object/course-source-pdfs")) {
+      assert.deepEqual(body, { prefixes: [storagePath] });
+      return json([]);
+    }
+    if (url.endsWith("/complete_course_source_pdf_delete_for_actor_v1")) {
+      assert.deepEqual(body, {
+        p_actor_id: USER_ID,
+        p_course_id: COURSE_ID,
+        p_request_id: requestId,
+        p_storage_path: storagePath
+      });
+      return json(true);
+    }
+    assert.fail(`Requisição inesperada: ${url}`);
+  });
+
+  const result = await value.resumeCourseSourcePdfDeletes({
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    sourceId: "source-pdf"
+  });
+  assert.deepEqual(result, { deleted: 1 });
+  assert.deepEqual(calls.map(({ method, url }) => [method, url.split("/").at(-1)]), [
+    ["POST", "claim_pending_course_source_pdf_delete_for_source_for_actor_v1"],
+    ["DELETE", "course-source-pdfs"],
+    ["POST", "complete_course_source_pdf_delete_for_actor_v1"],
+    ["POST", "claim_pending_course_source_pdf_delete_for_source_for_actor_v1"]
+  ]);
 });
 
 

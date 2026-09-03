@@ -269,6 +269,58 @@ test("#272 escrita confiável injeta fences/requestId e repete exatamente a falh
     /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
 });
 
+test("confirmação incerta de PDF repete uma vez com a mesma identidade", async () => {
+  const commits = [];
+  const value = await executeTrustedCourseWrite({
+    load: async () => ({ revision: 5 }),
+    build: async (state) => ({ expectedRevision: state.revision }),
+    commit: async (request) => {
+      commits.push(structuredClone(request));
+      if (commits.length === 1) {
+        throw new AuthoringApiError(
+          409,
+          "course_source_pdf_write_uncertain",
+          "A escrita pode ter sido concluída."
+        );
+      }
+      return { stored: true, requestId: request.requestId };
+    },
+    requestIdFactory: () => "request-pdf-confirmation-0001"
+  });
+
+  assert.equal(value.stored, true);
+  assert.equal(commits.length, 2);
+  assert.deepEqual(commits[1], commits[0]);
+});
+
+test("falha no replay preserva a escrita incerta de PDF", async () => {
+  const commits = [];
+  await assert.rejects(() => executeTrustedCourseWrite({
+    load: async () => ({ revision: 5 }),
+    build: async (state) => ({ expectedRevision: state.revision }),
+    commit: async (request) => {
+      commits.push(structuredClone(request));
+      if (commits.length === 1) {
+        throw new AuthoringApiError(
+          409,
+          "course_source_pdf_write_uncertain",
+          "A escrita pode ter sido concluída."
+        );
+      }
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O replay não respondeu."
+      );
+    },
+    requestIdFactory: () => "request-pdf-uncertain-replay-0001"
+  }), (error) => error.status === 409 &&
+    error.code === "course_source_pdf_write_uncertain");
+
+  assert.equal(commits.length, 2);
+  assert.deepEqual(commits[1], commits[0]);
+});
+
 test("#272 CAS relê e reconstrói; autorização e validação nunca entram em retry", async () => {
   let loads = 0;
   let ids = 0;

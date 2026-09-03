@@ -17,6 +17,8 @@ import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import { AuthoringApiError } from
+  "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 
 const ORIGIN = "https://client.example";
 const RESOURCE_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
@@ -149,7 +151,7 @@ test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.3");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.4");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
@@ -583,7 +585,11 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     assert.match(task.description, /^Use\b/u, task.name);
     assert.match(task.description, /\bNão\b/iu, task.name);
     assert.equal(task.annotations.openWorldHint, false, task.name);
-    assert.equal(task.annotations.destructiveHint, false, task.name);
+    assert.equal(
+      task.annotations.destructiveHint,
+      task.name === "manter_fonte",
+      task.name
+    );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
     for (const [name, property] of Object.entries(task.inputSchema.properties || {})) {
       assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
@@ -886,6 +892,41 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
   assert.equal(Object.hasOwn(denied.result.structuredContent.error, "recovery"), false);
 });
 
+test("MCP não manda repetir incorporação de PDF com escrita incerta", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async listCourses() {
+        throw new AuthoringApiError(
+          409,
+          "course_source_pdf_write_uncertain",
+          "A confirmação da ingestão do PDF ficou inconclusiva."
+        );
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.error.code,
+    "course_source_pdf_write_uncertain"
+  );
+  assert.equal(payload.result.structuredContent.error.retryable, false);
+  assert.equal(
+    payload.result.structuredContent.nextDecision,
+    "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF."
+  );
+});
+
 test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnico", async () => {
   const response = await mcpHandler()(request("tools/call", {
     name: "retomar_curso",
@@ -1036,6 +1077,253 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
   assert.deepEqual(binding.sourceLinks[0].anchors, [{
     anchorId: "anchor-other"
   }]);
+});
+
+test("manter_fonte expõe e executa retirada humana de PDFs e da Fonte", async () => {
+  const definition = COURSE_HUMAN_TASKS.find(({ name }) => name === "manter_fonte");
+  const validate = new Ajv2020({ strict: false }).compile(definition.inputSchema);
+  assert.equal(validate({
+    curso: "Redes para iniciantes",
+    fonte: "Edital descartável",
+    retirar: "fonte"
+  }), true);
+  assert.equal(validate({
+    curso: "Redes para iniciantes",
+    retirar: "fonte"
+  }), false);
+  assert.equal(validate({
+    curso: "Redes para iniciantes",
+    fonte: "Edital descartável",
+    retirar: "pdfs",
+    metadados: { titulo: "Não combinar" }
+  }), false);
+  assert.equal(definition.annotations.destructiveHint, true);
+
+  let courseRevision = 7;
+  const source = {
+    sourceId: "source-disposable",
+    revision: 2,
+    status: "active",
+    title: "Edital descartável",
+    citationText: null,
+    attachments: [
+      { contentHash: "a".repeat(64) },
+      { contentHash: "b".repeat(64) }
+    ]
+  };
+  const commands = [];
+  const resumedDeletes = [];
+  const sourceAdapter = {
+    ...adapter(),
+    async listCourses() {
+      return {
+        items: [{ courseId: COURSE_ID, title: "Redes para iniciantes", revision: courseRevision }],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async getCourse() {
+      return { courseId: COURSE_ID, title: "Redes para iniciantes", revision: courseRevision };
+    },
+    async getCourseSources({ mode, sourceId }) {
+      if (mode === "source") {
+        return { items: sourceId === source.sourceId ? [structuredClone(source)] : [], nextCursor: null };
+      }
+      return { items: [structuredClone(source)], nextCursor: null };
+    },
+    async executeCourseSourceCommand({ expectedCourseRevision, command }) {
+      assert.equal(expectedCourseRevision, courseRevision);
+      commands.push(structuredClone(command));
+      if (command.type === "remove_pdf") {
+        source.attachments = source.attachments.filter(({ contentHash }) =>
+          contentHash !== command.contentHash);
+      } else if (command.type === "retire_source") {
+        source.status = "retired";
+        source.revision += 1;
+      } else {
+        assert.fail(`Comando inesperado: ${command.type}`);
+      }
+      courseRevision += 1;
+      return { changed: true };
+    },
+    async resumeCourseSourcePdfDeletes(value) {
+      resumedDeletes.push(structuredClone(value));
+      return { deleted: 0 };
+    }
+  };
+
+  const pdfOutput = await executeHumanCourseTask({
+    adapter: sourceAdapter,
+    principal: PRINCIPAL,
+    name: "manter_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      fonte: "Edital descartável",
+      retirar: "pdfs"
+    }
+  });
+  assert.match(pdfOutput.result, /Retirei os PDFs/u);
+  assert.deepEqual(commands.map(({ type }) => type), ["remove_pdf", "remove_pdf"]);
+  assert.equal(source.attachments.length, 0);
+  assert.equal(source.status, "active");
+  assert.deepEqual(resumedDeletes.map(({ courseId, sourceId }) => ({ courseId, sourceId })), [{
+    courseId: COURSE_ID,
+    sourceId: source.sourceId
+  }]);
+
+  source.attachments = [{ contentHash: "c".repeat(64) }];
+  const output = await executeHumanCourseTask({
+    adapter: sourceAdapter,
+    principal: PRINCIPAL,
+    name: "manter_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      fonte: "Edital descartável",
+      retirar: "fonte"
+    }
+  });
+  assert.match(output.result, /Retirei a Fonte/u);
+  assert.deepEqual(commands.map(({ type }) => type), [
+    "remove_pdf", "remove_pdf", "remove_pdf", "retire_source"
+  ]);
+  assert.deepEqual(commands.slice(0, 3).map(({ contentHash }) => contentHash), [
+    "a".repeat(64), "b".repeat(64), "c".repeat(64)
+  ]);
+  assert.equal(source.attachments.length, 0);
+  assert.equal(source.status, "retired");
+  assert.equal(resumedDeletes.length, 2);
+
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: sourceAdapter,
+    principal: PRINCIPAL,
+    name: "manter_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      fonte: "Edital descartável",
+      retirar: "pdfs",
+      metadados: { titulo: "Não combinar" }
+    }
+  }), (error) => error.code === "invalid_human_task_arguments");
+});
+
+test("nova retirada retoma delete físico pendente antes de declarar sucesso", async () => {
+  let courseRevision = 7;
+  let activeAttachments = [{ contentHash: "d".repeat(64) }];
+  let removeAttempts = 0;
+  let resumed = 0;
+  const sourceAdapter = {
+    ...adapter(),
+    async listCourses() {
+      return {
+        items: [{ courseId: COURSE_ID, title: "Redes para iniciantes", revision: courseRevision }],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async getCourse() {
+      return { courseId: COURSE_ID, title: "Redes para iniciantes", revision: courseRevision };
+    },
+    async getCourseSources({ mode }) {
+      const source = {
+        sourceId: "source-pending-delete",
+        revision: 2,
+        status: "active",
+        title: "PDF com limpeza pendente",
+        citationText: null,
+        attachments: structuredClone(activeAttachments)
+      };
+      return { items: mode === "source" || mode === "catalog" ? [source] : [], nextCursor: null };
+    },
+    async executeCourseSourceCommand({ command }) {
+      assert.equal(command.type, "remove_pdf");
+      removeAttempts += 1;
+      activeAttachments = [];
+      if (removeAttempts === 1) courseRevision += 1;
+      throw new AuthoringApiError(
+        503,
+        "course_storage_unavailable",
+        "O objeto ainda não pôde ser removido."
+      );
+    },
+    async resumeCourseSourcePdfDeletes() {
+      resumed += 1;
+      return { deleted: 1 };
+    }
+  };
+  const input = {
+    adapter: sourceAdapter,
+    principal: PRINCIPAL,
+    name: "manter_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      fonte: "PDF com limpeza pendente",
+      retirar: "pdfs"
+    }
+  };
+
+  await assert.rejects(() => executeHumanCourseTask(input),
+    (error) => error.code === "course_storage_unavailable");
+  assert.equal(removeAttempts, 2, "o replay interno conserva a mesma retirada");
+  assert.equal(resumed, 0);
+
+  const output = await executeHumanCourseTask(input);
+  assert.match(output.result, /Retirei os PDFs/u);
+  assert.equal(resumed, 1);
+  assert.equal(removeAttempts, 2, "a retomada não cria outro comando remove_pdf");
+});
+
+test("retirada da Fonte só ocorre depois de concluir limpeza física pendente", async () => {
+  let resumeAttempts = 0;
+  const commands = [];
+  const sourceAdapter = {
+    ...adapter(),
+    async getCourseSources() {
+      return {
+        items: [{
+          sourceId: "source-pending-retire",
+          revision: 2,
+          status: "active",
+          title: "Fonte aguardando limpeza",
+          citationText: null,
+          attachments: []
+        }],
+        nextCursor: null
+      };
+    },
+    async resumeCourseSourcePdfDeletes() {
+      resumeAttempts += 1;
+      if (resumeAttempts === 1) {
+        throw new AuthoringApiError(
+          503,
+          "course_storage_unavailable",
+          "A limpeza física continua pendente."
+        );
+      }
+      return { deleted: 1 };
+    },
+    async executeCourseSourceCommand({ command }) {
+      commands.push(structuredClone(command));
+      return { changed: true };
+    }
+  };
+  const input = {
+    adapter: sourceAdapter,
+    principal: PRINCIPAL,
+    name: "manter_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      fonte: "Fonte aguardando limpeza",
+      retirar: "fonte"
+    }
+  };
+
+  await assert.rejects(() => executeHumanCourseTask(input),
+    (error) => error.code === "course_storage_unavailable");
+  assert.deepEqual(commands, []);
+
+  const output = await executeHumanCourseTask(input);
+  assert.match(output.result, /Retirei a Fonte/u);
+  assert.deepEqual(commands.map(({ type }) => type), ["retire_source"]);
 });
 
 test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {

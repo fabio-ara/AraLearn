@@ -185,3 +185,16 @@ test("erros do transporte de PDF distinguem correção, reanexo, retry e recibo"
     assert.match(projected.recovery.steps.join(" "), candidate.expected, candidate.code);
   }
 });
+
+test("confirmação incerta de PDF exige releitura sem nova incorporação", () => {
+  const projected = toolErrorData(new AuthoringApiError(
+    409,
+    "course_source_pdf_write_uncertain",
+    "A escrita pode ter sido concluída."
+  ), { requestId: "request-pdf-write-uncertain-0001" });
+
+  assert.equal(projected.recovery.strategy, "stop");
+  assert.equal(projected.recovery.retryable, false);
+  assert.equal(projected.recovery.requestIdMode, "none");
+  assert.match(projected.recovery.steps.join(" "), /Releia as Fontes|Não repita/iu);
+});

@@ -42,8 +42,12 @@ test("#275 restauração aplica toda a cadeia final em ordem", () => {
   const actionCallback = script.indexOf(
     "20260902234800_bind_real_chatgpt_action_callback.sql"
   );
+  const pdfLifecycleHardening = script.indexOf(
+    "20260903025658_harden_course_source_pdf_lifecycle.sql"
+  );
   assert.ok(cut >= 0 && actionOrigin > cut && focalCorrection > actionOrigin &&
-    analyticsApplicability > focalCorrection && actionCallback > analyticsApplicability);
+    analyticsApplicability > focalCorrection && actionCallback > analyticsApplicability &&
+    pdfLifecycleHardening > actionCallback);
   assert.match(script, /values\.migrations\.push\(\.\.\.defaultMigrations\)/u);
   assert.match(script, /const preCutMigrations = migrationsBefore\(resolved\.migrations\[0\]\)/u);
   assert.match(script, /applyMigrationFiles\([\s\S]+pre-cut-migrations-/u);

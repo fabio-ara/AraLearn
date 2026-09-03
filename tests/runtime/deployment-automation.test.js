@@ -474,7 +474,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260902234800");
+  assert.equal(manifest.schemaRevision, "20260903025658");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-part-save-v1"), true);
   assert.equal(
@@ -533,8 +533,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260902234800_bind_real_chatgpt_action_callback.sql",
-    revision: "20260902234800"
+    fileName: "20260903025658_harden_course_source_pdf_lifecycle.sql",
+    revision: "20260903025658"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

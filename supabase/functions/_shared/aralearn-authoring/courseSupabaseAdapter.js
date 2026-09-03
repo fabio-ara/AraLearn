@@ -72,6 +72,8 @@ const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
 const PERSON_AVATAR_BUCKET = "person-avatars";
 const COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS = 60;
 const COURSE_SOURCE_PDF_VERIFICATION_TIMEOUT_MS = 20_000;
+const COURSE_SOURCE_PDF_MAX_DELETE_CLAIMS = 8;
+const INTERNAL_REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const ACCOUNT_DELETION_CONFIRMATION = "EXCLUIR MINHA CONTA";
 const ACCOUNT_DELETION_CONTRACT = "aralearn.account-deletion.v1";
 const ACCOUNT_STORAGE_BATCH_SIZE = 100;
@@ -731,6 +733,15 @@ function unavailableCourseSourcePdf() {
     503,
     "course_storage_unavailable",
     "O Storage não permitiu verificar o PDF enviado."
+  );
+}
+
+function uncertainCourseSourcePdfWrite() {
+  return new AuthoringApiError(
+    409,
+    "course_source_pdf_write_uncertain",
+    "A ingestão pode ter sido concluída, mas não foi possível confirmar com segurança " +
+      "o PDF e a Fonte solicitados."
   );
 }
 
@@ -1470,35 +1481,45 @@ export class CourseSupabaseAdapter {
     attachment = null,
     deadlineAt
   }) {
-    const result = normalizeCourseSourcesDatabaseValue(() =>
-      normalizeCourseSourcePdfIngestion(raw)
-    );
-    const expectedSourceRevision = sourceIntent.mode === "existing"
-      ? sourceIntent.sourceRevision
-      : sourceIntent.expectedSourceRevision + 1;
-    const expectedResultRevision = expectedCourseRevision +
-      (result.source.bibliographyChanged ? 1 : 0) +
-      (result.change === null ? 0 : 1);
-    if (result.courseId !== courseId || result.requestId !== requestId ||
-        result.courseRevision !== expectedResultRevision ||
-        result.source.sourceId !== sourceIntent.sourceId ||
-        result.source.sourceRevision !== expectedSourceRevision ||
-        attachment !== null && !courseSourcePdfAttachmentEquals(result.attachment, attachment) &&
-          !(result.idempotent && courseSourcePdfAttachmentBinaryEquals(
-            result.attachment,
-            attachment
-          ))) {
-      throw new AuthoringApiError(
-        503,
-        "course_service_unavailable",
-        "A confirmação da ingestão não corresponde ao PDF e à Fonte solicitados."
+    // Chegar aqui significa que a transação devolveu um resultado ou receipt:
+    // qualquer falha posterior deixa o commit potencialmente durável. Nunca a
+    // apresente como erro repetível, pois uma nova chamada usaria outra chave
+    // idempotente e poderia criar uma Fonte duplicada.
+    try {
+      const result = normalizeCourseSourcesDatabaseValue(() =>
+        normalizeCourseSourcePdfIngestion(raw)
       );
+      const expectedSourceRevision = sourceIntent.mode === "existing"
+        ? sourceIntent.sourceRevision
+        : sourceIntent.expectedSourceRevision + 1;
+      // A Fonte e o vínculo PDF são finalizados na mesma transação e avançam a
+      // revisão do Curso uma única vez. `bibliographyChanged` descreve parte
+      // dessa mudança; não é um segundo incremento independente.
+      const expectedResultRevision = expectedCourseRevision +
+        Number(result.changed);
+      if (result.courseId !== courseId || result.requestId !== requestId ||
+          result.courseRevision !== expectedResultRevision ||
+          result.source.sourceId !== sourceIntent.sourceId ||
+          result.source.sourceRevision !== expectedSourceRevision ||
+          attachment !== null && !courseSourcePdfAttachmentEquals(result.attachment, attachment) &&
+            !(result.idempotent && courseSourcePdfAttachmentBinaryEquals(
+              result.attachment,
+              attachment
+            ))) {
+        throw uncertainCourseSourcePdfWrite();
+      }
+      await this.#verifyCourseSourcePdf(result.attachment, {
+        deadlineAt,
+        requireStructure: true
+      });
+      return result;
+    } catch (error) {
+      if (error instanceof AuthoringApiError &&
+          error.code === "course_source_pdf_write_uncertain") {
+        throw error;
+      }
+      throw uncertainCourseSourcePdfWrite();
     }
-    await this.#verifyCourseSourcePdf(result.attachment, {
-      deadlineAt,
-      requireStructure: true
-    });
-    return result;
   }
 
   async getCourseSourcePdfIngestionReceipt({
@@ -1709,6 +1730,59 @@ export class CourseSupabaseAdapter {
       { deadlineAt, responseLimitBytes: 4 * 1024 }
     ));
     if (completed !== true) throw unavailableCourseSourcePdf();
+  }
+
+  async resumeCourseSourcePdfDeletes({
+    principal,
+    courseId,
+    sourceId,
+    deadlineAt = null
+  }) {
+    let deleted = 0;
+    for (let claimIndex = 0;
+      claimIndex <= COURSE_SOURCE_PDF_MAX_DELETE_CLAIMS;
+      claimIndex += 1) {
+      const claimed = first(await this.rpc(
+        "claim_pending_course_source_pdf_delete_for_source_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_source_id: sourceId
+        },
+        { deadlineAt, responseLimitBytes: 4 * 1024 }
+      ));
+      if (claimed === null) return { deleted };
+      if (!exactRecord(claimed, new Set(["requestId", "storagePath"])) ||
+          typeof claimed.requestId !== "string" ||
+          !INTERNAL_REQUEST_ID_PATTERN.test(claimed.requestId)) {
+        throw unavailableCourseSourcePdf();
+      }
+      if (claimIndex === COURSE_SOURCE_PDF_MAX_DELETE_CLAIMS) {
+        throw unavailableCourseSourcePdf();
+      }
+      const storagePath = maintenanceObjectPath(
+        claimed.storagePath,
+        COURSE_SOURCE_ATTACHMENT_BUCKET
+      );
+      await this.#deleteMaintenanceObject(
+        COURSE_SOURCE_ATTACHMENT_BUCKET,
+        storagePath,
+        { deadlineAt }
+      );
+      const completed = first(await this.rpc(
+        "complete_course_source_pdf_delete_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_request_id: claimed.requestId,
+          p_storage_path: storagePath
+        },
+        { deadlineAt, responseLimitBytes: 4 * 1024 }
+      ));
+      if (completed !== true) throw unavailableCourseSourcePdf();
+      deleted += 1;
+    }
+    throw unavailableCourseSourcePdf();
   }
 
   rpc(functionName, payload, options = {}) {

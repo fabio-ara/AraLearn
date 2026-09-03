@@ -169,12 +169,13 @@ registrado e precisa coincidir nas etapas seguintes do OAuth; o caminho não é
 reconstruído a partir de outro identificador do GPT.
 
 O manifesto corrente termina em
-`20260902234800_bind_real_chatgpt_action_callback.sql`, que registra o callback
-real comprovado pela troca confidencial do código. A migration anterior de
-Analytics continua contando o teto de novas unidades de análise somente onde
-ele se aplica: StudyUnits expositivas ou mistas. Reimporte o OpenAPI no GPT
-somente quando o próprio documento mudar; uma correção interna do vínculo OAuth
-não exige reimportação.
+`20260903025658_harden_course_source_pdf_lifecycle.sql`, que protege a
+finalização concorrente da ingestão e permite retomar com segurança uma remoção
+física pendente. A migration
+`20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
+autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
+quando o próprio documento mudar; uma correção interna do vínculo OAuth não
+exige reimportação.
 
 ```powershell
 npm.cmd run deployment:verify-hosted

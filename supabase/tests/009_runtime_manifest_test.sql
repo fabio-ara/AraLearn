@@ -1,11 +1,11 @@
 begin;
 
-select plan(24);
+select plan(25);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260902234800','o manifesto identifica a hotfix do callback real');
+  '20260903025658','o manifesto identifica o endurecimento do ciclo de PDF');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),38,
@@ -67,6 +67,26 @@ select ok(
     'public.exchange_authoring_action_oauth_code_v4(uuid,text,text,text,text,text,uuid)'::regprocedure
   ) like '%cardinality(v_client.redirect_uris) = 0%',
   'OAuth vincula o callback real e aceita somente os dois hosts oficiais');
+
+select ok(
+  strpos(pg_get_functiondef(
+    'public.ingest_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,jsonb,text,text)'::regprocedure
+  ),'course-row:') > 0
+  and strpos(pg_get_functiondef(
+    'public.ingest_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,jsonb,text,text)'::regprocedure
+  ),'v_receipt.result') < strpos(pg_get_functiondef(
+    'public.ingest_course_source_pdf_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,jsonb,text,text)'::regprocedure
+  ),'course-row:')
+  and (length(pg_get_functiondef(
+    'private.guard_course_source_attachment_lifecycle_v1()'::regprocedure
+  ))-length(replace(pg_get_functiondef(
+    'private.guard_course_source_attachment_lifecycle_v1()'::regprocedure
+  ),'course-source-pdf-object:','')))
+    = 2*length('course-source-pdf-object:')
+  and pg_get_functiondef(
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'::regprocedure
+  ) like '%claim_course_source_pdf_delete_for_actor_v1%',
+  'ingestão conserva CAS/replay e remoção física pode ser retomada com lock');
 
 select is((select count(*) from pg_constraint constraint_value
   join pg_class relation on relation.oid=constraint_value.conrelid
@@ -131,7 +151,8 @@ select is(array(
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_owned_course_authoring_analytics_for_actor_v2(uuid,uuid,bigint,jsonb)',
-    'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)'
+    'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
   ]) signature where to_regprocedure(signature) is null
 ),array[]::text[],'todas as fronteiras finais existem');
 
@@ -163,7 +184,8 @@ select is(array(
     'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
-    'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)'
+    'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
   ]) signature where not has_function_privilege('service_role',signature,'execute')
 ),array[]::text[],'service_role executa as fronteiras internas');
 
@@ -174,7 +196,8 @@ select is(array(
     'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
-    'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)'
+    'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
   ]) signature where has_function_privilege('authenticated',signature,'execute')
     or has_function_privilege('anon',signature,'execute')
 ),array[]::text[],'clientes não chamam fronteiras internas');

@@ -110,6 +110,17 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
+  if (error.code === "course_source_pdf_write_uncertain") {
+    return {
+      strategy: "stop",
+      retryable: false,
+      requestIdMode: "none",
+      steps: [
+        "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF.",
+        "Não repita a incorporação enquanto o resultado corrente não for conhecido."
+      ]
+    };
+  }
   if (error.status === 409) {
     return {
       strategy: "reread_and_retry",

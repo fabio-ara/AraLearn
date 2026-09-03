@@ -264,10 +264,12 @@ function toolFailure(
   failure = {}
 ) {
   const normalized = asAuthoringApiError(error);
-  const retryable = normalized.status === 408 || normalized.status === 429 ||
+  const retryable = normalized.code !== "course_source_pdf_write_uncertain" && (
+    normalized.status === 408 || normalized.status === 429 ||
     normalized.status >= 500 || new Set([
       "course_service_unavailable", "request_timeout", "network_error"
-    ]).has(normalized.code);
+    ]).has(normalized.code)
+  );
   const publicError = {
     code: String(normalized.code || "human_task_failed"),
     message: String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
@@ -279,6 +281,8 @@ function toolFailure(
       ? "Confira o título ou a posição e tente novamente."
       : normalized.code === "human_task_result_too_large"
         ? "Escolha um Curso, Parte, Microssequência ou Unidade mais específica."
+        : normalized.code === "course_source_pdf_write_uncertain"
+          ? "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF."
         : retryable
           ? "Tente novamente sem mudar a intenção da tarefa."
           : null;

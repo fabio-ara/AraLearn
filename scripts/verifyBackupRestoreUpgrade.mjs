@@ -13,7 +13,8 @@ const defaultMigrations = Object.freeze([
   "20260902123759_drop_legacy_chat_openai_action_origin.sql",
   "20260902160602_preserve_course_design_on_focal_mcp_corrections.sql",
   "20260902180219_count_expository_parameter_usage_in_analytics.sql",
-  "20260902234800_bind_real_chatgpt_action_callback.sql"
+  "20260902234800_bind_real_chatgpt_action_callback.sql",
+  "20260903025658_harden_course_source_pdf_lifecycle.sql"
 ].map((name) => path.join(migrationDirectory, name)));
 const defaultFixture = path.join(
   repositoryRoot,
