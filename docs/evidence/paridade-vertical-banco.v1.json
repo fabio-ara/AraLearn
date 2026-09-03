@@ -259,6 +259,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "constraint:private.course_authoring_parts/course_authoring_parts_progression_v1[check]",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "constraint:private.course_authoring_parts/course_authoring_parts_title_v1[check]",
       "caseId": "course-authoring-experience"
     },
@@ -283,7 +287,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v11[check]",
+      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v12[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -351,7 +355,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_design_parameter_definitions/course_design_parameter_definitions_id_v1[check]",
+      "object": "constraint:private.course_design_parameter_definitions/course_design_parameter_definitions_id_v2[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -375,7 +379,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_design_target_plan_items/course_design_target_plan_items_kind_v1[check]",
+      "object": "constraint:private.course_design_target_plan_items/course_design_target_plan_items_kind_v2[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -439,11 +443,15 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "constraint:private.course_instructional_plan_items/course_instructional_plan_items_description_v1[check]",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "constraint:private.course_instructional_plan_items/course_instructional_plan_items_kind_identity_v1[unique]",
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_instructional_plan_items/course_instructional_plan_items_kind_v1[check]",
+      "object": "constraint:private.course_instructional_plan_items/course_instructional_plan_items_kind_v2[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -484,6 +492,10 @@
     },
     {
       "object": "constraint:private.course_instructional_plans/course_instructional_plans_course_id_key[unique]",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "constraint:private.course_instructional_plans/course_instructional_plans_curriculum_map_status_v1[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -743,6 +755,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "constraint:private.course_sources/course_sources_role_v1[check]",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "constraint:private.course_sources/course_sources_status_v2[check]",
       "caseId": "course-source-provenance"
     },
@@ -875,6 +891,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:private.count_course_component_authorial_words_v1(p_value jsonb, p_field text)",
+      "caseId": "course-authoring-research"
+    },
+    {
       "object": "function:private.course_anchored_annotation_item_v1(p_annotation private.course_anchored_annotations, p_viewer_id uuid, p_viewer_is_owner boolean)",
       "caseId": "course-anchored-annotations"
     },
@@ -979,6 +999,10 @@
       "caseId": "current-data-lifecycle"
     },
     {
+      "object": "function:private.current_course_curricular_map_v1(p_course_id uuid)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.decorate_course_inspection_page_v2(p_course_id uuid, p_expected_revision bigint, p_result jsonb)",
       "caseId": "course-authoring-experience"
     },
@@ -1007,7 +1031,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "function:private.get_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid)",
+      "object": "function:private.get_course_instructional_plan_for_actor_v3(p_actor_id uuid, p_course_id uuid)",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1053,6 +1077,10 @@
     {
       "object": "function:private.lock_current_account_storage_write_v1()",
       "caseId": "current-data-lifecycle"
+    },
+    {
+      "object": "function:private.materialize_course_authoring_part_core_v1(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_expected_course_revision bigint, p_expected_authoring_part_version bigint, p_units jsonb, p_request_id text, p_request_hash text)",
+      "caseId": "course-authoring-experience"
     },
     {
       "object": "function:private.prepare_course_source_pdf_ingestion_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_content_hash text, p_byte_size bigint, p_media_type text, p_request_id text)",
@@ -1115,11 +1143,19 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "function:private.valid_course_authoring_progression_v1(p_value jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.valid_course_component_policy_v1(p_policy jsonb)",
       "caseId": "course-authoring-experience"
     },
     {
       "object": "function:private.valid_course_component_refs_in_content_v1(p_content jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.valid_course_curricular_map_shape_v1(p_map jsonb)",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1299,7 +1335,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "function:public.get_owned_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid)",
+      "object": "function:public.get_owned_course_instructional_plan_for_actor_v3(p_actor_id uuid, p_course_id uuid)",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1379,7 +1415,7 @@
       "caseId": "person-profile-and-course-access"
     },
     {
-      "object": "function:public.materialize_course_authoring_part_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_expected_course_revision bigint, p_expected_authoring_part_version bigint, p_units jsonb, p_request_id text, p_request_hash text)",
+      "object": "function:public.materialize_course_authoring_part_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_expected_course_revision bigint, p_expected_authoring_part_version bigint, p_plan_item_upserts jsonb, p_target_plan_items jsonb, p_units jsonb, p_request_id text, p_request_hash text)",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1408,6 +1444,10 @@
     },
     {
       "object": "function:public.save_course_authoring_part_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_expected_plan_version bigint, p_part jsonb, p_request_id text, p_request_hash text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.save_course_curricular_map_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_expected_plan_version bigint, p_approved boolean, p_curricular_map jsonb, p_request_id text, p_request_hash text)",
       "caseId": "course-authoring-experience"
     },
     {
