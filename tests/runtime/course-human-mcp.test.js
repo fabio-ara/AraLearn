@@ -386,7 +386,7 @@ test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo ma
       mapWrites.push(structuredClone(input));
       const approved = input.approved === true || input.curricularMap?.approval === "approved";
       current = mapPlanRead({
-        artifactId: "mapa-global-v1",
+        artifactId: mapWrites.length === 1 ? "mapa-global-v1" : "mapa-global-v2",
         approval: approved ? "approved" : "draft",
         courseRevision: current.courseRevision + 1,
         planVersion: current.plan.version + 1
@@ -441,13 +441,22 @@ test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo ma
   }), (error) => error.code === "curricular_map_draft_mismatch");
   assert.equal(mapWrites.length, 1);
 
+  const revisedArguments = curricularMapArguments("mapa-global-v2", false);
+  await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_mapa_curricular",
+    rawArguments: revisedArguments
+  });
+  assert.equal(mapWrites.length, 2);
+
   const approved = await executeHumanCourseTask({
     adapter: value,
     principal: PRINCIPAL,
     name: "salvar_mapa_curricular",
-    rawArguments: { ...draftArguments, aprovado: true }
+    rawArguments: { ...revisedArguments, aprovado: true }
   });
-  assert.equal(mapWrites.length, 2);
+  assert.equal(mapWrites.length, 3);
   assert.equal(partWrites, 0);
   assert.match(JSON.stringify(approved.context), /aprovado/iu);
   assert.match(approved.nextDecision, /primeira parte/iu);
@@ -747,57 +756,57 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
     rawArguments: { curso: "Redes para iniciantes", parte: 2 }
   });
 
-  assert.equal(output.result, "Preparei o recorte focal da Parte 2: Sockets.");
-  assert.equal(Object.hasOwn(output.context, "instructionalAnalysisUnits"), false);
-  assert.deepEqual(output.context.part.establishedAnalysisUnits, [{
-    position: 1,
-    statement: "Processos trocam dados por serviços de transporte."
+  assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
+  assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  assert.deepEqual(output.context.parte.ideiasEstabelecidas, [{
+    posicao: 1,
+    ideia: "Processos trocam dados por serviços de transporte."
   }]);
-  assert.equal(output.context.part.microsequences.length, 2);
-  assert.deepEqual(output.context.part.microsequences.map((microsequence) => ({
-    title: microsequence.title,
-    analysis: microsequence.instructionalAnalysisUnits,
-    evidence: microsequence.evidenceRequirements,
-    objective: microsequence.objective,
-    function: microsequence.function,
-    ceiling: microsequence.configuration.parameters[0].effectiveValue
+  assert.equal(output.context.parte.microssequencias.length, 2);
+  assert.deepEqual(output.context.parte.microssequencias.map((microsequence) => ({
+    title: microsequence.titulo,
+    analysis: microsequence.ideiasPlanejadas,
+    evidence: microsequence.requisitosDeEvidencia,
+    objective: microsequence.objetivo,
+    function: microsequence.funcao,
+    ceiling: microsequence.configuracao.parametros[0].valorEfetivo
   })), [{
     title: "Definição",
-    analysis: [{ position: 2, statement: "Socket liga processo e transporte." }],
-    evidence: [{ position: 1, statement: "Distinguir processo e socket." }],
+    analysis: [{ posicao: 2, ideia: "Socket liga processo e transporte." }],
+    evidence: [{ posicao: 1, ideia: "Distinguir processo e socket." }],
     objective: "Definir socket e sua relação com o processo.",
     function: "explicar",
     ceiling: 1
   }, {
     title: "Mecanismo",
-    analysis: [{ position: 3, statement: "Endereço localiza uma ponta da comunicação." }],
-    evidence: [{ position: 2, statement: "Relacionar endereço e comunicação." }],
+    analysis: [{ posicao: 3, ideia: "Endereço localiza uma ponta da comunicação." }],
+    evidence: [{ posicao: 2, ideia: "Relacionar endereço e comunicação." }],
     objective: "Explicar como o endereço participa da comunicação.",
     function: "explicar",
     ceiling: 2
   }]);
-  assert.equal(output.context.part.microsequences.every((microsequence) =>
-    !Object.hasOwn(microsequence.configuration, "targets")), true);
+  assert.equal(output.context.parte.microssequencias.every((microsequence) =>
+    !Object.hasOwn(microsequence.configuracao, "alvos")), true);
   assert.deepEqual(
-    output.context.part.microsequences[0].existingStudyUnitOverrides.map((unit) => ({
-      position: unit.position,
-      title: unit.title,
-      ceiling: unit.configuration.parameters[0].effectiveValue,
-      sourceScope: unit.configuration.parameters[0].sourceScope
+    output.context.parte.microssequencias[0].ajustesExistentesDasUnidades.map((unit) => ({
+      position: unit.posicao,
+      title: unit.titulo,
+      ceiling: unit.configuracao.parametros[0].valorEfetivo,
+      sourceScope: unit.configuracao.parametros[0].escopoDeOrigem
     })),
     [{
       position: 1,
       title: "Definição já produzida",
       ceiling: 2,
-      sourceScope: "study_unit"
+      sourceScope: "unidade de estudo"
     }]
   );
   assert.deepEqual(
-    output.context.part.microsequences[1].existingStudyUnitOverrides,
+    output.context.parte.microssequencias[1].ajustesExistentesDasUnidades,
     []
   );
-  assert.doesNotMatch(JSON.stringify(output.context.part), /Novidade de outra Parte/u);
-  assert.doesNotMatch(JSON.stringify(output.context.part), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
+  assert.doesNotMatch(JSON.stringify(output.context.parte), /Novidade de outra Parte/u);
+  assert.doesNotMatch(JSON.stringify(output.context.parte), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
 });
 
 test("#272 schemas, descrições e annotations distinguem leitura de escrita", () => {
@@ -866,8 +875,9 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       conteudo: content,
       aplicacaoPedagogica: {
         modo: "expositiva",
-        novidadesIntroduzidas: [1],
-        explicacoes: [{ novidade: 1, formas: ["plain_definition"] }],
+        ideiasIntroduzidas: [1],
+        ideiasUtilizadas: [],
+        explicacoes: [{ ideia: 1, formas: ["plain_definition"] }],
         praticas: []
       }
     }]
@@ -901,7 +911,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       ...materializationArguments.unidades[0],
       aplicacaoPedagogica: {
         modo: "pratica",
-        novidadesIntroduzidas: [],
+        ideiasIntroduzidas: [],
+        ideiasUtilizadas: [],
         explicacoes: [],
         praticas: []
       }
@@ -1157,7 +1168,7 @@ test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnic
   }));
   const payload = await response.json();
   assert.equal(payload.result.isError, false);
-  assert.equal(payload.result.structuredContent.result, "Retomei o Curso “Redes para iniciantes”.");
+  assert.equal(payload.result.structuredContent.result, "Retomei o curso “Redes para iniciantes”.");
   assert.equal(Object.hasOwn(payload.result.structuredContent, "ok"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "requestId"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "data"), false);
@@ -1274,7 +1285,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
       metadados: { tipo: "document", titulo: "Manual duplicado" }
     }
   });
-  assert.match(created.result, /Atualizei a Fonte/u);
+  assert.match(created.result, /Atualizei a fonte/u);
   assert.equal(sourceCommands[0].type, "save_source");
   assert.notEqual(sourceCommands[0].sourceId, "source-existing-a");
 
@@ -1405,7 +1416,7 @@ test("manter_fonte expõe e executa retirada humana de PDFs e da Fonte", async (
       retirar: "fonte"
     }
   });
-  assert.match(output.result, /Retirei a Fonte/u);
+  assert.match(output.result, /Retirei a fonte/u);
   assert.deepEqual(commands.map(({ type }) => type), [
     "remove_pdf", "remove_pdf", "remove_pdf", "retire_source"
   ]);
@@ -1545,7 +1556,7 @@ test("retirada da Fonte só ocorre depois de concluir limpeza física pendente",
   assert.deepEqual(commands, []);
 
   const output = await executeHumanCourseTask(input);
-  assert.match(output.result, /Retirei a Fonte/u);
+  assert.match(output.result, /Retirei a fonte/u);
   assert.deepEqual(commands.map(({ type }) => type), ["retire_source"]);
 });
 
@@ -1556,9 +1567,9 @@ test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
     { required: ["fonte"] },
     { required: ["titulo"] }
   ]);
-  assert.match(pdfTask.description, /anexa\/reanexa/u);
+  assert.match(pdfTask.description, /anexa ou reanexa/u);
   assert.match(pdfTask.inputSchema.properties.fonte.description, /Fonte existente/u);
-  assert.equal(pdfTask.inputSchema.properties.titulo.description, "Nova Fonte a criar.");
+  assert.equal(pdfTask.inputSchema.properties.titulo.description, "Nova fonte a criar.");
   assert.deepEqual(pdfTask.inputSchema.properties.pdf, {
     type: "object",
     additionalProperties: false,
@@ -1715,7 +1726,7 @@ test("MCP recebe o descritor oficial e mantém o download_url fora do envelope",
       }
     }
   });
-  assert.equal(output.result, "Mantive o PDF entre as Fontes do Curso.");
+  assert.equal(output.result, "Mantive o PDF entre as fontes do curso.");
   assert.doesNotMatch(JSON.stringify(output), /token=temporary/u);
   assert.equal(ingestions.length, 1);
   assert.equal(ingestions[0].fileIdentity.fileId, "file-123");
@@ -1829,7 +1840,7 @@ test("#272 PDF anexado a Fonte existente relê a Fonte solicitada após o commit
       }
     }
   });
-  assert.equal(output.result, "Mantive o PDF entre as Fontes do Curso.");
+  assert.equal(output.result, "Mantive o PDF entre as fontes do curso.");
 });
 
 test("resultado final remove maquinaria técnica e não anexa manual de operação", async () => {
@@ -1913,7 +1924,7 @@ test("#272 Observações de uma Parte paginam todas as Units e excluem outros al
     name: "consultar_observacoes",
     rawArguments: { curso: "Redes para iniciantes", parte: 1 }
   });
-  assert.equal(output.result, "1 Observação encontrada.");
+  assert.equal(output.result, "1 observação encontrada.");
   assert.equal(unitPages, 2);
   assert.match(JSON.stringify(output.context), /Observação da Parte/u);
   assert.doesNotMatch(JSON.stringify(output.context), /outra Parte/u);
@@ -1942,12 +1953,43 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
   assert.equal(writes, 0);
 });
 
-test("#272 configuração e Observações escrevem por objetivos focais", async () => {
+test("configuração default calibra o foco, condição de pesquisa prevalece e Observações são focais", async () => {
   const designCommands = [];
   const observationBatches = [];
   const writeAdapter = {
     ...adapter(),
+    async getCourseInstructionalPlan() {
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        plan: {
+          id: "40000000-0000-4000-8000-000000000004",
+          version: 3,
+          title: "Redes para iniciantes",
+          objective: "Explicar serviços em rede.",
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: [{
+            id: PART_ID,
+            version: 2,
+            position: 0,
+            title: "Sockets",
+            intent: "Relacionar processos e comunicação.",
+            microsequences: [{
+              id: "micro-sockets",
+              productionPosition: 0,
+              title: "Sockets",
+              goal: "Relacionar processos e comunicação.",
+              role: "explain"
+            }]
+          }]
+        }
+      };
+    },
     async getCourseDesign() {
+      const currentParameter = designCommands
+        .filter(({ type }) => type === "set_parameter")
+        .at(-1);
       return {
         definitions: [{
           id: "new_analysis_unit_ceiling_per_expository_study_unit",
@@ -1955,8 +1997,14 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
         }],
         parameters: [{
           parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-          localAssignment: { value: 1 },
-          effectiveAssignment: { value: 1, inherited: false, origin: "author" }
+          localAssignment: { value: currentParameter?.value ?? 1 },
+          effectiveAssignment: {
+            value: currentParameter?.value ?? 1,
+            inherited: false,
+            origin: currentParameter?.origin ?? "author",
+            reason: currentParameter?.reason ?? "Condição anterior.",
+            sourceScope: currentParameter?.scope ?? { kind: "course" }
+          }
         }],
         guidance: { localAssignment: null, effectiveAssignments: [] },
         targetPlanItems: null
@@ -1993,7 +2041,7 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
     rawArguments: {
       curso: "Redes para iniciantes",
       parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 },
-      direcaoEditorial: "Use títulos informativos; crie mais Units se necessário."
+      direcaoEditorial: "Use títulos informativos; crie mais unidades se necessário."
     }
   });
   assert.deepEqual(designCommands.map(({ type }) => type), [
@@ -2002,7 +2050,43 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
   assert.equal(designCommands.every(({ origin }) => origin === "automatic"), true);
   assert.doesNotMatch(JSON.stringify(configured.context), /definitions|componentCatalog|recentApplications/u);
 
-  await executeHumanCourseTask({
+  const calibratedMicrosequence = await executeHumanCourseTask({
+    adapter: writeAdapter,
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      microssequencia: "Sockets",
+      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 }
+    }
+  });
+  assert.deepEqual(designCommands.at(-1), {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-sockets" },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 2,
+    origin: "automatic",
+    reason: "Valor calibrado automaticamente para o contexto corrente."
+  });
+  assert.ok(JSON.stringify(calibratedMicrosequence.context).length < 2500);
+  assert.doesNotMatch(
+    JSON.stringify(calibratedMicrosequence.context),
+    /StudyUnit|AnalysisUnit|requestId|revision|authoring-guidance/iu
+  );
+  assert.deepEqual(
+    calibratedMicrosequence.context.configuracao.parametros[0],
+    {
+      nome: "Novas unidades de análise",
+      valorLocal: 2,
+      valorEfetivo: 2,
+      herdado: false,
+      origem: "calibração contextual",
+      motivo: "Valor calibrado automaticamente para o contexto corrente.",
+      escopoDeOrigem: "microssequência"
+    }
+  );
+
+  const fixedForResearch = await executeHumanCourseTask({
     adapter: writeAdapter,
     principal: PRINCIPAL,
     name: "ajustar_configuracao",
@@ -2021,6 +2105,14 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
     origin: "research_condition",
     reason: "Condição de pesquisa fixada explicitamente."
   });
+  assert.equal(
+    fixedForResearch.context.configuracao.parametros[0].origem,
+    "condição de pesquisa"
+  );
+  assert.equal(
+    fixedForResearch.context.configuracao.parametros[0].escopoDeOrigem,
+    "unidade de estudo"
+  );
 
   const observed = await executeHumanCourseTask({
     adapter: writeAdapter,
@@ -2041,5 +2133,5 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
     annotationId)).size, 2);
   assert.equal(new Set(observationBatches[0].commands.map(({ capturedAt }) =>
     capturedAt)).size, 1);
-  assert.match(observed.result, /separadamente em 2 Unidades/u);
+  assert.match(observed.result, /separadamente em 2 unidades/u);
 });

@@ -420,4 +420,10 @@ test("as instruções primárias não restauram o fluxo parte por parte nem o me
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
     /StudyUnit|AnalysisUnit|analysisUnits|evidenceRequirements/iu
   );
+  assert.match(
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    /estado default.*calibre cada microssequência ou unidade.*assunto e mapa/iu
+  );
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /condições fixadas pelo pesquisador prevalecem/iu);
+  assert.doesNotMatch(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /concurso|banca|macete de prova/iu);
 });

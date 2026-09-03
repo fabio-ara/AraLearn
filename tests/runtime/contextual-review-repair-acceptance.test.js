@@ -56,7 +56,7 @@ test("#271 guidance conduz Observações abertas até reparo contextual e reinsp
     .instructions.join(" ");
   const componentText = courseAuthoringGuidanceForCall("consultar_componentes")
     .instructions.join(" ");
-  assert.match(inspectionText, /Observações abertas.*inbox/iu);
+  assert.match(inspectionText, /caixa de observações abertas/iu);
   assert.match(inspectionText, /não crie entidade persistente de lote/iu);
   assert.match(inspectionText, /progressão, pré-requisitos, transições, exemplos ou prática/iu);
   assert.match(reviewText, /inspecionar, observar, pedir revisão.*propor reparo.*reinspecionar/iu);

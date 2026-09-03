@@ -53,5 +53,5 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
     .instructions.join(" ");
   assert.match(materialization, /prática e consolidação perto.*bloco de novidades e pré-requisitos/iu);
   assert.match(materialization, /não deixe toda a prática.*longa sequência teórica/iu);
-  assert.match(materialization, /não invente evidence_requirement/iu);
+  assert.match(materialization, /não invente requisito de evidência/iu);
 });
