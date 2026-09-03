@@ -330,22 +330,28 @@ test("#272 transporte de PDF aceita as origens oficiais sem expor a URL", async 
     "https://oaisdmntprbrazilsouth.blob.core.windows.net/manual.pdf?token=temporary"
   ]) {
     let receiptInput = null;
+    let receiptSourceId = null;
     const response = await createHandler({
       async ingestCourseSourcePdf() {
         throw new Error("O recibo existente deve impedir nova ingestão.");
       },
       async getCourseSourcePdfIngestionReceipt(value) {
         receiptInput = value;
-        return { stored: true, sourceId: "source-manual", sourceRevision: 1 };
-      },
-      async getCourseSources() {
+        receiptSourceId = value.sourceIntent.sourceId;
         return {
-          items: [{
-            sourceId: "source-manual",
-            revision: 1,
-            title: "Manual do proxy",
-            citationText: "Manual do proxy"
-          }],
+          stored: true,
+          source: { sourceId: receiptSourceId, sourceRevision: 1 }
+        };
+      },
+      async getCourseSources({ mode, sourceId }) {
+        const source = {
+          sourceId: receiptSourceId,
+          revision: 1,
+          title: "Manual do proxy",
+          citationText: "Manual do proxy"
+        };
+        return {
+          items: mode !== "source" || sourceId === receiptSourceId ? [source] : [],
           nextCursor: null
         };
       }

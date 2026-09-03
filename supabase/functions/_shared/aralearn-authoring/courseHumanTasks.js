@@ -707,16 +707,30 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "incorporar_pdf_como_fonte",
     "Incorporar PDF como Fonte",
-    "Use para incorporar PDF como Fonte permanente. Não use para leitura descartável.",
+    "Use: fonte anexa/reanexa; titulo cria Fonte. Só um. Não use em leitura descartável.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
-        fonte: HUMAN_REFERENCE_SCHEMA,
-        titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-        intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
+        fonte: Object.freeze({
+          ...HUMAN_REFERENCE_SCHEMA,
+          description: "Fonte existente."
+        }),
+        titulo: Object.freeze({
+          type: "string",
+          minLength: 1,
+          maxLength: 300,
+          description: "Nova Fonte a criar."
+        }),
+        intencao: Object.freeze({
+          type: "string",
+          minLength: 1,
+          maxLength: 1000,
+          description: "Motivo para manter."
+        }),
         pdf: Object.freeze({
           type: "object",
           additionalProperties: false,
+          description: "PDF temporário.",
           required: Object.freeze(["download_url", "file_id"]),
           properties: Object.freeze({
             download_url: Object.freeze({ type: "string", minLength: 1, maxLength: 8192 }),
@@ -726,7 +740,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           })
         })
       }, ["curso", "intencao", "pdf"]),
-      anyOf: Object.freeze([
+      oneOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["fonte"]) }),
         Object.freeze({ required: Object.freeze(["titulo"]) })
       ])
@@ -736,9 +750,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.4";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.5";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:59d1757d1baddc62421908e535e1e56191146f8077ba7672a51fe572ad79ec17";
+  "sha256:ac85250eb05103f2e22ce68e585801056423ad0e6e7387d3d90512d5a6c236bc";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2713,6 +2727,15 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
 HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
   adapter, principal, args, deadlineAt, projectionRecipient
 }) => {
+  const hasSourceReference = args.fonte !== undefined;
+  const hasNewSourceTitle = args.titulo !== undefined;
+  if (hasSourceReference === hasNewSourceTitle) {
+    fail(
+      "invalid_human_task_arguments",
+      "Informe exatamente um destino para o PDF: fonte existente ou titulo da nova Fonte.",
+      { fields: ["fonte", "titulo"] }
+    );
+  }
   const course = humanCourseTitle(args);
   const sourceReference = optionalReference(args.fonte, "fonte");
   const newSourceTitle = sourceReference === undefined
@@ -2732,15 +2755,19 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
     configurable: false,
     writable: false
   });
+  let ingestedSourceId = null;
   const receipt = await executeTrustedCourseWrite({
     load: async () => await resolveHumanCourseContext({
       adapter, principal, course, source: sourceReference ?? null, deadlineAt
     }),
     build: async (state, { newId }) => {
+      ingestedSourceId = sourceReference === undefined
+        ? await newId("pdf-source")
+        : state.source.sourceId;
       const sourceIntent = sourceReference === undefined
         ? {
             mode: "save",
-            sourceId: await newId("pdf-source"),
+            sourceId: ingestedSourceId,
             expectedSourceRevision: 0,
             source: sourceDocument({
               titulo: newSourceTitle,
@@ -2805,7 +2832,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
     adapter,
     principal,
     course,
-    source: sourceReference ?? args.titulo,
+    internalSourceId: receipt?.source?.sourceId ?? ingestedSourceId,
     deadlineAt
   });
   return result("Mantive o PDF entre as Fontes do Curso.", {
