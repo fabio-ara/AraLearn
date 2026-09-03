@@ -685,23 +685,29 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "incorporar_pdf_como_fonte",
     "Incorporar PDF como Fonte",
     "Use para incorporar PDF como Fonte permanente. Não use para leitura descartável.",
-    inputSchema({
-      curso: COURSE_SCHEMA,
-      fonte: HUMAN_REFERENCE_SCHEMA,
-      titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
-      pdf: Object.freeze({
-        type: "object",
-        additionalProperties: false,
-        required: Object.freeze(["download_url", "file_id"]),
-        properties: Object.freeze({
-          download_url: Object.freeze({ type: "string", minLength: 1, maxLength: 8192 }),
-          file_id: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
-          file_name: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
-          mime_type: Object.freeze({ type: "string", const: "application/pdf" })
+    Object.freeze({
+      ...inputSchema({
+        curso: COURSE_SCHEMA,
+        fonte: HUMAN_REFERENCE_SCHEMA,
+        titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+        intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
+        pdf: Object.freeze({
+          type: "object",
+          additionalProperties: false,
+          required: Object.freeze(["download_url", "file_id"]),
+          properties: Object.freeze({
+            download_url: Object.freeze({ type: "string", minLength: 1, maxLength: 8192 }),
+            file_id: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
+            file_name: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
+            mime_type: Object.freeze({ type: "string", const: "application/pdf" })
+          })
         })
-      })
-    }, ["curso", "intencao", "pdf"]),
+      }, ["curso", "intencao", "pdf"]),
+      anyOf: Object.freeze([
+        Object.freeze({ required: Object.freeze(["fonte"]) }),
+        Object.freeze({ required: Object.freeze(["titulo"]) })
+      ])
+    }),
     { readOnly: false, file: true }
   )
 ]);
@@ -709,7 +715,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.3";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:4d09f62a6e7bd5bc7d3d0b2697012c95443342261072fa7bead8d0426377bb9a";
+  "sha256:c3997e1211f4b4f973eaace98d0d36262215d6ae3d173ef5285a3e69567137c0";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2610,6 +2616,9 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
 }) => {
   const course = humanCourseTitle(args);
   const sourceReference = optionalReference(args.fonte, "fonte");
+  const newSourceTitle = sourceReference === undefined
+    ? text(args.titulo, "titulo", 300)
+    : undefined;
   text(args.intencao, "intencao", 1000);
   const pdf = plainObject(args.pdf, "pdf");
   exactFields(pdf, new Set(["file_id", "file_name", "mime_type", "download_url"]));
@@ -2635,7 +2644,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
             sourceId: await newId("pdf-source"),
             expectedSourceRevision: 0,
             source: sourceDocument({
-              titulo: text(args.titulo, "titulo", 300),
+              titulo: newSourceTitle,
               tipo: "document",
               disponibilidade: "desconhecida",
               verificacao: "nao_verificada",

@@ -1041,6 +1041,10 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
 test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
   const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
   assert.deepEqual(pdfTask._meta, { "openai/fileParams": ["pdf"] });
+  assert.deepEqual(pdfTask.inputSchema.anyOf, [
+    { required: ["fonte"] },
+    { required: ["titulo"] }
+  ]);
   assert.deepEqual(pdfTask.inputSchema.properties.pdf, {
     type: "object",
     additionalProperties: false,
@@ -1070,6 +1074,7 @@ test("MCP rejeita caminho textual no lugar do descritor oficial sem efeitos", as
     name: "incorporar_pdf_como_fonte",
     rawArguments: {
       curso: "Redes para iniciantes",
+      titulo: "Manual do proxy",
       intencao: "Manter o documento entre as Fontes.",
       pdf: "/mnt/data/manual.pdf"
     }
@@ -1078,6 +1083,37 @@ test("MCP rejeita caminho textual no lugar do descritor oficial sem efeitos", as
     assert.match(error.message, /pdf precisa ser um objeto/u);
     return true;
   });
+  assert.equal(reads, 0);
+});
+
+test("MCP exige Fonte existente ou título novo antes de consultar o Curso", async () => {
+  const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
+  const validatePdfTask = new Ajv2020({ strict: false }).compile(pdfTask.inputSchema);
+  const rawArguments = {
+    curso: "Redes para iniciantes",
+    intencao: "Manter o documento entre as Fontes.",
+    pdf: {
+      file_id: "file-123",
+      download_url: "https://files.oaiusercontent.com/manual.pdf?token=temporary"
+    }
+  };
+  assert.equal(validatePdfTask(rawArguments), false);
+
+  let reads = 0;
+  const pdfAdapter = {
+    ...adapter(),
+    async getCourse() {
+      reads += 1;
+      return await adapter().getCourse();
+    }
+  };
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: pdfAdapter,
+    principal: PRINCIPAL,
+    name: "incorporar_pdf_como_fonte",
+    rawArguments
+  }), (error) => error.code === "invalid_human_task_argument" &&
+      error.details?.field === "titulo");
   assert.equal(reads, 0);
 });
 
