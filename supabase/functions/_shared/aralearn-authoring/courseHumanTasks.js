@@ -693,8 +693,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       pdf: Object.freeze({
         type: "object",
         additionalProperties: false,
-        required: Object.freeze(["file_id"]),
+        required: Object.freeze(["download_url", "file_id"]),
         properties: Object.freeze({
+          download_url: Object.freeze({ type: "string", minLength: 1, maxLength: 8192 }),
           file_id: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
           file_name: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
           mime_type: Object.freeze({ type: "string", const: "application/pdf" })
@@ -706,9 +707,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.2";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.3";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:2f566595ae3436db055695cc488bf7fefa582d26471216ed3a2e318fe2afb305";
+  "sha256:4d09f62a6e7bd5bc7d3d0b2697012c95443342261072fa7bead8d0426377bb9a";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -894,31 +895,7 @@ export async function executeHumanCourseTask({
   if (!courseHumanTaskIsAllowed(name, principal)) {
     throw new AuthoringApiError(403, "insufficient_scope", "A sessão não permite usar esta tarefa.");
   }
-  let argumentsForValidation = rawArguments;
-  let managedPdfDownloadUrl = null;
-  if (name === "incorporar_pdf_como_fonte" && rawArguments?.pdf &&
-      typeof rawArguments.pdf === "object" && !Array.isArray(rawArguments.pdf) &&
-      Object.hasOwn(rawArguments.pdf, "download_url")) {
-    managedPdfDownloadUrl = text(
-      rawArguments.pdf.download_url,
-      "pdf.download_url",
-      8192
-    );
-    argumentsForValidation = {
-      ...rawArguments,
-      pdf: Object.fromEntries(Object.entries(rawArguments.pdf)
-        .filter(([field]) => field !== "download_url"))
-    };
-  }
-  const args = assertTaskArguments(name, argumentsForValidation);
-  if (managedPdfDownloadUrl !== null) {
-    Object.defineProperty(args.pdf, "download_url", {
-      value: managedPdfDownloadUrl,
-      enumerable: false,
-      configurable: false,
-      writable: false
-    });
-  }
+  const args = assertTaskArguments(name, rawArguments);
   try {
     const output = await HUMAN_TASK_HANDLERS[name]({
       adapter,
@@ -2641,14 +2618,12 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
     ...(pdf.file_name === undefined ? {} : { file_name: text(pdf.file_name, "pdf.file_name", 512) }),
     ...(pdf.mime_type === undefined ? {} : { mime_type: text(pdf.mime_type, "pdf.mime_type", 80) })
   };
-  if (typeof pdf.download_url === "string") {
-    Object.defineProperty(descriptor, "download_url", {
-      value: pdf.download_url,
-      enumerable: true,
-      configurable: false,
-      writable: false
-    });
-  }
+  Object.defineProperty(descriptor, "download_url", {
+    value: text(pdf.download_url, "pdf.download_url", 8192),
+    enumerable: true,
+    configurable: false,
+    writable: false
+  });
   const receipt = await executeTrustedCourseWrite({
     load: async () => await resolveHumanCourseContext({
       adapter, principal, course, source: sourceReference ?? null, deadlineAt

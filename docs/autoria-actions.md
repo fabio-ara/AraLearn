@@ -94,8 +94,8 @@ novamente o OAuth numa conversa nova.
 `incorporar_pdf_como_fonte` é a única operação com adaptação de transporte. O
 schema público apresenta `openaiFileIdRefs`; o ChatGPT fornece em runtime a
 referência temporária do arquivo anexado. O servidor aceita somente um PDF,
-confere a origem temporária autorizada, baixa com limite de tamanho e remove a
-URL transitória antes de validar a tarefa humana.
+confere a origem temporária autorizada, baixa com limite de tamanho e não devolve
+a URL transitória na resposta.
 
 O arquivo só é guardado quando a conversa deixa clara a intenção de mantê-lo
 como Fonte. Uma leitura pontual de PDF não deve chamar essa operação.
