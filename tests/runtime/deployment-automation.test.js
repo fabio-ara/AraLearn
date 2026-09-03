@@ -579,6 +579,117 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   );
 });
 
+test("patch de precedência do desenho tolera migration com CRLF", () => {
+  const migrationPath = path.join(
+    repositoryRoot,
+    "supabase",
+    "migrations",
+    "20260903160000_global_curriculum_authoring_flow.sql"
+  );
+  const canonicalPath = path.join(
+    repositoryRoot,
+    "supabase",
+    "migrations",
+    "20260902044404_cut_legacy_authoring_runtime.sql"
+  );
+  const migration = fs.readFileSync(migrationPath, "utf8").replace(/\r\n?/gu, "\n");
+  const canonicalFunction = fs.readFileSync(canonicalPath, "utf8").replace(/\r\n?/gu, "\n");
+  const block = migration.match(
+    /do \$protect_explicit_design_assignments\$[\s\S]*?\$protect_explicit_design_assignments\$;/u
+  )?.[0];
+  assert.ok(block);
+
+  const windowsBlock = block.replace(/\n/gu, "\r\n");
+  const dollarValue = (name, tag) => {
+    const match = windowsBlock.match(new RegExp(
+      `${name} text:=\\$${tag}\\$([\\s\\S]*?)\\$${tag}\\$;`,
+      "u"
+    ));
+    assert.ok(match, `literal ${name} ausente`);
+    return match[1];
+  };
+  const parameterBefore = dollarValue("v_parameter_before", "old");
+  const parameterAfter = dollarValue("v_parameter_after", "new");
+  const guidanceBefore = dollarValue("v_guidance_before", "old");
+  const guidanceAfter = dollarValue("v_guidance_after", "new");
+  const normalize = (value) => value.replace(/\r\n/gu, "\n");
+
+  assert.equal(canonicalFunction.includes(parameterBefore), false);
+  let patched = canonicalFunction.replace(
+    normalize(parameterBefore),
+    normalize(parameterAfter)
+  );
+  patched = patched.replace(normalize(guidanceBefore), normalize(guidanceAfter));
+  assert.notEqual(patched, canonicalFunction);
+  assert.match(
+    patched,
+    /course_design_parameter_assignments\.origin in\('author','research_condition'\)/u
+  );
+  assert.match(
+    patched,
+    /course_authoring_guidance_assignments\.origin in\('author','research_condition'\)/u
+  );
+  for (const variable of [
+    "v_parameter_before",
+    "v_parameter_after",
+    "v_guidance_before",
+    "v_guidance_after"
+  ]) {
+    assert.match(
+      block,
+      new RegExp(`${variable}:=replace\\(${variable},E'\\\\r\\\\n',E'\\\\n'\\);`, "u")
+    );
+  }
+});
+
+test("patch da materialização tolera migration com CRLF", () => {
+  const migrationPath = path.join(
+    repositoryRoot,
+    "supabase",
+    "migrations",
+    "20260903160000_global_curriculum_authoring_flow.sql"
+  );
+  const canonicalPath = path.join(
+    repositoryRoot,
+    "supabase",
+    "migrations",
+    "20260902044404_cut_legacy_authoring_runtime.sql"
+  );
+  const migration = fs.readFileSync(migrationPath, "utf8").replace(/\r\n?/gu, "\n");
+  const canonicalFunction = fs.readFileSync(canonicalPath, "utf8").replace(/\r\n?/gu, "\n");
+  const block = migration.match(
+    /do \$expand_materialization_parameter_snapshot\$[\s\S]*?\$expand_materialization_parameter_snapshot\$;/u
+  )?.[0];
+  assert.ok(block);
+
+  const windowsBlock = block.replace(/\n/gu, "\r\n");
+  const dollarValue = (name) => {
+    const match = windowsBlock.match(new RegExp(
+      `${name} text:=\\$configuration_check\\$([\\s\\S]*?)\\$configuration_check\\$;`,
+      "u"
+    ));
+    assert.ok(match, `literal ${name} ausente`);
+    return match[1];
+  };
+  const before = dollarValue("v_configuration_check");
+  const after = dollarValue("v_configuration_check_with_new_unit_calibration");
+  const normalize = (value) => value.replace(/\r\n/gu, "\n");
+
+  assert.equal(canonicalFunction.includes(before), false);
+  assert.equal(canonicalFunction.includes(normalize(before)), true);
+  const patched = canonicalFunction.replace(normalize(before), normalize(after));
+  assert.notEqual(patched, canonicalFunction);
+  assert.match(patched, /sourceScopeKind' is distinct from 'study_unit'/u);
+  assert.match(
+    block,
+    /v_configuration_check:=replace\(v_configuration_check,E'\\r\\n',E'\\n'\);/u
+  );
+  assert.match(
+    block,
+    /v_configuration_check_with_new_unit_calibration:=replace\(\s*v_configuration_check_with_new_unit_calibration,E'\\r\\n',E'\\n'\s*\);/u
+  );
+});
+
 test("diagnóstico valida configuração pública sem revelar seu valor", {
   skip: !powerShellAvailable
 }, () => {
