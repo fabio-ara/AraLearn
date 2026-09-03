@@ -39,7 +39,8 @@ function containsControlCharacters(value) {
 }
 
 function canonicalEntityId(value) {
-  return typeof value === "string" && value.length > 0 && value.length <= ENTITY_ID_MAX_LENGTH &&
+  return typeof value === "string" && value.length > 0 &&
+    [...value].length <= ENTITY_ID_MAX_LENGTH &&
     value === value.trim() && /\S/u.test(value) && !containsControlCharacters(value);
 }
 
@@ -157,6 +158,22 @@ export function buildCourseAuthoringRoute(courseId, options = {}) {
           : "")
     : "";
   return `${COURSE_AUTHORING_ROUTE_PREFIX}${courseId}?section=${section}${suffix}`;
+}
+
+export function buildCourseAuthoringAnalyticsRoute(courseId, { scope, revision } = {}) {
+  if (!isCanonicalCourseId(courseId) || !scope || typeof scope !== "object" ||
+      Array.isArray(scope) || Object.keys(scope).some((field) => !["kind", "ref"].includes(field)) ||
+      !ANALYTICS_SCOPE_KINDS.has(scope.kind) || !Number.isSafeInteger(revision) || revision < 1) {
+    throw new TypeError("Destino inválido para os dados de autoria.");
+  }
+  const expectsRef = scope.kind !== "course";
+  if (expectsRef ? !canonicalEntityId(scope.ref) : scope.ref !== null) {
+    throw new TypeError("Destino inválido para os dados de autoria.");
+  }
+  return `${COURSE_AUTHORING_ROUTE_PREFIX}${courseId}?section=research` +
+    `&analyticsScopeKind=${encodeURIComponent(scope.kind)}` +
+    (expectsRef ? `&analyticsScopeId=${encodeURIComponent(scope.ref)}` : "") +
+    `&analyticsRevision=${revision}`;
 }
 
 export function parseCourseAuthoringRoute(hashValue) {

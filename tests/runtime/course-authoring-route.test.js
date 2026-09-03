@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildCourseAuthoringAnalyticsRoute,
   buildCourseAuthoringRoute,
   isCanonicalCourseId,
   isCourseAuthoringRouteCandidate,
@@ -83,6 +84,30 @@ test("deep link de dados de autoria preserva recorte e revisão sem virar alvo c
       revision: 9
     }
   });
+  assert.equal(buildCourseAuthoringAnalyticsRoute(COURSE_ID, {
+    scope: { kind: "didactic_microsequence", ref: "micro dns" },
+    revision: 9
+  }), hash);
+  assert.equal(buildCourseAuthoringAnalyticsRoute(COURSE_ID, {
+    scope: { kind: "course", ref: null },
+    revision: 9
+  }), `#/authoring/courses/${COURSE_ID}?section=research` +
+    "&analyticsScopeKind=course&analyticsRevision=9");
+});
+
+test("identidade de recorte mede o limite por caracteres Unicode completos", () => {
+  const validAstralId = "😀".repeat(240);
+  const validHash = `#/authoring/courses/${COURSE_ID}?section=research` +
+    "&analyticsScopeKind=study_unit" +
+    `&analyticsScopeId=${encodeURIComponent(validAstralId)}&analyticsRevision=9`;
+  assert.equal(parseCourseAuthoringRoute(validHash)?.target?.id, validAstralId);
+
+  const invalidAstralId = "😀".repeat(241);
+  assert.equal(parseCourseAuthoringRoute(
+    `#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=study_unit" +
+      `&analyticsScopeId=${encodeURIComponent(invalidAstralId)}&analyticsRevision=9`
+  ), null);
 });
 
 test("parser rejeita overview e aliases do shell substituído", () => {

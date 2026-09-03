@@ -871,7 +871,7 @@ function renderCatalogPanel(state) {
   return '<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title">' +
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Fontes</h2>' +
     '<header class="course-authoring-section-toolbar" aria-label="Ações de fontes">' +
-    `<span class="course-source-catalog-summary">${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} fontes${escapeHtml(pdfStorageSummary)}</span>` +
+    `<span class="course-source-catalog-summary">${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} ${state.catalog?.items.length === 1 && !state.catalog?.nextCursor ? "fonte" : "fontes"}${escapeHtml(pdfStorageSummary)}</span>` +
     '<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte">' +
     `${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderNotice(state) + renderSourceForm(state) + renderCatalog(state) + "</section>";

@@ -2402,6 +2402,30 @@ test("back interno retorna do Conteúdo diretamente à lista sem overview interm
   assert.match(root.innerHTML, /<h1>Meus cursos<\/h1>/u);
 });
 
+test("back dos dados de autoria retorna diretamente ao conteúdo", async () => {
+  const root = new FakeRoot();
+  const locationValue = {
+    pathname: "/app",
+    search: "",
+    hash: `#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=5"
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture(),
+    locationValue,
+    historyValue: { state: null, replaceState() {} },
+    windowValue: new FakeWindow()
+  });
+
+  await surface.open();
+  assert.equal(surface.handleBack(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(locationValue.hash,
+    buildCourseAuthoringRoute(COURSE_ID, { section: "content" }));
+});
+
 test("offline conhecido e acesso revogado têm estados próprios", async () => {
   const offlineRoot = new FakeRoot();
   const offlineSurface = createCourseAuthoringSurface({

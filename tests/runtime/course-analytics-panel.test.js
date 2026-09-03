@@ -146,6 +146,10 @@ function analyticsPage({
         componentRef: "aralearn.resource.table@1.0.0",
         studyUnitCount: 1,
         instanceCount: 1
+      }, {
+        componentRef: "aralearn.response.choice@1.0.0",
+        studyUnitCount,
+        instanceCount: studyUnitCount
       }],
       practiceByRequirement: [{
         position: 1,
@@ -215,7 +219,7 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
   assert.match(root.innerHTML, /aria-label="Resumo do desenho"/u);
   assert.match(root.innerHTML, /Unidades de estudo<small>Unidades no escopo\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Unidades de análise<small>Ideias acompanhadas no repertório\.<\/small><\/dt><dd>2<\/dd>/u);
-  assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>3<\/dd>/u);
+  assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Observações abertas<small>Pendências humanas atuais\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Parâmetros definidos[\s\S]+<dd>1<\/dd>/u);
   assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);
@@ -265,6 +269,84 @@ test("abertura por deep link consulta a revisão e o recorte indicados", async (
     root.innerHTML,
     /<option value="1" selected>Microssequência · Fundamentos<\/option>/u
   );
+});
+
+test("painel comunica o recorte e a revisão efetivamente exibidos", async () => {
+  const root = new FakeRoot();
+  const displayed = [];
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    onSnapshotDisplayed(snapshot) {
+      displayed.push({
+        revision: snapshot.course.revision,
+        scope: snapshot.scope.selected
+      });
+    },
+    controller: { async loadCourseAuthoringAnalytics(_courseId, request) {
+      const selected = request.query.scope.kind === "course"
+        ? { kind: "course", ref: null, label: "Curso inteiro" }
+        : {
+          kind: "didactic_microsequence",
+          ref: MICRO_REF,
+          label: "Microssequência · Fundamentos"
+        };
+      return analyticsPage({
+        revision: request.expectedCourseRevision,
+        selected,
+        studyUnitCount: selected.kind === "course" ? 2 : 1
+      });
+    } }
+  });
+
+  await panel.open();
+  await submitScope(root, 1);
+  await panel.refresh(8);
+
+  assert.deepEqual(displayed.map(({ revision, scope }) => ({
+    revision,
+    scope: { kind: scope.kind, ref: scope.ref }
+  })), [{
+    revision: 7,
+    scope: { kind: "course", ref: null }
+  }, {
+    revision: 7,
+    scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+  }, {
+    revision: 8,
+    scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+  }]);
+});
+
+test("respostas materializadas contam como prática por modalidade sem dupla contagem", async () => {
+  for (const practiceByRequirement of [[], [{
+    position: 1,
+    statement: "Completar o estado solicitado.",
+    opportunityCount: 4
+  }]]) {
+    const root = new FakeRoot();
+    const page = analyticsPage({ studyUnitCount: 4 });
+    page.design.practiceByRequirement = practiceByRequirement;
+    page.design.components = [{
+      componentRef: "aralearn.response.gap@1.0.0",
+      studyUnitCount: 4,
+      instanceCount: 4
+    }];
+    const panel = createCourseAnalyticsPanel({
+      root,
+      course: { courseId: COURSE_ID, revision: 7 },
+      controller: { async loadCourseAuthoringAnalytics() { return page; } }
+    });
+
+    await panel.open();
+
+    assert.match(root.innerHTML,
+      /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>4<\/dd>/u);
+    assert.match(root.innerHTML,
+      /Modalidade · lacuna<\/th><td>4 oportunidades · 4 unidades de estudo/u);
+    assert.doesNotMatch(root.innerHTML,
+      /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>8<\/dd>/u);
+  }
 });
 
 test("tabelas simples preservam os números do desenho e intervenções explícitas", async () => {
@@ -355,7 +437,7 @@ test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", 
     downloads[0].content,
     /"facts"|"runs"|"steps"|"duration"|"hash"|"payload"|"transcript"|"prompt"|"clickstream"|"score"/iu
   );
-  for (const value of [2, 3, 1]) {
+  for (const value of [2, 1]) {
     assert.match(root.innerHTML, new RegExp(`<dd>${value}</dd>`, "u"));
   }
   assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);

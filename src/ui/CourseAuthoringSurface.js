@@ -8,6 +8,7 @@ import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import { createCourseAnalyticsPanel } from "./CourseAnalyticsPanel.js";
 import {
+  buildCourseAuthoringAnalyticsRoute,
   buildCourseAuthoringRoute,
   isCourseAuthoringRouteCandidate,
   parseCourseAuthoringRoute
@@ -1367,7 +1368,24 @@ export function createCourseAuthoringSurface({
               },
               expectedCourseRevision: analyticsTarget.revision
             }
-          : {})
+          : {}),
+        onSnapshotDisplayed: (snapshot) => {
+          if (!state.opened || state.view !== "course" || state.section !== "research" ||
+              snapshot.course.id !== state.course?.courseId) return;
+          const hash = buildCourseAuthoringAnalyticsRoute(snapshot.course.id, {
+            scope: {
+              kind: snapshot.scope.selected.kind,
+              ref: snapshot.scope.selected.ref
+            },
+            revision: snapshot.course.revision
+          });
+          if (typeof historyValue?.replaceState === "function") {
+            historyValue.replaceState(historyValue.state ?? null, "", locationUrl(hash));
+          }
+          if (locationValue.hash !== hash) locationValue.hash = hash;
+          state.routeKey = hash;
+          state.routeTarget = parseCourseAuthoringRoute(hash).target;
+        }
       });
       void analyticsPanel.open();
     } catch (error) {
@@ -1969,6 +1987,10 @@ export function createCourseAuthoringSurface({
         void navigate(buildCourseAuthoringRoute(state.course.courseId, {
           section: "planning"
         }));
+        return true;
+      }
+      if (state.routeTarget?.kind === "authoring_analytics") {
+        void navigate(buildCourseAuthoringRoute(state.course.courseId, { section: "content" }));
         return true;
       }
       if (state.routeTarget) {

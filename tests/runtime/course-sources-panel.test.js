@@ -350,6 +350,43 @@ test("catálogo e detalhe mostram somente Fonte, Âncoras e PDF correntes", asyn
     /course-source-revisions|Revisão anterior|Histórico|actorId|targetHash|legacy/iu);
 });
 
+test("resumo do catálogo flexiona fonte no singular", async () => {
+  const singularRoot = new FakeRoot();
+  const singular = createCourseSourcesPanel({
+    root: singularRoot,
+    controller: controllerFixture({ catalog: [source()] }),
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+  assert.equal(await singular.open(), true);
+  assert.match(singularRoot.innerHTML, />1 fonte · PDFs 0 B de 64 MiB</u);
+  assert.doesNotMatch(singularRoot.innerHTML, />1 fontes/u);
+
+  const pluralRoot = new FakeRoot();
+  const pluralPanel = createCourseSourcesPanel({
+    root: pluralRoot,
+    controller: controllerFixture({ catalog: [source(1), source(2)] }),
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+  assert.equal(await pluralPanel.open(), true);
+  assert.match(pluralRoot.innerHTML, />2 fontes · PDFs 0 B de 64 MiB</u);
+
+  const pagedRoot = new FakeRoot();
+  const pagedController = controllerFixture();
+  pagedController.loadCourseSources = async () => catalogPage([source()], {
+    nextCursor: "cGFnZS0x"
+  });
+  const pagedPanel = createCourseSourcesPanel({
+    root: pagedRoot,
+    controller: pagedController,
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+  assert.equal(await pagedPanel.open(), true);
+  assert.match(pagedRoot.innerHTML, />1\+ fontes · PDFs 0 B de 64 MiB</u);
+});
+
 test("catálogo mantém paginação apenas entre Fontes correntes", async () => {
   const all = Array.from({ length: 15 }, (_, index) => source(index + 1));
   const calls = [];

@@ -1363,6 +1363,10 @@ async function mountCourseAuthoring(page, {
             componentRef: "aralearn.resource.relation_map@1.0.0",
             studyUnitCount: 1,
             instanceCount: 1
+          }, {
+            componentRef: "aralearn.response.choice@1.0.0",
+            studyUnitCount,
+            instanceCount: studyUnitCount
           }],
           practiceByRequirement: [{
             position: 1,
@@ -4221,7 +4225,12 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   await expect(scope).toHaveValue("1");
   await expect(analytics.locator(
     '.course-analytics-metrics[aria-label="Resumo do desenho"] dd'
-  )).toHaveText(["1", "1", "3", "2"]);
+  )).toHaveText(["1", "1", "1", "2"]);
+  await analytics.locator("details.course-analytics-details", {
+    hasText: "Prática e fontes"
+  }).locator("summary").click();
+  await expect(analytics.getByRole("table", { name: "Prática e fontes" }))
+    .toContainText("Modalidade · escolha");
 
   const jsonStarted = page.waitForEvent("download");
   await analytics.getByRole("button", { name: "Baixar dados de autoria" }).click();
@@ -4279,6 +4288,7 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
   await expect(analytics.getByRole("combobox", { name: "Escopo", exact: true })).toHaveValue("1");
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(1);
+  await expect.poll(() => new URL(page.url()).hash).toBe(analyticsHash);
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads[0])).toEqual({
     courseId: COURSE_IDS[0],
@@ -4292,4 +4302,25 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
       }
     }
   });
+
+  await analytics.getByRole("combobox", { name: "Escopo", exact: true }).selectOption("0");
+  await analytics.getByRole("button", { name: "Aplicar escopo" }).click();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
+  await expect.poll(() => new URL(page.url()).hash).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=5"
+  );
+
+  await page.evaluate(() => {
+    globalThis.__courseAuthoringHarness.updateInspectionStudyUnit(
+      "study-unit-01",
+      "Exemplo atualizado"
+    );
+  });
+  await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
+  await expect.poll(() => new URL(page.url()).hash).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=6"
+  );
 });
