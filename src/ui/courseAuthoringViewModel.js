@@ -10,6 +10,7 @@ const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_conditi
 const PART_PROGRESS_STATES = new Set([
   "planned", "partially_materialized", "materialized"
 ]);
+const CURRICULUM_MAP_STATES = new Set(["absent", "draft", "approved"]);
 const CURRICULUM_SCOPE_STATES = new Set(["planned", "developed"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
 const COURSE_DESIGN_SCOPE_KINDS = Object.freeze([
@@ -404,6 +405,19 @@ function normalizeCurriculum(value) {
   return Object.freeze({ modules });
 }
 
+function normalizeDeclaredPrerequisites(value) {
+  if (!Array.isArray(value) || value.length > 64) {
+    fail("invalid_authoring_plan", "Os pré-requisitos declarados são inválidos.");
+  }
+  const prerequisites = value.map((item) =>
+    requiredText(item, "Um pré-requisito declarado", { maximum: 2_000 }));
+  if (new Set(prerequisites.map((item) => item.toLocaleLowerCase("pt-BR"))).size !==
+      prerequisites.length) {
+    fail("invalid_authoring_plan", "Os pré-requisitos declarados se repetem.");
+  }
+  return Object.freeze(prerequisites);
+}
+
 function curriculumIndex(curriculum) {
   const modules = new Map();
   const lessons = new Map();
@@ -698,6 +712,13 @@ export function normalizeCourseAuthoringPlan(value, {
   if (expectedCourseRevision !== null && courseRevision !== expectedCourseRevision) {
     fail("course_revision_changed", "O Curso mudou durante a leitura do planejamento.");
   }
+  const curriculumMapStatus = text(value.plan.curriculumMapStatus);
+  if (!CURRICULUM_MAP_STATES.has(curriculumMapStatus)) {
+    fail("invalid_authoring_plan", "A situação do mapa curricular é inválida.");
+  }
+  const declaredPrerequisites = normalizeDeclaredPrerequisites(
+    value.plan.declaredPrerequisites
+  );
   const curriculum = normalizeCurriculum(value.plan.curriculum);
   const indexedCurriculum = curriculumIndex(curriculum);
   const curriculumScopeItems = normalizeCurriculumScopeItems(
@@ -772,6 +793,8 @@ export function normalizeCourseAuthoringPlan(value, {
       objective: requiredText(value.plan.objective, "O objetivo do Curso", { maximum: 2_000 }),
       audience: optionalText(value.plan.audience, "O público", { maximum: 4_000 }),
       scope: optionalText(value.plan.scope, "O escopo", { maximum: 8_000 }),
+      curriculumMapStatus,
+      declaredPrerequisites,
       curriculum,
       curriculumScopeItems,
       updatedAt: dateTime(value.plan.updatedAt, "A atualização do planejamento"),
@@ -805,6 +828,8 @@ export function projectCoursePlanning(course, authoringPlan) {
     objective: text(course.goal) || null,
     audience: authoringPlan.plan.audience,
     scope: authoringPlan.plan.scope,
+    curriculumMapStatus: authoringPlan.plan.curriculumMapStatus,
+    declaredPrerequisites: authoringPlan.plan.declaredPrerequisites,
     curriculum: authoringPlan.plan.curriculum,
     curriculumScopeItems: authoringPlan.plan.curriculumScopeItems,
     updatedAt: authoringPlan.plan.updatedAt,

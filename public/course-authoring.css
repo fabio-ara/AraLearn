@@ -963,6 +963,16 @@
   gap: 8px;
 }
 
+.course-authoring-planning-card ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
 .course-authoring-curriculum-map,
 .course-authoring-scope-coverage {
   min-width: 0;
@@ -988,6 +998,16 @@
 
 .course-authoring-curriculum-map > .course-authoring-curriculum-modules {
   margin-top: 10px;
+}
+
+.course-authoring-curriculum-status {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--action-primary-hover);
+  background: var(--action-primary-subtle);
+  font-size: var(--type-xs);
+  font-weight: 700;
 }
 
 .course-authoring-curriculum-module,

@@ -302,7 +302,9 @@ test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => 
       version: 2,
       title: "Fundamentos",
       objective: "Compreender relações essenciais.",
+      curriculumMapStatus: "approved",
       audience: "Pessoas iniciantes.",
+      declaredPrerequisites: ["Leitura de textos curtos."],
       scope: "Relações fundamentais.",
       curriculum: {
         modules: [{
@@ -422,7 +424,9 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
       version: 1,
       title: "Fundamentos",
       objective: "Aprender.",
+      curriculumMapStatus: "approved",
       audience: "",
+      declaredPrerequisites: [],
       scope: "",
       curriculum: {
         modules: [{
@@ -523,7 +527,9 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
       version: 1,
       title: "Outro título",
       objective: "Aprender.",
+      curriculumMapStatus: "absent",
       audience: null,
+      declaredPrerequisites: [],
       scope: null,
       curriculum: { modules: [] },
       curriculumScopeItems: [],

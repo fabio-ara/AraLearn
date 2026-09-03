@@ -294,7 +294,12 @@ function authoringPlanFixture(overrides = {}) {
       version: 3,
       title: "Fundamentos",
       objective: "Compreender relações essenciais.",
+      curriculumMapStatus: "approved",
       audience: "Pessoas iniciantes.",
+      declaredPrerequisites: [
+        "Leitura de textos curtos em português.",
+        "Nenhum conhecimento técnico prévio."
+      ],
       scope: "Relações fundamentais.",
       curriculum: curriculumFixture(),
       curriculumScopeItems: curriculumScopeFixture(),
@@ -951,6 +956,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   const assertCompleteCurriculumMap = (html) => {
     const curriculumMap = curriculumMapFrom(html);
     assert.match(curriculumMap, /Mapa curricular/u);
+    assert.match(curriculumMap, /Aprovado/u);
     assert.match(
       curriculumMap,
       /Base[\s\S]*Compreender relações antes de aplicá-las\.[\s\S]*Relações[\s\S]*Distinguir e praticar relações fundamentais\.[\s\S]*Primeiro caso[\s\S]*Explicar a primeira relação\.[\s\S]*Segundo caso[\s\S]*Praticar a relação em outro caso\.[\s\S]*Depende de:[\s\S]*Primeiro caso/u
@@ -1023,6 +1029,10 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   assert.equal(inspectionReads, 0);
   assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
   assert.match(root.innerHTML, /<p class="course-authoring-context-title">Planejamento<\/p>/u);
+  assert.match(
+    root.innerHTML,
+    /Pré-requisitos declarados[\s\S]*Leitura de textos curtos em português\.[\s\S]*Nenhum conhecimento técnico prévio\./u
+  );
   assert.match(
     root.innerHTML,
     /Progressão local[\s\S]*Observar a primeira relação em uma situação concreta\.[\s\S]*Aplicar a distinção em um segundo caso\./u

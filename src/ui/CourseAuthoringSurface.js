@@ -35,6 +35,11 @@ const CURRICULUM_SCOPE_STATUS_LABELS = Object.freeze({
   planned: "Planejado",
   developed: "Desenvolvido"
 });
+const CURRICULUM_MAP_STATUS_LABELS = Object.freeze({
+  absent: "Ainda não definido",
+  draft: "Rascunho",
+  approved: "Aprovado"
+});
 const AUTHORING_TASKS = Object.freeze([
   Object.freeze({ key: "content", label: "Conteúdo", icon: "module", primary: true }),
   Object.freeze({ key: "planning", label: "Planejamento", icon: "intent", ownerOnly: true, primary: true }),
@@ -583,7 +588,10 @@ function renderCurriculumMap(planning) {
     ' aria-labelledby="course-authoring-curriculum-map-title">' +
     '<header class="course-authoring-subsection-heading"><div>' +
     '<h3 id="course-authoring-curriculum-map-title">Mapa curricular</h3>' +
-    '<p>Visão global de módulos, lições e microssequências.</p></div></header>' +
+    '<p>Visão global de módulos, lições e microssequências.</p></div>' +
+    `<span class="course-authoring-curriculum-status">${escapeHtml(
+      CURRICULUM_MAP_STATUS_LABELS[planning.curriculumMapStatus]
+    )}</span></header>` +
     content + '</section>';
 }
 
@@ -637,7 +645,14 @@ function renderCurriculumScope(planning) {
 }
 
 function renderPlanningContext(planning) {
-  if (!planning.audience && !planning.scope) return "";
+  if (!planning.audience && !planning.scope && !planning.declaredPrerequisites.length) return "";
+  const prerequisites = planning.declaredPrerequisites.length
+    ? '<section class="course-authoring-planning-card">' +
+      '<span class="course-authoring-planning-icon" aria-hidden="true">' +
+      renderUiIcon("prompt", "course-authoring-button-icon") + '</span><div>' +
+      '<h3>Pré-requisitos declarados</h3><ul>' + planning.declaredPrerequisites.map((item) =>
+        `<li>${escapeHtml(item)}</li>`).join("") + '</ul></div></section>'
+    : "";
   return '<details class="course-authoring-planning-context"><summary>Contexto do plano</summary>' +
     '<div class="course-authoring-planning-details">' +
     (planning.audience ? renderPlanningCard({
@@ -649,7 +664,7 @@ function renderPlanningContext(planning) {
       icon: "tags",
       label: "Escopo",
       value: planning.scope
-    }) : "") + "</div></details>";
+    }) : "") + prerequisites + "</div></details>";
 }
 
 function renderPlanningSection(state) {
