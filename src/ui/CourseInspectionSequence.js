@@ -231,25 +231,26 @@ function normalizeAuthorship(value) {
       ![null, "human", "gpt"].includes(value.lastRevisionOrigin)) {
     throw new TypeError("A origem autoral da Unidade é inválida.");
   }
-  exactRecord(value.design, ["snapshot", "application"], "O desenho aplicado é inválido.");
-  if ((value.design.snapshot === null) !== (value.design.application === null)) {
-    throw new TypeError("O desenho aplicado é inconsistente.");
-  }
+  exactRecord(value.design, ["application"], "O desenho aplicado é inválido.");
   const application = value.design.application === null
     ? null
     : structuredClone(value.design.application);
-  if (application && Object.hasOwn(application, "analysisIdeas")) {
+  if (application) {
+    exactRecord(
+      application,
+      ["mode", "componentRefs", "analysisIdeas"],
+      "A aplicação do desenho é inválida."
+    );
+    if (!["expository", "practice", "mixed"].includes(application.mode) ||
+        !Array.isArray(application.componentRefs)) {
+      throw new TypeError("A aplicação do desenho é inválida.");
+    }
     application.analysisIdeas = normalizeAnalysisIdeas(application.analysisIdeas);
   }
   return Object.freeze({
     createdOrigin: value.createdOrigin,
     lastRevisionOrigin: value.lastRevisionOrigin,
-    design: Object.freeze({
-      snapshot: value.design.snapshot === null
-        ? null
-        : structuredClone(value.design.snapshot),
-      application
-    })
+    design: Object.freeze({ application })
   });
 }
 

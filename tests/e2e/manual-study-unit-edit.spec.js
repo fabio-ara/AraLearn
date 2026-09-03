@@ -544,7 +544,6 @@ async function openInspectionUnit(page, ownership) {
               createdOrigin: "human",
               lastRevisionOrigin: "human",
               design: {
-                snapshot: null,
                 application: null
               }
             },

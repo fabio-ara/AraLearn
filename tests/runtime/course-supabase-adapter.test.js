@@ -1565,49 +1565,6 @@ test("materialização envia repertório e alvos no mesmo commit das unidades", 
   assert.equal(payload.p_request_hash.length, 64);
 });
 
-function inspectionDesignSnapshot({ ceiling = 2 } = {}) {
-  return {
-    contract: "aralearn.study-unit-design-snapshot.v1",
-    didacticMicrosequenceId: "micro-a",
-    instructionalAnalysisUnitIds: [PLAN_ID, USED_ANALYSIS_ID, REVISITED_ANALYSIS_ID],
-    evidenceRequirementIds: [STEP_ID],
-    parameters: [
-      {
-        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-        value: ceiling,
-        origin: "author",
-        sourceScopeKind: "study_unit"
-      },
-      {
-        parameterId: "required_explanation_forms",
-        value: ["plain_definition"],
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-        value: 2,
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "required_practice_variation_dimensions",
-        value: ["case_or_data"],
-        origin: "system_default",
-        sourceScopeKind: null
-      }
-    ],
-    editorialDirections: [],
-    componentPolicy: {
-      policy: defaultComponentPolicy(),
-      origin: "author",
-      sourceScopeKind: "course"
-    },
-    appliedAt: "2026-08-17T09:00:00Z"
-  };
-}
-
-
 test("lê inspeção curricular limitada e acrescenta link exato da Unidade", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {
@@ -1662,17 +1619,8 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
           createdOrigin: "gpt",
           lastRevisionOrigin: "human",
           design: {
-            snapshot: inspectionDesignSnapshot({ ceiling: 3 }),
             application: {
               mode: "expository",
-              introducedInstructionalAnalysisUnitIds: [PLAN_ID],
-              usedInstructionalAnalysisUnitIds: [USED_ANALYSIS_ID],
-              explanationApplications: [{
-                instructionalAnalysisUnitId: REVISITED_ANALYSIS_ID,
-                developedForms: ["contrast"],
-                notApplicable: []
-              }],
-              practiceApplications: [],
               componentRefs: ["aralearn.resource.paragraph@1.0.0"],
               analysisIdeas: {
                 introduced: [{
@@ -1730,10 +1678,11 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
       description: "Conexão retomada para contrastar entrada e saída."
     }]
   });
-  assert.deepEqual(
-    result.items[0].authorship.design.application.usedInstructionalAnalysisUnitIds,
-    [USED_ANALYSIS_ID]
-  );
+  assert.equal(Object.hasOwn(result.items[0].authorship.design, "snapshot"), false);
+  assert.equal(Object.hasOwn(
+    result.items[0].authorship.design.application,
+    "usedInstructionalAnalysisUnitIds"
+  ), false);
   assert.equal(
     result.items[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +

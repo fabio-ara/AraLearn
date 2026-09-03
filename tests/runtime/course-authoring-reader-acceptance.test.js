@@ -83,7 +83,6 @@ function inspectionItem(ordinal, revision = fixture.course.revision) {
       createdOrigin: "gpt",
       lastRevisionOrigin: "gpt",
       design: {
-        snapshot: null,
         application: null
       }
     },

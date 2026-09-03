@@ -3,7 +3,6 @@ import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
 import {
-  COURSE_DESIGN_PARAMETER_DEFINITIONS,
   CourseDesignParametersError,
   normalizeCourseDesignChange,
   normalizeCourseDesignCommand,
@@ -55,15 +54,6 @@ const INSPECTION_SCOPE_KINDS = new Set([
 const AUTHORING_PART_STATES = new Set([
   "planned", "partially_materialized", "materialized"
 ]);
-const INSPECTION_DESIGN_ORIGINS = new Set([
-  "automatic", "author", "research_condition", "migration", "system_default"
-]);
-const INSPECTION_DESIGN_SCOPES = new Set([
-  "course", "module", "lesson", "didactic_microsequence", "study_unit"
-]);
-const INSPECTION_DESIGN_PARAMETER_IDS = new Set(
-  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id)
-);
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
@@ -384,58 +374,21 @@ function validInspectionAnalysisIdeas(value) {
   return true;
 }
 
-function validInspectionDesignState(value, microsequenceId) {
-  if (!exactRecord(value, new Set(["snapshot", "application"]))) return false;
-  const snapshot = value.snapshot;
+function validInspectionDesignState(value) {
+  if (!exactRecord(value, new Set(["application"]))) return false;
   const application = value.application;
-  if ((snapshot === null) !== (application === null)) return false;
-  if (snapshot === null) return true;
-  if (!jsonRecord(snapshot) || !jsonRecord(application) ||
-      new TextEncoder().encode(JSON.stringify(snapshot)).byteLength > 65_536 ||
+  if (application === null) return true;
+  if (!jsonRecord(application) ||
       new TextEncoder().encode(JSON.stringify(application)).byteLength > 65_536 ||
-      !exactRecord(snapshot, new Set([
-        "contract", "didacticMicrosequenceId", "instructionalAnalysisUnitIds",
-        "evidenceRequirementIds", "parameters", "editorialDirections",
-        "componentPolicy", "appliedAt"
-      ])) ||
-      snapshot.contract !== "aralearn.study-unit-design-snapshot.v1" ||
-      snapshot.didacticMicrosequenceId !== microsequenceId ||
-      !validTimestamp(snapshot.appliedAt) ||
-      !Array.isArray(snapshot.instructionalAnalysisUnitIds) ||
-      !Array.isArray(snapshot.evidenceRequirementIds) ||
-      !Array.isArray(snapshot.parameters) || snapshot.parameters.length !== 4 ||
-      !Array.isArray(snapshot.editorialDirections) ||
-      snapshot.editorialDirections.length > 4 ||
-      !exactRecord(snapshot.componentPolicy, new Set([
-        "policy", "origin", "sourceScopeKind"
-      ])) ||
       !exactRecord(application, new Set([
-        "mode", "introducedInstructionalAnalysisUnitIds",
-        "usedInstructionalAnalysisUnitIds", "explanationApplications",
-        "practiceApplications", "componentRefs", "analysisIdeas"
+        "mode", "componentRefs", "analysisIdeas"
       ])) ||
       !new Set(["expository", "practice", "mixed"]).has(application.mode) ||
-      !Array.isArray(application.introducedInstructionalAnalysisUnitIds) ||
-      !Array.isArray(application.usedInstructionalAnalysisUnitIds) ||
-      !Array.isArray(application.explanationApplications) ||
-      !Array.isArray(application.practiceApplications) ||
-      !Array.isArray(application.componentRefs) ||
+      !Array.isArray(application.componentRefs) || application.componentRefs.length > 64 ||
+      application.componentRefs.some((componentRef) =>
+        typeof componentRef !== "string" || !componentRef.trim() || componentRef.length > 500) ||
       !validInspectionAnalysisIdeas(application.analysisIdeas)) return false;
-  const parameterIds = new Set();
-  for (const parameter of snapshot.parameters) {
-    if (!exactRecord(parameter, new Set([
-      "parameterId", "value", "origin", "sourceScopeKind"
-    ])) || !INSPECTION_DESIGN_PARAMETER_IDS.has(parameter.parameterId) ||
-        parameterIds.has(parameter.parameterId) ||
-        !INSPECTION_DESIGN_ORIGINS.has(parameter.origin) ||
-        !(parameter.sourceScopeKind === null ||
-          INSPECTION_DESIGN_SCOPES.has(parameter.sourceScopeKind))) return false;
-    parameterIds.add(parameter.parameterId);
-  }
-  return parameterIds.size === 4 &&
-    INSPECTION_DESIGN_ORIGINS.has(snapshot.componentPolicy.origin) &&
-    (snapshot.componentPolicy.sourceScopeKind === null ||
-      INSPECTION_DESIGN_SCOPES.has(snapshot.componentPolicy.sourceScopeKind));
+  return true;
 }
 
 function normalizeInspectionPage(
@@ -484,10 +437,7 @@ function normalizeInspectionPage(
       "createdOrigin", "lastRevisionOrigin", "design"
     ])) || ![null, "human", "gpt"].includes(authorship.createdOrigin) ||
         ![null, "human", "gpt"].includes(authorship.lastRevisionOrigin) ||
-        !validInspectionDesignState(
-          authorship.design,
-          curriculumPath.didacticMicrosequence.id
-        )) {
+        !validInspectionDesignState(authorship.design)) {
       invalidInspectionRead();
     }
     if (!id || !positiveSafeInteger(item.studyUnit.position) ||

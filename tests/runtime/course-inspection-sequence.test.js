@@ -119,50 +119,6 @@ function studyUnit(index) {
   };
 }
 
-function designSnapshot({ ceiling = 2 } = {}) {
-  return {
-    parameters: [
-      {
-        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-        value: ceiling,
-        origin: "author",
-        sourceScopeKind: "didactic_microsequence"
-      },
-      {
-        parameterId: "required_explanation_forms",
-        value: ["plain_definition", "concrete_example"],
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-        value: 2,
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "required_practice_variation_dimensions",
-        value: ["case_or_data"],
-        origin: "system_default",
-        sourceScopeKind: null
-      }
-    ],
-    guidance: [{
-      guidance: "Usar exemplos contrastivos.",
-      origin: "author",
-      sourceScopeKind: "course"
-    }],
-    componentPolicy: {
-      availability: "allow_only",
-      allowedCount: 3,
-      excludedCount: 0,
-      preferredCount: 2,
-      origin: "author",
-      sourceScopeKind: "course"
-    }
-  };
-}
-
 function inspectionItem(index) {
   return {
     studyUnit: studyUnit(index),
@@ -188,29 +144,10 @@ function inspectionItem(index) {
       createdOrigin: "gpt",
       lastRevisionOrigin: "gpt",
       design: {
-        snapshot: index === 1
-          ? {
-            ...designSnapshot(),
-            instructionalAnalysisUnitIds: [
-              ANALYSIS_TABLE_ID,
-              ANALYSIS_ASSOCIATION_ID,
-              ANALYSIS_MAC_ID,
-              ANALYSIS_PORT_ID
-            ]
-          }
-          : designSnapshot(),
-        application: index === 1
-          ? {
-          introducedInstructionalAnalysisUnitIds: [
-            ANALYSIS_TABLE_ID,
-            ANALYSIS_ASSOCIATION_ID
-          ],
-          usedInstructionalAnalysisUnitIds: [ANALYSIS_MAC_ID, ANALYSIS_PORT_ID],
-          explanationApplications: [{
-            instructionalAnalysisUnitId: ANALYSIS_PORT_ID,
-            form: "brief_recall"
-          }],
-          analysisIdeas: {
+        application: {
+          mode: "expository",
+          componentRefs: ["aralearn.resource.paragraph@1.0.0"],
+          analysisIdeas: index === 1 ? {
             introduced: [{
               name: "tabela MAC",
               description: "Registro que associa endereços MAC às portas conhecidas."
@@ -226,9 +163,12 @@ function inspectionItem(index) {
               name: "porta do switch",
               description: "Ponto de entrada ou saída retomado para acompanhar o encaminhamento."
             }]
+          } : {
+            introduced: [],
+            used: [],
+            revisited: []
           }
-          }
-          : {}
+        }
       }
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
@@ -583,7 +523,7 @@ test("detalhes da unidade apresentam ideias em português sem expor metamodelo n
 
   assert.doesNotMatch(
     root.innerHTML,
-    /StudyUnits?|AnalysisUnits?|analysisIdeas|introducedInstructionalAnalysisUnitIds|usedInstructionalAnalysisUnitIds|explanationApplications/u
+    /StudyUnits?|AnalysisUnits?|analysisIdeas|introducedInstructionalAnalysisUnitIds|usedInstructionalAnalysisUnitIds|explanationApplications|designSnapshot/u
   );
   const visibleCopy = root.innerHTML.replace(/<[^>]*>/gu, " ").replace(/\s+/gu, " ");
   for (const internalId of [
