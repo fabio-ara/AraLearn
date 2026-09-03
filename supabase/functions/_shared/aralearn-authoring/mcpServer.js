@@ -283,9 +283,11 @@ function toolFailure(
         ? "Escolha um curso, uma parte, uma microssequência ou uma unidade de estudo mais específica."
         : normalized.code === "course_source_pdf_write_uncertain"
           ? "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
-        : retryable
-          ? "Tente novamente sem mudar a intenção da tarefa."
-          : null;
+          : normalized.code === "human_materialization_contextual_calibration_required"
+            ? "A próxima etapa é definir a calibração contextual antes de produzir a parte."
+            : retryable
+              ? "Tente novamente sem mudar a intenção da tarefa."
+              : null;
   if (failure.writeState === "complete") {
     publicError.message = "A escrita pode ter sido concluída, mas a resposta excedeu o limite.";
     publicError.retryable = false;

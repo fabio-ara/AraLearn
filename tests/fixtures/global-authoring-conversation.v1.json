@@ -422,7 +422,7 @@
       "turn": 2,
       "speaker": "assistente",
       "inspectableArtifact": "mapa-global-v1",
-      "text": "A ementa é extensa. Como o curso é destinado a iniciantes, organizei um mapa global em quatro módulos: fundamentos da comunicação; Ethernet; organização e camadas; da rede ao serviço. O mapa completo mostra módulos, lições, microssequências, dependências e a cobertura de cada item da ementa. [Abrir mapa curricular]\n\nQuer mudar cobertura, ordem ou ênfase?"
+      "text": "A ementa é extensa. Como o curso é destinado a iniciantes, organizei o mapa global em uma progressão que vai dos fundamentos da comunicação à Ethernet, às camadas e aos serviços de rede. O mapa completo mostra módulos, lições, microssequências, dependências e a cobertura de cada item da ementa. [Abrir mapa curricular]\n\nQuer mudar cobertura, ordem ou ênfase?"
     },
     {
       "turn": 3,

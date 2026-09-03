@@ -706,7 +706,7 @@ function designSnapshot(design, microsequenceId) {
     parameter?.effectiveAssignment?.origin === "system_default")) {
     fail(
       "human_materialization_contextual_calibration_required",
-      "Calibre silenciosamente os valores ainda sem decisão contextual para esta microssequência antes de produzir.",
+      "A calibração contextual desta microssequência ainda não foi definida.",
       409
     );
   }

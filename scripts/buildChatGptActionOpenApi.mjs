@@ -98,7 +98,7 @@ const document = {
     "x-aralearn-task-catalog-version": COURSE_HUMAN_TASK_CATALOG_METADATA.version,
     "x-aralearn-task-catalog-fingerprint": COURSE_HUMAN_TASK_CATALOG_METADATA.hash,
     description: [
-      "Opera Cursos privados por tarefas humanas, sem exigir controles internos do banco.",
+      "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.",
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
     ].join("\n\n")
   },

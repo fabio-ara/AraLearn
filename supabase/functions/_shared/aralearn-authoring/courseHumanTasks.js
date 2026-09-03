@@ -515,7 +515,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use para ler a parte antes de produzi-la. Não grava.",
+    "Use para ler um lote definido antes da produção. Não grava.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
@@ -636,7 +636,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "Use para salvar o lote aprovado. Não muda o currículo.",
+    "Use para salvar um lote definido. Não muda o currículo.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -657,7 +657,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use para produzir o lote aprovado. Não repara.",
+    "Use para produzir um lote preparado. Não repara.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -860,9 +860,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.1";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:d8bcc662f6eba910184f3f70226e2198d15d78f0ee673684b7194a13271563c4";
+  "sha256:6e7b8af111ac77a003b11053e589dac412d42c3fa2e08fef0fc5a61316488d35";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2172,7 +2172,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
         : "Quer propor o mapa curricular global?"
       : part
         ? `Quer revisar a parte ${Number(part.position) + 1} ou preparar a próxima?`
-        : "Prepare agora a progressão focal da primeira parte de produção.",
+        : "A etapa seguinte é a progressão focal da primeira parte de produção.",
     context: projectedPlanContext(plan, part)
   });
 };
@@ -2195,7 +2195,7 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
       : args.parte === undefined
         ? part
           ? "Quer revisar esta parte ou preparar a próxima?"
-          : "Prepare agora a progressão focal da primeira parte de produção."
+          : "A etapa seguinte é a progressão focal da primeira parte de produção."
         : "Quer alterar a progressão desta parte?",
     context: projectedPlanContext(plan, part)
   });
@@ -2251,8 +2251,8 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning", [["authoringPartId", part.id]]),
     nextDecision: calibrationPending
-      ? "Calibre silenciosamente por microssequência ou por unidade nova, preservando condições fixadas, e produza o conteúdo aprovado."
-      : "Produza o conteúdo aprovado desta parte e, ao terminar, ofereça acesso ao resultado.",
+      ? "A etapa seguinte é a calibração contextual e a produção desta parte."
+      : "A parte está pronta para produção e inspeção do resultado.",
     context: {
       parte: projectedPart
     }
@@ -2558,7 +2558,7 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
     : "Salvei o mapa curricular como rascunho para inspeção.", {
     deepLink: courseDeepLink(adapter, savedCourse, "planning"),
     nextDecision: input.approved
-      ? "Prepare agora a progressão focal da primeira parte de produção."
+      ? "A etapa seguinte é a progressão focal da primeira parte de produção."
       : "Aprova este mapa curricular ou quer mudar cobertura, ordem ou ênfase?",
     context: {
       mapaCurricular: {
@@ -2625,7 +2625,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     ? `Preparei a parte de produção: ${title}.`
     : `Atualizei a parte de produção: ${title}.`, {
     deepLink: courseDeepLink(adapter, savedCourse, "planning", [["authoringPartId", savedPartId]]),
-    nextDecision: "Leia o recorte focal e produza agora esta parte já aprovada.",
+    nextDecision: "A parte está pronta para leitura focal e produção.",
     context: {
       parte: { titulo: title, intencao: intent, microssequencias: titles, progressao: progression },
       changed: receipt.changed !== false
