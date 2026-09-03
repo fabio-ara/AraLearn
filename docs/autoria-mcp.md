@@ -30,15 +30,15 @@ As dezesseis tarefas formam o catálogo público `aralearn.human-authoring-tasks
 | `ajustar_configuracao` | definir valores pedagógicos ou direção editorial, ou restaurar herança |
 | `registrar_observacao` | registrar o mesmo apontamento em uma ou várias StudyUnits |
 | `aplicar_correcoes` | aplicar o conjunto coerente de correções já revisado |
-| `manter_fonte` | salvar Fonte, Âncoras, verificação e vínculos de proveniência |
+| `manter_fonte` | salvar ou retirar Fonte, PDFs, Âncoras, verificação e vínculos de proveniência |
 | `incorporar_pdf_como_fonte` | guardar um PDF anexado como Fonte ou vinculá-lo a uma Fonte existente |
 
 Os nomes e schemas vêm de um único catálogo compartilhado com Actions. Não há
 aliases para ferramentas antigas nem mega-comando que exponha a estrutura do
 banco.
 
-No MCP, o PDF anexado chega em `pdf` como descritor de arquivo gerido pelo
-ChatGPT. Nome, caminho local ou URL digitada não substituem esse descritor; o
+No MCP, o PDF anexado chega em `pdf` como o objeto oficial de arquivo gerido pelo
+ChatGPT. Nome, caminho local ou URL digitada não substituem esse objeto; o
 servidor aceita somente a origem temporária autorizada e valida os bytes antes
 de persistir a Fonte.
 
@@ -99,7 +99,10 @@ decisão, `aplicar_correcoes` grava as alterações e o GPT reinspeciona o resul
 
 Fontes e Âncoras podem ser consultadas em qualquer fase. Uma Fonte permanece
 contestável. O arquivo PDF só é persistido quando a intenção de guardá-lo está
-inequívoca; leitura descartável não usa `incorporar_pdf_como_fonte`.
+inequívoca; leitura descartável não usa `incorporar_pdf_como_fonte`. Para retirar
+acesso ao arquivo e preservar a referência bibliográfica, use `manter_fonte` com
+`retirar: pdfs`; `retirar: fonte` remove antes os PDFs ativos e então retira a
+própria Fonte.
 
 ## Respostas e erros
 

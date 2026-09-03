@@ -380,6 +380,7 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   metadados: "Metadados humanos da Fonte a criar ou revisar.",
   ancoras: "Âncoras verificáveis da Fonte a criar ou revisar.",
   vinculos: "Relações de proveniência entre a Fonte e Unidades de estudo.",
+  retirar: "Retirada explícita: todos os PDFs da Fonte ou a Fonte inteira.",
   pdf: "Descritor temporário do PDF fornecido pelo cliente OpenAI.",
   aplicacaoPedagogica: "Fatos pedagógicos aplicados à Unidade materializada."
 });
@@ -395,22 +396,26 @@ function describeTopLevelArguments(schema) {
   return projected;
 }
 
-function annotations(readOnly) {
+function annotations(readOnly, destructive = false) {
   return Object.freeze({
     readOnlyHint: readOnly,
-    destructiveHint: false,
+    destructiveHint: destructive,
     openWorldHint: false
   });
 }
 
-function task(name, title, description, schema, { readOnly, file = false } = {}) {
+function task(name, title, description, schema, {
+  readOnly,
+  destructive = false,
+  file = false
+} = {}) {
   return Object.freeze({
     name,
     title,
     description,
     inputSchema: Object.freeze(describeTopLevelArguments(schema)),
     outputSchema: HUMAN_TASK_OUTPUT_SCHEMA,
-    annotations: annotations(readOnly),
+    annotations: annotations(readOnly, destructive),
     ...(file ? { _meta: Object.freeze({ "openai/fileParams": Object.freeze(["pdf"]) }) } : {})
   });
 }
@@ -638,7 +643,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "manter_fonte",
     "Manter Fonte e Âncoras",
-    "Use para manter metadados, Âncoras e vínculos da Fonte. Não use para receber PDF.",
+    "Use para criar, revisar ou retirar Fonte, PDFs, Âncoras e vínculos. Não use para receber PDF.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
@@ -671,15 +676,33 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
             })
           })
         })
+        }),
+        retirar: Object.freeze({
+          type: "string",
+          enum: Object.freeze(["pdfs", "fonte"]),
+          description: "Use sozinho com fonte: pdfs preserva a Fonte; fonte retira também a Fonte."
         })
       }, ["curso"]),
       anyOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["metadados"]) }),
         Object.freeze({ required: Object.freeze(["ancoras"]) }),
-        Object.freeze({ required: Object.freeze(["vinculos"]) })
+        Object.freeze({ required: Object.freeze(["vinculos"]) }),
+        Object.freeze({ required: Object.freeze(["retirar"]) })
+      ]),
+      allOf: Object.freeze([Object.freeze({
+        if: Object.freeze({ required: Object.freeze(["retirar"]) }),
+        then: Object.freeze({
+          required: Object.freeze(["fonte"]),
+          not: Object.freeze({ anyOf: Object.freeze([
+            Object.freeze({ required: Object.freeze(["metadados"]) }),
+            Object.freeze({ required: Object.freeze(["ancoras"]) }),
+            Object.freeze({ required: Object.freeze(["vinculos"]) })
+          ]) })
+        })
+      })
       ])
     }),
-    { readOnly: false }
+    { readOnly: false, destructive: true }
   ),
   task(
     "incorporar_pdf_como_fonte",
@@ -713,9 +736,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.3";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.4";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:c3997e1211f4b4f973eaace98d0d36262215d6ae3d173ef5285a3e69567137c0";
+  "sha256:59d1757d1baddc62421908e535e1e56191146f8077ba7672a51fe572ad79ec17";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2467,8 +2490,84 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
   let sourceReference = optionalReference(args.fonte, "fonte");
   let internalSourceId = null;
   let savedSourceId = null;
+  const withdrawal = args.retirar === undefined ? null : text(args.retirar, "retirar", 16);
+  if (withdrawal !== null && !new Set(["pdfs", "fonte"]).has(withdrawal)) {
+    fail("invalid_human_task_argument", "retirar precisa ser pdfs ou fonte.", { field: "retirar" });
+  }
+  if (withdrawal !== null) {
+    if (sourceReference === undefined) {
+      fail("missing_human_task_argument", "Informe fonte para realizar a retirada.", { field: "fonte" });
+    }
+    if (args.metadados !== undefined || args.ancoras !== undefined || args.vinculos !== undefined) {
+      fail(
+        "invalid_human_task_arguments",
+        "A retirada não pode ser combinada com outras mudanças da Fonte.",
+        { field: "retirar" }
+      );
+    }
+    const initial = await resolveHumanCourseContext({
+      adapter, principal, course, source: sourceReference, deadlineAt
+    });
+    const initialDetail = await detailedSource(adapter, principal, initial, deadlineAt);
+    const attachments = Array.isArray(initialDetail?.attachments)
+      ? initialDetail.attachments
+      : [];
+    for (const attachment of attachments) {
+      await executeSourceWrite({
+        adapter,
+        principal,
+        course,
+        internalSourceId: initial.source.sourceId,
+        deadlineAt,
+        build: async (state) => ({
+          type: "remove_pdf",
+          sourceId: state.source.sourceId,
+          expectedSourceRevision: Number(state.sourceDetail?.revision ?? state.source.revision),
+          contentHash: attachment.contentHash
+        })
+      });
+    }
+    if (typeof adapter.resumeCourseSourcePdfDeletes !== "function") {
+      throw new AuthoringApiError(
+        503,
+        "course_storage_unavailable",
+        "O Storage não permitiu concluir a retirada dos PDFs."
+      );
+    }
+    const resumed = await adapter.resumeCourseSourcePdfDeletes({
+      principal,
+      courseId: initial.course.id,
+      sourceId: initial.source.sourceId,
+      deadlineAt
+    });
+    if (withdrawal === "fonte") {
+      await executeSourceWrite({
+        adapter,
+        principal,
+        course,
+        internalSourceId: initial.source.sourceId,
+        deadlineAt,
+        build: async (state) => ({
+          type: "retire_source",
+          sourceId: state.source.sourceId,
+          expectedSourceRevision: Number(state.sourceDetail?.revision ?? state.source.revision)
+        })
+      });
+    }
+    const title = initial.source.title;
+    const message = withdrawal === "fonte"
+      ? `Retirei a Fonte “${title}” e seus PDFs ativos.`
+      : attachments.length || Number(resumed?.deleted ?? 0) > 0
+        ? `Retirei os PDFs ativos da Fonte “${title}”.`
+        : `A Fonte “${title}” não tinha PDFs ativos.`;
+    return result(message, {
+      deepLink: courseDeepLink(adapter, initial.course, "sources"),
+      nextDecision: "Quer consultar as Fontes restantes?",
+      context: { source: { title, status: withdrawal === "fonte" ? "retired" : initial.source.status } }
+    });
+  }
   if (args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined) {
-    fail("missing_human_task_argument", "Informe metadados, ancoras e/ou vinculos.");
+    fail("missing_human_task_argument", "Informe metadados, ancoras, vinculos ou retirar.");
   }
   if (args.metadados !== undefined) {
     const metadata = safeClone(args.metadados, "metadados", 32 * 1024);

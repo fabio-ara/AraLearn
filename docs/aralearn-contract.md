@@ -65,7 +65,8 @@ A incorporação server-side usa:
   uma URL assinada de leitura.
 
 O caminho e o resumo SHA-256 não são argumentos de uma tarefa humana. O serviço
-os deriva dos bytes.
+os deriva dos bytes. Criar ou revisar a Fonte e vincular o PDF ocorre numa única
+transação e avança a revisão do Curso uma vez.
 
 `aralearn.course-study-citations.v1` entrega ao Estudo somente citação, endereço
 permitido e seletor de Âncora necessários à Unit.
@@ -107,7 +108,7 @@ texto, autorização e conflitos são diferentes.
 ## Catálogo humano de Autoria
 
 MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, versão
-2.0.3. O catálogo possui dezesseis tarefas: oito leituras e oito escritas.
+2.0.4. O catálogo possui dezesseis tarefas: oito leituras e oito escritas.
 
 Cada definição contém:
 

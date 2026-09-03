@@ -187,17 +187,22 @@ async function removePdf(config, {
     p_channel: "application",
     p_request_id: requestId
   });
-  const claim = await rpc(config, "claim_course_source_pdf_delete_for_actor_v1", {
-    p_actor_id: actorId,
-    p_course_id: courseId,
-    p_request_id: requestId
-  });
+  const claim = await rpc(
+    config,
+    "claim_pending_course_source_pdf_delete_for_source_for_actor_v1",
+    {
+      p_actor_id: actorId,
+      p_course_id: courseId,
+      p_source_id: sourceId
+    }
+  );
   if (claim !== null) {
+    assert.equal(claim.requestId, requestId);
     await deleteStorageObjects(config, [claim.storagePath]);
     assert.equal(await rpc(config, "complete_course_source_pdf_delete_for_actor_v1", {
       p_actor_id: actorId,
       p_course_id: courseId,
-      p_request_id: requestId,
+      p_request_id: claim.requestId,
       p_storage_path: claim.storagePath
     }), true);
   }
@@ -266,24 +271,56 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
     revision = course.revision;
 
     const bytes = syntheticPdf(marker);
+    const revisionBeforeIngestion = revision;
+    const sourceIntent = {
+      mode: "save",
+      sourceId,
+      expectedSourceRevision: 0,
+      source: sourceDocument()
+    };
+    const fileId = `local-storage-${marker}`;
     const ingested = await ingestPdf(config, {
       actorId: userId,
       courseId,
       courseRevision: revision,
-      sourceIntent: {
-        mode: "save",
-        sourceId,
-        expectedSourceRevision: 0,
-        source: sourceDocument()
-      },
+      sourceIntent,
       bytes,
-      fileId: `local-storage-${marker}`
+      fileId
     });
+    assert.equal(ingested.courseRevision, revisionBeforeIngestion + 1);
     revision = ingested.courseRevision;
     sourceRevision = ingested.source.sourceRevision;
     attachment = ingested.attachment;
     cleanupPaths.add(attachment.storagePath);
     assert.equal(await storageObjectExists(config, attachment.storagePath), true);
+    const replay = await rpc(config, "get_course_source_pdf_ingestion_receipt_for_actor_v1", {
+      p_actor_id: userId,
+      p_course_id: courseId,
+      p_expected_revision: revisionBeforeIngestion,
+      p_source_intent: sourceIntent,
+      p_file_identity: {
+        fileId,
+        fileName: "storage-lifecycle.pdf",
+        mediaType: MEDIA_TYPE
+      },
+      p_channel: "application",
+      p_request_id: ingested.requestId
+    });
+    assert.equal(replay.idempotent, true);
+    assert.equal(replay.courseRevision, revision);
+    assert.equal(replay.source.sourceId, sourceId);
+    const sourcesAfterReplay = await rpc(config, "get_owned_course_sources_for_actor_v1", {
+      p_actor_id: userId,
+      p_course_id: courseId,
+      p_expected_revision: revision,
+      p_mode: "catalog",
+      p_source_id: null,
+      p_target_kind: null,
+      p_target_id: null,
+      p_cursor: null,
+      p_limit: 24
+    });
+    assert.equal(sourcesAfterReplay.items.filter((item) => item.sourceId === sourceId).length, 1);
     const activeDownload = await downloadPdf(config, {
       actorId: userId,
       courseId,

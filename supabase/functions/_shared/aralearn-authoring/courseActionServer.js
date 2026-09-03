@@ -150,6 +150,7 @@ function normalizedResult(value) {
 }
 
 function retryableError(error) {
+  if (error.code === "course_source_pdf_write_uncertain") return false;
   if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
   return new Set([
     "course_service_unavailable", "request_timeout", "network_error"
@@ -168,6 +169,9 @@ function nextDecisionForError(error, retryable) {
   }
   if (error.code === "action_payload_too_large") {
     return "Divida a tarefa em um conjunto menor de Units ou correções.";
+  }
+  if (error.code === "course_source_pdf_write_uncertain") {
+    return "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF.";
   }
   if (retryable) return "Tente novamente sem mudar a intenção da tarefa.";
   return null;

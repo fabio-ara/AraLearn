@@ -288,7 +288,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260902234800" ||
+  if (manifest.schemaRevision !== "20260903025658" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -334,6 +334,21 @@ async function validateManifest() {
   ]) {
     if (!actionCallback.includes(token)) {
       fail(`A hotfix do callback real de Actions não demonstra ${token}.`);
+    }
+  }
+  const pdfLifecycleHardening = await read(
+    "supabase/migrations/20260903025658_harden_course_source_pdf_lifecycle.sql"
+  );
+  for (const token of [
+    "course-change-request:",
+    "course-row:",
+    "course-source-pdf-object:",
+    "claim_pending_course_source_pdf_delete_for_source_for_actor_v1",
+    "to_jsonb('20260903025658'::text)",
+    "commit;"
+  ]) {
+    if (!pdfLifecycleHardening.includes(token)) {
+      fail(`O endurecimento do ciclo de PDF não demonstra ${token}.`);
     }
   }
   const analyticsApplicability = await read(

@@ -169,7 +169,11 @@ test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real"
     assert.match(task.description, /^Use\b/u, task.name);
     assert.match(task.description, /\bNão\b/iu, task.name);
     assert.equal(task.annotations.openWorldHint, false, task.name);
-    assert.equal(task.annotations.destructiveHint, false, task.name);
+    assert.equal(
+      task.annotations.destructiveHint,
+      task.name === "manter_fonte",
+      task.name
+    );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
     const action = operation(task.name);
     assert.equal(action.description, task.description);

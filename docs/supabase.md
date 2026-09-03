@@ -119,6 +119,9 @@ PDF segue outro contrato:
 5. a transação relacional salva ou atualiza a Fonte e ativa o vínculo do PDF;
 6. o preparo é consumido ou cancelado; preparos vencidos saem pela retenção.
 
+A Fonte e o vínculo são uma única mudança confirmada e, por isso, avançam a
+revisão do Curso uma vez.
+
 Download é uma operação separada. Depois de verificar o vínculo ativo e a
 propriedade do Curso, a API emite URL assinada de curta duração. Cada PDF aceita
 até 20 MiB; o conteúdo único vinculado a um Curso aceita até 64 MiB.

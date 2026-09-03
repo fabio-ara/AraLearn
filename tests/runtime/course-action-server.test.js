@@ -287,6 +287,27 @@ test("#272 referência ambígua e indisponibilidade devolvem retomadas diferente
   assert.match(unavailablePayload.nextDecision, /Tente novamente sem mudar a intenção/iu);
 });
 
+test("Actions não manda repetir incorporação de PDF com escrita incerta", async () => {
+  const response = await createHandler({
+    async listCourses() {
+      throw new AuthoringApiError(
+        409,
+        "course_source_pdf_write_uncertain",
+        "A confirmação da ingestão do PDF ficou inconclusiva."
+      );
+    }
+  })(request("retomar_curso", { titulo: "Redes para iniciantes" }));
+
+  assert.equal(response.status, 409);
+  const payload = await response.json();
+  assert.equal(payload.error.code, "course_source_pdf_write_uncertain");
+  assert.equal(payload.error.retryable, false);
+  assert.equal(
+    payload.nextDecision,
+    "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF."
+  );
+});
+
 test("#272 transporte de PDF exige o objeto oficial e rejeita origem não confiável", async () => {
   const invalid = await createHandler()(request("incorporar_pdf_como_fonte", {
     curso: "Redes para iniciantes",

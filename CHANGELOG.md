@@ -4,6 +4,18 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.54] - 2026-09-03
+
+### Corrigido
+
+- a incorporação de PDF confirma Fonte e vínculo como uma única revisão do
+  Curso, conserva o CAS até o commit e não induz repetição depois de uma
+  gravação potencialmente concluída;
+- o MCP recebe o objeto oficial do arquivo anexado e `manter_fonte` permite
+  retirar os PDFs preservando a Fonte ou retirar a própria Fonte com seus PDFs;
+- o ciclo de Storage serializa vínculo e exclusão pelo objeto exato e permite
+  concluir uma retirada física interrompida sem ampliar o alvo da limpeza.
+
 ## [0.0.53] - 2026-09-02
 
 ### Corrigido

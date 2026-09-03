@@ -188,7 +188,9 @@ Para incorporar um PDF, envie um único arquivo na conversa que executará
 `incorporar_pdf_como_fonte`. O serviço valida os bytes e grava no Storage
 privado. O download autorizado usa um endereço temporário. Remover o PDF revoga
 novas leituras, preservando Fonte, Âncoras e vínculos; o mesmo conteúdo pode ser
-reativado por uma nova incorporação confirmada.
+reativado por uma nova incorporação confirmada. Numa conversa, peça a
+`manter_fonte` para retirar somente os PDFs ou para retirar a Fonte inteira; esta
+segunda opção remove primeiro todos os PDFs ativos vinculados à Fonte.
 
 Use **Definir fontes** numa StudyUnit para revisar o conjunto corrente. Salvar
 substitui as relações daquele alvo. Identidades técnicas, caminhos de Storage e

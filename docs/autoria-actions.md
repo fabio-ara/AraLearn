@@ -48,8 +48,8 @@ Exemplos:
 - `registrar_observacao` recebe Curso, StudyUnits e texto;
 - `ajustar_configuracao` reúne parâmetros pedagógicos e direção editorial sem
   transformá-los num único catálogo;
-- `manter_fonte` recebe somente as alterações bibliográficas, Âncoras ou
-  vínculos realmente solicitados.
+- `manter_fonte` recebe somente as alterações bibliográficas, Âncoras, vínculos
+  ou a retirada de PDFs ou da Fonte realmente solicitada.
 
 Para produzir conteúdo, `consultar_componentes` funciona em duas etapas: busca
 os candidatos pela função instrucional e, quando conhecidos, pela estrutura,
@@ -98,7 +98,8 @@ confere a origem temporária autorizada, baixa com limite de tamanho e não devo
 a URL transitória na resposta.
 
 O arquivo só é guardado quando a conversa deixa clara a intenção de mantê-lo
-como Fonte. Uma leitura pontual de PDF não deve chamar essa operação.
+como Fonte. Uma leitura pontual de PDF não deve chamar essa operação. A retirada
+do PDF ou da Fonte é feita por `manter_fonte`, sem reenviar o arquivo.
 
 ## Planejamento e coordenação
 

@@ -35,7 +35,7 @@
     { "id": "aplicar_correcoes_direct", "class": "direct", "prompt": "Aplique o conjunto aprovado de correções nas quatro Units afetadas.", "expectedTool": "aplicar_correcoes" },
     { "id": "aplicar_correcoes_indirect", "class": "indirect", "prompt": "A proposta de reparo foi aprovada; atualize regra, transição, exemplo e prática juntos.", "expectedTool": "aplicar_correcoes" },
     { "id": "manter_fonte_direct", "class": "direct", "prompt": "Mantenha os metadados e a Âncora seção 4.2 da Fonte ‘Manual do proxy’.", "expectedTool": "manter_fonte" },
-    { "id": "manter_fonte_indirect", "class": "indirect", "prompt": "Conteste a verificação desta Fonte e troque o vínculo da Unit 6 para a nova Âncora.", "expectedTool": "manter_fonte" },
+    { "id": "manter_fonte_indirect", "class": "indirect", "prompt": "Retire o PDF descartável desta Fonte, mas preserve os metadados bibliográficos.", "expectedTool": "manter_fonte" },
     { "id": "pdf_direct", "class": "direct", "prompt": "Incorpore o PDF anexado como Fonte persistente do Curso ‘Redes para iniciantes’.", "expectedTool": "incorporar_pdf_como_fonte" },
     { "id": "pdf_indirect", "class": "indirect", "prompt": "Quero guardar este único PDF entre as Fontes e chamá-lo de ‘Manual do proxy’.", "expectedTool": "incorporar_pdf_como_fonte" },
     { "id": "negative_fact_question", "class": "negative", "prompt": "O que é um socket em sistemas operacionais?", "expectedTool": null },
