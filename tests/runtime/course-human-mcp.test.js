@@ -149,7 +149,7 @@ test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.2");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.3");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
@@ -859,6 +859,12 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
   for (const tool of full.result.tools) {
     assert.deepEqual(tool.securitySchemes, [{ type: "oauth2", scopes: ["offline_access"] }]);
   }
+  const pdfTool = full.result.tools.find(({ name }) => name === "incorporar_pdf_como_fonte");
+  assert.deepEqual(pdfTool._meta["openai/fileParams"], ["pdf"]);
+  assert.deepEqual(pdfTool.inputSchema.properties.pdf.required, ["download_url", "file_id"]);
+  assert.deepEqual(Object.keys(pdfTool.inputSchema.properties.pdf.properties), [
+    "download_url", "file_id", "file_name", "mime_type"
+  ]);
 
   const readResponse = await mcpHandler(READ_PRINCIPAL)(request("tools/list"));
   const read = await readResponse.json();
@@ -1032,11 +1038,89 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
   }]);
 });
 
-test("#272 PDF aceita download_url somente como dado gerido pelo transporte", async () => {
+test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
   const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
-  assert.equal(Object.hasOwn(pdfTask.inputSchema.properties.pdf.properties, "download_url"), false);
+  assert.deepEqual(pdfTask._meta, { "openai/fileParams": ["pdf"] });
+  assert.deepEqual(pdfTask.inputSchema.anyOf, [
+    { required: ["fonte"] },
+    { required: ["titulo"] }
+  ]);
+  assert.deepEqual(pdfTask.inputSchema.properties.pdf, {
+    type: "object",
+    additionalProperties: false,
+    required: ["download_url", "file_id"],
+    properties: {
+      download_url: { type: "string", minLength: 1, maxLength: 8192 },
+      file_id: { type: "string", minLength: 1, maxLength: 512 },
+      file_name: { type: "string", minLength: 1, maxLength: 512 },
+      mime_type: { type: "string", const: "application/pdf" }
+    },
+    description: "Descritor temporário do PDF fornecido pelo cliente OpenAI."
+  });
+});
+
+test("MCP rejeita caminho textual no lugar do descritor oficial sem efeitos", async () => {
+  let reads = 0;
+  const pdfAdapter = {
+    ...adapter(),
+    async getCourse() {
+      reads += 1;
+      return await adapter().getCourse();
+    }
+  };
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: pdfAdapter,
+    principal: PRINCIPAL,
+    name: "incorporar_pdf_como_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      titulo: "Manual do proxy",
+      intencao: "Manter o documento entre as Fontes.",
+      pdf: "/mnt/data/manual.pdf"
+    }
+  }), (error) => {
+    assert.equal(error.code, "invalid_human_task_arguments");
+    assert.match(error.message, /pdf precisa ser um objeto/u);
+    return true;
+  });
+  assert.equal(reads, 0);
+});
+
+test("MCP exige Fonte existente ou título novo antes de consultar o Curso", async () => {
+  const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
+  const validatePdfTask = new Ajv2020({ strict: false }).compile(pdfTask.inputSchema);
+  const rawArguments = {
+    curso: "Redes para iniciantes",
+    intencao: "Manter o documento entre as Fontes.",
+    pdf: {
+      file_id: "file-123",
+      download_url: "https://files.oaiusercontent.com/manual.pdf?token=temporary"
+    }
+  };
+  assert.equal(validatePdfTask(rawArguments), false);
+
+  let reads = 0;
+  const pdfAdapter = {
+    ...adapter(),
+    async getCourse() {
+      reads += 1;
+      return await adapter().getCourse();
+    }
+  };
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: pdfAdapter,
+    principal: PRINCIPAL,
+    name: "incorporar_pdf_como_fonte",
+    rawArguments
+  }), (error) => error.code === "invalid_human_task_argument" &&
+      error.details?.field === "titulo");
+  assert.equal(reads, 0);
+});
+
+test("MCP recebe o descritor oficial e mantém o download_url fora do envelope", async () => {
   const sources = [];
   const ingestions = [];
+  const temporaryUrl = "https://files.oaiusercontent.com/manual.pdf?token=temporary";
   const pdfAdapter = {
     ...adapter(),
     async getCourseSources() {
@@ -1046,7 +1130,7 @@ test("#272 PDF aceita download_url somente como dado gerido pelo transporte", as
       return null;
     },
     async fetchImpl(url) {
-      assert.match(String(url), /^https:\/\/files\.oaiusercontent\.com\//u);
+      assert.equal(String(url), temporaryUrl);
       return new Response(new TextEncoder().encode("%PDF-1.4\n%%EOF"), {
         status: 200,
         headers: { "Content-Type": "application/pdf" }
@@ -1074,11 +1158,12 @@ test("#272 PDF aceita download_url somente como dado gerido pelo transporte", as
         file_id: "file-123",
         file_name: "manual.pdf",
         mime_type: "application/pdf",
-        download_url: "https://files.oaiusercontent.com/manual.pdf?token=temporary"
+        download_url: temporaryUrl
       }
     }
   });
   assert.equal(output.result, "Mantive o PDF entre as Fontes do Curso.");
+  assert.doesNotMatch(JSON.stringify(output), /token=temporary/u);
   assert.equal(ingestions.length, 1);
   assert.equal(ingestions[0].fileIdentity.fileId, "file-123");
 });

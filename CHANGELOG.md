@@ -4,6 +4,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.53] - 2026-09-02
+
+### Corrigido
+
+- o catálogo MCP anuncia o descritor oficial completo de arquivos para
+  `incorporar_pdf_como_fonte`, permitindo que o ChatGPT entregue o PDF anexado
+  sem expor ou aceitar caminhos locais;
+- a versão e o fingerprint do catálogo mudam para invalidar o snapshot de
+  ferramentas anterior após **Refresh / Scan Tools**.
+
 ## [0.0.52] - 2026-09-02
 
 ### Corrigido

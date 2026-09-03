@@ -37,6 +37,11 @@ Os nomes e schemas vêm de um único catálogo compartilhado com Actions. Não h
 aliases para ferramentas antigas nem mega-comando que exponha a estrutura do
 banco.
 
+No MCP, o PDF anexado chega em `pdf` como descritor de arquivo gerido pelo
+ChatGPT. Nome, caminho local ou URL digitada não substituem esse descritor; o
+servidor aceita somente a origem temporária autorizada e valida os bytes antes
+de persistir a Fonte.
+
 ## Fluxo de conversa
 
 Uma conversa de autoria normalmente segue este ciclo:

@@ -685,30 +685,37 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "incorporar_pdf_como_fonte",
     "Incorporar PDF como Fonte",
     "Use para incorporar PDF como Fonte permanente. Não use para leitura descartável.",
-    inputSchema({
-      curso: COURSE_SCHEMA,
-      fonte: HUMAN_REFERENCE_SCHEMA,
-      titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
-      pdf: Object.freeze({
-        type: "object",
-        additionalProperties: false,
-        required: Object.freeze(["file_id"]),
-        properties: Object.freeze({
-          file_id: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
-          file_name: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
-          mime_type: Object.freeze({ type: "string", const: "application/pdf" })
+    Object.freeze({
+      ...inputSchema({
+        curso: COURSE_SCHEMA,
+        fonte: HUMAN_REFERENCE_SCHEMA,
+        titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+        intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 }),
+        pdf: Object.freeze({
+          type: "object",
+          additionalProperties: false,
+          required: Object.freeze(["download_url", "file_id"]),
+          properties: Object.freeze({
+            download_url: Object.freeze({ type: "string", minLength: 1, maxLength: 8192 }),
+            file_id: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
+            file_name: Object.freeze({ type: "string", minLength: 1, maxLength: 512 }),
+            mime_type: Object.freeze({ type: "string", const: "application/pdf" })
+          })
         })
-      })
-    }, ["curso", "intencao", "pdf"]),
+      }, ["curso", "intencao", "pdf"]),
+      anyOf: Object.freeze([
+        Object.freeze({ required: Object.freeze(["fonte"]) }),
+        Object.freeze({ required: Object.freeze(["titulo"]) })
+      ])
+    }),
     { readOnly: false, file: true }
   )
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.2";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.3";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:2f566595ae3436db055695cc488bf7fefa582d26471216ed3a2e318fe2afb305";
+  "sha256:c3997e1211f4b4f973eaace98d0d36262215d6ae3d173ef5285a3e69567137c0";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -894,31 +901,7 @@ export async function executeHumanCourseTask({
   if (!courseHumanTaskIsAllowed(name, principal)) {
     throw new AuthoringApiError(403, "insufficient_scope", "A sessão não permite usar esta tarefa.");
   }
-  let argumentsForValidation = rawArguments;
-  let managedPdfDownloadUrl = null;
-  if (name === "incorporar_pdf_como_fonte" && rawArguments?.pdf &&
-      typeof rawArguments.pdf === "object" && !Array.isArray(rawArguments.pdf) &&
-      Object.hasOwn(rawArguments.pdf, "download_url")) {
-    managedPdfDownloadUrl = text(
-      rawArguments.pdf.download_url,
-      "pdf.download_url",
-      8192
-    );
-    argumentsForValidation = {
-      ...rawArguments,
-      pdf: Object.fromEntries(Object.entries(rawArguments.pdf)
-        .filter(([field]) => field !== "download_url"))
-    };
-  }
-  const args = assertTaskArguments(name, argumentsForValidation);
-  if (managedPdfDownloadUrl !== null) {
-    Object.defineProperty(args.pdf, "download_url", {
-      value: managedPdfDownloadUrl,
-      enumerable: false,
-      configurable: false,
-      writable: false
-    });
-  }
+  const args = assertTaskArguments(name, rawArguments);
   try {
     const output = await HUMAN_TASK_HANDLERS[name]({
       adapter,
@@ -2633,6 +2616,9 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
 }) => {
   const course = humanCourseTitle(args);
   const sourceReference = optionalReference(args.fonte, "fonte");
+  const newSourceTitle = sourceReference === undefined
+    ? text(args.titulo, "titulo", 300)
+    : undefined;
   text(args.intencao, "intencao", 1000);
   const pdf = plainObject(args.pdf, "pdf");
   exactFields(pdf, new Set(["file_id", "file_name", "mime_type", "download_url"]));
@@ -2641,14 +2627,12 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
     ...(pdf.file_name === undefined ? {} : { file_name: text(pdf.file_name, "pdf.file_name", 512) }),
     ...(pdf.mime_type === undefined ? {} : { mime_type: text(pdf.mime_type, "pdf.mime_type", 80) })
   };
-  if (typeof pdf.download_url === "string") {
-    Object.defineProperty(descriptor, "download_url", {
-      value: pdf.download_url,
-      enumerable: true,
-      configurable: false,
-      writable: false
-    });
-  }
+  Object.defineProperty(descriptor, "download_url", {
+    value: text(pdf.download_url, "pdf.download_url", 8192),
+    enumerable: true,
+    configurable: false,
+    writable: false
+  });
   const receipt = await executeTrustedCourseWrite({
     load: async () => await resolveHumanCourseContext({
       adapter, principal, course, source: sourceReference ?? null, deadlineAt
@@ -2660,7 +2644,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
             sourceId: await newId("pdf-source"),
             expectedSourceRevision: 0,
             source: sourceDocument({
-              titulo: text(args.titulo, "titulo", 300),
+              titulo: newSourceTitle,
               tipo: "document",
               disponibilidade: "desconhecida",
               verificacao: "nao_verificada",
