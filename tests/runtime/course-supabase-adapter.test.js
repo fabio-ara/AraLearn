@@ -1416,6 +1416,155 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
   );
 });
 
+test("grava mapa curricular e lote por contratos atômicos distintos", async () => {
+  const calls = [];
+  const map = {
+    audience: "Pessoas iniciantes.",
+    prerequisites: [],
+    scopeItems: [{
+      id: CURRICULUM_SCOPE_ID,
+      position: 0,
+      statement: "Compreender a relação fundamental."
+    }],
+    modules: [{
+      moduleId: "module-a",
+      position: 0,
+      title: "Fundamentos",
+      objective: "Construir a relação.",
+      lessons: [{
+        lessonId: "lesson-a",
+        position: 0,
+        title: "Primeiro percurso",
+        objective: "Explicar e aplicar.",
+        microsequences: [{
+          microsequenceId: "micro-a",
+          position: 0,
+          title: "Da situação ao conceito",
+          objective: "Introduzir a relação em contexto.",
+          dependencyMicrosequenceIds: [],
+          scopeItemIds: [CURRICULUM_SCOPE_ID]
+        }]
+      }]
+    }]
+  };
+  const part = {
+    partId: PART_ID,
+    position: 0,
+    title: "Primeiro lote",
+    intent: "Produzir o início do percurso.",
+    progression: ["situação concreta", "relação", "aplicação"],
+    microsequences: [{ microsequenceId: "micro-a", position: 0 }]
+  };
+  const value = adapter(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (url.endsWith("/rpc/save_course_curricular_map_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-curricular-map-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 8,
+        planVersion: 5,
+        approval: "draft",
+        changed: true,
+        idempotent: false
+      });
+    }
+    assert.match(url, /\/rpc\/save_course_authoring_part_for_actor_v1$/u);
+    return json({
+      contract: "aralearn.course-authoring-part-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 9,
+      planVersion: 6,
+      authoringPartId: PART_ID,
+      changed: true,
+      idempotent: false
+    });
+  });
+
+  await value.saveCourseCurricularMap({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    requestId: "request-curricular-map-1",
+    expectedCourseRevision: 7,
+    expectedPlanVersion: 4,
+    approved: false,
+    curricularMap: map
+  });
+  await value.saveCourseAuthoringPart({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    requestId: "request-production-part-1",
+    expectedCourseRevision: 8,
+    expectedPlanVersion: 5,
+    part
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].body.p_approved, false);
+  assert.deepEqual(calls[0].body.p_curricular_map, map);
+  assert.equal(typeof calls[0].body.p_request_hash, "string");
+  assert.equal(calls[0].body.p_request_hash.length, 64);
+  assert.deepEqual(calls[1].body.p_part, part);
+  assert.equal(Object.hasOwn(calls[1].body.p_part, "modules"), false);
+  assert.equal(Object.hasOwn(calls[1].body.p_part, "analysisUnits"), false);
+});
+
+test("materialização envia repertório e alvos no mesmo commit das unidades", async () => {
+  const planItemUpserts = [{
+    id: PLAN_ID,
+    kind: "instructional_analysis_unit",
+    position: 0,
+    statement: "relação focal",
+    description: "Relação necessária para executar a aplicação."
+  }];
+  const targetPlanItems = [{
+    didacticMicrosequenceId: "micro-a",
+    instructionalAnalysisUnitIds: [PLAN_ID],
+    evidenceRequirementIds: []
+  }];
+  const units = [{
+    studyUnitId: "unit-a",
+    position: 1,
+    didacticMicrosequenceId: "micro-a",
+    content: {},
+    designSnapshot: {},
+    designApplication: {},
+    sourceLinks: []
+  }];
+  let payload = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/materialize_course_authoring_part_for_actor_v2$/u);
+    payload = JSON.parse(init.body);
+    return json({
+      contract: "aralearn.course-part-materialization.v1",
+      courseId: COURSE_ID,
+      courseRevision: 8,
+      authoringPartId: PART_ID,
+      changed: true,
+      studyUnitCount: 1,
+      idempotent: false
+    });
+  });
+
+  await value.materializeCourseAuthoringPart({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    requestId: "request-materialization-plan-1",
+    expectedCourseRevision: 7,
+    expectedAuthoringPartVersion: 2,
+    planItemUpserts,
+    targetPlanItems,
+    units
+  });
+
+  assert.deepEqual(payload.p_plan_item_upserts, planItemUpserts);
+  assert.deepEqual(payload.p_target_plan_items, targetPlanItems);
+  assert.deepEqual(payload.p_units, units);
+  assert.equal(typeof payload.p_request_hash, "string");
+  assert.equal(payload.p_request_hash.length, 64);
+});
+
 function inspectionDesignSnapshot({ ceiling = 2 } = {}) {
   return {
     contract: "aralearn.study-unit-design-snapshot.v1",

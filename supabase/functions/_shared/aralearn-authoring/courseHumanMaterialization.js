@@ -141,6 +141,121 @@ function resolvePlanItem(plan, collection, value, label) {
   });
 }
 
+function boundedText(value, label, maximum) {
+  if (typeof value !== "string" || value !== value.trim() || !value ||
+      [...value].length > maximum || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(value)) {
+    fail("invalid_human_materialization", `${label} é inválido.`);
+  }
+  return value;
+}
+
+function analysisDefinition(value) {
+  if (!plainObject(value) ||
+      Object.keys(value).length !== 2 ||
+      !Object.hasOwn(value, "nome") || !Object.hasOwn(value, "descricao")) {
+    return null;
+  }
+  return {
+    statement: boundedText(value.nome, "O nome da ideia", 2_000),
+    description: boundedText(value.descricao, "A descrição da ideia", 4_000)
+  };
+}
+
+async function preparePlanInventory({ context, units, newId }) {
+  const analysisUnits = planItems(context.plan, "instructionalAnalysisUnits")
+    .map((item) => ({ ...item }));
+  const evidenceRequirements = planItems(context.plan, "evidenceRequirements")
+    .map((item) => ({ ...item }));
+  const upserts = [];
+
+  const uniqueMatch = (items, statement, label) => {
+    const matches = items.filter((item) =>
+      normalizedText(item?.statement) === normalizedText(statement));
+    if (matches.length > 1) {
+      fail("ambiguous_semantic_inventory_item", `${label} aparece mais de uma vez no repertório.`, 409);
+    }
+    return matches[0] ?? null;
+  };
+
+  for (const unit of units) {
+    for (const requested of unit.aplicacaoPedagogica.ideiasIntroduzidas) {
+      const definition = analysisDefinition(requested);
+      if (!definition) continue;
+      let item = uniqueMatch(analysisUnits, definition.statement, "A ideia");
+      if (item) {
+        const currentDescription = String(item.description || "").trim();
+        if (currentDescription &&
+            normalizedText(currentDescription) !== normalizedText(definition.description)) {
+          fail(
+            "analysis_unit_description_mismatch",
+            `A ideia “${definition.statement}” já existe com outra descrição.`,
+            409
+          );
+        }
+        if (!currentDescription) {
+          item.description = definition.description;
+          upserts.push({
+            id: item.id,
+            kind: "instructional_analysis_unit",
+            position: Number(item.position),
+            statement: item.statement,
+            description: item.description
+          });
+        }
+      } else {
+        item = {
+          id: await newId(`analysis-unit:${normalizedText(definition.statement)}`),
+          position: analysisUnits.reduce((maximum, entry) => {
+            const position = Number(entry?.position);
+            return Math.max(maximum, Number.isSafeInteger(position) ? position : -1);
+          }, -1) + 1,
+          statement: definition.statement,
+          description: definition.description,
+          introducedAt: null,
+          usedBy: [],
+          revisitedBy: []
+        };
+        analysisUnits.push(item);
+        upserts.push({
+          id: item.id,
+          kind: "instructional_analysis_unit",
+          position: item.position,
+          statement: item.statement,
+          description: item.description
+        });
+      }
+    }
+  }
+
+  for (const unit of units) {
+    for (const practice of unit.aplicacaoPedagogica.praticas) {
+      if (typeof practice?.requisito !== "string") continue;
+      const statement = boundedText(practice.requisito, "O critério da prática", 2_000);
+      if (uniqueMatch(evidenceRequirements, statement, "O critério da prática")) continue;
+      const item = {
+        id: await newId(`evidence-requirement:${normalizedText(statement)}`),
+        position: evidenceRequirements.reduce((maximum, entry) => {
+          const position = Number(entry?.position);
+          return Math.max(maximum, Number.isSafeInteger(position) ? position : -1);
+        }, -1) + 1,
+        statement
+      };
+      evidenceRequirements.push(item);
+      upserts.push({
+        id: item.id,
+        kind: "evidence_requirement",
+        position: item.position,
+        statement: item.statement,
+        description: ""
+      });
+    }
+  }
+
+  context.plan.plan.instructionalAnalysisUnits = analysisUnits;
+  context.plan.plan.evidenceRequirements = evidenceRequirements;
+  return { analysisUnits, evidenceRequirements, upserts };
+}
+
 function resolveAnchor(anchors, value) {
   return resolveReference(anchors, value, {
     position: () => Number.NaN,
@@ -253,7 +368,8 @@ function validateUnits(units) {
         !plainObject(unit.aplicacaoPedagogica) ||
         !Number.isSafeInteger(unit.posicao) || unit.posicao < 1 ||
         !Object.hasOwn(MODE, unit.aplicacaoPedagogica.modo) ||
-        !Array.isArray(unit.aplicacaoPedagogica.novidadesIntroduzidas) ||
+        !Array.isArray(unit.aplicacaoPedagogica.ideiasIntroduzidas) ||
+        !Array.isArray(unit.aplicacaoPedagogica.ideiasUtilizadas) ||
         !Array.isArray(unit.aplicacaoPedagogica.explicacoes) ||
         !Array.isArray(unit.aplicacaoPedagogica.praticas) ||
         unit.fontes != null && !Array.isArray(unit.fontes)) {
@@ -265,11 +381,12 @@ function validateUnits(units) {
   }
 }
 
-async function prepareUnits({ adapter, principal, context, units, deadlineAt }) {
+async function prepareUnits({ adapter, principal, context, units, deadlineAt, newId }) {
   const microsequences = partMicrosequences(context.part);
   if (!microsequences.length) {
     fail("human_part_has_no_microsequences", "A Parte ainda não possui Microssequências para materializar.");
   }
+  const inventory = await preparePlanInventory({ context, units, newId });
   const groups = new Map();
   const sourceCache = new Map();
   for (const [unitIndex, unit] of units.entries()) {
@@ -278,12 +395,20 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt }) 
       texts: (item) => [item.title],
       label: "A Microssequência"
     });
-    const noveltyIds = unit.aplicacaoPedagogica.novidadesIntroduzidas.map((value) => (
+    const noveltyIds = unit.aplicacaoPedagogica.ideiasIntroduzidas.map((value) => (
+      resolvePlanItem(
+        context.plan,
+        "instructionalAnalysisUnits",
+        analysisDefinition(value)?.statement ?? value,
+        "A ideia do repertório"
+      ).id
+    ));
+    const usedIds = unit.aplicacaoPedagogica.ideiasUtilizadas.map((value) => (
       resolvePlanItem(
         context.plan,
         "instructionalAnalysisUnits",
         value,
-        "A unidade da análise instrucional"
+        "A ideia do repertório"
       ).id
     ));
     const explanations = unit.aplicacaoPedagogica.explicacoes.map((entry) => {
@@ -316,8 +441,8 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt }) 
         instructionalAnalysisUnitId: resolvePlanItem(
           context.plan,
           "instructionalAnalysisUnits",
-          entry.novidade,
-          "A unidade da análise instrucional"
+          entry.ideia,
+          "A ideia do repertório"
         ).id,
         developedForms: [...entry.formas],
         notApplicable
@@ -364,6 +489,7 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt }) 
       source: unit,
       microsequence,
       noveltyIds,
+      usedIds,
       explanations,
       practices,
       content,
@@ -379,18 +505,28 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt }) 
     if (!groups.has(microsequence.id)) groups.set(microsequence.id, []);
     groups.get(microsequence.id).push(prepared);
   }
-  return [...groups.entries()].map(([microsequenceId, values]) => {
+  const productionPositionById = new Map(microsequences.map((item, index) => [
+    item.id,
+    Number(item.productionPosition ?? item.position ?? index)
+  ]));
+  return {
+    inventory,
+    groups: [...groups.entries()].map(([microsequenceId, values]) => {
     if (new Set(values.map(({ source }) => source.posicao)).size !== values.length) {
       fail(
         "invalid_human_materialization",
         "A mesma Microssequência não pode repetir a posição de uma Unidade."
       );
     }
-    return {
+      return {
       microsequenceId,
       units: values.sort((left, right) => left.source.posicao - right.source.posicao)
-    };
-  });
+      };
+    }).sort((left, right) => (
+      productionPositionById.get(left.microsequenceId) -
+      productionPositionById.get(right.microsequenceId)
+    ))
+  };
 }
 
 function designSnapshot(design, microsequenceId) {
@@ -436,6 +572,7 @@ function unitDesignApplication(unit) {
     mode: MODE[unit.source.aplicacaoPedagogica.modo],
     introducedInstructionalAnalysisUnitIds: unit.noveltyIds,
     explanationApplications: unit.explanations,
+    usedInstructionalAnalysisUnitIds: unit.usedIds,
     practiceApplications: unit.practices,
     componentRefs: componentRefs(unit.content)
   };
@@ -471,7 +608,64 @@ function validateComponentPolicy(componentRefsValue, policy) {
   }
 }
 
-function validatePedagogicalGroup(group) {
+function establishedAnalysisUnitIds(plan, replacedStudyUnitIds) {
+  return new Set(planItems(plan, "instructionalAnalysisUnits")
+    .filter((item) => {
+      const introducedAt = item?.introducedAt;
+      const studyUnitId = introducedAt?.studyUnitId;
+      return typeof item?.id === "string" && item.id &&
+        plainObject(introducedAt) && typeof studyUnitId === "string" && studyUnitId &&
+        !replacedStudyUnitIds.has(studyUnitId);
+    })
+    .map(({ id }) => id));
+}
+
+function orderedPlanItemIds(items, requestedIds) {
+  const requested = new Set(requestedIds);
+  const ordered = items
+    .filter((item) => requested.has(item?.id))
+    .sort((left, right) => Number(left.position) - Number(right.position))
+    .map(({ id }) => id);
+  if (ordered.length !== requested.size) {
+    fail("course_service_unavailable", "O repertório focal divergiu do planejamento.", 503);
+  }
+  return ordered;
+}
+
+function applyGroupTargetPlans(groups, plan) {
+  const analysisItems = planItems(plan, "instructionalAnalysisUnits");
+  const evidenceItems = planItems(plan, "evidenceRequirements");
+  return groups.map((group) => {
+    const analysisIds = new Set();
+    const evidenceIds = new Set();
+    for (const unit of group.units) {
+      const current = unit.design?.targetPlanItems;
+      for (const id of current?.instructionalAnalysisUnitIds || []) analysisIds.add(id);
+      for (const id of current?.evidenceRequirementIds || []) evidenceIds.add(id);
+      for (const id of unit.noveltyIds) analysisIds.add(id);
+      for (const id of unit.usedIds) analysisIds.add(id);
+      for (const explanation of unit.explanations) {
+        analysisIds.add(explanation.instructionalAnalysisUnitId);
+      }
+      for (const practice of unit.practices) {
+        evidenceIds.add(practice.evidenceRequirementId);
+      }
+    }
+    const targetPlanItems = {
+      instructionalAnalysisUnitIds: orderedPlanItemIds(analysisItems, analysisIds),
+      evidenceRequirementIds: orderedPlanItemIds(evidenceItems, evidenceIds)
+    };
+    for (const unit of group.units) {
+      unit.design = { ...unit.design, targetPlanItems };
+    }
+    return {
+      didacticMicrosequenceId: group.microsequenceId,
+      ...targetPlanItems
+    };
+  });
+}
+
+function validatePedagogicalGroup(group, establishedAnalysis) {
   const firstDesign = group.units[0]?.design;
   const targets = firstDesign?.targetPlanItems;
   if (!plainObject(targets)) {
@@ -480,11 +674,11 @@ function validatePedagogicalGroup(group) {
   const targetAnalysis = new Set(targets.instructionalAnalysisUnitIds || []);
   const targetEvidence = new Set(targets.evidenceRequirementIds || []);
 
-  const introducedAt = new Map();
+  const representedAnalysis = new Set();
+  const introducedInGroup = new Set();
   const developedByAnalysis = new Map([...targetAnalysis].map((id) => [id, new Set()]));
   const notApplicableByAnalysis = new Map([...targetAnalysis].map((id) => [id, new Set()]));
-  const requiredFormsByAnalysis = new Map([...targetAnalysis].map((id) => [id, new Set()]));
-  const explanationsAtIntroduction = new Set();
+  const requiredFormsByAnalysis = new Map();
   const practiceByEvidence = new Map([...targetEvidence].map((id) => [id, {
     opportunities: new Set(),
     operation: null,
@@ -516,22 +710,34 @@ function validatePedagogicalGroup(group) {
         mode !== "expository" && unit.content.role !== "practice") {
       fail(
         "human_materialization_mode_mismatch",
-        "O papel da StudyUnit não corresponde ao modo da aplicação pedagógica."
+        "O papel da unidade de estudo não corresponde ao modo da aplicação pedagógica."
       );
     }
+    const noveltySet = new Set(unit.noveltyIds);
+    const usedSet = new Set(unit.usedIds);
+    const explanationIds = unit.explanations.map((entry) =>
+      entry.instructionalAnalysisUnitId);
+    const explanationSet = new Set(explanationIds);
     if (new Set(unit.noveltyIds).size !== unit.noveltyIds.length ||
-        new Set(unit.explanations.map((entry) => entry.instructionalAnalysisUnitId)).size !==
-          unit.explanations.length) {
-      fail("invalid_human_materialization", "Uma Unidade repete novidade ou explicação.");
+        usedSet.size !== unit.usedIds.length ||
+        explanationSet.size !== unit.explanations.length) {
+      fail("invalid_human_materialization", "Uma unidade repete ideia introduzida, usada ou explicada.");
+    }
+    if ([...usedSet].some((id) => noveltySet.has(id) || explanationSet.has(id))) {
+      fail(
+        "invalid_human_materialization",
+        "Uma ideia usada sem reexplicação não pode ser também introduzida ou retomada na mesma unidade."
+      );
     }
     if (unit.noveltyIds.some((id) => !targetAnalysis.has(id)) ||
+        unit.usedIds.some((id) => !targetAnalysis.has(id)) ||
         unit.explanations.some(({ instructionalAnalysisUnitId }) =>
           !targetAnalysis.has(instructionalAnalysisUnitId)) ||
         unit.practices.some(({ evidenceRequirementId }) =>
           !targetEvidence.has(evidenceRequirementId))) {
       fail(
         "human_materialization_outside_plan",
-        "A aplicação pedagógica referencia item fora do inventário da Microssequência."
+        "A aplicação pedagógica referencia uma ideia fora do repertório da microssequência."
       );
     }
     if (["expository", "mixed"].includes(mode) && unit.noveltyIds.length > ceiling) {
@@ -545,23 +751,37 @@ function validatePedagogicalGroup(group) {
         mode === "mixed" && (unit.explanations.length === 0 || unit.practices.length === 0)) {
       fail("human_materialization_mode_mismatch", "O modo da Unidade não corresponde à aplicação declarada.");
     }
-    for (const id of unit.noveltyIds) {
-      if (introducedAt.has(id)) {
-        fail("human_materialization_duplicate_introduction", "Uma AnalysisUnit foi introduzida mais de uma vez.");
+
+    const knownBeforeUnit = new Set(establishedAnalysis);
+    for (const id of unit.usedIds) {
+      if (!knownBeforeUnit.has(id)) {
+        fail(
+          "human_materialization_use_before_introduction",
+          "Uma unidade usa uma ideia antes que ela tenha sido estabelecida no percurso."
+        );
       }
-      introducedAt.set(id, unit.source.posicao);
+    }
+    for (const id of unit.noveltyIds) {
+      if (establishedAnalysis.has(id)) {
+        fail("human_materialization_duplicate_introduction", "Uma ideia foi introduzida mais de uma vez.");
+      }
+      if (!explanationSet.has(id)) {
+        fail(
+          "human_materialization_incomplete_analysis_inventory",
+          "Toda ideia nova precisa ser explicada na unidade em que é introduzida."
+        );
+      }
+      introducedInGroup.add(id);
+      requiredFormsByAnalysis.set(id, new Set(requiredForms));
     }
     for (const explanation of unit.explanations) {
       const id = explanation.instructionalAnalysisUnitId;
-      requiredForms.forEach((form) => requiredFormsByAnalysis.get(id)?.add(form));
-      const introductionPosition = introducedAt.get(id);
-      if (introductionPosition === undefined || introductionPosition > unit.source.posicao) {
+      if (!noveltySet.has(id) && !knownBeforeUnit.has(id)) {
         fail(
           "human_materialization_explanation_before_introduction",
-          "Uma explicação aparece antes da introdução da AnalysisUnit."
+          "Uma explicação retoma uma ideia antes que ela tenha sido estabelecida no percurso."
         );
       }
-      if (introductionPosition === unit.source.posicao) explanationsAtIntroduction.add(id);
       const developed = developedByAnalysis.get(id);
       const notApplicable = notApplicableByAnalysis.get(id);
       for (const form of explanation.developedForms) {
@@ -577,6 +797,10 @@ function validatePedagogicalGroup(group) {
         notApplicable.add(form);
       }
     }
+    unit.noveltyIds.forEach((id) => establishedAnalysis.add(id));
+    unit.noveltyIds.forEach((id) => representedAnalysis.add(id));
+    unit.usedIds.forEach((id) => representedAnalysis.add(id));
+    explanationIds.forEach((id) => representedAnalysis.add(id));
     for (const practice of unit.practices) {
       const state = practiceByEvidence.get(practice.evidenceRequirementId);
       state.minimum = Math.max(state.minimum, practiceMinimum);
@@ -594,19 +818,18 @@ function validatePedagogicalGroup(group) {
     validateComponentPolicy(componentRefs(unit.content), policy);
   }
 
-  if ([...targetAnalysis].some((id) => !introducedAt.has(id) ||
-      !explanationsAtIntroduction.has(id))) {
+  if ([...targetAnalysis].some((id) => !representedAnalysis.has(id))) {
     fail(
       "human_materialization_incomplete_analysis_inventory",
-      "Toda AnalysisUnit da Microssequência precisa ser introduzida uma vez e explicada na Unit de introdução."
+      "Toda ideia focal da microssequência precisa aparecer como introdução, uso ou retomada."
     );
   }
-  for (const id of targetAnalysis) {
+  for (const id of introducedInGroup) {
     const covered = new Set([
       ...developedByAnalysis.get(id),
       ...notApplicableByAnalysis.get(id)
     ]);
-    if ([...requiredFormsByAnalysis.get(id)].some((form) => !covered.has(form))) {
+    if ([...(requiredFormsByAnalysis.get(id) || [])].some((form) => !covered.has(form))) {
       fail(
         "human_materialization_missing_explanation_form",
         "As formas de explicação requeridas não foram desenvolvidas nem justificadas como não aplicáveis."
@@ -624,6 +847,11 @@ function validatePedagogicalGroup(group) {
   }
 }
 
+function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
+  const establishedAnalysis = establishedAnalysisUnitIds(plan, replacedStudyUnitIds);
+  for (const group of groups) validatePedagogicalGroup(group, establishedAnalysis);
+}
+
 export async function materializeHumanCoursePart({
   adapter,
   principal,
@@ -633,7 +861,7 @@ export async function materializeHumanCoursePart({
   deadlineAt = null
 }) {
   validateUnits(units);
-  let preparedCount = 0;
+  let producedPartPosition = null;
   const receipt = await executeTrustedCourseWrite({
     load: () => resolveHumanCourseContext({
       adapter,
@@ -643,13 +871,16 @@ export async function materializeHumanCoursePart({
       deadlineAt
     }),
     async build(context, { newId }) {
-      const groups = await prepareUnits({
+      producedPartPosition = Number(context.part.position) + 1;
+      const prepared = await prepareUnits({
         adapter,
         principal,
         context,
         units,
-        deadlineAt
+        deadlineAt,
+        newId
       });
+      const groups = prepared.groups;
       const plannedMicrosequenceIds = new Set(
         partMicrosequences(context.part).map(({ id }) => id)
       );
@@ -699,14 +930,21 @@ export async function materializeHumanCoursePart({
           deadlineAt
         })])
       ));
-      const preparedUnits = [];
       for (const group of groups) {
         for (const unit of group.units) {
           const slot = `${group.microsequenceId}\0${unit.source.posicao}`;
           const scope = scopeBySlot.get(slot);
           unit.design = designByScope.get(`${scope.kind}\0${scope.ref}`);
         }
-        validatePedagogicalGroup(group);
+      }
+      const targetPlanItems = applyGroupTargetPlans(groups, context.plan);
+      validatePedagogicalPart(
+        groups,
+        context.plan,
+        new Set([...existingBySlot.values()].map(({ studyUnitId }) => studyUnitId))
+      );
+      const preparedUnits = [];
+      for (const group of groups) {
         for (const unit of group.units) {
           const slot = `${group.microsequenceId}\0${unit.source.posicao}`;
           const existing = existingBySlot.get(slot) ?? null;
@@ -724,13 +962,14 @@ export async function materializeHumanCoursePart({
         }
       }
       preparedUnits.sort((left, right) => left.inputIndex - right.inputIndex);
-      preparedCount = preparedUnits.length;
       return {
         principal,
         courseId: context.course.id,
         authoringPartId: context.part.id,
         expectedCourseRevision: context.course.revision,
         expectedAuthoringPartVersion: context.part.version,
+        planItemUpserts: prepared.inventory.upserts,
+        targetPlanItems,
         units: preparedUnits.map((entry) => {
           const unit = { ...entry };
           delete unit.inputIndex;
@@ -742,14 +981,10 @@ export async function materializeHumanCoursePart({
     commit: (request) => adapter.materializeCourseAuthoringPart(request)
   });
   return {
-    result: `${preparedCount} ${preparedCount === 1
-      ? "Unidade foi produzida"
-      : "Unidades foram produzidas"} na Parte ${String(part)}.`,
+    result: producedPartPosition === 1
+      ? "Primeira parte produzida."
+      : `Parte ${producedPartPosition} produzida.`,
     deepLink: receipt.deepLink ?? null,
-    nextDecision: "Quer revisar as Unidades produzidas?",
-    context: {
-      part: String(part),
-      studyUnitCount: preparedCount
-    }
+    nextDecision: "Posso preparar a próxima parte."
   };
 }

@@ -374,13 +374,81 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-rfc-1035-section-2" }]
   }]);
-  assert.equal(receipt.result, "1 Unidade foi produzida na Parte 1.");
+  assert.equal(receipt.result, "Primeira parte produzida.");
   assert.equal(receipt.deepLink, `#/authoring/courses/${COURSE_ID}?section=content`);
-  assert.deepEqual(receipt.context, {
-    part: "1",
-    studyUnitCount: 1
-  });
+  assert.equal(receipt.nextDecision, "Posso preparar a próxima parte.");
+  assert.equal(Object.hasOwn(receipt, "context"), false);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes(COURSE_ID), false);
+});
+
+test("primeira materialização cria o repertório necessário sem exigir planejamento interno do autor", async () => {
+  const value = adapterFixture();
+  value.getCourseInstructionalPlan = async () => ({
+    contract: "aralearn.course-instructional-plan.v3",
+    courseRevision: 8,
+    plan: {
+      version: 3,
+      title: "Curso de Redes",
+      instructionalAnalysisUnits: [],
+      evidenceRequirements: [],
+      parts: [{
+        id: PART_ID,
+        position: 0,
+        title: "Fundamentos",
+        version: 2,
+        microsequences: [{ id: "micro-dns", productionPosition: 0, title: "DNS" }]
+      }]
+    }
+  });
+  const inheritedDesign = value.getCourseDesign;
+  value.getCourseDesign = async () => ({
+    ...await inheritedDesign(),
+    targetPlanItems: {
+      instructionalAnalysisUnitIds: [],
+      evidenceRequirementIds: []
+    }
+  });
+  const firstUnit = unit();
+  firstUnit.aplicacaoPedagogica.ideiasIntroduzidas = [{
+    nome: "associação entre nome e endereço",
+    descricao: "Relação pela qual uma consulta de nome devolve um endereço utilizável."
+  }];
+  firstUnit.aplicacaoPedagogica.explicacoes[0].ideia =
+    "associação entre nome e endereço";
+
+  await materializeHumanCoursePart({
+    adapter: value,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [firstUnit]
+  });
+
+  const [write] = value.calls;
+  assert.equal(write.planItemUpserts.length, 1);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(write.planItemUpserts[0])
+      .filter(([key]) => key !== "id")),
+    {
+      kind: "instructional_analysis_unit",
+      position: 0,
+      statement: "associação entre nome e endereço",
+      description: "Relação pela qual uma consulta de nome devolve um endereço utilizável."
+    }
+  );
+  assert.match(
+    write.planItemUpserts[0].id,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+  );
+  assert.deepEqual(write.targetPlanItems, [{
+    didacticMicrosequenceId: "micro-dns",
+    instructionalAnalysisUnitIds: [write.planItemUpserts[0].id],
+    evidenceRequirementIds: []
+  }]);
+  assert.deepEqual(
+    write.units[0].designSnapshot.instructionalAnalysisUnitIds,
+    [write.planItemUpserts[0].id]
+  );
 });
 
 test("#272 materialização falha cedo quando a Âncora humana não existe", async () => {
