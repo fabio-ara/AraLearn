@@ -4,8 +4,9 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "A autoria parte de objetivo, público, pré-requisitos, escopo e fontes e segue para o mapa completo de módulos, lições e microssequências. O chat resume temas e progressão; o detalhe fica no AraLearn.",
   "A decisão da pessoa autora cobre o mapa apresentado; conteúdo futuro é uma etapa distinta. Partes são lotes operacionais posteriores e podem mudar sem alterar o currículo.",
   "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa; condições fixadas pelo pesquisador prevalecem. O repertório distingue novidade, uso e retomada; dependências vêm antes do uso.",
-  "Unidades focalizadas e conectadas combinam explicação e prática e usam componentes e fontes por função. A conversa separa pessoa autora de público estudante e mantém substantivos comuns em minúsculas.",
-  "O resumo global apresenta assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas aparecem à pessoa autora como impacto e retomada em linguagem humana."
+  "Unidades focalizadas conectam explicação e prática; componentes e fontes cumprem função. Separe pessoa autora de público estudante; use substantivos comuns em minúsculas.",
+  "O resumo global mostra assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas aparecem como impacto e retomada em linguagem humana.",
+  "Quando uma tarefa devolver um link, reproduza o endereço exato como link Markdown no chat."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({

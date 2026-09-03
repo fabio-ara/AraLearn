@@ -241,6 +241,10 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   assert.match(openApi.info.description, /Partes são lotes operacionais.*sem alterar o currículo/iu);
   assert.match(openApi.info.description, /pessoa autora.*público estudante.*minúsculas/iu);
   assert.match(openApi.info.description, /não estatísticas da estrutura/iu);
+  assert.match(
+    openApi.info.description,
+    /devolver um link.*endereço exato.*link Markdown no chat/iu
+  );
   assert.doesNotMatch(
     openApi.info.description,
     /aprovada?,?\s+materialize|calibre silenciosamente|produza (?:agora|o conteúdo aprovado)|no chat, só/iu

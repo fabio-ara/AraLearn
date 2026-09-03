@@ -17,6 +17,9 @@ import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import {
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 
@@ -357,6 +360,21 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
   assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.1");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
+});
+
+test("MCP orienta o chat a reproduzir o link retornado", async () => {
+  const response = await mcpHandler()(request("initialize", {
+    protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
+    capabilities: {},
+    clientInfo: { name: "chat-de-aceitação", version: "1.0.0" }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.instructions, COURSE_AUTHORING_SERVER_INSTRUCTIONS);
+  assert.match(
+    payload.result.instructions,
+    /devolver um link.*endereço exato.*link Markdown no chat/iu
+  );
 });
 
 test("consultar_planejamento projeta mapa e cobertura humanos sem identidades técnicas", async () => {
@@ -1453,7 +1471,7 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
   );
 });
 
-test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnico", async () => {
+test("chamada MCP entrega o deep link como link Markdown sem expor estado técnico", async () => {
   const response = await mcpHandler()(request("tools/call", {
     name: "retomar_curso",
     arguments: { titulo: "Redes para iniciantes" }
@@ -1464,8 +1482,15 @@ test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnic
   assert.equal(Object.hasOwn(payload.result.structuredContent, "ok"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "requestId"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "data"), false);
-  assert.doesNotMatch(payload.result.content[0].text, /https?:\/\//u);
-  assert.match(payload.result.content[0].text, /Abrir no AraLearn\./u);
+  assert.match(payload.result.structuredContent.deepLink, new RegExp(
+    `^https://app\\.example/#/authoring/courses/${COURSE_ID}\\?section=planning`,
+    "u"
+  ));
+  assert.ok(
+    payload.result.content[0].text.includes(
+      `[Abrir no AraLearn](${payload.result.structuredContent.deepLink})`
+    )
+  );
   const serializedContext = JSON.stringify(payload.result.structuredContent.context);
   assert.doesNotMatch(serializedContext, /courseId|requestId|revision|version|hash|path|resultFacts/iu);
 

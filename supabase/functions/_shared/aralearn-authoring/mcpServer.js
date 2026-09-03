@@ -248,7 +248,7 @@ function toolSuccess(value) {
     : "A tarefa foi concluída.";
   const text = [
     summary,
-    value?.deepLink ? "Abrir no AraLearn." : null,
+    value?.deepLink ? `[Abrir no AraLearn](${value.deepLink})` : null,
     value?.nextDecision ?? null
   ].filter(Boolean).join(" ");
   return {
