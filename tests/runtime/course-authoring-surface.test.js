@@ -16,6 +16,8 @@ const SECOND_PART_ID = "40000000-0000-4000-8000-000000000004";
 const OUTCOME_ID = "50000000-0000-4000-8000-000000000005";
 const ANALYSIS_ID = "60000000-0000-4000-8000-000000000006";
 const EVIDENCE_ID = "70000000-0000-4000-8000-000000000007";
+const FOUNDATIONS_SCOPE_ID = "80000000-0000-4000-8000-000000000008";
+const TRANSFER_SCOPE_ID = "90000000-0000-4000-8000-000000000009";
 const PLAN_ID = "a0000000-0000-4000-8000-00000000000a";
 
 class FakeRoot {
@@ -190,6 +192,89 @@ function listPage(overrides = {}) {
   };
 }
 
+function curriculumFixture() {
+  return {
+    modules: [{
+      id: "module-a",
+      position: 0,
+      title: "Base",
+      lessons: [{
+        id: "lesson-a",
+        position: 0,
+        title: "Relações",
+        microsequences: [{
+          id: "micro-a",
+          position: 0,
+          title: "Primeiro caso",
+          goal: "Explicar a primeira relação.",
+          role: "explain"
+        }, {
+          id: "micro-b",
+          position: 1,
+          title: "Segundo caso",
+          goal: "Praticar a relação em outro caso.",
+          role: "practice"
+        }]
+      }]
+    }, {
+      id: "module-b",
+      position: 1,
+      title: "Aplicações",
+      lessons: [{
+        id: "lesson-b",
+        position: 0,
+        title: "Casos de transferência",
+        microsequences: [{
+          id: "micro-c",
+          position: 0,
+          title: "Aplicação em novos contextos",
+          goal: "Comparar relações em situações novas.",
+          role: "practice"
+        }]
+      }, {
+        id: "lesson-c",
+        position: 1,
+        title: "Evolução e limites",
+        microsequences: [{
+          id: "micro-d",
+          position: 0,
+          title: "Quando uma relação deixa de valer",
+          goal: "Reconhecer quando uma associação precisa ser revista.",
+          role: "explain"
+        }]
+      }]
+    }]
+  };
+}
+
+function curriculumScopeFixture({ foundationsState = "planned" } = {}) {
+  return [{
+    id: FOUNDATIONS_SCOPE_ID,
+    position: 0,
+    statement: "Compreender relações fundamentais e seu uso imediato.",
+    state: foundationsState,
+    curriculumTargets: [{
+      moduleId: "module-a",
+      lessonId: "lesson-a",
+      didacticMicrosequenceIds: ["micro-a", "micro-b"]
+    }]
+  }, {
+    id: TRANSFER_SCOPE_ID,
+    position: 1,
+    statement: "Transferir relações e reconhecer quando precisam ser revistas.",
+    state: "planned",
+    curriculumTargets: [{
+      moduleId: "module-b",
+      lessonId: "lesson-b",
+      didacticMicrosequenceIds: ["micro-c"]
+    }, {
+      moduleId: "module-b",
+      lessonId: "lesson-c",
+      didacticMicrosequenceIds: ["micro-d"]
+    }]
+  }];
+}
+
 function authoringPlanFixture(overrides = {}) {
   return {
     contract: "aralearn.course-instructional-plan.v2",
@@ -202,6 +287,8 @@ function authoringPlanFixture(overrides = {}) {
       objective: "Compreender relações essenciais.",
       audience: "Pessoas iniciantes.",
       scope: "Relações fundamentais.",
+      curriculum: curriculumFixture(),
+      curriculumScopeItems: curriculumScopeFixture(),
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [{
         id: OUTCOME_ID,
@@ -300,7 +387,7 @@ function courseDesignFixture({
   const supportedScopes = ["course", "lesson", "didactic_microsequence", "study_unit"];
   const definitions = [{
     id: "new_analysis_unit_ceiling_per_expository_study_unit",
-    label: "Novas unidades de análise por Unidade expositiva",
+    label: "Novas unidades de análise por unidade expositiva",
     valueSchema: { type: "integer", minimum: 1, maximum: 8 },
     defaultValue: 2
   }, {
@@ -746,46 +833,84 @@ test("menu de tarefas fecha antes de trocar de seção", async () => {
   surface.destroy();
 });
 
-test("Planejamento mostra uma Parte focal sem painel de execução nem segunda hierarquia", async () => {
-  const root = new FakeRoot();
+test("Planejamento mostra o mapa curricular completo antes e separado dos lotes de produção", async () => {
   let outlineReads = 0;
   let inspectionReads = 0;
   const basePlan = authoringPlanFixture();
-  const surface = createCourseAuthoringSurface({
+  const plannedParts = [basePlan.plan.parts[0], {
+    ...basePlan.plan.parts[1],
+    title: "<img src=x onerror=alert(1)>",
+    microsequences: [{
+      id: "micro-c",
+      productionPosition: 0,
+      title: "Aplicação em novos contextos",
+      goal: "Comparar relações em situações novas.",
+      role: "practice",
+      curriculumPath: {
+        moduleId: "module-b",
+        moduleTitle: "Aplicações",
+        lessonId: "lesson-b",
+        lessonTitle: "Casos de transferência"
+      },
+      studyUnitCount: 0
+    }],
+    progress: {
+      state: "planned",
+      microsequenceCount: 1,
+      studyUnitCount: 0
+    }
+  }];
+  const responseWithParts = (parts) => ({
+    ...basePlan,
+    plan: {
+      ...basePlan.plan,
+      objective: "Comparar <origem> e aplicação.",
+      curriculumScopeItems: curriculumScopeFixture({
+        foundationsState: parts.some((part) => part.progress.state === "materialized")
+          ? "developed"
+          : "planned"
+      }),
+      parts,
+      counts: {
+        ...basePlan.plan.counts,
+        authoringPartCount: parts.length,
+        linkedDidacticMicrosequenceCount: parts.reduce(
+          (total, part) => total + part.microsequences.length,
+          0
+        ),
+        studyUnitCount: parts.reduce(
+          (total, part) => total + part.progress.studyUnitCount,
+          0
+        )
+      }
+    }
+  });
+  const controllerFor = (parts) => controllerFixture({
+    async getCourse(courseId) {
+      return {
+        courseId,
+        title: "Fundamentos",
+        goal: "Comparar <origem> e aplicação.",
+        revision: 5,
+        ownership: "owned",
+        canEdit: true
+      };
+    },
+    async loadAuthoringPlan() {
+      return responseWithParts(parts);
+    },
+    async loadAuthoringOutline() {
+      outlineReads += 1;
+      throw new Error("Planejamento não deve carregar a composição materializada do curso.");
+    },
+    async loadAuthoringStudyUnits() {
+      inspectionReads += 1;
+      throw new Error("Planejamento não deve carregar unidades de estudo materializadas.");
+    }
+  });
+  const surfaceFor = (root, parts) => createCourseAuthoringSurface({
     root,
-    controller: controllerFixture({
-      async getCourse(courseId) {
-        return {
-          courseId,
-          title: "Fundamentos",
-          goal: "Comparar <origem> e aplicação.",
-          revision: 5,
-          ownership: "owned",
-          canEdit: true
-        };
-      },
-      async loadAuthoringPlan() {
-        return {
-          ...basePlan,
-          plan: {
-            ...basePlan.plan,
-            objective: "Comparar <origem> e aplicação.",
-            parts: [basePlan.plan.parts[0], {
-              ...basePlan.plan.parts[1],
-              title: "<img src=x onerror=alert(1)>"
-            }]
-          }
-        };
-      },
-      async loadAuthoringOutline() {
-        outlineReads += 1;
-        throw new Error("Planejamento não deve carregar a composição do Curso.");
-      },
-      async loadAuthoringStudyUnits() {
-        inspectionReads += 1;
-        throw new Error("Planejamento não deve carregar Unidades de estudo.");
-      },
-    }),
+    controller: controllerFor(parts),
     locationValue: {
       pathname: "/",
       search: "",
@@ -793,7 +918,85 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
     },
     windowValue: new FakeWindow()
   });
+  const curriculumMapFrom = (html) => {
+    const start = html.indexOf("course-authoring-curriculum-map");
+    assert.ok(start >= 0, "O planejamento precisa expor o mapa curricular global.");
+    const coverageStart = html.indexOf("course-authoring-scope-coverage", start);
+    const lotsStart = html.indexOf("course-authoring-parts", start);
+    const end = [coverageStart, lotsStart].filter((index) => index > start).sort(
+      (left, right) => left - right
+    )[0];
+    return html.slice(start, end);
+  };
+  const assertCompleteCurriculumMap = (html) => {
+    const curriculumMap = curriculumMapFrom(html);
+    assert.match(curriculumMap, /Mapa curricular/u);
+    assert.match(
+      curriculumMap,
+      /Base[\s\S]*Relações[\s\S]*Primeiro caso[\s\S]*Explicar a primeira relação\.[\s\S]*Segundo caso[\s\S]*Praticar a relação em outro caso\./u
+    );
+    assert.match(
+      curriculumMap,
+      /Aplicações[\s\S]*Casos de transferência[\s\S]*Aplicação em novos contextos[\s\S]*Comparar relações em situações novas\.[\s\S]*Evolução e limites[\s\S]*Quando uma relação deixa de valer[\s\S]*Reconhecer quando uma associação precisa ser revista\./u
+    );
+    assert.doesNotMatch(curriculumMap, /\bpartes?\b/iu);
+    return curriculumMap;
+  };
+  const assertScopeCoverage = (html, { foundationsState }) => {
+    const mapStart = html.indexOf("course-authoring-curriculum-map");
+    const coverageStart = html.indexOf("course-authoring-scope-coverage", mapStart);
+    const lotsStart = html.indexOf("course-authoring-parts", coverageStart);
+    assert.ok(coverageStart > mapStart, "A cobertura humana deve complementar o mapa curricular.");
+    if (lotsStart >= 0) {
+      assert.ok(coverageStart < lotsStart, "A cobertura do escopo deve vir antes dos lotes.");
+    }
+    const coverage = html.slice(coverageStart, lotsStart > coverageStart ? lotsStart : undefined);
+    assert.match(
+      coverage,
+      /<details[^>]*class="[^"]*course-authoring-scope-coverage[^"]*"[\s\S]*?<summary[^>]*>[\s\S]*?Cobertura do escopo[\s\S]*?<\/summary>/u,
+      "A inspeção detalhada da cobertura deve usar divulgação progressiva."
+    );
+    assert.match(
+      coverage,
+      /Compreender relações fundamentais e seu uso imediato\.[\s\S]*Base[\s\S]*Relações[\s\S]*Primeiro caso[\s\S]*Segundo caso/u
+    );
+    assert.match(
+      coverage,
+      /Transferir relações e reconhecer quando precisam ser revistas\.[\s\S]*Aplicações[\s\S]*Casos de transferência[\s\S]*Aplicação em novos contextos[\s\S]*Evolução e limites[\s\S]*Quando uma relação deixa de valer/u
+    );
+    assert.match(coverage, new RegExp(foundationsState, "u"));
+    assert.match(coverage, /Planejado/u);
+    assert.doesNotMatch(
+      coverage,
+      /StudyUnits?|AnalysisUnits?|instructional|evidenceRequirements|curriculumScopeItems|curriculumTargets/u
+    );
+    const visibleCoverage = coverage.replace(/<[^>]*>/gu, " ").replace(/\s+/gu, " ");
+    for (const internalId of [FOUNDATIONS_SCOPE_ID, TRANSFER_SCOPE_ID, "module-a", "lesson-a"]) {
+      assert.doesNotMatch(visibleCoverage, new RegExp(internalId, "u"));
+    }
+    assert.doesNotMatch(
+      visibleCoverage,
+      /\b\d+\s+(?:itens|módulos|lições|microssequências|unidades)\b/iu,
+      "A pessoa autora deve inspecionar cobertura, não contagens internas."
+    );
+  };
 
+  const mapOnlyRoot = new FakeRoot();
+  const mapOnlySurface = surfaceFor(mapOnlyRoot, []);
+  assert.equal(await mapOnlySurface.open(), true);
+  assertCompleteCurriculumMap(mapOnlyRoot.innerHTML);
+  assertScopeCoverage(mapOnlyRoot.innerHTML, { foundationsState: "Planejado" });
+  assert.doesNotMatch(mapOnlyRoot.innerHTML, /Desenvolvido/u);
+  assert.equal(
+    (mapOnlyRoot.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length,
+    0,
+    "O mapa precisa ser inspecionável antes que exista qualquer lote de produção."
+  );
+  assert.doesNotMatch(mapOnlyRoot.innerHTML, /StudyUnits?|AnalysisUnits?|evidenceRequirements/u);
+  mapOnlySurface.destroy();
+
+  const root = new FakeRoot();
+  const surface = surfaceFor(root, plannedParts);
   assert.equal(await surface.open(), true);
   assert.equal(outlineReads, 0);
   assert.equal(inspectionReads, 0);
@@ -802,23 +1005,47 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; e aplicação\./u);
   assert.doesNotMatch(root.innerHTML, /7–12|Escolha automática/u);
-  assert.match(root.innerHTML, /Parte 1/u);
-  assert.equal(
-    (root.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length,
-    1,
-    "O Planejamento deve renderizar somente a Parte focal."
+  assertCompleteCurriculumMap(root.innerHTML);
+  assertScopeCoverage(root.innerHTML, { foundationsState: "Desenvolvido" });
+
+  const curriculumMapStart = root.innerHTML.indexOf("course-authoring-curriculum-map");
+  const productionPartsStart = root.innerHTML.indexOf("course-authoring-parts");
+  assert.ok(
+    productionPartsStart > curriculumMapStart,
+    "O mapa curricular deve vir antes dos lotes operacionais de produção."
   );
-  assert.match(root.innerHTML, /class="course-authoring-part-navigation" aria-label="Navegação entre Partes"/u);
-  assert.match(root.innerHTML, /<summary aria-label="Escolher Parte\. Parte 2 de 2:[^"]+" title="Escolher Parte"><span>Parte 2 de 2<\/span>/u);
+  const productionParts = root.innerHTML.slice(productionPartsStart);
+  assert.match(productionParts, /Lotes de produção/u);
+  assert.match(
+    productionParts,
+    /divisão[\s\S]*produção[\s\S]*(?:não altera|sem mudar)[\s\S]*mapa curricular/iu,
+    "A interface deve explicar que as partes organizam a produção sem virar hierarquia curricular."
+  );
+  assert.match(productionParts, /Relações iniciais/u);
+  assert.match(productionParts, /Materializar exemplos fundamentais\./u);
+  assert.match(productionParts, /&lt;img src=x onerror=alert\(1\)&gt;/u);
+  assert.match(productionParts, /Transferir relações para novos contextos\./u);
+  assert.doesNotMatch(
+    productionParts,
+    /Quando uma relação deixa de valer/u,
+    "Uma microssequência pode pertencer ao mapa curricular antes de entrar em um lote."
+  );
+  assert.equal(
+    (productionParts.match(/data-course-authoring-part-card=/gu) || []).length,
+    2,
+    "As partes aprovadas devem permanecer visíveis como lotes de produção separados."
+  );
+  assert.doesNotMatch(root.innerHTML, /Uma Parte em foco/iu);
+  assert.doesNotMatch(root.innerHTML, /class="course-authoring-part-navigation"/u);
+  assert.match(
+    root.innerHTML,
+    new RegExp(`section=planning&amp;authoringPartId=${PART_ID}`, "u")
+  );
   assert.match(
     root.innerHTML,
     new RegExp(`section=planning&amp;authoringPartId=${SECOND_PART_ID}`, "u")
   );
-  assert.doesNotMatch(root.innerHTML, /<details open><summary aria-label="Escolher Parte\./u);
-  assert.match(
-    root.innerHTML,
-    /<div class="course-authoring-part-counts" aria-label="Estrutura e conteúdo"><span>0 microssequências<\/span><span>0 unidades<\/span><\/div>/u
-  );
+  assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?|evidenceRequirements/u);
   assert.doesNotMatch(
     root.innerHTML,
     /course-authoring-(?:materialization|recent-activity)|Etapas e resultados|Fatos da etapa|resultFacts|contextHash|>MCP<|>Actions</iu
@@ -827,6 +1054,7 @@ test("Planejamento mostra uma Parte focal sem painel de execução nem segunda h
   assert.doesNotMatch(root.innerHTML, /course-authoring-part-tools|Adicionar Parte|Editar Parte/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
+  surface.destroy();
 });
 
 
@@ -1138,7 +1366,8 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
   assert.doesNotMatch(root.innerHTML, /Interpretação estruturada|Revisar interpretação/u);
   assert.match(root.innerHTML, /<h3 id="course-design-guidance-title">Direção editorial<\/h3>/u);
   assert.match(root.innerHTML, /Nunca comprime nem remove conteúdo necessário/iu);
-  assert.match(root.innerHTML, /distribui em mais StudyUnits/iu);
+  assert.match(root.innerHTML, /distribui em mais unidades de estudo/iu);
+  assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
   assert.match(root.innerHTML, /<h3 id="course-design-policy-title">Componentes<\/h3>/u);
   assert.doesNotMatch(root.innerHTML, /Planejado × aplicado|materialização|contextHash/iu);
   assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 32);
@@ -1230,10 +1459,9 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.match(root.innerHTML, /Decisão definida no Curso/u);
 });
 
-test("Microssequência mostra cobertura estável do planejamento somente para leitura", async () => {
+test("Microssequência mostra parâmetros em linguagem humana sem expor o metamodelo do plano", async () => {
   const root = new FakeRoot();
   const revision = 5;
-  let planReads = 0;
   const scope = {
     kind: "didactic_microsequence",
     ref: "micro-a",
@@ -1272,7 +1500,6 @@ test("Microssequência mostra cobertura estável do planejamento somente para le
         };
       },
       async loadAuthoringPlan() {
-        planReads += 1;
         return { ...authoringPlanFixture(), courseRevision: revision };
       },
       async loadCourseDesign() {
@@ -1294,17 +1521,12 @@ test("Microssequência mostra cobertura estável do planejamento somente para le
   });
 
   assert.equal(await surface.open(), true);
-  assert.equal(planReads, 1);
-  assert.match(root.innerHTML, /StudyUnits desta Microssequência usam estes valores/iu);
-  assert.match(root.innerHTML, /Cada Unidade preserva a configuração usada na produção/iu);
-  assert.match(root.innerHTML, /Abrir StudyUnit/u);
-  assert.doesNotMatch(root.innerHTML, /Abrir studyunit/u);
-  assert.match(root.innerHTML, /Cobertura planejada desta Microssequência/u);
-  assert.match(root.innerHTML, /Definida no planejamento da Parte/u);
-  assert.match(root.innerHTML, /Relação entre grandezas/u);
-  assert.doesNotMatch(root.innerHTML, /Resolver um caso novo/u);
+  assert.match(root.innerHTML, /unidades de estudo desta microssequência usam estes valores/iu);
+  assert.match(root.innerHTML, /Cada unidade preserva a configuração usada na produção/iu);
+  assert.match(root.innerHTML, /Abrir unidade de estudo/iu);
+  assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
+  assert.doesNotMatch(root.innerHTML, /Requisitos de evidência|Unidades de análise instrucional/u);
   assert.doesNotMatch(root.innerHTML, /data-course-design-target-items|Salvar cobertura/u);
-  assert.equal(planReads, 1);
 });
 
 test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança", async () => {

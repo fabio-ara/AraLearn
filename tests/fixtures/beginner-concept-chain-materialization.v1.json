@@ -1,0 +1,462 @@
+{
+  "course": {
+    "id": "10000000-0000-4000-8000-000000000201",
+    "title": "Como encontrar seu lugar em um auditório",
+    "revision": 5
+  },
+  "part": {
+    "id": "20000000-0000-4000-8000-000000000201",
+    "position": 0,
+    "title": "Linhas, colunas e lugares",
+    "version": 2,
+    "microsequence": {
+      "id": "micro-lugar-auditorio",
+      "position": 0,
+      "title": "Do bilhete ao assento"
+    }
+  },
+  "repertoire": [
+    {
+      "id": "30000000-0000-4000-8000-000000000201",
+      "name": "linha de assentos",
+      "description": "Conjunto horizontal de assentos identificado por uma letra.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000202",
+      "name": "coluna de assentos",
+      "description": "Conjunto vertical de assentos identificado por um número.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000203",
+      "name": "posição na interseção de linha e coluna",
+      "description": "Um único assento é localizado pelo encontro da linha indicada com a coluna indicada.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000204",
+      "name": "localização de assento a partir do bilhete",
+      "description": "Aplicação da linha e da coluna impressas no bilhete para encontrar o assento correto.",
+      "status": "new"
+    }
+  ],
+  "acceptance": {
+    "newIdeaCeiling": 2,
+    "dependencyOrder": [
+      "linha de assentos",
+      "coluna de assentos",
+      "posição na interseção de linha e coluna",
+      "localização de assento a partir do bilhete"
+    ],
+    "applicationMustBePracticed": "localização de assento a partir do bilhete",
+    "unestablishedTechnicalTerms": ["coordenada cartesiana", "matriz bidimensional", "índice zero"],
+    "explanationEvidence": {
+      "linha de assentos": ["horizontal", "letra"],
+      "coluna de assentos": ["vertical", "número"],
+      "posição na interseção de linha e coluna": ["encontro", "único assento"],
+      "localização de assento a partir do bilhete": ["bilhete", "linha", "coluna"]
+    },
+    "coherentFusion": {
+      "canonicalIdea": "posição na interseção de linha e coluna",
+      "fragmentsThatMustNotBecomeIdeas": [
+        "ler a letra",
+        "ler o número",
+        "mover o dedo na horizontal",
+        "mover o dedo na vertical",
+        "parar no cruzamento"
+      ]
+    },
+    "rejectedCandidates": [
+      {
+        "id": "b-before-a",
+        "description": "A coluna é apresentada antes de a progressão estabelecer a linha."
+      },
+      {
+        "id": "relation-assumed",
+        "description": "A aplicação pede o lugar sem explicar como linha e coluna se encontram."
+      },
+      {
+        "id": "application-never-practiced",
+        "description": "A localização pelo bilhete é explicada, mas nunca realizada pelo estudante."
+      },
+      {
+        "id": "hidden-technical-knowledge",
+        "description": "O texto passa a depender de matriz bidimensional e índice zero sem ensiná-los."
+      },
+      {
+        "id": "mere-mention",
+        "description": "O card apenas cita linha e coluna e declara que a relação foi explicada."
+      },
+      {
+        "id": "dense-chain",
+        "description": "Toda a cadeia aparece como quatro ideias novas em um único card expositivo."
+      },
+      {
+        "id": "over-atomized",
+        "description": "Uma relação coerente é quebrada em cinco pseudoideias operacionais."
+      }
+    ]
+  },
+  "units": [
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 1,
+      "conteudo": {
+        "title": "Por onde começar?",
+        "role": "practice",
+        "content": [
+          {
+            "id": "auditorium-situation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "Um bilhete mostra o lugar C4 em um auditório com muitos assentos. Antes de procurar esse lugar, observe como os assentos podem ser organizados."}
+          }
+        ],
+        "response": {
+          "id": "auditorium-prediction",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual organização tornaria mais fácil localizar um único assento?",
+            "selectionMode": "single",
+            "selectionCriterion": "best",
+            "options": [
+              {"id": "two-directions", "text": "Usar uma indicação horizontal e outra vertical."},
+              {"id": "colors-only", "text": "Pintar todos os assentos da mesma cor."},
+              {"id": "random", "text": "Distribuir números sem ordem."}
+            ],
+            "answerIds": ["two-directions"]
+          }
+        },
+        "feedback": [],
+        "topics": ["organização espacial"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": [],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 2,
+      "conteudo": {
+        "title": "Primeiro, encontre a linha",
+        "role": "theory",
+        "content": [
+          {
+            "id": "row-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "Uma linha é um conjunto horizontal de assentos. Neste auditório, cada linha recebe uma letra: A, B, C e D. A letra C leva você à terceira linha, não ainda a um assento específico."}
+          },
+          {
+            "id": "row-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Cada faixa representa uma linha horizontal.",
+              "columns": ["Linha", "Assentos nela"],
+              "rows": [["A", "A1, A2, A3, A4"], ["B", "B1, B2, B3, B4"], ["C", "C1, C2, C3, C4"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["linha"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["linha de assentos"],
+        "ideiasUtilizadas": [],
+        "explicacoes": [{"ideia": "linha de assentos", "formas": ["plain_definition", "representation_link"]}],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 3,
+      "conteudo": {
+        "title": "Identifique uma linha",
+        "role": "practice",
+        "content": [
+          {
+            "id": "row-practice-context",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "Os lugares B1, B2, B3 e B4 pertencem ao mesmo conjunto horizontal."}
+          }
+        ],
+        "response": {
+          "id": "row-practice-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual é a letra dessa linha?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}, {"id": "c", "text": "C"}],
+            "answerIds": ["b"]
+          }
+        },
+        "feedback": [],
+        "topics": ["linha"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["linha de assentos"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 4,
+      "conteudo": {
+        "title": "Depois, encontre a coluna",
+        "role": "theory",
+        "content": [
+          {
+            "id": "column-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "Uma coluna é um conjunto vertical de assentos. Neste auditório, cada coluna recebe um número: 1, 2, 3 ou 4. A coluna 4 reúne A4, B4, C4 e D4."}
+          },
+          {
+            "id": "column-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Leia de cima para baixo para acompanhar uma coluna vertical.",
+              "columns": ["Coluna", "Assentos nela"],
+              "rows": [["1", "A1, B1, C1, D1"], ["2", "A2, B2, C2, D2"], ["4", "A4, B4, C4, D4"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["coluna"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["coluna de assentos"],
+        "ideiasUtilizadas": ["linha de assentos"],
+        "explicacoes": [{"ideia": "coluna de assentos", "formas": ["plain_definition", "contrast", "representation_link"]}],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 5,
+      "conteudo": {
+        "title": "Linha ou coluna?",
+        "role": "practice",
+        "content": [
+          {
+            "id": "row-column-comparison",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Compare as duas direções antes de localizar um assento.",
+              "columns": ["Organização", "Direção", "Identificação"],
+              "rows": [["Linha", "Horizontal", "Letra"], ["Coluna", "Vertical", "Número"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "row-column-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "No lugar C4, o número 4 indica o quê?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [{"id": "row", "text": "A linha."}, {"id": "column", "text": "A coluna."}, {"id": "room", "text": "O auditório."}],
+            "answerIds": ["column"]
+          }
+        },
+        "feedback": [],
+        "topics": ["linha e coluna"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["linha de assentos", "coluna de assentos"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 6,
+      "conteudo": {
+        "title": "O encontro aponta um único assento",
+        "role": "theory",
+        "content": [
+          {
+            "id": "intersection-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "A linha sozinha ainda contém vários assentos, e a coluna sozinha também. O encontro da linha C com a coluna 4 aponta um único assento: C4. A letra escolhe a faixa horizontal; o número escolhe a posição vertical nessa faixa."}
+          },
+          {
+            "id": "intersection-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Encontre o cruzamento indicado.",
+              "columns": ["Linha \\ coluna", "1", "2", "3", "4"],
+              "rows": [["A", "A1", "A2", "A3", "A4"], ["B", "B1", "B2", "B3", "B4"], ["C", "C1", "C2", "C3", "C4"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["interseção"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["posição na interseção de linha e coluna"],
+        "ideiasUtilizadas": [],
+        "explicacoes": [
+          {"ideia": "linha de assentos", "formas": ["contrast"]},
+          {"ideia": "coluna de assentos", "formas": ["contrast"]},
+          {"ideia": "posição na interseção de linha e coluna", "formas": ["plain_definition", "mechanism", "representation_link"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 7,
+      "conteudo": {
+        "title": "Encontre o cruzamento",
+        "role": "practice",
+        "content": [
+          {
+            "id": "intersection-practice-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Use a letra para escolher a linha e o número para escolher a coluna.",
+              "columns": ["Linha \\ coluna", "1", "2", "3"],
+              "rows": [["A", "A1", "A2", "A3"], ["B", "B1", "B2", "B3"], ["C", "C1", "C2", "C3"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "intersection-practice-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual assento está no encontro da linha B com a coluna 3?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [{"id": "b2", "text": "B2"}, {"id": "b3", "text": "B3"}, {"id": "c3", "text": "C3"}],
+            "answerIds": ["b3"]
+          }
+        },
+        "feedback": [],
+        "topics": ["interseção"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["linha de assentos", "coluna de assentos", "posição na interseção de linha e coluna"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 8,
+      "conteudo": {
+        "title": "Leia o bilhete em duas etapas",
+        "role": "theory",
+        "content": [
+          {
+            "id": "ticket-application-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "Para localizar um assento a partir do bilhete, leia primeiro a letra da linha e depois o número da coluna. No bilhete C4, procure a linha C e avance até o encontro com a coluna 4. Esse encontro é o assento C4."}
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["bilhete"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["localização de assento a partir do bilhete"],
+        "ideiasUtilizadas": ["linha de assentos", "coluna de assentos", "posição na interseção de linha e coluna"],
+        "explicacoes": [{"ideia": "localização de assento a partir do bilhete", "formas": ["plain_definition", "mechanism", "worked_example"]}],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Do bilhete ao assento",
+      "posicao": 9,
+      "conteudo": {
+        "title": "Agora encontre seu lugar",
+        "role": "practice",
+        "content": [
+          {
+            "id": "ticket-practice-map",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Seu bilhete mostra D2. Use o mapa do auditório.",
+              "columns": ["Linha \\ coluna", "1", "2", "3", "4"],
+              "rows": [["A", "A1", "A2", "A3", "A4"], ["B", "B1", "B2", "B3", "B4"], ["C", "C1", "C2", "C3", "C4"], ["D", "D1", "D2", "D3", "D4"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "ticket-practice-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual caminho localiza corretamente o lugar do bilhete D2?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "d2", "text": "Ir à linha D e procurar a coluna 2."},
+              {"id": "b4", "text": "Ir à linha B e procurar a coluna 4."},
+              {"id": "d4", "text": "Ir à linha D e procurar a coluna 4."}
+            ],
+            "answerIds": ["d2"]
+          }
+        },
+        "feedback": [
+          {
+            "id": "ticket-practice-feedback",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "A letra D indica a linha, o número 2 indica a coluna e o encontro dos dois indica D2."}
+          }
+        ],
+        "topics": ["aplicação integrada"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["linha de assentos", "coluna de assentos", "posição na interseção de linha e coluna", "localização de assento a partir do bilhete"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    }
+  ]
+}

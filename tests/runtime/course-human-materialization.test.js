@@ -31,6 +31,7 @@ function adapterFixture() {
     },
     async getCourseInstructionalPlan() {
       return {
+        contract: "aralearn.course-instructional-plan.v3",
         courseRevision: revision,
         plan: {
           version: 3,
@@ -39,6 +40,10 @@ function adapterFixture() {
             id: ANALYSIS_ID,
             position: 8,
             statement: "DNS associa nomes a endereços.",
+            description: "Relação entre um nome consultado e o endereço devolvido pelo DNS.",
+            introducedAt: null,
+            usedBy: [],
+            revisitedBy: [],
             version: 1
           }],
           evidenceRequirements: [],
@@ -157,9 +162,10 @@ function unit(fontes = []) {
     },
     aplicacaoPedagogica: {
       modo: "expositiva",
-      novidadesIntroduzidas: [1],
+      ideiasIntroduzidas: [1],
+      ideiasUtilizadas: [],
       explicacoes: [{
-        novidade: "DNS associa nomes a endereços.",
+        ideia: "DNS associa nomes a endereços.",
         formas: ["plain_definition", "concrete_example", "mechanism"],
         formasNaoAplicaveis: [{
           forma: "contrast",
@@ -175,8 +181,18 @@ function unit(fontes = []) {
 function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = false } = {}) {
   const value = adapterFixture();
   const analysis = [ANALYSIS_ID, SECOND_ANALYSIS_ID].slice(0, analysisCount)
-    .map((id, position) => ({ id, position, statement: `Novidade ${position + 1}.`, version: 1 }));
+    .map((id, position) => ({
+      id,
+      position,
+      statement: `Novidade ${position + 1}.`,
+      description: `Descrição suficiente para distinguir a ideia ${position + 1}.`,
+      introducedAt: null,
+      usedBy: [],
+      revisitedBy: [],
+      version: 1
+    }));
   value.getCourseInstructionalPlan = async () => ({
+    contract: "aralearn.course-instructional-plan.v3",
     courseRevision: 8,
     plan: {
       version: 3,
@@ -236,6 +252,7 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
 function pedagogicalUnit(position, {
   mode = "expositiva",
   novelty = [],
+  used = [],
   explanations = [],
   practices = []
 } = {}) {
@@ -263,7 +280,8 @@ function pedagogicalUnit(position, {
   }
   value.aplicacaoPedagogica = {
     modo: mode,
-    novidadesIntroduzidas: novelty,
+    ideiasIntroduzidas: novelty,
+    ideiasUtilizadas: used,
     explicacoes: explanations,
     praticas: practices
   };
@@ -284,7 +302,7 @@ test("papel da StudyUnit corresponde ao modo pedagógico declarado", async () =>
 
   const theoryAsPractice = pedagogicalUnit(1, {
     novelty: [1],
-    explanations: [{ novidade: 1, formas: ["plain_definition", "mechanism"] }]
+    explanations: [{ ideia: 1, formas: ["plain_definition", "mechanism"] }]
   });
   theoryAsPractice.conteudo.role = "practice";
   theoryAsPractice.conteudo.response = {
@@ -340,6 +358,7 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
     /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
   const applied = stored.designApplication;
   assert.deepEqual(applied.introducedInstructionalAnalysisUnitIds, [ANALYSIS_ID]);
+  assert.deepEqual(applied.usedInstructionalAnalysisUnitIds, []);
   assert.equal(applied.explanationApplications[0].instructionalAnalysisUnitId, ANALYSIS_ID);
   assert.deepEqual(applied.explanationApplications[0].notApplicable, [{
     form: "contrast",
@@ -552,7 +571,7 @@ function unitScopedMaterialization({
     ["caso-c", ["case_or_data"]]
   ]
 } = {}) {
-  const explanation = (novidade, formas) => ({ novidade, formas });
+  const explanation = (ideia, formas) => ({ ideia, formas });
   const practice = ([oportunidade, dimensoesVariadas]) => ({
     requisito: 1, oportunidade, dimensoesVariadas
   });
@@ -591,9 +610,9 @@ test("Unit existente sela os quatro overrides e a Unit nova herda a Microssequê
 test("override da Unit rege teto, formas, prática, variação e componentes na rematerialização", async () => {
   const cases = [{
     mutate(units) {
-      units[0].aplicacaoPedagogica.novidadesIntroduzidas = [1, 2];
+      units[0].aplicacaoPedagogica.ideiasIntroduzidas = [1, 2];
       units[0].aplicacaoPedagogica.explicacoes.push({
-        novidade: 2, formas: ["contrast"]
+        ideia: 2, formas: ["contrast"]
       });
       units.pop();
     },
@@ -637,8 +656,8 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
 });
 
 test("teto 1 e 2 preservam o inventário e mudam somente sua distribuição", async () => {
-  const explanation = (novidade) => ({
-    novidade,
+  const explanation = (ideia) => ({
+    ideia,
     formas: ["plain_definition", "mechanism"]
   });
   const ceilingOne = pedagogicalAdapter({ ceiling: 1 });
@@ -741,10 +760,10 @@ test("formas podem continuar depois da introdução, mas nunca antes dela", asyn
     units: [
       pedagogicalUnit(1, {
         novelty: [1],
-        explanations: [{ novidade: 1, formas: ["plain_definition"] }]
+        explanations: [{ ideia: 1, formas: ["plain_definition"] }]
       }),
       pedagogicalUnit(2, {
-        explanations: [{ novidade: 1, formas: ["mechanism"] }]
+        explanations: [{ ideia: 1, formas: ["mechanism"] }]
       })
     ]
   });
@@ -757,12 +776,210 @@ test("formas podem continuar depois da introdução, mas nunca antes dela", asyn
     part: 1,
     units: [
       pedagogicalUnit(1, {
-        explanations: [{ novidade: 1, formas: ["plain_definition"] }]
+        explanations: [{ ideia: 1, formas: ["plain_definition"] }]
       }),
       pedagogicalUnit(2, {
         novelty: [1],
-        explanations: [{ novidade: 1, formas: ["mechanism"] }]
+        explanations: [{ ideia: 1, formas: ["mechanism"] }]
       })
     ]
   }), (error) => error.code === "human_materialization_explanation_before_introduction");
+});
+
+test("item focal percorre a microssequência e chega às unidades como introdução, uso ou retomada", async () => {
+  const adapter = pedagogicalAdapter({ ceiling: 2, analysisCount: 2 });
+  const designReads = [];
+  const materializationReads = [];
+  const establishedAt = {
+    studyUnitId: "70000000-0000-4000-8000-000000000010",
+    didacticMicrosequenceId: "micro-prerequisite",
+    title: "Ideia já estabelecida"
+  };
+  adapter.getCourseInstructionalPlan = async () => ({
+    contract: "aralearn.course-instructional-plan.v3",
+    courseRevision: 8,
+    plan: {
+      version: 4,
+      title: "Curso de Redes",
+      curriculum: {
+        modules: [{
+          id: "module-network",
+          position: 0,
+          title: "Rede local",
+          lessons: [{
+            id: "lesson-switch",
+            position: 0,
+            title: "Decisões do switch",
+            microsequences: [{
+              id: "micro-foundations",
+              position: 0,
+              title: "Aprender a associação"
+            }, {
+              id: "micro-application",
+              position: 1,
+              title: "Usar e retomar a associação"
+            }]
+          }]
+        }]
+      },
+      curriculumScopeItems: [{
+        id: "50000000-0000-4000-8000-000000000001",
+        position: 0,
+        statement: "Aprender e aplicar uma associação de rede.",
+        state: "planned",
+        curriculumTargets: [{
+          moduleId: "module-network",
+          lessonId: "lesson-switch",
+          didacticMicrosequenceIds: ["micro-foundations", "micro-application"]
+        }],
+        developedIn: []
+      }],
+      instructionalAnalysisUnits: [{
+        id: ANALYSIS_ID,
+        position: 0,
+        statement: "Ideia já estabelecida.",
+        description: "Conhecimento anterior necessário para interpretar a associação.",
+        version: 1,
+        introducedAt: establishedAt,
+        usedBy: [],
+        revisitedBy: []
+      }, {
+        id: SECOND_ANALYSIS_ID,
+        position: 1,
+        statement: "Associação focal.",
+        description: "Relação nova que será introduzida, usada e depois retomada.",
+        version: 1,
+        introducedAt: null,
+        usedBy: [],
+        revisitedBy: []
+      }],
+      evidenceRequirements: [],
+      parts: [{
+        id: PART_ID,
+        position: 0,
+        title: "Fundamentos",
+        version: 2,
+        microsequences: [{
+          id: "micro-foundations",
+          productionPosition: 0,
+          title: "Aprender a associação"
+        }, {
+          id: "micro-application",
+          productionPosition: 1,
+          title: "Usar e retomar a associação"
+        }]
+      }]
+    }
+  });
+  adapter.getCourseDesign = async ({ scopeKind, scopeRef }) => {
+    designReads.push({ scopeKind, scopeRef });
+    const ids = scopeRef === "micro-foundations"
+      ? [SECOND_ANALYSIS_ID]
+      : [ANALYSIS_ID, SECOND_ANALYSIS_ID];
+    return {
+      targetPlanItems: {
+        instructionalAnalysisUnitIds: ids,
+        evidenceRequirementIds: []
+      },
+      parameters: [
+        ["new_analysis_unit_ceiling_per_expository_study_unit", 2],
+        ["required_explanation_forms", ["plain_definition"]],
+        ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
+        ["required_practice_variation_dimensions", []]
+      ].map(([parameterId, value]) => ({
+        parameterId,
+        effectiveAssignment: {
+          value,
+          origin: "automatic",
+          sourceScope: { kind: "didactic_microsequence", ref: scopeRef }
+        }
+      })),
+      guidance: { effectiveAssignments: [] },
+      componentPolicy: {
+        effectiveAssignment: {
+          policy: {
+            catalogVersion: "fixture",
+            availability: "all",
+            allowedRefs: [],
+            excludedRefs: [],
+            preferredRefs: []
+          },
+          origin: "system_default",
+          sourceScope: null
+        }
+      }
+    };
+  };
+  const commit = adapter.materializeCourseAuthoringPart;
+  adapter.materializeCourseAuthoringPart = async (request) => {
+    materializationReads.push(structuredClone(request));
+    return commit(request);
+  };
+
+  const introduction = pedagogicalUnit(1, {
+    novelty: [2],
+    explanations: [{ ideia: 2, formas: ["plain_definition"] }]
+  });
+  introduction.microssequencia = "Aprender a associação";
+  introduction.conteudo.title = "A associação focal";
+  const application = pedagogicalUnit(1, {
+    mode: "pratica",
+    used: [1, 2]
+  });
+  application.microssequencia = "Usar e retomar a associação";
+  application.conteudo.title = "Aplicar a associação";
+  const revisit = pedagogicalUnit(2, {
+    used: [1],
+    explanations: [{ ideia: 2, formas: ["contrast"] }]
+  });
+  revisit.microssequencia = "Usar e retomar a associação";
+  revisit.conteudo.title = "Retomar a associação por contraste";
+
+  await materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [introduction, application, revisit]
+  });
+
+  assert.deepEqual(designReads, [{
+    scopeKind: "didactic_microsequence",
+    scopeRef: "micro-foundations"
+  }, {
+    scopeKind: "didactic_microsequence",
+    scopeRef: "micro-application"
+  }]);
+  assert.equal(materializationReads.length, 1);
+  const [introduced, used, revisited] = materializationReads[0].units;
+  assert.equal(introduced.didacticMicrosequenceId, "micro-foundations");
+  assert.deepEqual(introduced.designSnapshot.instructionalAnalysisUnitIds,
+    [SECOND_ANALYSIS_ID]);
+  assert.deepEqual(introduced.designApplication, {
+    mode: "expository",
+    introducedInstructionalAnalysisUnitIds: [SECOND_ANALYSIS_ID],
+    usedInstructionalAnalysisUnitIds: [],
+    explanationApplications: [{
+      instructionalAnalysisUnitId: SECOND_ANALYSIS_ID,
+      developedForms: ["plain_definition"],
+      notApplicable: []
+    }],
+    practiceApplications: [],
+    componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+  });
+  assert.equal(used.didacticMicrosequenceId, "micro-application");
+  assert.deepEqual(used.designSnapshot.instructionalAnalysisUnitIds,
+    [ANALYSIS_ID, SECOND_ANALYSIS_ID]);
+  assert.deepEqual(used.designApplication.usedInstructionalAnalysisUnitIds,
+    [ANALYSIS_ID, SECOND_ANALYSIS_ID]);
+  assert.deepEqual(used.designApplication.introducedInstructionalAnalysisUnitIds, []);
+  assert.equal(revisited.didacticMicrosequenceId, "micro-application");
+  assert.deepEqual(revisited.designApplication.introducedInstructionalAnalysisUnitIds, []);
+  assert.deepEqual(revisited.designApplication.usedInstructionalAnalysisUnitIds,
+    [ANALYSIS_ID]);
+  assert.deepEqual(revisited.designApplication.explanationApplications, [{
+    instructionalAnalysisUnitId: SECOND_ANALYSIS_ID,
+    developedForms: ["contrast"],
+    notApplicable: []
+  }]);
 });

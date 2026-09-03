@@ -16,6 +16,10 @@ import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
+const ANALYSIS_TABLE_ID = "30000000-0000-4000-8000-000000000003";
+const ANALYSIS_ASSOCIATION_ID = "30000000-0000-4000-8000-000000000004";
+const ANALYSIS_MAC_ID = "30000000-0000-4000-8000-000000000005";
+const ANALYSIS_PORT_ID = "30000000-0000-4000-8000-000000000006";
 const REVISION = 7;
 
 class FakeRoot {
@@ -184,8 +188,47 @@ function inspectionItem(index) {
       createdOrigin: "gpt",
       lastRevisionOrigin: "gpt",
       design: {
-        snapshot: designSnapshot(),
-        application: {}
+        snapshot: index === 1
+          ? {
+            ...designSnapshot(),
+            instructionalAnalysisUnitIds: [
+              ANALYSIS_TABLE_ID,
+              ANALYSIS_ASSOCIATION_ID,
+              ANALYSIS_MAC_ID,
+              ANALYSIS_PORT_ID
+            ]
+          }
+          : designSnapshot(),
+        application: index === 1
+          ? {
+          introducedInstructionalAnalysisUnitIds: [
+            ANALYSIS_TABLE_ID,
+            ANALYSIS_ASSOCIATION_ID
+          ],
+          usedInstructionalAnalysisUnitIds: [ANALYSIS_MAC_ID, ANALYSIS_PORT_ID],
+          explanationApplications: [{
+            instructionalAnalysisUnitId: ANALYSIS_PORT_ID,
+            form: "brief_recall"
+          }],
+          analysisIdeas: {
+            introduced: [{
+              name: "tabela MAC",
+              description: "Registro que associa endereços MAC às portas conhecidas."
+            }, {
+              name: "associação entre MAC e porta",
+              description: "Relação usada para localizar a porta de saída."
+            }],
+            used: [{
+              name: "endereço MAC",
+              description: "Identificador já estabelecido para origem e destino do quadro."
+            }],
+            revisited: [{
+              name: "porta do switch",
+              description: "Ponto de entrada ou saída retomado para acompanhar o encaminhamento."
+            }]
+          }
+          }
+          : {}
       }
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
@@ -489,7 +532,7 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
   assert.match(
     root.innerHTML,
-    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da StudyUnit"><svg[\s\S]*?<\/svg><\/a>/u
+    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/a>/u
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e Âncoras de Unidade 1" title="Fontes e Âncoras"><svg/u);
@@ -497,6 +540,58 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
   assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
+  sequence.destroy();
+});
+
+test("detalhes da unidade apresentam ideias em português sem expor metamodelo nem IDs", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      return pageFor(options, 2);
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: {
+      courseId: COURSE_ID,
+      revision: REVISION,
+      ownership: "owned",
+      canEdit: true
+    },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+
+  assert.equal(await sequence.open(), true);
+  assert.match(
+    root.innerHTML,
+    /<details class="course-inspection-item-details">[\s\S]*?course-inspection-item-detail-panel[\s\S]*?Ideias introduzidas aqui[\s\S]*?Ideias já estabelecidas usadas aqui[\s\S]*?Ideias retomadas[\s\S]*?<\/details>/u,
+    "As ideias devem ficar nos detalhes progressivos da unidade, e não disputar espaço com o conteúdo."
+  );
+  for (const visibleIdea of [
+    "tabela MAC",
+    "Registro que associa endereços MAC às portas conhecidas.",
+    "associação entre MAC e porta",
+    "Relação usada para localizar a porta de saída.",
+    "endereço MAC",
+    "Identificador já estabelecido para origem e destino do quadro.",
+    "porta do switch",
+    "Ponto de entrada ou saída retomado para acompanhar o encaminhamento."
+  ]) assert.match(root.innerHTML, new RegExp(visibleIdea, "u"));
+
+  assert.doesNotMatch(
+    root.innerHTML,
+    /StudyUnits?|AnalysisUnits?|analysisIdeas|introducedInstructionalAnalysisUnitIds|usedInstructionalAnalysisUnitIds|explanationApplications/u
+  );
+  const visibleCopy = root.innerHTML.replace(/<[^>]*>/gu, " ").replace(/\s+/gu, " ");
+  for (const internalId of [
+    ANALYSIS_TABLE_ID,
+    ANALYSIS_ASSOCIATION_ID,
+    ANALYSIS_MAC_ID,
+    ANALYSIS_PORT_ID
+  ]) assert.doesNotMatch(visibleCopy, new RegExp(internalId, "u"));
   sequence.destroy();
 });
 

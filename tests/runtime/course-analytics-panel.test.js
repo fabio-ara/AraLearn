@@ -49,7 +49,7 @@ function analyticsPage({
       studyUnitCount,
       parameters: [{
         parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-        label: "Novidades por StudyUnit expositiva",
+        label: "Novidades por unidade de estudo expositiva",
         valueKind: "integer",
         effectiveValues: [{ value: 1, origin: "research_condition", studyUnitCount }]
       }, {
@@ -132,7 +132,7 @@ async function submitScope(root, index) {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
-test("Analytics mostra somente Desenho e Autoria em uma leitura quantitativa estreita", async () => {
+test("dados de autoria mostram somente desenho e autoria em uma leitura quantitativa estreita", async () => {
   const root = new FakeRoot();
   const queries = [];
   const panel = createCourseAnalyticsPanel({
@@ -147,20 +147,24 @@ test("Analytics mostra somente Desenho e Autoria em uma leitura quantitativa est
   await panel.open();
 
   assert.deepEqual(queries, [{ scope: { kind: "course", ref: null } }]);
-  assert.match(root.innerHTML, /id="course-analytics-section-title">Analytics<\/h2>/u);
+  assert.match(root.innerHTML, /id="course-analytics-section-title">Dados de autoria<\/h2>/u);
   assert.match(root.innerHTML, /<label for="course-analytics-scope">Escopo<\/label>/u);
   assert.match(root.innerHTML, /aria-label="Aplicar escopo"/u);
-  assert.match(root.innerHTML, /aria-label="Exportar Analytics em JSON"/u);
+  assert.match(root.innerHTML, /aria-label="Baixar dados de autoria"/u);
   assert.deepEqual([...root.innerHTML.matchAll(/<h3[^>]*>([^<]+)<\/h3>/gu)].map((match) => match[1]), [
     "Desenho", "Autoria"
   ]);
   assert.match(root.innerHTML, /aria-label="Resumo do desenho"/u);
-  assert.match(root.innerHTML, /StudyUnits<small>Unidades no escopo\.<\/small><\/dt><dd>2<\/dd>/u);
-  assert.match(root.innerHTML, /AnalysisUnits<small>Novidades semânticas inventariadas\.<\/small><\/dt><dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Unidades de estudo<small>Unidades no escopo\.<\/small><\/dt><dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Unidades de análise<small>Novidades semânticas inventariadas\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>3<\/dd>/u);
   assert.match(root.innerHTML, /Observações abertas<small>Pendências humanas atuais\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Parâmetros definidos[\s\S]+<dd>1<\/dd>/u);
-  assert.match(root.innerHTML, /StudyUnits revistas manualmente[\s\S]+<dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);
+  assert.doesNotMatch(
+    root.innerHTML,
+    /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|courseRevision|componentRef|studyUnitRef|Representation/u
+  );
   assert.doesNotMatch(root.innerHTML, /Reparos aceitos|Reparos rejeitados/u);
   assert.equal((root.innerHTML.match(/<table /gu) || []).length, 4);
   assert.equal((root.innerHTML.match(/<details /gu) || []).length, 4);
@@ -180,20 +184,24 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
   await panel.open();
 
   for (const table of [
-    "Configuração aplicada", "Conteúdo e representações", "Prática e Fontes",
+    "Configuração aplicada", "Conteúdo e representações", "Prática e fontes",
     "Intervenções por origem"
   ]) assert.match(root.innerHTML, new RegExp(`table aria-label="${table}"`, "u"));
-  assert.match(root.innerHTML, /Novidades por StudyUnit expositiva<\/th><td>1 · 2 StudyUnits · Condição de pesquisa/u);
-  assert.match(root.innerHTML, /Formas de explicação requeridas<\/th><td>Definição, Contraste · 2 StudyUnits · Calibração automática/u);
+  assert.match(root.innerHTML, /Novidades por unidade de estudo expositiva<\/th><td>1 · 2 unidades de estudo · condição de pesquisa/u);
+  assert.match(root.innerHTML, /Formas de explicação requeridas<\/th><td>Definição, contraste · 2 unidades de estudo · calibração automática/u);
+  assert.match(root.innerHTML, /Dimensões de variação requeridas<\/th><td>Contexto, representação · 2 unidades de estudo · calibração automática/u);
   assert.match(root.innerHTML, /Direção editorial<\/th><td>Títulos diretos e parágrafos breves\./u);
-  assert.match(root.innerHTML, /AnalysisUnit 1<\/th><td>Servidor oferece um serviço em rede\. · 1 introdução/u);
-  assert.match(root.innerHTML, /StudyUnit 2 · Pedido e resposta<\/th><td>1 novidade introduzida/u);
-  assert.match(root.innerHTML, /Forma · Contraste<\/th><td>1 StudyUnit · 1 aplicação/u);
-  assert.match(root.innerHTML, /Componente · Tabela<\/th><td>1 StudyUnit · 1 uso/u);
+  assert.match(root.innerHTML, /Unidade de análise 1<\/th><td>Servidor oferece um serviço em rede\. · 1 introdução/u);
+  assert.match(root.innerHTML, /Unidade de estudo 2 · Pedido e resposta<\/th><td>1 novidade introduzida/u);
+  assert.match(root.innerHTML, /Forma · contraste<\/th><td>1 unidade de estudo · 1 aplicação/u);
+  assert.match(root.innerHTML, /Componente · tabela<\/th><td>1 unidade de estudo · 1 uso/u);
   assert.match(root.innerHTML, /Prática 1<\/th><td>Distinguir cliente e servidor em situações novas\. · 3 oportunidades/u);
-  assert.match(root.innerHTML, /Fonte · Sustentação factual<\/th><td>2 Fontes · 3 Âncoras · 2 StudyUnits/u);
-  assert.match(root.innerHTML, /GPT<\/th><td>2 StudyUnits criadas · 1 StudyUnit com última revisão/u);
-  assert.match(root.innerHTML, /Pessoa autora<\/th><td>0 StudyUnits criadas · 2 StudyUnits com última revisão/u);
+  assert.match(root.innerHTML, /Fonte · sustentação factual<\/th><td>2 fontes · 3 âncoras · 2 unidades de estudo/u);
+  assert.match(root.innerHTML, /Variação · representação<\/th><td>1 oportunidade/u);
+  assert.match(root.innerHTML, /Observações criadas<\/th><td>5 observações/u);
+  assert.match(root.innerHTML, /Observações resolvidas<\/th><td>3 observações/u);
+  assert.match(root.innerHTML, /GPT<\/th><td>2 unidades de estudo criadas · 1 unidade de estudo com última revisão/u);
+  assert.match(root.innerHTML, /Pessoa autora<\/th><td>0 unidades de estudo criadas · 2 unidades de estudo com última revisão/u);
   assert.match(root.innerHTML, /<strong>Dados ausentes<\/strong>/u);
   assert.match(root.innerHTML, /Uma direção editorial não informou origem\./u);
   assert.doesNotMatch(
@@ -232,7 +240,7 @@ test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", 
   for (const value of [2, 3, 1]) {
     assert.match(root.innerHTML, new RegExp(`<dd>${value}</dd>`, "u"));
   }
-  assert.match(root.innerHTML, /StudyUnits revistas manualmente[\s\S]+<dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);
 });
 
 test("filtro relê um escopo humano sem expor sua referência no DOM", async () => {
@@ -263,7 +271,7 @@ test("filtro relê um escopo humano sem expor sua referência no DOM", async () 
     scope: { kind: "didactic_microsequence", ref: MICRO_REF }
   }]);
   assert.match(root.innerHTML, /<option value="1" selected>Microssequência · Fundamentos<\/option>/u);
-  assert.match(root.innerHTML, /StudyUnits<small>Unidades no escopo\.<\/small><\/dt><dd>1<\/dd>/u);
+  assert.match(root.innerHTML, /Unidades de estudo<small>Unidades no escopo\.<\/small><\/dt><dd>1<\/dd>/u);
   assert.doesNotMatch(root.innerHTML, new RegExp(MICRO_REF, "u"));
 
   await submitScope(root, 1);
@@ -288,7 +296,7 @@ test("refresh adota a revisão relida e dados ausentes continuam explícitos", a
   assert.deepEqual(revisions, [7, 8]);
   assert.match(root.innerHTML, /aria-label="Dados ausentes"/u);
   assert.doesNotMatch(root.innerHTML, /Revisão 8|courseRevision|generatedAt/iu);
-  await assert.rejects(panel.refresh(0), /revisão do Curso para atualizar Analytics é inválida/u);
+  await assert.rejects(panel.refresh(0), /revisão do curso para atualizar os dados de autoria é inválida/u);
 });
 
 test("falha transitória oferece nova tentativa sem expor a infraestrutura", async () => {
