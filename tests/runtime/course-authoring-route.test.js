@@ -54,6 +54,37 @@ test("rota canônica abre tarefa, objeto e detalhe humano", () => {
   });
 });
 
+test("deep link de dados de autoria preserva recorte e revisão sem virar alvo curricular", () => {
+  const hash = `#/authoring/courses/${COURSE_ID}?section=research` +
+    "&analyticsScopeKind=didactic_microsequence" +
+    "&analyticsScopeId=micro%20dns" +
+    "&analyticsRevision=9";
+
+  assert.deepEqual(parseCourseAuthoringRoute(hash), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: {
+      kind: "authoring_analytics",
+      id: "micro dns",
+      scopeKind: "didactic_microsequence",
+      revision: 9
+    }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(
+    `#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=9"
+  ), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: {
+      kind: "authoring_analytics",
+      id: null,
+      scopeKind: "course",
+      revision: 9
+    }
+  });
+});
+
 test("parser rejeita overview e aliases do shell substituído", () => {
   for (const removed of ["overview", "structure", "inspection", "observations", "variants"]) {
     assert.equal(
@@ -73,6 +104,14 @@ test("parser rejeita identidades, detalhes e combinações alheias à tarefa", (
     `#/authoring/courses/${COURSE_ID}?section=content&annotationId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=review&moduleId=a`,
     `#/authoring/courses/${COURSE_ID}?section=research&authoringPartId=${UUID}`,
+    `#/authoring/courses/${COURSE_ID}?section=content&analyticsScopeKind=course&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=unknown&analyticsScopeId=a&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=course&analyticsScopeId=${COURSE_ID}&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsScopeId=unit-a&analyticsRevision=0`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsScopeId=unit-a&analyticsRevision=09`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsScopeId=%20&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsRevision=9&analyticsScopeKind=course`,
     `#/authoring/courses/${COURSE_ID}?section=review&correctionId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=sources&anchorId=ancora-1`,
     `#/authoring/courses/${COURSE_ID}?section=planning&authoringPartId=${UUID}&materializationId=${COURSE_ID}`,

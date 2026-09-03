@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import test from "node:test";
 
 import * as analyticsDomain from "../../src/domain/courseAuthoringAnalytics.js";
+import { parseCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
 
 const {
   COURSE_AUTHORING_ANALYTICS_CONTRACT,
@@ -430,8 +431,46 @@ test("#273 assembler anexa somente deep link e confere Curso/escopo", () => {
     expectedCourseId: COURSE_ID,
     expectedQuery: { scope: { kind: "course", ref: null } }
   });
-  assert.match(assembled.deepLink,
-    new RegExp(`/#/authoring/courses/${COURSE_ID}\\?section=research&analyticsScopeKind=course$`, "u"));
+  assert.equal(
+    assembled.deepLink,
+    `https://app.example/#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=9"
+  );
+  assert.deepEqual(parseCourseAuthoringRoute(new URL(assembled.deepLink).hash), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: {
+      kind: "authoring_analytics",
+      id: null,
+      scopeKind: "course",
+      revision: 9
+    }
+  });
+
+  const microScope = {
+    kind: "didactic_microsequence",
+    ref: "micro-dns",
+    label: "DNS"
+  };
+  const micro = assembleCourseAuthoringAnalyticsPage(snapshot({ scope: microScope }), {
+    publicAppUrl: "https://app.example/",
+    expectedCourseId: COURSE_ID,
+    expectedQuery: {
+      scope: { kind: "didactic_microsequence", ref: "micro-dns" }
+    }
+  });
+  assert.equal(
+    micro.deepLink,
+    `https://app.example/#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=didactic_microsequence" +
+      "&analyticsScopeId=micro-dns&analyticsRevision=9"
+  );
+  assert.deepEqual(parseCourseAuthoringRoute(new URL(micro.deepLink).hash)?.target, {
+    kind: "authoring_analytics",
+    id: "micro-dns",
+    scopeKind: "didactic_microsequence",
+    revision: 9
+  });
 
   assert.throws(() => assembleCourseAuthoringAnalyticsPage(snapshot(), {
     publicAppUrl: "https://app.example",

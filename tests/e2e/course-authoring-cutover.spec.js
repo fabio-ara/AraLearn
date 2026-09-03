@@ -4267,3 +4267,29 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   expect(clientErrors).toEqual([]);
   expect(networkErrors).toEqual([]);
 });
+
+test("deep link de dados de autoria abre o recorte e a revisão indicados", async ({ page }) => {
+  const analyticsHash = `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
+    "&analyticsScopeKind=didactic_microsequence" +
+    "&analyticsScopeId=microsequence-a&analyticsRevision=5";
+  await mountCourseAuthoring(page, { cardinality: "many", hash: analyticsHash });
+
+  const analytics = page.locator(".course-analytics");
+  await expect(analytics).toBeVisible();
+  await expect(analytics.getByRole("combobox", { name: "Escopo", exact: true })).toHaveValue("1");
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(1);
+  expect(await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads[0])).toEqual({
+    courseId: COURSE_IDS[0],
+    options: {
+      expectedCourseRevision: 5,
+      query: {
+        scope: {
+          kind: "didactic_microsequence",
+          ref: "microsequence-a"
+        }
+      }
+    }
+  });
+});

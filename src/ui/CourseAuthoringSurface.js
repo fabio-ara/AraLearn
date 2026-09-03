@@ -824,7 +824,7 @@ function cursorKey(value) {
 }
 
 function designScopeForRoute(courseId, target = null) {
-  return Object.freeze(target
+  return Object.freeze(target && target.kind !== "authoring_analytics"
     ? { kind: target.kind, ref: target.id }
     : { kind: "course", ref: courseId });
 }
@@ -1353,7 +1353,22 @@ export function createCourseAuthoringSurface({
     const host = root.querySelector?.("[data-course-analytics-host]");
     if (!host) return;
     try {
-      analyticsPanel = createCourseAnalyticsPanel({ root: host, controller, course: state.course });
+      const analyticsTarget = state.routeTarget?.kind === "authoring_analytics"
+        ? state.routeTarget
+        : null;
+      analyticsPanel = createCourseAnalyticsPanel({
+        root: host,
+        controller,
+        course: state.course,
+        ...(analyticsTarget
+          ? {
+              initialQuery: {
+                scope: { kind: analyticsTarget.scopeKind, ref: analyticsTarget.id }
+              },
+              expectedCourseRevision: analyticsTarget.revision
+            }
+          : {})
+      });
       void analyticsPanel.open();
     } catch (error) {
       host.innerHTML = statusPanel({

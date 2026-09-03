@@ -610,13 +610,13 @@ export function assembleCourseAuthoringAnalyticsPage(rawValue, {
   });
   if (snapshot.deepLink !== null || publicAppUrl === null) return snapshot;
   const baseUrl = analyticsBaseUrl(publicAppUrl);
-  const query = new URLSearchParams({
-    section: "research",
-    analyticsScopeKind: snapshot.scope.selected.kind
-  });
+  let query = `section=research&analyticsScopeKind=${encodeURIComponent(
+    snapshot.scope.selected.kind
+  )}`;
   if (snapshot.scope.selected.ref !== null) {
-    query.set("analyticsScopeRef", snapshot.scope.selected.ref);
+    query += `&analyticsScopeId=${encodeURIComponent(snapshot.scope.selected.ref)}`;
   }
+  query += `&analyticsRevision=${snapshot.course.revision}`;
   return normalizeCourseAuthoringAnalyticsPage({
     ...snapshot,
     deepLink: `${baseUrl}/#/authoring/courses/${encodeURIComponent(snapshot.course.id)}?${query}`

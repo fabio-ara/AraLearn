@@ -408,15 +408,19 @@ export function createCourseAnalyticsPanel({
   root,
   controller,
   course,
+  initialQuery = undefined,
+  expectedCourseRevision = course?.revision,
   download = downloadTextFile
 } = {}) {
+  const initialRevision = Number(expectedCourseRevision);
   if (!root || !controller || !course?.courseId || !Number.isSafeInteger(course.revision) ||
+      !Number.isSafeInteger(initialRevision) || initialRevision < 1 ||
       typeof controller.loadCourseAuthoringAnalytics !== "function") {
     throw new TypeError("Painel de dados de autoria inválido.");
   }
   const state = {
-    course,
-    query: normalizeCourseAuthoringAnalyticsQuery(),
+    course: { ...course, revision: initialRevision },
+    query: normalizeCourseAuthoringAnalyticsQuery(initialQuery),
     page: null,
     loading: false,
     failure: "",

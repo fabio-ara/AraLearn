@@ -5,6 +5,9 @@ export const COURSE_AUTHORING_SECTIONS = Object.freeze([
 const COURSE_AUTHORING_ROUTE_PREFIX = "#/authoring/courses/";
 const COURSE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const ENTITY_ID_MAX_LENGTH = 240;
+const ANALYTICS_SCOPE_KINDS = new Set([
+  "course", "authoring_part", "didactic_microsequence", "study_unit"
+]);
 const TARGET_DEFINITIONS = Object.freeze([
   Object.freeze({ option: "authoringPartId", query: "authoringPartId", kind: "authoring_part", uuid: true }),
   Object.freeze({ option: "moduleId", query: "moduleId", kind: "module" }),
@@ -83,6 +86,7 @@ function normalizedTargetOptions(options) {
 
 function targetAllowedForSection(target, section) {
   if (!target) return true;
+  if (target.kind === "authoring_analytics") return section === "research";
   if (section === "research") return false;
   if (target.kind === "authoring_part") return section === "planning" || section === "content";
   if (["anchored_annotation", "study_unit"].includes(target.kind)) {
@@ -95,6 +99,39 @@ function targetAllowedForSection(target, section) {
   return section === "parameters" && [
     "module", "lesson", "didactic_microsequence"
   ].includes(target.kind);
+}
+
+function parseAuthoringAnalyticsTarget(parameters) {
+  const kindMatch = /^analyticsScopeKind=([a-z_]+)$/u.exec(parameters[0] || "");
+  const scopeKind = kindMatch?.[1] || "";
+  if (!ANALYTICS_SCOPE_KINDS.has(scopeKind)) return null;
+
+  const expectsId = scopeKind !== "course";
+  if (parameters.length !== (expectsId ? 3 : 2)) return null;
+  let id = null;
+  if (expectsId) {
+    const idMatch = /^analyticsScopeId=([^=]+)$/u.exec(parameters[1] || "");
+    if (!idMatch) return null;
+    try {
+      id = decodeURIComponent(idMatch[1]);
+    } catch {
+      return null;
+    }
+    if (encodeURIComponent(id) !== idMatch[1] || !canonicalEntityId(id)) return null;
+  }
+
+  const revisionMatch = /^analyticsRevision=([1-9][0-9]*)$/u.exec(
+    parameters[expectsId ? 2 : 1] || ""
+  );
+  if (!revisionMatch) return null;
+  const revision = Number(revisionMatch[1]);
+  if (!Number.isSafeInteger(revision)) return null;
+  return {
+    kind: "authoring_analytics",
+    id,
+    scopeKind,
+    revision
+  };
 }
 
 export function buildCourseAuthoringRoute(courseId, options = {}) {
@@ -132,12 +169,21 @@ export function parseCourseAuthoringRoute(hashValue) {
   const courseId = remainder.slice(0, separator);
   if (!isCanonicalCourseId(courseId)) return null;
   const rawParameters = remainder.slice(separator + 1).split("&");
-  if (rawParameters.length < 1 || rawParameters.length > 3) return null;
+  if (rawParameters.length < 1 || rawParameters.length > 4) return null;
   const sectionMatch = /^section=([a-z]+)$/u.exec(rawParameters[0]);
   const section = sectionMatch?.[1] || "";
   if (!COURSE_AUTHORING_SECTIONS.includes(section)) return null;
 
   let target = null;
+  if (section === "research" && rawParameters.length > 1) {
+    target = parseAuthoringAnalyticsTarget(rawParameters.slice(1));
+    if (!target) return null;
+    return Object.freeze({
+      courseId,
+      section,
+      target: Object.freeze(target)
+    });
+  }
   if (rawParameters.length >= 2) {
     const separatorIndex = rawParameters[1].indexOf("=");
     if (separatorIndex <= 0 || rawParameters[1].indexOf("=", separatorIndex + 1) >= 0) return null;

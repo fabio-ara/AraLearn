@@ -231,6 +231,42 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
   panel.destroy();
 });
 
+test("abertura por deep link consulta a revisão e o recorte indicados", async () => {
+  const root = new FakeRoot();
+  const reads = [];
+  const selected = {
+    kind: "didactic_microsequence",
+    ref: MICRO_REF,
+    label: "Microssequência · Fundamentos"
+  };
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 11 },
+    initialQuery: {
+      scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+    },
+    expectedCourseRevision: 9,
+    controller: { async loadCourseAuthoringAnalytics(courseId, options) {
+      reads.push({ courseId, options });
+      return analyticsPage({ revision: 9, selected, studyUnitCount: 1 });
+    } }
+  });
+
+  await panel.open();
+
+  assert.deepEqual(reads, [{
+    courseId: COURSE_ID,
+    options: {
+      expectedCourseRevision: 9,
+      query: { scope: { kind: "didactic_microsequence", ref: MICRO_REF } }
+    }
+  }]);
+  assert.match(
+    root.innerHTML,
+    /<option value="1" selected>Microssequência · Fundamentos<\/option>/u
+  );
+});
+
 test("tabelas simples preservam os números do desenho e intervenções explícitas", async () => {
   const root = new FakeRoot();
   const panel = createCourseAnalyticsPanel({

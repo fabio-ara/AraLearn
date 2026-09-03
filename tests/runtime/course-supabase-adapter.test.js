@@ -394,7 +394,7 @@ test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do b
   assert.equal(Object.hasOwn(page, "facts"), false);
   assert.equal(page.deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      "?section=research&analyticsScopeKind=course");
+      "?section=research&analyticsScopeKind=course&analyticsRevision=7");
 });
 
 
