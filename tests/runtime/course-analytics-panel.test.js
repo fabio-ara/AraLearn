@@ -27,6 +27,9 @@ function analyticsPage({
   selected = { kind: "course", ref: null, label: "Curso inteiro" },
   studyUnitCount = 2,
   manuallyRevisedStudyUnitCount = 2,
+  ceilingValue = 1,
+  ceilingOrigin = "research_condition",
+  editorialDirection = "Títulos diretos e parágrafos breves.",
   missingData = ["Uma direção editorial não informou origem."]
 } = {}) {
   const courseScope = { kind: "course", ref: null, label: "Curso inteiro" };
@@ -51,7 +54,7 @@ function analyticsPage({
         parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
         label: "Novidades por unidade de estudo expositiva",
         valueKind: "integer",
-        effectiveValues: [{ value: 1, origin: "research_condition", studyUnitCount }]
+        effectiveValues: [{ value: ceilingValue, origin: ceilingOrigin, studyUnitCount }]
       }, {
         parameterId: "required_explanation_forms",
         label: "Formas de explicação requeridas",
@@ -69,7 +72,7 @@ function analyticsPage({
         effectiveValues: [{ value: ["context", "representation"], origin: "automatic", studyUnitCount }]
       }],
       editorialDirections: [{
-        direction: "Títulos diretos e parágrafos breves.",
+        direction: editorialDirection,
         origin: null,
         studyUnitCount
       }],
@@ -241,6 +244,52 @@ test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", 
     assert.match(root.innerHTML, new RegExp(`<dd>${value}</dd>`, "u"));
   }
   assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);
+});
+
+test("exports distinguem desenhos efetivamente aplicados entre revisões comparáveis", async () => {
+  const exports = [];
+  for (const expected of [
+    analyticsPage({
+      revision: 7,
+      ceilingValue: 1,
+      ceilingOrigin: "research_condition",
+      editorialDirection: "Uma ideia nova por unidade expositiva."
+    }),
+    analyticsPage({
+      revision: 8,
+      ceilingValue: 2,
+      ceilingOrigin: "automatic",
+      editorialDirection: "Duas ideias relacionadas podem compartilhar uma unidade."
+    })
+  ]) {
+    const root = new FakeRoot();
+    const panel = createCourseAnalyticsPanel({
+      root,
+      course: { courseId: COURSE_ID, revision: expected.course.revision },
+      download: (file) => { exports.push(file); return file; },
+      controller: { async loadCourseAuthoringAnalytics() { return expected; } }
+    });
+    await panel.open();
+    panel.export();
+    panel.destroy();
+  }
+
+  const [first, second] = exports.map(({ content }) => JSON.parse(content));
+  assert.deepEqual([first.course.revision, second.course.revision], [7, 8]);
+  assert.deepEqual(
+    [first, second].map(({ design }) => {
+      const applied = design.parameters[0].effectiveValues[0];
+      return { value: applied.value, origin: applied.origin, units: applied.studyUnitCount };
+    }),
+    [
+      { value: 1, origin: "research_condition", units: 2 },
+      { value: 2, origin: "automatic", units: 2 }
+    ]
+  );
+  assert.notEqual(
+    first.design.editorialDirections[0].direction,
+    second.design.editorialDirections[0].direction
+  );
 });
 
 test("filtro relê um escopo humano sem expor sua referência no DOM", async () => {
