@@ -309,15 +309,18 @@ test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => 
           id: "module-a",
           position: 0,
           title: "Base",
+          objective: "Organizar a base conceitual.",
           lessons: [{
             id: "lesson-a",
             position: 0,
             title: "Relações",
+            objective: "Compreender relações iniciais.",
             microsequences: [{
               id: "micro-a",
               position: 0,
               title: "Primeiro caso",
-              goal: "Explicar a relação inicial.",
+              objective: "Explicar a relação inicial.",
+              dependencyMicrosequenceIds: [],
               role: "explain"
             }]
           }]
@@ -339,6 +342,7 @@ test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => 
         intent: "Materializar exemplos fundamentais.",
         version: 2,
         position: 0,
+        progression: ["Observar a relação.", "Explicar a relação."],
         microsequences: [{
           id: "micro-a",
           productionPosition: 0,
@@ -364,6 +368,7 @@ test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => 
         intent: null,
         version: 1,
         position: 1,
+        progression: [],
         microsequences: [],
         progress: {
           state: "planned",
@@ -424,15 +429,18 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
           id: curriculumId,
           position: 0,
           title: "Módulo",
+          objective: "Organizar o recorte.",
           lessons: [{
             id: curriculumId,
             position: 0,
             title: "Lição",
+            objective: "Preparar o recorte.",
             microsequences: [{
               id: "micro-a",
               position: 0,
               title: "Microssequência",
-              goal: "Preparar o primeiro recorte.",
+              objective: "Preparar o primeiro recorte.",
+              dependencyMicrosequenceIds: [],
               role: "support"
             }]
           }]
@@ -449,6 +457,7 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
         intent: "",
         version: 1,
         position: 0,
+        progression: ["Preparar o primeiro recorte."],
         microsequences: [{
           id: "micro-a",
           productionPosition: 0,

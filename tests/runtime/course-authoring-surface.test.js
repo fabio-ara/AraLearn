@@ -198,21 +198,25 @@ function curriculumFixture() {
       id: "module-a",
       position: 0,
       title: "Base",
+      objective: "Compreender relações antes de aplicá-las.",
       lessons: [{
         id: "lesson-a",
         position: 0,
         title: "Relações",
+        objective: "Distinguir e praticar relações fundamentais.",
         microsequences: [{
           id: "micro-a",
           position: 0,
           title: "Primeiro caso",
-          goal: "Explicar a primeira relação.",
+          objective: "Explicar a primeira relação.",
+          dependencyMicrosequenceIds: [],
           role: "explain"
         }, {
           id: "micro-b",
           position: 1,
           title: "Segundo caso",
-          goal: "Praticar a relação em outro caso.",
+          objective: "Praticar a relação em outro caso.",
+          dependencyMicrosequenceIds: ["micro-a"],
           role: "practice"
         }]
       }]
@@ -220,26 +224,31 @@ function curriculumFixture() {
       id: "module-b",
       position: 1,
       title: "Aplicações",
+      objective: "Transferir relações para situações novas.",
       lessons: [{
         id: "lesson-b",
         position: 0,
         title: "Casos de transferência",
+        objective: "Aplicar relações além do exemplo inicial.",
         microsequences: [{
           id: "micro-c",
           position: 0,
           title: "Aplicação em novos contextos",
-          goal: "Comparar relações em situações novas.",
+          objective: "Comparar relações em situações novas.",
+          dependencyMicrosequenceIds: ["micro-b"],
           role: "practice"
         }]
       }, {
         id: "lesson-c",
         position: 1,
         title: "Evolução e limites",
+        objective: "Reconhecer quando uma relação precisa ser revista.",
         microsequences: [{
           id: "micro-d",
           position: 0,
           title: "Quando uma relação deixa de valer",
-          goal: "Reconhecer quando uma associação precisa ser revista.",
+          objective: "Reconhecer quando uma associação precisa ser revista.",
+          dependencyMicrosequenceIds: ["micro-c"],
           role: "explain"
         }]
       }]
@@ -322,6 +331,10 @@ function authoringPlanFixture(overrides = {}) {
         intent: "Materializar exemplos fundamentais.",
         version: 2,
         position: 0,
+        progression: [
+          "Observar a primeira relação em uma situação concreta.",
+          "Aplicar a distinção em um segundo caso."
+        ],
         microsequences: [{
           id: "micro-a",
           productionPosition: 0,
@@ -360,6 +373,7 @@ function authoringPlanFixture(overrides = {}) {
         intent: "Transferir relações para novos contextos.",
         version: 1,
         position: 1,
+        progression: [],
         microsequences: [],
         progress: {
           state: "planned",
@@ -939,7 +953,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     assert.match(curriculumMap, /Mapa curricular/u);
     assert.match(
       curriculumMap,
-      /Base[\s\S]*Relações[\s\S]*Primeiro caso[\s\S]*Explicar a primeira relação\.[\s\S]*Segundo caso[\s\S]*Praticar a relação em outro caso\./u
+      /Base[\s\S]*Compreender relações antes de aplicá-las\.[\s\S]*Relações[\s\S]*Distinguir e praticar relações fundamentais\.[\s\S]*Primeiro caso[\s\S]*Explicar a primeira relação\.[\s\S]*Segundo caso[\s\S]*Praticar a relação em outro caso\.[\s\S]*Depende de:[\s\S]*Primeiro caso/u
     );
     assert.match(
       curriculumMap,
@@ -1009,6 +1023,10 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   assert.equal(inspectionReads, 0);
   assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
   assert.match(root.innerHTML, /<p class="course-authoring-context-title">Planejamento<\/p>/u);
+  assert.match(
+    root.innerHTML,
+    /Progressão local[\s\S]*Observar a primeira relação em uma situação concreta\.[\s\S]*Aplicar a distinção em um segundo caso\./u
+  );
   assert.match(root.innerHTML, /<h3>Objetivo<\/h3>/u);
   assert.match(root.innerHTML, /Comparar &lt;origem&gt; e aplicação\./u);
   assert.doesNotMatch(root.innerHTML, /7–12|Escolha automática/u);

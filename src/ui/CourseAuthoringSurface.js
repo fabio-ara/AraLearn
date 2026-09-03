@@ -455,6 +455,10 @@ function renderPart(state, part, index, _parts, { detail = false } = {}) {
         className: "course-authoring-part-primary"
       })
     : "";
+  const progression = part.progression.length
+    ? '<div class="course-authoring-part-progression"><strong>Progressão local</strong><ol>' +
+      part.progression.map((step) => `<li>${escapeHtml(step)}</li>`).join("") + "</ol></div>"
+    : "";
   return `<article class="course-authoring-part${detail ? " is-detail" : ""}"` +
     ` data-status="${escapeHtml(part.status)}" data-course-authoring-part-card="${escapeHtml(
       part.id
@@ -464,6 +468,7 @@ function renderPart(state, part, index, _parts, { detail = false } = {}) {
     `<p class="course-authoring-part-status">${escapeHtml(PART_STATUS_LABELS[part.status])}</p>` +
     '</div></header>' +
     (part.intent ? `<p class="course-authoring-part-intent">${escapeHtml(part.intent)}</p>` : "") +
+    progression +
     '<div class="course-authoring-part-counts" aria-label="Estrutura e conteúdo">' +
     `<span>${escapeHtml(countedLabel(
       part.linkedMicrosequenceCount,
@@ -545,20 +550,33 @@ function renderPartDetailScreen(state, planning, part) {
     renderPart(state, part, index, planning.parts, { detail: true }) + "</section>";
 }
 
+function renderCurriculumMicrosequence(microsequence, nodes) {
+  const dependencies = microsequence.dependencyMicrosequenceIds.length
+    ? '<p class="course-authoring-curriculum-dependencies"><span>Depende de:</span> ' +
+      microsequence.dependencyMicrosequenceIds.map((id) =>
+        escapeHtml(nodes.microsequences.get(id).title)).join(", ") + "</p>"
+    : "";
+  return '<li><strong>' + escapeHtml(microsequence.title) + '</strong>' +
+    (microsequence.objective ? `<p>${escapeHtml(microsequence.objective)}</p>` : "") +
+    dependencies + '</li>';
+}
+
 function renderCurriculumMap(planning) {
   const modules = planning.curriculum.modules;
+  const nodes = curriculumNodes(planning.curriculum);
   const content = modules.length
     ? '<ol class="course-authoring-curriculum-modules">' + modules.map((module) =>
       '<li><section class="course-authoring-curriculum-module">' +
       `<h4>${escapeHtml(module.title)}</h4>` +
+      (module.objective ? `<p>${escapeHtml(module.objective)}</p>` : "") +
       '<ol class="course-authoring-curriculum-lessons">' + module.lessons.map((lesson) =>
         '<li><section class="course-authoring-curriculum-lesson">' +
         `<h5>${escapeHtml(lesson.title)}</h5>` +
+        (lesson.objective ? `<p>${escapeHtml(lesson.objective)}</p>` : "") +
         '<ol class="course-authoring-curriculum-microsequences">' +
         lesson.microsequences.map((microsequence) =>
-          '<li><strong>' + escapeHtml(microsequence.title) + '</strong>' +
-          (microsequence.goal ? `<p>${escapeHtml(microsequence.goal)}</p>` : "") +
-          '</li>').join("") + '</ol></section></li>').join("") +
+          renderCurriculumMicrosequence(microsequence, nodes)).join("") +
+        '</ol></section></li>').join("") +
       '</ol></section></li>').join("") + '</ol>'
     : '<p class="course-authoring-empty-copy">O mapa curricular ainda não foi definido.</p>';
   return '<section class="course-authoring-curriculum-map"' +

@@ -304,13 +304,23 @@ function normalizeCurriculumMicrosequence(value) {
   if (role && !MICROSEQUENCE_ROLES.has(role)) {
     fail("invalid_authoring_plan", "A função da microssequência é inválida.");
   }
+  if (!Array.isArray(value.dependencyMicrosequenceIds) ||
+      value.dependencyMicrosequenceIds.length > 64) {
+    fail("invalid_authoring_plan", "As dependências da microssequência são inválidas.");
+  }
+  const dependencyMicrosequenceIds = value.dependencyMicrosequenceIds.map((id) =>
+    requiredText(id, "A dependência da microssequência", { maximum: 240 }));
+  if (new Set(dependencyMicrosequenceIds).size !== dependencyMicrosequenceIds.length) {
+    fail("invalid_authoring_plan", "A microssequência repete uma dependência.");
+  }
   return Object.freeze({
     id: requiredText(value.id, "A identidade da microssequência", { maximum: 240 }),
     position: boundedNaturalNumber(value.position, "A posição da microssequência", {
       maximum: 511
     }),
     title: requiredText(value.title, "O título da microssequência", { maximum: 300 }),
-    goal: optionalText(value.goal, "O objetivo da microssequência", { maximum: 4_000 }),
+    objective: optionalText(value.objective, "O objetivo da microssequência", { maximum: 4_000 }),
+    dependencyMicrosequenceIds: Object.freeze(dependencyMicrosequenceIds),
     role
   });
 }
@@ -335,6 +345,7 @@ function normalizeCurriculumLesson(value) {
     id: requiredText(value.id, "A identidade da lição", { maximum: 240 }),
     position: boundedNaturalNumber(value.position, "A posição da lição", { maximum: 511 }),
     title: requiredText(value.title, "O título da lição", { maximum: 300 }),
+    objective: optionalText(value.objective, "O objetivo da lição", { maximum: 4_000 }),
     microsequences: normalizedCurriculumChildren(
       value.microsequences,
       normalizeCurriculumMicrosequence,
@@ -352,6 +363,7 @@ function normalizeCurriculumModule(value) {
     id: requiredText(value.id, "A identidade do módulo", { maximum: 240 }),
     position: boundedNaturalNumber(value.position, "A posição do módulo", { maximum: 127 }),
     title: requiredText(value.title, "O título do módulo", { maximum: 300 }),
+    objective: optionalText(value.objective, "O objetivo do módulo", { maximum: 4_000 }),
     lessons: normalizedCurriculumChildren(
       value.lessons,
       normalizeCurriculumLesson,
@@ -376,6 +388,18 @@ function normalizeCurriculum(value) {
   if (new Set(lessons.map(({ id }) => id)).size !== lessons.length ||
       new Set(microsequences.map(({ id }) => id)).size !== microsequences.length) {
     fail("invalid_authoring_plan", "O mapa curricular repete identidades.");
+  }
+  const positionByMicrosequenceId = new Map(microsequences.map((item, position) => [
+    item.id, position
+  ]));
+  for (const [position, microsequence] of microsequences.entries()) {
+    if (microsequence.dependencyMicrosequenceIds.some((id) =>
+      !positionByMicrosequenceId.has(id) || positionByMicrosequenceId.get(id) >= position)) {
+      fail(
+        "invalid_authoring_plan",
+        "Uma dependência precisa apontar para uma microssequência anterior do mapa."
+      );
+    }
   }
   return Object.freeze({ modules });
 }
@@ -549,6 +573,7 @@ function normalizePartProgress(value) {
 
 function normalizeCoursePart(value) {
   if (!isPlainObject(value) || !Array.isArray(value.microsequences) ||
+      !Array.isArray(value.progression) || value.progression.length > 64 ||
       value.microsequences.length > 500) {
     fail("invalid_authoring_plan", "Uma Parte de autoria é inválida.");
   }
@@ -566,12 +591,15 @@ function normalizeCoursePart(value) {
       progress.studyUnitCount !== studyUnitCount) {
     fail("invalid_authoring_plan", "O progresso da Parte não corresponde ao conteúdo vivo.");
   }
+  const progression = value.progression.map((item) =>
+    requiredText(item, "Uma etapa da progressão local", { maximum: 1_000 }));
   return Object.freeze({
     id: uuid(value.id, "A identidade da Parte"),
     title: requiredText(value.title, "O título da Parte", { maximum: 300 }),
     intent: optionalText(value.intent, "A intenção da Parte", { maximum: 4_000 }),
     version: boundedNaturalNumber(value.version, "A versão da Parte", { minimum: 1 }),
     position: boundedNaturalNumber(value.position, "A posição da Parte", { maximum: 63 }),
+    progression: Object.freeze(progression),
     microsequences: Object.freeze(microsequences),
     progress
   });
@@ -698,6 +726,7 @@ export function normalizeCourseAuthoringPlan(value, {
           path.lesson.id !== linked.curriculumPath.lessonId ||
           path.lesson.title !== linked.curriculumPath.lessonTitle ||
           path.microsequence.title !== linked.title ||
+          (path.microsequence.objective && path.microsequence.objective !== linked.goal) ||
           (path.microsequence.role && path.microsequence.role !== linked.role)) {
         fail("invalid_authoring_plan", "Um lote de produção diverge do mapa curricular.");
       }
