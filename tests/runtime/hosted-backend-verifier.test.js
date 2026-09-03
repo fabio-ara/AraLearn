@@ -33,9 +33,10 @@ function response(status, body, headers = {}) {
 function createHostedFetch({
   mcpContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
   actionContract = EXPECTED_AUTHORING_CONTRACT_HEADER,
-  mcpCatalog = COURSE_HUMAN_TASK_CATALOG_HEADER
+  mcpCatalog = COURSE_HUMAN_TASK_CATALOG_HEADER,
+  actionCorsOrigin = null
 } = {}) {
-  return async (url) => {
+  return async (url, options = {}) => {
     if (url.endsWith("/.well-known/jwks.json")) {
       return response(200, { keys: [{
         kty: "EC", alg: "ES256", crv: "P-256", kid: "key-a",
@@ -54,7 +55,7 @@ function createHostedFetch({
     }
     if (url.endsWith("/aralearn-authoring-action/retomar_curso")) {
       return response(204, null, {
-        "Access-Control-Allow-Origin": "https://chatgpt.com",
+        "Access-Control-Allow-Origin": actionCorsOrigin || options.headers?.Origin,
         "X-AraLearn-Authoring-Contract": actionContract
       });
     }
@@ -130,16 +131,21 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     }
   });
   assert.equal(result.schemaRevision, EXPECTED_REVISION);
-  assert.equal(calls.length, 4);
+  assert.equal(calls.length, 5);
   assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/get_aralearn_runtime_manifest");
   assert.equal(calls[0].options.headers.apikey, PUBLIC_KEY);
   assert.equal("Authorization" in calls[0].options.headers, false);
-  assert.equal(
-    calls[3].url,
-    "https://example.supabase.co/functions/v1/aralearn-authoring-action/retomar_curso"
+  assert.deepEqual(
+    calls.slice(3).map(({ url }) => url),
+    Array(2).fill(
+      "https://example.supabase.co/functions/v1/aralearn-authoring-action/retomar_curso"
+    )
   );
-  assert.equal(calls[3].options.method, "OPTIONS");
-  assert.equal(calls[3].options.headers.Origin, "https://chatgpt.com");
+  assert.deepEqual(calls.slice(3).map(({ options }) => options.method), ["OPTIONS", "OPTIONS"]);
+  assert.deepEqual(calls.slice(3).map(({ options }) => options.headers.Origin), [
+    "https://chatgpt.com",
+    "https://chat.openai.com"
+  ]);
   assert.deepEqual(result.oauth, {
     algorithms: ["ES256"],
     resource: "https://example.supabase.co/functions/v1/aralearn-authoring-mcp",
@@ -147,6 +153,17 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
   });
   assert.deepEqual(result.authoringContract, COURSE_HUMAN_TASK_CATALOG_METADATA);
   assert.deepEqual(result.mcpCatalog, COURSE_HUMAN_TASK_CATALOG_METADATA);
+});
+
+test("verificador exige CORS para os dois hosts oficiais de Actions", async () => {
+  await assert.rejects(
+    () => verifyHostedBackend({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: createHostedFetch({ actionCorsOrigin: "https://chatgpt.com" })
+    }),
+    /não confirmou CORS para https:\/\/chat[.]openai[.]com/u
+  );
 });
 
 test("verificador bloqueia MCP hospedado com fingerprint defasado", async () => {

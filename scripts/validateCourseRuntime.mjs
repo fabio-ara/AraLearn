@@ -288,7 +288,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260902180219" ||
+  if (manifest.schemaRevision !== "20260902234800" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -322,6 +322,19 @@ async function validateManifest() {
     "commit;"
   ]) {
     if (!cut.includes(token)) fail(`A migration final não demonstra ${token}.`);
+  }
+  const actionCallback = await read(
+    "supabase/migrations/20260902234800_bind_real_chatgpt_action_callback.sql"
+  );
+  for (const token of [
+    "https://(chatgpt[.]com|chat[.]openai[.]com)/aip/g-",
+    "v_authorization.redirect_uri <> p_redirect_uri",
+    "cardinality(v_client.redirect_uris) = 0",
+    "to_jsonb('20260902234800'::text)"
+  ]) {
+    if (!actionCallback.includes(token)) {
+      fail(`A hotfix do callback real de Actions não demonstra ${token}.`);
+    }
   }
   const analyticsApplicability = await read(
     "supabase/migrations/20260902180219_count_expository_parameter_usage_in_analytics.sql"

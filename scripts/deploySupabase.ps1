@@ -27,7 +27,8 @@ $RequiredApplicationOrigins = @(
   'https://appassets.androidplatform.net'
 )
 $RequiredActionOrigins = @(
-  'https://chatgpt.com'
+  'https://chatgpt.com',
+  'https://chat.openai.com'
 )
 
 function Invoke-AraLearnSupabase {
@@ -206,24 +207,26 @@ process.stdout.write(COURSE_HUMAN_TASK_CATALOG_HEADER);
       throw 'O preflight hospedado da API de Cursos falhou; as funções antigas foram preservadas.'
     }
 
-    Write-Host 'Validando a configuração CORS de Actions...'
-    $actionPreflight = Invoke-WebRequest `
-      -Uri "$resolvedProjectUrl/functions/v1/aralearn-authoring-action/retomar_curso" `
-      -Method Options `
-      -Headers @{
-        Origin = 'https://chatgpt.com'
-        'Access-Control-Request-Method' = 'POST'
-      } `
-      -UseBasicParsing
-    if ($actionPreflight.StatusCode -lt 200 -or
-        $actionPreflight.StatusCode -ge 300 -or
-        $actionPreflight.Headers['Access-Control-Allow-Origin'] -ne
-          'https://chatgpt.com') {
-      throw 'O preflight hospedado de Actions falhou; a publicação deve ser interrompida.'
-    }
-    if ([string]$actionPreflight.Headers['X-AraLearn-Authoring-Contract'] -ne
-        $expectedAuthoringContractHeader) {
-      throw 'A Action hospedada não corresponde ao contrato canônico local da Autoria.'
+    foreach ($actionOrigin in $RequiredActionOrigins) {
+      Write-Host "Validando a configuração CORS de Actions para $actionOrigin..."
+      $actionPreflight = Invoke-WebRequest `
+        -Uri "$resolvedProjectUrl/functions/v1/aralearn-authoring-action/retomar_curso" `
+        -Method Options `
+        -Headers @{
+          Origin = $actionOrigin
+          'Access-Control-Request-Method' = 'POST'
+        } `
+        -UseBasicParsing
+      if ($actionPreflight.StatusCode -lt 200 -or
+          $actionPreflight.StatusCode -ge 300 -or
+          $actionPreflight.Headers['Access-Control-Allow-Origin'] -ne
+            $actionOrigin) {
+        throw "O preflight hospedado de Actions falhou para $actionOrigin; a publicação deve ser interrompida."
+      }
+      if ([string]$actionPreflight.Headers['X-AraLearn-Authoring-Contract'] -ne
+          $expectedAuthoringContractHeader) {
+        throw 'A Action hospedada não corresponde ao contrato canônico local da Autoria.'
+      }
     }
 
     Write-Host 'Validando o MCP OAuth hospedado...'

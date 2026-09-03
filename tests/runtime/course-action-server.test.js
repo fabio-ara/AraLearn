@@ -12,6 +12,7 @@ import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 
 const ORIGIN = "https://chatgpt.com";
+const CHAT_OPENAI_ORIGIN = "https://chat.openai.com";
 const BASE_URL = "https://project.example/functions/v1/aralearn-authoring-action";
 const APP_URL = "https://app.example/";
 const ACTOR_ID = "10000000-0000-4000-8000-000000000001";
@@ -65,7 +66,7 @@ function adapterFixture(overrides = {}, scopes = ["authoring:read", "authoring:w
 function createHandler(overrides = {}, scopes) {
   return createAuthoringActionHandler({
     adapter: adapterFixture(overrides, scopes),
-    allowedOrigins: new Set([ORIGIN, "https://app.example"]),
+    allowedOrigins: new Set([ORIGIN, CHAT_OPENAI_ORIGIN, "https://app.example"]),
     actionBaseUrl: BASE_URL,
     publicAppUrl: APP_URL
   });
@@ -119,17 +120,31 @@ test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técni
 
 test("#272 preflight, OAuth e erros preservam o catálogo humano", async () => {
   const handler = createHandler();
-  const preflight = await handler(new Request(`${BASE_URL}/retomar_curso`, {
+  for (const origin of [ORIGIN, CHAT_OPENAI_ORIGIN]) {
+    const preflight = await handler(new Request(`${BASE_URL}/retomar_curso`, {
+      method: "OPTIONS",
+      headers: { Origin: origin, "Access-Control-Request-Method": "POST" }
+    }));
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), origin);
+    assert.equal(preflight.headers.get("access-control-allow-methods"), "POST, OPTIONS");
+    assert.equal(ARALEARN_ACTION_CONTRACT_HEADER, COURSE_HUMAN_TASK_CATALOG_HEADER);
+    assert.equal(
+      preflight.headers.get("x-aralearn-authoring-contract"),
+      COURSE_HUMAN_TASK_CATALOG_HEADER
+    );
+  }
+
+  const rejectedPreflight = await handler(new Request(`${BASE_URL}/retomar_curso`, {
     method: "OPTIONS",
-    headers: { Origin: ORIGIN, "Access-Control-Request-Method": "POST" }
+    headers: {
+      Origin: "https://actions.example",
+      "Access-Control-Request-Method": "POST"
+    }
   }));
-  assert.equal(preflight.status, 204);
-  assert.equal(preflight.headers.get("access-control-allow-methods"), "POST, OPTIONS");
-  assert.equal(ARALEARN_ACTION_CONTRACT_HEADER, COURSE_HUMAN_TASK_CATALOG_HEADER);
-  assert.equal(
-    preflight.headers.get("x-aralearn-authoring-contract"),
-    COURSE_HUMAN_TASK_CATALOG_HEADER
-  );
+  assert.equal(rejectedPreflight.status, 403);
+  assert.equal(rejectedPreflight.headers.get("access-control-allow-origin"), null);
+  assert.equal((await rejectedPreflight.json()).error.code, "origin_not_allowed");
 
   const oauth = await handler(new Request(`${BASE_URL}/oauth/unknown`, {
     method: "GET",
@@ -149,6 +164,77 @@ test("#272 preflight, OAuth e erros preservam o catálogo humano", async () => {
       retryable: false
     },
     nextDecision: null
+  });
+});
+
+test("OAuth nunca publica invalid_course_command durante autorização ou token", async () => {
+  const leakedCourseError = new AuthoringApiError(
+    422,
+    "invalid_course_command",
+    "Os dados do Curso são inválidos."
+  );
+  const handler = createHandler({
+    async createActionOAuthAuthorization() {
+      throw leakedCourseError;
+    },
+    async exchangeActionOAuthCode() {
+      throw leakedCourseError;
+    }
+  });
+  const redirectUri = "https://chat.openai.com/aip/g-real-callback/oauth/callback";
+  const authorizeUrl = new URL(`${BASE_URL}/oauth/authorize`);
+  authorizeUrl.search = new URLSearchParams({
+    response_type: "code",
+    client_id: ACTOR_ID,
+    redirect_uri: redirectUri,
+    state: "estado-oauth-actions",
+    scope: "openid email"
+  }).toString();
+  const authorize = await handler(new Request(authorizeUrl, {
+    headers: { Origin: ORIGIN }
+  }));
+  assert.equal(authorize.status, 400);
+  assert.deepEqual(await authorize.json(), {
+    error: "invalid_request",
+    error_description: "A solicitação OAuth é inválida."
+  });
+
+  const token = await handler(new Request(`${BASE_URL}/oauth/token`, {
+    method: "POST",
+    headers: {
+      Origin: ORIGIN,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: ACTOR_ID,
+      client_secret: `ars_${"a".repeat(32)}`,
+      code: `arc_${"b".repeat(32)}`,
+      redirect_uri: redirectUri
+    })
+  }));
+  assert.equal(token.status, 400);
+  assert.deepEqual(await token.json(), {
+    error: "invalid_grant",
+    error_description: "As credenciais ou a concessão OAuth são inválidas."
+  });
+
+  const unavailableHandler = createHandler({
+    async createActionOAuthAuthorization() {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço de Cursos não concluiu a operação."
+      );
+    }
+  });
+  const unavailable = await unavailableHandler(new Request(authorizeUrl, {
+    headers: { Origin: ORIGIN }
+  }));
+  assert.equal(unavailable.status, 503);
+  assert.deepEqual(await unavailable.json(), {
+    error: "temporarily_unavailable",
+    error_description: "O serviço OAuth está temporariamente indisponível."
   });
 });
 

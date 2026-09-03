@@ -11,7 +11,10 @@ const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtim
 const REQUEST_TIMEOUT_MS = 20_000;
 const MCP_PATH = "/functions/v1/aralearn-authoring-mcp";
 const ACTION_PATH = "/functions/v1/aralearn-authoring-action";
-const ACTION_ORIGIN = "https://chatgpt.com";
+const ACTION_ORIGINS = Object.freeze([
+  "https://chatgpt.com",
+  "https://chat.openai.com"
+]);
 const AUTHORING_CONTRACT_HEADER_NAME = "X-AraLearn-Authoring-Contract";
 const AUTHORING_MCP_CATALOG_HEADER_NAME = "X-AraLearn-Authoring-Mcp-Catalog";
 const SUPPORTED_JWT_KEYS = new Set(["EC:ES256:P-256"]);
@@ -165,6 +168,13 @@ function validateHostedAuthoringContract(response, label, { requireMcpCatalog = 
   }
 }
 
+function validateHostedActionPreflight(response, origin) {
+  validateHostedAuthoringContract(response, "A Action hospedada");
+  if (response.headers.get("Access-Control-Allow-Origin") !== origin) {
+    throw new Error(`A Action hospedada não confirmou CORS para ${origin}.`);
+  }
+}
+
 export async function verifyHostedBackend({
   projectUrl,
   publishableKey,
@@ -197,7 +207,7 @@ export async function verifyHostedBackend({
     );
   }
   const runtime = compareRuntimeManifest(expected, payload);
-  const [jwksResponse, metadataResponse, actionPreflightResponse] = await Promise.all([
+  const [jwksResponse, metadataResponse, ...actionPreflightResponses] = await Promise.all([
     fetchImpl(`${publicConfiguration.projectUrl}/auth/v1/.well-known/jwks.json`, {
       headers: { Accept: "application/json" },
       redirect: "error",
@@ -208,20 +218,25 @@ export async function verifyHostedBackend({
       redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     }),
-    fetchImpl(`${publicConfiguration.projectUrl}${ACTION_PATH}/retomar_curso`, {
-      method: "OPTIONS",
-      headers: {
-        Origin: ACTION_ORIGIN,
-        "Access-Control-Request-Method": "POST"
-      },
-      redirect: "error",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-    })
+    ...ACTION_ORIGINS.map((origin) => fetchImpl(
+      `${publicConfiguration.projectUrl}${ACTION_PATH}/retomar_curso`,
+      {
+        method: "OPTIONS",
+        headers: {
+          Origin: origin,
+          "Access-Control-Request-Method": "POST"
+        },
+        redirect: "error",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      }
+    ))
   ]);
   validateHostedAuthoringContract(metadataResponse, "O MCP hospedado", {
     requireMcpCatalog: true
   });
-  validateHostedAuthoringContract(actionPreflightResponse, "A Action hospedada");
+  actionPreflightResponses.forEach((response, index) => {
+    validateHostedActionPreflight(response, ACTION_ORIGINS[index]);
+  });
   const oauth = validateHostedOAuthBoundary({
     projectUrl: publicConfiguration.projectUrl,
     jwks: await responseJson(jwksResponse, "A leitura do JWKS hospedado"),

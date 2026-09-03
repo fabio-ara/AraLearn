@@ -167,20 +167,36 @@ function appendOAuthResult(rawRedirectUri, values) {
 
 function publicFailure(error, headers = {}) {
   const normalized = asAuthoringApiError(error);
-  return jsonResponse(normalized.status, {
-    error: normalized.code,
-    error_description: normalized.message
+  const courseError = normalized.code === "invalid_course_command";
+  const courseServiceError = normalized.code === "course_service_unavailable"
+    || normalized.code === "course_response_too_large";
+  return jsonResponse(courseError ? 400 : courseServiceError ? 503 : normalized.status, {
+    error: courseError
+      ? "invalid_request"
+      : courseServiceError ? "temporarily_unavailable" : normalized.code,
+    error_description: courseError
+      ? "A solicitação OAuth é inválida."
+      : courseServiceError
+        ? "O serviço OAuth está temporariamente indisponível."
+        : normalized.message
   }, headers);
 }
 
 function tokenFailure(error, headers = {}) {
   const normalized = asAuthoringApiError(error);
-  const authenticationFailure = normalized.status === 401;
-  return jsonResponse(authenticationFailure ? 400 : normalized.status, {
-    error: authenticationFailure ? "invalid_grant" : normalized.code,
+  const authenticationFailure = normalized.status === 401
+    || normalized.code === "invalid_course_command";
+  const courseServiceError = normalized.code === "course_service_unavailable"
+    || normalized.code === "course_response_too_large";
+  return jsonResponse(authenticationFailure ? 400 : courseServiceError ? 503 : normalized.status, {
+    error: authenticationFailure
+      ? "invalid_grant"
+      : courseServiceError ? "temporarily_unavailable" : normalized.code,
     error_description: authenticationFailure
       ? "As credenciais ou a concessão OAuth são inválidas."
-      : normalized.message
+      : courseServiceError
+        ? "O serviço OAuth está temporariamente indisponível."
+        : normalized.message
   }, headers);
 }
 

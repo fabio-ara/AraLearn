@@ -282,6 +282,71 @@ function adapter(fetchImpl, options = {}) {
   });
 }
 
+test("RPCs OAuth não convertem falhas de concessão em erro de Curso", async () => {
+  const value = adapter(async () => json({
+    code: "22023",
+    message: "O callback OAuth não é um endereço oficial vinculado ao cliente."
+  }, 422));
+
+  await assert.rejects(
+    () => value.createActionOAuthAuthorization({
+      clientId: MCP_CLIENT_ID,
+      redirectUri: "https://example.test/callback",
+      state: "estado-oauth",
+      scope: "openid"
+    }),
+    (error) => error.status === 400 && error.code === "invalid_request"
+  );
+  await assert.rejects(
+    () => value.exchangeActionOAuthCode({
+      clientId: MCP_CLIENT_ID,
+      clientSecretHash: "a".repeat(64),
+      codeHash: "b".repeat(64),
+      redirectUri: "https://example.test/callback",
+      accessTokenHash: "c".repeat(64),
+      refreshTokenHash: "d".repeat(64),
+      grantId: COURSE_ID
+    }),
+    (error) => error.status === 400 && error.code === "invalid_grant"
+  );
+  await assert.rejects(
+    () => value.rpc("course_command_fixture", {}),
+    (error) => error.status === 422 && error.code === "invalid_course_command"
+  );
+
+  const unavailable = adapter(async () => json({
+    code: "XX000",
+    message: "Falha interna."
+  }, 500));
+  await assert.rejects(
+    () => unavailable.createActionOAuthAuthorization({
+      clientId: MCP_CLIENT_ID,
+      redirectUri: "https://chatgpt.com/aip/g-real-callback/oauth/callback",
+      state: "estado-oauth",
+      scope: "openid"
+    }),
+    (error) => error.status === 503 && error.code === "temporarily_unavailable"
+  );
+  await assert.rejects(
+    () => unavailable.rpc("course_command_fixture", {}),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+
+  const unreachable = adapter(async () => {
+    throw new TypeError("network down");
+  });
+  await assert.rejects(
+    () => unreachable.exchangeActionOAuthRefresh({
+      clientId: MCP_CLIENT_ID,
+      clientSecretHash: "a".repeat(64),
+      refreshTokenHash: "b".repeat(64),
+      accessTokenHash: "c".repeat(64),
+      newRefreshTokenHash: "d".repeat(64)
+    }),
+    (error) => error.status === 503 && error.code === "temporarily_unavailable"
+  );
+});
+
 
 test("configuração de serviço recusa schemes executáveis nos deep links", () => {
   assert.throws(() => adapter(async () => json({}), {
