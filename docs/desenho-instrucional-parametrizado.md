@@ -180,7 +180,7 @@ componentes preferidos
 ```
 
 Cada referência usa a identidade técnica `package@version`. Um conjunto admite
-até 32 referências. Bloqueio prevalece sobre permissão; preferência apenas
+até 64 referências. Bloqueio prevalece sobre permissão; preferência apenas
 orienta a escolha entre componentes permitidos e adequados. Disponibilidade,
 preferência e uso materializado são fatos diferentes.
 

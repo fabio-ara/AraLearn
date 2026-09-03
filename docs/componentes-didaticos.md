@@ -157,7 +157,8 @@ um gráfico que mostra o comportamento. A composição é inadequada quando dupl
 o estímulo ou obriga o estudante a reconciliar representações sem finalidade.
 
 A prática acrescenta uma resposta compatível com o conteúdo. `choice` apresenta
-alternativas próprias. `gap` e `ordering` atuam nos campos que os pacotes de
+alternativas próprias. `open` recebe explicação, justificativa ou previsão em
+texto livre sem fingir correção semântica automática. `gap` e `ordering` atuam nos campos que os pacotes de
 conteúdo declaram como alvos: não duplicam o texto numa lista ou num painel de
 resposta. Uma correspondência simples é expressa por lacunas independentes nos
 campos reais de um `paragraph` ou de uma `table`, sem um pacote paralelo de

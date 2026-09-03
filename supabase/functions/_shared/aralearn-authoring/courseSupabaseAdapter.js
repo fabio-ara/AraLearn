@@ -255,7 +255,7 @@ function normalizeComponentPolicy(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_RE
   const lists = {};
   for (const field of ["allowedRefs", "excludedRefs", "preferredRefs"]) {
     const refs = value[field];
-    if (!Array.isArray(refs) || refs.length > 32 || new Set(refs).size !== refs.length ||
+    if (!Array.isArray(refs) || refs.length > 64 || new Set(refs).size !== refs.length ||
         refs.some((ref) => typeof ref !== "string" || !componentRefs.has(ref))) {
       throw new AuthoringApiError(
         503,

@@ -147,7 +147,7 @@ de um artefato extensível; sua relevância e avaliação seguem a lógica de DS
 **Operacionalização.** Cada pacote registra contrato, mecanismo de
 renderização, descrição de descoberta, campos editáveis e testes; o núcleo
 consome essa interface comum. O catálogo corrente materializa essa decisão em
-32 pacotes, sendo 29 de conteúdo e três de resposta.
+33 pacotes, sendo 29 de conteúdo e quatro de resposta.
 
 **Consequências.** A contribuição potencial é um padrão arquitetural para integrar representações
 acadêmicas heterogêneas sem expor detalhes geométricos à autoria.

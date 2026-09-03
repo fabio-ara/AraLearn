@@ -2081,6 +2081,48 @@ button.account-settings-back[hidden] {
   white-space: inherit;
 }
 
+.package-open-response {
+  display: grid;
+  gap: 10px;
+}
+
+.runtime-open-response-prompt > :first-child {
+  margin-top: 0;
+}
+
+.runtime-open-response-prompt > :last-child {
+  margin-bottom: 0;
+}
+
+.open-response-input,
+.open-response-preview {
+  width: 100%;
+  min-height: 8rem;
+  box-sizing: border-box;
+  border: 1px solid var(--resource-border);
+  border-radius: 12px;
+  background: var(--resource-surface);
+  color: var(--resource-text);
+}
+
+.open-response-input {
+  padding: 12px 14px;
+  resize: vertical;
+  font: inherit;
+  line-height: var(--leading-normal);
+}
+
+.open-response-input:focus-visible {
+  outline: 3px solid var(--resource-gap-focus);
+  outline-offset: 2px;
+}
+
+.open-response-placeholder,
+.open-response-note {
+  margin: 0;
+  color: var(--resource-text-secondary);
+}
+
 .inline-feedback {
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--resource-border) 26%, transparent);

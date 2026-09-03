@@ -28,6 +28,16 @@ const UNIT_PARAMETER_FIELD_TO_ID = Object.freeze({
   alvoDePalavrasPorResposta: "authoring_chat_response_word_target",
   alvoDePalavrasPorUnidade: "study_unit_content_word_target"
 });
+const EXPLANATION_FORM_LABELS = Object.freeze({
+  plain_definition: "definição em linguagem direta",
+  concrete_example: "exemplo concreto",
+  mechanism: "mecanismo",
+  contrast: "contraste",
+  application_condition: "condição de aplicação",
+  limit_or_exception: "limite ou exceção",
+  worked_example: "exemplo resolvido",
+  representation_link: "relação entre representações"
+});
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -342,7 +352,11 @@ export async function resolveHumanSourceLinks({
         : source.anchors.length === 1
         ? [source.anchors[0]]
         : source.anchors.length === 0
-          ? fail("human_reference_not_found", "A fonte não possui âncora ativa.", 404)
+          ? fail(
+              "human_reference_not_found",
+              "A fonte não possui localização confirmada. Vincule-a como precisa de verificação sem âncora; não invente uma localização.",
+              404
+            )
           : fail(
               "ambiguous_human_reference",
               "A fonte possui várias âncoras; indique a posição ou o trecho que a identifica.",
@@ -547,9 +561,12 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
       position: unit.posicao
     });
     if (!validation.valid) {
+      const reasons = validation.errors
+        .map((error) => typeof error === "string" ? error : error?.message)
+        .filter((message) => typeof message === "string" && message.trim());
       fail(
         "invalid_human_study_unit",
-        `A unidade de estudo ${unit.posicao} é inválida: ${validation.errors.join(" ")}`
+        `A unidade de estudo ${unit.posicao} é inválida: ${reasons.join(" ")}`
       );
     }
     const content = structuredClone(validation.normalized);
@@ -882,7 +899,12 @@ function applyGroupTargetPlans(groups, plan) {
   });
 }
 
-function validatePedagogicalGroup(group, establishedAnalysis, introducedAnywhere) {
+function validatePedagogicalGroup(
+  group,
+  establishedAnalysis,
+  introducedAnywhere,
+  analysisLabels
+) {
   const firstDesign = group.units[0]?.design;
   const targets = firstDesign?.targetPlanItems;
   if (!plainObject(targets)) {
@@ -1049,10 +1071,15 @@ function validatePedagogicalGroup(group, establishedAnalysis, introducedAnywhere
       ...developedByAnalysis.get(id),
       ...notApplicableByAnalysis.get(id)
     ]);
-    if ([...(requiredFormsByAnalysis.get(id) || [])].some((form) => !covered.has(form))) {
+    const missing = [...(requiredFormsByAnalysis.get(id) || [])]
+      .filter((form) => !covered.has(form));
+    if (missing.length) {
+      const idea = analysisLabels.get(id) || "ideia nova";
+      const forms = missing.map((form) => EXPLANATION_FORM_LABELS[form] || form)
+        .join(", ");
       fail(
         "human_materialization_missing_explanation_form",
-        "As formas de explicação requeridas não foram desenvolvidas nem justificadas como não aplicáveis."
+        `A ideia “${idea}” ainda precisa destas formas: ${forms}. Desenvolva-as ou justifique as que não se aplicam.`
       );
     }
   }
@@ -1078,6 +1105,8 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
   }).sort((left, right) => left.order - right.order);
   const establishedAnalysis = new Set();
   const introducedAnywhere = introducedAnalysisUnitIds(plan, replacedStudyUnitIds);
+  const analysisLabels = new Map(planItems(plan, "instructionalAnalysisUnits")
+    .map((item) => [item.id, item.statement]));
   for (const { group, order } of orderedGroups) {
     for (const id of establishedAnalysisUnitIds(
       plan,
@@ -1085,7 +1114,12 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
       order,
       curriculumOrder
     )) establishedAnalysis.add(id);
-    validatePedagogicalGroup(group, establishedAnalysis, introducedAnywhere);
+    validatePedagogicalGroup(
+      group,
+      establishedAnalysis,
+      introducedAnywhere,
+      analysisLabels
+    );
     const coveredScopeIds = new Set(group.units.flatMap((unit) =>
       unit.curriculumScopeItemIds));
     if (plannedCurriculumScopeIds(plan, group.microsequenceId)

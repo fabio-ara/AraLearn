@@ -188,6 +188,15 @@ async function solveOrderingWithKeyboard(page, response) {
     .toHaveAttribute("data-ordering-item-id", firstId);
 }
 
+async function solveOpenResponseWithKeyboard(page) {
+  const input = page.locator('[data-action="open-response-input"]');
+  await input.focus();
+  await page.keyboard.insertText(
+    "Minha explicação relaciona a situação apresentada ao mecanismo estudado."
+  );
+  await expect(input).toHaveValue(/Minha explicação relaciona/iu);
+}
+
 async function auditVisibleStudyUnit(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -229,7 +238,7 @@ async function auditVisibleStudyUnit(page) {
   });
 }
 
-test("Curso de catálogo exercita os 32 packages no Estudo e permanece disponível sem conexão", async ({
+test("Curso de catálogo exercita os 33 packages no Estudo e permanece disponível sem conexão", async ({
   context,
   page
 }) => {
@@ -254,6 +263,8 @@ test("Curso de catálogo exercita os 32 packages no Estudo e permanece disponív
       await solveChoiceWithKeyboard(page, unit.response);
     } else if (unit.response.package === "aralearn.response.ordering") {
       await solveOrderingWithKeyboard(page, unit.response);
+    } else if (unit.response.package === "aralearn.response.open") {
+      await solveOpenResponseWithKeyboard(page);
     } else {
       throw new Error(`Resposta sem exercício funcional: ${unit.response.package}`);
     }
@@ -262,6 +273,10 @@ test("Curso de catálogo exercita os 32 packages no Estudo e permanece disponív
     const continueButton = page.locator('[data-action="next-study-unit"]');
     await continueButton.focus();
     await continueButton.press("Enter");
+    if (unit.response.package === "aralearn.response.open") {
+      await expect(page.getByRole("status")).toContainText("Resposta preenchida.");
+      await expect(page.locator(".inline-feedback.ok, .inline-feedback.err")).toHaveCount(0);
+    }
     const continueFeedback = page.locator('[data-action="continue-feedback"]');
     if (await continueFeedback.isVisible()) {
       await continueFeedback.focus();

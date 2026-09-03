@@ -816,7 +816,7 @@ async function mountCourseAuthoring(page, {
       evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
       supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"]
     }));
-    const componentOptions = Array.from({ length: 32 }, (_, index) => ({
+    const componentOptions = Array.from({ length: 33 }, (_, index) => ({
       ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
       label: `Componente ${index + 1}`,
       purpose: `Finalidade acadêmica ${index + 1}.`
@@ -980,7 +980,7 @@ async function mountCourseAuthoring(page, {
           localAssignment: structuredClone(store.guidance.get(scopeKey(current)) || null),
           effectiveAssignments
         },
-        componentCatalog: { version: "1-3e5629f8", options: structuredClone(componentOptions) },
+        componentCatalog: { version: "1-4616b2e5", options: structuredClone(componentOptions) },
         targetPlanItems: ["didactic_microsequence", "study_unit"].includes(current.kind) ? {
           instructionalAnalysisUnitIds: ["79000000-0000-4000-8000-000000000019"],
           evidenceRequirementIds: []
@@ -996,7 +996,7 @@ async function mountCourseAuthoring(page, {
             inherited: scopeKey(selectedPolicy.scope) !== scopeKey(current)
           } : {
             policy: {
-              catalogVersion: "1-3e5629f8",
+              catalogVersion: "1-4616b2e5",
               availability: "all",
               allowedRefs: [],
               excludedRefs: [],
@@ -2244,7 +2244,7 @@ test.describe("Autoria canônica mobile-first", () => {
         .toHaveText("Fundamentos de relações");
       await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
       await expect(page.locator(".course-design-parameter")).toHaveCount(6);
-      await expect(page.locator(".course-design-component-option")).toHaveCount(32);
+      await expect(page.locator(".course-design-component-option")).toHaveCount(33);
       await expect(page.locator(".course-design-parameters").getByLabel(/^Ajustar /u))
         .toHaveCount(6);
       await expect(page.getByRole("heading", { name: "Componentes", exact: true })).toBeVisible();
@@ -3941,7 +3941,7 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
     origin: "research_condition"
   });
   expect(mutations[2].command.policy).toMatchObject({
-    catalogVersion: "1-3e5629f8",
+    catalogVersion: "1-4616b2e5",
     availability: "allow_only"
   });
   expect(mutations[2].command.policy.allowedRefs).toEqual([

@@ -4,6 +4,8 @@ import {
   normalizeCourseSourceLinks,
   normalizeCourseSourcesRead
 } from "../domain/courseSources.js";
+import { COURSE_COMPONENT_CATALOG_VERSION } from
+  "../domain/courseDesignParameters.js";
 
 const OWNERSHIP_VALUES = new Set(["owned"]);
 const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_condition"]);
@@ -25,7 +27,6 @@ const COURSE_DESIGN_PARAMETER_IDS = Object.freeze([
   "study_unit_content_word_target"
 ]);
 const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.1.0";
-const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 const COURSE_DESIGN_CHANGE_TYPES = new Set([
   "set_parameter", "clear_parameter", "set_guidance", "clear_guidance",
   "set_component_policy", "clear_component_policy"
@@ -1200,7 +1201,7 @@ function normalizeGuidance(value, context) {
 
 function normalizeComponentCatalog(value) {
   designRecord(value, ["version", "options"], "O catálogo de componentes");
-  if (!Array.isArray(value.options) || value.options.length !== 32) {
+  if (!Array.isArray(value.options) || value.options.length !== 33) {
     designFail("O catálogo de componentes é inválido.");
   }
   const version = designText(value.version, "A versão do catálogo", { maximum: 80 });
@@ -1235,17 +1236,17 @@ function normalizeComponentPolicyValue(value, catalog) {
   const known = new Set(catalog.options.map((option) => option.ref));
   const allowedRefs = normalizeStringList(value.allowedRefs, "Uma permissão de componente", {
     allowed: known,
-    maximumItems: 32,
+    maximumItems: 64,
     maximumLength: 160
   });
   const excludedRefs = normalizeStringList(value.excludedRefs, "Uma exclusão de componente", {
     allowed: known,
-    maximumItems: 32,
+    maximumItems: 64,
     maximumLength: 160
   });
   const preferredRefs = normalizeStringList(value.preferredRefs, "Uma preferência de componente", {
     allowed: known,
-    maximumItems: 32,
+    maximumItems: 64,
     maximumLength: 160
   });
   const allowed = availability === "all" ? known : new Set(allowedRefs);

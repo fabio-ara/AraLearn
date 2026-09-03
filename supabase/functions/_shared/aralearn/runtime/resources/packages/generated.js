@@ -31,6 +31,7 @@ import { entityRelationshipPackage } from "./entity-relationship/index.js";
 import { stateTransitionTablePackage } from "./state-transition-table/index.js";
 import { callStackPackage } from "./call-stack/index.js";
 import { terminalSessionPackage } from "./terminal-session/index.js";
+import { openResponsePackage } from "./open-response/index.js";
 
 export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   paragraphPackage,
@@ -64,7 +65,8 @@ export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   entityRelationshipPackage,
   stateTransitionTablePackage,
   callStackPackage,
-  terminalSessionPackage
+  terminalSessionPackage,
+  openResponsePackage
 ]);
 
 export {
@@ -99,5 +101,6 @@ export {
   entityRelationshipPackage,
   stateTransitionTablePackage,
   callStackPackage,
-  terminalSessionPackage
+  terminalSessionPackage,
+  openResponsePackage
 };

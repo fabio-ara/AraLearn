@@ -2988,6 +2988,42 @@
                         }
                       ],
                       "topics": []
+                    },
+                    {
+                      "id": "gallery-33",
+                      "position": 33,
+                      "title": "Resposta aberta",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "context-aralearn.response.open",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Pedir que o estudante explique, justifique ou preveja com palavras próprias, sem oferecer alternativas."
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "instance-33",
+                        "package": "aralearn.response.open",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Explique com suas palavras por que o switch aprende pela origem e consulta o destino.",
+                          "placeholder": "Relacione origem, tabela MAC e decisão de saída."
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "feedback-33",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A proposta rotula um campo multilinha nativo e o retorno de preenchimento é anunciado."
+                          }
+                        }
+                      ],
+                      "topics": []
                     }
                   ]
                 }

@@ -59,12 +59,14 @@ function responseKind(entry) {
   if (entry.instance.package === "aralearn.response.choice") return "choice";
   if (entry.instance.package === "aralearn.response.gap") return "gap";
   if (entry.instance.package === "aralearn.response.ordering") return "ordering";
+  if (entry.instance.package === "aralearn.response.open") return "open";
   return "";
 }
 
 function defaultResponseState(entry) {
   if (responseKind(entry) === "choice") return { selected: [], feedback: null };
   if (responseKind(entry) === "gap") return { values: [], feedback: null };
+  if (responseKind(entry) === "open") return { text: "", feedback: null };
   if (responseKind(entry) === "ordering") {
     const ids = (entry.block?.targets || []).map(({ id }) => String(id));
     return {
@@ -2753,12 +2755,25 @@ export function createCourseStudyApplication({
       payload = { values: Object.fromEntries(blanks.map((blank, index) => [blank.id, values[index]])) };
     } else if (kind === "ordering") {
       payload = { order: [...exercise.order] };
+    } else if (kind === "open") {
+      const text = String(exercise.text || "").trim();
+      if (!text) {
+        exercise.feedback = "incomplete";
+        queueStudyFocus("[data-action='open-response-input']");
+        if (rerender) render();
+        return false;
+      }
+      payload = { text };
     } else {
       return true;
     }
-    exercise.feedback = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, payload).correct
-      ? "correct"
-      : "wrong";
+    const evaluated = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, payload);
+    if (kind === "open") {
+      exercise.feedback = evaluated.complete ? "recorded" : "incomplete";
+      if (rerender) render();
+      return evaluated.complete === true;
+    }
+    exercise.feedback = evaluated.correct ? "correct" : "wrong";
     if (rerender) render();
     return exercise.feedback === "correct";
   }
@@ -3048,6 +3063,20 @@ export function createCourseStudyApplication({
         });
       }
       node.addEventListener("input", update);
+    });
+  }
+
+  function bindOpenResponseInputs(scope) {
+    scope.querySelectorAll("[data-action='open-response-input']").forEach((node) => {
+      if (node.dataset.studyBound === "true") return;
+      node.dataset.studyBound = "true";
+      node.addEventListener("input", () => {
+        const entry = currentResponseEntry();
+        const exercise = ensureResponseState(entry);
+        if (!exercise || responseKind(entry) !== "open") return;
+        exercise.text = String(node.value || "");
+        exercise.feedback = null;
+      });
     });
   }
 
@@ -3578,6 +3607,7 @@ export function createCourseStudyApplication({
       }
     });
     bindGapInputs(root);
+    bindOpenResponseInputs(root);
   }
 
   function render({ preserveFocus = true, captureDraft = true } = {}) {
@@ -3767,6 +3797,7 @@ export function createCourseStudyApplication({
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
       activateManualEditing();
       bindGapInputs(root);
+      bindOpenResponseInputs(root);
       bindTextGapChoiceActions(root);
     }).catch((error) => {
       root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {

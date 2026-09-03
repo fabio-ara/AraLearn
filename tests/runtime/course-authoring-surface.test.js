@@ -412,7 +412,7 @@ function courseDesignFixture({
   targetPlanItems = null
 } = {}) {
   const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
-  const componentOptions = Array.from({ length: 32 }, (_, index) => ({
+  const componentOptions = Array.from({ length: 33 }, (_, index) => ({
     ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
     label: `Componente ${index + 1}`,
     purpose: `Finalidade acadêmica ${index + 1}.`
@@ -468,7 +468,7 @@ function courseDesignFixture({
         inherited
       }]
     },
-    componentCatalog: { version: "1-3e5629f8", options: componentOptions },
+    componentCatalog: { version: "1-4616b2e5", options: componentOptions },
     targetPlanItems,
     componentPolicy: {
       localAssignment: localPolicy ? {
@@ -484,7 +484,7 @@ function courseDesignFixture({
         inherited: false
       } : {
         policy: {
-          catalogVersion: "1-3e5629f8",
+          catalogVersion: "1-4616b2e5",
           availability: "all",
           allowedRefs: [],
           excludedRefs: [],
@@ -1390,7 +1390,7 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
   assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
   assert.match(root.innerHTML, /<h3 id="course-design-policy-title">Componentes<\/h3>/u);
   assert.doesNotMatch(root.innerHTML, /Planejado × aplicado|materialização|contextHash/iu);
-  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 32);
+  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 33);
   assert.doesNotMatch(root.innerHTML, /<pre|\{\s*"/u);
 });
 

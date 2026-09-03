@@ -94,7 +94,7 @@ function courseDesignFixture({
   nextChildCursor = null
 } = {}) {
   const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
-  const componentOptions = Array.from({ length: 32 }, (_, index) => ({
+  const componentOptions = Array.from({ length: 33 }, (_, index) => ({
     ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
     label: `Componente ${index + 1}`,
     purpose: `Finalidade acadêmica ${index + 1}.`
@@ -138,12 +138,12 @@ function courseDesignFixture({
         inherited: false
       }]
     },
-    componentCatalog: { version: "1-3e5629f8", options: componentOptions },
+    componentCatalog: { version: "1-4616b2e5", options: componentOptions },
     componentPolicy: {
       localAssignment: null,
       effectiveAssignment: {
         policy: {
-          catalogVersion: "1-3e5629f8",
+          catalogVersion: "1-4616b2e5",
           availability: "all",
           allowedRefs: [],
           excludedRefs: [],
@@ -521,7 +521,7 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
     "authoring_chat_response_word_target",
     "study_unit_content_word_target"
   ]);
-  assert.equal(design.componentCatalog.options.length, 32);
+  assert.equal(design.componentCatalog.options.length, 33);
   assert.equal(design.parameters[0].effectiveAssignment.origin, "system_default");
   assert.equal(design.guidance.localAssignment.origin, "migration");
   assert.equal(design.guidance.effectiveAssignments.length, 1);
@@ -556,6 +556,28 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
     expectedScope: { kind: "didactic_microsequence", ref: "micro-a" }
   });
   assert.deepEqual(normalizedMicro.targetPlanItems.instructionalAnalysisUnitIds, [ITEM_ID]);
+});
+
+test("leitura autoral aceita condição fixa com os 33 componentes correntes", () => {
+  const fixture = courseDesignFixture();
+  const refs = fixture.componentCatalog.options.map(({ ref }) => ref);
+  fixture.componentPolicy.effectiveAssignment = {
+    policy: {
+      catalogVersion: fixture.componentCatalog.version,
+      availability: "allow_only",
+      allowedRefs: refs,
+      excludedRefs: [],
+      preferredRefs: [refs[0]]
+    },
+    origin: "research_condition",
+    reason: "Condição comparável.",
+    sourceScope: { kind: "course", ref: COURSE_ID },
+    inherited: false
+  };
+
+  const design = normalizeCourseDesign(fixture);
+  assert.equal(design.componentPolicy.effectiveAssignment.policy.allowedRefs.length, 33);
+  assert.equal(design.componentPolicy.effectiveAssignment.origin, "research_condition");
 });
 
 test("StudyUnit é escopo corrente de configuração com herança e override próprios", () => {

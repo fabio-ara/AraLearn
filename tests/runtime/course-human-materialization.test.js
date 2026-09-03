@@ -414,6 +414,84 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes(COURSE_ID), false);
 });
 
+test("materializa prática de resposta aberta na primeira tentativa sem resposta-modelo", async () => {
+  const adapter = adapterFixture();
+  const practice = {
+    microssequencia: "DNS",
+    posicao: 2,
+    conteudo: {
+      title: "Explique a decisão do resolvedor",
+      role: "practice",
+      content: [{
+        id: "contexto-consulta",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "O resolvedor recebeu um nome e precisa obter o endereço associado." }
+      }],
+      response: {
+        id: "resposta-explicada",
+        package: "aralearn.response.open",
+        version: "1.0.0",
+        data: {
+          prompt: "Explique com suas palavras a relação entre o nome consultado e o endereço devolvido."
+        }
+      },
+      feedback: [],
+      topics: ["DNS"]
+    },
+    aplicacaoPedagogica: {
+      modo: "pratica",
+      ideiasIntroduzidas: [],
+      ideiasUtilizadas: ["DNS associa nomes a endereços."],
+      explicacoes: [],
+      praticas: [],
+      cobertura: []
+    },
+    fontes: []
+  };
+
+  await materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [unit(), practice]
+  });
+
+  assert.equal(adapter.calls.length, 1);
+  const stored = adapter.calls[0].units[1];
+  assert.equal(stored.content.response.package, "aralearn.response.open");
+  assert.deepEqual(stored.content.response.data, practice.conteudo.response.data);
+  assert.deepEqual(stored.designApplication.componentRefs, [
+    "aralearn.resource.paragraph@1.0.0",
+    "aralearn.response.open@1.0.0"
+  ]);
+});
+
+test("erro de elemento repetido orienta a retomada sem expor sua identificação interna", async () => {
+  const repeated = pedagogicalUnit(2, { mode: "pratica" });
+  repeated.conteudo.response = {
+    id: repeated.conteudo.content[0].id,
+    package: "aralearn.response.open",
+    version: "1.0.0",
+    data: { prompt: "Explique a relação observada." }
+  };
+
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: adapterFixture(),
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [unit(), repeated]
+  }), (error) => {
+    assert.equal(error.code, "invalid_human_study_unit");
+    assert.match(error.message, /repete.*refaça/iu);
+    assert.doesNotMatch(error.message, new RegExp(repeated.conteudo.response.id, "u"));
+    assert.doesNotMatch(error.message, /identificador local|\$\.|\.id\b/iu);
+    return true;
+  });
+});
+
 test("materialização exige uma decisão contextual para valores ainda no padrão", async () => {
   const value = adapterFixture();
   const inheritedDesign = value.getCourseDesign;
@@ -615,6 +693,57 @@ test("#272 materialização falha cedo quando a Âncora humana não existe", asy
     }])]
   }), (error) => error.status === 404 && error.code === "human_reference_not_found");
   assert.deepEqual(adapter.calls, []);
+});
+
+test("fonte sem localização confirmada permanece não verificada e não exige âncora inventada", async () => {
+  const withoutAnchors = () => {
+    const value = adapterFixture();
+    const readSources = value.getCourseSources;
+    value.getCourseSources = async (request) => {
+      const response = await readSources(request);
+      if (request.mode !== "source") return response;
+      return {
+        ...response,
+        items: response.items.map((source) => ({ ...source, anchors: [] }))
+      };
+    };
+    return value;
+  };
+
+  const safe = withoutAnchors();
+  await materializeHumanCoursePart({
+    adapter: safe,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [unit([{
+      fonte: "RFC 1035",
+      relacao: "needs_verification"
+    }])]
+  });
+  assert.deepEqual(safe.calls[0].units[0].sourceLinks, [{
+    sourceId: "source-rfc-1035",
+    relation: "needs_verification",
+    anchors: []
+  }]);
+
+  const unsafe = withoutAnchors();
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: unsafe,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [unit([{
+      fonte: "RFC 1035",
+      relacao: "supported_by"
+    }])]
+  }), (error) => {
+    assert.equal(error.code, "human_reference_not_found");
+    assert.match(error.message, /precisa de verificação/iu);
+    assert.match(error.message, /não invente.*localização/iu);
+    return true;
+  });
+  assert.deepEqual(unsafe.calls, []);
 });
 
 test("#272 IDs de Fonte e Âncora não voltam a ser referências humanas", async () => {
@@ -841,7 +970,8 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
     mutate(units) {
       units[0].aplicacaoPedagogica.explicacoes[0].formas = ["plain_definition"];
     },
-    code: "human_materialization_missing_explanation_form"
+    code: "human_materialization_missing_explanation_form",
+    message: /Novidade 1.*Contraste/iu
   }, {
     mutate(units) {
       units[0].aplicacaoPedagogica.praticas.pop();
@@ -864,7 +994,11 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
       course: "Curso de Redes",
       part: 1,
       units
-    }), (error) => error.code === scenario.code, scenario.code);
+    }), (error) => {
+      assert.equal(error.code, scenario.code);
+      if (scenario.message) assert.match(error.message, scenario.message);
+      return true;
+    }, scenario.code);
   }
   await assert.rejects(() => materializeHumanCoursePart({
     adapter: unitScopedPedagogicalAdapter({ blockedComponent: true }),

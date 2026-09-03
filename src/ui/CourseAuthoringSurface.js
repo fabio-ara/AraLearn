@@ -2927,7 +2927,7 @@ export function createCourseAuthoringSurface({
       const lists = [allowedRefs, excludedRefs, preferredRefs];
       if (!scope || !new Set(["all", "allow_only"]).has(availability) ||
           availability === "allow_only" && allowedRefs.length === 0 ||
-          lists.some((list) => list.length > 32 || new Set(list).size !== list.length ||
+          lists.some((list) => list.length > 64 || new Set(list).size !== list.length ||
             list.some((ref) => !known.has(ref))) ||
           preferredRefs.some((ref) => !allowed.has(ref) || excluded.has(ref)) ||
           !new Set(["automatic", "author", "research_condition"]).has(origin) ||

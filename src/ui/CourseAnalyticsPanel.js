@@ -40,6 +40,7 @@ const CONCEPT_LABELS = Object.freeze({
   paragraph: "Parágrafo",
   choice: "Escolha",
   gap: "Lacuna",
+  open: "Resposta aberta",
   table: "Tabela",
   sequence: "Sequência",
   flow: "Fluxo",

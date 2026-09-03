@@ -37,6 +37,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Fontes podem entrar em qualquer fase. Mostre a referência humana, o papel efetivo e a âncora ou trecho pertinente sem narrar controles internos.",
       "Separe os papéis: documento curricular define escopo; fonte de aplicação ou avaliação calibra o contexto; fonte técnica sustenta explicações e não redefine o currículo por si só.",
+      "Dados bibliográficos fornecidos não significam conferência. Só atribua confirmação à autoria após declaração explícita dela. Leitura direta pode sustentar uma localização, mas não essa confirmação; sem localização observada, mantenha a verificação pendente e nunca invente capítulo, página ou trecho.",
       "Fonte e âncora continuam contestáveis. Ao corrigir ou retirar uma atribuição, repare apenas conteúdo e vínculos realmente afetados."
     ])
   }),

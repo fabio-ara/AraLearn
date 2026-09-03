@@ -625,6 +625,73 @@
                       "topics": []
                     }
                   ]
+                },
+                {
+                  "id": "catalog-aralearn-response-open-microsequence",
+                  "title": "Resposta aberta",
+                  "goal": "Compreender quando usar Resposta aberta e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.response.open"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "catalog-aralearn-response-open-theory-card",
+                      "position": 1,
+                      "title": "Como funciona: Resposta aberta",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-response-open-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Resposta aberta: Pedir que o estudante explique, justifique ou preveja com palavras próprias, sem oferecer alternativas. É apropriado quando o estudante deve explicar, justificar, prever ou interpretar com palavras próprias. Na leitura, observe esta convenção: proposta focal. Limite importante: Aceita a produção, mas não afirma se ela está semanticamente correta.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    },
+                    {
+                      "id": "catalog-aralearn-response-open-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Resposta aberta",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "catalog-aralearn-response-open-practice-response",
+                        "package": "aralearn.response.open",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Explique com suas palavras por que o switch aprende pela origem e consulta o destino.",
+                          "placeholder": "Relacione origem, tabela MAC e decisão de saída."
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-response-open-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Critério de revisão para Resposta aberta: a representação deve realizar a finalidade declarada — Pedir que o estudante explique, justifique ou preveja com palavras próprias, sem oferecer alternativas. A operação-alvo da tarefa é explicar e situar. Evite este recurso quando a resposta precisa de correção automática exata.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": []
+                    }
+                  ]
                 }
               ]
             }

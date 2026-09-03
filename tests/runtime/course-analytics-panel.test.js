@@ -150,6 +150,10 @@ function analyticsPage({
         componentRef: "aralearn.response.choice@1.0.0",
         studyUnitCount,
         instanceCount: studyUnitCount
+      }, {
+        componentRef: "aralearn.response.open@1.0.0",
+        studyUnitCount: 1,
+        instanceCount: 1
       }],
       practiceByRequirement: [{
         position: 1,
@@ -219,7 +223,7 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
   assert.match(root.innerHTML, /aria-label="Resumo do desenho"/u);
   assert.match(root.innerHTML, /Unidades de estudo<small>Unidades no escopo\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Unidades de análise<small>Ideias acompanhadas no repertório\.<\/small><\/dt><dd>2<\/dd>/u);
-  assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>2<\/dd>/u);
+  assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>3<\/dd>/u);
   assert.match(root.innerHTML, /Observações abertas<small>Pendências humanas atuais\.<\/small><\/dt><dd>2<\/dd>/u);
   assert.match(root.innerHTML, /Parâmetros definidos[\s\S]+<dd>1<\/dd>/u);
   assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);
@@ -385,6 +389,7 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
   assert.match(root.innerHTML, /Unidade de estudo 2 · Pedido e resposta<\/th><td>1 novidade introduzida/u);
   assert.match(root.innerHTML, /Forma · contraste<\/th><td>1 unidade de estudo · 1 aplicação/u);
   assert.match(root.innerHTML, /Componente · tabela<\/th><td>1 unidade de estudo · 1 uso/u);
+  assert.match(root.innerHTML, /Componente · resposta aberta<\/th><td>1 unidade de estudo · 1 uso/u);
   assert.match(root.innerHTML, /Prática 1<\/th><td>Distinguir cliente e servidor em situações novas\. · 3 oportunidades/u);
   assert.match(root.innerHTML, /Fonte · técnica ou conceitual<\/th><td>2 fontes · 3 âncoras · 2 unidades de estudo/u);
   assert.match(root.innerHTML, /Variação · representação<\/th><td>1 oportunidade/u);

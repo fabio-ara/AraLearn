@@ -358,7 +358,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.1");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.2");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
@@ -1245,6 +1245,38 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
     referencia === "aralearn.response.ordering@3.0.0"
   )), true);
 
+  const open = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: {
+      funcao: "Pedir que a pessoa explique o mecanismo com palavras próprias, sem alternativas.",
+      papel: "pratica",
+      lugar: "resposta"
+    }
+  });
+  assert.equal(
+    open.context.components.candidates[0].referencia,
+    "aralearn.response.open@1.0.0"
+  );
+  const inspectedOpen = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { componente: "aralearn.response.open@1.0.0" }
+  });
+  assert.deepEqual(
+    inspectedOpen.context.componentAuthoringContract.contrato.required,
+    ["prompt"]
+  );
+  assert.equal(
+    Object.hasOwn(
+      inspectedOpen.context.componentAuthoringContract.modeloDeInstancia.data,
+      "answer"
+    ),
+    false
+  );
+
   const table = await executeHumanCourseTask({
     adapter: adapter(),
     principal: PRINCIPAL,
@@ -1609,6 +1641,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
   assert.match(created.result, /Atualizei a fonte/u);
   assert.equal(sourceCommands[0].type, "save_source");
   assert.notEqual(sourceCommands[0].sourceId, "source-existing-a");
+  assert.equal(sourceCommands[0].source.verificationStatus, "unverified");
 
   await executeHumanCourseTask({
     adapter: sourceAdapter,

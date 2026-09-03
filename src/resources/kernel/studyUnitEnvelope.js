@@ -64,7 +64,11 @@ export function validateStudyUnitEnvelope(studyUnit, registry, path = "$.studyUn
   const ids = new Set();
   const validateSlot = (instance, slot, instancePath) => {
     const id = text(instance?.id);
-    if (id && ids.has(id)) errors.push(`${instancePath}.id está duplicado na Unidade de estudo.`);
+    if (id && ids.has(id)) {
+      errors.push(
+        "A unidade repete o mesmo elemento entre conteúdo, resposta e retorno; refaça esses elementos sem duplicação."
+      );
+    }
     if (id) ids.add(id);
     const result = registry?.validateInstance?.(instance, slot);
     if (!result || result.valid !== true) {
