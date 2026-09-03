@@ -290,6 +290,10 @@ begin
   v_definition:=replace(pg_get_functiondef(
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)'::regprocedure
   ),E'\r\n',E'\n');
+  v_parameter_before:=replace(v_parameter_before,E'\r\n',E'\n');
+  v_parameter_after:=replace(v_parameter_after,E'\r\n',E'\n');
+  v_guidance_before:=replace(v_guidance_before,E'\r\n',E'\n');
+  v_guidance_after:=replace(v_guidance_after,E'\r\n',E'\n');
   v_original:=v_definition;
   v_definition:=replace(v_definition,v_parameter_before,v_parameter_after);
   v_definition:=replace(v_definition,v_guidance_before,v_guidance_after);
@@ -1877,6 +1881,10 @@ $configuration_check$;
     ) then
 $configuration_check$;
 begin
+  v_configuration_check:=replace(v_configuration_check,E'\r\n',E'\n');
+  v_configuration_check_with_new_unit_calibration:=replace(
+    v_configuration_check_with_new_unit_calibration,E'\r\n',E'\n'
+  );
   v_definition:=replace(pg_get_functiondef(
     'private.materialize_course_authoring_part_core_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)'::regprocedure
   ),E'\r\n',E'\n');
