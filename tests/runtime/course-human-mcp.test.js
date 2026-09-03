@@ -151,7 +151,7 @@ test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.4");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.5");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
@@ -1329,10 +1329,13 @@ test("retirada da Fonte só ocorre depois de concluir limpeza física pendente",
 test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
   const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
   assert.deepEqual(pdfTask._meta, { "openai/fileParams": ["pdf"] });
-  assert.deepEqual(pdfTask.inputSchema.anyOf, [
+  assert.deepEqual(pdfTask.inputSchema.oneOf, [
     { required: ["fonte"] },
     { required: ["titulo"] }
   ]);
+  assert.match(pdfTask.description, /anexa\/reanexa/u);
+  assert.match(pdfTask.inputSchema.properties.fonte.description, /Fonte existente/u);
+  assert.equal(pdfTask.inputSchema.properties.titulo.description, "Nova Fonte a criar.");
   assert.deepEqual(pdfTask.inputSchema.properties.pdf, {
     type: "object",
     additionalProperties: false,
@@ -1343,7 +1346,7 @@ test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
       file_name: { type: "string", minLength: 1, maxLength: 512 },
       mime_type: { type: "string", const: "application/pdf" }
     },
-    description: "Descritor temporário do PDF fornecido pelo cliente OpenAI."
+    description: "PDF temporário."
   });
 });
 
@@ -1400,9 +1403,48 @@ test("MCP exige Fonte existente ou título novo antes de consultar o Curso", asy
     principal: PRINCIPAL,
     name: "incorporar_pdf_como_fonte",
     rawArguments
-  }), (error) => error.code === "invalid_human_task_argument" &&
-      error.details?.field === "titulo");
+  }), (error) => error.code === "invalid_human_task_arguments" &&
+      error.details?.fields?.join(",") === "fonte,titulo");
   assert.equal(reads, 0);
+});
+
+test("MCP rejeita Fonte existente e título novo juntos antes de qualquer efeito", async () => {
+  const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
+  const validatePdfTask = new Ajv2020({ strict: false }).compile(pdfTask.inputSchema);
+  const rawArguments = {
+    curso: "Redes para iniciantes",
+    fonte: "Manual existente",
+    titulo: "Manual duplicado",
+    intencao: "Anexar o documento.",
+    pdf: {
+      file_id: "file-123",
+      download_url: "https://files.oaiusercontent.com/manual.pdf?token=temporary"
+    }
+  };
+  assert.equal(validatePdfTask(rawArguments), false);
+
+  let reads = 0;
+  let downloads = 0;
+  const pdfAdapter = {
+    ...adapter(),
+    async getCourse() {
+      reads += 1;
+      return await adapter().getCourse();
+    },
+    async fetchImpl() {
+      downloads += 1;
+      return new Response();
+    }
+  };
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: pdfAdapter,
+    principal: PRINCIPAL,
+    name: "incorporar_pdf_como_fonte",
+    rawArguments
+  }), (error) => error.code === "invalid_human_task_arguments" &&
+      error.details?.fields?.join(",") === "fonte,titulo");
+  assert.equal(reads, 0);
+  assert.equal(downloads, 0);
 });
 
 test("MCP recebe o descritor oficial e mantém o download_url fora do envelope", async () => {
@@ -1456,6 +1498,75 @@ test("MCP recebe o descritor oficial e mantém o download_url fora do envelope",
   assert.equal(ingestions[0].fileIdentity.fileId, "file-123");
 });
 
+test("PDF em nova Fonte homônima relê a escrita pela identidade interna", async () => {
+  const existing = {
+    sourceId: "source-existing-same-title",
+    revision: 2,
+    status: "active",
+    title: "Manual do proxy",
+    citationText: null,
+    attachments: []
+  };
+  const sources = [existing];
+  const ingestions = [];
+  const sourceReads = [];
+  const pdfAdapter = {
+    ...adapter(),
+    async getCourseSources({ mode, sourceId }) {
+      if (mode === "source") {
+        sourceReads.push(sourceId);
+        const source = sources.find((candidate) => candidate.sourceId === sourceId);
+        return { items: source ? [structuredClone(source)] : [], nextCursor: null };
+      }
+      return { items: structuredClone(sources), nextCursor: null };
+    },
+    async getCourseSourcePdfIngestionReceipt() {
+      return null;
+    },
+    async fetchImpl() {
+      return new Response(new TextEncoder().encode("%PDF-1.4\n%%EOF"), {
+        status: 200,
+        headers: { "Content-Type": "application/pdf" }
+      });
+    },
+    async ingestCourseSourcePdf(value) {
+      ingestions.push(structuredClone(value));
+      sources.push({
+        sourceId: value.sourceIntent.sourceId,
+        revision: 1,
+        status: "active",
+        title: value.sourceIntent.source.title,
+        citationText: null,
+        attachments: [{ contentHash: "c".repeat(64) }]
+      });
+      return { stored: true };
+    }
+  };
+
+  const output = await executeHumanCourseTask({
+    adapter: pdfAdapter,
+    principal: PRINCIPAL,
+    name: "incorporar_pdf_como_fonte",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      titulo: "Manual do proxy",
+      intencao: "Manter outro documento como nova Fonte homônima.",
+      pdf: {
+        file_id: "file-homonymous",
+        mime_type: "application/pdf",
+        download_url: "https://files.oaiusercontent.com/homonymous.pdf?token=temporary"
+      }
+    }
+  });
+
+  assert.equal(ingestions.length, 1);
+  assert.equal(sources.length, 2);
+  assert.notEqual(ingestions[0].sourceIntent.sourceId, existing.sourceId);
+  assert.deepEqual(sourceReads, [ingestions[0].sourceIntent.sourceId]);
+  assert.equal(Object.hasOwn(output.context.source, "sourceId"), false);
+  assert.equal(output.context.source.title, "Manual do proxy");
+});
+
 test("#272 PDF anexado a Fonte existente relê a Fonte solicitada após o commit", async () => {
   const existing = {
     sourceId: "source-existing",
@@ -1487,7 +1598,6 @@ test("#272 PDF anexado a Fonte existente relê a Fonte solicitada após o commit
     rawArguments: {
       curso: "Redes para iniciantes",
       fonte: "Manual existente",
-      titulo: "Título opcional que não identifica a Fonte",
       intencao: "Anexar o PDF à Fonte já escolhida.",
       pdf: {
         file_id: "file-existing",

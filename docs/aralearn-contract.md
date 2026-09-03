@@ -108,7 +108,7 @@ texto, autorização e conflitos são diferentes.
 ## Catálogo humano de Autoria
 
 MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, versão
-2.0.4. O catálogo possui dezesseis tarefas: oito leituras e oito escritas.
+2.0.5. O catálogo possui dezesseis tarefas: oito leituras e oito escritas.
 
 Cada definição contém:
 
@@ -140,7 +140,8 @@ OpenAPI conserva OAuth, hints e schemas importáveis e não duplica o catálogo.
 
 `incorporar_pdf_como_fonte` adapta `openaiFileIdRefs` fornecido pelo ChatGPT. A
 URL temporária do transporte é aceita apenas de origem autorizada e não entra no
-schema que o modelo precisa preencher.
+schema que o modelo precisa preencher. A tarefa recebe exatamente um destino:
+`fonte` anexa ou reanexa o PDF a uma Fonte existente; `titulo` cria uma nova.
 
 ## Erros
 

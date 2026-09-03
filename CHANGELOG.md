@@ -4,6 +4,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.56] - 2026-09-03
+
+### Corrigido
+
+- a incorporação de PDF distingue no contrato a criação de uma Fonte da
+  anexação a uma Fonte existente e exige exatamente um desses destinos;
+- a confirmação pós-gravação relê a Fonte pelo identificador interno efetivamente
+  persistido, sem falhar quando existem títulos homônimos.
+
 ## [0.0.55] - 2026-09-03
 
 ### Corrigido
