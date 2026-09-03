@@ -24,6 +24,9 @@ export const COURSE_SOURCE_PDF_COURSE_MAX_UNIQUE_BYTES = 64 * 1024 * 1024;
 export const COURSE_SOURCE_KINDS = Object.freeze([
   "web_page", "article", "book", "document", "media", "other"
 ]);
+export const COURSE_SOURCE_ROLES = Object.freeze([
+  "curricular_scope", "assessment_evidence", "technical_conceptual"
+]);
 export const COURSE_SOURCE_STATUSES = Object.freeze([
   "active", "retired"
 ]);
@@ -462,13 +465,14 @@ const NEW_PDF_SOURCE_DEFAULTS = Object.freeze({
 
 function normalizeSourceDocument(value) {
   exact(value, [
-    "kind", "title", "authorship", "publicationDate", "identifier", "language",
+    "kind", "sourceRole", "title", "authorship", "publicationDate", "identifier", "language",
     "citationText", "url", "editionOrVersion", "origin", "availability",
     "verificationStatus", "studyVisibility"
   ], "invalid_course_source", "A revisão da Fonte");
   if (!COURSE_SOURCE_KINDS.includes(value.kind) ||
+      !COURSE_SOURCE_ROLES.includes(value.sourceRole) ||
       !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility)) {
-    fail("invalid_course_source", "O tipo ou a visibilidade da Fonte é inválido.");
+    fail("invalid_course_source", "O tipo, o papel ou a visibilidade da Fonte é inválido.");
   }
   sourceMetadataEnums(value);
   const url = optionalText(value.url, 2048, "invalid_course_source", "A URL HTTPS da Fonte");
@@ -477,6 +481,7 @@ function normalizeSourceDocument(value) {
   }
   const normalized = {
     kind: value.kind,
+    sourceRole: value.sourceRole,
     title: text(value.title, 300, "invalid_course_source", "O título da Fonte", {
       allowLayoutWhitespace: false
     }),
@@ -827,7 +832,7 @@ export function normalizeSourceAttributionApplications(value) {
 
 function validateSource(value, { detailed = false } = {}) {
   const fields = [
-    "sourceId", "revision", "status", "kind", "title", "authorship",
+    "sourceId", "revision", "status", "kind", "sourceRole", "title", "authorship",
     "publicationDate", "identifier", "language", "citationText", "url",
     "editionOrVersion", "origin", "availability", "verificationStatus",
     "studyVisibility", "anchorCount", "createdAt"
@@ -838,6 +843,7 @@ function validateSource(value, { detailed = false } = {}) {
   integer(value.revision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A revisão da Fonte");
   if (!COURSE_SOURCE_STATUSES.includes(value.status) ||
       !COURSE_SOURCE_KINDS.includes(value.kind) ||
+      !(value.sourceRole === null || COURSE_SOURCE_ROLES.includes(value.sourceRole)) ||
       !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility)) {
     fail("invalid_course_sources_read", "A Fonte possui enumeração inválida.");
   }

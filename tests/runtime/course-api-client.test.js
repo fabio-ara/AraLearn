@@ -41,7 +41,9 @@ function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }
     "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
   ], ["required_explanation_forms", "Formas", "string_list"], [
     "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-  ], ["required_practice_variation_dimensions", "Variação", "string_list"]]
+  ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
+    "authoring_chat_response_word_target", "Extensão da conversa", "integer"
+  ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
     .map(([parameterId, label, valueKind]) => ({
       parameterId, label, valueKind, effectiveValues: []
     }));
@@ -59,7 +61,8 @@ function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }
       components: [],
       practiceByRequirement: [],
       practiceVariationDimensions: [],
-      sourcesByRole: []
+      sourcesByRole: [],
+      wordCountsByStudyUnit: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -841,6 +844,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
         expectedSourceRevision: 0,
         source: {
           kind: "web_page",
+          sourceRole: "technical_conceptual",
           title: "Fonte A",
           authorship: "Autoria",
           publicationDate: "2026",

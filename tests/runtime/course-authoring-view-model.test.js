@@ -14,6 +14,8 @@ import {
   normalizeCourseListPage,
   projectCoursePlanning
 } from "../../src/ui/courseAuthoringViewModel.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+  "../../src/domain/courseDesignParameters.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const SECOND_COURSE_ID = "20000000-0000-4000-8000-000000000002";
@@ -91,66 +93,7 @@ function courseDesignFixture({
   hasMoreChildren = false,
   nextChildCursor = null
 } = {}) {
-  const definitions = [{
-    id: "new_analysis_unit_ceiling_per_expository_study_unit",
-    label: "Novas unidades de análise por Unidade expositiva",
-    construct: "Quantidade de unidades novas introduzidas em uma explicação.",
-    operationalization: "Conta identidades introduzidas por Unidade expositiva.",
-    limitations: "O agregado não demonstra desenvolvimento conceitual.",
-    defaultStatus: "product_hypothesis",
-    evidenceRefs: ["https://doi.org/10.1111/j.1551-6709.2012.01245.x"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
-    valueSchema: { type: "integer", minimum: 1, maximum: 8 },
-    defaultValue: 2
-  }, {
-    id: "required_explanation_forms",
-    label: "Formas exigidas de explicação",
-    construct: "Formas complementares usadas para desenvolver um termo.",
-    operationalization: "Registra as formas desenvolvidas na materialização.",
-    limitations: "Presença não prova clareza.",
-    defaultStatus: "product_hypothesis",
-    evidenceRefs: ["https://doi.org/10.1080/01638539609544975"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
-    valueSchema: {
-      type: "set",
-      allowedValues: [
-        "plain_definition", "concrete_example", "mechanism", "contrast",
-        "application_condition", "limit_or_exception", "worked_example", "representation_link"
-      ],
-      minimumItems: 1,
-      maximumItems: 8
-    },
-    defaultValue: ["plain_definition", "concrete_example", "mechanism", "contrast"]
-  }, {
-    id: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-    label: "Oportunidades distintas de prática",
-    construct: "Quantidade de oportunidades para o mesmo requisito de evidência.",
-    operationalization: "Conta oportunidades distintas registradas.",
-    limitations: "Quantidade não mede recuperação bem-sucedida.",
-    defaultStatus: "product_hypothesis",
-    evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
-    valueSchema: { type: "integer", minimum: 1, maximum: 16 },
-    defaultValue: 2
-  }, {
-    id: "required_practice_variation_dimensions",
-    label: "Dimensões exigidas de variação",
-    construct: "Aspectos variados entre oportunidades de prática.",
-    operationalization: "Registra as dimensões variadas mantendo a operação-alvo.",
-    limitations: "Variação registrada não prova transferência.",
-    defaultStatus: "product_hypothesis",
-    evidenceRefs: ["https://doi.org/10.1002/acp.1598"],
-    supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"],
-    valueSchema: {
-      type: "set",
-      allowedValues: [
-        "case_or_data", "context", "task_feature", "external_representation", "support_level"
-      ],
-      minimumItems: 1,
-      maximumItems: 5
-    },
-    defaultValue: ["case_or_data"]
-  }];
+  const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
   const componentOptions = Array.from({ length: 32 }, (_, index) => ({
     ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
     label: `Componente ${index + 1}`,
@@ -160,7 +103,7 @@ function courseDesignFixture({
     contract: "aralearn.course-design.v2",
     courseId: COURSE_ID,
     courseRevision: 3,
-    parameterCatalogVersion: "1.0.0",
+    parameterCatalogVersion: "1.1.0",
     scopeContext: {
       current: { kind: "course", ref: COURSE_ID, label: "Fundamentos" },
       ancestors: [],
@@ -573,7 +516,11 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
     expectedCourseRevision: 3,
     expectedScope: { kind: "course", ref: COURSE_ID }
   });
-  assert.equal(design.definitions.length, 4);
+  assert.equal(design.definitions.length, 6);
+  assert.deepEqual(design.definitions.slice(-2).map(({ id }) => id), [
+    "authoring_chat_response_word_target",
+    "study_unit_content_word_target"
+  ]);
   assert.equal(design.componentCatalog.options.length, 32);
   assert.equal(design.parameters[0].effectiveAssignment.origin, "system_default");
   assert.equal(design.guidance.localAssignment.origin, "migration");
@@ -829,7 +776,7 @@ test("outline recusa contagens ou identidades duplicadas em vez de criar outra h
 test("falhas conhecidas não expõem mensagem técnica", () => {
   assert.deepEqual(classifyCourseAuthoringError({ status: 404 }), {
     kind: "access-revoked",
-    message: "O acesso a este Curso não está mais disponível."
+    message: "O acesso a este curso não está mais disponível."
   });
   assert.equal(classifyCourseAuthoringError({ code: "PT404" }).kind, "access-revoked");
   assert.equal(classifyCourseAuthoringError({ code: "40001" }).kind, "revision-changed");

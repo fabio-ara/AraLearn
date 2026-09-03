@@ -41,8 +41,10 @@ como efeito dessa aprovação.
 `aralearn.course-design-change.v2` confirma uma definição ou restauração de
 herança.
 
-Os quatro parâmetros pedagógicos são identificados de forma estável. Direção
-editorial e política de componentes permanecem campos distintos.
+O catálogo 1.1.0 identifica de forma estável quatro parâmetros pedagógicos e
+dois alvos editoriais quantitativos flexíveis: palavras por resposta de autoria
+e por unidade de estudo. Os alvos não são limites e não autorizam compressão.
+Direção editorial e política de componentes permanecem campos distintos.
 
 Uma unidade de estudo produzida guarda:
 
@@ -56,9 +58,9 @@ Retomadas são identificadas quando a explicação mobiliza novamente uma ideia
 estabelecida sem apresentá-la como nova. O plano deriva do estado corrente onde
 cada ideia foi introduzida, usada ou retomada; não existe ledger paralelo.
 
-O valor `default` de configuração significa resolução contextual pelo GPT no
-escopo da microssequência ou unidade. Uma definição explícita do pesquisador
-prevalece sobre essa calibração.
+O valor `default` de configuração exige resolução contextual automática pelo GPT
+no escopo da microssequência ou unidade antes da produção. Uma definição
+explícita do pesquisador prevalece sobre essa calibração.
 
 O contrato fixa a ordem de decisões, os limites de aprovação e a fronteira
 pública. Ele não transforma continuidade narrativa, redução de apoio ou outra

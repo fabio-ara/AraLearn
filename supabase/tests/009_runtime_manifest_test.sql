@@ -5,17 +5,20 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260903025658','o manifesto identifica o endurecimento do ciclo de PDF');
+  '20260903160000','o manifesto identifica o fluxo curricular global');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),38,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),41,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-anchored-annotations-atomic-create-v1",
+  "course-analysis-repertoire-v1",
   "course-authoring-configuration-v2",
   "course-authoring-part-save-v1",
-  "course-authoring-part-materialization-atomic-v1",
-  "course-instructional-plan-v2",
+  "course-authoring-part-materialization-atomic-v2",
+  "course-curricular-map-v1",
+  "course-instructional-plan-v3",
+  "course-source-roles-v1",
   "course-source-current-state-v1",
   "course-study-unit-inspection-v2",
   "single-authoring-runtime-v1"
@@ -144,9 +147,10 @@ select is(array(
 
 select is(array(
   select signature from unnest(array[
+    'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.get_owned_course_instructional_plan_for_actor_v2(uuid,uuid)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
+    'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
@@ -158,6 +162,8 @@ select is(array(
 
 select is(array(
   select signature from unnest(array[
+    'public.get_owned_course_instructional_plan_for_actor_v2(uuid,uuid)',
+    'public.materialize_course_authoring_part_for_actor_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)',
     'public.get_owned_course_instructional_plan_for_actor_v1(uuid,uuid,integer)',
     'public.get_owned_course_authoring_part_materialization_for_actor_v1(uuid,uuid,uuid,uuid)',
     'public.advance_course_authoring_part_materialization_for_actor_v1(uuid,uuid,uuid,uuid,bigint,bigint,text,jsonb,text,text)',
@@ -179,8 +185,10 @@ select is(array(
 
 select is(array(
   select signature from unnest(array[
+    'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
+    'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
@@ -191,8 +199,10 @@ select is(array(
 
 select is(array(
   select signature from unnest(array[
+    'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
+    'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
@@ -281,7 +291,7 @@ select is((select count(*) from pg_trigger trigger_value
     )),0::bigint,'estado corrente de Fonte não possui trigger append-only');
 
 select is((select count(*) from private.course_design_parameter_definitions),
-  4::bigint,'permanecem exatamente quatro parâmetros pedagógicos');
+  6::bigint,'permanecem exatamente seis parâmetros pedagógicos e editoriais');
 
 select * from finish();
 rollback;

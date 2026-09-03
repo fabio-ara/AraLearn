@@ -732,7 +732,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(ownerPage.locator(
         ".course-authoring-surface[data-view='course'][data-section='content']"
       )).toHaveAttribute("aria-busy", "false");
-      await expect(ownerPage.getByRole("heading", { name: "Unidades", exact: true }))
+      await expect(ownerPage.getByRole("heading", { name: "Unidades de estudo", exact: true }))
         .toBeVisible();
       await ownerPage.locator(".course-authoring-task-menu > summary").click();
       await ownerPage.getByRole("link", { name: "Pessoas e acesso", exact: true }).click();
@@ -766,7 +766,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
 
       await learnerPage.reload();
       const learnerPreview = learnerPage.locator(".home-course-selector-preview");
-      await expect(learnerPage.getByRole("combobox", { name: "Selecionar Curso" }))
+      await expect(learnerPage.getByRole("combobox", { name: "Selecionar curso" }))
         .toHaveValue(courseId);
       await expect(learnerPreview).toContainText(COURSE_TITLE);
       await expect(learnerPreview).toContainText("Curso compartilhado");
@@ -798,7 +798,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerPage.getByRole("button", { name: "Adicionar" }).click();
       await expect(learnerPage.getByText("Sincronizada", { exact: true })).toBeVisible();
       await learnerPage.getByRole("button", { name: "Fechar" }).click();
-      await learnerPage.getByRole("button", { name: "Próxima Unidade" }).click();
+      await learnerPage.getByRole("button", { name: "Próxima unidade de estudo" }).click();
       await expect(learnerPage.getByText(
         "O avanço confirma a prática e o estado pessoal do estudante.",
         { exact: true }

@@ -17,7 +17,7 @@ As dezessete tarefas formam o catálogo público
 | `retomar_curso` | localizar ou continuar um curso pelo título |
 | `consultar_planejamento` | ler o mapa curricular completo e, quando pertinente, uma parte operacional |
 | `preparar_materializacao` | reunir o recorte aprovado, o repertório acumulado e a configuração antes de produzir conteúdo |
-| `consultar_configuracao` | ler parâmetros pedagógicos efetivos e direção editorial |
+| `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_observacoes` | localizar observações, geralmente as abertas |
 | `preparar_revisao` | reunir também unidades afetadas por progressão, exemplos ou prática |
 | `consultar_fontes` | localizar fontes, âncoras e proveniência |
@@ -29,7 +29,7 @@ As dezessete tarefas formam o catálogo público
 | `salvar_mapa_curricular` | salvar ou aprovar o mapa completo, sem produzir unidades de estudo |
 | `salvar_parte` | agrupar microssequências já previstas num lote operacional e registrar sua progressão local |
 | `materializar_parte` | gravar as unidades de estudo de uma parte preparada |
-| `ajustar_configuracao` | definir parâmetros ou direção editorial, ou restaurar herança |
+| `ajustar_configuracao` | definir parâmetros pedagógicos, alvos editoriais ou direção editorial, ou restaurar herança |
 | `registrar_observacao` | registrar o mesmo apontamento em uma ou várias unidades |
 | `aplicar_correcoes` | aplicar o conjunto coerente de correções já revisado |
 | `manter_fonte` | salvar ou retirar fonte, PDFs, âncoras, verificação e vínculos de proveniência |
@@ -91,18 +91,25 @@ virado fragmentação textual. Não existe quantidade-alvo de unidades.
 
 ## Configuração para uso e pesquisa
 
-Os quatro parâmetros pedagógicos correntes controlam:
+O catálogo corrente reúne quatro parâmetros pedagógicos:
 
 - teto de ideias novas por unidade expositiva;
 - formas de explicação requeridas;
 - mínimo de oportunidades distintas de prática por requisito;
 - dimensões de variação requeridas para a prática.
 
-No estado `default`, o GPT calibra esses valores para cada microssequência ou
-unidade conforme conteúdo, função e público; não aplica um preset fixo.
-Pesquisadores podem fixar condições explícitas para comparação, e essas
-definições prevalecem. Direção editorial permanece separada e nunca autoriza
-comprimir conhecimento necessário.
+E dois alvos editoriais quantitativos flexíveis:
+
+- palavras por resposta de autoria;
+- palavras por unidade de estudo.
+
+No estado `default`, o GPT precisa calibrar automaticamente esses valores para
+cada microssequência ou unidade conforme conteúdo, função e público; não aplica
+um preset fixo. Pesquisadores podem fixar condições explícitas para comparação,
+e essas definições prevalecem. Direção editorial permanece separada e nunca
+autoriza comprimir conhecimento necessário. Os alvos de palavras também não são
+limites: podem ser ultrapassados e não autorizam ocultar decisões nem compactar
+conteúdo.
 
 A ordem global do fluxo, a aprovação somente do que estava inspecionável e a
 fronteira pública em linguagem humana são invariantes, não parâmetros. As

@@ -161,17 +161,19 @@ histórico de execução.
 
 ## Configurar o desenho do curso
 
-Em **Parâmetros**, consulte as definições do curso ou da microssequência focal.
-Cada decisão mostra o valor efetivo e o escopo que o definiu. Uma unidade de
-estudo usa a configuração de sua microssequência. Remover uma definição local restaura a
-herança.
+Em **Parâmetros**, consulte o curso, a lição, a microssequência ou a unidade de
+estudo focal. Cada decisão mostra o valor efetivo e o escopo que o definiu. Uma
+unidade usa a configuração aplicável mais específica. Remover uma definição
+local restaura a herança.
 
-Os quatro parâmetros pedagógicos controlam distribuição de novidade, formas de
-explicação, oportunidades de prática e dimensões de variação. O estado
-`default` permite ao GPT calibrar cada microssequência ou unidade segundo seu
-conteúdo e função; não é um preset fixo. Um valor deliberadamente fixado pelo
-pesquisador prevalece. Direção editorial
-fica separada e nunca elimina conteúdo necessário. A política de componentes
+Quatro parâmetros pedagógicos controlam distribuição de novidade, formas de
+explicação, oportunidades de prática e dimensões de variação. Dois alvos
+editoriais quantitativos flexíveis orientam palavras por resposta de autoria e
+por unidade de estudo. Eles não são limites e não autorizam compressão. O estado
+`default` exige que o GPT calibre automaticamente cada microssequência ou
+unidade segundo seu conteúdo e função; não é um preset fixo. Um valor
+deliberadamente fixado pelo pesquisador prevalece. Direção editorial fica
+separada e nunca elimina conteúdo necessário. A política de componentes
 pode restringir ou preferir pacotes, mas a escolha final continua ligada à
 função instrucional.
 
@@ -346,7 +348,7 @@ Para pedir uma correção ampla, use o GPT conectado. Ele consulta as Observaç�
 abertas, prepara uma revisão com progressão, pré-requisitos, transições,
 exemplos e prática afetados e apresenta uma proposta. Depois da decisão,
 `aplicar_correcoes` grava o conjunto aprovado. Volte ao deep link e reinspecione
-as Units; aplicação não demonstra que a questão foi resolvida.
+as unidades de estudo; aplicação não demonstra que a questão foi resolvida.
 
 Revisão autoral exige conexão. A cópia e a fila de Anotações próprias pertencem
 ao percurso de Estudo; a consulta do Curso e as correções usam o estado remoto

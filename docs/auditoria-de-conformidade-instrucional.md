@@ -64,11 +64,13 @@ verdade da afirmação.
 
 ## Parâmetros e próxima revisão
 
-Os quatro parâmetros pedagógicos e a direção editorial são consultados no
-escopo efetivo. Uma definição feita na Microssequência rege a próxima geração ou
-revisão daquele escopo. Direção editorial pode mudar extensão, estilo e
-organização, mas não eliminar conteúdo necessário; quando o espaço de uma Unit
-não basta, o Curso ganha mais Units.
+Os quatro parâmetros pedagógicos, os dois alvos editoriais quantitativos e a
+direção editorial são consultados no escopo efetivo. Uma definição feita na
+microssequência ou unidade de estudo rege a próxima geração ou revisão daquele
+escopo. No estado `default`, o GPT precisa calibrá-los automaticamente para esse
+contexto. Alvos de palavras e direção editorial podem orientar extensão, estilo
+e organização, mas não eliminar ou comprimir conteúdo necessário; quando uma
+unidade fica densa demais, o curso ganha mais unidades coerentes.
 
 ## Aplicação e reinspeção
 

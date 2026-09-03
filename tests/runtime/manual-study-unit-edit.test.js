@@ -58,7 +58,7 @@ test("título e feedback são editáveis sem expor identidade ou estrutura", () 
 test("edição recusa envelope inválido e aceita no-op sem alterar o original", () => {
   assert.throws(() => applyManualStudyUnitEdit(sourceStudyUnit, "study_unit", {
     pathValues: { title: "" }
-  }), /Unidade de estudo inválida/u);
+  }), /unidade de estudo incompleta ou inválida/u);
   const targetId = `content:${sourceStudyUnit.content[0].id}`;
   const noOp = applyManualStudyUnitEdit(sourceStudyUnit, targetId, {
     pathValues: { text: sourceStudyUnit.content[0].data.text }

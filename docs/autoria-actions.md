@@ -51,7 +51,8 @@ Exemplos:
   microssequências que já pertencem ao mapa;
 - `materializar_parte` recebe as unidades que concretizam o lote aprovado e
   distingue ideias introduzidas de ideias estabelecidas usadas ou retomadas;
-- `ajustar_configuracao` reúne parâmetros pedagógicos e direção editorial;
+- `ajustar_configuracao` reúne parâmetros pedagógicos, alvos editoriais e
+  direção editorial;
 - `manter_fonte` recebe somente as mudanças ou retiradas realmente solicitadas.
 
 Para produzir conteúdo, `consultar_componentes` primeiro busca candidatos pela
@@ -92,9 +93,12 @@ expositivas. Ele não exige a mesma quantidade em toda unidade nem transforma
 cada ideia em uma tela.
 
 O valor `default` de um parâmetro não representa um preset pedagógico fixo. Ele
-autoriza a calibração contextual pelo GPT para cada microssequência ou unidade,
+exige calibração automática pelo GPT para cada microssequência ou unidade,
 conforme conteúdo, função e público. Um valor deliberadamente fixado pelo
-pesquisador prevalece e torna a condição observável.
+pesquisador prevalece e torna a condição observável. O catálogo reúne quatro
+parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis: palavras
+por resposta de autoria e por unidade de estudo. Esses alvos não são limites e
+não autorizam esconder decisões nem comprimir conteúdo.
 
 Finalidade de concurso, formação profissional ou outra aplicação pode orientar
 vocabulário e prática, mas não altera o caráter geral do AraLearn como ambiente

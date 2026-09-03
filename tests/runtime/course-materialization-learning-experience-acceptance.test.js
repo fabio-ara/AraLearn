@@ -36,6 +36,23 @@ function normalizedText(value) {
 }
 
 function planForFixture(value) {
+  const hasEstablishedKnowledge = value.repertoire.some((idea) => idea.introducedAt);
+  const prerequisiteMicrosequenceId = "micro-prerequisite";
+  const microsequences = hasEstablishedKnowledge
+    ? [{
+        id: prerequisiteMicrosequenceId,
+        position: 0,
+        title: "Conhecimentos estabelecidos antes deste lote"
+      }, {
+        id: value.part.microsequence.id,
+        position: 1,
+        title: value.part.microsequence.title
+      }]
+    : [{
+        id: value.part.microsequence.id,
+        position: 0,
+        title: value.part.microsequence.title
+      }];
   return {
     contract: "aralearn.course-instructional-plan.v3",
     courseRevision: value.course.revision,
@@ -51,11 +68,7 @@ function planForFixture(value) {
             id: "lesson-fixture",
             position: 0,
             title: value.part.microsequence.title,
-            microsequences: [{
-              id: value.part.microsequence.id,
-              position: value.part.microsequence.position,
-              title: value.part.microsequence.title
-            }]
+            microsequences
           }]
         }]
       },
@@ -77,7 +90,11 @@ function planForFixture(value) {
         statement: idea.name,
         description: idea.description,
         version: 1,
-        introducedAt: idea.introducedAt ?? null,
+        introducedAt: idea.introducedAt ? {
+          ...idea.introducedAt,
+          didacticMicrosequenceId: idea.introducedAt.didacticMicrosequenceId ??
+            prerequisiteMicrosequenceId
+        } : null,
         usedBy: [],
         revisitedBy: []
       })),
@@ -126,7 +143,9 @@ function adapterForFixture(value) {
           ["new_analysis_unit_ceiling_per_expository_study_unit", value.acceptance.newIdeaCeiling],
           ["required_explanation_forms", ["plain_definition"]],
           ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
-          ["required_practice_variation_dimensions", []]
+          ["required_practice_variation_dimensions", []],
+          ["authoring_chat_response_word_target", 90],
+          ["study_unit_content_word_target", 180]
         ].map(([parameterId, parameterValue]) => ({
           parameterId,
           effectiveAssignment: {
@@ -216,15 +235,25 @@ function validateAndRender(units) {
 
 async function materializeFixture(value) {
   const adapter = adapterForFixture(value);
+  const units = structuredClone(value.units);
+  for (const unit of units) unit.aplicacaoPedagogica.cobertura = [];
+  units.at(-1).aplicacaoPedagogica.cobertura = [value.part.title];
   await materializeHumanCoursePart({
     adapter,
     principal: PRINCIPAL,
     course: value.course.title,
     part: value.part.position + 1,
-    units: structuredClone(value.units)
+    units
   });
   assert.equal(adapter.calls.length, 1);
-  return adapter.calls[0].units;
+  const committed = adapter.calls[0].units;
+  assert.deepEqual(
+    committed.filter(({ designApplication }) =>
+      designApplication.curriculumScopeItemIds.length > 0).map(({ designApplication }) =>
+      designApplication.curriculumScopeItemIds),
+    [["50000000-0000-4000-8000-000000000101"]]
+  );
+  return committed;
 }
 
 function ideaMaps(value) {

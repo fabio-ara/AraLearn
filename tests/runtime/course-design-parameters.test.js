@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   COURSE_COMPONENT_CATALOG_VERSION,
+  COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   CourseDesignParametersError,
   normalizeCourseComponentPolicy,
@@ -22,30 +23,30 @@ const ANALYSIS_IDS = Array.from(
 const EVIDENCE = "30000000-0000-4000-8000-000000000001";
 
 
-test("catálogo v1 contém somente quatro hipóteses pedagógicas sem proxy editorial", () => {
+test("catálogo v1.1 mantém quatro hipóteses pedagógicas e dois alvos editoriais flexíveis", () => {
+  assert.equal(COURSE_DESIGN_PARAMETER_CATALOG_VERSION, "1.1.0");
   assert.deepEqual(
     COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultStatus }) => [id, defaultStatus]),
     [
       ["new_analysis_unit_ceiling_per_expository_study_unit", "product_hypothesis"],
       ["required_explanation_forms", "product_hypothesis"],
       ["minimum_distinct_practice_opportunities_per_evidence_requirement", "product_hypothesis"],
-      ["required_practice_variation_dimensions", "product_hypothesis"]
+      ["required_practice_variation_dimensions", "product_hypothesis"],
+      ["authoring_chat_response_word_target", "product_hypothesis"],
+      ["study_unit_content_word_target", "product_hypothesis"]
     ]
   );
   const catalogText = JSON.stringify(COURSE_DESIGN_PARAMETER_DEFINITIONS);
   assert.ok(COURSE_DESIGN_PARAMETER_DEFINITIONS.every(({ valueSchema }) => (
     ["integer", "set"].includes(valueSchema.type)
   )));
-  assert.equal(
-    COURSE_DESIGN_PARAMETER_DEFINITIONS.some(({ id }) => (
-      /editorial|footprint|paragraph|title|style/u.test(id)
-    )),
-    false
-  );
-  assert.match(catalogText, /não mede|não demonstra|não prova/iu);
+  const editorial = COURSE_DESIGN_PARAMETER_DEFINITIONS.slice(-2);
+  assert.deepEqual(editorial.map(({ defaultValue }) => defaultValue), [120, 180]);
+  assert.ok(editorial.every(({ valueSchema }) => valueSchema.type === "integer"));
+  assert.match(catalogText, /não é limite rígido|não é máximo/iu);
 });
 
-test("#268 orientação editorial permanece separada dos quatro parâmetros pedagógicos", () => {
+test("orientação qualitativa permanece separada dos seis parâmetros quantitativos", () => {
   const scope = { kind: "didactic_microsequence", ref: MICROSEQUENCE };
   const editorial = normalizeCourseDesignCommand({
     type: "set_guidance",
@@ -63,17 +64,23 @@ test("#268 orientação editorial permanece separada dos quatro parâmetros peda
   assert.equal(Object.hasOwn(editorial, "value"), false);
   assert.match(editorial.guidance, /Footprint.*Parágrafos.*Títulos.*Estilo/isu);
 
+  assert.deepEqual(normalizeCourseDesignCommand({
+    type: "set_parameter",
+    scope,
+    parameterId: "study_unit_content_word_target",
+    value: 220,
+    origin: "author",
+    reason: "Condição editorial comparável."
+  }).value, 220);
   assert.throws(() => normalizeCourseDesignCommand({
     type: "set_parameter",
     scope,
-    parameterId: "editorial_study_unit_footprint",
-    value: 1,
+    parameterId: "study_unit_content_word_target",
+    value: 20,
     origin: "author",
-    reason: "Editorial não pertence ao catálogo pedagógico."
-  }), (error) => (
-    error instanceof CourseDesignParametersError &&
-    error.code === "unknown_course_design_parameter"
-  ));
+    reason: "Abaixo da faixa declarada."
+  }), (error) => error instanceof CourseDesignParametersError &&
+    error.code === "invalid_course_design_parameter_value");
 });
 
 test("comandos são fechados e preservam paridade exata com o mirror Edge", () => {

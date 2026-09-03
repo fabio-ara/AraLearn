@@ -1,3 +1,5 @@
+import { COURSE_SOURCE_ROLES } from "./courseSources.js";
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const IDENTIFIER = /^[a-z][a-z0-9._:-]{0,159}$/u;
 
@@ -15,16 +17,34 @@ export const COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS = Object.freeze([
   "new_analysis_unit_ceiling_per_expository_study_unit",
   "required_explanation_forms",
   "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  "required_practice_variation_dimensions"
+  "required_practice_variation_dimensions",
+  "authoring_chat_response_word_target",
+  "study_unit_content_word_target"
 ]);
 
 const SCOPE_KIND_SET = new Set(COURSE_AUTHORING_ANALYTICS_SCOPE_KINDS);
 const PARAMETER_ID_SET = new Set(COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS);
+const SOURCE_ROLE_SET = new Set(COURSE_SOURCE_ROLES);
+const PARAMETER_SOURCE_SCOPE_KIND_SET = new Set([
+  "course",
+  "lesson",
+  "didactic_microsequence",
+  "study_unit"
+]);
+const EDITORIAL_SOURCE_SCOPE_KIND_SET = new Set([
+  "course",
+  "module",
+  "lesson",
+  "didactic_microsequence",
+  "study_unit"
+]);
 const PARAMETER_VALUE_KINDS = Object.freeze({
   new_analysis_unit_ceiling_per_expository_study_unit: "integer",
   required_explanation_forms: "string_list",
   minimum_distinct_practice_opportunities_per_evidence_requirement: "integer",
-  required_practice_variation_dimensions: "string_list"
+  required_practice_variation_dimensions: "string_list",
+  authoring_chat_response_word_target: "integer",
+  study_unit_content_word_target: "integer"
 });
 
 export class CourseAuthoringAnalyticsError extends Error {
@@ -74,6 +94,15 @@ function text(value, maximum, label, { empty = false } = {}) {
 
 function nullableText(value, maximum, label) {
   return value === null ? null : text(value, maximum, label);
+}
+
+function nullableScopeKind(value, allowed, label) {
+  if (value === null) return null;
+  const normalized = identifier(value, label);
+  if (!allowed.has(normalized)) {
+    fail("invalid_course_authoring_analytics", `${label} é desconhecido.`);
+  }
+  return normalized;
 }
 
 function uuid(value, label) {
@@ -191,7 +220,7 @@ function normalizeParameter(value) {
   ], "Um parâmetro pedagógico");
   const parameterId = identifier(source.parameterId, "A identidade do parâmetro");
   if (!PARAMETER_ID_SET.has(parameterId)) {
-    fail("invalid_course_authoring_analytics", "Analytics recebeu parâmetro fora dos quatro pedagógicos.");
+    fail("invalid_course_authoring_analytics", "Analytics recebeu parâmetro fora do catálogo vigente.");
   }
   const valueKind = identifier(source.valueKind, "O tipo do valor do parâmetro");
   if (valueKind !== PARAMETER_VALUE_KINDS[parameterId]) {
@@ -200,13 +229,26 @@ function normalizeParameter(value) {
   const effectiveValues = uniqueRows(
     source.effectiveValues,
     256,
-    (entry) => `${JSON.stringify(entry.value)}\0${entry.origin ?? ""}`,
+    (entry) => [
+      JSON.stringify(entry.value),
+      entry.origin ?? "",
+      entry.sourceScopeKind ?? ""
+    ].join("\0"),
     "Os valores efetivos do parâmetro",
     (entry) => {
-      const row = exact(entry, ["value", "origin", "studyUnitCount"], "Um valor efetivo");
+      const row = exact(
+        entry,
+        ["value", "origin", "sourceScopeKind", "studyUnitCount"],
+        "Um valor efetivo"
+      );
       return {
         value: normalizeParameterValue(row.value, valueKind, "O valor pedagógico efetivo"),
         origin: row.origin === null ? null : identifier(row.origin, "A origem do valor efetivo"),
+        sourceScopeKind: nullableScopeKind(
+          row.sourceScopeKind,
+          PARAMETER_SOURCE_SCOPE_KIND_SET,
+          "O escopo de origem do valor efetivo"
+        ),
         studyUnitCount: nonnegativeInteger(row.studyUnitCount, "A contagem de Units do valor")
       };
     }
@@ -220,20 +262,33 @@ function normalizeParameter(value) {
 }
 
 function normalizeEditorialDirection(value) {
-  const source = exact(value, ["direction", "origin", "studyUnitCount"], "Uma direção editorial");
+  const source = exact(
+    value,
+    ["direction", "origin", "sourceScopeKind", "studyUnitCount"],
+    "Uma direção editorial"
+  );
   return {
     direction: nullableText(source.direction, 4000, "A direção editorial"),
     origin: source.origin === null ? null : identifier(source.origin, "A origem editorial"),
+    sourceScopeKind: nullableScopeKind(
+      source.sourceScopeKind,
+      EDITORIAL_SOURCE_SCOPE_KIND_SET,
+      "O escopo de origem da direção editorial"
+    ),
     studyUnitCount: nonnegativeInteger(source.studyUnitCount, "A contagem editorial de Units")
   };
 }
 
 function normalizeAnalysisUnit(value) {
-  const source = exact(value, ["position", "statement", "introductionCount"], "Uma AnalysisUnit");
+  const source = exact(value, [
+    "position", "statement", "introductionCount", "useCount", "revisitCount"
+  ], "Uma AnalysisUnit");
   return {
     position: positiveInteger(source.position, "A posição da AnalysisUnit"),
     statement: text(source.statement, 2000, "O enunciado da AnalysisUnit"),
-    introductionCount: nonnegativeInteger(source.introductionCount, "As introduções da AnalysisUnit")
+    introductionCount: nonnegativeInteger(source.introductionCount, "As introduções da AnalysisUnit"),
+    useCount: nonnegativeInteger(source.useCount, "Os usos da AnalysisUnit"),
+    revisitCount: nonnegativeInteger(source.revisitCount, "As retomadas da AnalysisUnit")
   };
 }
 
@@ -298,19 +353,55 @@ function normalizeSourceRole(value) {
   const source = exact(value, [
     "role", "sourceCount", "anchorCount", "studyUnitCount"
   ], "Um papel de Fonte");
+  const role = source.role === null ? null : identifier(source.role, "O papel da Fonte");
+  if (role !== null && !SOURCE_ROLE_SET.has(role)) {
+    fail("invalid_course_authoring_analytics", "O papel da Fonte não pertence ao catálogo.");
+  }
   return {
-    role: identifier(source.role, "O papel da Fonte"),
+    role,
     sourceCount: nonnegativeInteger(source.sourceCount, "As Fontes do papel"),
     anchorCount: nonnegativeInteger(source.anchorCount, "As Âncoras do papel"),
     studyUnitCount: nonnegativeInteger(source.studyUnitCount, "As Units do papel")
   };
 }
 
+function normalizeWordCountsByStudyUnit(value, studyUnitCount) {
+  const distribution = uniqueRows(
+    value,
+    4096,
+    (entry) => String(entry.wordCount),
+    "A distribuição de palavras por unidade de estudo",
+    (entry) => {
+      const row = exact(
+        entry,
+        ["wordCount", "studyUnitCount"],
+        "Uma faixa de palavras por unidade de estudo"
+      );
+      return {
+        wordCount: nonnegativeInteger(row.wordCount, "A quantidade de palavras"),
+        studyUnitCount: positiveInteger(
+          row.studyUnitCount,
+          "A quantidade de unidades com esta extensão"
+        )
+      };
+    }
+  ).sort((left, right) => left.wordCount - right.wordCount);
+  if (distribution.reduce((sum, entry) => sum + entry.studyUnitCount, 0) !==
+      studyUnitCount) {
+    fail(
+      "invalid_course_authoring_analytics",
+      "A distribuição de palavras não fecha com as unidades de estudo."
+    );
+  }
+  return distribution;
+}
+
 function normalizeDesign(value) {
   const source = exact(value, [
     "studyUnitCount", "parameters", "editorialDirections", "analysisUnits",
     "introductionsByStudyUnit", "explanationForms", "components",
-    "practiceByRequirement", "practiceVariationDimensions", "sourcesByRole"
+    "practiceByRequirement", "practiceVariationDimensions", "sourcesByRole",
+    "wordCountsByStudyUnit"
   ], "O desenho quantitativo");
   const studyUnitCount = nonnegativeInteger(source.studyUnitCount, "A quantidade de StudyUnits");
   const parameters = uniqueRows(
@@ -323,12 +414,16 @@ function normalizeDesign(value) {
   if (parameters.length !== COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.length ||
       COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.some((id) =>
         !parameters.some((parameter) => parameter.parameterId === id))) {
-    fail("invalid_course_authoring_analytics", "Analytics precisa informar os quatro parâmetros pedagógicos.");
+    fail("invalid_course_authoring_analytics", "Analytics precisa informar os seis parâmetros de desenho.");
   }
   const editorialDirections = uniqueRows(
     source.editorialDirections,
     256,
-    (entry) => `${entry.direction ?? ""}\0${entry.origin ?? ""}`,
+    (entry) => [
+      entry.direction ?? "",
+      entry.origin ?? "",
+      entry.sourceScopeKind ?? ""
+    ].join("\0"),
     "As direções editoriais",
     normalizeEditorialDirection
   );
@@ -357,10 +452,6 @@ function normalizeDesign(value) {
       fail("invalid_course_authoring_analytics", "Um parâmetro conta mais Units que o recorte.");
     }
   }
-  if (editorialDirections.reduce((sum, entry) => sum + entry.studyUnitCount, 0) >
-      studyUnitCount) {
-    fail("invalid_course_authoring_analytics", "A direção editorial conta mais Units que o recorte.");
-  }
   return {
     studyUnitCount,
     parameters,
@@ -376,7 +467,11 @@ function normalizeDesign(value) {
     practiceVariationDimensions: uniqueRows(source.practiceVariationDimensions, 32,
       (entry) => entry.dimension, "As dimensões de prática", normalizePracticeDimension),
     sourcesByRole: uniqueRows(source.sourcesByRole, 32, (entry) => entry.role,
-      "As Fontes por papel", normalizeSourceRole)
+      "As Fontes por papel", normalizeSourceRole),
+    wordCountsByStudyUnit: normalizeWordCountsByStudyUnit(
+      source.wordCountsByStudyUnit,
+      studyUnitCount
+    )
   };
 }
 

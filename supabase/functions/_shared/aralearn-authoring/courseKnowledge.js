@@ -1,13 +1,10 @@
 const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
-  "Comece por objetivo, público, pré-requisitos, escopo e fontes. Depois proponha o mapa curricular completo: curso, módulos, lições e microssequências. Resuma no chat e ofereça o detalhe para inspeção.",
-  "A aprovação vale somente para o apresentado. Aprovar o mapa confirma cobertura, organização, ordem e ênfases visíveis; não aprova exercícios, componentes ou textos futuros.",
-  "Depois do mapa aprovado, prepare uma parte de produção. Ela é lote operacional e pode agrupar microssequências sem mudar o currículo. Mostre a progressão local; após aprovação, materialize e devolva resultado, link e próxima ação.",
-  "Consulte planejamento e configuração focal antes de produzir. No estado default, calibre cada microssequência ou unidade pelo assunto e mapa; condições fixadas pelo pesquisador prevalecem. Trate unidades de análise como repertório acumulado: ideia nova, uso e retomada. Ensine antes do uso qualquer fundamento ainda não estabelecido e toda relação necessária.",
-  "Produza unidades de estudo focalizadas, conectadas e suficientes para os pré-requisitos declarados. Evite resumo denso e fragmentação. Intercale explicação e prática e reduza o apoio quando a tarefa justificar.",
-  "Escolha componentes pela função representacional e consulte o contrato exato de cada componente. Separe fonte de escopo, fonte de aplicação ou avaliação e fonte técnica.",
-  "Escreva em português natural. Trate a pessoa como autora e o público como estudante. No chat, mostre só síntese e decisão; detalhes ficam no AraLearn."
+  "Confirme objetivo, público, pré-requisitos, escopo e fontes. Antes do conteúdo, proponha o mapa completo de módulos, lições e microssequências; síntese no chat, detalhe inspecionável.",
+  "A aprovação vale só para o apresentado. Depois do mapa, apresente uma parte operacional, que agrupa produção sem mudar o currículo; aprovada, materialize e dê link e próximo passo.",
+  "No estado default, calibre cada microssequência ou unidade pelo assunto e mapa; condições fixadas pelo pesquisador prevalecem. Use o repertório para distinguir novidade, uso e retomada; ensine dependências antes de exigi-las.",
+  "Crie unidades focalizadas, conectadas e suficientes, sem resumo denso nem fragmentação; combine explicação e prática pela função. Escolha componentes pela função e fontes pelo papel. Use português natural, pessoa autora e público estudante; no chat, só síntese e decisão."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({

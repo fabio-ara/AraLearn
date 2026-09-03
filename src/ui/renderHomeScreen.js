@@ -143,11 +143,11 @@ function renderCoursePreview({
   const lifecycleAction = owned
     ? {
         action: "delete-owned-course",
-        label: "Excluir este Curso",
+        label: "Excluir este curso",
       }
     : {
         action: "leave-shared-course",
-        label: "Sair deste Curso",
+        label: "Sair deste curso",
       };
   return (
     '<article class="progress-card home-course-selector-preview" data-course-id="' +
@@ -174,10 +174,10 @@ function renderCoursePreview({
     '<button class="icon-ghost home-course-lifecycle-trigger" type="button"' +
     ' data-action="course-lifecycle-menu" data-course-id="' + escapeHtml(entityId(course)) +
     '" popovertarget="home-course-actions-menu" popovertargetaction="toggle"' +
-    ' title="Ações deste Curso" aria-label="Ações deste Curso" aria-haspopup="menu">' +
+    ' title="Ações deste curso" aria-label="Ações deste curso" aria-haspopup="menu">' +
     renderUiIcon("more", "home-tab-icon") + '</button>' +
     '<div class="home-course-lifecycle-menu" id="home-course-actions-menu" popover="auto" role="menu"' +
-    ' aria-label="Ações deste Curso">' +
+    ' aria-label="Ações deste curso">' +
     (completed > 0
       ? '<button type="button" role="menuitem" data-action="reset-course-progress" data-course-id="' +
         escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu"' +
@@ -196,7 +196,7 @@ function renderCoursePreview({
     (loading || unavailableOffline ? ' disabled aria-disabled="true"' : "") + ">" +
     renderUiIcon(loading ? "rotate" : "play", "home-tab-icon") + "</button></div>" +
     (loading
-      ? '<p class="home-course-loading" role="status">Preparando este Curso…</p>'
+      ? '<p class="home-course-loading" role="status">Preparando este curso…</p>'
       : "") + "</article>"
   );
 }
@@ -242,7 +242,7 @@ function renderReviewQueue(
         renderUiIcon("remove-state", "home-tab-icon") + "</button></article>"
       );
     }).join("")
-      : '<p class="muted tiny study-review-empty">Nenhuma Unidade marcada neste Curso.</p>') +
+      : '<p class="muted tiny study-review-empty">Nenhuma unidade de estudo marcada neste curso.</p>') +
     (hasMore
       ? '<button class="open-mini study-review-more" type="button" data-action="load-more-review-items">' +
         renderUiIcon("add", "home-tab-icon") + "<span>Mostrar mais</span></button>"
@@ -260,20 +260,20 @@ export function renderRuntimeStatusControl(status = {}, {
   const label = offline
     ? "Sem conexão"
     : stale
-      ? "Sincronizando Curso"
+      ? "Sincronizando curso"
       : pending
         ? "Sincronização pendente"
         : "Sincronizado";
   const message = offline
     ? status.availableOffline === false
-      ? "Sem conexão. Conecte-se para abrir este Curso."
+      ? "Sem conexão. Conecte-se para abrir este curso."
       : pending
         ? "Sem conexão. Suas alterações aguardam sincronização."
         : "Sem conexão. A cópia deste dispositivo continua disponível."
     : stale
       ? pending
         ? "Versão salva em uso. Suas alterações aguardam sincronização."
-        : "Versão salva em uso enquanto o AraLearn atualiza este Curso."
+        : "Versão salva em uso enquanto o AraLearn atualiza este curso."
       : pending
         ? "Suas alterações aguardam sincronização."
         : "Sincronizado com a nuvem.";
@@ -332,7 +332,7 @@ export function renderHomeScreen({
     ? '<section class="clean-card home-course-selector-card" aria-labelledby="home-course-selector-label">' +
       '<label id="home-course-selector-label" class="home-course-selector-label" for="home-course-select">' +
       renderUiIcon("study", "home-tab-icon") + '<span>Curso</span></label>' +
-      '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar Curso"' +
+      '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar curso"' +
       (loading ? " disabled" : "") + ">" + presentations.map((item, index) =>
         '<option value="' + escapeHtml(entityId(item.course)) + '"' +
         ' aria-label="' + escapeHtml(labels[index].accessible) + '"' +
@@ -346,8 +346,8 @@ export function renderHomeScreen({
         loading,
         error: homeError
       }) + "</section>"
-    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">Seus Cursos</h2>' +
-      '<p class="empty-state-copy">Nenhum Curso está disponível para estudo nesta conta.</p></section>';
+    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">Seus cursos</h2>' +
+      '<p class="empty-state-copy">Nenhum curso está disponível para estudo nesta conta.</p></section>';
   return (
     '<section class="screen">' + renderTopbar(topbarRuntimeStatus) +
     '<main class="screen-content courses-home-screen navigation-screen">' +

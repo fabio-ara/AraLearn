@@ -19,6 +19,8 @@ const MAX_TURNS = 8;
 const MAX_REQUEST_LENGTH = 4_000;
 const MAX_CONTEXT_BYTES = 96 * 1024;
 const MAX_REPAIR_ATTEMPTS = 2;
+// O contrato corrente ainda exige o campo, mas ele não orienta decisões pedagógicas da IA.
+const INTERNAL_MICROSEQUENCE_ROLE = "explain";
 
 function clone(value) {
   return structuredClone(value);
@@ -50,9 +52,9 @@ function exactKeys(value, allowed) {
 
 function targetLabel(scope) {
   return ({
-    study_unit: "Unidade",
-    didactic_microsequence: "Microssequência",
-    lesson: "Lição"
+    study_unit: "unidade de estudo",
+    didactic_microsequence: "microssequência",
+    lesson: "lição"
   })[scope];
 }
 
@@ -69,7 +71,7 @@ function findPath(project, selection = {}) {
       (selection.studyUnitId && !studyUnit)) {
     throw new StudyUnitProviderError(
       "assistance_target_unavailable",
-      "O alvo da assistência deixou de existir no Curso."
+      "O item escolhido deixou de existir no curso."
     );
   }
   return { course, moduleValue, lesson, microsequence, studyUnit };
@@ -87,7 +89,6 @@ function compactOutline(course, selection) {
       microsequences: list(lesson.microsequences).map((microsequence) => ({
         id: microsequence.id,
         title: bounded(microsequence.title, 180),
-        role: bounded(microsequence.role, 80),
         selected: microsequence.id === selection.microsequenceId,
         studyUnitCount: list(microsequence.studyUnits).length
       }))
@@ -108,6 +109,35 @@ function targetForScope(path, scope) {
   return path.lesson;
 }
 
+function projectAssistanceTarget(target, scope) {
+  const projected = clone(target);
+  if (scope === "didactic_microsequence") {
+    delete projected.role;
+  } else if (scope === "lesson") {
+    projected.microsequences = list(projected.microsequences).map((microsequence) => {
+      const item = clone(microsequence);
+      delete item.role;
+      return item;
+    });
+  }
+  return projected;
+}
+
+function restoreInternalMicrosequenceRoles(candidate, currentTarget, scope) {
+  const restored = clone(candidate);
+  if (scope === "didactic_microsequence") {
+    restored.role = text(currentTarget?.role) || INTERNAL_MICROSEQUENCE_ROLE;
+  } else if (scope === "lesson") {
+    const currentById = new Map(list(currentTarget?.microsequences)
+      .map((microsequence) => [microsequence.id, microsequence]));
+    restored.microsequences = list(restored.microsequences).map((microsequence) => ({
+      ...microsequence,
+      role: text(currentById.get(microsequence.id)?.role) || INTERNAL_MICROSEQUENCE_ROLE
+    }));
+  }
+  return restored;
+}
+
 function targetSelectionIds(target, scope, requested = []) {
   const ids = [...new Set(list(requested).map(text).filter(Boolean))];
   if (scope === "study_unit") {
@@ -120,7 +150,7 @@ function targetSelectionIds(target, scope, requested = []) {
     if (ids.some((id) => id !== "study_unit" && !componentIds.has(id))) {
       throw new StudyUnitProviderError(
         "assistance_write_target_invalid",
-        "A seleção de escrita não pertence mais a esta Unidade. Selecione o conteúdo novamente."
+        "A seleção de escrita não pertence mais a esta unidade de estudo. Selecione o conteúdo novamente."
       );
     }
     return ids;
@@ -168,14 +198,13 @@ export function buildCourseAssistanceContext({
       )
     },
     readOnlyContext: {
-      target: clone(target),
+      target: projectAssistanceTarget(target, scope),
       ...(path.studyUnit ? { completeStudyUnit: clone(path.studyUnit) } : {}),
       microsequence: path.microsequence ? {
         id: path.microsequence.id,
         position: path.microsequence.position,
         title: path.microsequence.title,
         goal: path.microsequence.goal,
-        role: path.microsequence.role || "",
         studyUnitCount: list(path.microsequence.studyUnits).length
       } : null,
       curriculumPath: {
@@ -347,7 +376,7 @@ export async function requestCourseAssistanceDiscussion({
       system: "Você participa de uma conversa curta de edição curricular situada, adequada a modelos leves. " +
         "Responda com brevidade e inclua sempre a melhor proposta concreta disponível neste turno, " +
         "refinando a proposta atual quando houver uma. Descreva de uma a seis mudanças objetivas e liste " +
-        "somente necessidades de representação por linguagem comum. Não invente Fontes, não exponha JSON " +
+        "somente necessidades de representação por linguagem comum. Não invente fontes, não exponha JSON " +
         "ao usuário e nunca amplie o escopo de escrita.",
       prompt: JSON.stringify(envelope),
       schema: discussionSchema
@@ -407,7 +436,7 @@ function discoverContracts(target, proposal) {
     if (item?.status !== "ok") {
       throw new StudyUnitProviderError(
         "assistance_component_contract_unavailable",
-        `O contrato de ${identity.packageId}@${identity.version} não está disponível.`
+        "Os detalhes de uso de um dos componentes não estão disponíveis."
       );
     }
     contracts.push(item.definition);
@@ -549,14 +578,13 @@ function microsequenceSchema(contracts) {
     type: "object",
     additionalProperties: false,
     required: [
-      "id", "title", "goal", "role", "branchOf", "dependsOn", "covers",
+      "id", "title", "goal", "branchOf", "dependsOn", "covers",
       "checks", "errors", "studyUnits"
     ],
     properties: {
       id: { type: "string", minLength: 1, maxLength: 240 },
       title: { type: "string", minLength: 1, maxLength: 300 },
       goal: { type: "string", minLength: 1, maxLength: 2_000 },
-      role: { type: "string", enum: ["explain", "practice", "review", "support"] },
       branchOf: {
         anyOf: [
           { type: "null" },
@@ -636,10 +664,17 @@ function same(left, right) {
 function selectionAuthorityErrors(currentTarget, candidate, scope, selectedIds) {
   const selected = new Set(selectedIds);
   const errors = [];
+  const fieldLabels = Object.freeze({
+    id: "a identidade",
+    position: "a posição",
+    title: "o título",
+    role: "a função didática",
+    topics: "os assuntos"
+  });
   if (scope === "study_unit" && !selected.has("study_unit")) {
     for (const field of ["id", "position", "title", "role", "topics"]) {
       if (!same(currentTarget?.[field], candidate?.[field])) {
-        errors.push(`A proposta tentou alterar ${field} fora dos componentes escolhidos.`);
+        errors.push(`A proposta tentou alterar ${fieldLabels[field]} fora dos componentes escolhidos.`);
       }
     }
     const currentInstances = [
@@ -655,7 +690,7 @@ function selectionAuthorityErrors(currentTarget, candidate, scope, selectedIds) 
     const candidateById = new Map(candidateInstances.map((instance) => [instance.id, instance]));
     for (const instance of currentInstances) {
       if (!selected.has(instance.id) && !same(instance, candidateById.get(instance.id))) {
-        errors.push(`O componente ${instance.id} não foi escolhido para escrita.`);
+        errors.push("A proposta alterou um componente que não foi escolhido para escrita.");
       }
     }
     if (candidateInstances.some(({ id }) =>
@@ -669,31 +704,31 @@ function selectionAuthorityErrors(currentTarget, candidate, scope, selectedIds) 
     delete currentMetadata.studyUnits;
     delete candidateMetadata.studyUnits;
     if (!same(currentMetadata, candidateMetadata)) {
-      errors.push("A seleção de Unidades não autoriza alterar os dados da Microssequência.");
+      errors.push("A seleção de unidades de estudo não autoriza alterar os dados da microssequência.");
     }
     const candidateById = new Map(list(candidate?.studyUnits).map((unit) => [unit.id, unit]));
     for (const unit of list(currentTarget?.studyUnits)) {
       if (!selected.has(unit.id) && !same(unit, candidateById.get(unit.id))) {
-        errors.push(`A Unidade ${unit.id} não foi escolhida para escrita.`);
+        errors.push(`A unidade de estudo “${unit.title}” não foi escolhida para escrita.`);
       }
     }
     if (selected.size < list(currentTarget?.studyUnits).length &&
         list(candidate?.studyUnits).some(({ id }) =>
           !list(currentTarget?.studyUnits).some((unit) => unit.id === id))) {
-      errors.push("Escolha todas as Unidades para acrescentar uma nova composição.");
+      errors.push("Escolha todas as unidades de estudo para acrescentar uma nova composição.");
     }
   }
   if (scope === "lesson") {
     const candidateById = new Map(list(candidate?.microsequences).map((item) => [item.id, item]));
     for (const microsequence of list(currentTarget?.microsequences)) {
       if (!selected.has(microsequence.id) && !same(microsequence, candidateById.get(microsequence.id))) {
-        errors.push(`A Microssequência ${microsequence.id} não foi escolhida para escrita.`);
+        errors.push(`A microssequência “${microsequence.title}” não foi escolhida para escrita.`);
       }
     }
     if (selected.size < list(currentTarget?.microsequences).length &&
         list(candidate?.microsequences).some(({ id }) =>
           !list(currentTarget?.microsequences).some((item) => item.id === id))) {
-      errors.push("Escolha todas as Microssequências para acrescentar uma nova composição.");
+      errors.push("Escolha todas as microssequências para acrescentar uma nova composição.");
     }
   }
   return errors;
@@ -703,10 +738,10 @@ function validateRenderableCandidate({ project, selection, scope, candidate, sel
   const errors = [];
   const current = findPath(project, selection);
   if (scope === "study_unit" && candidate.id !== current.studyUnit.id) {
-    errors.push("A proposta deve preservar a identidade da Unidade escolhida.");
+    errors.push("A proposta deve preservar a unidade de estudo escolhida.");
   }
   if (scope === "didactic_microsequence" && candidate.id !== current.microsequence.id) {
-    errors.push("A proposta deve preservar a identidade da Microssequência escolhida.");
+    errors.push("A proposta deve preservar a microssequência escolhida.");
   }
   errors.push(...selectionAuthorityErrors(
     targetForScope(current, scope),
@@ -721,7 +756,7 @@ function validateRenderableCandidate({ project, selection, scope, candidate, sel
   }
   const projectValidation = validateProjectDocument(proposedProject);
   if (!projectValidation.ok) {
-    errors.push(...projectValidation.errors.map(({ path, message }) => `${path}: ${message}`));
+    errors.push(...projectValidation.errors.map(({ message }) => message));
   }
   if (!errors.length) {
     for (const unit of unitsInTarget(scope, candidate)) {
@@ -733,7 +768,7 @@ function validateRenderableCandidate({ project, selection, scope, candidate, sel
         }
         const rendered = renderStudyUnitEnvelope(unit, RESOURCE_PACKAGE_REGISTRY);
         if (!text(rendered.accessibleText) && !text(rendered.contentHtml)) {
-          errors.push(`A Unidade ${unit.id} não produziu conteúdo renderizável.`);
+          errors.push(`A unidade de estudo “${unit.title}” não produziu conteúdo renderizável.`);
           continue;
         }
       } catch (error) {
@@ -753,7 +788,7 @@ function normalizedGenerated(raw) {
       !text(raw.message) || !plainObject(raw.candidate)) {
     throw new StudyUnitProviderError(
       "provider_structured_output_invalid",
-      "A proposta não respeitou o contrato estruturado exigido."
+      "A proposta não respeitou o formato necessário."
     );
   }
   return { message: text(raw.message), candidate: clone(raw.candidate) };
@@ -785,7 +820,7 @@ export async function prepareCourseAssistanceProposal({
   if (!contracts.length) {
     throw new StudyUnitProviderError(
       "assistance_component_contract_unavailable",
-      "A proposta não possui contratos de componentes suficientes para ser gerada."
+      "A proposta não possui detalhes de uso suficientes dos componentes escolhidos."
     );
   }
   const schema = candidateSchema(scope, contracts);
@@ -807,7 +842,7 @@ export async function prepareCourseAssistanceProposal({
         prompt: {
           system: "Prepare uma composição curricular tipada somente no escopo confirmado. " +
             "Use exclusivamente os contratos exatos fornecidos. Preserve identidades existentes quando o objeto continuar existindo, " +
-            "use posições consecutivas a partir de 1 e não invente Fontes. Devolva somente o objeto do schema.",
+            "use posições consecutivas a partir de 1 e não invente fontes. Devolva somente o objeto no formato solicitado.",
           prompt: JSON.stringify({
             ...context,
             confirmedProposal: {
@@ -827,12 +862,17 @@ export async function prepareCourseAssistanceProposal({
         }
       });
       const generated = normalizedGenerated(raw);
-      generated.candidate = normalizeCandidateComponents(
+      const providerCandidate = projectAssistanceTarget(normalizeCandidateComponents(
         generated.candidate,
         scope,
         contracts
+      ), scope);
+      priorCandidate = providerCandidate;
+      generated.candidate = restoreInternalMicrosequenceRoles(
+        providerCandidate,
+        target,
+        scope
       );
-      priorCandidate = generated.candidate;
       const validation = validateRenderableCandidate({
         project,
         selection,

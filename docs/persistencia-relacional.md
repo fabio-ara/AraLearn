@@ -35,9 +35,11 @@ itens de escopo, repertório de unidades de análise, requisitos de evidência e
 partes. Cada parte referencia microssequências já existentes. Esses vínculos
 permitem preparar um lote sem convertê-lo em nível didático.
 
-Parâmetros pedagógicos, direção editorial e política de componentes possuem
-uma atribuição corrente por Curso ou escopo permitido. Remover uma atribuição
-local restaura herança. A linha anterior não permanece como estado de produto.
+Parâmetros pedagógicos, alvos editoriais quantitativos, direção editorial e
+política de componentes possuem uma atribuição corrente por Curso ou escopo
+permitido. Os alvos são flexíveis e não funcionam como limites de conteúdo.
+Remover uma atribuição local restaura herança. A linha anterior não permanece
+como estado de produto.
 
 Uma unidade de estudo pode guardar o snapshot focal e a aplicação de desenho
 que recebeu. O snapshot contém apenas parâmetros e itens pertinentes à sua

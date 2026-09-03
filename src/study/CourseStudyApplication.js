@@ -157,10 +157,10 @@ export function createCourseStudyApplication({
     throw new TypeError("Repositório canônico de Estudo obrigatório.");
   }
   if (!initialProject || !Array.isArray(initialProject.courses)) {
-    throw new TypeError("Documento de Cursos inválido.");
+    throw new TypeError("Documento de cursos inválido.");
   }
   if (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") {
-    throw new TypeError("Gravação contextual de Unidade inválida.");
+    throw new TypeError("Gravação contextual de unidade de estudo inválida.");
   }
   if (onSaveAssistedStructure !== null && typeof onSaveAssistedStructure !== "function") {
     throw new TypeError("Gravação estrutural assistida inválida.");
@@ -629,7 +629,7 @@ export function createCourseStudyApplication({
   function reconcileProjectAfterRevocation() {
     const nextProject = repository.loadProject?.();
     if (!nextProject || !Array.isArray(nextProject.courses)) return false;
-    const revokedTitle = context().course?.title || "o Curso selecionado";
+    const revokedTitle = context().course?.title || "o curso selecionado";
     const previousCourseId = state.selection.courseId;
     const retained = retainContext(nextProject, state.selection, state.view);
     state.project = clone(nextProject);
@@ -683,10 +683,10 @@ export function createCourseStudyApplication({
       }
       const code = String(error?.code || "").toLowerCase();
       state.citationsError = code === "course_revision_changed"
-        ? "O Curso mudou. Reabra esta Unidade para consultar as fontes atuais."
+        ? "O curso mudou. Reabra esta unidade de estudo para consultar as fontes atuais."
         : /offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)
-          ? "Sem conexão para consultar as fontes desta Unidade."
-          : "Não foi possível consultar as fontes desta Unidade.";
+          ? "Sem conexão para consultar as fontes desta unidade de estudo."
+          : "Não foi possível consultar as fontes desta unidade de estudo.";
       return false;
     } finally {
       if (epoch === citationsEpoch) {
@@ -728,10 +728,10 @@ export function createCourseStudyApplication({
       }
       state.homeError = state.connectionOffline ||
         repository.loadRuntimeStatus?.(courseId)?.offline === true
-        ? "Este Curso ainda não está disponível neste dispositivo. Conecte-se para abri-lo pela primeira vez."
+        ? "Este curso ainda não está disponível neste dispositivo. Conecte-se para abri-lo pela primeira vez."
         : courseAccessWasRevoked(error)
-          ? "Seu acesso a este Curso foi encerrado."
-          : "Não foi possível abrir este Curso. Tente novamente.";
+          ? "Seu acesso a este curso foi encerrado."
+          : "Não foi possível abrir este curso. Tente novamente.";
       return false;
     } finally {
       root.setAttribute("aria-busy", "false");
@@ -800,7 +800,7 @@ export function createCourseStudyApplication({
 
   function openModule(moduleId) {
     if (state.structuralEditing) {
-      state.structuralError = "Salve ou cancele a edição antes de abrir um Módulo.";
+      state.structuralError = "Salve ou cancele a edição antes de abrir um módulo.";
       render();
       return false;
     }
@@ -816,7 +816,7 @@ export function createCourseStudyApplication({
 
   function openLesson(lessonId) {
     if (state.structuralEditing) {
-      state.structuralError = "Salve ou cancele a edição antes de abrir uma Lição.";
+      state.structuralError = "Salve ou cancele a edição antes de abrir uma lição.";
       render();
       return false;
     }
@@ -885,7 +885,7 @@ export function createCourseStudyApplication({
     return selection ? openLessonStudyUnit(selection, { focusDestination: true }) : false;
   }
 
-  async function removeReviewItem(entityPath, title = "Unidade") {
+  async function removeReviewItem(entityPath, title = "Unidade de estudo") {
     if (!Array.isArray(entityPath) || entityPath.length !== 5) return false;
     const reference = {
       courseId: entityPath[0],
@@ -983,7 +983,7 @@ export function createCourseStudyApplication({
     if (!courseId || typeof repository.clearCourseProgress !== "function") return false;
     const course = findCourse(state.project, courseId);
     const accepted = typeof globalThis.confirm !== "function" || globalThis.confirm(
-      `Zerar o progresso de ${course?.title || "este Curso"}?`
+      `Zerar o progresso de ${course?.title || "este curso"}?`
     );
     if (!accepted) return false;
     if (!await ensureCourseLoaded(courseId)) {
@@ -1015,10 +1015,10 @@ export function createCourseStudyApplication({
     if (typeof repository.clearProgressScope !== "function") return false;
     const level = node?.getAttribute("data-reset-level") || "";
     const labels = {
-      module: "este Módulo",
-      lesson: "esta Lição",
-      microsequence: "esta Microssequência didática",
-      "study-unit": "esta Unidade de estudo e as seguintes na Lição"
+      module: "este módulo",
+      lesson: "esta lição",
+      microsequence: "esta microssequência didática",
+      "study-unit": "esta unidade de estudo e as seguintes na lição"
     };
     if (!labels[level]) return false;
     if (typeof globalThis.confirm === "function" &&
@@ -1203,7 +1203,7 @@ export function createCourseStudyApplication({
       if (!targetSelection) {
         state.project = project;
         return showPendingPersonalCopyResolution(
-          "Sua cópia existe, mas a Unidade desta alteração deixou de existir. Descarte o rascunho ou continue pela cópia atual.",
+          "Sua cópia existe, mas a unidade de estudo desta alteração deixou de existir. Descarte o rascunho ou continue pela cópia atual.",
           requestedPending
         );
       }
@@ -1280,7 +1280,7 @@ export function createCourseStudyApplication({
     );
     if (!sourceSelection) {
       return showPendingPersonalCopyResolution(
-        "A Unidade da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
+        "A unidade de estudo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
         pending
       );
     }
@@ -1352,7 +1352,7 @@ export function createCourseStudyApplication({
     );
     if (!currentSelection) {
       return showPendingPersonalCopyResolution(
-        "A Unidade da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
+        "A unidade de estudo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
         pending
       );
     }
@@ -1379,7 +1379,7 @@ export function createCourseStudyApplication({
       ...clone(pending),
       didacticMicrosequenceId: currentSelection.microsequenceId,
       sourceSelection: canonicalReference(currentSelection)
-    }, "O Curso mudou. Revise a alteração sobre a Unidade atual e salve novamente.", {
+    }, "O curso mudou. Revise a alteração sobre a unidade de estudo atual e salve novamente.", {
       retrySameRequest: false
     });
   }
@@ -1446,7 +1446,7 @@ export function createCourseStudyApplication({
       state.manualCourseRevisionByCourse[result.courseId] = result.courseRevision;
     }
     state.manualStatus = targetSelection.studyUnitId
-      ? "Cópia criada. Você continua nesta Unidade."
+      ? "Cópia criada. Você continua nesta unidade de estudo."
       : "Sua cópia foi retomada na versão atual.";
     state.homePendingPersonalCopyDiscard = false;
     state.homePendingPersonalCopyRequestId = "";
@@ -1467,7 +1467,7 @@ export function createCourseStudyApplication({
           pending.sourceCourseId
         );
         if (result?.changed === false) {
-          setHomeNotice("A alteração pendente não mudou o Curso.");
+          setHomeNotice("A alteração pendente não mudou o curso.");
           render();
           return true;
         }
@@ -1513,11 +1513,11 @@ export function createCourseStudyApplication({
             state.selection = firstSelection(state.project);
             state.view = "courses";
             state.homeError = remainingPending
-              ? "Seu acesso ao Curso compartilhado foi encerrado. Há outra alteração guardada; descarte-a ou tente confirmá-la novamente."
+              ? "Seu acesso ao curso compartilhado foi encerrado. Há outra alteração guardada; descarte-a ou tente confirmá-la novamente."
               : "";
             setHomeNotice(remainingPending
               ? ""
-              : "Seu acesso ao Curso compartilhado foi encerrado.");
+              : "Seu acesso ao curso compartilhado foi encerrado.");
             state.homePendingPersonalCopyDiscard = Boolean(remainingPending);
             state.homePendingPersonalCopyRequestId = remainingPending?.requestId || "";
             await repository.clearStudyNavigationPosition?.(pending.sourceCourseId);
@@ -1581,7 +1581,7 @@ export function createCourseStudyApplication({
     }
     const current = context().studyUnit;
     if (!manualEditCapability() || !current || !targetId) {
-      throw new Error("A edição contextual não está disponível nesta Unidade.");
+      throw new Error("A edição contextual não está disponível nesta unidade de estudo.");
     }
     applyManualStudyUnitEdit(current, targetId, { pathValues });
     return beginManualEdit(targetId, { pathValues, origin, restoreFocus });
@@ -1625,8 +1625,8 @@ export function createCourseStudyApplication({
     if (!course) return false;
     const owned = operation === "delete_owned_course";
     const prompt = owned
-      ? `Excluir definitivamente ${course.title || "este Curso"}? Esta ação também remove os dados compartilhados do Curso.`
-      : `Sair de ${course.title || "este Curso"}? Seu acesso compartilhado será encerrado.`;
+      ? `Excluir definitivamente ${course.title || "este curso"}? Esta ação também remove os dados compartilhados do curso.`
+      : `Sair de ${course.title || "este curso"}? Seu acesso compartilhado será encerrado.`;
     if (typeof globalThis.confirm === "function" && !globalThis.confirm(prompt)) return false;
     state.homeLoadingCourseId = courseId;
     state.homeError = "";
@@ -1648,8 +1648,8 @@ export function createCourseStudyApplication({
       state.navigationHistory = [];
       state.homeLoadingCourseId = "";
       setHomeNotice(owned
-        ? `${course.title || "O Curso"} foi excluído.`
-        : `Seu acesso a ${course.title || "o Curso"} foi encerrado.`);
+        ? `${course.title || "O curso"} foi excluído.`
+        : `Seu acesso a ${course.title || "o curso"} foi encerrado.`);
       if (nextCourseId) persistStudyNavigation({ includePosition: false });
       queueStudyFocus(nextCourseId
         ? "[data-field='home-course-select']"
@@ -1660,7 +1660,7 @@ export function createCourseStudyApplication({
       state.homeLoadingCourseId = "";
       state.homeError = error instanceof Error
         ? error.message
-        : "Não foi possível concluir a ação deste Curso.";
+        : "Não foi possível concluir a ação deste curso.";
       queueStudyFocus("[data-action='course-lifecycle-menu']", {
         "data-course-id": courseId
       });
@@ -1793,7 +1793,7 @@ export function createCourseStudyApplication({
     ].filter((value) => Number.isSafeInteger(Number(value)) && Number(value) >= 1)
       .map(Number);
     if (!values.length) {
-      throw new Error("A versão canônica deste Curso não está disponível para edição.");
+      throw new Error("A versão canônica deste curso não está disponível para edição.");
     }
     return Math.max(...values);
   }
@@ -1831,7 +1831,7 @@ export function createCourseStudyApplication({
     } catch (error) {
       state.structuralError = error instanceof Error
         ? error.message
-        : "A edição não satisfaz o contrato deste Curso.";
+        : "A edição não satisfaz o formato deste curso.";
       queueStudyFocus("[data-action='save-study-structure']");
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -1893,7 +1893,7 @@ export function createCourseStudyApplication({
   }
 
   function assistanceTargetTitle(scope, current) {
-    if (scope === "study_unit") return current.studyUnit?.title || "Unidade";
+    if (scope === "study_unit") return current.studyUnit?.title || "Unidade de estudo";
     if (scope === "didactic_microsequence") {
       return current.microsequence?.title || "Microssequência";
     }
@@ -2202,7 +2202,7 @@ export function createCourseStudyApplication({
       id === state.selection.studyUnitId
     );
     if (!Number.isInteger(index) || index < 0) {
-      throw new Error("A Unidade editada deixou de existir.");
+      throw new Error("A unidade de estudo editada deixou de existir.");
     }
     current.microsequence.studyUnits[index] = clone(studyUnit);
     return current.microsequence.studyUnits[index];
@@ -2231,7 +2231,7 @@ export function createCourseStudyApplication({
       : null;
     if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1 ||
         !Number.isSafeInteger(courseRevision) || courseRevision < 1) {
-      throw new Error("A versão canônica desta Unidade não está disponível para edição.");
+      throw new Error("O estado atual desta unidade de estudo não está disponível para edição.");
     }
     return {
       ...reference,
@@ -2346,20 +2346,20 @@ export function createCourseStudyApplication({
       { pathValues: {} }
     );
     if (confirmedStudyUnit.id !== composition.studyUnitId) {
-      throw new TypeError("A Unidade confirmada não corresponde à edição enviada.");
+      throw new TypeError("A unidade de estudo confirmada não corresponde à edição enviada.");
     }
     const resultVersion = result?.version ?? result?.studyUnitVersion;
     const nextVersion = resultVersion == null
       ? composition.expectedVersion + 1
       : Number(resultVersion);
     if (!Number.isSafeInteger(nextVersion) || nextVersion < 1) {
-      throw new TypeError("A versão confirmada da Unidade é inválida.");
+      throw new TypeError("O estado confirmado da unidade de estudo é inválido.");
     }
     const nextCourseRevision = result?.courseRevision == null
       ? composition.courseRevision
       : Number(result.courseRevision);
     if (!Number.isSafeInteger(nextCourseRevision) || nextCourseRevision < 1) {
-      throw new TypeError("A revisão confirmada do Curso é inválida.");
+      throw new TypeError("A edição confirmada do curso é inválida.");
     }
     state.manualVersionByStudyUnit[
       manualStudyUnitVersionKey(targetCourseId, composition.studyUnitId)
@@ -2469,7 +2469,7 @@ export function createCourseStudyApplication({
         status: pendingCleanupFailed
           ? "Edição salva. O rascunho local será reconciliado na próxima abertura."
           : committed.createdCopy
-            ? "Cópia criada. Você continua nesta Unidade."
+            ? "Cópia criada. Você continua nesta unidade de estudo."
             : committed.reconciled
               ? "Edição salva."
             : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
@@ -2660,7 +2660,7 @@ export function createCourseStudyApplication({
       return false;
     }
     if (state.manualEditing) {
-      state.manualError = "Salve ou cancele a edição antes de sair da Unidade.";
+      state.manualError = "Salve ou cancele a edição antes de sair da unidade de estudo.";
       render();
       return false;
     }
@@ -2766,7 +2766,7 @@ export function createCourseStudyApplication({
   async function stepStudyUnit(delta) {
     if (state.advancePending) return false;
     if (state.assistanceDraft) {
-      state.assistanceError = "Salve ou descarte a proposta antes de mudar de Unidade.";
+      state.assistanceError = "Salve ou descarte a proposta antes de mudar de unidade de estudo.";
       render();
       return false;
     }
@@ -3335,7 +3335,7 @@ export function createCourseStudyApplication({
         node.getAttribute("data-lesson-id"),
         node.getAttribute("data-microsequence-id"),
         node.getAttribute("data-study-unit-id")
-      ], node.getAttribute("aria-label")?.replace(/^Retirar de Rever:\s*/u, "") || "Unidade")));
+      ], node.getAttribute("aria-label")?.replace(/^Retirar de Rever:\s*/u, "") || "Unidade de estudo")));
     root.querySelector("[data-action='undo-review-removal']")?.addEventListener(
       "click",
       () => void undoReviewRemoval()
@@ -3794,7 +3794,7 @@ export function createCourseStudyApplication({
     },
     async replaceProject(nextProject) {
       if (!nextProject || !Array.isArray(nextProject.courses)) {
-        throw new TypeError("Documento de Cursos inválido.");
+        throw new TypeError("Documento de cursos inválido.");
       }
       if (state.manualEditing || state.structuralEditing) return false;
       resetCitations();
@@ -3820,7 +3820,7 @@ export function createCourseStudyApplication({
       state.view = retained.view;
       if (previousSelection.courseId &&
           !findCourse(state.project, previousSelection.courseId)) {
-        setHomeNotice("Seu acesso ao Curso selecionado foi encerrado.");
+        setHomeNotice("Seu acesso ao curso selecionado foi encerrado.");
         state.homeError = "";
         persistStudyNavigation({ includePosition: false });
       }
@@ -3876,7 +3876,7 @@ export function createCourseStudyApplication({
           state.view = retained.view;
           if (previousSelection.courseId &&
               !findCourse(state.project, previousSelection.courseId)) {
-            setHomeNotice("Seu acesso ao Curso selecionado foi encerrado.");
+            setHomeNotice("Seu acesso ao curso selecionado foi encerrado.");
             state.homeError = "";
             persistStudyNavigation({ includePosition: false });
           }

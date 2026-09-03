@@ -2,7 +2,7 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 
 const ORIGIN_LABELS = Object.freeze({
-  system_default: "Padrão do produto",
+  system_default: "Calibração contextual pendente",
   automatic: "Escolha automática explicada",
   author: "Definido pelo autor",
   research_condition: "Condição de pesquisa",
@@ -31,6 +31,15 @@ const VALUE_LABELS = Object.freeze({
   task_feature: "Característica da tarefa",
   external_representation: "Representação externa",
   support_level: "Nível de apoio"
+});
+
+const PARAMETER_GROUP_BY_ID = Object.freeze({
+  new_analysis_unit_ceiling_per_expository_study_unit: "pedagogical",
+  required_explanation_forms: "pedagogical",
+  minimum_distinct_practice_opportunities_per_evidence_requirement: "pedagogical",
+  required_practice_variation_dimensions: "pedagogical",
+  authoring_chat_response_word_target: "editorial",
+  study_unit_content_word_target: "editorial"
 });
 
 function escapeHtml(value) {
@@ -169,8 +178,8 @@ function renderParameterCard(design, definition, resolution, busy) {
           `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
         : "") + "</div></form>"
     : '<div class="course-design-disabled-editor" aria-disabled="true"><p>' +
-      "Parâmetros pedagógicos não são definidos em Módulo. O valor herdado continua visível; " +
-      "selecione Curso, Lição ou Microssequência para alterá-lo.</p>" +
+      "Parâmetros pedagógicos não são definidos em módulo. O valor herdado continua visível; " +
+      "selecione curso, lição ou microssequência para alterá-lo.</p>" +
       '<fieldset disabled><legend>Valor herdado</legend>' +
       renderParameterInput(definition, effective.value, { disabled: true }) + "</fieldset></div>";
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
@@ -188,6 +197,22 @@ function renderParameterCard(design, definition, resolution, busy) {
     `<div class="course-design-parameter-explanation"><p>${escapeHtml(definition.construct)}</p>` +
     `<p><strong>Como é aplicado:</strong> ${escapeHtml(definition.operationalization)}</p>` +
     `<p><strong>Limite:</strong> ${escapeHtml(definition.limitations)}</p></div>${editor}</details></article>`;
+}
+
+function renderParameterGroup(design, busy, {
+  group,
+  titleId,
+  title,
+  description
+}) {
+  const cards = design.definitions.flatMap((definition, index) =>
+    PARAMETER_GROUP_BY_ID[definition.id] === group
+      ? [renderParameterCard(design, definition, design.parameters[index], busy)]
+      : []
+  ).join("");
+  return `<section class="course-design-parameters" aria-labelledby="${titleId}">` +
+    `<header class="course-design-subheading"><div><h3 id="${titleId}">${title}</h3>` +
+    `<p>${description}</p></div></header>${cards}</section>`;
 }
 
 function renderGuidanceAssignmentCopy(assignment) {
@@ -318,15 +343,18 @@ export function renderCourseDesignPanel(state) {
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.designFailure)}</p>`
       : "") +
     renderScopeContext(design) +
-    '<section class="course-design-parameters" aria-labelledby="course-design-parameters-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-parameters-title">Parâmetros pedagógicos</h3>' +
-    '<p>Quatro decisões educacionais, separadas da direção editorial.</p></div></header>' +
-    design.definitions.map((definition, index) => renderParameterCard(
-      design,
-      definition,
-      design.parameters[index],
-      state.designBusy
-    )).join("") + "</section>" +
+    renderParameterGroup(design, state.designBusy, {
+      group: "pedagogical",
+      titleId: "course-design-pedagogical-parameters-title",
+      title: "Parâmetros pedagógicos",
+      description: "Quatro decisões educacionais sobre explicação, novidade e prática."
+    }) +
+    renderParameterGroup(design, state.designBusy, {
+      group: "editorial",
+      titleId: "course-design-editorial-parameters-title",
+      title: "Parâmetros editoriais",
+      description: "Dois alvos flexíveis para a conversa de autoria e o conteúdo das unidades de estudo."
+    }) +
     renderGuidance(design, state.designBusy) +
     renderComponentPolicy(design, state.designBusy) +
     "</section>";

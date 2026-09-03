@@ -407,13 +407,13 @@ Regra versionada que permite, restringe ou exige comportamento e que é efetivam
 
 **Base.** [observação técnica](desenho-instrucional-parametrizado.md).
 
-#### Valor padrão
+#### Valor de fallback do catálogo
 
-Valor explicitamente definido e versionado que se aplica na ausência de atribuição mais específica; não é uma recomendação universal. Sem atribuição aplicável, o teto de novas unidades usa o Valor padrão 2 e mostra origem system_default, sem criar uma linha herdada.
+Valor de referência versionado usado somente como fallback técnico enquanto a calibração contextual não foi registrada; não representa o estado default da autoria, uma condição pronta para materialização ou uma recomendação universal. O catálogo conserva 2 como fallback do teto, mas, no estado default, o GPT ainda calibra o valor para a microssequência ou unidade de estudo antes de produzir.
 
-**Domínio e implementação.** Valor padrão; equivalente internacional: default value; símbolo: `default_value`.
+**Domínio e implementação.** Valor de fallback do catálogo; equivalente internacional: catalog fallback value; símbolo: `default_value`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `default`. Distinguir de `auto`, `herança`, `melhor prática`.
+**Uso.** `restringir`. Distinguir de `estado default`, `calibração automática`, `herança`, `melhor prática`.
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
@@ -439,21 +439,21 @@ Atribuição intencional em um escopo que substitui integralmente o valor herdad
 
 #### Direção editorial
 
-Orientação corrente de extensão, estilo, títulos ou organização, separada dos quatro parâmetros pedagógicos e incapaz de eliminar conteúdo necessário. Uma Microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais StudyUnits em vez de o comprimir.
+Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.1.0 de quatro parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis e incapaz de eliminar conteúdo necessário. Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.
 
 **Domínio e implementação.** Direção editorial; equivalente internacional: editorial direction; símbolo: `course_authoring_guidance`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `orientação editorial`. Distinguir de `parâmetro pedagógico`, `prompt persistido`, `limite de conteúdo`.
+**Uso.** `restringir`; formas técnicas ou históricas: `orientação editorial`. Distinguir de `parâmetro pedagógico`, `alvo editorial quantitativo`, `prompt persistido`, `limite de conteúdo`.
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 
 #### Calibração automática
 
-Escolha contextual dos quatro parâmetros pedagógicos a partir do público, da tarefa e do contexto mínimo, sem transformar a conversa num questionário. Com público e tarefa conhecidos, o GPT escolhe valores iniciais e só pergunta quando uma lacuna material impede a produção.
+No estado default, escolha contextual obrigatória, por microssequência ou unidade de estudo, dos quatro parâmetros pedagógicos e dos dois alvos editoriais quantitativos flexíveis, conforme público, tarefa, conteúdo e função, sem transformar a conversa num questionário. Com público e tarefa conhecidos, o GPT calibra automaticamente cada microssequência ou unidade; valores deliberadamente fixados pelo pesquisador prevalecem. O catálogo serve à pesquisa geral em design instrucional, e concurso é apenas um contexto possível.
 
 **Domínio e implementação.** Calibração automática de parâmetros; equivalente internacional: automatic parameter calibration; símbolo: `automatic_parameter_calibration`.
 
-**Uso.** `restringir`. Distinguir de `valor-padrão`, `condição fixada`, `questionário obrigatório`.
+**Uso.** `restringir`. Distinguir de `preset fixo`, `valor de fallback do catálogo`, `condição fixada`, `questionário obrigatório`.
 
 **Base.** [definição própria](desenho-instrucional-parametrizado.md).
 

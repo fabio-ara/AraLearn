@@ -19,12 +19,15 @@ const REQUIRED_FEATURES = Object.freeze([
   "study-only-course-access-v1",
   "private-person-avatar-v1",
   "self-account-deletion-v1",
-  "course-instructional-plan-v2",
+  "course-analysis-repertoire-v1",
+  "course-curricular-map-v1",
+  "course-instructional-plan-v3",
   "course-authoring-part-save-v1",
-  "course-authoring-part-materialization-atomic-v1",
+  "course-authoring-part-materialization-atomic-v2",
   "course-study-unit-inspection-v2",
   "course-authoring-configuration-v2",
   "course-sources-v1",
+  "course-source-roles-v1",
   "course-source-provenance-v1",
   "course-source-pdf-attachments-v1",
   "course-source-pdf-ingestion-v1",
@@ -122,7 +125,10 @@ const FORBIDDEN_RUNTIME_SYMBOLS = Object.freeze([
   "mutate_course_personal_state_v1",
   "saveCommentForPath",
   "deleteCommentForPath",
-  "loadCommentForPath"
+  "loadCommentForPath",
+  "aralearn.course-instructional-plan.v2",
+  "get_owned_course_instructional_plan_for_actor_v2",
+  "materialize_course_authoring_part_for_actor_v1"
 ]);
 
 const COURSE_PERSONAL_STATE_REPOSITORY =
@@ -288,7 +294,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260903025658" ||
+  if (manifest.schemaRevision !== "20260903160000" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -296,6 +302,7 @@ async function validateManifest() {
       required.some((feature) => !manifest.requiredFeatures.includes(feature))) {
     fail("O manifesto estático não descreve exatamente o runtime final de Curso.");
   }
+  await validateRuntimeManifestRevision(manifest);
 
   const cut = await read(
     "supabase/migrations/20260902044404_cut_legacy_authoring_runtime.sql"
@@ -306,8 +313,6 @@ async function validateManifest() {
     "$authoring_runtime_cut_postflight$",
     "course_design_parameter_assignments",
     "save_course_authoring_part_for_actor_v1",
-    "materialize_course_authoring_part_for_actor_v1",
-    "get_owned_course_instructional_plan_for_actor_v2",
     "get_owned_course_design_for_actor_v2",
     "apply_course_design_command_for_actor_v2",
     "create_course_anchored_annotations_for_actor_v1",
@@ -322,6 +327,27 @@ async function validateManifest() {
     "commit;"
   ]) {
     if (!cut.includes(token)) fail(`A migration final não demonstra ${token}.`);
+  }
+  const globalCurriculum = await read(
+    "supabase/migrations/20260903160000_global_curriculum_authoring_flow.sql"
+  );
+  for (const token of [
+    "get_owned_course_instructional_plan_for_actor_v3",
+    "save_course_curricular_map_for_actor_v1",
+    "materialize_course_authoring_part_for_actor_v2",
+    "drop function public.get_owned_course_instructional_plan_for_actor_v2",
+    "alter function public.materialize_course_authoring_part_for_actor_v1",
+    "rename to materialize_course_authoring_part_core_v1",
+    "'course-analysis-repertoire-v1'",
+    "'course-authoring-part-materialization-atomic-v2'",
+    "'course-curricular-map-v1'",
+    "'course-instructional-plan-v3'",
+    "to_jsonb('20260903160000'::text)",
+    "commit;"
+  ]) {
+    if (!globalCurriculum.includes(token)) {
+      fail(`O fluxo curricular global não demonstra ${token}.`);
+    }
   }
   const actionCallback = await read(
     "supabase/migrations/20260902234800_bind_real_chatgpt_action_callback.sql"
@@ -471,6 +497,18 @@ async function validateRuntimeFiles() {
   ]) {
     if (!main.includes(required)) fail(`O entrypoint não usa ${required}.`);
   }
+  const adapter = entries.find(({ relativePath }) =>
+    relativePath.endsWith("/courseSupabaseAdapter.js"))?.source || "";
+  for (const required of [
+    "aralearn.course-instructional-plan.v3",
+    "get_owned_course_instructional_plan_for_actor_v3",
+    "save_course_curricular_map_for_actor_v1",
+    "materialize_course_authoring_part_for_actor_v2"
+  ]) {
+    if (!adapter.includes(required)) {
+      fail(`O adapter final não usa ${required}.`);
+    }
+  }
   const authStore = await read("src/persistence/AuthSessionStore.js");
   const courseStore = await read("src/persistence/CourseLocalStore.js");
   if (!authStore.includes("aralearn-auth-v1") ||
@@ -501,12 +539,13 @@ async function validateEdgeAndMcp() {
   const expected = [
     "retomar_curso", "consultar_planejamento", "preparar_materializacao",
     "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
-    "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_parte",
+    "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_mapa_curricular",
+    "salvar_parte",
     "materializar_parte", "ajustar_configuracao", "registrar_observacao",
     "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às dezesseis tarefas humanas esperadas.");
+    fail("O catálogo MCP não corresponde às dezessete tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

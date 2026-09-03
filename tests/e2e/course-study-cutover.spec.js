@@ -307,7 +307,7 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   const failedReview = page.getByRole("button", { name: "Abrir para rever: Rever regra do Curso A" });
   await failedReview.press("Enter");
   await expect(page.getByRole("alert")).toHaveText(
-    "Não foi possível abrir este Curso. Tente novamente."
+    "Não foi possível abrir este curso. Tente novamente."
   );
   await expect(page.getByRole("button", { name: "Desfazer" })).toHaveCount(0);
   await expect(page.locator(".study-review-queue > summary")).toBeFocused();
@@ -393,7 +393,7 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   await selector.selectOption(HOME_COURSE_IDS.c);
   await page.getByRole("button", { name: "Sem conexão" }).click();
   await expect(page.getByText(
-    "Sem conexão. Conecte-se para abrir este Curso.",
+    "Sem conexão. Conecte-se para abrir este curso.",
     { exact: true }
   )).toBeVisible();
   await expect(page.getByRole("button", { name: "Abrir Curso C" })).toBeDisabled();
@@ -404,7 +404,7 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   }, HOME_COURSE_IDS.c);
   await page.getByRole("button", { name: "Abrir Curso C" }).press("Enter");
   await expect(page.getByRole("alert")).toHaveText(
-    "Não foi possível abrir este Curso. Tente novamente."
+    "Não foi possível abrir este curso. Tente novamente."
   );
   await expect(page.getByRole("button", { name: "Tentar novamente Curso C" })).toBeFocused();
 
@@ -838,7 +838,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.keyboard.press("Tab");
   await expect(observationClose).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Observações da Unidade de estudo" }))
+  await expect(page.getByRole("dialog", { name: "Observações da unidade de estudo" }))
     .toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Observações/u })).toBeFocused();
   await expect(studyScreen).not.toHaveAttribute("inert", "");
@@ -1048,7 +1048,7 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
   for (const width of [360, 390, 430, 1280]) {
     await page.setViewportSize({ width, height: width < 600 ? 780 : 900 });
     await page.getByRole("button", { name: /^Observações/u }).click();
-    await expect(page.getByRole("dialog", { name: "Observações da Unidade", exact: true }))
+    await expect(page.getByRole("dialog", { name: "Observações da unidade", exact: true }))
       .toBeVisible();
     await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
     await expect(page.locator("#study-observation-counter"))
@@ -1153,7 +1153,7 @@ test("zerar progresso mostra falhas de carga e gravação antes de concluir", as
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("menuitem", { name: "Zerar progresso" }).click();
   await expect(page.getByRole("alert")).toHaveText(
-    "Não foi possível abrir este Curso. Tente novamente."
+    "Não foi possível abrir este curso. Tente novamente."
   );
   await expect(courseActions).toBeFocused();
   await expect.poll(() => page.evaluate(() => ({
@@ -1273,15 +1273,15 @@ test("avanço guarda localmente, não espera o flush e bloqueia ativações conc
   await expect(page.locator(".runtime-card-title")).not.toHaveText(initialTitle);
   await expect.poll(() => page.evaluate(() => globalThis.__studyAdvanceProbe.flushCalls)).toBe(1);
 
-  await page.getByRole("button", { name: "Unidade anterior" }).click();
+  await page.getByRole("button", { name: "Unidade de estudo anterior" }).click();
   await expect(page.locator(".runtime-card-title")).toHaveText(initialTitle);
   await page.evaluate(() => { globalThis.__studyAdvanceProbe.mode = "fail"; });
-  await page.getByRole("button", { name: "Próxima Unidade" }).click();
+  await page.getByRole("button", { name: "Próxima unidade de estudo" }).click();
   await expect(page.getByRole("alert")).toHaveText(
     "Não foi possível guardar o progresso neste dispositivo. Tente novamente."
   );
   await expect(page.locator(".runtime-card-title")).toHaveText(initialTitle);
-  await expect(page.getByRole("button", { name: "Próxima Unidade" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Próxima unidade de estudo" })).toBeEnabled();
   expect(await page.evaluate(() => globalThis.__studyAdvanceProbe.completionCalls)).toHaveLength(2);
 });
 

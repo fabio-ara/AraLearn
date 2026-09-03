@@ -169,9 +169,9 @@ registrado e precisa coincidir nas etapas seguintes do OAuth; o caminho não é
 reconstruído a partir de outro identificador do GPT.
 
 O manifesto corrente termina em
-`20260903025658_harden_course_source_pdf_lifecycle.sql`, que protege a
-finalização concorrente da ingestão e permite retomar com segurança uma remoção
-física pendente. A migration
+`20260903160000_global_curriculum_authoring_flow.sql`, que estabelece o mapa
+curricular global anterior à produção, conserva partes como lotes operacionais
+e registra o repertório e a configuração efetivamente aplicados. A migration
 `20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
 autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
 quando o próprio documento mudar; uma correção interna do vínculo OAuth não

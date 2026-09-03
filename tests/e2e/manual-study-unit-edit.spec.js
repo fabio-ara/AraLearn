@@ -471,7 +471,7 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
     await app.openCourse(sourceCourseId);
   }, { project, ownership });
   await openSecondStudyUnitByClicks(page);
-  await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
+  await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
 }
 
 async function openInspectionUnit(page, ownership) {
@@ -821,11 +821,11 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   )).toBeVisible();
   await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
   await expect(page.getByText(
-    "Cópia criada. Você continua nesta Unidade.",
+    "Cópia criada. Você continua nesta unidade de estudo.",
     { exact: true }
   )).toBeVisible();
   await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
+  await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
   await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
   const personalCopy = await page.evaluate(() => ({
     requests: globalThis.__manualStudyRequests,
@@ -903,7 +903,7 @@ test("cópia pessoal permanece legível nos quatro tamanhos e nos dois temas", a
       );
       await save.click();
       await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-      await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
+      await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth -
         document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
     }
@@ -948,10 +948,10 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   await expect(page.getByRole("button", { name: "Salvar edição" })).toBeFocused();
   await page.getByRole("button", { name: "Cancelar edição" }).click();
   await page.getByRole("button", { name: "Voltar" }).click();
-  await expect(page.getByRole("heading", { name: "Unidades" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Unidades de estudo" })).toBeVisible();
   await page.getByRole("button", { name: "Assistência por IA" }).click();
   const microScope = page.getByRole("region", { name: "Edição com IA" });
-  await expect(microScope).toContainText("1 Unidade");
+  await expect(microScope).toContainText("1 unidade de estudo");
   await expect(page.locator(
     '[data-action="toggle-assistance-target"][aria-pressed="true"]'
   ).first()).toBeFocused();
@@ -963,7 +963,7 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   await expect(page.locator(
     `[data-action="toggle-assistance-target"][data-assistance-target-id="${secondUnitId}"]`
   )).toBeFocused();
-  await expect(microScope).toContainText("2 Unidades");
+  await expect(microScope).toContainText("2 unidades de estudo");
   await microScope.getByRole("button", { name: "Cancelar seleção" }).click();
   await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeFocused();
 
@@ -971,7 +971,7 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   await expect(page.getByRole("heading", { name: "Microssequências didáticas" })).toBeVisible();
   await page.getByRole("button", { name: "Assistência por IA" }).click();
   const lessonScope = page.getByRole("region", { name: "Edição com IA" });
-  await expect(lessonScope).toContainText("1 Microssequência");
+  await expect(lessonScope).toContainText("1 microssequência");
   await expect(page.locator(
     '[data-action="toggle-assistance-target"][aria-pressed="true"]'
   ).first()).toBeFocused();
@@ -985,7 +985,7 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   await expect(page.locator(
     `[data-action="toggle-assistance-target"][data-assistance-target-id="${secondMicrosequenceId}"]`
   )).toBeFocused();
-  await expect(lessonScope).toContainText("2 Microssequências");
+  await expect(lessonScope).toContainText("2 microssequências");
   await lessonScope.getByRole("button", { name: "Cancelar seleção" }).click();
   await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeFocused();
 
@@ -1037,11 +1037,11 @@ test("rascunho pessoal pendente reaparece e a reconexão retoma o mesmo pedido",
 
   await page.evaluate(() => globalThis.__manualStudyApp.resumePendingManualEdit({ retry: true }));
   await expect(page.getByText(
-    "Cópia criada. Você continua nesta Unidade.",
+    "Cópia criada. Você continua nesta unidade de estudo.",
     { exact: true }
   )).toBeVisible();
   await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Unidade 2 de 2")).toBeVisible();
+  await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
 });
 
 test("duas abas convergem para uma cópia e preservam o rascunho conflitante", async ({ page }) => {
@@ -1097,7 +1097,7 @@ test("rebase da cópia preserva o pedido anterior e torna o substituto durável"
 
   await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "O Curso mudou. Revise a alteração sobre a Unidade atual e salve novamente."
+    "O curso mudou. Revise a alteração sobre a unidade de estudo atual e salve novamente."
   );
   await expect(field).toHaveText(draft);
   const firstRebase = await page.evaluate(() => ({
@@ -1115,7 +1115,7 @@ test("rebase da cópia preserva o pedido anterior e torna o substituto durável"
 
   await page.evaluate(() => globalThis.__manualStudyReload({ retry: true }));
   await expect(page.getByRole("alert")).toContainText(
-    "O Curso mudou. Revise a alteração sobre a Unidade atual e salve novamente."
+    "O curso mudou. Revise a alteração sobre a unidade de estudo atual e salve novamente."
   );
   await expect(field).toHaveText(draft);
   const afterReload = await page.evaluate(() => ({
@@ -1230,7 +1230,7 @@ test("conflito de cópia sobrevive à recarga e limpar o editor remove o pedido"
 test("alvo removido leva o rascunho à Home para descarte visível", async ({ page }) => {
   const scenarios = [{
     kind: "study_unit",
-    message: "A Unidade da alteração guardada mudou ou deixou de existir. " +
+    message: "A unidade de estudo da alteração guardada mudou ou deixou de existir. " +
       "Descarte o rascunho para continuar."
   }, {
     kind: "resource",

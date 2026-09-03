@@ -9,6 +9,7 @@ const PART_ID = "20000000-0000-4000-8000-000000000001";
 const ANALYSIS_ID = "30000000-0000-4000-8000-000000000001";
 const SECOND_ANALYSIS_ID = "30000000-0000-4000-8000-000000000002";
 const EVIDENCE_ID = "30000000-0000-4000-8000-000000000003";
+const CURRICULUM_SCOPE_ID = "50000000-0000-4000-8000-000000000001";
 const PRINCIPAL = {
   actorId: "40000000-0000-4000-8000-000000000001",
   scopes: ["authoring:read", "authoring:write"]
@@ -36,6 +37,19 @@ function adapterFixture() {
         plan: {
           version: 3,
           title: "Curso de Redes",
+          curriculum: {
+            modules: [{
+              id: "module-network",
+              position: 0,
+              title: "Rede local",
+              lessons: [{
+                id: "lesson-network",
+                position: 0,
+                title: "Serviços de rede",
+                microsequences: [{ id: "micro-dns", position: 0, title: "DNS" }]
+              }]
+            }]
+          },
           instructionalAnalysisUnits: [{
             id: ANALYSIS_ID,
             position: 8,
@@ -97,7 +111,9 @@ function adapterFixture() {
           ["new_analysis_unit_ceiling_per_expository_study_unit", 1],
           ["required_explanation_forms", ["plain_definition"]],
           ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
-          ["required_practice_variation_dimensions", ["case_or_data"]]
+          ["required_practice_variation_dimensions", ["case_or_data"]],
+          ["authoring_chat_response_word_target", 90],
+          ["study_unit_content_word_target", 180]
         ].map(([parameterId, value]) => ({
           parameterId,
           effectiveAssignment: {
@@ -172,7 +188,8 @@ function unit(fontes = []) {
           motivo: "Esta primeira Unit estabelece a relação antes de contrastá-la."
         }]
       }],
-      praticas: []
+      praticas: [],
+      cobertura: []
     },
     fontes
   };
@@ -197,6 +214,19 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
     plan: {
       version: 3,
       title: "Curso de Redes",
+      curriculum: {
+        modules: [{
+          id: "module-network",
+          position: 0,
+          title: "Rede local",
+          lessons: [{
+            id: "lesson-network",
+            position: 0,
+            title: "Serviços de rede",
+            microsequences: [{ id: "micro-dns", position: 0, title: "DNS" }]
+          }]
+        }]
+      },
       instructionalAnalysisUnits: analysis,
       evidenceRequirements: withEvidence ? [{
         id: EVIDENCE_ID,
@@ -222,7 +252,9 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
       ["new_analysis_unit_ceiling_per_expository_study_unit", ceiling],
       ["required_explanation_forms", ["plain_definition", "mechanism"]],
       ["minimum_distinct_practice_opportunities_per_evidence_requirement", 2],
-      ["required_practice_variation_dimensions", ["case_or_data", "context"]]
+      ["required_practice_variation_dimensions", ["case_or_data", "context"]],
+      ["authoring_chat_response_word_target", 100],
+      ["study_unit_content_word_target", 200]
     ].map(([parameterId, parameterValue]) => ({
       parameterId,
       effectiveAssignment: {
@@ -283,7 +315,8 @@ function pedagogicalUnit(position, {
     ideiasIntroduzidas: novelty,
     ideiasUtilizadas: used,
     explicacoes: explanations,
-    praticas: practices
+    praticas: practices,
+    cobertura: []
   };
   return value;
 }
@@ -381,6 +414,99 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes(COURSE_ID), false);
 });
 
+test("materialização exige uma decisão contextual para valores ainda no padrão", async () => {
+  const value = adapterFixture();
+  const inheritedDesign = value.getCourseDesign;
+  value.getCourseDesign = async (...args) => {
+    const design = await inheritedDesign(...args);
+    const target = design.parameters.find(({ parameterId }) =>
+      parameterId === "authoring_chat_response_word_target");
+    target.effectiveAssignment = {
+      value: 120,
+      origin: "system_default",
+      sourceScope: null
+    };
+    return design;
+  };
+
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: value,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [unit()]
+  }), (error) => error.code === "human_materialization_contextual_calibration_required");
+  assert.deepEqual(value.calls, []);
+});
+
+test("calibração contextual pode variar uma unidade nova sem substituir condição fixa", async () => {
+  const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 2 });
+  const content = pedagogicalUnit(1, {
+    novelty: [1, 2],
+    explanations: [{
+      ideia: 1,
+      formas: ["plain_definition", "mechanism"]
+    }, {
+      ideia: 2,
+      formas: ["plain_definition", "mechanism"]
+    }]
+  });
+  content.configuracao = {
+    parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 },
+    parametrosEditoriais: { alvoDePalavrasPorUnidade: 260 },
+    direcaoEditorial: "Conserve as duas ideias relacionadas no mesmo exemplo em evolução."
+  };
+
+  await materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [content]
+  });
+  const snapshot = adapter.calls[0].units[0].designSnapshot;
+  const effective = new Map(snapshot.parameters.map((parameter) => [
+    parameter.parameterId,
+    parameter
+  ]));
+  assert.deepEqual(effective.get(
+    "new_analysis_unit_ceiling_per_expository_study_unit"
+  ), {
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 2,
+    origin: "automatic",
+    sourceScopeKind: "study_unit"
+  });
+  assert.equal(effective.get("study_unit_content_word_target").value, 260);
+  assert.deepEqual(snapshot.editorialDirections.at(-1), {
+    direction: "Conserve as duas ideias relacionadas no mesmo exemplo em evolução.",
+    origin: "automatic",
+    sourceScopeKind: "study_unit"
+  });
+
+  const fixedAdapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 2 });
+  const readDesign = fixedAdapter.getCourseDesign;
+  fixedAdapter.getCourseDesign = async (request) => {
+    const design = await readDesign(request);
+    const ceiling = design.parameters.find(({ parameterId }) =>
+      parameterId === "new_analysis_unit_ceiling_per_expository_study_unit");
+    ceiling.effectiveAssignment = {
+      value: 1,
+      origin: "research_condition",
+      sourceScope: { kind: "didactic_microsequence", ref: "micro-dns" }
+    };
+    return design;
+  };
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: fixedAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [content]
+  }), (error) => error.code === "human_materialization_fixed_configuration_conflict");
+  assert.deepEqual(fixedAdapter.calls, []);
+});
+
 test("primeira materialização cria o repertório necessário sem exigir planejamento interno do autor", async () => {
   const value = adapterFixture();
   value.getCourseInstructionalPlan = async () => ({
@@ -389,6 +515,19 @@ test("primeira materialização cria o repertório necessário sem exigir planej
     plan: {
       version: 3,
       title: "Curso de Redes",
+      curriculum: {
+        modules: [{
+          id: "module-network",
+          position: 0,
+          title: "Rede local",
+          lessons: [{
+            id: "lesson-network",
+            position: 0,
+            title: "Serviços de rede",
+            microsequences: [{ id: "micro-dns", position: 0, title: "DNS" }]
+          }]
+        }]
+      },
       instructionalAnalysisUnits: [],
       evidenceRequirements: [],
       parts: [{
@@ -603,7 +742,9 @@ function unitScopedPedagogicalAdapter({ blockedComponent = false } = {}) {
       ["new_analysis_unit_ceiling_per_expository_study_unit", 1],
       ["required_explanation_forms", ["contrast"]],
       ["minimum_distinct_practice_opportunities_per_evidence_requirement", 3],
-      ["required_practice_variation_dimensions", ["support_level"]]
+      ["required_practice_variation_dimensions", ["support_level"]],
+      ["authoring_chat_response_word_target", 72],
+      ["study_unit_content_word_target", 140]
     ]);
     design.parameters = design.parameters.map((parameter) => ({
       ...parameter,
@@ -657,7 +798,7 @@ function unitScopedMaterialization({
   ];
 }
 
-test("Unit existente sela os quatro overrides e a Unit nova herda a Microssequência", async () => {
+test("unidade existente sela os seis ajustes e a nova herda a microssequência", async () => {
   const adapter = unitScopedPedagogicalAdapter();
   await materializeHumanCoursePart({
     adapter,
@@ -854,6 +995,99 @@ test("formas podem continuar depois da introdução, mas nunca antes dela", asyn
   }), (error) => error.code === "human_materialization_explanation_before_introduction");
 });
 
+test("materialização desenvolve de fato cada item de escopo atribuído à microssequência", async () => {
+  const adapter = pedagogicalAdapter({ analysisCount: 0 });
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const current = await readPlan();
+    current.plan.curriculumScopeItems = [{
+      id: CURRICULUM_SCOPE_ID,
+      position: 0,
+      statement: "Resolução de nomes pelo DNS.",
+      state: "planned",
+      curriculumTargets: [{
+        moduleId: "module-network",
+        lessonId: "lesson-network",
+        didacticMicrosequenceIds: ["micro-dns"]
+      }],
+      developedIn: []
+    }];
+    return current;
+  };
+  const content = pedagogicalUnit(1, { mode: "pratica" });
+
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [content]
+  }), (error) => error.code === "human_materialization_incomplete_scope_coverage");
+  assert.deepEqual(adapter.calls, []);
+
+  content.aplicacaoPedagogica.cobertura = ["Resolução de nomes pelo DNS."];
+  await materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [content]
+  });
+  assert.deepEqual(
+    adapter.calls[0].units[0].designApplication.curriculumScopeItemIds,
+    [CURRICULUM_SCOPE_ID]
+  );
+});
+
+test("revisar conteúdo inicial não mobiliza ideia ensinada apenas depois no currículo", async () => {
+  const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 1 });
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const read = await readPlan();
+    read.plan.curriculum = {
+      modules: [{
+        id: "module-network",
+        position: 0,
+        lessons: [{
+          id: "lesson-network",
+          position: 0,
+          microsequences: [{ id: "micro-dns", position: 0 }, {
+            id: "micro-future",
+            position: 1
+          }]
+        }]
+      }]
+    };
+    read.plan.instructionalAnalysisUnits[0].introducedAt = {
+      studyUnitId: "70000000-0000-4000-8000-000000000099",
+      didacticMicrosequenceId: "micro-future",
+      title: "Explicação posterior"
+    };
+    return read;
+  };
+
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [pedagogicalUnit(1, { used: [1] })]
+  }), (error) => error.code === "human_materialization_use_before_introduction");
+  assert.deepEqual(adapter.calls, []);
+
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [pedagogicalUnit(1, {
+      novelty: [1],
+      explanations: [{ ideia: 1, formas: ["plain_definition", "mechanism"] }]
+    })]
+  }), (error) => error.code === "human_materialization_duplicate_introduction");
+  assert.deepEqual(adapter.calls, []);
+});
+
 test("item focal percorre a microssequência e chega às unidades como introdução, uso ou retomada", async () => {
   const adapter = pedagogicalAdapter({ ceiling: 2, analysisCount: 2 });
   const designReads = [];
@@ -879,12 +1113,16 @@ test("item focal percorre a microssequência e chega às unidades como introduç
             position: 0,
             title: "Decisões do switch",
             microsequences: [{
-              id: "micro-foundations",
+              id: "micro-prerequisite",
               position: 0,
+              title: "Conhecimento estabelecido"
+            }, {
+              id: "micro-foundations",
+              position: 1,
               title: "Aprender a associação"
             }, {
               id: "micro-application",
-              position: 1,
+              position: 2,
               title: "Usar e retomar a associação"
             }]
           }]
@@ -953,7 +1191,9 @@ test("item focal percorre a microssequência e chega às unidades como introduç
         ["new_analysis_unit_ceiling_per_expository_study_unit", 2],
         ["required_explanation_forms", ["plain_definition"]],
         ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
-        ["required_practice_variation_dimensions", []]
+        ["required_practice_variation_dimensions", []],
+        ["authoring_chat_response_word_target", 100],
+        ["study_unit_content_word_target", 180]
       ].map(([parameterId, value]) => ({
         parameterId,
         effectiveAssignment: {
@@ -990,12 +1230,18 @@ test("item focal percorre a microssequência e chega às unidades como introduç
   });
   introduction.microssequencia = "Aprender a associação";
   introduction.conteudo.title = "A associação focal";
+  introduction.aplicacaoPedagogica.cobertura = [
+    "Aprender e aplicar uma associação de rede."
+  ];
   const application = pedagogicalUnit(1, {
     mode: "pratica",
     used: [1, 2]
   });
   application.microssequencia = "Usar e retomar a associação";
   application.conteudo.title = "Aplicar a associação";
+  application.aplicacaoPedagogica.cobertura = [
+    "Aprender e aplicar uma associação de rede."
+  ];
   const revisit = pedagogicalUnit(2, {
     used: [1],
     explanations: [{ ideia: 2, formas: ["contrast"] }]
@@ -1032,6 +1278,7 @@ test("item focal percorre a microssequência e chega às unidades como introduç
       developedForms: ["plain_definition"],
       notApplicable: []
     }],
+    curriculumScopeItemIds: [CURRICULUM_SCOPE_ID],
     practiceApplications: [],
     componentRefs: ["aralearn.resource.paragraph@1.0.0"]
   });

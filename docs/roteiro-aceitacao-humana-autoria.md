@@ -68,7 +68,8 @@ correções futuras.
 | “Produza este lote.” | materializa unidades suficientes e conectadas | conteúdo renderizado, não apenas JSON ou contagens |
 | “Mostre o que esta unidade pressupõe.” | exibe ideias introduzidas, usadas e retomadas em linguagem humana | ausência de termos internos e referências coerentes |
 | “Compare teto 1 e 2.” | preserva o repertório e permite mudar a distribuição de unidades | condição fixada prevalece sobre calibração contextual |
-| “Deixe o GPT ajustar ao conteúdo.” | estado `default` produz calibração contextual por microssequência ou unidade | valor, origem, escopo e aplicação observáveis |
+| “Deixe o GPT ajustar ao conteúdo.” | estado `default` exige calibração contextual automática dos parâmetros pedagógicos e alvos editoriais por microssequência ou unidade | valor, origem, escopo e aplicação observáveis |
+| “Prefira cerca de 140 palavras por unidade.” | registra alvo editorial flexível sem truncar nem compactar conteúdo | alvo e extensão observada comparáveis; unidades podem ultrapassá-lo |
 | “Confira de onde vem esta afirmação.” | distingue fonte de escopo, avaliação e sustentação técnica | proveniência e limite interpretado |
 | “Revise as observações abertas.” | relê também progressão, pré-requisitos, transições, exemplos e prática | conjunto afetado e proposta concreta |
 | “Mostre como o curso foi desenhado.” | Analytics mostra estado aplicado e exporta dados comparáveis | valores, origem, escopo, uso e JSON |

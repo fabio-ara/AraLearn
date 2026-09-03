@@ -86,13 +86,13 @@ function normalizePerson(value, label) {
 function normalizeCoursePeople(value, courseId) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       value.courseId !== courseId || !Array.isArray(value.people)) {
-    throw new TypeError("A lista de pessoas do Curso é inválida.");
+    throw new TypeError("A lista de pessoas do curso é inválida.");
   }
   const owner = normalizePerson(value.owner, "Pessoa proprietária");
   const people = value.people.map((person) => normalizePerson(person, "Pessoa com acesso"));
   if (people.some((person) => person.userId === owner.userId) ||
       new Set(people.map((person) => person.userId)).size !== people.length) {
-    throw new TypeError("A lista de pessoas do Curso é inconsistente.");
+    throw new TypeError("A lista de pessoas do curso é inconsistente.");
   }
   return Object.freeze({ owner, people: Object.freeze(people) });
 }
@@ -164,7 +164,7 @@ function renderCourseList(state) {
   const cardinality = page ? courseListCardinality(page) : "zero";
   let content;
   if (state.loading && !page) {
-    content = '<p class="course-authoring-loading" role="status">Carregando Cursos…</p>';
+    content = '<p class="course-authoring-loading" role="status">Carregando cursos…</p>';
   } else if (state.failure && !page) {
     content = statusPanel({
       kind: state.failure.kind,
@@ -176,10 +176,10 @@ function renderCourseList(state) {
   } else if (!page || page.items.length === 0) {
     content = statusPanel({
       kind: page?.offlineKnown ? "offline-known" : "empty",
-      title: page?.offlineKnown ? "Nenhum Curso salvo" : "Nenhum Curso ainda",
+      title: page?.offlineKnown ? "Nenhum curso salvo" : "Nenhum curso ainda",
       message: page?.offlineKnown
-        ? "Conecte-se para consultar os Cursos disponíveis."
-        : state.query ? "A busca não encontrou Cursos." : "Seus Cursos aparecerão aqui."
+        ? "Conecte-se para consultar os cursos disponíveis."
+        : state.query ? "A busca não encontrou cursos." : "Seus cursos aparecerão aqui."
     });
   } else {
     content = `<div class="course-authoring-course-list" data-cardinality="${cardinality}">` +
@@ -199,7 +199,7 @@ function renderCourseList(state) {
       '<label for="course-authoring-create-objective">Objetivo</label>' +
       `<input id="course-authoring-create-objective" name="objective" maxlength="2000" required autocomplete="off" value="${escapeHtml(state.createDraft?.objective || "")}">` +
       '<div class="course-authoring-write-actions">' +
-      `<button type="submit"${state.writeBusy ? " disabled" : ""} aria-label="Criar Curso" title="Criar Curso">` +
+      `<button type="submit"${state.writeBusy ? " disabled" : ""} aria-label="Criar curso" title="Criar curso">` +
       renderUiIcon("save", "course-authoring-button-icon") + "</button>" +
       '<button type="button" data-course-authoring-action="cancel-create" aria-label="Cancelar" title="Cancelar">' +
       renderUiIcon("remove-state", "course-authoring-button-icon") + "</button></div></form>"
@@ -217,13 +217,13 @@ function renderCourseList(state) {
       stale: state.syncing === true || state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<button type="button" class="course-authoring-header-action"' +
-    ' data-course-authoring-action="open-create" aria-label="Criar Curso" title="Criar Curso">' +
+    ' data-course-authoring-action="open-create" aria-label="Criar curso" title="Criar curso">' +
     renderUiIcon("add", "course-authoring-button-icon") + "</button></div></header>" +
     '<form class="course-authoring-search" role="search" data-course-authoring-search>' +
-    '<label class="course-authoring-visually-hidden" for="course-authoring-query">Buscar Cursos</label>' +
+    '<label class="course-authoring-visually-hidden" for="course-authoring-query">Buscar cursos</label>' +
     `<input id="course-authoring-query" type="search" maxlength="120" autocomplete="off"` +
-    ` value="${escapeHtml(state.query)}" placeholder="Buscar Curso" data-course-authoring-query>` +
-    '<button type="submit" aria-label="Buscar Cursos">' +
+    ` value="${escapeHtml(state.query)}" placeholder="Buscar curso" data-course-authoring-query>` +
+    '<button type="submit" aria-label="Buscar cursos">' +
     renderUiIcon("search", "course-authoring-button-icon") + "</button></form>" +
     '<div class="course-authoring-feedback-layer"><p class="course-authoring-notice" data-course-authoring-request-feedback' +
     ' role="status" aria-live="polite" hidden></p>' +
@@ -272,14 +272,14 @@ function renderCourseHeader(course, state) {
   if (!course?.courseId) {
     return '<header class="course-authoring-course-header">' +
       '<button type="button" class="course-authoring-back" data-course-authoring-action="show-list"' +
-      ' aria-label="Voltar aos Cursos" title="Voltar aos Cursos">' +
+      ' aria-label="Voltar aos cursos" title="Voltar aos cursos">' +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button>" +
       '<div class="course-authoring-course-heading"><p class="course-authoring-eyebrow">Autoria</p>' +
       `<h1>${escapeHtml(title)}</h1></div></header>`;
   }
   const backLabel = state.section !== "content" || state.routeTarget || state.contextualReturn
     ? "Voltar ao Conteúdo"
-    : "Voltar aos Cursos";
+    : "Voltar aos cursos";
   const back = '<button type="button" class="course-authoring-back"' +
     ' data-course-authoring-action="back" aria-label="' + backLabel + '" title="' +
     backLabel + '">' + renderUiIcon("arrow-left", "course-authoring-button-icon") +
@@ -300,15 +300,15 @@ function renderCourseHeader(course, state) {
       stale: state.syncing === true || state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
-    ' aria-label="Abrir tarefas do Curso" title="Tarefas">' +
+    ' aria-label="Abrir tarefas do curso" title="Tarefas">' +
     renderUiIcon("more", "course-authoring-button-icon") +
-    '</summary><nav aria-label="Tarefas do Curso">' +
+    '</summary><nav aria-label="Tarefas do curso">' +
     '<button type="button" data-course-authoring-action="refresh-course">' +
-    `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar Curso</span></button>` +
+    `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar curso</span></button>` +
     (state.section === "content" && canAccessPlanning(course) && state.canOpenStudyContent
       ? '<button type="button" data-course-authoring-action="edit-content-entity"' +
         ' data-target-kind="course">' +
-        `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar Curso</span></button>`
+        `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar curso</span></button>`
       : "") +
     renderTaskLinks(course, state.section, { primary: false }) +
     "</nav></details></div></header>";
@@ -506,17 +506,17 @@ function renderPartNavigator(state, parts, activePart) {
     `<li><a href="${escapeHtml(planningPartRoute(state.course.courseId, part.id))}"` +
       ' data-course-authoring-action="change-section" data-section="planning"' +
       `${part.id === activePart.id ? ' aria-current="page"' : ""}>` +
-      `<span>Parte ${partIndex + 1}</span><strong>${escapeHtml(part.title)}</strong></a></li>`
+      `<span>parte ${partIndex + 1}</span><strong>${escapeHtml(part.title)}</strong></a></li>`
   ).join("");
-  return '<nav class="course-authoring-part-navigation" aria-label="Navegação entre Partes">' +
+  return '<nav class="course-authoring-part-navigation" aria-label="Navegação entre partes">' +
     link(parts[index - 1], "Parte anterior", "arrow-left") +
-    `<details><summary aria-label="Escolher Parte. Parte ${index + 1} de ${parts.length}: ${escapeHtml(
+    `<details><summary aria-label="Escolher parte. Parte ${index + 1} de ${parts.length}: ${escapeHtml(
       activePart.title
-    )}" title="Escolher Parte">` +
-    `<span>Parte ${index + 1} de ${parts.length}</span>` +
+    )}" title="Escolher parte">` +
+    `<span>parte ${index + 1} de ${parts.length}</span>` +
     `<strong>${escapeHtml(activePart.title)}</strong></summary>` +
     `<ol>${choices}</ol></details>` +
-    link(parts[index + 1], "Próxima Parte", "arrow-right") + "</nav>";
+    link(parts[index + 1], "Próxima parte", "arrow-right") + "</nav>";
 }
 
 function renderParts(state, planning) {
@@ -537,7 +537,7 @@ function renderUnlinkedContentNotice(state, planning) {
   const plannedStudyUnits = Number(planning.studyUnitCount || 0);
   if (contentStudyUnits <= plannedStudyUnits) return "";
   const unlinkedCount = contentStudyUnits - plannedStudyUnits;
-  const label = unlinkedCount === 1 ? "Unidade sem Parte" : "Unidades sem Parte";
+  const label = unlinkedCount === 1 ? "Unidade de estudo sem parte" : "Unidades de estudo sem parte";
   return `<aside class="course-authoring-unlinked-content" aria-label="${escapeHtml(
     `${unlinkedCount} ${label}`
   )}">` + renderUiIcon("reposition", "course-authoring-section-icon") +
@@ -710,7 +710,7 @@ function renderPlanningSection(state) {
 }
 
 function renderContentSection() {
-  return '<section class="course-authoring-content-flow" aria-label="Conteúdo do Curso">' +
+  return '<section class="course-authoring-content-flow" aria-label="Conteúdo do curso">' +
     '<div class="course-inspection-host" data-course-inspection-host></div></section>';
 }
 
@@ -737,7 +737,7 @@ function renderCourseSection(state) {
       return statusPanel({
         kind: "error",
         title: "Fontes indisponíveis",
-        message: "Somente a pessoa proprietária pode consultar e alterar as fontes deste Curso."
+        message: "Somente a pessoa proprietária pode consultar e alterar as fontes deste curso."
       });
     }
     return '<div class="course-sources-host" data-course-sources-host></div>';
@@ -752,7 +752,7 @@ function renderCourseSection(state) {
     return renderResearchSection(state);
   }
   if (state.loading && !state.course) {
-    return '<p class="course-authoring-loading" role="status">Carregando Curso…</p>';
+    return '<p class="course-authoring-loading" role="status">Carregando curso…</p>';
   }
   if (state.failure && !state.course) {
     return statusPanel({
@@ -766,7 +766,7 @@ function renderCourseSection(state) {
   return statusPanel({
     kind: "error",
     title: "Curso indisponível",
-    message: "Não foi possível abrir esta tarefa no Curso. Volte à Home e tente novamente."
+    message: "Não foi possível abrir esta tarefa no curso. Volte à página inicial e tente novamente."
   });
 }
 
@@ -804,10 +804,10 @@ function renderInvalidRoute() {
     '<main class="course-authoring-course-content">' + statusPanel({
       kind: "error",
       title: "Endereço inválido",
-      message: "Abra um Curso pela lista para continuar."
+      message: "Abra um curso pela lista para continuar."
     }) +
     '<button type="button" class="course-authoring-primary" data-course-authoring-action="show-list">' +
-    renderUiIcon("arrow-left", "course-authoring-button-icon") + "<span>Ver Cursos</span></button></main></div>";
+    renderUiIcon("arrow-left", "course-authoring-button-icon") + "<span>Ver cursos</span></button></main></div>";
 }
 
 export function renderCourseAuthoringSurface(state = {}) {
@@ -908,7 +908,7 @@ function assertController(controller) {
     "loadCourseDesign", "mutateCourseDesign"
   ]) {
     if (typeof controller?.[method] !== "function") {
-      throw new TypeError(`Controller de Cursos sem ${method}.`);
+      throw new TypeError(`Controle de cursos sem ${method}.`);
     }
   }
 }
@@ -928,7 +928,7 @@ export function createCourseAuthoringSurface({
   onClose = () => {}
 } = {}) {
   if (!root || typeof root.addEventListener !== "function") {
-    throw new TypeError("Elemento raiz da Autoria de Cursos ausente.");
+    throw new TypeError("Elemento raiz da autoria de cursos ausente.");
   }
   assertController(controller);
   if (!Number.isSafeInteger(courseLimit) || courseLimit < 1 || courseLimit > 50) {
@@ -2755,7 +2755,7 @@ export function createCourseAuthoringSurface({
       };
       state.writeBusy = true;
       state.writeFailure = "";
-      state.writeMessage = "Criando Curso…";
+      state.writeMessage = "Criando curso…";
       render();
       void Promise.resolve().then(() => controller.createCourse(
         structuredClone(command)
@@ -2933,7 +2933,7 @@ export function createCourseAuthoringSurface({
         state.pendingPeopleCommand = null;
       }
       openActionConfirmation({
-        message: `Conceder a ${email} acesso para Estudo neste Curso?`,
+        message: `Conceder a ${email} acesso para estudo neste curso?`,
         confirmLabel: "Conceder acesso",
         tone: "primary",
         icon: "account-add",
@@ -2943,7 +2943,7 @@ export function createCourseAuthoringSurface({
             request: { courseId, email, confirmed: true },
             method: "grantCourseAccess",
             startedMessage: "Concedendo acesso…",
-            successMessage: "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Use Atualizar Curso depois para conferir o acesso.",
+            successMessage: "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Depois, atualize o curso para conferir o acesso.",
             refreshAfterSuccess: false,
             afterSuccess() {
               state.grantOpen = false;

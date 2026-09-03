@@ -68,11 +68,13 @@ microssequências existentes apenas como lotes operacionais. A produção
 confirmada aparece como unidades de estudo em Conteúdo, sem expor passos
 técnicos.
 
-Parâmetros pedagógicos, orientações e política de componentes podem ser
-definidos no curso ou em um escopo didático mais específico. No estado
-`default`, o GPT calibra o desenho pelo conteúdo e pela função; uma condição
-fixada pelo pesquisador prevalece. A interface mostra de onde veio cada decisão
-e o valor efetivamente aplicado.
+Quatro parâmetros pedagógicos, dois alvos editoriais quantitativos, orientações
+e política de componentes podem ser definidos no curso ou em um escopo didático
+mais específico. No estado `default`, o GPT precisa calibrar automaticamente o
+desenho para cada microssequência ou unidade pelo conteúdo e pela função; uma
+condição fixada pelo pesquisador prevalece. Os alvos de palavras são flexíveis,
+não limites, e não autorizam compressão. A interface mostra de onde veio cada
+decisão e o valor efetivamente aplicado.
 
 Fontes e Âncoras possuem estado corrente; PDFs são privados. Uma
 atribuição liga a Unidade à Fonte e às Âncoras exatas usadas. Referências sem

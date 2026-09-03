@@ -322,7 +322,8 @@ atualização para conservar o rascunho. Conclua ou cancele essa edição e use
 Cada condição de pesquisa deve usar um Curso privado independente. Confira se o
 mesmo inventário semântico foi preservado e se os parâmetros realmente foram
 fixados antes da produção. Direção editorial não pode eliminar novidade
-necessária; uma condição mais estreita pode produzir mais StudyUnits.
+necessária. Os alvos de palavras são flexíveis, não limites; uma condição mais
+estreita pode produzir mais unidades de estudo.
 
 ## Um número de Analytics parece incorreto
 

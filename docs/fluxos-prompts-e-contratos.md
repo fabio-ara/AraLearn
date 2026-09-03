@@ -116,9 +116,12 @@ O mapa responde o que será ensinado e em que ordem. Os parâmetros e a direçã
 editorial regem como o recorte será desenhado. A composição contém as unidades
 de estudo e suas representações.
 
-O estado `default` de um parâmetro delega ao GPT a calibração contextual para
-cada microssequência ou unidade, conforme conteúdo, função e público. Não é um
-preset fixo. Um valor deliberadamente fixado pelo pesquisador prevalece.
+O estado `default` de um parâmetro exige que o GPT faça a calibração contextual
+automática para cada microssequência ou unidade, conforme conteúdo, função e
+público. Isso vale para os quatro parâmetros pedagógicos e os dois alvos
+editoriais quantitativos flexíveis. Não é um preset fixo. Um valor
+deliberadamente fixado pelo pesquisador prevalece. Os alvos de palavras não são
+limites e não autorizam ocultar decisões ou comprimir conteúdo.
 
 O AraLearn fornece mecanismos gerais para pesquisa em design instrucional.
 Finalidades como concurso podem calibrar vocabulário, precisão e prática de um

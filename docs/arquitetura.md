@@ -20,7 +20,8 @@ Um curso reúne:
 - módulos, lições, microssequências e unidades de estudo (`StudyUnit` no código);
 - mapa curricular global e partes operacionais de autoria;
 - repertório de unidades de análise (`AnalysisUnit` no código) e requisitos de evidência;
-- parâmetros pedagógicos e direção editorial;
+- quatro parâmetros pedagógicos, dois alvos editoriais quantitativos e direção
+  editorial;
 - fontes, âncoras, PDFs e atribuições;
 - observações e estado necessário à revisão;
 - estado pessoal de estudo por pessoa.
@@ -117,24 +118,26 @@ muda a distribuição da novidade, não o inventário nem a profundidade necess�
 
 ## Desenho aplicado à unidade de estudo
 
-Parâmetros e direção editorial possuem atribuição corrente por escopo. Limpar
-uma definição restaura herança e remove a atribuição local; não cria uma linha
-histórica de “limpeza”.
+Parâmetros pedagógicos, alvos editoriais e direção editorial possuem atribuição
+corrente por escopo. Limpar uma definição restaura herança e remove a atribuição
+local; não cria uma linha histórica de “limpeza”.
 
 Quando uma unidade de estudo é produzida ou revisada, ela guarda o recorte de desenho
-efetivamente aplicado: ideias e requisitos pertinentes, valores
-pedagógicos, direção editorial, componentes e oportunidades de prática. Esse
-registro focal permite inspeção e Analytics sem conservar contexto de execução
-da parte inteira.
+efetivamente aplicado: ideias e requisitos pertinentes, valores pedagógicos,
+alvos editoriais, direção editorial, componentes e oportunidades de prática.
+Esse registro focal permite inspeção e Analytics sem conservar contexto de
+execução da parte inteira.
 
 Ideias introduzidas são persistidas separadamente das ideias estabelecidas que
 a unidade apenas utiliza. Retomadas são derivadas das explicações de ideias já
 estabelecidas. Identidade, nome, descrição curta e referências às unidades
 permitem consultar o repertório sem criar ontologia, grafo ou ledger paralelo.
 
-O estado `default` de um parâmetro delega ao GPT a calibração contextual para a
+O estado `default` exige que o GPT calibre automaticamente cada parâmetro para a
 microssequência ou unidade, conforme conteúdo, função e público. Ele não é um
 preset fixo. Uma definição deliberadamente fixada pelo pesquisador prevalece.
+Os alvos de palavras orientam a extensão, mas não são limites e não autorizam
+comprimir nem omitir conteúdo necessário.
 
 Fluxo global antes dos lotes, aprovação apenas do artefato inspecionável e
 fronteira pública em linguagem humana são invariantes. Distribuição editorial,
@@ -184,8 +187,9 @@ cotidiana vem de poder reabrir qualquer ponto e revisá-lo outra vez.
 
 Analytics deriva um snapshot quantitativo do estado corrente. **Desenho** conta
 unidades de estudo, ideias do repertório, prática, fontes, valores pedagógicos,
-formas e componentes. **Autoria** conta observações abertas, parâmetros definidos
-e a origem observável da criação e da última revisão das unidades.
+alvos e extensão editorial observada, formas e componentes. **Autoria** conta
+observações abertas, parâmetros definidos e a origem observável da criação e da
+última revisão das unidades.
 
 O snapshot não usa telemetria de atenção, conversa ou rastreamento da execução.
 O JSON baixado contém os mesmos números da tela e não representa uma cópia

@@ -146,9 +146,9 @@ laboratório. Uma **decisão local** define o que fazer numa microssequência, c
 introduzir um pré-requisito, usar um exemplo, escolher uma representação,
 acrescentar prática ou declarar que um meio indispensável não está disponível.
 A mesma condição pode exigir respostas diferentes conforme a operação e o
-conteúdo. Por isso, o estado `default` permite ao GPT calibrar cada
-microssequência ou unidade segundo sua função, em vez de aplicar um preset ao
-curso inteiro. Uma condição deliberadamente fixada pelo pesquisador prevalece.
+conteúdo. Por isso, o estado `default` exige que o GPT calibre automaticamente
+cada microssequência ou unidade segundo sua função, em vez de aplicar um preset
+ao curso inteiro. Uma condição deliberadamente fixada pelo pesquisador prevalece.
 Objetivos, cobertura e invariantes continuam comuns; configuração não substitui
 decisões locais.
 
@@ -203,10 +203,13 @@ repertório quando precisam ser ensinadas. Isso não cria ontologia universal ne
 grafo genérico; a estrutura curricular continua validando sua própria ordem e
 dependências.
 
-Os quatro parâmetros podem variar no curso ou na
-microssequência: teto de novas unidades por unidade expositiva, formas de
-explicação, oportunidades distintas de prática e dimensões de variação. Módulo
-pode receber orientação e política de componentes, mas não ganhou um parâmetro
+O catálogo reúne quatro parâmetros pedagógicos — teto de novas unidades por
+unidade expositiva, formas de explicação, oportunidades distintas de prática e
+dimensões de variação — e dois alvos editoriais quantitativos flexíveis —
+palavras por resposta de autoria e por unidade de estudo. Eles podem variar no
+curso, na lição, na microssequência ou na unidade. Os alvos não são limites e
+não autorizam compressão. Módulo pode receber orientação e política de
+componentes, mas não ganhou um parâmetro
 sem necessidade distinta demonstrada. O estado contextual e os valores fixados
 são hipóteses do produto ou da pesquisa, não regras pedagógicas universais.
 

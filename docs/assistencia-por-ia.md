@@ -169,11 +169,17 @@ recorte. Ele diferencia ideias introduzidas, ideias estabelecidas apenas usadas
 e retomadas deliberadas. A resposta coordenadora informa o resultado, abre o
 destino pertinente e formula no máximo uma decisão seguinte.
 
-O estado `default` dos parâmetros significa calibração contextual pelo GPT para
-cada microssequência ou unidade, conforme conteúdo e função; não é um preset
-fixo. Valores deliberadamente fixados pelo pesquisador prevalecem. Assim, o
-AraLearn continua geral para pesquisa em design instrucional, sem tomar uma
-finalidade específica, como concurso, por padrão pedagógico universal.
+O estado `default` dos parâmetros exige calibração contextual automática pelo
+GPT para cada microssequência ou unidade, conforme conteúdo e função; não é um
+preset fixo. Isso inclui os quatro parâmetros pedagógicos e os dois alvos
+editoriais quantitativos flexíveis. Valores deliberadamente fixados pelo
+pesquisador prevalecem. Assim, o AraLearn continua geral para pesquisa em
+design instrucional, sem tomar uma finalidade específica, como concurso, por
+padrão pedagógico universal.
+
+Os alvos de palavras por resposta de autoria e por unidade de estudo orientam a
+extensão, mas não são limites e não autorizam esconder decisões ou comprimir
+conteúdo necessário.
 
 Fontes e âncoras ficam no curso vivo. Um arquivo anexado à conversa só se torna
 fonte persistente quando essa intenção está clara. Em outra sessão, a

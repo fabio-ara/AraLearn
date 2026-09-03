@@ -35,29 +35,50 @@ sequencial do conteúdo.
 
 ### Configuração aplicada
 
-A tabela mostra os parâmetros efetivamente usados:
+A tabela mostra as seis definições do catálogo efetivamente usadas. Quatro são
+parâmetros pedagógicos:
 
 - teto de ideias novas por unidade expositiva;
 - formas de explicação requeridas;
 - mínimo de oportunidades distintas de prática por requisito;
 - dimensões de variação requeridas para a prática.
 
+As outras duas definições são alvos editoriais quantitativos flexíveis:
+
+- palavras por resposta de autoria;
+- palavras por unidade de estudo.
+
 Quando unidades do mesmo escopo usam valores diferentes, a distribuição informa
 quantas receberam cada valor, sua origem — calibração contextual, decisão da
 pessoa autora ou condição de pesquisa —, o escopo e as unidades em que foram
-aplicados. Direção editorial permanece separada.
+aplicados. Direção editorial permanece separada. Para o conteúdo, a extensão
+observada informa total, mínimo, mediana, média e máximo de palavras por
+unidade, o que permite comparar alvo e resultado sem tratar a diferença como
+erro automático.
 
-O estado `default` não representa um preset fixo: ele permite ao GPT calibrar o
-valor no contexto de cada microssequência ou unidade. Um valor fixado
-deliberadamente pelo pesquisador prevalece e deve aparecer como definição
-explícita. Isso permite investigar diferentes desenhos sem transformar uma
-aplicação específica em padrão universal.
+As direções editoriais são camadas acumuladas ao longo dos escopos. Uma mesma
+unidade pode receber, por exemplo, uma direção do curso e outra da
+microssequência. Portanto, suas contagens podem se sobrepor e não formam uma
+partição das unidades do recorte.
+
+O estado `default` não representa um preset fixo: ele exige que o GPT calibre
+automaticamente o valor no contexto de cada microssequência ou unidade. Um
+valor fixado deliberadamente pelo pesquisador prevalece e deve aparecer como
+definição explícita. Isso permite investigar diferentes desenhos sem
+transformar uma aplicação específica em padrão universal.
+
+Os alvos de palavras não são mínimos ou máximos, não medem qualidade e não
+autorizam comprimir conhecimento, ocultar decisões ou fragmentar unidades. A
+distribuição observada descreve o artefato produzido; não julga sua adequação.
+O alvo de resposta de autoria caracteriza o desenho configurado. Ele não é
+tratado como medida de uma conversa observada: o AraLearn não persiste
+transcrição para Analytics.
 
 ### Conteúdo e representações
 
 As tabelas relacionam:
 
-- cada ideia acompanhada e suas introduções;
+- cada ideia acompanhada e suas introduções, usos e retomadas;
 - a distribuição de novidades entre unidades;
 - formas explicativas aplicadas;
 - componentes e representações usados.

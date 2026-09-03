@@ -103,18 +103,24 @@ repertório permanece equivalente e muda apenas a distribuição pelas unidades.
 
 **Parâmetro pedagógico.** Uma das quatro decisões configuráveis sobre teto de
 novidade, formas de explicação, oportunidades mínimas de prática e dimensões de
-variação.
+variação. O catálogo também contém dois alvos editoriais quantitativos.
+
+**Alvo editorial quantitativo.** Intenção flexível de palavras por resposta de
+autoria ou por unidade de estudo. Não é mínimo nem máximo, não mede qualidade e
+não autoriza ocultar decisões, comprimir conteúdo ou atomizar unidades.
 
 **Valor efetivo.** Valor selado na materialização de uma unidade. No estado
-`default`, o GPT o calibra pelo contexto; definições deliberadas no curso ou na
-microssequência prevalecem. A leitura informa o valor, a origem e o escopo.
+`default`, o GPT precisa calibrá-lo automaticamente pelo contexto da
+microssequência ou unidade; definições deliberadas prevalecem. A leitura informa
+o valor, a origem e o escopo.
 
 **Herança.** Uso do valor do escopo mais amplo quando o escopo focal não possui
 uma definição. Limpar uma definição restaura essa relação.
 
-**Direção editorial.** Orientação de extensão, estilo, títulos ou organização,
-separada dos parâmetros pedagógicos. Nunca elimina novidade necessária; pode
-levar à criação de mais StudyUnits.
+**Direção editorial.** Orientação qualitativa de extensão, estilo, títulos ou
+organização, separada dos quatro parâmetros pedagógicos e dos dois alvos
+editoriais quantitativos. Nunca elimina novidade necessária; pode levar à
+criação de mais unidades de estudo.
 
 **Política de componentes.** Disponibilidade, preferência ou restrição corrente
 de pacotes didáticos. Preferência não concede permissão e não cria quota de

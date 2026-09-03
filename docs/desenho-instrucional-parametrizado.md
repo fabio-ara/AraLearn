@@ -1,10 +1,10 @@
 # Desenho instrucional parametrizado
 
-O AraLearn representa um conjunto pequeno de decisões pedagógicas que a pessoa
-autora pode compreender, revisar e aplicar a um curso. A interface, o MCP e a
-produção em partes usam a mesma resolução. O propósito é tornar uma intenção
-examinável, sem converter preferência editorial em resultado científico ou
-conformidade técnica em prova de aprendizagem.
+O AraLearn representa um conjunto pequeno de decisões pedagógicas e editoriais
+que a pessoa autora pode compreender, revisar e aplicar a um curso. A interface,
+o MCP e a produção em partes usam a mesma resolução. O propósito é tornar uma
+intenção examinável, sem converter preferência editorial em resultado
+científico ou conformidade técnica em prova de aprendizagem.
 
 ## O que constitui um parâmetro
 
@@ -18,8 +18,10 @@ Um parâmetro de desenho instrucional possui:
 - limites de interpretação;
 - referências que fundamentam a dimensão investigada.
 
-No estado `default`, o GPT calibra o valor para cada microssequência ou unidade
-conforme público, conteúdo e função. Esse estado não é um preset fixo. Evidência
+No estado `default`, o GPT precisa calibrar automaticamente cada valor para a
+microssequência ou unidade, conforme público, conteúdo, função e planejamento.
+Esse estado não é um preset fixo, e a produção não considera a configuração
+pronta enquanto a calibração contextual não estiver registrada. Evidência
 externa pode justificar a investigação de uma dimensão, mas não estabelece
 automaticamente o melhor valor para toda população, conteúdo ou tarefa. Uma
 definição deliberadamente fixada pelo pesquisador prevalece no escopo pertinente.
@@ -31,14 +33,24 @@ parâmetros pedagógicos.
 
 ## Catálogo corrente
 
-O catálogo aceita quatro parâmetros. Comandos não criam definições livres.
+O catálogo 1.1.0 contém quatro parâmetros pedagógicos e dois alvos editoriais
+quantitativos flexíveis. Comandos não criam definições livres.
 
 | Parâmetro | Forma e exemplos de valores | Escopos | Decisão representada |
 | --- | --- | --- | --- |
-| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; por exemplo, `1` ou `2` | curso e microssequência | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
-| `required_explanation_forms` | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso e microssequência | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
-| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; por exemplo, `1` ou `2` | curso e microssequência | quantidade mínima de oportunidades distintas por requisito de evidência |
-| `required_practice_variation_dimensions` | conjunto; por exemplo, caso, contexto, representação ou apoio | curso e microssequência | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
+| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
+| `required_explanation_forms` | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso, lição, microssequência e unidade de estudo | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
+| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | quantidade mínima de oportunidades distintas por requisito de evidência |
+| `required_practice_variation_dimensions` | conjunto; por exemplo, caso, contexto, representação ou apoio | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
+| `authoring_chat_response_word_target` | inteiro; por exemplo, `80` ou `120` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para uma resposta de autoria |
+| `study_unit_content_word_target` | inteiro; por exemplo, `140` ou `180` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para o conteúdo de uma unidade de estudo |
+
+Os quatro primeiros parâmetros alteram decisões pedagógicas observáveis. Os dois
+últimos tornam a extensão editorial comparável sem transformá-la em medida de
+qualidade. Um alvo de palavras não é mínimo nem máximo: respostas e unidades
+podem ultrapassá-lo quando a decisão ou o conteúdo exigirem. Ele nunca autoriza
+ocultar uma decisão educacional, truncar conteúdo necessário, compactar várias
+novidades ou atomizar uma explicação para satisfazer a contagem.
 
 Uma unidade de análise instrucional identifica uma mudança de conhecimento que
 vale acompanhar separadamente no desenho corrente. Antes de agregar um enunciado,
@@ -112,9 +124,10 @@ indevido a números fáceis de calcular.
 
 ## Escopo, origem e precedência
 
-Parâmetros pedagógicos podem ser definidos no curso ou numa microssequência.
-Uma unidade de estudo recebe o valor efetivo de seu contexto. Sem definição
-deliberada, o GPT calibra o desenho conforme público, tarefa, conteúdo e função.
+Os parâmetros pedagógicos e os alvos editoriais podem ser definidos no curso,
+na lição, na microssequência ou na unidade de estudo. Uma unidade recebe o valor
+efetivo de seu contexto. Sem definição deliberada, o GPT precisa calibrar o
+desenho conforme público, tarefa, conteúdo e função.
 Quando uma pessoa fixa uma condição, essa decisão explícita prevalece no escopo
 pertinente. Remover a definição restaura o estado `default`; não cria uma
 narrativa histórica de alteração.
@@ -142,15 +155,16 @@ retomada.
 
 ## Direção editorial
 
-Direção editorial é um texto curto e explícito no curso ou na microssequência.
+Direção editorial é um texto curto e explícito no curso ou num escopo didático.
 Ela orienta extensão, estilo, títulos e organização da próxima geração ou
-revisão. O valor efetivo segue a mesma herança do escopo: a Microssequência usa
-sua direção local ou, na ausência dela, a direção do Curso.
+revisão. O valor efetivo segue a hierarquia de escopos e usa a direção aplicável
+mais próxima.
 
 Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
-de interpretações. O GPT aplica a direção na fase editorial pertinente sem
-alterar o repertório semântico. Se o conteúdo necessário não couber no formato
-preferido, cria mais unidades de estudo.
+de interpretações. Ele complementa os dois alvos quantitativos com orientação
+qualitativa. O GPT aplica a direção na fase editorial pertinente sem alterar o
+repertório semântico. Se o conteúdo necessário não couber no formato preferido
+ou em torno do alvo de palavras, cria mais unidades de estudo coerentes.
 
 ## Política de componentes didáticos
 
@@ -178,8 +192,8 @@ bloqueado ou fora de uma lista restrita faz a gravação inteira ser revertida.
 ## Contexto efetivo e aplicação corrente
 
 Ao preparar a produção de uma parte, o servidor reúne para cada microssequência
-os parâmetros, a direção editorial, a política de componentes, o repertório,
-os requisitos de evidência e as fontes pertinentes.
+os parâmetros pedagógicos, os alvos editoriais, a direção editorial, a política
+de componentes, o repertório, os requisitos de evidência e as fontes pertinentes.
 
 A gravação conserva com as unidades de estudo a aplicação instrucional corrente:
 
@@ -189,7 +203,8 @@ A gravação conserva com as unidades de estudo a aplicação instrucional corre
 - formas de explicação desenvolvidas ou justificadamente inaplicáveis;
 - oportunidades dirigidas aos requisitos de evidência;
 - operação mantida e dimensões variadas;
-- componentes usados.
+- componentes usados;
+- alvos editoriais aplicados e extensão observada.
 
 Uma introdução marca somente a primeira apresentação de cada unidade de análise. O
 desenvolvimento pode continuar em duas ou mais unidades de estudo sem repetir a
@@ -218,11 +233,12 @@ mecanismo ou se duas práticas são substantivamente distintas.
 
 ## Interface, MCP e Actions
 
-A subvisão **Parâmetros** abre no curso ou no contexto da microssequência e
-mostra:
+A subvisão **Parâmetros** abre no curso, no módulo, na lição, na microssequência
+ou na unidade de estudo e mostra:
 
 - valor efetivo e escopo que o definiu;
 - definição local e ação para restaurar a herança;
+- quatro parâmetros pedagógicos e dois alvos editoriais flexíveis;
 - direção editorial separada;
 - política de componentes com nomes legíveis;
 - unidades de análise e requisitos atribuídos à microssequência;

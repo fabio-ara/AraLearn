@@ -1324,11 +1324,11 @@
       "id": "default-value",
       "family": "design-parameters",
       "currentTerms": [
-        "default"
+        "valor de fallback do catálogo"
       ],
-      "productTerm": "Valor padrão",
+      "productTerm": "Valor de fallback do catálogo",
       "technicalSymbol": "default_value",
-      "definition": "Valor explicitamente definido e versionado que se aplica na ausência de atribuição mais específica; não é uma recomendação universal.",
+      "definition": "Valor de referência versionado usado somente como fallback técnico enquanto a calibração contextual não foi registrada; não representa o estado default da autoria, uma condição pronta para materialização ou uma recomendação universal.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1344,18 +1344,19 @@
         }
       ],
       "notSynonyms": [
-        "auto",
+        "estado default",
+        "calibração automática",
         "herança",
         "melhor prática"
       ],
-      "interfaceTerm": "Valor padrão",
-      "domainTerm": "Valor padrão",
-      "englishEquivalent": "default value",
-      "araLearnExample": "Sem atribuição aplicável, o teto de novas unidades usa o Valor padrão 2 e mostra origem system_default, sem criar uma linha herdada.",
-      "ambiguityRisk": "Sem esta delimitação, “Valor padrão” pode ser confundido com auto, herança, melhor prática, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "interfaceTerm": "Valor de fallback do catálogo",
+      "domainTerm": "Valor de fallback do catálogo",
+      "englishEquivalent": "catalog fallback value",
+      "araLearnExample": "O catálogo conserva 2 como fallback do teto, mas, no estado default, o GPT ainda calibra o valor para a microssequência ou unidade de estudo antes de produzir.",
+      "ambiguityRisk": "Sem esta delimitação, valor de fallback pode ser confundido com estado default, calibração automática, herança ou melhor prática, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Valor inicial”: só descreve o momento de criação, enquanto Valor padrão também pode ser resolvido sempre que uma atribuição específica estiver ausente."
+        "“Valor padrão”: sugere uma recomendação aplicada diretamente; o valor de fallback apenas protege a leitura enquanto a calibração contextual continua pendente."
       ],
       "status": "vigente"
     },
@@ -1445,7 +1446,7 @@
       ],
       "productTerm": "Direção editorial",
       "technicalSymbol": "course_authoring_guidance",
-      "definition": "Orientação corrente de extensão, estilo, títulos ou organização, separada dos quatro parâmetros pedagógicos e incapaz de eliminar conteúdo necessário.",
+      "definition": "Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.1.0 de quatro parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis e incapaz de eliminar conteúdo necessário.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1461,14 +1462,15 @@
       ],
       "notSynonyms": [
         "parâmetro pedagógico",
+        "alvo editorial quantitativo",
         "prompt persistido",
         "limite de conteúdo"
       ],
       "interfaceTerm": "Direção editorial",
       "domainTerm": "Direção editorial",
       "englishEquivalent": "editorial direction",
-      "araLearnExample": "Uma Microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais StudyUnits em vez de o comprimir.",
-      "ambiguityRisk": "Sem esta delimitação, Direção editorial pode ser confundida com parâmetro pedagógico, prompt persistido ou autorização para retirar conteúdo.",
+      "araLearnExample": "Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.",
+      "ambiguityRisk": "Sem esta delimitação, direção editorial pode ser confundida com parâmetro pedagógico, alvo quantitativo, prompt persistido ou autorização para retirar conteúdo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Orientação de autoria”: é ampla demais e mistura decisões pedagógicas com escolhas de apresentação.",
@@ -1484,7 +1486,7 @@
       ],
       "productTerm": "Calibração automática",
       "technicalSymbol": "automatic_parameter_calibration",
-      "definition": "Escolha contextual dos quatro parâmetros pedagógicos a partir do público, da tarefa e do contexto mínimo, sem transformar a conversa num questionário.",
+      "definition": "No estado default, escolha contextual obrigatória, por microssequência ou unidade de estudo, dos quatro parâmetros pedagógicos e dos dois alvos editoriais quantitativos flexíveis, conforme público, tarefa, conteúdo e função, sem transformar a conversa num questionário.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1498,18 +1500,19 @@
         }
       ],
       "notSynonyms": [
-        "valor-padrão",
+        "preset fixo",
+        "valor de fallback do catálogo",
         "condição fixada",
         "questionário obrigatório"
       ],
       "interfaceTerm": "Calibração automática",
       "domainTerm": "Calibração automática de parâmetros",
       "englishEquivalent": "automatic parameter calibration",
-      "araLearnExample": "Com público e tarefa conhecidos, o GPT escolhe valores iniciais e só pergunta quando uma lacuna material impede a produção.",
-      "ambiguityRisk": "Sem esta delimitação, calibração automática pode ser confundida com padrão fixo, condição experimental ou questionário obrigatório.",
+      "araLearnExample": "Com público e tarefa conhecidos, o GPT calibra automaticamente cada microssequência ou unidade; valores deliberadamente fixados pelo pesquisador prevalecem. O catálogo serve à pesquisa geral em design instrucional, e concurso é apenas um contexto possível.",
+      "ambiguityRisk": "Sem esta delimitação, calibração automática pode ser confundida com preset fixo, fallback técnico, condição experimental ou questionário obrigatório.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Valor-padrão”: ignora diferenças observáveis de público, tarefa e contexto.",
+        "“Preset fixo”: ignora diferenças observáveis de público, tarefa e contexto.",
         "“Questionário de configuração”: transfere rotineiramente à pessoa uma decisão que o contexto já permite calibrar."
       ],
       "status": "vigente"

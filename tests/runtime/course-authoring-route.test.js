@@ -91,7 +91,7 @@ test("parser rejeita identidades, detalhes e combinações alheias à tarefa", (
 });
 
 test("construtor falha cedo sem reduzir silenciosamente o destino", () => {
-  assert.throws(() => buildCourseAuthoringRoute("curso-a"), /Identidade de Curso inválida/u);
+  assert.throws(() => buildCourseAuthoringRoute("curso-a"), /Identidade de curso inválida/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "content", moduleId: "a", lessonId: "b"
   }), /somente um alvo/u);
@@ -103,7 +103,7 @@ test("construtor falha cedo sem reduzir silenciosamente o destino", () => {
   }), /Opções inválidas/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "sources", anchorId: "ancora-1"
-  }), /âncora exige uma Fonte literal/u);
+  }), /âncora exige uma fonte literal/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "content", studyUnitId: "a", returnAuthoringPartId: UUID
   }), /Opções inválidas/u);
@@ -112,5 +112,5 @@ test("construtor falha cedo sem reduzir silenciosamente o destino", () => {
   }), /Opções inválidas/u);
   assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, {
     section: "notes"
-  }), /Seção de Curso inválida/u);
+  }), /Seção de curso inválida/u);
 });

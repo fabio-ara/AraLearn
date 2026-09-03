@@ -469,7 +469,7 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
 
   assert.equal(await sequence.open(), true);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
-  assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
+  assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da unidade de estudo"/u);
   assert.match(
     root.innerHTML,
     /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/a>/u
@@ -1006,7 +1006,7 @@ test("Inspeção incorpora sem tradução o mesmo renderer de Unidade usado no E
 
   assert.match(root.innerHTML, /aria-label="Unidades de estudo"/u);
   assert.doesNotMatch(root.innerHTML, /<h2[^>]*>Unidades<\/h2>/u);
-  assert.match(root.innerHTML, /aria-label="Navegação entre Unidades"/u);
+  assert.match(root.innerHTML, /aria-label="Navegação entre unidades"/u);
   assert.doesNotMatch(root.innerHTML, />Inspeção<|Navegação na Inspeção/u);
   const expected = renderPackageStudyUnitBlocksWithDock(studyUnit(1), {
     omitRepeatedHeading: true,
@@ -1492,7 +1492,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
       }
     }
   });
-  assert.match(root.innerHTML, /Observações da Unidade/u);
+  assert.match(root.innerHTML, /Observações da unidade/u);
   assert.match(root.innerHTML, /data-observation-composer/u);
   assert.doesNotMatch(root.innerHTML, /Nova observação/u);
   assert.doesNotMatch(root.innerHTML, /Observações · 0/u);
@@ -1563,15 +1563,15 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.equal(await clickSelection("toggle-current", "unit-01"), true);
   assert.equal(await clickSelection("next"), true);
   assert.equal(await clickSelection("toggle-current", "unit-02"), true);
-  assert.match(root.innerHTML, /2 Unidades selecionadas/u);
+  assert.match(root.innerHTML, /2 unidades selecionadas/u);
   assert.doesNotMatch(
     root.innerHTML,
     /data-inspection-selection-action="observe-selected"[^>]*disabled/iu
   );
 
   assert.equal(await clickSelection("observe-selected"), true);
-  assert.match(root.innerHTML, /Observação em 2 Unidades/u);
-  assert.match(root.innerHTML, /registrado separadamente em cada Unidade selecionada/iu);
+  assert.match(root.innerHTML, /Observação em 2 unidades/u);
+  assert.match(root.innerHTML, /registrado separadamente em cada unidade selecionada/iu);
   root.listeners.get("input")({
     target: {
       value: "Rever a transição entre as duas Unidades.",
@@ -1605,7 +1605,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.match(root.innerHTML, /Você pode registrar outra/iu);
   assert.match(
     root.innerHTML,
-    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar Observações abertas no Curso/u
+    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar observações abertas no curso/u
   );
   assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
 
@@ -1987,7 +1987,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
     documentValue
   });
   assert.equal(await empty.open(), true);
-  assert.match(emptyRoot.innerHTML, /Nenhuma Unidade de estudo materializada/u);
+  assert.match(emptyRoot.innerHTML, /Nenhuma unidade de estudo materializada/u);
   empty.destroy();
 
   const offlineRoot = new FakeRoot();
@@ -2043,7 +2043,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
   assert.equal(await partial.loadMore("forward"), false);
   assert.equal((partialRoot.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
   assert.match(partialRoot.innerHTML, /Sem conexão para carregar este trecho/u);
-  assert.match(partialRoot.innerHTML, /aria-label="Próxima Unidade"/u);
+  assert.match(partialRoot.innerHTML, /aria-label="Próxima unidade"/u);
   partial.destroy();
 });
 
@@ -2178,7 +2178,7 @@ test("revisão nova cancela paginação antiga e mantém somente o trecho ancora
   assert.equal(await loading, false);
   assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
   assert.equal(sequence.snapshot().itemCount, COURSE_INSPECTION_PAGE_SIZE);
-  assert.doesNotMatch(root.innerHTML, /O Curso mudou durante a leitura/u);
+  assert.doesNotMatch(root.innerHTML, /O curso mudou durante a leitura/u);
   assert.equal(calls.at(-1).anchorStudyUnitId, "unit-01");
   sequence.destroy();
 });

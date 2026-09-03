@@ -70,6 +70,7 @@ function source(index = 1, overrides = {}) {
     revision: 1,
     status: "active",
     kind: "book",
+    sourceRole: "technical_conceptual",
     title: `Fonte ${index}`,
     authorship: "Autoria",
     publicationDate: "2026",
@@ -287,6 +288,7 @@ function sourceFormValues(overrides = {}) {
   return {
     sourceId: "source-new",
     kind: "book",
+    sourceRole: "assessment_evidence",
     title: "Fonte atualizada",
     authorship: "Autoria",
     publicationDate: "2026",
@@ -343,6 +345,7 @@ test("catálogo e detalhe mostram somente Fonte, Âncoras e PDF correntes", asyn
   assert.match(root.innerHTML, /Fonte 1/u);
   assert.match(root.innerHTML, /Capítulo 2/u);
   assert.match(root.innerHTML, /PDF disponível/u);
+  assert.match(root.innerHTML, /Fonte técnica ou conceitual/u);
   assert.doesNotMatch(root.innerHTML,
     /course-source-revisions|Revisão anterior|Histórico|actorId|targetHash|legacy/iu);
 });
@@ -392,7 +395,7 @@ test("deep link encontra somente a Fonte e a Âncora correntes", async () => {
     courseId: COURSE_ID,
     courseRevision: 5,
     initialSourceId: "x".repeat(241)
-  }), /Deep link de Fonte inválido/u);
+  }), /endereço da fonte é inválido/u);
 });
 
 test("edição de Fonte usa revisão somente como cerca interna", async () => {
@@ -418,6 +421,7 @@ test("edição de Fonte usa revisão somente como cerca interna", async () => {
   assert.equal(commands[0].command.type, "save_source");
   assert.equal(commands[0].command.sourceId, "source-01");
   assert.equal(commands[0].command.expectedSourceRevision, 1);
+  assert.equal(commands[0].command.source.sourceRole, "assessment_evidence");
   assert.equal(Object.hasOwn(commands[0].command.source, "actorId"), false);
 });
 
@@ -511,12 +515,13 @@ test("somente needs_verification aceita vínculo sem Âncora", async () => {
   });
 
   await panel.open();
+  assert.match(root.innerHTML, /Fontes deste item/u);
   click(root, "add-target-source", { sourceId: current.sourceId });
   await settle();
   click(root, "save-target");
   await settle();
   assert.equal(mutations.length, 0);
-  assert.match(root.innerHTML, /Somente “Precisa de verificação” pode permanecer sem Âncora/u);
+  assert.match(root.innerHTML, /Somente “Precisa de verificação” pode permanecer sem âncora/u);
 
   change(root, "[data-source-target-relation]", {
     dataset: { sourceId: current.sourceId },

@@ -20,12 +20,17 @@ O GPT não deve presumir que a pessoa autora é estudante. Se o curso se destina
 a iniciantes, a conversa dirá que o público é iniciante, sem atribuir esse nível
 à pessoa que está criando o material.
 
-No uso comum, o estado `default` permite ao GPT calibrar os parâmetros para cada
-microssequência ou unidade conforme conteúdo, função e público; não é um preset
-fixo. Numa pesquisa, valores deliberadamente fixados prevalecem e tornam a
-condição auditável. Finalidade de concurso, treinamento corporativo ou outra
-aplicação pode mudar vocabulário, precisão e tipos de prática, mas não é o
-princípio organizador universal do AraLearn.
+No uso comum, o estado `default` exige que o GPT calibre automaticamente os
+parâmetros para cada microssequência ou unidade conforme conteúdo, função e
+público; não é um preset fixo. Numa pesquisa, valores deliberadamente fixados
+prevalecem e tornam a condição auditável. Finalidade de concurso, treinamento
+corporativo ou outra aplicação pode mudar vocabulário, precisão e tipos de
+prática, mas não é o princípio organizador universal do AraLearn.
+
+O catálogo reúne quatro parâmetros pedagógicos e dois alvos editoriais
+quantitativos flexíveis: palavras por resposta de autoria e por unidade de
+estudo. Os alvos não são limites e não autorizam omitir decisões ou comprimir o
+conteúdo para atingir uma contagem.
 
 O mapa global antes dos lotes, a aprovação apenas do que estava inspecionável e
 a conversa em linguagem humana são invariantes. Distribuição editorial, formas

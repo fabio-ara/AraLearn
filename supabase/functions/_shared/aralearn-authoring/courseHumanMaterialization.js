@@ -6,8 +6,10 @@ import {
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import {
+  COURSE_DESIGN_PARAMETER_DEFINITIONS,
   EXPLANATION_FORMS,
-  PRACTICE_VARIATION_DIMENSIONS
+  PRACTICE_VARIATION_DIMENSIONS,
+  normalizeCourseDesignParameterValue
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 
 const MODE = Object.freeze({
@@ -16,6 +18,16 @@ const MODE = Object.freeze({
   mista: "mixed"
 });
 const MAX_PART_STUDY_UNIT_PAGES = 100;
+const UNIT_PARAMETER_FIELD_TO_ID = Object.freeze({
+  tetoNovasUnidadesDeAnalise:
+    "new_analysis_unit_ceiling_per_expository_study_unit",
+  formasDeExplicacao: "required_explanation_forms",
+  minimoDePraticasPorRequisito:
+    "minimum_distinct_practice_opportunities_per_evidence_requirement",
+  dimensoesDeVariacaoDaPratica: "required_practice_variation_dimensions",
+  alvoDePalavrasPorResposta: "authoring_chat_response_word_target",
+  alvoDePalavrasPorUnidade: "study_unit_content_word_target"
+});
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -77,7 +89,7 @@ function existingStudyUnitSlot(item) {
       typeof studyUnitId !== "string" || !studyUnitId) {
     fail(
       "course_service_unavailable",
-      "Uma Unidade existente da Parte não possui posição curricular válida.",
+      "Uma unidade de estudo existente da parte não possui posição curricular válida.",
       503
     );
   }
@@ -92,7 +104,7 @@ async function listExistingPartStudyUnits({ adapter, principal, context, deadlin
   for (let pageIndex = 0; pageIndex < MAX_PART_STUDY_UNIT_PAGES; pageIndex += 1) {
     const cursorKey = cursorStudyUnitId ?? "null";
     if (seenCursors.has(cursorKey)) {
-      fail("course_service_unavailable", "A paginação da Parte repetiu o mesmo ponto.", 503);
+      fail("course_service_unavailable", "A paginação da parte repetiu o mesmo ponto.", 503);
     }
     seenCursors.add(cursorKey);
     const page = await adapter.listCourseStudyUnits({
@@ -109,12 +121,12 @@ async function listExistingPartStudyUnits({ adapter, principal, context, deadlin
       deadlineAt
     });
     if (!plainObject(page) || !Array.isArray(page.items)) {
-      fail("course_service_unavailable", "A lista de Unidades da Parte é inválida.", 503);
+      fail("course_service_unavailable", "A lista de unidades de estudo da parte é inválida.", 503);
     }
     for (const item of page.items) {
       const slot = existingStudyUnitSlot(item);
       if (seenIds.has(slot.studyUnitId) || bySlot.has(slot.key)) {
-        fail("course_service_unavailable", "A Parte possui posições de Unidade duplicadas.", 503);
+        fail("course_service_unavailable", "A parte possui posições de unidade de estudo duplicadas.", 503);
       }
       seenIds.add(slot.studyUnitId);
       bySlot.set(slot.key, { studyUnitId: slot.studyUnitId });
@@ -122,11 +134,11 @@ async function listExistingPartStudyUnits({ adapter, principal, context, deadlin
     if (page.hasMore !== true) return bySlot;
     const next = page.nextCursor?.studyUnitId;
     if (typeof next !== "string" || !next) {
-      fail("course_service_unavailable", "A paginação da Parte perdeu o ponto de retomada.", 503);
+      fail("course_service_unavailable", "A paginação da parte perdeu o ponto de retomada.", 503);
     }
     cursorStudyUnitId = next;
   }
-  fail("course_service_unavailable", "A Parte excedeu o limite seguro de paginação.", 503);
+  fail("course_service_unavailable", "A parte excedeu o limite seguro de paginação.", 503);
 }
 
 function planItems(plan, collection) {
@@ -143,7 +155,11 @@ function resolvePlanItem(plan, collection, value, label) {
 
 function boundedText(value, label, maximum) {
   if (typeof value !== "string" || value !== value.trim() || !value ||
-      [...value].length > maximum || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(value)) {
+      [...value].length > maximum || [...value].some((character) => {
+        const code = character.codePointAt(0);
+        return code <= 8 || code === 11 || code === 12 ||
+          code >= 14 && code <= 31 || code === 127;
+      })) {
     fail("invalid_human_materialization", `${label} é inválido.`);
   }
   return value;
@@ -263,7 +279,7 @@ function resolveAnchor(anchors, value) {
       anchor.humanLocator,
       anchor.verificationExcerpt
     ],
-    label: "A Âncora"
+    label: "A âncora"
   });
 }
 
@@ -280,7 +296,7 @@ export async function resolveHumanSourceLinks({
   for (const entry of requested) {
     if (!plainObject(entry) || !Object.hasOwn(entry, "fonte") ||
         typeof entry.relacao !== "string") {
-      fail("invalid_human_materialization", "Um vínculo de Fonte da Unidade é inválido.");
+      fail("invalid_human_materialization", "Um vínculo de fonte da unidade de estudo é inválido.");
     }
     const cacheKey = `${typeof entry.fonte}:${String(entry.fonte)}`;
     let source = sourceCache.get(cacheKey);
@@ -309,7 +325,7 @@ export async function resolveHumanSourceLinks({
         : null;
       if (!current || current.sourceId !== resolved.source.sourceId ||
           Number(current.revision) !== Number(resolved.source.revision)) {
-        fail("human_reference_not_found", "A Fonte corrente não foi localizada.", 404);
+        fail("human_reference_not_found", "A fonte corrente não foi localizada.", 404);
       }
       source = {
         sourceId: current.sourceId,
@@ -326,10 +342,10 @@ export async function resolveHumanSourceLinks({
         : source.anchors.length === 1
         ? [source.anchors[0]]
         : source.anchors.length === 0
-          ? fail("human_reference_not_found", "A Fonte não possui Âncora ativa.", 404)
+          ? fail("human_reference_not_found", "A fonte não possui âncora ativa.", 404)
           : fail(
               "ambiguous_human_reference",
-              "A Fonte possui várias Âncoras; indique a posição ou o localizador humano.",
+              "A fonte possui várias âncoras; indique a posição ou o trecho que a identifica.",
               409
             );
     links.push({
@@ -341,7 +357,7 @@ export async function resolveHumanSourceLinks({
     });
   }
   if (new Set(links.map(({ sourceId }) => sourceId)).size !== links.length) {
-    fail("duplicate_human_reference", "A Unidade repete a mesma Fonte.");
+    fail("duplicate_human_reference", "A unidade de estudo repete a mesma fonte.");
   }
   return links;
 }
@@ -359,9 +375,40 @@ function componentRefs(content) {
   }).filter(Boolean))].sort((left, right) => left.localeCompare(right, "en"));
 }
 
+function validateUnitConfiguration(configuration) {
+  if (configuration === undefined) return;
+  const allowed = new Set([
+    "parametrosPedagogicos", "parametrosEditoriais", "direcaoEditorial"
+  ]);
+  if (!plainObject(configuration) || !Object.keys(configuration).length ||
+      Object.keys(configuration).some((field) => !allowed.has(field))) {
+    fail("invalid_human_materialization", "A calibração da unidade de estudo é inválida.");
+  }
+  const groups = [{
+    value: configuration.parametrosPedagogicos,
+    fields: new Set([
+      "tetoNovasUnidadesDeAnalise", "formasDeExplicacao",
+      "minimoDePraticasPorRequisito", "dimensoesDeVariacaoDaPratica"
+    ])
+  }, {
+    value: configuration.parametrosEditoriais,
+    fields: new Set(["alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"])
+  }];
+  for (const group of groups) {
+    if (group.value === undefined) continue;
+    if (!plainObject(group.value) || !Object.keys(group.value).length ||
+        Object.keys(group.value).some((field) => !group.fields.has(field))) {
+      fail("invalid_human_materialization", "Os parâmetros próprios da unidade são inválidos.");
+    }
+  }
+  if (configuration.direcaoEditorial !== undefined) {
+    boundedText(configuration.direcaoEditorial, "A direção editorial da unidade", 4_000);
+  }
+}
+
 function validateUnits(units) {
   if (!Array.isArray(units) || units.length < 1 || units.length > 64) {
-    fail("invalid_human_materialization", "A materialização precisa conter de 1 a 64 Unidades.");
+    fail("invalid_human_materialization", "A materialização precisa conter de 1 a 64 unidades de estudo.");
   }
   for (const [index, unit] of units.entries()) {
     if (!plainObject(unit) || !plainObject(unit.conteudo) ||
@@ -372,19 +419,21 @@ function validateUnits(units) {
         !Array.isArray(unit.aplicacaoPedagogica.ideiasUtilizadas) ||
         !Array.isArray(unit.aplicacaoPedagogica.explicacoes) ||
         !Array.isArray(unit.aplicacaoPedagogica.praticas) ||
+        !Array.isArray(unit.aplicacaoPedagogica.cobertura) ||
         unit.fontes != null && !Array.isArray(unit.fontes)) {
       fail(
         "invalid_human_materialization",
-        `A Unidade ${index + 1} possui conteúdo ou aplicação pedagógica inválida.`
+        `A unidade de estudo ${index + 1} possui conteúdo ou aplicação pedagógica inválida.`
       );
     }
+    validateUnitConfiguration(unit.configuracao);
   }
 }
 
 async function prepareUnits({ adapter, principal, context, units, deadlineAt, newId }) {
   const microsequences = partMicrosequences(context.part);
   if (!microsequences.length) {
-    fail("human_part_has_no_microsequences", "A Parte ainda não possui Microssequências para materializar.");
+    fail("human_part_has_no_microsequences", "A parte ainda não possui microssequências para materializar.");
   }
   const inventory = await preparePlanInventory({ context, units, newId });
   const groups = new Map();
@@ -393,7 +442,7 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
     const microsequence = resolveReference(microsequences, unit.microssequencia, {
       position: (item) => item.productionPosition ?? item.position,
       texts: (item) => [item.title],
-      label: "A Microssequência"
+      label: "A microssequência"
     });
     const noveltyIds = unit.aplicacaoPedagogica.ideiasIntroduzidas.map((value) => (
       resolvePlanItem(
@@ -411,6 +460,28 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
         "A ideia do repertório"
       ).id
     ));
+    const curriculumScopeItemIds = unit.aplicacaoPedagogica.cobertura.map((value) => {
+      const scopeItem = resolvePlanItem(
+        context.plan,
+        "curriculumScopeItems",
+        value,
+        "O item de cobertura curricular"
+      );
+      const belongsToMicrosequence = Array.isArray(scopeItem.curriculumTargets) &&
+        scopeItem.curriculumTargets.some((target) =>
+          Array.isArray(target?.didacticMicrosequenceIds) &&
+          target.didacticMicrosequenceIds.includes(microsequence.id));
+      if (!belongsToMicrosequence) {
+        fail(
+          "human_materialization_scope_outside_map",
+          "Um item de cobertura não pertence à microssequência desta unidade de estudo."
+        );
+      }
+      return scopeItem.id;
+    });
+    if (new Set(curriculumScopeItemIds).size !== curriculumScopeItemIds.length) {
+      fail("duplicate_human_reference", "A unidade de estudo repete o mesmo item de cobertura.");
+    }
     const explanations = unit.aplicacaoPedagogica.explicacoes.map((entry) => {
       if (!plainObject(entry) || !Array.isArray(entry.formas)) {
         fail("invalid_human_materialization", "Uma aplicação de explicação é inválida.");
@@ -478,7 +549,7 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
     if (!validation.valid) {
       fail(
         "invalid_human_study_unit",
-        `A Unidade ${unit.posicao} é inválida: ${validation.errors.join(" ")}`
+        `A unidade de estudo ${unit.posicao} é inválida: ${validation.errors.join(" ")}`
       );
     }
     const content = structuredClone(validation.normalized);
@@ -490,6 +561,7 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
       microsequence,
       noveltyIds,
       usedIds,
+      curriculumScopeItemIds,
       explanations,
       practices,
       content,
@@ -515,7 +587,7 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
     if (new Set(values.map(({ source }) => source.posicao)).size !== values.length) {
       fail(
         "invalid_human_materialization",
-        "A mesma Microssequência não pode repetir a posição de uma Unidade."
+        "A mesma microssequência não pode repetir a posição de uma unidade de estudo."
       );
     }
       return {
@@ -529,6 +601,92 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
   };
 }
 
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function applyUnitContextualCalibration(design, configuration, { existing }) {
+  if (configuration === undefined) return design;
+  if (existing) {
+    fail(
+      "human_materialization_existing_unit_configuration",
+      "Ajuste a configuração da unidade existente antes de rematerializá-la."
+    );
+  }
+  const calibrated = structuredClone(design);
+  const requestedParameters = [
+    ...Object.entries(configuration.parametrosPedagogicos ?? {}),
+    ...Object.entries(configuration.parametrosEditoriais ?? {})
+  ];
+  const fixedOrigins = new Set(["author", "research_condition"]);
+  for (const [field, requestedValue] of requestedParameters) {
+    if (requestedValue === null) continue;
+    const parameterId = UNIT_PARAMETER_FIELD_TO_ID[field];
+    const parameter = calibrated.parameters?.find((entry) =>
+      entry.parameterId === parameterId);
+    if (!parameter?.effectiveAssignment) {
+      fail("course_service_unavailable", "A configuração da unidade divergiu do catálogo.", 503);
+    }
+    let value;
+    try {
+      value = normalizeCourseDesignParameterValue(parameterId, requestedValue);
+    } catch (error) {
+      fail(
+        "invalid_human_materialization",
+        error instanceof Error ? error.message : "Um parâmetro da unidade é inválido."
+      );
+    }
+    if (fixedOrigins.has(parameter.effectiveAssignment.origin)) {
+      if (!sameJson(parameter.effectiveAssignment.value, value)) {
+        fail(
+          "human_materialization_fixed_configuration_conflict",
+          "A calibração automática da unidade não pode substituir uma condição fixada."
+        );
+      }
+      continue;
+    }
+    parameter.effectiveAssignment = {
+      value: structuredClone(value),
+      inherited: false,
+      origin: "automatic",
+      reason: "Valor calibrado automaticamente para esta unidade de estudo.",
+      sourceScope: { kind: "study_unit", ref: "pending-study-unit" }
+    };
+  }
+  if (configuration.direcaoEditorial !== undefined) {
+    const guidance = boundedText(
+      configuration.direcaoEditorial,
+      "A direção editorial da unidade",
+      4_000
+    );
+    const effective = Array.isArray(calibrated.guidance?.effectiveAssignments)
+      ? calibrated.guidance.effectiveAssignments
+      : [];
+    const fixed = effective.filter((assignment) => fixedOrigins.has(assignment?.origin));
+    if (fixed.length && !fixed.some((assignment) => assignment.guidance === guidance)) {
+      fail(
+        "human_materialization_fixed_configuration_conflict",
+        "A direção automática da unidade não pode substituir uma condição fixada."
+      );
+    }
+    if (!fixed.length && !effective.some((assignment) =>
+      assignment?.guidance === guidance)) {
+      effective.push({
+        guidance,
+        inherited: false,
+        origin: "automatic",
+        reason: "Direção editorial calibrada automaticamente para esta unidade de estudo.",
+        sourceScope: { kind: "study_unit", ref: "pending-study-unit" }
+      });
+    }
+    calibrated.guidance = {
+      ...(calibrated.guidance ?? {}),
+      effectiveAssignments: effective
+    };
+  }
+  return calibrated;
+}
+
 function designSnapshot(design, microsequenceId) {
   const parameters = Array.isArray(design?.parameters) ? design.parameters : [];
   const directions = Array.isArray(design?.guidance?.effectiveAssignments)
@@ -536,11 +694,20 @@ function designSnapshot(design, microsequenceId) {
     : [];
   const targetPlanItems = design?.targetPlanItems;
   const policy = design?.componentPolicy?.effectiveAssignment;
-  if (parameters.length !== 4 || !plainObject(targetPlanItems) || !plainObject(policy)) {
+  if (parameters.length !== COURSE_DESIGN_PARAMETER_DEFINITIONS.length ||
+      !plainObject(targetPlanItems) || !plainObject(policy)) {
     fail(
       "course_service_unavailable",
-      "A configuração corrente da Microssequência está incompleta.",
+      "A configuração corrente da microssequência está incompleta.",
       503
+    );
+  }
+  if (parameters.some((parameter) =>
+    parameter?.effectiveAssignment?.origin === "system_default")) {
+    fail(
+      "human_materialization_contextual_calibration_required",
+      "Calibre silenciosamente os valores ainda sem decisão contextual para esta microssequência antes de produzir.",
+      409
     );
   }
   return {
@@ -573,6 +740,7 @@ function unitDesignApplication(unit) {
     introducedInstructionalAnalysisUnitIds: unit.noveltyIds,
     explanationApplications: unit.explanations,
     usedInstructionalAnalysisUnitIds: unit.usedIds,
+    curriculumScopeItemIds: unit.curriculumScopeItemIds,
     practiceApplications: unit.practices,
     componentRefs: componentRefs(unit.content)
   };
@@ -603,20 +771,69 @@ function validateComponentPolicy(componentRefsValue, policy) {
       policy.availability === "allow_only" && !allowed.has(ref))) {
     fail(
       "human_materialization_component_policy_violation",
-      "Uma Unidade usa componente fora da política efetiva."
+      "Uma unidade de estudo usa um componente fora da política efetiva."
     );
   }
 }
 
-function establishedAnalysisUnitIds(plan, replacedStudyUnitIds) {
+function curriculumMicrosequenceOrder(plan) {
+  const result = new Map();
+  const body = plainObject(plan?.plan) ? plan.plan : plan;
+  const modules = Array.isArray(body?.curriculum?.modules) ? body.curriculum.modules : [];
+  for (const moduleValue of modules) {
+    const lessons = Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : [];
+    for (const lesson of lessons) {
+      const microsequences = Array.isArray(lesson?.microsequences) ? lesson.microsequences : [];
+      for (const microsequence of microsequences) {
+        if (typeof microsequence?.id !== "string" || !microsequence.id ||
+            result.has(microsequence.id)) {
+          fail("course_service_unavailable", "A ordem curricular das microssequências é inválida.", 503);
+        }
+        result.set(microsequence.id, result.size);
+      }
+    }
+  }
+  return result;
+}
+
+function plannedCurriculumScopeIds(plan, microsequenceId) {
+  return planItems(plan, "curriculumScopeItems")
+    .filter((item) => Array.isArray(item?.curriculumTargets) &&
+      item.curriculumTargets.some((target) =>
+        Array.isArray(target?.didacticMicrosequenceIds) &&
+        target.didacticMicrosequenceIds.includes(microsequenceId)))
+    .map(({ id }) => id);
+}
+
+function establishedAnalysisUnitIds(
+  plan,
+  replacedStudyUnitIds,
+  beforeMicrosequence,
+  curriculumOrder
+) {
   return new Set(planItems(plan, "instructionalAnalysisUnits")
     .filter((item) => {
       const introducedAt = item?.introducedAt;
       const studyUnitId = introducedAt?.studyUnitId;
-      return typeof item?.id === "string" && item.id &&
+      if (!(typeof item?.id === "string" && item.id &&
         plainObject(introducedAt) && typeof studyUnitId === "string" && studyUnitId &&
-        !replacedStudyUnitIds.has(studyUnitId);
+        !replacedStudyUnitIds.has(studyUnitId))) return false;
+      const introductionOrder = curriculumOrder.get(introducedAt.didacticMicrosequenceId);
+      if (!Number.isSafeInteger(introductionOrder)) {
+        fail("course_service_unavailable", "A introdução de uma ideia não pertence ao mapa curricular.", 503);
+      }
+      return introductionOrder < beforeMicrosequence;
     })
+    .map(({ id }) => id));
+}
+
+function introducedAnalysisUnitIds(plan, replacedStudyUnitIds) {
+  return new Set(planItems(plan, "instructionalAnalysisUnits")
+    .filter((item) => typeof item?.id === "string" && item.id &&
+      plainObject(item?.introducedAt) &&
+      typeof item.introducedAt.studyUnitId === "string" &&
+      item.introducedAt.studyUnitId &&
+      !replacedStudyUnitIds.has(item.introducedAt.studyUnitId))
     .map(({ id }) => id));
 }
 
@@ -665,7 +882,7 @@ function applyGroupTargetPlans(groups, plan) {
   });
 }
 
-function validatePedagogicalGroup(group, establishedAnalysis) {
+function validatePedagogicalGroup(group, establishedAnalysis, introducedAnywhere) {
   const firstDesign = group.units[0]?.design;
   const targets = firstDesign?.targetPlanItems;
   if (!plainObject(targets)) {
@@ -703,7 +920,7 @@ function validatePedagogicalGroup(group, establishedAnalysis) {
         !Number.isSafeInteger(ceiling) || ceiling < 1 ||
         !Array.isArray(requiredForms) || !Number.isSafeInteger(practiceMinimum) ||
         practiceMinimum < 1 || !Array.isArray(requiredDimensions)) {
-      fail("course_service_unavailable", "Os quatro parâmetros efetivos são inválidos.", 503);
+      fail("course_service_unavailable", "Os parâmetros efetivos essenciais são inválidos.", 503);
     }
     const mode = MODE[unit.source.aplicacaoPedagogica.modo];
     if (mode === "expository" && unit.content.role !== "theory" ||
@@ -743,13 +960,13 @@ function validatePedagogicalGroup(group, establishedAnalysis) {
     if (["expository", "mixed"].includes(mode) && unit.noveltyIds.length > ceiling) {
       fail(
         "human_materialization_analysis_unit_ceiling_exceeded",
-        `A Unidade ${unit.source.posicao} excede o teto de novidades.`
+        `A unidade de estudo ${unit.source.posicao} excede o teto de novidades.`
       );
     }
     if (mode === "practice" && (unit.noveltyIds.length || unit.explanations.length) ||
         mode === "expository" && unit.practices.length > 0 ||
         mode === "mixed" && (unit.explanations.length === 0 || unit.practices.length === 0)) {
-      fail("human_materialization_mode_mismatch", "O modo da Unidade não corresponde à aplicação declarada.");
+      fail("human_materialization_mode_mismatch", "O modo da unidade de estudo não corresponde à aplicação declarada.");
     }
 
     const knownBeforeUnit = new Set(establishedAnalysis);
@@ -762,7 +979,7 @@ function validatePedagogicalGroup(group, establishedAnalysis) {
       }
     }
     for (const id of unit.noveltyIds) {
-      if (establishedAnalysis.has(id)) {
+      if (introducedAnywhere.has(id)) {
         fail("human_materialization_duplicate_introduction", "Uma ideia foi introduzida mais de uma vez.");
       }
       if (!explanationSet.has(id)) {
@@ -797,7 +1014,10 @@ function validatePedagogicalGroup(group, establishedAnalysis) {
         notApplicable.add(form);
       }
     }
-    unit.noveltyIds.forEach((id) => establishedAnalysis.add(id));
+    unit.noveltyIds.forEach((id) => {
+      establishedAnalysis.add(id);
+      introducedAnywhere.add(id);
+    });
     unit.noveltyIds.forEach((id) => representedAnalysis.add(id));
     unit.usedIds.forEach((id) => representedAnalysis.add(id));
     explanationIds.forEach((id) => representedAnalysis.add(id));
@@ -848,8 +1068,34 @@ function validatePedagogicalGroup(group, establishedAnalysis) {
 }
 
 function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
-  const establishedAnalysis = establishedAnalysisUnitIds(plan, replacedStudyUnitIds);
-  for (const group of groups) validatePedagogicalGroup(group, establishedAnalysis);
+  const curriculumOrder = curriculumMicrosequenceOrder(plan);
+  const orderedGroups = [...groups].map((group) => {
+    const order = curriculumOrder.get(group.microsequenceId);
+    if (!Number.isSafeInteger(order)) {
+      fail("course_service_unavailable", "Uma microssequência da parte não pertence ao mapa curricular.", 503);
+    }
+    return { group, order };
+  }).sort((left, right) => left.order - right.order);
+  const establishedAnalysis = new Set();
+  const introducedAnywhere = introducedAnalysisUnitIds(plan, replacedStudyUnitIds);
+  for (const { group, order } of orderedGroups) {
+    for (const id of establishedAnalysisUnitIds(
+      plan,
+      replacedStudyUnitIds,
+      order,
+      curriculumOrder
+    )) establishedAnalysis.add(id);
+    validatePedagogicalGroup(group, establishedAnalysis, introducedAnywhere);
+    const coveredScopeIds = new Set(group.units.flatMap((unit) =>
+      unit.curriculumScopeItemIds));
+    if (plannedCurriculumScopeIds(plan, group.microsequenceId)
+      .some((id) => !coveredScopeIds.has(id))) {
+      fail(
+        "human_materialization_incomplete_scope_coverage",
+        "A microssequência precisa desenvolver os itens de escopo que o mapa curricular atribuiu a ela."
+      );
+    }
+  }
 }
 
 export async function materializeHumanCoursePart({
@@ -890,7 +1136,7 @@ export async function materializeHumanCoursePart({
           [...plannedMicrosequenceIds].some((id) => !suppliedMicrosequenceIds.has(id))) {
         fail(
           "human_materialization_incomplete_part",
-          "A materialização precisa incluir ao menos uma Unidade de cada Microssequência da Parte."
+          "A materialização precisa incluir ao menos uma unidade de estudo de cada microssequência da parte."
         );
       }
       const existingBySlot = await listExistingPartStudyUnits({
@@ -904,7 +1150,7 @@ export async function materializeHumanCoursePart({
       if ([...existingBySlot.keys()].some((slot) => !suppliedSlots.has(slot))) {
         fail(
           "human_materialization_existing_unit_omitted",
-          "A revisão da Parte precisa representar todas as Unidades já existentes; nenhuma é removida implicitamente."
+          "A revisão da parte precisa representar todas as unidades de estudo já existentes; nenhuma é removida implicitamente."
         );
       }
       const scopeBySlot = new Map();
@@ -934,7 +1180,11 @@ export async function materializeHumanCoursePart({
         for (const unit of group.units) {
           const slot = `${group.microsequenceId}\0${unit.source.posicao}`;
           const scope = scopeBySlot.get(slot);
-          unit.design = designByScope.get(`${scope.kind}\0${scope.ref}`);
+          unit.design = applyUnitContextualCalibration(
+            designByScope.get(`${scope.kind}\0${scope.ref}`),
+            unit.source.configuracao,
+            { existing: existingBySlot.has(slot) }
+          );
         }
       }
       const targetPlanItems = applyGroupTargetPlans(groups, context.plan);

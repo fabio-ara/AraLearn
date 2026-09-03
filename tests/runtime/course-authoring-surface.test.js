@@ -8,6 +8,8 @@ import {
 } from "../../src/ui/CourseAuthoringSurface.js";
 import { buildCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
 import { normalizeCourseListPage } from "../../src/ui/courseAuthoringViewModel.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+  "../../src/domain/courseDesignParameters.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const SECOND_COURSE_ID = "20000000-0000-4000-8000-000000000002";
@@ -409,51 +411,7 @@ function courseDesignFixture({
   localPolicy = null,
   targetPlanItems = null
 } = {}) {
-  const supportedScopes = ["course", "lesson", "didactic_microsequence", "study_unit"];
-  const definitions = [{
-    id: "new_analysis_unit_ceiling_per_expository_study_unit",
-    label: "Novas unidades de análise por unidade expositiva",
-    valueSchema: { type: "integer", minimum: 1, maximum: 8 },
-    defaultValue: 2
-  }, {
-    id: "required_explanation_forms",
-    label: "Formas exigidas de explicação",
-    valueSchema: {
-      type: "set",
-      allowedValues: [
-        "plain_definition", "concrete_example", "mechanism", "contrast",
-        "application_condition", "limit_or_exception", "worked_example", "representation_link"
-      ],
-      minimumItems: 1,
-      maximumItems: 8
-    },
-    defaultValue: ["plain_definition", "concrete_example", "mechanism", "contrast"]
-  }, {
-    id: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-    label: "Oportunidades distintas de prática",
-    valueSchema: { type: "integer", minimum: 1, maximum: 16 },
-    defaultValue: 2
-  }, {
-    id: "required_practice_variation_dimensions",
-    label: "Dimensões exigidas de variação",
-    valueSchema: {
-      type: "set",
-      allowedValues: [
-        "case_or_data", "context", "task_feature", "external_representation", "support_level"
-      ],
-      minimumItems: 1,
-      maximumItems: 5
-    },
-    defaultValue: ["case_or_data"]
-  }].map((definition) => ({
-    ...definition,
-    construct: `Construto de ${definition.label}.`,
-    operationalization: "Usa somente identidades e fatos persistidos.",
-    limitations: "O registro não prova qualidade nem aprendizagem.",
-    defaultStatus: "product_hypothesis",
-    evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
-    supportedScopes
-  }));
+  const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
   const componentOptions = Array.from({ length: 32 }, (_, index) => ({
     ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
     label: `Componente ${index + 1}`,
@@ -470,7 +428,7 @@ function courseDesignFixture({
     contract: "aralearn.course-design.v2",
     courseId: COURSE_ID,
     courseRevision,
-    parameterCatalogVersion: "1.0.0",
+    parameterCatalogVersion: "1.1.0",
     scopeContext: {
       current: scope,
       ancestors,
@@ -787,7 +745,7 @@ test("Conteúdo monta uma única sequência sem árvore paralela nem carga de ou
   assert.doesNotMatch(root.innerHTML, /course-authoring-content-hierarchy|Estrutura do Curso/u);
   assert.match(
     root.innerHTML,
-    /class="course-authoring-task-menu"[\s\S]*data-target-kind="course"[\s\S]*<span>Editar Curso<\/span>/u
+    /class="course-authoring-task-menu"[\s\S]*data-target-kind="course"[\s\S]*<span>Editar curso<\/span>/u
   );
   assert.match(root.innerHTML, /data-course-inspection-host/u);
   assert.doesNotMatch(root.innerHTML, />Estrutura<|>Inspeção</u);
@@ -1379,13 +1337,40 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
   assert.doesNotMatch(root.innerHTML, /Os valores iniciais são hipóteses operacionais/iu);
   assert.match(
     root.innerHTML,
-    /<dl class="course-design-resolution"><div><dt class="course-authoring-visually-hidden">Origem e escopo<\/dt><dd>Padrão do produto · Produto<\/dd><\/div><\/dl>/u
+    /<dl class="course-design-resolution"><div><dt class="course-authoring-visually-hidden">Origem e escopo<\/dt><dd>Calibração contextual pendente · Produto<\/dd><\/div><\/dl>/u
   );
   assert.match(
     root.innerHTML,
     /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*><svg/u
   );
-  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 4);
+  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 6);
+  const pedagogicalStart = root.innerHTML.indexOf(
+    'aria-labelledby="course-design-pedagogical-parameters-title"'
+  );
+  const editorialStart = root.innerHTML.indexOf(
+    'aria-labelledby="course-design-editorial-parameters-title"'
+  );
+  const guidanceStart = root.innerHTML.indexOf('class="course-design-guidance"');
+  assert.ok(pedagogicalStart >= 0 && editorialStart > pedagogicalStart);
+  assert.ok(guidanceStart > editorialStart);
+  const pedagogicalParameters = root.innerHTML.slice(pedagogicalStart, editorialStart);
+  const editorialParameters = root.innerHTML.slice(editorialStart, guidanceStart);
+  assert.equal(
+    (pedagogicalParameters.match(/class="course-design-parameter"/gu) || []).length,
+    4
+  );
+  assert.equal(
+    (editorialParameters.match(/class="course-design-parameter"/gu) || []).length,
+    2
+  );
+  assert.match(pedagogicalParameters, /Parâmetros pedagógicos/u);
+  assert.doesNotMatch(pedagogicalParameters, /Alvo de palavras/u);
+  assert.match(editorialParameters, /Parâmetros editoriais/u);
+  assert.match(editorialParameters, /Alvo de palavras por resposta de autoria/u);
+  assert.match(editorialParameters, /Alvo de palavras por unidade de estudo/u);
+  assert.doesNotMatch(editorialParameters, /Novas unidades de análise/u);
+  assert.match(root.innerHTML, /Alvo de palavras por resposta de autoria/u);
+  assert.match(root.innerHTML, /Alvo de palavras por unidade de estudo/u);
   assert.match(root.innerHTML, /aria-label="Editar direção editorial neste escopo"[^>]*><svg/u);
   assert.match(root.innerHTML, /aria-label="Ajustar componentes neste escopo"[^>]*><svg/u);
   assert.doesNotMatch(
@@ -1488,7 +1473,7 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.deepEqual(calls[0].options.scope, { kind: "module", ref: "module-a" });
   assert.match(root.innerHTML, /Módulo: Base/u);
   assert.match(root.innerHTML, /Herdado de Fundamentos · Definido pelo autor/u);
-  assert.match(root.innerHTML, /não são definidos em Módulo/u);
+  assert.match(root.innerHTML, /não são definidos em módulo/u);
   assert.match(root.innerHTML, /<fieldset disabled>/u);
   assert.doesNotMatch(root.innerHTML, /data-course-design-parameter/u);
   assert.match(root.innerHTML, /Decisão definida no Curso/u);
@@ -2201,7 +2186,7 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   assert.doesNotMatch(root.innerHTML, /Pessoa estudante/u);
   assert.match(root.innerHTML, /Solicitação recebida/u);
   assert.match(root.innerHTML, /não informa se o endereço corresponde a uma conta/u);
-  assert.match(root.innerHTML, /Use Atualizar Curso depois/u);
+  assert.match(root.innerHTML, /Depois, atualize o curso/u);
   assert.doesNotMatch(root.innerHTML, /student@example\.test/u);
   await surface.refresh();
   assert.match(root.innerHTML, /Pessoa estudante/u);
@@ -2455,7 +2440,7 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
     windowValue: new FakeWindow()
   });
   await revokedSurface.open();
-  assert.match(revokedRoot.innerHTML, /O acesso a este Curso não está mais disponível/u);
+  assert.match(revokedRoot.innerHTML, /O acesso a este curso não está mais disponível/u);
   assert.doesNotMatch(revokedRoot.innerHTML, /not found/u);
 });
 

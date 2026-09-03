@@ -5,7 +5,7 @@ const encoder = new TextEncoder();
 
 export const COURSE_DESIGN_CONTRACT = "aralearn.course-design.v2";
 export const COURSE_DESIGN_CHANGE_CONTRACT = "aralearn.course-design-change.v2";
-export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.0.0";
+export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.1.0";
 export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 
 export const EXPLANATION_FORMS = Object.freeze([
@@ -27,9 +27,9 @@ export const PRACTICE_VARIATION_DIMENSIONS = Object.freeze([
   "support_level"
 ]);
 
-// O catálogo estruturado contém somente decisões pedagógicas. Restrições de
-// footprint, parágrafos, títulos e estilo pertencem à orientação autoral
-// escopada, que é selada separadamente na materialização.
+// O catálogo estruturado conserva somente condições quantitativas que uma
+// pessoa pesquisadora precisa comparar. Julgamentos de estilo e adequação
+// continuam na orientação autoral escopada, selada separadamente.
 const PEDAGOGICAL_PARAMETER_SCOPES = Object.freeze([
   "course",
   "lesson",
@@ -60,9 +60,9 @@ const COMMAND_TYPES = Object.freeze([
 export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "new_analysis_unit_ceiling_per_expository_study_unit",
-    label: "Novas unidades de análise por Unidade expositiva",
-    construct: "Quantidade de unidades da análise instrucional introduzidas como novas em uma mesma Unidade de estudo expositiva.",
-    operationalization: "Conta identidades distintas declaradas como introduzidas em cada Unidade expositiva ou mista; não usa caracteres, linhas, altura nem tempo como proxy.",
+    label: "Novas unidades de análise por unidade expositiva",
+    construct: "Quantidade de unidades da análise instrucional introduzidas como novas em uma mesma unidade de estudo expositiva.",
+    operationalization: "Conta identidades distintas declaradas como introduzidas em cada unidade expositiva ou mista; não usa caracteres, linhas, altura nem tempo como proxy.",
     limitations: "A contagem orienta granularidade de desenho e não mede carga cognitiva, dificuldade, aprendizagem ou qualidade da explicação.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: Object.freeze(["koedinger2012kli", "chen2023elementinteractivity"]),
@@ -120,6 +120,30 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
       maximumItems: PRACTICE_VARIATION_DIMENSIONS.length
     }),
     defaultValue: Object.freeze(["case_or_data"])
+  }),
+  Object.freeze({
+    id: "authoring_chat_response_word_target",
+    label: "Alvo de palavras por resposta de autoria",
+    construct: "Extensão editorial pretendida para uma resposta do assistente durante a autoria.",
+    operationalization: "Informa ao assistente um alvo flexível de palavras para a decisão corrente; respostas podem ultrapassá-lo quando a inspeção ou a segurança exigir.",
+    limitations: "O alvo não é limite rígido e não autoriza esconder decisões educacionais, reduzir cobertura nem expor detalhes internos.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: Object.freeze([]),
+    supportedScopes: PEDAGOGICAL_PARAMETER_SCOPES,
+    valueSchema: Object.freeze({ type: "integer", minimum: 20, maximum: 500 }),
+    defaultValue: 120
+  }),
+  Object.freeze({
+    id: "study_unit_content_word_target",
+    label: "Alvo de palavras por unidade de estudo",
+    construct: "Extensão editorial pretendida para o conteúdo de uma unidade de estudo focal.",
+    operationalization: "Orienta a distribuição do conteúdo em torno de um alvo flexível, depois de satisfeitas a função didática e as dependências necessárias.",
+    limitations: "O alvo não é máximo, não mede qualidade ou carga cognitiva e não justifica compactação nem atomização.",
+    defaultStatus: "product_hypothesis",
+    evidenceRefs: Object.freeze([]),
+    supportedScopes: PEDAGOGICAL_PARAMETER_SCOPES,
+    valueSchema: Object.freeze({ type: "integer", minimum: 40, maximum: 1000 }),
+    defaultValue: 180
   })
 ]);
 
@@ -551,7 +575,7 @@ function validateParameterAssignment(
 
 function validateParameters(value, scopePath, currentScope) {
   if (!Array.isArray(value) || value.length !== COURSE_DESIGN_PARAMETER_DEFINITIONS.length) {
-    fail("invalid_course_design_read", "A leitura não contém os quatro parâmetros canônicos.");
+    fail("invalid_course_design_read", "A leitura não contém todos os parâmetros canônicos.");
   }
   value.forEach((entry, index) => {
     exact(

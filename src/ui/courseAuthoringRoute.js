@@ -58,23 +58,23 @@ function normalizedTargetOptions(options) {
     const value = options?.[definition.option];
     if (value == null || value === "") continue;
     if (!targetIdIsCanonical(definition, value)) {
-      throw new TypeError("Alvo inválido para a rota de Autoria.");
+      throw new TypeError("Alvo inválido para a rota de autoria.");
     }
     selected.push({ ...definition, id: value });
   }
   if (options?.unassigned === true) {
     selected.push({ option: "unassigned", query: "unassigned", kind: "unassigned", id: null });
   } else if (options?.unassigned != null && options.unassigned !== false) {
-    throw new TypeError("Alvo inválido para a rota de Autoria.");
+    throw new TypeError("Alvo inválido para a rota de autoria.");
   }
   if (selected.length > 1) {
-    throw new TypeError("A rota de Autoria aceita somente um alvo.");
+    throw new TypeError("A rota de autoria aceita somente um alvo.");
   }
   const target = selected[0] || null;
   const anchorId = options?.anchorId;
   if (anchorId != null && anchorId !== "") {
     if (!canonicalEntityId(anchorId) || target?.kind !== "course_source") {
-      throw new TypeError("A âncora exige uma Fonte literal na mesma rota.");
+      throw new TypeError("A âncora exige uma fonte literal na mesma rota.");
     }
     return { ...target, anchorId };
   }
@@ -104,10 +104,10 @@ export function buildCourseAuthoringRoute(courseId, options = {}) {
   }
   const section = options.section || "content";
   if (!isCanonicalCourseId(courseId)) {
-    throw new TypeError("Identidade de Curso inválida para a rota de Autoria.");
+    throw new TypeError("Identidade de curso inválida para a rota de autoria.");
   }
   if (!COURSE_AUTHORING_SECTIONS.includes(section)) {
-    throw new TypeError("Seção de Curso inválida para a rota de Autoria.");
+    throw new TypeError("Seção de curso inválida para a rota de autoria.");
   }
   const target = normalizedTargetOptions(options);
   if (!targetAllowedForSection(target, section)) {

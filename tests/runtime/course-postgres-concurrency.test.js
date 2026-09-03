@@ -414,7 +414,8 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
         jsonb_build_object(
           'mode','save','sourceId','source-lock','expectedSourceRevision',0,
           'source',jsonb_build_object(
-            'kind','document','title','Fonte do lock de PDF',
+            'kind','document','sourceRole','technical_conceptual',
+            'title','Fonte do lock de PDF',
             'authorship',null,'publicationDate',null,'identifier',null,
             'language',null,'citationText',null,'url',null,
             'editionOrVersion',null,'origin','author_provided',

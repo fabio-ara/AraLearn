@@ -12,8 +12,6 @@ const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
 const OTHER_COURSE_ID = "20000000-0000-4000-8000-000000000009";
 const PLAN_ID = "30000000-0000-4000-8000-000000000003";
-const USED_ANALYSIS_ID = "30000000-0000-4000-8000-000000000013";
-const REVISITED_ANALYSIS_ID = "30000000-0000-4000-8000-000000000023";
 const CURRICULUM_SCOPE_ID = "30000000-0000-4000-8000-000000000033";
 const PART_ID = "40000000-0000-4000-8000-000000000004";
 const STEP_ID = "60000000-0000-4000-8000-000000000006";
@@ -34,7 +32,9 @@ function analyticsSnapshot() {
         "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
       ], ["required_explanation_forms", "Formas", "string_list"], [
         "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-      ], ["required_practice_variation_dimensions", "Variação", "string_list"]]
+      ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
+        "authoring_chat_response_word_target", "Extensão da conversa", "integer"
+      ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
         .map(([parameterId, label, valueKind]) => ({
           parameterId, label, valueKind, effectiveValues: []
         })),
@@ -45,7 +45,8 @@ function analyticsSnapshot() {
       components: [],
       practiceByRequirement: [],
       practiceVariationDimensions: [],
-      sourcesByRole: []
+      sourcesByRole: [],
+      wordCountsByStudyUnit: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -125,6 +126,7 @@ function syntheticPdf(label = "fixture") {
 function pdfSourceDocument(overrides = {}) {
   return {
     kind: "document",
+    sourceRole: "technical_conceptual",
     title: "Documento autorizado",
     authorship: null,
     publicationDate: null,
@@ -780,7 +782,7 @@ function courseDesignRead() {
     contract: "aralearn.course-design.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
-    parameterCatalogVersion: "1.0.0",
+    parameterCatalogVersion: "1.1.0",
     scopeContext: {
       current: { kind: "course", ref: COURSE_ID, label: "Curso" },
       ancestors: [],
@@ -1849,6 +1851,7 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
       revision: 1,
       status: "active",
       kind: "web_page",
+      sourceRole: "technical_conceptual",
       title: "Fonte A",
       authorship: "Autoria",
       publicationDate: "2026",

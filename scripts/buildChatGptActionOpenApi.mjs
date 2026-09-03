@@ -39,11 +39,34 @@ const errorSchema = {
   }
 };
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 96_000;
+const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!resultSchema || actionTools.some(({ outputSchema }) => (
   JSON.stringify(outputSchema) !== JSON.stringify(resultSchema)
 ))) {
   throw new TypeError("As tarefas humanas precisam compartilhar o contrato curto de resultado.");
+}
+
+const studyUnitContentSchema = structuredClone(actionTools
+  .find(({ name }) => name === "materializar_parte")
+  ?.inputSchema?.properties?.unidades?.items?.properties?.conteudo);
+if (!studyUnitContentSchema) {
+  throw new TypeError("A materialização perdeu o contrato de conteúdo da unidade de estudo.");
+}
+
+function inputSchemaWithSharedContent(tool) {
+  const schema = structuredClone(tool.inputSchema);
+  if (tool.name === "materializar_parte") {
+    schema.properties.unidades.items.properties.conteudo = {
+      $ref: STUDY_UNIT_CONTENT_REF
+    };
+  }
+  if (tool.name === "aplicar_correcoes") {
+    schema.properties.correcoes.items.properties.conteudo = {
+      $ref: STUDY_UNIT_CONTENT_REF
+    };
+  }
+  return schema;
 }
 
 const paths = Object.fromEntries(actionTools.map((tool) => [
@@ -56,7 +79,7 @@ const paths = Object.fromEntries(actionTools.map((tool) => [
       "x-openai-isConsequential": tool.annotations?.readOnlyHint !== true,
       requestBody: {
         required: true,
-        content: { "application/json": { schema: tool.inputSchema } }
+        content: { "application/json": { schema: inputSchemaWithSharedContent(tool) } }
       },
       responses: {
         "200": { $ref: "#/components/responses/Success" },
@@ -85,7 +108,8 @@ const document = {
   components: {
     schemas: {
       HumanTaskResult: resultSchema,
-      HumanTaskError: errorSchema
+      HumanTaskError: errorSchema,
+      HumanStudyUnitContent: studyUnitContentSchema
     },
     responses: {
       Success: {

@@ -1090,7 +1090,7 @@ test("valida e persiste a seleção e a posição locais em um envelope fechado"
         microsequenceMode: "play"
       }
     }),
-    /outro Curso/u
+    /outro curso/u
   );
   assert.equal(repository.loadStudyNavigation().positions[COURSE_A].entityPath[0], COURSE_A);
 });

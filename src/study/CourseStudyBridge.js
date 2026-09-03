@@ -3,7 +3,7 @@ export class CourseStudyBridge {
     if (!controller || typeof controller.listCourses !== "function" ||
         typeof controller.loadCourseDocument !== "function" ||
         typeof controller.clearCourse !== "function") {
-      throw new TypeError("Controlador canônico de Cursos obrigatório para Estudo.");
+      throw new TypeError("Controlador canônico de cursos obrigatório para Estudo.");
     }
     this.controller = controller;
   }
@@ -32,7 +32,7 @@ export class CourseStudyBridge {
 
   maintainCourse(values) {
     if (typeof this.controller.maintainCourse !== "function") {
-      throw new TypeError("O ciclo de vida do Curso não está disponível.");
+      throw new TypeError("O ciclo de vida do curso não está disponível.");
     }
     return this.controller.maintainCourse(values);
   }

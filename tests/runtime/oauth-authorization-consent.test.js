@@ -65,10 +65,10 @@ test("consentimento incompatível falha antes de oferecer ou enviar aprovação"
 
 test("consentimento explicita a autoridade de autoria efetivamente concedida", () => {
   assert.deepEqual(OAUTH_AUTHORING_PERMISSION_LABELS, [
-    "Ler seus Cursos, planejamento e conteúdo na Autoria",
-    "Criar Cursos privados e alterar metadados, planejamento e conteúdo",
-    "Consultar Observações; incluir o texto somente quando você pedir explicitamente",
-    "Consultar contratos e validar os componentes didáticos instalados"
+    "Ler seus cursos, planejamento e conteúdo na autoria",
+    "Criar cursos privados e alterar metadados, planejamento e conteúdo",
+    "Consultar observações; incluir o texto somente quando você pedir explicitamente",
+    "Consultar e validar os componentes didáticos disponíveis"
   ]);
 });
 

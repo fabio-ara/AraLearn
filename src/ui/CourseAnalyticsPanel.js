@@ -6,6 +6,7 @@ import { downloadTextFile } from "./downloadTextFile.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const ORIGIN_LABELS = Object.freeze({
+  system_default: "Calibração contextual pendente",
   automatic: "Calibração automática",
   author: "Pessoa autora",
   research_condition: "Condição de pesquisa",
@@ -15,6 +16,14 @@ const ORIGIN_LABELS = Object.freeze({
   authoring_interface: "Edição na Autoria",
   authoring_chat: "Conversa de Autoria",
   unknown: "Origem não informada",
+});
+
+const SOURCE_SCOPE_LABELS = Object.freeze({
+  course: "no curso",
+  module: "no módulo",
+  lesson: "na lição",
+  didactic_microsequence: "na microssequência",
+  study_unit: "na unidade de estudo"
 });
 
 const CONCEPT_LABELS = Object.freeze({
@@ -40,11 +49,13 @@ const CONCEPT_LABELS = Object.freeze({
   relation_map: "Mapa de relações",
   text: "Texto",
   ordering: "Ordenação",
-  factual_support: "Sustentação factual",
   contextualization: "Contextualização",
   representation: "Representação",
   worked_example: "Exemplo desenvolvido",
-  counterexample: "Contraexemplo"
+  counterexample: "Contraexemplo",
+  curricular_scope: "Escopo curricular",
+  assessment_evidence: "Evidência de avaliação",
+  technical_conceptual: "Técnica ou conceitual"
 });
 
 function escapeHtml(value) {
@@ -62,6 +73,10 @@ function errorText(error) {
 
 function formatCount(value) {
   return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatMeasure(value) {
+  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value);
 }
 
 function plural(value, singular, pluralForm) {
@@ -82,6 +97,36 @@ function contextualLabel(value) {
   return /^[A-ZÀ-Ý]{2,}$/u.test(label)
     ? label
     : label[0].toLocaleLowerCase("pt-BR") + label.slice(1);
+}
+
+function sourceScopeLabel(value) {
+  const label = SOURCE_SCOPE_LABELS[value];
+  return label ? `origem ${label}` : null;
+}
+
+function wordCountSummary(distribution) {
+  const rows = [...distribution].sort((left, right) => left.wordCount - right.wordCount);
+  const unitCount = sum(rows.map(({ studyUnitCount }) => studyUnitCount));
+  if (!unitCount) return null;
+  const total = rows.reduce((value, row) =>
+    value + row.wordCount * row.studyUnitCount, 0);
+  const wordCountAt = (position) => {
+    let seen = 0;
+    for (const row of rows) {
+      seen += row.studyUnitCount;
+      if (seen >= position) return row.wordCount;
+    }
+    return rows.at(-1).wordCount;
+  };
+  const lower = wordCountAt(Math.floor((unitCount + 1) / 2));
+  const upper = wordCountAt(Math.ceil((unitCount + 1) / 2));
+  return {
+    total,
+    minimum: rows[0].wordCount,
+    median: (lower + upper) / 2,
+    mean: total / unitCount,
+    maximum: rows.at(-1).wordCount
+  };
 }
 
 function appliedValue(value) {
@@ -143,8 +188,15 @@ function configurationRows(design) {
   for (const parameter of design.parameters) {
     for (const applied of parameter.effectiveValues) {
       const suffix = [
-        plural(applied.studyUnitCount, "unidade de estudo", "unidades de estudo"),
-        applied.origin ? contextualLabel(applied.origin) : null
+        parameter.parameterId === "authoring_chat_response_word_target"
+          ? `configuração registrada em ${plural(
+            applied.studyUnitCount,
+            "unidade de estudo",
+            "unidades de estudo"
+          )}`
+          : plural(applied.studyUnitCount, "unidade de estudo", "unidades de estudo"),
+        applied.origin ? contextualLabel(applied.origin) : null,
+        sourceScopeLabel(applied.sourceScopeKind)
       ].filter(Boolean).join(" · ");
       rows.push({
         label: parameter.label,
@@ -155,11 +207,22 @@ function configurationRows(design) {
   for (const direction of design.editorialDirections) {
     const suffix = [
       plural(direction.studyUnitCount, "unidade de estudo", "unidades de estudo"),
-      direction.origin ? contextualLabel(direction.origin) : null
+      direction.origin ? contextualLabel(direction.origin) : null,
+      sourceScopeLabel(direction.sourceScopeKind)
     ].filter(Boolean).join(" · ");
     rows.push({
       label: "Direção editorial",
       value: `${direction.direction || "Sem direção adicional"} · ${suffix}`
+    });
+  }
+  const words = wordCountSummary(design.wordCountsByStudyUnit);
+  if (words) {
+    rows.push({
+      label: "Extensão observada",
+      value: `${plural(words.total, "palavra", "palavras")} no total · ` +
+        `mínimo ${formatCount(words.minimum)} · mediana ${formatMeasure(words.median)} · ` +
+        `média ${formatMeasure(words.mean)} · máximo ${formatCount(words.maximum)} ` +
+        "por unidade de estudo"
     });
   }
   return rows;
@@ -173,6 +236,10 @@ function structureRows(design) {
         unit.introductionCount,
         "introdução",
         "introduções"
+      )} · ${plural(unit.useCount, "uso", "usos")} · ${plural(
+        unit.revisitCount,
+        "retomada",
+        "retomadas"
       )}`
     })),
     ...design.introductionsByStudyUnit.map((unit) => ({
@@ -237,8 +304,8 @@ function authorshipRows(authorship) {
       label: humanLabel(entry.origin),
       value: `${plural(entry.createdCount, "unidade de estudo criada", "unidades de estudo criadas")} · ${plural(
         entry.lastRevisedCount,
-        "unidade de estudo com última revisão",
-        "unidades de estudo com última revisão"
+        "unidade de estudo com última edição",
+        "unidades de estudo com última edição"
       )}`
     }))
   ];
@@ -259,7 +326,7 @@ function renderDesign(design) {
       name: "Unidades de estudo", value: design.studyUnitCount, definition: "Unidades no escopo."
     }, {
       name: "Unidades de análise", value: design.analysisUnits.length,
-      definition: "Novidades semânticas inventariadas."
+      definition: "Ideias acompanhadas no repertório."
     }, {
       name: "Prática", value: practiceCount, definition: "Oportunidades produzidas."
     }, {
@@ -267,11 +334,13 @@ function renderDesign(design) {
     }], "Resumo do desenho") +
     renderTableDetails({
       title: "Configuração aplicada",
-      definition: "Parâmetros pedagógicos e direção editorial usados pelas unidades de estudo.",
+      definition: "Parâmetros, direção editorial e extensão observada nas unidades de estudo, " +
+        "sem atribuir qualidade. Direções de escopos diferentes podem alcançar a mesma " +
+        "unidade de estudo.",
       rows: configurationRows(design)
     }) + renderTableDetails({
       title: "Conteúdo e representações",
-      definition: "Novidades, distribuição, formas explicativas e componentes do escopo.",
+      definition: "Introduções, usos, retomadas, formas explicativas e componentes do escopo.",
       rows: structureRows(design)
     }) + renderTableDetails({
       title: "Prática e fontes",
@@ -293,7 +362,7 @@ function renderAuthorship(authorship) {
     }, {
       name: "Unidades de estudo revisadas manualmente",
       value: authorship.manuallyRevisedStudyUnitCount,
-      definition: "Unidades cuja última revisão observável é humana."
+      definition: "Unidades cuja última edição observável é humana."
     }], "Resumo da autoria") + renderTableDetails({
       title: "Intervenções por origem",
       definition: "Contagens explícitas por origem observável.",
@@ -413,7 +482,7 @@ export function createCourseAnalyticsPanel({
       state.failure = "";
       state.reloadQuery = null;
       const result = download({
-        name: `aralearn-analytics-snapshot-r${state.page.course.revision}.json`,
+        name: `aralearn-dados-de-autoria-edicao-${state.page.course.revision}.json`,
         type: "application/json;charset=utf-8",
         content: JSON.stringify(state.page, null, 2) + "\n"
       });
@@ -446,7 +515,7 @@ export function createCourseAnalyticsPanel({
       const revision = Number(nextCourseRevision);
       if (!Number.isSafeInteger(revision) || revision < 1) {
         return Promise.reject(new TypeError(
-          "A revisão do curso para atualizar os dados de autoria é inválida."
+          "O estado do curso para atualizar os dados de autoria é inválido."
         ));
       }
       state.course = { ...state.course, revision };

@@ -1903,7 +1903,7 @@
 }
 
 
-/* Parâmetros conserva quatro decisões pedagógicas, direção editorial e componentes. */
+/* Parâmetros conserva condições pedagógicas e editoriais, direção e componentes. */
 .course-authoring-surface[data-section="parameters"] {
   width: min(100%, 430px);
 }
@@ -1916,7 +1916,6 @@
 .course-design > section,
 .course-design > aside,
 .course-design-parameters,
-.course-design-targets,
 .course-design-guidance,
 .course-design-policy {
   min-width: 0;
@@ -2211,46 +2210,6 @@
   min-width: 0;
   display: grid;
   gap: 6px;
-}
-
-.course-design-target-groups,
-.course-design-target-group {
-  min-width: 0;
-}
-
-.course-design-target-groups {
-  display: grid;
-  gap: 6px;
-}
-
-.course-design-target-group {
-  display: grid;
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-}
-
-.course-design-target-group :is(h4, p, ul) {
-  margin: 0;
-}
-
-.course-design-target-group h4 {
-  color: var(--text-primary);
-  font-size: var(--type-xs);
-}
-
-.course-design-target-group :is(p, li) {
-  overflow-wrap: anywhere;
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  line-height: var(--leading-normal);
-}
-
-.course-design-target-group ul {
-  display: grid;
-  gap: 5px;
-  padding-inline-start: 18px;
 }
 
 .course-design form textarea {

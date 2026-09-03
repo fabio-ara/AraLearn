@@ -99,10 +99,15 @@ O AraLearn mantém quatro dimensões pedagógicas configuráveis:
 - oportunidades mínimas de prática por requisito;
 - dimensões de variação da prática.
 
-No estado `default`, o GPT calibra os valores para cada microssequência ou
-unidade conforme conteúdo, função e público; não aplica um preset fixo. Em
-pesquisa, a pessoa pode fixar valores deliberadamente, e esses valores
-prevalecem.
+Também mantém dois alvos editoriais quantitativos flexíveis: palavras por
+resposta de autoria e palavras por unidade de estudo. Eles orientam a extensão,
+mas não são limites e não autorizam resumir, omitir ou fragmentar conteúdo para
+atingir uma contagem.
+
+No estado `default`, o GPT precisa calibrar automaticamente os valores para cada
+microssequência ou unidade conforme conteúdo, função e público; não aplica um
+preset fixo. Em pesquisa, a pessoa pode fixar valores deliberadamente, e esses
+valores prevalecem.
 
 Direção editorial é separada. Ela pode orientar extensão, estilo, títulos e
 organização, mas não retirar conteúdo necessário.

@@ -37,16 +37,28 @@ medidas de aprendizagem.
 
 ## Fixar condições sem arquitetura paralela
 
-O catálogo possui quatro parâmetros pedagógicos:
+O catálogo 1.1.0 possui quatro parâmetros pedagógicos:
 
 1. teto de novas unidades de análise por unidade de estudo;
 2. formas de explicação por unidade de análise;
 3. oportunidades mínimas de prática por requisito;
 4. dimensões de variação da prática.
 
-Direção editorial é registrada separadamente. O estado `default` autoriza
-calibração contextual pelo GPT para cada microssequência ou unidade; não
-representa um preset fixo. Para comparar uma condição, crie um curso privado
+E dois alvos editoriais quantitativos flexíveis:
+
+1. palavras por resposta de autoria;
+2. palavras por unidade de estudo.
+
+Os alvos servem para comparar condições de desenho. No conteúdo, também é
+possível confrontar o alvo com a extensão observada da unidade de estudo. O
+alvo da resposta de autoria não é uma medida de conversa observada: Analytics
+não persiste transcrição. Os alvos não são mínimos ou máximos, não medem
+qualidade e não autorizam ocultar decisões, retirar conteúdo, compactar
+novidades nem atomizar unidades.
+
+Direção editorial é registrada separadamente. O estado `default` exige
+calibração contextual automática pelo GPT para cada microssequência ou unidade;
+não representa um preset fixo. Para comparar uma condição, crie um curso privado
 independente, fixe deliberadamente os valores pertinentes e documente o que
 deve permanecer igual. Uma definição do pesquisador prevalece sobre a
 calibração contextual. Não existe entidade de variante nem bloqueio
@@ -83,8 +95,9 @@ relevantes. Não é necessário criar histórico universal ou ledger no produto.
 
 Analytics oferece duas leituras por curso, parte, microssequência ou unidade de estudo:
 
-- **Desenho**: unidades de estudo, parâmetros efetivos, unidades de análise,
-  introduções, formas explicativas, componentes, prática, variação e fontes por papel;
+- **Desenho**: unidades de estudo, parâmetros efetivos, extensão observada do
+  conteúdo, unidades de análise, introduções, usos, retomadas, formas
+  explicativas, componentes, prática, variação e fontes por papel;
 - **Autoria**: observações, parâmetros definidos, unidades revisadas manualmente e
   origem observável de criação e última revisão.
 

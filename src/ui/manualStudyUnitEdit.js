@@ -280,7 +280,7 @@ export function applyManualStudyUnitEdit(studyUnit = {}, targetId = "study_unit"
     "$.manualEdit.studyUnit"
   );
   if (!validation.valid) {
-    throw new Error(`A edição deixou a Unidade de estudo inválida: ${validation.errors[0]}`);
+    throw new Error("A edição deixou a unidade de estudo incompleta ou inválida.");
   }
   return nextStudyUnit;
 }

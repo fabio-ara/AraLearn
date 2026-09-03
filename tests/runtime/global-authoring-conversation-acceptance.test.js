@@ -218,6 +218,40 @@ test("a jornada progride de proposta inspecionável a aprovação e só então c
   }
 });
 
+test("o estado inicial leva a calibração contextual silenciosa antes de cada materialização", () => {
+  for (const part of [1, 2]) {
+    const artifact = fixture.artifacts[`parte-${part}-v2`];
+    const preparationIndex = fixture.toolTrace.findIndex(({ task, arguments: input }) =>
+      task === "preparar_materializacao" && input?.parte === part);
+    const materializationIndex = fixture.toolTrace.findIndex(({ task, part: position }) =>
+      task === "materializar_parte" && position === part);
+    const calibrations = fixture.toolTrace.slice(preparationIndex + 1, materializationIndex)
+      .filter(({ task }) => task === "ajustar_configuracao");
+    assert.deepEqual(
+      calibrations.map(({ arguments: input }) => input.microssequencia),
+      artifact.microsequences
+    );
+    for (const { arguments: input } of calibrations) {
+      assert.equal(input.condicao, "automatica");
+      assert.deepEqual(Object.keys(input.parametrosPedagogicos).sort(), [
+        "dimensoesDeVariacaoDaPratica",
+        "formasDeExplicacao",
+        "minimoDePraticasPorRequisito",
+        "tetoNovasUnidadesDeAnalise"
+      ]);
+      assert.deepEqual(Object.keys(input.parametrosEditoriais).sort(), [
+        "alvoDePalavrasPorResposta",
+        "alvoDePalavrasPorUnidade"
+      ]);
+      assert.ok(input.direcaoEditorial.length > 30);
+    }
+  }
+  assert.doesNotMatch(
+    fixture.conversation.map(({ text }) => text).join("\n"),
+    /calibr(?:ar|ação)|parâmetro|default/iu
+  );
+});
+
 test("toda aprovação corresponde ao mesmo artefato que a pessoa pôde inspecionar", () => {
   const inspectedBefore = (artifactId, turn) => fixture.conversation.some((message) =>
     message.speaker === "assistente" &&
@@ -359,6 +393,7 @@ test("a fonte técnica e o repertório acumulado chegam à segunda parte no pape
   assert.match(sourceTurn, /não será tratada como evidência de cobrança/u);
 
   const sourceCall = fixture.toolTrace.find(({ task }) => task === "manter_fonte");
+  assert.equal(sourceCall.arguments.metadados.papel, "tecnica_conceitual");
   assert.equal(Object.hasOwn(sourceCall.arguments, "papelNoCurso"), false);
   assert.equal(fixture.artifacts["parte-2-v2"].sourceUse.role, "tecnica_conceitual");
   assert.equal(fixture.artifacts["parte-2-v2"].sourceUse.relation, "supported_by");
@@ -411,7 +446,7 @@ test("as duas inspeções contêm conteúdo estudável, não apenas estrutura ou
 });
 
 test("as instruções primárias não restauram o fluxo parte por parte nem o metamodelo", () => {
-  assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1500);
+  assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1000);
   assert.doesNotMatch(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
     /Planeje uma Parte por vez|proponha somente a próxima Parte|grave exatamente uma Parte/iu

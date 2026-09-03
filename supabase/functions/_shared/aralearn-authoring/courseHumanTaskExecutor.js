@@ -93,7 +93,7 @@ async function allCourseMatches({ adapter, principal, title, deadlineAt }) {
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "A paginação de Cursos repetiu o mesmo ponto."
+        "A paginação de cursos repetiu o mesmo ponto."
       );
     }
     seenCursors.add(key);
@@ -106,32 +106,32 @@ async function allCourseMatches({ adapter, principal, title, deadlineAt }) {
       deadlineAt
     });
     if (!plainObject(page) || !Array.isArray(page.items)) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de Cursos é inválida.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de cursos é inválida.");
     }
     matches.push(...page.items.filter((item) =>
       plainObject(item) && typeof item.courseId === "string" && typeof item.title === "string"));
     if (page.hasMore !== true) return matches;
     if (!plainObject(page.nextCursor)) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de Cursos perdeu o cursor.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de cursos perdeu o ponto de retomada.");
     }
     cursor = page.nextCursor;
   }
   throw new AuthoringApiError(
     503,
     "course_service_unavailable",
-    "A busca de Cursos excedeu o limite seguro de paginação."
+    "A busca de cursos excedeu o limite seguro de paginação."
   );
 }
 
 async function resolveCourse({ adapter, principal, course, deadlineAt }) {
-  const reference = humanReference(course, "O Curso", { stringOnly: true });
+  const reference = humanReference(course, "O curso", { stringOnly: true });
   const listed = uniqueBy(await allCourseMatches({
     adapter,
     principal,
     title: reference.value,
     deadlineAt
   }), (item) => item.courseId);
-  const match = textMatches(listed, reference, (item) => [item.title], "O Curso");
+  const match = textMatches(listed, reference, (item) => [item.title], "O curso");
   const detail = await adapter.getCourse({
     principal,
     courseId: match.courseId,
@@ -141,7 +141,7 @@ async function resolveCourse({ adapter, principal, course, deadlineAt }) {
   const revision = Number(detail?.revision ?? detail?.courseRevision);
   if (!plainObject(detail) || detail.courseId !== match.courseId ||
       !Number.isSafeInteger(revision) || revision < 1) {
-    throw new AuthoringApiError(503, "course_service_unavailable", "O Curso localizado não pôde ser relido.");
+    throw new AuthoringApiError(503, "course_service_unavailable", "O curso localizado não pôde ser relido.");
   }
   return {
     id: match.courseId,
@@ -152,14 +152,14 @@ async function resolveCourse({ adapter, principal, course, deadlineAt }) {
 }
 
 function resolvePart(planRead, referenceValue) {
-  const reference = humanReference(referenceValue, "A Parte");
+  const reference = humanReference(referenceValue, "A parte");
   const parts = Array.isArray(planRead?.plan?.parts) ? planRead.plan.parts : [];
   return positionedMatch(
     parts,
     reference,
     (part) => part.position,
     (part) => [part.title],
-    "A Parte"
+    "A parte"
   );
 }
 
@@ -173,7 +173,7 @@ function partMicrosequences(part) {
 }
 
 function resolveMicrosequence(planRead, part, referenceValue) {
-  const reference = humanReference(referenceValue, "A Microssequência");
+  const reference = humanReference(referenceValue, "A microssequência");
   const candidates = part
     ? partMicrosequences(part)
     : (Array.isArray(planRead?.plan?.parts) ? planRead.plan.parts : [])
@@ -183,7 +183,7 @@ function resolveMicrosequence(planRead, part, referenceValue) {
     reference,
     (microsequence) => microsequence.productionPosition ?? microsequence.position,
     (microsequence) => [microsequence.title],
-    "A Microssequência"
+    "A microssequência"
   );
 }
 
@@ -211,7 +211,7 @@ async function listStudyUnits({
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "A paginação de Unidades repetiu o mesmo ponto."
+        "A paginação de unidades de estudo repetiu o mesmo ponto."
       );
     }
     seenCursors.add(cursorKey);
@@ -229,7 +229,7 @@ async function listStudyUnits({
       deadlineAt
     });
     if (!plainObject(page) || !Array.isArray(page.items)) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de Unidades é inválida.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de unidades de estudo é inválida.");
     }
     for (const item of page.items) {
       const id = item?.studyUnit?.id;
@@ -240,56 +240,56 @@ async function listStudyUnits({
     if (page.hasMore !== true) return items;
     const next = page.nextCursor?.studyUnitId;
     if (typeof next !== "string" || !next) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de Unidades perdeu o cursor.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "A lista de unidades de estudo perdeu o ponto de retomada.");
     }
     cursorStudyUnitId = next;
   }
   throw new AuthoringApiError(
     503,
     "course_service_unavailable",
-    "A busca de Unidades excedeu o limite seguro de paginação."
+    "A busca de unidades de estudo excedeu o limite seguro de paginação."
   );
 }
 
 function resolveStudyUnitReferences(items, values) {
   if (!Array.isArray(values) || values.length > 64) {
-    throw new AuthoringApiError(422, "invalid_human_reference", "As Unidades precisam formar uma seleção limitada.");
+    throw new AuthoringApiError(422, "invalid_human_reference", "As unidades de estudo precisam formar uma seleção limitada.");
   }
   const resolved = values.map((value) => {
-    const reference = humanReference(value, "A Unidade");
+    const reference = humanReference(value, "A unidade de estudo");
     if (reference.kind === "text") {
-      return textMatches(items, reference, (item) => [item.studyUnit?.title], "A Unidade");
+      return textMatches(items, reference, (item) => [item.studyUnit?.title], "A unidade de estudo");
     }
     const ordinal = items.filter((item) => Number(item.ordinal) === reference.value);
     if (ordinal.length === 1) return ordinal[0];
-    if (ordinal.length > 1) ambiguous("A Unidade", ordinal.length);
+    if (ordinal.length > 1) ambiguous("A unidade de estudo", ordinal.length);
     return positionedMatch(
       items,
       reference,
       (_item, index) => index,
       (item) => [item.studyUnit?.title],
-      "A Unidade"
+      "A unidade de estudo"
     );
   });
   if (new Set(resolved.map((item) => item.studyUnit.id)).size !== resolved.length) {
     throw new AuthoringApiError(
       422,
       "duplicate_human_reference",
-      "A seleção repete a mesma Unidade."
+      "A seleção repete a mesma unidade de estudo."
     );
   }
   return resolved;
 }
 
 async function resolveSource({ adapter, principal, course, source, deadlineAt }) {
-  const reference = humanReference(source, "A Fonte");
+  const reference = humanReference(source, "A fonte");
   const items = [];
   const seenCursors = new Set();
   let cursor = null;
   for (let pageIndex = 0; pageIndex < MAX_REFERENCE_PAGES; pageIndex += 1) {
     const key = cursor ?? "null";
     if (seenCursors.has(key)) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "A paginação de Fontes repetiu o mesmo ponto.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "A paginação de fontes repetiu o mesmo ponto.");
     }
     seenCursors.add(key);
     const page = await adapter.getCourseSources({
@@ -302,12 +302,12 @@ async function resolveSource({ adapter, principal, course, source, deadlineAt })
       deadlineAt
     });
     if (!plainObject(page) || !Array.isArray(page.items)) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "O catálogo de Fontes é inválido.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "O catálogo de fontes é inválido.");
     }
     items.push(...page.items);
     if (page.nextCursor == null) break;
     if (typeof page.nextCursor !== "string" || !page.nextCursor) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "O catálogo de Fontes perdeu o cursor.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "O catálogo de fontes perdeu o ponto de retomada.");
     }
     cursor = page.nextCursor;
   }
@@ -316,14 +316,14 @@ async function resolveSource({ adapter, principal, course, source, deadlineAt })
     reference,
     (_item, index) => index,
     (item) => [item.title, item.citationText],
-    "A Fonte"
+    "A fonte"
   );
 }
 
 async function resolveInternalSource({ adapter, principal, course, sourceId, deadlineAt }) {
   if (typeof sourceId !== "string" || sourceId !== sourceId.trim() || !sourceId ||
       [...sourceId].length > 240) {
-    throw new TypeError("A identidade interna da Fonte é inválida.");
+    throw new TypeError("A identidade interna da fonte é inválida.");
   }
   const read = await adapter.getCourseSources({
     principal,
@@ -345,7 +345,7 @@ async function resolveInternalSource({ adapter, principal, course, sourceId, dea
     throw new AuthoringApiError(
       503,
       "course_service_unavailable",
-      "A Fonte recém-gravada não pôde ser relida."
+      "A fonte recém-gravada não pôde ser relida."
     );
   }
   return source;
@@ -368,7 +368,7 @@ export async function resolveHumanCourseContext({
 }) {
   if (!adapter || !principal) throw new TypeError("Dependências da resolução humana são inválidas.");
   if (source !== null && internalSourceId !== null) {
-    throw new TypeError("A resolução da Fonte recebeu duas autoridades.");
+    throw new TypeError("A resolução da fonte recebeu duas autoridades.");
   }
   const resolvedCourse = await resolveCourse({ adapter, principal, course, deadlineAt });
   let plan = null;
@@ -383,7 +383,7 @@ export async function resolveHumanCourseContext({
     });
     const revision = Number(plan?.courseRevision);
     if (!plainObject(plan?.plan) || !Number.isSafeInteger(revision) || revision < 1) {
-      throw new AuthoringApiError(503, "course_service_unavailable", "O planejamento do Curso é inválido.");
+      throw new AuthoringApiError(503, "course_service_unavailable", "O planejamento do curso é inválido.");
     }
     resolvedCourse.revision = revision;
     if (typeof plan.plan.title === "string" && plan.plan.title) resolvedCourse.title = plan.plan.title;

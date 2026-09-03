@@ -102,9 +102,9 @@ test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técni
     COURSE_HUMAN_TASK_CATALOG_HEADER
   );
   const payload = await response.json();
-  assert.match(payload.result, /Retomei o Curso “Redes para iniciantes”/u);
+  assert.match(payload.result, /Retomei o curso “Redes para iniciantes”/u);
   assert.match(payload.deepLink, /section=planning/u);
-  assert.equal(payload.nextDecision, "Quer propor a primeira Parte?");
+  assert.equal(payload.nextDecision, "Quer propor o mapa curricular global?");
   assert.deepEqual(Object.keys(payload).sort(), ["context", "deepLink", "nextDecision", "result"]);
   assert.doesNotMatch(JSON.stringify({
     result: payload.result,
@@ -304,7 +304,7 @@ test("Actions não manda repetir incorporação de PDF com escrita incerta", asy
   assert.equal(payload.error.retryable, false);
   assert.equal(
     payload.nextDecision,
-    "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF."
+    "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
   );
 });
 
@@ -358,6 +358,7 @@ test("#272 transporte de PDF aceita as origens oficiais sem expor a URL", async 
     })(request("incorporar_pdf_como_fonte", {
       curso: "Redes para iniciantes",
       titulo: "Manual do proxy",
+      papel: "tecnica_conceitual",
       intencao: "Manter o PDF como Fonte.",
       openaiFileIdRefs: [{
         id: "file-official",

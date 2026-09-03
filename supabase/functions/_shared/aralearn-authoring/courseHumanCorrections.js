@@ -32,7 +32,7 @@ function microsequenceId(item) {
   const id = item?.curriculumPath?.didacticMicrosequence?.id ??
     item?.didacticMicrosequenceId ?? item?.microsequenceId;
   if (typeof id !== "string" || !id) {
-    fail("course_service_unavailable", "A Unidade não informa sua Microssequência.", 503);
+    fail("course_service_unavailable", "A unidade de estudo não informa sua microssequência.", 503);
   }
   return id;
 }
@@ -98,22 +98,22 @@ async function loadCorrectionState({
     if (!validation.valid) {
       fail(
         "invalid_human_study_unit",
-        `A correção da Unidade ${index + 1} é inválida: ${validation.errors.join(" ")}`
+        `A correção da unidade de estudo ${index + 1} é inválida: ${validation.errors.join(" ")}`
       );
     }
     const currentRole = unit.studyUnit?.role;
     if (!new Set(["theory", "practice"]).has(currentRole)) {
       fail(
         "course_service_unavailable",
-        "A Unidade não informa sua função instrucional corrente.",
+        "A unidade de estudo não informa sua função instrucional corrente.",
         503
       );
     }
     if (validation.normalized.role !== currentRole) {
       fail(
         "invalid_human_study_unit",
-        "Uma correção focal não pode mudar a função instrucional da Unidade; " +
-          "rematerialize a Parte para redistribuir teoria e prática."
+        "Uma correção focal não pode mudar a função instrucional da unidade de estudo; " +
+          "rematerialize a parte para redistribuir teoria e prática."
       );
     }
     const content = structuredClone(validation.normalized);
@@ -183,14 +183,14 @@ export async function applyHumanCourseCorrections({
   });
   return {
     result: corrections.length === 1
-      ? "A correção foi aplicada à Unidade afetada."
-      : `As ${corrections.length} correções coerentes foram aplicadas às Unidades afetadas.`,
+      ? "A correção foi aplicada à unidade de estudo afetada."
+      : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`,
     deepLink: correctedCourseId && firstCorrectedStudyUnitId && adapter.publicAppUrl
       ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
         `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}` +
         `?section=content&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
       : receipt.deepLink ?? null,
-    nextDecision: "Quer reinspecionar o reparo ou rematerializar a Parte para aplicar uma configuração alterada?",
+    nextDecision: "Quer reinspecionar o reparo ou rematerializar a parte para aplicar uma configuração alterada?",
     context: {
       correctionCount: corrections.length,
       sourceMode: corrections.some(({ fontes }) => fontes !== undefined)

@@ -461,7 +461,10 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     "mutate_course_personal_state_v1",
     "saveCommentForPath",
     "deleteCommentForPath",
-    "loadCommentForPath"
+    "loadCommentForPath",
+    "aralearn.course-instructional-plan.v2",
+    "get_owned_course_instructional_plan_for_actor_v2",
+    "materialize_course_authoring_part_for_actor_v1"
   ]) {
     assert.match(source, new RegExp(removed, "u"));
   }
@@ -474,11 +477,18 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260903025658");
-  assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), true);
+  assert.equal(manifest.schemaRevision, "20260903160000");
+  assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v3"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-curricular-map-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-analysis-repertoire-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-part-save-v1"), true);
   assert.equal(
     manifest.requiredFeatures.includes("course-authoring-part-materialization-atomic-v1"),
+    false
+  );
+  assert.equal(
+    manifest.requiredFeatures.includes("course-authoring-part-materialization-atomic-v2"),
     true
   );
   assert.equal(manifest.requiredFeatures.includes("course-study-unit-inspection-v2"), true);
@@ -517,6 +527,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-variant-comparison-list-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-source-pdf-attachments-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-human-locators-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-source-roles-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), false);
@@ -533,8 +544,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260903025658_harden_course_source_pdf_lifecycle.sql",
-    revision: "20260903025658"
+    fileName: "20260903160000_global_curriculum_authoring_flow.sql",
+    revision: "20260903160000"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
