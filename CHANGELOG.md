@@ -4,6 +4,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.58] - 2026-09-03
+
+### Corrigido
+
+- orientações e falhas de autoria usam linguagem declarativa e humana, sem
+  induzir aprovação, expor maquinaria ou transformar o mapa global em
+  estatísticas estruturais no chat.
+
 ## [0.0.57] - 2026-09-03
 
 ### Alterado

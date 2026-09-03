@@ -181,6 +181,7 @@ test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.1");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -232,13 +233,21 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.equal(
     openApi.info.description,
-    "Opera Cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
+    "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
   assert.match(openApi.info.description, /mapa completo de módulos, lições e microssequências/iu);
-  assert.match(openApi.info.description, /aprovação vale só para o apresentado/iu);
-  assert.match(openApi.info.description, /parte operacional.*sem mudar o currículo/iu);
-  assert.match(openApi.info.description, /português natural.*pessoa autora.*público estudante/iu);
+  assert.match(openApi.info.description, /decisão da pessoa autora cobre o mapa apresentado/iu);
+  assert.match(openApi.info.description, /Partes são lotes operacionais.*sem alterar o currículo/iu);
+  assert.match(openApi.info.description, /pessoa autora.*público estudante.*minúsculas/iu);
+  assert.match(openApi.info.description, /não estatísticas da estrutura/iu);
+  assert.doesNotMatch(
+    openApi.info.description,
+    /aprovada?,?\s+materialize|calibre silenciosamente|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
+  );
+  for (const name of ["salvar_parte", "materializar_parte"]) {
+    assert.doesNotMatch(operation(name).description, /aprovad/iu);
+  }
   assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1000);
   assert.ok(Object.hasOwn(
     operation("consultar_componentes").requestBody.content["application/json"]

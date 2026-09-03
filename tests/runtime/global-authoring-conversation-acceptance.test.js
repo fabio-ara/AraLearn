@@ -335,6 +335,10 @@ test("o chat é curto, leigo e trata o autor como autor", () => {
   assert.doesNotMatch(publicText, /\b(?:Curso|Parte|Fonte|Microssequência|Unidade de estudo)\b/u);
   assert.doesNotMatch(publicText, /arquitetura|backend|metamodelo|mecânica do AraLearn/iu);
   assert.doesNotMatch(publicText, /quantas? (?:unidades|microssequências)|quantidade de (?:unidades|microssequências)/iu);
+  assert.doesNotMatch(
+    publicText,
+    /\b(?:\d+|um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|vinte e quatro)\s+(?:módulos|lições|microssequências)\b/iu
+  );
   assert.match(fixture.conversation.find(({ turn }) => turn === 2).text, /mapa global/u);
   assert.match(fixture.conversation.find(({ turn }) => turn === 4).text, /cobertos no mapa completo/u);
   assert.match(fixture.conversation.find(({ turn }) => turn === 10).text, /^Primeira parte produzida\./u);
@@ -457,8 +461,18 @@ test("as instruções primárias não restauram o fluxo parte por parte nem o me
   );
   assert.match(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /estado default.*calibre cada microssequência ou unidade.*assunto e mapa/iu
+    /estado default.*calibração varia por microssequência ou unidade.*assunto e mapa/iu
   );
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /condições fixadas pelo pesquisador prevalecem/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /substantivos comuns em minúsculas/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não estatísticas da estrutura/iu);
+  assert.match(
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    /Falhas.*impacto.*retomada.*linguagem humana/iu
+  );
+  assert.doesNotMatch(
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    /aprovada?,?\s+materialize|calibre silenciosamente|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
+  );
   assert.doesNotMatch(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /concurso|banca|macete de prova/iu);
 });

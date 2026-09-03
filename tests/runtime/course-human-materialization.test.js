@@ -435,7 +435,18 @@ test("materialização exige uma decisão contextual para valores ainda no padr�
     course: "Curso de Redes",
     part: 1,
     units: [unit()]
-  }), (error) => error.code === "human_materialization_contextual_calibration_required");
+  }), (error) => {
+    assert.equal(error.code, "human_materialization_contextual_calibration_required");
+    assert.equal(
+      error.message,
+      "A calibração contextual desta microssequência ainda não foi definida."
+    );
+    assert.doesNotMatch(
+      error.message,
+      /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+    );
+    return true;
+  });
   assert.deepEqual(value.calls, []);
 });
 

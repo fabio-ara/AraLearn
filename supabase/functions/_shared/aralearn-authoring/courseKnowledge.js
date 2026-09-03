@@ -1,10 +1,11 @@
 const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
-  "Confirme objetivo, público, pré-requisitos, escopo e fontes. Antes do conteúdo, proponha o mapa completo de módulos, lições e microssequências; síntese no chat, detalhe inspecionável.",
-  "A aprovação vale só para o apresentado. Depois do mapa, apresente uma parte operacional, que agrupa produção sem mudar o currículo; aprovada, materialize e dê link e próximo passo.",
-  "No estado default, calibre cada microssequência ou unidade pelo assunto e mapa; condições fixadas pelo pesquisador prevalecem. Use o repertório para distinguir novidade, uso e retomada; ensine dependências antes de exigi-las.",
-  "Crie unidades focalizadas, conectadas e suficientes, sem resumo denso nem fragmentação; combine explicação e prática pela função. Escolha componentes pela função e fontes pelo papel. Use português natural, pessoa autora e público estudante; no chat, só síntese e decisão."
+  "A autoria parte de objetivo, público, pré-requisitos, escopo e fontes e segue para o mapa completo de módulos, lições e microssequências. O chat resume temas e progressão; o detalhe fica no AraLearn.",
+  "A decisão da pessoa autora cobre o mapa apresentado; conteúdo futuro é uma etapa distinta. Partes são lotes operacionais posteriores e podem mudar sem alterar o currículo.",
+  "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa; condições fixadas pelo pesquisador prevalecem. O repertório distingue novidade, uso e retomada; dependências vêm antes do uso.",
+  "Unidades focalizadas e conectadas combinam explicação e prática e usam componentes e fontes por função. A conversa separa pessoa autora de público estudante e mantém substantivos comuns em minúsculas.",
+  "O resumo global apresenta assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas aparecem à pessoa autora como impacto e retomada em linguagem humana."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({

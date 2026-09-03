@@ -355,7 +355,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.notEqual(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.5");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.1");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
@@ -587,7 +587,7 @@ test("salvar_parte agrupa microssequências existentes sem recriar o mapa curric
     name: "salvar_parte",
     rawArguments: authoringPartArguments("parte-1-v1")
   });
-  assert.match(firstPart.nextDecision, /produza agora/iu);
+  assert.equal(firstPart.nextDecision, "A parte está pronta para leitura focal e produção.");
   assert.doesNotMatch(firstPart.nextDecision, /\?/u);
   await executeHumanCourseTask({
     adapter: value,
@@ -931,6 +931,14 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   });
 
   assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
+  assert.equal(
+    output.nextDecision,
+    "A parte está pronta para produção e inspeção do resultado."
+  );
+  assert.doesNotMatch(
+    output.nextDecision,
+    /silenciosamente|aprovad|produza|materialize|ferramenta|schema|contrato|servidor/iu
+  );
   assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
   assert.deepEqual(output.context.parte.ideiasEstabelecidas, [{
     posicao: 1,
@@ -1405,6 +1413,43 @@ test("MCP não manda repetir incorporação de PDF com escrita incerta", async (
   assert.equal(
     payload.result.structuredContent.nextDecision,
     "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
+  );
+});
+
+test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async listCourses() {
+        throw new AuthoringApiError(
+          409,
+          "human_materialization_contextual_calibration_required",
+          "A calibração contextual desta microssequência ainda não foi definida."
+        );
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+  const payload = await response.json();
+  const publicText = [
+    payload.result.content[0].text,
+    payload.result.structuredContent.nextDecision
+  ].join(" ");
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(
+    payload.result.structuredContent.nextDecision,
+    "A próxima etapa é definir a calibração contextual antes de produzir a parte."
+  );
+  assert.doesNotMatch(
+    publicText,
+    /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
   );
 });
 

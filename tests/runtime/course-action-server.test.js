@@ -308,6 +308,29 @@ test("Actions não manda repetir incorporação de PDF com escrita incerta", asy
   );
 });
 
+test("Actions apresenta falha de calibração sem narrar a maquinaria", async () => {
+  const response = await createHandler({
+    async listCourses() {
+      throw new AuthoringApiError(
+        409,
+        "human_materialization_contextual_calibration_required",
+        "A calibração contextual desta microssequência ainda não foi definida."
+      );
+    }
+  })(request("retomar_curso", { titulo: "Redes para iniciantes" }));
+
+  assert.equal(response.status, 409);
+  const payload = await response.json();
+  assert.equal(
+    payload.nextDecision,
+    "A próxima etapa é definir a calibração contextual antes de produzir a parte."
+  );
+  assert.doesNotMatch(
+    `${payload.error.message} ${payload.nextDecision}`,
+    /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+  );
+});
+
 test("#272 transporte de PDF exige o objeto oficial e rejeita origem não confiável", async () => {
   const invalid = await createHandler()(request("incorporar_pdf_como_fonte", {
     curso: "Redes para iniciantes",
