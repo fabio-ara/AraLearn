@@ -280,16 +280,16 @@ function toolFailure(
     : normalized.code === "human_reference_not_found"
       ? "Confira o título ou a posição e tente novamente."
       : normalized.code === "human_task_result_too_large"
-        ? "Escolha um Curso, Parte, Microssequência ou Unidade mais específica."
+        ? "Escolha um curso, uma parte, uma microssequência ou uma unidade de estudo mais específica."
         : normalized.code === "course_source_pdf_write_uncertain"
-          ? "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF."
+          ? "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
         : retryable
           ? "Tente novamente sem mudar a intenção da tarefa."
           : null;
   if (failure.writeState === "complete") {
     publicError.message = "A escrita pode ter sido concluída, mas a resposta excedeu o limite.";
     publicError.retryable = false;
-    nextDecision = "Releia o Curso antes de decidir se ainda falta alguma mudança.";
+    nextDecision = "Releia o curso antes de decidir se ainda falta alguma mudança.";
   }
   const structuredContent = { error: publicError, nextDecision };
   return {

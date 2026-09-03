@@ -194,7 +194,7 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
       ) loaded;
     `));
     const read = readOutput.split(/\r?\n/u).at(-1);
-    assert.equal(read, "aralearn.course-design.v2|4|1-3e5629f8|3");
+    assert.equal(read, "aralearn.course-design.v2|6|1-3e5629f8|3");
   } finally {
     await cleanupUser(ownerId, email);
   }
@@ -414,7 +414,8 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
         jsonb_build_object(
           'mode','save','sourceId','source-lock','expectedSourceRevision',0,
           'source',jsonb_build_object(
-            'kind','document','title','Fonte do lock de PDF',
+            'kind','document','sourceRole','technical_conceptual',
+            'title','Fonte do lock de PDF',
             'authorship',null,'publicationDate',null,'identifier',null,
             'language',null,'citationText',null,'url',null,
             'editionOrVersion',null,'origin','author_provided',
@@ -1091,10 +1092,11 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
         ) end
       from generate_series(1,60) unit_value;
       insert into private.course_authoring_parts(
-        id,course_id,instructional_plan_id,position,title,intent
+        id,course_id,instructional_plan_id,position,title,intent,progression
       ) values(
         '${partId}','${courseId}','${planId}',0,
-        'Parte única','Produzir todas as Unidades'
+        'Parte única','Produzir todas as Unidades',
+        '["Inspecionar as unidades em ordem curricular."]'::jsonb
       );
       insert into private.course_authoring_part_didactic_microsequences(
         course_id,authoring_part_id,didactic_microsequence_id,

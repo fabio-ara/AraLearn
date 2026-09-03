@@ -81,12 +81,13 @@ async function deleteStorageObjects(config, paths) {
 function sourceDocument() {
   return {
     kind: "document",
-    title: "PDF descartável da prova de Storage",
+    sourceRole: "technical_conceptual",
+    title: "PDF descartável da prova de armazenamento",
     authorship: "AraLearn",
     publicationDate: "2026-09-02",
     identifier: null,
     language: "pt-BR",
-    citationText: "AraLearn. PDF descartável da prova de Storage, 2026.",
+    citationText: "AraLearn. PDF descartável da prova de armazenamento, 2026.",
     url: null,
     editionOrVersion: null,
     origin: "author_provided",
@@ -263,7 +264,7 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
     userId = user.id;
     const course = await rpc(config, "create_course_for_actor_v1", {
       p_actor_id: userId,
-      p_title: `Curso descartável de Storage ${marker.slice(0, 8)}`,
+      p_title: `Curso descartável de armazenamento ${marker.slice(0, 8)}`,
       p_objective: "Provar vínculo, remoção, reativação e coleta segura de um PDF.",
       p_request_id: randomUUID()
     });

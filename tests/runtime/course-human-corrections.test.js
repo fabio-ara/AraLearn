@@ -144,7 +144,7 @@ test("#272 correções MCP multi-Unit preservam Fontes e usam composição gené
   assert.match(commit.requestId, /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u);
   assert.equal(receipt.context.correctionCount, 2);
   assert.equal(receipt.context.sourceMode, "preserved");
-  assert.match(receipt.nextDecision, /rematerializar a Parte/u);
+  assert.match(receipt.nextDecision, /rematerializar a parte/u);
   assert.equal(
     receipt.deepLink,
     `https://app.example/#/authoring/courses/${COURSE_ID}` +

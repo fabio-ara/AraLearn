@@ -1,0 +1,660 @@
+{
+  "course": {
+    "id": "10000000-0000-4000-8000-000000000101",
+    "title": "Redes de computadores para iniciantes",
+    "revision": 12
+  },
+  "part": {
+    "id": "20000000-0000-4000-8000-000000000101",
+    "position": 1,
+    "title": "Comutação em uma rede local",
+    "version": 3,
+    "microsequence": {
+      "id": "micro-switch-ethernet",
+      "position": 0,
+      "title": "Como um switch encaminha quadros"
+    }
+  },
+  "repertoire": [
+    {
+      "id": "30000000-0000-4000-8000-000000000101",
+      "name": "quadro Ethernet",
+      "description": "Unidade de transmissão da camada de enlace usada nesta rede local.",
+      "status": "established",
+      "introducedAt": {
+        "studyUnitId": "70000000-0000-4000-8000-000000000101",
+        "title": "O quadro que circula na rede"
+      }
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000102",
+      "name": "endereço MAC",
+      "description": "Identificador de origem ou destino presente no quadro Ethernet.",
+      "status": "established",
+      "introducedAt": {
+        "studyUnitId": "70000000-0000-4000-8000-000000000102",
+        "title": "Origem e destino no quadro"
+      }
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000103",
+      "name": "porta do switch",
+      "description": "Conexão do switch pela qual um quadro entra ou sai.",
+      "status": "established",
+      "introducedAt": {
+        "studyUnitId": "70000000-0000-4000-8000-000000000103",
+        "title": "As portas de entrada e saída"
+      }
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000104",
+      "name": "tabela MAC",
+      "description": "Memória interna que relaciona endereços MAC às portas do switch.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000105",
+      "name": "associação entre endereço MAC e porta",
+      "description": "Entrada da tabela que registra por qual porta um endereço MAC foi observado.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000106",
+      "name": "aprendizagem pelo endereço de origem",
+      "description": "Operação de aprender ou atualizar uma associação observando a origem do quadro recebido.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000107",
+      "name": "consulta ao endereço de destino",
+      "description": "Consulta da tabela MAC usando o destino do quadro para decidir o encaminhamento.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000108",
+      "name": "encaminhamento para destino conhecido",
+      "description": "Envio do quadro somente pela porta associada ao destino conhecido.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000109",
+      "name": "flooding para destino desconhecido",
+      "description": "Envio do quadro por todas as portas elegíveis, exceto a de entrada, quando o destino não consta da tabela.",
+      "status": "new"
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000110",
+      "name": "aprendizagem a partir do retorno",
+      "description": "Novo quadro de resposta permite aprender a associação do dispositivo que antes era desconhecido.",
+      "status": "new"
+    }
+  ],
+  "acceptance": {
+    "newIdeaCeiling": 2,
+    "expectedNewIdeas": [
+      "tabela MAC",
+      "associação entre endereço MAC e porta",
+      "aprendizagem pelo endereço de origem",
+      "consulta ao endereço de destino",
+      "encaminhamento para destino conhecido",
+      "flooding para destino desconhecido",
+      "aprendizagem a partir do retorno"
+    ],
+    "expectedEstablishedIdeas": [
+      "quadro Ethernet",
+      "endereço MAC",
+      "porta do switch"
+    ],
+    "renderedProgression": [
+      "A tabela começa vazia",
+      "A tabela MAC é a memória",
+      "O switch observa primeiro a origem",
+      "Complete a associação que falta",
+      "A origem ensina; o destino orienta",
+      "Por qual porta o quadro deve sair?",
+      "Quando o destino não aparece na tabela",
+      "Conhecido e desconhecido lado a lado",
+      "A resposta também ensina",
+      "A tabela muda a cada quadro",
+      "Uma etapa já está resolvida",
+      "Analise a sequência completa"
+    ],
+    "componentFunctions": {
+      "stateAndChange": [2, 3, 4, 8, 10, 11, 12],
+      "quickPrediction": [1, 6, 10, 12],
+      "focusedExplanation": [2, 3, 5, 7, 9]
+    }
+  },
+  "units": [
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 1,
+      "conteudo": {
+        "title": "A tabela começa vazia",
+        "role": "practice",
+        "content": [
+          {
+            "id": "empty-state",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "O computador A envia um quadro ao computador B. O quadro entra pela porta 1 e a memória do switch ainda está vazia.",
+              "caption": "Estado inicial",
+              "layout": "compact",
+              "columns": ["Endereço observado", "Porta associada"],
+              "rows": [["—", "—"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "empty-state-prediction",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Que informação ajudaria o switch a não enviar para sempre todos os quadros por todas as portas?",
+            "selectionMode": "single",
+            "selectionCriterion": "best",
+            "options": [
+              {
+                "id": "remember-source-port",
+                "text": "Lembrar qual endereço apareceu em cada porta.",
+                "feedback": "Essa memória permitirá encaminhamentos seletivos depois."
+              },
+              {
+                "id": "remember-payload",
+                "text": "Guardar uma cópia permanente do conteúdo de cada quadro.",
+                "feedback": "O conteúdo transportado não informa por qual porta um destino pode ser alcançado."
+              },
+              {
+                "id": "rename-ports",
+                "text": "Trocar o número das portas a cada transmissão.",
+                "feedback": "Mudar o nome das portas não cria conhecimento sobre os dispositivos."
+              }
+            ],
+            "answerIds": ["remember-source-port"]
+          }
+        },
+        "feedback": [],
+        "topics": ["switch Ethernet"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 2,
+      "conteudo": {
+        "title": "A tabela MAC é a memória",
+        "role": "theory",
+        "content": [
+          {
+            "id": "mac-table-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "A tabela MAC é a memória interna do switch. Cada entrada associa um endereço MAC à porta pela qual esse endereço foi observado. Ela não guarda o conteúdo do quadro."
+            }
+          },
+          {
+            "id": "mac-table-example",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Leia cada linha como uma associação entre um dispositivo e uma porta.",
+              "caption": "Exemplo de tabela MAC",
+              "layout": "compact",
+              "columns": ["Endereço MAC", "Porta"],
+              "rows": [["AA:AA", "1"], ["CC:CC", "3"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["tabela MAC"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["tabela MAC", "associação entre endereço MAC e porta"],
+        "ideiasUtilizadas": ["endereço MAC", "porta do switch"],
+        "explicacoes": [
+          {"ideia": "tabela MAC", "formas": ["plain_definition", "concrete_example"]},
+          {"ideia": "associação entre endereço MAC e porta", "formas": ["plain_definition", "representation_link"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 3,
+      "conteudo": {
+        "title": "O switch observa primeiro a origem",
+        "role": "theory",
+        "content": [
+          {
+            "id": "source-learning-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "Ao receber um quadro, o switch lê o endereço MAC de origem e registra a porta de entrada. Se o quadro de AA:AA chegou pela porta 1, a associação AA:AA ↔ porta 1 passa a constar da tabela."
+            }
+          },
+          {
+            "id": "source-learning-state",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Compare o estado antes e depois da chegada do quadro.",
+              "caption": "Mudança produzida pela origem AA:AA",
+              "columns": ["Momento", "Endereço MAC", "Porta"],
+              "rows": [["Antes", "—", "—"], ["Depois", "AA:AA", "1"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["aprendizagem MAC"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["aprendizagem pelo endereço de origem"],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta"],
+        "explicacoes": [
+          {"ideia": "aprendizagem pelo endereço de origem", "formas": ["plain_definition", "mechanism", "representation_link"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 4,
+      "conteudo": {
+        "title": "Complete a associação que falta",
+        "role": "practice",
+        "content": [
+          {
+            "id": "complete-learning-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Depois de AA:AA entrar pela porta 1, um quadro com origem CC:CC entra pela porta 3. Complete o novo estado.",
+              "columns": ["Endereço MAC", "Porta"],
+              "rows": [["AA:AA", "1"], ["CC:CC", "3"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "complete-learning-gap",
+          "package": "aralearn.response.gap",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Complete a porta associada a CC:CC.",
+            "blanks": [
+              {
+                "id": "cc-port",
+                "targetInstanceId": "complete-learning-table",
+                "targetPath": "rows[1][1]",
+                "responseMode": "choice",
+                "answer": "3",
+                "distractors": ["1", "2"]
+              }
+            ]
+          }
+        },
+        "feedback": [
+          {
+            "id": "complete-learning-feedback",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "A origem CC:CC foi observada na porta 3, por isso essa é a associação aprendida."}
+          }
+        ],
+        "topics": ["aprendizagem MAC"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 5,
+      "conteudo": {
+        "title": "A origem ensina; o destino orienta",
+        "role": "theory",
+        "content": [
+          {
+            "id": "source-destination-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "O switch usa os dois endereços com funções diferentes: observa a origem para aprender e consulta o destino na tabela para decidir a saída. Se o destino BB:BB já está associado à porta 2, o quadro segue somente por essa porta."
+            }
+          },
+          {
+            "id": "source-destination-contrast",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Compare as duas leituras feitas sobre o mesmo quadro.",
+              "columns": ["Campo do quadro", "Pergunta feita pelo switch", "Efeito"],
+              "rows": [["Origem", "Por qual porta chegou?", "Aprender ou atualizar a associação"], ["Destino", "Em qual porta está?", "Escolher a saída"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["encaminhamento Ethernet"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["consulta ao endereço de destino", "encaminhamento para destino conhecido"],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta"],
+        "explicacoes": [
+          {"ideia": "aprendizagem pelo endereço de origem", "formas": ["contrast"]},
+          {"ideia": "consulta ao endereço de destino", "formas": ["plain_definition", "mechanism", "contrast"]},
+          {"ideia": "encaminhamento para destino conhecido", "formas": ["plain_definition", "concrete_example"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 6,
+      "conteudo": {
+        "title": "Por qual porta o quadro deve sair?",
+        "role": "practice",
+        "content": [
+          {
+            "id": "known-destination-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "A tabela já contém duas associações.",
+              "columns": ["Endereço MAC", "Porta"],
+              "rows": [["AA:AA", "1"], ["BB:BB", "2"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "known-destination-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Um quadro de AA:AA para BB:BB entra pela porta 1. Por qual porta ele deve sair?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "port-1", "text": "Somente pela porta 1."},
+              {"id": "port-2", "text": "Somente pela porta 2."},
+              {"id": "all", "text": "Por todas as portas."}
+            ],
+            "answerIds": ["port-2"]
+          }
+        },
+        "feedback": [
+          {
+            "id": "known-destination-feedback",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "BB:BB é um destino conhecido e está associado à porta 2."}
+          }
+        ],
+        "topics": ["encaminhamento seletivo"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "consulta ao endereço de destino", "encaminhamento para destino conhecido"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 7,
+      "conteudo": {
+        "title": "Quando o destino não aparece na tabela",
+        "role": "theory",
+        "content": [
+          {
+            "id": "unknown-destination-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "Se a consulta pelo destino não encontra uma associação, o switch ainda não sabe qual é a porta correta. Ele faz flooding: envia o quadro pelas portas elegíveis, exceto pela porta em que o quadro entrou."
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["flooding"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["flooding para destino desconhecido"],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC"],
+        "explicacoes": [
+          {"ideia": "consulta ao endereço de destino", "formas": ["limit_or_exception"]},
+          {"ideia": "flooding para destino desconhecido", "formas": ["plain_definition", "mechanism"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 8,
+      "conteudo": {
+        "title": "Conhecido e desconhecido lado a lado",
+        "role": "theory",
+        "content": [
+          {
+            "id": "known-unknown-comparison",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "A diferença está no resultado da consulta ao destino.",
+              "caption": "Duas decisões possíveis depois da mesma consulta",
+              "columns": ["Destino na tabela?", "Decisão", "Portas de saída"],
+              "rows": [["Sim", "Encaminhamento seletivo", "Somente a porta associada"], ["Não", "Flooding", "Todas as portas elegíveis, menos a de entrada"]]
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["comparação de encaminhamento"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["porta do switch", "tabela MAC", "consulta ao endereço de destino"],
+        "explicacoes": [
+          {"ideia": "encaminhamento para destino conhecido", "formas": ["contrast", "representation_link"]},
+          {"ideia": "flooding para destino desconhecido", "formas": ["contrast", "representation_link"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 9,
+      "conteudo": {
+        "title": "A resposta também ensina",
+        "role": "theory",
+        "content": [
+          {
+            "id": "return-learning-explanation",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {
+              "text": "O flooding pode alcançar BB:BB mesmo quando sua porta era desconhecida. Quando BB:BB responde e o novo quadro entra pela porta 2, BB:BB agora aparece como origem. O switch aprende BB:BB ↔ porta 2 pelo mesmo mecanismo de observar a origem."
+            }
+          }
+        ],
+        "response": null,
+        "feedback": [],
+        "topics": ["aprendizagem pelo retorno"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "expositiva",
+        "ideiasIntroduzidas": ["aprendizagem a partir do retorno"],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "flooding para destino desconhecido"],
+        "explicacoes": [
+          {"ideia": "aprendizagem pelo endereço de origem", "formas": ["application_condition"]},
+          {"ideia": "aprendizagem a partir do retorno", "formas": ["plain_definition", "mechanism", "concrete_example"]}
+        ],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 10,
+      "conteudo": {
+        "title": "A tabela muda a cada quadro",
+        "role": "practice",
+        "content": [
+          {
+            "id": "changing-table-sequence",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Acompanhe o estado depois de cada chegada.",
+              "columns": ["Passo", "Quadro que chegou", "Entrada aprendida", "Destino conhecido?", "Ação"],
+              "rows": [["1", "AA:AA → BB:BB pela porta 1", "AA:AA ↔ 1", "Não", "Flooding"], ["2", "BB:BB → AA:AA pela porta 2", "BB:BB ↔ 2", "Sim", "Somente porta 1"], ["3", "AA:AA → BB:BB pela porta 1", "AA:AA ↔ 1", "Sim", "Somente porta 2"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "changing-table-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Em qual passo o switch aprende onde BB:BB está?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [{"id": "step-1", "text": "Passo 1."}, {"id": "step-2", "text": "Passo 2."}, {"id": "step-3", "text": "Passo 3."}],
+            "answerIds": ["step-2"]
+          }
+        },
+        "feedback": [],
+        "topics": ["mudança de estado"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem", "consulta ao endereço de destino", "encaminhamento para destino conhecido", "flooding para destino desconhecido", "aprendizagem a partir do retorno"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 11,
+      "conteudo": {
+        "title": "Uma etapa já está resolvida",
+        "role": "practice",
+        "content": [
+          {
+            "id": "faded-support-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "Use a primeira linha resolvida como apoio e complete mentalmente a decisão da segunda.",
+              "columns": ["Situação", "Aprendizagem pela origem", "Consulta ao destino", "Saída"],
+              "rows": [["AA:AA → BB:BB entra em 1; BB:BB ↔ 2 já consta", "AA:AA ↔ 1", "BB:BB encontrado em 2", "porta 2"], ["CC:CC → AA:AA entra em 3; AA:AA ↔ 1 já consta", "CC:CC ↔ 3", "AA:AA encontrado em 1", "porta 1"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "faded-support-gap",
+          "package": "aralearn.response.gap",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Complete a saída da segunda situação.",
+            "blanks": [{"id": "second-output", "targetInstanceId": "faded-support-table", "targetPath": "rows[1][3]", "responseMode": "text", "answer": "porta 1"}]
+          }
+        },
+        "feedback": [],
+        "topics": ["apoio reduzido"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem", "consulta ao endereço de destino", "encaminhamento para destino conhecido"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    },
+    {
+      "microssequencia": "Como um switch encaminha quadros",
+      "posicao": 12,
+      "conteudo": {
+        "title": "Analise a sequência completa",
+        "role": "practice",
+        "content": [
+          {
+            "id": "integrated-sequence-table",
+            "package": "aralearn.resource.table",
+            "version": "1.0.0",
+            "data": {
+              "prompt": "A tabela começa vazia. Considere os quadros na ordem indicada.",
+              "columns": ["Passo", "Quadro recebido", "Porta de entrada"],
+              "rows": [["1", "DD:DD → EE:EE", "4"], ["2", "EE:EE → DD:DD", "2"], ["3", "DD:DD → EE:EE", "4"]]
+            }
+          }
+        ],
+        "response": {
+          "id": "integrated-sequence-choice",
+          "package": "aralearn.response.choice",
+          "version": "1.0.0",
+          "data": {
+            "question": "Qual descrição reúne corretamente aprendizagem e encaminhamento nos três passos?",
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "correct-sequence", "text": "Aprende DD:DD ↔ 4 e faz flooding; aprende EE:EE ↔ 2 e envia só por 4; depois envia só por 2."},
+              {"id": "dest-learning", "text": "Aprende EE:EE no primeiro passo olhando o destino e nunca faz flooding."},
+              {"id": "always-flood", "text": "Aprende as duas associações, mas continua fazendo flooding nos três passos."}
+            ],
+            "answerIds": ["correct-sequence"]
+          }
+        },
+        "feedback": [
+          {
+            "id": "integrated-sequence-feedback",
+            "package": "aralearn.resource.paragraph",
+            "version": "1.0.0",
+            "data": {"text": "A origem de cada quadro atualiza a tabela; a consulta ao destino decide entre flooding e uma única porta."}
+          }
+        ],
+        "topics": ["prática integrada"]
+      },
+      "aplicacaoPedagogica": {
+        "modo": "pratica",
+        "ideiasIntroduzidas": [],
+        "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem", "consulta ao endereço de destino", "encaminhamento para destino conhecido", "flooding para destino desconhecido", "aprendizagem a partir do retorno"],
+        "explicacoes": [],
+        "praticas": []
+      },
+      "fontes": []
+    }
+  ]
+}

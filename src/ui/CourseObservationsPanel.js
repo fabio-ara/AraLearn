@@ -119,12 +119,12 @@ function pathLabel(item) {
 
 function targetLinkLabel(kind) {
   return `Abrir ${({
-    course: "Curso",
-    module: "Módulo",
-    lesson: "Lição",
-    topic: "Tópico",
-    didactic_microsequence: "Microssequência",
-    study_unit: "Unidade"
+    course: "curso",
+    module: "módulo",
+    lesson: "lição",
+    topic: "tópico",
+    didactic_microsequence: "microssequência",
+    study_unit: "unidade de estudo"
   })[kind] || "contexto"}`;
 }
 
@@ -277,7 +277,7 @@ function renderFilters(state) {
     '<option value="">Todos</option>' + subjects.map(({ id, label: value }) =>
       `<option value="${escapeHtml(id)}"${id === selectedSubject ? " selected" : ""}>` +
       `${escapeHtml(value)}</option>`).join("") + '</select></label>' +
-    '<label><span>Contexto</span><select name="hierarchy"><option value="">Todo o Curso</option>' +
+    '<label><span>Contexto</span><select name="hierarchy"><option value="">Todo o curso</option>' +
     hierarchy.map(({ label: value }, index) =>
       `<option value="${index}"${index === selectedHierarchy ? " selected" : ""}>` +
       `${escapeHtml(value)}</option>`).join("") + '</select></label></div>' +
@@ -303,11 +303,11 @@ function renderAuthorComposer(state) {
     targets.map(({ kind, label: value }, index) =>
       `<option value="${index}"${String(index) === draft?.targetIndex ? " selected" : ""}>` +
       `${escapeHtml(value)} · ${escapeHtml({
-        course: "Curso",
-        module: "Módulo",
-        lesson: "Lição",
+        course: "curso",
+        module: "módulo",
+        lesson: "lição",
         topic: "Tópico",
-        didactic_microsequence: "Microssequência didática"
+        didactic_microsequence: "microssequência didática"
       }[kind] || kind)}</option>`).join("") + '</select></label>' +
     `<label><span>Categoria</span><select name="category"${disabled}><option value="">Sem categoria</option>` +
     COURSE_ANCHORED_ANNOTATION_CATEGORIES.map((value) =>
@@ -364,10 +364,11 @@ function renderClassification(item, catalog) {
 function renderOwnerResponseSources(sourceLinks) {
   if (!sourceLinks?.length) return "";
   return '<div class="course-observation-owner-response-sources">' +
-    '<strong>Fontes e Âncoras consideradas</strong><ul>' +
-    sourceLinks.map((link) => `<li>${escapeHtml(link.sourceId)}` +
-      (link.anchors.length ? ` · ${link.anchors.map((anchor) =>
-        escapeHtml(anchor.anchorId)).join(", ")}` : "") + "</li>"
+    '<strong>Fontes e âncoras consideradas</strong><ul>' +
+    sourceLinks.map((link, index) => `<li>Fonte ${index + 1}` +
+      (link.anchors.length
+        ? ` · ${link.anchors.length} ${link.anchors.length === 1 ? "âncora" : "âncoras"}`
+        : "") + "</li>"
     ).join("") + "</ul></div>";
 }
 
@@ -601,7 +602,7 @@ export function createCourseObservationsPanel({
       state.outlineCatalog = emptyOutlineCatalog();
       state.outlineError = error instanceof Error
         ? error.message
-        : "Não foi possível carregar os contextos e assuntos do Curso.";
+        : "Não foi possível carregar os contextos e assuntos do curso.";
       return false;
     }
   }
@@ -1020,7 +1021,7 @@ export function createCourseObservationsPanel({
     async refresh(nextCourseRevision = state.courseRevision) {
       const revision = Number(nextCourseRevision);
       if (!Number.isSafeInteger(revision) || revision < 1) {
-        throw new TypeError("A revisão do Curso para atualizar as observações é inválida.");
+        throw new TypeError("O estado do curso para atualizar as observações é inválido.");
       }
       if (revision !== state.courseRevision) {
         state.courseRevision = revision;

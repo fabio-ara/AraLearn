@@ -95,7 +95,7 @@ function normalizeStudyNavigationPosition(value, courseId) {
   const entityPath = value.entityPath.map((item, index) =>
     navigationEntityId(item, `Caminho de Estudo ${index + 1}`));
   if (entityPath[0].toLowerCase() !== courseId) {
-    throw new TypeError("A posição pertence a outro Curso.");
+    throw new TypeError("A posição pertence a outro curso.");
   }
   entityPath[0] = courseId;
   const microsequenceMode = String(value.microsequenceMode || "play").trim();
@@ -131,7 +131,7 @@ function normalizeStudyNavigation(value) {
   for (const [rawCourseId, position] of entries) {
     const courseId = String(rawCourseId || "").trim().toLowerCase();
     if (!COURSE_ID_PATTERN.test(courseId) || courseId !== rawCourseId) {
-      throw new TypeError("Curso da posição de Estudo inválido.");
+      throw new TypeError("Curso da posição de estudo inválido.");
     }
     positions[courseId] = normalizeStudyNavigationPosition(position, courseId);
   }
@@ -197,7 +197,7 @@ function courseRevisionConflict(error) {
 
 function courseRevisionChangedError(cause = null) {
   if (String(cause?.code || "").toLowerCase() === "course_revision_changed") return cause;
-  const error = new Error("O Curso mudou durante a leitura das citações.");
+  const error = new Error("O curso mudou durante a leitura das citações.");
   error.name = "CourseRevisionChangedError";
   error.status = 409;
   error.code = "course_revision_changed";
@@ -238,9 +238,9 @@ export class CourseStudyRepository {
     }
     if (!api || typeof api.loadPersonalState !== "function" ||
         typeof api.mutatePersonalState !== "function") {
-      throw new TypeError("API canônica de Cursos obrigatória.");
+      throw new TypeError("API canônica de cursos obrigatória.");
     }
-    if (!cache) throw new TypeError("Cache canônico de Cursos obrigatório.");
+    if (!cache) throw new TypeError("Cache canônico de cursos obrigatório.");
     this.bridge = bridge;
     this.api = api;
     this.cache = cache;
@@ -373,18 +373,18 @@ export class CourseStudyRepository {
     let stale = false;
     for (let pageIndex = 0; pageIndex < MAX_LIST_PAGES; pageIndex += 1) {
       const page = await this.bridge.listAccessibleCourses({ limit: 50, cursor });
-      if (!Array.isArray(page?.items)) throw new TypeError("A lista de Cursos é inválida.");
+      if (!Array.isArray(page?.items)) throw new TypeError("A lista de cursos é inválida.");
       items.push(...page.items);
       offline ||= page.offline === true;
       stale ||= page.stale === true;
       if (page.hasMore !== true) return { items, offline, stale };
-      if (!page.nextCursor) throw new TypeError("A lista de Cursos omitiu o cursor seguinte.");
+      if (!page.nextCursor) throw new TypeError("A lista de cursos omitiu o cursor seguinte.");
       const cursorKey = JSON.stringify(page.nextCursor);
-      if (cursors.has(cursorKey)) throw new TypeError("A lista de Cursos repetiu o cursor.");
+      if (cursors.has(cursorKey)) throw new TypeError("A lista de cursos repetiu o cursor.");
       cursors.add(cursorKey);
       cursor = page.nextCursor;
     }
-    throw new TypeError("A lista de Cursos excedeu o limite seguro de páginas.");
+    throw new TypeError("A lista de cursos excedeu o limite seguro de páginas.");
   }
 
   async #reviewPage(cursor = null) {
@@ -548,7 +548,7 @@ export class CourseStudyRepository {
 
   async maintainCourse({ courseId, operation, confirmed, requestId } = {}) {
     if (typeof this.bridge.maintainCourse !== "function") {
-      throw new TypeError("O ciclo de vida do Curso não está disponível.");
+      throw new TypeError("O ciclo de vida do curso não está disponível.");
     }
     const result = await this.bridge.maintainCourse({
       courseId,
@@ -562,7 +562,7 @@ export class CourseStudyRepository {
 
   async clearLocalCourse(courseIdentity) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
-    if (!courseId) throw new TypeError("O Curso não está acessível.");
+    if (!courseId) throw new TypeError("O curso não está acessível.");
     const personal = this.personalByCourseId.get(courseId);
     if (personal) await personal.clearLocal();
     const annotations = this.annotationsByCourseId.get(courseId);
@@ -585,7 +585,7 @@ export class CourseStudyRepository {
   async loadCourse(courseIdentity) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
-    if (!descriptor) throw new Error("O Curso solicitado não está acessível.");
+    if (!descriptor) throw new Error("O curso solicitado não está acessível.");
     let loaded = this.loadedCourseById.get(courseId);
     if (!loaded || loaded.revision !== descriptor.revision || (
       this.listRuntimeStatus.offline !== true &&
@@ -602,7 +602,7 @@ export class CourseStudyRepository {
       }
       const course = result.document?.courses?.[0];
       if (!course || course.id !== courseId) {
-        throw new TypeError("O documento carregado não corresponde ao Curso listado.");
+        throw new TypeError("O documento carregado não corresponde ao curso listado.");
       }
       const resultRevision = Number(result.revision ?? result.course?.revision ?? descriptor.revision);
       if (!Number.isSafeInteger(resultRevision) || resultRevision < 1) {
@@ -679,7 +679,7 @@ export class CourseStudyRepository {
     const expectedRevision = loaded?.revision || descriptor?.revision;
     if (!COURSE_ID_PATTERN.test(courseId) || !studyUnitId ||
         !Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
-      throw new TypeError("Referência de Unidade de estudo inválida para citações.");
+      throw new TypeError("Referência de unidade de estudo inválida para citações.");
     }
     let rawCitations;
     try {
@@ -711,7 +711,7 @@ export class CourseStudyRepository {
   }
 
   saveProject() {
-    throw new Error("O Estudo não altera o conteúdo canônico do Curso.");
+    throw new Error("O Estudo não altera o conteúdo canônico do curso.");
   }
 
   resolveCourseContractKey(courseIdentity) {
@@ -758,7 +758,7 @@ export class CourseStudyRepository {
   saveStudyNavigation({ selectedCourseId, position = null } = {}) {
     const normalizedCourseId = String(selectedCourseId || "").trim().toLowerCase();
     if (!this.courseList.some((item) => item.courseId === normalizedCourseId)) {
-      throw new TypeError("O Curso selecionado não está acessível.");
+      throw new TypeError("O curso selecionado não está acessível.");
     }
     return this.#enqueueStudyNavigation(async () => {
       const timestamp = nowIso(this.clock);
@@ -1094,14 +1094,14 @@ export class CourseStudyRepository {
   #personal(reference) {
     const courseId = courseIdFromReference(reference);
     const personal = this.personalByCourseId.get(courseId);
-    if (!personal) throw new Error("O Curso do estado pessoal não está carregado.");
+    if (!personal) throw new Error("O curso do estado pessoal não está carregado.");
     return personal;
   }
 
   #annotations(reference) {
     const courseId = courseIdFromReference(reference);
     const annotations = this.annotationsByCourseId.get(courseId);
-    if (!annotations) throw new Error("As observações deste Curso não estão disponíveis.");
+    if (!annotations) throw new Error("As observações deste curso não estão disponíveis.");
     return annotations;
   }
 
@@ -1127,9 +1127,9 @@ export class CourseStudyRepository {
     studyUnitId = ""
   } = {}) {
     const normalizedCourseId = this.resolveCourseContractKey(courseId);
-    if (!normalizedCourseId) throw new Error("O Curso do progresso não está acessível.");
+    if (!normalizedCourseId) throw new Error("O curso do progresso não está acessível.");
     const course = findCourse(this.project, normalizedCourseId);
-    if (!course?.modules?.length) throw new Error("Carregue o Curso antes de zerar o progresso.");
+    if (!course?.modules?.length) throw new Error("Carregue o curso antes de zerar o progresso.");
     const personal = this.#personal({ courseId: normalizedCourseId });
     await personal.clearProgressScope({
       courseId: normalizedCourseId,

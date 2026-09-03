@@ -1,4 +1,4 @@
-# Roteiro de aceitação humana da Autoria
+# Roteiro de aceitação humana da autoria
 
 Este roteiro avalia se uma pessoa encontra e conclui as tarefas reais de autoria
 sem aprender a arquitetura interna. Automação verifica contratos e geometria;
@@ -6,96 +6,116 @@ não substitui observação de compreensão e uso.
 
 ## Pré-condições
 
-Reprove a revisão antes da sessão se:
+Reprove a revisão se:
 
-- a Autoria deixa de abrir diretamente em Conteúdo;
+- a autoria deixa de abrir diretamente em Conteúdo;
 - aparece dashboard, sidebar, segunda coluna permanente ou segundo rolador;
-- uma StudyUnit deixa de dominar o leitor;
-- ações icon-only não possuem nome acessível, foco e estado corretos;
+- uma unidade de estudo deixa de dominar o leitor;
+- ações somente por ícone não possuem nome acessível, foco e estado corretos;
 - a página cria rolagem horizontal em 360, 390 ou 430 px;
 - Estudo perde navegação, renderer, prática, progresso ou funcionamento offline;
-- a interface expõe IDs, hashes, caminhos, etapas ou detalhes de transporte.
+- a interface ou a conversa expõe identificadores, nomes de campos, hashes,
+  comandos, contagens internas ou detalhes de transporte.
 
-Verifique a aplicação real em claro e escuro, por toque, teclado e tecnologias
-assistivas pertinentes. Tela larga preserva a mesma arquitetura de uma coluna.
+Verifique a aplicação real nos temas claro e escuro, por toque, teclado e
+tecnologias assistivas pertinentes. Tela larga preserva a mesma arquitetura de
+uma coluna.
 
 ## Preparação
 
-- use conta e Curso privados descartáveis;
-- comece também com um Curso novo para avaliar o vazio real;
-- prepare uma jornada longa com Partes, Units antigas e conteúdo suficiente para
-  exigir índice e pesquisa;
-- inclua configuração herdada e definida, Fontes com Âncoras, um PDF válido e
-  Observações abertas e resolvidas;
-- use outra conta apenas para conferir acesso de Estudo;
-- exercite conexão instável, retomada e duas abas;
-- não explique MCP, Actions, schema, revisão, CAS ou localização de controles;
+- use conta e cursos privados descartáveis;
+- inclua um curso novo baseado numa ementa extensa;
+- prepare público, objetivo, pré-requisitos, escopo e fontes com papéis distintos;
+- inclua ao menos duas partes de produção e conteúdo suficiente para exigir
+  índice e pesquisa;
+- use configuração contextual e uma condição de pesquisa deliberadamente fixa;
+- não explique MCP, Actions nem mecanismos internos;
 - peça que a pessoa diga o que procura, o que espera e por que escolheu cada ação.
 
-## Condução
+## Jornada curricular e conversacional
 
-Apresente somente a intenção. Se houver pedido de ajuda, registre o ponto e dê a
-menor pista necessária. Para cada tarefa, anote dispositivo, tema, condição de
-rede, primeiro caminho, hesitação, retorno perdido, ajuda e comentário espontâneo.
+Execute numa conexão MCP nova ou renovada e num GPT com o OpenAPI corrente
+efetivamente importado:
+
+1. a pessoa pede um curso extenso;
+2. o GPT apresenta uma síntese curricular global;
+3. um link permite inspecionar todos os módulos, lições e microssequências;
+4. cada item obrigatório do escopo aparece associado ao mapa;
+5. a pessoa altera cobertura ou ordem;
+6. o GPT ajusta a mesma arquitetura, sem materializar unidades;
+7. a pessoa aprova o mapa visível;
+8. o GPT apresenta brevemente a progressão da primeira parte;
+9. a pessoa corrige uma ênfase;
+10. o GPT materializa a parte e devolve o link do conteúdo;
+11. a pessoa inspeciona todas as unidades na ordem;
+12. o GPT apresenta a segunda parte;
+13. a pessoa altera uma decisão e acrescenta uma fonte técnica;
+14. o GPT materializa e a pessoa inspeciona o resultado;
+15. o repertório acumulado distingue ideias novas, usadas e retomadas.
+
+O chat deve parecer conversa com uma pessoa que desconhece o mecanismo do
+AraLearn. A pessoa autora não pode ser tratada como estudante. A aprovação do
+mapa não aprova a parte; a aprovação da parte não aprova silenciosamente
+correções futuras.
 
 ## Tarefas
 
 | Intenção | Resultado esperado | Evidência |
 | --- | --- | --- |
-| “Abra este Curso para continuar a criação.” | entra em Conteúdo e encontra a StudyUnit focal | primeiro destino e vocabulário usado |
-| “Volte a uma Unit antiga e depois retorne exatamente aqui.” | usa anterior/próxima, índice, pesquisa ou deep link sem perder contexto | percurso, foco e posição |
-| “Planeje apenas a próxima Parte.” | propõe, altera e aprova uma Parte sem despejar o plano inteiro | decisão compreendida e plano relido |
-| “Produza conteúdo para esta Parte.” | materializa Units suficientes, com inventário completo e prática | conteúdo, distribuição e ausência de maquinaria técnica |
-| “Compare teto 1 e 2.” | preserva o inventário e deixa a quantidade/distribuição de Units mudar | equivalência semântica examinada |
-| “Mude a prática e o estilo aqui.” | distingue parâmetro pedagógico de direção editorial e encontra o valor efetivo | escopo, herança e efeito produzido |
-| “Confira de onde vem esta afirmação.” | abre Fonte, papel e Âncora; acessa PDF autorizado quando houver | proveniência e limite interpretado |
-| “Esta Fonte não sustenta o que diz.” | contesta ou substitui Fonte sem apagar o conteúdo por implicação | decisão e resultado corrente |
-| “Registre este apontamento em três Units.” | seleção produz três Observações independentes | alvos, contagem e ausência de lote permanente |
-| “Revise as Observações abertas.” | GPT relê também progressão, pré-requisitos, transições, exemplos e prática | Units lidas, propostas e justificativa |
-| “Aplique a proposta e verifique.” | muda somente o conjunto aprovado e reinspeciona o resultado | conteúdo corrente e Observações |
-| “Mostre como o Curso foi desenhado.” | Analytics abre em Desenho/Autoria, troca escopo e exporta os mesmos números | leitura rápida, ausência e JSON |
-| “Dê acesso de Estudo a outra pessoa.” | preserva propriedade, dados privados e edição do original | concessão, revogação e projeção |
-| “Continue em uma conversa nova.” | retoma pelo Curso e plano persistidos sem pedir IDs ou repetir briefing inteiro | contexto recuperado e próxima decisão |
+| “Mostre como todo o curso ficará organizado.” | apresenta síntese e mapa completo de módulos, lições e microssequências | cobertura, ordem, dependências e zero unidades materializadas |
+| “Mude esta área de lugar.” | atualiza o mapa e preserva decisões anteriores | nova versão inspecionável antes da aprovação |
+| “Prepare o primeiro lote.” | apresenta somente a progressão local relevante | parte separada do currículo e conversa curta |
+| “Produza este lote.” | materializa unidades suficientes e conectadas | conteúdo renderizado, não apenas JSON ou contagens |
+| “Mostre o que esta unidade pressupõe.” | exibe ideias introduzidas, usadas e retomadas em linguagem humana | ausência de termos internos e referências coerentes |
+| “Compare teto 1 e 2.” | preserva o repertório e permite mudar a distribuição de unidades | condição fixada prevalece sobre calibração contextual |
+| “Deixe o GPT ajustar ao conteúdo.” | estado `default` exige calibração contextual automática dos parâmetros pedagógicos e alvos editoriais por microssequência ou unidade | valor, origem, escopo e aplicação observáveis |
+| “Prefira cerca de 140 palavras por unidade.” | registra alvo editorial flexível sem truncar nem compactar conteúdo | alvo e extensão observada comparáveis; unidades podem ultrapassá-lo |
+| “Confira de onde vem esta afirmação.” | distingue fonte de escopo, avaliação e sustentação técnica | proveniência e limite interpretado |
+| “Revise as observações abertas.” | relê também progressão, pré-requisitos, transições, exemplos e prática | conjunto afetado e proposta concreta |
+| “Mostre como o curso foi desenhado.” | Analytics mostra estado aplicado e exporta dados comparáveis | valores, origem, escopo, uso e JSON |
+| “Continue numa conversa nova.” | retoma mapa, lotes e repertório persistidos sem repetir o briefing | próxima decisão correta |
 
-## Jornada conversacional
+## Revisão sequencial do conteúdo
 
-Execute duas vezes: numa conexão MCP nova ou renovada e num GPT com o OpenAPI
-corrente efetivamente importado. Em ambos:
+Use ao menos uma microssequência técnica, como o funcionamento de um switch
+Ethernet. Assuma que quadro, endereço MAC e porta já foram ensinados e confira
+uma progressão real com problema, mecanismo, mudança de estado, previsão,
+comparação, prática parcialmente resolvida e integração.
 
-1. crie um Curso privado;
-2. planeje Parte por Parte;
-3. produza conteúdo suficiente para revelar problemas de densidade;
-4. varie parâmetros pedagógicos e direção editorial;
-5. revise Units antigas e suas Fontes;
-6. registre Observações individuais e em seleção;
-7. peça correções do conjunto pedagogicamente afetado;
-8. abra Analytics em mais de um escopo;
-9. retome numa conversa nova.
+Reprove se:
 
-Um PDF enviado para incorporação precisa estar na mesma mensagem. Uma pergunta
-ambígua sobre arquivo deve ser esclarecida antes da persistência. Resultado de
-escrita traz deep link e uma próxima decisão, sem reproduzir o conteúdo inteiro.
+- um conceito necessário aparece antes de ser ensinado;
+- uma relação essencial é pressuposta;
+- uma aplicação exige operação que nunca foi praticada;
+- uma unidade expositiva supera o teto de novidades;
+- prática é obrigada a introduzir novidade;
+- o conteúdo vira resumo denso;
+- uma ideia simples é atomizada em telas sem progressão;
+- componentes variam pela aparência em vez da função;
+- definições se repetem integralmente sem necessidade.
+
+Registre um caso em que uma unidade densa foi dividida e outro em que fragmentos
+foram fundidos. Avalie o percurso completo, não apenas unidades isoladas.
 
 ## Perguntas finais
 
 Pergunte sem mostrar a navegação:
 
-1. “Como você voltaria a um conteúdo antigo?”
-2. “Qual é a diferença entre Parte e StudyUnit?”
-3. “Como saberia que configuração vale neste ponto?”
-4. “O que faria quando uma Fonte parece inadequada?”
-5. “Por que uma Observação não corrige o Curso sozinha?”
-6. “Como decidiria quais Units precisam mudar?”
+1. “Onde você conferiria o mapa completo antes da produção?”
+2. “Qual é a diferença entre currículo e parte?”
+3. “O que exatamente você aprovou em cada momento?”
+4. “Como saberia que configuração vale neste ponto?”
+5. “Como voltaria a um conteúdo antigo?”
+6. “O que faria quando uma fonte parece inadequada?”
 7. “O que os números de Analytics permitem e não permitem concluir?”
-8. “Que ícones ou passagens foram difíceis de descobrir?”
 
 ## Critério de decisão
 
-O fluxo falha se a pessoa precisar conhecer banco ou protocolo, perder o contexto
-do Curso, aceitar compressão pedagógica por limite visual, não reencontrar Units
-antigas, interpretar contagem como qualidade ou não compreender o efeito de uma
-decisão.
+O fluxo falha se a pessoa precisar conhecer o backend, perder o contexto,
+aprovar conteúdo que não viu, aceitar compactação por limite visual, reconstruir
+sozinha uma sequência atomizada, não reencontrar unidades antigas ou interpretar
+contagem como qualidade.
 
-Registre dificuldades como Observações e corrija falhas materiais reproduzíveis.
+Registre dificuldades como observações e corrija falhas materiais reproduzíveis.
 Uma sessão positiva sustenta usabilidade somente para participantes, tarefas e
 condições exercitados. Não demonstra aprendizagem nem eficácia educacional.

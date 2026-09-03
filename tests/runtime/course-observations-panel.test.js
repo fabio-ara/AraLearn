@@ -446,7 +446,7 @@ test("deep link abre detalhe, contexto, resposta única e correção de assunto"
   await panel.open();
 
   assert.doesNotMatch(root.innerHTML, /Detalhe contextual|Inbox única do Curso/u);
-  assert.match(root.innerHTML, /Abrir Unidade/u);
+  assert.match(root.innerHTML, /Abrir unidade de estudo/u);
   assert.match(root.innerHTML, /Retorno da autoria/u);
   assert.match(root.innerHTML, /Resposta privada vinculada a esta observação/u);
   assert.match(root.innerHTML, /Corrigir assuntos/u);
@@ -457,14 +457,14 @@ test("deep link abre detalhe, contexto, resposta única e correção de assunto"
 
 test("deep link nomeia cada tipo de contexto sem chamar tudo de Unidade", async () => {
   const targets = [
-    ["course", COURSE_ID, "Curso", 7],
-    ["module", "module-a", "Módulo", 2],
-    ["lesson", "lesson-a", "Lição", 2],
-    ["topic", "topic-a", "Tópico", 2],
-    ["didactic_microsequence", "micro-a", "Microssequência", 2],
-    ["study_unit", "unit-a", "Unidade", 2]
+    ["course", COURSE_ID, "Curso", "curso", 7],
+    ["module", "module-a", "Módulo", "módulo", 2],
+    ["lesson", "lesson-a", "Lição", "lição", 2],
+    ["topic", "topic-a", "Tópico", "tópico", 2],
+    ["didactic_microsequence", "micro-a", "Microssequência", "microssequência", 2],
+    ["study_unit", "unit-a", "Unidade", "unidade de estudo", 2]
   ];
-  for (const [kind, id, expectedLabel, targetVersion] of targets) {
+  for (const [kind, id, expectedLabel, expectedActionLabel, targetVersion] of targets) {
     const contextual = item();
     const targetEntry = { kind, id, label: expectedLabel, version: targetVersion };
     contextual.target = {
@@ -498,7 +498,7 @@ test("deep link nomeia cada tipo de contexto sem chamar tudo de Unidade", async 
       }
     });
     await panel.open();
-    assert.match(root.innerHTML, new RegExp(`Abrir ${expectedLabel}`, "u"));
+    assert.match(root.innerHTML, new RegExp(`Abrir ${expectedActionLabel}`, "u"));
     panel.destroy();
   }
 });

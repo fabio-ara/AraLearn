@@ -30,18 +30,21 @@ estrutura curricular usa entidades ligadas por Curso, tipo, pai e posição. A
 ordem é validada pelo banco; uma StudyUnit não pode pertencer a duas posições no
 mesmo pai.
 
-O plano possui resultados pretendidos, AnalysisUnits, requisitos de evidência e
-Partes. Cada Parte referencia as Microssequências que organiza. Esses vínculos
-permitem preparar uma Parte sem converter Parte em nível didático.
+O plano possui mapa curricular global, estado de aprovação, pré-requisitos,
+itens de escopo, repertório de unidades de análise, requisitos de evidência e
+partes. Cada parte referencia microssequências já existentes. Esses vínculos
+permitem preparar um lote sem convertê-lo em nível didático.
 
-Parâmetros pedagógicos, direção editorial e política de componentes possuem
-uma atribuição corrente por Curso ou escopo permitido. Remover uma atribuição
-local restaura herança. A linha anterior não permanece como estado de produto.
+Parâmetros pedagógicos, alvos editoriais quantitativos, direção editorial e
+política de componentes possuem uma atribuição corrente por Curso ou escopo
+permitido. Os alvos são flexíveis e não funcionam como limites de conteúdo.
+Remover uma atribuição local restaura herança. A linha anterior não permanece
+como estado de produto.
 
-Uma StudyUnit pode guardar o snapshot focal e a aplicação de desenho que
-recebeu. O snapshot contém apenas parâmetros e itens pertinentes à sua
-Microssequência; a aplicação registra novidades, formas explicativas,
-componentes e prática efetivamente usados.
+Uma unidade de estudo pode guardar o snapshot focal e a aplicação de desenho
+que recebeu. O snapshot contém apenas parâmetros e itens pertinentes à sua
+microssequência; a aplicação registra ideias introduzidas, ideias estabelecidas
+usadas, formas explicativas, componentes e prática efetivamente usados.
 
 ## Escritas concorrentes
 

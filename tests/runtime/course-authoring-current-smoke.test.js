@@ -15,16 +15,24 @@ const source = fs.readFileSync(smokePath, "utf8");
 
 test("#274 prova a jornada autoral corrente no Supabase local", () => {
   for (const task of [
-    "criar_curso", "salvar_parte", "preparar_materializacao",
+    "criar_curso", "salvar_mapa_curricular", "salvar_parte", "preparar_materializacao",
     "materializar_parte", "registrar_observacao"
   ]) {
     assert.match(source, new RegExp(`name: "${task}"`, "u"));
   }
-  assert.match(source, /objetivoDoModulo/u);
-  assert.match(source, /unidadesDeAnalise: \[\]/u);
+  assert.match(source, /const proposedMap = curricularMap\(title, false\)/u);
+  assert.match(source, /\.\.\.proposedMap, aprovado: true/u);
+  assert.match(source, /preRequisitos/u);
+  assert.match(source, /itensDeEscopo/u);
+  assert.match(source, /dependencias/u);
+  assert.match(source, /microssequencias: \["O que é um socket", "Prática de identificação"\]/u);
+  assert.match(source, /ideiasIntroduzidas/u);
+  assert.match(source, /ideiasUtilizadas/u);
+  assert.match(source, /cobertura/u);
+  assert.match(source, /readPackageStudyUnitText/u);
+  assert.match(source, /renderPackageStudyUnitArticle/u);
+  assert.doesNotMatch(source, /objetivoDoModulo|unidadesDeAnalise|requisitosDeEvidencia/u);
   assert.match(source, /getCourseAuthoringAnalytics/u);
-  assert.match(source, /Interfaces e transporte/u);
-  assert.match(source, /content\.dependsOn/u);
   assert.match(source, /removeLocalUser\(config, actorId\)/u);
 });
 

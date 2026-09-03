@@ -12,6 +12,7 @@ const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
 const OTHER_COURSE_ID = "20000000-0000-4000-8000-000000000009";
 const PLAN_ID = "30000000-0000-4000-8000-000000000003";
+const CURRICULUM_SCOPE_ID = "30000000-0000-4000-8000-000000000033";
 const PART_ID = "40000000-0000-4000-8000-000000000004";
 const STEP_ID = "60000000-0000-4000-8000-000000000006";
 const AUDIT_RUN_ID = "11111111-1111-5111-8111-111111111111";
@@ -31,7 +32,9 @@ function analyticsSnapshot() {
         "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
       ], ["required_explanation_forms", "Formas", "string_list"], [
         "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-      ], ["required_practice_variation_dimensions", "Variação", "string_list"]]
+      ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
+        "authoring_chat_response_word_target", "Extensão da conversa", "integer"
+      ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
         .map(([parameterId, label, valueKind]) => ({
           parameterId, label, valueKind, effectiveValues: []
         })),
@@ -42,7 +45,8 @@ function analyticsSnapshot() {
       components: [],
       practiceByRequirement: [],
       practiceVariationDimensions: [],
-      sourcesByRole: []
+      sourcesByRole: [],
+      wordCountsByStudyUnit: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -122,6 +126,7 @@ function syntheticPdf(label = "fixture") {
 function pdfSourceDocument(overrides = {}) {
   return {
     kind: "document",
+    sourceRole: "technical_conceptual",
     title: "Documento autorizado",
     authorship: null,
     publicationDate: null,
@@ -777,7 +782,7 @@ function courseDesignRead() {
     contract: "aralearn.course-design.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
-    parameterCatalogVersion: "1.0.0",
+    parameterCatalogVersion: "1.1.0",
     scopeContext: {
       current: { kind: "course", ref: COURSE_ID, label: "Curso" },
       ancestors: [],
@@ -1274,48 +1279,293 @@ test("lê entidades para o MCP com ator e cerca de versão", async () => {
   assert.equal(payload.p_after_entity_id, "lesson-a");
 });
 
-function inspectionDesignSnapshot({ ceiling = 2 } = {}) {
-  return {
-    contract: "aralearn.study-unit-design-snapshot.v1",
+test("plano v3 liga escopo ao currículo e deriva o repertório das unidades correntes", async () => {
+  const introducedAt = {
+    studyUnitId: "unit-introduction",
+    didacticMicrosequenceId: "micro-a",
+    title: "Apresentação da relação"
+  };
+  const usedBy = [{
+    studyUnitId: "unit-application",
+    didacticMicrosequenceId: "micro-b",
+    title: "Aplicação imediata"
+  }];
+  const revisitedBy = [{
+    studyUnitId: "unit-recall",
+    didacticMicrosequenceId: "micro-c",
+    title: "Retomada em outro contexto"
+  }];
+  const curriculumTargets = [{
+    moduleId: "module-a",
+    lessonId: "lesson-a",
+    didacticMicrosequenceIds: ["micro-a", "micro-b", "micro-c"]
+  }];
+  const developedIn = [introducedAt, ...usedBy, ...revisitedBy];
+  const read = {
+    contract: "aralearn.course-instructional-plan.v3",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    plan: {
+      id: PLAN_ID,
+      version: 4,
+      title: "Curso",
+      objective: "Compreender uma relação e aplicá-la.",
+      audience: "Pessoas iniciantes.",
+      scope: "Relação, mecanismo e aplicação.",
+      curriculum: {
+        modules: [{
+          id: "module-a",
+          position: 0,
+          title: "Relações fundamentais",
+          lessons: [{
+            id: "lesson-a",
+            position: 0,
+            title: "Da ideia à aplicação",
+            microsequences: [{
+              id: "micro-a", position: 0, title: "Primeiro contato"
+            }, {
+              id: "micro-b", position: 1, title: "Uso imediato"
+            }, {
+              id: "micro-c", position: 2, title: "Retomada"
+            }]
+          }]
+        }]
+      },
+      curriculumScopeItems: [{
+        id: CURRICULUM_SCOPE_ID,
+        position: 0,
+        statement: "Compreender a relação e usá-la em outro contexto.",
+        state: "developed",
+        curriculumTargets,
+        developedIn
+      }],
+      preferredPartCount: { minimum: 1, maximum: 3, origin: "automatic" },
+      intendedLearningOutcomes: [],
+      instructionalAnalysisUnits: [{
+        id: PLAN_ID,
+        position: 0,
+        statement: "relação focal",
+        description: "Relação entre duas propriedades que precisa ser distinguida de mera coocorrência.",
+        version: 2,
+        introducedAt,
+        usedBy,
+        revisitedBy
+      }],
+      evidenceRequirements: [],
+      parts: [],
+      counts: {
+        intendedLearningOutcomeCount: 0,
+        instructionalAnalysisUnitCount: 1,
+        evidenceRequirementCount: 0,
+        authoringPartCount: 0,
+        linkedDidacticMicrosequenceCount: 0,
+        studyUnitCount: 3
+      },
+      updatedAt: "2026-09-03T12:00:00Z"
+    }
+  };
+  let payload = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/get_owned_course_instructional_plan_for_actor_v3$/u);
+    payload = JSON.parse(init.body);
+    return json(read);
+  });
+
+  const result = await value.getCourseInstructionalPlan({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID
+  });
+
+  assert.deepEqual(payload, { p_actor_id: USER_ID, p_course_id: COURSE_ID });
+  assert.equal(result.contract, "aralearn.course-instructional-plan.v3");
+  assert.deepEqual(result.plan.curriculumScopeItems[0], {
+    id: CURRICULUM_SCOPE_ID,
+    position: 0,
+    statement: "Compreender a relação e usá-la em outro contexto.",
+    state: "developed",
+    curriculumTargets,
+    developedIn
+  });
+  assert.deepEqual(result.plan.instructionalAnalysisUnits[0], {
+    id: PLAN_ID,
+    position: 0,
+    statement: "relação focal",
+    description: "Relação entre duas propriedades que precisa ser distinguida de mera coocorrência.",
+    version: 2,
+    introducedAt,
+    usedBy,
+    revisitedBy
+  });
+  assert.equal(
+    Object.hasOwn(result.plan.instructionalAnalysisUnits[0], "introducedPartPosition"),
+    false,
+    "Parte não pode ser usada como posição curricular da introdução."
+  );
+  assert.equal(
+    result.deepLink,
+    `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}?section=planning`
+  );
+
+  const legacy = adapter(async () => json({ ...read,
+    contract: "aralearn.course-instructional-plan.v2"
+  }));
+  await assert.rejects(
+    () => legacy.getCourseInstructionalPlan({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID
+    }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+});
+
+test("grava mapa curricular e lote por contratos atômicos distintos", async () => {
+  const calls = [];
+  const map = {
+    audience: "Pessoas iniciantes.",
+    prerequisites: [],
+    scopeItems: [{
+      id: CURRICULUM_SCOPE_ID,
+      position: 0,
+      statement: "Compreender a relação fundamental."
+    }],
+    modules: [{
+      moduleId: "module-a",
+      position: 0,
+      title: "Fundamentos",
+      objective: "Construir a relação.",
+      lessons: [{
+        lessonId: "lesson-a",
+        position: 0,
+        title: "Primeiro percurso",
+        objective: "Explicar e aplicar.",
+        microsequences: [{
+          microsequenceId: "micro-a",
+          position: 0,
+          title: "Da situação ao conceito",
+          objective: "Introduzir a relação em contexto.",
+          dependencyMicrosequenceIds: [],
+          scopeItemIds: [CURRICULUM_SCOPE_ID]
+        }]
+      }]
+    }]
+  };
+  const part = {
+    partId: PART_ID,
+    position: 0,
+    title: "Primeiro lote",
+    intent: "Produzir o início do percurso.",
+    progression: ["situação concreta", "relação", "aplicação"],
+    microsequences: [{ microsequenceId: "micro-a", position: 0 }]
+  };
+  const value = adapter(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (url.endsWith("/rpc/save_course_curricular_map_for_actor_v1")) {
+      return json({
+        contract: "aralearn.course-curricular-map-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: 8,
+        planVersion: 5,
+        approval: "draft",
+        changed: true,
+        idempotent: false
+      });
+    }
+    assert.match(url, /\/rpc\/save_course_authoring_part_for_actor_v1$/u);
+    return json({
+      contract: "aralearn.course-authoring-part-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 9,
+      planVersion: 6,
+      authoringPartId: PART_ID,
+      changed: true,
+      idempotent: false
+    });
+  });
+
+  await value.saveCourseCurricularMap({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    requestId: "request-curricular-map-1",
+    expectedCourseRevision: 7,
+    expectedPlanVersion: 4,
+    approved: false,
+    curricularMap: map
+  });
+  await value.saveCourseAuthoringPart({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    requestId: "request-production-part-1",
+    expectedCourseRevision: 8,
+    expectedPlanVersion: 5,
+    part
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].body.p_approved, false);
+  assert.deepEqual(calls[0].body.p_curricular_map, map);
+  assert.equal(typeof calls[0].body.p_request_hash, "string");
+  assert.equal(calls[0].body.p_request_hash.length, 64);
+  assert.deepEqual(calls[1].body.p_part, part);
+  assert.equal(Object.hasOwn(calls[1].body.p_part, "modules"), false);
+  assert.equal(Object.hasOwn(calls[1].body.p_part, "analysisUnits"), false);
+});
+
+test("materialização envia repertório e alvos no mesmo commit das unidades", async () => {
+  const planItemUpserts = [{
+    id: PLAN_ID,
+    kind: "instructional_analysis_unit",
+    position: 0,
+    statement: "relação focal",
+    description: "Relação necessária para executar a aplicação."
+  }];
+  const targetPlanItems = [{
     didacticMicrosequenceId: "micro-a",
     instructionalAnalysisUnitIds: [PLAN_ID],
-    evidenceRequirementIds: [STEP_ID],
-    parameters: [
-      {
-        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-        value: ceiling,
-        origin: "author",
-        sourceScopeKind: "study_unit"
-      },
-      {
-        parameterId: "required_explanation_forms",
-        value: ["plain_definition"],
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-        value: 2,
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "required_practice_variation_dimensions",
-        value: ["case_or_data"],
-        origin: "system_default",
-        sourceScopeKind: null
-      }
-    ],
-    editorialDirections: [],
-    componentPolicy: {
-      policy: defaultComponentPolicy(),
-      origin: "author",
-      sourceScopeKind: "course"
-    },
-    appliedAt: "2026-08-17T09:00:00Z"
-  };
-}
+    evidenceRequirementIds: []
+  }];
+  const units = [{
+    studyUnitId: "unit-a",
+    position: 1,
+    didacticMicrosequenceId: "micro-a",
+    content: {},
+    designSnapshot: {},
+    designApplication: {},
+    sourceLinks: []
+  }];
+  let payload = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/materialize_course_authoring_part_for_actor_v2$/u);
+    payload = JSON.parse(init.body);
+    return json({
+      contract: "aralearn.course-part-materialization.v1",
+      courseId: COURSE_ID,
+      courseRevision: 8,
+      authoringPartId: PART_ID,
+      changed: true,
+      studyUnitCount: 1,
+      idempotent: false
+    });
+  });
 
+  await value.materializeCourseAuthoringPart({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    authoringPartId: PART_ID,
+    requestId: "request-materialization-plan-1",
+    expectedCourseRevision: 7,
+    expectedAuthoringPartVersion: 2,
+    planItemUpserts,
+    targetPlanItems,
+    units
+  });
+
+  assert.deepEqual(payload.p_plan_item_upserts, planItemUpserts);
+  assert.deepEqual(payload.p_target_plan_items, targetPlanItems);
+  assert.deepEqual(payload.p_units, units);
+  assert.equal(typeof payload.p_request_hash, "string");
+  assert.equal(payload.p_request_hash.length, 64);
+});
 
 test("lê inspeção curricular limitada e acrescenta link exato da Unidade", async () => {
   let payload = null;
@@ -1371,13 +1621,23 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
           createdOrigin: "gpt",
           lastRevisionOrigin: "human",
           design: {
-            snapshot: inspectionDesignSnapshot({ ceiling: 3 }),
             application: {
               mode: "expository",
-              introducedInstructionalAnalysisUnitIds: [PLAN_ID],
-              explanationApplications: [],
-              practiceApplications: [],
-              componentRefs: ["aralearn.resource.paragraph@1.0.0"]
+              componentRefs: ["aralearn.resource.paragraph@1.0.0"],
+              analysisIdeas: {
+                introduced: [{
+                  name: "tabela MAC",
+                  description: "Memória que associa endereços MAC às portas conhecidas."
+                }],
+                used: [{
+                  name: "endereço MAC",
+                  description: "Identificador já estabelecido usado na consulta."
+                }],
+                revisited: [{
+                  name: "porta do switch",
+                  description: "Conexão retomada para contrastar entrada e saída."
+                }]
+              }
             }
           }
         }
@@ -1406,6 +1666,25 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
   assert.equal(payload.p_scope_kind, "authoring_part");
   assert.equal(payload.p_anchor_study_unit_id, "unit-a");
   assert.equal(payload.p_max_bytes, 262144);
+  assert.deepEqual(result.items[0].authorship.design.application.analysisIdeas, {
+    introduced: [{
+      name: "tabela MAC",
+      description: "Memória que associa endereços MAC às portas conhecidas."
+    }],
+    used: [{
+      name: "endereço MAC",
+      description: "Identificador já estabelecido usado na consulta."
+    }],
+    revisited: [{
+      name: "porta do switch",
+      description: "Conexão retomada para contrastar entrada e saída."
+    }]
+  });
+  assert.equal(Object.hasOwn(result.items[0].authorship.design, "snapshot"), false);
+  assert.equal(Object.hasOwn(
+    result.items[0].authorship.design.application,
+    "usedInstructionalAnalysisUnitIds"
+  ), false);
   assert.equal(
     result.items[0].deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
@@ -1572,6 +1851,7 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
       revision: 1,
       status: "active",
       kind: "web_page",
+      sourceRole: "technical_conceptual",
       title: "Fonte A",
       authorship: "Autoria",
       publicationDate: "2026",

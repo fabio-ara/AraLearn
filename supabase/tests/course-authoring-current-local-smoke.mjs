@@ -9,6 +9,10 @@ import { executeHumanCourseTask } from
 import { resolveHumanCourseContext } from
   "../functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 import {
+  readPackageStudyUnitText,
+  renderPackageStudyUnitArticle
+} from "../../src/render/renderPackageStudyUnit.js";
+import {
   localSupabaseConfiguration,
   localSupabaseRequest,
   removeLocalUser,
@@ -49,27 +53,37 @@ function paragraph(id, text) {
   };
 }
 
-function compositionEntity(entity, content) {
+function unitCalibration(editorialDirection) {
   return {
-    entityType: entity.entityType,
-    entityId: entity.entityId,
-    parentType: entity.parentType,
-    parentId: entity.parentId,
-    position: entity.position,
-    content
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 1,
+      formasDeExplicacao: ["plain_definition"],
+      minimoDePraticasPorRequisito: 1,
+      dimensoesDeVariacaoDaPratica: ["case_or_data"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 90,
+      alvoDePalavrasPorUnidade: 60
+    },
+    direcaoEditorial: editorialDirection
   };
 }
 
-function explanationUnit() {
+function explanationUnit({ calibrate = true } = {}) {
   return {
     microssequencia: "O que é um socket",
     posicao: 1,
+    ...(calibrate ? {
+      configuracao: unitCalibration(
+        "Defina o mecanismo e contraste socket com conexão."
+      )
+    } : {}),
     conteudo: {
       title: "Socket liga processo e transporte",
       role: "theory",
       content: [paragraph(
         "socket-definition",
-        "Um socket é a interface pela qual um processo envia e recebe dados usando um protocolo de transporte."
+        "Um processo não envia dados diretamente pela rede. Ele usa um socket: a interface local pela qual entrega e recebe dados de um protocolo de transporte. O socket representa essa ponta local da comunicação, não a conexão inteira entre os participantes."
       )],
       response: null,
       feedback: [],
@@ -77,21 +91,31 @@ function explanationUnit() {
     },
     aplicacaoPedagogica: {
       modo: "expositiva",
-      novidadesIntroduzidas: [1],
-      explicacoes: [{
-        novidade: 1,
-        formas: ["plain_definition", "concrete_example", "mechanism", "contrast"]
+      ideiasIntroduzidas: [{
+        nome: "Socket como interface entre processo e transporte",
+        descricao: "Interface local pela qual um processo envia e recebe dados usando um protocolo de transporte."
       }],
-      praticas: []
+      ideiasUtilizadas: [],
+      explicacoes: [{
+        ideia: "Socket como interface entre processo e transporte",
+        formas: ["plain_definition"]
+      }],
+      praticas: [],
+      cobertura: ["Compreender o papel de um socket."]
     },
     fontes: []
   };
 }
 
-function practiceUnit() {
+function practiceUnit({ calibrate = true } = {}) {
   return {
     microssequencia: "Prática de identificação",
     posicao: 1,
+    ...(calibrate ? {
+      configuracao: unitCalibration(
+        "Peça uma identificação rápida em um contexto concreto sem introduzir nova terminologia."
+      )
+    } : {}),
     conteudo: {
       title: "Distinguir processo, socket e conexão",
       role: "practice",
@@ -122,58 +146,73 @@ function practiceUnit() {
     },
     aplicacaoPedagogica: {
       modo: "pratica",
-      novidadesIntroduzidas: [],
+      ideiasIntroduzidas: [],
+      ideiasUtilizadas: ["Socket como interface entre processo e transporte"],
       explicacoes: [],
       praticas: [{
-        requisito: 1,
+        requisito: "Distinguir processo, socket e conexão.",
         oportunidade: "identificar-interface-em-navegador",
         dimensoesVariadas: ["case_or_data"]
-      }, {
-        requisito: 1,
-        oportunidade: "identificar-interface-em-mensageria",
-        dimensoesVariadas: ["case_or_data"]
-      }]
+      }],
+      cobertura: ["Distinguir processo, socket e conexão."]
     },
     fontes: []
   };
 }
 
-function approvedPart(course, { revise = false } = {}) {
+function curricularMap(course, approved) {
   return {
     curso: course,
-    ...(revise ? { parte: 1 } : {}),
+    aprovado: approved,
+    publico: "Pessoas iniciantes em comunicação de rede",
+    preRequisitos: [
+      "Reconhecer um processo computacional.",
+      "Reconhecer a função geral de um protocolo de transporte.",
+      "Reconhecer uma comunicação cliente-servidor."
+    ],
+    itensDeEscopo: [
+      "Compreender o papel de um socket.",
+      "Distinguir processo, socket e conexão."
+    ],
+    modulos: [{
+      titulo: "Comunicação",
+      objetivo: "Explicar como processos se comunicam em rede.",
+      licoes: [{
+        titulo: "Sockets",
+        objetivo: "Relacionar processo, interface e transporte.",
+        microssequencias: [{
+          titulo: "O que é um socket",
+          objetivo: "Definir socket sem pressupor uma conexão já estabelecida.",
+          dependencias: [],
+          cobertura: ["Compreender o papel de um socket."]
+        }, {
+          titulo: "Prática de identificação",
+          objetivo: "Distinguir processo, socket e conexão em casos variados.",
+          dependencias: ["O que é um socket"],
+          cobertura: ["Distinguir processo, socket e conexão."]
+        }]
+      }]
+    }]
+  };
+}
+
+function approvedPart(course) {
+  return {
+    curso: course,
     titulo: "Sockets",
     intencao: "Construir a distinção e praticá-la em casos variados.",
-    microssequencias: [{
-      modulo: "Comunicação",
-      objetivoDoModulo: "Explicar como processos se comunicam em rede.",
-      licao: "Sockets",
-      objetivoDaLicao: "Relacionar processo, interface e transporte.",
-      titulo: "O que é um socket",
-      objetivo: "Definir socket sem pressupor uma conexão já estabelecida.",
-      funcao: "explicar",
-      unidadesDeAnalise: [
-        "Socket é uma interface entre processo e protocolo de transporte."
-      ],
-      requisitosDeEvidencia: []
-    }, {
-      modulo: "Comunicação",
-      objetivoDoModulo: "Explicar como processos se comunicam em rede.",
-      licao: "Sockets",
-      objetivoDaLicao: "Relacionar processo, interface e transporte.",
-      titulo: "Prática de identificação",
-      objetivo: "Distinguir processo, socket e conexão em casos variados.",
-      funcao: "praticar",
-      unidadesDeAnalise: [],
-      requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
-    }]
+    microssequencias: ["O que é um socket", "Prática de identificação"],
+    progressao: [
+      "Compreender por que um processo precisa de uma interface com o transporte.",
+      "Distinguir socket de processo e de conexão em situações concretas."
+    ]
   };
 }
 
 export async function runLocalCourseAuthoringCurrent(environment = process.env) {
   const config = localSupabaseConfiguration(environment);
   const marker = randomUUID();
-  const title = `Curso descartável de Autoria ${marker.slice(0, 8)}`;
+  const title = `Curso descartável de autoria ${marker.slice(0, 8)}`;
   let actorId = null;
   let accessToken = null;
   let courseId = null;
@@ -200,10 +239,24 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       name: "criar_curso",
       rawArguments: {
         titulo: title,
-        objetivo: "Distinguir processo, socket e conexão sem pressupor o modelo de transporte."
+        objetivo: "Distinguir processo, socket e conexão a partir dos pré-requisitos declarados."
       }
     });
-    assert.match(created.result, /Criei o Curso privado/u);
+    assert.match(created.result, /Criei o curso privado/u);
+
+    const proposedMap = curricularMap(title, false);
+    await executeHumanCourseTask({
+      adapter,
+      principal,
+      name: "salvar_mapa_curricular",
+      rawArguments: proposedMap
+    });
+    await executeHumanCourseTask({
+      adapter,
+      principal,
+      name: "salvar_mapa_curricular",
+      rawArguments: { ...proposedMap, aprovado: true }
+    });
 
     await executeHumanCourseTask({
       adapter,
@@ -212,96 +265,13 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: approvedPart(title)
     });
 
-    const savedPart = await resolveHumanCourseContext({
-      adapter, principal, course: title, part: 1
-    });
-    const hierarchy = await adapter.listCourseEntities({
-      principal,
-      courseId: savedPart.course.id,
-      expectedRevision: savedPart.course.revision,
-      limit: 50
-    });
-    const moduleValue = hierarchy.items.find(({ entityType }) => entityType === "module");
-    const lesson = hierarchy.items.find(({ entityType }) => entityType === "lesson");
-    const microsequences = hierarchy.items.filter(({ entityType }) =>
-      entityType === "microsequence");
-    assert.ok(moduleValue && lesson && microsequences.length === 2);
-    const secondMicrosequence = microsequences.find(({ entityId }) =>
-      entityId === savedPart.part.microsequences[1].id);
-    await adapter.commitCourseComposition({
-      principal,
-      courseId: savedPart.course.id,
-      requestId: randomUUID(),
-      expectedRevision: savedPart.course.revision,
-      upserts: [compositionEntity(moduleValue, {
-          ...moduleValue.content,
-          guide: {
-            ...moduleValue.content.guide,
-            include: ["Interfaces e transporte"],
-            exclude: ["Programação de baixo nível"],
-            notation: ["Use processo → socket → transporte."],
-            avoid: ["Não confundir socket e conexão."]
-          }
-        }), compositionEntity(lesson, {
-          ...lesson.content,
-          guide: {
-            ...lesson.content.guide,
-            include: ["Distinções operacionais"],
-            exclude: ["Detalhes de implementação"]
-          }
-        }), compositionEntity(secondMicrosequence, {
-          ...secondMicrosequence.content,
-          dependsOn: [savedPart.part.microsequences[0].id],
-          errors: ["Tratar conexão como sinônimo de socket."]
-        })],
-      deletes: [],
-      sourceAttributionApplications: []
-    });
-    await executeHumanCourseTask({
-      adapter,
-      principal,
-      name: "salvar_parte",
-      rawArguments: approvedPart(title, { revise: true })
-    });
-    const revisedPart = await resolveHumanCourseContext({
-      adapter, principal, course: title, part: 1
-    });
-    const preserved = await adapter.listCourseEntities({
-      principal,
-      courseId: revisedPart.course.id,
-      expectedRevision: revisedPart.course.revision,
-      limit: 50
-    });
-    assert.deepEqual(
-      preserved.items.find(({ entityType }) => entityType === "module")
-        .content.guide.include,
-      ["Interfaces e transporte"]
-    );
-    assert.deepEqual(
-      preserved.items.find(({ entityId }) => entityId === secondMicrosequence.entityId)
-        .content.dependsOn,
-      [savedPart.part.microsequences[0].id]
-    );
-    assert.deepEqual(
-      preserved.items.find(({ entityId }) => entityId === secondMicrosequence.entityId)
-        .content.errors,
-      ["Tratar conexão como sinônimo de socket."]
-    );
-
     const prepared = await executeHumanCourseTask({
       adapter,
       principal,
       name: "preparar_materializacao",
       rawArguments: { curso: title, parte: 1 }
     });
-    assert.equal(prepared.context.part.microsequences.length, 2);
-    const planned = await resolveHumanCourseContext({
-      adapter, principal, course: title, part: 1
-    });
-    assert.deepEqual(
-      planned.part.microsequences.map(({ role }) => role),
-      ["explain", "practice"]
-    );
+    assert.equal(prepared.context.parte.microssequencias.length, 2);
     const materialized = await executeHumanCourseTask({
       adapter,
       principal,
@@ -312,7 +282,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         unidades: [explanationUnit(), practiceUnit()]
       }
     });
-    assert.match(materialized.result, /2 Unidades/u);
+    assert.equal(materialized.result, "Primeira parte produzida.");
 
     await executeHumanCourseTask({
       adapter,
@@ -332,7 +302,10 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: {
         curso: title,
         parte: 1,
-        unidades: [explanationUnit(), practiceUnit()]
+        unidades: [
+          explanationUnit({ calibrate: false }),
+          practiceUnit({ calibrate: false })
+        ]
       }
     });
 
@@ -349,7 +322,10 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: {
         curso: title,
         parte: 1,
-        unidades: [explanationUnit(), practiceUnit()]
+        unidades: [
+          explanationUnit({ calibrate: false }),
+          practiceUnit({ calibrate: false })
+        ]
       }
     });
     const context = await resolveHumanCourseContext({
@@ -370,6 +346,14 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     assert.deepEqual(units.items.map(({ authorship }) => authorship.createdOrigin), [
       "gpt", "gpt"
     ]);
+    const sequentialText = units.items.map(({ studyUnit }) =>
+      readPackageStudyUnitText(studyUnit));
+    assert.match(sequentialText[0], /socket.+interface.+transporte/isu);
+    assert.match(sequentialText[1], /processo.+socket.+conexão/isu);
+    const renderedUnits = units.items.map(({ studyUnit }) =>
+      renderPackageStudyUnitArticle(studyUnit, { revealPracticeAnswers: true }));
+    assert.match(renderedUnits[0], /Socket liga processo e transporte/u);
+    assert.match(renderedUnits[1], /Qual elemento é a interface usada pelo processo\?/u);
 
     const annotationCommand = (studyUnitId, text) => ({
       type: "create_anchored_annotation",
@@ -434,7 +418,9 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     });
     assert.equal(analytics.design.studyUnitCount, 2);
     assert.equal(analytics.design.analysisUnits[0].introductionCount, 1);
-    assert.equal(analytics.design.practiceByRequirement[0].opportunityCount, 2);
+    assert.equal(analytics.design.analysisUnits[0].useCount, 1);
+    assert.equal(analytics.design.analysisUnits[0].revisitCount, 0);
+    assert.equal(analytics.design.practiceByRequirement[0].opportunityCount, 1);
     const ceiling = analytics.design.parameters.find(({ parameterId }) =>
       parameterId === "new_analysis_unit_ceiling_per_expository_study_unit");
     assert.deepEqual(
@@ -456,6 +442,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         curso: title,
         metadados: {
           titulo: "Referência sobre sockets",
+          papel: "tecnica_conceitual",
           citacao: "AraLearn. Referência sobre sockets, 2026.",
           verificacao: "adotada_pelo_autor",
           visibilidadeNoEstudo: "citacao"
@@ -489,6 +476,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       cursor: null,
       limit: 1
     });
+    assert.equal(sourceDetail.items[0].sourceRole, "technical_conceptual");
     const beforeEditAttribution = await adapter.getCourseSources({
       principal,
       courseId,
@@ -540,6 +528,18 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       beforeEditAttribution.items[0].targetVersion + 1
     );
     assert.deepEqual(afterEditAttribution.items[0].sourceLinks, sourceLinks);
+    const sourceAnalytics = await adapter.getCourseAuthoringAnalytics({
+      principal,
+      courseId,
+      expectedCourseRevision: edited.revision,
+      query: { scope: { kind: "course", ref: null } }
+    });
+    assert.deepEqual(sourceAnalytics.design.sourcesByRole, [{
+      role: "technical_conceptual",
+      sourceCount: 1,
+      anchorCount: 1,
+      studyUnitCount: 1
+    }]);
     const studyCitations = async (revision) => {
       const response = await localSupabaseRequest(
         config,
@@ -596,7 +596,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       partMicrosequenceCount: 2,
       studyUnitCount: 2,
       analysisIntroductionCount: 1,
-      practiceOpportunityCount: 2,
+      practiceOpportunityCount: 1,
       observationCount: 2,
       deletedUnitOverrideCount: 0,
       sourceTargetVersion: afterEditAttribution.items[0].targetVersion,

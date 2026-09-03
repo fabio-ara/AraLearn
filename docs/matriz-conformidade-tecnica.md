@@ -10,7 +10,7 @@ qualidade pedagógica global nem usabilidade com participantes.
 | Uma StudyUnit domina o leitor | sequência focal, índice/pesquisa e deep links | `course-inspection-sequence.test.js`, E2E de Autoria | conteúdo real ainda pode revelar problemas de densidade |
 | Planejamento é incremental | uma Parte por resposta, releitura do plano e Parte anterior reabrível | `incremental-authoring-conversation-acceptance.test.js` | 7–12 é heurística, não gate |
 | AnalysisUnit preserva granularidade semântica | inventário antes da produção e distribuição por teto | `instructional-analysis-granularity-eval.test.js` e fixtures correspondentes | o banco não julga equivalência semântica |
-| Quatro parâmetros pedagógicos têm efeito | guidance focal e configuração efetiva por escopo | `course-design-parameters.test.js` e fixture de calibração | direção editorial não pode reduzir conteúdo necessário |
+| Quatro parâmetros pedagógicos e dois alvos editoriais têm efeito | configuração focal e efetiva por escopo | `course-design-parameters.test.js`, Analytics e fixture de calibração | alvos são flexíveis e não podem reduzir conteúdo necessário |
 | MCP e Actions oferecem os mesmos casos de uso | catálogo `COURSE_HUMAN_TASKS` projetado nos dois transportes | `course-human-mcp.test.js`, `chatgpt-action-human-schema.test.js`, gate OpenAPI | cliente real precisa ser reconectado após publicação |
 | Contrato público usa referências humanas | camada confiável resolve identidades e concorrência | testes do executor humano e do roteador | ambiguidade material volta à conversa |
 | Revisão alcança o contexto afetado | Observações abertas, preparação contextual e correções em conjunto | `contextual-review-repair-acceptance.test.js` | aplicação exige reinspeção humana ou assistida |

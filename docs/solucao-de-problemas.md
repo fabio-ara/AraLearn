@@ -235,7 +235,7 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. confira se o catálogo oferece as dezesseis tarefas humanas correntes;
+3. confira se o catálogo oferece as dezessete tarefas humanas correntes;
 4. use `retomar_curso` ou a leitura focal da tarefa antes de escrever;
 5. diante de conflito ou referência ambígua, releia o recorte;
 6. confira se conversa e interface apontam para o mesmo ambiente.
@@ -322,7 +322,8 @@ atualização para conservar o rascunho. Conclua ou cancele essa edição e use
 Cada condição de pesquisa deve usar um Curso privado independente. Confira se o
 mesmo inventário semântico foi preservado e se os parâmetros realmente foram
 fixados antes da produção. Direção editorial não pode eliminar novidade
-necessária; uma condição mais estreita pode produzir mais StudyUnits.
+necessária. Os alvos de palavras são flexíveis, não limites; uma condição mais
+estreita pode produzir mais unidades de estudo.
 
 ## Um número de Analytics parece incorreto
 

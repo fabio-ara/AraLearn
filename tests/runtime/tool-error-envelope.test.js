@@ -59,7 +59,7 @@ test("campo desconhecido não é refletido no erro público", () => {
   ));
   const serialized = JSON.stringify(projected);
 
-  assert.equal(projected.message, "O comando contém um campo não reconhecido.");
+  assert.equal(projected.message, "O pedido contém uma informação não reconhecida.");
   assert.equal(Object.hasOwn(projected, "details"), false);
   assert.equal(serialized.includes(unknownField), false);
 });
@@ -155,21 +155,21 @@ test("erros do transporte de PDF distinguem correção, reanexo, retry e recibo"
       code: "openai_file_unavailable",
       strategy: "repeat_identical",
       requestIdMode: "same",
-      expected: /mesma chamada|sem uma resposta de expiração/iu
+      expected: /mesma operação|sem uma resposta de expiração/iu
     },
     {
       status: 408,
       code: "openai_file_timeout",
       strategy: "repeat_identical",
       requestIdMode: "same",
-      expected: /mesma chamada|sem uma resposta de expiração/iu
+      expected: /mesma operação|sem uma resposta de expiração/iu
     },
     {
       status: 502,
       code: "course_source_pdf_persistence_unconfirmed",
       strategy: "repeat_identical",
       requestIdMode: "same",
-      expected: /recibo|stored igual a true/iu
+      expected: /recuperar o resultado|documento foi armazenado/iu
     }
   ];
 
@@ -196,5 +196,5 @@ test("confirmação incerta de PDF exige releitura sem nova incorporação", () 
   assert.equal(projected.recovery.strategy, "stop");
   assert.equal(projected.recovery.retryable, false);
   assert.equal(projected.recovery.requestIdMode, "none");
-  assert.match(projected.recovery.steps.join(" "), /Releia as Fontes|Não repita/iu);
+  assert.match(projected.recovery.steps.join(" "), /Releia as fontes|Não repita/iu);
 });

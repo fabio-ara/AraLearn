@@ -261,12 +261,13 @@ escala, risco e contexto diferentes.
 as ferramentas ou coordenar autoria estrutural e correção focal. O escopo
 precisa ser visível, validável e revisável.
 
-**Decisão.** A autoria estrutural avança uma Parte por vez por contratos de
-tarefas humanas. Observações ficam ancoradas no Curso, na Microssequência ou na
-StudyUnit e podem ser registradas em vários alvos na mesma ação. Ao preparar uma
-revisão, o contexto inclui também as Units afetadas por progressão,
+**Decisão.** A autoria estrutural apresenta primeiro o mapa curricular global e
+o mantém inspecionável antes da aprovação. Depois, partes agrupam a produção
+incremental sem se tornar nível curricular. Observações ficam ancoradas no
+curso, na microssequência ou na unidade de estudo e podem ser registradas em
+vários alvos na mesma ação. Ao preparar uma revisão, o contexto inclui também as unidades afetadas por progressão,
 pré-requisitos, exemplos, prática e transições; a correção atualiza diretamente
-o Curso mutável e a rematerialização volta a comprovar seus parâmetros.
+o curso mutável e a rematerialização volta a comprovar seus parâmetros.
 
 **Fundamentação.** A interação entre pessoas e IA requer limites
 compreensíveis, correção e controle
@@ -276,9 +277,9 @@ excessiva e acrescentaram custo; o resultado não demonstra controle efetivo na
 autoria educacional
 ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 
-**Operacionalização.** O servidor deriva o contexto focal, mantém as Observações
+**Operacionalização.** O servidor deriva o contexto focal, mantém as observações
 abertas consultáveis e aplica correções com controle de concorrência. Voltar a
-qualquer ponto significa abrir Units antigas, anotar e reparar o conjunto
+qualquer ponto significa abrir unidades antigas, anotar e reparar o conjunto
 coerente afetado; não requer rodadas imutáveis nem um histórico paralelo de
 mutações.
 

@@ -25,8 +25,13 @@ const SOURCE_KINDS = Object.freeze({
   media: "Áudio ou vídeo",
   other: "Outro"
 });
+const SOURCE_ROLES = Object.freeze({
+  curricular_scope: "Escopo curricular",
+  assessment_evidence: "Evidência de avaliação",
+  technical_conceptual: "Fonte técnica ou conceitual"
+});
 const SOURCE_VISIBILITIES = Object.freeze({
-  hidden: "Não mostrar no Estudo",
+  hidden: "Não mostrar no estudo",
   citation: "Mostrar citação",
   citation_and_link: "Mostrar citação e link"
 });
@@ -210,7 +215,7 @@ function errorMessage(error) {
   if (error instanceof TypeError && error.message) return error.message;
   const code = String(error?.code || "").toLowerCase();
   if (code === "course_revision_changed" || Number(error?.status) === 409) {
-    return "O Curso mudou. Recarregue as fontes antes de salvar.";
+    return "O curso mudou. Recarregue as fontes antes de salvar.";
   }
   if (/offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)) {
     return "Sem conexão para concluir esta operação.";
@@ -263,9 +268,9 @@ function renderSourceConfirmation(state) {
 }
 
 function sourceObservationTargetLabel(item, source) {
-  if (item.target.kind === "source") return "Fonte";
+  if (item.target.kind === "source") return "fonte";
   const anchor = source.anchors.find(({ anchorId }) => anchorId === item.target.id);
-  return anchor ? `Âncora · ${anchorLabel(anchor)}` : "Âncora não disponível";
+  return anchor ? `âncora · ${anchorLabel(anchor)}` : "âncora não disponível";
 }
 
 function sourceObservationCategoryLabel(category) {
@@ -276,9 +281,9 @@ function sourceObservationCategoryLabel(category) {
 
 function renderConsideredSourceLinks(sourceLinks) {
   if (!sourceLinks.length) return "";
-  return '<div class="course-source-observation-references"><strong>Fontes e Âncoras consideradas</strong><ul>' +
+  return '<div class="course-source-observation-references"><strong>Fontes e âncoras consideradas</strong><ul>' +
     sourceLinks.map((link, index) => `<li>Fonte ${index + 1} · ${link.anchors.length} ` +
-      `${link.anchors.length === 1 ? "Âncora" : "Âncoras"}</li>`).join("") + "</ul></div>";
+      `${link.anchors.length === 1 ? "âncora" : "âncoras"}</li>`).join("") + "</ul></div>";
 }
 
 function renderSourceObservation(item, source) {
@@ -433,7 +438,7 @@ function buildSourceObservationsExport(state, exportedAt) {
       message: "Exportação operacional privada. Pode conter dados pessoais no texto livre ou nos rótulos e inclui identificadores internos e horários; não é um conjunto anônimo.",
       included: {
         freeText: "Texto livre da observação, do resumo, da resposta e rótulos de assunto, quando houver.",
-        internalIdentifiers: "Identificadores internos do Curso, da Fonte, da Observação e dos assuntos relacionados.",
+        internalIdentifiers: "Identificadores internos do curso, da fonte, da observação e dos assuntos relacionados.",
         timestamps: "Horários de criação e do ciclo da observação."
       },
       excluded: [
@@ -492,6 +497,7 @@ function sourceDraft(source = null) {
   return {
     sourceId: source?.sourceId || "",
     kind: source?.kind || "web_page",
+    sourceRole: source?.sourceRole || "",
     title: source?.title || "",
     authorship: source?.authorship || "",
     publicationDate: source?.publicationDate || "",
@@ -518,7 +524,7 @@ function formDraft(form, current, names) {
 
 function sourceDraftFromForm(form, current) {
   return formDraft(form, current, [
-    "sourceId", "kind", "title", "authorship", "publicationDate", "identifier", "language",
+    "sourceId", "kind", "sourceRole", "title", "authorship", "publicationDate", "identifier", "language",
     "citationText", "url", "editionOrVersion", "origin", "availability", "verificationStatus",
     "studyVisibility"
   ]);
@@ -532,6 +538,11 @@ function renderSourceForm(state) {
   const kindOptions = Object.entries(SOURCE_KINDS).map(([value, label]) =>
     `<option value="${value}"${values.kind === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
+  const roleOptions = '<option value="" disabled' +
+    `${values.sourceRole ? "" : " selected"}>Escolha o papel da fonte</option>` +
+    Object.entries(SOURCE_ROLES).map(([value, label]) =>
+      `<option value="${value}"${values.sourceRole === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+    ).join("");
   const visibilityOptions = Object.entries(SOURCE_VISIBILITIES).map(([value, label]) =>
     `<option value="${value}"${values.studyVisibility === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
@@ -549,6 +560,8 @@ function renderSourceForm(state) {
     `<input type="hidden" name="sourceId" value="${escapeHtml(values.sourceId)}">` +
     '<label for="course-source-kind">Tipo</label>' +
     `<select id="course-source-kind" name="kind" required>${kindOptions}</select>` +
+    '<label for="course-source-role">Papel no curso</label>' +
+    `<select id="course-source-role" name="sourceRole" required>${roleOptions}</select>` +
     '<label for="course-source-title">Título</label>' +
     `<input id="course-source-title" name="title" maxlength="600" required value="${escapeHtml(values.title)}">` +
     '<div class="course-source-form-grid"><div><label for="course-source-authorship">Autoria</label>' +
@@ -693,7 +706,7 @@ function renderAnchor(anchor, sourceRevision, state) {
     (deepLinked ? '<span class="course-source-deep-link-label">Âncora indicada</span>' : "") +
     "</div>" +
     (anchor.needsReverification
-      ? '<p>O PDF mudou. Confira a paginação e o trecho antes de reutilizar esta Âncora.</p>'
+      ? '<p>O PDF mudou. Confira a paginação e o trecho antes de reutilizar esta âncora.</p>'
       : anchor.verificationExcerpt
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
@@ -714,7 +727,7 @@ function renderSourceAttachments(source, index, state) {
   if (index !== 0) return "";
   const attachments = Array.isArray(source.attachments) ? source.attachments : [];
   const canUpload = index === 0 && source.status === "active" && attachments.length < 8;
-  return '<section class="course-source-attachments"><header><div><h4>Acesso PDF da Fonte</h4>' +
+  return '<section class="course-source-attachments"><header><div><h4>Acesso ao PDF da fonte</h4>' +
     `<p>${attachments.length ? "PDF disponível" : "Sem PDF"}</p></div>` +
     (canUpload
       ? `<label class="course-source-pdf-picker" title="${state.busy ? "Aguarde" : "Anexar PDF"}">` +
@@ -731,22 +744,22 @@ function renderSourceAttachments(source, index, state) {
         '<button type="button" data-source-action="remove-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
           `${state.busy || source.status !== "active" ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}` +
-          '<span><strong>Remover PDF</strong><small>Manter Fonte e referências</small></span></button>'
+          '<span><strong>Remover PDF</strong><small>Manter fonte e referências</small></span></button>'
       ).join("") + "</div>"
-      : '<p class="course-source-empty">A Fonte continua disponível sem arquivo PDF.</p>') + "</section>";
+      : '<p class="course-source-empty">A fonte continua disponível sem arquivo PDF.</p>') + "</section>";
 }
 
 function sourceAvailabilityNote(source) {
   const attachmentCount = Array.isArray(source.attachments) ? source.attachments.length : 0;
   if (attachmentCount > 0) {
     return safeHttpUrl(source.url)
-      ? "A Fonte oferece PDF privado e endereço web."
-      : "PDF privado disponível como forma de acesso à Fonte.";
+      ? "A fonte oferece PDF privado e endereço web."
+      : "PDF privado disponível como forma de acesso à fonte.";
   }
   if (safeHttpUrl(source.url)) {
     return "Referência remota: o endereço pode mudar ou deixar de estar disponível.";
   }
-  return "A Fonte continua registrada sem PDF ou endereço de acesso.";
+  return "A fonte continua registrada sem PDF ou endereço de acesso.";
 }
 
 function renderSource(source, state) {
@@ -763,6 +776,7 @@ function renderSource(source, state) {
         : "") + "</div>" : "") + "</header>" +
     '<dl class="course-source-metadata">' +
         `<div><dt>Tipo</dt><dd>${escapeHtml(SOURCE_KINDS[source.kind] || "Não informado")}</dd></div>` +
+        `<div><dt>Papel no curso</dt><dd>${escapeHtml(SOURCE_ROLES[source.sourceRole] || "Não informado")}</dd></div>` +
         `<div><dt>Autoria</dt><dd>${escapeHtml(source.authorship || "Não informada")}</dd></div>` +
         `<div><dt>Publicação</dt><dd>${escapeHtml(source.publicationDate || "Não informada")}</dd></div>` +
         `<div><dt>Identificador</dt><dd>${escapeHtml(source.identifier || "Não informado")}</dd></div>` +
@@ -803,7 +817,7 @@ function renderSourceDetail(state) {
   return '<section class="course-source-detail" aria-labelledby="course-source-detail-title">' +
     '<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo">' +
     `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button><div>` +
-    `<h2 id="course-source-detail-title">${escapeHtml(items[0] ? sourceTitle(items[0]) : state.selectedSourceId)}</h2></div></header>` +
+    `<h2 id="course-source-detail-title">${escapeHtml(items[0] ? sourceTitle(items[0]) : "Fonte indisponível")}</h2></div></header>` +
     renderNotice(state) + renderSourceConfirmation(state) + renderSourceForm(state) +
     (items.length
       ? `<div class="course-source-current-view">${renderSource(items[0], state)}</div>`
@@ -819,7 +833,8 @@ function renderCatalogCard(source, { selectable = false, selected = false } = {}
     '<span class="course-source-card-icon">' + renderUiIcon("study", "course-authoring-icon") +
     '</span><span class="course-source-card-copy">' +
     sourceStatusMarkup(source) + `<strong>${escapeHtml(sourceTitle(source))}</strong>` +
-    `<small>${source.anchorCount} ${source.anchorCount === 1 ? "âncora" : "âncoras"}</small></span>` +
+    `<small>${escapeHtml(SOURCE_ROLES[source.sourceRole] || "Papel não informado")} · ` +
+    `${source.anchorCount} ${source.anchorCount === 1 ? "âncora" : "âncoras"}</small></span>` +
     (selectable ? selected ? renderUiIcon("save", "course-authoring-arrow") : renderUiIcon("add", "course-authoring-arrow") : renderUiIcon("arrow-right", "course-authoring-arrow")) +
     "</button></article>";
 }
@@ -855,7 +870,7 @@ function renderCatalogPanel(state) {
     : "";
   return '<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title">' +
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Fontes</h2>' +
-    '<header class="course-authoring-section-toolbar" aria-label="Ações de Fontes">' +
+    '<header class="course-authoring-section-toolbar" aria-label="Ações de fontes">' +
     `<span class="course-source-catalog-summary">${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} fontes${escapeHtml(pdfStorageSummary)}</span>` +
     '<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte">' +
     `${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
@@ -900,11 +915,11 @@ function renderTargetLink(state, link, index) {
     `<button type="button" data-source-action="move-target-source-down" data-source-id="${escapeHtml(link.sourceId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="remove-target-source" data-source-id="${escapeHtml(link.sourceId)}" aria-label="Remover vínculo">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
     (unavailableReference
-      ? '<p class="course-authoring-notice is-error">A Fonte ou uma Âncora vinculada não está mais ativa. Ajuste o vínculo.</p>'
+      ? '<p class="course-authoring-notice is-error">A fonte ou uma âncora vinculada não está mais ativa. Ajuste o vínculo.</p>'
       : "") +
     `<label class="course-source-relation"><span>Relação com o item</span><select data-source-target-relation data-source-id="${escapeHtml(link.sourceId)}">${relationOptions}</select></label>` +
     (unavailable
-      ? '<p class="course-authoring-notice is-error">A Fonte corrente não está disponível. Remova este vínculo e escolha outra Fonte.</p>'
+      ? '<p class="course-authoring-notice is-error">A fonte corrente não está disponível. Remova este vínculo e escolha outra fonte.</p>'
       : loading
         ? '<p class="course-authoring-loading">Carregando âncoras…</p>'
         : anchors.filter(({ status }) => status === "active").length
@@ -913,8 +928,8 @@ function renderTargetLink(state, link, index) {
               `<label><input type="checkbox" data-source-target-anchor data-source-id="${escapeHtml(link.sourceId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
               `<span>${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
           : link.relation === "needs_verification"
-            ? '<p class="course-source-empty">Sem Âncora: este vínculo permanece marcado para verificação.</p>'
-            : '<p class="course-source-empty">Esta Fonte não tem Âncora ativa. Escolha “Precisa de verificação” ou crie uma Âncora.</p>') +
+            ? '<p class="course-source-empty">Sem âncora: este vínculo permanece marcado para verificação.</p>'
+            : '<p class="course-source-empty">Esta fonte não tem âncora ativa. Escolha “Precisa de verificação” ou crie uma âncora.</p>') +
     "</article>";
 }
 
@@ -927,7 +942,9 @@ function renderTargetPanel(state) {
     ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title">' +
     '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
     '<div>' +
-    `<h2 id="course-source-target-title">Fontes de ${escapeHtml(state.targetLabel || "este item")}</h2></div>` +
+    `<h2 id="course-source-target-title">${state.targetLabel
+      ? `Fontes de ${escapeHtml(state.targetLabel)}`
+      : "Fontes deste item"}</h2></div>` +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
     '<div class="course-source-target-body">' +
@@ -1021,7 +1038,7 @@ export function renderCourseSourcesPanel(state = {}) {
 
 function assertDependencies(root, controller, options) {
   if (!root || typeof root.addEventListener !== "function") {
-    throw new TypeError("Raiz de Fontes inválida.");
+    throw new TypeError("A área de fontes é inválida.");
   }
   const methods = ["loadCourseSources", "mutateCourseSources"];
   if (options?.mode === "catalog") {
@@ -1029,23 +1046,23 @@ function assertDependencies(root, controller, options) {
   }
   for (const method of methods) {
     if (typeof controller?.[method] !== "function") {
-      throw new TypeError(`Controller de Cursos sem ${method}.`);
+      throw new TypeError("O controle de cursos não oferece o recurso necessário.");
     }
   }
   if (!options?.courseId || !Number.isSafeInteger(options.courseRevision) ||
       options.courseRevision < 1 || !["catalog", "target"].includes(options.mode)) {
-    throw new TypeError("Contexto de Fontes inválido.");
+    throw new TypeError("O contexto de fontes é inválido.");
   }
   if (options.mode === "target" &&
       (!new Set(["plan_item", "study_unit"]).has(options.targetKind) || !options.targetId ||
        !Number.isSafeInteger(options.targetVersion) || options.targetVersion < 1)) {
-    throw new TypeError("Alvo de Fontes inválido.");
+    throw new TypeError("O item relacionado às fontes é inválido.");
   }
   if (options.initialSourceId !== null &&
       (options.mode !== "catalog" || !validLiteralSourceId(options.initialSourceId)) ||
       options.initialAnchorId !== null &&
       (options.initialSourceId === null || !validAnchorId(options.initialAnchorId))) {
-    throw new TypeError("Deep link de Fonte inválido.");
+    throw new TypeError("O endereço da fonte é inválido.");
   }
 }
 
@@ -1087,7 +1104,7 @@ export function createCourseSourcesPanel({
   };
   assertDependencies(root, controller, options);
   if (onNavigate !== null && typeof onNavigate !== "function") {
-    throw new TypeError("Navegação contextual de Fontes inválida.");
+    throw new TypeError("A navegação contextual de fontes é inválida.");
   }
   if (typeof downloadUrl !== "function") throw new TypeError("Abertura de anexo inválida.");
   if (typeof downloadJson !== "function" || typeof now !== "function") {
@@ -1257,7 +1274,7 @@ export function createCourseSourcesPanel({
       title: awaitingConfirmation ? "Abandonar confirmação?" : "Descartar alterações?",
       message: awaitingConfirmation
         ? "A resposta da gravação não chegou. A operação pode ter sido aplicada; fechar abandona a repetição segura deste mesmo pedido."
-        : "As mudanças neste conjunto de Fontes ainda não foram salvas.",
+        : "As mudanças neste conjunto de fontes ainda não foram salvas.",
       confirmLabel: awaitingConfirmation ? "Fechar mesmo assim" : "Descartar",
       returnFocusSelector: '[data-source-action="close-target"]'
     });
@@ -1569,12 +1586,12 @@ export function createCourseSourcesPanel({
     const page = await loadDetail(sourceId, { preserveExisting, courseRevision });
     if (!page) return false;
     if (!page.items.length) {
-      return initialLinkFailure("not_found: a Fonte indicada não está disponível.");
+      return initialLinkFailure("A fonte indicada não está disponível.");
     }
     if (anchorId === null) return true;
     const source = page.items[0];
     const anchor = source.anchors.find((item) => item.anchorId === anchorId);
-    if (!anchor) return initialLinkFailure("not_found: a Âncora indicada não existe na Fonte.");
+    if (!anchor) return initialLinkFailure("A âncora indicada não existe na fonte.");
     state.initialAnchorMatch = {
       sourceRevision: source.revision,
       anchorId: anchor.anchorId,
@@ -1647,7 +1664,7 @@ export function createCourseSourcesPanel({
 
   function reportConfirmedRefreshFailure(confirmedMessage) {
     state.message = confirmedMessage;
-    state.failure = "A escrita foi confirmada, mas a lista está desatualizada. Recarregue Fontes para conferir o estado salvo.";
+    state.failure = "A alteração foi confirmada, mas a lista está desatualizada. Recarregue as fontes para conferir o estado salvo.";
   }
 
   async function refreshAfterChange(change) {
@@ -1736,7 +1753,7 @@ export function createCourseSourcesPanel({
     if (state.busy) return false;
     const source = state.detail?.items?.[0];
     if (!source || source.status !== "active") {
-      state.failure = "A Fonte corrente não está disponível.";
+      state.failure = "A fonte corrente não está disponível.";
       render();
       return false;
     }
@@ -1878,6 +1895,7 @@ export function createCourseSourcesPanel({
     }
     const source = {
       kind: requiredFormValue(form, "kind", "O tipo", 32),
+      sourceRole: requiredFormValue(form, "sourceRole", "O papel no curso", 32),
       title: requiredFormValue(form, "title", "O título", 300),
       authorship: optionalFormValue(form, "authorship", "A autoria", 500),
       publicationDate: optionalFormValue(form, "publicationDate", "A data de publicação", 10),
@@ -1911,7 +1929,7 @@ export function createCourseSourcesPanel({
     const source = state.detail?.items?.[0];
     const editor = state.anchorEditor;
     const existing = editor?.anchor || null;
-    if (!source || source.status !== "active") throw new TypeError("A Fonte corrente não está disponível.");
+    if (!source || source.status !== "active") throw new TypeError("A fonte corrente não está disponível.");
     if (!existing && editor && !editor.anchorId) editor.anchorId = createUuid();
     const command = {
       type: "save_anchor",
@@ -2014,7 +2032,7 @@ export function createCourseSourcesPanel({
     captureObservationDraft(form);
     const source = state.detail?.items?.[0];
     if (!source || source.status !== "active") {
-      throw new TypeError("A Fonte corrente não está disponível.");
+      throw new TypeError("A fonte corrente não está disponível.");
     }
     const observationKind = requiredFormValue(
       form,
@@ -2026,10 +2044,10 @@ export function createCourseSourcesPanel({
     if (!observation) {
       throw formFieldError("A intenção da observação é inválida.", "observationKind");
     }
-    const anchorId = optionalFormValue(form, "targetId", "A Âncora", 240) || "";
+    const anchorId = optionalFormValue(form, "targetId", "A âncora", 240) || "";
     if (anchorId && !source.anchors.some((anchor) =>
       anchor.anchorId === anchorId && anchor.status === "active")) {
-      throw formFieldError("A Âncora escolhida não está ativa nesta Fonte.", "targetId");
+      throw formFieldError("A âncora escolhida não está ativa nesta fonte.", "targetId");
     }
     const editor = state.observationEditor;
     if (editor && !editor.annotationId) editor.annotationId = createUuid();
@@ -2211,7 +2229,7 @@ export function createCourseSourcesPanel({
       };
       requestConfirmation({
         title: "Aposentar fonte?",
-        message: "A Fonte deixará de estar ativa. Revise os conteúdos que ainda dependem dela.",
+        message: "A fonte deixará de estar ativa. Revise os conteúdos que ainda dependem dela.",
         confirmLabel: "Aposentar",
         command,
         draft: command,
@@ -2242,7 +2260,7 @@ export function createCourseSourcesPanel({
       const command = { type: "retire_anchor", anchorId, expectedAnchorRevision };
       requestConfirmation({
         title: "Aposentar âncora?",
-        message: "A Âncora deixará de estar ativa. Revise os vínculos que ainda dependem dela.",
+        message: "A âncora deixará de estar ativa. Revise os vínculos que ainda dependem dela.",
         confirmLabel: "Aposentar",
         command,
         draft: command,
@@ -2278,7 +2296,7 @@ export function createCourseSourcesPanel({
       try {
         downloadJson(
           buildSourceObservationsExport(state, now()),
-          `aralearn-observacoes-fonte-${state.courseId}.json`
+          "aralearn-observacoes-da-fonte.json"
         );
         state.failure = "";
         state.message = "A exportação das observações foi preparada para salvamento.";
@@ -2307,7 +2325,7 @@ export function createCourseSourcesPanel({
       };
       requestConfirmation({
         title: "Remover PDF?",
-        message: "Somente o arquivo PDF será removido. A Fonte, sua citação, as Âncoras e os vínculos pedagógicos serão preservados.",
+        message: "Somente o arquivo PDF será removido. A fonte, sua citação, as âncoras e os vínculos pedagógicos serão preservados.",
         confirmLabel: "Remover PDF",
         command,
         draft: command,
@@ -2365,7 +2383,7 @@ export function createCourseSourcesPanel({
       render();
     } else if (action === "save-target") {
       if (!targetLinksValid()) {
-        state.failure = "Cada Fonte precisa estar ativa e usar uma relação explícita. Somente “Precisa de verificação” pode permanecer sem Âncora.";
+        state.failure = "Cada fonte precisa estar ativa e usar uma relação explícita. Somente “Precisa de verificação” pode permanecer sem âncora.";
         render();
         return;
       }

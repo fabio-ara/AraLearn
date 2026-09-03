@@ -19,9 +19,9 @@ visibilidade e retorno da conexão.
 
 ## PostgreSQL, esquemas e autorização
 
-O banco conserva o Curso vivo, sua hierarquia, planejamento, Partes,
-AnalysisUnits, requisitos de evidência, parâmetros, direção editorial, Fontes,
-Âncoras, vínculos de PDF, Observações, acesso e estado pessoal. Cada StudyUnit
+O banco conserva o curso vivo, seu mapa curricular, partes operacionais,
+repertório de unidades de análise, requisitos de evidência, parâmetros, direção
+editorial, fontes, âncoras, vínculos de PDF, observações, acesso e estado pessoal. Cada unidade de estudo
 guarda o recorte de desenho que efetivamente recebeu. Analytics deriva números
 dessas autoridades correntes; não mantém uma história da execução.
 
@@ -136,8 +136,8 @@ autorizada. Reanexar o conteúdo reativa o vínculo e volta a verificar os bytes
 | Função | Entrada | Identidade aceita |
 | --- | --- | --- |
 | `aralearn-course-api` | aplicação web e Android | sessão AraLearn validada pelo handler |
-| `aralearn-authoring-mcp` | dezesseis tarefas humanas pelo MCP | JWT OAuth minimizado do MCP |
-| `aralearn-authoring-action` | as mesmas dezesseis tarefas projetadas em OpenAPI | access token opaco do OAuth de Actions |
+| `aralearn-authoring-mcp` | dezessete tarefas humanas pelo MCP | JWT OAuth minimizado do MCP |
+| `aralearn-authoring-action` | as mesmas dezessete tarefas projetadas em OpenAPI | access token opaco do OAuth de Actions |
 
 As três funções usam `verify_jwt = false` na configuração. Isso não as torna
 anônimas. Cada handler precisa receber formatos que o verificador genérico da
@@ -208,7 +208,7 @@ coerentes: dump do banco e cópia dos objetos privados. Essa separação é
 documentada pelo [Supabase](https://supabase.com/docs/guides/platform/backups).
 
 O ensaio local cria duas instâncias descartáveis. A primeira recebe uma fixture
-com Curso, plano, Parte, desenho, StudyUnit, Fonte, Âncora, PDF, Observações e
+com curso, mapa, parte, desenho, unidade de estudo, fonte, âncora, PDF, observações e
 operações ainda abertas. Depois do dump, a segunda restaura o banco, aplica a
 migration de corte e confere o estado útil. Nenhuma delas modifica o projeto
 hospedado ou a stack usada como origem.

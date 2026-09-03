@@ -19,7 +19,12 @@ const PARAMETER_ROWS = Object.freeze([{
   parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
   label: "Teto de novas AnalysisUnits",
   valueKind: "integer",
-  effectiveValues: [{ value: 2, origin: "author", studyUnitCount: 2 }]
+  effectiveValues: [{
+    value: 2,
+    origin: "author",
+    sourceScopeKind: "course",
+    studyUnitCount: 2
+  }]
 }, {
   parameterId: "required_explanation_forms",
   label: "Formas de explicação",
@@ -27,13 +32,19 @@ const PARAMETER_ROWS = Object.freeze([{
   effectiveValues: [{
     value: ["plain_definition", "mechanism"],
     origin: "automatic",
+    sourceScopeKind: "didactic_microsequence",
     studyUnitCount: 2
   }]
 }, {
   parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
   label: "Mínimo de práticas",
   valueKind: "integer",
-  effectiveValues: [{ value: 2, origin: "author", studyUnitCount: 2 }]
+  effectiveValues: [{
+    value: 2,
+    origin: "author",
+    sourceScopeKind: "course",
+    studyUnitCount: 2
+  }]
 }, {
   parameterId: "required_practice_variation_dimensions",
   label: "Dimensões de variação",
@@ -41,6 +52,27 @@ const PARAMETER_ROWS = Object.freeze([{
   effectiveValues: [{
     value: ["case_or_data", "context"],
     origin: "author",
+    sourceScopeKind: "course",
+    studyUnitCount: 2
+  }]
+}, {
+  parameterId: "authoring_chat_response_word_target",
+  label: "Alvo de palavras por resposta de autoria",
+  valueKind: "integer",
+  effectiveValues: [{
+    value: 90,
+    origin: "automatic",
+    sourceScopeKind: "didactic_microsequence",
+    studyUnitCount: 2
+  }]
+}, {
+  parameterId: "study_unit_content_word_target",
+  label: "Alvo de palavras por unidade de estudo",
+  valueKind: "integer",
+  effectiveValues: [{
+    value: 140,
+    origin: "research_condition",
+    sourceScopeKind: "course",
     studyUnitCount: 2
   }]
 }]);
@@ -92,20 +124,27 @@ function snapshot({
       editorialDirections: [{
         direction: "Parágrafos curtos e títulos informativos.",
         origin: "author",
+        sourceScopeKind: "course",
         studyUnitCount: studyUnits.length
       }],
       analysisUnits: [{
         position: 1,
         statement: "DNS associa nomes a endereços.",
-        introductionCount: 1
+        introductionCount: 1,
+        useCount: 2,
+        revisitCount: 1
       }, {
         position: 2,
         statement: "A resolução consulta registros em sequência.",
-        introductionCount: 1
+        introductionCount: 1,
+        useCount: 1,
+        revisitCount: 0
       }, {
         position: 3,
         statement: "O cache condiciona uma nova consulta.",
-        introductionCount: 1
+        introductionCount: 1,
+        useCount: 0,
+        revisitCount: 0
       }],
       introductionsByStudyUnit: studyUnits,
       explanationForms: [{
@@ -139,11 +178,15 @@ function snapshot({
         opportunityCount: 1
       }],
       sourcesByRole: [{
-        role: "supported_by",
+        role: "technical_conceptual",
         sourceCount: 2,
         anchorCount: 3,
         studyUnitCount: studyUnits.length
-      }]
+      }],
+      wordCountsByStudyUnit: studyUnits.map((_, index) => ({
+        wordCount: 80 + index * 20,
+        studyUnitCount: 1
+      }))
     },
     authorship: {
       observations: { createdCount: 4, openCount: 1, resolvedCount: 2 },
@@ -192,6 +235,16 @@ test("#273 snapshot responde desenho e autoria somente com contagens observávei
   assert.deepEqual(normalized.design.parameters.map(({ parameterId }) => parameterId),
     COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS);
   assert.equal(normalized.design.analysisUnits.length, 3);
+  assert.deepEqual(
+    normalized.design.analysisUnits.map(({ introductionCount, useCount, revisitCount }) => ({
+      introductionCount,
+      useCount,
+      revisitCount
+    })),
+    [{ introductionCount: 1, useCount: 2, revisitCount: 1 },
+      { introductionCount: 1, useCount: 1, revisitCount: 0 },
+      { introductionCount: 1, useCount: 0, revisitCount: 0 }]
+  );
   assert.deepEqual(normalized.design.introductionsByStudyUnit.map(({ introducedCount }) =>
     introducedCount), [2, 1]);
   assert.equal(normalized.design.explanationForms[0].applicationCount, 3);
@@ -199,6 +252,26 @@ test("#273 snapshot responde desenho e autoria somente com contagens observávei
     "aralearn.resource.sequence@1.0.0");
   assert.equal(normalized.design.practiceByRequirement[0].opportunityCount, 2);
   assert.equal(normalized.design.practiceVariationDimensions[0].opportunityCount, 2);
+  assert.equal(normalized.design.sourcesByRole[0].role, "technical_conceptual");
+  const provenanceAsRole = snapshot();
+  provenanceAsRole.design.sourcesByRole[0].role = "supported_by";
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(provenanceAsRole),
+    /papel da Fonte não pertence ao catálogo/u
+  );
+  const legacyWithoutRole = snapshot();
+  legacyWithoutRole.design.sourcesByRole[0].role = null;
+  assert.equal(
+    normalizeCourseAuthoringAnalyticsPage(legacyWithoutRole).design.sourcesByRole[0].role,
+    null
+  );
+  assert.deepEqual(normalized.design.wordCountsByStudyUnit, [{
+    wordCount: 80,
+    studyUnitCount: 1
+  }, {
+    wordCount: 100,
+    studyUnitCount: 1
+  }]);
   assert.deepEqual(normalized.authorship.observations, {
     createdCount: 4,
     openCount: 1,
@@ -247,15 +320,21 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
   value.design.parameters[0].effectiveValues = [{
     value: 1,
     origin: "author",
+    sourceScopeKind: "study_unit",
     studyUnitCount: 1
   }, {
     value: 2,
     origin: "automatic",
+    sourceScopeKind: "didactic_microsequence",
     studyUnitCount: 1
   }];
   const normalized = normalizeCourseAuthoringAnalyticsPage(value);
   assert.deepEqual(normalized.design.parameters[0].effectiveValues.map(({ value: entry }) => entry),
     [1, 2]);
+  assert.deepEqual(
+    normalized.design.parameters[0].effectiveValues.map(({ sourceScopeKind }) => sourceScopeKind),
+    ["study_unit", "didactic_microsequence"]
+  );
   assert.deepEqual(normalized.missingData,
     ["Uma Observação retirada não é classificada como resolvida."]);
 
@@ -276,9 +355,52 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
   silentlyMissing.design.parameters[1].effectiveValues[0].studyUnitCount = 1;
   silentlyMissing.missingData = [];
   assert.throws(() => normalizeCourseAuthoringAnalyticsPage(silentlyMissing), /missingData/u);
+
+  const incompleteWordDistribution = snapshot();
+  incompleteWordDistribution.design.wordCountsByStudyUnit[0].studyUnitCount = 2;
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(incompleteWordDistribution),
+    /distribuição de palavras não fecha/u
+  );
 });
 
-test("#273 rejeita maquinaria, score e quinto parâmetro em qualquer projeção", () => {
+test("valores iguais em escopos de origem distintos permanecem comparáveis", () => {
+  const value = snapshot();
+  value.design.parameters[0].effectiveValues = [{
+    value: 2,
+    origin: "automatic",
+    sourceScopeKind: "course",
+    studyUnitCount: 1
+  }, {
+    value: 2,
+    origin: "automatic",
+    sourceScopeKind: "didactic_microsequence",
+    studyUnitCount: 1
+  }];
+  value.design.editorialDirections = [{
+    direction: "Use títulos informativos.",
+    origin: "automatic",
+    sourceScopeKind: "course",
+    studyUnitCount: 2
+  }, {
+    direction: "Use títulos informativos.",
+    origin: "automatic",
+    sourceScopeKind: "study_unit",
+    studyUnitCount: 2
+  }];
+
+  const normalized = normalizeCourseAuthoringAnalyticsPage(value);
+  assert.deepEqual(
+    normalized.design.parameters[0].effectiveValues.map(({ sourceScopeKind }) => sourceScopeKind),
+    ["course", "didactic_microsequence"]
+  );
+  assert.deepEqual(
+    normalized.design.editorialDirections.map(({ sourceScopeKind }) => sourceScopeKind),
+    ["course", "study_unit"]
+  );
+});
+
+test("#273 rejeita maquinaria, score e parâmetro inventado em qualquer projeção", () => {
   for (const mutate of [
     (value) => { value.runs = []; },
     (value) => { value.design.steps = 3; },
@@ -296,7 +418,10 @@ test("#273 rejeita maquinaria, score e quinto parâmetro em qualquer projeção"
     assert.throws(() => normalizeCourseAuthoringAnalyticsPage(value));
   }
   const serialized = JSON.stringify(normalizeCourseAuthoringAnalyticsPage(snapshot()));
-  assert.doesNotMatch(serialized, /run|step|retry|duration|hash|payload|score/iu);
+  assert.doesNotMatch(
+    serialized,
+    /run|step|retry|duration|hash|payload|score|transcript|prompt|clickstream/iu
+  );
 });
 
 test("#273 assembler anexa somente deep link e confere Curso/escopo", () => {

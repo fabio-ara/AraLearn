@@ -12,6 +12,7 @@ import {
 import {
   COURSE_SOURCE_KINDS,
   COURSE_SOURCE_RELATIONS,
+  COURSE_SOURCE_ROLES,
   normalizeCourseSourceCommand,
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
@@ -28,16 +29,22 @@ import {
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
 import { materializeHumanCoursePart } from "./courseHumanMaterialization.js";
 import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
-import { courseAuthoringGuidanceForCall } from "./courseKnowledge.js";
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
 const WRITE_SCOPE = "authoring:write";
-const MAX_RESULT_BYTES = 512 * 1024;
+const MAX_RESULT_BYTES = 500 * 1024;
 const MAX_CONTEXT_PAGES = 100;
 const MCP_OAUTH_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["offline_access"]) })
 ]);
+const SOURCE_ROLES_BY_HUMAN_NAME = Object.freeze({
+  escopo_curricular: "curricular_scope",
+  evidencia_de_avaliacao: "assessment_evidence",
+  tecnica_conceitual: "technical_conceptual"
+});
+const SOURCE_ROLE_HUMAN_NAMES = new Map(Object.entries(SOURCE_ROLES_BY_HUMAN_NAME)
+  .map(([humanName, internalName]) => [internalName, humanName]));
 
 const HUMAN_REFERENCE_SCHEMA = Object.freeze({
   oneOf: Object.freeze([
@@ -49,7 +56,7 @@ const COURSE_SCHEMA = Object.freeze({
   type: "string",
   minLength: 1,
   maxLength: 300,
-  description: "Título inequívoco do Curso."
+  description: "Título do curso."
 });
 const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   type: "array",
@@ -87,46 +94,78 @@ const PEDAGOGICAL_PARAMETERS_SCHEMA = Object.freeze({
   })
 });
 
-const AUTHORING_PART_MICROSEQUENCE_SCHEMA = Object.freeze({
+const CURRICULAR_MAP_MICROSEQUENCE_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze([
-    "modulo", "objetivoDoModulo", "licao", "objetivoDaLicao",
-    "titulo", "objetivo", "funcao",
-    "unidadesDeAnalise", "requisitosDeEvidencia"
-  ]),
+  required: Object.freeze(["titulo", "objetivo", "dependencias", "cobertura"]),
   properties: Object.freeze({
-    modulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-    objetivoDoModulo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
-    licao: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-    objetivoDaLicao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
     titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
     objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
-    funcao: Object.freeze({
-      type: "string", enum: Object.freeze(["explicar", "praticar", "revisar", "apoiar"])
+    dependencias: Object.freeze({
+      type: "array", maxItems: 64, uniqueItems: true,
+      items: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
     }),
-    unidadesDeAnalise: Object.freeze({
+    cobertura: Object.freeze({
       type: "array", maxItems: 64, uniqueItems: true,
       items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
+    })
+  })
+});
+
+const EDITORIAL_PARAMETERS_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: Object.freeze({
+    alvoDePalavrasPorResposta: Object.freeze({
+      type: ["integer", "null"], minimum: 20, maximum: 500
     }),
-    requisitosDeEvidencia: Object.freeze({
-      type: "array", maxItems: 64, uniqueItems: true,
-      items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
+    alvoDePalavrasPorUnidade: Object.freeze({
+      type: ["integer", "null"], minimum: 40, maximum: 1000
+    })
+  })
+});
+
+const MATERIALIZATION_CONFIGURATION_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: Object.freeze({
+    parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
+    parametrosEditoriais: EDITORIAL_PARAMETERS_SCHEMA,
+    direcaoEditorial: Object.freeze({
+      type: "string", minLength: 1, maxLength: 4000
     })
   }),
-  allOf: Object.freeze([Object.freeze({
-    if: Object.freeze({
-      properties: Object.freeze({
-        funcao: Object.freeze({ const: "explicar" })
-      }),
-      required: Object.freeze(["funcao"])
-    }),
-    then: Object.freeze({
-      properties: Object.freeze({
-        unidadesDeAnalise: Object.freeze({ minItems: 1 })
-      })
+  description: "Calibração desta unidade nova."
+});
+
+const CURRICULAR_MAP_LESSON_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["titulo", "objetivo", "microssequencias"]),
+  properties: Object.freeze({
+    titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+    objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+    microssequencias: Object.freeze({
+      type: "array", minItems: 1, maxItems: 64,
+      items: CURRICULAR_MAP_MICROSEQUENCE_SCHEMA
     })
-  })])
+  })
+});
+
+const CURRICULAR_MAP_MODULE_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["titulo", "objetivo", "licoes"]),
+  properties: Object.freeze({
+    titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
+    objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+    licoes: Object.freeze({
+      type: "array", minItems: 1, maxItems: 64,
+      items: CURRICULAR_MAP_LESSON_SCHEMA
+    })
+  })
 });
 
 const SOURCE_SELECTOR_SCHEMA = Object.freeze({
@@ -152,9 +191,13 @@ const SOURCE_SELECTOR_SCHEMA = Object.freeze({
 const SOURCE_METADATA_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze(["titulo"]),
+  required: Object.freeze(["titulo", "papel"]),
   properties: Object.freeze({
     tipo: Object.freeze({ type: "string", enum: COURSE_SOURCE_KINDS }),
+    papel: Object.freeze({
+      type: "string",
+      enum: Object.freeze(Object.keys(SOURCE_ROLES_BY_HUMAN_NAME))
+    }),
     titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
     autoria: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
     dataDePublicacao: Object.freeze({ type: ["string", "null"], maxLength: 10 }),
@@ -218,7 +261,7 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
       properties: Object.freeze({ response: Object.freeze({ not: Object.freeze({ type: "null" }) }) })
     })
   })]),
-  description: "StudyUnit sem id/position."
+  description: "Conteúdo da unidade, sem controles."
 });
 
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
@@ -231,15 +274,34 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
     posicao: Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 }),
     conteudo: STUDY_UNIT_CONTENT_SCHEMA,
+    configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
     aplicacaoPedagogica: Object.freeze({
       type: "object",
       additionalProperties: false,
       required: Object.freeze([
-        "modo", "novidadesIntroduzidas", "explicacoes", "praticas"
+        "modo", "ideiasIntroduzidas", "ideiasUtilizadas", "explicacoes", "praticas",
+        "cobertura"
       ]),
       properties: Object.freeze({
         modo: Object.freeze({ type: "string", enum: Object.freeze(["expositiva", "pratica", "mista"]) }),
-        novidadesIntroduzidas: Object.freeze({
+        ideiasIntroduzidas: Object.freeze({
+          type: "array", maxItems: 64,
+          items: Object.freeze({
+            oneOf: Object.freeze([
+              HUMAN_REFERENCE_SCHEMA,
+              Object.freeze({
+                type: "object",
+                additionalProperties: false,
+                required: Object.freeze(["nome", "descricao"]),
+                properties: Object.freeze({
+                  nome: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+                  descricao: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 })
+                })
+              })
+            ])
+          })
+        }),
+        ideiasUtilizadas: Object.freeze({
           type: "array", maxItems: 64, uniqueItems: true,
           items: HUMAN_REFERENCE_SCHEMA
         }),
@@ -247,9 +309,9 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
           type: "array", maxItems: 256,
           items: Object.freeze({
             type: "object", additionalProperties: false,
-            required: Object.freeze(["novidade", "formas"]),
+            required: Object.freeze(["ideia", "formas"]),
             properties: Object.freeze({
-              novidade: HUMAN_REFERENCE_SCHEMA,
+              ideia: HUMAN_REFERENCE_SCHEMA,
               formas: Object.freeze({
                 type: "array", maxItems: EXPLANATION_FORMS.length,
                 uniqueItems: true,
@@ -299,6 +361,11 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
               })
             })
           })
+        }),
+        cobertura: Object.freeze({
+          type: "array", maxItems: 64, uniqueItems: true,
+          items: HUMAN_REFERENCE_SCHEMA,
+          description: "Escopo desenvolvido nesta unidade."
         })
       })
     }),
@@ -339,13 +406,11 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
 
 const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
   type: "object",
-  additionalProperties: false,
   required: Object.freeze(["result", "deepLink", "nextDecision"]),
   properties: Object.freeze({
-    result: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
-    deepLink: Object.freeze({ type: ["string", "null"], maxLength: 4096 }),
-    nextDecision: Object.freeze({ type: ["string", "null"], maxLength: 1000 }),
-    context: Object.freeze({ type: "object" })
+    result: Object.freeze({ type: "string" }),
+    deepLink: Object.freeze({ type: ["string", "null"] }),
+    nextDecision: Object.freeze({ type: ["string", "null"] })
   })
 });
 
@@ -359,30 +424,40 @@ function inputSchema(properties, required = []) {
 }
 
 const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
-  titulo: "Título humano do objeto; por exemplo, “Fundamentos de redes”.",
-  objetivo: "Objetivo autoral confirmado para o novo Curso.",
-  curso: "Título inequívoco do Curso.",
-  parte: "Posição a partir de 1 ou título humano da Parte.",
-  microssequencia: "Posição a partir de 1 ou título humano da Microssequência.",
-  unidade: "Posição a partir de 1 ou título humano da Unidade de estudo.",
-  unidades: "Seleção limitada de Unidades por posição ou título humano.",
-  fonte: "Posição a partir de 1, título ou citação humana inequívoca da Fonte.",
-  busca: "Palavras que descrevem a Fonte ou o componente procurado.",
-  funcao: "Função instrucional que a representação precisa cumprir.",
-  componente: "Nome humano ou referência exata do componente a inspecionar.",
-  somenteAbertas: "Quando verdadeiro, devolve apenas Observações ainda abertas.",
-  intencao: "Intenção pedagógica ou editorial confirmada para a ação.",
-  parametrosPedagogicos: "Somente os parâmetros pedagógicos a definir; null restaura herança.",
-  direcaoEditorial: "Orientação de extensão, parágrafos, títulos e estilo; null restaura herança.",
-  texto: "Texto integral da Observação humana.",
-  categoria: "Categoria factual da Observação, quando a pessoa a tiver indicado.",
-  correcoes: "Conjunto coerente de Unidades afetadas e seus conteúdos completos corrigidos.",
-  metadados: "Metadados humanos da Fonte a criar ou revisar.",
-  ancoras: "Âncoras verificáveis da Fonte a criar ou revisar.",
-  vinculos: "Relações de proveniência entre a Fonte e Unidades de estudo.",
-  retirar: "Retirada explícita: todos os PDFs da Fonte ou a Fonte inteira.",
-  pdf: "Descritor temporário do PDF fornecido pelo cliente OpenAI.",
-  aplicacaoPedagogica: "Fatos pedagógicos aplicados à Unidade materializada."
+  titulo: "Título do objeto.",
+  objetivo: "Objetivo do curso.",
+  curso: "Título do curso.",
+  aprovado: "Aprova o mapa exibido.",
+  publico: "Público do curso.",
+  preRequisitos: "Pré-requisitos do curso.",
+  itensDeEscopo: "Escopo obrigatório.",
+  modulos: "Mapa curricular completo.",
+  parte: "Posição ou título da parte.",
+  progressao: "Progressão do lote.",
+  microssequencias: "Microssequências do lote.",
+  microssequencia: "Posição ou título da microssequência.",
+  unidade: "Unidade por posição ou título.",
+  unidades: "Unidades por posição ou título.",
+  fonte: "Fonte por posição ou título.",
+  busca: "Termos da busca.",
+  funcao: "Função necessária.",
+  componente: "Componente a inspecionar.",
+  somenteAbertas: "Filtrar só abertas.",
+  intencao: "Intenção confirmada.",
+  parametrosPedagogicos: "Parâmetros pedagógicos.",
+  parametrosEditoriais: "Alvos editoriais.",
+  direcaoEditorial: "Direção editorial.",
+  condicao: "Origem da definição.",
+  texto: "Texto da observação.",
+  categoria: "Categoria da observação.",
+  correcoes: "Conteúdos corrigidos.",
+  metadados: "Dados da fonte.",
+  papel: "Papel da fonte.",
+  ancoras: "Trechos da fonte.",
+  vinculos: "Vínculos com unidades.",
+  retirar: "Retirada solicitada.",
+  pdf: "PDF temporário.",
+  aplicacaoPedagogica: "Aplicação pedagógica."
 });
 
 function describeTopLevelArguments(schema) {
@@ -423,8 +498,8 @@ function task(name, title, description, schema, {
 export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "retomar_curso",
-    "Retomar um Curso",
-    "Use para localizar ou continuar Curso por título. Não use para alterá-lo.",
+    "Retomar um curso",
+    "Use para retomar um curso. Não altera.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
     }),
@@ -433,21 +508,21 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_planejamento",
     "Consultar o planejamento",
-    "Use para ler a Parte corrente, próxima ou anterior. Não use para salvá-la.",
+    "Use para ler mapa e parte. Não altera.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use para ler inventário e configuração da Parte. Não use para gravar conteúdo ou Fontes.",
+    "Use para ler a parte antes de produzi-la. Não grava.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Use para ler parâmetros e direção editorial no escopo focal. Não use para alterá-los.",
+    "Use para ler a configuração. Não altera.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -457,8 +532,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "consultar_observacoes",
-    "Consultar Observações",
-    "Use para ler Observações abertas no escopo. Não use para revisar nem registrar.",
+    "Consultar observações",
+    "Use para ler observações. Não registra.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -471,7 +546,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Use para reler Observações e Units afetadas. Não use para aplicar correções.",
+    "Use para preparar a revisão. Não corrige.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -482,8 +557,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "consultar_fontes",
-    "Consultar Fontes e Âncoras",
-    "Use para ler Fonte, Âncoras e proveniência. Não use para baixar PDF nem alterar.",
+    "Consultar fontes e âncoras",
+    "Use para ler fontes e âncoras. Não altera.",
     inputSchema({
       curso: COURSE_SCHEMA,
       fonte: HUMAN_REFERENCE_SCHEMA,
@@ -495,7 +570,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_componentes",
     "Consultar componentes didáticos",
-    "Use função e filtros focais para buscar; componente lê schema. Não use para listar tudo nem gravar.",
+    "Use para buscar componentes pela função. Não grava.",
     Object.freeze({
       ...inputSchema({
         busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
@@ -510,7 +585,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         }),
         componente: Object.freeze({
           type: "string", minLength: 1, maxLength: 240,
-          description: "Nome exato ou referência package@version do candidato cujo contrato será lido."
+          description: "Componente a inspecionar."
         }),
         papel: Object.freeze({
           type: "string", enum: Object.freeze(["teoria", "pratica"]),
@@ -518,7 +593,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         }),
         lugar: Object.freeze({
           type: "string", enum: Object.freeze(["conteudo", "resposta", "feedback"]),
-          description: "Lugar na Unit."
+          description: "Lugar na unidade de estudo."
         })
       }),
       minProperties: 1
@@ -527,8 +602,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "criar_curso",
-    "Criar um Curso",
-    "Use após confirmar título e objetivo de Curso privado. Não use para copiar ou alterar.",
+    "Criar um curso",
+    "Use para criar o curso confirmado. Não copia.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
       objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
@@ -536,9 +611,32 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     { readOnly: false }
   ),
   task(
+    "salvar_mapa_curricular",
+    "Salvar o mapa curricular",
+    "Use para propor ou aprovar o mapa completo. Não produz.",
+    inputSchema({
+      curso: COURSE_SCHEMA,
+      aprovado: Object.freeze({ type: "boolean" }),
+      publico: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+      preRequisitos: Object.freeze({
+        type: "array", maxItems: 64, uniqueItems: true,
+        items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
+      }),
+      itensDeEscopo: Object.freeze({
+        type: "array", minItems: 1, maxItems: 256, uniqueItems: true,
+        items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
+      }),
+      modulos: Object.freeze({
+        type: "array", minItems: 1, maxItems: 64,
+        items: CURRICULAR_MAP_MODULE_SCHEMA
+      })
+    }, ["curso", "aprovado", "publico", "preRequisitos", "itensDeEscopo", "modulos"]),
+    { readOnly: false }
+  ),
+  task(
     "salvar_parte",
-    "Salvar uma Parte do planejamento",
-    "Use após aprovar a próxima Parte ou revisar uma anterior. Não use para materializar.",
+    "Salvar uma parte do planejamento",
+    "Use para salvar o lote aprovado. Não muda o currículo.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -546,20 +644,26 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
       microssequencias: Object.freeze({
         type: "array", minItems: 1, maxItems: 32,
-        items: AUTHORING_PART_MICROSEQUENCE_SCHEMA
+        uniqueItems: true,
+        items: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
+      }),
+      progressao: Object.freeze({
+        type: "array", minItems: 1, maxItems: 64,
+        items: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 })
       })
-    }, ["curso", "titulo", "intencao", "microssequencias"]),
+    }, ["curso", "titulo", "intencao", "microssequencias", "progressao"]),
     { readOnly: false }
   ),
   task(
     "materializar_parte",
-    "Materializar uma Parte",
-    "Use para gravar Parte aprovada após preparar. Não use para reparar Unit.",
+    "Materializar uma parte",
+    "Use para produzir o lote aprovado. Não repara.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       unidades: Object.freeze({
-        type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA
+        type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
+        description: "Unidades novas completas."
       })
     }, ["curso", "parte", "unidades"]),
     { readOnly: false }
@@ -567,7 +671,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "ajustar_configuracao",
     "Ajustar a configuração autoral",
-    "Use para definir ou herdar parâmetros e direção. Não use editorial para comprimir conteúdo.",
+    "Use para definir a configuração focal. Não comprime.",
     Object.freeze({
       ...inputSchema({
       curso: COURSE_SCHEMA,
@@ -579,10 +683,12 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         default: "automatica"
       }),
       parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
+      parametrosEditoriais: EDITORIAL_PARAMETERS_SCHEMA,
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
       }, ["curso"]),
       anyOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["parametrosPedagogicos"]) }),
+        Object.freeze({ required: Object.freeze(["parametrosEditoriais"]) }),
         Object.freeze({ required: Object.freeze(["direcaoEditorial"]) })
       ])
     }),
@@ -590,8 +696,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "registrar_observacao",
-    "Registrar Observação",
-    "Use para anotar uma ou várias Units separadamente. Não use para criar lote nem corrigir.",
+    "Registrar observação",
+    "Use para anotar unidades. Não corrige.",
     inputSchema({
       curso: COURSE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
@@ -608,7 +714,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Use após revisar o conjunto coerente de Units afetadas. Não use para aplicar configuração.",
+    "Use para aplicar correções aprovadas. Não configura.",
     inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -642,8 +748,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "manter_fonte",
-    "Manter Fonte e Âncoras",
-    "Use para criar, revisar ou retirar Fonte, PDFs, Âncoras e vínculos. Não use para receber PDF.",
+    "Manter fonte e âncoras",
+    "Use para manter fontes, âncoras e vínculos. Não recebe PDF.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
@@ -680,7 +786,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         retirar: Object.freeze({
           type: "string",
           enum: Object.freeze(["pdfs", "fonte"]),
-          description: "Use sozinho com fonte: pdfs preserva a Fonte; fonte retira também a Fonte."
+          description: "Retire os PDFs ou a fonte inteira."
         })
       }, ["curso"]),
       anyOf: Object.freeze([
@@ -706,20 +812,24 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "incorporar_pdf_como_fonte",
-    "Incorporar PDF como Fonte",
-    "Use: fonte anexa/reanexa; titulo cria Fonte. Só um. Não use em leitura descartável.",
+    "Incorporar PDF como fonte",
+    "Use para guardar PDF. Não faz leitura.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
         fonte: Object.freeze({
           ...HUMAN_REFERENCE_SCHEMA,
-          description: "Fonte existente."
+          description: "Referência: fonte existente."
         }),
         titulo: Object.freeze({
           type: "string",
           minLength: 1,
           maxLength: 300,
-          description: "Nova Fonte a criar."
+          description: "Nova fonte a criar."
+        }),
+        papel: Object.freeze({
+          type: "string",
+          enum: Object.freeze(Object.keys(SOURCE_ROLES_BY_HUMAN_NAME))
         }),
         intencao: Object.freeze({
           type: "string",
@@ -742,7 +852,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       }, ["curso", "intencao", "pdf"]),
       oneOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["fonte"]) }),
-        Object.freeze({ required: Object.freeze(["titulo"]) })
+        Object.freeze({ required: Object.freeze(["titulo", "papel"]) })
       ])
     }),
     { readOnly: false, file: true }
@@ -750,9 +860,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.0.5";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:ac85250eb05103f2e22ce68e585801056423ad0e6e7387d3d90512d5a6c236bc";
+  "sha256:d8bcc662f6eba910184f3f70226e2198d15d78f0ee673684b7194a13271563c4";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -877,6 +987,10 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
+    if (normalizedKey === "source_role") {
+      projected.papel = entry === null ? null : SOURCE_ROLE_HUMAN_NAMES.get(entry) ?? null;
+      continue;
+    }
     if (normalizedKey === "component_authoring_contract") {
       projected[key] = structuredClone(entry);
       continue;
@@ -910,7 +1024,7 @@ function result(message, {
   if (encoder.encode(JSON.stringify(projected)).byteLength > MAX_RESULT_BYTES) {
     fail(
       "human_task_result_too_large",
-      "O recorte solicitado excede o limite; escolha uma Parte, Microssequência ou Unidade.",
+      "O recorte solicitado excede o limite; escolha uma parte, microssequência ou unidade.",
       null,
       413
     );
@@ -947,7 +1061,6 @@ export async function executeHumanCourseTask({
       deadlineAt,
       projectionRecipient
     });
-    const guidance = courseAuthoringGuidanceForCall(name);
     if (!output || typeof output !== "object" || Array.isArray(output) ||
         typeof output.result !== "string" ||
         !(output.deepLink === null || typeof output.deepLink === "string") ||
@@ -961,14 +1074,7 @@ export async function executeHumanCourseTask({
     return result(output.result, {
       deepLink: output.deepLink,
       nextDecision: output.nextDecision,
-      ...(output.context === undefined && !guidance
-        ? {}
-        : {
-            context: {
-              ...(output.context || {}),
-              ...(guidance ? { guidance } : {})
-            }
-          })
+      ...(output.context === undefined ? {} : { context: output.context })
     });
   } catch (error) {
     return normalizeTaskError(error);
@@ -1009,16 +1115,6 @@ function planVersion(read) {
   return value;
 }
 
-const MICROSEQUENCE_ROLE_BY_HUMAN_FUNCTION = Object.freeze({
-  explicar: "explain",
-  praticar: "practice",
-  revisar: "review",
-  apoiar: "support"
-});
-const HUMAN_FUNCTION_BY_MICROSEQUENCE_ROLE = Object.freeze(Object.fromEntries(
-  Object.entries(MICROSEQUENCE_ROLE_BY_HUMAN_FUNCTION).map(([human, role]) => [role, human])
-));
-
 function matchingText(value) {
   return String(value || "")
     .normalize("NFKD")
@@ -1028,66 +1124,165 @@ function matchingText(value) {
     .trim();
 }
 
-function statementList(value, field) {
-  if (!Array.isArray(value) || value.length > 64) {
-    fail("invalid_human_task_argument", `${field} precisa conter até 64 itens.`, { field });
+function textList(value, field, {
+  minimum = 0,
+  maximum = 64,
+  itemMaximum = 2000
+} = {}) {
+  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
+    fail(
+      "invalid_human_task_argument",
+      `${field} precisa conter de ${minimum} a ${maximum} itens.`,
+      { field }
+    );
   }
-  const items = value.map((item, index) => text(item, `${field}[${index}]`, 2000));
+  const items = value.map((item, index) => text(item, `${field}[${index}]`, itemMaximum));
   if (new Set(items.map(matchingText)).size !== items.length) {
-    fail("duplicate_human_reference", `${field} não pode repetir a mesma novidade.`, { field });
+    fail("duplicate_human_reference", `${field} não pode repetir o mesmo item.`, { field });
   }
   return items;
 }
 
-function normalizeApprovedPartMicrosequences(value) {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 32) {
-    fail(
-      "invalid_human_task_argument",
-      "microssequencias precisa conter de 1 a 32 recortes aprovados.",
-      { field: "microssequencias" }
-    );
-  }
-  return value.map((raw, index) => {
-    const field = `microssequencias[${index}]`;
-    const item = plainObject(raw, field);
-    exactFields(item, new Set([
-      "modulo", "objetivoDoModulo", "licao", "objetivoDaLicao",
-      "titulo", "objetivo", "funcao", "unidadesDeAnalise",
-      "requisitosDeEvidencia"
-    ]));
-    const humanFunction = text(item.funcao, `${field}.funcao`, 20);
-    const role = MICROSEQUENCE_ROLE_BY_HUMAN_FUNCTION[humanFunction];
-    if (!role) {
-      fail("invalid_human_task_argument", `${field}.funcao é inválida.`, {
-        field: `${field}.funcao`
-      });
-    }
-    const analysisUnitStatements = statementList(
-      item.unidadesDeAnalise,
-      `${field}.unidadesDeAnalise`
-    );
-    if (role === "explain" && analysisUnitStatements.length === 0) {
+function uniqueTitles(items, field) {
+  const seen = new Set();
+  for (const [index, item] of items.entries()) {
+    const title = matchingText(item.title);
+    if (seen.has(title)) {
       fail(
-        "missing_instructional_analysis_unit",
-        `${field}.unidadesDeAnalise exige ao menos uma novidade para explicar.`,
-        { field: `${field}.unidadesDeAnalise` }
+        "duplicate_human_reference",
+        `${field}[${index}].titulo repete um título no mesmo contexto.`,
+        { field: `${field}[${index}].titulo` }
       );
     }
+    seen.add(title);
+  }
+}
+
+function normalizeCurricularMapArguments(args) {
+  if (typeof args.aprovado !== "boolean") {
+    fail("invalid_human_task_argument", "aprovado precisa ser verdadeiro ou falso.", {
+      field: "aprovado"
+    });
+  }
+  const audience = text(args.publico, "publico", 2000);
+  const prerequisites = textList(args.preRequisitos, "preRequisitos", { maximum: 64 });
+  const scopeItems = textList(args.itensDeEscopo, "itensDeEscopo", {
+    minimum: 1,
+    maximum: 256
+  });
+  if (!Array.isArray(args.modulos) || args.modulos.length < 1 || args.modulos.length > 64) {
+    fail("invalid_human_task_argument", "modulos precisa conter de 1 a 64 módulos.", {
+      field: "modulos"
+    });
+  }
+  const scopeByText = new Map(scopeItems.map((statement) => [matchingText(statement), statement]));
+  const microsequenceTitles = new Map();
+  let microsequenceOrder = 0;
+  const modules = args.modulos.map((rawModule, moduleIndex) => {
+    const moduleField = `modulos[${moduleIndex}]`;
+    const moduleValue = plainObject(rawModule, moduleField);
+    exactFields(moduleValue, new Set(["titulo", "objetivo", "licoes"]));
+    if (!Array.isArray(moduleValue.licoes) || moduleValue.licoes.length < 1 ||
+        moduleValue.licoes.length > 64) {
+      fail("invalid_human_task_argument", `${moduleField}.licoes precisa conter de 1 a 64 lições.`, {
+        field: `${moduleField}.licoes`
+      });
+    }
+    const lessons = moduleValue.licoes.map((rawLesson, lessonIndex) => {
+      const lessonField = `${moduleField}.licoes[${lessonIndex}]`;
+      const lessonValue = plainObject(rawLesson, lessonField);
+      exactFields(lessonValue, new Set(["titulo", "objetivo", "microssequencias"]));
+      if (!Array.isArray(lessonValue.microssequencias) ||
+          lessonValue.microssequencias.length < 1 ||
+          lessonValue.microssequencias.length > 64) {
+        fail(
+          "invalid_human_task_argument",
+          `${lessonField}.microssequencias precisa conter de 1 a 64 itens.`,
+          { field: `${lessonField}.microssequencias` }
+        );
+      }
+      const microsequences = lessonValue.microssequencias.map((rawMicrosequence, index) => {
+        const field = `${lessonField}.microssequencias[${index}]`;
+        const item = plainObject(rawMicrosequence, field);
+        exactFields(item, new Set(["titulo", "objetivo", "dependencias", "cobertura"]));
+        const title = text(item.titulo, `${field}.titulo`, 300);
+        const key = matchingText(title);
+        if (microsequenceTitles.has(key)) {
+          fail(
+            "duplicate_human_reference",
+            `O título da microssequência “${title}” se repete no mapa curricular.`,
+            { field: `${field}.titulo` }
+          );
+        }
+        const dependencies = textList(item.dependencias, `${field}.dependencias`, {
+          maximum: 64,
+          itemMaximum: 300
+        });
+        const coverage = textList(item.cobertura, `${field}.cobertura`, { maximum: 64 })
+          .map((statement) => {
+            const canonical = scopeByText.get(matchingText(statement));
+            if (!canonical) {
+              fail(
+                "curricular_scope_item_not_found",
+                `A cobertura “${statement}” não pertence ao escopo declarado.`,
+                { field: `${field}.cobertura` }
+              );
+            }
+            return canonical;
+          });
+        const normalized = {
+          title,
+          objective: text(item.objetivo, `${field}.objetivo`, 2000),
+          dependencies,
+          coverage,
+          order: microsequenceOrder
+        };
+        microsequenceTitles.set(key, normalized);
+        microsequenceOrder += 1;
+        return normalized;
+      });
+      uniqueTitles(microsequences, `${lessonField}.microssequencias`);
+      return {
+        title: text(lessonValue.titulo, `${lessonField}.titulo`, 300),
+        objective: text(lessonValue.objetivo, `${lessonField}.objetivo`, 2000),
+        microsequences
+      };
+    });
+    uniqueTitles(lessons, `${moduleField}.licoes`);
     return {
-      moduleTitle: text(item.modulo, `${field}.modulo`, 300),
-      moduleGoal: text(item.objetivoDoModulo, `${field}.objetivoDoModulo`, 2000),
-      lessonTitle: text(item.licao, `${field}.licao`, 300),
-      lessonGoal: text(item.objetivoDaLicao, `${field}.objetivoDaLicao`, 2000),
-      title: text(item.titulo, `${field}.titulo`, 300),
-      goal: text(item.objetivo, `${field}.objetivo`, 2000),
-      role,
-      analysisUnitStatements,
-      evidenceRequirementStatements: statementList(
-        item.requisitosDeEvidencia,
-        `${field}.requisitosDeEvidencia`
-      )
+      title: text(moduleValue.titulo, `${moduleField}.titulo`, 300),
+      objective: text(moduleValue.objetivo, `${moduleField}.objetivo`, 2000),
+      lessons
     };
   });
+  uniqueTitles(modules, "modulos");
+
+  for (const moduleValue of modules) {
+    for (const lesson of moduleValue.lessons) {
+      for (const microsequence of lesson.microsequences) {
+        microsequence.dependencies = microsequence.dependencies.map((reference) => {
+          const dependency = microsequenceTitles.get(matchingText(reference));
+          if (!dependency) {
+            fail(
+              "curricular_dependency_not_found",
+              `A dependência “${reference}” não pertence ao mapa curricular.`,
+              { microsequence: microsequence.title }
+            );
+          }
+          if (dependency.order >= microsequence.order) {
+            fail(
+              "curricular_dependency_out_of_order",
+              `A dependência “${dependency.title}” precisa aparecer antes de “${microsequence.title}”.`,
+              { microsequence: microsequence.title, dependency: dependency.title }
+            );
+          }
+          return dependency.title;
+        });
+        delete microsequence.order;
+      }
+    }
+  }
+  return { approved: args.aprovado, audience, prerequisites, scopeItems, modules };
 }
 
 async function loadAllCourseEntities(adapter, principal, course, deadlineAt) {
@@ -1108,7 +1303,7 @@ async function loadAllCourseEntities(adapter, principal, course, deadlineAt) {
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "A estrutura corrente do Curso é inválida."
+        "A estrutura corrente do curso é inválida."
       );
     }
     items.push(...page.items);
@@ -1120,221 +1315,325 @@ async function loadAllCourseEntities(adapter, principal, course, deadlineAt) {
   throw new AuthoringApiError(
     413,
     "course_structure_too_large",
-    "A estrutura do Curso excede o limite; reduza o recorte antes de salvar a Parte."
+    "A estrutura do curso excede o limite; reduza o recorte antes de salvar a parte."
   );
 }
 
-function existingEntityByTitle(rows, entityType, parentId, title) {
-  const wanted = matchingText(title);
-  const matches = rows.filter((row) => row?.entityType === entityType &&
-    (row.parentId ?? null) === parentId && matchingText(row.content?.title) === wanted);
-  if (matches.length > 1) {
-    fail(
-      "ambiguous_human_reference",
-      `Há mais de um ${entityType} chamado “${title}” no mesmo contexto.`,
-      { entityType, title },
-      409
-    );
-  }
-  return matches[0] ?? null;
+function curricularMapFromPlan(planRead) {
+  const plan = planRead?.plan || {};
+  if (!plan.curriculum || !Array.isArray(plan.curriculum.modules) ||
+      !Array.isArray(plan.declaredPrerequisites) ||
+      !Array.isArray(plan.curriculumScopeItems) ||
+      !new Set(["absent", "draft", "approved"]).has(plan.curriculumMapStatus)) return null;
+  return {
+    approval: plan.curriculumMapStatus,
+    audience: plan.audience ?? "",
+    prerequisites: plan.declaredPrerequisites,
+    scopeItems: plan.curriculumScopeItems,
+    modules: plan.curriculum.modules
+  };
 }
 
-function consistentHierarchyGoal(goals, identity, goal, label) {
-  const previous = goals.get(identity);
-  if (previous !== undefined && previous !== goal) {
-    fail(
-      "inconsistent_authoring_part_hierarchy",
-      `${label} recebeu objetivos diferentes na mesma Parte.`,
-      { label },
-      409
-    );
-  }
-  goals.set(identity, goal);
+function internalIdentity(value, kind) {
+  if (!value || typeof value !== "object") return null;
+  return value[`${kind}Id`] ?? value.id ?? null;
 }
 
-function currentPartMicrosequenceIds(part) {
-  if (!part) return [];
-  if (Array.isArray(part.microsequences)) {
-    return part.microsequences.map((item) => item?.id).filter(Boolean);
-  }
-  return Array.isArray(part.microsequenceIds) ? [...part.microsequenceIds] : [];
+function itemStatement(value) {
+  if (typeof value === "string") return value;
+  return value?.statement ?? value?.title ?? value?.name ?? "";
 }
 
-async function buildApprovedPart({ state, definitions, title, intent, newId }) {
-  const rows = [...state.entities];
-  const partId = state.part?.id ?? await newId("part");
-  const partPosition = state.part?.position ?? state.plan.plan.parts.length;
-  const currentMicrosequenceIds = currentPartMicrosequenceIds(state.part);
-  const assignedElsewhere = new Set((state.plan.plan.parts || [])
-    .filter((part) => part.id !== partId)
-    .flatMap(currentPartMicrosequenceIds));
-  const moduleGoals = new Map();
-  const lessonGoals = new Map();
-  const selectedMicrosequenceIds = new Set();
-  const analysisTargetById = new Map();
-  const planItemRows = {
-    instructional_analysis_unit: Array.isArray(state.plan.plan.instructionalAnalysisUnits)
-      ? [...state.plan.plan.instructionalAnalysisUnits]
-      : [],
-    evidence_requirement: Array.isArray(state.plan.plan.evidenceRequirements)
-      ? [...state.plan.plan.evidenceRequirements]
-      : []
-  };
+function internalMapCollections(map) {
+  const modules = Array.isArray(map?.modules) ? map.modules : [];
+  const scopeItems = Array.isArray(map?.scopeItems) ? map.scopeItems : [];
+  const microsequences = modules.flatMap((moduleValue) =>
+    (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).flatMap((lesson) =>
+      (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).map((microsequence) => ({
+        ...microsequence,
+        module: moduleValue,
+        lesson
+      }))));
+  return { modules, scopeItems, microsequences };
+}
 
-  const resolvePlanItem = async (kind, statement) => {
-    const collection = planItemRows[kind];
-    const matches = collection.filter((item) => matchingText(item.statement) === matchingText(statement));
-    if (matches.length > 1) {
-      fail(
-        "ambiguous_semantic_inventory_item",
-        `O inventário contém mais de um item equivalente a “${statement}”.`,
-        { kind, statement },
-        409
-      );
-    }
-    if (matches[0]) {
-      return {
-        id: matches[0].id,
-        position: matches[0].position,
-        statement: matches[0].statement
-      };
-    }
-    const created = {
-      id: await newId(`${kind}:${collection.length}`),
-      position: collection.reduce((maximum, item) => Math.max(maximum, item.position), -1) + 1,
-      statement
-    };
-    collection.push(created);
-    return created;
-  };
-  const resolvePlanItems = async (kind, statements) => {
-    const resolved = [];
-    for (const statement of statements) resolved.push(await resolvePlanItem(kind, statement));
-    return resolved;
-  };
-
-  const microsequences = [];
-  for (const [index, definition] of definitions.entries()) {
-    let moduleRow = existingEntityByTitle(rows, "module", null, definition.moduleTitle);
-    if (!moduleRow) {
-      moduleRow = {
-        entityType: "module",
-        entityId: await newId(`module:${matchingText(definition.moduleTitle)}`),
-        parentId: null,
-        content: { title: definition.moduleTitle }
-      };
-      rows.push(moduleRow);
-    }
-    consistentHierarchyGoal(
-      moduleGoals,
-      moduleRow.entityId,
-      definition.moduleGoal,
-      `O Módulo “${definition.moduleTitle}”`
-    );
-
-    let lessonRow = existingEntityByTitle(
-      rows,
-      "lesson",
-      moduleRow.entityId,
-      definition.lessonTitle
-    );
-    if (!lessonRow) {
-      lessonRow = {
-        entityType: "lesson",
-        entityId: await newId(`lesson:${moduleRow.entityId}:${matchingText(definition.lessonTitle)}`),
-        parentId: moduleRow.entityId,
-        content: { title: definition.lessonTitle }
-      };
-      rows.push(lessonRow);
-    }
-    consistentHierarchyGoal(
-      lessonGoals,
-      lessonRow.entityId,
-      definition.lessonGoal,
-      `A Lição “${definition.lessonTitle}”`
-    );
-
-    let microsequenceRow = existingEntityByTitle(
-      rows,
-      "microsequence",
-      lessonRow.entityId,
-      definition.title
-    );
-    if (microsequenceRow && assignedElsewhere.has(microsequenceRow.entityId)) {
-      fail(
-        "authoring_microsequence_already_assigned",
-        `A Microssequência “${definition.title}” já pertence a outra Parte; use outro título ou revise a Parte existente.`,
-        { title: definition.title },
-        409
-      );
-    }
-    if (!microsequenceRow) {
-      const indexedCurrentId = currentMicrosequenceIds[index] ?? null;
-      const indexedCurrent = rows.find((row) => row?.entityType === "microsequence" &&
-        row.entityId === indexedCurrentId && row.parentId === lessonRow.entityId);
-      microsequenceRow = indexedCurrent || {
-        entityType: "microsequence",
-        entityId: await newId(`microsequence:${index}`),
-        parentId: lessonRow.entityId,
-        content: { title: definition.title }
-      };
-      if (!indexedCurrent) rows.push(microsequenceRow);
-    }
-    if (selectedMicrosequenceIds.has(microsequenceRow.entityId)) {
-      fail(
-        "duplicate_authoring_part_microsequence",
-        `A Parte repete a Microssequência “${definition.title}”.`,
-        { title: definition.title },
-        409
-      );
-    }
-    selectedMicrosequenceIds.add(microsequenceRow.entityId);
-
-    const analysisUnits = await resolvePlanItems(
-      "instructional_analysis_unit",
-      definition.analysisUnitStatements
-    );
-    for (const analysisUnit of analysisUnits) {
-      const previousMicrosequenceId = analysisTargetById.get(analysisUnit.id);
-      if (previousMicrosequenceId && previousMicrosequenceId !== microsequenceRow.entityId) {
-        fail(
-          "analysis_unit_assigned_to_multiple_microsequences",
-          `A novidade “${analysisUnit.statement}” aparece em duas Microssequências; mantenha-a somente onde será introduzida.`,
-          { statement: analysisUnit.statement },
-          409
-        );
+function semanticCurricularMap(map) {
+  if (!map) return null;
+  const { modules, scopeItems, microsequences } = internalMapCollections(map);
+  const titleByMicrosequenceId = new Map(microsequences
+    .map((item) => [internalIdentity(item, "microsequence"), item.title])
+    .filter(([id, title]) => id && title));
+  const titleByText = new Map(microsequences
+    .map((item) => [matchingText(item.title), item.title]));
+  const scopeById = new Map(scopeItems
+    .map((item) => [internalIdentity(item, "scopeItem"), itemStatement(item)])
+    .filter(([id, statement]) => id && statement));
+  const scopeByText = new Map(scopeItems
+    .map((item) => [matchingText(itemStatement(item)), itemStatement(item)]));
+  const scopeStatementsByMicrosequenceId = new Map();
+  for (const scopeItem of scopeItems) {
+    for (const target of Array.isArray(scopeItem?.curriculumTargets)
+      ? scopeItem.curriculumTargets
+      : []) {
+      for (const microsequenceId of Array.isArray(target?.didacticMicrosequenceIds)
+        ? target.didacticMicrosequenceIds
+        : []) {
+        const statements = scopeStatementsByMicrosequenceId.get(microsequenceId) ?? [];
+        statements.push(itemStatement(scopeItem));
+        scopeStatementsByMicrosequenceId.set(microsequenceId, statements);
       }
-      analysisTargetById.set(analysisUnit.id, microsequenceRow.entityId);
     }
-    microsequences.push({
-      moduleId: moduleRow.entityId,
-      moduleTitle: definition.moduleTitle,
-      moduleGoal: definition.moduleGoal,
-      lessonId: lessonRow.entityId,
-      lessonTitle: definition.lessonTitle,
-      lessonGoal: definition.lessonGoal,
-      microsequenceId: microsequenceRow.entityId,
-      title: definition.title,
-      goal: definition.goal,
-      role: definition.role,
-      position: index,
-      analysisUnits,
-      evidenceRequirements: await resolvePlanItems(
-        "evidence_requirement",
-        definition.evidenceRequirementStatements
-      )
+  }
+  const referencedTitle = (reference) => {
+    const value = typeof reference === "object" && reference !== null
+      ? internalIdentity(reference, "microsequence") ?? reference.title
+      : reference;
+    return titleByMicrosequenceId.get(value) ?? titleByText.get(matchingText(value)) ?? String(value || "");
+  };
+  const referencedScope = (reference) => {
+    const value = typeof reference === "object" && reference !== null
+      ? internalIdentity(reference, "scopeItem") ?? itemStatement(reference)
+      : reference;
+    return scopeById.get(value) ?? scopeByText.get(matchingText(value)) ?? String(value || "");
+  };
+  return {
+    audience: String(map.audience || ""),
+    prerequisites: (Array.isArray(map.prerequisites) ? map.prerequisites : [])
+      .map(itemStatement),
+    scopeItems: scopeItems.map(itemStatement),
+    modules: modules.map((moduleValue) => ({
+      title: String(moduleValue?.title || ""),
+      objective: String(moduleValue?.objective ?? moduleValue?.goal ?? ""),
+      lessons: (Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []).map((lesson) => ({
+        title: String(lesson?.title || ""),
+        objective: String(lesson?.objective ?? lesson?.goal ?? ""),
+        microsequences: (Array.isArray(lesson?.microsequences) ? lesson.microsequences : [])
+          .map((microsequence) => ({
+            title: String(microsequence?.title || ""),
+            objective: String(microsequence?.objective ?? microsequence?.goal ?? ""),
+            dependencies: (Array.isArray(microsequence?.dependencyMicrosequenceIds)
+              ? microsequence.dependencyMicrosequenceIds
+              : Array.isArray(microsequence?.dependencies)
+                ? microsequence.dependencies
+                : Array.isArray(microsequence?.dependsOn) ? microsequence.dependsOn : [])
+              .map(referencedTitle),
+            coverage: (Array.isArray(microsequence?.scopeItemIds)
+              ? microsequence.scopeItemIds
+              : Array.isArray(microsequence?.coverage)
+                ? microsequence.coverage
+                : Array.isArray(microsequence?.covers)
+                  ? microsequence.covers
+                  : scopeStatementsByMicrosequenceId.get(
+                    internalIdentity(microsequence, "microsequence")
+                  ) ?? [])
+              .map(referencedScope)
+          }))
+      }))
+    }))
+  };
+}
+
+function semanticMapFromInput(input) {
+  return {
+    audience: input.audience,
+    prerequisites: input.prerequisites,
+    scopeItems: input.scopeItems,
+    modules: input.modules.map(({ title, objective, lessons }) => ({
+      title,
+      objective,
+      lessons: lessons.map(({ title: lessonTitle, objective: lessonObjective, microsequences }) => ({
+        title: lessonTitle,
+        objective: lessonObjective,
+        microsequences: microsequences.map(({ title: microTitle, objective: microObjective,
+          dependencies, coverage }) => ({
+          title: microTitle,
+          objective: microObjective,
+          dependencies,
+          coverage
+        }))
+      }))
+    }))
+  };
+}
+
+function sameCurricularMap(currentMap, input) {
+  return JSON.stringify(semanticCurricularMap(currentMap)) ===
+    JSON.stringify(semanticMapFromInput(input));
+}
+
+function matchingInternalChild(items, title) {
+  const matches = items.filter((item) => matchingText(item?.title) === matchingText(title));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+async function buildCurricularMapWrite({ state, input, newId }) {
+  const currentMap = curricularMapFromPlan(state.plan);
+  if (input.approved && (!currentMap || currentMap.approval === "absent" ||
+      !sameCurricularMap(currentMap, input))) {
+    fail(
+      "curricular_map_draft_mismatch",
+      "A aprovação precisa corresponder exatamente ao mapa curricular que estava disponível para inspeção.",
+      null,
+      409
+    );
+  }
+  if (input.approved) {
+    const covered = new Set(input.modules.flatMap(({ lessons }) =>
+      lessons.flatMap(({ microsequences }) =>
+        microsequences.flatMap(({ coverage }) => coverage.map(matchingText)))));
+    const missing = input.scopeItems.filter((statement) => !covered.has(matchingText(statement)));
+    if (missing.length) {
+      fail(
+        "curricular_scope_incomplete",
+        "O mapa curricular não pode ser aprovado enquanto houver item obrigatório sem cobertura.",
+        { missing }
+      );
+    }
+  }
+  const current = internalMapCollections(currentMap);
+  const currentScopeByText = new Map(current.scopeItems
+    .map((item) => [matchingText(itemStatement(item)), item]));
+  const scopeItems = [];
+  for (const [position, statement] of input.scopeItems.entries()) {
+    const existing = currentScopeByText.get(matchingText(statement));
+    scopeItems.push({
+      id: internalIdentity(existing, "scopeItem") ?? await newId(`curricular-scope:${position}`),
+      position,
+      statement
     });
   }
+  const scopeIdByText = new Map(scopeItems.map(({ id, statement }) => [matchingText(statement), id]));
+  const modules = [];
+  const microsequenceIdByText = new Map();
+  for (const [modulePosition, definition] of input.modules.entries()) {
+    const currentModule = matchingInternalChild(current.modules, definition.title);
+    const moduleId = internalIdentity(currentModule, "module") ??
+      await newId(`curricular-module:${modulePosition}`);
+    const currentLessons = Array.isArray(currentModule?.lessons) ? currentModule.lessons : [];
+    const lessons = [];
+    for (const [lessonPosition, lessonDefinition] of definition.lessons.entries()) {
+      const currentLesson = matchingInternalChild(currentLessons, lessonDefinition.title);
+      const lessonId = internalIdentity(currentLesson, "lesson") ??
+        await newId(`curricular-lesson:${modulePosition}:${lessonPosition}`);
+      const currentMicrosequences = Array.isArray(currentLesson?.microsequences)
+        ? currentLesson.microsequences
+        : [];
+      const microsequences = [];
+      for (const [microsequencePosition, microsequenceDefinition] of
+        lessonDefinition.microsequences.entries()) {
+        const currentMicrosequence = matchingInternalChild(
+          currentMicrosequences,
+          microsequenceDefinition.title
+        );
+        const microsequenceId = internalIdentity(currentMicrosequence, "microsequence") ??
+          await newId(
+            `curricular-micro:${modulePosition}:${lessonPosition}:${microsequencePosition}`
+          );
+        microsequenceIdByText.set(matchingText(microsequenceDefinition.title), microsequenceId);
+        microsequences.push({
+          microsequenceId,
+          position: microsequencePosition,
+          title: microsequenceDefinition.title,
+          objective: microsequenceDefinition.objective,
+          dependencyTitles: microsequenceDefinition.dependencies,
+          scopeItemIds: microsequenceDefinition.coverage.map((statement) =>
+            scopeIdByText.get(matchingText(statement)))
+        });
+      }
+      lessons.push({ lessonId, position: lessonPosition, title: lessonDefinition.title,
+        objective: lessonDefinition.objective, microsequences });
+    }
+    modules.push({ moduleId, position: modulePosition, title: definition.title,
+      objective: definition.objective, lessons });
+  }
+  for (const moduleValue of modules) {
+    for (const lesson of moduleValue.lessons) {
+      for (const microsequence of lesson.microsequences) {
+        microsequence.dependencyMicrosequenceIds = microsequence.dependencyTitles.map((title) =>
+          microsequenceIdByText.get(matchingText(title)));
+        delete microsequence.dependencyTitles;
+      }
+    }
+  }
+  return {
+    courseId: state.course.id,
+    expectedCourseRevision: state.course.revision,
+    expectedPlanVersion: planVersion(state.plan),
+    approved: input.approved,
+    curricularMap: {
+      audience: input.audience,
+      prerequisites: input.prerequisites,
+      scopeItems,
+      modules
+    }
+  };
+}
 
+function normalizePartMicrosequenceTitles(value) {
+  return textList(value, "microssequencias", {
+    minimum: 1,
+    maximum: 32,
+    itemMaximum: 300
+  });
+}
+
+async function buildProductionPart({ state, titles, progression, title, intent, newId }) {
+  const map = curricularMapFromPlan(state.plan);
+  if (!map || map.approval !== "approved") {
+    fail(
+      "curricular_map_not_approved",
+      "A primeira parte só pode ser preparada depois da aprovação do mapa curricular completo.",
+      null,
+      409
+    );
+  }
+  const partId = state.part?.id ?? await newId("part");
+  const parts = Array.isArray(state.plan?.plan?.parts) ? state.plan.plan.parts : [];
+  const mapMicrosequences = internalMapCollections(map).microsequences;
+  const entityIds = new Set((state.entities || [])
+    .filter((row) => row?.entityType === "microsequence")
+    .map((row) => row.entityId));
+  const selectedIds = new Set();
+  const microsequences = titles.map((microsequenceTitle, position) => {
+    const matches = mapMicrosequences.filter((item) =>
+      matchingText(item.title) === matchingText(microsequenceTitle));
+    if (matches.length !== 1) {
+      fail(
+        matches.length ? "ambiguous_human_reference" : "human_reference_not_found",
+        `A microssequência “${microsequenceTitle}” não corresponde a um ponto único do mapa curricular.`,
+        { title: microsequenceTitle },
+        matches.length ? 409 : 404
+      );
+    }
+    const microsequenceId = internalIdentity(matches[0], "microsequence");
+    if (!microsequenceId || !entityIds.has(microsequenceId)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O mapa curricular e sua estrutura persistida estão divergentes."
+      );
+    }
+    if (selectedIds.has(microsequenceId)) {
+      fail(
+        "duplicate_authoring_part_microsequence",
+        `A parte repete a microssequência “${microsequenceTitle}”.`,
+        { title: microsequenceTitle },
+        409
+      );
+    }
+    selectedIds.add(microsequenceId);
+    return { microsequenceId, position };
+  });
   return {
     courseId: state.course.id,
     expectedCourseRevision: state.course.revision,
     expectedPlanVersion: planVersion(state.plan),
     part: {
       partId,
-      position: partPosition,
+      position: state.part?.position ?? parts.length,
       title,
       intent,
+      progression,
       microsequences
     }
   };
@@ -1359,36 +1658,80 @@ function focusedPart(plan, resolvedPart = null) {
   return parts.at(-1) ?? null;
 }
 
+function humanCurricularMap(map, status) {
+  if (!map) return { situacao: status };
+  return {
+    situacao: status,
+    publico: map.audience,
+    preRequisitos: map.prerequisites,
+    modulos: map.modules.map((moduleValue, moduleIndex) => ({
+      posicao: moduleIndex + 1,
+      titulo: moduleValue.title,
+      objetivo: moduleValue.objective,
+      licoes: moduleValue.lessons.map((lesson, lessonIndex) => ({
+        posicao: lessonIndex + 1,
+        titulo: lesson.title,
+        objetivo: lesson.objective,
+        microssequencias: lesson.microsequences.map((microsequence, index) => ({
+          posicao: index + 1,
+          titulo: microsequence.title,
+          objetivo: microsequence.objective,
+          dependencias: microsequence.dependencies,
+          cobertura: microsequence.coverage
+        }))
+      }))
+    }))
+  };
+}
+
 function projectedPlanContext(plan, part) {
   const source = plan?.plan || {};
-  return {
-    title: source.title ?? null,
-    objective: source.objective ?? null,
-    partCount: Array.isArray(source.parts) ? source.parts.length : 0,
-    part: part ? {
-      position: Number(part.position) + 1,
-      title: part.title,
-      intent: part.intent,
-      progress: part.progress ?? null,
-      microsequences: Array.isArray(part.microsequences)
-        ? part.microsequences.map((item, index) => ({
-            position: Number(item.productionPosition ?? item.position ?? index) + 1,
-            title: item.title ?? null
-          }))
-        : []
-    } : null,
-    instructionalAnalysisUnits: Array.isArray(source.instructionalAnalysisUnits)
-      ? source.instructionalAnalysisUnits.map(({ statement }, index) => ({
-          position: index + 1,
-          statement
-        }))
-      : [],
-    evidenceRequirements: Array.isArray(source.evidenceRequirements)
-      ? source.evidenceRequirements.map(({ statement }, index) => ({
-          position: index + 1,
-          statement
+  const storedMap = curricularMapFromPlan(plan);
+  const map = semanticCurricularMap(storedMap);
+  const mapStatus = storedMap?.approval === "approved"
+    ? "aprovado"
+    : storedMap ? "rascunho" : "ainda não proposto";
+  const coverageLocations = new Map((map?.scopeItems || []).map((statement) => [
+    matchingText(statement),
+    []
+  ]));
+  for (const moduleValue of map?.modules || []) {
+    for (const lesson of moduleValue.lessons) {
+      for (const microsequence of lesson.microsequences) {
+        for (const statement of microsequence.coverage) {
+          const locations = coverageLocations.get(matchingText(statement));
+          if (locations) locations.push({
+            modulo: moduleValue.title,
+            licao: lesson.title,
+            microssequencia: microsequence.title
+          });
+        }
+      }
+    }
+  }
+  const projectPart = (value) => ({
+    posicao: Number(value.position) + 1,
+    titulo: value.title,
+    intencao: value.intent,
+    progressao: value.progression ?? value.progress ?? [],
+    microssequencias: Array.isArray(value.microsequences)
+      ? value.microsequences.map((item, index) => ({
+          posicao: Number(item.productionPosition ?? item.position ?? index) + 1,
+          titulo: item.title ?? null
         }))
       : []
+  });
+  return {
+    titulo: source.title ?? null,
+    objetivo: source.objective ?? null,
+    mapaCurricular: humanCurricularMap(map, mapStatus),
+    cobertura: [...coverageLocations.entries()].map(([normalizedStatement, previstaEm]) => ({
+      item: map.scopeItems.find((statement) => matchingText(statement) === normalizedStatement),
+      situacao: previstaEm.length ? "prevista" : "sem cobertura",
+      previstaEm
+    })),
+    partesDeProducao: Array.isArray(source.parts) ? source.parts.map(projectPart) : [],
+    parteEmFoco: part ? projectPart(part) : null
   };
 }
 
@@ -1408,7 +1751,7 @@ async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, l
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "A paginação de Unidades repetiu o mesmo ponto."
+        "A paginação de unidades repetiu o mesmo ponto."
       );
     }
     seenCursors.add(cursorKey);
@@ -1429,7 +1772,7 @@ async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, l
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "A lista de Unidades é inválida."
+        "A lista de unidades é inválida."
       );
     }
     for (const item of page.items) {
@@ -1444,7 +1787,7 @@ async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, l
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
-        "A lista de Unidades perdeu o ponto de retomada."
+        "A lista de unidades perdeu o ponto de retomada."
       );
     }
     cursorStudyUnitId = next;
@@ -1452,7 +1795,7 @@ async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, l
   throw new AuthoringApiError(
     503,
     "course_service_unavailable",
-    "A leitura de Unidades excedeu o limite seguro de paginação."
+    "A leitura de unidades excedeu o limite seguro de paginação."
   );
 }
 
@@ -1520,7 +1863,7 @@ async function readObservations({
         throw new AuthoringApiError(
           503,
           "course_service_unavailable",
-          "A paginação de Observações perdeu o ponto de retomada."
+          "A paginação de observações perdeu o ponto de retomada."
         );
       }
       seen.add(page.nextCursor);
@@ -1538,44 +1881,73 @@ async function readObservations({
   };
 }
 
+function humanDesignOrigin(value) {
+  return {
+    automatic: "calibração contextual",
+    author: "definida pela pessoa autora",
+    research_condition: "condição de pesquisa",
+    system_default: "padrão do produto"
+  }[value] ?? "origem não informada";
+}
+
+function humanDesignScope(value) {
+  return {
+    course: "curso",
+    module: "módulo",
+    lesson: "lição",
+    didactic_microsequence: "microssequência",
+    study_unit: "unidade de estudo"
+  }[value] ?? null;
+}
+
+function humanParameterLabel(parameterId, definitionById) {
+  const definition = definitionById.get(parameterId) ??
+    COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameterId);
+  if (!definition?.label) return "Parâmetro pedagógico";
+  return definition.label.replace(/\bUnidades?\b/gu, (term) => term.toLocaleLowerCase("pt-BR"));
+}
+
 function projectConfiguration(read) {
   const definitionById = new Map((read?.definitions ?? []).map((definition) => [
     definition.id,
     definition
   ]));
   const effectivePolicy = read?.componentPolicy?.effectiveAssignment ?? null;
+  const parameters = Array.isArray(read?.parameters)
+    ? read.parameters.map((parameter) => ({
+        nome: humanParameterLabel(parameter.parameterId, definitionById),
+        valorLocal: parameter.localAssignment?.value ?? null,
+        valorEfetivo: parameter.effectiveAssignment?.value ?? null,
+        herdado: parameter.effectiveAssignment?.inherited ?? false,
+        origem: humanDesignOrigin(parameter.effectiveAssignment?.origin),
+        motivo: parameter.effectiveAssignment?.reason ?? null,
+        escopoDeOrigem: humanDesignScope(parameter.effectiveAssignment?.sourceScope?.kind)
+      }))
+    : [];
   return {
-    scope: read?.scopeContext?.current?.label ?? null,
-    parameters: Array.isArray(read?.parameters)
-      ? read.parameters.map((parameter) => ({
-          name: definitionById.get(parameter.parameterId)?.label ?? parameter.parameterId,
-          localValue: parameter.localAssignment?.value ?? null,
-          effectiveValue: parameter.effectiveAssignment?.value ?? null,
-          inherited: parameter.effectiveAssignment?.inherited ?? false,
-          origin: parameter.effectiveAssignment?.origin ?? null,
-          reason: parameter.effectiveAssignment?.reason ?? null,
-          sourceScope: parameter.effectiveAssignment?.sourceScope?.kind ?? null
-        }))
-      : [],
-    editorialDirection: {
+    escopo: read?.scopeContext?.current?.label ?? null,
+    parametros: parameters,
+    precisaDeCalibracaoContextual: Array.isArray(read?.parameters) &&
+      read.parameters.some((parameter) =>
+        parameter?.effectiveAssignment?.origin === "system_default"),
+    direcaoEditorial: {
       local: read?.guidance?.localAssignment?.guidance ?? null,
-      effective: Array.isArray(read?.guidance?.effectiveAssignments)
+      efetiva: Array.isArray(read?.guidance?.effectiveAssignments)
         ? read.guidance.effectiveAssignments.map((assignment) => ({
-            guidance: assignment.guidance,
-            origin: assignment.origin,
-            reason: assignment.reason,
-            sourceScope: assignment.sourceScope?.kind ?? null
+            orientacao: assignment.guidance,
+            origem: humanDesignOrigin(assignment.origin),
+            motivo: assignment.reason,
+            escopoDeOrigem: humanDesignScope(assignment.sourceScope?.kind)
           }))
         : []
     },
-    componentPolicy: effectivePolicy == null ? null : {
-      policy: withoutTechnicalState(effectivePolicy.policy),
-      inherited: effectivePolicy.inherited ?? false,
-      origin: effectivePolicy.origin ?? null,
-      reason: effectivePolicy.reason ?? null,
-      sourceScope: effectivePolicy.sourceScope?.kind ?? null
-    },
-    targets: read?.targetPlanItems == null ? null : withoutTechnicalState(read.targetPlanItems)
+    politicaDeComponentes: effectivePolicy == null ? null : {
+      politica: withoutTechnicalState(effectivePolicy.policy),
+      herdada: effectivePolicy.inherited ?? false,
+      origem: humanDesignOrigin(effectivePolicy.origin),
+      motivo: effectivePolicy.reason ?? null,
+      escopoDeOrigem: humanDesignScope(effectivePolicy.sourceScope?.kind)
+    }
   };
 }
 
@@ -1594,7 +1966,13 @@ function projectFocalPlanItems(items, targetIds, label) {
         typeof item.statement !== "string" || !item.statement.trim()) {
       fail("course_service_unavailable", `O inventário focal de ${label} divergiu do plano.`, null, 503);
     }
-    return { position: indexed.position, statement: item.statement };
+    return {
+      posicao: indexed.position,
+      ideia: item.statement,
+      ...(typeof item.description === "string" && item.description.trim()
+        ? { descricao: item.description }
+        : {})
+    };
   });
 }
 
@@ -1607,6 +1985,82 @@ function hasEffectiveStudyUnitOverride(read) {
     read?.componentPolicy?.effectiveAssignment?.sourceScope?.kind === "study_unit";
 }
 
+function curriculumMicrosequenceOrder(plan) {
+  const order = new Map();
+  for (const moduleValue of plan?.curriculum?.modules ?? []) {
+    for (const lesson of moduleValue?.lessons ?? []) {
+      for (const microsequence of lesson?.microsequences ?? []) {
+        if (typeof microsequence?.id !== "string" || !microsequence.id ||
+            order.has(microsequence.id)) {
+          fail(
+            "course_service_unavailable",
+            "A ordem das microssequências no mapa curricular é inválida.",
+            null,
+            503
+          );
+        }
+        order.set(microsequence.id, order.size);
+      }
+    }
+  }
+  return order;
+}
+
+function establishedAnalysisUnitsInRange(plan, order, afterOrAt, before) {
+  return (Array.isArray(plan?.instructionalAnalysisUnits)
+    ? plan.instructionalAnalysisUnits
+    : []).map((item, index) => ({ ...item, currentPosition: index + 1 }))
+    .filter((item) => {
+      if (!item?.introducedAt ||
+          typeof item.introducedAt !== "object" ||
+          Array.isArray(item.introducedAt)) return false;
+      const introducedOrder = order.get(item.introducedAt.didacticMicrosequenceId);
+      if (!Number.isSafeInteger(introducedOrder)) {
+        fail(
+          "course_service_unavailable",
+          "A introdução de uma ideia não pertence ao mapa curricular.",
+          null,
+          503
+        );
+      }
+      return introducedOrder >= afterOrAt && introducedOrder < before;
+    });
+}
+
+function humanAnalysisUnits(items) {
+  return items.map((item) => ({
+    posicao: item.currentPosition,
+    ideia: item.statement,
+    ...(typeof item.description === "string" && item.description.trim()
+      ? { descricao: item.description }
+      : {})
+  }));
+}
+
+function materializationRepertoire(plan, part) {
+  const order = curriculumMicrosequenceOrder(plan);
+  const currentOrders = (part?.microsequences ?? []).map(({ id }) => order.get(id));
+  if (!currentOrders.length || currentOrders.some((value) => !Number.isSafeInteger(value))) {
+    fail(
+      "course_service_unavailable",
+      "A parte não corresponde ao mapa curricular corrente.",
+      null,
+      503
+    );
+  }
+  const firstOrder = Math.min(...currentOrders);
+  return {
+    order,
+    firstOrder,
+    establishedBeforePart: establishedAnalysisUnitsInRange(
+      plan,
+      order,
+      Number.NEGATIVE_INFINITY,
+      firstOrder
+    )
+  };
+}
+
 function projectMaterializationPart(planRead, part, designReads, unitDesignReads = []) {
   const plan = planRead?.plan ?? {};
   const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
@@ -1614,69 +2068,66 @@ function projectMaterializationPart(planRead, part, designReads, unitDesignReads
   if (!microsequences.length || !Array.isArray(designReads) ||
       designReads.length !== microsequences.length ||
       !Number.isSafeInteger(partPosition) || partPosition < 0) {
-    fail("course_service_unavailable", "O recorte focal da Parte está incompleto.", null, 503);
+    fail("course_service_unavailable", "O recorte focal da parte está incompleto.", null, 503);
   }
+  const repertoire = materializationRepertoire(plan, part);
   return {
-    position: partPosition + 1,
-    title: part.title,
-    intent: part.intent,
-    establishedAnalysisUnits: (Array.isArray(plan.instructionalAnalysisUnits)
-      ? plan.instructionalAnalysisUnits
-      : []).map((item, index) => ({ ...item, currentPosition: index + 1 }))
-      .filter((item) => item?.introduced === true &&
-        item.introducedPartPosition !== null &&
-        Number.isSafeInteger(item.introducedPartPosition) &&
-        item.introducedPartPosition < partPosition)
-      .map((item) => ({ position: item.currentPosition, statement: item.statement })),
-    microsequences: microsequences.map((microsequence, index) => {
+    posicao: partPosition + 1,
+    titulo: part.title,
+    intencao: part.intent,
+    ideiasEstabelecidas: humanAnalysisUnits(repertoire.establishedBeforePart),
+    microssequencias: microsequences.map((microsequence, index) => {
       const design = designReads[index];
       const targets = design?.targetPlanItems;
       const configuration = projectConfiguration(design);
-      const humanFunction = HUMAN_FUNCTION_BY_MICROSEQUENCE_ROLE[microsequence.role];
-      if (typeof microsequence.goal !== "string" || !microsequence.goal.trim() ||
-          !humanFunction) {
+      if (typeof microsequence.goal !== "string" || !microsequence.goal.trim()) {
         fail(
           "course_service_unavailable",
-          "A finalidade de uma Microssequência divergiu do planejamento.",
+          "A finalidade de uma microssequência divergiu do planejamento.",
           null,
           503
         );
       }
-      delete configuration.targets;
-      const existingStudyUnitOverrides = unitDesignReads
+      const existingUnitOverrides = unitDesignReads
         .filter((entry) => entry.microsequenceId === microsequence.id &&
           hasEffectiveStudyUnitOverride(entry.design))
         .map((entry) => {
           const unitConfiguration = projectConfiguration(entry.design);
-          delete unitConfiguration.targets;
           return {
-            position: Number(entry.unit.studyUnit.position),
-            title: entry.unit.studyUnit.title,
-            configuration: unitConfiguration
+            posicao: Number(entry.unit.studyUnit.position),
+            titulo: entry.unit.studyUnit.title,
+            configuracao: unitConfiguration
           };
         })
         .sort((left, right) => left.position - right.position);
       return {
-        position: Number(microsequence.productionPosition ?? microsequence.position ?? index) + 1,
-        title: microsequence.title,
-        objective: microsequence.goal,
-        function: humanFunction,
-        curriculum: {
-          module: microsequence.curriculumPath?.moduleTitle ?? null,
-          lesson: microsequence.curriculumPath?.lessonTitle ?? null
+        posicao: Number(microsequence.productionPosition ?? microsequence.position ?? index) + 1,
+        titulo: microsequence.title,
+        objetivo: microsequence.goal,
+        curriculo: {
+          modulo: microsequence.curriculumPath?.moduleTitle ?? null,
+          licao: microsequence.curriculumPath?.lessonTitle ?? null
         },
-        instructionalAnalysisUnits: projectFocalPlanItems(
+        ideiasPlanejadas: projectFocalPlanItems(
           plan.instructionalAnalysisUnits,
           targets?.instructionalAnalysisUnitIds,
           "unidades de análise"
         ),
-        evidenceRequirements: projectFocalPlanItems(
+        ideiasEstabelecidasDesdeOInicioDaParte: humanAnalysisUnits(
+          establishedAnalysisUnitsInRange(
+            plan,
+            repertoire.order,
+            repertoire.firstOrder,
+            repertoire.order.get(microsequence.id)
+          )
+        ),
+        requisitosDeEvidencia: projectFocalPlanItems(
           plan.evidenceRequirements,
           targets?.evidenceRequirementIds,
           "requisitos de evidência"
         ),
-        configuration,
-        existingStudyUnitOverrides
+        configuracao: configuration,
+        ajustesExistentesDasUnidades: existingUnitOverrides
       };
     })
   };
@@ -1695,12 +2146,12 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
     });
     return result(
       page?.items?.length === 1
-        ? "Encontrei um Curso para retomar."
-        : `Encontrei ${page?.items?.length ?? 0} Cursos para retomar.`,
+        ? "Encontrei um curso para retomar."
+        : `Encontrei ${page?.items?.length ?? 0} cursos para retomar.`,
       {
         nextDecision: page?.items?.length === 1
           ? "Quer continuar do ponto atual?"
-          : "Qual Curso você quer retomar?",
+          : "Qual curso você quer retomar?",
         context: { courses: page?.items ?? [] }
       }
     );
@@ -1711,12 +2162,17 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
   });
   const plan = await loadPlan(adapter, principal, resolved.course, deadlineAt);
   const part = focusedPart(plan);
-  return result(`Retomei o Curso “${resolved.course.title}”.`, {
+  const map = curricularMapFromPlan(plan);
+  return result(`Retomei o curso “${resolved.course.title}”.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: part
-      ? `Quer revisar a Parte ${Number(part.position) + 1} ou propor a próxima?`
-      : "Quer propor a primeira Parte?",
+    nextDecision: map?.approval !== "approved"
+      ? map
+        ? "Quer revisar ou aprovar o mapa curricular?"
+        : "Quer propor o mapa curricular global?"
+      : part
+        ? `Quer revisar a parte ${Number(part.position) + 1} ou preparar a próxima?`
+        : "Prepare agora a progressão focal da primeira parte de produção.",
     context: projectedPlanContext(plan, part)
   });
 };
@@ -1727,14 +2183,20 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
   const plan = resolved.plan || await loadPlan(adapter, principal, resolved.course, deadlineAt);
   const part = focusedPart(plan, resolved.part);
-  return result(part
-    ? `O planejamento está na Parte ${Number(part.position) + 1}: ${part.title}.`
-    : "O Curso ainda não tem Partes planejadas.", {
+  const map = curricularMapFromPlan(plan);
+  const mapStatus = map?.approval === "approved" ? "aprovado" : map ? "em rascunho" : "ausente";
+  return result(`Li o mapa curricular global; ele está ${mapStatus}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: args.parte === undefined
-      ? "Quer revisar esta Parte ou propor somente a próxima?"
-      : "Quer alterar esta Parte?",
+    nextDecision: map?.approval !== "approved"
+      ? map
+        ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?"
+        : "Quer propor o mapa curricular completo?"
+      : args.parte === undefined
+        ? part
+          ? "Quer revisar esta parte ou preparar a próxima?"
+          : "Prepare agora a progressão focal da primeira parte de produção."
+        : "Quer alterar a progressão desta parte?",
     context: projectedPlanContext(plan, part)
   });
 };
@@ -1760,7 +2222,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   if (existingPage.items.length > 64) {
     fail(
       "human_materialization_part_too_large",
-      "A Parte excede 64 Unidades e não cabe numa materialização atômica.",
+      "A parte excede 64 unidades e não cabe numa materialização atômica.",
       null,
       413
     );
@@ -1778,11 +2240,21 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
       deadlineAt
     })
   })));
-  return result(`Preparei o recorte focal da Parte ${Number(part.position) + 1}: ${part.title}.`, {
+  const projectedPart = projectMaterializationPart(
+    resolved.plan,
+    part,
+    design,
+    unitDesign
+  );
+  const calibrationPending = projectedPart.microssequencias.some(({ configuracao }) =>
+    configuracao.precisaDeCalibracaoContextual);
+  return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning", [["authoringPartId", part.id]]),
-    nextDecision: "Gere as Unidades necessárias sem mudar o inventário semântico.",
+    nextDecision: calibrationPending
+      ? "Calibre silenciosamente por microssequência ou por unidade nova, preservando condições fixadas, e produza o conteúdo aprovado."
+      : "Produza o conteúdo aprovado desta parte e, ao terminar, ofereça acesso ao resultado.",
     context: {
-      part: projectMaterializationPart(resolved.plan, part, design, unitDesign)
+      parte: projectedPart
     }
   });
 };
@@ -1819,8 +2291,8 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
           : []),
     nextDecision: "Quer manter a herança ou fixar alguma condição?",
     context: {
-      configuration: projectConfiguration(configuration),
-      appliedToUnit: unit?.authorship?.design?.application ?? null
+      configuracao: projectConfiguration(configuration),
+      aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null
     }
   });
 };
@@ -1832,9 +2304,9 @@ HUMAN_TASK_HANDLERS.consultar_observacoes = async ({
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
   const observations = await readObservations({ adapter, principal, resolved, args, deadlineAt });
   const count = Array.isArray(observations?.items) ? observations.items.length : 0;
-  return result(`${count} ${count === 1 ? "Observação encontrada" : "Observações encontradas"}.`, {
+  return result(`${count} ${count === 1 ? "observação encontrada" : "observações encontradas"}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "review"),
-    nextDecision: count ? "Quer preparar uma revisão coerente dessas Observações?" : null,
+    nextDecision: count ? "Quer preparar uma revisão coerente dessas observações?" : null,
     context: { observations }
   });
 };
@@ -1895,10 +2367,10 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
           .toLocaleLowerCase("pt-BR")
           .includes(text(args.busca, "busca", 300).toLocaleLowerCase("pt-BR")))
       };
-  return result("Li as Fontes e Âncoras do recorte solicitado.", {
+  return result("Li as fontes e âncoras do recorte solicitado.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content",
       unit ? [["studyUnitId", unit.id]] : []),
-    nextDecision: "Quer adotar, contestar ou vincular alguma Fonte?",
+    nextDecision: "Quer adotar, contestar ou vincular alguma fonte?",
     context: { sources: context }
   });
 };
@@ -1995,8 +2467,8 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
       : null;
     if (inspected?.status === "ok") {
       const definition = inspected.definition;
-      return result("Li o contrato exato do componente escolhido.", {
-        nextDecision: "Use este schema na instância ou consulte outro candidato se ele não cumprir a função.",
+      return result("Li os detalhes de uso do componente escolhido.", {
+        nextDecision: "Use estes detalhes ao compor o conteúdo ou consulte outra representação se ela não cumprir a função.",
         context: {
           componentAuthoringContract: {
             referencia: `${definition.package}@${definition.version}`,
@@ -2022,7 +2494,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
     }
   }
   return result("Encontrei representações candidatas para a função instrucional.", {
-    nextDecision: "Qual representação cumpre melhor a função desta Unidade?",
+    nextDecision: "Qual representação cumpre melhor a função desta unidade?",
     context: { components: componentSearchProjection(catalog) }
   });
 };
@@ -2045,10 +2517,55 @@ HUMAN_TASK_HANDLERS.criar_curso = async ({ adapter, principal, args, deadlineAt 
     title: receipt.title ?? receipt.course?.title ?? title,
     deepLink: receipt.deepLink ?? null
   };
-  return result(`Criei o Curso privado “${course.title}”.`, {
+  return result(`Criei o curso privado “${course.title}”.`, {
     deepLink: courseDeepLink(adapter, course, "planning"),
-    nextDecision: "Quer propor somente a Parte 1?",
-    context: { course: { title: course.title } }
+    nextDecision: "Quer propor o mapa curricular global?",
+    context: { curso: { titulo: course.title } }
+  });
+};
+
+HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
+  adapter, principal, args, deadlineAt
+}) => {
+  const course = humanCourseTitle(args);
+  const input = normalizeCurricularMapArguments(args);
+  let savedCourse = null;
+  await executeTrustedCourseWrite({
+    load: async () => {
+      const resolved = await resolveHumanCourseContext({
+        adapter, principal, course, deadlineAt
+      });
+      const plan = resolved.plan || await loadPlan(
+        adapter,
+        principal,
+        resolved.course,
+        deadlineAt
+      );
+      savedCourse = {
+        ...resolved.course,
+        revision: Number(plan.courseRevision)
+      };
+      return { ...resolved, course: savedCourse, plan };
+    },
+    build: async (state, { newId }) => await buildCurricularMapWrite({ state, input, newId }),
+    commit: async ({ requestId, ...value }) => await adapter.saveCourseCurricularMap({
+      principal, ...value, requestId, deadlineAt
+    })
+  });
+  const publicMap = semanticMapFromInput(input);
+  return result(input.approved
+    ? "Mapa curricular aprovado."
+    : "Salvei o mapa curricular como rascunho para inspeção.", {
+    deepLink: courseDeepLink(adapter, savedCourse, "planning"),
+    nextDecision: input.approved
+      ? "Prepare agora a progressão focal da primeira parte de produção."
+      : "Aprova este mapa curricular ou quer mudar cobertura, ordem ou ênfase?",
+    context: {
+      mapaCurricular: {
+        ...humanCurricularMap(publicMap, input.approved ? "aprovado" : "rascunho"),
+        itensDeEscopo: publicMap.scopeItems
+      }
+    }
   });
 };
 
@@ -2057,7 +2574,12 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   const partReference = optionalReference(args.parte, "parte");
   const title = text(args.titulo, "titulo", 300);
   const intent = text(args.intencao, "intencao", 2000);
-  const definitions = normalizeApprovedPartMicrosequences(args.microssequencias);
+  const titles = normalizePartMicrosequenceTitles(args.microssequencias);
+  const progression = textList(args.progressao, "progressao", {
+    minimum: 1,
+    maximum: 64,
+    itemMaximum: 1000
+  });
   let savedPartId = null;
   let savedCourse = null;
   const receipt = await executeTrustedCourseWrite({
@@ -2089,7 +2611,9 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
       };
     },
     build: async (state, { newId }) => {
-      const built = await buildApprovedPart({ state, definitions, title, intent, newId });
+      const built = await buildProductionPart({
+        state, titles, progression, title, intent, newId
+      });
       savedPartId = built.part.partId;
       return built;
     },
@@ -2098,12 +2622,12 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     })
   });
   return result(partReference === undefined
-    ? `Adicionei somente a próxima Parte: ${title}.`
-    : `Revisei a Parte: ${title}.`, {
+    ? `Preparei a parte de produção: ${title}.`
+    : `Atualizei a parte de produção: ${title}.`, {
     deepLink: courseDeepLink(adapter, savedCourse, "planning", [["authoringPartId", savedPartId]]),
-    nextDecision: "Quer revisar esta Parte ou propor somente a próxima?",
+    nextDecision: "Leia o recorte focal e produza agora esta parte já aprovada.",
     context: {
-      part: { title, intent, microsequenceCount: definitions.length },
+      parte: { titulo: title, intencao: intent, microssequencias: titles, progressao: progression },
       changed: receipt.changed !== false
     }
   });
@@ -2137,6 +2661,11 @@ const PARAMETER_FIELD_TO_ID = Object.freeze({
   minimoDePraticasPorRequisito:
     "minimum_distinct_practice_opportunities_per_evidence_requirement",
   dimensoesDeVariacaoDaPratica: "required_practice_variation_dimensions"
+});
+
+const EDITORIAL_PARAMETER_FIELD_TO_ID = Object.freeze({
+  alvoDePalavrasPorResposta: "authoring_chat_response_word_target",
+  alvoDePalavrasPorUnidade: "study_unit_content_word_target"
 });
 
 function designScope(resolved) {
@@ -2191,7 +2720,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   if (microsequence !== undefined && studyUnit !== undefined) {
     fail(
       "ambiguous_human_scope",
-      "Informe Microssequência ou StudyUnit, não os dois escopos ao mesmo tempo.",
+      "Informe microssequência ou unidade de estudo, não os dois escopos ao mesmo tempo.",
       null,
       409
     );
@@ -2199,10 +2728,13 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   const parameters = args.parametrosPedagogicos === undefined
     ? null
     : plainObject(args.parametrosPedagogicos, "parametrosPedagogicos");
-  if (!parameters && args.direcaoEditorial === undefined) {
+  const editorialParameters = args.parametrosEditoriais === undefined
+    ? null
+    : plainObject(args.parametrosEditoriais, "parametrosEditoriais");
+  if (!parameters && !editorialParameters && args.direcaoEditorial === undefined) {
     fail(
       "missing_human_task_argument",
-      "Informe parametrosPedagogicos e/ou direcaoEditorial."
+      "Informe parâmetros pedagógicos, parâmetros editoriais e/ou direção editorial."
     );
   }
   const guidance = args.direcaoEditorial === undefined
@@ -2247,6 +2779,32 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
             }, { knownComponentRefs }));
     }
   }
+  if (editorialParameters) {
+    exactFields(editorialParameters, new Set(Object.keys(EDITORIAL_PARAMETER_FIELD_TO_ID)));
+    if (!Object.keys(editorialParameters).length) {
+      fail("missing_human_task_argument", "Informe ao menos um parâmetro editorial.");
+    }
+    for (const [field, value] of Object.entries(editorialParameters)) {
+      const parameterId = EDITORIAL_PARAMETER_FIELD_TO_ID[field];
+      if (!COURSE_DESIGN_PARAMETER_DEFINITIONS.some(({ id }) => id === parameterId)) {
+        fail("invalid_human_task_argument", `${field} não pertence ao catálogo editorial.`);
+      }
+      commands.push(normalizeCourseDesignCommand(value === null
+        ? { type: "clear_parameter", scope: designScope(preflightState), parameterId }
+        : {
+            type: "set_parameter",
+            scope: designScope(preflightState),
+            parameterId,
+            value: safeClone(value, field, 16 * 1024),
+            origin,
+            reason: origin === "automatic"
+              ? "Alvo editorial calibrado automaticamente para o contexto corrente."
+              : origin === "research_condition"
+                ? "Condição editorial de pesquisa fixada explicitamente."
+                : "Condição editorial fixada explicitamente pela pessoa autora."
+          }, { knownComponentRefs }));
+    }
+  }
   if (guidance !== undefined) {
     commands.push(normalizeCourseDesignCommand(guidance === null
       ? { type: "clear_guidance", scope: designScope(preflightState) }
@@ -2259,10 +2817,47 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
             ? "Direção editorial calibrada automaticamente para o contexto corrente."
             : origin === "research_condition"
               ? "Direção editorial fixada como condição de pesquisa."
-              : "Direção editorial fixada explicitamente pela pessoa autora."
+            : "Direção editorial fixada explicitamente pela pessoa autora."
         }, { knownComponentRefs }));
   }
-  for (const normalizedCommand of commands) {
+  const preservedOrigins = new Set();
+  let applicableCommands = commands;
+  if (origin === "automatic") {
+    const currentScope = designScope(preflightState);
+    const currentDesign = await adapter.getCourseDesign({
+      principal,
+      courseId: preflightState.course.id,
+      scopeKind: currentScope.kind,
+      scopeRef: currentScope.ref,
+      childLimit: 1,
+      childCursor: null,
+      deadlineAt
+    });
+    const fixedOrigins = new Set(["author", "research_condition"]);
+    const protectedParameterOrigins = new Map((currentDesign?.parameters ?? [])
+      .filter((parameter) => fixedOrigins.has(parameter?.effectiveAssignment?.origin))
+      .map((parameter) => [
+        parameter.parameterId,
+        parameter.effectiveAssignment.origin
+      ]));
+    const protectedGuidanceOrigin = (currentDesign?.guidance?.effectiveAssignments ?? [])
+      .map((assignment) => assignment?.origin)
+      .find((currentOrigin) => fixedOrigins.has(currentOrigin)) ?? null;
+    applicableCommands = commands.filter((command) => {
+      if (["set_parameter", "clear_parameter"].includes(command.type) &&
+          protectedParameterOrigins.has(command.parameterId)) {
+        preservedOrigins.add(protectedParameterOrigins.get(command.parameterId));
+        return false;
+      }
+      if (["set_guidance", "clear_guidance"].includes(command.type) &&
+          protectedGuidanceOrigin) {
+        preservedOrigins.add(protectedGuidanceOrigin);
+        return false;
+      }
+      return true;
+    });
+  }
+  for (const normalizedCommand of applicableCommands) {
     await applyDesignCommand({
       adapter,
       principal,
@@ -2293,7 +2888,16 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     childCursor: null,
     deadlineAt
   });
-  return result("Atualizei a configuração autoral e reli os valores efetivos.", {
+  const preservedCondition = preservedOrigins.has("research_condition")
+    ? "a condição de pesquisa"
+    : preservedOrigins.has("author")
+      ? "a condição fixada pela pessoa autora"
+      : null;
+  return result(preservedCondition
+    ? applicableCommands.length
+      ? `Mantive ${preservedCondition} e atualizei os demais ajustes.`
+      : `Mantive ${preservedCondition}; a calibração automática não a substituiu.`
+    : "Atualizei a configuração autoral e reli os valores efetivos.", {
     deepLink: courseDeepLink(adapter, resolved.course, "parameters",
       resolved.studyUnits?.[0]
         ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
@@ -2301,7 +2905,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
           ? [["didacticMicrosequenceId", resolved.microsequence.id]]
           : []),
     nextDecision: "Quer comparar esta condição com outra configuração?",
-    context: { configuration: projectConfiguration(configuration) }
+    context: { configuracao: projectConfiguration(configuration) }
   });
 };
 
@@ -2316,7 +2920,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
     ? null
     : text(args.categoria, "categoria", 120);
   if (category !== null && !COURSE_ANCHORED_ANNOTATION_CATEGORIES.includes(category)) {
-    fail("invalid_human_task_argument", "categoria não pertence às Observações.", {
+    fail("invalid_human_task_argument", "categoria não pertence às observações.", {
       field: "categoria"
     });
   }
@@ -2351,11 +2955,11 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
   });
   return result(
     units.length === 1
-      ? "Registrei a Observação na Unidade selecionada."
-      : `Registrei a Observação separadamente em ${units.length} Unidades.`,
+      ? "Registrei a observação na unidade selecionada."
+      : `Registrei a observação separadamente em ${units.length} unidades.`,
     {
       deepLink: courseDeepLink(adapter, savedCourse, "review"),
-      nextDecision: "Quer registrar outra Observação ou preparar a revisão das abertas?",
+      nextDecision: "Quer registrar outra observação ou preparar a revisão das abertas?",
       context: { observationCount: units.length }
     }
   );
@@ -2378,8 +2982,15 @@ function sourceDocument(publicValue, previous = null) {
     citacao: "citation",
     citacao_e_link: "citation_and_link"
   });
+  const sourceRole = SOURCE_ROLES_BY_HUMAN_NAME[value.papel] ?? previous?.sourceRole;
+  if (!COURSE_SOURCE_ROLES.includes(sourceRole)) {
+    fail("invalid_human_task_argument", "metadados.papel é inválido.", {
+      field: "metadados.papel"
+    });
+  }
   return {
     kind: value.tipo ?? previous?.kind ?? "document",
+    sourceRole,
     title: text(value.titulo, "metadados.titulo", 300),
     authorship: value.autoria === undefined ? previous?.authorship ?? null : value.autoria,
     publicationDate: value.dataDePublicacao === undefined
@@ -2426,7 +3037,7 @@ function sourceSelector(publicValue) {
     return { kind: "uri_fragment", fragment: text(value.fragmento, "fragmento", 2048) };
   }
   if (type !== "trecho") {
-    fail("invalid_human_task_argument", "O tipo de Âncora é inválido.");
+    fail("invalid_human_task_argument", "O tipo de âncora é inválido.");
   }
   return {
     kind: "text_quote",
@@ -2494,7 +3105,7 @@ function matchAnchor(anchors, reference) {
     anchor.humanLocator, anchor.verificationExcerpt
   ].some((value) => String(value || "").toLocaleLowerCase("pt-BR") === wanted));
   if (matches.length > 1) {
-    throw new AuthoringApiError(409, "ambiguous_human_reference", "A Âncora é ambígua.");
+    throw new AuthoringApiError(409, "ambiguous_human_reference", "A âncora é ambígua.");
   }
   return matches[0] ?? null;
 }
@@ -2515,7 +3126,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     if (args.metadados !== undefined || args.ancoras !== undefined || args.vinculos !== undefined) {
       fail(
         "invalid_human_task_arguments",
-        "A retirada não pode ser combinada com outras mudanças da Fonte.",
+        "A retirada não pode ser combinada com outras mudanças da fonte.",
         { field: "retirar" }
       );
     }
@@ -2570,13 +3181,13 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     }
     const title = initial.source.title;
     const message = withdrawal === "fonte"
-      ? `Retirei a Fonte “${title}” e seus PDFs ativos.`
+      ? `Retirei a fonte “${title}” e seus PDFs ativos.`
       : attachments.length || Number(resumed?.deleted ?? 0) > 0
-        ? `Retirei os PDFs ativos da Fonte “${title}”.`
-        : `A Fonte “${title}” não tinha PDFs ativos.`;
+        ? `Retirei os PDFs ativos da fonte “${title}”.`
+        : `A fonte “${title}” não tinha PDFs ativos.`;
     return result(message, {
       deepLink: courseDeepLink(adapter, initial.course, "sources"),
-      nextDecision: "Quer consultar as Fontes restantes?",
+      nextDecision: "Quer consultar as fontes restantes?",
       context: { source: { title, status: withdrawal === "fonte" ? "retired" : initial.source.status } }
     });
   }
@@ -2607,7 +3218,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
   const anchors = args.ancoras === undefined ? [] : safeClone(args.ancoras, "ancoras", 64 * 1024);
   for (let index = 0; index < anchors.length; index += 1) {
     if (sourceReference === undefined && internalSourceId === null) {
-      fail("missing_human_task_argument", "Informe fonte para manter Âncoras.");
+      fail("missing_human_task_argument", "Informe fonte para manter âncoras.");
     }
     const anchor = plainObject(anchors[index], `ancoras[${index}]`);
     await executeSourceWrite({
@@ -2663,7 +3274,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
         const selectedAnchors = (binding.ancoras ?? []).map((reference) => {
           const matched = matchAnchor(state.sourceDetail?.anchors ?? [], reference);
           if (!matched) {
-            throw new AuthoringApiError(404, "human_reference_not_found", "A Âncora não foi localizada.");
+            throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
           }
           return { anchorId: matched.anchorId };
         });
@@ -2717,9 +3328,9 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     internalSourceId,
     deadlineAt
   });
-  return result("Atualizei a Fonte, suas Âncoras e vínculos solicitados.", {
+  return result("Atualizei a fonte, suas âncoras e vínculos solicitados.", {
     deepLink: courseDeepLink(adapter, resolved.course, "sources"),
-    nextDecision: "Quer revisar esta Fonte no contexto de uma Unidade?",
+    nextDecision: "Quer revisar esta fonte no contexto de uma unidade?",
     context: { source: resolved.source ?? { title: sourceReference } }
   });
 };
@@ -2729,10 +3340,11 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
 }) => {
   const hasSourceReference = args.fonte !== undefined;
   const hasNewSourceTitle = args.titulo !== undefined;
-  if (hasSourceReference === hasNewSourceTitle) {
+  if (hasSourceReference === hasNewSourceTitle ||
+      hasSourceReference && args.papel !== undefined) {
     fail(
       "invalid_human_task_arguments",
-      "Informe exatamente um destino para o PDF: fonte existente ou titulo da nova Fonte.",
+      "Informe exatamente um destino para o PDF: fonte existente ou título da nova fonte.",
       { fields: ["fonte", "titulo"] }
     );
   }
@@ -2771,6 +3383,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
             expectedSourceRevision: 0,
             source: sourceDocument({
               titulo: newSourceTitle,
+              papel: args.papel,
               tipo: "document",
               disponibilidade: "desconhecida",
               verificacao: "nao_verificada",
@@ -2835,9 +3448,9 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
     internalSourceId: receipt?.source?.sourceId ?? ingestedSourceId,
     deadlineAt
   });
-  return result("Mantive o PDF entre as Fontes do Curso.", {
+  return result("Mantive o PDF entre as fontes do curso.", {
     deepLink: courseDeepLink(adapter, resolved.course, "sources"),
-    nextDecision: "Quer criar ou revisar Âncoras verificáveis deste PDF?",
+    nextDecision: "Quer criar ou revisar âncoras verificáveis deste PDF?",
     context: {
       source: resolved.source,
       stored: receipt?.stored !== false,

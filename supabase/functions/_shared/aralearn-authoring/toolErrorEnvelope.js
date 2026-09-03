@@ -11,7 +11,7 @@ const SAFE_NUMERIC_DETAIL_KEYS = new Set([
 
 function publicErrorMessage(error) {
   if (UNKNOWN_FIELD_MESSAGE.test(String(error.message || ""))) {
-    return "O comando contém um campo não reconhecido.";
+    return "O pedido contém uma informação não reconhecida.";
   }
   return String(error.message);
 }
@@ -105,8 +105,8 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: "new",
       steps: [
-        "Releia o Curso e sua versão de estado corrente.",
-        "Reaplique somente a intenção ainda pertinente com novo requestId."
+        "Releia o curso e seu estado atual.",
+        "Refaça somente a alteração que ainda for pertinente."
       ]
     };
   }
@@ -116,7 +116,7 @@ function errorRecovery(error, issues, requestId) {
       retryable: false,
       requestIdMode: "none",
       steps: [
-        "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF.",
+        "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.",
         "Não repita a incorporação enquanto o resultado corrente não for conhecido."
       ]
     };
@@ -127,8 +127,8 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: "new",
       steps: [
-        "Releia o Curso e confirme o estado que causou o conflito.",
-        "Repita somente a alteração ainda pertinente com novo requestId."
+        "Releia o curso e confirme o estado que causou o conflito.",
+        "Repita somente a alteração que ainda for pertinente."
       ]
     };
   }
@@ -162,7 +162,7 @@ function errorRecovery(error, issues, requestId) {
       requestIdMode: requestId == null ? "none" : "new",
       steps: [
         "Reconstrua a chamada a partir do PDF já anexado.",
-        "Não copie nem fabrique nome, URL ou identificador do arquivo.",
+        "Não copie nem fabrique dados técnicos do arquivo.",
         "Não peça reenvio enquanto o anexo continuar disponível."
       ]
     };
@@ -196,7 +196,7 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: requestId == null ? "none" : "same",
       steps: [
-        "Repita exatamente a mesma chamada e o mesmo requestId.",
+        "Repita exatamente a mesma operação.",
         "Não peça um novo anexo sem uma resposta de expiração."
       ]
     };
@@ -207,8 +207,8 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: requestId == null ? "none" : "same",
       steps: [
-        "Repita exatamente a mesma chamada e o mesmo requestId para recuperar o recibo.",
-        "Não declare sucesso até o resultado confirmar stored igual a true."
+        "Repita exatamente a mesma operação para recuperar o resultado.",
+        "Não declare sucesso até o resultado confirmar que o documento foi armazenado."
       ]
     };
   }
@@ -219,7 +219,7 @@ function errorRecovery(error, issues, requestId) {
       requestIdMode: requestId == null ? "none" : "new",
       steps: [
         "Envie um único PDF de até 20 MiB.",
-        "Repita a operação com o novo arquivo e um novo requestId."
+        "Repita a operação com o novo arquivo."
       ]
     };
   }
@@ -229,7 +229,7 @@ function errorRecovery(error, issues, requestId) {
       retryable: false,
       requestIdMode: "none",
       steps: [
-        "Informe que o Curso atingiu a cota de PDFs mantidos entre as Fontes.",
+        "Informe que o curso atingiu a cota de PDFs mantidos entre as fontes.",
         "Peça à pessoa que revise quais documentos precisam permanecer antes de uma nova tentativa."
       ]
     };
@@ -240,8 +240,8 @@ function errorRecovery(error, issues, requestId) {
       retryable: false,
       requestIdMode: "none",
       steps: [
-        "Informe que esta revisão da Fonte já atingiu o limite de anexos.",
-        "Peça à pessoa que decida se deve atualizar a Fonte ou usar outra Fonte."
+        "Informe que esta fonte já atingiu o limite de anexos.",
+        "Peça à pessoa que decida se deve atualizar a fonte ou usar outra fonte."
       ]
     };
   }
@@ -251,8 +251,8 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: "new",
       steps: [
-        "Divida a composição ou a consulta do Curso em um lote menor.",
-        "Repita o menor lote com novo requestId."
+        "Divida a composição ou a consulta do curso em um lote menor.",
+        "Repita somente o lote menor."
       ]
     };
   }
@@ -261,7 +261,7 @@ function errorRecovery(error, issues, requestId) {
       strategy: "repeat_identical",
       retryable: true,
       requestIdMode: requestId == null ? "none" : "same",
-      steps: ["Repita exatamente os mesmos argumentos e requestId."]
+      steps: ["Repita exatamente a mesma operação."]
     };
   }
   if (error.status === 400 || error.status === 422) {
@@ -270,12 +270,12 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: requestId == null ? "none" : "new",
       steps: [
-        "Leia todos os caminhos em issues.",
+        "Considere todas as informações de correção devolvidas.",
         ...(error.code === "invalid_course_contract"
-          ? ["Consulte os contratos dos componentes didáticos usados nas Unidades rejeitadas."]
+          ? ["Consulte os detalhes dos componentes didáticos usados nas unidades de estudo rejeitadas."]
           : []),
-        "Corrija somente os campos rejeitados ou a menor parcela incompatível.",
-        "Repita a operação corrigida com novo requestId antes de encerrar a tarefa."
+        "Corrija somente a menor parcela incompatível.",
+        "Repita a operação corrigida antes de encerrar a tarefa."
       ]
     };
   }
@@ -283,7 +283,7 @@ function errorRecovery(error, issues, requestId) {
     strategy: "stop",
     retryable: false,
     requestIdMode: "none",
-    steps: ["Informe o código e a mensagem exatos sem afirmar sucesso."]
+    steps: ["Informe que não foi possível concluir e não afirme sucesso."]
   };
 }
 

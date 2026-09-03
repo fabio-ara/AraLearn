@@ -58,10 +58,10 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
     microsequenceMode: "overview"
   });
 
-  assert.match(courseHtml, /data-reset-level="module"[^>]+Zerar progresso deste Módulo/u);
-  assert.match(moduleHtml, /data-reset-level="lesson"[^>]+Zerar progresso desta Lição/u);
-  assert.match(lessonHtml, /data-reset-level="microsequence"[^>]+Zerar progresso desta Microssequência didática/u);
-  assert.match(unitListHtml, /data-reset-level="study-unit"[^>]+Zerar progresso a partir desta Unidade de estudo/u);
+  assert.match(courseHtml, /data-reset-level="module"[^>]+Zerar progresso deste módulo/u);
+  assert.match(moduleHtml, /data-reset-level="lesson"[^>]+Zerar progresso desta lição/u);
+  assert.match(lessonHtml, /data-reset-level="microsequence"[^>]+Zerar progresso desta microssequência didática/u);
+  assert.match(unitListHtml, /data-reset-level="study-unit"[^>]+Zerar progresso a partir desta unidade de estudo/u);
   for (const [html, label] of [
     [courseHtml, "Curso"],
     [moduleHtml, "Módulo"],
@@ -99,7 +99,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   assert.match(homeHtml, /<details class="study-review-queue clean-card" open>/u);
   assert.match(homeHtml, /<strong>Rever<\/strong><span class="muted tiny">1<\/span>/u);
   assert.match(homeHtml, /aria-label="Sem conexão"/u);
-  assert.match(homeHtml, /Sem conexão\. Conecte-se para abrir este Curso\./u);
+  assert.match(homeHtml, /Sem conexão\. Conecte-se para abrir este curso\./u);
   assert.doesNotMatch(homeHtml, /study-runtime-notice/u);
 
   const synchronizingHtml = renderCourseStudyScreen({
@@ -109,7 +109,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   });
   assert.match(
     synchronizingHtml,
-    /Versão salva em uso enquanto o AraLearn atualiza este Curso\./u
+    /Versão salva em uso enquanto o AraLearn atualiza este curso\./u
   );
   assert.doesNotMatch(synchronizingHtml, /Sem conexão/u);
 
@@ -233,7 +233,7 @@ test("os modos contextuais ficam no topbar com nome acessível e ordem estável"
       view,
       microsequenceMode: view === "microsequence" ? "overview" : "play"
     });
-    assert.match(html, /<header[\s\S]*role="group" aria-label="Modo de (?:Lição|Microssequência didática)"/u);
+    assert.match(html, /<header[\s\S]*role="group" aria-label="Modo de (?:lição|microssequência didática)"/u);
     assert.ok(html.indexOf('aria-label="Visualizar"') < html.indexOf(`data-action="${action}"`));
     assert.match(html, new RegExp(`data-action="${action}"[\\s\\S]*?aria-label="Assistência por IA"`, "u"));
     assert.match(html, /data-action="study-level-edit"/u);
@@ -250,7 +250,7 @@ test("os modos contextuais ficam no topbar com nome acessível e ordem estável"
       error: ""
     }
   });
-  assert.match(draftHtml, /aria-label="Rascunho da Assistência por IA"/u);
+  assert.match(draftHtml, /aria-label="Rascunho da assistência por IA"/u);
   assert.match(draftHtml, /data-action="save-assistance-draft"/u);
   assert.match(draftHtml, /data-action="discard-assistance-draft"/u);
 });
@@ -284,7 +284,7 @@ test("a ação da Unidade é icon-only, estável e anuncia a mudança de estado"
   };
   const ready = renderCourseStudyScreen(common);
   const readyButton = ready.match(/<button class="open-mini study-continue-btn"[\s\S]*?<\/button>/u)?.[0] || "";
-  assert.match(readyButton, /aria-label="(?:Ver explicação|Próxima Unidade)"/u);
+  assert.match(readyButton, /aria-label="(?:Ver explicação|Próxima unidade de estudo)"/u);
   assert.doesNotMatch(readyButton, /<span>/u);
   assert.match(ready, /aria-label="Sincronização pendente"/u);
   assert.doesNotMatch(ready, /study-runtime-notice/u);
@@ -336,7 +336,7 @@ test("seleção da assistência acontece nos objetos renderizados e resume o alc
     }
   });
   assert.equal((lessonHtml.match(/data-action="toggle-assistance-target"/gu) || []).length, 2);
-  assert.match(lessonHtml, /class="visually-hidden">2 Microssequências/u);
+  assert.match(lessonHtml, /class="visually-hidden">2 microssequências/u);
   assert.doesNotMatch(lessonHtml, />Alterar</u);
   assert.doesNotMatch(visibleText(lessonHtml), /micro-contexto-secundario/u);
 
@@ -355,7 +355,7 @@ test("seleção da assistência acontece nos objetos renderizados e resume o alc
   });
   assert.equal((microHtml.match(/data-action="toggle-assistance-target"/gu) || []).length,
     originalMicrosequence.studyUnits.length);
-  assert.match(microHtml, /class="visually-hidden">2 Unidades/u);
+  assert.match(microHtml, /class="visually-hidden">2 unidades de estudo/u);
   assert.doesNotMatch(microHtml, />Alterar</u);
 
   const unitHtml = renderCourseStudyScreen({
@@ -376,7 +376,7 @@ test("seleção da assistência acontece nos objetos renderizados e resume o alc
   assert.doesNotMatch(unitHtml, /data-assistance-target-id="study_unit"/u);
   assert.match(unitHtml, /study-assistance-selection-footer/u);
   assert.match(unitHtml, /class="visually-hidden">1 componente/u);
-  assert.doesNotMatch(unitHtml, />Alterar|>Conversar|>Unidade inteira/u);
+  assert.doesNotMatch(unitHtml, />Alterar|>Conversar|>Unidade de estudo inteira/u);
 });
 
 test("Editar mantém resumo e filhos situados e mostra organização só no alvo selecionado", async () => {
@@ -495,7 +495,7 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma única entrada"
   const titleRow = html.match(/<div class="home-course-title-row">[\s\S]*?<\/div>/u)?.[0] || "";
   assert.match(titleRow, /<p class="home-course-ownership"[^>]*>[\s\S]*home-course-origin-icon[\s\S]*<\/p>/u);
   assert.ok(titleRow.includes(`<h2 class="card-title">${selected.title}</h2>`));
-  assert.match(html, /aria-label="Selecionar Curso"/u);
+  assert.match(html, /aria-label="Selecionar curso"/u);
   assert.match(html, /opção 1/u);
   assert.match(html, /opção 2/u);
   assert.doesNotMatch(html, /Disponível neste dispositivo|Disponível com conexão/u);
@@ -609,9 +609,9 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   assert.match(html, />Curso compartilhado/u);
   assert.match(html, />Minha continuidade/u);
   assert.match(html, /home-course-ownership" aria-label="Cópia pessoal"/u);
-  assert.match(html, /<button[^>]+aria-label="Ações deste Curso"[^>]+aria-haspopup="menu"/u);
+  assert.match(html, /<button[^>]+aria-label="Ações deste curso"[^>]+aria-haspopup="menu"/u);
   assert.match(html, /data-action="delete-owned-course"/u);
-  assert.match(html, />Excluir este Curso<\/span>/u);
+  assert.match(html, />Excluir este curso<\/span>/u);
   const sharedHtml = renderHomeScreen({
     project: { ...project, courses },
     progress: { version: 1, lessons: {} },
@@ -619,7 +619,7 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
     selectedCourseId: shared.id
   });
   assert.match(sharedHtml, /data-action="leave-shared-course"/u);
-  assert.match(sharedHtml, />Sair deste Curso<\/span>/u);
+  assert.match(sharedHtml, />Sair deste curso<\/span>/u);
   assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
 });
 
@@ -666,7 +666,7 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
   });
   assert.match(
     sharedHtml,
-    /Ao salvar, o AraLearn criará uma cópia privada para você\. O Curso compartilhado continuará intacto\./u
+    /Ao salvar, o AraLearn criará uma cópia privada para você\. O curso compartilhado continuará intacto\./u
   );
   assert.match(sharedHtml, /aria-label="Salvar na minha cópia"/u);
   assert.match(sharedHtml, /<span>Salvar na minha cópia<\/span>/u);
@@ -786,5 +786,5 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
   });
   assert.match(ownedOpen, /section=sources&amp;sourceId=fonte-citacao&amp;anchorId=anchor-publica/u);
   assert.match(ownedOpen, /Revisar esta âncora/u);
-  assert.match(ownedOpen, /Revisar Fonte no Curso/u);
+  assert.match(ownedOpen, /Revisar fonte no curso/u);
 });

@@ -16,6 +16,10 @@ import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
+const ANALYSIS_TABLE_ID = "30000000-0000-4000-8000-000000000003";
+const ANALYSIS_ASSOCIATION_ID = "30000000-0000-4000-8000-000000000004";
+const ANALYSIS_MAC_ID = "30000000-0000-4000-8000-000000000005";
+const ANALYSIS_PORT_ID = "30000000-0000-4000-8000-000000000006";
 const REVISION = 7;
 
 class FakeRoot {
@@ -115,50 +119,6 @@ function studyUnit(index) {
   };
 }
 
-function designSnapshot({ ceiling = 2 } = {}) {
-  return {
-    parameters: [
-      {
-        parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-        value: ceiling,
-        origin: "author",
-        sourceScopeKind: "didactic_microsequence"
-      },
-      {
-        parameterId: "required_explanation_forms",
-        value: ["plain_definition", "concrete_example"],
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-        value: 2,
-        origin: "system_default",
-        sourceScopeKind: null
-      },
-      {
-        parameterId: "required_practice_variation_dimensions",
-        value: ["case_or_data"],
-        origin: "system_default",
-        sourceScopeKind: null
-      }
-    ],
-    guidance: [{
-      guidance: "Usar exemplos contrastivos.",
-      origin: "author",
-      sourceScopeKind: "course"
-    }],
-    componentPolicy: {
-      availability: "allow_only",
-      allowedCount: 3,
-      excludedCount: 0,
-      preferredCount: 2,
-      origin: "author",
-      sourceScopeKind: "course"
-    }
-  };
-}
-
 function inspectionItem(index) {
   return {
     studyUnit: studyUnit(index),
@@ -184,8 +144,31 @@ function inspectionItem(index) {
       createdOrigin: "gpt",
       lastRevisionOrigin: "gpt",
       design: {
-        snapshot: designSnapshot(),
-        application: {}
+        application: {
+          mode: "expository",
+          componentRefs: ["aralearn.resource.paragraph@1.0.0"],
+          analysisIdeas: index === 1 ? {
+            introduced: [{
+              name: "tabela MAC",
+              description: "Registro que associa endereços MAC às portas conhecidas."
+            }, {
+              name: "associação entre MAC e porta",
+              description: "Relação usada para localizar a porta de saída."
+            }],
+            used: [{
+              name: "endereço MAC",
+              description: "Identificador já estabelecido para origem e destino do quadro."
+            }],
+            revisited: [{
+              name: "porta do switch",
+              description: "Ponto de entrada ou saída retomado para acompanhar o encaminhamento."
+            }]
+          } : {
+            introduced: [],
+            used: [],
+            revisited: []
+          }
+        }
       }
     },
     deepLink: `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-${String(index).padStart(2, "0")}`
@@ -486,10 +469,10 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
 
   assert.equal(await sequence.open(), true);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"[^>]*aria-label="Mais ações para Unidade 1"/u);
-  assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da Unidade de estudo"/u);
+  assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da unidade de estudo"/u);
   assert.match(
     root.innerHTML,
-    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da StudyUnit"><svg[\s\S]*?<\/svg><\/a>/u
+    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/a>/u
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e Âncoras de Unidade 1" title="Fontes e Âncoras"><svg/u);
@@ -497,6 +480,58 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
   assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
+  sequence.destroy();
+});
+
+test("detalhes da unidade apresentam ideias em português sem expor metamodelo nem IDs", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      return pageFor(options, 2);
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller,
+    course: {
+      courseId: COURSE_ID,
+      revision: REVISION,
+      ownership: "owned",
+      canEdit: true
+    },
+    windowValue: new FakeWindow(),
+    documentValue: { activeElement: null },
+    navigatorValue: null
+  });
+
+  assert.equal(await sequence.open(), true);
+  assert.match(
+    root.innerHTML,
+    /<details class="course-inspection-item-details">[\s\S]*?course-inspection-item-detail-panel[\s\S]*?Ideias introduzidas aqui[\s\S]*?Ideias já estabelecidas usadas aqui[\s\S]*?Ideias retomadas[\s\S]*?<\/details>/u,
+    "As ideias devem ficar nos detalhes progressivos da unidade, e não disputar espaço com o conteúdo."
+  );
+  for (const visibleIdea of [
+    "tabela MAC",
+    "Registro que associa endereços MAC às portas conhecidas.",
+    "associação entre MAC e porta",
+    "Relação usada para localizar a porta de saída.",
+    "endereço MAC",
+    "Identificador já estabelecido para origem e destino do quadro.",
+    "porta do switch",
+    "Ponto de entrada ou saída retomado para acompanhar o encaminhamento."
+  ]) assert.match(root.innerHTML, new RegExp(visibleIdea, "u"));
+
+  assert.doesNotMatch(
+    root.innerHTML,
+    /StudyUnits?|AnalysisUnits?|analysisIdeas|introducedInstructionalAnalysisUnitIds|usedInstructionalAnalysisUnitIds|explanationApplications|designSnapshot/u
+  );
+  const visibleCopy = root.innerHTML.replace(/<[^>]*>/gu, " ").replace(/\s+/gu, " ");
+  for (const internalId of [
+    ANALYSIS_TABLE_ID,
+    ANALYSIS_ASSOCIATION_ID,
+    ANALYSIS_MAC_ID,
+    ANALYSIS_PORT_ID
+  ]) assert.doesNotMatch(visibleCopy, new RegExp(internalId, "u"));
   sequence.destroy();
 });
 
@@ -971,7 +1006,7 @@ test("Inspeção incorpora sem tradução o mesmo renderer de Unidade usado no E
 
   assert.match(root.innerHTML, /aria-label="Unidades de estudo"/u);
   assert.doesNotMatch(root.innerHTML, /<h2[^>]*>Unidades<\/h2>/u);
-  assert.match(root.innerHTML, /aria-label="Navegação entre Unidades"/u);
+  assert.match(root.innerHTML, /aria-label="Navegação entre unidades"/u);
   assert.doesNotMatch(root.innerHTML, />Inspeção<|Navegação na Inspeção/u);
   const expected = renderPackageStudyUnitBlocksWithDock(studyUnit(1), {
     omitRepeatedHeading: true,
@@ -1457,7 +1492,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
       }
     }
   });
-  assert.match(root.innerHTML, /Observações da Unidade/u);
+  assert.match(root.innerHTML, /Observações da unidade/u);
   assert.match(root.innerHTML, /data-observation-composer/u);
   assert.doesNotMatch(root.innerHTML, /Nova observação/u);
   assert.doesNotMatch(root.innerHTML, /Observações · 0/u);
@@ -1528,15 +1563,15 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.equal(await clickSelection("toggle-current", "unit-01"), true);
   assert.equal(await clickSelection("next"), true);
   assert.equal(await clickSelection("toggle-current", "unit-02"), true);
-  assert.match(root.innerHTML, /2 Unidades selecionadas/u);
+  assert.match(root.innerHTML, /2 unidades selecionadas/u);
   assert.doesNotMatch(
     root.innerHTML,
     /data-inspection-selection-action="observe-selected"[^>]*disabled/iu
   );
 
   assert.equal(await clickSelection("observe-selected"), true);
-  assert.match(root.innerHTML, /Observação em 2 Unidades/u);
-  assert.match(root.innerHTML, /registrado separadamente em cada Unidade selecionada/iu);
+  assert.match(root.innerHTML, /Observação em 2 unidades/u);
+  assert.match(root.innerHTML, /registrado separadamente em cada unidade selecionada/iu);
   root.listeners.get("input")({
     target: {
       value: "Rever a transição entre as duas Unidades.",
@@ -1570,7 +1605,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.match(root.innerHTML, /Você pode registrar outra/iu);
   assert.match(
     root.innerHTML,
-    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar Observações abertas no Curso/u
+    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar observações abertas no curso/u
   );
   assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
 
@@ -1952,7 +1987,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
     documentValue
   });
   assert.equal(await empty.open(), true);
-  assert.match(emptyRoot.innerHTML, /Nenhuma Unidade de estudo materializada/u);
+  assert.match(emptyRoot.innerHTML, /Nenhuma unidade de estudo materializada/u);
   empty.destroy();
 
   const offlineRoot = new FakeRoot();
@@ -2008,7 +2043,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
   assert.equal(await partial.loadMore("forward"), false);
   assert.equal((partialRoot.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
   assert.match(partialRoot.innerHTML, /Sem conexão para carregar este trecho/u);
-  assert.match(partialRoot.innerHTML, /aria-label="Próxima Unidade"/u);
+  assert.match(partialRoot.innerHTML, /aria-label="Próxima unidade"/u);
   partial.destroy();
 });
 
@@ -2143,7 +2178,7 @@ test("revisão nova cancela paginação antiga e mantém somente o trecho ancora
   assert.equal(await loading, false);
   assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
   assert.equal(sequence.snapshot().itemCount, COURSE_INSPECTION_PAGE_SIZE);
-  assert.doesNotMatch(root.innerHTML, /O Curso mudou durante a leitura/u);
+  assert.doesNotMatch(root.innerHTML, /O curso mudou durante a leitura/u);
   assert.equal(calls.at(-1).anchorStudyUnitId, "unit-01");
   sequence.destroy();
 });

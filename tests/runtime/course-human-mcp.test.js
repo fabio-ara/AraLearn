@@ -24,6 +24,10 @@ const ORIGIN = "https://client.example";
 const RESOURCE_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
+const GLOBAL_AUTHORING_FIXTURE = JSON.parse(await fs.readFile(new URL(
+  "../fixtures/global-authoring-conversation.v1.json",
+  import.meta.url
+), "utf8"));
 const PRINCIPAL = Object.freeze({
   actorId: "30000000-0000-4000-8000-000000000003",
   authenticationKind: "oauth",
@@ -43,6 +47,7 @@ const EXPECTED_NAMES = Object.freeze([
   "consultar_fontes",
   "consultar_componentes",
   "criar_curso",
+  "salvar_mapa_curricular",
   "salvar_parte",
   "materializar_parte",
   "ajustar_configuracao",
@@ -144,217 +149,548 @@ function visit(value, callback, path = "$") {
   }
 }
 
-test("#272 catálogo MCP publica somente as dezesseis tarefas humanas", () => {
+function globalCourseIdentity(revision = 7) {
+  const currentRevision = () => typeof revision === "function" ? revision() : revision;
+  return {
+    async listCourses({ query }) {
+      const title = GLOBAL_AUTHORING_FIXTURE.course.title;
+      const matches = !query || title.toLocaleLowerCase("pt-BR")
+        .includes(String(query).toLocaleLowerCase("pt-BR"));
+      return {
+        items: matches ? [{
+          courseId: COURSE_ID,
+          title,
+          revision: currentRevision(),
+          deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}`
+        }] : [],
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async getCourse() {
+      return {
+        courseId: COURSE_ID,
+        title: GLOBAL_AUTHORING_FIXTURE.course.title,
+        revision: currentRevision(),
+        deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}`
+      };
+    }
+  };
+}
+
+function curricularMapArguments(artifactId, approved) {
+  const artifact = GLOBAL_AUTHORING_FIXTURE.artifacts[artifactId];
+  return {
+    curso: GLOBAL_AUTHORING_FIXTURE.course.title,
+    aprovado: approved,
+    publico: GLOBAL_AUTHORING_FIXTURE.course.audience,
+    preRequisitos: GLOBAL_AUTHORING_FIXTURE.course.prerequisites,
+    itensDeEscopo: GLOBAL_AUTHORING_FIXTURE.scopeItems,
+    modulos: artifact.modules.map((module) => ({
+      titulo: module.title,
+      objetivo: module.objective,
+      licoes: module.lessons.map((lesson) => ({
+        titulo: lesson.title,
+        objetivo: lesson.objective,
+        microssequencias: lesson.microsequences.map((microsequence) => ({
+          titulo: microsequence.title,
+          objetivo: microsequence.objective,
+          dependencias: microsequence.dependsOn,
+          cobertura: microsequence.covers
+        }))
+      }))
+    }))
+  };
+}
+
+function authoringPartArguments(artifactId, part = undefined) {
+  const artifact = GLOBAL_AUTHORING_FIXTURE.artifacts[artifactId];
+  return {
+    curso: GLOBAL_AUTHORING_FIXTURE.course.title,
+    ...(part === undefined ? {} : { parte: part }),
+    titulo: artifact.title,
+    intencao: artifact.intent,
+    microssequencias: artifact.microsequences,
+    progressao: artifact.progression
+  };
+}
+
+function fixtureUuid(group, position) {
+  return `${group}0000000-0000-4000-8000-${String(position + 1).padStart(12, "0")}`;
+}
+
+function internalCurricularMap(artifactId, approval) {
+  const artifact = GLOBAL_AUTHORING_FIXTURE.artifacts[artifactId];
+  const scopeItems = GLOBAL_AUTHORING_FIXTURE.scopeItems.map((statement, position) => ({
+    id: fixtureUuid("5", position),
+    position,
+    statement
+  }));
+  const scopeIds = new Map(scopeItems.map(({ id, statement }) => [statement, id]));
+  let lessonPosition = 0;
+  let microsequencePosition = 0;
+  return {
+    approval,
+    audience: GLOBAL_AUTHORING_FIXTURE.course.audience,
+    prerequisites: GLOBAL_AUTHORING_FIXTURE.course.prerequisites,
+    scopeItems,
+    modules: artifact.modules.map((module, modulePosition) => ({
+      id: fixtureUuid("6", modulePosition),
+      position: modulePosition,
+      title: module.title,
+      objective: module.objective,
+      lessons: module.lessons.map((lesson) => {
+        const currentLessonPosition = lessonPosition;
+        lessonPosition += 1;
+        return {
+          id: fixtureUuid("7", currentLessonPosition),
+          position: currentLessonPosition,
+          title: lesson.title,
+          objective: lesson.objective,
+          microsequences: lesson.microsequences.map((microsequence) => {
+            const currentMicrosequencePosition = microsequencePosition;
+            microsequencePosition += 1;
+            return {
+              id: fixtureUuid("8", currentMicrosequencePosition),
+              position: currentMicrosequencePosition,
+              title: microsequence.title,
+              objective: microsequence.objective,
+              dependencies: [...microsequence.dependsOn],
+              scopeItemIds: microsequence.covers.map((item) => scopeIds.get(item))
+            };
+          })
+        };
+      })
+    }))
+  };
+}
+
+function mapPlanRead({
+  artifactId = "mapa-global-v2",
+  approval = "approved",
+  courseRevision = 7,
+  planVersion = 3,
+  parts = []
+} = {}) {
+  const map = artifactId === null ? null : internalCurricularMap(artifactId, approval);
+  const modules = (map?.modules ?? []).map((module) => ({
+    ...module,
+    lessons: module.lessons.map((lesson) => ({
+      ...lesson,
+      microsequences: lesson.microsequences.map((microsequence) => {
+        const { dependencies, ...projected } = microsequence;
+        delete projected.scopeItemIds;
+        return { ...projected, dependencyMicrosequenceIds: dependencies };
+      })
+    }))
+  }));
+  const curriculumScopeItems = (map?.scopeItems ?? []).map((scopeItem) => ({
+    ...scopeItem,
+    curriculumTargets: (map?.modules ?? []).flatMap((module) =>
+      module.lessons.flatMap((lesson) => {
+        const didacticMicrosequenceIds = lesson.microsequences
+          .filter((microsequence) => microsequence.scopeItemIds.includes(scopeItem.id))
+          .map(({ id }) => id);
+        return didacticMicrosequenceIds.length ? [{
+          moduleId: module.id,
+          lessonId: lesson.id,
+          didacticMicrosequenceIds
+        }] : [];
+      }))
+  }));
+  return {
+    courseId: COURSE_ID,
+    courseRevision,
+    plan: {
+      id: "40000000-0000-4000-8000-000000000004",
+      version: planVersion,
+      title: GLOBAL_AUTHORING_FIXTURE.course.title,
+      objective: GLOBAL_AUTHORING_FIXTURE.course.objective,
+      curriculumMapStatus: map?.approval ?? "absent",
+      audience: map?.audience ?? null,
+      declaredPrerequisites: map?.prerequisites ?? [],
+      curriculumScopeItems,
+      curriculum: { modules },
+      instructionalAnalysisUnits: [],
+      evidenceRequirements: [],
+      parts
+    }
+  };
+}
+
+function internalMapMicrosequences(planRead) {
+  return planRead.plan.curriculum.modules.flatMap(({ lessons }) =>
+    lessons.flatMap(({ microsequences }) => microsequences));
+}
+
+function internalMapEntities(planRead) {
+  return planRead.plan.curriculum.modules.flatMap((module) => [
+    {
+      entityType: "module",
+      entityId: module.id,
+      parentId: null,
+      content: { title: module.title, goal: module.objective }
+    },
+    ...module.lessons.flatMap((lesson) => [
+      {
+        entityType: "lesson",
+        entityId: lesson.id,
+        parentId: module.id,
+        content: { title: lesson.title, goal: lesson.objective }
+      },
+      ...lesson.microsequences.map((microsequence) => ({
+        entityType: "microsequence",
+        entityId: microsequence.id,
+        parentId: lesson.id,
+        content: { title: microsequence.title, goal: microsequence.objective }
+      }))
+    ])
+  ]);
+}
+
+test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 16);
+  assert.equal(new Set(EXPECTED_NAMES).size, 17);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.5");
+  assert.notEqual(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.0.5");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
 });
 
-test("planejamento projeta posições humanas correntes após revisão do inventário", async () => {
-  const value = adapter();
-  const current = await value.getCourseInstructionalPlan();
-  current.plan.instructionalAnalysisUnits[0].position = 8;
-  current.plan.evidenceRequirements = [{
-    id: "50000000-0000-4000-8000-000000000006",
-    position: 4,
-    statement: "Distinguir socket de conexão."
-  }];
-  value.getCourseInstructionalPlan = async () => structuredClone(current);
+test("consultar_planejamento projeta mapa e cobertura humanos sem identidades técnicas", async () => {
+  const current = mapPlanRead();
+  const value = {
+    ...adapter(),
+    ...globalCourseIdentity(current.courseRevision),
+    async getCourseInstructionalPlan() {
+      return structuredClone(current);
+    }
+  };
 
   const output = await executeHumanCourseTask({
     adapter: value,
     principal: PRINCIPAL,
     name: "consultar_planejamento",
-    rawArguments: { curso: "Redes para iniciantes" }
+    rawArguments: { curso: GLOBAL_AUTHORING_FIXTURE.course.title }
   });
 
-  assert.equal(output.context.instructionalAnalysisUnits[0].position, 1);
-  assert.equal(output.context.evidenceRequirements[0].position, 1);
+  const serialized = JSON.stringify(output.context);
+  assert.match(serialized, /cobertura/iu);
+  assert.match(serialized, /Pessoas iniciantes em redes/u);
+  for (const prerequisite of GLOBAL_AUTHORING_FIXTURE.course.prerequisites) {
+    assert.match(serialized, new RegExp(prerequisite, "u"));
+  }
+  for (const item of GLOBAL_AUTHORING_FIXTURE.scopeItems) {
+    assert.match(serialized, new RegExp(item, "u"));
+  }
+  for (const module of GLOBAL_AUTHORING_FIXTURE.artifacts["mapa-global-v2"].modules) {
+    assert.match(serialized, new RegExp(module.title, "u"));
+    for (const lesson of module.lessons) {
+      assert.match(serialized, new RegExp(lesson.title, "u"));
+      for (const microsequence of lesson.microsequences) {
+        assert.match(serialized, new RegExp(microsequence.title, "u"));
+      }
+    }
+  }
+  assert.doesNotMatch(serialized, /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
+  assert.doesNotMatch(
+    serialized,
+    /courseId|planId|moduleId|lessonId|microsequenceId|requestId|revision|version/iu
+  );
+  assert.doesNotMatch(serialized, /AnalysisUnit|StudyUnit|evidenceRequirements/iu);
 });
 
-test("salvar_parte grava estrutura e inventário completos sem expor identidades técnicas", async () => {
-  const writes = [];
+test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo mapa", async () => {
+  let current = mapPlanRead({ artifactId: null, approval: "absent" });
+  const mapWrites = [];
+  let partWrites = 0;
   const value = {
     ...adapter(),
+    ...globalCourseIdentity(() => current.courseRevision),
     async getCourseInstructionalPlan() {
+      return structuredClone(current);
+    },
+    async saveCourseCurricularMap(input) {
+      mapWrites.push(structuredClone(input));
+      const approved = input.approved === true || input.curricularMap?.approval === "approved";
+      current = mapPlanRead({
+        artifactId: mapWrites.length === 1 ? "mapa-global-v1" : "mapa-global-v2",
+        approval: approved ? "approved" : "draft",
+        courseRevision: current.courseRevision + 1,
+        planVersion: current.plan.version + 1
+      });
       return {
+        contract: "aralearn.course-curricular-map-change.v1",
         courseId: COURSE_ID,
-        courseRevision: 7,
-        plan: {
-          id: "40000000-0000-4000-8000-000000000004",
-          version: 3,
-          title: "Redes para iniciantes",
-          objective: "Explicar serviços em rede.",
-          instructionalAnalysisUnits: [],
-          evidenceRequirements: [],
-          parts: []
-        }
+        courseRevision: current.courseRevision,
+        planVersion: current.plan.version,
+        approval: approved ? "approved" : "draft",
+        changed: true,
+        idempotent: false
       };
     },
+    async saveCourseAuthoringPart() {
+      partWrites += 1;
+      assert.fail("Salvar o mapa não pode criar lote de produção.");
+    }
+  };
+  const draftArguments = curricularMapArguments("mapa-global-v1", false);
+  const draft = await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_mapa_curricular",
+    rawArguments: draftArguments
+  });
+
+  assert.equal(mapWrites.length, 1);
+  assert.equal(partWrites, 0);
+  assert.match(JSON.stringify(draft.context), /rascunho|proposto/iu);
+  assert.match(draft.nextDecision, /aprova|mudar/iu);
+  const serializedDraftWrite = JSON.stringify(mapWrites[0]);
+  assert.match(serializedDraftWrite, /Pessoas iniciantes em redes/u);
+  assert.match(serializedDraftWrite, /pre.?requisitos|prerequisites/iu);
+  for (const item of GLOBAL_AUTHORING_FIXTURE.scopeItems) {
+    assert.match(serializedDraftWrite, new RegExp(item, "u"));
+  }
+  for (const microsequence of internalMapMicrosequences(mapPlanRead({
+    artifactId: "mapa-global-v1",
+    approval: "draft"
+  }))) {
+    assert.match(serializedDraftWrite, new RegExp(microsequence.title, "u"));
+  }
+
+  const uninspectedChange = curricularMapArguments("mapa-global-v1", true);
+  uninspectedChange.modulos[0].objetivo = "Uma mudança que não foi apresentada à pessoa autora.";
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_mapa_curricular",
+    rawArguments: uninspectedChange
+  }), (error) => error.code === "curricular_map_draft_mismatch");
+  assert.equal(mapWrites.length, 1);
+
+  const revisedArguments = curricularMapArguments("mapa-global-v2", false);
+  await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_mapa_curricular",
+    rawArguments: revisedArguments
+  });
+  assert.equal(mapWrites.length, 2);
+
+  const approved = await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_mapa_curricular",
+    rawArguments: { ...revisedArguments, aprovado: true }
+  });
+  assert.equal(mapWrites.length, 3);
+  assert.equal(partWrites, 0);
+  assert.match(JSON.stringify(approved.context), /aprovado/iu);
+  assert.match(approved.nextDecision, /primeira parte/iu);
+  assert.doesNotMatch(approved.nextDecision, /\?/u);
+});
+
+test("salvar_parte permanece bloqueada enquanto o mapa curricular é rascunho", async () => {
+  let partWrites = 0;
+  const current = mapPlanRead({ artifactId: "mapa-global-v2", approval: "draft" });
+  const value = {
+    ...adapter(),
+    ...globalCourseIdentity(current.courseRevision),
+    async getCourseInstructionalPlan() {
+      return structuredClone(current);
+    },
     async listCourseEntities() {
-      return { revision: 7, items: [], hasMore: false, nextCursor: null };
+      return {
+        revision: current.courseRevision,
+        items: internalMapEntities(current),
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async saveCourseAuthoringPart() {
+      partWrites += 1;
+      assert.fail("Um rascunho curricular não autoriza criar lote.");
+    }
+  };
+
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_parte",
+    rawArguments: authoringPartArguments("parte-1-v1")
+  }), (error) => error.code === "curricular_map_not_approved");
+  assert.equal(partWrites, 0);
+});
+
+test("salvar_parte agrupa microssequências existentes sem recriar o mapa curricular", async () => {
+  let current = mapPlanRead();
+  const mapBefore = structuredClone(current.plan.curriculum);
+  const partWrites = [];
+  let curricularMapWrites = 0;
+  const value = {
+    ...adapter(),
+    ...globalCourseIdentity(() => current.courseRevision),
+    async getCourseInstructionalPlan() {
+      return structuredClone(current);
+    },
+    async listCourseEntities() {
+      return {
+        revision: current.courseRevision,
+        items: internalMapEntities(current),
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async saveCourseCurricularMap() {
+      curricularMapWrites += 1;
+      assert.fail("Alterar o limite do lote não pode regravar o mapa curricular.");
     },
     async saveCourseAuthoringPart(input) {
-      writes.push(structuredClone(input));
+      partWrites.push(structuredClone(input));
+      const stored = input.part;
+      current = mapPlanRead({
+        courseRevision: current.courseRevision + 1,
+        planVersion: current.plan.version + 1,
+        parts: [{
+          id: stored.partId,
+          version: partWrites.length,
+          position: 0,
+          title: stored.title,
+          intent: stored.intent,
+          progression: stored.progression,
+          microsequences: stored.microsequences.map((item, position) => ({
+            id: item.microsequenceId,
+            productionPosition: position,
+            title: internalMapMicrosequences(current)
+              .find(({ id }) => id === item.microsequenceId)?.title
+          }))
+        }]
+      });
       return {
         contract: "aralearn.course-authoring-part-change.v1",
         courseId: COURSE_ID,
-        courseRevision: 8,
-        planVersion: 4,
+        courseRevision: current.courseRevision,
+        planVersion: current.plan.version,
+        authoringPartId: stored.partId,
+        changed: true,
+        idempotent: false
+      };
+    }
+  };
+
+  const firstPart = await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_parte",
+    rawArguments: authoringPartArguments("parte-1-v1")
+  });
+  assert.match(firstPart.nextDecision, /produza agora/iu);
+  assert.doesNotMatch(firstPart.nextDecision, /\?/u);
+  await executeHumanCourseTask({
+    adapter: value,
+    principal: PRINCIPAL,
+    name: "salvar_parte",
+    rawArguments: authoringPartArguments("parte-1-v2", 1)
+  });
+
+  assert.equal(partWrites.length, 2);
+  assert.equal(curricularMapWrites, 0);
+  assert.deepEqual(current.plan.curriculum, mapBefore);
+  const idsByTitle = new Map(internalMapMicrosequences({
+    plan: { curriculum: mapBefore }
+  }).map(({ id, title }) => [title, id]));
+  const expectedIds = (artifactId) => GLOBAL_AUTHORING_FIXTURE.artifacts[artifactId]
+    .microsequences.map((title) => idsByTitle.get(title));
+  assert.deepEqual(
+    partWrites[0].part.microsequences.map(({ microsequenceId }) => microsequenceId),
+    expectedIds("parte-1-v1")
+  );
+  assert.deepEqual(
+    partWrites[1].part.microsequences.map(({ microsequenceId }) => microsequenceId),
+    expectedIds("parte-1-v2")
+  );
+  assert.deepEqual(
+    partWrites[1].part.progression,
+    GLOBAL_AUTHORING_FIXTURE.artifacts["parte-1-v2"].progression
+  );
+  assert.doesNotMatch(
+    JSON.stringify(partWrites),
+    /moduleTitle|moduleGoal|lessonTitle|lessonGoal|analysisUnits|evidenceRequirements/iu
+  );
+});
+
+test("salvar_parte pode redefinir lotes sem alterar a arquitetura curricular", async () => {
+  const initial = mapPlanRead();
+  const mapBefore = structuredClone(initial.plan.curriculum);
+  const [firstMicrosequence, secondMicrosequence] = internalMapMicrosequences(initial);
+  const existingPart = {
+    id: PART_ID,
+    version: 1,
+    position: 0,
+    title: "Lote inicial",
+    intent: "Preparar os fundamentos.",
+    progression: [firstMicrosequence.title, secondMicrosequence.title],
+    microsequences: [firstMicrosequence, secondMicrosequence].map((item, position) => ({
+      id: item.id,
+      productionPosition: position,
+      title: item.title
+    }))
+  };
+  const current = mapPlanRead({ parts: [existingPart] });
+  let savedPart = null;
+  const value = {
+    ...adapter(),
+    ...globalCourseIdentity(current.courseRevision),
+    async getCourseInstructionalPlan() {
+      return structuredClone(current);
+    },
+    async listCourseEntities() {
+      return {
+        revision: current.courseRevision,
+        items: internalMapEntities(current),
+        hasMore: false,
+        nextCursor: null
+      };
+    },
+    async saveCourseCurricularMap() {
+      assert.fail("Redefinir um lote não pode regravar o mapa curricular.");
+    },
+    async saveCourseAuthoringPart(input) {
+      savedPart = structuredClone(input.part);
+      return {
+        contract: "aralearn.course-authoring-part-change.v1",
+        courseId: COURSE_ID,
+        courseRevision: current.courseRevision + 1,
+        planVersion: current.plan.version + 1,
         authoringPartId: input.part.partId,
         changed: true,
         idempotent: false
       };
     }
   };
-  const output = await executeHumanCourseTask({
+
+  await executeHumanCourseTask({
     adapter: value,
     principal: PRINCIPAL,
     name: "salvar_parte",
     rawArguments: {
-      curso: "Redes para iniciantes",
-      titulo: "Sockets",
-      intencao: "Construir o modelo antes da prática.",
-      microssequencias: [{
-        modulo: "Comunicação",
-        objetivoDoModulo: "Explicar como processos se comunicam em rede.",
-        licao: "Sockets",
-        objetivoDaLicao: "Relacionar processo, endereço e transporte.",
-        titulo: "O que é um socket",
-        objetivo: "Definir socket sem pressupor o modelo de transporte.",
-        funcao: "explicar",
-        unidadesDeAnalise: [
-          "Socket é uma interface entre processo e transporte.",
-          "Uma conexão relaciona dois endpoints de comunicação."
-        ],
-        requisitosDeEvidencia: [
-          "Distinguir processo, socket e conexão.",
-          "Relacionar cada endpoint ao processo correspondente."
-        ]
-      }, {
-        modulo: "Comunicação",
-        objetivoDoModulo: "Explicar como processos se comunicam em rede.",
-        licao: "Sockets",
-        objetivoDaLicao: "Relacionar processo, endereço e transporte.",
-        titulo: "Prática de identificação",
-        objetivo: "Mobilizar a distinção em casos variados.",
-        funcao: "praticar",
-        unidadesDeAnalise: [],
-        requisitosDeEvidencia: [
-          "Distinguir processo, socket e conexão.",
-          "Relacionar cada endpoint ao processo correspondente."
-        ]
-      }]
+      curso: GLOBAL_AUTHORING_FIXTURE.course.title,
+      titulo: "Novo limite operacional",
+      intencao: "Reagrupar o trabalho sem mudar o currículo.",
+      microssequencias: [secondMicrosequence.title],
+      progressao: [secondMicrosequence.title]
     }
   });
 
-  assert.equal(writes.length, 1);
-  assert.equal(writes[0].expectedCourseRevision, 7);
-  assert.equal(writes[0].expectedPlanVersion, 3);
-  assert.equal(writes[0].part.position, 0);
-  assert.deepEqual(writes[0].part.microsequences.map(({ role }) => role), [
-    "explain", "practice"
-  ]);
-  assert.equal(writes[0].part.microsequences[0].moduleId,
-    writes[0].part.microsequences[1].moduleId);
-  assert.equal(writes[0].part.microsequences[0].lessonId,
-    writes[0].part.microsequences[1].lessonId);
-  assert.equal(writes[0].part.microsequences[1].analysisUnits.length, 0);
-  assert.equal(new Set(writes[0].part.microsequences[0].analysisUnits
-    .map(({ id }) => id)).size, 2);
-  assert.equal(new Set(writes[0].part.microsequences[0].evidenceRequirements
-    .map(({ id }) => id)).size, 2);
-  assert.equal(writes[0].part.microsequences[0].evidenceRequirements[0].id,
-    writes[0].part.microsequences[1].evidenceRequirements[0].id);
-  assert.equal(writes[0].part.microsequences[0].evidenceRequirements[1].id,
-    writes[0].part.microsequences[1].evidenceRequirements[1].id);
-  assert.equal(output.context.part.microsequenceCount, 2);
-  assert.doesNotMatch(
-    JSON.stringify(output.context),
-    /courseId|partId|moduleId|lessonId|requestId/iu
+  assert.ok(savedPart);
+  assert.deepEqual(
+    savedPart.microsequences.map(({ microsequenceId }) => microsequenceId),
+    [secondMicrosequence.id]
   );
-});
-
-test("salvar_parte não atribui a mesma novidade a duas Microssequências", async () => {
-  const value = {
-    ...adapter(),
-    async getCourseInstructionalPlan() {
-      return {
-        courseRevision: 7,
-        plan: {
-          version: 3,
-          title: "Redes para iniciantes",
-          instructionalAnalysisUnits: [],
-          evidenceRequirements: [],
-          parts: []
-        }
-      };
-    },
-    async listCourseEntities() {
-      return { revision: 7, items: [], hasMore: false, nextCursor: null };
-    },
-    async saveCourseAuthoringPart() {
-      assert.fail("A duplicidade semântica precisa falhar antes do commit.");
-    }
-  };
-  const micro = (titulo) => ({
-    modulo: "Comunicação",
-    objetivoDoModulo: "Explicar comunicação em rede.",
-    licao: "Sockets",
-    objetivoDaLicao: "Relacionar processo e transporte.",
-    titulo,
-    objetivo: `Explicar ${titulo}.`,
-    funcao: "explicar",
-    unidadesDeAnalise: ["Socket relaciona processo e transporte."],
-    requisitosDeEvidencia: []
-  });
-  await assert.rejects(() => executeHumanCourseTask({
-    adapter: value,
-    principal: PRINCIPAL,
-    name: "salvar_parte",
-    rawArguments: {
-      curso: "Redes para iniciantes",
-      titulo: "Sockets",
-      intencao: "Construir a progressão.",
-      microssequencias: [micro("Definição"), micro("Mecanismo")]
-    }
-  }), (error) => error.code === "analysis_unit_assigned_to_multiple_microsequences");
-});
-
-test("salvar_parte exige novidade somente quando a Microssequência vai explicar", async () => {
-  const definition = COURSE_HUMAN_TASKS.find(({ name }) => name === "salvar_parte");
-  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
-    definition.inputSchema
-  );
-  const microsequence = (funcao) => ({
-    modulo: "Comunicação",
-    objetivoDoModulo: "Construir um modelo de comunicação em rede.",
-    licao: "Sockets",
-    objetivoDaLicao: "Relacionar processos e transporte.",
-    titulo: funcao === "explicar" ? "Definição" : "Consolidação",
-    objetivo: funcao === "explicar"
-      ? "Explicar uma novidade."
-      : "Retomar conhecimentos já estabelecidos.",
-    funcao,
-    unidadesDeAnalise: [],
-    requisitosDeEvidencia: []
-  });
-  const args = {
-    curso: "Redes para iniciantes",
-    titulo: "Sockets",
-    intencao: "Construir e consolidar o modelo.",
-    microssequencias: [microsequence("explicar")]
-  };
-  assert.equal(validate(args), false);
-  assert.equal(validate({ ...args, microssequencias: [microsequence("revisar")] }), true);
-  await assert.rejects(() => executeHumanCourseTask({
-    adapter: adapter(), principal: PRINCIPAL, name: "salvar_parte", rawArguments: args
-  }), (error) => error.code === "missing_instructional_analysis_unit");
+  assert.deepEqual(current.plan.curriculum, mapBefore);
 });
 
 test("preparar_materializacao separa o inventário focal de duas Microssequências", async () => {
@@ -362,6 +698,12 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   const analysisA = "50000000-0000-4000-8000-000000000005";
   const analysisB = "50000000-0000-4000-8000-000000000006";
   const analysisOutsidePart = "50000000-0000-4000-8000-000000000007";
+  const analysisBetween = "50000000-0000-4000-8000-000000000008";
+  const prerequisiteUnit = "70000000-0000-4000-8000-000000000099";
+  const futureUnit = "70000000-0000-4000-8000-000000000098";
+  const prerequisiteMicro = "micro-prerequisito";
+  const futureMicro = "micro-futuro";
+  const betweenMicro = "micro-intermediario";
   const evidenceA = "60000000-0000-4000-8000-000000000001";
   const evidenceB = "60000000-0000-4000-8000-000000000002";
   const microA = "micro-definicao";
@@ -371,8 +713,17 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
     ["new_analysis_unit_ceiling_per_expository_study_unit", "Novas unidades de análise"],
     ["required_explanation_forms", "Formas de explicação"],
     ["minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas"],
-    ["required_practice_variation_dimensions", "Variação da prática"]
+    ["required_practice_variation_dimensions", "Variação da prática"],
+    ["authoring_chat_response_word_target", "Alvo de palavras por resposta de autoria"],
+    ["study_unit_content_word_target", "Alvo de palavras por unidade de estudo"]
   ];
+  const parameterValues = new Map([
+    ["required_explanation_forms", ["plain_definition"]],
+    ["minimum_distinct_practice_opportunities_per_evidence_requirement", 2],
+    ["required_practice_variation_dimensions", ["case_or_data"]],
+    ["authoring_chat_response_word_target", 90],
+    ["study_unit_content_word_target", 180]
+  ]);
   const design = (scopeRef, targetAnalysis, targetEvidence, ceiling) => ({
     scopeContext: { current: { label: scopeRef === microA ? "Definição" : "Mecanismo" } },
     definitions: parameterDefinitions.map(([id, label]) => ({ id, label })),
@@ -380,8 +731,7 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
       parameterId,
       localAssignment: null,
       effectiveAssignment: {
-        value: index === 0 ? ceiling : index === 1 ? ["plain_definition"] :
-          index === 2 ? 2 : ["case_or_data"],
+        value: index === 0 ? ceiling : parameterValues.get(parameterId),
         inherited: true,
         origin: "automatic",
         reason: "Calibração focal.",
@@ -420,30 +770,86 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
           version: 3,
           title: "Redes para iniciantes",
           objective: "Explicar serviços em rede.",
+          curriculum: {
+            modules: [{
+              id: "module-network",
+              position: 0,
+              title: "Comunicação",
+              lessons: [{
+                id: "lesson-sockets",
+                position: 0,
+                title: "Sockets",
+                microsequences: [{
+                  id: prerequisiteMicro,
+                  position: 0,
+                  title: "Processos"
+                }, {
+                  id: microA,
+                  position: 1,
+                  title: "Definição"
+                }, {
+                  id: betweenMicro,
+                  position: 2,
+                  title: "Conhecimento intermediário"
+                }, {
+                  id: microB,
+                  position: 3,
+                  title: "Mecanismo"
+                }, {
+                  id: futureMicro,
+                  position: 4,
+                  title: "Aplicação futura"
+                }]
+              }]
+            }]
+          },
           instructionalAnalysisUnits: [{
             id: analysisEstablished,
             position: 0,
             statement: "Processos trocam dados por serviços de transporte.",
-            introduced: true,
-            introducedPartPosition: 0
+            introducedAt: {
+              studyUnitId: prerequisiteUnit,
+              didacticMicrosequenceId: prerequisiteMicro,
+              title: "Processos"
+            },
+            usedBy: [],
+            revisitedBy: []
           }, {
             id: analysisA,
             position: 1,
             statement: "Socket liga processo e transporte.",
-            introduced: false,
-            introducedPartPosition: null
+            introducedAt: null,
+            usedBy: [],
+            revisitedBy: []
           }, {
             id: analysisB,
             position: 2,
             statement: "Endereço localiza uma ponta da comunicação.",
-            introduced: false,
-            introducedPartPosition: null
+            introducedAt: null,
+            usedBy: [],
+            revisitedBy: []
           }, {
             id: analysisOutsidePart,
             position: 3,
             statement: "Novidade de outra Parte.",
-            introduced: true,
-            introducedPartPosition: 2
+            introducedAt: {
+              studyUnitId: futureUnit,
+              didacticMicrosequenceId: futureMicro,
+              title: "Aplicação futura"
+            },
+            usedBy: [],
+            revisitedBy: []
+          }, {
+            id: analysisBetween,
+            position: 4,
+            statement: "Uma ideia foi estabelecida entre as duas etapas do lote.",
+            introducedAt: {
+              studyUnitId: "70000000-0000-4000-8000-000000000097",
+              didacticMicrosequenceId: betweenMicro,
+              title: "Conhecimento intermediário"
+            },
+            usedBy: [],
+            revisitedBy: []
           }],
           evidenceRequirements: [{
             id: evidenceA, position: 0, statement: "Distinguir processo e socket."
@@ -524,62 +930,75 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
     rawArguments: { curso: "Redes para iniciantes", parte: 2 }
   });
 
-  assert.equal(output.result, "Preparei o recorte focal da Parte 2: Sockets.");
-  assert.equal(Object.hasOwn(output.context, "instructionalAnalysisUnits"), false);
-  assert.deepEqual(output.context.part.establishedAnalysisUnits, [{
-    position: 1,
-    statement: "Processos trocam dados por serviços de transporte."
+  assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
+  assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  assert.deepEqual(output.context.parte.ideiasEstabelecidas, [{
+    posicao: 1,
+    ideia: "Processos trocam dados por serviços de transporte."
   }]);
-  assert.equal(output.context.part.microsequences.length, 2);
-  assert.deepEqual(output.context.part.microsequences.map((microsequence) => ({
-    title: microsequence.title,
-    analysis: microsequence.instructionalAnalysisUnits,
-    evidence: microsequence.evidenceRequirements,
-    objective: microsequence.objective,
-    function: microsequence.function,
-    ceiling: microsequence.configuration.parameters[0].effectiveValue
+  assert.equal(output.context.parte.microssequencias.length, 2);
+  assert.equal(output.context.parte.microssequencias.every((microsequence) =>
+    !Object.hasOwn(microsequence, "funcao")), true);
+  assert.deepEqual(output.context.parte.microssequencias.map((microsequence) => ({
+    title: microsequence.titulo,
+    analysis: microsequence.ideiasPlanejadas,
+    evidence: microsequence.requisitosDeEvidencia,
+    objective: microsequence.objetivo,
+    ceiling: microsequence.configuracao.parametros[0].valorEfetivo
   })), [{
     title: "Definição",
-    analysis: [{ position: 2, statement: "Socket liga processo e transporte." }],
-    evidence: [{ position: 1, statement: "Distinguir processo e socket." }],
+    analysis: [{ posicao: 2, ideia: "Socket liga processo e transporte." }],
+    evidence: [{ posicao: 1, ideia: "Distinguir processo e socket." }],
     objective: "Definir socket e sua relação com o processo.",
-    function: "explicar",
     ceiling: 1
   }, {
     title: "Mecanismo",
-    analysis: [{ position: 3, statement: "Endereço localiza uma ponta da comunicação." }],
-    evidence: [{ position: 2, statement: "Relacionar endereço e comunicação." }],
+    analysis: [{ posicao: 3, ideia: "Endereço localiza uma ponta da comunicação." }],
+    evidence: [{ posicao: 2, ideia: "Relacionar endereço e comunicação." }],
     objective: "Explicar como o endereço participa da comunicação.",
-    function: "explicar",
     ceiling: 2
   }]);
-  assert.equal(output.context.part.microsequences.every((microsequence) =>
-    !Object.hasOwn(microsequence.configuration, "targets")), true);
+  assert.equal(output.context.parte.microssequencias.every((microsequence) =>
+    !Object.hasOwn(microsequence.configuracao, "alvos")), true);
   assert.deepEqual(
-    output.context.part.microsequences[0].existingStudyUnitOverrides.map((unit) => ({
-      position: unit.position,
-      title: unit.title,
-      ceiling: unit.configuration.parameters[0].effectiveValue,
-      sourceScope: unit.configuration.parameters[0].sourceScope
+    output.context.parte.microssequencias[0].ajustesExistentesDasUnidades.map((unit) => ({
+      position: unit.posicao,
+      title: unit.titulo,
+      ceiling: unit.configuracao.parametros[0].valorEfetivo,
+      sourceScope: unit.configuracao.parametros[0].escopoDeOrigem
     })),
     [{
       position: 1,
       title: "Definição já produzida",
       ceiling: 2,
-      sourceScope: "study_unit"
+      sourceScope: "unidade de estudo"
     }]
   );
   assert.deepEqual(
-    output.context.part.microsequences[1].existingStudyUnitOverrides,
+    output.context.parte.microssequencias[1].ajustesExistentesDasUnidades,
     []
   );
-  assert.doesNotMatch(JSON.stringify(output.context.part), /Novidade de outra Parte/u);
-  assert.doesNotMatch(JSON.stringify(output.context.part), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
+  assert.deepEqual(
+    output.context.parte.microssequencias[0].ideiasEstabelecidasDesdeOInicioDaParte,
+    []
+  );
+  assert.deepEqual(
+    output.context.parte.microssequencias[1].ideiasEstabelecidasDesdeOInicioDaParte,
+    [{
+      posicao: 5,
+      ideia: "Uma ideia foi estabelecida entre as duas etapas do lote."
+    }]
+  );
+  assert.doesNotMatch(JSON.stringify(output.context.parte), /Novidade de outra Parte/u);
+  assert.doesNotMatch(JSON.stringify(output.context.parte), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
 });
 
 test("#272 schemas, descrições e annotations distinguem leitura de escrita", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   const forbidden = /^(?:id|ids|courseId|revision|version|hash|path|requestId|expectedRevision|expectedPlanVersion|cursor)$/iu;
+  const forbiddenPublicCopy = /\b(?:StudyUnit|AnalysisUnit|Units?|schema|CAS|requestId|expectedRevision|expectedPlanVersion)\b/iu;
+  const artificiallyCapitalized = /\b(?:Curso|Parte|Fonte|Âncora|Microssequência|Unidade de estudo|Observações)\b/u;
+  const authorAsStudent = /\b(?:você (?:está começando|é iniciante|já sabe)|seu conhecimento prévio)\b/iu;
   for (const task of COURSE_HUMAN_TASKS) {
     assert.doesNotThrow(() => ajv.compile(task.inputSchema), task.name);
     assert.match(task.description, /^Use\b/u, task.name);
@@ -591,6 +1010,19 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       task.name
     );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
+    for (const copy of [
+      task.title,
+      task.description,
+      ...Object.values(task.inputSchema.properties || {}).map(({ description }) => description)
+    ].filter(Boolean)) {
+      assert.doesNotMatch(copy, forbiddenPublicCopy, `${task.name}: ${copy}`);
+      assert.doesNotMatch(copy, authorAsStudent, `${task.name}: ${copy}`);
+      assert.doesNotMatch(
+        copy.replace(/^\P{L}*\p{L}+\b/u, ""),
+        artificiallyCapitalized,
+        `${task.name}: ${copy}`
+      );
+    }
     for (const [name, property] of Object.entries(task.inputSchema.properties || {})) {
       assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
       assert.ok(property.description?.length >= 12, `${task.name}.${name}`);
@@ -643,9 +1075,11 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       conteudo: content,
       aplicacaoPedagogica: {
         modo: "expositiva",
-        novidadesIntroduzidas: [1],
-        explicacoes: [{ novidade: 1, formas: ["plain_definition"] }],
-        praticas: []
+        ideiasIntroduzidas: [1],
+        ideiasUtilizadas: [],
+        explicacoes: [{ ideia: 1, formas: ["plain_definition"] }],
+        praticas: [],
+        cobertura: []
       }
     }]
   };
@@ -678,9 +1112,11 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       ...materializationArguments.unidades[0],
       aplicacaoPedagogica: {
         modo: "pratica",
-        novidadesIntroduzidas: [],
+        ideiasIntroduzidas: [],
+        ideiasUtilizadas: [],
         explicacoes: [],
-        praticas: []
+        praticas: [],
+        cobertura: []
       }
     }]
   }), false);
@@ -692,6 +1128,51 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     curso: "Redes",
     correcoes: [{ unidade: 1, conteudo: { ...content, id: "unit-technical" } }]
   }), false);
+});
+
+test("materializar_parte descreve integralmente a calibração própria de uma unidade nova", () => {
+  const task = COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte");
+  const schema = task.inputSchema.properties.unidades.items.properties.configuracao;
+  assert.equal(schema.additionalProperties, false);
+  assert.deepEqual(Object.keys(schema.properties).sort(), [
+    "direcaoEditorial", "parametrosEditoriais", "parametrosPedagogicos"
+  ]);
+  assert.deepEqual(Object.keys(schema.properties.parametrosPedagogicos.properties).sort(), [
+    "dimensoesDeVariacaoDaPratica", "formasDeExplicacao",
+    "minimoDePraticasPorRequisito", "tetoNovasUnidadesDeAnalise"
+  ]);
+  assert.deepEqual(Object.keys(schema.properties.parametrosEditoriais.properties).sort(), [
+    "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
+  ]);
+
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const complete = {
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 2,
+      formasDeExplicacao: ["plain_definition", "mechanism"],
+      minimoDePraticasPorRequisito: 3,
+      dimensoesDeVariacaoDaPratica: ["context", "support_level"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 80,
+      alvoDePalavrasPorUnidade: 180
+    },
+    direcaoEditorial: "Preserve uma situação concreta ao longo da sequência."
+  };
+  assert.equal(validate(complete), true, JSON.stringify(validate.errors));
+  for (const invalid of [
+    { ...complete, mecanismoInterno: true },
+    { parametrosPedagogicos: { parametroInterno: 2 } },
+    { parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 0 } },
+    { parametrosPedagogicos: { formasDeExplicacao: ["forma_inexistente"] } },
+    { parametrosPedagogicos: { minimoDePraticasPorRequisito: 65 } },
+    { parametrosPedagogicos: { dimensoesDeVariacaoDaPratica: ["aparencia"] } },
+    { parametrosEditoriais: { alvoDePalavrasPorResposta: 19 } },
+    { parametrosEditoriais: { alvoDePalavrasPorUnidade: 1001 } },
+    { direcaoEditorial: null }
+  ]) {
+    assert.equal(validate(invalid), false, JSON.stringify(invalid));
+  }
 });
 
 test("#275 consultar_componentes separa descoberta do contrato exato", async () => {
@@ -714,7 +1195,7 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
     rawArguments: { componente: "aralearn.resource.plane@1.0.0" }
   });
   const contract = inspected.context.componentAuthoringContract;
-  assert.equal(inspected.result, "Li o contrato exato do componente escolhido.");
+  assert.equal(inspected.result, "Li os detalhes de uso do componente escolhido.");
   assert.equal(contract.referencia, "aralearn.resource.plane@1.0.0");
   assert.equal(contract.modeloDeInstancia.package, "aralearn.resource.plane");
   assert.equal(contract.modeloDeInstancia.version, "1.0.0");
@@ -923,7 +1404,7 @@ test("MCP não manda repetir incorporação de PDF com escrita incerta", async (
   assert.equal(payload.result.structuredContent.error.retryable, false);
   assert.equal(
     payload.result.structuredContent.nextDecision,
-    "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF."
+    "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
   );
 });
 
@@ -934,7 +1415,7 @@ test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnic
   }));
   const payload = await response.json();
   assert.equal(payload.result.isError, false);
-  assert.equal(payload.result.structuredContent.result, "Retomei o Curso “Redes para iniciantes”.");
+  assert.equal(payload.result.structuredContent.result, "Retomei o curso “Redes para iniciantes”.");
   assert.equal(Object.hasOwn(payload.result.structuredContent, "ok"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "requestId"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "data"), false);
@@ -1048,10 +1529,14 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
     name: "manter_fonte",
     rawArguments: {
       curso: "Redes para iniciantes",
-      metadados: { tipo: "document", titulo: "Manual duplicado" }
+      metadados: {
+        tipo: "document",
+        titulo: "Manual duplicado",
+        papel: "tecnica_conceitual"
+      }
     }
   });
-  assert.match(created.result, /Atualizei a Fonte/u);
+  assert.match(created.result, /Atualizei a fonte/u);
   assert.equal(sourceCommands[0].type, "save_source");
   assert.notEqual(sourceCommands[0].sourceId, "source-existing-a");
 
@@ -1182,7 +1667,7 @@ test("manter_fonte expõe e executa retirada humana de PDFs e da Fonte", async (
       retirar: "fonte"
     }
   });
-  assert.match(output.result, /Retirei a Fonte/u);
+  assert.match(output.result, /Retirei a fonte/u);
   assert.deepEqual(commands.map(({ type }) => type), [
     "remove_pdf", "remove_pdf", "remove_pdf", "retire_source"
   ]);
@@ -1322,7 +1807,7 @@ test("retirada da Fonte só ocorre depois de concluir limpeza física pendente",
   assert.deepEqual(commands, []);
 
   const output = await executeHumanCourseTask(input);
-  assert.match(output.result, /Retirei a Fonte/u);
+  assert.match(output.result, /Retirei a fonte/u);
   assert.deepEqual(commands.map(({ type }) => type), ["retire_source"]);
 });
 
@@ -1331,11 +1816,14 @@ test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
   assert.deepEqual(pdfTask._meta, { "openai/fileParams": ["pdf"] });
   assert.deepEqual(pdfTask.inputSchema.oneOf, [
     { required: ["fonte"] },
-    { required: ["titulo"] }
+    { required: ["titulo", "papel"] }
   ]);
-  assert.match(pdfTask.description, /anexa\/reanexa/u);
-  assert.match(pdfTask.inputSchema.properties.fonte.description, /Fonte existente/u);
-  assert.equal(pdfTask.inputSchema.properties.titulo.description, "Nova Fonte a criar.");
+  assert.deepEqual(pdfTask.inputSchema.properties.papel.enum, [
+    "escopo_curricular", "evidencia_de_avaliacao", "tecnica_conceitual"
+  ]);
+  assert.match(pdfTask.description, /guardar PDF/u);
+  assert.match(pdfTask.inputSchema.properties.fonte.description, /fonte existente/u);
+  assert.equal(pdfTask.inputSchema.properties.titulo.description, "Nova fonte a criar.");
   assert.deepEqual(pdfTask.inputSchema.properties.pdf, {
     type: "object",
     additionalProperties: false,
@@ -1415,6 +1903,7 @@ test("MCP rejeita Fonte existente e título novo juntos antes de qualquer efeito
     curso: "Redes para iniciantes",
     fonte: "Manual existente",
     titulo: "Manual duplicado",
+    papel: "tecnica_conceitual",
     intencao: "Anexar o documento.",
     pdf: {
       file_id: "file-123",
@@ -1483,6 +1972,7 @@ test("MCP recebe o descritor oficial e mantém o download_url fora do envelope",
     rawArguments: {
       curso: "Redes para iniciantes",
       titulo: "Manual do proxy",
+      papel: "tecnica_conceitual",
       intencao: "Manter o documento entre as Fontes.",
       pdf: {
         file_id: "file-123",
@@ -1492,7 +1982,7 @@ test("MCP recebe o descritor oficial e mantém o download_url fora do envelope",
       }
     }
   });
-  assert.equal(output.result, "Mantive o PDF entre as Fontes do Curso.");
+  assert.equal(output.result, "Mantive o PDF entre as fontes do curso.");
   assert.doesNotMatch(JSON.stringify(output), /token=temporary/u);
   assert.equal(ingestions.length, 1);
   assert.equal(ingestions[0].fileIdentity.fileId, "file-123");
@@ -1550,6 +2040,7 @@ test("PDF em nova Fonte homônima relê a escrita pela identidade interna", asyn
     rawArguments: {
       curso: "Redes para iniciantes",
       titulo: "Manual do proxy",
+      papel: "tecnica_conceitual",
       intencao: "Manter outro documento como nova Fonte homônima.",
       pdf: {
         file_id: "file-homonymous",
@@ -1606,10 +2097,10 @@ test("#272 PDF anexado a Fonte existente relê a Fonte solicitada após o commit
       }
     }
   });
-  assert.equal(output.result, "Mantive o PDF entre as Fontes do Curso.");
+  assert.equal(output.result, "Mantive o PDF entre as fontes do curso.");
 });
 
-test("#272 resultado final remove maquinaria técnica mesmo depois de anexar guidance", async () => {
+test("resultado final remove maquinaria técnica e não anexa manual de operação", async () => {
   const output = await executeHumanCourseTask({
     adapter: {
       ...adapter(),
@@ -1617,6 +2108,7 @@ test("#272 resultado final remove maquinaria técnica mesmo depois de anexar gui
         return {
           items: [{
             title: "Fonte legível",
+            sourceRole: "technical_conceptual",
             steps: [{ payload: { requestId: "internal" } }],
             runs: [{ duration: 12 }],
             materialization: { hash: "a".repeat(64) }
@@ -1630,11 +2122,13 @@ test("#272 resultado final remove maquinaria técnica mesmo depois de anexar gui
     rawArguments: { curso: "Redes para iniciantes" }
   });
   const serialized = JSON.stringify(output.context);
+  assert.match(serialized, /"papel":"tecnica_conceitual"/u);
+  assert.doesNotMatch(serialized, /sourceRole|technical_conceptual/u);
   assert.doesNotMatch(serialized, /steps|payload|requestId|runs|duration|materialization|hash/iu);
-  assert.match(serialized, /guidance/iu);
+  assert.doesNotMatch(serialized, /guidance|authoring-guidance|instructions/iu);
 });
 
-test("#272 guidance participa do limite do envelope final", async () => {
+test("o limite continua valendo para todo o envelope humano", async () => {
   await assert.rejects(() => executeHumanCourseTask({
     adapter: {
       ...adapter(),
@@ -1690,7 +2184,7 @@ test("#272 Observações de uma Parte paginam todas as Units e excluem outros al
     name: "consultar_observacoes",
     rawArguments: { curso: "Redes para iniciantes", parte: 1 }
   });
-  assert.equal(output.result, "1 Observação encontrada.");
+  assert.equal(output.result, "1 observação encontrada.");
   assert.equal(unitPages, 2);
   assert.match(JSON.stringify(output.context), /Observação da Parte/u);
   assert.doesNotMatch(JSON.stringify(output.context), /outra Parte/u);
@@ -1719,12 +2213,44 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
   assert.equal(writes, 0);
 });
 
-test("#272 configuração e Observações escrevem por objetivos focais", async () => {
+test("configuração default calibra o foco, condição de pesquisa prevalece e Observações são focais", async () => {
   const designCommands = [];
   const observationBatches = [];
   const writeAdapter = {
     ...adapter(),
+    async getCourseInstructionalPlan() {
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        plan: {
+          id: "40000000-0000-4000-8000-000000000004",
+          version: 3,
+          title: "Redes para iniciantes",
+          objective: "Explicar serviços em rede.",
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: [{
+            id: PART_ID,
+            version: 2,
+            position: 0,
+            title: "Sockets",
+            intent: "Relacionar processos e comunicação.",
+            microsequences: [{
+              id: "micro-sockets",
+              productionPosition: 0,
+              title: "Sockets",
+              goal: "Relacionar processos e comunicação.",
+              role: "explain"
+            }]
+          }]
+        }
+      };
+    },
     async getCourseDesign() {
+      const currentParameter = designCommands
+        .filter(({ type, parameterId }) => type === "set_parameter" &&
+          parameterId === "new_analysis_unit_ceiling_per_expository_study_unit")
+        .at(-1);
       return {
         definitions: [{
           id: "new_analysis_unit_ceiling_per_expository_study_unit",
@@ -1732,8 +2258,18 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
         }],
         parameters: [{
           parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
-          localAssignment: { value: 1 },
-          effectiveAssignment: { value: 1, inherited: false, origin: "author" }
+          localAssignment: currentParameter ? {
+            value: currentParameter.value,
+            origin: currentParameter.origin,
+            reason: currentParameter.reason
+          } : null,
+          effectiveAssignment: {
+            value: currentParameter?.value ?? 1,
+            inherited: false,
+            origin: currentParameter?.origin ?? "system_default",
+            reason: currentParameter?.reason ?? "Ainda sem calibração contextual.",
+            sourceScope: currentParameter?.scope ?? null
+          }
         }],
         guidance: { localAssignment: null, effectiveAssignments: [] },
         targetPlanItems: null
@@ -1770,16 +2306,66 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
     rawArguments: {
       curso: "Redes para iniciantes",
       parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 },
-      direcaoEditorial: "Use títulos informativos; crie mais Units se necessário."
+      parametrosEditoriais: {
+        alvoDePalavrasPorResposta: 75,
+        alvoDePalavrasPorUnidade: 190
+      },
+      direcaoEditorial: "Use títulos informativos; crie mais unidades se necessário."
     }
   });
   assert.deepEqual(designCommands.map(({ type }) => type), [
-    "set_parameter", "set_guidance"
+    "set_parameter", "set_parameter", "set_parameter", "set_guidance"
   ]);
   assert.equal(designCommands.every(({ origin }) => origin === "automatic"), true);
+  assert.deepEqual(designCommands.slice(1, 3).map(({ parameterId, value }) => ({
+    parameterId,
+    value
+  })), [{
+    parameterId: "authoring_chat_response_word_target",
+    value: 75
+  }, {
+    parameterId: "study_unit_content_word_target",
+    value: 190
+  }]);
   assert.doesNotMatch(JSON.stringify(configured.context), /definitions|componentCatalog|recentApplications/u);
 
-  await executeHumanCourseTask({
+  const calibratedMicrosequence = await executeHumanCourseTask({
+    adapter: writeAdapter,
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      microssequencia: "Sockets",
+      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 }
+    }
+  });
+  assert.deepEqual(designCommands.at(-1), {
+    type: "set_parameter",
+    scope: { kind: "didactic_microsequence", ref: "micro-sockets" },
+    parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+    value: 2,
+    origin: "automatic",
+    reason: "Valor calibrado automaticamente para o contexto corrente."
+  });
+  assert.ok(JSON.stringify(calibratedMicrosequence.context).length < 2500);
+  assert.doesNotMatch(
+    JSON.stringify(calibratedMicrosequence.context),
+    /StudyUnit|AnalysisUnit|requestId|revision|authoring-guidance/iu
+  );
+  assert.deepEqual(
+    calibratedMicrosequence.context.configuracao.parametros[0],
+    {
+      nome: "Novas unidades de análise",
+      valorLocal: 2,
+      valorEfetivo: 2,
+      herdado: false,
+      origem: "calibração contextual",
+      motivo: "Valor calibrado automaticamente para o contexto corrente.",
+      escopoDeOrigem: "microssequência"
+    }
+  );
+
+  const fixedForResearch = await executeHumanCourseTask({
     adapter: writeAdapter,
     principal: PRINCIPAL,
     name: "ajustar_configuracao",
@@ -1798,6 +2384,32 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
     origin: "research_condition",
     reason: "Condição de pesquisa fixada explicitamente."
   });
+  assert.equal(
+    fixedForResearch.context.configuracao.parametros[0].origem,
+    "condição de pesquisa"
+  );
+  assert.equal(
+    fixedForResearch.context.configuracao.parametros[0].escopoDeOrigem,
+    "unidade de estudo"
+  );
+
+  const commandCountBeforeAutomaticRetry = designCommands.length;
+  const preservedResearchCondition = await executeHumanCourseTask({
+    adapter: writeAdapter,
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      unidade: "Unidade um",
+      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
+    }
+  });
+  assert.equal(designCommands.length, commandCountBeforeAutomaticRetry);
+  assert.match(preservedResearchCondition.result, /Mantive a condição de pesquisa/u);
+  assert.equal(
+    preservedResearchCondition.context.configuracao.parametros[0].origem,
+    "condição de pesquisa"
+  );
 
   const observed = await executeHumanCourseTask({
     adapter: writeAdapter,
@@ -1818,5 +2430,5 @@ test("#272 configuração e Observações escrevem por objetivos focais", async 
     annotationId)).size, 2);
   assert.equal(new Set(observationBatches[0].commands.map(({ capturedAt }) =>
     capturedAt)).size, 1);
-  assert.match(observed.result, /separadamente em 2 Unidades/u);
+  assert.match(observed.result, /separadamente em 2 unidades/u);
 });

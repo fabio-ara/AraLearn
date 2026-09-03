@@ -963,6 +963,158 @@
   gap: 8px;
 }
 
+.course-authoring-planning-card ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.course-authoring-curriculum-map,
+.course-authoring-scope-coverage {
+  min-width: 0;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.course-authoring-curriculum-map :is(ol, ul),
+.course-authoring-scope-coverage :is(ol, ul) {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.course-authoring-curriculum-modules,
+.course-authoring-curriculum-lessons,
+.course-authoring-curriculum-microsequences {
+  display: grid;
+  gap: 8px;
+}
+
+.course-authoring-curriculum-map > .course-authoring-curriculum-modules {
+  margin-top: 10px;
+}
+
+.course-authoring-curriculum-status {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--action-primary-hover);
+  background: var(--action-primary-subtle);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.course-authoring-curriculum-module,
+.course-authoring-curriculum-lesson {
+  display: grid;
+  gap: 7px;
+}
+
+.course-authoring-curriculum-module > h4,
+.course-authoring-curriculum-lesson > h5 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.course-authoring-curriculum-module > p,
+.course-authoring-curriculum-lesson > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.course-authoring-curriculum-lesson {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-subtle);
+}
+
+.course-authoring-curriculum-microsequences > li {
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+
+.course-authoring-curriculum-microsequences strong,
+.course-authoring-curriculum-microsequences p {
+  overflow-wrap: anywhere;
+}
+
+.course-authoring-curriculum-dependencies > span {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.course-authoring-curriculum-microsequences p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
+}
+
+.course-authoring-scope-coverage > summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.course-authoring-scope-coverage > ol {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.course-authoring-scope-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+}
+
+.course-authoring-scope-item > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.course-authoring-scope-item h4 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-sm);
+}
+
+.course-authoring-scope-item > header span,
+.course-authoring-scope-targets span,
+.course-authoring-scope-developed {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.course-authoring-scope-targets,
+.course-authoring-scope-targets > li,
+.course-authoring-scope-targets ul,
+.course-authoring-scope-developed {
+  display: grid;
+  gap: 4px;
+}
+
+.course-authoring-scope-targets ul,
+.course-authoring-scope-developed ul {
+  padding-left: 12px;
+  list-style: disc;
+}
+
 .course-authoring-part-navigation {
   min-width: 0;
   display: grid;
@@ -1180,6 +1332,14 @@
 .course-authoring-part h4 {
   overflow-wrap: anywhere;
   font-size: var(--type-base);
+}
+
+.course-authoring-part h4 a {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
 }
 
 .course-authoring-part-status {
@@ -1743,7 +1903,7 @@
 }
 
 
-/* Parâmetros conserva quatro decisões pedagógicas, direção editorial e componentes. */
+/* Parâmetros conserva condições pedagógicas e editoriais, direção e componentes. */
 .course-authoring-surface[data-section="parameters"] {
   width: min(100%, 430px);
 }
@@ -1756,7 +1916,6 @@
 .course-design > section,
 .course-design > aside,
 .course-design-parameters,
-.course-design-targets,
 .course-design-guidance,
 .course-design-policy {
   min-width: 0;
@@ -2051,46 +2210,6 @@
   min-width: 0;
   display: grid;
   gap: 6px;
-}
-
-.course-design-target-groups,
-.course-design-target-group {
-  min-width: 0;
-}
-
-.course-design-target-groups {
-  display: grid;
-  gap: 6px;
-}
-
-.course-design-target-group {
-  display: grid;
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-}
-
-.course-design-target-group :is(h4, p, ul) {
-  margin: 0;
-}
-
-.course-design-target-group h4 {
-  color: var(--text-primary);
-  font-size: var(--type-xs);
-}
-
-.course-design-target-group :is(p, li) {
-  overflow-wrap: anywhere;
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  line-height: var(--leading-normal);
-}
-
-.course-design-target-group ul {
-  display: grid;
-  gap: 5px;
-  padding-inline-start: 18px;
 }
 
 .course-design form textarea {
@@ -2803,6 +2922,58 @@
 .course-inspection-item-detail-panel dt {
   color: var(--text-secondary);
   font-weight: 700;
+}
+
+.course-authoring-part-progression {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+
+.course-authoring-part-progression ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.course-inspection-analysis-ideas,
+.course-inspection-analysis-idea-group,
+.course-inspection-analysis-idea-group ul {
+  display: grid;
+  gap: 6px;
+}
+
+.course-inspection-analysis-ideas {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.course-inspection-analysis-idea-group h4,
+.course-inspection-analysis-idea-group p {
+  margin: 0;
+}
+
+.course-inspection-analysis-idea-group h4 {
+  font-size: var(--type-xs);
+}
+
+.course-inspection-analysis-idea-group ul {
+  margin: 0;
+  padding-left: 17px;
+}
+
+.course-inspection-analysis-idea-group li,
+.course-inspection-analysis-idea-group p {
+  overflow-wrap: anywhere;
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
+}
+
+.course-inspection-analysis-idea-group p {
+  color: var(--text-secondary);
 }
 
 .course-inspection-item-detail-panel button {

@@ -70,21 +70,36 @@ const samples = {
     titulo: "Redes para iniciantes",
     objetivo: "Explicar como requisições chegam a serviços."
   },
+  salvar_mapa_curricular: {
+    curso: "Redes para iniciantes",
+    aprovado: false,
+    publico: "Pessoas iniciantes em redes",
+    preRequisitos: [],
+    itensDeEscopo: ["comunicação entre processos"],
+    modulos: [{
+      titulo: "Comunicação",
+      objetivo: "Explicar a comunicação entre processos.",
+      licoes: [{
+        titulo: "Sockets",
+        objetivo: "Relacionar processo e transporte.",
+        microssequencias: [{
+          titulo: "Socket e processo",
+          objetivo: "Explicar a função do socket.",
+          dependencias: [],
+          cobertura: ["comunicação entre processos"]
+        }]
+      }]
+    }]
+  },
   salvar_parte: {
     curso: "Redes para iniciantes",
     titulo: "Sockets",
     intencao: "Relacionar processos e comunicação em rede.",
-    microssequencias: [{
-      modulo: "Comunicação",
-      objetivoDoModulo: "Explicar a comunicação entre processos.",
-      licao: "Sockets",
-      objetivoDaLicao: "Relacionar endereço, porta e processo.",
-      titulo: "Socket e processo",
-      objetivo: "Explicar a função do socket.",
-      funcao: "explicar",
-      unidadesDeAnalise: ["Socket relaciona processo e transporte."],
-      requisitosDeEvidencia: ["Distinguir processo, socket e conexão."]
-    }]
+    microssequencias: ["Socket e processo"],
+    progressao: [
+      "Partir de uma conversa entre processos.",
+      "Relacionar o processo ao transporte por meio do socket."
+    ]
   },
   materializar_parte: {
     curso: "Redes para iniciantes",
@@ -93,14 +108,21 @@ const samples = {
       microssequencia: "Sockets",
       posicao: 1,
       conteudo: SAMPLE_THEORY_CONTENT,
+      configuracao: {
+        parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 },
+        parametrosEditoriais: { alvoDePalavrasPorUnidade: 180 },
+        direcaoEditorial: "Explique o mecanismo antes de nomear exceções."
+      },
       aplicacaoPedagogica: {
         modo: "expositiva",
-        novidadesIntroduzidas: ["Socket como interface"],
+        ideiasIntroduzidas: ["Socket como interface"],
+        ideiasUtilizadas: [],
         explicacoes: [{
-          novidade: "Socket como interface",
+          ideia: "Socket como interface",
           formas: ["plain_definition"]
         }],
-        praticas: []
+        praticas: [],
+        cobertura: ["comunicação entre processos"]
       },
       fontes: []
     }]
@@ -128,12 +150,14 @@ const samples = {
     curso: "Redes para iniciantes",
     metadados: {
       tipo: "document",
+      papel: "tecnica_conceitual",
       titulo: "Manual do proxy"
     }
   },
   incorporar_pdf_como_fonte: {
     curso: "Redes para iniciantes",
     titulo: "Manual do proxy",
+    papel: "tecnica_conceitual",
     intencao: "Manter o PDF como referência técnica do Curso.",
     [HUMAN_ACTION_FILE_FIELD]: ["file-reference"]
   }
@@ -150,7 +174,7 @@ function visit(value, callback, path = "$") {
   else Object.entries(value).forEach(([key, entry]) => visit(entry, callback, `${path}.${key}`));
 }
 
-test("#272 OpenAPI publica exatamente as dezesseis tarefas humanas", () => {
+test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
   assert.deepEqual(Object.keys(openApi.paths), COURSE_HUMAN_TASKS.map(({ name }) => `/${name}`));
   assert.equal(openApi.info["x-aralearn-task-catalog"], COURSE_HUMAN_TASK_CATALOG_METADATA.id);
   assert.equal(
@@ -211,9 +235,11 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     "Opera Cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
-  assert.match(openApi.info.description, /planejamento e configuração focal/iu);
-  assert.match(openApi.info.description, /fundamento ainda não estabelecido/iu);
-  assert.match(openApi.info.description, /contrato exato de cada componente/iu);
+  assert.match(openApi.info.description, /mapa completo de módulos, lições e microssequências/iu);
+  assert.match(openApi.info.description, /aprovação vale só para o apresentado/iu);
+  assert.match(openApi.info.description, /parte operacional.*sem mudar o currículo/iu);
+  assert.match(openApi.info.description, /português natural.*pessoa autora.*público estudante/iu);
+  assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1000);
   assert.ok(Object.hasOwn(
     operation("consultar_componentes").requestBody.content["application/json"]
       .schema.properties,
@@ -226,7 +252,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   ));
 });
 
-test("#272 os dezesseis inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
+test("#272 os dezessete inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   for (const task of actionTools) {
     const validate = ajv.compile(task.inputSchema);
@@ -256,6 +282,39 @@ test("#272 os dezesseis inputs importáveis aceitam exemplos humanos e recusam m
   }), false);
 });
 
+test("Actions publica a calibração completa das unidades novas sem campo aberto", () => {
+  const schemas = [
+    actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
+    operation("materializar_parte").requestBody.content["application/json"].schema
+  ].map((schema) => schema.properties.unidades.items.properties.configuracao);
+  for (const schema of schemas) {
+    assert.equal(schema.additionalProperties, false);
+    assert.deepEqual(Object.keys(schema.properties.parametrosPedagogicos.properties).sort(), [
+      "dimensoesDeVariacaoDaPratica", "formasDeExplicacao",
+      "minimoDePraticasPorRequisito", "tetoNovasUnidadesDeAnalise"
+    ]);
+    assert.deepEqual(Object.keys(schema.properties.parametrosEditoriais.properties).sort(), [
+      "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
+    ]);
+    assert.deepEqual(
+      schema.properties.parametrosPedagogicos.properties.formasDeExplicacao.items.enum,
+      [
+        "plain_definition", "concrete_example", "mechanism", "contrast",
+        "application_condition", "limit_or_exception", "worked_example",
+        "representation_link"
+      ]
+    );
+    assert.deepEqual(
+      schema.properties.parametrosPedagogicos.properties
+        .dimensoesDeVariacaoDaPratica.items.enum,
+      ["case_or_data", "context", "task_feature", "external_representation", "support_level"]
+    );
+    assert.deepEqual(schema.properties.direcaoEditorial, {
+      type: "string", minLength: 1, maxLength: 4000
+    });
+  }
+});
+
 function validatorFor(name) {
   return new Ajv2020({ allErrors: true, strict: false }).compile(
     actionTools.find((task) => task.name === name).inputSchema
@@ -266,7 +325,7 @@ test("#272 resultado comum é curto e não usa envelope de compatibilidade", () 
   assert.deepEqual(openApi.components.schemas.HumanTaskResult.required, [
     "result", "deepLink", "nextDecision"
   ]);
-  assert.equal(openApi.components.schemas.HumanTaskResult.additionalProperties, false);
+  assert.equal(openApi.components.schemas.HumanTaskResult.additionalProperties, undefined);
   assert.equal(Object.hasOwn(openApi.components.schemas, "ConversationProjection"), false);
   assert.equal(Object.hasOwn(openApi.components.schemas, "SuccessResponse"), false);
   const serialized = JSON.stringify(openApi.components.schemas.HumanTaskResult);

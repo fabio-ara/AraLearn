@@ -86,12 +86,37 @@ test("contexto separa escrita de leitura e inclui Unidade inteira sem Fontes ou 
     selectedIds: ["card-fixture-minimal-regra-content"]
   });
   assert.deepEqual(context.readOnlyContext.completeStudyUnit, currentStudyUnit());
+  assert.equal(context.readOnlyContext.completeStudyUnit.role, "theory");
   assert.equal(context.readOnlyContext.microsequence.id, selection.microsequenceId);
+  assert.equal(Object.hasOwn(context.readOnlyContext.microsequence, "role"), false);
+  assert.equal(context.readOnlyContext.courseOutline.every((moduleValue) =>
+    moduleValue.lessons.every((lesson) => lesson.microsequences.every((microsequence) =>
+      !Object.hasOwn(microsequence, "role")))), true);
   assert.equal(context.readOnlyContext.curriculumPath.lesson.id, selection.lessonId);
   assert.ok(context.readOnlyContext.courseOutline.length > 0);
   assert.ok(new TextEncoder().encode(JSON.stringify(context)).byteLength <=
     COURSE_ASSISTANCE_LIMITS.maximumContextBytes);
   assert.doesNotMatch(JSON.stringify(context), /pdf|sourceLinks|Fontes/iu);
+});
+
+test("contexto de assistência não apresenta o papel macro interno como decisão pedagógica", () => {
+  const microsequenceContext = buildCourseAssistanceContext({
+    project: fixture,
+    selection,
+    scope: "didactic_microsequence"
+  }).context;
+  assert.equal(Object.hasOwn(microsequenceContext.readOnlyContext.target, "role"), false);
+
+  const lessonContext = buildCourseAssistanceContext({
+    project: fixture,
+    selection,
+    scope: "lesson"
+  }).context;
+  assert.equal(lessonContext.readOnlyContext.target.microsequences.every((microsequence) =>
+    !Object.hasOwn(microsequence, "role")), true);
+  assert.equal(lessonContext.readOnlyContext.target.microsequences.every((microsequence) =>
+    microsequence.studyUnits.every((studyUnit) => ["theory", "practice"].includes(studyUnit.role))),
+  true);
 });
 
 test("seleção inválida ou obsoleta nunca amplia autoridade de escrita", () => {
@@ -263,7 +288,7 @@ test("Unidade e Microssequência preservam a identidade do alvo durante reparos"
   }), (error) => {
     assert.equal(error.code, "assistance_candidate_invalid");
     assert.ok(error.validationErrors.some((message) =>
-      /preservar a identidade da Unidade/u.test(message)
+      /preservar a unidade de estudo escolhida/u.test(message)
     ));
     return true;
   });
@@ -290,7 +315,7 @@ test("Unidade e Microssequência preservam a identidade do alvo durante reparos"
   }), (error) => {
     assert.equal(error.code, "assistance_candidate_invalid");
     assert.ok(error.validationErrors.some((message) =>
-      /preservar a identidade da Microssequência/u.test(message)
+      /preservar a microssequência escolhida/u.test(message)
     ));
     return true;
   });
@@ -343,9 +368,7 @@ test("seleção focal impede escrita em componentes e Unidades usados só como c
     }))
   }), (error) => {
     assert.equal(error.code, "assistance_candidate_invalid");
-    assert.ok(error.validationErrors.some((message) =>
-      message.includes(readOnlyUnit.id) && /não foi escolhida/u.test(message)
-    ));
+    assert.ok(error.validationErrors.some((message) => /não foi escolhida/u.test(message)));
     return true;
   });
 });
@@ -363,6 +386,9 @@ test("Lição aceita criação de Microssequência somente como proposta da pró
     response: unit.response ? { ...unit.response, id: `${unit.response.id}-nova` } : null,
     feedback: unit.feedback.map((instance) => ({ ...instance, id: `${instance.id}-nova` }))
   }));
+  lesson.microsequences.forEach((microsequence) => { delete microsequence.role; });
+  delete newMicrosequence.role;
+  const requests = [];
   const result = await prepareCourseAssistanceProposal({
     project: fixture,
     selection,
@@ -377,12 +403,24 @@ test("Lição aceita criação de Microssequência somente como proposta da pró
     fetchImpl: sequenceFetch([{
       message: "A Lição passa a ter duas Microssequências.",
       candidate: { microsequences: [lesson.microsequences[0], newMicrosequence] }
-    }])
+    }], requests)
   });
   assert.equal(result.scope, "lesson");
   assert.equal(result.candidate.microsequences.length, 2);
+  assert.deepEqual(result.candidate.microsequences.map(({ role }) => role), [
+    "explain", "explain"
+  ]);
   assert.equal(result.proposedProject.courses[0].modules[0].lessons[0]
     .microsequences.length, 2);
+  assert.deepEqual(result.proposedProject.courses[0].modules[0].lessons[0]
+    .microsequences.map(({ role }) => role), ["explain", "explain"]);
+  const prompt = JSON.parse(requests[0].body.input);
+  assert.equal(prompt.readOnlyContext.target.microsequences.every((microsequence) =>
+    !Object.hasOwn(microsequence, "role")), true);
+  const microsequenceSchema = requests[0].body.text.format.schema.properties.candidate
+    .properties.microsequences.items;
+  assert.equal(microsequenceSchema.required.includes("role"), false);
+  assert.equal(Object.hasOwn(microsequenceSchema.properties, "role"), false);
   assert.equal(fixture.courses[0].modules[0].lessons[0].microsequences.length, 1);
 });
 

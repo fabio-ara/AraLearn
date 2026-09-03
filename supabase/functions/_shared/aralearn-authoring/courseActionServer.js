@@ -166,13 +166,13 @@ function nextDecisionForError(error, retryable) {
     return "Confira o título ou a posição e tente novamente.";
   }
   if (error.code === "human_task_result_too_large") {
-    return "Escolha um Curso, Parte, Microssequência ou Unidade mais específica.";
+    return "Escolha um curso, uma parte, uma microssequência ou uma unidade de estudo mais específica.";
   }
   if (error.code === "action_payload_too_large") {
-    return "Divida a tarefa em um conjunto menor de Units ou correções.";
+    return "Divida a tarefa em um conjunto menor de unidades de estudo ou correções.";
   }
   if (error.code === "course_source_pdf_write_uncertain") {
-    return "Releia as Fontes antes de decidir se ainda precisa incorporar o PDF.";
+    return "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.";
   }
   if (retryable) return "Tente novamente sem mudar a intenção da tarefa.";
   return null;
@@ -186,7 +186,7 @@ function publicError(error, { completedWrite = false } = {}) {
         message: "A escrita pode ter sido concluída, mas a resposta excedeu o limite.",
         retryable: false
       },
-      nextDecision: "Releia o Curso antes de decidir se ainda falta alguma mudança."
+      nextDecision: "Releia o curso antes de decidir se ainda falta alguma mudança."
     };
   }
   const retryable = retryableError(error);

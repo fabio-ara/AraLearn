@@ -342,7 +342,7 @@ test("títulos de Curso não recebem sufixo textual de propriedade", async ({ pa
       }
     });
   }, fixture);
-  const labels = await page.locator("select[aria-label='Selecionar Curso'] option")
+  const labels = await page.locator("select[aria-label='Selecionar curso'] option")
     .allTextContents();
   expect(labels).toHaveLength(3);
   labels.forEach((label) => {
@@ -353,7 +353,7 @@ test("títulos de Curso não recebem sufixo textual de propriedade", async ({ pa
     "Curso homônimo · opção 2",
     "Curso homônimo · opção 3"
   ]);
-  expect(await page.locator("select[aria-label='Selecionar Curso'] option")
+  expect(await page.locator("select[aria-label='Selecionar curso'] option")
     .evaluateAll((options) => options.map((option) => option.getAttribute("aria-label"))))
     .toEqual([
       "Curso homônimo, Curso próprio, opção 1",
@@ -550,7 +550,7 @@ test("níveis e cards compartilham tipografia e a Unidade preserva a descrição
     ["Curso", "Módulos", "open-course"],
     ["Módulo", "Lições", "open-module"],
     ["Lição", "Microssequências didáticas", "open-lesson"],
-    ["Microssequência", "Unidades", "open-microsequence"]
+    ["Microssequência", "Unidades de estudo", "open-microsequence"]
   ]) {
     await page.locator(`[data-action='${step[2]}']`).first().click();
     await expect(page.locator(".entity-level-heading")).toHaveText(step[0]);

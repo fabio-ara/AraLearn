@@ -4,6 +4,35 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.57] - 2026-09-03
+
+### Alterado
+
+- a autoria começa por um mapa curricular global completo e inspecionável de
+  módulos, lições e microssequências; partes existem somente como lotes de
+  produção incremental;
+- cada aprovação se limita às decisões efetivamente apresentadas, com sínteses
+  curtas no chat e detalhes pedagógicos acessíveis no AraLearn;
+- o repertório acumulado distingue ideias introduzidas, utilizadas e retomadas,
+  orienta dependências e limita apenas a novidade semântica de unidades
+  expositivas;
+- a materialização favorece percursos autocontidos, focalizados e conectados,
+  com componentes e práticas escolhidos por função didática;
+- parâmetros pedagógicos e editoriais aceitam calibração contextual automática
+  por microssequência ou unidade de estudo, preservando condições fixadas pela
+  pessoa autora ou pela pesquisa;
+- analytics permitem comparar desenhos por configuração aplicada, repertório,
+  representações, práticas, fontes e intervenções humanas explícitas;
+- fontes distinguem escopo curricular, evidência de avaliação e sustentação
+  técnica ou conceitual.
+
+### Corrigido
+
+- cobertura obrigatória passa a exigir desenvolvimento efetivo nas unidades de
+  estudo, e não apenas presença no planejamento;
+- conversa, interface e contratos públicos deixam de expor nomes do metamodelo,
+  contagens e detalhes técnicos que não ajudam a decisão autoral.
+
 ## [0.0.56] - 2026-09-03
 
 ### Corrigido

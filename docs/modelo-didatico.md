@@ -59,7 +59,14 @@ O curso é organizado em níveis com responsabilidades diferentes:
 | módulo | reunir uma região coerente do domínio | que parte ampla do assunto está em foco? |
 | lição | organizar uma progressão local | que sequência de objetivos será percorrida? |
 | microssequência | ensinar e verificar um objetivo delimitado | qual transformação de conhecimento ou desempenho se pretende agora? |
-| Unidade de estudo | realizar uma função didática específica | o que a pessoa precisa compreender ou fazer neste momento? |
+| unidade de estudo | realizar uma função didática específica | o que a pessoa precisa compreender ou fazer neste momento? |
+
+### Mapa curricular global
+
+Antes de materializar conteúdo, a autoria apresenta o mapa completo de módulos,
+lições e microssequências, com progressão, dependências importantes e cobertura
+do escopo. O mapa pode ser revisto como rascunho. A aprovação confirma somente
+as decisões que estavam inspecionáveis e não alcança unidades de estudo futuras.
 
 ### Por que a microssequência existe
 
@@ -99,8 +106,8 @@ concretos.
 
 ### Parte como coordenação operacional
 
-Em cursos extensos, a autoria pode reunir microssequências em **Partes** para
-que planejamento, construção, auditoria, reparo e reauditoria permaneçam
+Depois da aprovação do mapa, a autoria pode reunir microssequências em partes
+para que planejamento, construção, auditoria, reparo e reauditoria permaneçam
 manejáveis. A divisão considera coesão semântica, dependências, quantidade e
 complexidade das microssequências e carga provável de revisão humana.
 
@@ -139,10 +146,11 @@ laboratório. Uma **decisão local** define o que fazer numa microssequência, c
 introduzir um pré-requisito, usar um exemplo, escolher uma representação,
 acrescentar prática ou declarar que um meio indispensável não está disponível.
 A mesma condição pode exigir respostas diferentes conforme a operação e o
-conteúdo. Por isso, o AraLearn não adota uma pedagogia global calibrável que
-determine o curso inteiro. Objetivos, cobertura e invariantes continuam comuns;
-o que não existe é uma configuração global de estilo que substitua as decisões
-locais.
+conteúdo. Por isso, o estado `default` exige que o GPT calibre automaticamente
+cada microssequência ou unidade segundo sua função, em vez de aplicar um preset
+ao curso inteiro. Uma condição deliberadamente fixada pelo pesquisador prevalece.
+Objetivos, cobertura e invariantes continuam comuns; configuração não substitui
+decisões locais.
 
 **Fundamentação.** A utilidade de orientação, exemplos e resolução de problemas
 pode mudar com o conhecimento prévio e a tarefa, fenômeno discutido como
@@ -172,57 +180,64 @@ certifica adequação disciplinar e não prediz resultados de aprendizagem.
 O plano e o desenho por escopo separam o percurso abaixo:
 
 ```text
-fontes e objetivo → itens do plano → atribuição explícita por Microssequência
+fontes, objetivo e mapa global → repertório por microssequência
   → parâmetros e orientações efetivos
   → política e seleção progressiva de componentes
   → contexto selado pelo servidor → Unidades e fatos de aplicação
   → Conteúdo e revisão humana
 ```
 
-A **unidade de análise instrucional** é um recorte editorial ligado a fontes,
-objetivo e relações. Ela não é automaticamente um componente de conhecimento
+A **unidade de análise instrucional** representa uma ideia, relação, condição,
+procedimento ou operação necessária ao percurso e que vale acompanhar
+separadamente. Ela não é automaticamente um componente de conhecimento
 validado: componentes de conhecimento e eventos de aprendizagem não são
 observados diretamente, e sua granularidade depende da análise e da população
 ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
-Do mesmo modo, classificar uma unidade como presumidamente nova, parcial,
-integrada ou desconhecida descreve uma hipótese para o desenho, não o domínio
+Do mesmo modo, classificar uma ideia como introduzida, já estabelecida e usada
+ou deliberadamente retomada descreve uma hipótese para o desenho, não o domínio
 de uma pessoa.
 
-Quando unidades precisam ser processadas juntas, a análise pode declarar essa
-relação em campo próprio. O plano conserva identidades e enunciados,
-mas não inventa dependências semânticas entre unidades de análise. A estrutura
-curricular continua validando sua própria ordem e relações.
+O plano conserva identidade, nome, descrição curta e referências às unidades
+que introduzem, usam ou retomam cada ideia. Relações essenciais também entram no
+repertório quando precisam ser ensinadas. Isso não cria ontologia universal nem
+grafo genérico; a estrutura curricular continua validando sua própria ordem e
+dependências.
 
-Os quatro parâmetros podem variar em Curso, Lição ou
-Microssequência: teto de novas unidades por Unidade expositiva, formas de
-explicação, oportunidades distintas de prática e dimensões de variação. Módulo
-pode receber orientação e política de componentes, mas não ganhou um parâmetro
-sem necessidade distinta demonstrada. Os valores iniciais são hipóteses do
-produto, não regras pedagógicas universais.
+O catálogo reúne quatro parâmetros pedagógicos — teto de novas unidades por
+unidade expositiva, formas de explicação, oportunidades distintas de prática e
+dimensões de variação — e dois alvos editoriais quantitativos flexíveis —
+palavras por resposta de autoria e por unidade de estudo. Eles podem variar no
+curso, na lição, na microssequência ou na unidade. Os alvos não são limites e
+não autorizam compressão. Módulo pode receber orientação e política de
+componentes, mas não ganhou um parâmetro
+sem necessidade distinta demonstrada. O estado contextual e os valores fixados
+são hipóteses do produto ou da pesquisa, não regras pedagógicas universais.
 
 Uma atribuição explícita da pessoa autora ou de uma condição de pesquisa
 precede a atribuição automática; dentro da mesma classe, vence o escopo
 aplicável mais próximo. A condição de pesquisa registra a origem da decisão,
-sem bloquear sua revisão. Limpar uma definição restaura a herança ou o valor
-inicial sem copiar o valor para o descendente.
+sem bloquear sua revisão. Limpar uma definição restaura a herança ou, na
+ausência dela, a calibração contextual sem copiar o valor para o descendente.
 
 No início da materialização, o servidor resolve e sela parâmetros,
 orientações, interpretações, política e os itens do plano atribuídos a cada
-Microssequência-alvo. O catálogo selado inclui identidade, posição, enunciado e
+microssequência-alvo. O catálogo selado inclui identidade, posição, enunciado e
 versão, enquanto cada alvo referencia somente seu subconjunto.
 
-Na etapa, fatos limitados declaram introduções, formas desenvolvidas, prática,
-variações e componentes usados. Formas, oportunidades e variações são
+Na etapa, fatos limitados declaram introduções, usos de ideias estabelecidas,
+formas desenvolvidas, prática, variações e componentes usados. Retomadas são
+derivadas quando uma explicação volta a mobilizar uma ideia estabelecida.
+Formas, oportunidades e variações são
 declarações do assistente ou da pessoa autora validadas quanto ao contrato; não são
-observadas semanticamente pelo banco. IDs de Unidades, pai/alvo e
+observadas semanticamente pelo banco. Identidades de unidades, pai/alvo e
 `componentRefs` são reconciliados com o conteúdo persistido. Esses fatos
 permitem confrontar planejado e declarado como aplicado; não constituem pontuação,
 diagnóstico ou resultado de aprendizagem.
 
 Uma unidade de análise é introduzida uma vez, mas pode ser desenvolvida em
-várias Unidades de estudo. Cada continuação declara a mesma relação e a
+várias unidades de estudo. Cada continuação declara uso ou retomada e a
 cobertura explicativa é reunida no lote; isso permite aprofundar sem condensar
-conteúdo para satisfazer cardinalidade técnica. Uma Unidade também pode
+conteúdo para satisfazer cardinalidade técnica. Uma unidade também pode
 desenvolver mais de uma unidade de análise, desde que a combinação seja
 coerente e o teto de introduções novas seja respeitado.
 

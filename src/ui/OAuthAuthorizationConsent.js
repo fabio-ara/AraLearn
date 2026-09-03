@@ -6,10 +6,10 @@ const SCOPE_LABELS = Object.freeze({
   email: "Confirmar a conta AraLearn conectada"
 });
 export const OAUTH_AUTHORING_PERMISSION_LABELS = Object.freeze([
-  "Ler seus Cursos, planejamento e conteúdo na Autoria",
-  "Criar Cursos privados e alterar metadados, planejamento e conteúdo",
-  "Consultar Observações; incluir o texto somente quando você pedir explicitamente",
-  "Consultar contratos e validar os componentes didáticos instalados"
+  "Ler seus cursos, planejamento e conteúdo na autoria",
+  "Criar cursos privados e alterar metadados, planejamento e conteúdo",
+  "Consultar observações; incluir o texto somente quando você pedir explicitamente",
+  "Consultar e validar os componentes didáticos disponíveis"
 ]);
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
 

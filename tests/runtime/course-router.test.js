@@ -469,6 +469,7 @@ test("Fontes usam consulta cercada e comando discriminado sem campos de autorida
     expectedSourceRevision: 0,
     source: {
       kind: "web_page",
+      sourceRole: "technical_conceptual",
       title: "Fonte A",
       authorship: "Autoria",
       publicationDate: "2026",

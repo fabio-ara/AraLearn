@@ -2,7 +2,7 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 
 const ORIGIN_LABELS = Object.freeze({
-  system_default: "Padrão do produto",
+  system_default: "Calibração contextual pendente",
   automatic: "Escolha automática explicada",
   author: "Definido pelo autor",
   research_condition: "Condição de pesquisa",
@@ -14,7 +14,7 @@ const SCOPE_LABELS = Object.freeze({
   module: "Módulo",
   lesson: "Lição",
   didactic_microsequence: "Microssequência didática",
-  study_unit: "StudyUnit"
+  study_unit: "unidade de estudo"
 });
 
 const VALUE_LABELS = Object.freeze({
@@ -31,6 +31,15 @@ const VALUE_LABELS = Object.freeze({
   task_feature: "Característica da tarefa",
   external_representation: "Representação externa",
   support_level: "Nível de apoio"
+});
+
+const PARAMETER_GROUP_BY_ID = Object.freeze({
+  new_analysis_unit_ceiling_per_expository_study_unit: "pedagogical",
+  required_explanation_forms: "pedagogical",
+  minimum_distinct_practice_opportunities_per_evidence_requirement: "pedagogical",
+  required_practice_variation_dimensions: "pedagogical",
+  authoring_chat_response_word_target: "editorial",
+  study_unit_content_word_target: "editorial"
 });
 
 function escapeHtml(value) {
@@ -111,7 +120,7 @@ function renderScopeContext(design) {
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
   const contextualNote = ["didactic_microsequence", "study_unit"].includes(context.current.kind)
-    ? "As StudyUnits desta Microssequência usam estes valores. Cada Unidade preserva a configuração usada na produção."
+    ? "As unidades de estudo desta microssequência usam estes valores. Cada unidade preserva a configuração usada na produção."
     : "Escolha um escopo para consultar o valor vigente e, quando necessário, sobrescrever ou restaurar a herança.";
   return '<section class="course-design-scope" aria-labelledby="course-design-scope-title">' +
     '<div><p id="course-design-scope-title">Escopo atual</p>' +
@@ -169,8 +178,8 @@ function renderParameterCard(design, definition, resolution, busy) {
           `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
         : "") + "</div></form>"
     : '<div class="course-design-disabled-editor" aria-disabled="true"><p>' +
-      "Parâmetros pedagógicos não são definidos em Módulo. O valor herdado continua visível; " +
-      "selecione Curso, Lição ou Microssequência para alterá-lo.</p>" +
+      "Parâmetros pedagógicos não são definidos em módulo. O valor herdado continua visível; " +
+      "selecione curso, lição ou microssequência para alterá-lo.</p>" +
       '<fieldset disabled><legend>Valor herdado</legend>' +
       renderParameterInput(definition, effective.value, { disabled: true }) + "</fieldset></div>";
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
@@ -190,6 +199,22 @@ function renderParameterCard(design, definition, resolution, busy) {
     `<p><strong>Limite:</strong> ${escapeHtml(definition.limitations)}</p></div>${editor}</details></article>`;
 }
 
+function renderParameterGroup(design, busy, {
+  group,
+  titleId,
+  title,
+  description
+}) {
+  const cards = design.definitions.flatMap((definition, index) =>
+    PARAMETER_GROUP_BY_ID[definition.id] === group
+      ? [renderParameterCard(design, definition, design.parameters[index], busy)]
+      : []
+  ).join("");
+  return `<section class="course-design-parameters" aria-labelledby="${titleId}">` +
+    `<header class="course-design-subheading"><div><h3 id="${titleId}">${title}</h3>` +
+    `<p>${description}</p></div></header>${cards}</section>`;
+}
+
 function renderGuidanceAssignmentCopy(assignment) {
   return `<blockquote>${escapeHtml(assignment.guidance)}</blockquote>` +
     `<p class="course-design-reason">${escapeHtml(assignment.reason)}</p>`;
@@ -207,7 +232,7 @@ function renderGuidance(design, busy) {
   const local = guidance.localAssignment;
   return '<section class="course-design-guidance" aria-labelledby="course-design-guidance-title">' +
     '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Direção editorial</h3>' +
-    '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais StudyUnits.</p></div></header>' + stack +
+    '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais unidades de estudo.</p></div></header>' + stack +
     '<details class="course-design-local-editor"><summary class="course-authoring-icon-action"' +
     ` aria-label="${local ? "Editar" : "Adicionar"} direção editorial neste escopo"` +
     ` title="${local ? "Editar" : "Adicionar"} direção editorial neste escopo">` +
@@ -280,50 +305,6 @@ function renderComponentPolicy(design, busy) {
 }
 
 
-function renderTargetPlanItemList(label, items) {
-  return '<section class="course-design-target-group">' +
-    `<h4>${escapeHtml(label)}</h4>` +
-    (items.length
-      ? `<ul>${items.map((item) => `<li>${escapeHtml(item.statement)}</li>`).join("")}</ul>`
-      : "<p>Nenhum item deste tipo foi definido no Planejamento.</p>") +
-    "</section>";
-}
-
-function renderTargetPlanItems(state, design) {
-  if (design.scopeContext.current.kind !== "didactic_microsequence") return "";
-  if (state.planningLoading && !state.authoringPlan) {
-    return '<section class="course-design-targets"><h3>Cobertura planejada</h3>' +
-      '<p role="status">Carregando itens do Planejamento…</p></section>';
-  }
-  const plan = state.authoringPlan?.plan;
-  if (!plan) {
-    return '<section class="course-design-targets"><h3>Cobertura planejada</h3>' +
-      `<p role="alert">${escapeHtml(state.planningFailure ||
-        "Não foi possível carregar os itens do Planejamento.")}</p>` +
-      '<button type="button" data-course-authoring-action="retry-planning" aria-label="Tentar novamente" title="Tentar novamente">' +
-      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>` +
-      "</section>";
-  }
-  const targets = design.targetPlanItems;
-  const analysis = new Set(targets.instructionalAnalysisUnitIds);
-  const evidence = new Set(targets.evidenceRequirementIds);
-  const assignedAnalysis = plan.instructionalAnalysisUnits.filter(({ id }) => analysis.has(id));
-  const assignedEvidence = plan.evidenceRequirements.filter(({ id }) => evidence.has(id));
-  return '<section class="course-design-targets" aria-labelledby="course-design-targets-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-targets-title">' +
-    'Cobertura planejada desta Microssequência</h3>' +
-    '<p>Definida no planejamento da Parte.</p></div></header>' +
-    '<div class="course-design-target-groups">' +
-    renderTargetPlanItemList(
-      "Unidades de análise instrucional",
-      assignedAnalysis
-    ) +
-    renderTargetPlanItemList(
-      "Requisitos de evidência",
-      assignedEvidence
-    ) + "</div></section>";
-}
-
 function renderDesignStatus({ kind, title, message, retry = false }) {
   return `<section class="course-authoring-state is-${escapeHtml(kind)}" role="${
     kind === "error" ? "alert" : "status"
@@ -362,16 +343,18 @@ export function renderCourseDesignPanel(state) {
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.designFailure)}</p>`
       : "") +
     renderScopeContext(design) +
-    '<section class="course-design-parameters" aria-labelledby="course-design-parameters-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-parameters-title">Parâmetros pedagógicos</h3>' +
-    '<p>Quatro decisões educacionais, separadas da direção editorial.</p></div></header>' +
-    design.definitions.map((definition, index) => renderParameterCard(
-      design,
-      definition,
-      design.parameters[index],
-      state.designBusy
-    )).join("") + "</section>" +
-    renderTargetPlanItems(state, design) +
+    renderParameterGroup(design, state.designBusy, {
+      group: "pedagogical",
+      titleId: "course-design-pedagogical-parameters-title",
+      title: "Parâmetros pedagógicos",
+      description: "Quatro decisões educacionais sobre explicação, novidade e prática."
+    }) +
+    renderParameterGroup(design, state.designBusy, {
+      group: "editorial",
+      titleId: "course-design-editorial-parameters-title",
+      title: "Parâmetros editoriais",
+      description: "Dois alvos flexíveis para a conversa de autoria e o conteúdo das unidades de estudo."
+    }) +
     renderGuidance(design, state.designBusy) +
     renderComponentPolicy(design, state.designBusy) +
     "</section>";

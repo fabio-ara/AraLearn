@@ -140,34 +140,40 @@ daquele Curso e preserva conteúdo, marcas **Rever**, Anotações e outros Curso
 Dentro do percurso, controles de reinício delimitam o alcance pelo rótulo:
 Módulo, Lição, Microssequência ou a partir de uma Unidade.
 
-## Criar e planejar um Curso
+## Criar e planejar um curso
 
-Em Autoria, use **Criar Curso**, informe título e objetivo e salve. O Curso nasce
+Em Autoria, use **Criar curso**, informe título e objetivo e salve. O curso nasce
 privado e abre em Conteúdo. A barra superior conserva o contexto; Conteúdo e
 Planejamento usam atalhos permanentes, e o menu reúne as tarefas ocasionais. A
 superfície mantém uma coluna útil de até 430 px também no computador.
 
-Em **Planejamento**, edite título, objetivo, público, escopo e faixa de Partes.
-Acrescente, reordene ou retire resultados de aprendizagem pretendidos, unidades
-de análise e requisitos de evidência. Em **Partes**, organize a ordem de
-produção e os vínculos com Microssequências. Essas ações preservam a hierarquia
-curricular e as Unidades já existentes.
+Em **Planejamento**, o mapa curricular mostra primeiro todos os módulos, lições
+e microssequências. A cobertura relaciona os itens obrigatórios do escopo aos
+pontos em que serão ensinados. Confira o mapa completo antes de aprová-lo; essa
+aprovação não inclui exercícios, componentes ou unidades futuras que ainda não
+existem.
 
-A tela focaliza uma Parte por vez. Use a navegação compacta para abrir qualquer
-Parte anterior e o botão de organização para editar, reordenar, dividir, unir
-ou retirar. A Parte registra o que deve ser produzido; o conteúdo confirmado
-fica em Conteúdo, não num histórico de execução.
+Depois da aprovação global, **Lotes de produção** mostra as partes usadas para
+materializar e revisar o curso aos poucos. Uma parte pode agrupar uma ou mais
+microssequências, mas não pertence à hierarquia curricular. Dividir, unir ou
+reordenar lotes preserva o mapa. O conteúdo confirmado fica em Conteúdo, não num
+histórico de execução.
 
-## Configurar o desenho do Curso
+## Configurar o desenho do curso
 
-Em **Parâmetros**, consulte as definições do Curso ou da Microssequência focal.
-Cada decisão mostra o valor efetivo e o escopo que o definiu. Uma StudyUnit usa
-a configuração de sua Microssequência. Remover uma definição local restaura a
-herança.
+Em **Parâmetros**, consulte o curso, a lição, a microssequência ou a unidade de
+estudo focal. Cada decisão mostra o valor efetivo e o escopo que o definiu. Uma
+unidade usa a configuração aplicável mais específica. Remover uma definição
+local restaura a herança.
 
-Os quatro parâmetros pedagógicos controlam distribuição de novidade, formas de
-explicação, oportunidades de prática e dimensões de variação. Direção editorial
-fica separada e nunca elimina conteúdo necessário. A política de componentes
+Quatro parâmetros pedagógicos controlam distribuição de novidade, formas de
+explicação, oportunidades de prática e dimensões de variação. Dois alvos
+editoriais quantitativos flexíveis orientam palavras por resposta de autoria e
+por unidade de estudo. Eles não são limites e não autorizam compressão. O estado
+`default` exige que o GPT calibre automaticamente cada microssequência ou
+unidade segundo seu conteúdo e função; não é um preset fixo. Um valor
+deliberadamente fixado pelo pesquisador prevalece. Direção editorial fica
+separada e nunca elimina conteúdo necessário. A política de componentes
 pode restringir ou preferir pacotes, mas a escolha final continua ligada à
 função instrucional.
 
@@ -182,7 +188,7 @@ exemplo ou outra relação declarada.
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
 interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora
 ativa como alvo. A revisão posterior precisa considerar esse contexto antes de
-alterar as StudyUnits relacionadas.
+alterar as unidades relacionadas.
 
 Para incorporar um PDF, envie um único arquivo na conversa que executará
 `incorporar_pdf_como_fonte`. O serviço valida os bytes e grava no Storage
@@ -192,7 +198,7 @@ reativado por uma nova incorporação confirmada. Numa conversa, peça a
 `manter_fonte` para retirar somente os PDFs ou para retirar a Fonte inteira; esta
 segunda opção remove primeiro todos os PDFs ativos vinculados à Fonte.
 
-Use **Definir fontes** numa StudyUnit para revisar o conjunto corrente. Salvar
+Use **Definir fontes** numa unidade de estudo para revisar o conjunto corrente. Salvar
 substitui as relações daquele alvo. Identidades técnicas, caminhos de Storage e
 endereços assinados não aparecem no uso normal.
 
@@ -265,19 +271,23 @@ uso normal.
 
 A interface normal não abre um compositor e não exige copiar e colar um pedido.
 O cliente conectado obtém o contexto necessário pelas operações autorizadas,
-respeita a revisão corrente e pode devolver um endereço direto para o alvo. Uma
-conversa ou proposta sem aprovação não altera o Curso. Quando o cliente produz
-uma Parte aprovada, as StudyUnits aparecem em Conteúdo e a Parte conserva sua
-organização atual, sem expor a execução técnica.
+respeita o estado corrente e pode devolver um endereço direto para o alvo. Uma
+conversa ou proposta sem aprovação não altera o curso.
 
-Curso, Módulo, Lição, Tópico, Microssequência, Unidade, Parâmetro, Fonte e
-Âncora podem ser alvos de leitura ou alteração conforme a operação disponível.
-Materialização continua restrita à Parte operacional.
+Primeiro, o GPT apresenta uma síntese do mapa curricular global e um link para
+inspecionar módulos, lições, microssequências, dependências e cobertura. A pessoa
+autora pode ajustar ordem, escopo e ênfase. Somente o mapa visto pode ser
+aprovado, e nenhuma unidade de estudo é criada nessa etapa.
 
-Ao aprovar uma Parte, inclua as Microssequências, seus Módulos e Lições, as
-AnalysisUnits e os requisitos de evidência necessários. O cliente salva essa
-estrutura antes de preparar as StudyUnits. Conteúdo permite conferir o resultado
-sem abrir uma tela de etapas.
+Depois, o GPT propõe brevemente a progressão da primeira parte operacional.
+Quando ela é aprovada, o conteúdo materializado aparece em Conteúdo. A inspeção
+mostra as unidades reais e, quando pertinente, as ideias introduzidas, as ideias
+estabelecidas usadas e as retomadas. O mesmo ciclo continua para a parte
+seguinte, sem expor detalhes técnicos da execução.
+
+Curso, módulo, lição, tópico, microssequência, unidade, parâmetro, fonte e âncora
+podem ser alvos de leitura ou alteração conforme a operação disponível.
+Materialização continua restrita à parte operacional.
 
 Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
@@ -338,7 +348,7 @@ Para pedir uma correção ampla, use o GPT conectado. Ele consulta as Observaç�
 abertas, prepara uma revisão com progressão, pré-requisitos, transições,
 exemplos e prática afetados e apresenta uma proposta. Depois da decisão,
 `aplicar_correcoes` grava o conjunto aprovado. Volte ao deep link e reinspecione
-as Units; aplicação não demonstra que a questão foi resolvida.
+as unidades de estudo; aplicação não demonstra que a questão foi resolvida.
 
 Revisão autoral exige conexão. A cópia e a fila de Anotações próprias pertencem
 ao percurso de Estudo; a consulta do Curso e as correções usam o estado remoto
@@ -346,14 +356,14 @@ corrente.
 
 ## Consultar Analytics
 
-**Analytics** caracteriza o estado atual do Curso em duas áreas: **Desenho** e
-**Autoria**. Selecione Curso, Parte, Microssequência ou StudyUnit; leia os poucos
+**Analytics** caracteriza o estado atual do curso em duas áreas: **Desenho** e
+**Autoria**. Selecione curso, parte, microssequência ou unidade de estudo; leia os poucos
 números principais e expanda apenas a tabela necessária.
 
-Desenho mostra parâmetros aplicados, AnalysisUnits, distribuição de novidades,
-formas explicativas, componentes, prática e Fontes. Autoria mostra parâmetros
+Desenho mostra parâmetros aplicados, unidades de análise, distribuição de novidades,
+formas explicativas, componentes, prática e fontes. Autoria mostra parâmetros
 definidos explicitamente e a origem observável da criação e da última revisão
-das StudyUnits. Uma origem incerta permanece ausente, em vez de virar uma
+das unidades. Uma origem incerta permanece ausente, em vez de virar uma
 inferência.
 
 **Exportar Analytics** baixa um JSON com o mesmo snapshot mostrado na tela. Ele

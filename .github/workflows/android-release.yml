@@ -252,12 +252,13 @@ jobs:
           @"
           ## AraLearn v${{ steps.identity.outputs.version }}
 
-          Esta versão torna a Autoria mais simples para a pessoa e mais rigorosa pedagogicamente.
+          Esta versão torna a autoria mais simples para a pessoa e mais rigorosa pedagogicamente.
 
-          - O planejamento avança uma Parte por vez e mantém uma StudyUnit principal em foco.
-          - AnalysisUnits controlam novidades semanticamente independentes sem comprimir conteúdo necessário.
-          - Parâmetros pedagógicos e editoriais funcionam no Curso, na Microssequência e na StudyUnit.
-          - Fontes, Observações, revisão contextual e Analytics ficam acessíveis junto do conteúdo.
+          - O planejamento começa pelo mapa curricular completo, com módulos, lições e microssequências inspecionáveis.
+          - As partes são apenas lotes de produção incremental, sem alterar a organização curricular aprovada.
+          - O repertório distingue ideias introduzidas, utilizadas e retomadas para orientar explicação e prática.
+          - Parâmetros pedagógicos e editoriais podem ser calibrados no curso, na microssequência e na unidade de estudo.
+          - Fontes, observações, revisão contextual e analytics ficam acessíveis junto do conteúdo.
           - Actions e MCP compartilham tarefas humanas curtas, sem expor a maquinaria interna.
 
           Instale o APK abaixo. A atualização preserva a identidade de assinatura das versões anteriores.

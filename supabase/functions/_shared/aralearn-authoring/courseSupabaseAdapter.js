@@ -3,7 +3,6 @@ import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
 import {
-  COURSE_DESIGN_PARAMETER_DEFINITIONS,
   CourseDesignParametersError,
   normalizeCourseDesignChange,
   normalizeCourseDesignCommand,
@@ -55,15 +54,6 @@ const INSPECTION_SCOPE_KINDS = new Set([
 const AUTHORING_PART_STATES = new Set([
   "planned", "partially_materialized", "materialized"
 ]);
-const INSPECTION_DESIGN_ORIGINS = new Set([
-  "automatic", "author", "research_condition", "migration", "system_default"
-]);
-const INSPECTION_DESIGN_SCOPES = new Set([
-  "course", "module", "lesson", "didactic_microsequence", "study_unit"
-]);
-const INSPECTION_DESIGN_PARAMETER_IDS = new Set(
-  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id)
-);
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
@@ -370,55 +360,35 @@ function normalizeInspectionCursor(value, expected) {
   return { studyUnitId };
 }
 
-function validInspectionDesignState(value, microsequenceId) {
-  if (!exactRecord(value, new Set(["snapshot", "application"]))) return false;
-  const snapshot = value.snapshot;
+function validInspectionAnalysisIdeas(value) {
+  if (!exactRecord(value, new Set(["introduced", "used", "revisited"]))) return false;
+  for (const field of ["introduced", "used", "revisited"]) {
+    const entries = value[field];
+    if (!Array.isArray(entries) || entries.length > 64 || entries.some((entry) =>
+      !exactRecord(entry, new Set(["name", "description"])) ||
+      typeof entry.name !== "string" || !entry.name.trim() || entry.name.length > 2_000 ||
+      typeof entry.description !== "string" || entry.description.length > 4_000)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validInspectionDesignState(value) {
+  if (!exactRecord(value, new Set(["application"]))) return false;
   const application = value.application;
-  if ((snapshot === null) !== (application === null)) return false;
-  if (snapshot === null) return true;
-  if (!jsonRecord(snapshot) || !jsonRecord(application) ||
-      new TextEncoder().encode(JSON.stringify(snapshot)).byteLength > 65_536 ||
+  if (application === null) return true;
+  if (!jsonRecord(application) ||
       new TextEncoder().encode(JSON.stringify(application)).byteLength > 65_536 ||
-      !exactRecord(snapshot, new Set([
-        "contract", "didacticMicrosequenceId", "instructionalAnalysisUnitIds",
-        "evidenceRequirementIds", "parameters", "editorialDirections",
-        "componentPolicy", "appliedAt"
-      ])) ||
-      snapshot.contract !== "aralearn.study-unit-design-snapshot.v1" ||
-      snapshot.didacticMicrosequenceId !== microsequenceId ||
-      !validTimestamp(snapshot.appliedAt) ||
-      !Array.isArray(snapshot.instructionalAnalysisUnitIds) ||
-      !Array.isArray(snapshot.evidenceRequirementIds) ||
-      !Array.isArray(snapshot.parameters) || snapshot.parameters.length !== 4 ||
-      !Array.isArray(snapshot.editorialDirections) ||
-      snapshot.editorialDirections.length > 4 ||
-      !exactRecord(snapshot.componentPolicy, new Set([
-        "policy", "origin", "sourceScopeKind"
-      ])) ||
       !exactRecord(application, new Set([
-        "mode", "introducedInstructionalAnalysisUnitIds", "explanationApplications",
-        "practiceApplications", "componentRefs"
+        "mode", "componentRefs", "analysisIdeas"
       ])) ||
       !new Set(["expository", "practice", "mixed"]).has(application.mode) ||
-      !Array.isArray(application.introducedInstructionalAnalysisUnitIds) ||
-      !Array.isArray(application.explanationApplications) ||
-      !Array.isArray(application.practiceApplications) ||
-      !Array.isArray(application.componentRefs)) return false;
-  const parameterIds = new Set();
-  for (const parameter of snapshot.parameters) {
-    if (!exactRecord(parameter, new Set([
-      "parameterId", "value", "origin", "sourceScopeKind"
-    ])) || !INSPECTION_DESIGN_PARAMETER_IDS.has(parameter.parameterId) ||
-        parameterIds.has(parameter.parameterId) ||
-        !INSPECTION_DESIGN_ORIGINS.has(parameter.origin) ||
-        !(parameter.sourceScopeKind === null ||
-          INSPECTION_DESIGN_SCOPES.has(parameter.sourceScopeKind))) return false;
-    parameterIds.add(parameter.parameterId);
-  }
-  return parameterIds.size === 4 &&
-    INSPECTION_DESIGN_ORIGINS.has(snapshot.componentPolicy.origin) &&
-    (snapshot.componentPolicy.sourceScopeKind === null ||
-      INSPECTION_DESIGN_SCOPES.has(snapshot.componentPolicy.sourceScopeKind));
+      !Array.isArray(application.componentRefs) || application.componentRefs.length > 64 ||
+      application.componentRefs.some((componentRef) =>
+        typeof componentRef !== "string" || !componentRef.trim() || componentRef.length > 500) ||
+      !validInspectionAnalysisIdeas(application.analysisIdeas)) return false;
+  return true;
 }
 
 function normalizeInspectionPage(
@@ -467,10 +437,7 @@ function normalizeInspectionPage(
       "createdOrigin", "lastRevisionOrigin", "design"
     ])) || ![null, "human", "gpt"].includes(authorship.createdOrigin) ||
         ![null, "human", "gpt"].includes(authorship.lastRevisionOrigin) ||
-        !validInspectionDesignState(
-          authorship.design,
-          curriculumPath.didacticMicrosequence.id
-        )) {
+        !validInspectionDesignState(authorship.design)) {
       invalidInspectionRead();
     }
     if (!id || !positiveSafeInteger(item.studyUnit.position) ||
@@ -2112,10 +2079,24 @@ export class CourseSupabaseAdapter {
     courseId,
     deadlineAt = null
   }) {
-    const result = first(await this.rpc("get_owned_course_instructional_plan_for_actor_v2", {
+    const result = first(await this.rpc("get_owned_course_instructional_plan_for_actor_v3", {
       p_actor_id: principal.actorId,
       p_course_id: courseId
     }, { deadlineAt }));
+    if (!jsonRecord(result) ||
+        result.contract !== "aralearn.course-instructional-plan.v3" ||
+        result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
+        !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
+        !jsonRecord(result.plan.curriculum) ||
+        !Array.isArray(result.plan.curriculum.modules) ||
+        !Array.isArray(result.plan.curriculumScopeItems) ||
+        !Array.isArray(result.plan.instructionalAnalysisUnits)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço devolveu um planejamento curricular inválido."
+      );
+    }
     return withDeepLink(result, this.publicAppUrl, "planning");
   }
 
@@ -2739,6 +2720,71 @@ export class CourseSupabaseAdapter {
     return withDeepLink(result, this.publicAppUrl);
   }
 
+  async saveCourseCurricularMap({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision,
+    expectedPlanVersion,
+    approved,
+    curricularMap,
+    deadlineAt = null
+  }) {
+    if (typeof approved !== "boolean" || !jsonRecord(curricularMap)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_course_curricular_map",
+        "O mapa curricular é inválido."
+      );
+    }
+    const normalizedMap = structuredClone(curricularMap);
+    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify({
+      courseId,
+      expectedCourseRevision,
+      expectedPlanVersion,
+      approved,
+      curricularMap: normalizedMap
+    })));
+    const result = first(await this.rpc(
+      "save_course_curricular_map_for_actor_v1",
+      {
+        p_actor_id: principal.actorId,
+        p_course_id: courseId,
+        p_expected_course_revision: expectedCourseRevision,
+        p_expected_plan_version: expectedPlanVersion,
+        p_approved: approved,
+        p_curricular_map: normalizedMap,
+        p_request_id: requestId,
+        p_request_hash: requestHash
+      },
+      { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024 }
+    ));
+    const fields = new Set([
+      "contract", "courseId", "courseRevision", "planVersion",
+      "approval", "changed", "idempotent"
+    ]);
+    if (!exactRecord(result, fields) ||
+        result.contract !== "aralearn.course-curricular-map-change.v1" ||
+        result.courseId !== courseId ||
+        result.approval !== (approved ? "approved" : "draft") ||
+        typeof result.changed !== "boolean" || typeof result.idempotent !== "boolean" ||
+        !positiveSafeInteger(result.courseRevision) ||
+        !positiveSafeInteger(result.planVersion) ||
+        result.courseRevision < expectedCourseRevision ||
+        result.planVersion < expectedPlanVersion ||
+        !result.idempotent && (
+          result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
+          result.planVersion !== expectedPlanVersion + (result.changed ? 1 : 0)
+        )) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação do mapa curricular é inválida."
+      );
+    }
+    return withDeepLink(result, this.publicAppUrl, "planning");
+  }
+
 
   async saveCourseAuthoringPart({
     principal,
@@ -3062,18 +3108,29 @@ export class CourseSupabaseAdapter {
     requestId,
     expectedCourseRevision,
     expectedAuthoringPartVersion,
+    planItemUpserts = [],
+    targetPlanItems = [],
     units,
     deadlineAt = null
   }) {
-    if (!Array.isArray(units) || units.length < 1 || units.length > 64) {
+    if (!Array.isArray(planItemUpserts) || planItemUpserts.length > 256 ||
+        !Array.isArray(targetPlanItems) || targetPlanItems.length < 1 ||
+        targetPlanItems.length > 64 ||
+        !Array.isArray(units) || units.length < 1 || units.length > 64) {
       throw new AuthoringApiError(
         422,
         "invalid_course_part_materialization",
         "A Parte precisa conter de 1 a 64 Unidades."
       );
     }
+    const normalizedPlanItemUpserts = structuredClone(planItemUpserts);
+    const normalizedTargetPlanItems = structuredClone(targetPlanItems);
     const normalizedUnits = structuredClone(units);
-    if (new TextEncoder().encode(JSON.stringify(normalizedUnits)).byteLength > 1_500_000) {
+    if (new TextEncoder().encode(JSON.stringify({
+      planItemUpserts: normalizedPlanItemUpserts,
+      targetPlanItems: normalizedTargetPlanItems,
+      units: normalizedUnits
+    })).byteLength > 1_500_000) {
       throw new AuthoringApiError(
         413,
         "course_part_materialization_too_large",
@@ -3085,16 +3142,20 @@ export class CourseSupabaseAdapter {
       authoringPartId,
       expectedCourseRevision,
       expectedAuthoringPartVersion,
+      planItemUpserts: normalizedPlanItemUpserts,
+      targetPlanItems: normalizedTargetPlanItems,
       units: normalizedUnits
     })));
     const result = first(await this.rpc(
-      "materialize_course_authoring_part_for_actor_v1",
+      "materialize_course_authoring_part_for_actor_v2",
       {
         p_actor_id: principal.actorId,
         p_course_id: courseId,
         p_authoring_part_id: authoringPartId,
         p_expected_course_revision: expectedCourseRevision,
         p_expected_authoring_part_version: expectedAuthoringPartVersion,
+        p_plan_item_upserts: normalizedPlanItemUpserts,
+        p_target_plan_items: normalizedTargetPlanItems,
         p_units: normalizedUnits,
         p_request_id: requestId,
         p_request_hash: requestHash

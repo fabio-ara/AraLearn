@@ -10,6 +10,8 @@ const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_conditi
 const PART_PROGRESS_STATES = new Set([
   "planned", "partially_materialized", "materialized"
 ]);
+const CURRICULUM_MAP_STATES = new Set(["absent", "draft", "approved"]);
+const CURRICULUM_SCOPE_STATES = new Set(["planned", "developed"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
 const COURSE_DESIGN_SCOPE_KINDS = Object.freeze([
   "course", "module", "lesson", "didactic_microsequence", "study_unit"
@@ -18,9 +20,11 @@ const COURSE_DESIGN_PARAMETER_IDS = Object.freeze([
   "new_analysis_unit_ceiling_per_expository_study_unit",
   "required_explanation_forms",
   "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  "required_practice_variation_dimensions"
+  "required_practice_variation_dimensions",
+  "authoring_chat_response_word_target",
+  "study_unit_content_word_target"
 ]);
-const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.0.0";
+const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.1.0";
 const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
 const COURSE_DESIGN_CHANGE_TYPES = new Set([
   "set_parameter", "clear_parameter", "set_guidance", "clear_guidance",
@@ -69,7 +73,7 @@ function naturalNumber(value, { minimum = 0 } = {}) {
 
 function revision(value) {
   const parsed = naturalNumber(value, { minimum: 1 });
-  if (parsed === null) fail("invalid_course_projection", "A versão do Curso é inválida.");
+  if (parsed === null) fail("invalid_course_projection", "A versão do curso é inválida.");
   return parsed;
 }
 
@@ -106,10 +110,10 @@ function ownership(value) {
   const normalized = text(value);
   if (!normalized) return null;
   if (normalized === "shared") {
-    fail("course_not_owned", "Somente Cursos próprios pertencem à Autoria.");
+    fail("course_not_owned", "Somente cursos próprios pertencem à autoria.");
   }
   if (!OWNERSHIP_VALUES.has(normalized)) {
-    fail("invalid_course_projection", "O tipo de acesso ao Curso é inválido.");
+    fail("invalid_course_projection", "O tipo de acesso ao curso é inválido.");
   }
   return normalized;
 }
@@ -118,7 +122,7 @@ function editCapability(value, normalizedOwnership) {
   if (!normalizedOwnership) return null;
   const expected = normalizedOwnership === "owned";
   if (typeof value === "boolean" && value !== expected) {
-    fail("invalid_course_projection", "A propriedade e a edição do Curso são inconsistentes.");
+    fail("invalid_course_projection", "A propriedade e a edição do curso são inconsistentes.");
   }
   return expected;
 }
@@ -135,19 +139,19 @@ function courseCounts(value) {
   if (!fields.some((field) => Object.hasOwn(value, field))) return null;
   const entries = fields.map((field) => [field, naturalNumber(value[field])]);
   if (entries.some(([, count]) => count === null)) {
-    fail("invalid_course_projection", "As contagens do Curso são inválidas.");
+    fail("invalid_course_projection", "As contagens do curso são inválidas.");
   }
   return Object.freeze(Object.fromEntries(entries));
 }
 
 function normalizeListItem(value) {
   if (!isPlainObject(value)) {
-    fail("invalid_course_projection", "A lista contém um Curso inválido.");
+    fail("invalid_course_projection", "A lista contém um curso inválido.");
   }
   const courseId = text(value.courseId);
   const title = text(value.title);
   if (!isCanonicalCourseId(courseId) || !title) {
-    fail("invalid_course_projection", "A lista contém um Curso sem identidade ou título válido.");
+    fail("invalid_course_projection", "A lista contém um curso sem identidade ou título válido.");
   }
   const itemRevision = value.revision == null ? null : revision(value.revision);
   const normalizedOwnership = ownership(value.ownership);
@@ -166,12 +170,12 @@ function normalizeListItem(value) {
 
 export function normalizeCourseListPage(value) {
   if (!isPlainObject(value) || !Array.isArray(value.items)) {
-    fail("invalid_course_projection", "A página de Cursos é inválida.");
+    fail("invalid_course_projection", "A página de cursos é inválida.");
   }
   const items = value.items.map(normalizeListItem);
   const identities = new Set(items.map((item) => item.courseId));
   if (identities.size !== items.length) {
-    fail("invalid_course_projection", "A página repete a identidade de um Curso.");
+    fail("invalid_course_projection", "A página repete a identidade de um curso.");
   }
   const pagination = pageState(value);
   if (items.length === 0 && pagination.hasMore) {
@@ -211,13 +215,13 @@ export function mergeCourseListPages(currentValue, incomingValue) {
 
 export function normalizeCourseDetail(value, { expectedCourseId = "" } = {}) {
   if (!isPlainObject(value)) {
-    fail("invalid_course_projection", "O Curso devolvido é inválido.");
+    fail("invalid_course_projection", "O curso devolvido é inválido.");
   }
   const courseId = text(value.courseId);
   const title = text(value.title);
   if (!isCanonicalCourseId(courseId) || !title ||
       (expectedCourseId && courseId !== expectedCourseId)) {
-    fail("invalid_course_projection", "O Curso devolvido não corresponde ao solicitado.");
+    fail("invalid_course_projection", "O curso devolvido não corresponde ao solicitado.");
   }
   const normalizedOwnership = ownership(value.ownership);
   return Object.freeze({
@@ -278,26 +282,245 @@ function boundedNaturalNumber(value, label, { minimum = 0, maximum = 10_000 } = 
 
 function normalizePreferredPartCount(value) {
   if (!isPlainObject(value)) {
-    fail("invalid_authoring_plan", "A faixa preferencial de Partes é inválida.");
+    fail("invalid_authoring_plan", "A faixa preferencial de partes é inválida.");
   }
-  const minimum = boundedNaturalNumber(value.minimum, "O mínimo de Partes", {
+  const minimum = boundedNaturalNumber(value.minimum, "O mínimo de partes", {
     minimum: 1,
     maximum: 64
   });
-  const maximum = boundedNaturalNumber(value.maximum, "O máximo de Partes", {
+  const maximum = boundedNaturalNumber(value.maximum, "O máximo de partes", {
     minimum: 1,
     maximum: 64
   });
   const origin = text(value.origin);
   if (minimum > maximum || !AUTHORING_PLAN_ORIGINS.has(origin)) {
-    fail("invalid_authoring_plan", "A faixa preferencial de Partes é inconsistente.");
+    fail("invalid_authoring_plan", "A faixa preferencial de partes é inconsistente.");
   }
   return Object.freeze({ minimum, maximum, origin });
 }
 
+function normalizeCurriculumMicrosequence(value) {
+  if (!isPlainObject(value)) {
+    fail("invalid_authoring_plan", "Uma microssequência do mapa curricular é inválida.");
+  }
+  const role = optionalText(value.role, "A função da microssequência", { maximum: 20 });
+  if (role && !MICROSEQUENCE_ROLES.has(role)) {
+    fail("invalid_authoring_plan", "A função da microssequência é inválida.");
+  }
+  if (!Array.isArray(value.dependencyMicrosequenceIds) ||
+      value.dependencyMicrosequenceIds.length > 64) {
+    fail("invalid_authoring_plan", "As dependências da microssequência são inválidas.");
+  }
+  const dependencyMicrosequenceIds = value.dependencyMicrosequenceIds.map((id) =>
+    requiredText(id, "A dependência da microssequência", { maximum: 240 }));
+  if (new Set(dependencyMicrosequenceIds).size !== dependencyMicrosequenceIds.length) {
+    fail("invalid_authoring_plan", "A microssequência repete uma dependência.");
+  }
+  return Object.freeze({
+    id: requiredText(value.id, "A identidade da microssequência", { maximum: 240 }),
+    position: boundedNaturalNumber(value.position, "A posição da microssequência", {
+      maximum: 511
+    }),
+    title: requiredText(value.title, "O título da microssequência", { maximum: 300 }),
+    objective: optionalText(value.objective, "O objetivo da microssequência", { maximum: 4_000 }),
+    dependencyMicrosequenceIds: Object.freeze(dependencyMicrosequenceIds),
+    role
+  });
+}
+
+function normalizedCurriculumChildren(value, normalizeItem, label, maximum) {
+  if (!Array.isArray(value) || value.length > maximum) {
+    fail("invalid_authoring_plan", `${label} do mapa curricular são inválidas.`);
+  }
+  const items = value.map(normalizeItem).sort((left, right) => left.position - right.position);
+  if (new Set(items.map(({ id }) => id)).size !== items.length ||
+      items.some((item, position) => item.position !== position)) {
+    fail("invalid_authoring_plan", `A ordem de ${label.toLowerCase()} é inconsistente.`);
+  }
+  return Object.freeze(items);
+}
+
+function normalizeCurriculumLesson(value) {
+  if (!isPlainObject(value)) {
+    fail("invalid_authoring_plan", "Uma lição do mapa curricular é inválida.");
+  }
+  return Object.freeze({
+    id: requiredText(value.id, "A identidade da lição", { maximum: 240 }),
+    position: boundedNaturalNumber(value.position, "A posição da lição", { maximum: 511 }),
+    title: requiredText(value.title, "O título da lição", { maximum: 300 }),
+    objective: optionalText(value.objective, "O objetivo da lição", { maximum: 4_000 }),
+    microsequences: normalizedCurriculumChildren(
+      value.microsequences,
+      normalizeCurriculumMicrosequence,
+      "Microssequências",
+      512
+    )
+  });
+}
+
+function normalizeCurriculumModule(value) {
+  if (!isPlainObject(value)) {
+    fail("invalid_authoring_plan", "Um módulo do mapa curricular é inválido.");
+  }
+  return Object.freeze({
+    id: requiredText(value.id, "A identidade do módulo", { maximum: 240 }),
+    position: boundedNaturalNumber(value.position, "A posição do módulo", { maximum: 127 }),
+    title: requiredText(value.title, "O título do módulo", { maximum: 300 }),
+    objective: optionalText(value.objective, "O objetivo do módulo", { maximum: 4_000 }),
+    lessons: normalizedCurriculumChildren(
+      value.lessons,
+      normalizeCurriculumLesson,
+      "Lições",
+      512
+    )
+  });
+}
+
+function normalizeCurriculum(value) {
+  if (!isPlainObject(value)) {
+    fail("invalid_authoring_plan", "O mapa curricular é inválido.");
+  }
+  const modules = normalizedCurriculumChildren(
+    value.modules,
+    normalizeCurriculumModule,
+    "Módulos",
+    128
+  );
+  const lessons = modules.flatMap((module) => module.lessons);
+  const microsequences = lessons.flatMap((lesson) => lesson.microsequences);
+  if (new Set(lessons.map(({ id }) => id)).size !== lessons.length ||
+      new Set(microsequences.map(({ id }) => id)).size !== microsequences.length) {
+    fail("invalid_authoring_plan", "O mapa curricular repete identidades.");
+  }
+  const positionByMicrosequenceId = new Map(microsequences.map((item, position) => [
+    item.id, position
+  ]));
+  for (const [position, microsequence] of microsequences.entries()) {
+    if (microsequence.dependencyMicrosequenceIds.some((id) =>
+      !positionByMicrosequenceId.has(id) || positionByMicrosequenceId.get(id) >= position)) {
+      fail(
+        "invalid_authoring_plan",
+        "Uma dependência precisa apontar para uma microssequência anterior do mapa."
+      );
+    }
+  }
+  return Object.freeze({ modules });
+}
+
+function normalizeDeclaredPrerequisites(value) {
+  if (!Array.isArray(value) || value.length > 64) {
+    fail("invalid_authoring_plan", "Os pré-requisitos declarados são inválidos.");
+  }
+  const prerequisites = value.map((item) =>
+    requiredText(item, "Um pré-requisito declarado", { maximum: 2_000 }));
+  if (new Set(prerequisites.map((item) => item.toLocaleLowerCase("pt-BR"))).size !==
+      prerequisites.length) {
+    fail("invalid_authoring_plan", "Os pré-requisitos declarados se repetem.");
+  }
+  return Object.freeze(prerequisites);
+}
+
+function curriculumIndex(curriculum) {
+  const modules = new Map();
+  const lessons = new Map();
+  const microsequences = new Map();
+  for (const module of curriculum.modules) {
+    modules.set(module.id, module);
+    for (const lesson of module.lessons) {
+      lessons.set(lesson.id, { module, lesson });
+      for (const microsequence of lesson.microsequences) {
+        microsequences.set(microsequence.id, { module, lesson, microsequence });
+      }
+    }
+  }
+  return { modules, lessons, microsequences };
+}
+
+function normalizeStudyUnitReference(value, label) {
+  if (!isPlainObject(value)) fail("invalid_authoring_plan", `${label} é inválida.`);
+  return Object.freeze({
+    studyUnitId: requiredText(value.studyUnitId, `A unidade de estudo de ${label.toLowerCase()}`, {
+      maximum: 240
+    }),
+    didacticMicrosequenceId: requiredText(
+      value.didacticMicrosequenceId,
+      `A microssequência de ${label.toLowerCase()}`,
+      { maximum: 240 }
+    ),
+    title: requiredText(value.title, `O título de ${label.toLowerCase()}`, { maximum: 300 })
+  });
+}
+
+function normalizeCurriculumTarget(value, index) {
+  if (!isPlainObject(value) || !Array.isArray(value.didacticMicrosequenceIds) ||
+      value.didacticMicrosequenceIds.length === 0 ||
+      value.didacticMicrosequenceIds.length > 512) {
+    fail("invalid_authoring_plan", "Um destino da cobertura curricular é inválido.");
+  }
+  const moduleId = requiredText(value.moduleId, "O módulo da cobertura", { maximum: 240 });
+  const lessonId = requiredText(value.lessonId, "A lição da cobertura", { maximum: 240 });
+  const path = index.lessons.get(lessonId);
+  if (!path || path.module.id !== moduleId) {
+    fail("invalid_authoring_plan", "Um destino da cobertura não pertence ao mapa curricular.");
+  }
+  const didacticMicrosequenceIds = value.didacticMicrosequenceIds.map((id) =>
+    requiredText(id, "A microssequência da cobertura", { maximum: 240 }));
+  if (new Set(didacticMicrosequenceIds).size !== didacticMicrosequenceIds.length ||
+      didacticMicrosequenceIds.some((id) => {
+        const microsequencePath = index.microsequences.get(id);
+        return !microsequencePath || microsequencePath.lesson.id !== lessonId;
+      })) {
+    fail("invalid_authoring_plan", "As microssequências da cobertura são inconsistentes.");
+  }
+  return Object.freeze({ moduleId, lessonId, didacticMicrosequenceIds: Object.freeze(
+    didacticMicrosequenceIds
+  ) });
+}
+
+function normalizeCurriculumScopeItems(value, curriculum) {
+  if (!Array.isArray(value) || value.length > 512) {
+    fail("invalid_authoring_plan", "A cobertura do escopo curricular é inválida.");
+  }
+  const index = curriculumIndex(curriculum);
+  const items = value.map((item) => {
+    if (!isPlainObject(item) || !Array.isArray(item.curriculumTargets) ||
+        !Array.isArray(item.developedIn ?? [])) {
+      fail("invalid_authoring_plan", "Um item da cobertura do escopo é inválido.");
+    }
+    const state = text(item.state);
+    if (!CURRICULUM_SCOPE_STATES.has(state)) {
+      fail("invalid_authoring_plan", "O estado da cobertura do escopo é inválido.");
+    }
+    const developedIn = (item.developedIn ?? []).map((reference) =>
+      normalizeStudyUnitReference(reference, "A referência de desenvolvimento"));
+    if (developedIn.some(({ didacticMicrosequenceId }) =>
+      !index.microsequences.has(didacticMicrosequenceId))) {
+      fail("invalid_authoring_plan", "Uma referência de desenvolvimento saiu do mapa curricular.");
+    }
+    return Object.freeze({
+      id: uuid(item.id, "A identidade do item de cobertura"),
+      position: boundedNaturalNumber(item.position, "A posição do item de cobertura", {
+        maximum: 511
+      }),
+      statement: requiredText(item.statement, "O enunciado do item de cobertura", {
+        maximum: 2_000
+      }),
+      state,
+      curriculumTargets: Object.freeze(item.curriculumTargets.map((target) =>
+        normalizeCurriculumTarget(target, index))),
+      developedIn: Object.freeze(developedIn)
+    });
+  }).sort((left, right) => left.position - right.position);
+  if (new Set(items.map(({ id }) => id)).size !== items.length ||
+      items.some((item, position) => item.position !== position)) {
+    fail("invalid_authoring_plan", "A ordem da cobertura do escopo é inconsistente.");
+  }
+  return Object.freeze(items);
+}
+
 function normalizePartMicrosequence(value) {
   if (!isPlainObject(value) || !isPlainObject(value.curriculumPath)) {
-    fail("invalid_authoring_plan", "Um vínculo de Parte é inválido.");
+    fail("invalid_authoring_plan", "Um vínculo de parte é inválido.");
   }
   return Object.freeze({
     id: requiredText(value.id, "A microssequência vinculada", {
@@ -318,20 +541,20 @@ function normalizePartMicrosequence(value) {
       return role;
     })(),
     curriculumPath: Object.freeze({
-      moduleId: requiredText(value.curriculumPath.moduleId, "O Módulo da microssequência", {
+      moduleId: requiredText(value.curriculumPath.moduleId, "O módulo da microssequência", {
         maximum: 240
       }),
       moduleTitle: requiredText(
         value.curriculumPath.moduleTitle,
-        "O título do Módulo",
+        "O título do módulo",
         { maximum: 300 }
       ),
-      lessonId: requiredText(value.curriculumPath.lessonId, "A Lição da microssequência", {
+      lessonId: requiredText(value.curriculumPath.lessonId, "A lição da microssequência", {
         maximum: 240
       }),
       lessonTitle: requiredText(
         value.curriculumPath.lessonTitle,
-        "O título da Lição",
+        "O título da lição",
         { maximum: 300 }
       )
     }),
@@ -345,11 +568,11 @@ function normalizePartProgress(value) {
       !Object.hasOwn(value, "state") ||
       !Object.hasOwn(value, "microsequenceCount") ||
       !Object.hasOwn(value, "studyUnitCount")) {
-    fail("invalid_authoring_plan", "O progresso de uma Parte é inválido.");
+    fail("invalid_authoring_plan", "O progresso de uma parte é inválido.");
   }
   const state = text(value.state);
   if (!PART_PROGRESS_STATES.has(state)) {
-    fail("invalid_authoring_plan", "O estado derivado de uma Parte é inválido.");
+    fail("invalid_authoring_plan", "O estado derivado de uma parte é inválido.");
   }
   return Object.freeze({
     state,
@@ -366,13 +589,14 @@ function normalizePartProgress(value) {
 
 function normalizeCoursePart(value) {
   if (!isPlainObject(value) || !Array.isArray(value.microsequences) ||
+      !Array.isArray(value.progression) || value.progression.length > 64 ||
       value.microsequences.length > 500) {
-    fail("invalid_authoring_plan", "Uma Parte de autoria é inválida.");
+    fail("invalid_authoring_plan", "Uma parte de autoria é inválida.");
   }
   const microsequences = value.microsequences.map(normalizePartMicrosequence);
   if (new Set(microsequences.map((item) => item.id)).size !== microsequences.length ||
       microsequences.some((item, position) => item.productionPosition !== position)) {
-    fail("invalid_authoring_plan", "Uma Parte repete a mesma microssequência.");
+    fail("invalid_authoring_plan", "Uma parte repete a mesma microssequência.");
   }
   const progress = normalizePartProgress(value.progress);
   const studyUnitCount = microsequences.reduce(
@@ -381,14 +605,17 @@ function normalizeCoursePart(value) {
   );
   if (progress.microsequenceCount !== microsequences.length ||
       progress.studyUnitCount !== studyUnitCount) {
-    fail("invalid_authoring_plan", "O progresso da Parte não corresponde ao conteúdo vivo.");
+    fail("invalid_authoring_plan", "O progresso da parte não corresponde ao conteúdo vivo.");
   }
+  const progression = value.progression.map((item) =>
+    requiredText(item, "Uma etapa da progressão local", { maximum: 1_000 }));
   return Object.freeze({
-    id: uuid(value.id, "A identidade da Parte"),
-    title: requiredText(value.title, "O título da Parte", { maximum: 300 }),
-    intent: optionalText(value.intent, "A intenção da Parte", { maximum: 4_000 }),
-    version: boundedNaturalNumber(value.version, "A versão da Parte", { minimum: 1 }),
-    position: boundedNaturalNumber(value.position, "A posição da Parte", { maximum: 63 }),
+    id: uuid(value.id, "A identidade da parte"),
+    title: requiredText(value.title, "O título da parte", { maximum: 300 }),
+    intent: optionalText(value.intent, "A intenção da parte", { maximum: 4_000 }),
+    version: boundedNaturalNumber(value.version, "A versão da parte", { minimum: 1 }),
+    position: boundedNaturalNumber(value.position, "A posição da parte", { maximum: 63 }),
+    progression: Object.freeze(progression),
     microsequences: Object.freeze(microsequences),
     progress
   });
@@ -429,23 +656,22 @@ function normalizePlanItem(value, label) {
 
 function normalizeAnalysisPlanItem(value, label) {
   const item = normalizePlanItem(value, label);
-  if (typeof value.introduced !== "boolean") {
-    fail("invalid_authoring_plan", "A introdução da unidade de análise é inválida.");
-  }
-  const introducedPartPosition = value.introducedPartPosition === null
+  const introducedAt = value.introducedAt == null
     ? null
-    : boundedNaturalNumber(
-        value.introducedPartPosition,
-        "A Parte de introdução da unidade de análise",
-        { maximum: 63 }
-      );
-  if (value.introduced !== (introducedPartPosition !== null)) {
-    fail("invalid_authoring_plan", "A introdução da unidade de análise é inconsistente.");
+    : normalizeStudyUnitReference(value.introducedAt, "A introdução da unidade de análise");
+  if (!Array.isArray(value.usedBy) || !Array.isArray(value.revisitedBy)) {
+    fail("invalid_authoring_plan", "As referências da unidade de análise são inválidas.");
   }
   return Object.freeze({
     ...item,
-    introduced: value.introduced,
-    introducedPartPosition
+    description: optionalText(value.description, "A descrição da unidade de análise", {
+      maximum: 2_000
+    }),
+    introducedAt,
+    usedBy: Object.freeze(value.usedBy.map((reference) =>
+      normalizeStudyUnitReference(reference, "Uma utilização da unidade de análise"))),
+    revisitedBy: Object.freeze(value.revisitedBy.map((reference) =>
+      normalizeStudyUnitReference(reference, "Uma retomada da unidade de análise")))
   });
 }
 
@@ -470,8 +696,10 @@ export function normalizeCourseAuthoringPlan(value, {
   expectedCourseId = "",
   expectedCourseRevision = null
 } = {}) {
-  if (!isPlainObject(value) || value.contract !== "aralearn.course-instructional-plan.v2" ||
+  if (!isPlainObject(value) || value.contract !== "aralearn.course-instructional-plan.v3" ||
       !isPlainObject(value.plan) ||
+      !isPlainObject(value.plan.curriculum) ||
+      !Array.isArray(value.plan.curriculumScopeItems) ||
       !Array.isArray(value.plan.intendedLearningOutcomes) ||
       !Array.isArray(value.plan.instructionalAnalysisUnits) ||
       !Array.isArray(value.plan.evidenceRequirements) ||
@@ -481,16 +709,29 @@ export function normalizeCourseAuthoringPlan(value, {
   const courseId = text(value.courseId).toLowerCase();
   const courseRevision = revision(value.courseRevision);
   if (!isCanonicalCourseId(courseId) || (expectedCourseId && courseId !== expectedCourseId)) {
-    fail("invalid_authoring_plan", "O planejamento pertence a outro Curso.");
+    fail("invalid_authoring_plan", "O planejamento pertence a outro curso.");
   }
   if (expectedCourseRevision !== null && courseRevision !== expectedCourseRevision) {
-    fail("course_revision_changed", "O Curso mudou durante a leitura do planejamento.");
+    fail("course_revision_changed", "O curso mudou durante a leitura do planejamento.");
   }
+  const curriculumMapStatus = text(value.plan.curriculumMapStatus);
+  if (!CURRICULUM_MAP_STATES.has(curriculumMapStatus)) {
+    fail("invalid_authoring_plan", "A situação do mapa curricular é inválida.");
+  }
+  const declaredPrerequisites = normalizeDeclaredPrerequisites(
+    value.plan.declaredPrerequisites
+  );
+  const curriculum = normalizeCurriculum(value.plan.curriculum);
+  const indexedCurriculum = curriculumIndex(curriculum);
+  const curriculumScopeItems = normalizeCurriculumScopeItems(
+    value.plan.curriculumScopeItems,
+    curriculum
+  );
   const parts = value.plan.parts.map(normalizeCoursePart)
     .sort((left, right) => left.position - right.position);
   if (new Set(parts.map((part) => part.id)).size !== parts.length ||
       parts.some((part, position) => part.position !== position)) {
-    fail("invalid_authoring_plan", "A ordem das Partes é inconsistente.");
+    fail("invalid_authoring_plan", "A ordem das partes é inconsistente.");
   }
   const linkedMicrosequenceIds = parts.flatMap((part) =>
     part.microsequences.map((item) => item.id));
@@ -498,7 +739,21 @@ export function normalizeCourseAuthoringPlan(value, {
     fail("invalid_authoring_plan", "O planejamento excede 192 vínculos de microssequência.");
   }
   if (new Set(linkedMicrosequenceIds).size !== linkedMicrosequenceIds.length) {
-    fail("invalid_authoring_plan", "Uma microssequência está vinculada a mais de uma Parte.");
+    fail("invalid_authoring_plan", "Uma microssequência está vinculada a mais de uma parte.");
+  }
+  for (const part of parts) {
+    for (const linked of part.microsequences) {
+      const path = indexedCurriculum.microsequences.get(linked.id);
+      if (!path || path.module.id !== linked.curriculumPath.moduleId ||
+          path.module.title !== linked.curriculumPath.moduleTitle ||
+          path.lesson.id !== linked.curriculumPath.lessonId ||
+          path.lesson.title !== linked.curriculumPath.lessonTitle ||
+          path.microsequence.title !== linked.title ||
+          (path.microsequence.objective && path.microsequence.objective !== linked.goal) ||
+          (path.microsequence.role && path.microsequence.role !== linked.role)) {
+        fail("invalid_authoring_plan", "Um lote de produção diverge do mapa curricular.");
+      }
+    }
   }
   const intendedLearningOutcomes = normalizePlanItemList(
     value.plan.intendedLearningOutcomes,
@@ -536,10 +791,14 @@ export function normalizeCourseAuthoringPlan(value, {
       version: boundedNaturalNumber(value.plan.version, "A versão do planejamento", {
         minimum: 1
       }),
-      title: requiredText(value.plan.title, "O título do Curso", { maximum: 300 }),
-      objective: requiredText(value.plan.objective, "O objetivo do Curso", { maximum: 2_000 }),
+      title: requiredText(value.plan.title, "O título do curso", { maximum: 300 }),
+      objective: requiredText(value.plan.objective, "O objetivo do curso", { maximum: 2_000 }),
       audience: optionalText(value.plan.audience, "O público", { maximum: 4_000 }),
       scope: optionalText(value.plan.scope, "O escopo", { maximum: 8_000 }),
+      curriculumMapStatus,
+      declaredPrerequisites,
+      curriculum,
+      curriculumScopeItems,
       updatedAt: dateTime(value.plan.updatedAt, "A atualização do planejamento"),
       preferredPartCount: normalizePreferredPartCount(value.plan.preferredPartCount),
       intendedLearningOutcomes,
@@ -557,7 +816,7 @@ export function projectCoursePlanning(course, authoringPlan) {
       course.revision !== authoringPlan.courseRevision ||
       course.title !== authoringPlan.plan.title ||
       (text(course.goal) || null) !== authoringPlan.plan.objective) {
-    fail("invalid_authoring_plan", "O planejamento não corresponde ao Curso aberto.");
+    fail("invalid_authoring_plan", "O planejamento não corresponde ao curso aberto.");
   }
   const parts = authoringPlan.plan.parts.map((part) => {
     return Object.freeze({
@@ -571,6 +830,10 @@ export function projectCoursePlanning(course, authoringPlan) {
     objective: text(course.goal) || null,
     audience: authoringPlan.plan.audience,
     scope: authoringPlan.plan.scope,
+    curriculumMapStatus: authoringPlan.plan.curriculumMapStatus,
+    declaredPrerequisites: authoringPlan.plan.declaredPrerequisites,
+    curriculum: authoringPlan.plan.curriculum,
+    curriculumScopeItems: authoringPlan.plan.curriculumScopeItems,
     updatedAt: authoringPlan.plan.updatedAt,
     preferredPartCount: authoringPlan.plan.preferredPartCount,
     parts: Object.freeze(parts),
@@ -942,7 +1205,7 @@ function normalizeComponentCatalog(value) {
   }
   const version = designText(value.version, "A versão do catálogo", { maximum: 80 });
   if (version !== COURSE_COMPONENT_CATALOG_VERSION) {
-    designFail("O catálogo de componentes divergiu da revisão corrente.");
+    designFail("A lista de componentes está desatualizada.");
   }
   const options = value.options.map((option) => {
     designRecord(option, ["ref", "label", "purpose"], "Um componente didático");
@@ -1056,7 +1319,7 @@ function normalizeComponentPolicy(value, catalog, context) {
 function normalizeTargetPlanItems(value, currentScope) {
   if (!["didactic_microsequence", "study_unit"].includes(currentScope.kind)) {
     if (value !== null) {
-      designFail("Somente uma Microssequência ou StudyUnit pode expor itens-alvo locais.");
+      designFail("Somente uma microssequência ou unidade de estudo pode expor itens-alvo locais.");
     }
     return null;
   }
@@ -1095,23 +1358,23 @@ export function normalizeCourseDesign(value, {
     "definitions", "parameters", "guidance", "componentCatalog", "componentPolicy",
     "targetPlanItems"
   ];
-  designRecord(value, topFields, "O desenho do Curso");
+  designRecord(value, topFields, "O desenho do curso");
   if (new TextEncoder().encode(JSON.stringify(value)).byteLength > 256 * 1_024) {
-    designFail("O desenho do Curso excede o limite seguro.");
+    designFail("O desenho do curso excede o limite seguro.");
   }
   const courseId = text(value.courseId).toLowerCase();
-  const courseRevision = designInteger(value.courseRevision, "A revisão do Curso", {
+  const courseRevision = designInteger(value.courseRevision, "O estado corrente do curso", {
     minimum: 1,
     maximum: Number.MAX_SAFE_INTEGER
   });
   if (expectedCourseRevision !== null && courseRevision !== expectedCourseRevision) {
-    fail("course_revision_changed", "O Curso mudou durante a leitura do desenho pedagógico.");
+    fail("course_revision_changed", "O curso mudou durante a leitura do desenho pedagógico.");
   }
   if (value.contract !== "aralearn.course-design.v2" || !isCanonicalCourseId(courseId) ||
       expectedCourseId && courseId !== expectedCourseId ||
       !Array.isArray(value.definitions) || value.definitions.length !== COURSE_DESIGN_PARAMETER_IDS.length ||
       !Array.isArray(value.parameters) || value.parameters.length !== COURSE_DESIGN_PARAMETER_IDS.length) {
-    designFail("O desenho do Curso é inválido.");
+    designFail("O desenho do curso é inválido.");
   }
   const parameterCatalogVersion = designText(
     value.parameterCatalogVersion,
@@ -1119,7 +1382,7 @@ export function normalizeCourseDesign(value, {
     { maximum: 80 }
   );
   if (parameterCatalogVersion !== COURSE_DESIGN_PARAMETER_CATALOG_VERSION) {
-    designFail("O catálogo de parâmetros divergiu da revisão corrente.");
+    designFail("A lista de parâmetros está desatualizada.");
   }
   const scopeContext = normalizeScopeContext(value.scopeContext, {
     courseId,
@@ -1148,7 +1411,7 @@ export function normalizeCourseDesign(value, {
       availableScopes
     });
     if (scopeContext.current.kind === "module" && localAssignment !== null) {
-      designFail("Um Módulo não pode conter atribuição local de parâmetro.");
+      designFail("Um módulo não pode conter atribuição local de parâmetro.");
     }
     return Object.freeze({
       parameterId,
@@ -1192,7 +1455,7 @@ export function normalizeCourseDesignChange(value, {
     "contract", "courseId", "courseRevision", "requestId", "idempotent", "changed", "change"
   ];
   designRecord(value, fields, "A confirmação da mudança de desenho");
-  const courseId = designUuid(value.courseId, "O Curso da mudança");
+  const courseId = designUuid(value.courseId, "O curso da mudança");
   const requestId = designRequestId(value.requestId, "A identidade da requisição");
   if (value.contract !== "aralearn.course-design-change.v2" ||
       expectedCourseId && courseId !== expectedCourseId ||
@@ -1227,7 +1490,7 @@ export function normalizeCourseDesignChange(value, {
   return Object.freeze({
     contract: value.contract,
     courseId,
-    courseRevision: designInteger(value.courseRevision, "A revisão do Curso", {
+    courseRevision: designInteger(value.courseRevision, "O estado corrente do curso", {
       minimum: 1,
       maximum: Number.MAX_SAFE_INTEGER
     }),
@@ -1288,7 +1551,7 @@ export function normalizeCourseSourcesPage(value, {
   if ((expectedCourseId && normalized.courseId !== expectedCourseId) ||
       (expectedCourseRevision !== null &&
        normalized.courseRevision !== expectedCourseRevision)) {
-    fail("course_revision_changed", "O Curso mudou durante a leitura de fontes.");
+    fail("course_revision_changed", "O curso mudou durante a leitura de fontes.");
   }
   if ((expectedMode && normalized.mode !== expectedMode) ||
       (expectedSourceId !== null && normalized.query.sourceId !== expectedSourceId) ||
@@ -1362,12 +1625,12 @@ export function normalizeCourseAuthoringOutline(value, {
   }
   const course = normalizeCourseDetail(value, { expectedCourseId });
   if (expectedRevision !== null && course.revision !== expectedRevision) {
-    fail("course_revision_changed", "O Curso mudou durante a leitura.");
+    fail("course_revision_changed", "O curso mudou durante a leitura.");
   }
   if (text(value.outline.courseId) !== course.courseId ||
       outlineRequiredText(value.outline.title, "O título da estrutura") !== course.title ||
       (text(value.outline.goal) || null) !== course.goal) {
-    fail("invalid_course_outline", "A estrutura não corresponde ao Curso aberto.");
+    fail("invalid_course_outline", "A estrutura não corresponde ao curso aberto.");
   }
 
   const identities = new Set();
@@ -1378,12 +1641,12 @@ export function normalizeCourseAuthoringOutline(value, {
   let studyUnitCount = 0;
   value.outline.modules.forEach((moduleValue, modulePosition) => {
     if (!isPlainObject(moduleValue) || !Array.isArray(moduleValue.lessons)) {
-      fail("invalid_course_outline", "Um Módulo da estrutura é inválido.");
+      fail("invalid_course_outline", "Um módulo da estrutura é inválido.");
     }
-    const moduleId = outlineIdentity(moduleValue.id, "A identidade do Módulo");
-    const moduleTitle = outlineRequiredText(moduleValue.title, "O título do Módulo");
+    const moduleId = outlineIdentity(moduleValue.id, "A identidade do módulo");
+    const moduleTitle = outlineRequiredText(moduleValue.title, "O título do módulo");
     const moduleIdentity = `module\u0000${moduleId}`;
-    if (identities.has(moduleIdentity)) fail("invalid_course_outline", "A estrutura repete um Módulo.");
+    if (identities.has(moduleIdentity)) fail("invalid_course_outline", "A estrutura repete um módulo.");
     identities.add(moduleIdentity);
     rows.push(Object.freeze({
       kind: "module",
@@ -1399,13 +1662,13 @@ export function normalizeCourseAuthoringOutline(value, {
     moduleValue.lessons.forEach((lessonValue, lessonPosition) => {
       if (!isPlainObject(lessonValue) || !Array.isArray(lessonValue.topics) ||
           !Array.isArray(lessonValue.microsequences)) {
-        fail("invalid_course_outline", "Uma Lição da estrutura é inválida.");
+        fail("invalid_course_outline", "Uma lição da estrutura é inválida.");
       }
       lessonCount += 1;
-      const lessonId = outlineIdentity(lessonValue.id, "A identidade da Lição");
-      const lessonTitle = outlineRequiredText(lessonValue.title, "O título da Lição");
+      const lessonId = outlineIdentity(lessonValue.id, "A identidade da lição");
+      const lessonTitle = outlineRequiredText(lessonValue.title, "O título da lição");
       const lessonIdentity = `lesson\u0000${lessonId}`;
-      if (identities.has(lessonIdentity)) fail("invalid_course_outline", "A estrutura repete uma Lição.");
+      if (identities.has(lessonIdentity)) fail("invalid_course_outline", "A estrutura repete uma lição.");
       identities.add(lessonIdentity);
       rows.push(Object.freeze({
         kind: "lesson",
@@ -1423,7 +1686,7 @@ export function normalizeCourseAuthoringOutline(value, {
           fail("invalid_course_outline", "Um Tópico da estrutura é inválido.");
         }
         topicCount += 1;
-        const topicId = outlineIdentity(topicValue.id, "A identidade do Tópico");
+        const topicId = outlineIdentity(topicValue.id, "A identidade do tópico");
         const topicKey = `topic\u0000${topicId}`;
         if (identities.has(topicKey)) fail("invalid_course_outline", "A estrutura repete um Tópico.");
         identities.add(topicKey);
@@ -1441,25 +1704,25 @@ export function normalizeCourseAuthoringOutline(value, {
       });
       lessonValue.microsequences.forEach((microsequenceValue, microsequencePosition) => {
         if (!isPlainObject(microsequenceValue)) {
-          fail("invalid_course_outline", "Uma Microssequência didática da estrutura é inválida.");
+          fail("invalid_course_outline", "Uma microssequência didática da estrutura é inválida.");
         }
         const microsequenceId = outlineIdentity(
           microsequenceValue.id,
-          "A identidade da Microssequência didática"
+          "A identidade da microssequência didática"
         );
         const microsequenceIdentity = `microsequence\u0000${microsequenceId}`;
         if (identities.has(microsequenceIdentity)) {
-          fail("invalid_course_outline", "A estrutura repete uma Microssequência didática.");
+          fail("invalid_course_outline", "A estrutura repete uma microssequência didática.");
         }
         identities.add(microsequenceIdentity);
         const count = naturalNumber(microsequenceValue.studyUnitCount);
         if (count === null) {
-          fail("invalid_course_outline", "A contagem da Microssequência didática é inválida.");
+          fail("invalid_course_outline", "A contagem da microssequência didática é inválida.");
         }
         studyUnitCount += count;
         const title = outlineRequiredText(
           microsequenceValue.title,
-          "O título da Microssequência didática"
+          "O título da microssequência didática"
         );
         const row = Object.freeze({
           kind: "microsequence",
@@ -1469,7 +1732,7 @@ export function normalizeCourseAuthoringOutline(value, {
           title,
           summary: outlineOptionalText(
             microsequenceValue.goal || microsequenceValue.role,
-            "A descrição da Microssequência didática",
+            "A descrição da microssequência didática",
             4_000
           ),
           context: `${moduleTitle} · ${lessonTitle}`,
@@ -1522,7 +1785,7 @@ export function classifyCourseAuthoringError(error, { knownCourse = null } = {})
   if (offline && knownCourse) {
     return Object.freeze({
       kind: "offline-known",
-      message: "Este Curso é conhecido neste dispositivo, mas o conteúdo não está disponível agora."
+      message: "Este curso é conhecido neste dispositivo, mas o conteúdo não está disponível agora."
     });
   }
   if ([
@@ -1535,19 +1798,19 @@ export function classifyCourseAuthoringError(error, { knownCourse = null } = {})
   ].includes(code) || status === 403 || status === 404) {
     return Object.freeze({
       kind: "access-revoked",
-      message: "O acesso a este Curso não está mais disponível."
+      message: "O acesso a este curso não está mais disponível."
     });
   }
   if (["40001", "course_revision_changed"].includes(code)) {
     return Object.freeze({
       kind: "revision-changed",
-      message: "O Curso mudou durante a leitura. Recarregue para ver a versão atual."
+      message: "O curso mudou durante a leitura. Recarregue para ver a versão atual."
     });
   }
   return Object.freeze({
     kind: "error",
     message: offline
-      ? "Não foi possível acessar os Cursos sem conexão."
+      ? "Não foi possível acessar os cursos sem conexão."
       : "Não foi possível carregar esta área agora."
   });
 }

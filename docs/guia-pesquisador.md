@@ -26,31 +26,53 @@ aprendeu ou transferiu conhecimento.
 
 ## Escolher unidade de análise e medida
 
-Uma pessoa estudando, uma StudyUnit, um requisito de evidência, uma sessão de
-autoria e um Curso sob certa condição são unidades diferentes. Declare a
+Uma pessoa estudando, uma unidade de estudo, um requisito de evidência, uma sessão de
+autoria e um curso sob certa condição são unidades diferentes. Declare a
 unidade, o instante do recorte, o denominador e os casos ausentes antes de
 calcular ou interpretar.
 
 Quantidade de mudanças do GPT não é qualidade autoral. Conformidade estrutural
-de uma Unit não é desempenho do estudante. Latência, rede e Storage não são
+de uma unidade não é desempenho do estudante. Latência, rede e Storage não são
 medidas de aprendizagem.
 
 ## Fixar condições sem arquitetura paralela
 
-O catálogo possui quatro parâmetros pedagógicos:
+O catálogo 1.1.0 possui quatro parâmetros pedagógicos:
 
-1. teto de novas AnalysisUnits por StudyUnit;
-2. formas de explicação por AnalysisUnit;
+1. teto de novas unidades de análise por unidade de estudo;
+2. formas de explicação por unidade de análise;
 3. oportunidades mínimas de prática por requisito;
 4. dimensões de variação da prática.
 
-Direção editorial é registrada separadamente. Para comparar uma condição,
-crie um Curso privado independente, fixe a configuração e documente o que deve
-permanecer igual. Não existe entidade de Variante nem bloqueio experimental.
+E dois alvos editoriais quantitativos flexíveis:
 
-Ao comparar teto 1 e 2, preserve o mesmo inventário semântico. O número de
-StudyUnits pode mudar; compactar AnalysisUnits para produzir tamanhos parecidos
+1. palavras por resposta de autoria;
+2. palavras por unidade de estudo.
+
+Os alvos servem para comparar condições de desenho. No conteúdo, também é
+possível confrontar o alvo com a extensão observada da unidade de estudo. O
+alvo da resposta de autoria não é uma medida de conversa observada: Analytics
+não persiste transcrição. Os alvos não são mínimos ou máximos, não medem
+qualidade e não autorizam ocultar decisões, retirar conteúdo, compactar
+novidades nem atomizar unidades.
+
+Direção editorial é registrada separadamente. O estado `default` exige
+calibração contextual automática pelo GPT para cada microssequência ou unidade;
+não representa um preset fixo. Para comparar uma condição, crie um curso privado
+independente, fixe deliberadamente os valores pertinentes e documente o que
+deve permanecer igual. Uma definição do pesquisador prevalece sobre a
+calibração contextual. Não existe entidade de variante nem bloqueio
+experimental.
+
+Ao comparar teto 1 e 2, preserve o mesmo repertório semântico. O número de
+unidades de estudo pode mudar; compactar unidades de análise para produzir tamanhos parecidos
 destrói a condição que se pretendia comparar.
+
+O fluxo global antes dos lotes, a aprovação apenas do que foi inspecionável e a
+fronteira pública em linguagem humana são invariantes do produto, não condições
+experimentais. Distribuição editorial, formas de explicação, prática e outras
+dimensões já configuráveis podem ser calibradas pelo GPT ou fixadas para a
+pesquisa.
 
 Configuração formal de progressão ou representação só é justificável quando uma
 diferença educacional concreta será produzida e comparada. Não crie catálogo por
@@ -58,21 +80,25 @@ antecipação.
 
 ## Congelar o artefato quando necessário
 
-O Curso cotidiano continua mutável. Se uma investigação precisar reproduzir o
+O curso cotidiano continua mutável. Se uma investigação precisar reproduzir o
 artefato apresentado a um grupo, exporte explicitamente o estado e a
 configuração pertinentes e guarde-os segundo o plano de dados do estudo.
 
-**Exportar Analytics** fornece apenas o snapshot quantitativo exibido. Ele não
-contém a composição completa do Curso e não substitui a exportação do artefato.
-Registre também a data, o escopo e quaisquer mudanças posteriores relevantes.
+**Baixar dados de autoria** fornece o snapshot quantitativo exibido, inclusive
+a configuração efetivamente aplicada e selada nas unidades materializadas. Ele
+permite comparar o desenho entre publicações ou cópias experimentais, mas não
+contém a composição completa do curso nem substitui a exportação explícita do
+artefato. Registre também a data, o escopo e quaisquer mudanças posteriores
+relevantes. Não é necessário criar histórico universal ou ledger no produto.
 
 ## Usar Analytics com limites claros
 
-Analytics oferece duas leituras por Curso, Parte, Microssequência ou StudyUnit:
+Analytics oferece duas leituras por curso, parte, microssequência ou unidade de estudo:
 
-- **Desenho**: StudyUnits, parâmetros efetivos, AnalysisUnits, introduções,
-  formas explicativas, componentes, prática, variação e Fontes por papel;
-- **Autoria**: Observações, parâmetros definidos, Units revisadas manualmente e
+- **Desenho**: unidades de estudo, parâmetros efetivos, extensão observada do
+  conteúdo, unidades de análise, introduções, usos, retomadas, formas
+  explicativas, componentes, prática, variação e fontes por papel;
+- **Autoria**: observações, parâmetros definidos, unidades revisadas manualmente e
   origem observável de criação e última revisão.
 
 Ausência de atribuição permanece ausente. O JSON exportado deve conter os mesmos
@@ -93,7 +119,7 @@ aprendizagem ou atenção dessas contagens.
 | limite | para quais pessoas, tarefas e contextos a interpretação vale? |
 
 Um parâmetro definido demonstra a condição registrada. Uma distribuição de
-Units demonstra o artefato produzido. Nenhum deles informa sozinho exposição,
+unidades demonstra o artefato produzido. Nenhum deles informa sozinho exposição,
 compreensão ou efeito.
 
 ## Observações e privacidade
@@ -107,7 +133,7 @@ decisão legítima, a retenção, o acesso e o risco de vigilância ou coerção
 AraLearn não coleta transcript, prompt, cadeia de pensamento, clickstream,
 rolagem ou tempo em tela para Analytics.
 
-Uma reutilização científica de conteúdo, Observações ou Fontes exige finalidade,
+Uma reutilização científica de conteúdo, observações ou fontes exige finalidade,
 minimização, governança, base adequada e avaliação de reidentificação. Dados
 pseudonimizados continuam pessoais enquanto houver possibilidade razoável de
 associação.

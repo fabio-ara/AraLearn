@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  COURSE_SOURCE_ROLES,
   CourseSourcesError,
   normalizeCourseSourceAttachment,
   normalizeCourseSourcePdfDownload,
@@ -50,6 +51,7 @@ function attachment(overrides = {}) {
 
 function sourceDocument(overrides = {}) {
   return {
+    sourceRole: "technical_conceptual",
     kind: "article",
     title: "Artigo de referência",
     authorship: "Autoria",
@@ -66,6 +68,28 @@ function sourceDocument(overrides = {}) {
     ...overrides
   };
 }
+
+test("papel da fonte é distinto da relação de proveniência", () => {
+  assert.deepEqual(COURSE_SOURCE_ROLES, [
+    "curricular_scope", "assessment_evidence", "technical_conceptual"
+  ]);
+  for (const sourceRole of COURSE_SOURCE_ROLES) {
+    const normalized = normalizeCourseSourceCommand({
+      type: "save_source",
+      sourceId: `source-${sourceRole}`,
+      expectedSourceRevision: 0,
+      source: sourceDocument({ sourceRole })
+    });
+    assert.equal(normalized.source.sourceRole, sourceRole);
+    assert.equal(sourceLink().relation, "supported_by");
+  }
+  assert.throws(() => normalizeCourseSourceCommand({
+    type: "save_source",
+    sourceId: "source-invalid-role",
+    expectedSourceRevision: 0,
+    source: sourceDocument({ sourceRole: "supported_by" })
+  }), (error) => error.code === "invalid_course_source");
+});
 
 function pdfStorage(uniqueBytes = 0) {
   return { uniqueBytes, maxUniqueBytes: 64 * 1024 * 1024 };
@@ -102,13 +126,14 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     mode: "save",
     sourceId: null,
     expectedSourceRevision: 0,
-    source: { title: "Edital Dataprev 2026" }
+    source: { title: "Edital Dataprev 2026", sourceRole: "curricular_scope" }
   }), {
     mode: "save",
     sourceId: null,
     expectedSourceRevision: 0,
     source: {
       kind: "document",
+      sourceRole: "curricular_scope",
       title: "Edital Dataprev 2026",
       authorship: null,
       publicationDate: null,
@@ -685,6 +710,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       revision: 1,
       status: "active",
       kind: "other",
+      sourceRole: null,
       title: "Referência importada",
       authorship: null,
       publicationDate: null,
@@ -736,6 +762,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       revision: 105,
       status: "active",
       kind: "document",
+      sourceRole: "assessment_evidence",
       title: "Fonte pinada",
       authorship: "Autoria",
       publicationDate: "2026",

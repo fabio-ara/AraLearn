@@ -1,0 +1,782 @@
+{
+  "format": "aralearn.global-authoring-conversation-eval.v1",
+  "epistemicStatus": "synthetic_flow_for_acceptance_and_human_review",
+  "course": {
+    "title": "Redes de computadores para iniciantes",
+    "objective": "Explicar como dados percorrem uma rede local e chegam a um serviço.",
+    "audience": "Pessoas iniciantes em redes",
+    "prerequisites": [],
+    "authorIntent": "Criar o curso para uma turma técnica, não para o próprio autor"
+  },
+  "scopeItems": [
+    "necessidades e elementos de uma comunicação",
+    "dados, sinais e transmissão",
+    "meios guiados e não guiados",
+    "LAN, WAN e WLAN",
+    "quadro Ethernet, endereço MAC e porta do switch",
+    "funcionamento de switches Ethernet",
+    "modelos em camadas e encapsulamento",
+    "endereçamento IP e entrega local",
+    "TCP, UDP e portas de transporte",
+    "DNS e HTTP",
+    "diagnóstico básico do percurso de uma requisição"
+  ],
+  "artifacts": {
+    "mapa-global-v1": {
+      "kind": "mapa_curricular",
+      "modules": [
+        {
+          "title": "Fundamentos da comunicação em rede",
+          "objective": "Dar sentido à comunicação e aos meios que carregam sinais.",
+          "lessons": [
+            {
+              "title": "Por que redes existem",
+              "objective": "Relacionar necessidades humanas aos elementos de uma comunicação.",
+              "microsequences": [
+                {
+                  "title": "Por que redes existem",
+                  "objective": "Reconhecer problemas resolvidos por uma rede.",
+                  "dependsOn": [],
+                  "covers": ["necessidades e elementos de uma comunicação"]
+                },
+                {
+                  "title": "Elementos de uma comunicação",
+                  "objective": "Relacionar origem, destino, mensagem, meio e regras.",
+                  "dependsOn": ["Por que redes existem"],
+                  "covers": ["necessidades e elementos de uma comunicação"]
+                }
+              ]
+            },
+            {
+              "title": "Dados, sinais e meios",
+              "objective": "Distinguir informação, representação e suporte físico.",
+              "microsequences": [
+                {
+                  "title": "Dados e sinais",
+                  "objective": "Distinguir o dado do sinal que o transporta.",
+                  "dependsOn": ["Elementos de uma comunicação"],
+                  "covers": ["dados, sinais e transmissão"]
+                },
+                {
+                  "title": "Meios guiados e não guiados",
+                  "objective": "Comparar como sinais percorrem cabos e o espaço.",
+                  "dependsOn": ["Dados e sinais"],
+                  "covers": ["meios guiados e não guiados"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Ethernet em uma rede local",
+          "objective": "Explicar como quadros circulam entre dispositivos de uma rede local.",
+          "lessons": [
+            {
+              "title": "Quadros e identificação local",
+              "objective": "Apresentar a informação usada na entrega local.",
+              "microsequences": [
+                {
+                  "title": "Quadro Ethernet, endereço MAC e porta do switch",
+                  "objective": "Relacionar o quadro aos endereços e às portas físicas do switch.",
+                  "dependsOn": ["Meios guiados e não guiados"],
+                  "covers": ["quadro Ethernet, endereço MAC e porta do switch"]
+                }
+              ]
+            },
+            {
+              "title": "Decisões do switch",
+              "objective": "Acompanhar aprendizagem e encaminhamento quadro a quadro.",
+              "microsequences": [
+                {
+                  "title": "Como switches aprendem e encaminham",
+                  "objective": "Explicar tabela MAC, aprendizagem, encaminhamento e flooding.",
+                  "dependsOn": ["Quadro Ethernet, endereço MAC e porta do switch"],
+                  "covers": ["funcionamento de switches Ethernet"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Organização e camadas",
+          "objective": "Situar redes por alcance e organizar protocolos em camadas.",
+          "lessons": [
+            {
+              "title": "Alcance e acesso",
+              "objective": "Comparar redes locais, de longa distância e sem fio.",
+              "microsequences": [
+                {
+                  "title": "LAN, WAN e WLAN",
+                  "objective": "Distinguir redes pelo alcance e pela forma de acesso.",
+                  "dependsOn": ["Meios guiados e não guiados"],
+                  "covers": ["LAN, WAN e WLAN"]
+                }
+              ]
+            },
+            {
+              "title": "Comunicação em camadas",
+              "objective": "Explicar responsabilidades e encapsulamento.",
+              "microsequences": [
+                {
+                  "title": "Modelos em camadas e encapsulamento",
+                  "objective": "Acompanhar uma mensagem ao ganhar e perder informações de controle.",
+                  "dependsOn": ["Elementos de uma comunicação"],
+                  "covers": ["modelos em camadas e encapsulamento"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Da rede ao serviço",
+          "objective": "Acompanhar uma requisição desde a entrega IP até a aplicação.",
+          "lessons": [
+            {
+              "title": "Entrega entre redes",
+              "objective": "Relacionar endereço IP e decisão de entrega.",
+              "microsequences": [
+                {
+                  "title": "Endereçamento IP e entrega local",
+                  "objective": "Decidir se um destino está na rede local.",
+                  "dependsOn": ["Modelos em camadas e encapsulamento"],
+                  "covers": ["endereçamento IP e entrega local"]
+                }
+              ]
+            },
+            {
+              "title": "Transporte e aplicação",
+              "objective": "Relacionar serviço, porta e protocolo de aplicação.",
+              "microsequences": [
+                {
+                  "title": "TCP, UDP e portas de transporte",
+                  "objective": "Relacionar uma conversa de rede ao processo correto.",
+                  "dependsOn": ["Endereçamento IP e entrega local"],
+                  "covers": ["TCP, UDP e portas de transporte"]
+                },
+                {
+                  "title": "DNS e HTTP no percurso de uma requisição",
+                  "objective": "Acompanhar resolução de nome e acesso a um serviço web.",
+                  "dependsOn": ["TCP, UDP e portas de transporte"],
+                  "covers": ["DNS e HTTP"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "mapa-global-v2": {
+      "kind": "mapa_curricular",
+      "modules": [
+        {
+          "title": "Fundamentos da comunicação em rede",
+          "objective": "Dar sentido à comunicação e aos meios que carregam sinais.",
+          "lessons": [
+            {
+              "title": "Por que redes existem",
+              "objective": "Relacionar necessidades humanas aos elementos de uma comunicação.",
+              "microsequences": [
+                {
+                  "title": "Por que redes existem",
+                  "objective": "Reconhecer problemas resolvidos por uma rede.",
+                  "dependsOn": [],
+                  "covers": ["necessidades e elementos de uma comunicação"]
+                },
+                {
+                  "title": "Elementos de uma comunicação",
+                  "objective": "Relacionar origem, destino, mensagem, meio e regras.",
+                  "dependsOn": ["Por que redes existem"],
+                  "covers": ["necessidades e elementos de uma comunicação"]
+                }
+              ]
+            },
+            {
+              "title": "Dados, sinais e meios",
+              "objective": "Distinguir informação, representação e suporte físico.",
+              "microsequences": [
+                {
+                  "title": "Dados e sinais",
+                  "objective": "Distinguir o dado do sinal que o transporta.",
+                  "dependsOn": ["Elementos de uma comunicação"],
+                  "covers": ["dados, sinais e transmissão"]
+                },
+                {
+                  "title": "Meios guiados e não guiados",
+                  "objective": "Comparar como sinais percorrem cabos e o espaço.",
+                  "dependsOn": ["Dados e sinais"],
+                  "covers": ["meios guiados e não guiados"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Redes por alcance e acesso",
+          "objective": "Situar redes locais, de longa distância e sem fio antes de detalhar Ethernet.",
+          "lessons": [
+            {
+              "title": "LAN, WAN e WLAN em situações concretas",
+              "objective": "Comparar alcance e acesso a partir de casa, campus e internet.",
+              "microsequences": [
+                {
+                  "title": "LAN, WAN e WLAN",
+                  "objective": "Distinguir redes pelo alcance e pela forma de acesso.",
+                  "dependsOn": ["Meios guiados e não guiados"],
+                  "covers": ["LAN, WAN e WLAN"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Ethernet em uma rede local",
+          "objective": "Explicar como quadros circulam entre dispositivos de uma rede local.",
+          "lessons": [
+            {
+              "title": "Quadros e identificação local",
+              "objective": "Apresentar a informação usada na entrega local.",
+              "microsequences": [
+                {
+                  "title": "Quadro Ethernet, endereço MAC e porta do switch",
+                  "objective": "Relacionar o quadro aos endereços e às portas físicas do switch.",
+                  "dependsOn": ["Meios guiados e não guiados"],
+                  "covers": ["quadro Ethernet, endereço MAC e porta do switch"]
+                }
+              ]
+            },
+            {
+              "title": "Decisões do switch",
+              "objective": "Acompanhar aprendizagem e encaminhamento quadro a quadro.",
+              "microsequences": [
+                {
+                  "title": "Como switches aprendem e encaminham",
+                  "objective": "Explicar tabela MAC, aprendizagem, encaminhamento e flooding.",
+                  "dependsOn": ["Quadro Ethernet, endereço MAC e porta do switch"],
+                  "covers": ["funcionamento de switches Ethernet"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Camadas e entrega entre redes",
+          "objective": "Organizar protocolos e acompanhar a entrega por endereço IP.",
+          "lessons": [
+            {
+              "title": "Comunicação em camadas",
+              "objective": "Explicar responsabilidades e encapsulamento.",
+              "microsequences": [
+                {
+                  "title": "Modelos em camadas e encapsulamento",
+                  "objective": "Acompanhar uma mensagem ao ganhar e perder informações de controle.",
+                  "dependsOn": ["Quadro Ethernet, endereço MAC e porta do switch"],
+                  "covers": ["modelos em camadas e encapsulamento"]
+                }
+              ]
+            },
+            {
+              "title": "Entrega IP",
+              "objective": "Relacionar endereço IP e decisão de entrega.",
+              "microsequences": [
+                {
+                  "title": "Endereçamento IP e entrega local",
+                  "objective": "Decidir se um destino está na rede local.",
+                  "dependsOn": ["Modelos em camadas e encapsulamento"],
+                  "covers": ["endereçamento IP e entrega local"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Da rede ao serviço",
+          "objective": "Acompanhar uma requisição até a aplicação e diagnosticar falhas básicas.",
+          "lessons": [
+            {
+              "title": "Transporte e aplicação",
+              "objective": "Relacionar serviço, porta e protocolo de aplicação.",
+              "microsequences": [
+                {
+                  "title": "TCP, UDP e portas de transporte",
+                  "objective": "Relacionar uma conversa de rede ao processo correto.",
+                  "dependsOn": ["Endereçamento IP e entrega local"],
+                  "covers": ["TCP, UDP e portas de transporte"]
+                },
+                {
+                  "title": "DNS e HTTP no percurso de uma requisição",
+                  "objective": "Acompanhar resolução de nome e acesso a um serviço web.",
+                  "dependsOn": ["TCP, UDP e portas de transporte"],
+                  "covers": ["DNS e HTTP"]
+                }
+              ]
+            },
+            {
+              "title": "Diagnóstico do percurso",
+              "objective": "Localizar falhas simples sem confundir sintomas e causas.",
+              "microsequences": [
+                {
+                  "title": "Diagnóstico do pedido ao serviço",
+                  "objective": "Usar o percurso completo para localizar uma falha básica.",
+                  "dependsOn": [
+                    "Como switches aprendem e encaminham",
+                    "Endereçamento IP e entrega local",
+                    "DNS e HTTP no percurso de uma requisição"
+                  ],
+                  "covers": ["diagnóstico básico do percurso de uma requisição"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "parte-1-v1": {
+      "kind": "planejamento_de_parte",
+      "title": "Fundamentos e tipos de rede",
+      "intent": "Partir de situações concretas e chegar à classificação por alcance.",
+      "microsequences": [
+        "Por que redes existem",
+        "Elementos de uma comunicação",
+        "Dados e sinais",
+        "Meios guiados e não guiados",
+        "LAN, WAN e WLAN"
+      ],
+      "progression": [
+        "por que redes existem",
+        "elementos de uma comunicação",
+        "dados e sinais",
+        "meios guiados e não guiados",
+        "LAN, WAN e WLAN"
+      ]
+    },
+    "parte-1-v2": {
+      "kind": "planejamento_de_parte",
+      "title": "Fundamentos, tipos de rede e base de Ethernet",
+      "intent": "Partir de situações concretas e estabelecer quadro, endereço e porta antes do funcionamento do switch.",
+      "microsequences": [
+        "Por que redes existem",
+        "Elementos de uma comunicação",
+        "Dados e sinais",
+        "Meios guiados e não guiados",
+        "LAN, WAN e WLAN",
+        "Quadro Ethernet, endereço MAC e porta do switch"
+      ],
+      "progression": [
+        "por que redes existem",
+        "elementos de uma comunicação",
+        "dados e sinais",
+        "meios guiados e não guiados",
+        "LAN, WAN e WLAN",
+        "quadro Ethernet, endereço MAC e porta do switch"
+      ]
+    },
+    "parte-2-v1": {
+      "kind": "planejamento_de_parte",
+      "title": "Switches e comunicação em camadas",
+      "intent": "Explicar decisões do switch e depois situá-las no encapsulamento.",
+      "microsequences": [
+        "Como switches aprendem e encaminham",
+        "Modelos em camadas e encapsulamento"
+      ],
+      "progression": [
+        "situação com a tabela MAC vazia",
+        "aprendizagem pelo endereço de origem",
+        "consulta ao endereço de destino",
+        "destino conhecido e desconhecido",
+        "prática integrada",
+        "modelos em camadas e encapsulamento"
+      ]
+    },
+    "parte-2-v2": {
+      "kind": "planejamento_de_parte",
+      "title": "Como o switch aprende e encaminha",
+      "intent": "Desenvolver o mecanismo do switch por mudanças observáveis na tabela e deixar camadas para o lote seguinte.",
+      "microsequences": ["Como switches aprendem e encaminham"],
+      "progression": [
+        "situação-problema com a tabela MAC vazia",
+        "aprendizagem observando o endereço de origem",
+        "origem para aprender e destino para encaminhar",
+        "previsão da porta de saída",
+        "destino desconhecido e flooding",
+        "comparação entre destino conhecido e desconhecido",
+        "mudança de estado após o retorno",
+        "exemplo parcialmente resolvido",
+        "prática integrada",
+        "envelhecimento da tabela como extensão final"
+      ],
+      "sourceUse": {
+        "title": "IEEE 802.1D — Bridges and Bridged Networks",
+        "role": "tecnica_conceitual",
+        "relation": "supported_by",
+        "decision": "Usar para conferir o mecanismo; não ampliar o escopo curricular nem inferir cobrança em exame."
+      }
+    }
+  },
+  "conversation": [
+    {
+      "turn": 1,
+      "speaker": "autor",
+      "text": "Quero um curso extenso de redes de computadores para uma turma iniciante. Eles precisam entender desde por que redes existem até como uma requisição chega a um serviço, incluindo diagnóstico básico."
+    },
+    {
+      "turn": 2,
+      "speaker": "assistente",
+      "inspectableArtifact": "mapa-global-v1",
+      "text": "A ementa é extensa. Como o curso é destinado a iniciantes, organizei um mapa global em quatro módulos: fundamentos da comunicação; Ethernet; organização e camadas; da rede ao serviço. O mapa completo mostra módulos, lições, microssequências, dependências e a cobertura de cada item da ementa. [Abrir mapa curricular]\n\nQuer mudar cobertura, ordem ou ênfase?"
+    },
+    {
+      "turn": 3,
+      "speaker": "autor",
+      "text": "Quero LAN, WAN e WLAN antes de Ethernet. Também faltou reservar um fechamento para diagnóstico do percurso completo."
+    },
+    {
+      "turn": 4,
+      "speaker": "assistente",
+      "inspectableArtifact": "mapa-global-v2",
+      "text": "Ajustei o mapa: redes por alcance agora vêm antes de Ethernet, e o diagnóstico do percurso foi incluído no encerramento. Todos os itens da ementa estão cobertos no mapa completo. [Abrir mapa curricular]\n\nAprova essa organização ou quer outra mudança de cobertura, ordem ou ênfase?"
+    },
+    {
+      "turn": 5,
+      "speaker": "autor",
+      "approvesArtifact": "mapa-global-v2",
+      "text": "Aprovo o mapa assim."
+    },
+    {
+      "turn": 6,
+      "speaker": "assistente",
+      "inspectableArtifact": "parte-1-v1",
+      "text": "Mapa global aprovado. Para a primeira parte, proponho esta progressão:\n\n- por que redes existem;\n- elementos de uma comunicação;\n- dados e sinais;\n- meios guiados e não guiados;\n- LAN, WAN e WLAN.\n\nA ideia é partir de situações concretas antes de nomes formais. [Abrir planejamento da primeira parte]\n\nQuer mudar alguma ênfase antes de eu produzir?"
+    },
+    {
+      "turn": 7,
+      "speaker": "autor",
+      "text": "Inclua ainda quadro Ethernet, endereço MAC e porta do switch nesta primeira parte. Assim a turma chega preparada ao funcionamento do switch. Não mude o mapa global."
+    },
+    {
+      "turn": 8,
+      "speaker": "assistente",
+      "inspectableArtifact": "parte-1-v2",
+      "text": "Acrescentei quadro Ethernet, endereço MAC e porta do switch ao fim da primeira parte. A organização curricular permanece a mesma; mudou apenas o limite deste lote de produção. [Abrir planejamento da primeira parte]\n\nQuer que eu produza assim?"
+    },
+    {
+      "turn": 9,
+      "speaker": "autor",
+      "approvesArtifact": "parte-1-v2",
+      "text": "Sim, pode produzir."
+    },
+    {
+      "turn": 10,
+      "speaker": "assistente",
+      "text": "Primeira parte produzida. [Abrir conteúdo]\n\nPosso preparar a segunda parte?"
+    },
+    {
+      "turn": 11,
+      "speaker": "autor",
+      "text": "Abri o conteúdo. A sequência começa com situações reconhecíveis, explica os elementos e traz prática antes de chegar ao quadro Ethernet. Pode preparar a segunda parte."
+    },
+    {
+      "turn": 12,
+      "speaker": "assistente",
+      "inspectableArtifact": "parte-2-v1",
+      "text": "Para a segunda parte, proponho começar com uma tabela MAC vazia, acompanhar aprendizagem e encaminhamento quadro a quadro, praticar casos conhecidos e desconhecidos e então situar o mecanismo nas camadas. [Abrir planejamento da segunda parte]\n\nQuer mudar alguma ênfase antes de eu produzir?"
+    },
+    {
+      "turn": 13,
+      "speaker": "autor",
+      "text": "Deixe toda esta parte concentrada no switch e passe camadas para a terceira. Quero envelhecimento da tabela somente no final, depois da prática integrada."
+    },
+    {
+      "turn": 14,
+      "speaker": "assistente",
+      "text": "Ajustei o limite do lote sem mudar o mapa curricular: a segunda parte agora trata somente do switch, e envelhecimento aparece como extensão final."
+    },
+    {
+      "turn": 15,
+      "speaker": "autor",
+      "text": "Use também a IEEE 802.1D para conferir tecnicamente o comportamento de bridges e switches."
+    },
+    {
+      "turn": 16,
+      "speaker": "assistente",
+      "inspectableArtifact": "parte-2-v2",
+      "text": "Vou usar a IEEE 802.1D como fonte técnica e conceitual para conferir o mecanismo. Ela não redefine o escopo curricular e não será tratada como evidência de cobrança em exame. A progressão ajustada está completa em [Abrir planejamento da segunda parte].\n\nPosso produzir?"
+    },
+    {
+      "turn": 17,
+      "speaker": "autor",
+      "approvesArtifact": "parte-2-v2",
+      "text": "Pode produzir."
+    },
+    {
+      "turn": 18,
+      "speaker": "assistente",
+      "text": "Segunda parte produzida. [Abrir conteúdo]\n\nPosso preparar a terceira parte?"
+    },
+    {
+      "turn": 19,
+      "speaker": "autor",
+      "text": "Li o conteúdo. A tabela muda de um quadro para o seguinte, há previsão, comparação, um caso parcialmente resolvido e prática integrada. Como você tratou o que já tinha sido ensinado?"
+    },
+    {
+      "turn": 20,
+      "speaker": "assistente",
+      "text": "Antes de produzir, consultei o repertório do curso: quadro Ethernet, endereço MAC e porta do switch já estavam estabelecidos. A segunda parte os utiliza; endereço MAC é retomado na distinção entre origem e destino. As ideias novas ficaram concentradas em tabela MAC, aprendizagem, encaminhamento e flooding. [Abrir conteúdo]"
+    }
+  ],
+  "journeySteps": [
+    { "step": 1, "event": "autor_pede_curso_extenso", "evidence": "turn:1" },
+    { "step": 2, "event": "assistente_apresenta_mapa_global_curto", "evidence": "turn:2" },
+    { "step": 3, "event": "autor_muda_cobertura_e_ordem", "evidence": "turn:3" },
+    { "step": 4, "event": "assistente_ajusta_mapa", "evidence": "turn:4" },
+    { "step": 5, "event": "autor_aprova_mapa", "evidence": "turn:5" },
+    { "step": 6, "event": "assistente_planeja_primeira_parte", "evidence": "turn:6" },
+    { "step": 7, "event": "autor_corrige_primeira_parte", "evidence": "turn:7" },
+    { "step": 8, "event": "assistente_materializa_primeira_parte", "evidence": "tool:materializar_parte:1" },
+    { "step": 9, "event": "conteudo_da_primeira_parte_e_inspecionado", "evidence": "inspection:parte-1" },
+    { "step": 10, "event": "assistente_planeja_segunda_parte", "evidence": "turn:12" },
+    { "step": 11, "event": "autor_altera_uma_decisao", "evidence": "turn:13" },
+    { "step": 12, "event": "fonte_tecnica_entra_na_discussao", "evidence": "turn:16" },
+    { "step": 13, "event": "assistente_materializa_segunda_parte", "evidence": "tool:materializar_parte:2" },
+    { "step": 14, "event": "conteudo_da_segunda_parte_e_inspecionado", "evidence": "inspection:parte-2" },
+    { "step": 15, "event": "repertorio_acumulado_e_consultado", "evidence": "repertoire:before-part-2" }
+  ],
+  "toolTrace": [
+    {
+      "sequence": 1,
+      "task": "criar_curso",
+      "afterTurn": 1,
+      "arguments": {
+        "titulo": "Redes de computadores para iniciantes",
+        "objetivo": "Explicar como dados percorrem uma rede local e chegam a um serviço."
+      },
+      "resultingState": "curso_criado"
+    },
+    {
+      "sequence": 2,
+      "task": "salvar_mapa_curricular",
+      "afterTurn": 2,
+      "artifact": "mapa-global-v1",
+      "approved": false,
+      "resultingState": "mapa_global_proposto"
+    },
+    {
+      "sequence": 3,
+      "task": "salvar_mapa_curricular",
+      "afterTurn": 4,
+      "artifact": "mapa-global-v2",
+      "approved": false,
+      "resultingState": "mapa_global_ajustado"
+    },
+    {
+      "sequence": 4,
+      "task": "salvar_mapa_curricular",
+      "afterTurn": 5,
+      "artifact": "mapa-global-v2",
+      "approved": true,
+      "approvedByTurn": 5,
+      "resultingState": "mapa_global_aprovado"
+    },
+    {
+      "sequence": 5,
+      "task": "consultar_planejamento",
+      "afterTurn": 5,
+      "arguments": { "curso": "Redes de computadores para iniciantes" },
+      "resultingState": "mapa_global_aprovado"
+    },
+    {
+      "sequence": 6,
+      "task": "salvar_parte",
+      "afterTurn": 9,
+      "artifact": "parte-1-v2",
+      "approvedByTurn": 9,
+      "resultingState": "parte_1_aprovada"
+    },
+    {
+      "sequence": 7,
+      "task": "preparar_materializacao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "parte": 1 },
+      "resultingState": "parte_1_pronta_para_produzir"
+    },
+    {
+      "sequence": 8,
+      "task": "ajustar_configuracao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Por que redes existem", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 1, "formasDeExplicacao": ["concrete_example", "mechanism"], "minimoDePraticasPorRequisito": 1, "dimensoesDeVariacaoDaPratica": ["context"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 140 }, "direcaoEditorial": "Comece pela situação concreta e mantenha cada unidade focal sem omitir a explicação necessária." },
+      "resultingState": "configuracao_da_parte_1_calibrada"
+    },
+    {
+      "sequence": 9,
+      "task": "ajustar_configuracao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Elementos de uma comunicação", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "concrete_example", "representation_link"], "minimoDePraticasPorRequisito": 1, "dimensoesDeVariacaoDaPratica": ["case_or_data"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 180 }, "direcaoEditorial": "Preserve um mesmo caso de comunicação enquanto diferencia seus elementos." },
+      "resultingState": "configuracao_da_parte_1_calibrada"
+    },
+    {
+      "sequence": 10,
+      "task": "ajustar_configuracao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Dados e sinais", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "contrast", "concrete_example"], "minimoDePraticasPorRequisito": 1, "dimensoesDeVariacaoDaPratica": ["case_or_data"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 170 }, "direcaoEditorial": "Destaque a distinção entre informação e variação física com exemplo e contraste." },
+      "resultingState": "configuracao_da_parte_1_calibrada"
+    },
+    {
+      "sequence": 11,
+      "task": "ajustar_configuracao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Meios guiados e não guiados", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["contrast", "concrete_example", "application_condition"], "minimoDePraticasPorRequisito": 2, "dimensoesDeVariacaoDaPratica": ["case_or_data", "context"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 180 }, "direcaoEditorial": "Use comparação lado a lado quando a função for discriminar os meios." },
+      "resultingState": "configuracao_da_parte_1_calibrada"
+    },
+    {
+      "sequence": 12,
+      "task": "ajustar_configuracao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "LAN, WAN e WLAN", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "contrast", "application_condition"], "minimoDePraticasPorRequisito": 2, "dimensoesDeVariacaoDaPratica": ["case_or_data", "context"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 170 }, "direcaoEditorial": "Apresente as categorias em contextos reais antes de cobrar classificação sem pistas." },
+      "resultingState": "configuracao_da_parte_1_calibrada"
+    },
+    {
+      "sequence": 13,
+      "task": "ajustar_configuracao",
+      "afterTurn": 9,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Quadro Ethernet, endereço MAC e porta do switch", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "mechanism", "representation_link"], "minimoDePraticasPorRequisito": 2, "dimensoesDeVariacaoDaPratica": ["case_or_data", "external_representation"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 200 }, "direcaoEditorial": "Relacione quadro, endereço e porta numa representação de rede, sem os fundir numa lista de definições." },
+      "resultingState": "configuracao_da_parte_1_calibrada"
+    },
+    {
+      "sequence": 14,
+      "task": "materializar_parte",
+      "afterTurn": 9,
+      "course": "Redes de computadores para iniciantes",
+      "part": 1,
+      "contentInspection": "parte-1",
+      "resultingState": "parte_1_materializada"
+    },
+    {
+      "sequence": 15,
+      "task": "consultar_planejamento",
+      "afterTurn": 11,
+      "arguments": { "curso": "Redes de computadores para iniciantes" },
+      "resultingState": "planejamento_da_parte_2"
+    },
+    {
+      "sequence": 16,
+      "task": "manter_fonte",
+      "afterTurn": 15,
+      "arguments": {
+        "curso": "Redes de computadores para iniciantes",
+        "metadados": {
+          "tipo": "document",
+          "papel": "tecnica_conceitual",
+          "titulo": "IEEE 802.1D — Bridges and Bridged Networks",
+          "autoria": "IEEE",
+          "dataDePublicacao": "2022",
+          "idioma": "en",
+          "citacao": "IEEE Standard for Local and Metropolitan Area Networks — Bridges and Bridged Networks.",
+          "url": "https://standards.ieee.org/ieee/802.1D/6844/",
+          "edicaoOuVersao": "2022",
+          "disponibilidade": "restrita",
+          "verificacao": "adotada_pelo_autor",
+          "visibilidadeNoEstudo": "citacao_e_link"
+        }
+      },
+      "resultingState": "fonte_tecnica_disponivel"
+    },
+    {
+      "sequence": 17,
+      "task": "salvar_parte",
+      "afterTurn": 17,
+      "artifact": "parte-2-v2",
+      "approvedByTurn": 17,
+      "resultingState": "parte_2_aprovada"
+    },
+    {
+      "sequence": 18,
+      "task": "preparar_materializacao",
+      "afterTurn": 17,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "parte": 2 },
+      "repertoire": "before-part-2",
+      "resultingState": "parte_2_pronta_para_produzir"
+    },
+    {
+      "sequence": 19,
+      "task": "ajustar_configuracao",
+      "afterTurn": 17,
+      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Como switches aprendem e encaminham", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "mechanism", "contrast", "worked_example", "representation_link"], "minimoDePraticasPorRequisito": 3, "dimensoesDeVariacaoDaPratica": ["case_or_data", "support_level", "external_representation"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 210 }, "direcaoEditorial": "Mantenha a mesma rede e a tabela em evolução; intercale previsão, explicação e prática com apoio reduzido." },
+      "resultingState": "configuracao_da_parte_2_calibrada"
+    },
+    {
+      "sequence": 20,
+      "task": "materializar_parte",
+      "afterTurn": 17,
+      "course": "Redes de computadores para iniciantes",
+      "part": 2,
+      "contentInspection": "parte-2",
+      "resultingState": "parte_2_materializada"
+    }
+  ],
+  "persistedStates": [
+    { "id": "curso_criado", "mapApproval": "ausente", "partCount": 0, "studyUnitCount": 0, "sourceCount": 0 },
+    { "id": "mapa_global_proposto", "mapApproval": "proposto", "partCount": 0, "studyUnitCount": 0, "sourceCount": 0 },
+    { "id": "mapa_global_ajustado", "mapApproval": "proposto", "partCount": 0, "studyUnitCount": 0, "sourceCount": 0 },
+    { "id": "mapa_global_aprovado", "mapApproval": "aprovado", "partCount": 0, "studyUnitCount": 0, "sourceCount": 0 },
+    { "id": "parte_1_aprovada", "mapApproval": "aprovado", "partCount": 1, "studyUnitCount": 0, "sourceCount": 0 },
+    { "id": "parte_1_materializada", "mapApproval": "aprovado", "partCount": 1, "studyUnitCount": 8, "sourceCount": 0 },
+    { "id": "fonte_tecnica_disponivel", "mapApproval": "aprovado", "partCount": 1, "studyUnitCount": 8, "sourceCount": 1 },
+    { "id": "parte_2_aprovada", "mapApproval": "aprovado", "partCount": 2, "studyUnitCount": 8, "sourceCount": 1 },
+    { "id": "parte_2_materializada", "mapApproval": "aprovado", "partCount": 2, "studyUnitCount": 18, "sourceCount": 1 }
+  ],
+  "contentInspections": {
+    "parte-1": {
+      "openedFromTurn": 10,
+      "units": [
+        { "title": "Por que conectar computadores?", "kind": "problema", "visibleText": "Uma escola precisa compartilhar arquivos e uma impressora entre salas. O que a conexão precisa tornar possível?" },
+        { "title": "Os elementos da comunicação", "kind": "explicacao", "visibleText": "Origem, destino, mensagem, meio e regras cumprem papéis diferentes na mesma comunicação." },
+        { "title": "Identifique os elementos", "kind": "pratica", "visibleText": "Em uma mensagem enviada do celular ao servidor, identifique origem, destino, mensagem e meio." },
+        { "title": "Dado não é sinal", "kind": "explicacao", "visibleText": "O dado representa a informação; o sinal é a variação física usada para transportá-la." },
+        { "title": "Cabo ou espaço?", "kind": "comparacao", "visibleText": "Compare um sinal guiado por fibra com um sinal que se propaga pelo ar." },
+        { "title": "LAN, WAN e WLAN em contexto", "kind": "aplicacao", "visibleText": "Classifique os exemplos de uma casa, de um campus e da conexão entre cidades." },
+        { "title": "Leia um quadro Ethernet", "kind": "explicacao", "visibleText": "O quadro leva endereços MAC de origem e destino para a entrega na rede local." },
+        { "title": "Endereço e porta não são a mesma coisa", "kind": "pratica", "visibleText": "Associe cada endereço MAC ao dispositivo e cada porta ao ponto físico do switch." }
+      ]
+    },
+    "parte-2": {
+      "openedFromTurn": 18,
+      "units": [
+        { "title": "O que acontece com uma tabela vazia?", "kind": "problema", "visibleText": "A tabela MAC está vazia quando A envia um quadro a B. Preveja o que o switch pode saber antes de encaminhar." },
+        { "title": "Como o switch aprende", "kind": "explicacao", "visibleText": "Ao receber o quadro, o switch observa o endereço MAC de origem e o associa à porta de entrada." },
+        { "title": "Complete a tabela MAC", "kind": "pratica", "visibleText": "Depois dos quadros de A e C, complete as associações entre endereço MAC e porta." },
+        { "title": "Origem para aprender, destino para encaminhar", "kind": "explicacao", "visibleText": "A origem atualiza a tabela; o destino é consultado para decidir a saída." },
+        { "title": "Para qual porta?", "kind": "previsao", "visibleText": "Com o destino já conhecido, escolha a única porta de saída e explique a decisão." },
+        { "title": "Quando o destino é desconhecido", "kind": "explicacao", "visibleText": "Sem associação para o destino, o switch faz flooding pelas portas adequadas, exceto a de entrada." },
+        { "title": "Conhecido ou desconhecido?", "kind": "comparacao", "visibleText": "Compare encaminhamento seletivo e flooding usando o mesmo quadro e dois estados da tabela." },
+        { "title": "A tabela muda a cada quadro", "kind": "aplicacao", "visibleText": "O retorno de B permite aprender B; o próximo quadro para B já pode seguir por uma única porta." },
+        { "title": "Complete o caso parcialmente resolvido", "kind": "pratica_com_apoio", "visibleText": "A primeira atualização da tabela já está feita. Complete as duas decisões seguintes e justifique." },
+        { "title": "Integre aprendizagem e encaminhamento", "kind": "integracao", "visibleText": "Acompanhe uma sequência de quadros, atualize a tabela e decida entre porta única e flooding; ao final, examine o envelhecimento." }
+      ]
+    }
+  },
+  "repertoires": {
+    "before-part-2": {
+      "established": [
+        { "idea": "quadro Ethernet", "introducedIn": "parte-1", "use": "utilizada" },
+        { "idea": "endereço MAC", "introducedIn": "parte-1", "use": "retomada" },
+        { "idea": "porta do switch", "introducedIn": "parte-1", "use": "utilizada" }
+      ],
+      "newForPart": [
+        "tabela MAC",
+        "associação entre endereço MAC e porta",
+        "aprendizagem pelo endereço de origem",
+        "consulta ao endereço de destino",
+        "encaminhamento para destino conhecido",
+        "flooding para destino desconhecido",
+        "aprendizagem a partir do retorno",
+        "envelhecimento da tabela"
+      ]
+    }
+  },
+  "forbiddenPersistentMechanisms": [
+    "proposal_history",
+    "course_snapshot",
+    "planning_session_state",
+    "knowledge_graph",
+    "new_ledger"
+  ]
+}

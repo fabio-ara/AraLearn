@@ -21,16 +21,26 @@ Analytics descreve o estado corrente de um Curso. O contrato
 | `studyUnitCount` | quantas StudyUnits existem no escopo? |
 | `parameters` | quais valores pedagógicos foram efetivamente usados e por quantas Units? |
 | `editorialDirections` | quais direções editoriais foram aplicadas? |
-| `analysisUnits` | quais novidades foram inventariadas e quantas vezes introduzidas? |
+| `analysisUnits` | quais ideias foram acompanhadas e quantas vezes foram introduzidas, usadas e retomadas? |
 | `introductionsByStudyUnit` | como a novidade se distribui pelas StudyUnits? |
 | `explanationForms` | quais formas explicativas foram aplicadas? |
 | `components` | quais representações e formatos de resposta aparecem? |
 | `practiceByRequirement` | quantas oportunidades respondem a cada requisito de evidência? |
 | `practiceVariationDimensions` | quais dimensões variam na prática? |
 | `sourcesByRole` | quantas Fontes, Âncoras e Units aparecem por papel? |
+| `wordCountsByStudyUnit` | como a extensão observada em palavras se distribui entre unidades de estudo? |
 
-`parameters` contém exatamente os quatro parâmetros pedagógicos. Direção
-editorial permanece em campo separado.
+`parameters` contém as seis definições do catálogo: quatro parâmetros
+pedagógicos e dois alvos editoriais quantitativos flexíveis, palavras por
+resposta de autoria e por unidade de estudo. Os alvos não são limites nem
+autorizam compressão. O primeiro descreve configuração, não uma conversa
+observada; não há transcrição em Analytics. Direção editorial permanece em
+campo separado.
+
+Cada linha de `editorialDirections` conta as unidades alcançadas por aquela
+direção. Como direções herdadas de escopos diferentes são aplicadas em camadas,
+as linhas podem se sobrepor; sua soma não precisa coincidir com
+`studyUnitCount`.
 
 ## Autoria
 

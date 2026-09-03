@@ -1,6 +1,6 @@
 # Arquitetura do AraLearn
 
-O AraLearn conserva um Curso vivo que pode ser estudado, desenvolvido e revisto
+O AraLearn conserva um curso vivo que pode ser estudado, desenvolvido e revisto
 sob a mesma identidade. A arquitetura separa quatro responsabilidades:
 
 - PostgreSQL guarda relações e estado corrente;
@@ -10,52 +10,53 @@ sob a mesma identidade. A arquitetura separa quatro responsabilidades:
   uso.
 
 Essa separação evita transformar o chat, a interface ou um histórico de
-execução numa segunda autoridade do Curso.
+execução numa segunda autoridade do curso.
 
-## O Curso como raiz
+## O curso como raiz
 
-Um Curso reúne:
+Um curso reúne:
 
 - título, objetivo, propriedade e acesso direto;
-- Módulos, Lições, Microssequências e StudyUnits;
-- plano instrucional e Partes de autoria;
-- AnalysisUnits e requisitos de evidência;
-- parâmetros pedagógicos e direção editorial;
-- Fontes, Âncoras, PDFs e atribuições;
-- Observações e estado necessário à revisão;
-- estado pessoal de Estudo por pessoa.
+- módulos, lições, microssequências e unidades de estudo (`StudyUnit` no código);
+- mapa curricular global e partes operacionais de autoria;
+- repertório de unidades de análise (`AnalysisUnit` no código) e requisitos de evidência;
+- quatro parâmetros pedagógicos, dois alvos editoriais quantitativos e direção
+  editorial;
+- fontes, âncoras, PDFs e atribuições;
+- observações e estado necessário à revisão;
+- estado pessoal de estudo por pessoa.
 
-O Curso não possui estágio de publicação. Conteúdo válido fica disponível em
-Estudo assim que existe. Revisar uma StudyUnit não cria outra identidade nem uma
+O curso não possui estágio de publicação. Conteúdo válido fica disponível em
+Estudo assim que existe. Revisar uma unidade de estudo não cria outra identidade nem uma
 árvore de versões.
 
 ## Superfícies do produto
 
-**Estudo** apresenta os Cursos acessíveis, a hierarquia curricular, uma
-StudyUnit por vez, prática, progresso pessoal, marcas para rever e Observações.
-Um Curso compartilhado pode ser estudado sem conceder Autoria no original.
+**Estudo** apresenta os cursos acessíveis, a hierarquia curricular, uma unidade
+de estudo por vez, prática, progresso pessoal, marcas para rever e observações.
+Um curso compartilhado pode ser estudado sem conceder autoria no original.
 
-**Autoria** apresenta apenas Cursos próprios. O Curso abre diretamente em
+**Autoria** apresenta apenas cursos próprios. O curso abre diretamente em
 Conteúdo; Conteúdo e Planejamento permanecem no cabeçalho, enquanto Parâmetros,
 Fontes, Revisão, Analytics e Pessoas aparecem no menu compacto. A composição é
 estreita, móvel primeiro e usa um único rolador vertical.
 
 A autoria por conversa complementa essas superfícies. O GPT pode planejar,
-produzir, consultar Fontes, tratar Observações e aplicar mudanças; a interface
+produzir, consultar fontes, tratar observações e aplicar mudanças; a interface
 permite localizar, ler e revisar o resultado no contexto.
 
 ## Um catálogo humano para MCP e Actions
 
-MCP e Actions são transportes distintos sobre dezesseis tarefas humanas. O
+MCP e Actions são transportes distintos sobre dezessete tarefas humanas. O
 catálogo `courseHumanTasks.js` define nome, descrição, schema, efeito e hints. O
 MCP publica esse catálogo diretamente. O gerador OpenAPI o projeta para Actions
 sem manter uma segunda definição.
 
-As leituras são retomar Curso, consultar planejamento, preparar materialização,
-consultar configuração, consultar Observações, preparar revisão, consultar
-Fontes e consultar componentes. As escritas criam Curso, salvam Parte,
-materializam Parte, ajustam configuração, registram Observação, aplicam
-correções, mantêm Fonte e incorporam PDF.
+As leituras retomam curso, consultam planejamento, preparam materialização,
+consultam configuração e observações, preparam revisão e consultam fontes e
+componentes. As escritas criam curso, salvam o mapa curricular, definem e
+materializam partes, ajustam configuração, registram observações, aplicam
+correções, mantêm fontes e incorporam PDF.
 
 Argumentos públicos usam título, posição e referência humana. A camada
 confiável em `courseHumanTaskExecutor.js` resolve identidades e versões, produz
@@ -84,44 +85,69 @@ canal são recusadas no outro.
 
 ## Estrutura e leitura paginada
 
-A composição curricular usa linhas de entidade ligadas ao Curso. Leituras de
+A composição curricular usa linhas de entidade ligadas ao curso. Leituras de
 Estudo e Conteúdo são paginadas e validam que todas as páginas pertencem à mesma
-revisão. Um deep link pode indicar StudyUnit inicial sem tornar o cursor parte
+revisão. Um deep link pode indicar a unidade de estudo inicial sem tornar o cursor parte
 da URL.
 
-Conteúdo mantém uma janela limitada de StudyUnits no DOM. Pesquisa e índice
+Conteúdo mantém uma janela limitada de unidades de estudo no DOM. Pesquisa e índice
 permitem chegar rapidamente a qualquer Unidade, inclusive anterior. O renderer
 é o mesmo usado por Estudo, com respostas inertes durante a inspeção autoral.
 
-## Planejamento incremental
+## Mapa global e produção incremental
 
-O plano conserva público, escopo, resultados pretendidos, AnalysisUnits,
-requisitos de evidência e Partes. Cada Parte descreve um lote de autoria e as
-Microssequências que deverá desenvolver; não é nível curricular.
+O plano conserva público, pré-requisitos declarados, itens de escopo, mapa
+curricular, repertório acumulado, requisitos de evidência e partes. O mapa
+organiza todo o curso em módulos, lições e microssequências antes de qualquer
+materialização. Cada item obrigatório do escopo aponta para os lugares do mapa
+em que será ensinado e, depois da produção, para as unidades que o desenvolveram.
 
-O fluxo conversacional propõe uma Parte por vez. Salvar a Parte também salva a
-estrutura humana necessária para que suas AnalysisUnits e requisitos tenham um
-alvo pedagógico. Depois, a preparação reúne apenas o recorte da Parte e a
-materialização grava suas StudyUnits.
+O mesmo mapa pode existir como rascunho ou aprovado. A aprovação é uma
+propriedade do artefato completo que estava inspecionável; ela não aprova
+unidades futuras. Partes só podem agrupar microssequências já pertencentes ao
+mapa aprovado. Elas descrevem lotes de planejamento focal, produção e revisão,
+mas não acrescentam nível curricular.
 
-Não existe quantidade-alvo de StudyUnits. O teto de novas AnalysisUnits muda a
-distribuição da novidade, não seu inventário nem a profundidade necessária.
+Depois da progressão local aprovada, a preparação reúne somente o lote, sua
+configuração e o repertório necessário. A materialização grava as unidades de
+estudo e atualiza, por derivação do estado corrente, onde cada ideia foi
+introduzida, usada ou retomada.
 
-## Desenho aplicado à StudyUnit
+Não existe quantidade-alvo de unidades. O teto de novas unidades de análise
+muda a distribuição da novidade, não o inventário nem a profundidade necessária.
 
-Parâmetros e direção editorial possuem atribuição corrente por escopo. Limpar
-uma definição restaura herança e remove a atribuição local; não cria uma linha
-histórica de “limpeza”.
+## Desenho aplicado à unidade de estudo
 
-Quando uma StudyUnit é produzida ou revisada, ela guarda o recorte de desenho
-efetivamente aplicado: AnalysisUnits e requisitos pertinentes, valores
-pedagógicos, direção editorial, componentes e oportunidades de prática. Esse
-registro focal permite inspeção e Analytics sem conservar contexto de execução
-da Parte inteira.
+Parâmetros pedagógicos, alvos editoriais e direção editorial possuem atribuição
+corrente por escopo. Limpar uma definição restaura herança e remove a atribuição
+local; não cria uma linha histórica de “limpeza”.
+
+Quando uma unidade de estudo é produzida ou revisada, ela guarda o recorte de desenho
+efetivamente aplicado: ideias e requisitos pertinentes, valores pedagógicos,
+alvos editoriais, direção editorial, componentes e oportunidades de prática.
+Esse registro focal permite inspeção e Analytics sem conservar contexto de
+execução da parte inteira.
+
+Ideias introduzidas são persistidas separadamente das ideias estabelecidas que
+a unidade apenas utiliza. Retomadas são derivadas das explicações de ideias já
+estabelecidas. Identidade, nome, descrição curta e referências às unidades
+permitem consultar o repertório sem criar ontologia, grafo ou ledger paralelo.
+
+O estado `default` exige que o GPT calibre automaticamente cada parâmetro para a
+microssequência ou unidade, conforme conteúdo, função e público. Ele não é um
+preset fixo. Uma definição deliberadamente fixada pelo pesquisador prevalece.
+Os alvos de palavras orientam a extensão, mas não são limites e não autorizam
+comprimir nem omitir conteúdo necessário.
+
+Fluxo global antes dos lotes, aprovação apenas do artefato inspecionável e
+fronteira pública em linguagem humana são invariantes. Distribuição editorial,
+formas explicativas e prática são dimensões calibráveis no mecanismo existente.
+Princípios pedagógicos orientam a produção e os testes de aceitação; não se
+convertem automaticamente em tabelas, flags ou pipelines.
 
 ## Concorrência e repetição segura
 
-Cada Curso possui revisão crescente; objetos editáveis também possuem uma
+Cada curso possui revisão crescente; objetos editáveis também possuem uma
 versão corrente quando necessário. Uma escrita informa o estado que leu. Se o
 objeto mudou, a camada confiável relê e reconstrói a mesma intenção ou devolve
 uma decisão humana quando isso não for seguro.
@@ -130,11 +156,11 @@ Um recibo temporário por pedido permite recuperar resposta perdida sem duplicar
 efeito. Recibos expirados são removidos pela retenção. Eles não formam um
 histórico universal de mudanças.
 
-## Fontes, Âncoras e PDFs
+## Fontes, âncoras e PDFs
 
-Fonte e Âncora são estado corrente. A versão serve à concorrência e aos deep
+Fonte e âncora são estado corrente. A versão serve à concorrência e aos deep
 links; versões antigas não constituem uma biblioteca paralela. Uma atribuição
-liga a Fonte e suas Âncoras a um item do plano ou StudyUnit corrente.
+liga a fonte e suas âncoras a um item do plano ou unidade de estudo corrente.
 
 O bucket privado `course-source-pdfs` contém os bytes. O banco conserva o
 descritor e o vínculo ativo ou removido. A ingestão calcula e verifica SHA-256,
@@ -148,11 +174,11 @@ reativa o vínculo após nova verificação.
 
 ## Observações e revisão
 
-Uma Observação pertence a uma pessoa e a um alvo. Selecionar várias StudyUnits
+Uma observação pertence a uma pessoa e a um alvo. Selecionar várias unidades de estudo
 cria registros separados; não existe entidade de lote. A caixa autoral pode
 consultar as abertas por escopo.
 
-Preparar revisão amplia o foco para StudyUnits afetadas por progressão,
+Preparar revisão amplia o foco para unidades afetadas por progressão,
 pré-requisitos, transições, exemplos e prática. Aplicar correções grava o conjunto
 aprovado e a inspeção seguinte permite conferir o resultado. Reversibilidade
 cotidiana vem de poder reabrir qualquer ponto e revisá-lo outra vez.
@@ -160,13 +186,14 @@ cotidiana vem de poder reabrir qualquer ponto e revisá-lo outra vez.
 ## Analytics
 
 Analytics deriva um snapshot quantitativo do estado corrente. **Desenho** conta
-StudyUnits, AnalysisUnits, prática, Fontes, valores pedagógicos, formas e
-componentes. **Autoria** conta Observações abertas, parâmetros definidos e a
-origem observável da criação e da última revisão das StudyUnits.
+unidades de estudo, ideias do repertório, prática, fontes, valores pedagógicos,
+alvos e extensão editorial observada, formas e componentes. **Autoria** conta
+observações abertas, parâmetros definidos e a origem observável da criação e da
+última revisão das unidades.
 
 O snapshot não usa telemetria de atenção, conversa ou rastreamento da execução.
 O JSON baixado contém os mesmos números da tela e não representa uma cópia
-completa do Curso.
+completa do curso.
 
 ## Réplica local e funcionamento sem rede
 
@@ -175,7 +202,7 @@ Observações próprias e escritas delimitadas que ainda precisam de confirmaç�
 `BroadcastChannel` informa outras abas sobre mudanças; foco, visibilidade e
 retorno da conexão provocam releitura.
 
-O servidor continua sendo a autoridade de propriedade e acesso. Um Curso
+O servidor continua sendo a autoridade de propriedade e acesso. Um curso
 revogado deixa de abrir depois da validação conectada, mesmo que uma cópia local
 antiga ainda exista.
 

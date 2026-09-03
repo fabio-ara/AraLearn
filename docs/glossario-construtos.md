@@ -552,11 +552,12 @@ aplicada nem prova de eficácia da auditoria.
 
 ### Parâmetro de desenho
 
-Decisão versionada por escopo que orienta propriedades como novidade presumida,
-formas de explicação, oportunidades de prática e dimensões de variação. Valor
-padrão, herança e sobrescrita registram origem e autoridade. Um parâmetro é
-hipótese operacional de desenho, não dose pedagógica validada nem perfil de
-estudante.
+Decisão versionada por escopo. Quatro parâmetros pedagógicos orientam novidade,
+formas de explicação, oportunidades de prática e dimensões de variação; dois
+alvos editoriais quantitativos orientam palavras por resposta de autoria e por
+unidade de estudo. No estado `default`, cada valor exige calibração contextual
+automática. Um alvo não é limite, e nenhum parâmetro constitui dose pedagógica
+validada, medida de qualidade ou perfil de estudante.
 
 ### Política de componentes
 
@@ -585,6 +586,7 @@ Contagem observável de caracteres, palavras, linhas, altura, duração ou volum
 transferido.
 Pode orientar ergonomia, renderização e limites técnicos, mas não mede por si
 mesma densidade conceitual, dificuldade, completude, atenção ou compreensão.
+Quando usada como alvo editorial, continua flexível e não autoriza compressão.
 
 ### Complexidade textual
 
@@ -769,8 +771,9 @@ Não equivale a painel de indicadores, predição ou vigilância.
 ### Condição autoral fixada
 
 - **Tipo:** termo operacional.
-- **Definição:** Curso independente no qual parâmetros pedagógicos e direção
-  editorial foram explicitamente definidos para uma comparação deliberada.
+- **Definição:** Curso independente no qual parâmetros pedagógicos, alvos
+  editoriais e direção editorial foram explicitamente definidos para uma
+  comparação deliberada.
 - **Não equivale a:** condição experimental governada, randomização ou garantia
   de que apenas uma propriedade mudou.
 - **Evidência necessária:** identidade própria, revisão exposta, configuração,
