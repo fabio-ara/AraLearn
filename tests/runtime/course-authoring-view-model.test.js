@@ -284,7 +284,7 @@ test("detalhe e outline exigem o mesmo Curso e a mesma revisão", () => {
   );
 });
 
-test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia", () => {
+test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => {
   const course = normalizeCourseDetail({
     courseId: COURSE_ID,
     title: "Fundamentos",
@@ -294,7 +294,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
     canEdit: true
   }, { expectedCourseId: COURSE_ID });
   const plan = normalizeCourseAuthoringPlan({
-    contract: "aralearn.course-instructional-plan.v2",
+    contract: "aralearn.course-instructional-plan.v3",
     courseId: COURSE_ID,
     courseRevision: 3,
     plan: {
@@ -304,6 +304,26 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
       objective: "Compreender relações essenciais.",
       audience: "Pessoas iniciantes.",
       scope: "Relações fundamentais.",
+      curriculum: {
+        modules: [{
+          id: "module-a",
+          position: 0,
+          title: "Base",
+          lessons: [{
+            id: "lesson-a",
+            position: 0,
+            title: "Relações",
+            microsequences: [{
+              id: "micro-a",
+              position: 0,
+              title: "Primeiro caso",
+              goal: "Explicar a relação inicial.",
+              role: "explain"
+            }]
+          }]
+        }]
+      },
+      curriculumScopeItems: [],
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [{
         id: ITEM_ID,
@@ -389,7 +409,7 @@ test("planejamento normaliza listas nomeadas e projeta Partes fora da hierarquia
 test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => {
   const curriculumId = "x".repeat(240);
   const base = {
-    contract: "aralearn.course-instructional-plan.v2",
+    contract: "aralearn.course-instructional-plan.v3",
     courseId: COURSE_ID,
     courseRevision: 3,
     plan: {
@@ -399,6 +419,26 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
       objective: "Aprender.",
       audience: "",
       scope: "",
+      curriculum: {
+        modules: [{
+          id: curriculumId,
+          position: 0,
+          title: "Módulo",
+          lessons: [{
+            id: curriculumId,
+            position: 0,
+            title: "Lição",
+            microsequences: [{
+              id: "micro-a",
+              position: 0,
+              title: "Microssequência",
+              goal: "Preparar o primeiro recorte.",
+              role: "support"
+            }]
+          }]
+        }]
+      },
+      curriculumScopeItems: [],
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [],
       instructionalAnalysisUnits: [],
@@ -466,7 +506,7 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
     canEdit: true
   });
   const base = {
-    contract: "aralearn.course-instructional-plan.v2",
+    contract: "aralearn.course-instructional-plan.v3",
     courseId: COURSE_ID,
     courseRevision: 3,
     plan: {
@@ -476,6 +516,8 @@ test("planejamento recusa segunda autoridade de título ou objetivo e vínculos 
       objective: "Aprender.",
       audience: null,
       scope: null,
+      curriculum: { modules: [] },
+      curriculumScopeItems: [],
       preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
       intendedLearningOutcomes: [],
       instructionalAnalysisUnits: [],
