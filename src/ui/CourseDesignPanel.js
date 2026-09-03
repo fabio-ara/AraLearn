@@ -14,7 +14,7 @@ const SCOPE_LABELS = Object.freeze({
   module: "Módulo",
   lesson: "Lição",
   didactic_microsequence: "Microssequência didática",
-  study_unit: "StudyUnit"
+  study_unit: "unidade de estudo"
 });
 
 const VALUE_LABELS = Object.freeze({
@@ -111,7 +111,7 @@ function renderScopeContext(design) {
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
   const contextualNote = ["didactic_microsequence", "study_unit"].includes(context.current.kind)
-    ? "As StudyUnits desta Microssequência usam estes valores. Cada Unidade preserva a configuração usada na produção."
+    ? "As unidades de estudo desta microssequência usam estes valores. Cada unidade preserva a configuração usada na produção."
     : "Escolha um escopo para consultar o valor vigente e, quando necessário, sobrescrever ou restaurar a herança.";
   return '<section class="course-design-scope" aria-labelledby="course-design-scope-title">' +
     '<div><p id="course-design-scope-title">Escopo atual</p>' +
@@ -207,7 +207,7 @@ function renderGuidance(design, busy) {
   const local = guidance.localAssignment;
   return '<section class="course-design-guidance" aria-labelledby="course-design-guidance-title">' +
     '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Direção editorial</h3>' +
-    '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais StudyUnits.</p></div></header>' + stack +
+    '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais unidades de estudo.</p></div></header>' + stack +
     '<details class="course-design-local-editor"><summary class="course-authoring-icon-action"' +
     ` aria-label="${local ? "Editar" : "Adicionar"} direção editorial neste escopo"` +
     ` title="${local ? "Editar" : "Adicionar"} direção editorial neste escopo">` +
@@ -280,50 +280,6 @@ function renderComponentPolicy(design, busy) {
 }
 
 
-function renderTargetPlanItemList(label, items) {
-  return '<section class="course-design-target-group">' +
-    `<h4>${escapeHtml(label)}</h4>` +
-    (items.length
-      ? `<ul>${items.map((item) => `<li>${escapeHtml(item.statement)}</li>`).join("")}</ul>`
-      : "<p>Nenhum item deste tipo foi definido no Planejamento.</p>") +
-    "</section>";
-}
-
-function renderTargetPlanItems(state, design) {
-  if (design.scopeContext.current.kind !== "didactic_microsequence") return "";
-  if (state.planningLoading && !state.authoringPlan) {
-    return '<section class="course-design-targets"><h3>Cobertura planejada</h3>' +
-      '<p role="status">Carregando itens do Planejamento…</p></section>';
-  }
-  const plan = state.authoringPlan?.plan;
-  if (!plan) {
-    return '<section class="course-design-targets"><h3>Cobertura planejada</h3>' +
-      `<p role="alert">${escapeHtml(state.planningFailure ||
-        "Não foi possível carregar os itens do Planejamento.")}</p>` +
-      '<button type="button" data-course-authoring-action="retry-planning" aria-label="Tentar novamente" title="Tentar novamente">' +
-      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>` +
-      "</section>";
-  }
-  const targets = design.targetPlanItems;
-  const analysis = new Set(targets.instructionalAnalysisUnitIds);
-  const evidence = new Set(targets.evidenceRequirementIds);
-  const assignedAnalysis = plan.instructionalAnalysisUnits.filter(({ id }) => analysis.has(id));
-  const assignedEvidence = plan.evidenceRequirements.filter(({ id }) => evidence.has(id));
-  return '<section class="course-design-targets" aria-labelledby="course-design-targets-title">' +
-    '<header class="course-design-subheading"><div><h3 id="course-design-targets-title">' +
-    'Cobertura planejada desta Microssequência</h3>' +
-    '<p>Definida no planejamento da Parte.</p></div></header>' +
-    '<div class="course-design-target-groups">' +
-    renderTargetPlanItemList(
-      "Unidades de análise instrucional",
-      assignedAnalysis
-    ) +
-    renderTargetPlanItemList(
-      "Requisitos de evidência",
-      assignedEvidence
-    ) + "</div></section>";
-}
-
 function renderDesignStatus({ kind, title, message, retry = false }) {
   return `<section class="course-authoring-state is-${escapeHtml(kind)}" role="${
     kind === "error" ? "alert" : "status"
@@ -371,7 +327,6 @@ export function renderCourseDesignPanel(state) {
       design.parameters[index],
       state.designBusy
     )).join("") + "</section>" +
-    renderTargetPlanItems(state, design) +
     renderGuidance(design, state.designBusy) +
     renderComponentPolicy(design, state.designBusy) +
     "</section>";

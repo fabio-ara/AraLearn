@@ -42,6 +42,7 @@ const CONCEPT_LABELS = Object.freeze({
   ordering: "Ordenação",
   factual_support: "Sustentação factual",
   contextualization: "Contextualização",
+  representation: "Representação",
   worked_example: "Exemplo desenvolvido",
   counterexample: "Contraexemplo"
 });
@@ -56,7 +57,7 @@ function escapeHtml(value) {
 }
 
 function errorText(error) {
-  return String(error?.message || "Não foi possível carregar Analytics.");
+  return String(error?.message || "Não foi possível carregar os dados de autoria.");
 }
 
 function formatCount(value) {
@@ -76,9 +77,18 @@ function humanLabel(value) {
   return words ? words[0].toLocaleUpperCase("pt-BR") + words.slice(1) : "Não informado";
 }
 
+function contextualLabel(value) {
+  const label = humanLabel(value);
+  return /^[A-ZÀ-Ý]{2,}$/u.test(label)
+    ? label
+    : label[0].toLocaleLowerCase("pt-BR") + label.slice(1);
+}
+
 function appliedValue(value) {
   if (value === null) return "Não informado";
-  if (Array.isArray(value)) return value.length ? value.map(humanLabel).join(", ") : "Nenhum";
+  if (Array.isArray(value)) return value.length
+    ? value.map((item, index) => index === 0 ? humanLabel(item) : contextualLabel(item)).join(", ")
+    : "Nenhum";
   if (typeof value === "number") return formatCount(value);
   return humanLabel(value);
 }
@@ -103,8 +113,8 @@ function renderScopeFilter(page) {
     ' aria-label="Aplicar escopo" title="Aplicar escopo">' +
     renderUiIcon("search", "course-authoring-button-icon") + '</button>' +
     '<button type="button" class="course-authoring-icon-action"' +
-    ' data-course-analytics-action="export-json" aria-label="Exportar Analytics em JSON"' +
-    ' title="Exportar Analytics">' + renderUiIcon("download", "course-authoring-button-icon") +
+    ' data-course-analytics-action="export-json" aria-label="Baixar dados de autoria"' +
+    ' title="Baixar dados de autoria">' + renderUiIcon("download", "course-authoring-button-icon") +
     "</button></div></form>";
 }
 
@@ -133,8 +143,8 @@ function configurationRows(design) {
   for (const parameter of design.parameters) {
     for (const applied of parameter.effectiveValues) {
       const suffix = [
-        plural(applied.studyUnitCount, "StudyUnit", "StudyUnits"),
-        applied.origin ? humanLabel(applied.origin) : null
+        plural(applied.studyUnitCount, "unidade de estudo", "unidades de estudo"),
+        applied.origin ? contextualLabel(applied.origin) : null
       ].filter(Boolean).join(" · ");
       rows.push({
         label: parameter.label,
@@ -144,8 +154,8 @@ function configurationRows(design) {
   }
   for (const direction of design.editorialDirections) {
     const suffix = [
-      plural(direction.studyUnitCount, "StudyUnit", "StudyUnits"),
-      direction.origin ? humanLabel(direction.origin) : null
+      plural(direction.studyUnitCount, "unidade de estudo", "unidades de estudo"),
+      direction.origin ? contextualLabel(direction.origin) : null
     ].filter(Boolean).join(" · ");
     rows.push({
       label: "Direção editorial",
@@ -158,7 +168,7 @@ function configurationRows(design) {
 function structureRows(design) {
   return [
     ...design.analysisUnits.map((unit) => ({
-      label: `AnalysisUnit ${unit.position}`,
+      label: `Unidade de análise ${unit.position}`,
       value: `${unit.statement} · ${plural(
         unit.introductionCount,
         "introdução",
@@ -166,20 +176,20 @@ function structureRows(design) {
       )}`
     })),
     ...design.introductionsByStudyUnit.map((unit) => ({
-      label: `StudyUnit ${unit.position} · ${unit.title}`,
+      label: `Unidade de estudo ${unit.position} · ${unit.title}`,
       value: plural(unit.introducedCount, "novidade introduzida", "novidades introduzidas")
     })),
     ...design.explanationForms.map((form) => ({
-      label: `Forma · ${humanLabel(form.form)}`,
-      value: `${plural(form.studyUnitCount, "StudyUnit", "StudyUnits")} · ${plural(
+      label: `Forma · ${contextualLabel(form.form)}`,
+      value: `${plural(form.studyUnitCount, "unidade de estudo", "unidades de estudo")} · ${plural(
         form.applicationCount,
         "aplicação",
         "aplicações"
       )}`
     })),
     ...design.components.map((component) => ({
-      label: `Componente · ${componentLabel(component.componentRef)}`,
-      value: `${plural(component.studyUnitCount, "StudyUnit", "StudyUnits")} · ${plural(
+      label: `Componente · ${contextualLabel(componentLabel(component.componentRef))}`,
+      value: `${plural(component.studyUnitCount, "unidade de estudo", "unidades de estudo")} · ${plural(
         component.instanceCount,
         "uso",
         "usos"
@@ -199,16 +209,16 @@ function practiceAndSourceRows(design) {
       )}`
     })),
     ...design.practiceVariationDimensions.map((dimension) => ({
-      label: `Variação · ${humanLabel(dimension.dimension)}`,
+      label: `Variação · ${contextualLabel(dimension.dimension)}`,
       value: plural(dimension.opportunityCount, "oportunidade", "oportunidades")
     })),
     ...design.sourcesByRole.map((source) => ({
-      label: `Fonte · ${humanLabel(source.role)}`,
-      value: `${plural(source.sourceCount, "Fonte", "Fontes")} · ${plural(
+      label: `Fonte · ${contextualLabel(source.role)}`,
+      value: `${plural(source.sourceCount, "fonte", "fontes")} · ${plural(
         source.anchorCount,
-        "Âncora",
-        "Âncoras"
-      )} · ${plural(source.studyUnitCount, "StudyUnit", "StudyUnits")}`
+        "âncora",
+        "âncoras"
+      )} · ${plural(source.studyUnitCount, "unidade de estudo", "unidades de estudo")}`
     }))
   ];
 }
@@ -217,18 +227,18 @@ function authorshipRows(authorship) {
   return [
     {
       label: "Observações criadas",
-      value: plural(authorship.observations.createdCount, "Observação", "Observações")
+      value: plural(authorship.observations.createdCount, "observação", "observações")
     },
     {
       label: "Observações resolvidas",
-      value: plural(authorship.observations.resolvedCount, "Observação", "Observações")
+      value: plural(authorship.observations.resolvedCount, "observação", "observações")
     },
     ...authorship.studyUnitsByOrigin.map((entry) => ({
       label: humanLabel(entry.origin),
-      value: `${plural(entry.createdCount, "StudyUnit criada", "StudyUnits criadas")} · ${plural(
+      value: `${plural(entry.createdCount, "unidade de estudo criada", "unidades de estudo criadas")} · ${plural(
         entry.lastRevisedCount,
-        "StudyUnit com última revisão",
-        "StudyUnits com última revisão"
+        "unidade de estudo com última revisão",
+        "unidades de estudo com última revisão"
       )}`
     }))
   ];
@@ -246,9 +256,9 @@ function renderDesign(design) {
     '<header><h3 id="course-analytics-design-title">Desenho</h3>' +
     '<p>Configuração e composição efetivamente usadas neste escopo.</p></header>' +
     renderMetrics([{
-      name: "StudyUnits", value: design.studyUnitCount, definition: "Unidades no escopo."
+      name: "Unidades de estudo", value: design.studyUnitCount, definition: "Unidades no escopo."
     }, {
-      name: "AnalysisUnits", value: design.analysisUnits.length,
+      name: "Unidades de análise", value: design.analysisUnits.length,
       definition: "Novidades semânticas inventariadas."
     }, {
       name: "Prática", value: practiceCount, definition: "Oportunidades produzidas."
@@ -257,14 +267,14 @@ function renderDesign(design) {
     }], "Resumo do desenho") +
     renderTableDetails({
       title: "Configuração aplicada",
-      definition: "Parâmetros pedagógicos e direção editorial usados pelas StudyUnits.",
+      definition: "Parâmetros pedagógicos e direção editorial usados pelas unidades de estudo.",
       rows: configurationRows(design)
     }) + renderTableDetails({
       title: "Conteúdo e representações",
       definition: "Novidades, distribuição, formas explicativas e componentes do escopo.",
       rows: structureRows(design)
     }) + renderTableDetails({
-      title: "Prática e Fontes",
+      title: "Prática e fontes",
       definition: "Oportunidades, variações e sustentação por papel.",
       rows: practiceAndSourceRows(design)
     }) + "</section>";
@@ -281,7 +291,8 @@ function renderAuthorship(authorship) {
       name: "Parâmetros definidos", value: authorship.explicitParameterOverrideCount,
       definition: "Atribuições explícitas correntes."
     }, {
-      name: "StudyUnits revistas manualmente", value: authorship.manuallyRevisedStudyUnitCount,
+      name: "Unidades de estudo revisadas manualmente",
+      value: authorship.manuallyRevisedStudyUnitCount,
       definition: "Unidades cuja última revisão observável é humana."
     }], "Resumo da autoria") + renderTableDetails({
       title: "Intervenções por origem",
@@ -300,10 +311,10 @@ function renderMissingData(missingData) {
 function renderPanel(state) {
   return '<section class="course-authoring-section course-analytics"' +
     ' aria-labelledby="course-analytics-section-title">' +
-    '<h2 class="course-authoring-visually-hidden" id="course-analytics-section-title">Analytics</h2>' +
+    '<h2 class="course-authoring-visually-hidden" id="course-analytics-section-title">Dados de autoria</h2>' +
     (state.page ? renderScopeFilter(state.page) : "") +
     (state.loading && !state.page
-      ? '<p class="course-authoring-loading" role="status">Carregando Analytics…</p>'
+      ? '<p class="course-authoring-loading" role="status">Carregando dados de autoria…</p>'
       : state.page
         ? renderDesign(state.page.design) + renderAuthorship(state.page.authorship) +
           renderMissingData(state.page.missingData)
@@ -332,7 +343,7 @@ export function createCourseAnalyticsPanel({
 } = {}) {
   if (!root || !controller || !course?.courseId || !Number.isSafeInteger(course.revision) ||
       typeof controller.loadCourseAuthoringAnalytics !== "function") {
-    throw new TypeError("Painel de Analytics inválido.");
+    throw new TypeError("Painel de dados de autoria inválido.");
   }
   const state = {
     course,
@@ -435,7 +446,7 @@ export function createCourseAnalyticsPanel({
       const revision = Number(nextCourseRevision);
       if (!Number.isSafeInteger(revision) || revision < 1) {
         return Promise.reject(new TypeError(
-          "A revisão do Curso para atualizar Analytics é inválida."
+          "A revisão do curso para atualizar os dados de autoria é inválida."
         ));
       }
       state.course = { ...state.course, revision };

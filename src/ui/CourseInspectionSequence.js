@@ -192,6 +192,35 @@ function normalizeStudyUnit(value) {
   return Object.freeze(cloned);
 }
 
+function normalizeAnalysisIdea(value, label) {
+  exactRecord(value, ["name", "description"], `${label} é inválida.`);
+  const description = value.description == null || value.description === ""
+    ? null
+    : requiredText(value.description, `A descrição de ${label.toLowerCase()}`, 2_000);
+  return Object.freeze({
+    name: requiredText(value.name, `O nome de ${label.toLowerCase()}`, 300),
+    description
+  });
+}
+
+function normalizeAnalysisIdeas(value) {
+  exactRecord(
+    value,
+    ["introduced", "used", "revisited"],
+    "A apresentação das ideias da unidade é inválida."
+  );
+  return Object.freeze(Object.fromEntries([
+    ["introduced", "Uma ideia introduzida"],
+    ["used", "Uma ideia utilizada"],
+    ["revisited", "Uma ideia retomada"]
+  ].map(([field, label]) => {
+    if (!Array.isArray(value[field]) || value[field].length > 128) {
+      throw new TypeError("A apresentação das ideias da unidade é inválida.");
+    }
+    return [field, Object.freeze(value[field].map((idea) => normalizeAnalysisIdea(idea, label)))];
+  })));
+}
+
 function normalizeAuthorship(value) {
   exactRecord(
     value,
@@ -206,6 +235,12 @@ function normalizeAuthorship(value) {
   if ((value.design.snapshot === null) !== (value.design.application === null)) {
     throw new TypeError("O desenho aplicado é inconsistente.");
   }
+  const application = value.design.application === null
+    ? null
+    : structuredClone(value.design.application);
+  if (application && Object.hasOwn(application, "analysisIdeas")) {
+    application.analysisIdeas = normalizeAnalysisIdeas(application.analysisIdeas);
+  }
   return Object.freeze({
     createdOrigin: value.createdOrigin,
     lastRevisionOrigin: value.lastRevisionOrigin,
@@ -213,9 +248,7 @@ function normalizeAuthorship(value) {
       snapshot: value.design.snapshot === null
         ? null
         : structuredClone(value.design.snapshot),
-      application: value.design.application === null
-        ? null
-        : structuredClone(value.design.application)
+      application
     })
   });
 }
@@ -501,7 +534,7 @@ function renderManualModeActions(item, state, editing, observationCount) {
       ? `<a href="${escapeHtml(designRoute)}" data-inspection-route` +
         ` data-inspection-control-key="design:${id}" aria-label="Parâmetros aplicáveis a ${escapeHtml(
           item.studyUnit.title
-        )}" title="Parâmetros da StudyUnit">` +
+        )}" title="Parâmetros da unidade de estudo">` +
         `${renderUiIcon("tags", "course-authoring-button-icon")}</a>`
       : "") +
     `<button type="button" data-inspection-observations data-study-unit-id="${id}"` +
@@ -851,6 +884,28 @@ function renderManualEditDock(item, state, editing, resourceTargetIds) {
     "</div></footer>";
 }
 
+function renderAnalysisIdeaGroup(label, ideas) {
+  if (!ideas.length) return "";
+  return '<section class="course-inspection-analysis-idea-group">' +
+    `<h4>${escapeHtml(label)}</h4><ul>` + ideas.map((idea) =>
+      '<li><strong>' + escapeHtml(idea.name) + '</strong>' +
+      (idea.description ? `<p>${escapeHtml(idea.description)}</p>` : "") +
+      '</li>').join("") + '</ul></section>';
+}
+
+function renderAnalysisIdeas(item) {
+  const ideas = item.authorship.design.application?.analysisIdeas;
+  if (!ideas) return "";
+  const content = [
+    renderAnalysisIdeaGroup("Ideias introduzidas aqui", ideas.introduced),
+    renderAnalysisIdeaGroup("Ideias já estabelecidas usadas aqui", ideas.used),
+    renderAnalysisIdeaGroup("Ideias retomadas", ideas.revisited)
+  ].join("");
+  return content
+    ? `<div class="course-inspection-analysis-ideas">${content}</div>`
+    : "";
+}
+
 function renderStudyUnit(
   item,
   totalCount,
@@ -890,6 +945,7 @@ function renderStudyUnit(
     `<div><dt>Módulo</dt><dd>${escapeHtml(path.module.title)}</dd></div>` +
     `<div><dt>Lição</dt><dd>${escapeHtml(path.lesson.title)}</dd></div>` +
     `<div><dt>Microssequência</dt><dd>${escapeHtml(path.didacticMicrosequence.title)}</dd></div></dl>` +
+    renderAnalysisIdeas(item) +
     renderStudyUnitContextActions(item) +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +

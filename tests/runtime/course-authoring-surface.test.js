@@ -277,7 +277,7 @@ function curriculumScopeFixture({ foundationsState = "planned" } = {}) {
 
 function authoringPlanFixture(overrides = {}) {
   return {
-    contract: "aralearn.course-instructional-plan.v2",
+    contract: "aralearn.course-instructional-plan.v3",
     courseId: COURSE_ID,
     courseRevision: 5,
     plan: {
@@ -300,9 +300,15 @@ function authoringPlanFixture(overrides = {}) {
         id: ANALYSIS_ID,
         position: 0,
         statement: "Relação entre grandezas.",
+        description: "Relação entre duas grandezas que precisa ser distinguida de coincidência.",
         version: 1,
-        introduced: true,
-        introducedPartPosition: 0
+        introducedAt: {
+          studyUnitId: "unit-a",
+          didacticMicrosequenceId: "micro-a",
+          title: "Unidade A"
+        },
+        usedBy: [],
+        revisitedBy: []
       }],
       evidenceRequirements: [{
         id: EVIDENCE_ID,
@@ -944,7 +950,8 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   };
   const assertScopeCoverage = (html, { foundationsState }) => {
     const mapStart = html.indexOf("course-authoring-curriculum-map");
-    const coverageStart = html.indexOf("course-authoring-scope-coverage", mapStart);
+    const coverageMarker = html.indexOf("course-authoring-scope-coverage", mapStart);
+    const coverageStart = html.lastIndexOf("<details", coverageMarker);
     const lotsStart = html.indexOf("course-authoring-parts", coverageStart);
     assert.ok(coverageStart > mapStart, "A cobertura humana deve complementar o mapa curricular.");
     if (lotsStart >= 0) {
@@ -2553,7 +2560,7 @@ test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasio
   assert.doesNotMatch(markup, /Visão geral|section=overview|course-authoring-overview/u);
   assert.doesNotMatch(markup, /course-authoring-sidebar-navigation/u);
   for (const label of [
-    "Parâmetros", "Fontes", "Revisão", "Analytics", "Pessoas e acesso"
+    "Parâmetros", "Fontes", "Revisão", "Dados de autoria", "Pessoas e acesso"
   ]) assert.match(markup, new RegExp(`<strong>${label}<\\/strong>`, "u"));
   for (const section of ["planning", "content", "parameters", "sources", "review", "research", "people"]) {
     assert.match(markup, new RegExp(`section=${section}`, "u"));
