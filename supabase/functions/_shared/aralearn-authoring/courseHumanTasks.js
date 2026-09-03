@@ -1274,16 +1274,17 @@ function currentPartMicrosequenceIds(part) {
 
 function curricularMapFromPlan(planRead) {
   const plan = planRead?.plan || {};
-  if (plan.curriculum && Array.isArray(plan.curriculum.modules)) {
-    return {
-      approval: plan.curriculumMapStatus ?? plan.curriculum.approval ?? "absent",
-      audience: plan.audience ?? plan.curriculum.audience ?? "",
-      prerequisites: plan.declaredPrerequisites ?? plan.curriculum.prerequisites ?? [],
-      scopeItems: plan.curriculumScopeItems ?? plan.curriculum.scopeItems ?? [],
-      modules: plan.curriculum.modules
-    };
-  }
-  return plan.curricularMap ?? null;
+  if (!plan.curriculum || !Array.isArray(plan.curriculum.modules) ||
+      !Array.isArray(plan.declaredPrerequisites) ||
+      !Array.isArray(plan.curriculumScopeItems) ||
+      !new Set(["absent", "draft", "approved"]).has(plan.curriculumMapStatus)) return null;
+  return {
+    approval: plan.curriculumMapStatus,
+    audience: plan.audience ?? "",
+    prerequisites: plan.declaredPrerequisites,
+    scopeItems: plan.curriculumScopeItems,
+    modules: plan.curriculum.modules
+  };
 }
 
 function internalIdentity(value, kind) {

@@ -272,6 +272,7 @@ function mapPlanRead({
   planVersion = 3,
   parts = []
 } = {}) {
+  const map = artifactId === null ? null : internalCurricularMap(artifactId, approval);
   return {
     courseId: COURSE_ID,
     courseRevision,
@@ -280,7 +281,22 @@ function mapPlanRead({
       version: planVersion,
       title: GLOBAL_AUTHORING_FIXTURE.course.title,
       objective: GLOBAL_AUTHORING_FIXTURE.course.objective,
-      curricularMap: artifactId === null ? null : internalCurricularMap(artifactId, approval),
+      curriculumMapStatus: map?.approval ?? "absent",
+      audience: map?.audience ?? null,
+      declaredPrerequisites: map?.prerequisites ?? [],
+      curriculumScopeItems: map?.scopeItems ?? [],
+      curriculum: {
+        modules: (map?.modules ?? []).map((module) => ({
+          ...module,
+          lessons: module.lessons.map((lesson) => ({
+            ...lesson,
+            microsequences: lesson.microsequences.map((microsequence) => {
+              const { dependencies, ...projected } = microsequence;
+              return { ...projected, dependencyMicrosequenceIds: dependencies };
+            })
+          }))
+        }))
+      },
       instructionalAnalysisUnits: [],
       evidenceRequirements: [],
       parts
@@ -289,12 +305,12 @@ function mapPlanRead({
 }
 
 function internalMapMicrosequences(planRead) {
-  return planRead.plan.curricularMap.modules.flatMap(({ lessons }) =>
+  return planRead.plan.curriculum.modules.flatMap(({ lessons }) =>
     lessons.flatMap(({ microsequences }) => microsequences));
 }
 
 function internalMapEntities(planRead) {
-  return planRead.plan.curricularMap.modules.flatMap((module) => [
+  return planRead.plan.curriculum.modules.flatMap((module) => [
     {
       entityType: "module",
       entityId: module.id,
@@ -496,7 +512,7 @@ test("salvar_parte permanece bloqueada enquanto o mapa curricular é rascunho", 
 
 test("salvar_parte agrupa microssequências existentes sem recriar o mapa curricular", async () => {
   let current = mapPlanRead();
-  const mapBefore = structuredClone(current.plan.curricularMap);
+  const mapBefore = structuredClone(current.plan.curriculum);
   const partWrites = [];
   let curricularMapWrites = 0;
   const value = {
@@ -565,9 +581,9 @@ test("salvar_parte agrupa microssequências existentes sem recriar o mapa curric
 
   assert.equal(partWrites.length, 2);
   assert.equal(curricularMapWrites, 0);
-  assert.deepEqual(current.plan.curricularMap, mapBefore);
+  assert.deepEqual(current.plan.curriculum, mapBefore);
   const idsByTitle = new Map(internalMapMicrosequences({
-    plan: { curricularMap: mapBefore }
+    plan: { curriculum: mapBefore }
   }).map(({ id, title }) => [title, id]));
   const expectedIds = (artifactId) => GLOBAL_AUTHORING_FIXTURE.artifacts[artifactId]
     .microsequences.map((title) => idsByTitle.get(title));
