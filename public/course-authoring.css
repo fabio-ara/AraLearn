@@ -1335,6 +1335,9 @@
 }
 
 .course-authoring-part h4 a {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
   color: inherit;
   text-decoration: none;
 }
