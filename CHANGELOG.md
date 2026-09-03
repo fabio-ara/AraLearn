@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.58] - 2026-09-03
+
 ### Corrigido
 
 - orientações e falhas de autoria usam linguagem declarativa e humana, sem
