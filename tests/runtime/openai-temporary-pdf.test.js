@@ -11,6 +11,8 @@ import { COURSE_SOURCE_PDF_MAX_BYTES } from
 const DOWNLOAD_URL = "https://files.oaiusercontent.com/file.pdf?sig=temporary-secret";
 const REGIONAL_DOWNLOAD_URL =
   "https://sdmntprbrazilsouth.oaiusercontent.com/files/file.pdf?sig=temporary-secret";
+const AZURE_REGIONAL_DOWNLOAD_URL =
+  "https://oaisdmntprbrazilsouth.blob.core.windows.net/files/file.pdf?sig=temporary-secret";
 const FILE_ID = "file-aralearn-synthetic-pdf";
 
 function descriptor(overrides = {}) {
@@ -85,22 +87,24 @@ test("rejeita descritor ausente, shape inválido e campos malformados sem pedir 
   }
 });
 
-test("aceita o host regional entregue pelo ChatGPT Actions", async () => {
+test("aceita os hosts regionais entregues pelo ChatGPT", async () => {
   const expected = new TextEncoder().encode("%PDF-1.7\n%%EOF");
-  let receivedUrl;
-  const bytes = await resolveOpenAiTemporaryPdf({
-    descriptor: descriptor({ download_url: REGIONAL_DOWNLOAD_URL }),
-    deadlineAt: Date.now() + 1_000,
-    fetchImpl: async (url) => {
-      receivedUrl = url;
-      return new Response(expected, {
-        headers: { "content-type": "application/pdf" }
-      });
-    }
-  });
+  for (const downloadUrl of [REGIONAL_DOWNLOAD_URL, AZURE_REGIONAL_DOWNLOAD_URL]) {
+    let receivedUrl;
+    const bytes = await resolveOpenAiTemporaryPdf({
+      descriptor: descriptor({ download_url: downloadUrl }),
+      deadlineAt: Date.now() + 1_000,
+      fetchImpl: async (url) => {
+        receivedUrl = url;
+        return new Response(expected, {
+          headers: { "content-type": "application/pdf" }
+        });
+      }
+    });
 
-  assert.deepEqual(bytes, expected);
-  assert.equal(receivedUrl, REGIONAL_DOWNLOAD_URL);
+    assert.deepEqual(bytes, expected);
+    assert.equal(receivedUrl, downloadUrl);
+  }
 });
 
 test("rejeita MIME declarado que não seja PDF", async () => {
@@ -121,6 +125,14 @@ test("rejeita URL não HTTPS, host aproximado, credenciais, fragmento e porta n�
     ["https://files.oaiusercontent.com.example.test/file.pdf", "trusted_openai_file_origin"],
     ["https://oaiusercontent.com/file.pdf", "trusted_openai_file_origin"],
     ["https://sdmntprbrazilsouth.oaiusercontent.com.example.test/file.pdf",
+      "trusted_openai_file_origin"],
+    ["https://arbitraryaccount.blob.core.windows.net/file.pdf",
+      "trusted_openai_file_origin"],
+    ["https://oaisdmntprwestus.blob.core.windows.net/file.pdf",
+      "trusted_openai_file_origin"],
+    ["https://sub.oaisdmntprbrazilsouth.blob.core.windows.net/file.pdf",
+      "trusted_openai_file_origin"],
+    ["https://oaisdmntprbrazilsouth.blob.core.windows.net.example.test/file.pdf",
       "trusted_openai_file_origin"],
     ["https://user:password@files.oaiusercontent.com/file.pdf", "no_url_credentials"],
     ["https://files.oaiusercontent.com/file.pdf#fragment", "no_url_fragment"],

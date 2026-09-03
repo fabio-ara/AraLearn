@@ -4,6 +4,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.55] - 2026-09-03
+
+### Corrigido
+
+- a anexação de PDF aceita o host regional exato realmente entregue pelo
+  ChatGPT, com a mesma validação estrita em MCP e Actions, sem liberar contas
+  arbitrárias do Azure Blob.
+
 ## [0.0.54] - 2026-09-03
 
 ### Corrigido
