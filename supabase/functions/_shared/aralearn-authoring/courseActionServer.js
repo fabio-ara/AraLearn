@@ -12,6 +12,7 @@ import {
   readAuthoringOAuthAuthorization,
   sha256Hex
 } from "./security.js";
+import { isTrustedOpenAiFileHost } from "./openAiTemporaryPdf.js";
 
 const BODY_LIMIT = 512 * 1024;
 const RESPONSE_LIMIT = 512 * 1024;
@@ -102,7 +103,7 @@ function actionFileReference(value) {
   }
   if (!fileId || mediaType && mediaType !== "application/pdf" ||
       downloadUrl?.protocol !== "https:" ||
-      !downloadUrl.hostname.endsWith(".oaiusercontent.com") ||
+      !isTrustedOpenAiFileHost(downloadUrl.hostname) ||
       downloadUrl.username || downloadUrl.password || downloadUrl.hash ||
       downloadUrl.port && downloadUrl.port !== "443") {
     throw new AuthoringApiError(422, "invalid_openai_file", "A referência precisa apontar para um PDF.");

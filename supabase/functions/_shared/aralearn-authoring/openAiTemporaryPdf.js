@@ -3,6 +3,9 @@ import { COURSE_SOURCE_PDF_MAX_BYTES } from
 import { AuthoringApiError } from "./errors.js";
 
 const OPENAI_FILE_HOST_SUFFIX = ".oaiusercontent.com";
+const OPENAI_AZURE_FILE_HOSTS = new Set([
+  "oaisdmntprbrazilsouth.blob.core.windows.net"
+]);
 const DESCRIPTOR_FIELDS = new Set([
   "download_url",
   "file_id",
@@ -72,8 +75,9 @@ function hasControlCharacter(value) {
   return false;
 }
 
-function isTrustedOpenAiFileHost(hostname) {
-  return hostname.endsWith(OPENAI_FILE_HOST_SUFFIX);
+export function isTrustedOpenAiFileHost(hostname) {
+  return hostname.endsWith(OPENAI_FILE_HOST_SUFFIX) ||
+    OPENAI_AZURE_FILE_HOSTS.has(hostname);
 }
 
 function normalizeDescriptor(descriptor) {

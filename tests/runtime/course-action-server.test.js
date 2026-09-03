@@ -324,42 +324,47 @@ test("#272 transporte de PDF exige o objeto oficial e rejeita origem não confi�
   assert.equal((await invalid.json()).error.code, "invalid_openai_file");
 });
 
-test("#272 transporte de PDF preserva URL oficial somente até a ingestão", async () => {
-  let receiptInput = null;
-  const response = await createHandler({
-    async ingestCourseSourcePdf() {
-      throw new Error("O recibo existente deve impedir nova ingestão.");
-    },
-    async getCourseSourcePdfIngestionReceipt(value) {
-      receiptInput = value;
-      return { stored: true, sourceId: "source-manual", sourceRevision: 1 };
-    },
-    async getCourseSources() {
-      return {
-        items: [{
-          sourceId: "source-manual",
-          revision: 1,
-          title: "Manual do proxy",
-          citationText: "Manual do proxy"
-        }],
-        nextCursor: null
-      };
-    }
-  })(request("incorporar_pdf_como_fonte", {
-    curso: "Redes para iniciantes",
-    titulo: "Manual do proxy",
-    intencao: "Manter o PDF como Fonte.",
-    openaiFileIdRefs: [{
-      id: "file-official",
-      name: "manual.pdf",
-      mime_type: "application/pdf",
-      download_link: "https://files.oaiusercontent.com/manual.pdf?token=temporary"
-    }]
-  }));
-  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
-  assert.equal(receiptInput.fileIdentity.fileId, "file-official");
-  const serialized = JSON.stringify(await response.json());
-  assert.doesNotMatch(serialized, /oaiusercontent|file-official|token=temporary/iu);
+test("#272 transporte de PDF aceita as origens oficiais sem expor a URL", async () => {
+  for (const downloadLink of [
+    "https://files.oaiusercontent.com/manual.pdf?token=temporary",
+    "https://oaisdmntprbrazilsouth.blob.core.windows.net/manual.pdf?token=temporary"
+  ]) {
+    let receiptInput = null;
+    const response = await createHandler({
+      async ingestCourseSourcePdf() {
+        throw new Error("O recibo existente deve impedir nova ingestão.");
+      },
+      async getCourseSourcePdfIngestionReceipt(value) {
+        receiptInput = value;
+        return { stored: true, sourceId: "source-manual", sourceRevision: 1 };
+      },
+      async getCourseSources() {
+        return {
+          items: [{
+            sourceId: "source-manual",
+            revision: 1,
+            title: "Manual do proxy",
+            citationText: "Manual do proxy"
+          }],
+          nextCursor: null
+        };
+      }
+    })(request("incorporar_pdf_como_fonte", {
+      curso: "Redes para iniciantes",
+      titulo: "Manual do proxy",
+      intencao: "Manter o PDF como Fonte.",
+      openaiFileIdRefs: [{
+        id: "file-official",
+        name: "manual.pdf",
+        mime_type: "application/pdf",
+        download_link: downloadLink
+      }]
+    }));
+    assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+    assert.equal(receiptInput.fileIdentity.fileId, "file-official");
+    const serialized = JSON.stringify(await response.json());
+    assert.doesNotMatch(serialized, /oaiusercontent|blob\.core|file-official|token=temporary/iu);
+  }
 });
 
 test("#272 payload e método inválidos falham antes da tarefa", async () => {
