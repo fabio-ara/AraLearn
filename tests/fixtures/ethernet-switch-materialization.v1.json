@@ -105,6 +105,11 @@
       "endereço MAC",
       "porta do switch"
     ],
+    "requiredEstablishedUsesByUnit": {
+      "A tabela começa vazia": ["quadro Ethernet", "endereço MAC", "porta do switch"],
+      "O switch observa primeiro a origem": ["quadro Ethernet", "endereço MAC", "porta do switch"],
+      "Analise a sequência completa": ["quadro Ethernet", "endereço MAC", "porta do switch"]
+    },
     "renderedProgression": [
       "A tabela começa vazia",
       "A tabela MAC é a memória",
@@ -178,7 +183,6 @@
         "topics": ["switch Ethernet"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch"],
         "explicacoes": [],
@@ -219,7 +223,6 @@
         "topics": ["tabela MAC"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["tabela MAC", "associação entre endereço MAC e porta"],
         "ideiasUtilizadas": ["endereço MAC", "porta do switch"],
         "explicacoes": [
@@ -262,7 +265,6 @@
         "topics": ["aprendizagem MAC"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["aprendizagem pelo endereço de origem"],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta"],
         "explicacoes": [
@@ -319,7 +321,6 @@
         "topics": ["aprendizagem MAC"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem"],
         "explicacoes": [],
@@ -358,7 +359,6 @@
         "topics": ["encaminhamento Ethernet"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["consulta ao endereço de destino", "encaminhamento para destino conhecido"],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta"],
         "explicacoes": [
@@ -415,7 +415,6 @@
         "topics": ["encaminhamento seletivo"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "consulta ao endereço de destino", "encaminhamento para destino conhecido"],
         "explicacoes": [],
@@ -444,7 +443,6 @@
         "topics": ["flooding"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["flooding para destino desconhecido"],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC"],
         "explicacoes": [
@@ -479,7 +477,6 @@
         "topics": ["comparação de encaminhamento"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["porta do switch", "tabela MAC", "consulta ao endereço de destino"],
         "explicacoes": [
@@ -511,7 +508,6 @@
         "topics": ["aprendizagem pelo retorno"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["aprendizagem a partir do retorno"],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "flooding para destino desconhecido"],
         "explicacoes": [
@@ -556,7 +552,6 @@
         "topics": ["mudança de estado"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem", "consulta ao endereço de destino", "encaminhamento para destino conhecido", "flooding para destino desconhecido", "aprendizagem a partir do retorno"],
         "explicacoes": [],
@@ -595,7 +590,6 @@
         "topics": ["apoio reduzido"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem", "consulta ao endereço de destino", "encaminhamento para destino conhecido"],
         "explicacoes": [],
@@ -648,7 +642,6 @@
         "topics": ["prática integrada"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["quadro Ethernet", "endereço MAC", "porta do switch", "tabela MAC", "associação entre endereço MAC e porta", "aprendizagem pelo endereço de origem", "consulta ao endereço de destino", "encaminhamento para destino conhecido", "flooding para destino desconhecido", "aprendizagem a partir do retorno"],
         "explicacoes": [],

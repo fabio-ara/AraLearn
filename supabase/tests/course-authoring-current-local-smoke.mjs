@@ -69,15 +69,13 @@ function unitCalibration(editorialDirection) {
   };
 }
 
-function explanationUnit({ calibrate = true } = {}) {
+function explanationUnit() {
   return {
     microssequencia: "O que é um socket",
     posicao: 1,
-    ...(calibrate ? {
-      configuracao: unitCalibration(
-        "Defina o mecanismo e contraste socket com conexão."
-      )
-    } : {}),
+    configuracao: unitCalibration(
+      "Defina o mecanismo e contraste socket com conexão."
+    ),
     conteudo: {
       title: "Socket liga processo e transporte",
       role: "theory",
@@ -90,7 +88,6 @@ function explanationUnit({ calibrate = true } = {}) {
       topics: ["socket"]
     },
     aplicacaoPedagogica: {
-      modo: "expositiva",
       ideiasIntroduzidas: [{
         nome: "Socket como interface entre processo e transporte",
         descricao: "Interface local pela qual um processo envia e recebe dados usando um protocolo de transporte."
@@ -107,15 +104,13 @@ function explanationUnit({ calibrate = true } = {}) {
   };
 }
 
-function practiceUnit({ calibrate = true } = {}) {
+function practiceUnit() {
   return {
     microssequencia: "Prática de identificação",
     posicao: 1,
-    ...(calibrate ? {
-      configuracao: unitCalibration(
-        "Peça uma identificação rápida em um contexto concreto sem introduzir nova terminologia."
-      )
-    } : {}),
+    configuracao: unitCalibration(
+      "Peça uma identificação rápida em um contexto concreto sem introduzir nova terminologia."
+    ),
     conteudo: {
       title: "Distinguir processo, socket e conexão",
       role: "practice",
@@ -145,7 +140,6 @@ function practiceUnit({ calibrate = true } = {}) {
       topics: ["socket", "conexão"]
     },
     aplicacaoPedagogica: {
-      modo: "pratica",
       ideiasIntroduzidas: [],
       ideiasUtilizadas: ["Socket como interface entre processo e transporte"],
       explicacoes: [],
@@ -272,6 +266,11 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: { curso: title, parte: 1 }
     });
     assert.equal(prepared.context.parte.microssequencias.length, 2);
+    assert.deepEqual(
+      prepared.context.parte.microssequencias.map(({ coberturaObrigatoria }) =>
+        coberturaObrigatoria.map(({ item }) => item)),
+      [["Compreender o papel de um socket."], ["Distinguir processo, socket e conexão."]]
+    );
     const materialized = await executeHumanCourseTask({
       adapter,
       principal,
@@ -303,8 +302,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         curso: title,
         parte: 1,
         unidades: [
-          explanationUnit({ calibrate: false }),
-          practiceUnit({ calibrate: false })
+          explanationUnit(),
+          practiceUnit()
         ]
       }
     });
@@ -323,8 +322,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         curso: title,
         parte: 1,
         unidades: [
-          explanationUnit({ calibrate: false }),
-          practiceUnit({ calibrate: false })
+          explanationUnit(),
+          practiceUnit()
         ]
       }
     });

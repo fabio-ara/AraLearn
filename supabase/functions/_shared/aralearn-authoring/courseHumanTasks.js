@@ -126,13 +126,60 @@ const EDITORIAL_PARAMETERS_SCHEMA = Object.freeze({
   })
 });
 
+const MATERIALIZATION_PEDAGOGICAL_PARAMETERS_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze([
+    "tetoNovasUnidadesDeAnalise", "formasDeExplicacao",
+    "minimoDePraticasPorRequisito", "dimensoesDeVariacaoDaPratica"
+  ]),
+  properties: Object.freeze({
+    tetoNovasUnidadesDeAnalise: Object.freeze({
+      type: "integer", minimum: 1, maximum: 64
+    }),
+    formasDeExplicacao: Object.freeze({
+      type: "array",
+      minItems: 1,
+      maxItems: EXPLANATION_FORMS.length,
+      uniqueItems: true,
+      items: Object.freeze({ type: "string", enum: EXPLANATION_FORMS })
+    }),
+    minimoDePraticasPorRequisito: Object.freeze({
+      type: "integer", minimum: 1, maximum: 64
+    }),
+    dimensoesDeVariacaoDaPratica: Object.freeze({
+      type: "array",
+      minItems: 1,
+      maxItems: PRACTICE_VARIATION_DIMENSIONS.length,
+      uniqueItems: true,
+      items: Object.freeze({ type: "string", enum: PRACTICE_VARIATION_DIMENSIONS })
+    })
+  })
+});
+
+const MATERIALIZATION_EDITORIAL_PARAMETERS_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze([
+    "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
+  ]),
+  properties: Object.freeze({
+    alvoDePalavrasPorResposta: Object.freeze({
+      type: "integer", minimum: 20, maximum: 500
+    }),
+    alvoDePalavrasPorUnidade: Object.freeze({
+      type: "integer", minimum: 40, maximum: 1000
+    })
+  })
+});
+
 const MATERIALIZATION_CONFIGURATION_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  minProperties: 1,
+  required: Object.freeze(["parametrosPedagogicos", "parametrosEditoriais"]),
   properties: Object.freeze({
-    parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
-    parametrosEditoriais: EDITORIAL_PARAMETERS_SCHEMA,
+    parametrosPedagogicos: MATERIALIZATION_PEDAGOGICAL_PARAMETERS_SCHEMA,
+    parametrosEditoriais: MATERIALIZATION_EDITORIAL_PARAMETERS_SCHEMA,
     direcaoEditorial: Object.freeze({
       type: "string", minLength: 1, maxLength: 4000
     })
@@ -270,7 +317,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
   required: Object.freeze([
-    "microssequencia", "posicao", "conteudo", "aplicacaoPedagogica"
+    "microssequencia", "posicao", "conteudo", "configuracao", "aplicacaoPedagogica"
   ]),
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -281,11 +328,10 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
       type: "object",
       additionalProperties: false,
       required: Object.freeze([
-        "modo", "ideiasIntroduzidas", "ideiasUtilizadas", "explicacoes", "praticas",
+        "ideiasIntroduzidas", "ideiasUtilizadas", "explicacoes", "praticas",
         "cobertura"
       ]),
       properties: Object.freeze({
-        modo: Object.freeze({ type: "string", enum: Object.freeze(["expositiva", "pratica", "mista"]) }),
         ideiasIntroduzidas: Object.freeze({
           type: "array", maxItems: 64,
           items: Object.freeze({
@@ -305,7 +351,8 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         }),
         ideiasUtilizadas: Object.freeze({
           type: "array", maxItems: 64, uniqueItems: true,
-          items: HUMAN_REFERENCE_SCHEMA
+          items: HUMAN_REFERENCE_SCHEMA,
+          description: "Toda ideia estabelecida mobilizada sem reexplicação nesta unidade."
         }),
         explicacoes: Object.freeze({
           type: "array", maxItems: 256,
@@ -354,7 +401,10 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
             type: "object", additionalProperties: false,
             required: Object.freeze(["requisito", "oportunidade", "dimensoesVariadas"]),
             properties: Object.freeze({
-              requisito: HUMAN_REFERENCE_SCHEMA,
+              requisito: Object.freeze({
+                ...HUMAN_REFERENCE_SCHEMA,
+                description: "Posição/título listado; um texto novo cria um requisito formal no repertório."
+              }),
               oportunidade: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
               dimensoesVariadas: Object.freeze({
                 type: "array", maxItems: PRACTICE_VARIATION_DIMENSIONS.length,
@@ -367,7 +417,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         cobertura: Object.freeze({
           type: "array", maxItems: 64, uniqueItems: true,
           items: HUMAN_REFERENCE_SCHEMA,
-          description: "Escopo desenvolvido nesta unidade."
+          description: "Itens obrigatórios do recorte efetivamente desenvolvidos nesta unidade."
         })
       })
     }),
@@ -386,24 +436,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         })
       })
     })
-  }),
-  allOf: Object.freeze([Object.freeze({
-    if: Object.freeze({ properties: Object.freeze({
-      aplicacaoPedagogica: Object.freeze({ properties: Object.freeze({
-        modo: Object.freeze({ const: "expositiva" })
-      }) })
-    }) }),
-    then: Object.freeze({ properties: Object.freeze({
-      conteudo: Object.freeze({ properties: Object.freeze({
-        role: Object.freeze({ const: "theory" })
-      }) })
-    }) }),
-    else: Object.freeze({ properties: Object.freeze({
-      conteudo: Object.freeze({ properties: Object.freeze({
-        role: Object.freeze({ const: "practice" })
-      }) })
-    }) })
-  })])
+  })
 });
 
 const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
@@ -659,13 +692,13 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use calibração contextual por unidade, sem etapa separada; siga contratos e marque formas. Não duplique a identificação local entre componentes nem repare.",
+    "Use o recorte preparado. Faça a calibração contextual de cada unidade na mesma materialização, sem etapa separada; marque formas, cobertura, novidade, uso e retomada. Não duplique a identificação local entre componentes. Não narre a chamada; no chat, só resultado, link e próxima etapa.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
-        description: "Unidades novas completas."
+        description: "Unidades completas do lote."
       })
     }, ["curso", "parte", "unidades"]),
     { readOnly: false }
@@ -861,9 +894,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.3";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.4";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:faa9da94ca5b804de27cec203efaa23ee3ac0994980ec596e018088c2d6149db";
+  "sha256:f9a2033642328bdf7d276324851a1f0d91f45ba36fae364faaacce2e95c94782";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1977,6 +2010,28 @@ function projectFocalPlanItems(items, targetIds, label) {
   });
 }
 
+function projectRequiredCurriculumCoverage(plan, microsequenceId) {
+  const items = Array.isArray(plan?.curriculumScopeItems)
+    ? plan.curriculumScopeItems
+    : [];
+  return items.flatMap((item, index) => {
+    const belongsToMicrosequence = Array.isArray(item?.curriculumTargets) &&
+      item.curriculumTargets.some((target) =>
+        Array.isArray(target?.didacticMicrosequenceIds) &&
+        target.didacticMicrosequenceIds.includes(microsequenceId));
+    if (!belongsToMicrosequence) return [];
+    if (typeof item.statement !== "string" || !item.statement.trim()) {
+      fail(
+        "course_service_unavailable",
+        "A cobertura curricular focal está incompleta.",
+        null,
+        503
+      );
+    }
+    return [{ posicao: index + 1, item: item.statement }];
+  });
+}
+
 function hasEffectiveStudyUnitOverride(read) {
   return (Array.isArray(read?.parameters) && read.parameters.some((parameter) =>
     parameter?.effectiveAssignment?.sourceScope?.kind === "study_unit")) ||
@@ -2109,6 +2164,10 @@ function projectMaterializationPart(planRead, part, designReads, unitDesignReads
           modulo: microsequence.curriculumPath?.moduleTitle ?? null,
           licao: microsequence.curriculumPath?.lessonTitle ?? null
         },
+        coberturaObrigatoria: projectRequiredCurriculumCoverage(
+          plan,
+          microsequence.id
+        ),
         ideiasPlanejadas: projectFocalPlanItems(
           plan.instructionalAnalysisUnits,
           targets?.instructionalAnalysisUnitIds,

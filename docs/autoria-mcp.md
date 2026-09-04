@@ -75,14 +75,21 @@ pertinente e o repertório acumulado do percurso. O GPT distingue ideias novas,
 ideias já estabelecidas que serão utilizadas e ideias deliberadamente retomadas.
 Conceitos auxiliares, relações, condições, procedimentos e operações também
 entram no repertório quando forem necessários para aprender o percurso.
+O mesmo recorte informa, para cada microssequência, os itens de escopo cuja
+cobertura precisa ser distribuída entre as unidades do lote.
 
 O teto de novidades controla quantas ideias semanticamente novas uma unidade
 expositiva introduz. Ele não exige uma quantidade exata, não transforma prática
 em exposição e não autoriza alterar artificialmente a granularidade das ideias.
 
-`materializar_parte` recebe unidades completas e sua aplicação de desenho. O
-servidor valida propriedades determinísticas. Suficiência, progressão, ausência
-de saltos e adequação das representações continuam dependendo da produção e da
+`materializar_parte` recebe unidades completas e sua aplicação de desenho. Cada
+unidade enviada traz os quatro valores pedagógicos e os dois alvos editoriais
+calibrados para seu contexto; o papel do conteúdo determina se a aplicação é
+expositiva, prática ou mista, sem uma segunda declaração. Uma atividade
+formativa pode permanecer sem requisito formal; quando uma prática precisa de
+um requisito novo, seu texto entra no inventário já existente. O servidor
+valida propriedades determinísticas. Suficiência, progressão, ausência de
+saltos e adequação das representações continuam dependendo da produção e da
 revisão pedagógica.
 
 O GPT deve fazer uma leitura sequencial antes de concluir o lote. Uma sequência

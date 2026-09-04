@@ -133,7 +133,6 @@
         "topics": ["organização espacial"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": [],
         "explicacoes": [],
@@ -170,7 +169,6 @@
         "topics": ["linha"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["linha de assentos"],
         "ideiasUtilizadas": [],
         "explicacoes": [{"ideia": "linha de assentos", "formas": ["plain_definition", "representation_link"]}],
@@ -208,7 +206,6 @@
         "topics": ["linha"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["linha de assentos"],
         "explicacoes": [],
@@ -245,7 +242,6 @@
         "topics": ["coluna"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["coluna de assentos"],
         "ideiasUtilizadas": ["linha de assentos"],
         "explicacoes": [{"ideia": "coluna de assentos", "formas": ["plain_definition", "contrast", "representation_link"]}],
@@ -287,7 +283,6 @@
         "topics": ["linha e coluna"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["linha de assentos", "coluna de assentos"],
         "explicacoes": [],
@@ -324,7 +319,6 @@
         "topics": ["interseção"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["posição na interseção de linha e coluna"],
         "ideiasUtilizadas": [],
         "explicacoes": [
@@ -370,7 +364,6 @@
         "topics": ["interseção"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["linha de assentos", "coluna de assentos", "posição na interseção de linha e coluna"],
         "explicacoes": [],
@@ -397,7 +390,6 @@
         "topics": ["bilhete"]
       },
       "aplicacaoPedagogica": {
-        "modo": "expositiva",
         "ideiasIntroduzidas": ["localização de assento a partir do bilhete"],
         "ideiasUtilizadas": ["linha de assentos", "coluna de assentos", "posição na interseção de linha e coluna"],
         "explicacoes": [{"ideia": "localização de assento a partir do bilhete", "formas": ["plain_definition", "mechanism", "worked_example"]}],
@@ -450,7 +442,6 @@
         "topics": ["aplicação integrada"]
       },
       "aplicacaoPedagogica": {
-        "modo": "pratica",
         "ideiasIntroduzidas": [],
         "ideiasUtilizadas": ["linha de assentos", "coluna de assentos", "posição na interseção de linha e coluna", "localização de assento a partir do bilhete"],
         "explicacoes": [],

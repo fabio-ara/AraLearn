@@ -49,8 +49,9 @@ Exemplos:
   e os itens de escopo; um rascunho pode ser revisto antes da aprovação;
 - `salvar_parte` recebe título, intenção, progressão local e referências a
   microssequências que já pertencem ao mapa;
-- `materializar_parte` recebe as unidades que concretizam o lote aprovado e
-  distingue ideias introduzidas de ideias estabelecidas usadas ou retomadas;
+- `materializar_parte` recebe as unidades que concretizam o lote aprovado,
+  distingue ideias introduzidas de ideias estabelecidas usadas ou retomadas e
+  distribui a cobertura obrigatória informada pela preparação focal;
 - `ajustar_configuracao` reúne parâmetros pedagógicos, alvos editoriais e
   direção editorial;
 - `manter_fonte` recebe somente as mudanças ou retiradas realmente solicitadas.
@@ -99,6 +100,13 @@ pesquisador prevalece e torna a condição observável. O catálogo reúne quatr
 parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis: palavras
 por resposta de autoria e por unidade de estudo. Esses alvos não são limites e
 não autorizam esconder decisões nem comprimir conteúdo.
+
+Na materialização, os seis valores aparecem juntos em cada unidade para que a
+decisão contextual seja completa e comparável. O papel do conteúdo basta para
+derivar exposição, prática ou combinação das duas; a pessoa autora não precisa
+operar essa classificação. Práticas formativas não fabricam requisito de
+evidência, enquanto um requisito realmente novo pode ser declarado pelo texto
+da operação que se pretende observar.
 
 Finalidade de concurso, formação profissional ou outra aplicação pode orientar
 vocabulário e prática, mas não altera o caráter geral do AraLearn como ambiente
