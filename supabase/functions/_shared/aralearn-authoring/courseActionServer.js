@@ -175,7 +175,7 @@ function nextDecisionForError(error, retryable) {
     return "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.";
   }
   if (error.code === "human_materialization_contextual_calibration_required") {
-    return "A próxima etapa é definir a calibração contextual antes de produzir a parte.";
+    return "Inclua a calibração contextual nas unidades e refaça a produção da parte.";
   }
   if (retryable) return "Tente novamente sem mudar a intenção da tarefa.";
   return null;

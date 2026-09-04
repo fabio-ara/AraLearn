@@ -56,7 +56,7 @@ const COURSE_SCHEMA = Object.freeze({
   type: "string",
   minLength: 1,
   maxLength: 300,
-  description: "Título do curso."
+  description: "Nome do curso."
 });
 const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   type: "array",
@@ -136,8 +136,7 @@ const MATERIALIZATION_CONFIGURATION_SCHEMA = Object.freeze({
     direcaoEditorial: Object.freeze({
       type: "string", minLength: 1, maxLength: 4000
     })
-  }),
-  description: "Calibração desta unidade nova."
+  })
 });
 
 const CURRICULAR_MAP_LESSON_SCHEMA = Object.freeze({
@@ -264,7 +263,7 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
       properties: Object.freeze({ response: Object.freeze({ not: Object.freeze({ type: "null" }) }) })
     })
   })]),
-  description: "Conteúdo da unidade, sem controles."
+  description: "Conteúdo sem controles internos."
 });
 
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
@@ -427,21 +426,21 @@ function inputSchema(properties, required = []) {
 }
 
 const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
-  titulo: "Título do objeto.",
+  titulo: "Novo título.",
   objetivo: "Objetivo do curso.",
-  curso: "Título do curso.",
+  curso: "Nome do curso.",
   aprovado: "Aprova o mapa exibido.",
   publico: "Público do curso.",
   preRequisitos: "Pré-requisitos do curso.",
   itensDeEscopo: "Escopo obrigatório.",
   modulos: "Mapa curricular completo.",
-  parte: "Posição ou título da parte.",
+  parte: "Parte: posição ou título.",
   progressao: "Progressão do lote.",
   microssequencias: "Microssequências do lote.",
-  microssequencia: "Posição ou título da microssequência.",
-  unidade: "Unidade por posição ou título.",
-  unidades: "Unidades por posição ou título.",
-  fonte: "Fonte por posição ou título.",
+  microssequencia: "Microssequência por posição/título.",
+  unidade: "Unidade: posição ou título.",
+  unidades: "Unidades: posições ou títulos.",
+  fonte: "Fonte: posição ou título.",
   busca: "Termos da busca.",
   funcao: "Função necessária.",
   componente: "Componente a inspecionar.",
@@ -502,7 +501,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "retomar_curso",
     "Retomar um curso",
-    "Use para retomar um curso. Não altera.",
+    "Use para retomar curso. Não altera.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
     }),
@@ -511,21 +510,21 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_planejamento",
     "Consultar o planejamento",
-    "Use para ler mapa e parte. Não altera.",
+    "Use para ler mapa/lote. Não altera.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use para ler um lote definido antes da produção. Não grava.",
+    "Use para ler o lote antes da produção. Não grava.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Use para ler a configuração. Não altera.",
+    "Use para ler configuração. Não altera.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -549,7 +548,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Use para preparar a revisão. Não corrige.",
+    "Use para preparar revisão. Não corrige.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -561,7 +560,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_fontes",
     "Consultar fontes e âncoras",
-    "Use para ler fontes e âncoras. Não altera.",
+    "Use para ler fontes/âncoras. Não altera.",
     inputSchema({
       curso: COURSE_SCHEMA,
       fonte: HUMAN_REFERENCE_SCHEMA,
@@ -573,7 +572,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_componentes",
     "Consultar componentes didáticos",
-    "Use para buscar e inspecionar um componente antes do uso. Não grava.",
+    "Use para inspecionar componente antes do uso. Não grava.",
     Object.freeze({
       ...inputSchema({
         busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
@@ -606,7 +605,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "criar_curso",
     "Criar um curso",
-    "Use para criar o curso confirmado. Não copia.",
+    "Use para criar curso confirmado. Não copia.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
       objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
@@ -616,7 +615,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Use para propor ou aprovar o mapa completo. Não produz.",
+    "Use para propor/aprovar o mapa completo. Não produz.",
     inputSchema({
       curso: COURSE_SCHEMA,
       aprovado: Object.freeze({ type: "boolean" }),
@@ -639,7 +638,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "Use para salvar um lote definido. Não muda o currículo.",
+    "Use para salvar o lote. Não muda o currículo.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -660,7 +659,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use para produzir lote preparado: siga contratos, marque formas e não repita a identificação local entre conteúdo, resposta e retorno. Não repara.",
+    "Use calibração contextual por unidade, sem etapa separada; siga contratos e marque formas. Não duplique a identificação local entre componentes nem repare.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -674,7 +673,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "ajustar_configuracao",
     "Ajustar a configuração autoral",
-    "Use para definir a configuração focal. Não comprime.",
+    "Use para fixar autoria/pesquisa; não para calibração automática rotineira.",
     Object.freeze({
       ...inputSchema({
       curso: COURSE_SCHEMA,
@@ -682,13 +681,12 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       unidade: HUMAN_REFERENCE_SCHEMA,
       condicao: Object.freeze({
         type: "string",
-        enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"]),
-        default: "automatica"
+        enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"])
       }),
       parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
       parametrosEditoriais: EDITORIAL_PARAMETERS_SCHEMA,
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
-      }, ["curso"]),
+      }, ["curso", "condicao"]),
       anyOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["parametrosPedagogicos"]) }),
         Object.freeze({ required: Object.freeze(["parametrosEditoriais"]) }),
@@ -752,7 +750,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "manter_fonte",
     "Manter fonte e âncoras",
-    "Use para manter fontes; só atribua confirmação à autoria após declaração dela e só localize o que foi fornecido ou lido. Não recebe PDF.",
+    "Use para fontes; só marque conferida após declaração explícita da autoria; localize apenas o fornecido ou lido. Não recebe PDF.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
@@ -816,7 +814,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "incorporar_pdf_como_fonte",
     "Incorporar PDF como fonte",
-    "Use para guardar PDF. Não faz leitura.",
+    "Use para guardar PDF. Não lê.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
@@ -863,9 +861,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.2";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.3";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:891eb2b80d3251d41908dcbd0dc2d09e9a600045cd5efca3e916b32e1cc97eae";
+  "sha256:faa9da94ca5b804de27cec203efaa23ee3ac0994980ec596e018088c2d6149db";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2249,13 +2247,9 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     design,
     unitDesign
   );
-  const calibrationPending = projectedPart.microssequencias.some(({ configuracao }) =>
-    configuracao.precisaDeCalibracaoContextual);
   return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
-    deepLink: courseDeepLink(adapter, resolved.course, "planning", [["authoringPartId", part.id]]),
-    nextDecision: calibrationPending
-      ? "A etapa seguinte é a calibração contextual e a produção desta parte."
-      : "A parte está pronta para produção e inspeção do resultado.",
+    deepLink: null,
+    nextDecision: null,
     context: {
       parte: projectedPart
     }
@@ -2716,7 +2710,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     automatica: "automatic",
     fixada_pelo_autor: "author",
     pesquisa: "research_condition"
-  }[args.condicao ?? "automatica"];
+  }[args.condicao];
   if (!origin) {
     fail("invalid_human_task_argument", "condicao é inválida.", { field: "condicao" });
   }
@@ -2896,18 +2890,21 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     : preservedOrigins.has("author")
       ? "a condição fixada pela pessoa autora"
       : null;
+  const automatic = origin === "automatic";
   return result(preservedCondition
     ? applicableCommands.length
       ? `Mantive ${preservedCondition} e atualizei os demais ajustes.`
       : `Mantive ${preservedCondition}; a calibração automática não a substituiu.`
     : "Atualizei a configuração autoral e reli os valores efetivos.", {
-    deepLink: courseDeepLink(adapter, resolved.course, "parameters",
-      resolved.studyUnits?.[0]
-        ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
-        : resolved.microsequence
-          ? [["didacticMicrosequenceId", resolved.microsequence.id]]
-          : []),
-    nextDecision: "Quer comparar esta condição com outra configuração?",
+    deepLink: automatic
+      ? null
+      : courseDeepLink(adapter, resolved.course, "parameters",
+        resolved.studyUnits?.[0]
+          ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
+          : resolved.microsequence
+            ? [["didacticMicrosequenceId", resolved.microsequence.id]]
+            : []),
+    nextDecision: automatic ? null : "Quer comparar esta condição com outra configuração?",
     context: { configuracao: projectConfiguration(configuration) }
   });
 };

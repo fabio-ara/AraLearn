@@ -517,7 +517,7 @@ test("materialização exige uma decisão contextual para valores ainda no padr�
     assert.equal(error.code, "human_materialization_contextual_calibration_required");
     assert.equal(
       error.message,
-      "A calibração contextual desta microssequência ainda não foi definida."
+      "Uma unidade nova ainda está sem calibração contextual."
     );
     assert.doesNotMatch(
       error.message,

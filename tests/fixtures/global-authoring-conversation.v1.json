@@ -600,64 +600,31 @@
     },
     {
       "sequence": 8,
-      "task": "ajustar_configuracao",
-      "afterTurn": 9,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Por que redes existem", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 1, "formasDeExplicacao": ["concrete_example", "mechanism"], "minimoDePraticasPorRequisito": 1, "dimensoesDeVariacaoDaPratica": ["context"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 140 }, "direcaoEditorial": "Comece pela situação concreta e mantenha cada unidade focal sem omitir a explicação necessária." },
-      "resultingState": "configuracao_da_parte_1_calibrada"
-    },
-    {
-      "sequence": 9,
-      "task": "ajustar_configuracao",
-      "afterTurn": 9,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Elementos de uma comunicação", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "concrete_example", "representation_link"], "minimoDePraticasPorRequisito": 1, "dimensoesDeVariacaoDaPratica": ["case_or_data"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 180 }, "direcaoEditorial": "Preserve um mesmo caso de comunicação enquanto diferencia seus elementos." },
-      "resultingState": "configuracao_da_parte_1_calibrada"
-    },
-    {
-      "sequence": 10,
-      "task": "ajustar_configuracao",
-      "afterTurn": 9,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Dados e sinais", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "contrast", "concrete_example"], "minimoDePraticasPorRequisito": 1, "dimensoesDeVariacaoDaPratica": ["case_or_data"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 170 }, "direcaoEditorial": "Destaque a distinção entre informação e variação física com exemplo e contraste." },
-      "resultingState": "configuracao_da_parte_1_calibrada"
-    },
-    {
-      "sequence": 11,
-      "task": "ajustar_configuracao",
-      "afterTurn": 9,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Meios guiados e não guiados", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["contrast", "concrete_example", "application_condition"], "minimoDePraticasPorRequisito": 2, "dimensoesDeVariacaoDaPratica": ["case_or_data", "context"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 180 }, "direcaoEditorial": "Use comparação lado a lado quando a função for discriminar os meios." },
-      "resultingState": "configuracao_da_parte_1_calibrada"
-    },
-    {
-      "sequence": 12,
-      "task": "ajustar_configuracao",
-      "afterTurn": 9,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "LAN, WAN e WLAN", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "contrast", "application_condition"], "minimoDePraticasPorRequisito": 2, "dimensoesDeVariacaoDaPratica": ["case_or_data", "context"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 170 }, "direcaoEditorial": "Apresente as categorias em contextos reais antes de cobrar classificação sem pistas." },
-      "resultingState": "configuracao_da_parte_1_calibrada"
-    },
-    {
-      "sequence": 13,
-      "task": "ajustar_configuracao",
-      "afterTurn": 9,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Quadro Ethernet, endereço MAC e porta do switch", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "mechanism", "representation_link"], "minimoDePraticasPorRequisito": 2, "dimensoesDeVariacaoDaPratica": ["case_or_data", "external_representation"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 200 }, "direcaoEditorial": "Relacione quadro, endereço e porta numa representação de rede, sem os fundir numa lista de definições." },
-      "resultingState": "configuracao_da_parte_1_calibrada"
-    },
-    {
-      "sequence": 14,
       "task": "materializar_parte",
       "afterTurn": 9,
       "course": "Redes de computadores para iniciantes",
       "part": 1,
+      "calibracaoContextual": "embutida_nas_unidades",
+      "microssequenciasCalibradas": [
+        "Por que redes existem",
+        "Elementos de uma comunicação",
+        "Dados e sinais",
+        "Meios guiados e não guiados",
+        "LAN, WAN e WLAN",
+        "Quadro Ethernet, endereço MAC e porta do switch"
+      ],
       "contentInspection": "parte-1",
       "resultingState": "parte_1_materializada"
     },
     {
-      "sequence": 15,
+      "sequence": 9,
       "task": "consultar_planejamento",
       "afterTurn": 11,
       "arguments": { "curso": "Redes de computadores para iniciantes" },
       "resultingState": "planejamento_da_parte_2"
     },
     {
-      "sequence": 16,
+      "sequence": 10,
       "task": "manter_fonte",
       "afterTurn": 15,
       "arguments": {
@@ -680,7 +647,7 @@
       "resultingState": "fonte_tecnica_disponivel"
     },
     {
-      "sequence": 17,
+      "sequence": 11,
       "task": "salvar_parte",
       "afterTurn": 17,
       "artifact": "parte-2-v2",
@@ -688,7 +655,7 @@
       "resultingState": "parte_2_aprovada"
     },
     {
-      "sequence": 18,
+      "sequence": 12,
       "task": "preparar_materializacao",
       "afterTurn": 17,
       "arguments": { "curso": "Redes de computadores para iniciantes", "parte": 2 },
@@ -696,18 +663,13 @@
       "resultingState": "parte_2_pronta_para_produzir"
     },
     {
-      "sequence": 19,
-      "task": "ajustar_configuracao",
-      "afterTurn": 17,
-      "arguments": { "curso": "Redes de computadores para iniciantes", "microssequencia": "Como switches aprendem e encaminham", "condicao": "automatica", "parametrosPedagogicos": { "tetoNovasUnidadesDeAnalise": 2, "formasDeExplicacao": ["plain_definition", "mechanism", "contrast", "worked_example", "representation_link"], "minimoDePraticasPorRequisito": 3, "dimensoesDeVariacaoDaPratica": ["case_or_data", "support_level", "external_representation"] }, "parametrosEditoriais": { "alvoDePalavrasPorResposta": 80, "alvoDePalavrasPorUnidade": 210 }, "direcaoEditorial": "Mantenha a mesma rede e a tabela em evolução; intercale previsão, explicação e prática com apoio reduzido." },
-      "resultingState": "configuracao_da_parte_2_calibrada"
-    },
-    {
-      "sequence": 20,
+      "sequence": 13,
       "task": "materializar_parte",
       "afterTurn": 17,
       "course": "Redes de computadores para iniciantes",
       "part": 2,
+      "calibracaoContextual": "embutida_nas_unidades",
+      "microssequenciasCalibradas": ["Como switches aprendem e encaminham"],
       "contentInspection": "parte-2",
       "resultingState": "parte_2_materializada"
     }

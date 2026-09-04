@@ -284,7 +284,7 @@ function toolFailure(
         : normalized.code === "course_source_pdf_write_uncertain"
           ? "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
           : normalized.code === "human_materialization_contextual_calibration_required"
-            ? "A próxima etapa é definir a calibração contextual antes de produzir a parte."
+            ? "Inclua a calibração contextual nas unidades e refaça a produção da parte."
             : retryable
               ? "Tente novamente sem mudar a intenção da tarefa."
               : null;

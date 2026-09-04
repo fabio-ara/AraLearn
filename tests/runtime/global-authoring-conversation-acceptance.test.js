@@ -218,7 +218,7 @@ test("a jornada progride de proposta inspecionável a aprovação e só então c
   }
 });
 
-test("o estado inicial leva a calibração contextual silenciosa antes de cada materialização", () => {
+test("o estado inicial leva a calibração contextual embutida e silenciosa em cada materialização", () => {
   for (const part of [1, 2]) {
     const artifact = fixture.artifacts[`parte-${part}-v2`];
     const preparationIndex = fixture.toolTrace.findIndex(({ task, arguments: input }) =>
@@ -227,24 +227,10 @@ test("o estado inicial leva a calibração contextual silenciosa antes de cada m
       task === "materializar_parte" && position === part);
     const calibrations = fixture.toolTrace.slice(preparationIndex + 1, materializationIndex)
       .filter(({ task }) => task === "ajustar_configuracao");
-    assert.deepEqual(
-      calibrations.map(({ arguments: input }) => input.microssequencia),
-      artifact.microsequences
-    );
-    for (const { arguments: input } of calibrations) {
-      assert.equal(input.condicao, "automatica");
-      assert.deepEqual(Object.keys(input.parametrosPedagogicos).sort(), [
-        "dimensoesDeVariacaoDaPratica",
-        "formasDeExplicacao",
-        "minimoDePraticasPorRequisito",
-        "tetoNovasUnidadesDeAnalise"
-      ]);
-      assert.deepEqual(Object.keys(input.parametrosEditoriais).sort(), [
-        "alvoDePalavrasPorResposta",
-        "alvoDePalavrasPorUnidade"
-      ]);
-      assert.ok(input.direcaoEditorial.length > 30);
-    }
+    assert.deepEqual(calibrations, [], "a calibração rotineira não deve virar etapa persistente");
+    const materialization = fixture.toolTrace[materializationIndex];
+    assert.equal(materialization.calibracaoContextual, "embutida_nas_unidades");
+    assert.deepEqual(materialization.microssequenciasCalibradas, artifact.microsequences);
   }
   assert.doesNotMatch(
     fixture.conversation.map(({ text }) => text).join("\n"),
@@ -473,7 +459,7 @@ test("as instruções primárias não restauram o fluxo parte por parte nem o me
   );
   assert.doesNotMatch(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /aprovada?,?\s+materialize|calibre silenciosamente|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
+    /aprovada?,?\s+materialize|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
   );
   assert.doesNotMatch(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /concurso|banca|macete de prova/iu);
 });

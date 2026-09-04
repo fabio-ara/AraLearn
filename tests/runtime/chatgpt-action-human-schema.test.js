@@ -130,6 +130,7 @@ const samples = {
   ajustar_configuracao: {
     curso: "Redes para iniciantes",
     microssequencia: "Sockets",
+    condicao: "fixada_pelo_autor",
     parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
   },
   registrar_observacao: {
@@ -181,7 +182,7 @@ test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.2");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.3");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -247,7 +248,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.doesNotMatch(
     openApi.info.description,
-    /aprovada?,?\s+materialize|calibre silenciosamente|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
+    /aprovada?,?\s+materialize|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
   );
   for (const name of ["salvar_parte", "materializar_parte"]) {
     assert.doesNotMatch(operation(name).description, /aprovad/iu);
@@ -265,6 +266,38 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   ));
 });
 
+test("contrato global mantém a calibração automática fora do chat", () => {
+  assert.match(
+    openApi.info.description,
+    /estado default[\s\S]*calibr[\s\S]*(?:em silêncio|silenciosamente)/iu
+  );
+  assert.match(
+    openApi.info.description,
+    /parâmetros[\s\S]*contagens[\s\S]*formas[\s\S]*alvos[\s\S]*(?:pedido|solicita)/iu
+  );
+  assert.match(
+    openApi.info.description,
+    /após produzir[\s\S]*resultado[\s\S]*link[\s\S]*próxima etapa/iu
+  );
+  assert.match(
+    operation("materializar_parte").description,
+    /calibração contextual[\s\S]*(?:cada|por) unidade[\s\S]*sem etapa separada/iu
+  );
+  assert.match(
+    operation("ajustar_configuracao").description,
+    /fixar[\s\S]*autoria[\s\S]*pesquisa[\s\S]*não.*calibração automática rotineira/iu
+  );
+});
+
+test("Actions documenta context como memória de continuação e não como fala", () => {
+  const actionContext = openApi.components.schemas.HumanTaskResult.properties.context;
+  assert.ok(actionContext, "Actions precisa documentar context na resposta");
+  assert.match(
+    actionContext.description,
+    /continua(?:r|ção)[\s\S]*(?:não|sem)[\s\S]*chat/iu
+  );
+});
+
 test("#272 os dezessete inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   for (const task of actionTools) {
@@ -278,6 +311,10 @@ test("#272 os dezessete inputs importáveis aceitam exemplos humanos e recusam m
   const source = validatorFor("manter_fonte");
   const materialization = validatorFor("materializar_parte");
   assert.equal(adjust({ curso: "Redes para iniciantes" }), false);
+  assert.equal(adjust({
+    ...samples.ajustar_configuracao,
+    condicao: undefined
+  }), false, "ajustes persistentes precisam declarar sua origem");
   assert.equal(source({ curso: "Redes para iniciantes" }), false);
   assert.equal(materialization({
     ...samples.materializar_parte,
@@ -336,7 +373,11 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
     "confirmada_explicitamente_pela_autoria"
   ]);
   const sourceTask = actionTools.find(({ name }) => name === "manter_fonte");
-  assert.match(sourceTask.description, /só confirme.*conferido|localize.*lido/iu);
+  assert.match(
+    sourceTask.description,
+    /conferida.*declaração explícita da autoria/iu
+  );
+  assert.match(sourceTask.description, /localize.*fornecido ou lido/iu);
 
   const materialization = actionTools.find(({ name }) =>
     name === "materializar_parte").inputSchema;
@@ -348,7 +389,7 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
   assert.match(materializationTask.description, /marque formas/iu);
   assert.match(
     materializationTask.description,
-    /não repita a identificação local.*conteúdo.*resposta.*retorno/iu
+    /não duplique (?:a )?identificação local.*componentes/iu
   );
   const componentsTask = actionTools.find(({ name }) => name === "consultar_componentes");
   assert.match(componentsTask.description, /inspecionar.*antes do uso/iu);
