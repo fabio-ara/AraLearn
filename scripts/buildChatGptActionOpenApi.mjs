@@ -46,6 +46,10 @@ if (!resultSchema || actionTools.some(({ outputSchema }) => (
 ))) {
   throw new TypeError("As tarefas humanas precisam compartilhar o contrato curto de resultado.");
 }
+resultSchema.properties.context = {
+  type: "object",
+  description: "Memória para continuar as chamadas; não reproduzir no chat salvo pedido."
+};
 
 const studyUnitContentSchema = structuredClone(actionTools
   .find(({ name }) => name === "materializar_parte")

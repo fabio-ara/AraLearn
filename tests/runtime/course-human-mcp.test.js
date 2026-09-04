@@ -358,8 +358,8 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.2");
-  assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.3");
+  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 32_000);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -949,14 +949,8 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   });
 
   assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
-  assert.equal(
-    output.nextDecision,
-    "A parte está pronta para produção e inspeção do resultado."
-  );
-  assert.doesNotMatch(
-    output.nextDecision,
-    /silenciosamente|aprovad|produza|materialize|ferramenta|schema|contrato|servidor/iu
-  );
+  assert.equal(output.deepLink, null);
+  assert.equal(output.nextDecision, null);
   assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
   assert.deepEqual(output.context.parte.ideiasEstabelecidas, [{
     posicao: 1,
@@ -1474,7 +1468,7 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
         throw new AuthoringApiError(
           409,
           "human_materialization_contextual_calibration_required",
-          "A calibração contextual desta microssequência ainda não foi definida."
+          "Uma unidade nova ainda está sem calibração contextual."
         );
       }
     },
@@ -1495,7 +1489,7 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
   assert.equal(payload.result.isError, true);
   assert.equal(
     payload.result.structuredContent.nextDecision,
-    "A próxima etapa é definir a calibração contextual antes de produzir a parte."
+    "Inclua a calibração contextual nas unidades e refaça a produção da parte."
   );
   assert.doesNotMatch(
     publicText,
@@ -2307,6 +2301,7 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
     name: "ajustar_configuracao",
     rawArguments: {
       curso: "Redes para iniciantes",
+      condicao: "automatica",
       parametrosPedagogicos: {
         tetoNovasUnidadesDeAnalise: 2,
         formasDeExplicacao: ["forma-inexistente"]
@@ -2408,6 +2403,7 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     name: "ajustar_configuracao",
     rawArguments: {
       curso: "Redes para iniciantes",
+      condicao: "automatica",
       parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 },
       parametrosEditoriais: {
         alvoDePalavrasPorResposta: 75,
@@ -2439,6 +2435,7 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     rawArguments: {
       curso: "Redes para iniciantes",
       microssequencia: "Sockets",
+      condicao: "automatica",
       parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 }
     }
   });
@@ -2495,6 +2492,8 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     fixedForResearch.context.configuracao.parametros[0].escopoDeOrigem,
     "unidade de estudo"
   );
+  assert.match(fixedForResearch.deepLink, /section=parameters/u);
+  assert.match(fixedForResearch.nextDecision, /comparar/iu);
 
   const commandCountBeforeAutomaticRetry = designCommands.length;
   const preservedResearchCondition = await executeHumanCourseTask({
@@ -2504,15 +2503,43 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     rawArguments: {
       curso: "Redes para iniciantes",
       unidade: "Unidade um",
+      condicao: "automatica",
       parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
     }
   });
   assert.equal(designCommands.length, commandCountBeforeAutomaticRetry);
   assert.match(preservedResearchCondition.result, /Mantive a condição de pesquisa/u);
+  assert.equal(preservedResearchCondition.deepLink, null);
+  assert.equal(preservedResearchCondition.nextDecision, null);
   assert.equal(
     preservedResearchCondition.context.configuracao.parametros[0].origem,
     "condição de pesquisa"
   );
+  assert.deepEqual({
+    curso: {
+      deepLink: configured.deepLink,
+      nextDecision: configured.nextDecision,
+      manteveContexto: Boolean(configured.context?.configuracao)
+    },
+    microssequencia: {
+      deepLink: calibratedMicrosequence.deepLink,
+      nextDecision: calibratedMicrosequence.nextDecision,
+      manteveContexto: Boolean(calibratedMicrosequence.context?.configuracao)
+    },
+    condicaoPreservadaDuranteAjusteAutomatico: {
+      deepLink: preservedResearchCondition.deepLink,
+      nextDecision: preservedResearchCondition.nextDecision,
+      manteveContexto: Boolean(preservedResearchCondition.context?.configuracao)
+    }
+  }, {
+    curso: { deepLink: null, nextDecision: null, manteveContexto: true },
+    microssequencia: { deepLink: null, nextDecision: null, manteveContexto: true },
+    condicaoPreservadaDuranteAjusteAutomatico: {
+      deepLink: null,
+      nextDecision: null,
+      manteveContexto: true
+    }
+  });
 
   const observed = await executeHumanCourseTask({
     adapter: writeAdapter,

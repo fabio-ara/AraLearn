@@ -723,7 +723,7 @@ function designSnapshot(design, microsequenceId) {
     parameter?.effectiveAssignment?.origin === "system_default")) {
     fail(
       "human_materialization_contextual_calibration_required",
-      "A calibração contextual desta microssequência ainda não foi definida.",
+      "Uma unidade nova ainda está sem calibração contextual.",
       409
     );
   }

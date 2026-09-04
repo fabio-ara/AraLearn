@@ -314,7 +314,7 @@ test("Actions apresenta falha de calibração sem narrar a maquinaria", async ()
       throw new AuthoringApiError(
         409,
         "human_materialization_contextual_calibration_required",
-        "A calibração contextual desta microssequência ainda não foi definida."
+        "Uma unidade nova ainda está sem calibração contextual."
       );
     }
   })(request("retomar_curso", { titulo: "Redes para iniciantes" }));
@@ -323,7 +323,7 @@ test("Actions apresenta falha de calibração sem narrar a maquinaria", async ()
   const payload = await response.json();
   assert.equal(
     payload.nextDecision,
-    "A próxima etapa é definir a calibração contextual antes de produzir a parte."
+    "Inclua a calibração contextual nas unidades e refaça a produção da parte."
   );
   assert.doesNotMatch(
     `${payload.error.message} ${payload.nextDecision}`,

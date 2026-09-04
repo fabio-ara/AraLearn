@@ -1,12 +1,12 @@
 const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
-  "A autoria parte de objetivo, público, pré-requisitos, escopo e fontes e segue para o mapa completo de módulos, lições e microssequências. O chat resume temas e progressão; o detalhe fica no AraLearn.",
-  "A decisão da pessoa autora cobre o mapa apresentado; conteúdo futuro é uma etapa distinta. Partes são lotes operacionais posteriores e podem mudar sem alterar o currículo.",
-  "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa; condições fixadas pelo pesquisador prevalecem. O repertório distingue novidade, uso e retomada; dependências vêm antes do uso.",
-  "Unidades focalizadas conectam explicação e prática; componentes e fontes cumprem função. Separe pessoa autora de público estudante; use substantivos comuns em minúsculas.",
-  "O resumo global mostra assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas aparecem como impacto e retomada em linguagem humana.",
-  "Quando uma tarefa devolver um link, reproduza o endereço exato como link Markdown no chat."
+  "Parta de objetivo, público, pré-requisitos, escopo e fontes; proponha o mapa completo de módulos, lições e microssequências. Síntese no chat; detalhe no AraLearn.",
+  "A decisão da pessoa autora cobre o mapa apresentado, não conteúdo futuro. Partes são lotes operacionais mutáveis sem alterar o currículo.",
+  "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa; faça-a em silêncio ao materializar. Condições fixadas pelo pesquisador prevalecem. Só mostre parâmetros, contagens, formas ou alvos se solicitados.",
+  "Repertório: novidade, uso e retomada; dependências antes do uso. Unidades conectam explicação e prática; componentes e fontes têm função.",
+  "Mapa: assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas: impacto, retomada e linguagem humana. Separe pessoa autora de público estudante; use substantivos comuns em minúsculas.",
+  "Após produzir: resultado, link e próxima etapa. Ao devolver um link, reproduza o endereço exato como link Markdown no chat."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({
@@ -23,7 +23,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   materialization: Object.freeze({
     title: "Materialização",
     instructions: Object.freeze([
-      "Antes de produzir, consulte a parte, a configuração focal e o repertório acumulado. Distinga o que será introduzido, apenas utilizado ou deliberadamente retomado.",
+      "Antes de produzir, consulte a parte, a configuração focal e o repertório acumulado. No estado default, calibre cada unidade nova no próprio pedido de materialização, sem etapa persistente separada nem narração no chat. Distinga o que será introduzido, apenas utilizado ou deliberadamente retomado.",
       "Ensine cada dependência antes do uso. Mesmo quando fundamental para alicerçar outra novidade, uma ideia ainda não estabelecida precisa de preparação suficiente.",
       "Crie experiências focalizadas e conectadas: divida uma unidade densa e funda fragmentos que não cumprem função didática sozinhos. A quantidade deve emergir do conteúdo.",
       "Distribua prática e consolidação perto do menor bloco de novidades e pré-requisitos que já as torne compreensíveis; não deixe toda a prática para depois de uma longa sequência teórica.",

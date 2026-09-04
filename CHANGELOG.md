@@ -4,6 +4,16 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.60] - 2026-09-03
+
+### Corrigido
+
+- a calibração automática de cada unidade nova integra a própria materialização,
+  sem uma etapa persistente separada nem exposição de parâmetros, contagens e
+  decisões editoriais rotineiras no chat;
+- condições deliberadamente fixadas pela autoria ou pela pesquisa continuam
+  inspecionáveis e comparáveis.
+
 ## [0.0.59] - 2026-09-03
 
 ### Adicionado
