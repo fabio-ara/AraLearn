@@ -28,12 +28,21 @@ const SOURCE_SCOPE_LABELS = Object.freeze({
 });
 
 const CONCEPT_LABELS = Object.freeze({
+  plain_definition: "Definição em linguagem direta",
+  concrete_example: "Exemplo concreto",
   definition: "Definição",
   context: "Contexto",
   mechanism: "Mecanismo",
   relationship: "Relação",
   example: "Exemplo",
   contrast: "Contraste",
+  application_condition: "Condição de aplicação",
+  limit_or_exception: "Limite ou exceção",
+  representation_link: "Relação entre representações",
+  case_or_data: "Caso ou dado",
+  task_feature: "Característica da tarefa",
+  external_representation: "Representação externa",
+  support_level: "Nível de apoio",
   complementary_representation: "Representação complementar",
   retrieval: "Recuperação",
   consolidation: "Consolidação",

@@ -189,7 +189,7 @@ test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.4");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.5");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -247,7 +247,15 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   assert.match(openApi.info.description, /mapa completo de módulos, lições e microssequências/iu);
   assert.match(openApi.info.description, /decisão da pessoa autora cobre o mapa apresentado/iu);
   assert.match(openApi.info.description, /Partes são lotes operacionais.*sem alterar o currículo/iu);
-  assert.match(openApi.info.description, /pessoa autora.*público estudante.*minúsculas/iu);
+  assert.match(
+    openApi.info.description,
+    /aprovar o mapa.*pedir o lote.*mesma mensagem.*registre primeiro o mapa/iu
+  );
+  assert.match(
+    openApi.info.description,
+    /falhas, diga só impacto e retomada.*omita causas, validações e mecanismos internos/iu
+  );
+  assert.match(openApi.info.description, /autor.*estudante.*minúsculas/iu);
   assert.match(openApi.info.description, /não estatísticas da estrutura/iu);
   assert.match(
     openApi.info.description,
@@ -257,9 +265,17 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     openApi.info.description,
     /aprovada?,?\s+materialize|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
   );
-  for (const name of ["salvar_parte", "materializar_parte"]) {
-    assert.doesNotMatch(operation(name).description, /aprovad/iu);
-  }
+  assert.match(
+    operation("salvar_mapa_curricular").description,
+    /propor\/aprovar o mapa antes do lote/iu
+  );
+  assert.match(
+    operation("salvar_parte").description,
+    /após confirmar a progressão/iu
+  );
+  assert.match(operation("salvar_parte").description, /não para propô-la/iu);
+  assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
+  assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
   assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1000);
   assert.ok(Object.hasOwn(
     operation("consultar_componentes").requestBody.content["application/json"]

@@ -648,7 +648,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Use para propor/aprovar o mapa completo. Não produz.",
+    "Use para propor/aprovar o mapa antes do lote; não produz.",
     inputSchema({
       curso: COURSE_SCHEMA,
       aprovado: Object.freeze({ type: "boolean" }),
@@ -671,7 +671,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "Use para salvar o lote. Não muda o currículo.",
+    "Use após confirmar a progressão; não para propô-la.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -894,9 +894,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.4";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.5";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:f9a2033642328bdf7d276324851a1f0d91f45ba36fae364faaacce2e95c94782";
+  "sha256:4a135fb0fc3c14803e68664b783865213288d2d727746b696f1ccc992b61b6c8";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

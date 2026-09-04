@@ -218,6 +218,23 @@ test("a jornada progride de proposta inspecionável a aprovação e só então c
   }
 });
 
+test("aprovação do mapa e pedido do primeiro lote na mesma fala preservam a ordem do fluxo", () => {
+  const request = fixture.conversation.find(({ turn }) => turn === 5);
+  assert.match(request.text, /aprovo o mapa.*progressão do primeiro lote/iu);
+
+  const calls = fixture.toolTrace.filter(({ afterTurn }) => afterTurn === request.turn);
+  assert.equal(calls[0]?.task, "salvar_mapa_curricular");
+  assert.equal(calls[0]?.approved, true);
+  assert.equal(calls.some(({ task }) => task === "salvar_parte"), false);
+
+  const response = fixture.conversation.find(({ turn }) => turn === 6);
+  assert.match(response.text, /Para a primeira parte, proponho esta progressão/iu);
+  assert.doesNotMatch(
+    response.text,
+    /AraLearn (?:bloqueou|exigiu)|aprovação.*persistid|backend|schema|ferramenta|chamada/iu
+  );
+});
+
 test("o estado inicial leva a calibração contextual embutida e silenciosa em cada materialização", () => {
   for (const part of [1, 2]) {
     const artifact = fixture.artifacts[`parte-${part}-v2`];
@@ -455,7 +472,11 @@ test("as instruções primárias não restauram o fluxo parte por parte nem o me
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não estatísticas da estrutura/iu);
   assert.match(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /Falhas.*impacto.*retomada.*linguagem humana/iu
+    /aprovar o mapa.*pedir o lote.*mesma mensagem.*registre primeiro o mapa/iu
+  );
+  assert.match(
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    /falhas, diga só impacto e retomada.*omita causas, validações e mecanismos internos/iu
   );
   assert.doesNotMatch(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
