@@ -38,7 +38,7 @@ Um curso compartilhado pode ser estudado sem conceder autoria no original.
 
 **Autoria** apresenta apenas cursos próprios. O curso abre diretamente em
 Conteúdo; Conteúdo e Planejamento permanecem no cabeçalho, enquanto Parâmetros,
-Fontes, Revisão, Analytics e Pessoas aparecem no menu compacto. A composição é
+**Fontes**, Revisão, Analytics e Pessoas aparecem no menu compacto. A composição é
 estreita, móvel primeiro e usa um único rolador vertical.
 
 A autoria por conversa complementa essas superfícies. O GPT pode planejar,

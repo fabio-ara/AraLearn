@@ -441,8 +441,8 @@ construto.
   na interface, aparece como **Observação**.
 - **Definição:** anotação com corpo e alvo endereçável, autoria, motivação e
   estado. Pode registrar dúvida, possível erro, confusão, sugestão ou pedido de
-  reformulação ligado a Curso, Módulo, Lição, Tópico, Microssequência, Unidade,
-  Fonte ou Âncora; podem coexistir várias no mesmo alvo
+  reformulação ligado a curso, módulo, lição, Tópico, microssequência, Unidade,
+  fonte ou Âncora; podem coexistir várias no mesmo alvo
   ([W3C (2017)](https://www.w3.org/TR/annotation-model/)).
 - **Manifestação possível:** texto registrado, alvo reencontrável, revisão,
   canal e estado preservados.
@@ -508,7 +508,7 @@ construto.
 ### Curso
 
 Objeto instrucional vivo e identificável que reúne hierarquia, conteúdo,
-desenho, Fontes, Observações e estado de Autoria. O Curso pode ser estudado à
+desenho, fontes, Observações e estado de Autoria. O curso pode ser estudado à
 medida que é produzido e não depende de uma etapa de publicação para existir.
 É unidade de propriedade e autorização do produto, não turma, disciplina,
 intervenção educacional validada ou programa institucional.
@@ -525,13 +525,13 @@ um estado persistido verificável.
 ### Fonte
 
 Objeto de proveniência que identifica o estado corrente de um material usado na
-Autoria. Uma Fonte pode ser documento, página da Web, vídeo, PDF ou outro
+Autoria. Uma fonte pode ser documento, página da Web, vídeo, PDF ou outro
 material aceito pelo produto. Sua presença permite localizar a origem, mas não
 atesta verdade, qualidade, pertinência ou fidelidade da interpretação.
 
 ### Âncora
 
-Localização delimitada dentro da Fonte corrente, como página,
+Localização delimitada dentro da fonte corrente, como página,
 instante de mídia, fragmento de endereço ou trecho textual. Ela torna a
 atribuição reencontrável; não demonstra que o alvo foi interpretado
 corretamente nem substitui a leitura do contexto.
@@ -539,7 +539,7 @@ corretamente nem substitui a leitura do contexto.
 ### Observação
 
 Nome de interface da anotação ancorada registrada por uma pessoa sobre um alvo
-do Curso. Pode expressar dúvida, possível erro, confusão, sugestão ou pedido de
+do curso. Pode expressar dúvida, possível erro, confusão, sugestão ou pedido de
 revisão e possui estado próprio. Não altera o conteúdo automaticamente e não é
 medida de compreensão, dificuldade, qualidade ou aprendizagem.
 
@@ -722,8 +722,8 @@ unidade universal da pesquisa educacional.
 Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
 dependências, complexidade das microssequências e volume de revisão. É uma
 unidade de materialização, não um nível didático. A faixa orientativa de 7 a 12
-Partes por curso é um valor padrão configurável para coordenar produção e
-revisão, não cota pedagógica nem quantidade universal; cada Parte pode abranger
+partes por curso é um valor padrão configurável para coordenar produção e
+revisão, não cota pedagógica nem quantidade universal; cada parte pode abranger
 várias microssequências.
 
 ### Microteoria
@@ -761,7 +761,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 ### Comparação descritiva de condições
 
 - **Tipo:** operação de pesquisa sobre o artefato.
-- **Definição:** confronto entre Cursos privados independentes cujas condições,
+- **Definição:** confronto entre cursos privados independentes cujas condições,
   invariantes e diferenças foram registradas pelo protocolo de pesquisa.
 - **Não equivale a:** experimento, atribuição de participantes, comparação de
   aprendizagem ou teste causal.
@@ -784,15 +784,15 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Tipo:** registro externo delimitado pelo protocolo de pesquisa.
 - **Definição:** exportação explícita do estado e da configuração efetivamente
   usados numa condição.
-- **Não equivale a:** versão cotidiana do Curso ou snapshot de Analytics.
+- **Não equivale a:** versão cotidiana do curso ou snapshot de Analytics.
 - **Evidência necessária:** conteúdo, configuração, data, revisão e vínculo
   inequívoco com a condição exposta.
 
 ### Estado observável de Autoria
 
 - **Tipo:** registro observável.
-- **Definição:** propriedade derivável do Curso corrente, como configuração,
-  composição, Fonte ou estado de Observação.
+- **Definição:** propriedade derivável do curso corrente, como configuração,
+  composição, fonte ou estado de Observação.
 - **Não equivale a:** conversa completa, raciocínio privado, interpretação
   educacional ou telemetria de Estudo.
 - **Evidência necessária:** regra de derivação, escopo, revisão e indicação de
@@ -801,7 +801,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 ### Escopo de Analytics
 
 - **Tipo:** recorte operacional.
-- **Definição:** Curso, Parte, Microssequência ou StudyUnit escolhida para
+- **Definição:** Curso, parte, microssequência ou StudyUnit escolhida para
   agregar o estado corrente.
 - **Não equivale a:** depósito analítico, população de participantes ou
   construto científico.
@@ -888,7 +888,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Definição:** estudo em que a atribuição aleatória forma condições
   comparáveis em expectativa e a intervenção, a exposição e os desfechos são
   definidos pelo protocolo.
-- **Não equivale a:** criação de Cursos com configurações diferentes, teste de
+- **Não equivale a:** criação de cursos com configurações diferentes, teste de
   software ou comparação descritiva entre artefatos.
 - **Evidência necessária:** participantes, atribuição, intervenção,
   instrumentos, aderência, perdas, análise e incerteza documentados

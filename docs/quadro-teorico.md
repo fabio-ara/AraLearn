@@ -87,7 +87,7 @@ O mesmo dado não responde a perguntas de todos os níveis:
 | microssequência | progressão de teoria e prática | há base suficiente, coerência e retirada adequada de apoio? | rubrica, explicação, prática imediata e tarefa posterior |
 | percurso | lição, módulo e curso | dependências e retomadas mantêm continuidade? | auditoria curricular e acompanhamento longitudinal |
 | autoria | pessoa, modelo, contrato e revisão | escopo, qualidade e responsabilidade são compreendidos? | tarefa de autoria, rubrica, revisão de ponto anterior e entrevista |
-| governança do Curso | propriedade, acesso e mudanças | responsabilidade e acesso são compreensíveis e seguros? | tarefas de compartilhamento e revogação, análise qualitativa e auditoria de acesso |
+| governança do curso | propriedade, acesso e mudanças | responsabilidade e acesso são compreensíveis e seguros? | tarefas de compartilhamento e revogação, análise qualitativa e auditoria de acesso |
 | infraestrutura | núcleo comum, pacotes de componente, armazenamento e sincronização | o artefato é correto, resiliente e proporcional? | testes, medições técnicas, custos e incidentes |
 
 Um clique pertence ao nível de interação. Ele não mede compreensão, percurso,
@@ -95,7 +95,7 @@ autorregulação ou colaboração sem uma cadeia de operacionalização validada
 
 ## Camada de análise instrucional
 
-Entre Fontes e materialização, o AraLearn mantém uma camada explícita de
+Entre fontes e materialização, o AraLearn mantém uma camada explícita de
 análise instrucional. Ela descreve unidades editoriais, conhecimento prévio
 presumido, relações, conjuntos que precisam ser coordenados e requisitos de
 explicação, evidência, prática, fidelidade e representação. Essa camada não é
@@ -183,7 +183,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Alternativas ou requisitos:** resumo curto, exposição extensa de uma vez ou
   progressão em camadas; a profundidade final e as relações precisam ser
   preservadas.
-- **Decisão:** planejamento antecede quantidade de Unidades de estudo; não há tamanho fixo de
+- **Decisão:** planejamento antecede quantidade de unidades de estudo; não há tamanho fixo de
   microteoria ou prática.
 - **Fundamentação:** carga e segmentação dependem de tarefa e desenho
   ([Sweller et al. (1998)](referencias.md#ref-sweller1998architecture); [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)); microaprendizagem é um campo
@@ -292,12 +292,12 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Alternativas ou requisitos:** editor estrutural livre, instrução sem escopo
   ou correção limitada ao alvo existente com contexto protegido.
 - **Decisão:** derivar o contexto pelo servidor, restringir a correção ao
-  conteúdo e às Fontes da Unidade focal e exigir confirmação e verificação.
+  conteúdo e às fontes da Unidade focal e exigir confirmação e verificação.
 - **Fundamentação:** controle humano exige comunicação de capacidade, correção e
   ação compreensível ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)); interpretação e uso do retorno são
   processos, não entrega isolada ([Wood (2021)](referencias.md#ref-wood2021dialogic)).
 - **Operacionalização:** Observações abertas identificam os alvos; o contexto
-  preparado inclui Units pedagogicamente afetadas; a correção atualiza o Curso
+  preparado inclui Units pedagogicamente afetadas; a correção atualiza o curso
   corrente e a rematerialização comprova novamente parâmetros e conteúdo.
 - **Consequência esperada:** menos erros de alvo e maior compreensão do escopo.
 - **Explicações rivais:** edição mais curta, experiência técnica ou tarefa
@@ -330,7 +330,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Problema e contexto:** edição difusa e geração automática podem ampliar
   poder, escopo e consequência sem responsabilidade compreensível.
 - **Alternativas ou requisitos:** edição compartilhada por papéis, isolamento
-  completo ou propriedade do Curso com acesso direto e revogável para Estudo;
+  completo ou propriedade do curso com acesso direto e revogável para Estudo;
   automação livre ou assistência delimitada por contratos e proveniência.
 - **Decisão:** reservar a Autoria à pessoa proprietária, conceder por acesso
   direto somente o Estudo e restringir a IA por catálogo, contrato, escopo e
@@ -342,7 +342,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   geração dependentes da tarefa
   ([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)); governança de IA exige
   responsabilidade e risco explícitos ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
-- **Operacionalização:** autorização por Curso e operação, acesso revogável,
+- **Operacionalização:** autorização por curso e operação, acesso revogável,
   trilha de proveniência, contrato especializado, auditoria e revisão humana.
 - **Consequência esperada:** acesso e autoria mais delimitados, com menor
   deriva estrutural.
@@ -401,7 +401,7 @@ instrumento, momento e interpretação próprios.
 - cardinalidade de unidades ou relações como carga cognitiva medida;
 - disponibilidade de um componente como prova de que ele foi selecionado ou
   materializado;
-- acesso direto a um Curso como autoria ou colaboração;
+- acesso direto a um curso como autoria ou colaboração;
 - materialização técnica como validação pedagógica;
 - esquema de dados válido como correção factual;
 - preferência estética como usabilidade;

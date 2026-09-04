@@ -2,7 +2,7 @@
 
 O AraLearn é uma aplicação web em módulos JavaScript, distribuída também num
 WebView Android. Os serviços remotos usam Supabase. Estudo, Autoria, MCP e
-Actions operam o mesmo Curso; uma mudança pública precisa preservar essa
+Actions operam o mesmo curso; uma mudança pública precisa preservar essa
 convergência sem criar outro domínio por transporte.
 
 Comece pela [Arquitetura](arquitetura.md), siga para [Persistência relacional e
@@ -37,7 +37,7 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 
 ## Percurso de dados
 
-Ao abrir um Curso, o navegador busca a composição em páginas, valida o conjunto
+Ao abrir um curso, o navegador busca a composição em páginas, valida o conjunto
 e só então promove a nova revisão local. Estado pessoal e Anotações possuem
 repositórios próprios e podem retomar envios depois de uma falha.
 
@@ -55,7 +55,7 @@ no servidor. Eles não pertencem ao schema apresentado ao modelo.
 | Caminho | Responsabilidade |
 | --- | --- |
 | `public/` | documento web, estilos, manifesto e service worker |
-| `src/domain/` | regras puras de Curso, configuração, Fontes e Analytics |
+| `src/domain/` | regras puras de curso, configuração, fontes e Analytics |
 | `src/persistence/` | réplica local, estado pessoal e Anotações |
 | `src/study/` | navegação, repositório e tela de Estudo |
 | `src/supabase/` | cliente e coordenação remota no navegador |
@@ -140,7 +140,7 @@ da mesma operação admite repetição automática; conflito material exige rele
 Uma composição nova permanece candidata no IndexedDB até a validação integral.
 Nunca apague a última revisão válida para aceitar uma candidata incompleta.
 Estado pessoal e Anotações possuem filas específicas. Planejamento, produção,
-Fontes, configuração, revisão e Analytics exigem o estado remoto corrente.
+fontes, configuração, revisão e Analytics exigem o estado remoto corrente.
 
 ## Interface
 
@@ -184,7 +184,7 @@ npm.cmd run test:backup-restore:local
 
 O ensaio de backup e restauração usa bancos PostgreSQL descartáveis, restaura um
 dump anterior, aplica a migração corrente e confere estrutura, planejamento,
-desenho, configuração, Fontes, PDFs e Observações. Os bytes do Storage formam
+desenho, configuração, fontes, PDFs e Observações. Os bytes do Storage formam
 uma fronteira separada do backup lógico do banco.
 
 Funções `security definer` fixam `search_path`, revogam execução ampla e validam

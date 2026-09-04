@@ -1,9 +1,9 @@
 # Revisão e correções do Curso
 
-Revisar um Curso significa voltar ao conteúdo corrente, localizar uma questão e
+Revisar um curso significa voltar ao conteúdo corrente, localizar uma questão e
 examinar o percurso necessário para corrigi-la. A revisão pode começar numa
-StudyUnit, numa Observação, numa Fonte, numa mudança de parâmetro ou numa
-representação inadequada. Ela não atribui nota ao Curso e não mede aprendizagem.
+StudyUnit, numa Observação, numa fonte, numa mudança de parâmetro ou numa
+representação inadequada. Ela não atribui nota ao curso e não mede aprendizagem.
 
 ## O ciclo de revisão
 
@@ -20,7 +20,7 @@ lote.
 Antes de propor mudanças, o GPT usa `preparar_revisao` para reler as Observações
 abertas e o contexto pedagógico pertinente. A resposta identifica o problema, o
 conjunto que precisa mudar e uma proposta concreta. A pessoa decide antes de
-`aplicar_correcoes` alterar o Curso.
+`aplicar_correcoes` alterar o curso.
 
 ## Contexto pedagogicamente afetado
 
@@ -32,7 +32,7 @@ releitura de Units anteriores e posteriores quando atingir:
 - exemplos que dependem da explicação alterada;
 - prática e consolidação;
 - Fontes, Âncoras ou atribuições;
-- parâmetros efetivos da Microssequência.
+- parâmetros efetivos da microssequência.
 
 O GPT deve propor o menor conjunto coerente de mudanças. Isso pode significar
 manter Units que foram lidas como contexto, alterar mais de uma Unit ou criar uma
@@ -53,12 +53,12 @@ e escolha continuam corretos quando cumprem a função instrucional.
 
 ## Fontes e contestação
 
-A revisão apresenta a referência da Fonte, o papel que ela cumpre e a Âncora ou
-o trecho pertinente. Uma Fonte pode apoiar uma afirmação, contextualizar,
+A revisão apresenta a referência da fonte, o papel que ela cumpre e a Âncora ou
+o trecho pertinente. Uma fonte pode apoiar uma afirmação, contextualizar,
 contrastar ou fornecer um exemplo. Esses papéis não são intercambiáveis.
 
 Fonte e Âncora continuam contestáveis. A pessoa pode corrigir metadados, ajustar
-a localização, mudar a relação com a Unit ou retirar a Fonte. Identidade e
+a localização, mudar a relação com a Unit ou retirar a fonte. Identidade e
 localização demonstram proveniência; não demonstram, sozinhas, qualidade ou
 verdade da afirmação.
 
@@ -75,7 +75,7 @@ unidade fica densa demais, o curso ganha mais unidades coerentes.
 ## Aplicação e reinspeção
 
 `aplicar_correcoes` recebe referências humanas das Units e seus conteúdos e
-Fontes propostos. A camada confiável resolve identidades e a revisão corrente,
+fontes propostos. A camada confiável resolve identidades e a revisão corrente,
 recusa ambiguidade ou falta de acesso e tenta novamente apenas quando consegue
 preservar a mesma intenção.
 
@@ -84,7 +84,7 @@ afetado. A alteração aplicada não prova que o problema foi resolvido. A
 Observação pode então ser respondida ou resolvida de acordo com o estado
 corrente.
 
-O AraLearn conserva o conteúdo, a configuração, as Fontes e as Observações
+O AraLearn conserva o conteúdo, a configuração, as fontes e as Observações
 necessários ao trabalho. A conversa não cria um histórico universal de rodadas,
 achados ou estados anteriores. Git, backup e exportação explícita cumprem as
 funções de recuperação e pesquisa que exigem um artefato congelado.
@@ -93,13 +93,13 @@ funções de recuperação e pesquisa que exigem um artefato congelado.
 
 Em **Conteúdo**, o ícone de Observações abre o contexto da StudyUnit. A pessoa
 pode navegar pelo índice, voltar a uma Unit antiga, selecionar várias Units e
-consultar Fontes sem sair do percurso. **Analytics** resume quantitativamente o
+consultar fontes sem sair do percurso. **Analytics** resume quantitativamente o
 desenho corrente e intervenções humanas explicitamente observáveis.
 
 No MCP e em Actions, o percurso usa quatro tarefas humanas:
 
 - `consultar_observacoes` lê o recorte solicitado;
-- `preparar_revisao` amplia o contexto sem alterar o Curso;
+- `preparar_revisao` amplia o contexto sem alterar o curso;
 - `registrar_observacao` grava um apontamento em uma ou várias Units;
 - `aplicar_correcoes` grava o conjunto aprovado.
 

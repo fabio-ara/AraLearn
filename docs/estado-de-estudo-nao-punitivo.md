@@ -2,7 +2,7 @@
 
 ## Problema que o estado de estudo resolve
 
-Para interromper uma Lição durante um deslocamento e retomá-la depois, o
+Para interromper uma lição durante um deslocamento e retomá-la depois, o
 aplicativo precisa lembrar onde continuar, quais Unidades já foram avançadas e
 o que a pessoa marcou para rever. O AraLearn chama esse conjunto mínimo de
 **estado de estudo**.
@@ -13,7 +13,7 @@ navegação nem modelo de proficiência.
 ## Estado funcional e telemetria
 
 O **estado funcional** permite que uma escolha continue produzindo seu efeito,
-como reabrir uma Lição no ponto alcançado. A **telemetria comportamental**
+como reabrir uma lição no ponto alcançado. A **telemetria comportamental**
 registra eventos para analisar uso, como abertura, duração, repetição ou
 sequência temporal de ações.
 
@@ -28,8 +28,8 @@ proporcionais ao risco
 
 | Registro | Finalidade | Unidade | Limite de interpretação |
 | --- | --- | --- | --- |
-| ponto de continuação | reabrir a Lição na Unidade alcançada | uma posição por Lição | não informa tempo, atenção, dificuldade ou domínio |
-| conclusão estrutural | impedir que uma Unidade avançada reapareça como inédita | identidades de Unidades por Lição | não informa acerto, qualidade da resposta, nota ou aprendizagem |
+| ponto de continuação | reabrir a lição na Unidade alcançada | uma posição por lição | não informa tempo, atenção, dificuldade ou domínio |
+| conclusão estrutural | impedir que uma Unidade avançada reapareça como inédita | identidades de Unidades por lição | não informa acerto, qualidade da resposta, nota ou aprendizagem |
 | marca **Rever** | formar a lista pessoal de revisão | presença ou ausência da marca por Unidade | não informa erro, déficit, prioridade docente ou risco |
 
 Observações ficam em Anotações ancoradas próprias. Essa separação permite que o
@@ -43,7 +43,7 @@ avanço ou comparação entre estudantes.
 
 ## Avançar e retomar
 
-Abra Curso, Módulo, Lição, Microssequência e Unidade. Quando houver prática,
+Abra curso, módulo, lição, microssequência e Unidade. Quando houver prática,
 responda e use **Continuar** para confirmar; depois, use **Continuar** novamente
 para avançar. Uma Unidade apenas expositiva avança no primeiro uso do controle.
 
@@ -82,7 +82,7 @@ limites.
 
 ## Identidades estáveis e reorganização do Curso
 
-Continuidade, **Rever** e Anotações usam identidades de Lição e Unidade. Inserir
+Continuidade, **Rever** e Anotações usam identidades de lição e Unidade. Inserir
 uma Unidade no começo da sequência não desloca os vínculos seguintes apenas por
 posição. Mover ou renomear um objeto preserva o vínculo quando sua identidade
 permanece.
@@ -104,7 +104,7 @@ repetição do mesmo pedido depois de uma falha de rede. As versões impedem que
 uma cópia antiga sobrescreva silenciosamente uma mudança mais recente.
 
 Anotações usam cópia e fila próprias. A versão entregue a Estudo é monotônica e
-privada por pessoa e Curso: atividade de colegas não aparece como conflito,
+privada por pessoa e curso: atividade de colegas não aparece como conflito,
 invalidação local ou mensagem entre abas. Essa versão coordena a leitura; ela
 não contém texto nem amplia permissões.
 
@@ -115,7 +115,7 @@ tornam indicadores de comportamento de estudo.
 
 O estado de continuidade e **Rever** pertence à conta e só pode ser lido pela
 própria pessoa. Cada estudante também lê somente suas Anotações. O proprietário
-recebe a caixa de entrada do Curso, sem tempo de estudo, quantidade de respostas,
+recebe a caixa de entrada do curso, sem tempo de estudo, quantidade de respostas,
 respostas anteriores ou classificação individual de desempenho.
 
 Uma síntese da caixa de entrada ajuda a localizar alvos com registros abertos.

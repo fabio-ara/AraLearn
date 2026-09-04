@@ -4,6 +4,42 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.64] - 2026-09-04
+
+### Corrigido
+
+- textos públicos e documentação usam substantivos curriculares comuns segundo
+  a capitalização natural do português, preservando maiúsculas apenas no início
+  de frases, itens visuais e nomes reais de superfícies.
+
+## [0.0.63] - 2026-09-04
+
+### Corrigido
+
+- falhas transitórias de MCP e Actions informam somente o impacto e a retomada
+  segura, sem expor causas, códigos ou mecanismos de transporte;
+- a orientação curta da autoria reforça retomada silenciosa e linguagem pública
+  natural sem ampliar o prompt nem o catálogo de tarefas.
+
+## [0.0.62] - 2026-09-04
+
+### Corrigido
+
+- quando uma fala aprova o mapa e pede o primeiro lote, a aprovação exata é
+  registrada antes de apresentar a progressão focal, sem salvar o lote antes da
+  confirmação correspondente;
+- valores categóricos de analytics aparecem em português humano, preservando os
+  valores técnicos apenas no contrato interno.
+
+## [0.0.61] - 2026-09-04
+
+### Corrigido
+
+- a materialização registra, na mesma passagem, cobertura efetiva, configuração
+  aplicada, novidade, uso, retomada, explicações e prática de cada unidade;
+- condições fixadas pela autoria ou pesquisa continuam prevalecendo sobre a
+  calibração automática de novas unidades, sem etapa ou entidade adicional.
+
 ## [0.0.60] - 2026-09-03
 
 ### Corrigido

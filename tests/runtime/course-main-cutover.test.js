@@ -195,7 +195,7 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   )?.[0] || "";
   assert.match(
     accountDeletionHandler,
-    /irreversível: exclui sua conta, Cursos próprios, cópias pessoais e PDFs enviados[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?controller\.deleteMyAccount\(\{ confirmation \}\)[\s\S]*?clearAraLearnLocalState\(\)/u,
+    /irreversível: exclui sua conta, cursos próprios, cópias pessoais e PDFs enviados[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?controller\.deleteMyAccount\(\{ confirmation \}\)[\s\S]*?clearAraLearnLocalState\(\)/u,
     "A exclusão da conta deve limpar o dispositivo somente depois da confirmação remota."
   );
   assert.match(

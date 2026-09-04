@@ -4,7 +4,7 @@
 
 Antes de limpar dados ou reinstalar:
 
-1. anote a tela, o Curso e a ação que falhou;
+1. anote a tela, o curso e a ação que falhou;
 2. verifique se a conexão voltou;
 3. observe mensagens de fila, revisão ou retomada;
 4. tente novamente uma vez;
@@ -23,7 +23,7 @@ URL manualmente.
 
 ## O aplicativo não conclui a inicialização
 
-A preparação mostra Dispositivo, Conta e Cursos. Use **Tentar novamente**. Se
+A preparação mostra Dispositivo, Conta e cursos. Use **Tentar novamente**. Se
 a falha local persistir, a interface pode oferecer limpar os dados do
 dispositivo.
 
@@ -31,7 +31,7 @@ Essa limpeza remove a cópia local e operações ainda não sincronizadas. Não 
 se houver progresso, marcas ou observações feitas sem conexão que precisam ser
 preservados.
 
-Em **Conta e aparência**, o logout comum preserva Cursos offline, estado pessoal
+Em **Conta e aparência**, o logout comum preserva cursos offline, estado pessoal
 e filas ou rascunhos que já estejam gravados no dispositivo. A confirmação
 avisa que uma alteração ainda aberta somente no editor será perdida. **Remover
 dados deste dispositivo** mantém a sessão e apaga somente o namespace local da
@@ -41,12 +41,12 @@ no mesmo navegador permanecem.
 
 ## Um Curso não aparece
 
-Em **Estudo**, devem aparecer Cursos próprios e com acesso direto. Em
-**Autoria**, aparecem somente Cursos próprios.
+Em **Estudo**, devem aparecer cursos próprios e com acesso direto. Em
+**Autoria**, aparecem somente cursos próprios.
 
 1. confirme que está na conta e no modo corretos;
 2. atualize a lista quando a conexão retornar;
-3. para Curso compartilhado, peça ao proprietário que confira **Pessoas**;
+3. para curso compartilhado, peça ao proprietário que confira **Pessoas**;
 4. confirme que o acesso foi concedido ao e-mail exato da conta.
 
 Não existe entrada por Workspace, Trilha, Coleção ou catálogo público.
@@ -54,10 +54,10 @@ Não existe entrada por Workspace, Trilha, Coleção ou catálogo público.
 ## Um Curso aparece, mas não abre
 
 Na primeira abertura, a composição é baixada em páginas sob uma única revisão.
-Se o Curso mudar durante esse processo, o cliente descarta o conjunto parcial
+Se o curso mudar durante esse processo, o cliente descarta o conjunto parcial
 e reinicia a leitura.
 
-Tente novamente com conexão estável. Se continuar falhando, registre o Curso,
+Tente novamente com conexão estável. Se continuar falhando, registre o curso,
 a mensagem e se o erro ocorreu antes ou depois de aparecer conteúdo conhecido
 da cópia local.
 
@@ -69,13 +69,13 @@ aguarde a atualização antes de tomar uma decisão de Autoria.
 
 ## Progresso ou marca aguardam envio
 
-O estado pessoal entra numa fila por Curso. Mantenha o aplicativo instalado e
+O estado pessoal entra numa fila por curso. Mantenha o aplicativo instalado e
 os dados locais preservados até a conexão retornar. O repositório tenta
 reconciliar mudanças de revisão de forma limitada.
 
 Se a fila continuar pendente:
 
-1. abra novamente o Curso;
+1. abra novamente o curso;
 2. confirme que o acesso ainda existe;
 3. tente sincronizar com conexão estável;
 4. registre o tipo da operação e a mensagem, sem copiar o conteúdo privado.
@@ -96,14 +96,14 @@ entregando dados sem autoridade.
 A observação do Estudo é uma Anotação ancorada própria e chega à caixa de
 entrada do proprietário. Ali ela pode ser considerada, respondida ou resolvida.
 Esses estados descrevem triagem: salvar, responder ou resolver não altera o
-Curso. Para corrigir por conversa, consulte as Observações abertas, prepare uma
+curso. Para corrigir por conversa, consulte as Observações abertas, prepare uma
 revisão coerente e confirme a proposta antes de aplicá-la. Reabra depois as
 StudyUnits afetadas para verificar o resultado.
 
 ## A revisão ou correção não funciona sem conexão
 
 Preparar e aplicar uma revisão exige conexão porque o serviço precisa reler o
-Curso autorizado. Reconecte, consulte novamente as Observações e o contexto
+curso autorizado. Reconecte, consulte novamente as Observações e o contexto
 afetado e só então execute a ação. Não trate a última tela renderizada como
 estado corrente.
 
@@ -115,7 +115,7 @@ Units que só fornecem contexto das que realmente precisam mudar.
 
 ## Não consigo aplicar uma correção
 
-Se a StudyUnit, seu conteúdo ou suas Fontes mudaram desde a leitura, o serviço
+Se a StudyUnit, seu conteúdo ou suas fontes mudaram desde a leitura, o serviço
 recusa a proposta desatualizada. Releia o conjunto e reconcilie a mesma intenção
 com o estado corrente. Não repita a escrita às cegas.
 
@@ -124,7 +124,7 @@ com o estado corrente. Não repita a escrita às cegas.
 Reabra **Fontes** e confira referência, papel, Âncora e relação com a StudyUnit.
 **Sustenta** é apropriado para uma afirmação; **Citado de** informa a origem de
 uma citação e não prova sua verdade. Se a evidência não bastar, conteste ou
-substitua a Fonte e prepare novamente a revisão.
+substitua a fonte e prepare novamente a revisão.
 
 ## Uma Observação retirada não aparece mais
 
@@ -141,7 +141,7 @@ pontuação global.
 
 ## Uma edição de Autoria entrou em conflito
 
-Outro cliente alterou o Curso depois da leitura. Reabra ou releia o Curso,
+Outro cliente alterou o curso depois da leitura. Reabra ou releia o curso,
 compare a intenção com o estado novo e aplique apenas o que ainda faz sentido.
 Não aumente a revisão à mão e não repita a escrita às cegas.
 
@@ -151,13 +151,13 @@ Uma cópia pessoal só nasce quando **Salvar na minha
 cópia** confirma uma mudança material.
 Abrir o editor, gerar
 uma prévia, cancelar, receber uma falha ou salvar conteúdo idêntico deixa o
-Curso compartilhado intacto e não cria outro Curso.
+curso compartilhado intacto e não cria outro curso.
 
 Se a conexão caiu ou a resposta ficou ambígua, não refaça o texto em outro
-Curso. Reabra a mesma Unidade ou reconecte: o aplicativo conserva o envelope
+curso. Reabra a mesma Unidade ou reconecte: o aplicativo conserva o envelope
 delimitado e repete o mesmo pedido. Se outra aba já criou a cópia com uma
 intenção diferente, a interface conserva o rascunho e informa o conflito. Ela
-não deve mostrar o identificador interno do Curso de destino.
+não deve mostrar o identificador interno do curso de destino.
 
 Depois da confirmação, a pessoa continua na mesma Unidade da **Cópia pessoal**. O
 progresso e as Observações do original não são transportados. Fontes, PDFs,
@@ -167,7 +167,7 @@ acessos e planejamento também começam separados.
 
 Se a mensagem disser que a resposta se perdeu e que a operação pode ter sido
 confirmada, confira os valores preservados e tente novamente pelo mesmo botão,
-sem reeditar o formulário. Parâmetros, Fontes, Observações e Conteúdo podem
+sem reeditar o formulário. Parâmetros, fontes, Observações e Conteúdo podem
 reutilizar a intenção pendente para recuperar a resposta sem duplicar o efeito.
 
 Use **Cancelar** ou **Descartar** somente quando quiser abandonar essa intenção.
@@ -185,9 +185,9 @@ Confira o provider escolhido, o modelo, a conectividade e a validade ou cota da
 chave efêmera. OpenAI, Gemini e DeepSeek usam origens oficiais fixas; a interface
 normal não aceita endpoint alternativo. Recarregar ou sair apaga a chave e a
 conversa, portanto abra uma nova sessão quando necessário. Não grave a chave no
-Curso, no navegador ou em logs para contornar uma falha.
+curso, no navegador ou em logs para contornar uma falha.
 
-Falha, cota, recusa ou resposta fora do formato não altera o Curso. Feche a
+Falha, cota, recusa ou resposta fora do formato não altera o curso. Feche a
 sugestão e continue a edição manual, ou use um cliente MCP ou um GPT conectado
 por Actions para uma tarefa mais ampla. Se **Aceitar e aplicar** já foi usado,
 confira o conteúdo e ainda use **Salvar** para efetivar a mudança; aplicar a
@@ -195,13 +195,13 @@ candidata não grava por si só.
 
 ## Não consigo salvar uma atribuição de Fontes
 
-Confira se cada Fonte escolhida possui ao menos uma Âncora ativa no estado
+Confira se cada fonte escolhida possui ao menos uma Âncora ativa no estado
 corrente e se o conjunto exibido contém tudo o que deve permanecer no alvo. Salvar
-substitui o conjunto completo; não há modo de acréscimo parcial. Se o Curso ou
+substitui o conjunto completo; não há modo de acréscimo parcial. Se o curso ou
 o alvo mudou, releia e reconcilie antes de tentar novamente.
 
 Uma referência **Legado não resolvido** pode não ter metadados nem Âncora. Para
-resolvê-la, revise a mesma identidade literal; não crie uma Fonte parecida nem
+resolvê-la, revise a mesma identidade literal; não crie uma fonte parecida nem
 remova espaços do identificador. Depois de falha de rede sem resposta, repita o
 pedido pelo mesmo controle, sem editar a intenção. O cliente reaproveita
 internamente o pedido pendente e recupera o recibo sem duplicar a alteração.
@@ -210,31 +210,31 @@ internamente o pedido pendente e recupera o recibo sem duplicar a alteração.
 
 O PDF precisa ser válido e ter no máximo 20 MiB. Envie-o na mesma mensagem em
 que pedir `incorporar_pdf_como_fonte`. O servidor baixa a referência temporária,
-valida os bytes e só então cria ou atualiza o vínculo com a Fonte. Se a referência
+valida os bytes e só então cria ou atualiza o vínculo com a fonte. Se a referência
 expirar, anexe novamente o mesmo arquivo numa mensagem nova.
 
-Para abrir um anexo, releia a Fonte e solicite um novo endereço assinado. O
+Para abrir um anexo, releia a fonte e solicite um novo endereço assinado. O
 endereço expira em 60 segundos, não pode ser revogado individualmente durante
 essa janela e não deve ser guardado como identidade do arquivo. Confira
-também a cota de 64 MiB de conteúdo único por Curso e o limite de oito anexos
-por Fonte.
+também a cota de 64 MiB de conteúdo único por curso e o limite de oito anexos
+por fonte.
 
 Envio, remoção e reativação de bytes passam pelo serviço e pela API do Storage;
 o navegador e o modelo não escolhem o caminho interno do objeto. Uma falha não
-confirmada deve ser seguida por nova consulta da Fonte antes de outra escrita.
+confirmada deve ser seguida por nova consulta da fonte antes de outra escrita.
 
 ## O Estudo não mostra uma Fonte ou um link
 
 Abra **Fontes** na Unidade: a consulta é sob demanda e não ocorre junto com o
 conteúdo. Fonte oculta ou legada não resolvida é omitida. A visibilidade
 **Citação** mostra identificação e localização, mas não URL; somente **Citação
-e link** pode mostrar o endereço. Se o acesso foi revogado ou o Curso não
+e link** pode mostrar o endereço. Se o acesso foi revogado ou o curso não
 existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 ## MCP ou Actions não encontra ou não altera o Curso
 
 1. confirme OAuth e conta;
-2. confirme que o Curso é próprio, pois a Autoria é exclusiva do proprietário;
+2. confirme que o curso é próprio, pois a Autoria é exclusiva do proprietário;
 3. confira se o catálogo oferece as dezessete tarefas humanas correntes;
 4. use `retomar_curso` ou a leitura focal da tarefa antes de escrever;
 5. diante de conflito ou referência ambígua, releia o recorte;
@@ -276,7 +276,7 @@ No corte que retirou a origem antiga do ChatGPT, os tokens Actions de clientes
 já vinculados foram revogados uma vez. Reimporte o OpenAPI e conclua novamente
 o OAuth numa conversa nova, mesmo que a conexão anterior ainda apareça no GPT.
 
-Se a Action pedir outra coisa além de referências humanas do Curso, reimporte o
+Se a Action pedir outra coisa além de referências humanas do curso, reimporte o
 OpenAPI, salve a configuração e abra uma conversa nova. Publicar o arquivo não
 atualiza automaticamente uma Action já importada.
 
@@ -297,7 +297,7 @@ de pedir qualquer reenvio:
 | o tipo não é PDF | use um único PDF válido |
 | o acesso temporário expirou | anexe novamente o mesmo PDF e faça uma nova tentativa |
 | download indisponível ou timeout | repita a mesma intenção; não peça reenvio sem sinal de expiração |
-| a persistência não foi confirmada | consulte novamente a Fonte antes de anunciar sucesso |
+| a persistência não foi confirmada | consulte novamente a fonte antes de anunciar sucesso |
 
 Se o transporte estiver correto e o download for recusado antes do Storage,
 registre apenas a categoria segura do erro e o hostname sanitizado. Não copie a
@@ -305,10 +305,10 @@ referência temporária do arquivo nem amplie a política para HTTPS arbitrário
 
 ## A alteração por MCP ou Actions não aparece na interface
 
-MCP, Actions e a Autoria usam o mesmo Curso, mas a interface pode conservar uma
+MCP, Actions e a Autoria usam o mesmo curso, mas a interface pode conservar uma
 projeção já carregada. Ao voltar à guia ou focalizar a janela do AraLearn,
 aguarde a releitura da área visível. Se o navegador não sinalizar o retorno, use
-a ação **Atualizar** no cabeçalho do Curso e confira a nova revisão. Se a leitura
+a ação **Atualizar** no cabeçalho do curso e confira a nova revisão. Se a leitura
 do servidor contiver a mudança e a tela não, registre console, rede, rota e
 revisão exibida: o defeito está na projeção ou atualização da interface, não
 numa etapa de publicação.
@@ -319,7 +319,7 @@ atualização para conservar o rascunho. Conclua ou cancele essa edição e use
 
 ## Duas condições autorais não mostram a diferença esperada
 
-Cada condição de pesquisa deve usar um Curso privado independente. Confira se o
+Cada condição de pesquisa deve usar um curso privado independente. Confira se o
 mesmo inventário semântico foi preservado e se os parâmetros realmente foram
 fixados antes da produção. Direção editorial não pode eliminar novidade
 necessária. Os alvos de palavras são flexíveis, não limites; uma condição mais
@@ -351,10 +351,10 @@ deve informar a limpeza pendente; não envie repetidamente arquivos maiores.
 ## A conta não é excluída
 
 A exclusão exige a frase exata `EXCLUIR MINHA CONTA`. O aplicativo envia uma
-única solicitação confirmada à API, que remove os avatares e os PDFs dos Cursos
+única solicitação confirmada à API, que remove os avatares e os PDFs dos cursos
 próprios. O banco recusa a exclusão enquanto algum desses objetos permanecer.
 Tente novamente com conexão estável. Não use exclusão como forma de sair: ela
-remove Cursos próprios e dados relacionados de modo irreversível.
+remove cursos próprios e dados relacionados de modo irreversível.
 
 O banco revoga todas as sessões antes de remover o
 usuário do Auth. Um download de PDF já assinado ainda pode funcionar por até 60
@@ -390,7 +390,7 @@ Inclua:
 - se o problema se repete após nova leitura.
 
 Não inclua credenciais, tokens, URL assinada, e-mail integral, dados de outra
-pessoa ou conteúdo de Curso que não possa ser divulgado.
+pessoa ou conteúdo de curso que não possa ser divulgado.
 
 Consulte também [Uso do aplicativo](uso-do-app.md), [Persistência e
 sincronização](persistencia-relacional.md) e [Autoria por MCP](autoria-mcp.md).

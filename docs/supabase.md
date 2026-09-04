@@ -103,7 +103,7 @@ somente na memória da sessão, não no Supabase nem no artefato público.
 
 Os buckets `person-avatars` e `course-source-pdfs` são privados. O Storage
 guarda bytes; o PostgreSQL conserva caminho, resumo criptográfico, tamanho,
-tipo e vínculo corrente com a Fonte. Conhecer um caminho não concede leitura.
+tipo e vínculo corrente com a fonte. Conhecer um caminho não concede leitura.
 [Políticas do Storage](https://supabase.com/docs/guides/storage/security/access-control)
 protegem `storage.objects` e complementam as verificações relacionais.
 
@@ -116,15 +116,15 @@ PDF segue outro contrato:
 3. o serviço envia o objeto ao caminho exato pela Storage API, sem sobrescrever
    conteúdo existente;
 4. o serviço relê o objeto e confere tamanho, cabeçalho e SHA-256;
-5. a transação relacional salva ou atualiza a Fonte e ativa o vínculo do PDF;
+5. a transação relacional salva ou atualiza a fonte e ativa o vínculo do PDF;
 6. o preparo é consumido ou cancelado; preparos vencidos saem pela retenção.
 
-A Fonte e o vínculo são uma única mudança confirmada e, por isso, avançam a
-revisão do Curso uma vez.
+A fonte e o vínculo são uma única mudança confirmada e, por isso, avançam a
+revisão do curso uma vez.
 
 Download é uma operação separada. Depois de verificar o vínculo ativo e a
-propriedade do Curso, a API emite URL assinada de curta duração. Cada PDF aceita
-até 20 MiB; o conteúdo único vinculado a um Curso aceita até 64 MiB.
+propriedade do curso, a API emite URL assinada de curta duração. Cada PDF aceita
+até 20 MiB; o conteúdo único vinculado a um curso aceita até 64 MiB.
 
 Remover um PDF primeiro desativa o vínculo e cria uma intenção de exclusão. O
 serviço reivindica essa intenção, remove o objeto pela Storage API e confirma a

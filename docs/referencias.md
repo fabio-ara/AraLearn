@@ -26,7 +26,7 @@ Os percursos abaixo oferecem entradas possíveis no corpus. A ordem é uma orien
 Comece pelos mecanismos que organizam planejamento, carga, prática e representação. A ordem vai do quadro geral às decisões mais específicas do AraLearn.
 
 1. [Panadero (2017)](#ref-panadero2017selfregulated). **Função da leitura:** situa os ciclos de planejamento, monitoramento e reflexão em seis modelos de aprendizagem autorregulada. **Limite principal:** é uma revisão de modelos; não demonstra que controles de interface produzam autorregulação.
-2. [Sweller et al. (1998)](#ref-sweller1998architecture). **Função da leitura:** introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional. **Limite principal:** a teoria não fornece um limite universal de tamanho para Unidades de estudo.
+2. [Sweller et al. (1998)](#ref-sweller1998architecture). **Função da leitura:** introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional. **Limite principal:** a teoria não fornece um limite universal de tamanho para unidades de estudo.
 3. [Ainsworth (2006)](#ref-ainsworth2006deft). **Função da leitura:** oferece um quadro para analisar desenho, função e tarefa em múltiplas representações. **Limite principal:** não estabelece que variedade visual ou um componente especializado seja sempre superior.
 4. [Carpenter et al. (2022)](#ref-carpenter2022spacing). **Função da leitura:** sintetiza prática de recuperação e espaçamento e ajuda a distinguir os dois mecanismos. **Limite principal:** intervalo, conteúdo, população e medida moderam a transferência para outro contexto.
 
@@ -56,7 +56,7 @@ As leituras avançam de princípios de interação e dependência apropriada par
 Estas fontes ajudam a distinguir aprendizagem individual, formação profissional e processos organizacionais de conhecimento.
 
 1. [Tynjälä (2008)](#ref-tynjala2008workplace). **Função da leitura:** diferencia formas, níveis e condições de aprendizagem no trabalho. **Limite principal:** a revisão não demonstra adequação de uma plataforma específica a toda organização.
-2. [Alavi e Leidner (2001)](#ref-alavi2001knowledge). **Função da leitura:** situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento. **Limite principal:** armazenar e distribuir Cursos não constitui por si gestão do conhecimento.
+2. [Alavi e Leidner (2001)](#ref-alavi2001knowledge). **Função da leitura:** situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento. **Limite principal:** armazenar e distribuir cursos não constitui por si gestão do conhecimento.
 3. [UNESCO (2015)](#ref-unesco2015tvet). **Função da leitura:** delimita educação e formação técnica e profissional numa perspectiva de aprendizagem ao longo da vida. **Limite principal:** é uma norma orientadora, não evidência de eficácia educacional do AraLearn.
 
 ### Interface móvel, interrupção e modos de cor

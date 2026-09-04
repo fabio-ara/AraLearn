@@ -22,7 +22,7 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "sweller1998architecture",
         purpose: "introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional",
-        limit: "a teoria não fornece um limite universal de tamanho para Unidades de estudo"
+        limit: "a teoria não fornece um limite universal de tamanho para unidades de estudo"
       },
       {
         key: "ainsworth2006deft",
@@ -115,7 +115,7 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "alavi2001knowledge",
         purpose: "situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento",
-        limit: "armazenar e distribuir Cursos não constitui por si gestão do conhecimento"
+        limit: "armazenar e distribuir cursos não constitui por si gestão do conhecimento"
       },
       {
         key: "unesco2015tvet",

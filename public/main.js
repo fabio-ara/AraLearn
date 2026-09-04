@@ -221,7 +221,7 @@ function renderStartupFailure(root, error) {
     <main class="startup-recovery-shell">
       <section class="startup-recovery-card" role="alert">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
-        <p class="startup-recovery-message">Não foi possível abrir seus Cursos neste dispositivo.</p>
+        <p class="startup-recovery-message">Não foi possível abrir seus cursos neste dispositivo.</p>
         <div class="startup-recovery-actions">
           <button class="icon-pill" type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
           <button class="icon-pill" type="button" data-action="reset-local-state" title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
@@ -404,7 +404,7 @@ function renderSettings(root, authClient, controller, {
   const maintenanceLabels = Object.freeze({
     avatar_owner_missing: "Avatar sem conta",
     avatar_profile_unlinked: "Avatar sem vínculo de perfil",
-    pdf_course_missing: "PDF de Curso ausente",
+    pdf_course_missing: "PDF de curso ausente",
     pdf_unlinked: "PDF sem vínculo",
     pdf_object_missing: "Registro de PDF sem arquivo"
   });
@@ -782,7 +782,7 @@ function renderSettings(root, authClient, controller, {
   });
   root.querySelector("[data-settings-delete-account]")?.addEventListener("click", async (event) => {
     const confirmation = promptValue(
-      "Esta ação é irreversível: exclui sua conta, Cursos próprios, cópias pessoais e PDFs enviados. Digite EXCLUIR MINHA CONTA para continuar."
+      "Esta ação é irreversível: exclui sua conta, cursos próprios, cópias pessoais e PDFs enviados. Digite EXCLUIR MINHA CONTA para continuar."
     );
     if (confirmation !== "EXCLUIR MINHA CONTA") return;
     event.currentTarget.disabled = true;
@@ -1183,7 +1183,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     };
     globalThis.queueMicrotask?.(restoreOriginFocus);
     void refreshStudy().catch((error) => {
-      console.warn("A lista de Cursos será atualizada na próxima conexão.", error);
+      console.warn("A lista de cursos será atualizada na próxima conexão.", error);
     }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
   };
   authoringSurface = createCourseAuthoringSurface({

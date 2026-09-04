@@ -11,7 +11,7 @@ da tarefa ou do conceito procurado.
 | Para que serve o AraLearn? | [Visão do produto](visao-do-produto.md) |
 | Como navegar pelo aplicativo? | [Uso do aplicativo](uso-do-app.md) |
 | Como estudar, retomar e marcar uma Unidade para rever? | [Guia do estudante](guia-estudante.md) |
-| Como criar, editar e compartilhar um Curso? | [Guia do professor e autor](guia-professor-autor.md) |
+| Como criar, editar e compartilhar um curso? | [Guia do professor e autor](guia-professor-autor.md) |
 | Como recuperar uma sessão ou diagnosticar uma falha? | [Solução de problemas](solucao-de-problemas.md) |
 | Quais capacidades estão disponíveis agora? | [Capacidades e limites atuais](estado-atual-e-roadmap.md) |
 
@@ -19,7 +19,7 @@ da tarefa ou do conceito procurado.
 
 | Pergunta | Documento |
 | --- | --- |
-| Como Curso, Módulo, Lição, Microssequência e Unidade se relacionam? | [Modelo didático](modelo-didatico.md) |
+| Como curso, módulo, lição, microssequência e Unidade se relacionam? | [Modelo didático](modelo-didatico.md) |
 | Como os parâmetros alteram o desenho sem substituir a decisão do autor? | [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) |
 | Como escolher e compor representações e respostas? | [Componentes didáticos](componentes-didaticos.md) |
 | Que fundamentos sustentam essas representações? | [Fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md) |
@@ -36,19 +36,19 @@ A [revisão de literatura](revisao-de-literatura.md), o
 | Tarefa | Documento |
 | --- | --- |
 | Planejar, produzir e revisar pela interface | [Guia do professor e autor](guia-professor-autor.md) |
-| Criar um Curso em conversa com um modelo de linguagem | [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) |
+| Criar um curso em conversa com um modelo de linguagem | [Criar Cursos pelo chat](criar-cursos-pelo-chat.md) |
 | Entender autoridade, contexto e confirmação | [Assistência por modelo de linguagem](assistencia-por-ia.md) |
 | Entender instruções, pedidos e operações estruturadas | [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md) |
 | Configurar o acesso por Model Context Protocol | [Autoria por MCP](autoria-mcp.md) |
 | Configurar um GPT personalizado por Actions/OpenAPI | [GPT personalizado com Actions](autoria-actions.md) |
-| Registrar Fontes, Âncoras e atribuição | [Contrato de conteúdo](aralearn-contract.md) |
+| Registrar fontes, Âncoras e atribuição | [Contrato de conteúdo](aralearn-contract.md) |
 | Revisar Observações, corrigir o conjunto afetado e reinspecionar | [Revisão e correções](auditoria-de-conformidade-instrucional.md) |
 
 ## Investigar a Autoria
 
 | Pergunta | Documento |
 | --- | --- |
-| Como comparar condições de desenho em Cursos independentes? | [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md) |
+| Como comparar condições de desenho em cursos independentes? | [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md) |
 | Que números Analytics apresenta e como exportá-los? | [Analytics da Autoria](analytics-instrucionais.md) |
 | O que significa cada número do snapshot? | [Referência do snapshot de Analytics](dicionario-metricas-datasets.md) |
 | Como formular uma investigação sem transformar contagem em conclusão causal? | [Guia de investigação](guia-pesquisador.md) |
@@ -67,7 +67,7 @@ registra a análise de cada componente mantido no catálogo.
 | Fronteiras e fluxo de dados | [Arquitetura](arquitetura.md) |
 | PostgreSQL, IndexedDB, filas e cache | [Persistência relacional](persistencia-relacional.md) |
 | Auth, banco, Storage, funções e políticas | [Supabase](supabase.md) |
-| Contratos de Curso e conteúdo | [Contrato de conteúdo](aralearn-contract.md) |
+| Contratos de curso e conteúdo | [Contrato de conteúdo](aralearn-contract.md) |
 | Tipografia, responsividade e acessibilidade | [Sistema visual](sistema-visual.md) |
 | Ambiente de desenvolvimento e validações | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 | Implantação, migração e publicação | [Implantação](implantacao.md) |
@@ -130,7 +130,7 @@ produto.
 | [`docs/fundamentacao-pedagogica-dos-resources.md`](fundamentacao-pedagogica-dos-resources.md) | capítulo acadêmico das decisões representacionais |
 | [`docs/estado-de-estudo-nao-punitivo.md`](estado-de-estudo-nao-punitivo.md) | capítulo conceitual sobre continuidade e estado pessoal |
 | [`docs/observacoes-pedagogicas.md`](observacoes-pedagogicas.md) | capítulo conceitual e guia de Observações |
-| [`docs/experimentos-instrucionais-parametrizados.md`](experimentos-instrucionais-parametrizados.md) | guia para comparar condições em Cursos separados |
+| [`docs/experimentos-instrucionais-parametrizados.md`](experimentos-instrucionais-parametrizados.md) | guia para comparar condições em cursos separados |
 | [`docs/analytics-instrucionais.md`](analytics-instrucionais.md) | capítulo conceitual e operacional de Analytics |
 | [`docs/dicionario-metricas-datasets.md`](dicionario-metricas-datasets.md) | referência do snapshot corrente de Analytics |
 | [`docs/revisao-de-literatura.md`](revisao-de-literatura.md) | revisão narrativa orientada ao desenho |

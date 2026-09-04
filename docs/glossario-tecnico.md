@@ -19,7 +19,7 @@ persistem operações. O AraLearn usa PostgreSQL, Auth, Storage e Edge Functions
 do Supabase.
 
 **Domínio.** Regras do produto independentes da aparência da tela, como
-composição, resolução de parâmetros, Fontes, Observações e Analytics.
+composição, resolução de parâmetros, fontes, Observações e Analytics.
 
 **Contrato fechado.** Estrutura que recusa campos e valores não declarados.
 Evita interpretações diferentes entre navegador, Edge Function e banco.
@@ -49,26 +49,26 @@ ou contrato, sem aliases e caminhos concorrentes.
 
 **Curso vivo (`course`).** Raiz mutável compartilhada por Estudo, Autoria, MCP e
 Actions. Possui proprietário, título, objetivo, revisão e relações próprias para
-plano, composição, configuração, Fontes e Observações.
+plano, composição, configuração, fontes e Observações.
 
-**Revisão do Curso (`revision`).** Inteiro crescente usado para leitura coerente
-e concorrência. Não cria uma versão paralela do Curso.
+**Revisão do curso (`revision`).** Inteiro crescente usado para leitura coerente
+e concorrência. Não cria uma versão paralela do curso.
 
-**Composição didática.** Estrutura corrente de Curso, Módulo, Lição,
-Microssequência didática e StudyUnit. Um Tópico pode classificar conteúdo dentro
-da Lição, mas não acrescenta um nível ao percurso principal.
+**Composição didática.** Estrutura corrente de curso, módulo, lição,
+microssequência didática e StudyUnit. Um Tópico pode classificar conteúdo dentro
+da lição, mas não acrescenta um nível ao percurso principal.
 
 **StudyUnit (`study_unit`).** Unidade persistida, ordenável, endereçável e
 renderizável. Pode explicar, representar, pedir resposta e oferecer retorno.
 
 **Documento `aralearn.course.v1`.** Forma hierárquica aceita para intercâmbio e
-composição de um Curso.
+composição de um curso.
 
 **Achatamento (`flatten`).** Conversão do documento hierárquico em linhas.
 **Composição (`compose`)** é o caminho inverso. A ida e volta só é válida quando
 recompõe um documento aceito pelo contrato.
 
-**Cópia pessoal de Curso.** Curso privado criado quando uma pessoa edita um Curso
+**Cópia pessoal de curso.** Curso privado criado quando uma pessoa edita um curso
 recebido somente para Estudo. Não transfere propriedade do original nem cria uma
 réplica compartilhada.
 
@@ -91,7 +91,7 @@ percurso. Pode ser introduzida, usada depois de estabelecida ou retomada.
 necessária. Uma atividade de consolidação não cria um requisito apenas por
 existir.
 
-**Materialização.** Gravação atômica das StudyUnits de uma Parte aprovada, com
+**Materialização.** Gravação atômica das StudyUnits de uma parte aprovada, com
 aplicação da configuração e da proveniência pertinente. Preparação e validação
 intermediárias não se tornam um histórico de produto.
 
@@ -153,7 +153,7 @@ uma interação obrigatória indica falha de hidratação.
 documentos compostos, estado pessoal e filas específicas de Observações.
 
 **Cache.** Cópia regenerável usada para reduzir latência. Não constitui outra
-autoridade sobre o Curso.
+autoridade sobre o curso.
 
 **Réplica local.** Cópia suficiente para leitura sem conexão. Uma candidata só
 substitui a revisão local válida depois de ser recomposta e validada.
@@ -161,13 +161,13 @@ substitui a revisão local válida depois de ser recomposta e validada.
 **Fila de saída.** Intenções ainda não confirmadas pelo servidor. Estado pessoal
 e Observações usam filas próprias; não existe fila universal de Autoria.
 
-**Estado pessoal de Curso.** Documento por pessoa e Curso com progresso e marcas
+**Estado pessoal de curso.** Documento por pessoa e curso com progresso e marcas
 para rever. Sua alteração não incrementa a revisão autoral.
 
 **Paginação por cursor.** Leitura cuja página seguinte começa após uma chave
 estável. O cursor pertence ao recorte e não representa posição curricular.
 
-**Deep link.** Endereço que abre Curso, área e objeto reconhecível. IDs técnicos
+**Deep link.** Endereço que abre curso, área e objeto reconhecível. IDs técnicos
 podem existir no URL, mas não são a linguagem pedida à pessoa ou ao modelo.
 
 **Posição local de Conteúdo.** Registro por dispositivo usado para retomar Unit,
@@ -194,12 +194,12 @@ chave lógica durante uma transação, sem criar entidade de produto.
 
 **Autenticação.** Verificação da identidade de uma conta.
 
-**Autorização.** Decisão sobre uma operação e um Curso específicos.
+**Autorização.** Decisão sobre uma operação e um curso específicos.
 
-**Proprietário (`owner`).** Conta que possui o Curso e pode usar sua Autoria,
+**Proprietário (`owner`).** Conta que possui o curso e pode usar sua Autoria,
 MCP, Actions e Analytics.
 
-**Acesso direto.** Relação Curso–pessoa que concede Estudo. Não cria coautoria
+**Acesso direto.** Relação curso–pessoa que concede Estudo. Não cria coautoria
 nem permissão de edição.
 
 **Segurança por linha (`Row Level Security`, RLS).** Políticas PostgreSQL que
@@ -211,12 +211,12 @@ filtram linhas segundo a sessão autenticada.
 Edge Functions e testes locais; nunca pertence ao navegador ou ao modelo.
 
 **Bucket privado.** Conjunto de objetos que exige autorização antes de emitir um
-endereço temporário. PDFs de Fonte e avatares usam buckets separados.
+endereço temporário. PDFs de fonte e avatares usam buckets separados.
 
 ## API, banco e funções remotas
 
-**PostgreSQL.** Autoridade remota para Curso, composição, plano, configuração,
-acesso, estado pessoal, Observações, Fontes e dados de Analytics.
+**PostgreSQL.** Autoridade remota para curso, composição, plano, configuração,
+acesso, estado pessoal, Observações, fontes e dados de Analytics.
 
 **PostgREST.** Camada que expõe funções PostgreSQL por HTTP conforme privilégios
 e políticas.
@@ -224,10 +224,10 @@ e políticas.
 **RPC (`Remote Procedure Call`).** Função de banco chamada pela rede para manter
 transação, autorização e invariantes próximos dos dados.
 
-**Edge Function.** Função HTTP executada no Supabase. API de Curso, MCP e
+**Edge Function.** Função HTTP executada no Supabase. API de curso, MCP e
 Actions autenticam o transporte e delegam aos mesmos casos de uso.
 
-**Roteador de Curso.** Camada que transforma rotas HTTP em casos de uso sem
+**Roteador de curso.** Camada que transforma rotas HTTP em casos de uso sem
 duplicar regras entre interface, MCP e Actions.
 
 ## MCP e Actions
@@ -247,7 +247,7 @@ transporte de arquivo pode adaptar a referência temporária de PDF sem mudar o
 caso de uso.
 
 **Recurso MCP.** Conhecimento estável carregado sob demanda. Estado mutável do
-Curso é lido por tarefas e não copiado para o recurso.
+curso é lido por tarefas e não copiado para o recurso.
 
 **OAuth.** Protocolo usado para conectar a conta individual ao cliente. MCP e
 Actions possuem concessões próprias; os tokens não são intercambiáveis.
@@ -260,7 +260,7 @@ O contexto estruturado pode permanecer completo sem ser despejado na conversa.
 
 ## Observações e revisão
 
-**Observação.** Apontamento ancorado num objeto do Curso. Uma seleção de várias
+**Observação.** Apontamento ancorado num objeto do curso. Uma seleção de várias
 StudyUnits cria registros separados, não um lote permanente.
 
 **Caixa de Observações.** Consulta filtrável das manifestações correntes. Estado
@@ -277,16 +277,16 @@ Aplicação não prova resolução; o conjunto precisa ser reinspecionado.
 
 ## Fontes, Âncoras e PDFs
 
-**Fonte.** Referência bibliográfica corrente pertencente ao Curso. Pode ser
+**Fonte.** Referência bibliográfica corrente pertencente ao curso. Pode ser
 contestada, revisada, removida e reativada.
 
-**Âncora.** Localização verificável dentro de uma Fonte, como página, seção ou
+**Âncora.** Localização verificável dentro de uma fonte, como página, seção ou
 trecho.
 
-**Atribuição de Fonte.** Relação corrente entre Fonte, Âncora e objeto do Curso,
+**Atribuição de fonte.** Relação corrente entre fonte, Âncora e objeto do curso,
 com papel como apoio, contexto, contraste ou exemplo.
 
-**Anexo de PDF.** Descritor relacional ligado a uma Fonte e a um objeto privado.
+**Anexo de PDF.** Descritor relacional ligado a uma fonte e a um objeto privado.
 O serviço calcula tamanho e SHA-256; cliente e modelo não escolhem o caminho do
 Storage.
 
@@ -310,7 +310,7 @@ do Storage.
 intervenções humanas explicitamente observáveis, agrupada em **Desenho** e
 **Autoria**.
 
-**Escopo de Analytics.** Curso, Parte, Microssequência ou StudyUnit escolhida
+**Escopo de Analytics.** Curso, parte, microssequência ou StudyUnit escolhida
 para o recorte. Dados que não podem ser atribuídos aparecem como ausentes, não
 como zero.
 
@@ -322,7 +322,7 @@ revisão como manual ou GPT quando o estado permite essa atribuição. Não é
 percentual de autoria humana.
 
 **Snapshot de Analytics.** JSON normalizado exportado pela interface com os
-mesmos números exibidos no recorte. Não contém o Curso completo.
+mesmos números exibidos no recorte. Não contém o curso completo.
 
 **Condição de pesquisa.** Curso privado independente no qual a pessoa fixa uma
 configuração para comparação deliberada. A comparação não exige entidade de

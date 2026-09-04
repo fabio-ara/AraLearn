@@ -77,14 +77,14 @@ decisão pedagógica e materialização.
 
 O AraLearn investiga uma configuração integrada composta por:
 
-- modelo didático de progressão sem quantidade fixa de Unidades de estudo;
+- modelo didático de progressão sem quantidade fixa de unidades de estudo;
 - catálogo semântico de componentes didáticos;
 - pacotes de componente especializados e independentes de um núcleo comum;
 - contratos recuperados sob demanda depois da escolha da representação;
 - práticas situadas dentro do objeto quando a operação assim exige;
 - estudo com cópia local e sincronização assíncrona;
-- autoria do Curso e correção focal em escalas distintas;
-- propriedade do Curso, acesso direto para Estudo, proveniência e correções
+- autoria do curso e correção focal em escalas distintas;
+- propriedade do curso, acesso direto para Estudo, proveniência e correções
   revisáveis em qualquer ponto;
 - política de dados orientada pela finalidade, sem telemetria comportamental
   automática.
@@ -199,7 +199,7 @@ funcionamento da busca não demonstra melhor decisão.
 
 ### C3: modelo didático operacional de microssequência
 
-**Problema.** Uma Unidade de estudo curta pode permanecer condensada, e uma
+**Problema.** Uma unidade de estudo curta pode permanecer condensada, e uma
 quantidade fixa de teoria ou prática pode ignorar complexidade e conhecimento
 prévio.
 
@@ -208,7 +208,7 @@ a sequência por pré-requisitos, relações e evidência de aprendizagem. É pr
 preservar profundidade e coerência.
 
 **Decisão.** A microssequência declara objetivo, pré-requisitos, progressão,
-exemplos, práticas e retomadas antes de materializar as Unidades de estudo.
+exemplos, práticas e retomadas antes de materializar as unidades de estudo.
 
 **Fundamentação.** Segmentação e microaprendizagem possuem efeitos e definições
 heterogêneos; não oferecem uma cota universal ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting); [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
@@ -254,7 +254,7 @@ recuperação não demonstram que qualquer lacuna seja válida.
 
 ### C5: autoria estrutural e correção focal com escopo explícito
 
-**Problema.** Construir um Curso inteiro e corrigir uma Unidade são tarefas de
+**Problema.** Construir um curso inteiro e corrigir uma Unidade são tarefas de
 escala, risco e contexto diferentes.
 
 **Alternativas e requisitos.** Usar o mesmo fluxo para tudo, separar completamente
@@ -323,13 +323,13 @@ hipótese.
 responsabilidade e produzir inferências sem validade.
 
 **Alternativas e requisitos.** Autoria coletiva com papéis, isolamento completo
-ou propriedade do Curso com acesso direto para Estudo; coleta ampla ou dados
+ou propriedade do curso com acesso direto para Estudo; coleta ampla ou dados
 definidos pela finalidade. A solução precisa permitir revogação, atribuição e
 proporcionalidade.
 
-**Decisão.** Cada Curso possui uma pessoa proprietária, e o acesso direto concede
+**Decisão.** Cada curso possui uma pessoa proprietária, e o acesso direto concede
 somente Estudo no original. Uma edição contextual feita
-por quem estuda cria outro Curso privado, sob sua propriedade, sem escrever na
+por quem estuda cria outro curso privado, sob sua propriedade, sem escrever na
 origem. Fontes, Âncoras, eventos e correções preservam proveniência. A área
 Pesquisa expõe fatos autorais sem dados identificadores e contagens descritivas,
 sem criar telemetria comportamental por conveniência.
@@ -337,7 +337,7 @@ sem criar telemetria comportamental por conveniência.
 **Fundamentação.** A ética da análise de dados educacionais exige finalidade, transparência e
 responsabilidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
-**Operacionalização.** A autorização é calculada por Curso e operação; mudanças
+**Operacionalização.** A autorização é calculada por curso e operação; mudanças
 recebem origem e revisão; cada métrica declara pergunta, denominador, ausências
 e interpretações vedadas.
 
@@ -381,7 +381,7 @@ configuração inexista em outros produtos ou estudos.
 
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
-| sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do Curso e acesso direto preservam responsabilidade sem burocratizar o Estudo? |
+| sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do curso e acesso direto preservam responsabilidade sem burocratizar o Estudo? |
 | flashcards e prática | recuperação, repetição e retorno após a resposta | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
 | bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
@@ -404,7 +404,7 @@ como:
 - descoberta de catálogo antes da recuperação do contrato;
 - validação de esquemas de dados e escopo de edição;
 - operação sem conexão nos cenários testados;
-- retorno a qualquer ponto do Curso e revisão segundo o fluxo implementado;
+- retorno a qualquer ponto do curso e revisão segundo o fluxo implementado;
 - ausência de recorte ou sobreposição nos casos geométricos avaliados.
 
 ### 6.2 Alegações que exigem avaliação de uso
@@ -431,7 +431,7 @@ Exigem medidas compatíveis de compreensão, retenção ou transferência:
 
 - o AraLearn é o primeiro ou único sistema com essa configuração;
 - a arquitetura é universalmente superior;
-- mais componentes didáticos produzem Cursos melhores;
+- mais componentes didáticos produzem cursos melhores;
 - conteúdo gerado ou reparado por modelo é correto por ter esquema de dados válido;
 - ausência de telemetria é suficiente para garantir justiça ou privacidade;
 - uma preferência visual reduz carga cognitiva para todas as pessoas.

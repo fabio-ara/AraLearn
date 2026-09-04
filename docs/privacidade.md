@@ -34,23 +34,23 @@ pesquisa são tratamentos diferentes.
 relacionada a ela. No AraLearn, isso inclui e-mail da conta, identificador
 interno, nome de apresentação e foto de perfil.
 
-**Proprietário do Curso** é a pessoa autorizada a alterar o planejamento e o
+**Proprietário do curso** é a pessoa autorizada a alterar o planejamento e o
 conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
-**Acesso ao Estudo** permite abrir e praticar um Curso compartilhado. A pessoa
-que recebeu acesso continua fora da Autoria desse Curso e não pode alterar o
+**Acesso ao Estudo** permite abrir e praticar um curso compartilhado. A pessoa
+que recebeu acesso continua fora da Autoria desse curso e não pode alterar o
 original. Uma mudança contextual confirmada pode criar
-outro Curso privado, pertencente a essa pessoa.
+outro curso privado, pertencente a essa pessoa.
 
-**Cópia pessoal de Curso** é esse novo Curso, criado somente na primeira
+**Cópia pessoal de curso** é esse novo curso, criado somente na primeira
 gravação material. Ele recebe a composição didática necessária para continuar na
-mesma Unidade, mas não recebe planejamento, Fontes, PDFs, acessos, progresso ou
+mesma Unidade, mas não recebe planejamento, fontes, PDFs, acessos, progresso ou
 Observações do original.
 
 **Estado pessoal de Estudo** reúne posição de retomada, Unidades concluídas e
-marcas **Rever**. Ele pertence à pessoa e ao Curso e fica separado do conteúdo.
+marcas **Rever**. Ele pertence à pessoa e ao curso e fica separado do conteúdo.
 
-**Anotação ancorada** registra uma Observação ligada a um alvo do Curso. Cada
+**Anotação ancorada** registra uma Observação ligada a um alvo do curso. Cada
 estudante lê somente as próprias; o proprietário recebe a caixa de entrada
 necessária à triagem.
 
@@ -68,9 +68,9 @@ apenas estado do dispositivo. Os termos não são intercambiáveis.
 | autenticar a conta | e-mail, credencial e sessão | Supabase Auth e sessão no dispositivo |
 | apresentar a pessoa | identificador, nome opcional e referência da foto | PostgreSQL |
 | exibir a foto | JPEG, PNG ou WebP de até 512 KiB | área privada `person-avatars` |
-| manter um Curso | proprietário, plano, configuração e composição corrente | PostgreSQL |
+| manter um curso | proprietário, plano, configuração e composição corrente | PostgreSQL |
 | documentar proveniência | Fonte, metadados, endereço, Âncoras, trecho de verificação e atribuições | PostgreSQL privado |
-| anexar documentos de Fonte | PDF, tamanho, resumo criptográfico e vínculo com a revisão | área privada `course-source-pdfs` e PostgreSQL |
+| anexar documentos de fonte | PDF, tamanho, resumo criptográfico e vínculo com a revisão | área privada `course-source-pdfs` e PostgreSQL |
 | autorizar Estudo | Curso, conta com acesso, proprietário e data da concessão | PostgreSQL |
 | retomar Estudo | posição, conclusões e marcas **Rever** | PostgreSQL e réplica local |
 | registrar Observações | alvo, origem, texto, categoria, estado e resposta | PostgreSQL privado; cópia e fila no dispositivo |
@@ -91,8 +91,8 @@ continua aberto quando indicado.
 | acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, contador, MCP ou Actions |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
 | Observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada redige de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
-| Analytics da Autoria | escopo, configuração aplicada e contagens de desenho e intervenção corrente | pode permanecer pessoal ou pseudonimizado por estar ligado a um Curso próprio | derivado do PostgreSQL; proprietário do Curso | acompanha o estado corrente; não cria retenção própria | snapshot JSON não mede aprendizagem nem constitui dataset anônimo |
-| PDFs e avatares | documentos de Fonte e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | PDFs não entram nas exportações correntes nem são enviados ao provedor por padrão |
+| Analytics da Autoria | escopo, configuração aplicada e contagens de desenho e intervenção corrente | pode permanecer pessoal ou pseudonimizado por estar ligado a um curso próprio | derivado do PostgreSQL; proprietário do curso | acompanha o estado corrente; não cria retenção própria | snapshot JSON não mede aprendizagem nem constitui dataset anônimo |
+| PDFs e avatares | documentos de fonte e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | PDFs não entram nas exportações correntes nem são enviados ao provedor por padrão |
 | assistência por provedor | pedido, texto editável selecionado, título, papel, tópicos e até oito turnos para produzir uma sugestão focal | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provedor escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provedor | não é dataset de pesquisa; envio exige aviso por chamada |
 | pesquisa | protocolo, pseudônimo específico, medidas e eventual tabela de reidentificação | pessoal pseudonimizado enquanto reidentificável; pode tornar-se sensível conforme a pergunta | plano de dados segregado e acesso definido pelo protocolo, ainda não implantado como infraestrutura genérica | conforme protocolo, retirada e obrigação institucional | exportação somente nos termos do protocolo; resultados publicados exigem avaliação de reidentificação |
 | registros e limpeza | contagens de tentativas, datas de expiração e contagens de remoção para segurança e ciclo de vida | ator é identificador pessoal da conta; horários e contagens permanecem correlacionáveis; nenhuma coluna de e-mail integra o contador de concessões | tabelas privadas e rotina administrativa | janela de concessão, 30 dias; demais prazos por classe | contagens operacionais não integram export comum nem autorizam pesquisa |
@@ -128,7 +128,7 @@ guarda ator, começo e fim da janela e contadores agregados de tentativa,
 concessão, ausência, inalteração e limitação. Não guarda e-mail nem resumo
 criptográfico do e-mail e fica elegível à limpeza depois de 30 dias.
 
-Uma pessoa pode ver o próprio perfil. Numa relação de Curso compartilhado:
+Uma pessoa pode ver o próprio perfil. Numa relação de curso compartilhado:
 
 - o proprietário vê o perfil das pessoas às quais concedeu acesso;
 - a pessoa com acesso vê o perfil do proprietário;
@@ -140,23 +140,23 @@ chave nova dentro da pasta da própria conta e não cria endereço público.
 
 ## Propriedade e acesso ao Curso
 
-Todo Curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
+Todo curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
 e composição, usar as tarefas autorais, consultar Analytics e gerir acessos.
 Uma pessoa com acesso recebe somente a projeção de Estudo, que
 exclui orientações privadas e estado autoral. Na operação de cópia pessoal, essa
 projeção permite enviar uma única Unidade editada ao servidor para criar um
-Curso pessoal privado; ela não concede escrita sobre o original.
+curso pessoal privado; ela não concede escrita sobre o original.
 
 A relação entre pessoa, origem e cópia pessoal permanece numa tabela privada do
 PostgreSQL, sem acesso direto pelo cliente. Ela é dado operacional relacionado à
 conta. A interface usa rótulos humanos e não mostra identificadores, revisões ou
 detalhes da relação. A cópia não recebe a lista de pessoas favorecidas, o estado
-pessoal, as Observações, as Fontes ou os PDFs da origem.
+pessoal, as Observações, as fontes ou os PDFs da origem.
 
 Conceder ou revogar acesso exige confirmação humana. A revogação encerra novas
 leituras e alterações no servidor, mas preserva o estado pessoal remoto. Na
 próxima validação conectada, o dispositivo dessa pessoa remove cabeçalho,
-composição, listas, Fontes projetadas e Anotações locais daquele Curso. Se o
+composição, listas, fontes projetadas e Anotações locais daquele curso. Se o
 acesso for concedido novamente, o estado pessoal preservado pode voltar a ser
 usado. Se uma cópia pessoal já foi confirmada, ela continua pertencendo à pessoa
 que a criou e não é apagada pela revogação do acesso ao original.
@@ -167,27 +167,27 @@ bytes.
 
 ## Fontes, Âncoras e PDFs
 
-Somente o proprietário acessa catálogo, Fontes ocultas, referências
+Somente o proprietário acessa catálogo, fontes ocultas, referências
 pendentes de comprovação, trecho privado de verificação, PDFs e controles de
 edição. Estudo solicita a proveniência de uma Unidade quando a pessoa abre
 **Fontes** e recebe apenas a projeção autorizada:
 
-- **Não mostrar no Estudo** omite a Fonte;
+- **Não mostrar no Estudo** omite a fonte;
 - **Mostrar citação** apresenta identificação e localização sem endereço;
 - **Mostrar citação e link** também pode apresentar o endereço;
 - trecho privado, identidade de quem alterou, PDF e controles autorais permanecem
   ausentes.
 
-Os PDFs usam caminhos formados pela identidade do Curso e pelo resumo
-criptográfico do conteúdo. Arquivos idênticos dentro do mesmo Curso compartilham
-os bytes, enquanto os vínculos apontam à Fonte corrente. Antes de
+Os PDFs usam caminhos formados pela identidade do curso e pelo resumo
+criptográfico do conteúdo. Arquivos idênticos dentro do mesmo curso compartilham
+os bytes, enquanto os vínculos apontam à fonte corrente. Antes de
 registrar o vínculo, a API lê o objeto privado com a credencial do servidor e
 confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivos
-vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada Fonte
-até oito anexos e o Curso até 64 MiB de conteúdo único.
+vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada fonte
+até oito anexos e o curso até 64 MiB de conteúdo único.
 
-O preparo de envio cria uma intenção privada e curta para pessoa, Curso,
-caminho, tamanho, tipo e Fonte exatos. A Edge Function envia os bytes pela
+O preparo de envio cria uma intenção privada e curta para pessoa, curso,
+caminho, tamanho, tipo e fonte exatos. A Edge Function envia os bytes pela
 Storage API com credencial de servidor, relê o objeto e só então confirma o
 vínculo. A URL transitória recebida do ChatGPT não é persistida. Uma URL de
 download já emitida permanece independente da sessão somente até expirar.
@@ -208,7 +208,7 @@ A exportação de proveniência contém o alvo, as relações, as versões corre
 realizou as operações. Depois de baixado, o arquivo passa a depender também dos
 cuidados adotados fora do AraLearn.
 
-Uma nota, contestação ou solicitação de reformulação pode apontar para a Fonte
+Uma nota, contestação ou solicitação de reformulação pode apontar para a fonte
 ou para uma Âncora. Esses registros seguem o mesmo controle privado das demais
 Anotações ancoradas. Quando a autoria responde com uma reformulação, o PDF e seu
 conteúdo não são copiados para a Anotação. A exportação dessas Observações
@@ -236,7 +236,7 @@ limites de interpretação.
 ## Anotações ancoradas e identidade protegida
 
 Cada estudante lê somente as próprias Anotações. O proprietário lê as
-Anotações do Curso para triagem. A interface autoral identifica a contribuição
+Anotações do curso para triagem. A interface autoral identifica a contribuição
 estudantil por um rótulo protegido, como “Estudante 7A3F”, sem apresentar o
 identificador interno da conta ou o e-mail.
 
@@ -248,15 +248,15 @@ anteriores do texto integral.
 Retirar uma Anotação redige imediatamente texto, síntese e resposta e mantém um
 registro de exclusão. Esse registro e o recibo de repetição expiram logicamente
 em até 14 dias. Os lotes oportunistas são complementados por uma
-rotina privada diária, às 03:17, para que um Curso inativo não seja a única
+rotina privada diária, às 03:17, para que um curso inativo não seja a única
 causa de atraso físico. Cada execução processa até 512 linhas por classe e
 devolve contagens separadas de Anotações retiradas, recibos de Anotação,
-recibos de mudança de Curso, recibos de estado pessoal, intenções de PDF e
+recibos de mudança de curso, recibos de estado pessoal, intenções de PDF e
 janelas de concessão. O limite pode ser ajustado entre 1 e 1.000 e a repetição
 sem itens vencidos produz contagens zero.
 
 Os prazos correntes são 14 dias para a linha redigida e para recibos de
-Anotação e de mudança de Curso, sete dias para recibos de estado pessoal, dez
+Anotação e de mudança de curso, sete dias para recibos de estado pessoal, dez
 minutos para intenção de upload e 30 dias para a janela agregada de concessão.
 Esses prazos técnicos não decidem a retenção institucional de logs, backups,
 conteúdo, autoria ou pesquisa.
@@ -268,7 +268,7 @@ minimização, governança e autorização adequadas.
 
 ## Revisão e Analytics
 
-Somente o proprietário consulta a caixa autoral e aplica correções ao Curso.
+Somente o proprietário consulta a caixa autoral e aplica correções ao curso.
 Uma revisão lê Observações abertas e o conteúdo corrente das StudyUnits
 afetadas. Não persiste cópia anterior e proposta apenas para formar uma história
 de auditoria.
@@ -276,7 +276,7 @@ de auditoria.
 Analytics deriva configuração, desenho aplicado e intervenções que o estado
 corrente permite atribuir. O snapshot não contém texto de Observação, e-mail,
 conversa, cliques ou tempo de permanência. Retirar nomes não torna o arquivo
-automaticamente anônimo: Curso, conteúdo e combinação de valores ainda podem
+automaticamente anônimo: curso, conteúdo e combinação de valores ainda podem
 permitir associação à pessoa autora.
 
 **Exportar Analytics** salva os mesmos números da tela. O arquivo não é plano de
@@ -286,7 +286,7 @@ protocolo, minimização, acesso, retenção e avaliação de reidentificação 
 ## Integrações conversacionais
 
 Um protocolo aberto conecta assistentes às ferramentas de Autoria: o **Model
-Context Protocol (MCP)**. Essa integração recebe apenas Cursos próprios da
+Context Protocol (MCP)**. Essa integração recebe apenas cursos próprios da
 pessoa autenticada. Cursos
 compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
@@ -336,10 +336,10 @@ Fontes preservam as referências necessárias à autoria, mas não expõem ator,
 caminho do Storage ou credencial administrativa. A incorporação de PDF aceita o
 arquivo temporário entregue pelo transporte, valida origem e bytes no servidor e
 grava o objeto em bucket privado. Para abrir um anexo, o serviço autoriza o alvo
-e emite uma URL assinada de curta duração. Metadados livres da Fonte, como título,
+e emite uma URL assinada de curta duração. Metadados livres da fonte, como título,
 autoria declarada, citação, endereço, identificador, edição e trecho de
 verificação, podem conter dados pessoais e exigem minimização. O painel de
-Fontes do Estudo mostra somente os metadados e a localização permitidos pela
+fontes do Estudo mostra somente os metadados e a localização permitidos pela
 visibilidade escolhida. Em Actions, o destinatário é o GPT conectado; no MCP, é
 o cliente MCP conectado.
 
@@ -347,9 +347,9 @@ Na Assistência por IA, o pedido sai do dispositivo diretamente para OpenAI,
 Gemini ou DeepSeek, conforme a escolha da pessoa. A chave efêmera segue somente
 no cabeçalho da chamada e permanece em memória durante a sessão. O aviso
 anterior à chamada enumera o conteúdo: pedido, conteúdo selecionado, restante
-do objeto corrente como contexto, resumo curricular do Curso e mensagens
+do objeto corrente como contexto, resumo curricular do curso e mensagens
 anteriores daquela conversa. O envelope usa identificadores internos dos
-objetos necessários para manter o recorte e a ordem. PDFs, Fontes e dados da
+objetos necessários para manter o recorte e a ordem. PDFs, fontes e dados da
 conta não são enviados.
 
 O envelope é montado por lista fechada, e campos extras presentes na Unidade
@@ -397,18 +397,18 @@ objeto retornado pelo Auth não são duplicados nesse registro; uma sessão lega
 ser dados pessoais por essa minimização.
 
 Durante a primeira gravação de uma cópia pessoal, o IndexedDB pode conservar o
-Curso e a seleção de origem, as versões esperadas, a Unidade final, a origem da
+curso e a seleção de origem, as versões esperadas, a Unidade final, a origem da
 edição e um identificador de pedido. Esse recorte existe para repetição
 idempotente após falha ou reinício e é removido na confirmação ou no descarte.
 Ele não inclui conversa, endpoint, modelo ou credencial do provedor.
 
-Conteúdo, Fontes, Observações e configuração do Curso permanecem no servidor.
+Conteúdo, fontes, Observações e configuração do curso permanecem no servidor.
 Limpar os dados do aplicativo pode apagar mudanças ainda não sincronizadas. Sair
 encerra a sessão, mas não equivale a excluir todos os dados do dispositivo ou
 do servidor.
 
 O logout comum tenta sincronizar as filas e preserva, por decisão de produto,
-Cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela
+cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela
 conta. Uma alteração ainda aberta somente na memória do editor será perdida; a
 interface informa isso e pede confirmação antes de sair. **Remover dados deste
 dispositivo** apaga somente o namespace da conta ativa e mantém a sessão;
@@ -432,10 +432,10 @@ classificando o objeto; ele não autoriza um expurgo automático.
 
 ### Conceder acesso ao Estudo
 
-Em um Curso próprio, abra **Pessoas**, informe o e-mail exato de uma conta,
+Em um curso próprio, abra **Pessoas**, informe o e-mail exato de uma conta,
 confira o valor na confirmação e conclua. A resposta genérica não confirma se o
 endereço possui conta nem se a relação mudou. Quando a conta existe e a
-concessão é válida, o destinatário passa a ver o Curso em Estudo, e a
+concessão é válida, o destinatário passa a ver o curso em Estudo, e a
 propriedade permanece inalterada. Depois de dez tentativas em dez minutos, novas
 solicitações daquela conta aguardam a próxima janela, com a mesma resposta.
 
@@ -450,7 +450,7 @@ A exclusão exige conexão, confirmação humana e a frase exata `EXCLUIR MINHA
 CONTA`. Ela não é oferecida às ferramentas conversacionais.
 
 O aplicativo envia uma única solicitação confirmada à API. A API autentica a
-pessoa, deriva seus Cursos e caminhos privados, remove os avatares e PDFs
+pessoa, deriva seus cursos e caminhos privados, remove os avatares e PDFs
 correspondentes e só então solicita a exclusão relacional com a mesma sessão. O
 banco recusa a operação enquanto algum objeto permanecer e confirma a ausência
 no momento da exclusão. Depois que a limpeza física começa, uma falha pode
@@ -471,10 +471,10 @@ que o envio possa prosseguir. Assim, um token residual não reabre a janela de
 escrita autenticada. Uma credencial temporária já emitida continua válida apenas
 até seu prazo; o inventário permite confirmar a expiração.
 
-Depois, a conta de autenticação, o perfil, os Cursos próprios, suas composições,
-acessos e estados dependentes são removidos. Contribuições em Cursos alheios são
+Depois, a conta de autenticação, o perfil, os cursos próprios, suas composições,
+acessos e estados dependentes são removidos. Contribuições em cursos alheios são
 retiradas e redigidas imediatamente e seguem a janela de limpeza lógica de 14
-dias. Uma cópia pessoal é Curso próprio e segue essa mesma exclusão. A réplica
+dias. Uma cópia pessoal é curso próprio e segue essa mesma exclusão. A réplica
 local é limpa depois da resposta de sucesso. Essa resposta remota é terminal:
 se outra aba bloquear a exclusão do IndexedDB, a conta continua excluída e a
 interface oferece somente repetir a limpeza local. Ela não repete a exclusão

@@ -1,6 +1,6 @@
 # Visão do produto
 
-O AraLearn é um ambiente móvel de estudo e autoria de Cursos. Seu propósito é
+O AraLearn é um ambiente móvel de estudo e autoria de cursos. Seu propósito é
 transformar um conjunto extenso de assuntos em um percurso que explique,
 exemplifique, proponha práticas e possa ser retomado depois de uma interrupção.
 Ele organiza condições para que o estudo seja compreensível, praticável e
@@ -35,7 +35,7 @@ produzido pela forma de apresentação. Essa distinção fundamenta a busca por
 segmentação, explicitação de relações e remoção de elementos que não contribuem
 para a tarefa ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). A
 segmentação, entretanto, não autoriza resumir a teoria até torná-la incompleta:
-se um assunto exige mais etapas, o Curso deve usar mais Unidades.
+se um assunto exige mais etapas, o curso deve usar mais Unidades.
 
 ## Unidade de organização do estudo
 
@@ -53,9 +53,9 @@ Cada nível cumpre uma função distinta:
 - **Microssequência didática** articula teoria e prática em torno de uma
   finalidade local;
 - **Unidade de estudo** apresenta uma contribuição delimitada para essa
-  Microssequência.
+  microssequência.
 
-A Microssequência evita dois extremos. Uma Unidade completamente isolada pode não
+A microssequência evita dois extremos. Uma Unidade completamente isolada pode não
 oferecer contexto suficiente; uma lição apresentada como bloco único pode
 concentrar relações demais. A divisão intermediária mantém um contexto próximo
 e permite alternar explicação, exemplo, prática e retorno. Estudos sobre
@@ -123,11 +123,11 @@ alterando, qual estado prevalece e como retornar. **Arquitetura da informação*
 designa aqui a organização de lugares, rótulos, relações e percursos que permite
 responder a essas perguntas.
 
-O AraLearn usa a hierarquia do próprio Curso como referência comum entre
+O AraLearn usa a hierarquia do próprio curso como referência comum entre
 Estudo e Autoria. O título, o caminho didático, o modo ativo e o alvo corrente
 permanecem visíveis nos pontos em que uma ação poderia ser ambígua. Essa
 decisão privilegia **reconhecimento em vez de memorização**: a pessoa pode
-reconhecer um Curso, uma Unidade, uma Fonte ou a origem de um valor na tela, em
+reconhecer um curso, uma Unidade, uma fonte ou a origem de um valor na tela, em
 vez de decorar identificadores, nomes de contratos ou a posição de uma área.
 
 **Visibilidade do estado** significa tornar observável o que o sistema sabe e
@@ -147,12 +147,12 @@ usabilidade da ISO 9241-11:2018
 
 ## Estudo, autoria e assistência computacional
 
-O mesmo Curso pode ser observado em dois contextos complementares:
+O mesmo curso pode ser observado em dois contextos complementares:
 
 - no **Estudo**, a pessoa lê, pratica, recebe retorno, marca uma Unidade para
   rever e registra uma observação. Também pode editar uma
-  Unidade; quando o Curso é
-  compartilhado, a primeira gravação cria um Curso pessoal privado sem alterar o
+  Unidade; quando o curso é
+  compartilhado, a primeira gravação cria um curso pessoal privado sem alterar o
   original;
 - na **Autoria**, a pessoa proprietária abre diretamente o Conteúdo, inspeciona
   o mapa curricular global antes de produzir por partes, lê unidades de estudo,
@@ -161,32 +161,32 @@ O mesmo Curso pode ser observado em dois contextos complementares:
   revisar; a responsabilidade humana permanece em conferir o objeto e decidir o
   que deve mudar.
 
-A assistência computacional chega ao Curso por três canais distintos. A
+A assistência computacional chega ao curso por três canais distintos. A
 **Assistência por IA** dentro do aplicativo mantém uma sessão contextual em
-memória para Unidade, Microssequência ou Lição. O **Model Context Protocol
+memória para Unidade, microssequência ou lição. O **Model Context Protocol
 (MCP)** conecta um cliente compatível às operações canônicas de Autoria. O
 canal **Actions/OpenAPI** permite que um GPT personalizado use as mesmas tarefas
 humanas por HTTP. Eles não compartilham protocolo, sessão, credencial ou
-principal de autorização, embora obedeçam às mesmas regras de Curso.
+principal de autorização, embora obedeçam às mesmas regras de curso.
 
 Quando a conversa precisa mostrar conteúdo material, o cliente pode reunir um
-conjunto ordenado de Unidades — de preferência uma Microssequência coerente — e
+conjunto ordenado de Unidades — de preferência uma microssequência coerente — e
 apresentá-lo no próprio chat. Cada Unidade conserva a representação final, a
 resposta esperada e o feedback de práticas, a referência curta para comentário e
 o desenho contextual. O mesmo conjunto possui um endereço para a área
 **Conteúdo** da Autoria, onde permanece filtrado sem impedir que a pessoa retire
-o filtro e percorra o restante do Curso.
+o filtro e percorra o restante do curso.
 
-Uma alteração não precisa transportar todos os Cursos. A entrada inicial recebe
-descritores finos para selecionar um Curso; a composição é lida em páginas sob
+Uma alteração não precisa transportar todos os cursos. A entrada inicial recebe
+descritores finos para selecionar um curso; a composição é lida em páginas sob
 uma revisão fixa somente na entrada. O contexto enviado a um serviço de
-linguagem é montado para o Curso e o alvo pertinentes, e a resposta precisa
+linguagem é montado para o curso e o alvo pertinentes, e a resposta precisa
 satisfazer contratos estruturais antes de ser gravada.
 
 Respostas produzidas por modelos podem conter omissões ou erros. A assistência
 é uma ferramenta de autoria sob responsabilidade humana. O AraLearn separa a
 coordenação na conversa, a tarefa humana contratada, a validação e a gravação no
-Curso corrente. Escopo delimitado, possibilidade de rejeitar, reabrir qualquer
+curso corrente. Escopo delimitado, possibilidade de rejeitar, reabrir qualquer
 ponto e pedir revisão são condições de supervisão; a existência desses
 controles não prova que a pessoa compreenda o erro ou exerça controle efetivo.
 
@@ -209,7 +209,7 @@ dados e adequação ao contexto ([UNESCO (2023)](referencias.md#ref-unesco2023ge
 ## Continuidade entre dispositivo e servidor
 
 O AraLearn foi concebido para contextos em que a conexão pode desaparecer. O
-dispositivo mantém uma réplica local dos Cursos já abertos e do estado
+dispositivo mantém uma réplica local dos cursos já abertos e do estado
 funcional necessário para estudar. Depois da primeira transferência, leitura,
 prática e retomada dependem primeiro dessa réplica; mudanças pendentes podem ser
 sincronizadas quando a rede retorna.
@@ -245,12 +245,12 @@ punitivo](estado-de-estudo-nao-punitivo.md).
 
 ## Propriedade e acesso direto
 
-Todo Curso nasce privado e possui uma pessoa proprietária. Estudo lista Cursos
+Todo curso nasce privado e possui uma pessoa proprietária. Estudo lista cursos
 próprios e aqueles aos quais a pessoa recebeu acesso. Autoria lista somente
-Cursos próprios.
+cursos próprios.
 
 O proprietário pode conceder ou revogar acesso diretamente a outra conta. A
-concessão dá acesso a Estudo e preserva com o proprietário a edição do Curso. O
+concessão dá acesso a Estudo e preserva com o proprietário a edição do curso. O
 modelo não cria grupos, organizações nem acesso público anônimo.
 
 ## Públicos e condições de uso
@@ -264,8 +264,8 @@ mas não autorizam supor que qualquer interface móvel produza autorregulação
 ([Lai et al. (2022)](referencias.md#ref-lai2022mobile); [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated)).
 
 O AraLearn também atende autores, professores, revisores e pesquisadores que
-precisam examinar como um Curso foi planejado, representado, corrigido e usado.
-Esses públicos observam o mesmo Curso vivo, mas recebem ações diferentes de
+precisam examinar como um curso foi planejado, representado, corrigido e usado.
+Esses públicos observam o mesmo curso vivo, mas recebem ações diferentes de
 acordo com propriedade e acesso.
 
 Treinamento e desenvolvimento, educação profissional e tecnológica,
@@ -292,7 +292,7 @@ O produto assume os seguintes compromissos de projeto:
 - estados funcionais de retomada conservam sua finalidade e não viram medidas
   de aprendizagem por conveniência;
 - operações locais permanecem imediatas quando sua execução independe da rede;
-- uma falha isolada preserva a leitura dos demais Cursos;
+- uma falha isolada preserva a leitura dos demais cursos;
 - decisões de eficiência, acessibilidade e eficácia devem ser avaliadas por
   testes ou estudos adequados, e não declaradas como resultado já comprovado.
 
