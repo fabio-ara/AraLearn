@@ -258,21 +258,28 @@ function toolSuccess(value) {
   };
 }
 
+function retryableError(error) {
+  if (error.code === "course_source_pdf_write_uncertain") return false;
+  if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
+  return new Set([
+    "course_service_unavailable", "request_timeout", "network_error"
+  ]).has(error.code);
+}
+
 function toolFailure(
   error,
   challenge = null,
   failure = {}
 ) {
   const normalized = asAuthoringApiError(error);
-  const retryable = normalized.code !== "course_source_pdf_write_uncertain" && (
-    normalized.status === 408 || normalized.status === 429 ||
-    normalized.status >= 500 || new Set([
-      "course_service_unavailable", "request_timeout", "network_error"
-    ]).has(normalized.code)
-  );
+  const retryable = retryableError(normalized);
   const publicError = {
-    code: String(normalized.code || "human_task_failed"),
-    message: String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
+    code: retryable
+      ? "temporarily_unavailable"
+      : String(normalized.code || "human_task_failed"),
+    message: retryable
+      ? "Não consegui concluir esta etapa."
+      : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable
   };
   let nextDecision = normalized.code === "ambiguous_human_reference"
@@ -286,7 +293,7 @@ function toolFailure(
           : normalized.code === "human_materialization_contextual_calibration_required"
             ? "Inclua a calibração contextual nas unidades e refaça a produção da parte."
             : retryable
-              ? "Tente novamente sem mudar a intenção da tarefa."
+              ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
               : null;
   if (failure.writeState === "complete") {
     publicError.message = "A escrita pode ter sido concluída, mas a resposta excedeu o limite.";
@@ -295,7 +302,7 @@ function toolFailure(
   }
   const structuredContent = { error: publicError, nextDecision };
   return {
-    content: [{ type: "text", text: normalized.message }],
+    content: [{ type: "text", text: publicError.message }],
     structuredContent,
     isError: true,
     ...(challenge
@@ -491,6 +498,7 @@ async function dispatchMcpRequest(envelope, context) {
 
 function transportErrorResponse(error, cors = {}, resourceUrl = "") {
   const normalized = asAuthoringApiError(error);
+  const retryable = retryableError(normalized);
   const rpcCode = normalized.code === "parse_error" ? -32700 : -32600;
   const headers = { ...cors };
   if (normalized.status === 401) {
@@ -500,9 +508,20 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "") {
     });
   }
   if (normalized.status === 429) headers["Retry-After"] = "60";
+  const publicMessage = retryable
+    ? "Não consegui concluir esta etapa."
+    : normalized.message;
+  const publicCode = retryable
+    ? "temporarily_unavailable"
+    : normalized.code;
   return jsonRpcResponse(
     normalized.status,
-    jsonRpcError(null, rpcCode, normalized.message, { code: normalized.code }),
+    jsonRpcError(null, rpcCode, publicMessage, {
+      code: publicCode,
+      ...(retryable
+        ? { nextDecision: "Refaça a mesma etapa em silêncio, sem mudar a intenção." }
+        : {})
+    }),
     headers
   );
 }

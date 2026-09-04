@@ -373,7 +373,7 @@ test("MCP orienta o chat a reproduzir o link retornado", async () => {
   assert.equal(payload.result.instructions, COURSE_AUTHORING_SERVER_INSTRUCTIONS);
   assert.match(
     payload.result.instructions,
-    /devolver um link.*endereço exato.*link Markdown no chat/iu
+    /devolva o endereço exato em Markdown/iu
   );
 });
 
@@ -1525,6 +1525,85 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
   assert.doesNotMatch(
     publicText,
     /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+  );
+});
+
+test("MCP reduz falha transitória a impacto e retomada sem expor transporte", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async createCourse() {
+        throw new AuthoringApiError(
+          503,
+          "network_error",
+          "Falha transitória de conexão antes da confirmação de escrita no servidor."
+        );
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "criar_curso",
+    arguments: { titulo: "Novo curso", objetivo: "Ensinar redes." }
+  }));
+  const payload = await response.json();
+  const publicText = [
+    payload.result.content[0].text,
+    payload.result.structuredContent.error.message,
+    payload.result.structuredContent.nextDecision
+  ].join(" ");
+  const completeProjection = JSON.stringify(payload.result);
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.retryable, true);
+  assert.equal(payload.result.structuredContent.error.code, "temporarily_unavailable");
+  assert.equal(payload.result.structuredContent.error.message, "Não consegui concluir esta etapa.");
+  assert.equal(
+    payload.result.content[0].text,
+    payload.result.structuredContent.error.message
+  );
+  assert.match(publicText, /Refaça a mesma etapa em silêncio, sem mudar a intenção/iu);
+  assert.doesNotMatch(
+    completeProjection,
+    /network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
+  );
+});
+
+test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async createCourse() {
+        throw new AuthoringApiError(
+          429,
+          "rate_limit_transport",
+          "Falha transitória de conexão e escrita no servidor."
+        );
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "criar_curso",
+    arguments: { titulo: "Novo curso", objetivo: "Ensinar redes." }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("Retry-After"), "60");
+  assert.equal(payload.error.message, "Não consegui concluir esta etapa.");
+  assert.equal(payload.error.data.code, "temporarily_unavailable");
+  assert.equal(
+    payload.error.data.nextDecision,
+    "Refaça a mesma etapa em silêncio, sem mudar a intenção."
+  );
+  assert.doesNotMatch(
+    JSON.stringify(payload),
+    /rate_limit_transport|network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
   );
 });
 

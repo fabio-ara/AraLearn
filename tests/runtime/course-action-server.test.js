@@ -284,7 +284,34 @@ test("#272 referência ambígua e indisponibilidade devolvem retomadas diferente
   assert.equal(unavailable.status, 503);
   const unavailablePayload = await unavailable.json();
   assert.equal(unavailablePayload.error.retryable, true);
-  assert.match(unavailablePayload.nextDecision, /Tente novamente sem mudar a intenção/iu);
+  assert.match(
+    unavailablePayload.nextDecision,
+    /Refaça a mesma etapa em silêncio, sem mudar a intenção/iu
+  );
+});
+
+test("Actions reduz falha transitória a impacto e retomada sem expor transporte", async () => {
+  const response = await createHandler({
+    async createCourse() {
+      throw new AuthoringApiError(
+        503,
+        "network_error",
+        "Falha transitória de conexão antes da confirmação de escrita no servidor."
+      );
+    }
+  })(request("criar_curso", { titulo: "Novo curso", objetivo: "Ensinar redes." }));
+  const payload = await response.json();
+  const publicText = `${payload.error.message} ${payload.nextDecision}`;
+
+  assert.equal(response.status, 503);
+  assert.equal(payload.error.retryable, true);
+  assert.equal(payload.error.code, "temporarily_unavailable");
+  assert.equal(payload.error.message, "Não consegui concluir esta etapa.");
+  assert.match(publicText, /Refaça a mesma etapa em silêncio, sem mudar a intenção/iu);
+  assert.doesNotMatch(
+    JSON.stringify(payload),
+    /network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
+  );
 });
 
 test("Actions não manda repetir incorporação de PDF com escrita incerta", async () => {
