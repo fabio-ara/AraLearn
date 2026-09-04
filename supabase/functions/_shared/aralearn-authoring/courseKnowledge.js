@@ -1,12 +1,13 @@
 const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
-  "Parta de objetivo, público, pré-requisitos, escopo e fontes; proponha o mapa completo de módulos, lições e microssequências. Síntese no chat; detalhe no AraLearn.",
-  "A decisão da pessoa autora cobre o mapa apresentado, não conteúdo futuro. Partes são lotes operacionais mutáveis sem alterar o currículo.",
-  "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa; faça-a em silêncio ao materializar. Condições fixadas pelo pesquisador prevalecem. Só mostre parâmetros, contagens, formas ou alvos se solicitados.",
-  "Repertório: novidade, uso e retomada; dependências antes do uso. Unidades conectam explicação e prática; componentes e fontes têm função.",
-  "Mapa: assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas: impacto, retomada e linguagem humana. Separe pessoa autora de público estudante; use substantivos comuns em minúsculas.",
-  "Após produzir: resultado, link e próxima etapa. Ao devolver um link, reproduza o endereço exato como link Markdown no chat."
+  "Use objetivo, público, pré-requisitos, escopo e fontes. Proponha o mapa completo de módulos, lições e microssequências; síntese no chat, detalhe no AraLearn.",
+  "A decisão da pessoa autora cobre o mapa apresentado, não o futuro. Partes são lotes operacionais, sem alterar o currículo.",
+  "Se aprovar o mapa e pedir o lote na mesma mensagem, registre primeiro o mapa; apresente a progressão focal e só salve o lote após confirmação.",
+  "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa, em silêncio. Condições fixadas pelo pesquisador prevalecem. Parâmetros, contagens, formas e alvos só a pedido.",
+  "Ensine dependências antes do uso.",
+  "Mapa: conteúdo, não estatísticas da estrutura. Em falhas, diga só impacto e retomada; omita causas, validações e mecanismos internos. Distinga autor e estudante; substantivos comuns em minúsculas.",
+  "Após produzir: resultado, link e próxima etapa. Ao devolver um link, use o endereço exato como link Markdown no chat."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({
@@ -14,7 +15,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Planejamento e desenho",
     instructions: Object.freeze([
       "Leia o estado corrente. Antes de qualquer conteúdo, proponha o mapa curricular completo com módulos, lições, microssequências, dependências relevantes e cobertura do escopo; uma síntese fica no chat e o detalhe fica inspecionável no AraLearn.",
-      "Aprovação do mapa não aprova decisões futuras. Depois dela, prepare uma parte operacional por vez e apresente somente sua progressão local; redefinir esse lote não altera o mapa.",
+      "A aprovação do mapa não aprova decisões futuras. Se aprovação e pedido do lote vierem juntos, registre primeiro o mapa; apresente uma parte operacional por vez e só a salve após a pessoa confirmar sua progressão. Redefinir o lote não altera o mapa.",
       "Recolha apenas contexto que possa mudar o desenho: objetivo, público, pré-requisitos, escopo, profundidade, restrições e fontes. No estado default, calibre a configuração para cada microssequência ou unidade conforme assunto e planejamento; uma condição fixada pelo pesquisador prevalece. Preserve decisões anteriores e pergunte só quando uma alternativa mudar materialmente o curso.",
       "Uma unidade de análise é uma ideia, distinção, relação, regra ou operação necessária ao percurso. Se houver dois conceitos novos e a relação essencial entre eles, acompanhe as três unidades de análise; conceitos fundamentais ainda não estabelecidos também pertencem ao repertório.",
       "Não use tópico agregado para esconder novidades: decomponha quando necessário. O teto conta ideias semanticamente novas, não palavras, altura, dificuldade ou carga cognitiva. Conhecimentos já estabelecidos podem ser mobilizados livremente. O produtor declara o julgamento semântico; o servidor confere somente propriedades determinísticas."
