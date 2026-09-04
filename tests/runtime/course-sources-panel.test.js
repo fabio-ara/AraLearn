@@ -478,6 +478,40 @@ test("edição de Fonte usa revisão somente como cerca interna", async () => {
   assert.equal(Object.hasOwn(commands[0].command.source, "actorId"), false);
 });
 
+test("falha ao salvar fonte orienta a ação sem revelar transporte ou versão", async (t) => {
+  async function renderFailure(error) {
+    const root = new FakeRoot();
+    const controller = controllerFixture();
+    controller.mutateCourseSources = async () => { throw error; };
+    const panel = createCourseSourcesPanel({
+      root,
+      controller,
+      courseId: COURSE_ID,
+      courseRevision: 5
+    });
+    await panel.open();
+    click(root, "open-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "edit-source");
+    submit(root, "source", sourceFormValues({ sourceId: "source-01" }));
+    await settle();
+    return root.innerHTML;
+  }
+
+  await t.test("sem conexão", async () => {
+    const html = await renderFailure(new TypeError("Failed to fetch"));
+    assert.match(html, /Sem conexão para salvar a fonte\./u);
+    assert.doesNotMatch(html, /Failed to fetch|Supabase respondeu com HTTP/iu);
+  });
+
+  await t.test("conflito", async () => {
+    const error = Object.assign(new Error("CourseVersion is invalid"), { status: 409 });
+    const html = await renderFailure(error);
+    assert.match(html, /O curso mudou\. Recarregue as fontes antes de salvar\./u);
+    assert.doesNotMatch(html, /CourseVersion is invalid|>409</iu);
+  });
+});
+
 test("edição de Âncora preserva CAS interno sem oferecer história", async () => {
   const commands = [];
   const root = new FakeRoot();
@@ -635,6 +669,55 @@ test("exportação contém a proveniência corrente em linguagem humana", async 
   }]);
   assert.doesNotMatch(JSON.stringify(exports[0]),
     /sourceRevision|anchorRevision|attributionId|actorId|targetHash|contentHash|storagePath|history/iu);
+});
+
+test("falhas de exportação nomeiam o resultado sem expor o erro interno", async (t) => {
+  const failure = new Error("Cannot read properties of undefined");
+
+  await t.test("observações", async () => {
+    const root = new FakeRoot();
+    const panel = createCourseSourcesPanel({
+      root,
+      controller: controllerFixture(),
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      downloadJson: () => { throw failure; }
+    });
+    await panel.open();
+    click(root, "open-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "export-observations");
+    assert.match(root.innerHTML, /Não foi possível exportar as observações\./u);
+    assert.doesNotMatch(root.innerHTML, /Cannot read properties of undefined/iu);
+  });
+
+  await t.test("proveniência", async () => {
+    const current = source();
+    const root = new FakeRoot();
+    const panel = createCourseSourcesPanel({
+      root,
+      controller: controllerFixture({
+        catalog: [current],
+        links: [{
+          sourceId: current.sourceId,
+          relation: "supported_by",
+          anchors: [{ anchorId: "anchor-a" }]
+        }]
+      }),
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      mode: "target",
+      targetKind: "plan_item",
+      targetId: PLAN_ITEM_ID,
+      targetVersion: 3,
+      downloadJson: () => { throw failure; }
+    });
+    await panel.open();
+    await settle();
+    click(root, "export-target");
+    assert.match(root.innerHTML, /Não foi possível exportar a proveniência\./u);
+    assert.doesNotMatch(root.innerHTML, /Cannot read properties of undefined/iu);
+  });
 });
 
 test("PDF usa ingestão server-side e download autorizado do estado corrente", async () => {

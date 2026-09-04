@@ -1,5 +1,4 @@
 import { renderUiIcon } from "./renderUiIcons.js";
-import { publicErrorMessage } from "./publicErrorMessage.js";
 
 function iconButton({ action, icon, label, type = "button", primary = false }) {
   const actionAttribute = action ? ` ${action}` : "";
@@ -59,16 +58,12 @@ function formMarkup(mode) {
   `;
 }
 
-function errorMessage(error) {
-  return publicErrorMessage(error, "Não foi possível concluir a operação.");
-}
-
 export function renderAuthGate({ root, authClient = null, configured = true, onAuthenticated = () => {} } = {}) {
   if (!root) throw new TypeError("Elemento raiz da autenticação ausente.");
   let mode = authClient?.recoveryMode ? "recovery-password" : "login";
   let status = configured
     ? authClient?.redirectError
-      ? publicErrorMessage(authClient.redirectError, "Não foi possível confirmar o acesso.")
+      ? "Não foi possível confirmar o acesso."
       : ""
     : "A configuração de acesso está ausente neste ambiente.";
   let statusKind = status ? "error" : "";
@@ -108,8 +103,8 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
         await authClient.resendConfirmation({ email });
         status = "Confirmação reenviada. Verifique também a caixa de spam.";
         statusKind = "success";
-      } catch (error) {
-        status = errorMessage(error);
+      } catch {
+        status = "Não foi possível reenviar a confirmação.";
         statusKind = "error";
       }
       render();
@@ -155,14 +150,23 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
       } else {
         const password = String(values.get("password") || "");
         if (password !== String(values.get("passwordConfirmation") || "")) {
-          throw new Error("As duas senhas precisam ser iguais.");
+          status = "As duas senhas precisam ser iguais.";
+          statusKind = "error";
+          render();
+          return;
         }
         await authClient.updatePassword(password);
         await onAuthenticated();
         return;
       }
-    } catch (error) {
-      status = errorMessage(error);
+    } catch {
+      const fallback = {
+        login: "Não foi possível entrar. Confira o e-mail e a senha.",
+        signup: "Não foi possível criar a conta.",
+        recover: "Não foi possível enviar a recuperação.",
+        "recovery-password": "Não foi possível salvar a nova senha."
+      }[mode] || "Não foi possível concluir o acesso.";
+      status = fallback;
       statusKind = "error";
     }
     render();

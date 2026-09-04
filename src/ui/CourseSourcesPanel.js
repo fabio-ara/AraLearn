@@ -212,15 +212,32 @@ function ambiguousWriteFailure(error) {
     .test(message) || (status == null && !code && !(error instanceof TypeError));
 }
 
-function errorMessage(error, fallback = "Não foi possível concluir esta operação.") {
-  const code = String(error?.code || "").toLowerCase();
-  if (code === "course_revision_changed" || Number(error?.status) === 409) {
-    return "O curso mudou. Recarregue as fontes antes de salvar.";
-  }
-  if (/offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)) {
-    return "Sem conexão para concluir esta operação.";
-  }
-  return publicErrorMessage(error, fallback);
+function errorMessage(error, options = {}) {
+  const context = typeof options === "string" ? { fallback: options } : options;
+  const fallback = context.fallback || "Não foi possível concluir esta operação.";
+  return publicErrorMessage(error, fallback, {
+    conflict: "O curso mudou. Recarregue as fontes antes de salvar.",
+    network: context.network || fallback
+  });
+}
+
+function operationErrorContext(action) {
+  return {
+    fallback: `Não foi possível ${action}.`,
+    network: `Sem conexão para ${action}.`
+  };
+}
+
+function commandErrorContext(command) {
+  const action = {
+    save_source: "salvar a fonte",
+    retire_source: "retirar a fonte",
+    save_anchor: "salvar a âncora",
+    retire_anchor: "retirar a âncora",
+    remove_pdf: "remover o PDF",
+    set_target_sources: "salvar as fontes deste item"
+  }[command?.type] || "salvar a alteração";
+  return operationErrorContext(action);
 }
 
 function sourceStatusMarkup(source) {
@@ -1688,6 +1705,7 @@ export function createCourseSourcesPanel({
 
   async function runCommand(command, draft) {
     if (state.busy) return false;
+    const failureContext = commandErrorContext(command);
     const matches = state.pendingCommand &&
       JSON.stringify(state.pendingCommand.draft) === JSON.stringify(draft);
     if (!matches) state.pendingCommand = null;
@@ -1700,7 +1718,7 @@ export function createCourseSourcesPanel({
       };
     } catch (error) {
       state.message = "";
-      state.failure = errorMessage(error);
+      state.failure = errorMessage(error, failureContext);
       render();
       return false;
     }
@@ -1726,8 +1744,8 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingCommand = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error)} Confirme novamente para verificar o resultado com segurança.`
-        : errorMessage(error);
+        ? `${errorMessage(error, failureContext)} Confirme novamente para verificar o resultado com segurança.`
+        : errorMessage(error, failureContext);
       state.busy = false;
       render();
       return false;
@@ -1791,8 +1809,8 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingAttachment = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error)} Confirme novamente para verificar o resultado com segurança.`
-        : errorMessage(error);
+        ? `${errorMessage(error, operationErrorContext("enviar o PDF"))} Confirme novamente para verificar o resultado com segurança.`
+        : errorMessage(error, operationErrorContext("enviar o PDF"));
       state.busy = false;
       render();
       return false;
@@ -1834,7 +1852,7 @@ export function createCourseSourcesPanel({
     } catch (error) {
       if (!state.opened) return false;
       state.message = "";
-      state.failure = errorMessage(error);
+      state.failure = errorMessage(error, operationErrorContext("baixar o PDF"));
       return false;
     } finally {
       if (state.opened) {
@@ -1965,7 +1983,7 @@ export function createCourseSourcesPanel({
       };
     } catch (error) {
       state.message = "";
-      state.failure = errorMessage(error);
+      state.failure = errorMessage(error, operationErrorContext("salvar a observação"));
       render();
       restoreObservationDraftFocus();
       return false;
@@ -1997,8 +2015,8 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingAnnotation = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error)} Confirme novamente para verificar o resultado com segurança.`
-        : errorMessage(error);
+        ? `${errorMessage(error, operationErrorContext("salvar a observação"))} Confirme novamente para verificar o resultado com segurança.`
+        : errorMessage(error, operationErrorContext("salvar a observação"));
       state.busy = false;
       render();
       restoreObservationDraftFocus();
@@ -2093,21 +2111,21 @@ export function createCourseSourcesPanel({
     if (event.target.matches?.('[data-source-form="source"]')) {
       event.preventDefault();
       void submitSource(event.target).catch((error) => {
-        state.failure = errorMessage(error);
+        state.failure = errorMessage(error, operationErrorContext("salvar a fonte"));
         render();
         focusEditorField("source", error?.fieldName);
       });
     } else if (event.target.matches?.('[data-source-form="anchor"]')) {
       event.preventDefault();
       void submitAnchor(event.target).catch((error) => {
-        state.failure = errorMessage(error);
+        state.failure = errorMessage(error, operationErrorContext("salvar a âncora"));
         render();
         focusEditorField("anchor", error?.fieldName);
       });
     } else if (event.target.matches?.('[data-source-form="observation"]')) {
       event.preventDefault();
       void submitObservation(event.target).catch((error) => {
-        state.failure = errorMessage(error);
+        state.failure = errorMessage(error, operationErrorContext("salvar a observação"));
         render();
         focusEditorField("observation", error?.fieldName || "rawText");
       });
@@ -2302,7 +2320,7 @@ export function createCourseSourcesPanel({
         state.message = "A exportação das observações foi preparada para salvamento.";
       } catch (error) {
         state.message = "";
-        state.failure = errorMessage(error);
+        state.failure = errorMessage(error, operationErrorContext("exportar as observações"));
       }
       render();
     } else if (action === "download-attachment") {
@@ -2346,7 +2364,7 @@ export function createCourseSourcesPanel({
         state.message = "A exportação da proveniência foi preparada para salvamento.";
       } catch (error) {
         state.message = "";
-        state.failure = errorMessage(error);
+        state.failure = errorMessage(error, operationErrorContext("exportar a proveniência"));
       }
       render();
     } else if (action === "close-target") {
