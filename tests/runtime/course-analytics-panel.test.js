@@ -241,6 +241,38 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
   panel.destroy();
 });
 
+test("parâmetros categóricos ficam em português na fronteira pública", async () => {
+  const root = new FakeRoot();
+  const page = analyticsPage();
+  page.design.parameters[1].effectiveValues[0].value = [
+    "plain_definition", "concrete_example", "application_condition",
+    "limit_or_exception", "representation_link"
+  ];
+  page.design.parameters[3].effectiveValues[0].value = [
+    "case_or_data", "task_feature", "external_representation", "support_level"
+  ];
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() { return page; } }
+  });
+
+  await panel.open();
+
+  for (const label of [
+    "Definição em linguagem direta", "Exemplo concreto", "Condição de aplicação",
+    "Limite ou exceção", "Relação entre representações", "Caso ou dado",
+    "Característica da tarefa", "Representação externa", "Nível de apoio"
+  ]) {
+    assert.match(root.innerHTML, new RegExp(label, "iu"));
+  }
+  assert.doesNotMatch(
+    root.innerHTML,
+    /Plain definition|Concrete example|Application condition|Representation link|Case or data|Task feature|External representation|Support level/u
+  );
+  panel.destroy();
+});
+
 test("dados ausentes e falhas do painel permanecem em linguagem humana", async () => {
   const messages = [
     "Unidades de estudo sem informações pedagógicas completas: 2.",
