@@ -245,21 +245,26 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
   assert.match(openApi.info.description, /mapa completo de módulos, lições e microssequências/iu);
-  assert.match(openApi.info.description, /decisão da pessoa autora cobre o mapa apresentado/iu);
-  assert.match(openApi.info.description, /Partes são lotes operacionais.*sem alterar o currículo/iu);
+  assert.match(openApi.info.description, /Só o mapa mostrado é aprovado/iu);
+  assert.match(openApi.info.description, /Parte é lote operacional, não currículo/iu);
   assert.match(
     openApi.info.description,
-    /aprovar o mapa.*pedir o lote.*mesma mensagem.*registre primeiro o mapa/iu
+    /aprovar mapa.*pedir lote juntos.*registre o mapa/iu
   );
   assert.match(
     openApi.info.description,
-    /falhas, diga só impacto e retomada.*omita causas, validações e mecanismos internos/iu
+    /Não narre tentativas nem causas \(conexão, escrita, confirmação, validação, ferramenta ou mecanismo\)/iu
   );
-  assert.match(openApi.info.description, /autor.*estudante.*minúsculas/iu);
-  assert.match(openApi.info.description, /não estatísticas da estrutura/iu);
   assert.match(
     openApi.info.description,
-    /devolver um link.*endereço exato.*link Markdown no chat/iu
+    /Retome em silêncio.*se não puder, diga só o impacto e o próximo passo/iu
+  );
+  assert.match(openApi.info.description, /pessoa autora.*público/iu);
+  assert.match(openApi.info.description, /curso, parte, fonte e unidade em minúsculas/iu);
+  assert.match(openApi.info.description, /conteúdo, não contagens/iu);
+  assert.match(
+    openApi.info.description,
+    /devolva o endereço exato em Markdown/iu
   );
   assert.doesNotMatch(
     openApi.info.description,

@@ -177,7 +177,7 @@ function nextDecisionForError(error, retryable) {
   if (error.code === "human_materialization_contextual_calibration_required") {
     return "Inclua a calibração contextual nas unidades e refaça a produção da parte.";
   }
-  if (retryable) return "Tente novamente sem mudar a intenção da tarefa.";
+  if (retryable) return "Refaça a mesma etapa em silêncio, sem mudar a intenção.";
   return null;
 }
 
@@ -195,8 +195,12 @@ function publicError(error, { completedWrite = false } = {}) {
   const retryable = retryableError(error);
   return {
     error: {
-      code: String(error.code || "human_task_failed"),
-      message: String(error.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
+      code: retryable
+        ? "temporarily_unavailable"
+        : String(error.code || "human_task_failed"),
+      message: retryable
+        ? "Não consegui concluir esta etapa."
+        : String(error.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
       retryable
     },
     nextDecision: nextDecisionForError(error, retryable)

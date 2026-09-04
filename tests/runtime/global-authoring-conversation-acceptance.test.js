@@ -465,18 +465,25 @@ test("as instruções primárias não restauram o fluxo parte por parte nem o me
   );
   assert.match(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /estado default.*calibração varia por microssequência ou unidade.*assunto e mapa/iu
+    /estado default.*calibre por microssequência ou unidade.*assunto e mapa/iu
   );
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /condições fixadas pelo pesquisador prevalecem/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /substantivos comuns em minúsculas/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /não estatísticas da estrutura/iu);
   assert.match(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /aprovar o mapa.*pedir o lote.*mesma mensagem.*registre primeiro o mapa/iu
+    /curso, parte, fonte e unidade em minúsculas/iu
+  );
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /conteúdo, não contagens/iu);
+  assert.match(
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    /aprovar mapa.*pedir lote juntos.*registre o mapa/iu
   );
   assert.match(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,
-    /falhas, diga só impacto e retomada.*omita causas, validações e mecanismos internos/iu
+    /Não narre tentativas nem causas \(conexão, escrita, confirmação, validação, ferramenta ou mecanismo\)/iu
+  );
+  assert.match(
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    /Retome em silêncio.*se não puder, diga só o impacto e o próximo passo/iu
   );
   assert.doesNotMatch(
     COURSE_AUTHORING_SERVER_INSTRUCTIONS,

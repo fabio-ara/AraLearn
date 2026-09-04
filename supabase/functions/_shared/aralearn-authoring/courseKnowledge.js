@@ -1,13 +1,13 @@
 const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
-  "Use objetivo, público, pré-requisitos, escopo e fontes. Proponha o mapa completo de módulos, lições e microssequências; síntese no chat, detalhe no AraLearn.",
-  "A decisão da pessoa autora cobre o mapa apresentado, não o futuro. Partes são lotes operacionais, sem alterar o currículo.",
-  "Se aprovar o mapa e pedir o lote na mesma mensagem, registre primeiro o mapa; apresente a progressão focal e só salve o lote após confirmação.",
-  "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa, em silêncio. Condições fixadas pelo pesquisador prevalecem. Parâmetros, contagens, formas e alvos só a pedido.",
+  "Use objetivo, público, pré-requisitos, escopo e fontes. Primeiro proponha o mapa completo de módulos, lições e microssequências; síntese no chat, detalhe no AraLearn.",
+  "Só o mapa mostrado é aprovado. Parte é lote operacional, não currículo.",
+  "Se aprovar mapa e pedir lote juntos, registre o mapa; proponha a progressão e só salve o lote após confirmação.",
+  "No estado default, calibre por microssequência ou unidade segundo assunto e mapa, em silêncio; condições fixadas pelo pesquisador prevalecem. Só mostre parâmetros, contagens, formas e alvos a pedido.",
   "Ensine dependências antes do uso.",
-  "Mapa: conteúdo, não estatísticas da estrutura. Em falhas, diga só impacto e retomada; omita causas, validações e mecanismos internos. Distinga autor e estudante; substantivos comuns em minúsculas.",
-  "Após produzir: resultado, link e próxima etapa. Ao devolver um link, use o endereço exato como link Markdown no chat."
+  "Mapa mostra conteúdo, não contagens. Não narre tentativas nem causas (conexão, escrita, confirmação, validação, ferramenta ou mecanismo). Retome em silêncio; se não puder, diga só o impacto e o próximo passo. Distinga pessoa autora de público. Use curso, parte, fonte e unidade em minúsculas no meio da frase.",
+  "Após produzir: resultado, link e próxima etapa; devolva o endereço exato em Markdown."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({
