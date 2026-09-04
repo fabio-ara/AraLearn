@@ -218,6 +218,60 @@ alter table private.course_component_policy_assignments
       and private.valid_course_component_policy_v1(policy)
   );
 
+-- A função já existente alimenta diretamente o painel e as exportações. A
+-- revisão do catálogo é o primeiro ponto ainda não publicado em que podemos
+-- corrigir essas mensagens sem reescrever migrations que já chegaram ao banco.
+do $humanize_authoring_analytics_missing_data$
+declare
+  v_definition text;
+begin
+  v_definition:=pg_get_functiondef(
+    'public.get_owned_course_authoring_analytics_for_actor_v2(uuid,uuid,bigint,jsonb)'
+      ::regprocedure
+  );
+  if strpos(v_definition,
+       '%s StudyUnits não possuem aplicação pedagógica corrente.')=0
+     or strpos(v_definition,
+       '%s StudyUnits não possuem os seis parâmetros usados.')=0
+     or strpos(v_definition,
+       '%s direções editoriais excederam o limite do snapshot.')=0
+     or strpos(v_definition,
+       'Há mudanças de StudyUnit sem origem explicitamente observável.')=0 then
+    raise exception 'As mensagens anteriores dos dados de autoria divergiram.'
+      using errcode='55000';
+  end if;
+  v_definition:=replace(
+    v_definition,
+    '%s StudyUnits não possuem aplicação pedagógica corrente.',
+    'Unidades de estudo sem informações pedagógicas completas: %s.'
+  );
+  v_definition:=replace(
+    v_definition,
+    '%s StudyUnits não possuem os seis parâmetros usados.',
+    'Unidades de estudo sem configuração aplicada completa: %s.'
+  );
+  v_definition:=replace(
+    v_definition,
+    '%s direções editoriais excederam o limite do snapshot.',
+    'Direções editoriais que não puderam ser mostradas integralmente: %s.'
+  );
+  v_definition:=replace(
+    v_definition,
+    'Há mudanças de StudyUnit sem origem explicitamente observável.',
+    'Há unidades de estudo cuja origem de autoria não foi registrada.'
+  );
+  if v_definition~'StudyUnits? não possuem'
+     or strpos(v_definition,
+       'direções editoriais excederam o limite do snapshot')>0
+     or strpos(v_definition,
+       'mudanças de StudyUnit sem origem explicitamente observável')>0 then
+    raise exception 'As mensagens internas dos dados de autoria não foram removidas.'
+      using errcode='55000';
+  end if;
+  execute v_definition;
+end;
+$humanize_authoring_analytics_missing_data$;
+
 do $advance_open_response_catalog_manifest$
 declare
   v_manifest jsonb;

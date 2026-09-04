@@ -258,7 +258,7 @@ test("#273 snapshot responde desenho e autoria somente com contagens observávei
   provenanceAsRole.design.sourcesByRole[0].role = "supported_by";
   assert.throws(
     () => normalizeCourseAuthoringAnalyticsPage(provenanceAsRole),
-    /papel da Fonte não pertence ao catálogo/u
+    /papel da fonte não está disponível/u
   );
   const legacyWithoutRole = snapshot();
   legacyWithoutRole.design.sourcesByRole[0].role = null;
@@ -341,7 +341,10 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
 
   const overflow = snapshot();
   overflow.design.parameters[0].effectiveValues[0].studyUnitCount = 3;
-  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(overflow), /mais Units/u);
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(overflow),
+    /mais unidades de estudo do que o recorte/u
+  );
 
   const ceilingOnlyWhereApplicable = snapshot();
   ceilingOnlyWhereApplicable.design.parameters[0].effectiveValues[0].studyUnitCount = 1;
@@ -355,7 +358,10 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
   const silentlyMissing = snapshot();
   silentlyMissing.design.parameters[1].effectiveValues[0].studyUnitCount = 1;
   silentlyMissing.missingData = [];
-  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(silentlyMissing), /missingData/u);
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(silentlyMissing),
+    /ausências de configuração precisam permanecer indicadas nos dados de autoria/u
+  );
 
   const incompleteWordDistribution = snapshot();
   incompleteWordDistribution.design.wordCountsByStudyUnit[0].studyUnitCount = 2;
@@ -422,6 +428,40 @@ test("#273 rejeita maquinaria, score e parâmetro inventado em qualquer projeç�
   assert.doesNotMatch(
     serialized,
     /run|step|retry|duration|hash|payload|score|transcript|prompt|clickstream/iu
+  );
+});
+
+test("falhas de normalização preservam a fronteira pública em português", () => {
+  const cases = [
+    (value) => { value.design.analysisUnits[0].statement = ""; },
+    (value) => { value.design.introductionsByStudyUnit[0].title = ""; },
+    (value) => { value.design.studyUnitCount = -1; },
+    (value) => { value.course.id = "não-é-um-curso"; },
+    (value) => { value.contract = "formato-desconhecido"; },
+    (value) => { value.authorship.manuallyRevisedStudyUnitCount = -1; }
+  ];
+  const forbidden =
+    /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\boverrides?\b/iu;
+  for (const mutate of cases) {
+    const value = snapshot();
+    mutate(value);
+    assert.throws(
+      () => normalizeCourseAuthoringAnalyticsPage(value),
+      (error) => {
+        assert.match(error.message, /[áàâãéêíóôõúç]|dados|curso|unidade|formato/iu);
+        assert.doesNotMatch(error.message, forbidden);
+        return true;
+      }
+    );
+  }
+
+  const leakedMissingData = snapshot();
+  leakedMissingData.missingData = [
+    "2 StudyUnits não possuem aplicação pedagógica corrente."
+  ];
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(leakedMissingData),
+    /dados ausentes precisam ser apresentados em linguagem humana/u
   );
 });
 

@@ -83,6 +83,8 @@ test("resposta aberta é um componente genuíno, consultável pela função did�
   assert.deepEqual(contract.contract.optional, ["placeholder"]);
   assert.equal(Object.hasOwn(contract.contract.example, "answer"), false);
   assert.equal(Object.hasOwn(contract.contract.example, "expectedAnswer"), false);
+  assert.match(JSON.stringify(contract.contract.rules), /retorno separado/iu);
+  assert.doesNotMatch(JSON.stringify(contract.contract.rules), /\bfeedback\b/iu);
 });
 
 test("resposta aberta aceita produção livre sem inventar correção semântica", () => {

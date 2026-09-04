@@ -70,7 +70,13 @@ function escapeHtml(value) {
 }
 
 function errorText(error) {
-  return String(error?.message || "Não foi possível carregar os dados de autoria.");
+  const message = String(error?.message || "").trim();
+  const exposesInternalLanguage =
+    /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bAnalytics\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
+  if (!message || exposesInternalLanguage.test(message)) {
+    return "Não foi possível carregar os dados de autoria. Tente novamente.";
+  }
+  return message;
 }
 
 function formatCount(value) {

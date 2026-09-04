@@ -60,7 +60,7 @@ export const openResponsePackage = Object.freeze({
     rules: Object.freeze([
       "A proposta aparece somente neste componente.",
       "O placeholder pode orientar o foco, mas não pode entregar a resposta.",
-      "Use feedback separado para oferecer explicação depois da produção."
+      "Use um retorno separado para oferecer explicação depois da produção."
     ]),
     example: Object.freeze({
       prompt: "Explique com suas palavras por que o switch aprende pela origem e consulta o destino.",

@@ -14,6 +14,8 @@ const COPY_A_ID = "223e4567-e89b-42d3-a456-426614174000";
 const COPY_B_ID = "323e4567-e89b-42d3-a456-426614174000";
 const MICRO_REF = "microsequence:fundamentos";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const FORBIDDEN_SYSTEM_LANGUAGE =
+  /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
 
 class FakeRoot {
   constructor() {
@@ -237,6 +239,81 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
   assert.doesNotMatch(root.innerHTML, new RegExp(MICRO_REF, "u"));
   assert.doesNotMatch(root.innerHTML, /Fatos do recorte|timeline|dashboard|sidebar|role="dialog"/iu);
   panel.destroy();
+});
+
+test("dados ausentes e falhas do painel permanecem em linguagem humana", async () => {
+  const messages = [
+    "Unidades de estudo sem informações pedagógicas completas: 2.",
+    "Unidades de estudo sem configuração aplicada completa: 2.",
+    "Direções editoriais que não puderam ser mostradas integralmente: 1.",
+    "Há unidades de estudo cuja origem de autoria não foi registrada."
+  ];
+  const root = new FakeRoot();
+  const malformed = analyticsPage({ missingData: messages });
+  malformed.design.analysisUnits[0].statement = "";
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() { return malformed; } }
+  });
+
+  await panel.open();
+
+  assert.match(root.innerHTML, /O enunciado da unidade de análise é inválido\./u);
+  assert.doesNotMatch(root.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+
+  const missingRoot = new FakeRoot();
+  const missingPanel = createCourseAnalyticsPanel({
+    root: missingRoot,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadCourseAuthoringAnalytics() {
+        return analyticsPage({ missingData: messages });
+      }
+    }
+  });
+  await missingPanel.open();
+  for (const message of messages) assert.match(missingRoot.innerHTML, new RegExp(message, "u"));
+  assert.doesNotMatch(missingRoot.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+
+  const legacyRoot = new FakeRoot();
+  const legacyPanel = createCourseAnalyticsPanel({
+    root: legacyRoot,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadCourseAuthoringAnalytics() {
+        return analyticsPage({
+          missingData: ["2 StudyUnits não possuem aplicação pedagógica corrente."]
+        });
+      }
+    }
+  });
+  await legacyPanel.open();
+  assert.match(legacyRoot.innerHTML, /dados ausentes precisam ser apresentados em linguagem humana/u);
+  assert.doesNotMatch(legacyRoot.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+
+  for (const unsafeMessage of [
+    "StudyUnit inválida em courseRevision=7.",
+    "Erro SQL ao chamar a RPC de Analytics."
+  ]) {
+    const unsafeRoot = new FakeRoot();
+    const unsafePanel = createCourseAnalyticsPanel({
+      root: unsafeRoot,
+      course: { courseId: COURSE_ID, revision: 7 },
+      controller: {
+        async loadCourseAuthoringAnalytics() {
+          throw new Error(unsafeMessage);
+        }
+      }
+    });
+    await unsafePanel.open();
+    assert.match(
+      unsafeRoot.innerHTML,
+      /Não foi possível carregar os dados de autoria\. Tente novamente\./u
+    );
+    assert.equal(unsafeRoot.innerHTML.includes(unsafeMessage), false);
+    assert.doesNotMatch(unsafeRoot.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+  }
 });
 
 test("abertura por deep link consulta a revisão e o recorte indicados", async () => {

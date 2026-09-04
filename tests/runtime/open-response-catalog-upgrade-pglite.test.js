@@ -53,6 +53,19 @@ test("upgrade preserva políticas e unidades existentes ao acrescentar resposta 
     returns jsonb language sql stable security definer as $$
       select '{"schemaRevision":"20260903160000","contractVersion":1}'::jsonb
     $$;
+    create function public.get_owned_course_authoring_analytics_for_actor_v2(
+      p_actor_id uuid,
+      p_course_id uuid,
+      p_expected_course_revision bigint,
+      p_query jsonb
+    ) returns jsonb language sql stable security definer as $$
+      select jsonb_build_object('missingData',jsonb_build_array(
+        format('%s StudyUnits não possuem aplicação pedagógica corrente.',2),
+        format('%s StudyUnits não possuem os seis parâmetros usados.',2),
+        format('%s direções editoriais excederam o limite do snapshot.',1),
+        'Há mudanças de StudyUnit sem origem explicitamente observável.'
+      ))
+    $$;
     create function private.course_component_catalog_v1()
     returns jsonb language sql immutable as $$
       select $catalog$${previousCatalog}$catalog$::jsonb
@@ -251,5 +264,20 @@ test("upgrade preserva políticas e unidades existentes ao acrescentar resposta 
       select public.get_aralearn_runtime_manifest()->>'schemaRevision' revision
     `)).rows[0].revision,
     "20260903193000"
+  );
+  const missingData = (await database.query(`
+    select public.get_owned_course_authoring_analytics_for_actor_v2(
+      '${COURSE}','${COURSE}',1,'{}'::jsonb
+    )->'missingData' value
+  `)).rows[0].value;
+  assert.deepEqual(missingData, [
+    "Unidades de estudo sem informações pedagógicas completas: 2.",
+    "Unidades de estudo sem configuração aplicada completa: 2.",
+    "Direções editoriais que não puderam ser mostradas integralmente: 1.",
+    "Há unidades de estudo cuja origem de autoria não foi registrada."
+  ]);
+  assert.doesNotMatch(
+    JSON.stringify(missingData),
+    /StudyUnits?|AnalysisUnits?|missingData|snapshot|schema|\bCAS\b/iu
   );
 });
