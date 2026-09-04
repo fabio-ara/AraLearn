@@ -6,7 +6,7 @@ domínio trata o registro como Anotação ancorada porque ele conserva um alvo
 endereçável.
 
 Uma Observação não é diagnóstico, evidência factual nem autorização para mudar
-o Curso. Ela preserva uma manifestação situada para que a pessoa proprietária
+o curso. Ela preserva uma manifestação situada para que a pessoa proprietária
 possa responder, resolver ou iniciar uma revisão.
 
 ## O que o registro contém
@@ -21,7 +21,7 @@ Cada Observação possui:
 - autoria e datas necessárias à conversa e à privacidade;
 - resposta da pessoa proprietária, quando houver.
 
-O alvo pode ser Curso, Módulo, Lição, Microssequência, StudyUnit, Fonte ou
+O alvo pode ser curso, módulo, lição, microssequência, StudyUnit, fonte ou
 Âncora, conforme a superfície. O texto continua separado do conteúdo didático:
 editar ou resolver uma Observação não altera a StudyUnit.
 
@@ -42,7 +42,7 @@ permanece no dispositivo até a confirmação. Se a conexão cair, a fila própr
 Anotações retoma o envio sem misturar o registro com progresso ou estado autoral.
 
 A Observação é privada entre a pessoa que a criou e a pessoa proprietária do
-Curso, de acordo com a autorização corrente. Outros estudantes não recebem o
+curso, de acordo com a autorização corrente. Outros estudantes não recebem o
 texto.
 
 Retirar uma Observação remove-a da consulta corrente. Se a questão continuar
@@ -82,21 +82,21 @@ consultar Observações abertas
 ```
 
 O contexto pode incluir Units anteriores ou posteriores quando a questão atinge
-progressão, pré-requisitos, transições, exemplos, prática ou Fontes. A proposta
+progressão, pré-requisitos, transições, exemplos, prática ou fontes. A proposta
 deve diferenciar Units que apenas informam o diagnóstico daquelas que precisam
 ser alteradas.
 
-`preparar_revisao` não muda o Curso. `aplicar_correcoes` só deve ser usado depois
+`preparar_revisao` não muda o curso. `aplicar_correcoes` só deve ser usado depois
 da decisão e recebe o conjunto coerente de StudyUnits. Aplicar não prova
 resolução; volte aos alvos e verifique o conteúdo corrente.
 
 ## Relação com Fontes
 
-Uma Observação pode contestar a Fonte inteira ou uma Âncora. A revisão precisa
+Uma Observação pode contestar a fonte inteira ou uma Âncora. A revisão precisa
 mostrar referência, papel e localização pertinente. A pessoa pode corrigir
-metadados, ajustar a Âncora, trocar a relação com a StudyUnit ou retirar a Fonte.
+metadados, ajustar a Âncora, trocar a relação com a StudyUnit ou retirar a fonte.
 
-O texto da Observação não vira evidência bibliográfica. A Fonte continua
+O texto da Observação não vira evidência bibliográfica. A fonte continua
 responsável pela proveniência factual; o apontamento apenas motiva a conferência.
 
 ## Privacidade e minimização
@@ -108,7 +108,7 @@ que a finalidade exige.
 O AraLearn não persiste a conversa do GPT nem cadeia de pensamento com a
 Observação. A tarefa conversacional recebe o recorte autorizado necessário à
 revisão. Respostas de coordenação não precisam repetir o conteúdo que já está no
-Curso.
+curso.
 
 ## Analytics e pesquisa
 

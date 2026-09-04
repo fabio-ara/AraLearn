@@ -20,7 +20,7 @@ Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que
 **Home** oferece a saída global sem consumir o histórico. Acesso ao pai só deve
 aparecer quando houver ação contextual própria. Na Unidade, **Visualizar**,
 **Editar** e **Assistência por IA** devem ser modos irmãos sobre o mesmo alvo,
-sem deslocar elementos cuja função não mudou. Verifique resposta, retorno, Fontes, Observações,
+sem deslocar elementos cuja função não mudou. Verifique resposta, retorno, fontes, Observações,
 marcação para rever, zeragem de progresso e retomada.
 
 Em **Autoria**, abra o curso diretamente em **Conteúdo**. Confirme que uma
@@ -101,7 +101,7 @@ Do mesmo modo, esconder edição de quem não pode editar não substitui RLS,
 revisão esperada e validação da operação.
 
 Para ações destrutivas, crie dados descartáveis e confira o alvo no diálogo. As
-ações **Excluir este Curso**, **Sair deste Curso**, **Remover dados deste
+ações **Excluir este curso**, **Sair deste curso**, **Remover dados deste
 dispositivo**, **Sair** e **Excluir conta** têm efeitos diferentes e não podem
 ser tratadas como atalhos equivalentes.
 

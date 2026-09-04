@@ -75,13 +75,13 @@ exemplificar e praticar um conceito complexo. Uma lição inteira pode conter
 objetivos demais para delimitar o que estava em andamento e permitir uma
 retomada precisa depois de interrupção.
 
-**Alternativas e requisitos.** Seria possível usar somente Unidades e Lições, ou
+**Alternativas e requisitos.** Seria possível usar somente Unidades e lições, ou
 fixar blocos por duração e quantidade. A unidade intermediária, porém, precisa
 preservar um objetivo, seus pré-requisitos, a teoria que o sustenta, as práticas
 que o verificam e a ligação com o percurso, sem impor duração universal.
 
 **Decisão.** A **Microssequência didática** é a unidade de progressão situada
-entre Unidade de estudo e Lição. Ela contém objetivo, papel no percurso,
+entre unidade de estudo e lição. Ela contém objetivo, papel no percurso,
 dependências, conceitos cobertos, operações verificadas e Unidades ordenadas.
 
 **Fundamentação.** A literatura de carga cognitiva chama atenção para a
@@ -92,7 +92,7 @@ de microaprendizagem também reúne intervenções heterogêneas
 ([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
 
 **Operacionalização.** A Autoria declara a função e as dependências da
-Microssequência antes de materializar as Unidades. Sua extensão varia conforme a
+microssequência antes de materializar as Unidades. Sua extensão varia conforme a
 complexidade, os conhecimentos prévios presumidos, os erros previsíveis e a
 evidência de aprendizagem requerida.
 
@@ -126,7 +126,7 @@ confundir uma condição do contexto com uma regra pedagógica universal.
 
 **Alternativas e requisitos.** A Autoria poderia aplicar sempre o mesmo estilo,
 perguntar tudo novamente ou começar a produzir com lacunas silenciosas. Em vez
-disso, precisa consultar primeiro o pedido, as Fontes, o Curso e as decisões já
+disso, precisa consultar primeiro o pedido, as fontes, o curso e as decisões já
 registradas; distinguir o que está documentado do que é apenas hipótese; e
 interromper para dialogar somente quando uma informação ausente ou contraditória
 mudaria materialmente objetivo, escopo, pré-requisito, sequência, representação,
@@ -556,7 +556,7 @@ comunicar capacidades e limites, permitir correção e sustentar controle
 
 **Operacionalização.** O estudante pode marcar conteúdo para revisão e registrar
 Observações. A pessoa autora recebe contexto de leitura, alvos graváveis
-separados e meios de reabrir, anotar e corrigir qualquer ponto do Curso.
+separados e meios de reabrir, anotar e corrigir qualquer ponto do curso.
 Estrutura e permissões vêm de contratos explícitos, e não da linguagem livre.
 
 **Consequências.** A automação funciona como instrumento de autoria, não como

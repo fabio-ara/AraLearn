@@ -1,6 +1,6 @@
 # Benchmark de footprint editorial
 
-Este benchmark compara sinais simples de extensão de uma Unidade de estudo com o espaço que ela ocupa no leitor móvel. Ele é um instrumento diagnóstico reproduzível. Não define qualidade pedagógica, nota, limite de autoria nem política executada pelo produto.
+Este benchmark compara sinais simples de extensão de uma unidade de estudo com o espaço que ela ocupa no leitor móvel. Ele é um instrumento diagnóstico reproduzível. Não define qualidade pedagógica, nota, limite de autoria nem política executada pelo produto.
 
 ## Corpus e ambiente
 
@@ -26,7 +26,7 @@ O ensaio registra quatro perspectivas:
 3. footprint abstrato em linhas, combinando quebra de texto estimada e custo estrutural;
 4. pixels e fração de viewport medidos no renderer após hidratação.
 
-Os coeficientes experimentais estão versionados em `scripts/editorialFootprintMetrics.mjs` para tornar a comparação auditável. Eles não são exportados para o runtime, não são persistidos com o Curso e não representam um limiar recomendado.
+Os coeficientes experimentais estão versionados em `scripts/editorialFootprintMetrics.mjs` para tornar a comparação auditável. Eles não são exportados para o runtime, não são persistidos com o curso e não representam um limiar recomendado.
 
 Execute:
 
@@ -44,7 +44,7 @@ node --test tests/runtime/editorial-footprint-benchmark.test.js
 
 Na execução de referência, a correlação de postos com os pixels realmente ocupados foi 0,654 para palavras, 0,719 para caracteres, 0,793 para o equivalente ponderado e 0,896 para o footprint abstrato. A geometria não variou entre os temas. O texto extremo ocupou em média 2,739 viewports internas; os demais casos ficaram abaixo de uma viewport, com os maiores entre eles sendo a escolha de oito alternativas, o código longo e a prática de ordenação.
 
-O contraste responde à pergunta do ensaio: palavras ou caracteres isolados perdem diferenças importantes entre tipos. A estrutura melhora a ordenação, e a medição real continua sendo a evidência mais direta quando o renderer está disponível. O resultado não calibra uma fronteira científica entre Unidade adequada e inadequada, nem demonstra que os pesos se generalizam para Cursos não presentes no corpus.
+O contraste responde à pergunta do ensaio: palavras ou caracteres isolados perdem diferenças importantes entre tipos. A estrutura melhora a ordenação, e a medição real continua sendo a evidência mais direta quando o renderer está disponível. O resultado não calibra uma fronteira científica entre Unidade adequada e inadequada, nem demonstra que os pesos se generalizam para cursos não presentes no corpus.
 
 ## Critério de encerramento
 

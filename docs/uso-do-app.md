@@ -10,18 +10,18 @@ de acesso integram o site e o aplicativo Android correntes.
 ## Conceitos para começar
 
 Uma **conta** autentica uma pessoa. O perfil contém nome e foto opcionais e
-serve para identificar relações diretas de Curso.
+serve para identificar relações diretas de curso.
 
 Um **Curso vivo** é o mesmo objeto em Estudo, Autoria e ferramentas
 conversacionais. O conteúdo pode mudar sob a mesma identidade e fica disponível
 para Estudo assim que contém Unidades válidas.
 
-**Estudo** permite selecionar Cursos próprios ou compartilhados, começar,
+**Estudo** permite selecionar cursos próprios ou compartilhados, começar,
 continuar ou retomar o percurso, marcar Unidades para rever e registrar
 Observações próprias.
 
-**Autoria** apresenta somente Cursos próprios e abre diretamente em Conteúdo.
-Planejamento fica sempre à mão; Parâmetros, Fontes, Revisão, Analytics e Pessoas
+**Autoria** apresenta somente cursos próprios e abre diretamente em Conteúdo.
+Planejamento fica sempre à mão; Parâmetros, **Fontes**, Revisão, Analytics e Pessoas
 e acesso aparecem no menu de tarefas.
 
 Uma **réplica local** é a cópia dos dados necessários à continuidade no
@@ -72,36 +72,36 @@ confirmar o resultado, a tela preserva o objeto e pede **Salvar** novamente para
 confirmar o vínculo ou removê-lo antes de escolher outro arquivo.
 
 Na mesma área, escolha o tema do sistema, claro ou escuro. A preferência fica no
-dispositivo e não altera nenhum Curso.
+dispositivo e não altera nenhum curso.
 
 ## Alternar entre Estudo e Autoria
 
 Use o seletor **Estudo / Autoria** na tela inicial.
 
-- **Estudo** reúne todos os Cursos acessíveis num seletor e apresenta uma prévia
-  rica do Curso selecionado.
-- **Autoria** mostra somente Cursos próprios.
+- **Estudo** reúne todos os cursos acessíveis num seletor e apresenta uma prévia
+  rica do curso selecionado.
+- **Autoria** mostra somente cursos próprios.
 
-A ausência de um Curso compartilhado em Autoria indica o alcance da concessão:
+A ausência de um curso compartilhado em Autoria indica o alcance da concessão:
 a pessoa pode estudar, mas não alterar o original. Uma
-gravação contextual feita em Estudo cria um Curso pessoal privado; ele passa a
-aparecer em Autoria como Curso próprio.
+gravação contextual feita em Estudo cria um curso pessoal privado; ele passa a
+aparecer em Autoria como curso próprio.
 
 ## Abrir e percorrer um Curso
 
 1. Em Estudo, escolha uma opção no seletor **Curso**.
 2. Confira título, objetivo, relação de acesso, progresso e disponibilidade na
    prévia selecionada.
-3. Use **Abrir**. A entrada mostra primeiro os Módulos, independentemente do
+3. Use **Abrir**. A entrada mostra primeiro os módulos, independentemente do
    progresso já salvo.
-4. Escolha Módulo, Lição ou Microssequência para chegar às Unidades.
+4. Escolha módulo, lição ou microssequência para chegar às Unidades.
 
 Na primeira abertura, o aplicativo baixa a composição em páginas, confirma que
 todas pertencem à mesma revisão e valida o documento. Depois, mantém uma cópia
 local para retomada.
 
 Quando a Unidade possuir proveniência pública, use **Fontes**. A consulta
-apresenta somente as Fontes e localizações autorizadas. Uma Fonte oculta ou
+apresenta somente as fontes e localizações autorizadas. Uma fonte oculta ou
 pendente de comprovação não aparece; **Mostrar citação** omite o endereço e
 **Mostrar citação e link** pode entregá-lo.
 
@@ -133,12 +133,12 @@ estudantes não a recebem.
 
 ## Zerar o progresso
 
-Quando há progresso, a prévia selecionada oferece **Zerar progresso do Curso**.
+Quando há progresso, a prévia selecionada oferece **Zerar progresso do curso**.
 Confira o título na confirmação. A ação limpa o progresso e o ponto de retomada
-daquele Curso e preserva conteúdo, marcas **Rever**, Anotações e outros Cursos.
+daquele curso e preserva conteúdo, marcas **Rever**, Anotações e outros cursos.
 
 Dentro do percurso, controles de reinício delimitam o alcance pelo rótulo:
-Módulo, Lição, Microssequência ou a partir de uma Unidade.
+módulo, lição, microssequência ou a partir de uma Unidade.
 
 ## Criar e planejar um curso
 
@@ -179,24 +179,24 @@ função instrucional.
 
 ## Manter Fontes, PDFs e proveniência
 
-Em **Fontes**, crie, atualize, conteste ou retire Fontes e mantenha Âncoras. A
-Fonte é a referência corrente; URL e PDF são formas opcionais de acesso. Uma
+Em **Fontes**, crie, atualize, conteste ou retire fontes e mantenha Âncoras. A
+fonte é a referência corrente; URL e PDF são formas opcionais de acesso. Uma
 Âncora pode localizar página, tempo, fragmento de endereço ou trecho. O papel
-explica por que a Fonte foi ligada ao objeto: apoio, contexto, contraste,
+explica por que a fonte foi ligada ao objeto: apoio, contexto, contraste,
 exemplo ou outra relação declarada.
 
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
-interpretação ou solicitar reformulação. Escolha a Fonte inteira ou uma Âncora
+interpretação ou solicitar reformulação. Escolha a fonte inteira ou uma Âncora
 ativa como alvo. A revisão posterior precisa considerar esse contexto antes de
 alterar as unidades relacionadas.
 
 Para incorporar um PDF, envie um único arquivo na conversa que executará
 `incorporar_pdf_como_fonte`. O serviço valida os bytes e grava no Storage
 privado. O download autorizado usa um endereço temporário. Remover o PDF revoga
-novas leituras, preservando Fonte, Âncoras e vínculos; o mesmo conteúdo pode ser
+novas leituras, preservando fonte, Âncoras e vínculos; o mesmo conteúdo pode ser
 reativado por uma nova incorporação confirmada. Numa conversa, peça a
-`manter_fonte` para retirar somente os PDFs ou para retirar a Fonte inteira; esta
-segunda opção remove primeiro todos os PDFs ativos vinculados à Fonte.
+`manter_fonte` para retirar somente os PDFs ou para retirar a fonte inteira; esta
+segunda opção remove primeiro todos os PDFs ativos vinculados à fonte.
 
 Use **Definir fontes** numa unidade de estudo para revisar o conjunto corrente. Salvar
 substitui as relações daquele alvo. Identidades técnicas, caminhos de Storage e
@@ -211,17 +211,17 @@ comprovados.
 O proprietário pode usar o ícone **Editar** tanto em Estudo quanto em Conteúdo.
 Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 **Salvar**. O AraLearn valida a Unidade inteira e preserva identidade, pai,
-posição e Fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
+posição e fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
 **Cancelar** abandona somente esse rascunho.
 
 A mesma ação aparece em Estudo para quem recebeu acesso
 direto. Antes da primeira gravação,
 a interface informa que
-**Salvar na minha cópia** criará um Curso pessoal privado. A operação materializa
+**Salvar na minha cópia** criará um curso pessoal privado. A operação materializa
 a estrutura e o conteúdo correntes, aplica a mudança e continua na mesma Unidade.
-O Curso compartilhado permanece intacto. Planejamento, Fontes, PDFs, acessos,
+O curso compartilhado permanece intacto. Planejamento, fontes, PDFs, acessos,
 progresso e Observações não são copiados; esses registros começam próprios no
-novo Curso.
+novo curso.
 
 Abrir o editor, pedir uma sugestão, cancelar, encontrar uma falha ou confirmar
 conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home
@@ -229,7 +229,7 @@ distingue a cópia pessoal e o original compartilhado por iconografia e estado
 acessível ao lado do título, sem alterar o título de nenhum dos dois.
 
 Para trabalhar com a sessão contextual, use **Assistência por IA** na Unidade,
-na Microssequência ou na Lição:
+na microssequência ou na lição:
 
 1. escolha OpenAI, Gemini ou DeepSeek;
 2. informe o modelo quando necessário e a chave efêmera da sessão;
@@ -241,8 +241,8 @@ na Microssequência ou na Lição:
 7. salve somente se o resultado estiver adequado.
 
 O pedido leva sua mensagem, o conteúdo selecionado, o restante do objeto
-corrente como contexto, um resumo do Curso e as mensagens recentes. PDFs,
-Fontes e dados da conta ficam fora. A chave segue somente ao provider escolhido
+corrente como contexto, um resumo do curso e as mensagens recentes. PDFs,
+fontes e dados da conta ficam fora. A chave segue somente ao provider escolhido
 e permanece em memória até sair, recarregar ou encerrar a superfície.
 
 O provider pode conservar dados segundo seus próprios termos. A configuração
@@ -250,7 +250,7 @@ do serviço fica disponível junto à conversa sem ocupar o espaço principal do
 chat.
 
 A sessão pode trabalhar com a composição da Unidade, com a estrutura da
-Microssequência e com a organização de Microssequências dentro da Lição. Depois
+microssequência e com a organização de microssequências dentro da lição. Depois
 do aceite, o AraLearn gera e valida a candidata no renderer real antes de
 aplicá-la ao rascunho. Proposta inválida ou não renderizável deixa o conteúdo
 corrente intacto. Endpoint, relay e instruções de arquitetura não aparecem no
@@ -260,14 +260,14 @@ uso normal.
 
 1. Em **Conteúdo**, localize e inspecione o objeto sobre o qual quer trabalhar.
 2. Registre uma Observação no alvo ou salve a mudança necessária em
-   **Parâmetros**. Os dois tipos de registro permanecem no Curso e aparecem na
+   **Parâmetros**. Os dois tipos de registro permanecem no curso e aparecem na
    Autoria.
-3. No ChatGPT conectado por MCP ou Actions, identifique o Curso e peça que ele
+3. No ChatGPT conectado por MCP ou Actions, identifique o curso e peça que ele
    leia as Observações ou decisões de Parâmetros pertinentes.
 4. Examine a proposta. Acrescente condições, discorde ou peça outra solução
    enquanto ela não representar sua intenção.
 5. Autorize explicitamente a operação somente depois de concordar com o efeito.
-6. Volte ao AraLearn e confira o resultado no mesmo Curso.
+6. Volte ao AraLearn e confira o resultado no mesmo curso.
 
 A interface normal não abre um compositor e não exige copiar e colar um pedido.
 O cliente conectado obtém o contexto necessário pelas operações autorizadas,
@@ -292,7 +292,7 @@ Materialização continua restrita à parte operacional.
 Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
 devolve o foco ao aplicativo. Se o navegador não sinalizar a troca de foco, use a ação
-**Atualizar** no cabeçalho do Curso. A atualização preserva o contexto de
+**Atualizar** no cabeçalho do curso. A atualização preserva o contexto de
 navegação e, em Conteúdo, a Unidade e a posição conhecidas.
 
 Se houver uma confirmação ou um formulário em edição, a atualização automática
@@ -302,7 +302,7 @@ ChatGPT não descarta uma contribuição ainda não enviada.
 
 Validação local, recomposição do painel e resposta de rede ambígua também
 conservam o formulário aberto e devolvem o foco ao campo pertinente. Esse
-comportamento abrange Parâmetros, Fontes e Âncoras, Observações na caixa autoral
+comportamento abrange Parâmetros, fontes e Âncoras, Observações na caixa autoral
 e em Conteúdo. **Descartar** ou **Cancelar** remove o rascunho de propósito.
 
 Se a rede cair depois do envio e não for possível saber se o servidor confirmou
@@ -313,36 +313,36 @@ recibo anterior em vez de duplicar o efeito. Alterar o formulário inicia uma
 nova intenção e um novo pedido.
 
 Na criação da cópia pessoal, esse envelope delimitado também fica no IndexedDB
-até a confirmação ou o descarte. Ele conserva o Curso de origem, a Unidade, as
+até a confirmação ou o descarte. Ele conserva o curso de origem, a Unidade, as
 versões esperadas, o rascunho final e a origem manual ou assistida. Não conserva
 a conversa, a configuração nem a credencial do provedor. Ao reconectar, o
 AraLearn pode repetir exatamente o mesmo pedido. Duas abas que repetem essa
 intenção recebem o mesmo resultado; intenções diferentes concorrendo pela
-primeira cópia produzem conflito em vez de dois Cursos pessoais.
+primeira cópia produzem conflito em vez de dois cursos pessoais.
 
 ## Navegar e editar Conteúdo
 
-**Conteúdo** percorre Curso, Módulos, Lições, Microssequências e Unidades e usa
+**Conteúdo** percorre curso, módulos, lições, microssequências e Unidades e usa
 o mesmo renderer de Estudo com respostas desativadas. O recorte pode abranger o
-Curso, uma Parte, Unidades sem Parte, um Módulo, uma Lição ou uma
-Microssequência.
+curso, uma parte, Unidades sem parte, um módulo, uma lição ou uma
+microssequência.
 
 A sequência mantém uma janela limitada de Unidades e conserva a posição no
 dispositivo. Ao mudar de revisão, procura a mesma identidade de Unidade.
 **Editar**, **Fontes**, **Observações** e **Parâmetros** trabalham sobre o alvo
-exato. No Curso, Módulo, Lição e Microssequência, Editar abre os metadados e a
+exato. No curso, módulo, lição e microssequência, Editar abre os metadados e a
 composição autorizados para aquele nível e exige salvamento explícito.
 
 ## Usar Revisão
 
-Em **Revisão**, a tarefa **Observações** reúne as Anotações do Curso.
+Em **Revisão**, a tarefa **Observações** reúne as Anotações do curso.
 Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
 resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
 
 Uma Observação salva fica visível no alvo e na caixa de entrada autoral. O
 ChatGPT conectado pode ler as Observações pendentes, discutir uma proposta e,
 depois da aprovação explícita, executar a alteração pertinente ou registrar a
-decisão de manter o estado. O resultado atualizado permanece no mesmo Curso.
+decisão de manter o estado. O resultado atualizado permanece no mesmo curso.
 
 Para pedir uma correção ampla, use o GPT conectado. Ele consulta as Observações
 abertas, prepara uma revisão com progressão, pré-requisitos, transições,
@@ -351,7 +351,7 @@ exemplos e prática afetados e apresenta uma proposta. Depois da decisão,
 as unidades de estudo; aplicação não demonstra que a questão foi resolvida.
 
 Revisão autoral exige conexão. A cópia e a fila de Anotações próprias pertencem
-ao percurso de Estudo; a consulta do Curso e as correções usam o estado remoto
+ao percurso de Estudo; a consulta do curso e as correções usam o estado remoto
 corrente.
 
 ## Consultar Analytics
@@ -367,7 +367,7 @@ das unidades. Uma origem incerta permanece ausente, em vez de virar uma
 inferência.
 
 **Exportar Analytics** baixa um JSON com o mesmo snapshot mostrado na tela. Ele
-não é uma cópia completa do Curso nem uma medida de aprendizagem. Veja
+não é uma cópia completa do curso nem uma medida de aprendizagem. Veja
 [Analytics da Autoria](analytics-instrucionais.md).
 
 ## Conceder e revogar acesso
@@ -376,9 +376,9 @@ Em **Pessoas**, use **Conceder acesso**, informe o e-mail exato de uma conta
 e confirme. A resposta imediata é a mesma exista ou não a
 conta, inclusive quando o endereço é próprio, o acesso já existe ou o limite foi
 atingido. Há dez tentativas por pessoa autenticada em dez minutos. Quando a
-concessão é válida, a pessoa passa a encontrar o Curso em Estudo. A concessão
+concessão é válida, a pessoa passa a encontrar o curso em Estudo. A concessão
 mantém propriedade e edição com o autor e não cria organização nem cópia do
-Curso. A releitura posterior da lista pode mostrar o acesso efetivamente criado;
+curso. A releitura posterior da lista pode mostrar o acesso efetivamente criado;
 a resposta genérica reduz a enumeração imediata, mas não elimina esse risco
 residual.
 
@@ -394,17 +394,17 @@ cliente localizar e ler o recorte necessário, revise a proposta, autorize a
 alteração e confira o resultado na Autoria e em Estudo.
 
 Ao retornar do cliente conversacional, o AraLearn relê o cabeçalho canônico do
-Curso antes de atualizar Planejamento, Conteúdo, Revisão, Fontes ou Analytics. A
+curso antes de atualizar Planejamento, Conteúdo, Revisão, **Fontes** ou Analytics. A
 cópia de um pedido não escreve na API, no PostgreSQL, no Storage nem no
 IndexedDB.
 
-O cliente usa a revisão do Curso e a versão do objeto lido para proteger a
+O cliente usa a revisão do curso e a versão do objeto lido para proteger a
 escrita. A pessoa escolhe a finalidade; o cliente seleciona a ferramenta e a
 operação adequadas. Veja [Autoria por MCP](autoria-mcp.md).
 
 Um GPT personalizado com **Actions** usa o contrato OpenAPI e um OAuth próprios,
 distintos do MCP. Os dois canais chegam às mesmas tarefas humanas e alteram o
-mesmo Curso vivo.
+mesmo curso vivo.
 
 ## Trabalhar sem conexão
 
@@ -414,8 +414,8 @@ Quando a conexão retorna, cada repositório compara sua versão remota e envia 
 operações pendentes.
 
 Na tela inicial, esse estado só aparece quando altera a capacidade de abrir o
-Curso. Sem conexão, **Disponível offline** confirma que a composição validada
-pode ser aberta; **Conecte-se para abrir este Curso** distingue o descritor
+curso. Sem conexão, **Disponível offline** confirma que a composição validada
+pode ser aberta; **Conecte-se para abrir este curso** distingue o descritor
 conhecido de uma composição ainda ausente. A seleção e o último ponto visitado
 permanecem no dispositivo; uma segunda aba não desloca a tela já aberta na
 primeira.
@@ -426,7 +426,7 @@ O texto **Sem conexão** aparece somente quando o navegador realmente está sem
 rede; uma cópia local momentaneamente desatualizada não é apresentada como perda
 de conexão.
 
-Na Autoria, o IndexedDB conserva a lista de Cursos próprios, o cabeçalho, o
+Na Autoria, o IndexedDB conserva a lista de cursos próprios, o cabeçalho, o
 planejamento, a hierarquia e páginas recentes de Conteúdo e a posição de retomada.
 Uma leitura local é identificada como desatualizada e somente para consulta. A
 mudança da revisão remota invalida os derivados da revisão anterior antes de
@@ -438,15 +438,15 @@ antes de invalidar as projeções anteriores. Progresso, Observações e posiç�
 preservados. Estudo e Conteúdo podem mostrar essa revisão sem rede como
 confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitura
 igual normaliza a cópia; uma revisão superior a descarta como superada. Sair da
-conta, limpar o Curso ou perder acesso purga esse estado.
+conta, limpar o curso ou perder acesso purga esse estado.
 
-Parâmetros, catálogo privado de Fontes, metadados e bytes de PDFs, caixa autoral
+Parâmetros, catálogo privado de fontes, metadados e bytes de PDFs, caixa autoral
 de Observações, revisão, correções, Analytics, gestão de acesso e mutações
 autorais dependem do servidor. O Storage não é reproduzido no
-IndexedDB. A tela inicial pode mostrar um Curso conhecido, mas a própria prévia
+IndexedDB. A tela inicial pode mostrar um curso conhecido, mas a própria prévia
 distingue esse caso de uma composição já disponível no dispositivo. Perder a
-autoridade sobre o Curso elimina a cópia e o ponto de retomada; a tela informa a
-mudança e escolhe outro Curso acessível, quando houver.
+autoridade sobre o curso elimina a cópia e o ponto de retomada; a tela informa a
+mudança e escolhe outro curso acessível, quando houver.
 
 Preserve os dados do aplicativo até a sincronização quando houver alterações
 recentes importantes.
@@ -455,7 +455,7 @@ recentes importantes.
 
 Em **Conta e aparência**, abra **Dados e conta** e use **Sair**. Se houver uma interrupção, o aplicativo
 permite repetir a saída.
-Sair encerra a sessão, mas Cursos, estado pessoal e filas já gravados localmente
+Sair encerra a sessão, mas cursos, estado pessoal e filas já gravados localmente
 podem permanecer no dispositivo. A confirmação avisa que uma alteração ainda
 aberta e não salva será perdida. Considere essas duas condições ao usar aparelho
 compartilhado.
@@ -472,10 +472,10 @@ preserva texto que ainda exista apenas num formulário aberto.
 3. Digite exatamente `EXCLUIR MINHA CONTA`.
 
 A operação exige conexão e é irreversível. O aplicativo envia uma única
-solicitação confirmada; a API autentica a pessoa, localiza seus Cursos e remove
+solicitação confirmada; a API autentica a pessoa, localiza seus cursos e remove
 os avatares e PDFs correspondentes. O banco recusa a exclusão enquanto algum
-desses objetos permanecer. Depois, remove a conta, os Cursos próprios e as
-relações dependentes; contribuições em Cursos alheios são retiradas e redigidas
+desses objetos permanecer. Depois, remove a conta, os cursos próprios e as
+relações dependentes; contribuições em cursos alheios são retiradas e redigidas
 conforme a política de retenção. Uma falha intermediária conserva a conta para
 nova tentativa. Se a limpeza do Storage já tiver começado, alguns PDFs ou a foto
 podem ter sido removidos e a conta pode já ter sido excluída ou ainda aguardar a

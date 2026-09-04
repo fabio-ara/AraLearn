@@ -325,7 +325,7 @@ Entre os percursos relevantes estão:
 
 - começar a usar o AraLearn;
 - estudar;
-- criar e revisar Cursos;
+- criar e revisar cursos;
 - compreender Assistência por IA e integrações conversacionais;
 - estudar a engenharia;
 - instalar e operar;

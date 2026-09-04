@@ -6,7 +6,7 @@ plano. Cor, movimento e elementos decorativos entram apenas quando ajudam a
 perceber estrutura, seleção, origem ou estado.
 
 A mesma linguagem atende Estudo e Autoria. As duas superfícies preservam a
-identidade do Curso, mas apresentam controles diferentes porque estudar,
+identidade do curso, mas apresentam controles diferentes porque estudar,
 planejar, inspecionar e corrigir são atividades distintas.
 
 ## Fundamentos
@@ -26,7 +26,7 @@ Os princípios vigentes são:
 2. nenhuma informação depende apenas de cor, forma ou movimento;
 3. ações frequentes têm nome compreensível e área de toque adequada;
 4. detalhes aparecem no contexto em que podem ser usados;
-5. o modo de cor não altera conteúdo, resposta ou estado do Curso;
+5. o modo de cor não altera conteúdo, resposta ou estado do curso;
 6. a largura de leitura continua contida em telas grandes;
 7. representações acadêmicas preservam suas convenções;
 8. uma ação local responde sem aguardar a rede quando já possui os dados
@@ -52,7 +52,7 @@ garante legibilidade por si só.
 O seletor oferece **Sistema**, **Claro** e **Escuro**. A opção Sistema acompanha
 `prefers-color-scheme`; uma escolha explícita prevalece e fica no dispositivo.
 `data-theme-preference` conserva a preferência, e `data-color-mode` registra o
-modo resolvido. A troca ocorre sem recarregar o Curso ou consultar a rede.
+modo resolvido. A troca ocorre sem recarregar o curso ou consultar a rede.
 
 O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto
 e branco absolutos são reservados às situações em que o contraste medido os
@@ -73,11 +73,11 @@ converter preferência ou um resultado situado em regra universal.
 ## Estrutura do produto
 
 A entrada de Autoria é **Meus cursos**. A lista mostra descritores suficientes
-para reconhecer os Cursos próprios sem baixar a composição inteira. Cursos
-compartilhados aparecem somente em Estudo. Um toque abre o Curso; a ação de
+para reconhecer os cursos próprios sem baixar a composição inteira. Cursos
+compartilhados aparecem somente em Estudo. Um toque abre o curso; a ação de
 voltar retorna à lista sem criar uma identidade intermediária.
 
-O Curso próprio abre diretamente em **Conteúdo**. A barra mantém atalhos por
+O curso próprio abre diretamente em **Conteúdo**. A barra mantém atalhos por
 ícone para Conteúdo e Planejamento. **Parâmetros**, **Fontes**, **Revisão**,
 **Analytics** e **Pessoas e acesso** ficam no menu compacto. Esses nomes
 expressam tarefas humanas e não expõem módulos internos.
@@ -97,13 +97,13 @@ Uma ação frequente, reconhecível e situada prefere ícone conhecido, nome
 acessível e dica. Texto visível permanece quando evita ambiguidade real; a ação
 principal de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
 em controles progressivos, sem desaparecer do produto. Planejamento não cria um
-card textual de próxima ação: objetivo e Parte focal permanecem visíveis,
+card textual de próxima ação: objetivo e parte focal permanecem visíveis,
 enquanto ações ficam junto do objeto e priorizam ícones.
 Partes, contexto e referências sem conteúdo não acrescentam mensagens de
 ausência; detalhes e organização avançada são abertos quando necessários.
 
 Em **Conteúdo**, Observações e mudanças de Parâmetros permanecem ligadas ao alvo
-inspecionado e aparecem como estado do próprio Curso. A pessoa pode percorrer os
+inspecionado e aparecem como estado do próprio curso. A pessoa pode percorrer os
 cards, registrar decisões e verificar resultados sem abrir uma superfície
 paralela. O ChatGPT conectado por MCP ou Actions lê esse mesmo estado, apresenta
 propostas para discussão e só executa uma operação depois da aprovação explícita.
@@ -116,9 +116,9 @@ em primeiro plano e associa uma proposta concreta a cada resposta. Configuraçã
 do serviço e detalhes aparecem progressivamente. Aceitar gera, valida e aplica
 somente ao rascunho; salvar continua sendo uma decisão separada da pessoa.
 
-A edição de um Curso compartilhado apresenta antes da gravação a
+A edição de um curso compartilhado apresenta antes da gravação a
 frase “Ao salvar, o AraLearn criará
-uma cópia privada para você. O Curso compartilhado continuará intacto.” A ação
+uma cópia privada para você. O curso compartilhado continuará intacto.” A ação
 correspondente é **Salvar na minha cópia**. Depois da confirmação, a pessoa
 permanece na mesma Unidade e a
 interface informa **Cópia criada. Você continua nesta Unidade.** A Home distingue
@@ -144,7 +144,7 @@ conclua ou cancele o rascunho. Os campos preenchidos permanecem no documento, e
 uma mensagem explica por que a atualização foi adiada. Preservar o trabalho em
 curso tem precedência sobre substituir a área por uma revisão recém-lida.
 
-Recomposições internas seguem a mesma regra. Parâmetros, Fontes, Observações,
+Recomposições internas seguem a mesma regra. Parâmetros, **Fontes**, Observações,
 Conteúdo e Analytics conservam valores, detalhes progressivos e
 foco após validação local, atualização assíncrona ou falha de rede ambígua. Uma
 nova tentativa sem edição parte do formulário novamente apresentado e conserva
@@ -154,15 +154,15 @@ transitório de maneira explícita.
 O Estudo conserva navegação própria, com foco na Unidade atual, na prática e na
 retomada. A barra cotidiana usa **Voltar + Home**: Voltar restaura a origem real,
 rolagem e foco; Home oferece saída global previsível. Acesso direto ao pai só
-aparece como ação contextual quando uma jornada concreta o justificar. Um Curso
+aparece como ação contextual quando uma jornada concreta o justificar. Um curso
 compartilhado concede Estudo e não entra na Autoria da pessoa
-favorecida. A cópia pessoal criada por uma gravação passa a ser Curso próprio e,
+favorecida. A cópia pessoal criada por uma gravação passa a ser curso próprio e,
 por isso, aparece na Autoria dessa pessoa. Semelhança visual entre cartões de
 navegação não comunica permissão.
 
-Sua entrada usa um único combobox de Curso e uma única prévia rica selecionada.
+Sua entrada usa um único combobox de curso e uma única prévia rica selecionada.
 A prévia reúne objetivo, relação de acesso, progresso, disponibilidade local e
-a ação estável **Abrir**, que leva à lista de Módulos. Ela não se multiplica numa
+a ação estável **Abrir**, que leva à lista de módulos. Ela não se multiplica numa
 grade de cartões, não pula a hierarquia por causa de uma posição salva e não
 mostra UUID, hash ou revisão técnica. A composição permanece centralizada e
 limitada a 430 px também em 1280 px.
@@ -172,11 +172,11 @@ limitada a 430 px também em 1280 px.
 Em Conteúdo, a inspeção é uma sequência curricular finita, não uma rolagem infinita. Ela
 reutiliza o mecanismo de renderização de Estudo com respostas inertes e mostra
 posição, hierarquia e limites do recorte. O autor pode restringir a sequência
-por Curso, Parte, Módulo, Lição ou Microssequência.
+por curso, parte, módulo, lição ou microssequência.
 
 As páginas possuem doze Unidades, e a janela mantém no máximo trinta e seis no
 documento. O carregamento acontece nas duas direções. Ao atualizar uma Unidade,
-mudar de recorte, perder a conexão ou abrir o mesmo Curso em outra aba, a
+mudar de recorte, perder a conexão ou abrir o mesmo curso em outra aba, a
 interface preserva a identidade da Unidade e sua distância em relação ao topo
 fixo. Um endereço direto inclui a Unidade inicial sem transformar o cursor de
 paginação em posição curricular.
@@ -196,13 +196,13 @@ Fontes apresentam primeiro os dados que ajudam a reconhecer o documento. O
 detalhe revela disponibilidade, papel e Âncoras. O envio de PDF mostra
 progresso, repetição segura por conteúdo, falha recuperável e uso da cota. A
 opção de baixar só aparece quando o servidor confirma um vínculo ativo e o
-acesso da pessoa ao Curso.
+acesso da pessoa ao curso.
 
 Analytics usa um seletor de escopo e duas áreas: **Desenho** e **Autoria**. Cada
 área mostra quatro números com definições curtas. Tabelas simples permanecem
 recolhidas até serem solicitadas. Não há gráfico redundante, segunda coluna ou
 rolador interno. Dado ausente recebe estado acessível próprio e a superfície não
-resume o Curso numa nota.
+resume o curso numa nota.
 
 ## Tipografia, espaço e forma
 
@@ -235,8 +235,8 @@ essa distinção, com cor apenas como reforço.
 
 Rótulos descrevem a tarefa. Termos como JSON, versão de estado, identificador de
 pacote ou trava de concorrência aparecem apenas em diagnóstico técnico. A
-interface comum fala em Curso, Parte, Unidade de estudo, componente didático,
-Fonte, Observação, achado e correção.
+interface comum fala em curso, parte, unidade de estudo, componente didático,
+fonte, Observação, achado e correção.
 
 Contorno, cursor, foco e aparência precisam corresponder à ação disponível. O
 foco visível pertence ao controle ativo. Texto sem ação não recebe aparência de
@@ -367,17 +367,17 @@ dentro de uma Unidade:
 ![Unidade de estudo em tela móvel clara, com conteúdo central e controles
 iconográficos.](screenshots/study/study-card-390-light.png)
 
-A lista de Cursos registra a superfície mínima de Autoria na mesma largura:
+A lista de cursos registra a superfície mínima de Autoria na mesma largura:
 
-![Lista de Cursos da Autoria em tela móvel clara, com busca, criação e três
+![Lista de cursos da Autoria em tela móvel clara, com busca, criação e três
 Cursos.](screenshots/authoring/authoring-courses-390-light.png)
 
 Uma captura comprova apenas o conjunto de dados, o modo e o tamanho usados. A
 aprovação visual exige também interação real, console e rede sem erros, foco,
 rolagem, textos extensos e estados intermediários.
 
-A inspeção local percorre Cursos em 360, 390, 430 e 1.280 px, Planejamento nos
-temas claro e escuro, Parâmetros, Fontes e Auditoria. Artefatos temporários
+A inspeção local percorre cursos em 360, 390, 430 e 1.280 px, Planejamento nos
+temas claro e escuro, Parâmetros, fontes e Auditoria. Artefatos temporários
 ajudam o diagnóstico, mas não substituem a matriz persistente de larguras e
 temas.
 

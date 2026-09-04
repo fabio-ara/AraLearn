@@ -1,7 +1,7 @@
 # Componentes didáticos e pacotes
 
 No AraLearn, um **componente didático** produz uma representação externa, uma
-forma de resposta ou ambas dentro de uma Unidade de estudo. Seu **pacote de
+forma de resposta ou ambas dentro de uma unidade de estudo. Seu **pacote de
 componente** reúne contrato, validação, apresentação, acessibilidade e avaliação.
 O núcleo de execução conhece as posições ocupadas na Unidade, mas não incorpora
 a estrutura interna de grafos, matrizes, fórmulas ou processos.
@@ -45,7 +45,7 @@ informação. Esse princípio é discutido no modelo DeFT de
 
 O núcleo em `src/resources/kernel/` oferece:
 
-- estrutura externa e posições da Unidade de estudo;
+- estrutura externa e posições da unidade de estudo;
 - resolução de `package@version`;
 - validação estrutural e de composição;
 - montagem da apresentação;
@@ -136,7 +136,7 @@ código, tabela, classificação e relações visuais devem levar a Autoria a
 considerar os componentes correspondentes quando preservarem melhor o objeto.
 
 O ajuste calculado não autoriza o uso sozinho. A política de componentes
-efetiva do Curso e do escopo fixa a revisão do catálogo, a disponibilidade
+efetiva do curso e do escopo fixa a revisão do catálogo, a disponibilidade
 total ou restrita (`all|allow_only`), as exclusões e as preferências. Exclusão vence; preferência
 somente desempata candidatos ainda permitidos e semanticamente adequados.
 Durante a materialização, o servidor confronta os `package@version` realmente
@@ -145,7 +145,7 @@ a lacuna e não finge equivalência.
 
 ## 5. Composição da Unidade de estudo
 
-Uma Unidade de estudo possui:
+Uma unidade de estudo possui:
 
 - zero ou mais representações de conteúdo (`content`);
 - no máximo um formato de resposta (`response`);
@@ -339,7 +339,7 @@ largura não excede a largura móvel do aplicativo; ali, diminuir e aumentar fic
 à esquerda e o retorno à Unidade fica à direita. Não há botão visível de ajuste:
 reduzir até o limite retoma automaticamente o enquadramento global e responsivo.
 Pinça e arraste continuam disponíveis. Escala e posição são estado efêmero do
-componente: auxiliam a navegação, mas não integram Curso, progresso ou
+componente: auxiliam a navegação, mas não integram curso, progresso ou
 sincronização.
 
 A orientação continua decorrendo da estrutura. Hierarquias e sistemas tendem à

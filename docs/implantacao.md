@@ -113,7 +113,7 @@ pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Full -RequireRunti
 `Core` exerce contratos e runtime sem publicar. `Web` acrescenta o artefato do
 site. `Full` acrescenta Android. Os verificadores de artefato examinam
 configuração pública, política de conteúdo, segredos, manifesto, recursos e
-ausência de catálogo de Cursos embutido. Testes demonstram os cenários
+ausência de catálogo de cursos embutido. Testes demonstram os cenários
 exercitados; mudanças visuais ainda exigem inspeção no produto real.
 
 Para o ambiente local descartável:
@@ -189,7 +189,7 @@ cliente que dependa da nova revisão.
 
 `npm run pages:build` gera `.pages` a partir das mesmas fontes validadas. O
 artefato contém HTML, CSS, módulos JavaScript, manifesto de recursos,
-configuração pública e o documento OpenAPI de Actions. Não contém Cursos,
+configuração pública e o documento OpenAPI de Actions. Não contém cursos,
 chave secreta nem credencial de provedor.
 
 O workflow `pages.yml` publica o mesmo SHA já aprovado. Em outro host estático,

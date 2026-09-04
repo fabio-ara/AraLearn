@@ -117,7 +117,7 @@
       ],
       "productTerm": "Analytics",
       "technicalSymbol": "authoring_analytics",
-      "definition": "Superfície quantitativa que caracteriza o desenho corrente de um Curso e as intervenções humanas explicitamente observáveis, sem atribuir score de qualidade, aprendizagem ou participação.",
+      "definition": "Superfície quantitativa que caracteriza o desenho corrente de um curso e as intervenções humanas explicitamente observáveis, sem atribuir score de qualidade, aprendizagem ou participação.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -138,7 +138,7 @@
       "interfaceTerm": "Analytics",
       "domainTerm": "Analytics da Autoria",
       "englishEquivalent": "authoring analytics",
-      "araLearnExample": "Em Analytics, a pessoa proprietária escolhe Curso, Parte, Microssequência ou StudyUnit e confronta parâmetros aplicados, novidades, prática, Fontes e intervenções humanas em números simples.",
+      "araLearnExample": "Em Analytics, a pessoa proprietária escolhe curso, parte, microssequência ou StudyUnit e confronta parâmetros aplicados, novidades, prática, fontes e intervenções humanas em números simples.",
       "ambiguityRisk": "Sem esta delimitação, Analytics pode ser confundido com telemetria de atenção, avaliação de aprendizagem, score de qualidade ou protocolo de pesquisa.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -217,7 +217,7 @@
       "interfaceTerm": "Módulo",
       "domainTerm": "Módulo",
       "englishEquivalent": "module",
-      "araLearnExample": "O módulo “Escrita em hiragana” reúne lições relacionadas, mas não corresponde a uma Parte de autoria.",
+      "araLearnExample": "O módulo “Escrita em hiragana” reúne lições relacionadas, mas não corresponde a uma parte de autoria.",
       "ambiguityRisk": "Sem esta delimitação, “Módulo” pode ser confundido com Parte de autoria, unidade de estudo, package, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -290,7 +290,7 @@
         {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.5209/clac.96949",
-          "supports": "Delimita unidades discursivas e critérios de segmentação textual; não define a entidade persistida Microssequência didática do AraLearn."
+          "supports": "Delimita unidades discursivas e critérios de segmentação textual; não define a entidade persistida microssequência didática do AraLearn."
         }
       ],
       "notSynonyms": [
@@ -341,7 +341,7 @@
       "interfaceTerm": "Parte de autoria",
       "domainTerm": "Parte de autoria",
       "englishEquivalent": "authoring part",
-      "araLearnExample": "O assistente pode planejar, produzir e auditar em uma mesma Parte de autoria várias microssequências que caibam no contexto disponível.",
+      "araLearnExample": "O assistente pode planejar, produzir e auditar em uma mesma parte de autoria várias microssequências que caibam no contexto disponível.",
       "ambiguityRisk": "Sem esta delimitação, “Parte de autoria” pode ser confundido com módulo, lição, lote de materialização, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -375,7 +375,7 @@
         {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.1016/S0959-4752(02)00017-8",
-          "supports": "Discute representações externas e sua interação; não define Unidade de estudo nem persistência no AraLearn."
+          "supports": "Discute representações externas e sua interação; não define unidade de estudo nem persistência no AraLearn."
         }
       ],
       "notSynonyms": [
@@ -387,7 +387,7 @@
       "interfaceTerm": "Unidade de estudo",
       "domainTerm": "Unidade de estudo",
       "englishEquivalent": "study unit",
-      "araLearnExample": "Na rolagem móvel, cada Unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.",
+      "araLearnExample": "Na rolagem móvel, cada unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.",
       "ambiguityRisk": "Sem esta delimitação, “Unidade de estudo” pode ser confundido com flashcard, tela, objeto de aprendizagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -426,7 +426,7 @@
       "interfaceTerm": "Item de prática de recuperação",
       "domainTerm": "Item de prática de recuperação",
       "englishEquivalent": "retrieval practice item",
-      "araLearnExample": "Uma Unidade de estudo pede a tradução de uma expressão antes de mostrar a resposta e o retorno, constituindo um item de prática de recuperação.",
+      "araLearnExample": "Uma unidade de estudo pede a tradução de uma expressão antes de mostrar a resposta e o retorno, constituindo um item de prática de recuperação.",
       "ambiguityRisk": "Sem esta delimitação, “Item de prática de recuperação” pode ser confundido com AraLearn, curso, unidade teórica, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -488,8 +488,8 @@
       "domainTerm": "Componente didático",
       "englishEquivalent": "instructional component",
       "technicalSymbol": "instructional_component",
-      "definition": "Capacidade modular instalada que produz uma representação externa, um formato de resposta ou ambos para uma Unidade de estudo, sem se confundir com a instância renderizada nem com seu pacote técnico.",
-      "araLearnExample": "O componente de escolha apresenta alternativas em um formato de resposta selecionável; cada uso gera uma instância dentro de uma Unidade de estudo.",
+      "definition": "Capacidade modular instalada que produz uma representação externa, um formato de resposta ou ambos para uma unidade de estudo, sem se confundir com a instância renderizada nem com seu pacote técnico.",
+      "araLearnExample": "O componente de escolha apresenta alternativas em um formato de resposta selecionável; cada uso gera uma instância dentro de uma unidade de estudo.",
       "ambiguityRisk": "Sem esta delimitação, Componente didático pode ser confundido com representação renderizada, pacote distribuível ou componente genérico de interface e esconder responsabilidades diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -774,7 +774,7 @@
       ],
       "productTerm": "Produção",
       "technicalSymbol": "course_materialization",
-      "definition": "Transformação controlada de uma Parte aprovada em StudyUnits persistidas, renderizáveis e novamente inspecionáveis.",
+      "definition": "Transformação controlada de uma parte aprovada em StudyUnits persistidas, renderizáveis e novamente inspecionáveis.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -796,7 +796,7 @@
       "interfaceTerm": "Produção",
       "domainTerm": "Materialização",
       "englishEquivalent": "materialization",
-      "araLearnExample": "A pessoa aprova uma Parte; o GPT materializa suas StudyUnits e devolve um endereço de Conteúdo para reinspeção, sem expor etapas intermediárias.",
+      "araLearnExample": "A pessoa aprova uma parte; o GPT materializa suas StudyUnits e devolve um endereço de Conteúdo para reinspeção, sem expor etapas intermediárias.",
       "ambiguityRisk": "Sem separar o rótulo concreto da interface do termo de domínio, Produção pode ser confundida com geração de texto e Materialização com publicação ou release.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -814,7 +814,7 @@
       ],
       "productTerm": "Revisão contextual",
       "technicalSymbol": "contextual_authoring_review",
-      "definition": "Releitura de Observações, conteúdo e contexto pedagogicamente afetado que produz uma proposta antes de qualquer alteração do Curso.",
+      "definition": "Releitura de Observações, conteúdo e contexto pedagogicamente afetado que produz uma proposta antes de qualquer alteração do curso.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -913,7 +913,7 @@
       "interfaceTerm": "Revisão autoral",
       "domainTerm": "Revisão autoral",
       "englishEquivalent": "authoring review",
-      "araLearnExample": "A pessoa autora relê uma Parte já materializada e decide manter, comentar ou solicitar correção de uma unidade.",
+      "araLearnExample": "A pessoa autora relê uma parte já materializada e decide manter, comentar ou solicitar correção de uma unidade.",
       "ambiguityRisk": "Sem esta delimitação, Revisão autoral pode ser confundida com versão de estado, correção aplicada ou resolução da Observação.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -994,7 +994,7 @@
       "interfaceTerm": "Fonte",
       "domainTerm": "Fonte",
       "englishEquivalent": "source",
-      "araLearnExample": "Um artigo, livro, documento interno ou entrevista usado para sustentar uma afirmação é registrado como Fonte identificável.",
+      "araLearnExample": "Um artigo, livro, documento interno ou entrevista usado para sustentar uma afirmação é registrado como fonte identificável.",
       "ambiguityRisk": "Sem esta delimitação, “Fonte” pode ser confundido com citação, âncora, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1037,7 +1037,7 @@
       "interfaceTerm": "Âncora de fonte",
       "domainTerm": "Âncora de fonte",
       "englishEquivalent": "source anchor",
-      "araLearnExample": "Uma afirmação da unidade aponta para a página 42 e o trecho correspondente de uma Fonte por meio de uma Âncora de fonte.",
+      "araLearnExample": "Uma afirmação da unidade aponta para a página 42 e o trecho correspondente de uma fonte por meio de uma Âncora de fonte.",
       "ambiguityRisk": "Sem esta delimitação, “Âncora de fonte” pode ser confundido com fonte, citação, evidência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1197,7 +1197,7 @@
       "interfaceTerm": "Citação bibliográfica",
       "domainTerm": "Citação bibliográfica",
       "englishEquivalent": "scholarly citation",
-      "araLearnExample": "Uma Fonte acadêmica recebe autores, título, ano, DOI e demais elementos necessários para gerar uma Citação bibliográfica verificável.",
+      "araLearnExample": "Uma fonte acadêmica recebe autores, título, ano, DOI e demais elementos necessários para gerar uma Citação bibliográfica verificável.",
       "ambiguityRisk": "Sem esta delimitação, “Citação bibliográfica” pode ser confundido com fonte, âncora, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1390,7 +1390,7 @@
       "interfaceTerm": "Herança calculada",
       "domainTerm": "Herança calculada",
       "englishEquivalent": "resolved inheritance",
-      "araLearnExample": "Uma Microssequência mostra o valor efetivo herdado do Curso e informa o escopo fonte sem copiar a definição.",
+      "araLearnExample": "Uma microssequência mostra o valor efetivo herdado do curso e informa o escopo fonte sem copiar a definição.",
       "ambiguityRisk": "Sem esta delimitação, “Herança calculada” pode ser confundido com cópia, default, sobrescrita, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1429,7 +1429,7 @@
       "interfaceTerm": "Parâmetro definido",
       "domainTerm": "Definição explícita de parâmetro",
       "englishEquivalent": "explicit override",
-      "araLearnExample": "A pessoa define para uma Microssequência um valor diferente do Curso; Analytics conta esse Parâmetro definido no estado corrente.",
+      "araLearnExample": "A pessoa define para uma microssequência um valor diferente do curso; Analytics conta esse Parâmetro definido no estado corrente.",
       "ambiguityRisk": "Sem esta delimitação, Parâmetro definido pode ser confundido com edição do padrão, herança ou bloqueio de pesquisa.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1545,9 +1545,9 @@
         "parâmetro pedagógico"
       ],
       "interfaceTerm": "Política de componentes",
-      "domainTerm": "Política de componentes do Curso",
+      "domainTerm": "Política de componentes do curso",
       "englishEquivalent": "course component policy",
-      "araLearnExample": "Uma Lição permite somente referências declaradas, exclui um pacote e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.",
+      "araLearnExample": "Uma lição permite somente referências declaradas, exclui um pacote e prefere outro; a exclusão vence e o uso real ainda precisa ser validado.",
       "ambiguityRisk": "Sem esta delimitação, disponibilidade, preferência e uso podem ser contados como a mesma relação ou apresentados como qualidade pedagógica.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1563,7 +1563,7 @@
         "condição autoral",
         "comparação de condições"
       ],
-      "productTerm": "Condição em Curso independente",
+      "productTerm": "Condição em curso independente",
       "technicalSymbol": "independent_course_condition",
       "definition": "Curso privado independente cuja configuração e invariantes foram explicitamente registrados para uma comparação deliberada.",
       "decision": "restringir",
@@ -1576,7 +1576,7 @@
         {
           "status": "decisao-produto",
           "ref": "docs/experimentos-instrucionais-parametrizados.md",
-          "supports": "Condições são produzidas em Cursos independentes, sem entidade de Variante nem promessa de experimento, atribuição ou análise causal."
+          "supports": "Condições são produzidas em cursos independentes, sem entidade de Variante nem promessa de experimento, atribuição ou análise causal."
         }
       ],
       "notSynonyms": [
@@ -1586,9 +1586,9 @@
         "versão de estado"
       ],
       "interfaceTerm": "Condição",
-      "domainTerm": "Condição em Curso independente",
+      "domainTerm": "Condição em curso independente",
       "englishEquivalent": "independent course condition",
-      "araLearnExample": "Dois Cursos preservam o mesmo inventário semântico e fixam tetos 1 e 2 para comparar a distribuição de StudyUnits.",
+      "araLearnExample": "Dois cursos preservam o mesmo inventário semântico e fixam tetos 1 e 2 para comparar a distribuição de StudyUnits.",
       "ambiguityRisk": "Sem esta delimitação, uma configuração em Curso separado pode ser confundida com experimento governado ou versão imutável do mesmo Curso.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1647,7 +1647,7 @@
       ],
       "productTerm": "Condição experimental",
       "technicalSymbol": "experimental_condition",
-      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada apenas por configurar um Curso.",
+      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada apenas por configurar um curso.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -1871,7 +1871,7 @@
       "interfaceTerm": "Curso em autoria",
       "domainTerm": "Curso em autoria",
       "englishEquivalent": "course under authoring",
-      "araLearnExample": "O que antes aparecia como Workspace passa a ser tratado como o próprio Curso em autoria, sem uma estrutura organizacional opaca adicional.",
+      "araLearnExample": "O que antes aparecia como Workspace passa a ser tratado como o próprio curso em autoria, sem uma estrutura organizacional opaca adicional.",
       "ambiguityRisk": "Sem esta delimitação, “Curso em autoria” pode ser confundido com organização, tenant, projeto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1986,7 +1986,7 @@
       ],
       "productTerm": "Disponibilização pública",
       "technicalSymbol": "public_course_release",
-      "definition": "Capacidade retirada que tornaria uma versão do Curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação.",
+      "definition": "Capacidade retirada que tornaria uma versão do curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação.",
       "decision": "remover",
       "layers": [
         "interface",
@@ -2049,7 +2049,7 @@
       "interfaceTerm": "Artefato de conteúdo",
       "domainTerm": "Artefato de conteúdo",
       "englishEquivalent": "content artifact",
-      "araLearnExample": "Um arquivo exportado ou uma representação produzida é um Artefato de conteúdo; não é automaticamente o Curso vivo completo.",
+      "araLearnExample": "Um arquivo exportado ou uma representação produzida é um Artefato de conteúdo; não é automaticamente o curso vivo completo.",
       "ambiguityRisk": "Sem esta delimitação, “Artefato de conteúdo” pode ser confundido com curso, versão de estado, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2635,7 +2635,7 @@
       ],
       "productTerm": "Abrir",
       "technicalSymbol": "study_entry_action",
-      "definition": "Ação de entrada que abre o Curso selecionado pela lista de Módulos; posições salvas não mudam o nome nem pulam silenciosamente a hierarquia.",
+      "definition": "Ação de entrada que abre o curso selecionado pela lista de módulos; posições salvas não mudam o nome nem pulam silenciosamente a hierarquia.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2656,7 +2656,7 @@
       "interfaceTerm": "Abrir",
       "domainTerm": "Ação de entrada no Estudo",
       "englishEquivalent": "study entry action",
-      "araLearnExample": "O botão inicial mostra Abrir em qualquer estado de progresso e entra no Curso pela lista de Módulos.",
+      "araLearnExample": "O botão inicial mostra Abrir em qualquer estado de progresso e entra no curso pela lista de módulos.",
       "ambiguityRisk": "Rótulos dependentes do progresso podem sugerir um destino diferente e fazer a entrada pular níveis sem que a pessoa tenha escolhido o alvo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2695,7 +2695,7 @@
       "interfaceTerm": "Rolagem vertical",
       "domainTerm": "Rolagem vertical",
       "englishEquivalent": "vertical scrolling",
-      "araLearnExample": "No celular, a pessoa desliza a página para cima e percorre rapidamente as Unidades de estudo em Rolagem vertical.",
+      "araLearnExample": "No celular, a pessoa desliza a página para cima e percorre rapidamente as unidades de estudo em Rolagem vertical.",
       "ambiguityRisk": "Sem esta delimitação, “Rolagem vertical” pode ser confundido com deslize, avançar, feed, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "Rolagem vertical nomeia precisamente a mudança contínua da viewport; deslize é gesto de entrada e avanço é navegação curricular, portanto nenhum deles disputa o mesmo conceito técnico.",
@@ -3020,7 +3020,7 @@
       "interfaceTerm": "Prompt de tarefa",
       "domainTerm": "Prompt de tarefa",
       "englishEquivalent": "task prompt",
-      "araLearnExample": "Ao pedir auditoria de uma Parte, a solicitação e seus limites formam o Prompt de tarefa daquela execução.",
+      "araLearnExample": "Ao pedir auditoria de uma parte, a solicitação e seus limites formam o Prompt de tarefa daquela execução.",
       "ambiguityRisk": "Sem esta delimitação, “Prompt de tarefa” pode ser confundido com instruções de sistema, estado persistido, ferramenta, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3256,7 +3256,7 @@
       "interfaceTerm": "Ferramenta MCP",
       "domainTerm": "Ferramenta MCP",
       "englishEquivalent": "mcp tool",
-      "araLearnExample": "O assistente chama uma Ferramenta MCP para registrar uma anotação ou materializar uma Parte, produzindo efeito verificável no estado persistido.",
+      "araLearnExample": "O assistente chama uma Ferramenta MCP para registrar uma anotação ou materializar uma parte, produzindo efeito verificável no estado persistido.",
       "ambiguityRisk": "Sem esta delimitação, “Ferramenta MCP” pode ser confundido com MCP Resource, prompt, estado persistido, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3302,7 +3302,7 @@
       "interfaceTerm": "Assistência por IA",
       "domainTerm": "Assistência contextual por modelo de linguagem",
       "englishEquivalent": "contextual AI assistance for authoring (descrição técnica própria)",
-      "araLearnExample": "Na Unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia no renderer real.",
+      "araLearnExample": "Na unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia no renderer real.",
       "ambiguityRisk": "O rótulo anterior nomeava o meio de transporte e podia sugerir que a API prestava a assistência, além de misturar a sessão situada com MCP e Actions, que são integrações de autoria distintas. A tradução inglesa registrada descreve o conceito próprio do AraLearn e não reivindica terminologia internacional estabelecida.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3349,7 +3349,7 @@
       "interfaceTerm": "Gênero discursivo",
       "domainTerm": "Gênero discursivo",
       "englishEquivalent": "discourse genre",
-      "araLearnExample": "Uma Unidade de estudo pode realizar o Gênero discursivo explicação quando seu propósito e sua situação recorrente organizam a ação comunicativa, independentemente de ser texto ou diagrama.",
+      "araLearnExample": "Uma unidade de estudo pode realizar o Gênero discursivo explicação quando seu propósito e sua situação recorrente organizam a ação comunicativa, independentemente de ser texto ou diagrama.",
       "ambiguityRisk": "Sem declarar a linhagem socioretórica, Gênero discursivo pode ser misturado a gênero comunicativo, gênero textual, classe de produto ou mídia, produzindo categorias de pesquisa incomparáveis.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3431,7 +3431,7 @@
       "interfaceTerm": "Parágrafo",
       "domainTerm": "Parágrafo",
       "englishEquivalent": "paragraph unit",
-      "araLearnExample": "Uma representação textual pode conter dois Parágrafos dentro da mesma Unidade de estudo quando a organização discursiva o exigir.",
+      "araLearnExample": "Uma representação textual pode conter dois Parágrafos dentro da mesma unidade de estudo quando a organização discursiva o exigir.",
       "ambiguityRisk": "Sem esta delimitação, “Parágrafo” pode ser confundido com segmento semântico, unidade de estudo, conceito, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "Parágrafo já é a unidade gráfico-textual estabelecida pela fonte adotada; segmento discursivo, conceito e unidade de estudo têm critérios de individuação diferentes, portanto não são nomes candidatos para o mesmo objeto.",

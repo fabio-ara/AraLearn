@@ -3,7 +3,7 @@
 ## 1. Objeto deste documento
 
 Um **componente didático** produz uma representação externa estruturada, uma
-forma de resposta ou ambas dentro de uma Unidade de estudo. Texto corrido,
+forma de resposta ou ambas dentro de uma unidade de estudo. Texto corrido,
 matriz, grafo, equação química e diagrama de estados não são variações ornamentais de uma
 mesma caixa: cada forma torna algumas relações perceptíveis e oculta outras.
 Por isso, a escolha da representação integra o planejamento didático.
@@ -128,7 +128,7 @@ de adaptações artificiais e capacidade de revisão posterior.
 
 A política de componentes fixa a revisão do catálogo, a disponibilidade total
 ou restrita (`all|allow_only`) e listas exatas de referências permitidas,
-excluídas e preferidas em Curso, Módulo, Lição ou Microssequência. Ela não
+excluídas e preferidas em curso, módulo, lição ou microssequência. Ela não
 carrega todos os contratos nem exige escolher manualmente um componente para
 cada Unidade.
 

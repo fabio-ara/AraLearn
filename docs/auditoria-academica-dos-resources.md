@@ -204,11 +204,11 @@ mantido pode ser inadequado para determinada tarefa; um pacote restrito pode
 ser a escolha canônica dentro de seu recorte declarado.
 
 A classificação abaixo considera o contrato, a representação acessível, o
-Curso de catálogo e o corpus corrente. `Restringir` significa conservar o
+curso de catálogo e o corpus corrente. `Restringir` significa conservar o
 pacote com a fronteira indicada. Não representa reprovação do código nem
 autoriza uso fora desse recorte.
 
-| Pacote | Decisão estática | Razão e fronteira | Instâncias nos dez Cursos correntes |
+| Pacote | Decisão estática | Razão e fronteira | Instâncias nos dez cursos correntes |
 | --- | --- | --- | ---: |
 | `paragraph` | `manter` | exposição verbal progressiva e alternativa simples para relações que não exigem outra gramática | 5.370 |
 | `annotated_text` | `manter` | conserva a ligação precisa entre trecho e anotação, ausente na prosa comum | 0 |
@@ -251,23 +251,23 @@ não decide a retirada.
 
 ### Corpus de Cursos
 
-A comparação usa dez documentos completos de Curso fora dos artefatos de
-galeria e do Curso de catálogo. O conjunto reúne os cinco arquivos de teste de
-conteúdo em `tests/fixtures/course-catalog`, os três Cursos em
+A comparação usa dez documentos completos de curso fora dos artefatos de
+galeria e do curso de catálogo. O conjunto reúne os cinco arquivos de teste de
+conteúdo em `tests/fixtures/course-catalog`, os três cursos em
 `supabase/fixtures/catalog` e os dois arquivos integrais usados na regressão do
-Estudo, `project-minimal` e `project-visual`. Esses Cursos contêm 10.388
+Estudo, `project-minimal` e `project-visual`. Esses cursos contêm 10.388
 instâncias de onze pacotes. A contagem da tabela registra instâncias, não
-número de Cursos nem frequência de uso por pessoas.
+número de cursos nem frequência de uso por pessoas.
 
-Os outros 22 pacotes aparecem no Curso de catálogo, mas ainda não no corpus
-de dez Cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
+Os outros 22 pacotes aparecem no curso de catálogo, mas ainda não no corpus
+de dez cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
 `reaction`, `truth_table`, `set_diagram`, `bpmn_process`, `call_stack`,
 `state_machine`, `state_transition_table`, `terminal_session`,
 `database_schema`, `entity_relationship`, `software_container`,
 `software_system_context`, `system_internal_block`, `memory_layout`,
 `network_topology`, `packet_layout`, `ordering` e `open`.
 
-O Curso de catálogo deriva os 33 pacotes do registro. Cada pacote possui uma
+O curso de catálogo deriva os 33 pacotes do registro. Cada pacote possui uma
 microssequência independente com uma Unidade de teoria e outra de prática. Os
 exemplos e as respostas usam conteúdo disciplinar concreto; perguntas que
 pedem apenas a finalidade ou o nome do pacote são recusadas pelo teste. Essa

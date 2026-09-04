@@ -14,7 +14,7 @@ O AraLearn pode ser examinado simultaneamente como:
    avaliações.
 
 Essas perspectivas se relacionam, mas não são equivalentes. Um teste pode
-demonstrar que uma Unidade de estudo abre sem conexão; não demonstra que a disponibilidade local
+demonstrar que uma unidade de estudo abre sem conexão; não demonstra que a disponibilidade local
 melhora a aprendizagem. Uma fonte pode sustentar a plausibilidade de exemplos
 resolvidos; não prova que uma microssequência concreta foi bem escrita. Uma
 entrevista pode revelar como participantes compreenderam uma permissão; não
@@ -87,7 +87,7 @@ usa-se “pretende”, “pode” ou “hipótese a avaliar”.
 ## Objeto, contexto e delimitação
 
 O objeto investigado é uma plataforma móvel e local-first para Estudo e Autoria
-de Cursos organizados em Módulos, Lições, Microssequências didáticas e Unidades
+de cursos organizados em módulos, lições, microssequências didáticas e unidades
 de estudo com representações especializadas. O contexto prioritário inclui pessoas adultas que conciliam
 trabalho e estudo, utilizam celular, enfrentam interrupções e podem perder
 conectividade.
@@ -296,7 +296,7 @@ distribuição possuem suporte amplo, com efeitos condicionados por conteúdo,
 formato, intervalo e medida ([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Intercalação possui moderadores
 próprios ([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving)).
 
-**Decisão:** planejamento antecede a quantidade de Unidades de estudo; prática é escolhida
+**Decisão:** planejamento antecede a quantidade de unidades de estudo; prática é escolhida
 pela operação e retomada não segue intervalo universal. **Hipótese:** uma
 microssequência coerente pode articular apoio, produção, feedback e retomada.
 **Limite:** resultados imediatos, posteriores e de transferência permanecem
@@ -347,15 +347,15 @@ crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scopi
 
 ### Proveniência das Fontes de um Curso
 
-A bibliografia desta documentação e as Fontes usadas num Curso cumprem funções
-diferentes. Dentro do produto, uma Fonte possui identidade e estado correntes;
+A bibliografia desta documentação e as fontes usadas num curso cumprem funções
+diferentes. Dentro do produto, uma fonte possui identidade e estado correntes;
 uma Âncora localiza página, tempo, fragmento de endereço ou trecho textual; e
 uma atribuição liga essa Âncora a um item do plano ou a uma StudyUnit. A relação
-declara se a Fonte informa ou sustenta o alvo, ou se o alvo foi adaptado ou
+declara se a fonte informa ou sustenta o alvo, ou se o alvo foi adaptado ou
 citado a partir dela.
 
 Essa cadeia permite localizar o material usado e reconstruir a decisão
-autoral. Ela não demonstra que a Fonte é verdadeira, que a atribuição é
+autoral. Ela não demonstra que a fonte é verdadeira, que a atribuição é
 pertinente ou que o conteúdo derivado é fiel. Essas conclusões exigem leitura,
 julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria.
 
@@ -420,13 +420,13 @@ operacional sempre que o desenho e o risco assim exigirem.
 
 ### Governança de condições comparáveis
 
-Uma investigação pode usar Cursos privados independentes para produzir
+Uma investigação pode usar cursos privados independentes para produzir
 condições diferentes. O protocolo externo registra a pergunta, o inventário
 semântico comum, a configuração fixada, o artefato efetivamente exposto, a
 população, a atribuição, os instrumentos, os dados ausentes e a análise.
 
-O produto não cria uma entidade de Variante nem bloqueia o Curso. Separar os
-Cursos ajuda a evitar mistura acidental, mas não garante equivalência semântica,
+O produto não cria uma entidade de Variante nem bloqueia o curso. Separar os
+cursos ajuda a evitar mistura acidental, mas não garante equivalência semântica,
 fidelidade de exposição ou validade causal. Consulte [Comparar condições de
 desenho](experimentos-instrucionais-parametrizados.md).
 
@@ -462,13 +462,13 @@ desenho](experimentos-instrucionais-parametrizados.md).
 **Analytics** deriva do estado corrente contagens de desenho e intervenções
 humanas explicitamente observáveis. A consulta é exclusiva da pessoa
 proprietária e não inclui texto de Observações, identidade de conta, conversa ou
-cópia integral do Curso.
+cópia integral do curso.
 
 Uma medida só deve orientar pesquisa com pergunta, unidade, denominador,
 tratamento de ausências, interpretação permitida e limite. As contagens do
 produto não medem aprendizagem, atenção, esforço ou qualidade. Um desfecho exige
 protocolo, consentimento, instrumento e finalidade próprios. O snapshot sem
-identificadores diretos ainda pode ser associável ao Curso; exportá-lo não
+identificadores diretos ainda pode ser associável ao curso; exportá-lo não
 dispensa retenção, controle de acesso nem avaliação de reidentificação.
 
 ## Conceitos mínimos para interpretar uma investigação
@@ -502,7 +502,7 @@ Num **desenho experimental**, a atribuição aleatória é usada para formar
 condições comparáveis em expectativa. Num **desenho quase experimental**, a
 intervenção é estudada sem atribuição aleatória, recorrendo a comparação,
 temporalidade, modelagem e pressupostos adicionais para sustentar a inferência.
-Criar Cursos separados com configurações diferentes não realiza nenhum dos dois:
+Criar cursos separados com configurações diferentes não realiza nenhum dos dois:
 ainda faltam participantes, atribuição, exposição, instrumentos, desfechos e
 análise.
 
@@ -510,7 +510,7 @@ análise.
 pessoas, tarefas, contextos, versões e momentos. **Generalização** não é um selo
 recebido por usar amostra grande nem uma promessa de universalidade; depende de
 quais dimensões mudam e de por que o mecanismo deveria permanecer aplicável.
-Resultados sobre uma ocupação, instituição ou Curso precisam conservar seus
+Resultados sobre uma ocupação, instituição ou curso precisam conservar seus
 limites antes de orientar outro contexto.
 
 <!-- referências locais: início -->

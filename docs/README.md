@@ -17,12 +17,12 @@ científica nem representa endosso institucional.
 
 1. [Visão do produto](visao-do-produto.md): problema educacional, público e
    compromissos;
-2. [Uso do aplicativo](uso-do-app.md): conta, seleção de Curso, Estudo,
+2. [Uso do aplicativo](uso-do-app.md): conta, seleção de curso, Estudo,
    Autoria e sincronização;
 3. [Guia do estudante](guia-estudante.md): primeiro percurso, retomada,
    revisão, observações e citações redigidas;
 4. [Guia do professor e autor](guia-professor-autor.md): criação privada,
-   planejamento incremental, Conteúdo, Fontes, revisão, Analytics e acesso;
+   planejamento incremental, Conteúdo, **Fontes**, revisão, Analytics e acesso;
 5. [Solução de problemas](solucao-de-problemas.md): diagnóstico por sintoma e
    recuperação segura.
 
@@ -56,7 +56,7 @@ liga decisões, literatura, implementação e avaliação prevista.
 Aprendizagem no trabalho, gestão do conhecimento, treinamento e
 desenvolvimento e educação profissional e tecnológica são contextos possíveis
 de aplicação e investigação. O percurso abaixo não presume que disponibilizar
-um Curso produza competência, transferência ao trabalho ou mudança
+um curso produza competência, transferência ao trabalho ou mudança
 organizacional:
 
 1. [Visão do produto](visao-do-produto.md): públicos, condições de uso e
@@ -66,8 +66,8 @@ organizacional:
    e educação e formação técnica e profissional;
 3. [Origens do AraLearn](origens-do-aralearn.md): experiências declaradas que
    tornaram esses problemas relevantes, sem transformar biografia em prova;
-4. [Modelo didático](modelo-didatico.md): como Fontes, progressão,
-   representações, prática e revisão organizam um Curso;
+4. [Modelo didático](modelo-didatico.md): como fontes, progressão,
+   representações, prática e revisão organizam um curso;
 5. [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
    e [Protocolo de avaliação](protocolo-avaliacao-artefato.md): como distinguir
    uso, tarefa, aprendizagem, transferência e resultado organizacional.
@@ -81,7 +81,7 @@ organizacional:
 3. [Supabase](supabase.md): Auth, banco, Storage, Edge Functions, migrações e
    políticas de acesso;
 4. [Contrato de conteúdo](aralearn-contract.md): envelopes, corte direto de
-   Fontes e validação;
+   fontes e validação;
 5. [Componentes didáticos e pacotes](componentes-didaticos.md): núcleo,
    pacotes, catálogo e renderização;
 6. [Sistema visual](sistema-visual.md): tipografia, responsividade e
@@ -96,10 +96,10 @@ cada propriedade pode ser verificada.
 
 Comece pelo comportamento já implementado:
 
-1. [Guia do professor e autor](guia-professor-autor.md): criar e abrir Cursos,
+1. [Guia do professor e autor](guia-professor-autor.md): criar e abrir cursos,
    editar planejamento e proveniência e conceder acesso para Estudo;
 2. [Autoria por Model Context Protocol](autoria-mcp.md): ferramentas que
-   operam o mesmo Curso da interface;
+   operam o mesmo curso da interface;
 3. [GPT personalizado com Actions](autoria-actions.md): OpenAPI, conexão OAuth
    e diferença em relação ao MCP;
 4. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md): percurso
@@ -118,7 +118,7 @@ O ciclo de revisão possui um capítulo próprio:
    reinspeção.
 
 Analytics caracteriza o desenho corrente e intervenções observáveis no mesmo
-Curso:
+curso:
 
 - [Analytics da Autoria](analytics-instrucionais.md);
 - [Referência do snapshot de Analytics](dicionario-metricas-datasets.md);

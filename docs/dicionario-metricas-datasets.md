@@ -1,6 +1,6 @@
 # Referência do snapshot de Analytics
 
-Analytics descreve o estado corrente de um Curso. O contrato
+Analytics descreve o estado corrente de um curso. O contrato
 `aralearn.course-authoring-analytics.v2` organiza a leitura em **Desenho** e
 **Autoria**; não possui conjuntos de eventos nem paginação.
 
@@ -8,8 +8,8 @@ Analytics descreve o estado corrente de um Curso. O contrato
 
 | Campo | Significado |
 | --- | --- |
-| `course` | identidade, título e revisão corrente do Curso |
-| `scope.selected` | Curso, Parte, Microssequência ou StudyUnit consultada |
+| `course` | identidade, título e revisão corrente do curso |
+| `scope.selected` | Curso, parte, microssequência ou StudyUnit consultada |
 | `scope.options` | opções humanas disponíveis para mudar o recorte |
 | `missingData` | ausências que não podem ser convertidas em zero |
 | `deepLink` | endereço da área, quando a borda pode fornecê-lo |
@@ -27,7 +27,7 @@ Analytics descreve o estado corrente de um Curso. O contrato
 | `components` | quais representações e formatos de resposta aparecem? |
 | `practiceByRequirement` | quantas oportunidades respondem a cada requisito de evidência? |
 | `practiceVariationDimensions` | quais dimensões variam na prática? |
-| `sourcesByRole` | quantas Fontes, Âncoras e Units aparecem por papel? |
+| `sourcesByRole` | quantas fontes, Âncoras e Units aparecem por papel? |
 | `wordCountsByStudyUnit` | como a extensão observada em palavras se distribui entre unidades de estudo? |
 
 `parameters` contém as seis definições do catálogo: quatro parâmetros
@@ -64,7 +64,7 @@ Consumidores devem manter essa diferença na interface e na exportação.
 
 **Exportar Analytics** salva o mesmo snapshot JSON que alimenta a tela. Não há
 CSV nem coleta de linhas adicionais. O arquivo não contém a composição completa
-do Curso e não congela um artefato para pesquisa.
+do curso e não congela um artefato para pesquisa.
 
 Consulte [Analytics da Autoria](analytics-instrucionais.md) para interpretar os
 números e [Arquitetura](arquitetura.md#analytics) para sua derivação.

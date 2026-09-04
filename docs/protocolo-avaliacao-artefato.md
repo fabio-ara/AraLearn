@@ -79,8 +79,8 @@ problema educacional situado
   → revisão da intervenção e da explicação
 ```
 
-Unidades possíveis: pessoa, Unidade de estudo, Microssequência didática,
-percurso, atividade de autoria e Curso. Produtos esperados: descrição do contexto, conjectura
+Unidades possíveis: pessoa, unidade de estudo, microssequência didática,
+percurso, atividade de autoria e curso. Produtos esperados: descrição do contexto, conjectura
 C–M–O, evidências, casos negativos, princípio provisório e limite de
 transferência.
 
@@ -134,7 +134,7 @@ Antes da coleta, preencher:
 | comparação | qual alternativa, referência, critério ou estado anterior? |
 | rivais | que outras explicações poderiam produzir o mesmo resultado? |
 | enfraquecimento | que achado exigiria rever ou abandonar a hipótese? |
-| unidade de análise | pessoa, tarefa, Unidade de estudo, sequência, Curso ou componente? |
+| unidade de análise | pessoa, tarefa, unidade de estudo, sequência, curso ou componente? |
 | versão | quais são as revisões do Git, do artefato executável, dos contratos, dos pacotes de componente, do conteúdo e do modelo de IA? |
 | risco | que dano, exposição, custo ou consequência precisa ser controlado? |
 
@@ -156,13 +156,13 @@ separadamente.
 
 ### Quando a avaliação compara condições
 
-Use Cursos privados independentes para condições distintas e registre fora do
+Use cursos privados independentes para condições distintas e registre fora do
 produto o que deve permanecer comum. Essa separação sustenta a descrição
 técnica da intervenção, mas não constitui experimento. Antes da investigação, o
 protocolo particular precisa identificar:
 
 - o planejamento comum e sua revisão;
-- as revisões de cada Curso na produção e na exposição;
+- as revisões de cada curso na produção e na exposição;
 - cada diferença pretendida como definição e valor interpretáveis;
 - os invariantes e os desvios não declarados que afetam a comparação;
 - a população e a regra de atribuição, quando houver;
@@ -170,7 +170,7 @@ protocolo particular precisa identificar:
 - os instrumentos, desfechos, momentos e procedimentos de análise;
 - as perdas, os dados ausentes e os critérios de correção ou invalidação.
 
-Cada condição continua sendo um Curso mutável. O protocolo precisa exportar o
+Cada condição continua sendo um curso mutável. O protocolo precisa exportar o
 artefato efetivamente apresentado, registrar desvios, efeitos adversos e
 explicações rivais; o AraLearn não congela exposição nem atribui participantes.
 Veja [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md).
@@ -272,13 +272,13 @@ apenas variações do mesmo tipo.
 
 ### Propriedade, acesso e autoria
 
-1. compartilhar um Curso para Estudo, confirmar que o acesso não concede
+1. compartilhar um curso para Estudo, confirmar que o acesso não concede
    Autoria e depois revogá-lo;
 2. identificar autoria, origem e revisão de uma mudança;
 3. registrar uma Observação, reencontrar a resposta e compreender a correção
    vinculada;
-4. distinguir conteúdo do Curso, estado pessoal, Fontes e dados da Autoria;
-5. anexar e reabrir um PDF na revisão correta da Fonte, sob acesso autorizado;
+4. distinguir conteúdo do curso, estado pessoal, fontes e dados da Autoria;
+5. anexar e reabrir um PDF na revisão correta da fonte, sob acesso autorizado;
 6. explicar quais dados existem, para que servem e quem pode acessá-los.
 
 ## Resultados e instrumentos candidatos
@@ -388,7 +388,7 @@ Cada episódio registra:
 
 - revisão do Git, versão web ou APK, esquemas de dados, catálogo e pacotes de componente;
 - revisão do curso e do conteúdo usado;
-- revisões das Fontes, Âncoras e atribuições usadas pelo conteúdo;
+- revisões das fontes, Âncoras e atribuições usadas pelo conteúdo;
 - módulos de instrução, conhecimento recuperado, modelo, provedor e parâmetros;
 - dispositivo, largura de tela, sistema, rede e cópia local relevante;
 - roteiro, instrumentos e materiais;
@@ -446,7 +446,7 @@ fontes centrais são DBR ([Design-Based Research Collective (2003)](referencias.
 
 ## Evidência exportada pela área Pesquisa
 
-Ao usar dados do AraLearn em uma avaliação, registre o contrato, o Curso e sua
+Ao usar dados do AraLearn em uma avaliação, registre o contrato, o curso e sua
 revisão, os conjuntos consultados, os filtros, o instante de corte, a definição
 da métrica, o denominador, as ausências e o instante da exportação. Preserve a
 tabela que sustentou o gráfico e percorra todas as páginas sob o mesmo recorte.

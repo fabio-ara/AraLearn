@@ -382,14 +382,14 @@ torno de um objetivo instrucional delimitado. Uma **Parte de autoria** reúne,
 por sua vez, trabalho de planejamento, produção e revisão que pode abranger
 várias microssequências. Ambas são construções próprias do produto: a primeira
 é didática; a segunda é uma unidade operacional de materialização. A faixa
-orientativa de Partes pode ser configurada e nunca constitui uma regularidade
+orientativa de partes pode ser configurada e nunca constitui uma regularidade
 pedagógica universal.
 
 Estudos de sistemas recentes oferecem evidência situada para manter o plano
 intermediário visível e editável, sem transferir a decisão pedagógica inteira
 ao modelo. O VIVID organizou geração, avaliação e modificação de diálogos
 educacionais por instrutores; sua avaliação com doze participantes tratou uma
-tarefa e um formato específicos, não a produção de Cursos em geral
+tarefa e um formato específicos, não a produção de cursos em geral
 ([Choi et al. (2024)](referencias.md#ref-choi2024vivid)). O Shiksha Copilot
 combinou geração, curadoria humana e adaptação docente de planos de aula; o
 estudo misto envolveu 1.043 docentes e 23 curadores num contexto multilíngue e
@@ -397,7 +397,7 @@ de recursos limitados, no qual profissionais continuaram avaliando e
 contextualizando o material produzido
 ([Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha)). Esses
 resultados sustentam investigar planejamento revisável, intervenção humana e
-uso móvel no AraLearn. Eles não validam a entidade Parte, não determinam sua
+uso móvel no AraLearn. Eles não validam a entidade parte, não determinam sua
 quantidade e não demonstram que a faixa de sete a doze melhora aprendizagem ou
 qualidade autoral; essa faixa permanece um valor padrão do produto a ser estudado.
 
@@ -462,7 +462,7 @@ procedimento, ligados às unidades e relações pertinentes. O mesmo princípio
 se aplica à prática: oportunidades distintas são reconhecidas por alvo,
 operação e estrutura semântica, não por troca cosmética de texto ou componente.
 
-- **Decisão:** separar Fontes e objetivo, análise instrucional, parâmetros,
+- **Decisão:** separar fontes e objetivo, análise instrucional, parâmetros,
   política de componentes, atribuição aos itens do plano e conteúdo
   materializado.
 - **Operacionalização:** usar categorias, conjuntos, vetores e relações quando
@@ -736,18 +736,18 @@ A aprendizagem ocorre por mediações, instrumentos e relações sociais
 assume partes da tarefa ([Wood et al. (1976)](referencias.md#ref-wood1976tutoring)). Comunidades de prática ajudam a
 compreender participação e construção de significado, mas também podem
 habilitar ou inibir agência ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Essas fontes não
-permitem tratar acesso comum a um Curso como colaboração ou comunidade.
+permitem tratar acesso comum a um curso como colaboração ou comunidade.
 
-- **Problema:** compartilhar um Curso para estudo precisa preservar acesso
+- **Problema:** compartilhar um curso para estudo precisa preservar acesso
   revogável sem tornar difusa a responsabilidade por sua autoria.
 - **Alternativas e requisitos:** edição coletiva por papéis, isolamento pessoal
-  completo ou propriedade do Curso com compartilhamento direto para Estudo.
+  completo ou propriedade do curso com compartilhamento direto para Estudo.
 - **Decisão:** reservar a Autoria à pessoa proprietária e conceder a outras
   pessoas somente o Estudo e o estado pessoal associado.
 - **Fundamentação:** participação e agência coletiva dependem do contexto e das
   relações sociais ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). A distinção entre propriedade e acesso
   torna explícito que participação social não decorre de um papel cadastrado.
-- **Operacionalização:** a autorização é calculada por Curso e operação; o
+- **Operacionalização:** a autorização é calculada por curso e operação; o
   acesso direto pode ser concedido ou revogado, e as mudanças autorais preservam
   origem e revisão.
 - **Consequências e hipótese:** uma fronteira compreensível entre autoria e
@@ -796,10 +796,10 @@ não demonstra que uma plataforma específica forme competências profissionais.
   normas, manuais, experiência, explicações locais e procedimentos que mudam.
   Transformar essas fontes em percurso de estudo exige curadoria, autoria,
   revisão, proveniência e relação explícita entre explicação e prática.
-- **Decisão:** o AraLearn conserva o mesmo Curso, Fontes, Âncoras, planejamento,
+- **Decisão:** o AraLearn conserva o mesmo curso, fontes, Âncoras, planejamento,
   representações, práticas e histórico de revisão em contextos educacionais e
   profissionais. Ele não cria uma ontologia especial de “conhecimento
-  corporativo” nem presume que disponibilizar um Curso produza aprendizagem
+  corporativo” nem presume que disponibilizar um curso produza aprendizagem
   organizacional.
 - **Possibilidades de investigação:** formação continuada, treinamento e
   desenvolvimento, aprendizagem autodirigida no trabalho, educação profissional
@@ -808,12 +808,12 @@ não demonstra que uma plataforma específica forme competências profissionais.
   transformam e revisam conhecimento relacionado a tarefas reais.
 - **Limites:** a versão corrente não oferece gestão de competências, matrícula
   institucional, certificação, coautoria organizacional, fluxo de aprovação por
-  papéis ou telemetria de desempenho no trabalho. Propriedade do Curso e acesso
+  papéis ou telemetria de desempenho no trabalho. Propriedade do curso e acesso
   direto para Estudo não constituem comunidade de prática, gestão do
   conhecimento ou programa de treinamento.
 - **Evidência necessária:** cada estudo precisa caracterizar ocupação,
   organização, tarefa, experiência prévia, condições de aprendizagem e
-  consequências do uso. Qualidade do Curso, sucesso numa tarefa, retenção,
+  consequências do uso. Qualidade do curso, sucesso numa tarefa, retenção,
   transferência ao trabalho e mudança organizacional são resultados distintos.
 
 ## 14. Inteligência artificial generativa, recuperação de contexto e controle humano
@@ -919,7 +919,7 @@ qualidade docente.
   Observações e cópias integrais de conteúdo.
 - **Fundamentação:** a ética da análise de dados exige finalidade, transparência,
   proporcionalidade e participação ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
-- **Operacionalização:** cada consulta fixa Curso, revisão, filtros e instante de
+- **Operacionalização:** cada consulta fixa curso, revisão, filtros e instante de
   corte. Gráfico, tabela, lista, CSV, JSON, MCP e Actions usam o mesmo recorte. As
   métricas correntes declaram pergunta, unidade, denominador, tratamento de
   ausências e inferências vedadas.
