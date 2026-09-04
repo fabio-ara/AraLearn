@@ -2,6 +2,8 @@ import { COURSE_SOURCE_ROLES } from "./courseSources.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const IDENTIFIER = /^[a-z][a-z0-9._:-]{0,159}$/u;
+const INTERNAL_PUBLIC_LANGUAGE =
+  /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bAnalytics\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
 
 export const COURSE_AUTHORING_ANALYTICS_CONTRACT =
   "aralearn.course-authoring-analytics.v2";
@@ -107,7 +109,7 @@ function nullableScopeKind(value, allowed, label) {
 
 function uuid(value, label) {
   if (typeof value !== "string" || !UUID.test(value)) {
-    fail("invalid_course_authoring_analytics", `${label} precisa ser UUID.`);
+    fail("invalid_course_authoring_analytics", `${label} é inválido.`);
   }
   return value.toLowerCase();
 }
@@ -140,7 +142,7 @@ function uniqueRows(value, maximum, key, label, normalize) {
   }
   const rows = value.map(normalize);
   if (new Set(rows.map(key)).size !== rows.length) {
-    fail("invalid_course_authoring_analytics", `${label} contém linha repetida.`);
+    fail("invalid_course_authoring_analytics", `${label} repete informações.`);
   }
   return rows;
 }
@@ -172,15 +174,18 @@ function normalizeScopeOption(value, label = "O escopo") {
   }
   return {
     kind,
-    ref: scopeReference(source.ref, kind, `A referência de ${label}`),
+    ref: scopeReference(source.ref, kind, `O destino de ${label}`),
     label: text(source.label, 300, `O rótulo de ${label}`)
   };
 }
 
 export function normalizeCourseAuthoringAnalyticsQuery(value = {}) {
-  const source = plainObject(value, "O recorte de Analytics");
+  const source = plainObject(value, "O recorte dos dados de autoria");
   if (Object.keys(source).some((field) => field !== "scope")) {
-    fail("invalid_course_authoring_analytics", "O recorte de Analytics contém campos desconhecidos.");
+    fail(
+      "invalid_course_authoring_analytics",
+      "O recorte dos dados de autoria não pôde ser reconhecido."
+    );
   }
   const scope = source.scope === undefined
     ? { kind: "course", ref: null }
@@ -189,11 +194,11 @@ export function normalizeCourseAuthoringAnalyticsQuery(value = {}) {
   if (!SCOPE_KIND_SET.has(kind)) {
     fail("invalid_course_authoring_analytics", "O escopo do recorte é desconhecido.");
   }
-  return { scope: { kind, ref: scopeReference(scope.ref, kind, "A referência do escopo") } };
+  return { scope: { kind, ref: scopeReference(scope.ref, kind, "O destino do escopo") } };
 }
 
 function normalizeScope(value) {
-  const source = exact(value, ["selected", "options"], "Os escopos de Analytics");
+  const source = exact(value, ["selected", "options"], "Os escopos dos dados de autoria");
   const selected = normalizeScopeOption(source.selected, "O escopo selecionado");
   const options = uniqueRows(
     source.options,
@@ -218,9 +223,12 @@ function normalizeParameter(value) {
   const source = exact(value, [
     "parameterId", "label", "valueKind", "effectiveValues"
   ], "Um parâmetro pedagógico");
-  const parameterId = identifier(source.parameterId, "A identidade do parâmetro");
+  const parameterId = identifier(source.parameterId, "O parâmetro");
   if (!PARAMETER_ID_SET.has(parameterId)) {
-    fail("invalid_course_authoring_analytics", "Analytics recebeu parâmetro fora do catálogo vigente.");
+    fail(
+      "invalid_course_authoring_analytics",
+      "Os dados de autoria contêm um parâmetro que não está disponível."
+    );
   }
   const valueKind = identifier(source.valueKind, "O tipo do valor do parâmetro");
   if (valueKind !== PARAMETER_VALUE_KINDS[parameterId]) {
@@ -249,7 +257,10 @@ function normalizeParameter(value) {
           PARAMETER_SOURCE_SCOPE_KIND_SET,
           "O escopo de origem do valor efetivo"
         ),
-        studyUnitCount: nonnegativeInteger(row.studyUnitCount, "A contagem de Units do valor")
+        studyUnitCount: nonnegativeInteger(
+          row.studyUnitCount,
+          "A quantidade de unidades de estudo deste valor"
+        )
       };
     }
   );
@@ -275,38 +286,50 @@ function normalizeEditorialDirection(value) {
       EDITORIAL_SOURCE_SCOPE_KIND_SET,
       "O escopo de origem da direção editorial"
     ),
-    studyUnitCount: nonnegativeInteger(source.studyUnitCount, "A contagem editorial de Units")
+    studyUnitCount: nonnegativeInteger(
+      source.studyUnitCount,
+      "A quantidade de unidades de estudo desta direção editorial"
+    )
   };
 }
 
 function normalizeAnalysisUnit(value) {
   const source = exact(value, [
     "position", "statement", "introductionCount", "useCount", "revisitCount"
-  ], "Uma AnalysisUnit");
+  ], "Uma unidade de análise");
   return {
-    position: positiveInteger(source.position, "A posição da AnalysisUnit"),
-    statement: text(source.statement, 2000, "O enunciado da AnalysisUnit"),
-    introductionCount: nonnegativeInteger(source.introductionCount, "As introduções da AnalysisUnit"),
-    useCount: nonnegativeInteger(source.useCount, "Os usos da AnalysisUnit"),
-    revisitCount: nonnegativeInteger(source.revisitCount, "As retomadas da AnalysisUnit")
+    position: positiveInteger(source.position, "A posição da unidade de análise"),
+    statement: text(source.statement, 2000, "O enunciado da unidade de análise"),
+    introductionCount: nonnegativeInteger(
+      source.introductionCount,
+      "As introduções da unidade de análise"
+    ),
+    useCount: nonnegativeInteger(source.useCount, "Os usos da unidade de análise"),
+    revisitCount: nonnegativeInteger(source.revisitCount, "As retomadas da unidade de análise")
   };
 }
 
 function normalizeStudyUnitIntroduction(value) {
   const source = exact(value, [
     "studyUnitRef", "position", "title", "introducedCount"
-  ], "Uma Unit em Analytics");
+  ], "Uma unidade de estudo nos dados de autoria");
   return {
-    studyUnitRef: text(source.studyUnitRef, 240, "A referência da Unit"),
-    position: positiveInteger(source.position, "A posição da Unit"),
-    title: text(source.title, 300, "O título da Unit"),
-    introducedCount: nonnegativeInteger(source.introducedCount, "As novidades da Unit")
+    studyUnitRef: text(source.studyUnitRef, 240, "O destino da unidade de estudo"),
+    position: positiveInteger(source.position, "A posição da unidade de estudo"),
+    title: text(source.title, 300, "O título da unidade de estudo"),
+    introducedCount: nonnegativeInteger(
+      source.introducedCount,
+      "As novidades da unidade de estudo"
+    )
   };
 }
 
 function normalizeExplanationForm(value) {
   const source = exact(value, ["form", "studyUnitCount", "applicationCount"], "Uma forma explicativa");
-  const studyUnitCount = nonnegativeInteger(source.studyUnitCount, "As Units da forma explicativa");
+  const studyUnitCount = nonnegativeInteger(
+    source.studyUnitCount,
+    "As unidades de estudo da forma explicativa"
+  );
   const applicationCount = nonnegativeInteger(source.applicationCount, "As aplicações da forma explicativa");
   if (applicationCount < studyUnitCount) {
     fail("invalid_course_authoring_analytics", "A forma explicativa possui aplicações incoerentes.");
@@ -320,7 +343,10 @@ function normalizeExplanationForm(value) {
 
 function normalizeComponent(value) {
   const source = exact(value, ["componentRef", "studyUnitCount", "instanceCount"], "Um componente");
-  const studyUnitCount = nonnegativeInteger(source.studyUnitCount, "As Units do componente");
+  const studyUnitCount = nonnegativeInteger(
+    source.studyUnitCount,
+    "As unidades de estudo do componente"
+  );
   const instanceCount = nonnegativeInteger(source.instanceCount, "As instâncias do componente");
   if (instanceCount < studyUnitCount) {
     fail("invalid_course_authoring_analytics", "O componente possui instâncias incoerentes.");
@@ -352,16 +378,19 @@ function normalizePracticeDimension(value) {
 function normalizeSourceRole(value) {
   const source = exact(value, [
     "role", "sourceCount", "anchorCount", "studyUnitCount"
-  ], "Um papel de Fonte");
-  const role = source.role === null ? null : identifier(source.role, "O papel da Fonte");
+  ], "Um papel de fonte");
+  const role = source.role === null ? null : identifier(source.role, "O papel da fonte");
   if (role !== null && !SOURCE_ROLE_SET.has(role)) {
-    fail("invalid_course_authoring_analytics", "O papel da Fonte não pertence ao catálogo.");
+    fail("invalid_course_authoring_analytics", "O papel da fonte não está disponível.");
   }
   return {
     role,
-    sourceCount: nonnegativeInteger(source.sourceCount, "As Fontes do papel"),
-    anchorCount: nonnegativeInteger(source.anchorCount, "As Âncoras do papel"),
-    studyUnitCount: nonnegativeInteger(source.studyUnitCount, "As Units do papel")
+    sourceCount: nonnegativeInteger(source.sourceCount, "As fontes do papel"),
+    anchorCount: nonnegativeInteger(source.anchorCount, "As âncoras do papel"),
+    studyUnitCount: nonnegativeInteger(
+      source.studyUnitCount,
+      "As unidades de estudo do papel"
+    )
   };
 }
 
@@ -403,7 +432,10 @@ function normalizeDesign(value) {
     "practiceByRequirement", "practiceVariationDimensions", "sourcesByRole",
     "wordCountsByStudyUnit"
   ], "O desenho quantitativo");
-  const studyUnitCount = nonnegativeInteger(source.studyUnitCount, "A quantidade de StudyUnits");
+  const studyUnitCount = nonnegativeInteger(
+    source.studyUnitCount,
+    "A quantidade de unidades de estudo"
+  );
   const parameters = uniqueRows(
     source.parameters,
     COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.length,
@@ -414,7 +446,10 @@ function normalizeDesign(value) {
   if (parameters.length !== COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.length ||
       COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.some((id) =>
         !parameters.some((parameter) => parameter.parameterId === id))) {
-    fail("invalid_course_authoring_analytics", "Analytics precisa informar os seis parâmetros de desenho.");
+    fail(
+      "invalid_course_authoring_analytics",
+      "Os dados de autoria não incluem toda a configuração do desenho."
+    );
   }
   const editorialDirections = uniqueRows(
     source.editorialDirections,
@@ -431,25 +466,31 @@ function normalizeDesign(value) {
     source.analysisUnits,
     4096,
     (entry) => String(entry.position),
-    "As AnalysisUnits",
+    "As unidades de análise",
     normalizeAnalysisUnit
   );
   const introductionsByStudyUnit = uniqueRows(
     source.introductionsByStudyUnit,
     4096,
     (entry) => entry.studyUnitRef,
-    "As introduções por StudyUnit",
+    "As introduções por unidade de estudo",
     normalizeStudyUnitIntroduction
   );
   if (introductionsByStudyUnit.length !== studyUnitCount ||
       analysisUnits.reduce((sum, entry) => sum + entry.introductionCount, 0) !==
         introductionsByStudyUnit.reduce((sum, entry) => sum + entry.introducedCount, 0)) {
-    fail("invalid_course_authoring_analytics", "As introduções não fecham com as StudyUnits.");
+    fail(
+      "invalid_course_authoring_analytics",
+      "As introduções não correspondem às unidades de estudo do recorte."
+    );
   }
   for (const parameter of parameters) {
     if (parameter.effectiveValues.reduce((sum, entry) => sum + entry.studyUnitCount, 0) >
         studyUnitCount) {
-      fail("invalid_course_authoring_analytics", "Um parâmetro conta mais Units que o recorte.");
+      fail(
+        "invalid_course_authoring_analytics",
+        "Um parâmetro abrange mais unidades de estudo do que o recorte."
+      );
     }
   }
   return {
@@ -467,7 +508,7 @@ function normalizeDesign(value) {
     practiceVariationDimensions: uniqueRows(source.practiceVariationDimensions, 32,
       (entry) => entry.dimension, "As dimensões de prática", normalizePracticeDimension),
     sourcesByRole: uniqueRows(source.sourcesByRole, 32, (entry) => entry.role,
-      "As Fontes por papel", normalizeSourceRole),
+      "As fontes por papel", normalizeSourceRole),
     wordCountsByStudyUnit: normalizeWordCountsByStudyUnit(
       source.wordCountsByStudyUnit,
       studyUnitCount
@@ -479,34 +520,34 @@ function normalizeAuthorship(value) {
   const source = exact(value, [
     "observations", "explicitParameterOverrideCount", "manuallyRevisedStudyUnitCount",
     "studyUnitsByOrigin"
-  ], "A autoria quantitativa");
+  ], "Os dados quantitativos de autoria");
   const observations = exact(source.observations, [
     "createdCount", "openCount", "resolvedCount"
-  ], "As contagens de Observações");
+  ], "As contagens de observações");
   const normalizedObservations = {
-    createdCount: nonnegativeInteger(observations.createdCount, "As Observações criadas"),
-    openCount: nonnegativeInteger(observations.openCount, "As Observações abertas"),
-    resolvedCount: nonnegativeInteger(observations.resolvedCount, "As Observações resolvidas")
+    createdCount: nonnegativeInteger(observations.createdCount, "As observações criadas"),
+    openCount: nonnegativeInteger(observations.openCount, "As observações abertas"),
+    resolvedCount: nonnegativeInteger(observations.resolvedCount, "As observações resolvidas")
   };
   if (normalizedObservations.openCount + normalizedObservations.resolvedCount >
       normalizedObservations.createdCount) {
-    fail("invalid_course_authoring_analytics", "Os estados das Observações excedem as criações.");
+    fail("invalid_course_authoring_analytics", "Os estados das observações excedem as criações.");
   }
   return {
     observations: normalizedObservations,
     explicitParameterOverrideCount: nonnegativeInteger(
       source.explicitParameterOverrideCount,
-      "Os overrides explícitos de parâmetros"
+      "As definições explícitas de parâmetros"
     ),
     manuallyRevisedStudyUnitCount: nonnegativeInteger(
       source.manuallyRevisedStudyUnitCount,
-      "As StudyUnits cuja última revisão é humana"
+      "As unidades de estudo cuja última edição é humana"
     ),
     studyUnitsByOrigin: uniqueRows(
       source.studyUnitsByOrigin,
       16,
       (entry) => entry.origin,
-      "As mudanças de StudyUnit por origem",
+      "As mudanças de unidades de estudo por origem",
       (entry) => {
         const row = exact(
           entry,
@@ -515,10 +556,13 @@ function normalizeAuthorship(value) {
         );
         return {
           origin: identifier(row.origin, "A origem da mudança"),
-          createdCount: nonnegativeInteger(row.createdCount, "As Units criadas pela origem"),
+          createdCount: nonnegativeInteger(
+            row.createdCount,
+            "As unidades de estudo criadas pela origem"
+          ),
           lastRevisedCount: nonnegativeInteger(
             row.lastRevisedCount,
-            "As Units cuja última revisão tem esta origem"
+            "As unidades de estudo cuja última edição tem esta origem"
           )
         };
       }
@@ -528,15 +572,15 @@ function normalizeAuthorship(value) {
 
 function nullableDeepLink(value) {
   if (value === null) return null;
-  const normalized = text(value, 4096, "O destino de Analytics");
+  const normalized = text(value, 4096, "O link dos dados de autoria");
   let parsed;
   try {
     parsed = new URL(normalized);
   } catch {
-    fail("invalid_course_authoring_analytics", "O destino de Analytics é inválido.");
+    fail("invalid_course_authoring_analytics", "O link dos dados de autoria é inválido.");
   }
   if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
-    fail("invalid_course_authoring_analytics", "O destino de Analytics é inválido.");
+    fail("invalid_course_authoring_analytics", "O link dos dados de autoria é inválido.");
   }
   return parsed.href;
 }
@@ -547,18 +591,18 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
 } = {}) {
   const source = exact(value, [
     "contract", "course", "scope", "design", "authorship", "missingData", "deepLink"
-  ], "O snapshot de Analytics");
+  ], "A leitura dos dados de autoria");
   if (source.contract !== COURSE_AUTHORING_ANALYTICS_CONTRACT) {
-    fail("invalid_course_authoring_analytics", "O contrato de Analytics é desconhecido.");
+    fail("invalid_course_authoring_analytics", "O formato dos dados de autoria não é reconhecido.");
   }
-  const course = exact(source.course, ["id", "revision", "title"], "O Curso de Analytics");
+  const course = exact(source.course, ["id", "revision", "title"], "O curso dos dados de autoria");
   const normalizedCourse = {
-    id: uuid(course.id, "A identidade do Curso"),
-    revision: positiveInteger(course.revision, "A revisão do Curso"),
-    title: text(course.title, 300, "O título do Curso")
+    id: uuid(course.id, "O curso informado"),
+    revision: positiveInteger(course.revision, "A edição do curso"),
+    title: text(course.title, 300, "O título do curso")
   };
-  if (expectedCourseId !== null && normalizedCourse.id !== uuid(expectedCourseId, "O Curso esperado")) {
-    fail("course_authoring_analytics_mismatch", "A resposta pertence a outro Curso.");
+  if (expectedCourseId !== null && normalizedCourse.id !== uuid(expectedCourseId, "O curso esperado")) {
+    fail("course_authoring_analytics_mismatch", "A resposta pertence a outro curso.");
   }
   const scope = normalizeScope(source.scope);
   if (expectedQuery !== null) {
@@ -570,6 +614,12 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
   const design = normalizeDesign(source.design);
   const authorship = normalizeAuthorship(source.authorship);
   const missingData = uniqueTexts(source.missingData, 64, 500, "Os dados ausentes");
+  if (missingData.some((message) => INTERNAL_PUBLIC_LANGUAGE.test(message))) {
+    fail(
+      "invalid_course_authoring_analytics",
+      "Os dados ausentes precisam ser apresentados em linguagem humana."
+    );
+  }
   const incompleteConditions = design.parameters.some((parameter) =>
     parameter.parameterId !==
       "new_analysis_unit_ceiling_per_expository_study_unit" &&
@@ -580,7 +630,7 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
   if (incompleteConditions && missingData.length === 0) {
     fail(
       "invalid_course_authoring_analytics",
-      "Condições efetivas ausentes precisam permanecer indicadas em missingData."
+      "As ausências de configuração precisam permanecer indicadas nos dados de autoria."
     );
   }
   return {
@@ -610,13 +660,13 @@ export function assembleCourseAuthoringAnalyticsPage(rawValue, {
   });
   if (snapshot.deepLink !== null || publicAppUrl === null) return snapshot;
   const baseUrl = analyticsBaseUrl(publicAppUrl);
-  const query = new URLSearchParams({
-    section: "research",
-    analyticsScopeKind: snapshot.scope.selected.kind
-  });
+  let query = `section=research&analyticsScopeKind=${encodeURIComponent(
+    snapshot.scope.selected.kind
+  )}`;
   if (snapshot.scope.selected.ref !== null) {
-    query.set("analyticsScopeRef", snapshot.scope.selected.ref);
+    query += `&analyticsScopeId=${encodeURIComponent(snapshot.scope.selected.ref)}`;
   }
+  query += `&analyticsRevision=${snapshot.course.revision}`;
   return normalizeCourseAuthoringAnalyticsPage({
     ...snapshot,
     deepLink: `${baseUrl}/#/authoring/courses/${encodeURIComponent(snapshot.course.id)}?${query}`

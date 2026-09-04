@@ -394,7 +394,7 @@ test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do b
   assert.equal(Object.hasOwn(page, "facts"), false);
   assert.equal(page.deepLink,
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}` +
-      "?section=research&analyticsScopeKind=course");
+      "?section=research&analyticsScopeKind=course&analyticsRevision=7");
 });
 
 
@@ -755,7 +755,7 @@ test("replay idempotente aceita revisão corrente sem relaxar identidade e alvo"
 
 function componentCatalog() {
   return {
-    version: "1-3e5629f8",
+    version: "1-4616b2e5",
     options: RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest) => ({
       ref: `${manifest.id}@${manifest.version}`,
       label: manifest.label,
@@ -766,7 +766,7 @@ function componentCatalog() {
 
 function defaultComponentPolicy(excludedRefs = []) {
   return {
-    catalogVersion: "1-3e5629f8",
+    catalogVersion: "1-4616b2e5",
     availability: "all",
     allowedRefs: [],
     excludedRefs,
@@ -1727,8 +1727,32 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     childLimit: 16,
     childCursor: null
   });
-  assert.equal(read.componentCatalog.options.length, 32);
+  assert.equal(read.componentCatalog.options.length, 33);
   assert.equal(Object.hasOwn(read, "deepLink"), false);
+
+  const fixedRead = courseDesignRead();
+  const fixedRefs = fixedRead.componentCatalog.options.map(({ ref }) => ref);
+  fixedRead.componentPolicy.effectiveAssignment = {
+    policy: {
+      catalogVersion: fixedRead.componentCatalog.version,
+      availability: "allow_only",
+      allowedRefs: fixedRefs,
+      excludedRefs: [],
+      preferredRefs: [fixedRefs[0]]
+    },
+    origin: "research_condition",
+    reason: "Condição comparável.",
+    sourceScope: { kind: "course", ref: COURSE_ID },
+    inherited: false
+  };
+  const fixed = await adapter(async () => json(fixedRead)).getCourseDesign({
+    principal: { actorId: USER_ID },
+    courseId: COURSE_ID,
+    scopeKind: "course",
+    scopeRef: COURSE_ID
+  });
+  assert.equal(fixed.componentPolicy.effectiveAssignment.policy.allowedRefs.length, 33);
+  assert.equal(fixed.componentPolicy.effectiveAssignment.origin, "research_condition");
 
   const changed = await value.applyCourseDesignCommand({
     principal: { actorId: USER_ID, authenticationKind: "application" },

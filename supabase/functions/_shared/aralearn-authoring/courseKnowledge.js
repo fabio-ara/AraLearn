@@ -4,8 +4,9 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "A autoria parte de objetivo, público, pré-requisitos, escopo e fontes e segue para o mapa completo de módulos, lições e microssequências. O chat resume temas e progressão; o detalhe fica no AraLearn.",
   "A decisão da pessoa autora cobre o mapa apresentado; conteúdo futuro é uma etapa distinta. Partes são lotes operacionais posteriores e podem mudar sem alterar o currículo.",
   "No estado default, a calibração varia por microssequência ou unidade conforme assunto e mapa; condições fixadas pelo pesquisador prevalecem. O repertório distingue novidade, uso e retomada; dependências vêm antes do uso.",
-  "Unidades focalizadas e conectadas combinam explicação e prática e usam componentes e fontes por função. A conversa separa pessoa autora de público estudante e mantém substantivos comuns em minúsculas.",
-  "O resumo global apresenta assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas aparecem à pessoa autora como impacto e retomada em linguagem humana."
+  "Unidades focalizadas conectam explicação e prática; componentes e fontes cumprem função. Separe pessoa autora de público estudante; use substantivos comuns em minúsculas.",
+  "O resumo global mostra assuntos, cobertura e ordem, não estatísticas da estrutura. Falhas aparecem como impacto e retomada em linguagem humana.",
+  "Quando uma tarefa devolver um link, reproduza o endereço exato como link Markdown no chat."
 ].join("\n");
 
 export const COURSE_AUTHORING_GUIDES = Object.freeze({
@@ -36,6 +37,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Fontes podem entrar em qualquer fase. Mostre a referência humana, o papel efetivo e a âncora ou trecho pertinente sem narrar controles internos.",
       "Separe os papéis: documento curricular define escopo; fonte de aplicação ou avaliação calibra o contexto; fonte técnica sustenta explicações e não redefine o currículo por si só.",
+      "Dados bibliográficos fornecidos não significam conferência. Só atribua confirmação à autoria após declaração explícita dela. Leitura direta pode sustentar uma localização, mas não essa confirmação; sem localização observada, mantenha a verificação pendente e nunca invente capítulo, página ou trecho.",
       "Fonte e âncora continuam contestáveis. Ao corrigir ou retirar uma atribuição, repare apenas conteúdo e vínculos realmente afetados."
     ])
   }),

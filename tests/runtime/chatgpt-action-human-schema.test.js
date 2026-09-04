@@ -181,7 +181,7 @@ test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.1");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.2");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -241,6 +241,10 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   assert.match(openApi.info.description, /Partes são lotes operacionais.*sem alterar o currículo/iu);
   assert.match(openApi.info.description, /pessoa autora.*público estudante.*minúsculas/iu);
   assert.match(openApi.info.description, /não estatísticas da estrutura/iu);
+  assert.match(
+    openApi.info.description,
+    /devolver um link.*endereço exato.*link Markdown no chat/iu
+  );
   assert.doesNotMatch(
     openApi.info.description,
     /aprovada?,?\s+materialize|calibre silenciosamente|produza (?:agora|o conteúdo aprovado)|no chat, só/iu
@@ -322,6 +326,53 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
       type: "string", minLength: 1, maxLength: 4000
     });
   }
+});
+
+test("Actions orienta proveniência, componentes locais e formas calibradas no ponto de uso", () => {
+  const source = actionTools.find(({ name }) => name === "manter_fonte").inputSchema;
+  const verification = source.properties.metadados.properties.verificacao;
+  assert.deepEqual(verification.enum, [
+    "nao_verificada",
+    "confirmada_explicitamente_pela_autoria"
+  ]);
+  const sourceTask = actionTools.find(({ name }) => name === "manter_fonte");
+  assert.match(sourceTask.description, /só confirme.*conferido|localize.*lido/iu);
+
+  const materialization = actionTools.find(({ name }) =>
+    name === "materializar_parte").inputSchema;
+  const unit = materialization.properties.unidades.items;
+  const instance = unit.properties.conteudo.properties.content.items;
+  assert.deepEqual(instance.required, ["id", "package", "version", "data"]);
+  const materializationTask = actionTools.find(({ name }) => name === "materializar_parte");
+  assert.match(materializationTask.description, /siga contratos/iu);
+  assert.match(materializationTask.description, /marque formas/iu);
+  assert.match(
+    materializationTask.description,
+    /não repita a identificação local.*conteúdo.*resposta.*retorno/iu
+  );
+  const componentsTask = actionTools.find(({ name }) => name === "consultar_componentes");
+  assert.match(componentsTask.description, /inspecionar.*antes do uso/iu);
+});
+
+test("Actions não confunde bibliografia fornecida com conferência da fonte", () => {
+  const validate = validatorFor("manter_fonte");
+  assert.equal(validate({
+    curso: "Redes para iniciantes",
+    metadados: {
+      papel: "tecnica_conceitual",
+      titulo: "Computer Networking: A Top-Down Approach",
+      autoria: "James Kurose e Keith Ross",
+      edicaoOuVersao: "8ª edição"
+    }
+  }), true);
+  assert.equal(validate({
+    curso: "Redes para iniciantes",
+    metadados: {
+      papel: "tecnica_conceitual",
+      titulo: "Computer Networking: A Top-Down Approach",
+      verificacao: "adotada_pelo_autor"
+    }
+  }), false);
 });
 
 function validatorFor(name) {

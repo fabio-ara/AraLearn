@@ -63,6 +63,53 @@ test("consentimento incompatível falha antes de oferecer ou enviar aprovação"
   assert.doesNotMatch(root.innerHTML, /data-oauth-decision/u);
 });
 
+test("consentimento não expõe transporte ou serviço em uma falha", async () => {
+  const errorNode = { textContent: "" };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      return selector === "[data-oauth-consent-error]" ? errorNode : null;
+    }
+  };
+  const result = await renderOAuthAuthorizationConsent({
+    root,
+    authorizationId: "authorization-123",
+    authClient: {
+      async getOAuthAuthorizationDetails() {
+        throw new Error("Supabase respondeu com HTTP 500.");
+      },
+      async decideOAuthAuthorization() {}
+    }
+  });
+
+  assert.equal(result.redirected, false);
+  assert.equal(errorNode.textContent, "Não foi possível revisar a conexão.");
+  assert.doesNotMatch(errorNode.textContent, /Supabase|HTTP/iu);
+});
+
+test("consentimento orienta novo acesso quando a sessão expirou", async () => {
+  const errorNode = { textContent: "" };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      return selector === "[data-oauth-consent-error]" ? errorNode : null;
+    }
+  };
+  const expired = Object.assign(new Error("Invalid JWT"), { status: 401 });
+  const result = await renderOAuthAuthorizationConsent({
+    root,
+    authorizationId: "authorization-123",
+    authClient: {
+      async getOAuthAuthorizationDetails() { throw expired; },
+      async decideOAuthAuthorization() {}
+    }
+  });
+
+  assert.equal(result.redirected, false);
+  assert.equal(errorNode.textContent, "Seu acesso expirou. Entre novamente e tente outra vez.");
+  assert.doesNotMatch(errorNode.textContent, /Invalid JWT|401/iu);
+});
+
 test("consentimento explicita a autoridade de autoria efetivamente concedida", () => {
   assert.deepEqual(OAUTH_AUTHORING_PERMISSION_LABELS, [
     "Ler seus cursos, planejamento e conteúdo na autoria",

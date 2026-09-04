@@ -444,7 +444,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
           titulo: "Referência sobre sockets",
           papel: "tecnica_conceitual",
           citacao: "AraLearn. Referência sobre sockets, 2026.",
-          verificacao: "adotada_pelo_autor",
+          verificacao: "confirmada_explicitamente_pela_autoria",
           visibilidadeNoEstudo: "citacao"
         },
         ancoras: [{

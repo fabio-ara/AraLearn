@@ -55,7 +55,7 @@ function responseUnit(manifest, index) {
         answer: "DNS"
       }]
     };
-  } else {
+  } else if (manifest.id === "aralearn.response.ordering") {
     content = ["Preparar", "Executar"].map((text, entryIndex) => ({
       id: `manual-order-${index}-${entryIndex}`,
       package: "aralearn.resource.paragraph",
@@ -70,6 +70,13 @@ function responseUnit(manifest, index) {
         answer: instance.data.text
       }))
     };
+  } else if (manifest.id === "aralearn.response.open") {
+    data = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
+      manifest.id,
+      manifest.version
+    ).contract.example;
+  } else {
+    throw new Error(`Formato de resposta sem fixture: ${manifest.id}`);
   }
   return {
     id: `manual-response-unit-${index}`,
@@ -683,9 +690,9 @@ async function prepareContextualAssistance(page, request) {
   return dialog;
 }
 
-test("os 32 packages preservam edição textual no renderer entre 360 e 1280 px", async ({ page }) => {
+test("os 33 packages preservam edição textual no renderer entre 360 e 1280 px", async ({ page }) => {
   const catalog = packageCatalogDocument();
-  expect(catalog.cases).toHaveLength(32);
+  expect(catalog.cases).toHaveLength(33);
   await page.goto("/");
   await page.setContent(catalog.html);
   await page.evaluate(async () => {

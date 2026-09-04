@@ -244,7 +244,7 @@ de convenção acadêmica.
 
 ### Representações e componentes
 
-O catálogo corrente contém 32 pacotes, sendo 29 de conteúdo e três de resposta.
+O catálogo corrente contém 33 pacotes, sendo 29 de conteúdo e quatro de resposta.
 A amostra deve cobrir funções distintas desse conjunto, em vez de repetir
 apenas variações do mesmo tipo.
 

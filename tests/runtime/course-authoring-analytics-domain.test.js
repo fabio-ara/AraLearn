@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import test from "node:test";
 
 import * as analyticsDomain from "../../src/domain/courseAuthoringAnalytics.js";
+import { parseCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
 
 const {
   COURSE_AUTHORING_ANALYTICS_CONTRACT,
@@ -257,7 +258,7 @@ test("#273 snapshot responde desenho e autoria somente com contagens observávei
   provenanceAsRole.design.sourcesByRole[0].role = "supported_by";
   assert.throws(
     () => normalizeCourseAuthoringAnalyticsPage(provenanceAsRole),
-    /papel da Fonte não pertence ao catálogo/u
+    /papel da fonte não está disponível/u
   );
   const legacyWithoutRole = snapshot();
   legacyWithoutRole.design.sourcesByRole[0].role = null;
@@ -340,7 +341,10 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
 
   const overflow = snapshot();
   overflow.design.parameters[0].effectiveValues[0].studyUnitCount = 3;
-  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(overflow), /mais Units/u);
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(overflow),
+    /mais unidades de estudo do que o recorte/u
+  );
 
   const ceilingOnlyWhereApplicable = snapshot();
   ceilingOnlyWhereApplicable.design.parameters[0].effectiveValues[0].studyUnitCount = 1;
@@ -354,7 +358,10 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
   const silentlyMissing = snapshot();
   silentlyMissing.design.parameters[1].effectiveValues[0].studyUnitCount = 1;
   silentlyMissing.missingData = [];
-  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(silentlyMissing), /missingData/u);
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(silentlyMissing),
+    /ausências de configuração precisam permanecer indicadas nos dados de autoria/u
+  );
 
   const incompleteWordDistribution = snapshot();
   incompleteWordDistribution.design.wordCountsByStudyUnit[0].studyUnitCount = 2;
@@ -424,14 +431,86 @@ test("#273 rejeita maquinaria, score e parâmetro inventado em qualquer projeç�
   );
 });
 
+test("falhas de normalização preservam a fronteira pública em português", () => {
+  const cases = [
+    (value) => { value.design.analysisUnits[0].statement = ""; },
+    (value) => { value.design.introductionsByStudyUnit[0].title = ""; },
+    (value) => { value.design.studyUnitCount = -1; },
+    (value) => { value.course.id = "não-é-um-curso"; },
+    (value) => { value.contract = "formato-desconhecido"; },
+    (value) => { value.authorship.manuallyRevisedStudyUnitCount = -1; }
+  ];
+  const forbidden =
+    /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\boverrides?\b/iu;
+  for (const mutate of cases) {
+    const value = snapshot();
+    mutate(value);
+    assert.throws(
+      () => normalizeCourseAuthoringAnalyticsPage(value),
+      (error) => {
+        assert.match(error.message, /[áàâãéêíóôõúç]|dados|curso|unidade|formato/iu);
+        assert.doesNotMatch(error.message, forbidden);
+        return true;
+      }
+    );
+  }
+
+  const leakedMissingData = snapshot();
+  leakedMissingData.missingData = [
+    "2 StudyUnits não possuem aplicação pedagógica corrente."
+  ];
+  assert.throws(
+    () => normalizeCourseAuthoringAnalyticsPage(leakedMissingData),
+    /dados ausentes precisam ser apresentados em linguagem humana/u
+  );
+});
+
 test("#273 assembler anexa somente deep link e confere Curso/escopo", () => {
   const assembled = assembleCourseAuthoringAnalyticsPage(snapshot(), {
     publicAppUrl: "https://app.example/",
     expectedCourseId: COURSE_ID,
     expectedQuery: { scope: { kind: "course", ref: null } }
   });
-  assert.match(assembled.deepLink,
-    new RegExp(`/#/authoring/courses/${COURSE_ID}\\?section=research&analyticsScopeKind=course$`, "u"));
+  assert.equal(
+    assembled.deepLink,
+    `https://app.example/#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=9"
+  );
+  assert.deepEqual(parseCourseAuthoringRoute(new URL(assembled.deepLink).hash), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: {
+      kind: "authoring_analytics",
+      id: null,
+      scopeKind: "course",
+      revision: 9
+    }
+  });
+
+  const microScope = {
+    kind: "didactic_microsequence",
+    ref: "micro-dns",
+    label: "DNS"
+  };
+  const micro = assembleCourseAuthoringAnalyticsPage(snapshot({ scope: microScope }), {
+    publicAppUrl: "https://app.example/",
+    expectedCourseId: COURSE_ID,
+    expectedQuery: {
+      scope: { kind: "didactic_microsequence", ref: "micro-dns" }
+    }
+  });
+  assert.equal(
+    micro.deepLink,
+    `https://app.example/#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=didactic_microsequence" +
+      "&analyticsScopeId=micro-dns&analyticsRevision=9"
+  );
+  assert.deepEqual(parseCourseAuthoringRoute(new URL(micro.deepLink).hash)?.target, {
+    kind: "authoring_analytics",
+    id: "micro-dns",
+    scopeKind: "didactic_microsequence",
+    revision: 9
+  });
 
   assert.throws(() => assembleCourseAuthoringAnalyticsPage(snapshot(), {
     publicAppUrl: "https://app.example",

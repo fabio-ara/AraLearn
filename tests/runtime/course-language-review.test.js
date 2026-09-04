@@ -30,3 +30,22 @@ test("revisão linguístico-didática mantém focos salientes sem virar árbitro
   ]) assert.match(guidance, pattern);
   assert.match(guidance, /não são proibições mecânicas/iu);
 });
+
+test("rótulos públicos evitam capitalização artificial de substantivos comuns", async () => {
+  const sources = await Promise.all([
+    "../../src/study/CourseStudyScreen.js",
+    "../../src/ui/CourseInspectionSequence.js",
+    "../../src/ui/courseAuthoringViewModel.js"
+  ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
+  const visibleSource = sources.join("\n");
+
+  for (const phrase of [
+    "Ordem das Lições",
+    "Fontes e Âncoras",
+    "à Observação enviada",
+    "esta Observação em lote",
+    "Um Tópico da estrutura"
+  ]) {
+    assert.doesNotMatch(visibleSource, new RegExp(phrase, "u"));
+  }
+});

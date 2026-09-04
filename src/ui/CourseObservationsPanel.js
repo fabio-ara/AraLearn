@@ -13,6 +13,7 @@ import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { normalizeCourseAuthoringOutline } from "./courseAuthoringViewModel.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import {
   formatObservationTextBudget,
@@ -600,9 +601,10 @@ export function createCourseObservationsPanel({
       return true;
     } catch (error) {
       state.outlineCatalog = emptyOutlineCatalog();
-      state.outlineError = error instanceof Error
-        ? error.message
-        : "Não foi possível carregar os contextos e assuntos do curso.";
+      state.outlineError = publicErrorMessage(
+        error,
+        "Não foi possível carregar os contextos e assuntos do curso."
+      );
       return false;
     }
   }
@@ -661,7 +663,7 @@ export function createCourseObservationsPanel({
       return true;
     } catch (error) {
       if (state.destroyed || currentEpoch !== epoch) return false;
-      state.error = error instanceof Error ? error.message : "Não foi possível carregar as observações.";
+      state.error = publicErrorMessage(error, "Não foi possível carregar as observações.");
       return false;
     } finally {
       if (!state.destroyed && currentEpoch === epoch) {
@@ -743,7 +745,7 @@ export function createCourseObservationsPanel({
       const ambiguous = ambiguousMutationFailure(error);
       if (!ambiguous) state.pendingMutation = null;
       state.restoreDraftFocus = draftKind;
-      const detail = error instanceof Error ? error.message : "Não foi possível alterar a observação.";
+      const detail = publicErrorMessage(error, "Não foi possível alterar a observação.");
       state.error = ambiguous
         ? `${detail} Tente novamente para confirmar exatamente a mesma operação.`
         : detail;

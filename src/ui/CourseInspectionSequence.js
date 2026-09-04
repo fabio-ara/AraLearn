@@ -18,6 +18,7 @@ import {
   readManualStudyUnitEditPathValues
 } from "./manualStudyUnitEdit.js";
 import { createCourseProviderAssistance } from "./CourseProviderAssistance.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
@@ -546,9 +547,9 @@ function renderManualModeActions(item, state, editing, observationCount) {
     `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>` +
     (state.canEditSources
       ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${id}"` +
-        ` data-inspection-control-key="sources:${id}" aria-label="Fontes e Âncoras de ${escapeHtml(
+        ` data-inspection-control-key="sources:${id}" aria-label="Fontes e âncoras de ${escapeHtml(
           item.studyUnit.title
-        )}" title="Fontes e Âncoras">` +
+        )}" title="Fontes e âncoras">` +
         `${renderUiIcon("study", "course-authoring-button-icon")}</button>`
       : "") +
     `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
@@ -1899,9 +1900,10 @@ export function createCourseInspectionSequence({
       return true;
     } catch (error) {
       if (!state.destroyed && epoch === observationEpoch) {
-        state.observationError = error instanceof Error
-          ? error.message
-          : "Não foi possível carregar as observações.";
+        state.observationError = publicErrorMessage(
+          error,
+          "Não foi possível carregar as observações."
+        );
       }
       return false;
     } finally {
@@ -1996,7 +1998,7 @@ export function createCourseInspectionSequence({
             change.requestId !== entry.request.requestId ||
             change.annotation &&
               change.annotation.annotationId !== entry.request.command.annotationId) {
-          throw new TypeError("A confirmação não corresponde à Observação enviada.");
+          throw new TypeError("A confirmação não corresponde à observação enviada.");
         }
         completed.add(entry.targetId);
         pending.completedTargetIds = [...completed];
@@ -2010,9 +2012,10 @@ export function createCourseInspectionSequence({
         `Observação registrada separadamente em ${targetIds.length} unidades. Você pode registrar outra.`;
       return true;
     } catch (error) {
-      const detail = error instanceof Error
-        ? error.message
-        : "Não foi possível concluir todas as observações.";
+      const detail = publicErrorMessage(
+        error,
+        "Não foi possível concluir todas as observações."
+      );
       state.observationError = completed.size > 0
         ? `${completed.size} de ${targetIds.length} observações foram registradas. ${detail} Tente novamente sem alterar o texto.`
         : detail;
@@ -2079,9 +2082,7 @@ export function createCourseInspectionSequence({
       }
       const ambiguous = ambiguousObservationFailure(error);
       if (!ambiguous) state.pendingObservationMutation = null;
-      const detail = error instanceof Error
-        ? error.message
-        : "Não foi possível alterar a observação.";
+      const detail = publicErrorMessage(error, "Não foi possível alterar a observação.");
       state.observationError = ambiguous
         ? `${detail} Tente novamente para confirmar exatamente a mesma operação.`
         : detail;
@@ -2633,9 +2634,7 @@ export function createCourseInspectionSequence({
       });
     } catch (error) {
       state.assistanceActiveStudyUnitId = "";
-      state.manualError = error instanceof Error
-        ? error.message
-        : "A assistência por API não está disponível.";
+      state.manualError = publicErrorMessage(error, "A assistência por IA não está disponível.");
       render({ captureDraft: false });
       return false;
     }
@@ -2684,9 +2683,7 @@ export function createCourseInspectionSequence({
       return true;
     } catch (error) {
       state.assistanceSaving = false;
-      state.assistanceError = error instanceof Error
-        ? error.message
-        : "Não foi possível salvar a proposta.";
+      state.assistanceError = publicErrorMessage(error, "Não foi possível salvar a proposta.");
       render({ captureDraft: false });
       return false;
     }
@@ -2798,9 +2795,7 @@ export function createCourseInspectionSequence({
         state.manualDraft
       );
     } catch (error) {
-      state.manualError = error instanceof Error
-        ? error.message
-        : "A edição não pôde ser validada.";
+      state.manualError = publicErrorMessage(error, "A edição não pôde ser validada.");
       state.manualRestoreFocus = "field";
       render({ captureDraft: false });
       return false;
@@ -2861,7 +2856,7 @@ export function createCourseInspectionSequence({
       state.manualDiscardArmed = false;
       state.manualError = ambiguous
         ? "Não foi possível confirmar se a edição foi salva. Tente Salvar novamente para consultar o mesmo pedido."
-        : error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+        : publicErrorMessage(error, "Não foi possível salvar a edição.");
       state.manualRestoreFocus = "field";
       render({ captureDraft: false });
       return false;
@@ -2949,9 +2944,7 @@ export function createCourseInspectionSequence({
         }));
         return true;
       } catch (error) {
-        state.manualStatus = error instanceof Error
-          ? error.message
-          : "Não foi possível abrir a edição.";
+        state.manualStatus = publicErrorMessage(error, "Não foi possível abrir a edição.");
         render();
         return false;
       }
@@ -3078,7 +3071,7 @@ export function createCourseInspectionSequence({
       } else if (action === "close") {
         if (state.pendingBatchObservation) {
           state.observationError =
-            "Conclua o envio parcial antes de fechar esta Observação em lote.";
+            "Conclua o envio parcial antes de fechar esta observação em lote.";
           state.restoreObservationFocus = true;
           render();
           return true;

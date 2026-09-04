@@ -151,6 +151,29 @@ test("política completa conserva preferência, disjunção e catálogo corrente
   }), /incoerentes/iu);
 });
 
+test("condição de pesquisa pode fixar todos os 33 componentes correntes", () => {
+  const refs = Array.from(
+    { length: 33 },
+    (_, index) => `aralearn.resource.component_${index + 1}@1.0.0`
+  );
+  const command = {
+    type: "set_component_policy",
+    scope: { kind: "didactic_microsequence", ref: MICROSEQUENCE },
+    policy: {
+      catalogVersion: COURSE_COMPONENT_CATALOG_VERSION,
+      availability: "allow_only",
+      allowedRefs: refs,
+      excludedRefs: [],
+      preferredRefs: [refs[0]]
+    },
+    origin: "research_condition",
+    reason: "Fixar o catálogo corrente para comparação."
+  };
+
+  assert.equal(normalizeCourseDesignCommand(command).policy.allowedRefs.length, 33);
+  assert.deepEqual(normalizeEdgeCommand(command), normalizeCourseDesignCommand(command));
+});
+
 
 
 test("change DTO conserva somente o fato corrente sem identidade de histórico", () => {

@@ -398,9 +398,10 @@ test("a fonte técnica e o repertório acumulado chegam à segunda parte no pape
 
   const sourceCall = fixture.toolTrace.find(({ task }) => task === "manter_fonte");
   assert.equal(sourceCall.arguments.metadados.papel, "tecnica_conceitual");
+  assert.equal(sourceCall.arguments.metadados.verificacao, "nao_verificada");
   assert.equal(Object.hasOwn(sourceCall.arguments, "papelNoCurso"), false);
   assert.equal(fixture.artifacts["parte-2-v2"].sourceUse.role, "tecnica_conceitual");
-  assert.equal(fixture.artifacts["parte-2-v2"].sourceUse.relation, "supported_by");
+  assert.equal(fixture.artifacts["parte-2-v2"].sourceUse.relation, "needs_verification");
   const preparation = fixture.toolTrace.find(({ repertoire }) => repertoire === "before-part-2");
   const materialization = fixture.toolTrace.find(({ task, part }) =>
     task === "materializar_parte" && part === 2);

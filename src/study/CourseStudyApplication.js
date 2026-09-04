@@ -12,6 +12,7 @@ import {
 } from "../ui/renderStudyUnitObservationSheet.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
+import { publicErrorMessage } from "../ui/publicErrorMessage.js";
 import {
   activateManualStudyUnitEdit,
   applyManualStudyUnitEdit,
@@ -59,12 +60,14 @@ function responseKind(entry) {
   if (entry.instance.package === "aralearn.response.choice") return "choice";
   if (entry.instance.package === "aralearn.response.gap") return "gap";
   if (entry.instance.package === "aralearn.response.ordering") return "ordering";
+  if (entry.instance.package === "aralearn.response.open") return "open";
   return "";
 }
 
 function defaultResponseState(entry) {
   if (responseKind(entry) === "choice") return { selected: [], feedback: null };
   if (responseKind(entry) === "gap") return { values: [], feedback: null };
+  if (responseKind(entry) === "open") return { text: "", feedback: null };
   if (responseKind(entry) === "ordering") {
     const ids = (entry.block?.targets || []).map(({ id }) => String(id));
     return {
@@ -903,9 +906,7 @@ export function createCourseStudyApplication({
       render({ preserveFocus: false });
       return true;
     } catch (error) {
-      state.homeError = error instanceof Error
-        ? error.message
-        : "Não foi possível retirar a marca de Rever.";
+      state.homeError = publicErrorMessage(error, "Não foi possível retirar a marca de Rever.");
       queueStudyFocus("[data-action='remove-review-item']", {
         "data-course-id": reference.courseId,
         "data-module-id": reference.moduleId,
@@ -929,9 +930,7 @@ export function createCourseStudyApplication({
       render({ preserveFocus: false });
       return true;
     } catch (error) {
-      state.homeError = error instanceof Error
-        ? error.message
-        : "Não foi possível restaurar a marca de Rever.";
+      state.homeError = publicErrorMessage(error, "Não foi possível restaurar a marca de Rever.");
       queueStudyFocus("[data-action='undo-review-removal']");
       render({ preserveFocus: false });
       return false;
@@ -1658,9 +1657,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.homeLoadingCourseId = "";
-      state.homeError = error instanceof Error
-        ? error.message
-        : "Não foi possível concluir a ação deste curso.";
+      state.homeError = publicErrorMessage(error, "Não foi possível concluir a ação deste curso.");
       queueStudyFocus("[data-action='course-lifecycle-menu']", {
         "data-course-id": courseId
       });
@@ -1829,9 +1826,10 @@ export function createCourseStudyApplication({
         scope
       });
     } catch (error) {
-      state.structuralError = error instanceof Error
-        ? error.message
-        : "A edição não satisfaz o formato deste curso.";
+      state.structuralError = publicErrorMessage(
+        error,
+        "A edição não satisfaz o formato deste curso."
+      );
       queueStudyFocus("[data-action='save-study-structure']");
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -1883,9 +1881,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.structuralSaving = false;
-      state.structuralError = error instanceof Error
-        ? error.message
-        : "Não foi possível salvar a edição.";
+      state.structuralError = publicErrorMessage(error, "Não foi possível salvar a edição.");
       queueStudyFocus("[data-action='save-study-structure']");
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2075,9 +2071,7 @@ export function createCourseStudyApplication({
     } catch (error) {
       state.assistanceActiveScope = "";
       state.assistanceSelection = null;
-      state.manualError = error instanceof Error
-        ? error.message
-        : "A Assistência por IA não está disponível.";
+      state.manualError = publicErrorMessage(error, "A assistência por IA não está disponível.");
       render();
       return false;
     }
@@ -2381,7 +2375,7 @@ export function createCourseStudyApplication({
     try {
       edited = applyManualStudyUnitEdit(current, state.manualTargetId, state.manualDraft);
     } catch (error) {
-      state.manualError = error instanceof Error ? error.message : "A edição é inválida.";
+      state.manualError = publicErrorMessage(error, "A edição é inválida.");
       state.manualRestoreFocus = true;
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2515,7 +2509,7 @@ export function createCourseStudyApplication({
       state.manualDiscardArmed = false;
       state.manualError = ambiguous
         ? "Não foi possível confirmar se a edição foi salva. Tente Salvar novamente para consultar o mesmo pedido."
-        : error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+        : publicErrorMessage(error, "Não foi possível salvar a edição.");
       state.manualRestoreFocus = true;
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2607,9 +2601,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.assistanceSaving = false;
-      state.assistanceError = error instanceof Error
-        ? error.message
-        : "Não foi possível salvar a proposta.";
+      state.assistanceError = publicErrorMessage(error, "Não foi possível salvar a proposta.");
       render({ preserveFocus: false, captureDraft: false });
       return false;
     }
@@ -2753,12 +2745,25 @@ export function createCourseStudyApplication({
       payload = { values: Object.fromEntries(blanks.map((blank, index) => [blank.id, values[index]])) };
     } else if (kind === "ordering") {
       payload = { order: [...exercise.order] };
+    } else if (kind === "open") {
+      const text = String(exercise.text || "").trim();
+      if (!text) {
+        exercise.feedback = "incomplete";
+        queueStudyFocus("[data-action='open-response-input']");
+        if (rerender) render();
+        return false;
+      }
+      payload = { text };
     } else {
       return true;
     }
-    exercise.feedback = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, payload).correct
-      ? "correct"
-      : "wrong";
+    const evaluated = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, payload);
+    if (kind === "open") {
+      exercise.feedback = evaluated.complete ? "recorded" : "incomplete";
+      if (rerender) render();
+      return evaluated.complete === true;
+    }
+    exercise.feedback = evaluated.correct ? "correct" : "wrong";
     if (rerender) render();
     return exercise.feedback === "correct";
   }
@@ -2892,9 +2897,7 @@ export function createCourseStudyApplication({
     } catch (error) {
       if (epoch !== observationsEpoch) return false;
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
-      state.observationError = error instanceof Error
-        ? error.message
-        : "Não foi possível atualizar as observações.";
+      state.observationError = publicErrorMessage(error, "Não foi possível atualizar as observações.");
       return false;
     } finally {
       if (epoch === observationsEpoch) {
@@ -2950,7 +2953,7 @@ export function createCourseStudyApplication({
       state.observationStale = false;
     } catch (error) {
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
-      state.observationError = error instanceof Error ? error.message : "Não foi possível salvar.";
+      state.observationError = publicErrorMessage(error, "Não foi possível salvar.");
     } finally {
       state.observationSaving = false;
       render();
@@ -2973,9 +2976,7 @@ export function createCourseStudyApplication({
       }
     } catch (error) {
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
-      state.observationError = error instanceof Error
-        ? error.message
-        : "Não foi possível retirar a observação.";
+      state.observationError = publicErrorMessage(error, "Não foi possível retirar a observação.");
     } finally {
       state.observationSaving = false;
       render();
@@ -2991,9 +2992,10 @@ export function createCourseStudyApplication({
     } catch (error) {
       state.observationItems = repository.loadAnnotationsForPath?.(reference) || [];
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
-      state.observationError = error instanceof Error
-        ? error.message
-        : "Não foi possível descartar a alteração com falha.";
+      state.observationError = publicErrorMessage(
+        error,
+        "Não foi possível descartar a alteração com falha."
+      );
     }
     render();
   }
@@ -3048,6 +3050,20 @@ export function createCourseStudyApplication({
         });
       }
       node.addEventListener("input", update);
+    });
+  }
+
+  function bindOpenResponseInputs(scope) {
+    scope.querySelectorAll("[data-action='open-response-input']").forEach((node) => {
+      if (node.dataset.studyBound === "true") return;
+      node.dataset.studyBound = "true";
+      node.addEventListener("input", () => {
+        const entry = currentResponseEntry();
+        const exercise = ensureResponseState(entry);
+        if (!exercise || responseKind(entry) !== "open") return;
+        exercise.text = String(node.value || "");
+        exercise.feedback = null;
+      });
     });
   }
 
@@ -3578,6 +3594,7 @@ export function createCourseStudyApplication({
       }
     });
     bindGapInputs(root);
+    bindOpenResponseInputs(root);
   }
 
   function render({ preserveFocus = true, captureDraft = true } = {}) {
@@ -3767,6 +3784,7 @@ export function createCourseStudyApplication({
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
       activateManualEditing();
       bindGapInputs(root);
+      bindOpenResponseInputs(root);
       bindTextGapChoiceActions(root);
     }).catch((error) => {
       root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {

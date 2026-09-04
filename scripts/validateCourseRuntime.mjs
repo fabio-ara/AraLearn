@@ -294,7 +294,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260903160000" ||
+  if (manifest.schemaRevision !== "20260903193000" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -347,6 +347,22 @@ async function validateManifest() {
   ]) {
     if (!globalCurriculum.includes(token)) {
       fail(`O fluxo curricular global não demonstra ${token}.`);
+    }
+  }
+  const openResponseCatalog = await read(
+    "supabase/migrations/20260903193000_add_open_response_component.sql"
+  );
+  for (const token of [
+    "'1-3e5629f8'",
+    "'1-4616b2e5'",
+    "aralearn.response.open@1.0.0",
+    "course_component_policy_assignments",
+    "{componentPolicy,policy,catalogVersion}",
+    "to_jsonb('20260903193000'::text)",
+    "commit;"
+  ]) {
+    if (!openResponseCatalog.includes(token)) {
+      fail(`A instalação de resposta aberta não demonstra ${token}.`);
     }
   }
   const actionCallback = await read(

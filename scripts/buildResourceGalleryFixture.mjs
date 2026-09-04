@@ -63,5 +63,14 @@ const project = {
 
 const validation = validateProjectDocument(project);
 if (!validation.ok) throw new Error(`Fixture de galeria inválida:\n${JSON.stringify(validation.errors, null, 2)}`);
-fs.writeFileSync(outputPath, `${JSON.stringify(validation.value, null, 2)}\n`, "utf8");
-console.log(`Galeria de packages gerada em ${outputPath} (${studyUnits.length} Unidades de estudo).`);
+const serialized = `${JSON.stringify(validation.value, null, 2)}\n`;
+if (process.argv.includes("--check")) {
+  const current = fs.readFileSync(outputPath, "utf8").replace(/\r\n?/gu, "\n");
+  if (current !== serialized) {
+    throw new Error("Fixture da galeria desatualizada. Execute npm run resources:gallery:fixture.");
+  }
+  console.log(`Fixture da galeria está atualizada (${studyUnits.length} Unidades de estudo).`);
+} else {
+  fs.writeFileSync(outputPath, serialized, "utf8");
+  console.log(`Galeria de packages gerada em ${outputPath} (${studyUnits.length} Unidades de estudo).`);
+}

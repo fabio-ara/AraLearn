@@ -194,7 +194,7 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
       ) loaded;
     `));
     const read = readOutput.split(/\r?\n/u).at(-1);
-    assert.equal(read, "aralearn.course-design.v2|6|1-3e5629f8|3");
+    assert.equal(read, "aralearn.course-design.v2|6|1-4616b2e5|3");
   } finally {
     await cleanupUser(ownerId, email);
   }

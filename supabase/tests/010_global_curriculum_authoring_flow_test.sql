@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(23);
 
 select set_config('request.jwt.claim.role','service_role',true);
 set constraints all deferred;
@@ -929,6 +929,19 @@ select is(
   )#>'{design,wordCountsByStudyUnit}'),
   '[{"wordCount":9,"studyUnitCount":2}]'::jsonb,
   'extensao autoral e comparavel entre paragrafo e escolha sem contar controles'
+);
+
+select is(
+  jsonb_path_query_array(
+    public.get_owned_course_authoring_analytics_for_actor_v2(
+      '91000000-0000-4000-8000-000000000001',
+      '91000000-0000-4000-8000-000000000401',1,
+      '{"scope":{"kind":"course","ref":null}}'::jsonb
+    )#>'{design,components}',
+    '$[*] ? (@.componentRef == "aralearn.response.choice@1.0.0")'
+  ),
+  '[{"componentRef":"aralearn.response.choice@1.0.0","instanceCount":1,"studyUnitCount":1}]'::jsonb,
+  'componentes de Analytics incluem a resposta materializada sem metadado de pratica'
 );
 
 select * from finish();

@@ -7,7 +7,9 @@ import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import { createCourseAnalyticsPanel } from "./CourseAnalyticsPanel.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import {
+  buildCourseAuthoringAnalyticsRoute,
   buildCourseAuthoringRoute,
   isCourseAuthoringRouteCandidate,
   parseCourseAuthoringRoute
@@ -824,7 +826,7 @@ function cursorKey(value) {
 }
 
 function designScopeForRoute(courseId, target = null) {
-  return Object.freeze(target
+  return Object.freeze(target && target.kind !== "authoring_analytics"
     ? { kind: target.kind, ref: target.id }
     : { kind: "course", ref: courseId });
 }
@@ -845,7 +847,9 @@ function designScopeRoute(courseId, scope) {
 }
 
 function writeFailureMessage(error) {
-  if (error instanceof TypeError && error.message) return error.message;
+  if (error instanceof TypeError) {
+    return publicErrorMessage(error, "Não foi possível salvar a alteração.");
+  }
   return classifyCourseAuthoringError(error).message;
 }
 
@@ -1353,7 +1357,39 @@ export function createCourseAuthoringSurface({
     const host = root.querySelector?.("[data-course-analytics-host]");
     if (!host) return;
     try {
-      analyticsPanel = createCourseAnalyticsPanel({ root: host, controller, course: state.course });
+      const analyticsTarget = state.routeTarget?.kind === "authoring_analytics"
+        ? state.routeTarget
+        : null;
+      analyticsPanel = createCourseAnalyticsPanel({
+        root: host,
+        controller,
+        course: state.course,
+        ...(analyticsTarget
+          ? {
+              initialQuery: {
+                scope: { kind: analyticsTarget.scopeKind, ref: analyticsTarget.id }
+              },
+              expectedCourseRevision: analyticsTarget.revision
+            }
+          : {}),
+        onSnapshotDisplayed: (snapshot) => {
+          if (!state.opened || state.view !== "course" || state.section !== "research" ||
+              snapshot.course.id !== state.course?.courseId) return;
+          const hash = buildCourseAuthoringAnalyticsRoute(snapshot.course.id, {
+            scope: {
+              kind: snapshot.scope.selected.kind,
+              ref: snapshot.scope.selected.ref
+            },
+            revision: snapshot.course.revision
+          });
+          if (typeof historyValue?.replaceState === "function") {
+            historyValue.replaceState(historyValue.state ?? null, "", locationUrl(hash));
+          }
+          if (locationValue.hash !== hash) locationValue.hash = hash;
+          state.routeKey = hash;
+          state.routeTarget = parseCourseAuthoringRoute(hash).target;
+        }
+      });
       void analyticsPanel.open();
     } catch (error) {
       host.innerHTML = statusPanel({
@@ -1954,6 +1990,10 @@ export function createCourseAuthoringSurface({
         void navigate(buildCourseAuthoringRoute(state.course.courseId, {
           section: "planning"
         }));
+        return true;
+      }
+      if (state.routeTarget?.kind === "authoring_analytics") {
+        void navigate(buildCourseAuthoringRoute(state.course.courseId, { section: "content" }));
         return true;
       }
       if (state.routeTarget) {
@@ -2890,7 +2930,7 @@ export function createCourseAuthoringSurface({
       const lists = [allowedRefs, excludedRefs, preferredRefs];
       if (!scope || !new Set(["all", "allow_only"]).has(availability) ||
           availability === "allow_only" && allowedRefs.length === 0 ||
-          lists.some((list) => list.length > 32 || new Set(list).size !== list.length ||
+          lists.some((list) => list.length > 64 || new Set(list).size !== list.length ||
             list.some((ref) => !known.has(ref))) ||
           preferredRefs.some((ref) => !allowed.has(ref) || excluded.has(ref)) ||
           !new Set(["automatic", "author", "research_condition"]).has(origin) ||

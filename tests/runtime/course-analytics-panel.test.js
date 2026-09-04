@@ -14,6 +14,8 @@ const COPY_A_ID = "223e4567-e89b-42d3-a456-426614174000";
 const COPY_B_ID = "323e4567-e89b-42d3-a456-426614174000";
 const MICRO_REF = "microsequence:fundamentos";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const FORBIDDEN_SYSTEM_LANGUAGE =
+  /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
 
 class FakeRoot {
   constructor() {
@@ -146,6 +148,14 @@ function analyticsPage({
         componentRef: "aralearn.resource.table@1.0.0",
         studyUnitCount: 1,
         instanceCount: 1
+      }, {
+        componentRef: "aralearn.response.choice@1.0.0",
+        studyUnitCount,
+        instanceCount: studyUnitCount
+      }, {
+        componentRef: "aralearn.response.open@1.0.0",
+        studyUnitCount: 1,
+        instanceCount: 1
       }],
       practiceByRequirement: [{
         position: 1,
@@ -231,6 +241,195 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
   panel.destroy();
 });
 
+test("dados ausentes e falhas do painel permanecem em linguagem humana", async () => {
+  const messages = [
+    "Unidades de estudo sem informações pedagógicas completas: 2.",
+    "Unidades de estudo sem configuração aplicada completa: 2.",
+    "Direções editoriais que não puderam ser mostradas integralmente: 1.",
+    "Há unidades de estudo cuja origem de autoria não foi registrada."
+  ];
+  const root = new FakeRoot();
+  const malformed = analyticsPage({ missingData: messages });
+  malformed.design.analysisUnits[0].statement = "";
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() { return malformed; } }
+  });
+
+  await panel.open();
+
+  assert.match(root.innerHTML, /O enunciado da unidade de análise é inválido\./u);
+  assert.doesNotMatch(root.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+
+  const missingRoot = new FakeRoot();
+  const missingPanel = createCourseAnalyticsPanel({
+    root: missingRoot,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadCourseAuthoringAnalytics() {
+        return analyticsPage({ missingData: messages });
+      }
+    }
+  });
+  await missingPanel.open();
+  for (const message of messages) assert.match(missingRoot.innerHTML, new RegExp(message, "u"));
+  assert.doesNotMatch(missingRoot.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+
+  const legacyRoot = new FakeRoot();
+  const legacyPanel = createCourseAnalyticsPanel({
+    root: legacyRoot,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadCourseAuthoringAnalytics() {
+        return analyticsPage({
+          missingData: ["2 StudyUnits não possuem aplicação pedagógica corrente."]
+        });
+      }
+    }
+  });
+  await legacyPanel.open();
+  assert.match(legacyRoot.innerHTML, /dados ausentes precisam ser apresentados em linguagem humana/u);
+  assert.doesNotMatch(legacyRoot.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+
+  for (const unsafeMessage of [
+    "StudyUnit inválida em courseRevision=7.",
+    "Erro SQL ao chamar a RPC de Analytics."
+  ]) {
+    const unsafeRoot = new FakeRoot();
+    const unsafePanel = createCourseAnalyticsPanel({
+      root: unsafeRoot,
+      course: { courseId: COURSE_ID, revision: 7 },
+      controller: {
+        async loadCourseAuthoringAnalytics() {
+          throw new Error(unsafeMessage);
+        }
+      }
+    });
+    await unsafePanel.open();
+    assert.match(
+      unsafeRoot.innerHTML,
+      /Não foi possível carregar os dados de autoria\. Tente novamente\./u
+    );
+    assert.equal(unsafeRoot.innerHTML.includes(unsafeMessage), false);
+    assert.doesNotMatch(unsafeRoot.innerHTML, FORBIDDEN_SYSTEM_LANGUAGE);
+  }
+});
+
+test("abertura por deep link consulta a revisão e o recorte indicados", async () => {
+  const root = new FakeRoot();
+  const reads = [];
+  const selected = {
+    kind: "didactic_microsequence",
+    ref: MICRO_REF,
+    label: "Microssequência · Fundamentos"
+  };
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 11 },
+    initialQuery: {
+      scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+    },
+    expectedCourseRevision: 9,
+    controller: { async loadCourseAuthoringAnalytics(courseId, options) {
+      reads.push({ courseId, options });
+      return analyticsPage({ revision: 9, selected, studyUnitCount: 1 });
+    } }
+  });
+
+  await panel.open();
+
+  assert.deepEqual(reads, [{
+    courseId: COURSE_ID,
+    options: {
+      expectedCourseRevision: 9,
+      query: { scope: { kind: "didactic_microsequence", ref: MICRO_REF } }
+    }
+  }]);
+  assert.match(
+    root.innerHTML,
+    /<option value="1" selected>Microssequência · Fundamentos<\/option>/u
+  );
+});
+
+test("painel comunica o recorte e a revisão efetivamente exibidos", async () => {
+  const root = new FakeRoot();
+  const displayed = [];
+  const panel = createCourseAnalyticsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    onSnapshotDisplayed(snapshot) {
+      displayed.push({
+        revision: snapshot.course.revision,
+        scope: snapshot.scope.selected
+      });
+    },
+    controller: { async loadCourseAuthoringAnalytics(_courseId, request) {
+      const selected = request.query.scope.kind === "course"
+        ? { kind: "course", ref: null, label: "Curso inteiro" }
+        : {
+          kind: "didactic_microsequence",
+          ref: MICRO_REF,
+          label: "Microssequência · Fundamentos"
+        };
+      return analyticsPage({
+        revision: request.expectedCourseRevision,
+        selected,
+        studyUnitCount: selected.kind === "course" ? 2 : 1
+      });
+    } }
+  });
+
+  await panel.open();
+  await submitScope(root, 1);
+  await panel.refresh(8);
+
+  assert.deepEqual(displayed.map(({ revision, scope }) => ({
+    revision,
+    scope: { kind: scope.kind, ref: scope.ref }
+  })), [{
+    revision: 7,
+    scope: { kind: "course", ref: null }
+  }, {
+    revision: 7,
+    scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+  }, {
+    revision: 8,
+    scope: { kind: "didactic_microsequence", ref: MICRO_REF }
+  }]);
+});
+
+test("respostas materializadas contam como prática por modalidade sem dupla contagem", async () => {
+  for (const practiceByRequirement of [[], [{
+    position: 1,
+    statement: "Completar o estado solicitado.",
+    opportunityCount: 4
+  }]]) {
+    const root = new FakeRoot();
+    const page = analyticsPage({ studyUnitCount: 4 });
+    page.design.practiceByRequirement = practiceByRequirement;
+    page.design.components = [{
+      componentRef: "aralearn.response.gap@1.0.0",
+      studyUnitCount: 4,
+      instanceCount: 4
+    }];
+    const panel = createCourseAnalyticsPanel({
+      root,
+      course: { courseId: COURSE_ID, revision: 7 },
+      controller: { async loadCourseAuthoringAnalytics() { return page; } }
+    });
+
+    await panel.open();
+
+    assert.match(root.innerHTML,
+      /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>4<\/dd>/u);
+    assert.match(root.innerHTML,
+      /Modalidade · lacuna<\/th><td>4 oportunidades · 4 unidades de estudo/u);
+    assert.doesNotMatch(root.innerHTML,
+      /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>8<\/dd>/u);
+  }
+});
+
 test("tabelas simples preservam os números do desenho e intervenções explícitas", async () => {
   const root = new FakeRoot();
   const panel = createCourseAnalyticsPanel({
@@ -267,6 +466,7 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
   assert.match(root.innerHTML, /Unidade de estudo 2 · Pedido e resposta<\/th><td>1 novidade introduzida/u);
   assert.match(root.innerHTML, /Forma · contraste<\/th><td>1 unidade de estudo · 1 aplicação/u);
   assert.match(root.innerHTML, /Componente · tabela<\/th><td>1 unidade de estudo · 1 uso/u);
+  assert.match(root.innerHTML, /Componente · resposta aberta<\/th><td>1 unidade de estudo · 1 uso/u);
   assert.match(root.innerHTML, /Prática 1<\/th><td>Distinguir cliente e servidor em situações novas\. · 3 oportunidades/u);
   assert.match(root.innerHTML, /Fonte · técnica ou conceitual<\/th><td>2 fontes · 3 âncoras · 2 unidades de estudo/u);
   assert.match(root.innerHTML, /Variação · representação<\/th><td>1 oportunidade/u);
@@ -319,7 +519,7 @@ test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", 
     downloads[0].content,
     /"facts"|"runs"|"steps"|"duration"|"hash"|"payload"|"transcript"|"prompt"|"clickstream"|"score"/iu
   );
-  for (const value of [2, 3, 1]) {
+  for (const value of [2, 1]) {
     assert.match(root.innerHTML, new RegExp(`<dd>${value}</dd>`, "u"));
   }
   assert.match(root.innerHTML, /Unidades de estudo revisadas manualmente[\s\S]+<dd>2<\/dd>/u);

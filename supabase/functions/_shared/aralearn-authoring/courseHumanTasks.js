@@ -210,7 +210,10 @@ const SOURCE_METADATA_SCHEMA = Object.freeze({
       type: "string", enum: Object.freeze(["aberta", "restrita", "privada", "desconhecida"])
     }),
     verificacao: Object.freeze({
-      type: "string", enum: Object.freeze(["nao_verificada", "adotada_pelo_autor"])
+      type: "string",
+      enum: Object.freeze([
+        "nao_verificada", "confirmada_explicitamente_pela_autoria"
+      ])
     }),
     visibilidadeNoEstudo: Object.freeze({
       type: "string", enum: Object.freeze(["oculta", "citacao", "citacao_e_link"])
@@ -570,7 +573,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_componentes",
     "Consultar componentes didáticos",
-    "Use para buscar componentes pela função. Não grava.",
+    "Use para buscar e inspecionar um componente antes do uso. Não grava.",
     Object.freeze({
       ...inputSchema({
         busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
@@ -657,7 +660,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use para produzir um lote preparado. Não repara.",
+    "Use para produzir lote preparado: siga contratos, marque formas e não repita a identificação local entre conteúdo, resposta e retorno. Não repara.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -749,7 +752,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "manter_fonte",
     "Manter fonte e âncoras",
-    "Use para manter fontes, âncoras e vínculos. Não recebe PDF.",
+    "Use para manter fontes; só atribua confirmação à autoria após declaração dela e só localize o que foi fornecido ou lido. Não recebe PDF.",
     Object.freeze({
       ...inputSchema({
         curso: COURSE_SCHEMA,
@@ -860,9 +863,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.1";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.2";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:6e7b8af111ac77a003b11053e589dac412d42c3fa2e08fef0fc5a61316488d35";
+  "sha256:891eb2b80d3251d41908dcbd0dc2d09e9a600045cd5efca3e916b32e1cc97eae";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2975,7 +2978,7 @@ function sourceDocument(publicValue, previous = null) {
   });
   const verification = Object.freeze({
     nao_verificada: "unverified",
-    adotada_pelo_autor: "author_verified"
+    confirmada_explicitamente_pela_autoria: "author_verified"
   });
   const visibility = Object.freeze({
     oculta: "hidden",

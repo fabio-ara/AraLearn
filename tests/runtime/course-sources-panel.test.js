@@ -327,6 +327,22 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+test("falha de contrato das fontes permanece no nível humano da operação", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture();
+  controller.loadCourseSources = async () => ({});
+  const panel = createCourseSourcesPanel({
+    root,
+    controller,
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+
+  assert.equal(await panel.open(), false);
+  assert.match(root.innerHTML, /Não foi possível carregar as fontes\./u);
+  assert.doesNotMatch(root.innerHTML, /contract|courseRevision|requestId|UUID|cursor/iu);
+});
+
 test("catálogo e detalhe mostram somente Fonte, Âncoras e PDF correntes", async () => {
   const current = source(1, { attachments: [attachment()] });
   const root = new FakeRoot();
@@ -348,6 +364,43 @@ test("catálogo e detalhe mostram somente Fonte, Âncoras e PDF correntes", asyn
   assert.match(root.innerHTML, /Fonte técnica ou conceitual/u);
   assert.doesNotMatch(root.innerHTML,
     /course-source-revisions|Revisão anterior|Histórico|actorId|targetHash|legacy/iu);
+});
+
+test("resumo do catálogo flexiona fonte no singular", async () => {
+  const singularRoot = new FakeRoot();
+  const singular = createCourseSourcesPanel({
+    root: singularRoot,
+    controller: controllerFixture({ catalog: [source()] }),
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+  assert.equal(await singular.open(), true);
+  assert.match(singularRoot.innerHTML, />1 fonte · PDFs 0 B de 64 MiB</u);
+  assert.doesNotMatch(singularRoot.innerHTML, />1 fontes/u);
+
+  const pluralRoot = new FakeRoot();
+  const pluralPanel = createCourseSourcesPanel({
+    root: pluralRoot,
+    controller: controllerFixture({ catalog: [source(1), source(2)] }),
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+  assert.equal(await pluralPanel.open(), true);
+  assert.match(pluralRoot.innerHTML, />2 fontes · PDFs 0 B de 64 MiB</u);
+
+  const pagedRoot = new FakeRoot();
+  const pagedController = controllerFixture();
+  pagedController.loadCourseSources = async () => catalogPage([source()], {
+    nextCursor: "cGFnZS0x"
+  });
+  const pagedPanel = createCourseSourcesPanel({
+    root: pagedRoot,
+    controller: pagedController,
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+  assert.equal(await pagedPanel.open(), true);
+  assert.match(pagedRoot.innerHTML, />1\+ fontes · PDFs 0 B de 64 MiB</u);
 });
 
 test("catálogo mantém paginação apenas entre Fontes correntes", async () => {
@@ -423,6 +476,40 @@ test("edição de Fonte usa revisão somente como cerca interna", async () => {
   assert.equal(commands[0].command.expectedSourceRevision, 1);
   assert.equal(commands[0].command.source.sourceRole, "assessment_evidence");
   assert.equal(Object.hasOwn(commands[0].command.source, "actorId"), false);
+});
+
+test("falha ao salvar fonte orienta a ação sem revelar transporte ou versão", async (t) => {
+  async function renderFailure(error) {
+    const root = new FakeRoot();
+    const controller = controllerFixture();
+    controller.mutateCourseSources = async () => { throw error; };
+    const panel = createCourseSourcesPanel({
+      root,
+      controller,
+      courseId: COURSE_ID,
+      courseRevision: 5
+    });
+    await panel.open();
+    click(root, "open-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "edit-source");
+    submit(root, "source", sourceFormValues({ sourceId: "source-01" }));
+    await settle();
+    return root.innerHTML;
+  }
+
+  await t.test("sem conexão", async () => {
+    const html = await renderFailure(new TypeError("Failed to fetch"));
+    assert.match(html, /Sem conexão para salvar a fonte\./u);
+    assert.doesNotMatch(html, /Failed to fetch|Supabase respondeu com HTTP/iu);
+  });
+
+  await t.test("conflito", async () => {
+    const error = Object.assign(new Error("CourseVersion is invalid"), { status: 409 });
+    const html = await renderFailure(error);
+    assert.match(html, /O curso mudou\. Recarregue as fontes antes de salvar\./u);
+    assert.doesNotMatch(html, /CourseVersion is invalid|>409</iu);
+  });
 });
 
 test("edição de Âncora preserva CAS interno sem oferecer história", async () => {
@@ -582,6 +669,55 @@ test("exportação contém a proveniência corrente em linguagem humana", async 
   }]);
   assert.doesNotMatch(JSON.stringify(exports[0]),
     /sourceRevision|anchorRevision|attributionId|actorId|targetHash|contentHash|storagePath|history/iu);
+});
+
+test("falhas de exportação nomeiam o resultado sem expor o erro interno", async (t) => {
+  const failure = new Error("Cannot read properties of undefined");
+
+  await t.test("observações", async () => {
+    const root = new FakeRoot();
+    const panel = createCourseSourcesPanel({
+      root,
+      controller: controllerFixture(),
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      downloadJson: () => { throw failure; }
+    });
+    await panel.open();
+    click(root, "open-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "export-observations");
+    assert.match(root.innerHTML, /Não foi possível exportar as observações\./u);
+    assert.doesNotMatch(root.innerHTML, /Cannot read properties of undefined/iu);
+  });
+
+  await t.test("proveniência", async () => {
+    const current = source();
+    const root = new FakeRoot();
+    const panel = createCourseSourcesPanel({
+      root,
+      controller: controllerFixture({
+        catalog: [current],
+        links: [{
+          sourceId: current.sourceId,
+          relation: "supported_by",
+          anchors: [{ anchorId: "anchor-a" }]
+        }]
+      }),
+      courseId: COURSE_ID,
+      courseRevision: 5,
+      mode: "target",
+      targetKind: "plan_item",
+      targetId: PLAN_ITEM_ID,
+      targetVersion: 3,
+      downloadJson: () => { throw failure; }
+    });
+    await panel.open();
+    await settle();
+    click(root, "export-target");
+    assert.match(root.innerHTML, /Não foi possível exportar a proveniência\./u);
+    assert.doesNotMatch(root.innerHTML, /Cannot read properties of undefined/iu);
+  });
 });
 
 test("PDF usa ingestão server-side e download autorizado do estado corrente", async () => {

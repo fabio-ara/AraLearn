@@ -85,11 +85,11 @@ test("fixture publicada do catálogo não diverge do gerador determinístico", a
   assert.equal(current, serializeResourceCatalogCourse());
 });
 
-test("registry oferece 32 exemplos e contratos exatos estruturalmente válidos", () => {
+test("registry oferece 33 exemplos e contratos exatos estruturalmente válidos", () => {
   const manifests = allManifests();
-  assert.equal(manifests.length, 32);
+  assert.equal(manifests.length, 33);
   assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).length, 29);
-  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" }).length, 3);
+  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" }).length, 4);
 
   for (const manifest of manifests) {
     const slot = manifest.slots.includes("content") ? "content" : "response";
@@ -255,12 +255,12 @@ test("dez Cursos correntes distinguem uso observado da cobertura do Curso de cat
       moduleValue.lessons[0].microsequences.flatMap(({ covers }) => covers)
     ))
   );
-  assert.equal(catalogPackages.size, 32);
+  assert.equal(catalogPackages.size, 33);
   assert.deepEqual(
     catalogPackages,
     new Set(allManifests().map(({ id }) => id))
   );
-  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 21);
+  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 22);
 });
 
 test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => {
@@ -313,7 +313,7 @@ test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", a
   const runtime = await javascriptRuntimeMetrics();
   assert.equal(COURSE_HUMAN_TASKS.length, 17);
   assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 32_000);
-  assert.equal(runtime.files, 51);
+  assert.equal(runtime.files, 52);
   assert.ok(runtime.bytes <= 560 * 1024);
 });
 
@@ -325,8 +325,8 @@ test("documento registra uma decisão estática para cada pacote sem confundi-la
   const rows = [...document.matchAll(
     /^\| `([a-z][a-z0-9_]*)` \| `(manter|restringir)` \|/gmu
   )].map((match) => ({ packageName: match[1], decision: match[2] }));
-  assert.equal(rows.length, 32);
-  assert.equal(new Set(rows.map(({ packageName }) => packageName)).size, 32);
+  assert.equal(rows.length, 33);
+  assert.equal(new Set(rows.map(({ packageName }) => packageName)).size, 33);
   assert.deepEqual(
     new Set(rows.map(({ packageName }) => packageName)),
     new Set(allManifests().map(({ id }) => id.split(".").at(-1)))

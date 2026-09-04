@@ -17,6 +17,9 @@ import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import {
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+} from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 
@@ -355,8 +358,23 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.1");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.2");
   assert.ok(JSON.stringify(COURSE_HUMAN_TASKS).length < 32_000);
+});
+
+test("MCP orienta o chat a reproduzir o link retornado", async () => {
+  const response = await mcpHandler()(request("initialize", {
+    protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
+    capabilities: {},
+    clientInfo: { name: "chat-de-aceitação", version: "1.0.0" }
+  }));
+  const payload = await response.json();
+
+  assert.equal(payload.result.instructions, COURSE_AUTHORING_SERVER_INSTRUCTIONS);
+  assert.match(
+    payload.result.instructions,
+    /devolver um link.*endereço exato.*link Markdown no chat/iu
+  );
 });
 
 test("consultar_planejamento projeta mapa e cobertura humanos sem identidades técnicas", async () => {
@@ -1227,6 +1245,38 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
     referencia === "aralearn.response.ordering@3.0.0"
   )), true);
 
+  const open = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: {
+      funcao: "Pedir que a pessoa explique o mecanismo com palavras próprias, sem alternativas.",
+      papel: "pratica",
+      lugar: "resposta"
+    }
+  });
+  assert.equal(
+    open.context.components.candidates[0].referencia,
+    "aralearn.response.open@1.0.0"
+  );
+  const inspectedOpen = await executeHumanCourseTask({
+    adapter: adapter(),
+    principal: PRINCIPAL,
+    name: "consultar_componentes",
+    rawArguments: { componente: "aralearn.response.open@1.0.0" }
+  });
+  assert.deepEqual(
+    inspectedOpen.context.componentAuthoringContract.contrato.required,
+    ["prompt"]
+  );
+  assert.equal(
+    Object.hasOwn(
+      inspectedOpen.context.componentAuthoringContract.modeloDeInstancia.data,
+      "answer"
+    ),
+    false
+  );
+
   const table = await executeHumanCourseTask({
     adapter: adapter(),
     principal: PRINCIPAL,
@@ -1453,7 +1503,7 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
   );
 });
 
-test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnico", async () => {
+test("chamada MCP entrega o deep link como link Markdown sem expor estado técnico", async () => {
   const response = await mcpHandler()(request("tools/call", {
     name: "retomar_curso",
     arguments: { titulo: "Redes para iniciantes" }
@@ -1464,8 +1514,15 @@ test("#272 chamada MCP retorna coordenação curta e contexto sem estado técnic
   assert.equal(Object.hasOwn(payload.result.structuredContent, "ok"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "requestId"), false);
   assert.equal(Object.hasOwn(payload.result.structuredContent, "data"), false);
-  assert.doesNotMatch(payload.result.content[0].text, /https?:\/\//u);
-  assert.match(payload.result.content[0].text, /Abrir no AraLearn\./u);
+  assert.match(payload.result.structuredContent.deepLink, new RegExp(
+    `^https://app\\.example/#/authoring/courses/${COURSE_ID}\\?section=planning`,
+    "u"
+  ));
+  assert.ok(
+    payload.result.content[0].text.includes(
+      `[Abrir no AraLearn](${payload.result.structuredContent.deepLink})`
+    )
+  );
   const serializedContext = JSON.stringify(payload.result.structuredContent.context);
   assert.doesNotMatch(serializedContext, /courseId|requestId|revision|version|hash|path|resultFacts/iu);
 
@@ -1584,6 +1641,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
   assert.match(created.result, /Atualizei a fonte/u);
   assert.equal(sourceCommands[0].type, "save_source");
   assert.notEqual(sourceCommands[0].sourceId, "source-existing-a");
+  assert.equal(sourceCommands[0].source.verificationStatus, "unverified");
 
   await executeHumanCourseTask({
     adapter: sourceAdapter,

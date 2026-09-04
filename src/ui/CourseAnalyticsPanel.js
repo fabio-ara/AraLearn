@@ -3,6 +3,7 @@ import {
   normalizeCourseAuthoringAnalyticsQuery
 } from "../domain/courseAuthoringAnalytics.js";
 import { downloadTextFile } from "./downloadTextFile.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const ORIGIN_LABELS = Object.freeze({
@@ -39,6 +40,8 @@ const CONCEPT_LABELS = Object.freeze({
   practice: "Prática",
   paragraph: "Parágrafo",
   choice: "Escolha",
+  gap: "Lacuna",
+  open: "Resposta aberta",
   table: "Tabela",
   sequence: "Sequência",
   flow: "Fluxo",
@@ -68,7 +71,10 @@ function escapeHtml(value) {
 }
 
 function errorText(error) {
-  return String(error?.message || "Não foi possível carregar os dados de autoria.");
+  return publicErrorMessage(
+    error,
+    "Não foi possível carregar os dados de autoria. Tente novamente."
+  );
 }
 
 function formatCount(value) {
@@ -143,6 +149,11 @@ function componentLabel(value) {
   const token = source.match(/^aralearn\.(?:resource|response)\.([a-z0-9_-]+)@[0-9.]+$/u)?.[1] ||
     source;
   return humanLabel(token);
+}
+
+function practiceComponents(design) {
+  return design.components.filter(({ componentRef }) =>
+    componentRef.startsWith("aralearn.response."));
 }
 
 function renderScopeFilter(page) {
@@ -275,6 +286,14 @@ function practiceAndSourceRows(design) {
         "oportunidades"
       )}`
     })),
+    ...practiceComponents(design).map((component) => ({
+      label: `Modalidade · ${contextualLabel(componentLabel(component.componentRef))}`,
+      value: `${plural(component.instanceCount, "oportunidade", "oportunidades")} · ${plural(
+        component.studyUnitCount,
+        "unidade de estudo",
+        "unidades de estudo"
+      )}`
+    })),
     ...design.practiceVariationDimensions.map((dimension) => ({
       label: `Variação · ${contextualLabel(dimension.dimension)}`,
       value: plural(dimension.opportunityCount, "oportunidade", "oportunidades")
@@ -316,8 +335,7 @@ function sum(values) {
 }
 
 function renderDesign(design) {
-  const practiceCount = sum(design.practiceByRequirement.map(({ opportunityCount }) =>
-    opportunityCount));
+  const practiceCount = sum(practiceComponents(design).map(({ instanceCount }) => instanceCount));
   const sourceCount = sum(design.sourcesByRole.map(({ sourceCount }) => sourceCount));
   return '<section class="course-analytics-area" aria-labelledby="course-analytics-design-title">' +
     '<header><h3 id="course-analytics-design-title">Desenho</h3>' +
@@ -408,15 +426,21 @@ export function createCourseAnalyticsPanel({
   root,
   controller,
   course,
+  initialQuery = undefined,
+  expectedCourseRevision = course?.revision,
+  onSnapshotDisplayed = null,
   download = downloadTextFile
 } = {}) {
+  const initialRevision = Number(expectedCourseRevision);
   if (!root || !controller || !course?.courseId || !Number.isSafeInteger(course.revision) ||
-      typeof controller.loadCourseAuthoringAnalytics !== "function") {
+      !Number.isSafeInteger(initialRevision) || initialRevision < 1 ||
+      typeof controller.loadCourseAuthoringAnalytics !== "function" ||
+      onSnapshotDisplayed !== null && typeof onSnapshotDisplayed !== "function") {
     throw new TypeError("Painel de dados de autoria inválido.");
   }
   const state = {
-    course,
-    query: normalizeCourseAuthoringAnalyticsQuery(),
+    course: { ...course, revision: initialRevision },
+    query: normalizeCourseAuthoringAnalyticsQuery(initialQuery),
     page: null,
     loading: false,
     failure: "",
@@ -446,6 +470,7 @@ export function createCourseAnalyticsPanel({
       state.query = normalizeCourseAuthoringAnalyticsQuery({
         scope: { kind: incoming.scope.selected.kind, ref: incoming.scope.selected.ref }
       });
+      onSnapshotDisplayed?.(incoming);
     } catch (error) {
       state.failure = errorText(error);
       state.reloadQuery = requestedQuery;

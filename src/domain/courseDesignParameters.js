@@ -6,7 +6,7 @@ const encoder = new TextEncoder();
 export const COURSE_DESIGN_CONTRACT = "aralearn.course-design.v2";
 export const COURSE_DESIGN_CHANGE_CONTRACT = "aralearn.course-design-change.v2";
 export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.1.0";
-export const COURSE_COMPONENT_CATALOG_VERSION = "1-3e5629f8";
+export const COURSE_COMPONENT_CATALOG_VERSION = "1-4616b2e5";
 
 export const EXPLANATION_FORMS = Object.freeze([
   "plain_definition",
@@ -300,7 +300,7 @@ export function normalizeCourseDesignParameterValue(parameterId, value) {
 function componentRefList(value, label) {
   const refs = uniqueIdentityList(
     value,
-    32,
+    64,
     200,
     "invalid_course_component_policy",
     label
@@ -676,7 +676,7 @@ function validateGuidance(value, scopePath, currentScope) {
 function validateComponentCatalog(value) {
   exact(value, ["version", "options"], "invalid_course_design_read", "O catálogo de componentes");
   if (value.version !== COURSE_COMPONENT_CATALOG_VERSION ||
-      !Array.isArray(value.options) || value.options.length !== 32) {
+      !Array.isArray(value.options) || value.options.length !== 33) {
     fail("course_component_catalog_drift", "O catálogo de componentes divergiu da revisão corrente.");
   }
   const refs = new Set();

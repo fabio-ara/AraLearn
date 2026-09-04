@@ -3,6 +3,7 @@ import {
   requestCourseAssistanceDiscussion,
   COURSE_ASSISTANCE_LIMITS
 } from "../assist/courseContextualAssistance.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const PROVIDERS = Object.freeze({
@@ -356,7 +357,7 @@ export function createCourseProviderAssistance({
       return true;
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
-      error = caught instanceof Error ? caught.message : "Não foi possível concluir a conversa.";
+      error = publicErrorMessage(caught, "Não foi possível concluir a conversa.");
       status = "";
       return false;
     } finally {
@@ -399,7 +400,10 @@ export function createCourseProviderAssistance({
       return close();
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
-      error = caught instanceof Error ? caught.message : "A proposta aceita não pôde ser aplicada ao rascunho.";
+      error = publicErrorMessage(
+        caught,
+        "A proposta aceita não pôde ser aplicada ao rascunho."
+      );
       status = "O conteúdo original foi preservado.";
       return false;
     } finally {

@@ -399,9 +399,10 @@ test("append da inbox rejeita cursor repetido, página vazia e observação dupl
       pagedResult(options.query, [pagedItem(2)], {
         hasMore: true,
         nextCursor: "cursor1"
-      }));
+    }));
     assert.equal(calls, 2);
-    assert.match(root.innerHTML, /repetiu um cursor/u);
+    assert.match(root.innerHTML, /Não foi possível carregar as observações\./u);
+    assert.doesNotMatch(root.innerHTML, /cursor/iu);
     assert.doesNotMatch(root.innerHTML, /Observação paginada 2\./u);
     panel.destroy();
   });
@@ -413,7 +414,8 @@ test("append da inbox rejeita cursor repetido, página vazia e observação dupl
         nextCursor: "cursor2"
       }));
     assert.equal(calls, 2);
-    assert.match(root.innerHTML, /página intermediária vazia/u);
+    assert.match(root.innerHTML, /Não foi possível carregar as observações\./u);
+    assert.doesNotMatch(root.innerHTML, /paginação|cursor/iu);
     panel.destroy();
   });
 
@@ -424,9 +426,28 @@ test("append da inbox rejeita cursor repetido, página vazia e observação dupl
         nextCursor: null
       }));
     assert.equal(calls, 2);
-    assert.match(root.innerHTML, /repetiu uma observação/u);
+    assert.match(root.innerHTML, /Não foi possível carregar as observações\./u);
+    assert.doesNotMatch(root.innerHTML, /paginação|cursor/iu);
     panel.destroy();
   });
+});
+
+test("falha de contrato das observações não revela campos internos", async () => {
+  const root = new FakeRoot();
+  const panel = createCourseObservationsPanel({
+    root,
+    course: { courseId: COURSE_ID, revision: 7 },
+    controller: {
+      async loadAuthoringOutline() { return outline(); },
+      async loadCourseAnchoredAnnotations() { return {}; },
+      async mutateCourseAnchoredAnnotations() { throw new Error("Não deve alterar."); }
+    }
+  });
+
+  assert.equal(await panel.open(), false);
+  assert.match(root.innerHTML, /Não foi possível carregar as observações\./u);
+  assert.doesNotMatch(root.innerHTML, /contract|courseRevision|requestId|UUID|cursor/iu);
+  panel.destroy();
 });
 
 test("deep link abre detalhe, contexto, resposta única e correção de assunto", async () => {

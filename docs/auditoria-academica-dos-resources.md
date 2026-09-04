@@ -180,6 +180,7 @@ um novo estilo para relações já preservadas.
 | `choice` | discriminar uma ou mais alternativas | distratores representam erros plausíveis; modo simples ou múltiplo é explícito | alternativa correta revelada antes da solicitação, enunciado duplicado ou avaliação a cada toque |
 | `gap` | completar elemento localizado | alvo pertence ao pacote de conteúdo; cada lacuna tem opções e estado próprios | lacuna aparece no enunciado por conveniência, ou todas as lacunas compartilham resposta |
 | `ordering` | reconstruir uma sequência entre trechos textuais | pelo menos dois alvos pertencem a `paragraph` ou `table`, aparecem na ordem correta de leitura e são movidos no próprio ponto por setas à esquerda ou à direita | itens são duplicados numa lista de resposta, a sequência é espacial/vertical ou a ordem não tem fundamento semântico |
+| `open` | explicar, justificar ou prever com palavras próprias | produção livre é a operação necessária e o retorno posterior oferece referência | a tarefa exige correção automática ou o campo oferece uma resposta-modelo antes da produção |
 
 Correspondências simples são lacunas de escolha aplicadas aos campos reais de
 um `paragraph` ou de uma `table`. Não constituem outro pacote de resposta. Um
@@ -241,6 +242,7 @@ autoriza uso fora desse recorte.
 | `choice` | `manter` | discriminação entre alternativas plausíveis constitui operação de resposta própria | 2.386 |
 | `gap` | `manter` | completa um alvo semântico no componente de conteúdo, com estado independente por lacuna | 604 |
 | `ordering` | `restringir` | atua somente em alvos textuais de `paragraph` e `table`, sem representar ordem espacial | 0 |
+| `open` | `manter` | permite produção livre sem afirmar correção semântica automática | 0 |
 
 Os artefatos atuais não demonstram motivo para fundir, redesenhar ou retirar
 um pacote. Essa conclusão pode mudar diante de revisão disciplinar, defeito
@@ -257,15 +259,15 @@ Estudo, `project-minimal` e `project-visual`. Esses Cursos contêm 10.388
 instâncias de onze pacotes. A contagem da tabela registra instâncias, não
 número de Cursos nem frequência de uso por pessoas.
 
-Os outros 21 pacotes aparecem no Curso de catálogo, mas ainda não no corpus
+Os outros 22 pacotes aparecem no Curso de catálogo, mas ainda não no corpus
 de dez Cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
 `reaction`, `truth_table`, `set_diagram`, `bpmn_process`, `call_stack`,
 `state_machine`, `state_transition_table`, `terminal_session`,
 `database_schema`, `entity_relationship`, `software_container`,
 `software_system_context`, `system_internal_block`, `memory_layout`,
-`network_topology`, `packet_layout` e `ordering`.
+`network_topology`, `packet_layout`, `ordering` e `open`.
 
-O Curso de catálogo deriva os 32 pacotes do registro. Cada pacote possui uma
+O Curso de catálogo deriva os 33 pacotes do registro. Cada pacote possui uma
 microssequência independente com uma Unidade de teoria e outra de prática. Os
 exemplos e as respostas usam conteúdo disciplinar concreto; perguntas que
 pedem apenas a finalidade ou o nome do pacote são recusadas pelo teste. Essa
@@ -291,7 +293,7 @@ pelo modelo (tokens).
 | busca mais pesada entre as facetas correntes, com oito candidatos | 5.542 bytes | 8 KiB |
 | inspeção dos oito perfis individuais mais extensos | 14.461 bytes | 16 KiB |
 | maior resposta de um contrato exato | 13.117 bytes | 16 KiB |
-| soma das 32 respostas de contrato, consultadas separadamente | 191.078 bytes | 200 KiB |
+| soma das 33 respostas de contrato, consultadas separadamente | até 200 KiB | 200 KiB |
 | Curso de catálogo completo em disco | 361.088 bytes | lido por recortes no produto |
 | código dos componentes espelhado no navegador e na Edge | 51 arquivos; 548.156 bytes | 560 KiB |
 

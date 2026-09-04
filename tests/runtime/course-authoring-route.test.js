@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildCourseAuthoringAnalyticsRoute,
   buildCourseAuthoringRoute,
   isCanonicalCourseId,
   isCourseAuthoringRouteCandidate,
@@ -54,6 +55,61 @@ test("rota canônica abre tarefa, objeto e detalhe humano", () => {
   });
 });
 
+test("deep link de dados de autoria preserva recorte e revisão sem virar alvo curricular", () => {
+  const hash = `#/authoring/courses/${COURSE_ID}?section=research` +
+    "&analyticsScopeKind=didactic_microsequence" +
+    "&analyticsScopeId=micro%20dns" +
+    "&analyticsRevision=9";
+
+  assert.deepEqual(parseCourseAuthoringRoute(hash), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: {
+      kind: "authoring_analytics",
+      id: "micro dns",
+      scopeKind: "didactic_microsequence",
+      revision: 9
+    }
+  });
+  assert.deepEqual(parseCourseAuthoringRoute(
+    `#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=9"
+  ), {
+    courseId: COURSE_ID,
+    section: "research",
+    target: {
+      kind: "authoring_analytics",
+      id: null,
+      scopeKind: "course",
+      revision: 9
+    }
+  });
+  assert.equal(buildCourseAuthoringAnalyticsRoute(COURSE_ID, {
+    scope: { kind: "didactic_microsequence", ref: "micro dns" },
+    revision: 9
+  }), hash);
+  assert.equal(buildCourseAuthoringAnalyticsRoute(COURSE_ID, {
+    scope: { kind: "course", ref: null },
+    revision: 9
+  }), `#/authoring/courses/${COURSE_ID}?section=research` +
+    "&analyticsScopeKind=course&analyticsRevision=9");
+});
+
+test("identidade de recorte mede o limite por caracteres Unicode completos", () => {
+  const validAstralId = "😀".repeat(240);
+  const validHash = `#/authoring/courses/${COURSE_ID}?section=research` +
+    "&analyticsScopeKind=study_unit" +
+    `&analyticsScopeId=${encodeURIComponent(validAstralId)}&analyticsRevision=9`;
+  assert.equal(parseCourseAuthoringRoute(validHash)?.target?.id, validAstralId);
+
+  const invalidAstralId = "😀".repeat(241);
+  assert.equal(parseCourseAuthoringRoute(
+    `#/authoring/courses/${COURSE_ID}?section=research` +
+      "&analyticsScopeKind=study_unit" +
+      `&analyticsScopeId=${encodeURIComponent(invalidAstralId)}&analyticsRevision=9`
+  ), null);
+});
+
 test("parser rejeita overview e aliases do shell substituído", () => {
   for (const removed of ["overview", "structure", "inspection", "observations", "variants"]) {
     assert.equal(
@@ -73,6 +129,14 @@ test("parser rejeita identidades, detalhes e combinações alheias à tarefa", (
     `#/authoring/courses/${COURSE_ID}?section=content&annotationId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=review&moduleId=a`,
     `#/authoring/courses/${COURSE_ID}?section=research&authoringPartId=${UUID}`,
+    `#/authoring/courses/${COURSE_ID}?section=content&analyticsScopeKind=course&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=unknown&analyticsScopeId=a&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=course&analyticsScopeId=${COURSE_ID}&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsScopeId=unit-a&analyticsRevision=0`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsScopeId=unit-a&analyticsRevision=09`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsScopeKind=study_unit&analyticsScopeId=%20&analyticsRevision=9`,
+    `#/authoring/courses/${COURSE_ID}?section=research&analyticsRevision=9&analyticsScopeKind=course`,
     `#/authoring/courses/${COURSE_ID}?section=review&correctionId=${UUID}`,
     `#/authoring/courses/${COURSE_ID}?section=sources&anchorId=ancora-1`,
     `#/authoring/courses/${COURSE_ID}?section=planning&authoringPartId=${UUID}&materializationId=${COURSE_ID}`,

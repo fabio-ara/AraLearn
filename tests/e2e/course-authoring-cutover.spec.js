@@ -816,7 +816,7 @@ async function mountCourseAuthoring(page, {
       evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
       supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"]
     }));
-    const componentOptions = Array.from({ length: 32 }, (_, index) => ({
+    const componentOptions = Array.from({ length: 33 }, (_, index) => ({
       ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
       label: `Componente ${index + 1}`,
       purpose: `Finalidade acadêmica ${index + 1}.`
@@ -980,7 +980,7 @@ async function mountCourseAuthoring(page, {
           localAssignment: structuredClone(store.guidance.get(scopeKey(current)) || null),
           effectiveAssignments
         },
-        componentCatalog: { version: "1-3e5629f8", options: structuredClone(componentOptions) },
+        componentCatalog: { version: "1-4616b2e5", options: structuredClone(componentOptions) },
         targetPlanItems: ["didactic_microsequence", "study_unit"].includes(current.kind) ? {
           instructionalAnalysisUnitIds: ["79000000-0000-4000-8000-000000000019"],
           evidenceRequirementIds: []
@@ -996,7 +996,7 @@ async function mountCourseAuthoring(page, {
             inherited: scopeKey(selectedPolicy.scope) !== scopeKey(current)
           } : {
             policy: {
-              catalogVersion: "1-3e5629f8",
+              catalogVersion: "1-4616b2e5",
               availability: "all",
               allowedRefs: [],
               excludedRefs: [],
@@ -1363,6 +1363,10 @@ async function mountCourseAuthoring(page, {
             componentRef: "aralearn.resource.relation_map@1.0.0",
             studyUnitCount: 1,
             instanceCount: 1
+          }, {
+            componentRef: "aralearn.response.choice@1.0.0",
+            studyUnitCount,
+            instanceCount: studyUnitCount
           }],
           practiceByRequirement: [{
             position: 1,
@@ -2240,7 +2244,7 @@ test.describe("Autoria canônica mobile-first", () => {
         .toHaveText("Fundamentos de relações");
       await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
       await expect(page.locator(".course-design-parameter")).toHaveCount(6);
-      await expect(page.locator(".course-design-component-option")).toHaveCount(32);
+      await expect(page.locator(".course-design-component-option")).toHaveCount(33);
       await expect(page.locator(".course-design-parameters").getByLabel(/^Ajustar /u))
         .toHaveCount(6);
       await expect(page.getByRole("heading", { name: "Componentes", exact: true })).toBeVisible();
@@ -2771,7 +2775,7 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   await expect(details).not.toHaveAttribute("open", "");
   await expect(detailsTrigger).toBeFocused();
   const sourcesAction = page.getByRole("button", {
-    name: "Fontes e Âncoras de Exemplo guiado com diagrama",
+    name: "Fontes e âncoras de Exemplo guiado com diagrama",
     exact: true
   });
   await sourcesAction.click();
@@ -3937,7 +3941,7 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
     origin: "research_condition"
   });
   expect(mutations[2].command.policy).toMatchObject({
-    catalogVersion: "1-3e5629f8",
+    catalogVersion: "1-4616b2e5",
     availability: "allow_only"
   });
   expect(mutations[2].command.policy.allowedRefs).toEqual([
@@ -4221,7 +4225,12 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   await expect(scope).toHaveValue("1");
   await expect(analytics.locator(
     '.course-analytics-metrics[aria-label="Resumo do desenho"] dd'
-  )).toHaveText(["1", "1", "3", "2"]);
+  )).toHaveText(["1", "1", "1", "2"]);
+  await analytics.locator("details.course-analytics-details", {
+    hasText: "Prática e fontes"
+  }).locator("summary").click();
+  await expect(analytics.getByRole("table", { name: "Prática e fontes" }))
+    .toContainText("Modalidade · escolha");
 
   const jsonStarted = page.waitForEvent("download");
   await analytics.getByRole("button", { name: "Baixar dados de autoria" }).click();
@@ -4266,4 +4275,52 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
 
   expect(clientErrors).toEqual([]);
   expect(networkErrors).toEqual([]);
+});
+
+test("deep link de dados de autoria abre o recorte e a revisão indicados", async ({ page }) => {
+  const analyticsHash = `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
+    "&analyticsScopeKind=didactic_microsequence" +
+    "&analyticsScopeId=microsequence-a&analyticsRevision=5";
+  await mountCourseAuthoring(page, { cardinality: "many", hash: analyticsHash });
+
+  const analytics = page.locator(".course-analytics");
+  await expect(analytics).toBeVisible();
+  await expect(analytics.getByRole("combobox", { name: "Escopo", exact: true })).toHaveValue("1");
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(1);
+  await expect.poll(() => new URL(page.url()).hash).toBe(analyticsHash);
+  expect(await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads[0])).toEqual({
+    courseId: COURSE_IDS[0],
+    options: {
+      expectedCourseRevision: 5,
+      query: {
+        scope: {
+          kind: "didactic_microsequence",
+          ref: "microsequence-a"
+        }
+      }
+    }
+  });
+
+  await analytics.getByRole("combobox", { name: "Escopo", exact: true }).selectOption("0");
+  await analytics.getByRole("button", { name: "Aplicar escopo" }).click();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
+  await expect.poll(() => new URL(page.url()).hash).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=5"
+  );
+
+  await page.evaluate(() => {
+    globalThis.__courseAuthoringHarness.updateInspectionStudyUnit(
+      "study-unit-01",
+      "Exemplo atualizado"
+    );
+  });
+  await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
+  await expect.poll(() => new URL(page.url()).hash).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
+      "&analyticsScopeKind=course&analyticsRevision=6"
+  );
 });

@@ -407,7 +407,7 @@
       "sourceUse": {
         "title": "IEEE 802.1D — Bridges and Bridged Networks",
         "role": "tecnica_conceitual",
-        "relation": "supported_by",
+        "relation": "needs_verification",
         "decision": "Usar para conferir o mecanismo; não ampliar o escopo curricular nem inferir cobrança em exame."
       }
     }
@@ -673,7 +673,7 @@
           "url": "https://standards.ieee.org/ieee/802.1D/6844/",
           "edicaoOuVersao": "2022",
           "disponibilidade": "restrita",
-          "verificacao": "adotada_pelo_autor",
+          "verificacao": "nao_verificada",
           "visibilidadeNoEstudo": "citacao_e_link"
         }
       },

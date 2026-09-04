@@ -4,6 +4,23 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.59] - 2026-09-03
+
+### Adicionado
+
+- resposta aberta genuína para explicações, justificativas e previsões do
+  estudante, sem simular correção semântica automática.
+
+### Corrigido
+
+- links da conversa abrem diretamente o contexto correspondente no AraLearn;
+- analytics contabilizam práticas pelos componentes efetivamente usados e
+  preservam o recorte e a revisão em links compartilháveis;
+- fontes não conferidas permanecem pendentes de verificação, sem localização
+  bibliográfica inventada, e a interface flexiona corretamente o singular;
+- falhas de serviços externos são apresentadas no contexto da ação, sem expor
+  mensagens técnicas ou nomes internos para a pessoa autora ou estudante.
+
 ## [0.0.58] - 2026-09-03
 
 ### Corrigido
