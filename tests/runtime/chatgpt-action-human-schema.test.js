@@ -109,12 +109,19 @@ const samples = {
       posicao: 1,
       conteudo: SAMPLE_THEORY_CONTENT,
       configuracao: {
-        parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 },
-        parametrosEditoriais: { alvoDePalavrasPorUnidade: 180 },
+        parametrosPedagogicos: {
+          tetoNovasUnidadesDeAnalise: 1,
+          formasDeExplicacao: ["plain_definition"],
+          minimoDePraticasPorRequisito: 1,
+          dimensoesDeVariacaoDaPratica: ["case_or_data"]
+        },
+        parametrosEditoriais: {
+          alvoDePalavrasPorResposta: 90,
+          alvoDePalavrasPorUnidade: 180
+        },
         direcaoEditorial: "Explique o mecanismo antes de nomear exceções."
       },
       aplicacaoPedagogica: {
-        modo: "expositiva",
         ideiasIntroduzidas: ["Socket como interface"],
         ideiasUtilizadas: [],
         explicacoes: [{
@@ -182,7 +189,7 @@ test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.3");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.4");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -365,6 +372,103 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
   }
 });
 
+test("MCP e Actions exigem em uma chamada a configuração efetiva completa da unidade", () => {
+  const schemas = [
+    COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
+    actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
+    operation("materializar_parte").requestBody.content["application/json"].schema
+  ];
+  const expectedPedagogical = [
+    "dimensoesDeVariacaoDaPratica",
+    "formasDeExplicacao",
+    "minimoDePraticasPorRequisito",
+    "tetoNovasUnidadesDeAnalise"
+  ];
+  const expectedEditorial = [
+    "alvoDePalavrasPorResposta",
+    "alvoDePalavrasPorUnidade"
+  ];
+
+  for (const schema of schemas) {
+    const unit = schema.properties.unidades.items;
+    const configuration = unit.properties.configuracao;
+    const pedagogical = configuration.properties.parametrosPedagogicos;
+    const editorial = configuration.properties.parametrosEditoriais;
+
+    assert.ok(unit.required.includes("configuracao"));
+    assert.deepEqual(
+      [...(configuration.required ?? [])].sort(),
+      ["parametrosEditoriais", "parametrosPedagogicos"]
+    );
+    assert.deepEqual([...(pedagogical.required ?? [])].sort(), expectedPedagogical);
+    assert.deepEqual([...(editorial.required ?? [])].sort(), expectedEditorial);
+    for (const property of [
+      ...Object.values(pedagogical.properties),
+      ...Object.values(editorial.properties)
+    ]) {
+      assert.equal(
+        Array.isArray(property.type) && property.type.includes("null"),
+        false,
+        "A calibração de materialização não pode aceitar null como decisão contextual."
+      );
+    }
+
+    const validationSchema = structuredClone(schema);
+    const content = validationSchema.properties.unidades.items.properties.conteudo;
+    if (content?.$ref === "#/components/schemas/HumanStudyUnitContent") {
+      validationSchema.properties.unidades.items.properties.conteudo =
+        structuredClone(openApi.components.schemas.HumanStudyUnitContent);
+    }
+    const validate = new Ajv2020({ allErrors: true, strict: false })
+      .compile(validationSchema);
+    assert.equal(validate(samples.materializar_parte), true, JSON.stringify(validate.errors));
+    for (const group of ["parametrosPedagogicos", "parametrosEditoriais"]) {
+      const fields = Object.keys(configuration.properties[group].properties);
+      for (const field of fields) {
+        const missing = structuredClone(samples.materializar_parte);
+        delete missing.unidades[0].configuracao[group][field];
+        assert.equal(validate(missing), false, `${group}.${field} ausente`);
+
+        const nullValue = structuredClone(samples.materializar_parte);
+        nullValue.unidades[0].configuracao[group][field] = null;
+        assert.equal(validate(nullValue), false, `${group}.${field} nulo`);
+      }
+    }
+  }
+});
+
+test("MCP e Actions não expõem modo como decisão duplicada", () => {
+  const schemas = [
+    COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
+    actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
+    operation("materializar_parte").requestBody.content["application/json"].schema
+  ];
+  for (const schema of schemas) {
+    const application = schema.properties.unidades.items.properties.aplicacaoPedagogica;
+    assert.equal(Object.hasOwn(application.properties, "modo"), false);
+    assert.equal(application.required.includes("modo"), false);
+  }
+});
+
+test("MCP e Actions orientam a mobilização do repertório e a criação de prática", () => {
+  const schemas = [
+    COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
+    actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
+    operation("materializar_parte").requestBody.content["application/json"].schema
+  ];
+  for (const schema of schemas) {
+    const application = schema.properties.unidades.items.properties.aplicacaoPedagogica;
+    assert.match(
+      String(application.properties.ideiasUtilizadas.description ?? ""),
+      /ideias? estabelecidas?.*mobilizadas?/iu
+    );
+    assert.match(
+      String(application.properties.praticas.items.properties.requisito.description ?? ""),
+      /texto.*(?:cria|novo).*requisito/iu
+    );
+  }
+});
+
 test("Actions orienta proveniência, componentes locais e formas calibradas no ponto de uso", () => {
   const source = actionTools.find(({ name }) => name === "manter_fonte").inputSchema;
   const verification = source.properties.metadados.properties.verificacao;
@@ -385,7 +489,7 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
   const instance = unit.properties.conteudo.properties.content.items;
   assert.deepEqual(instance.required, ["id", "package", "version", "data"]);
   const materializationTask = actionTools.find(({ name }) => name === "materializar_parte");
-  assert.match(materializationTask.description, /siga contratos/iu);
+  assert.match(materializationTask.description, /recorte preparado/iu);
   assert.match(materializationTask.description, /marque formas/iu);
   assert.match(
     materializationTask.description,

@@ -12,11 +12,6 @@ import {
   normalizeCourseDesignParameterValue
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 
-const MODE = Object.freeze({
-  expositiva: "expository",
-  pratica: "practice",
-  mista: "mixed"
-});
 const MAX_PART_STUDY_UNIT_PAGES = 100;
 const UNIT_PARAMETER_FIELD_TO_ID = Object.freeze({
   tetoNovasUnidadesDeAnalise:
@@ -394,30 +389,41 @@ function validateUnitConfiguration(configuration) {
   const allowed = new Set([
     "parametrosPedagogicos", "parametrosEditoriais", "direcaoEditorial"
   ]);
-  if (!plainObject(configuration) || !Object.keys(configuration).length ||
+  if (!plainObject(configuration) ||
       Object.keys(configuration).some((field) => !allowed.has(field))) {
     fail("invalid_human_materialization", "A calibração da unidade de estudo é inválida.");
   }
   const groups = [{
     value: configuration.parametrosPedagogicos,
-    fields: new Set([
+    fields: [
       "tetoNovasUnidadesDeAnalise", "formasDeExplicacao",
       "minimoDePraticasPorRequisito", "dimensoesDeVariacaoDaPratica"
-    ])
+    ]
   }, {
     value: configuration.parametrosEditoriais,
-    fields: new Set(["alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"])
+    fields: ["alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"]
   }];
   for (const group of groups) {
-    if (group.value === undefined) continue;
-    if (!plainObject(group.value) || !Object.keys(group.value).length ||
-        Object.keys(group.value).some((field) => !group.fields.has(field))) {
-      fail("invalid_human_materialization", "Os parâmetros próprios da unidade são inválidos.");
+    const expected = new Set(group.fields);
+    if (!plainObject(group.value) ||
+        group.fields.some((field) => !Object.hasOwn(group.value, field) ||
+          group.value[field] === null) ||
+        Object.keys(group.value).some((field) => !expected.has(field))) {
+      fail(
+        "human_materialization_contextual_calibration_required",
+        "Uma unidade nova ainda está sem calibração contextual.",
+        409
+      );
     }
   }
   if (configuration.direcaoEditorial !== undefined) {
     boundedText(configuration.direcaoEditorial, "A direção editorial da unidade", 4_000);
   }
+}
+
+function pedagogicalMode(unit) {
+  if (unit.conteudo.role === "theory") return "expository";
+  return unit.aplicacaoPedagogica.explicacoes.length ? "mixed" : "practice";
 }
 
 function validateUnits(units) {
@@ -428,7 +434,6 @@ function validateUnits(units) {
     if (!plainObject(unit) || !plainObject(unit.conteudo) ||
         !plainObject(unit.aplicacaoPedagogica) ||
         !Number.isSafeInteger(unit.posicao) || unit.posicao < 1 ||
-        !Object.hasOwn(MODE, unit.aplicacaoPedagogica.modo) ||
         !Array.isArray(unit.aplicacaoPedagogica.ideiasIntroduzidas) ||
         !Array.isArray(unit.aplicacaoPedagogica.ideiasUtilizadas) ||
         !Array.isArray(unit.aplicacaoPedagogica.explicacoes) ||
@@ -622,14 +627,15 @@ function sameJson(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function applyUnitContextualCalibration(design, configuration, { existing }) {
+function existingConfigurationConflict() {
+  fail(
+    "human_materialization_existing_configuration_conflict",
+    "Esta unidade já possui outra configuração. Ajuste a configuração antes de revisar o conteúdo."
+  );
+}
+
+function applyUnitContextualCalibration(design, configuration, { existing = false } = {}) {
   if (configuration === undefined) return design;
-  if (existing) {
-    fail(
-      "human_materialization_existing_unit_configuration",
-      "Ajuste a configuração da unidade existente antes de rematerializá-la."
-    );
-  }
   const calibrated = structuredClone(design);
   const requestedParameters = [
     ...Object.entries(configuration.parametrosPedagogicos ?? {}),
@@ -652,6 +658,12 @@ function applyUnitContextualCalibration(design, configuration, { existing }) {
         "invalid_human_materialization",
         error instanceof Error ? error.message : "Um parâmetro da unidade é inválido."
       );
+    }
+    if (existing) {
+      if (!sameJson(parameter.effectiveAssignment.value, value)) {
+        existingConfigurationConflict();
+      }
+      continue;
     }
     if (fixedOrigins.has(parameter.effectiveAssignment.origin)) {
       if (!sameJson(parameter.effectiveAssignment.value, value)) {
@@ -679,6 +691,12 @@ function applyUnitContextualCalibration(design, configuration, { existing }) {
     const effective = Array.isArray(calibrated.guidance?.effectiveAssignments)
       ? calibrated.guidance.effectiveAssignments
       : [];
+    if (existing) {
+      if (!effective.some((assignment) => assignment?.guidance === guidance)) {
+        existingConfigurationConflict();
+      }
+      return calibrated;
+    }
     const fixed = effective.filter((assignment) => fixedOrigins.has(assignment?.origin));
     if (fixed.length && !fixed.some((assignment) => assignment.guidance === guidance)) {
       fail(
@@ -753,7 +771,7 @@ function designSnapshot(design, microsequenceId) {
 
 function unitDesignApplication(unit) {
   return {
-    mode: MODE[unit.source.aplicacaoPedagogica.modo],
+    mode: pedagogicalMode(unit.source),
     introducedInstructionalAnalysisUnitIds: unit.noveltyIds,
     explanationApplications: unit.explanations,
     usedInstructionalAnalysisUnitIds: unit.usedIds,
@@ -944,14 +962,7 @@ function validatePedagogicalGroup(
         practiceMinimum < 1 || !Array.isArray(requiredDimensions)) {
       fail("course_service_unavailable", "Os parâmetros efetivos essenciais são inválidos.", 503);
     }
-    const mode = MODE[unit.source.aplicacaoPedagogica.modo];
-    if (mode === "expository" && unit.content.role !== "theory" ||
-        mode !== "expository" && unit.content.role !== "practice") {
-      fail(
-        "human_materialization_mode_mismatch",
-        "O papel da unidade de estudo não corresponde ao modo da aplicação pedagógica."
-      );
-    }
+    const mode = pedagogicalMode(unit.source);
     const noveltySet = new Set(unit.noveltyIds);
     const usedSet = new Set(unit.usedIds);
     const explanationIds = unit.explanations.map((entry) =>
@@ -988,7 +999,10 @@ function validatePedagogicalGroup(
     if (mode === "practice" && (unit.noveltyIds.length || unit.explanations.length) ||
         mode === "expository" && unit.practices.length > 0 ||
         mode === "mixed" && (unit.explanations.length === 0 || unit.practices.length === 0)) {
-      fail("human_materialization_mode_mismatch", "O modo da unidade de estudo não corresponde à aplicação declarada.");
+      fail(
+        "human_materialization_mode_mismatch",
+        "A função didática da unidade não corresponde ao conteúdo e às aplicações informadas."
+      );
     }
 
     const knownBeforeUnit = new Set(establishedAnalysis);
@@ -1217,7 +1231,7 @@ export async function materializeHumanCoursePart({
           unit.design = applyUnitContextualCalibration(
             designByScope.get(`${scope.kind}\0${scope.ref}`),
             unit.source.configuracao,
-            { existing: existingBySlot.has(slot) }
+            { existing: scope.kind === "study_unit" }
           );
         }
       }

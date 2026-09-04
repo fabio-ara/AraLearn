@@ -454,6 +454,41 @@ test("switch Ethernet materializa e renderiza uma progressão real usando repert
   }
 });
 
+test("fixture mobiliza explicitamente as ideias já estabelecidas em ideiasUtilizadas", async () => {
+  const established = ethernet.acceptance.expectedEstablishedIdeas;
+  const mobilized = new Set(ethernet.units.flatMap((unit) =>
+    rawIdeas(unit, "ideiasUtilizadas")));
+  assert.deepEqual(
+    established.filter((idea) => mobilized.has(idea)),
+    established
+  );
+
+  const requiredByUnit = ethernet.acceptance.requiredEstablishedUsesByUnit;
+  for (const [title, requiredIdeas] of Object.entries(requiredByUnit)) {
+    const unit = ethernet.units.find((candidate) => candidate.conteudo.title === title);
+    assert.ok(unit, `Unidade obrigatória ausente: ${title}`);
+    assert.deepEqual(
+      requiredIdeas.filter((idea) => rawIdeas(unit, "ideiasUtilizadas").includes(idea)),
+      requiredIdeas,
+      `${title} precisa declarar todo conhecimento estabelecido que mobiliza.`
+    );
+  }
+
+  const omission = structuredClone(ethernet);
+  const integrated = omission.units.find(({ conteudo }) =>
+    conteudo.title === "Analise a sequência completa");
+  integrated.aplicacaoPedagogica.ideiasUtilizadas = rawIdeas(
+    integrated,
+    "ideiasUtilizadas"
+  ).filter((idea) => idea !== "endereço MAC");
+  assert.notDeepEqual(
+    requiredByUnit["Analise a sequência completa"].filter((idea) =>
+      rawIdeas(integrated, "ideiasUtilizadas").includes(idea)),
+    requiredByUnit["Analise a sequência completa"],
+    "O teste precisa detectar omissão semântica na unidade específica, não só no lote."
+  );
+});
+
 test("uma ideia só pode ser usada ou retomada depois de existir no repertório do percurso", async () => {
   const withoutPriorMac = structuredClone(ethernet);
   const mac = withoutPriorMac.repertoire.find(({ name }) => name === "endereço MAC");
@@ -570,7 +605,6 @@ test("a aceitação rejeita lacunas evidentes e os dois extremos sem criar heur�
       topics: ["localização"]
     },
     aplicacaoPedagogica: {
-      modo: "expositiva",
       ideiasIntroduzidas: [fragment],
       ideiasUtilizadas: [],
       explicacoes: [{ ideia: fragment, formas: ["plain_definition"] }],

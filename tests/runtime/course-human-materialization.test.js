@@ -177,7 +177,6 @@ function unit(fontes = []) {
       topics: ["DNS"]
     },
     aplicacaoPedagogica: {
-      modo: "expositiva",
       ideiasIntroduzidas: [1],
       ideiasUtilizadas: [],
       explicacoes: [{
@@ -311,7 +310,6 @@ function pedagogicalUnit(position, {
     };
   }
   value.aplicacaoPedagogica = {
-    modo: mode,
     ideiasIntroduzidas: novelty,
     ideiasUtilizadas: used,
     explicacoes: explanations,
@@ -320,47 +318,6 @@ function pedagogicalUnit(position, {
   };
   return value;
 }
-
-test("papel da StudyUnit corresponde ao modo pedagógico declarado", async () => {
-  const practiceAsTheory = pedagogicalUnit(1, { mode: "pratica", practices: [] });
-  practiceAsTheory.conteudo.role = "theory";
-  practiceAsTheory.conteudo.response = null;
-  await assert.rejects(() => materializeHumanCoursePart({
-    adapter: pedagogicalAdapter({ analysisCount: 0 }),
-    principal: PRINCIPAL,
-    course: "Curso de Redes",
-    part: 1,
-    units: [practiceAsTheory]
-  }), (error) => error.code === "human_materialization_mode_mismatch");
-
-  const theoryAsPractice = pedagogicalUnit(1, {
-    novelty: [1],
-    explanations: [{ ideia: 1, formas: ["plain_definition", "mechanism"] }]
-  });
-  theoryAsPractice.conteudo.role = "practice";
-  theoryAsPractice.conteudo.response = {
-    id: "choice-1",
-    package: "aralearn.response.choice",
-    version: "1.0.0",
-    data: {
-      question: "Qual relação foi explicada?",
-      selectionMode: "single",
-      selectionCriterion: "correct",
-      options: [
-        { id: "correct", text: "A relação explicada." },
-        { id: "distractor", text: "Outra relação." }
-      ],
-      answerIds: ["correct"]
-    }
-  };
-  await assert.rejects(() => materializeHumanCoursePart({
-    adapter: pedagogicalAdapter({ analysisCount: 1 }),
-    principal: PRINCIPAL,
-    course: "Curso de Redes",
-    part: 1,
-    units: [theoryAsPractice]
-  }), (error) => error.code === "human_materialization_mode_mismatch");
-});
 
 test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou requestIds públicos", async () => {
   const adapter = adapterFixture();
@@ -440,7 +397,6 @@ test("materializa prática de resposta aberta na primeira tentativa sem resposta
       topics: ["DNS"]
     },
     aplicacaoPedagogica: {
-      modo: "pratica",
       ideiasIntroduzidas: [],
       ideiasUtilizadas: ["DNS associa nomes a endereços."],
       explicacoes: [],
@@ -528,6 +484,132 @@ test("materialização exige uma decisão contextual para valores ainda no padr�
   assert.deepEqual(value.calls, []);
 });
 
+test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisão duplicada", async () => {
+  const expositoryAdapter = adapterFixture();
+  const expository = unit();
+  delete expository.aplicacaoPedagogica.modo;
+  await materializeHumanCoursePart({
+    adapter: expositoryAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [expository]
+  });
+  assert.equal(
+    expositoryAdapter.calls[0].units[0].designApplication.mode,
+    "expository"
+  );
+
+  const practiceAdapter = pedagogicalAdapter({ analysisCount: 0 });
+  const practice = pedagogicalUnit(1, { mode: "pratica" });
+  delete practice.aplicacaoPedagogica.modo;
+  await materializeHumanCoursePart({
+    adapter: practiceAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [practice]
+  });
+  assert.equal(
+    practiceAdapter.calls[0].units[0].designApplication.mode,
+    "practice"
+  );
+
+  const mixedAdapter = pedagogicalAdapter({ analysisCount: 1, withEvidence: true });
+  const mixed = pedagogicalUnit(1, {
+    mode: "mista",
+    novelty: [1],
+    explanations: [{ ideia: 1, formas: ["plain_definition", "mechanism"] }],
+    practices: [{
+      requisito: 1,
+      oportunidade: "prever-com-pista",
+      dimensoesVariadas: ["case_or_data"]
+    }, {
+      requisito: 1,
+      oportunidade: "prever-sem-pista",
+      dimensoesVariadas: ["context"]
+    }]
+  });
+  delete mixed.aplicacaoPedagogica.modo;
+  await materializeHumanCoursePart({
+    adapter: mixedAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [mixed]
+  });
+  assert.equal(
+    mixedAdapter.calls[0].units[0].designApplication.mode,
+    "mixed"
+  );
+});
+
+test("prática realista cria pelo texto um requisito ausente do mapa", async () => {
+  const value = pedagogicalAdapter({ analysisCount: 0, withEvidence: false });
+  const requirement =
+    "Prever a porta de saída e justificar a decisão a partir da tabela MAC.";
+  const practice = pedagogicalUnit(1, {
+    mode: "pratica",
+    practices: [{
+      requisito: requirement,
+      oportunidade: "tabela-vazia-com-pista",
+      dimensoesVariadas: ["case_or_data"]
+    }, {
+      requisito: requirement,
+      oportunidade: "tabela-alterada-sem-pista",
+      dimensoesVariadas: ["context"]
+    }]
+  });
+  delete practice.aplicacaoPedagogica.modo;
+  practice.conteudo.title = "Decida a porta depois que a tabela mudou";
+  practice.conteudo.content[0].data.text =
+    "O switch recebeu um quadro pela porta 1 e sua tabela associa o destino à porta 3.";
+  practice.conteudo.response.data.question =
+    "Por qual porta o quadro deve sair? Justifique usando o estado da tabela.";
+  practice.configuracao = {
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 1,
+      formasDeExplicacao: ["plain_definition", "mechanism"],
+      minimoDePraticasPorRequisito: 2,
+      dimensoesDeVariacaoDaPratica: ["case_or_data", "context"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 100,
+      alvoDePalavrasPorUnidade: 200
+    }
+  };
+
+  await materializeHumanCoursePart({
+    adapter: value,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [practice]
+  });
+
+  assert.equal(value.calls.length, 1);
+  const [createdRequirement] = value.calls[0].planItemUpserts;
+  assert.deepEqual({
+    kind: createdRequirement.kind,
+    statement: createdRequirement.statement,
+    description: createdRequirement.description
+  }, {
+    kind: "evidence_requirement",
+    statement: requirement,
+    description: ""
+  });
+  assert.deepEqual(
+    value.calls[0].targetPlanItems[0].evidenceRequirementIds,
+    [createdRequirement.id]
+  );
+  assert.deepEqual(
+    value.calls[0].units[0].designApplication.practiceApplications.map(
+      ({ evidenceRequirementId }) => evidenceRequirementId
+    ),
+    [createdRequirement.id, createdRequirement.id]
+  );
+});
+
 test("calibração contextual pode variar uma unidade nova sem substituir condição fixa", async () => {
   const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 2 });
   const content = pedagogicalUnit(1, {
@@ -541,8 +623,16 @@ test("calibração contextual pode variar uma unidade nova sem substituir condi�
     }]
   });
   content.configuracao = {
-    parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 },
-    parametrosEditoriais: { alvoDePalavrasPorUnidade: 260 },
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 2,
+      formasDeExplicacao: ["plain_definition", "mechanism"],
+      minimoDePraticasPorRequisito: 2,
+      dimensoesDeVariacaoDaPratica: ["case_or_data", "context"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 100,
+      alvoDePalavrasPorUnidade: 260
+    },
     direcaoEditorial: "Conserve as duas ideias relacionadas no mesmo exemplo em evolução."
   };
 
@@ -860,7 +950,10 @@ test("revisão atômica reutiliza o slot existente e não remove Unit omitida", 
   assert.deepEqual(omission.calls, []);
 });
 
-function unitScopedPedagogicalAdapter({ blockedComponent = false } = {}) {
+function unitScopedPedagogicalAdapter({
+  blockedComponent = false,
+  existingOrigin = "research_condition"
+} = {}) {
   const value = pedagogicalAdapter({ ceiling: 2, analysisCount: 2, withEvidence: true });
   const inheritedDesign = value.getCourseDesign;
   const studyUnitId = "70000000-0000-4000-8000-000000000001";
@@ -890,7 +983,7 @@ function unitScopedPedagogicalAdapter({ blockedComponent = false } = {}) {
       ...parameter,
       effectiveAssignment: {
         value: values.get(parameter.parameterId),
-        origin: "research_condition",
+        origin: existingOrigin,
         sourceScope: { kind: "study_unit", ref: studyUnitId }
       }
     }));
@@ -904,7 +997,7 @@ function unitScopedPedagogicalAdapter({ blockedComponent = false } = {}) {
           : [],
         preferredRefs: []
       },
-      origin: "research_condition",
+      origin: existingOrigin,
       sourceScope: { kind: "study_unit", ref: studyUnitId }
     };
     return design;
@@ -938,22 +1031,80 @@ function unitScopedMaterialization({
   ];
 }
 
-test("unidade existente sela os seis ajustes e a nova herda a microssequência", async () => {
+test("configuração completa preserva condição fixa e sela a calibração da unidade nova", async () => {
   const adapter = unitScopedPedagogicalAdapter();
+  const units = unitScopedMaterialization();
+  units[0].configuracao = {
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 1,
+      formasDeExplicacao: ["contrast"],
+      minimoDePraticasPorRequisito: 3,
+      dimensoesDeVariacaoDaPratica: ["support_level"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 72,
+      alvoDePalavrasPorUnidade: 140
+    }
+  };
+  units[1].configuracao = {
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 2,
+      formasDeExplicacao: ["plain_definition", "mechanism"],
+      minimoDePraticasPorRequisito: 2,
+      dimensoesDeVariacaoDaPratica: ["case_or_data", "context"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 100,
+      alvoDePalavrasPorUnidade: 200
+    }
+  };
   await materializeHumanCoursePart({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
     part: 1,
-    units: unitScopedMaterialization()
+    units
   });
   const [existing, created] = adapter.calls[0].units;
   assert.equal(existing.studyUnitId, "70000000-0000-4000-8000-000000000001");
+  assert.equal(existing.designSnapshot.parameters.every(({ origin }) =>
+    origin === "research_condition"), true);
   assert.equal(existing.designSnapshot.parameters.every(({ sourceScopeKind }) =>
     sourceScopeKind === "study_unit"), true);
   assert.equal(existing.designSnapshot.componentPolicy.sourceScopeKind, "study_unit");
+  assert.equal(created.designSnapshot.parameters.every(({ origin }) =>
+    origin === "automatic"), true);
   assert.equal(created.designSnapshot.parameters.every(({ sourceScopeKind }) =>
-    sourceScopeKind === "didactic_microsequence"), true);
+    sourceScopeKind === "study_unit"), true);
+});
+
+test("revisão de unidade existente reproduz a configuração vigente em vez de prometer recalibração", async () => {
+  const adapter = unitScopedPedagogicalAdapter({ existingOrigin: "automatic" });
+  const units = unitScopedMaterialization();
+  units[0].configuracao = {
+    parametrosPedagogicos: {
+      tetoNovasUnidadesDeAnalise: 2,
+      formasDeExplicacao: ["contrast"],
+      minimoDePraticasPorRequisito: 3,
+      dimensoesDeVariacaoDaPratica: ["support_level"]
+    },
+    parametrosEditoriais: {
+      alvoDePalavrasPorResposta: 72,
+      alvoDePalavrasPorUnidade: 140
+    }
+  };
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units
+  }), (error) => {
+    assert.equal(error.code, "human_materialization_existing_configuration_conflict");
+    assert.doesNotMatch(error.message, /schema|SQL|backend|snapshot/iu);
+    return true;
+  });
+  assert.deepEqual(adapter.calls, []);
 });
 
 test("override da Unit rege teto, formas, prática, variação e componentes na rematerialização", async () => {

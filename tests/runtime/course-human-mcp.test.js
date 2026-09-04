@@ -358,7 +358,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.3");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.4");
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 32_000);
 });
 
@@ -821,6 +821,29 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
               }]
             }]
           },
+          curriculumScopeItems: [{
+            id: "51000000-0000-4000-8000-000000000001",
+            position: 0,
+            statement: "Distinguir processo e socket.",
+            state: "planned",
+            curriculumTargets: [{
+              moduleId: "module-network",
+              lessonId: "lesson-sockets",
+              didacticMicrosequenceIds: [microA]
+            }],
+            developedIn: []
+          }, {
+            id: "51000000-0000-4000-8000-000000000002",
+            position: 1,
+            statement: "Relacionar endereço e ponta da comunicação.",
+            state: "planned",
+            curriculumTargets: [{
+              moduleId: "module-network",
+              lessonId: "lesson-sockets",
+              didacticMicrosequenceIds: [microB]
+            }],
+            developedIn: []
+          }],
           instructionalAnalysisUnits: [{
             id: analysisEstablished,
             position: 0,
@@ -959,6 +982,17 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   assert.equal(output.context.parte.microssequencias.length, 2);
   assert.equal(output.context.parte.microssequencias.every((microsequence) =>
     !Object.hasOwn(microsequence, "funcao")), true);
+  assert.deepEqual(
+    output.context.parte.microssequencias.map(({ coberturaObrigatoria }) =>
+      coberturaObrigatoria),
+    [[{
+      posicao: 1,
+      item: "Distinguir processo e socket."
+    }], [{
+      posicao: 2,
+      item: "Relacionar endereço e ponta da comunicação."
+    }]]
+  );
   assert.deepEqual(output.context.parte.microssequencias.map((microsequence) => ({
     title: microsequence.titulo,
     analysis: microsequence.ideiasPlanejadas,
@@ -1093,8 +1127,19 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       microssequencia: 1,
       posicao: 1,
       conteudo: content,
+      configuracao: {
+        parametrosPedagogicos: {
+          tetoNovasUnidadesDeAnalise: 1,
+          formasDeExplicacao: ["plain_definition"],
+          minimoDePraticasPorRequisito: 1,
+          dimensoesDeVariacaoDaPratica: ["case_or_data"]
+        },
+        parametrosEditoriais: {
+          alvoDePalavrasPorResposta: 90,
+          alvoDePalavrasPorUnidade: 180
+        }
+      },
       aplicacaoPedagogica: {
-        modo: "expositiva",
         ideiasIntroduzidas: [1],
         ideiasUtilizadas: [],
         explicacoes: [{ ideia: 1, formas: ["plain_definition"] }],
@@ -1124,20 +1169,6 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     unidades: [{
       ...materializationArguments.unidades[0],
       conteudo: { ...content, role: "practice", response: null }
-    }]
-  }), false);
-  assert.equal(materialization({
-    ...materializationArguments,
-    unidades: [{
-      ...materializationArguments.unidades[0],
-      aplicacaoPedagogica: {
-        modo: "pratica",
-        ideiasIntroduzidas: [],
-        ideiasUtilizadas: [],
-        explicacoes: [],
-        praticas: [],
-        cobertura: []
-      }
     }]
   }), false);
   assert.equal(corrections({

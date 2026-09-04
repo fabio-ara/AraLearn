@@ -129,7 +129,7 @@ texto, autorização e conflitos são diferentes.
 ## Catálogo humano de Autoria
 
 MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, versão
-2.3.3. O catálogo possui dezessete tarefas: oito leituras e nove escritas.
+2.3.4. O catálogo possui dezessete tarefas: oito leituras e nove escritas.
 
 Cada definição contém:
 
