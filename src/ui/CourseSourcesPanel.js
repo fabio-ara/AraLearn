@@ -10,6 +10,7 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { downloadTextFile } from "./downloadTextFile.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import {
   mergeCourseSourceCatalogPages,
   normalizeCourseSourceChange,
@@ -211,8 +212,7 @@ function ambiguousWriteFailure(error) {
     .test(message) || (status == null && !code && !(error instanceof TypeError));
 }
 
-function errorMessage(error) {
-  if (error instanceof TypeError && error.message) return error.message;
+function errorMessage(error, fallback = "Não foi possível concluir esta operação.") {
   const code = String(error?.code || "").toLowerCase();
   if (code === "course_revision_changed" || Number(error?.status) === 409) {
     return "O curso mudou. Recarregue as fontes antes de salvar.";
@@ -220,7 +220,7 @@ function errorMessage(error) {
   if (/offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)) {
     return "Sem conexão para concluir esta operação.";
   }
-  return String(error?.message || "Não foi possível concluir esta operação.");
+  return publicErrorMessage(error, fallback);
 }
 
 function sourceStatusMarkup(source) {
@@ -1411,7 +1411,7 @@ export function createCourseSourcesPanel({
       return true;
     } catch (error) {
       if (!state.opened || requestEpoch !== epoch) return false;
-      state.catalogFailure = errorMessage(error);
+      state.catalogFailure = errorMessage(error, "Não foi possível carregar as fontes.");
       return false;
     } finally {
       if (state.opened && requestEpoch === epoch) {
@@ -1486,7 +1486,7 @@ export function createCourseSourcesPanel({
       if (!state.opened || requestEpoch !== epoch || state.selectedSourceId !== sourceId) {
         return false;
       }
-      state.annotationsFailure = errorMessage(error);
+      state.annotationsFailure = errorMessage(error, "Não foi possível carregar as observações da fonte.");
       return false;
     } finally {
       if (!preserveExisting && state.opened && requestEpoch === epoch &&
@@ -1547,7 +1547,7 @@ export function createCourseSourcesPanel({
       return page;
     } catch (error) {
       if (!state.opened || requestEpoch !== epoch) return null;
-      if (!target) state.detailFailure = errorMessage(error);
+      if (!target) state.detailFailure = errorMessage(error, "Não foi possível carregar esta fonte.");
       return null;
     } finally {
       if (state.opened && requestEpoch === epoch) {
@@ -1641,7 +1641,7 @@ export function createCourseSourcesPanel({
       return true;
     } catch (error) {
       if (!state.opened || requestEpoch !== epoch) return false;
-      state.targetFailure = errorMessage(error);
+      state.targetFailure = errorMessage(error, "Não foi possível carregar as fontes deste item.");
       return false;
     } finally {
       if (state.opened && requestEpoch === epoch) {

@@ -1684,20 +1684,20 @@ export function normalizeCourseAuthoringOutline(value, {
       }));
       lessonValue.topics.forEach((topicValue, topicPosition) => {
         if (!isPlainObject(topicValue)) {
-          fail("invalid_course_outline", "Um Tópico da estrutura é inválido.");
+          fail("invalid_course_outline", "Um tópico da estrutura é inválido.");
         }
         topicCount += 1;
         const topicId = outlineIdentity(topicValue.id, "A identidade do tópico");
         const topicKey = `topic\u0000${topicId}`;
-        if (identities.has(topicKey)) fail("invalid_course_outline", "A estrutura repete um Tópico.");
+        if (identities.has(topicKey)) fail("invalid_course_outline", "A estrutura repete um tópico.");
         identities.add(topicKey);
         rows.push(Object.freeze({
           kind: "topic",
           entityId: topicId,
           label: "Tópico",
           icon: "tags",
-          title: outlineRequiredText(topicValue.title, "O título do Tópico"),
-          summary: outlineOptionalText(topicValue.summary, "O resumo do Tópico", 4_000),
+          title: outlineRequiredText(topicValue.title, "O título do tópico"),
+          summary: outlineOptionalText(topicValue.summary, "O resumo do tópico", 4_000),
           context: `${moduleTitle} · ${lessonTitle}`,
           entityPath: null,
           position: topicPosition

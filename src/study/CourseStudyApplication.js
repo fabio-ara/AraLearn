@@ -12,6 +12,7 @@ import {
 } from "../ui/renderStudyUnitObservationSheet.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
+import { publicErrorMessage } from "../ui/publicErrorMessage.js";
 import {
   activateManualStudyUnitEdit,
   applyManualStudyUnitEdit,
@@ -905,9 +906,7 @@ export function createCourseStudyApplication({
       render({ preserveFocus: false });
       return true;
     } catch (error) {
-      state.homeError = error instanceof Error
-        ? error.message
-        : "Não foi possível retirar a marca de Rever.";
+      state.homeError = publicErrorMessage(error, "Não foi possível retirar a marca de Rever.");
       queueStudyFocus("[data-action='remove-review-item']", {
         "data-course-id": reference.courseId,
         "data-module-id": reference.moduleId,
@@ -931,9 +930,7 @@ export function createCourseStudyApplication({
       render({ preserveFocus: false });
       return true;
     } catch (error) {
-      state.homeError = error instanceof Error
-        ? error.message
-        : "Não foi possível restaurar a marca de Rever.";
+      state.homeError = publicErrorMessage(error, "Não foi possível restaurar a marca de Rever.");
       queueStudyFocus("[data-action='undo-review-removal']");
       render({ preserveFocus: false });
       return false;
@@ -1660,9 +1657,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.homeLoadingCourseId = "";
-      state.homeError = error instanceof Error
-        ? error.message
-        : "Não foi possível concluir a ação deste curso.";
+      state.homeError = publicErrorMessage(error, "Não foi possível concluir a ação deste curso.");
       queueStudyFocus("[data-action='course-lifecycle-menu']", {
         "data-course-id": courseId
       });
@@ -1831,9 +1826,10 @@ export function createCourseStudyApplication({
         scope
       });
     } catch (error) {
-      state.structuralError = error instanceof Error
-        ? error.message
-        : "A edição não satisfaz o formato deste curso.";
+      state.structuralError = publicErrorMessage(
+        error,
+        "A edição não satisfaz o formato deste curso."
+      );
       queueStudyFocus("[data-action='save-study-structure']");
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -1885,9 +1881,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.structuralSaving = false;
-      state.structuralError = error instanceof Error
-        ? error.message
-        : "Não foi possível salvar a edição.";
+      state.structuralError = publicErrorMessage(error, "Não foi possível salvar a edição.");
       queueStudyFocus("[data-action='save-study-structure']");
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2077,9 +2071,7 @@ export function createCourseStudyApplication({
     } catch (error) {
       state.assistanceActiveScope = "";
       state.assistanceSelection = null;
-      state.manualError = error instanceof Error
-        ? error.message
-        : "A Assistência por IA não está disponível.";
+      state.manualError = publicErrorMessage(error, "A assistência por IA não está disponível.");
       render();
       return false;
     }
@@ -2383,7 +2375,7 @@ export function createCourseStudyApplication({
     try {
       edited = applyManualStudyUnitEdit(current, state.manualTargetId, state.manualDraft);
     } catch (error) {
-      state.manualError = error instanceof Error ? error.message : "A edição é inválida.";
+      state.manualError = publicErrorMessage(error, "A edição é inválida.");
       state.manualRestoreFocus = true;
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2517,7 +2509,7 @@ export function createCourseStudyApplication({
       state.manualDiscardArmed = false;
       state.manualError = ambiguous
         ? "Não foi possível confirmar se a edição foi salva. Tente Salvar novamente para consultar o mesmo pedido."
-        : error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+        : publicErrorMessage(error, "Não foi possível salvar a edição.");
       state.manualRestoreFocus = true;
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2609,9 +2601,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.assistanceSaving = false;
-      state.assistanceError = error instanceof Error
-        ? error.message
-        : "Não foi possível salvar a proposta.";
+      state.assistanceError = publicErrorMessage(error, "Não foi possível salvar a proposta.");
       render({ preserveFocus: false, captureDraft: false });
       return false;
     }
@@ -2907,9 +2897,7 @@ export function createCourseStudyApplication({
     } catch (error) {
       if (epoch !== observationsEpoch) return false;
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
-      state.observationError = error instanceof Error
-        ? error.message
-        : "Não foi possível atualizar as observações.";
+      state.observationError = publicErrorMessage(error, "Não foi possível atualizar as observações.");
       return false;
     } finally {
       if (epoch === observationsEpoch) {
@@ -2965,7 +2953,7 @@ export function createCourseStudyApplication({
       state.observationStale = false;
     } catch (error) {
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
-      state.observationError = error instanceof Error ? error.message : "Não foi possível salvar.";
+      state.observationError = publicErrorMessage(error, "Não foi possível salvar.");
     } finally {
       state.observationSaving = false;
       render();
@@ -2988,9 +2976,7 @@ export function createCourseStudyApplication({
       }
     } catch (error) {
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
-      state.observationError = error instanceof Error
-        ? error.message
-        : "Não foi possível retirar a observação.";
+      state.observationError = publicErrorMessage(error, "Não foi possível retirar a observação.");
     } finally {
       state.observationSaving = false;
       render();
@@ -3006,9 +2992,10 @@ export function createCourseStudyApplication({
     } catch (error) {
       state.observationItems = repository.loadAnnotationsForPath?.(reference) || [];
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return;
-      state.observationError = error instanceof Error
-        ? error.message
-        : "Não foi possível descartar a alteração com falha.";
+      state.observationError = publicErrorMessage(
+        error,
+        "Não foi possível descartar a alteração com falha."
+      );
     }
     render();
   }

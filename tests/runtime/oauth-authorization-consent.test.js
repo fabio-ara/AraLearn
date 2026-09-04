@@ -63,6 +63,30 @@ test("consentimento incompatível falha antes de oferecer ou enviar aprovação"
   assert.doesNotMatch(root.innerHTML, /data-oauth-decision/u);
 });
 
+test("consentimento não expõe transporte ou serviço em uma falha", async () => {
+  const errorNode = { textContent: "" };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      return selector === "[data-oauth-consent-error]" ? errorNode : null;
+    }
+  };
+  const result = await renderOAuthAuthorizationConsent({
+    root,
+    authorizationId: "authorization-123",
+    authClient: {
+      async getOAuthAuthorizationDetails() {
+        throw new Error("Supabase respondeu com HTTP 500.");
+      },
+      async decideOAuthAuthorization() {}
+    }
+  });
+
+  assert.equal(result.redirected, false);
+  assert.equal(errorNode.textContent, "Não foi possível revisar a conexão.");
+  assert.doesNotMatch(errorNode.textContent, /Supabase|HTTP/iu);
+});
+
 test("consentimento explicita a autoridade de autoria efetivamente concedida", () => {
   assert.deepEqual(OAUTH_AUTHORING_PERMISSION_LABELS, [
     "Ler seus cursos, planejamento e conteúdo na autoria",

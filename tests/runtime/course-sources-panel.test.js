@@ -327,6 +327,22 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+test("falha de contrato das fontes permanece no nível humano da operação", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture();
+  controller.loadCourseSources = async () => ({});
+  const panel = createCourseSourcesPanel({
+    root,
+    controller,
+    courseId: COURSE_ID,
+    courseRevision: 5
+  });
+
+  assert.equal(await panel.open(), false);
+  assert.match(root.innerHTML, /Não foi possível carregar as fontes\./u);
+  assert.doesNotMatch(root.innerHTML, /contract|courseRevision|requestId|UUID|cursor/iu);
+});
+
 test("catálogo e detalhe mostram somente Fonte, Âncoras e PDF correntes", async () => {
   const current = source(1, { attachments: [attachment()] });
   const root = new FakeRoot();

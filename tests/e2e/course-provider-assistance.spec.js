@@ -77,9 +77,11 @@ async function installHarness(page, { delayed = false, configured = true } = {})
         if (!generation && globalThis.__rejectNextDiscussion) {
           globalThis.__rejectNextDiscussion = false;
           return {
-            ok: false,
-            status: 400,
-            async json() { return { error: { message: "Falha simulada" } }; }
+            ok: true,
+            status: 200,
+            async json() {
+              return { output: [{ content: [{ type: "output_text", text: "resposta sem estrutura" }] }] };
+            }
           };
         }
         if (generation) return response({ message: "A explicação foi revisada.", candidate });
@@ -186,6 +188,8 @@ test("minichat refina a proposta e só gera e aplica ao rascunho após aceite", 
   await dialog.getByLabel("Mensagem").fill("Dê outra justificativa.");
   await dialog.getByRole("button", { name: "Enviar" }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByRole("alert")).toHaveText("Não foi possível concluir a conversa.");
+  await expect(dialog.getByRole("alert")).not.toContainText(/formato estruturado|endpoint/iu);
   await expect(dialog.getByText("Reescrever a explicação e preservar", { exact: false })).toBeVisible();
   await expect(page.locator("#preview")).toContainText("conjunção");
 

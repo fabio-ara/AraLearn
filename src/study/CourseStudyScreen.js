@@ -370,7 +370,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
       ? renderStructuralEditor(structuralEditor, {
           titleLabel: "Título",
           goalLabel: "Objetivo",
-          childrenLabel: "Ordem das Lições"
+          childrenLabel: "Ordem das lições"
         })
       : summary(moduleValue.title || "Módulo", moduleValue.guide?.goal || "")) +
     '<h2 class="section-heading">Lições</h2><section class="navigation-list">' +

@@ -475,7 +475,7 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
     /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/a>/u
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
-  assert.match(root.innerHTML, /aria-label="Fontes e Âncoras de Unidade 1" title="Fontes e Âncoras"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Fontes e âncoras de Unidade 1" title="Fontes e âncoras"><svg/u);
   assert.match(root.innerHTML, /aria-label="Revisar Unidade 1" title="Revisar"><svg/u);
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
   assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
@@ -1964,7 +1964,8 @@ test("Inspeção recusa cursor repetido sem renderizar inbox parcial", async () 
   });
 
   assert.equal(reads, 2);
-  assert.match(root.innerHTML, /não avançou de forma válida/u);
+  assert.match(root.innerHTML, /Não foi possível carregar as observações\./u);
+  assert.doesNotMatch(root.innerHTML, /paginação|cursor/iu);
   assert.doesNotMatch(root.innerHTML, /Observação da página 1\./u);
   sequence.destroy();
 });

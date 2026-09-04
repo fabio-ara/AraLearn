@@ -2775,7 +2775,7 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   await expect(details).not.toHaveAttribute("open", "");
   await expect(detailsTrigger).toBeFocused();
   const sourcesAction = page.getByRole("button", {
-    name: "Fontes e Âncoras de Exemplo guiado com diagrama",
+    name: "Fontes e âncoras de Exemplo guiado com diagrama",
     exact: true
   });
   await sourcesAction.click();

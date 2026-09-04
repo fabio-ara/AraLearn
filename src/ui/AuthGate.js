@@ -1,4 +1,5 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 
 function iconButton({ action, icon, label, type = "button", primary = false }) {
   const actionAttribute = action ? ` ${action}` : "";
@@ -59,15 +60,17 @@ function formMarkup(mode) {
 }
 
 function errorMessage(error) {
-  return error instanceof Error ? error.message : String(error || "Não foi possível concluir a operação.");
+  return publicErrorMessage(error, "Não foi possível concluir a operação.");
 }
 
 export function renderAuthGate({ root, authClient = null, configured = true, onAuthenticated = () => {} } = {}) {
   if (!root) throw new TypeError("Elemento raiz da autenticação ausente.");
   let mode = authClient?.recoveryMode ? "recovery-password" : "login";
   let status = configured
-    ? authClient?.redirectError || ""
-    : "A configuração pública do Supabase está ausente neste ambiente.";
+    ? authClient?.redirectError
+      ? publicErrorMessage(authClient.redirectError, "Não foi possível confirmar o acesso.")
+      : ""
+    : "A configuração de acesso está ausente neste ambiente.";
   let statusKind = status ? "error" : "";
 
   const render = () => {

@@ -1,4 +1,5 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 
 const SCOPE_LABELS = Object.freeze({
   offline_access: "Manter a conexão ativa até você revogá-la",
@@ -103,7 +104,7 @@ function renderFailure(root, error) {
     </main>
   `;
   root.querySelector("[data-oauth-consent-error]").textContent =
-    error instanceof Error ? error.message : String(error);
+    publicErrorMessage(error, "Não foi possível revisar a conexão.");
 }
 
 export async function renderOAuthAuthorizationConsent({
@@ -221,7 +222,7 @@ export async function renderOAuthAuthorizationConsent({
       const result = await decideAuthorization(requestedId, action);
       redirectToOAuthClient(result?.redirect_url, locationValue);
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : String(error);
+      status.textContent = publicErrorMessage(error, "Não foi possível concluir esta decisão.");
       status.dataset.kind = "error";
       buttons.forEach((button) => { button.disabled = false; });
     }

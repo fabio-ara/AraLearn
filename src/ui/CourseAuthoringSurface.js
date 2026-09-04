@@ -7,6 +7,7 @@ import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import { createCourseAnalyticsPanel } from "./CourseAnalyticsPanel.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import {
   buildCourseAuthoringAnalyticsRoute,
   buildCourseAuthoringRoute,
@@ -846,7 +847,9 @@ function designScopeRoute(courseId, scope) {
 }
 
 function writeFailureMessage(error) {
-  if (error instanceof TypeError && error.message) return error.message;
+  if (error instanceof TypeError) {
+    return publicErrorMessage(error, "Não foi possível salvar a alteração.");
+  }
   return classifyCourseAuthoringError(error).message;
 }
 

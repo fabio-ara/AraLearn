@@ -3,6 +3,7 @@ import {
   normalizeCourseAuthoringAnalyticsQuery
 } from "../domain/courseAuthoringAnalytics.js";
 import { downloadTextFile } from "./downloadTextFile.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const ORIGIN_LABELS = Object.freeze({
@@ -70,13 +71,10 @@ function escapeHtml(value) {
 }
 
 function errorText(error) {
-  const message = String(error?.message || "").trim();
-  const exposesInternalLanguage =
-    /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bAnalytics\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
-  if (!message || exposesInternalLanguage.test(message)) {
-    return "Não foi possível carregar os dados de autoria. Tente novamente.";
-  }
-  return message;
+  return publicErrorMessage(
+    error,
+    "Não foi possível carregar os dados de autoria. Tente novamente."
+  );
 }
 
 function formatCount(value) {
