@@ -14,6 +14,7 @@ import {
 } from "../resources/kernel/studyUnitEnvelope.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 import { projectCourseDesignContext } from "../domain/courseDesignContext.js";
+import { validatePackageSchema } from "../resources/kernel/schemaValidation.js";
 
 const SCOPES = new Set(["study_unit", "didactic_microsequence", "lesson"]);
 const MAX_TURNS = 8;
@@ -507,6 +508,15 @@ function strictComponentSchema(schema) {
 }
 
 function normalizeComponentData(value, schema) {
+  for (const keyword of ["oneOf", "anyOf"]) {
+    if (!Array.isArray(schema?.[keyword])) continue;
+    const candidates = schema[keyword].map(branch => normalizeComponentData(value, branch))
+      .filter(candidate => validatePackageSchema(candidate, schema).valid);
+    // Remove only the optional-null placeholders of an unambiguous canonical
+    // shape. Unknown keys, required nulls and conflicting forms still fail.
+    const distinct = new Map(candidates.map(candidate => [JSON.stringify(candidate), candidate]));
+    return distinct.size === 1 ? distinct.values().next().value : clone(value);
+  }
   if (schema?.type === "object" && plainObject(value) && plainObject(schema.properties)) {
     const result = clone(value);
     const required = new Set(list(schema.required));

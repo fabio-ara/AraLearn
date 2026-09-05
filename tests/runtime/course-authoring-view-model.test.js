@@ -519,7 +519,7 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
     "authoring_chat_response_word_target",
     "study_unit_content_word_target"
   ]);
-  assert.equal(design.componentCatalog.options.length, 33);
+  assert.deepEqual(design.componentCatalog.options, COURSE_COMPONENT_CATALOG.options);
   assert.equal(design.parameters[0].effectiveAssignment.origin, "system_default");
   assert.equal(design.guidance.localAssignment.origin, "migration");
   assert.equal(design.guidance.effectiveAssignments.length, 1);
@@ -556,7 +556,7 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
   assert.deepEqual(normalizedMicro.targetPlanItems.instructionalAnalysisUnitIds, [ITEM_ID]);
 });
 
-test("leitura autoral aceita condição fixa com os 33 componentes correntes", () => {
+test("leitura autoral aceita condição fixa com todos os componentes do catálogo corrente", () => {
   const fixture = courseDesignFixture();
   const refs = fixture.componentCatalog.options.map(({ ref }) => ref);
   fixture.componentPolicy.effectiveAssignment = {
@@ -574,7 +574,7 @@ test("leitura autoral aceita condição fixa com os 33 componentes correntes", (
   };
 
   const design = normalizeCourseDesign(fixture);
-  assert.equal(design.componentPolicy.effectiveAssignment.policy.allowedRefs.length, 33);
+  assert.deepEqual(design.componentPolicy.effectiveAssignment.policy.allowedRefs, refs);
   assert.equal(design.componentPolicy.effectiveAssignment.origin, "research_condition");
 });
 

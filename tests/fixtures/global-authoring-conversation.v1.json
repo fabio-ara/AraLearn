@@ -631,9 +631,9 @@
         "curso": "Redes de computadores para iniciantes",
         "metadados": {
           "tipo": "document",
-          "papel": "tecnica_conceitual",
+          "papeisSugeridos": ["tecnica_conceitual"],
           "titulo": "IEEE 802.1D — Bridges and Bridged Networks",
-          "autoria": "IEEE",
+          "autores": [{ "literal": "IEEE" }],
           "dataDePublicacao": "2022",
           "idioma": "en",
           "citacao": "IEEE Standard for Local and Metropolitan Area Networks — Bridges and Bridged Networks.",

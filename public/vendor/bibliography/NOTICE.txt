@@ -13,7 +13,9 @@ the original source. AraLearn does not elect the AGPL option for this component.
 
 Modification by Fabio Eidi Ara / AraLearn, 2026-09-05:
 The original source is enclosed by a local CommonJS exports object and a default
-ESM export. The upstream source bytes remain unchanged. The generated module
+ESM export. Its default debug emitter is suppressed to keep reference data out
+of operational logs; error propagation is preserved. The original upstream file
+remains unchanged. The generated module
 and modifications containing that source are distributed under CPAL-1.0.
 The bibliography output adapter uses a closed output format and exposes text
 runs rather than arbitrary HTML.

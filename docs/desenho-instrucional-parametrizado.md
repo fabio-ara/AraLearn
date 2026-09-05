@@ -8,7 +8,7 @@ científico ou conformidade técnica em prova de aprendizagem.
 
 ## Acesso e organização
 
-Na inspeção do curso, o menu de tarefas abre Parâmetros e Fontes diretamente.
+Na inspeção do curso, o menu de tarefas abre **Parâmetros** e **Fontes** diretamente.
 O ícone da unidade abre os ajustes daquele escopo sem perder a posição da
 inspeção. A folha mantém dimensões e ações estáveis, apresenta um grupo por vez
 e revela a definição, origem e limites ao abrir uma decisão.

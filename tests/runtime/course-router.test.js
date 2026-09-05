@@ -236,8 +236,11 @@ test("observações chegam ao Adapter com query canônica e sem autoridade do cl
   assert.deepEqual(calls[3].value.query.categories, ["reformulation_request"]);
 
   const consideredSourceLinks = [{
+    linkId: "link-source-a",
     sourceId: "source-a",
     relation: "supported_by",
+    roles: ["technical_conceptual"],
+    occurrences: [],
     anchors: [{ anchorId: "anchor-a" }]
   }];
   await executeCourseRoute({
@@ -828,8 +831,11 @@ test("commit de composição exige versão, conteúdo e escopo de escrita", asyn
 
 test("composição contextual encaminha somente versão e origem fechada", async () => {
   const sourceLinks = [{
+    linkId: "link-retired-source",
     sourceId: "fonte retirada",
     relation: "needs_verification",
+    roles: ["technical_conceptual"],
+    occurrences: [],
     anchors: []
   }];
   const body = {
@@ -1229,6 +1235,7 @@ test("perfil próprio e acesso direto atravessam o mesmo contrato do MCP", async
     body: {
       requestId: "request-access-0001",
       handle: "@Pessoa", userId: "20000000-0000-4000-8000-000000000002",
+      canCopy: false,
       confirmed: true
     }
   });
@@ -1258,6 +1265,7 @@ test("perfil próprio e acesso direto atravessam o mesmo contrato do MCP", async
     "read-profile", "update-profile", "list-access", "manage-access", "manage-access"
   ]);
   assert.equal(calls[3][1].handle, "pessoa");
+  assert.equal(calls[3][1].canCopy, false);
   assert.equal(calls[4][1].targetUserId, "20000000-0000-4000-8000-000000000002");
 });
 

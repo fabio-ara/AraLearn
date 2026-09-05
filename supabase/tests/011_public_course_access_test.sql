@@ -45,17 +45,17 @@ select throws_ok($t$select public.search_course_access_people_for_actor_v1('9300
  '93000000-0000-4000-8000-000000000101','a',10)$t$,'22023','Identificador inválido.','prefixo mínimo dois');
 select throws_ok($t$select public.search_course_access_people_for_actor_v1('93000000-0000-4000-8000-000000000001',
  '93000000-0000-4000-8000-000000000101','al',11)$t$,'22023','Limite inválido.','busca limita dez resultados');
-select is(public.manage_course_access_for_actor_v2('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
- 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-first-01')->>'changed','true','grant confirma UUID e handle');
-select is(public.manage_course_access_for_actor_v2('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
- 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-first-01')->>'idempotent','true','grant reproduz receipt sem mutação');
-select throws_ok($t$select public.manage_course_access_for_actor_v2('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
- 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000003',true,'grant-stale-01')$t$,
+select is(public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
+ 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-first-01',false)->>'changed','true','grant confirma UUID e handle');
+select is(public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
+ 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-first-01',false)->>'idempotent','true','grant reproduz receipt sem mutação');
+select throws_ok($t$select public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
+ 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000003',true,'grant-stale-01',false)$t$,
  '40001','Pessoa selecionada mudou; refaça a busca.','handle de outro UUID não concede acesso');
 select is(public.update_person_profile_for_actor_v2('93000000-0000-4000-8000-000000000002','{"handle":"aluno.novo"}')->>'handle','aluno.novo','troca handle preserva UUID');
 select is(public.update_person_profile_for_actor_v2('93000000-0000-4000-8000-000000000003','{"handle":"aluno.dois"}')->>'handle','aluno.dois','identificador livre pode ser reutilizado');
-select throws_ok($t$select public.manage_course_access_for_actor_v2('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
- 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-reused-01')$t$,
+select throws_ok($t$select public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
+ 'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-reused-01',false)$t$,
  '40001','Pessoa selecionada mudou; refaça a busca.','seleção antiga não segue identificador reutilizado');
 select ok(exists(select 1 from public.course_access where course_id='93000000-0000-4000-8000-000000000101' and user_id='93000000-0000-4000-8000-000000000002'),'grant existente sobrevive à troca de handle');
 update private.course_access_grant_rate_limits set search_attempt_count=60 where actor_id='93000000-0000-4000-8000-000000000001';
@@ -137,7 +137,7 @@ select is((select count(*) from public.courses where owner_id='93000000-0000-400
 select is(to_regprocedure('public.commit_personal_course_copy_edit_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)')::text,null::text,'escritor automático foi removido');
 select is(to_regprocedure('public.manage_course_access_for_actor_v1(uuid,uuid,text,text,uuid,boolean,text)')::text,null::text,'grant por e-mail foi removido');
 select ok(not has_table_privilege('anon','private.person_profile_identity_migration_backup','select'),'arquivo de migração não é público');
-select is(public.get_aralearn_runtime_manifest()->>'schemaRevision','20260905071622','manifesto identifica identidade e acesso protegido a avatares');
+select ok(public.get_aralearn_runtime_manifest()->'features' ?& array['person-profile-v2','public-course-study-v1','private-person-avatar-v1'],'manifesto identifica identidade e acesso protegido a avatares');
 select ok(not (public.get_aralearn_runtime_manifest()->'features' ? 'personal-course-copy-edit-v1'),'manifesto não promete escritor retirado');
 select * from finish();
 rollback;

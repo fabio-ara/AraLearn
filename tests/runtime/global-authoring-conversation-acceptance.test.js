@@ -402,7 +402,10 @@ test("a fonte técnica e o repertório acumulado chegam à segunda parte no pape
   assert.match(sourceTurn, /não será tratada como evidência de cobrança/u);
 
   const sourceCall = fixture.toolTrace.find(({ task }) => task === "manter_fonte");
-  assert.equal(sourceCall.arguments.metadados.papel, "tecnica_conceitual");
+  assert.deepEqual(sourceCall.arguments.metadados.papeisSugeridos, ["tecnica_conceitual"]);
+  assert.deepEqual(sourceCall.arguments.metadados.autores, [{ literal: "IEEE" }]);
+  assert.equal(Object.hasOwn(sourceCall.arguments.metadados, "papel"), false);
+  assert.equal(Object.hasOwn(sourceCall.arguments.metadados, "autoria"), false);
   assert.equal(sourceCall.arguments.metadados.verificacao, "nao_verificada");
   assert.equal(Object.hasOwn(sourceCall.arguments, "papelNoCurso"), false);
   assert.equal(fixture.artifacts["parte-2-v2"].sourceUse.role, "tecnica_conceitual");

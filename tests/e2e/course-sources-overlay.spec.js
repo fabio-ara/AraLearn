@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 
-async function mountSources(page, { theme = "light", mode = "catalog", initialAnchorId = null } = {}) {
+async function mountSources(page, { theme = "light", mode = "catalog", initialAnchorId = null, fileAccess = false, retired = false } = {}) {
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   await page.goto("/");
-  await page.evaluate(async ({ theme, mode, initialAnchorId }) => {
+  await page.evaluate(async ({ theme, mode, initialAnchorId, fileAccess, retired }) => {
     document.documentElement.dataset.colorMode = theme;
     document.body.innerHTML = '<div id="app-root"><main class="course-authoring-root"><section class="course-authoring-surface" data-section="sources"><div data-sources-host></div></section></main></div>';
     const { createCourseSourcesPanel } = await import("/src/ui/CourseSourcesPanel.js");
@@ -11,7 +11,7 @@ async function mountSources(page, { theme = "light", mode = "catalog", initialAn
     const courseId = "e3060000-0000-4000-8000-000000000021";
     const targetId = "e3060000-0000-4000-8000-000000000022";
     let revision = 5;
-    const source = { sourceId: "source-overlay", revision: 1, status: "active", kind: "book",
+    const source = { sourceId: "source-overlay", revision: 1, status: retired ? "retired" : "active", kind: "book",
       defaultRoles: ["technical_conceptual"], bibliographic: createEmptyCourseSourceBibliographicMetadata(),
       citationMode: "manual", title: "Fonte sintética: " + "título completo e legível ".repeat(10) + "FIM DO TÍTULO",
       authors: [{ literal: "Autoria sintética" }], publicationDate: "2026", identifier: null,
@@ -26,6 +26,7 @@ async function mountSources(page, { theme = "light", mode = "catalog", initialAn
     window.failNextSourceWrite = false;
     let appliedReceipt = null;
     const controller = {
+      ...(fileAccess ? { async setCourseSourceFileAccess() { throw new Error("Esta prova visual não escreve permissões."); } } : {}),
       async mutateCourseAnchoredAnnotations() { throw new Error("Escritor fora do recorte sintético."); },
       async loadCourseSources(_courseId, options) {
         return { contract: "aralearn.course-sources.v3", bibliographyStyle: "abnt-2025", courseId,
@@ -64,7 +65,101 @@ async function mountSources(page, { theme = "light", mode = "catalog", initialAn
         targetKind: "plan_item", targetId, targetVersion: 3, targetLabel: "Item sintético" } : {}),
       ...(initialAnchorId ? { initialSourceId: source.sourceId, initialAnchorId } : {}) });
     await window.sourcesPanel.open();
-  }, { theme, mode, initialAnchorId });
+  }, { theme, mode, initialAnchorId, fileAccess, retired });
+}
+
+for (const theme of ["light", "dark"]) {
+  test(`Acesso a PDFs usa tokens da área de fontes em 390 ${theme}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mountSources(page, { theme, fileAccess: true });
+    const opener = page.locator('[data-source-action="open-source"]');
+    await opener.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.locator("[data-source-detail-dialog]");
+    await dialog.locator('[data-source-disclosure="files"] > summary').click();
+    const access = dialog.locator(".course-source-file-access");
+    const before = await dialog.boundingBox();
+    await access.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(access).toHaveAttribute("open", "");
+    await expect(access.locator("select")).toBeVisible();
+    await expect(access).toContainText("Uma exceção no PDF prevalece sobre a fonte e o curso.");
+    expect(await access.evaluate(node => node.closest(".course-authoring-section"))).toBeNull();
+    expect(await access.locator("option").evaluateAll(nodes => nodes.map(node => node.value))).toEqual(["inherit", "restricted", "available"]);
+    const colors = await access.evaluate(node => {
+      const probe = document.createElement("span");
+      probe.style.borderColor = "var(--border-default)";
+      probe.style.color = "var(--text-secondary)";
+      probe.style.backgroundColor = "var(--surface-raised)";
+      probe.style.outlineColor = "var(--focus-ring)";
+      node.append(probe);
+      const expected = getComputedStyle(probe);
+      const controls = [...node.querySelectorAll("select, button")].map(control => {
+        const style = getComputedStyle(control);
+        const box = control.getBoundingClientRect();
+        return { y: box.y, bottom: box.bottom, width: box.width, height: box.height, radius: parseFloat(style.borderRadius),
+          fontSize: parseFloat(style.fontSize), fontWeight: Number(style.fontWeight), color: style.color, background: style.backgroundColor };
+      });
+      const summary = getComputedStyle(node.querySelector("summary"));
+      const result = { border: getComputedStyle(node).borderTopColor, text: getComputedStyle(node.querySelector("p")).color,
+        expectedBorder: expected.borderTopColor, expectedText: expected.color, expectedSurface: expected.backgroundColor,
+        focusColor: summary.outlineColor, focusWidth: parseFloat(summary.outlineWidth), expectedFocus: expected.outlineColor, controls,
+        support: [...node.querySelectorAll("summary, label, p, small")].map(element => {
+          const style = getComputedStyle(element);
+          return { fontSize: parseFloat(style.fontSize), fontWeight: Number(style.fontWeight) };
+        }) };
+      probe.remove();
+      return result;
+    });
+    expect(colors.border).toBe(colors.expectedBorder);
+    expect(colors.text).toBe(colors.expectedText);
+    expect(colors.focusColor).toBe(colors.expectedFocus);
+    expect(colors.focusWidth).toBeGreaterThanOrEqual(2);
+    expect(colors.controls[0].background).toBe(colors.expectedSurface);
+    expect(Math.abs(colors.controls[0].y - colors.controls[1].y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(colors.controls[0].bottom - colors.controls[1].bottom)).toBeLessThanOrEqual(1);
+    for (const support of colors.support) {
+      expect(support.fontSize).toBe(13);
+      expect(support.fontWeight).toBeLessThanOrEqual(600);
+    }
+    for (const control of colors.controls) {
+      expect(control.width).toBeGreaterThanOrEqual(44);
+      expect(control.height).toBeGreaterThanOrEqual(44);
+      expect(control.radius).toBeGreaterThanOrEqual(10);
+      expect(control.fontSize).toBe(13);
+      expect(control.fontWeight).toBeLessThanOrEqual(600);
+      expect(control.color).not.toBe(control.background);
+    }
+    const after = await dialog.boundingBox();
+    for (const key of ["x", "y", "width", "height"]) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+    const back = await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).boundingBox();
+    expect(back.width).toBeGreaterThanOrEqual(44);
+    expect(back.height).toBeGreaterThanOrEqual(44);
+    for (const control of [access.locator("select"), access.getByRole("button", { name: "Aplicar", exact: true })]) {
+      await page.keyboard.press("Tab");
+      await expect(control).toBeFocused();
+      expect(await control.evaluate(node => getComputedStyle(node).outlineColor)).toBe(colors.expectedFocus);
+    }
+    await access.locator("summary").focus();
+    await access.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`source-file-tokens-390-${theme}.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await page.keyboard.press("Escape");
+    await expect(opener).toBeFocused();
+    expect(await page.evaluate(() => window.sourceRequests)).toEqual([]);
+    await mountSources(page, { theme, fileAccess: true, retired: true });
+    await page.locator('[data-source-action="open-source"]').click();
+    await dialog.locator('[data-source-disclosure="files"] > summary').click();
+    await access.locator("summary").click();
+    for (const control of [access.locator("select"), access.getByRole("button", { name: "Aplicar", exact: true })]) {
+      await expect(control).toBeDisabled();
+      const box = await control.boundingBox();
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(await control.evaluate(node => getComputedStyle(node).cursor)).toBe("not-allowed");
+      expect(await control.evaluate(node => getComputedStyle(node).opacity)).toBe("1");
+    }
+  });
 }
 
 for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {

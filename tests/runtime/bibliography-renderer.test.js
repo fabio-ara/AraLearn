@@ -10,6 +10,15 @@ const corpus = JSON.parse(await readFile(new URL("../fixtures/bibliography/corpu
 const styles = ["apa7", "abnt-2025"];
 const code = (expected) => (error) => error?.code === expected;
 
+test("diagnósticos bibliográficos não enviam conteúdo ao console e erros continuam explícitos", async (t) => {
+  const { default: engine } = await import("../../src/bibliography/vendor/citeproc.generated.js");
+  for (const method of ["log", "info", "warn", "error", "debug", "trace"]) {
+    t.mock.method(console, method, () => assert.fail("Conteúdo bibliográfico chegou ao console."));
+  }
+  engine.debug("referência sintética que deve permanecer local");
+  assert.throws(() => engine.error("falha sintética"), /citeproc-js error: falha sintética/u);
+});
+
 test("motor e estilos correspondem aos fontes e hashes fixados; alteração do fonte recusa geração", async () => {
   for (const [file, expected] of await bibliographyVendorOutputs()) {
     assert.equal(await readFile(new URL(`../../${file}`, import.meta.url), "utf8"), expected, file);

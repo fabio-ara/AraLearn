@@ -318,7 +318,7 @@ test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", a
     javascriptRuntimeMetrics("src/resources"),
     javascriptRuntimeMetrics("supabase/functions/_shared/aralearn/runtime/resources")
   ]);
-  assert.equal(COURSE_HUMAN_TASKS.length, 24);
+  assert.equal(COURSE_HUMAN_TASKS.length, 27);
   assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 48_000);
   assert.deepEqual(runtime.files, source.files);
   assert.ok(runtime.bytes <= 640 * 1024);

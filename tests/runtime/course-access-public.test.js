@@ -89,9 +89,9 @@ test("busca limita prefixo e grant confirma UUID com handle sem campo e-mail", a
       items: [], rateLimited: false } });
   }));
   await client.searchCourseAccessPeople(COURSE, { query: " @AB.", limit: 10 });
-  await client.grantCourseAccess({ courseId: COURSE, userId: PERSON, handle: "@Abc", confirmed: true, requestId: REQUEST });
+  await client.grantCourseAccess({ courseId: COURSE, userId: PERSON, handle: "@Abc", canCopy: false, confirmed: true, requestId: REQUEST });
   assert.equal(calls[0].url.searchParams.get("query"), "ab.");
-  assert.deepEqual(calls[1].body, { userId: PERSON, handle: "abc", confirmed: true, requestId: REQUEST });
+  assert.deepEqual(calls[1].body, { userId: PERSON, handle: "abc", canCopy: false, confirmed: true, requestId: REQUEST });
   await assert.rejects(client.searchCourseAccessPeople(COURSE, { query: "a" }), TypeError);
   await assert.rejects(client.searchCourseAccessPeople(COURSE, { query: "ab", limit: 11 }), TypeError);
   assert.throws(() => client.grantCourseAccess({ courseId: COURSE, handle: "abc", confirmed: true }), TypeError);

@@ -47,9 +47,9 @@ select is((select count(*) from storage.objects where bucket_id='person-avatars'
  name='95000000-0000-4000-8000-000000000002/95000000-0000-4000-8000-000000000022.png'),0::bigint,'busca não abre leitura Storage genérica');
 reset role;
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
-select is(public.manage_course_access_for_actor_v2('95000000-0000-4000-8000-000000000001',
+select is(public.manage_course_access_for_actor_v3('95000000-0000-4000-8000-000000000001',
  '95000000-0000-4000-8000-000000000101','grant_access','avatar.leitor',
- '95000000-0000-4000-8000-000000000002',true,'avatar-grant-01')->>'changed','true','grant estabelece relação por UUID confirmado');
+ '95000000-0000-4000-8000-000000000002',true,'avatar-grant-01',false)->>'changed','true','grant estabelece relação por UUID confirmado');
 select set_config('request.jwt.claims','{"sub":"95000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"95000000-0000-4000-8000-000000000011"}',true);
 set local role authenticated;
 select is((select count(*) from storage.objects where bucket_id='person-avatars' and

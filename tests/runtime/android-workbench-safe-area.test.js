@@ -40,7 +40,10 @@ test("diagramas sistêmicos oferecem pan e pinça no card e na exploração Andr
   assert.doesNotMatch(document, /script-src[^;]*'unsafe-eval'/u);
   assert.doesNotMatch(renderer, /package-flow-tree|package-flow-node-card/u);
   assert.match(renderer, /data-resource-scroll-frame="diagram"/u);
-  assert.match(styles, /\.package-flowchart\s*\{[\s\S]*?max-height:\s*min\(48dvh, 430px\);[\s\S]*?overflow:\s*auto;[\s\S]*?overscroll-behavior-block:\s*auto;[\s\S]*?touch-action:\s*pan-x pan-y;/u);
+  assert.match(styles, /\.package-flow-canvas\s*\{[^}]*height:\s*100%;[^}]*overflow:\s*auto;[^}]*overscroll-behavior:\s*contain;[^}]*touch-action:\s*none;/u);
+  assert.match(styles, /\.package-flowchart \.package-diagram-frame\s*\{[^}]*height:\s*clamp\(300px, 48dvh, 460px\);/u);
+  assert.match(styles, /\.package-flowchart \.package-diagram-modal\[open\] \.package-diagram-frame\s*\{[^}]*height:\s*100%;/u);
+  assert.match(styles, /\.package-diagram-toolbar button\s*\{[^}]*width:\s*var\(--tap\);[^}]*height:\s*var\(--tap\);/u);
   assert.match(styles, /\.package-diagram-frame\s*\{[\s\S]*?grid-template-rows:\s*calc\(var\(--tap\) \+ 12px\) minmax\(0, 1fr\);[\s\S]*?height:\s*clamp\(220px, 34dvh, 300px\);[\s\S]*?overflow:\s*hidden;/u);
   assert.match(styles, /\.package-system-diagram-canvas\s*\{[\s\S]*?height:\s*100%;[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*none;/u);
   assert.match(styles, /\.package-system-diagram-canvas\[data-diagram-viewport-mode="explore"\]\s*\{[\s\S]*?overflow:\s*auto;[\s\S]*?touch-action:\s*none;/u);

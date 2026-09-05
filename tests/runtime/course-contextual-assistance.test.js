@@ -279,7 +279,8 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
     .microsequences[0].studyUnits[0].content[0].data.text, valid.content[0].data.text);
   assert.equal(requests.length, 2);
   assert.match(requests[1].body.input, /repair/u);
-  assert.match(requests[1].body.input, /curto demais/iu);
+  assert.match(requests[1].body.input, /exatamente uma forma/iu);
+  assert.equal(JSON.parse(requests[1].body.input).repair.rejectedCandidate.content[0].data.text, "");
   const generationPrompt = JSON.parse(requests[0].body.input);
   assert.ok(generationPrompt.exactComponentContracts.every((item) =>
     !Object.hasOwn(item, "schema")
@@ -288,6 +289,20 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
     ["Reescrever a explicação em linguagem direta."]);
   assert.deepEqual(currentStudyUnit(), fixture.courses[0].modules[0]
     .lessons[0].microsequences[0].studyUnits[0]);
+});
+
+test("normalização de opcionais não aceita prosa nula, ramo rich incompleto nem campo desconhecido", async () => {
+  for (const data of [{ text: null }, { text: "Texto.", format: "rich", blocks: [] }, { text: "Texto.", unknown: null }]) {
+    const candidate = validChangedStudyUnit();
+    candidate.content[0].data = data;
+    const before = structuredClone(fixture);
+    await assert.rejects(prepareCourseAssistanceProposal({ project: fixture, selection,
+      confirmedProposal: { summary: "Revisar explicação.", changes: ["Reescrever somente a explicação."],
+        scope: "study_unit", componentNeeds: [{ query: "explicação em prosa", slot: "content" }] },
+      providerConfig, runtimeConfig, fetchImpl: sequenceFetch([{ message: "Composição inválida.", candidate }])
+    }), error => error.code === "assistance_candidate_invalid" && error.validationErrors.length > 0);
+    assert.deepEqual(fixture, before);
+  }
 });
 
 test("três composições inválidas preservam o projeto e nunca produzem prévia quebrada", async () => {

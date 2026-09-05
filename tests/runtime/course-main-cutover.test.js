@@ -260,18 +260,17 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     "Um upload ambíguo precisa ser reconciliado antes de qualquer novo envio."
   );
   for (const continuityContract of [
-    "await editorApp?.replaceProject(nextProject)",
+    "await editorApp?.replaceProject(nextProject, { explicit })",
     "authoringSurface?.opened",
     "authoringSurface.refresh()"
   ]) {
-    assert.match(
-      mainSource,
-      new RegExp(continuityContract.replace(/[?.()]/gu, "\\$&"), "u"),
+    assert.ok(
+      mainSource.includes(continuityContract),
       `A continuidade entre chat, Autoria e Estudo perdeu ${continuityContract}.`
     );
   }
   assert.equal(
-    (mainSource.match(/refreshVisibleApplication\(\)/gu) || []).length >= 2,
+    (mainSource.match(/refreshOnForeground\(\)/gu) || []).length >= 2,
     true,
     "Retorno ao aplicativo e reconexão devem atualizar a superfície que está visível."
   );
@@ -307,13 +306,18 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /const scheduleVisibleApplicationRefresh[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?refreshVisibleApplication\(\)/u,
+    /const scheduleVisibleApplicationRefresh[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?refreshOnForeground\(\)/u,
     "A atualização de retorno deve ser agrupada sem perder a releitura da área visível."
   );
   assert.match(
     mainSource,
-    /addEventListener\("online"[\s\S]*?void refreshVisibleApplication\(\)/u,
+    /addEventListener\("online"[\s\S]*?void refreshOnForeground\(\)/u,
     "A reconexão deve buscar alterações pessoais remotas."
+  );
+  assert.match(
+    mainSource,
+    /const refreshOnForeground[\s\S]*?await checkStudyAccess\(\);[\s\S]*?if \(synchronizationPreference\.get\(\) === "manual"\) return;[\s\S]*?return refreshVisibleApplication\(\)/u,
+    "Retorno e reconexão verificam acesso mesmo em modo manual, sem sincronizar o Estudo automaticamente."
   );
   assert.doesNotMatch(
     mainSource,
@@ -324,6 +328,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     mainSource,
     /refreshStudy[\s\S]*?resumePendingManualEdit[\s\S]*?refreshCourses/u,
     "A reconexão deve inspecionar o rascunho preservado antes da atualização comum."
+  );
+  assert.doesNotMatch(
+    mainSource,
+    /querySelector\("\.study-runtime-status-popover"\)\?\.showPopover/u,
+    "Um conflito assinala a nuvem; a explicação só deve abrir por ação da pessoa."
   );
   assert.match(
     mainSource,

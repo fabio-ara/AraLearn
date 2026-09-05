@@ -28,7 +28,7 @@ const EVIDENCE = "30000000-0000-4000-8000-000000000001";
 
 
 test("catálogo v1.2 reúne definições tipadas com metadados para todos os consumidores", () => {
-  assert.equal(COURSE_DESIGN_PARAMETER_CATALOG_VERSION, "1.2.0");
+  assert.equal(COURSE_DESIGN_PARAMETER_CATALOG_VERSION, "1.2.1");
   assert.deepEqual(
     COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultStatus }) => [id, defaultStatus]),
     [

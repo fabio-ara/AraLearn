@@ -1182,6 +1182,7 @@ test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   await client.grantCourseAccess({
     courseId: COURSE_ID,
     handle: "@Pessoa", userId: USER_ID,
+    canCopy: false,
     confirmed: true,
     requestId: AVATAR_ID
   });
@@ -1201,6 +1202,7 @@ test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   ]);
   assert.deepEqual(calls.map(({ method }) => method), ["GET", "PATCH", "GET", "POST", "DELETE"]);
   assert.equal(calls[3].body.handle, "pessoa");
+  assert.equal(calls[3].body.canCopy, false);
   assert.equal(calls[3].body.confirmed, true);
   assert.equal(calls[4].body.confirmed, true);
   assert.throws(

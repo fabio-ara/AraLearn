@@ -1718,7 +1718,7 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     childLimit: 16,
     childCursor: null
   });
-  assert.equal(read.componentCatalog.options.length, 33);
+  assert.deepEqual(read.componentCatalog.options, COURSE_COMPONENT_CATALOG.options);
   assert.equal(Object.hasOwn(read, "deepLink"), false);
 
   const fixedRead = courseDesignRead();
@@ -1742,7 +1742,7 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     scopeKind: "course",
     scopeRef: COURSE_ID
   });
-  assert.equal(fixed.componentPolicy.effectiveAssignment.policy.allowedRefs.length, 33);
+  assert.deepEqual(fixed.componentPolicy.effectiveAssignment.policy.allowedRefs, fixedRefs);
   assert.equal(fixed.componentPolicy.effectiveAssignment.origin, "research_condition");
 
   const changed = await value.applyCourseDesignCommand({

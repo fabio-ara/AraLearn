@@ -1817,6 +1817,7 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
   assert.deepEqual(calls[1], calls[0]);
   assert.equal(confirmations.size, 1);
   assert.match(root.innerHTML, /Parâmetro salvo neste escopo/u);
+  designAction(root, "edit-design-parameter", { parameterId: "new_analysis_unit_ceiling_per_expository_study_unit" });
   assert.match(root.innerHTML, /value="4"/u);
 });
 
@@ -2572,7 +2573,9 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
     windowValue: new FakeWindow()
   });
   await offlineSurface.open();
-  assert.match(offlineRoot.innerHTML, /Exibindo o que já está neste dispositivo/u);
+  assert.match(offlineRoot.innerHTML, /Exibindo os cursos disponíveis neste dispositivo/u);
+  assert.match(offlineRoot.innerHTML, /data-runtime-state="offline"/u);
+  assert.match(offlineRoot.innerHTML, /data-course-authoring-action="open-course"/u);
 
   const revokedRoot = new FakeRoot();
   const revokedSurface = createCourseAuthoringSurface({

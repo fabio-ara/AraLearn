@@ -4,6 +4,8 @@ import test from "node:test";
 
 import { runPsql } from "../helpers/runPsql.mjs";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { COURSE_DESIGN_CONTRACT, COURSE_DESIGN_PARAMETER_DEFINITIONS,
+  COURSE_COMPONENT_CATALOG_VERSION } from "../../src/domain/courseDesignParameters.js";
 
 const databaseUrl = String(process.env.ARALEARN_TEST_DATABASE_URL || "").trim();
 const dockerContainer = String(process.env.ARALEARN_TEST_DATABASE_CONTAINER || "supabase_db_aralearn");
@@ -292,19 +294,19 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
         change->>'contract','|',change->>'courseRevision','|',
         change->>'idempotent','|',change->>'changed'
       ) from (
-        select public.apply_course_design_command_for_actor_v2(
+        select public.apply_course_design_command_for_actor_v3(
           '${ownerId}','${courseId}',1,${command},
           'course-122-design-1',repeat('a',64),'application'
         ) as change
       ) applied;
     `));
     const first = firstOutput.split(/\r?\n/u).at(-1);
-    assert.equal(first, "aralearn.course-design-change.v2|2|false|true");
+    assert.equal(first, "aralearn.course-design-change.v3|2|false|true");
     const replayOutput = await result(psql(`
       select set_config('request.jwt.claim.role','service_role',false);
       select concat(change->>'courseRevision','|',change->>'idempotent')
       from (
-        select public.apply_course_design_command_for_actor_v2(
+        select public.apply_course_design_command_for_actor_v3(
           '${ownerId}','${courseId}',1,${command},
           'course-122-design-1',repeat('a',64),'application'
         ) as change
@@ -319,13 +321,13 @@ test("PostgreSQL aplica e relê o contrato de desenho #122 com replay idempotent
         design#>>'{componentCatalog,version}','|',
         design#>>'{parameters,0,effectiveAssignment,value}'
       ) from (
-        select public.get_owned_course_design_for_actor_v2(
+        select public.get_owned_course_design_for_actor_v3(
           '${ownerId}','${courseId}','course','${courseId}',32,null
         ) as design
       ) loaded;
     `));
     const read = readOutput.split(/\r?\n/u).at(-1);
-    assert.equal(read, "aralearn.course-design.v2|6|1-4616b2e5|3");
+    assert.equal(read, `${COURSE_DESIGN_CONTRACT}|${COURSE_DESIGN_PARAMETER_DEFINITIONS.length}|${COURSE_COMPONENT_CATALOG_VERSION}|3`);
   } finally {
     await cleanupUser(ownerId, email);
   }
@@ -633,6 +635,8 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
         '${courseId}','${ownerId}',
         'Curso do lock de acesso','Serializar acesso e exclusão de conta'
       );
+      update public.person_profiles set handle='access-lock-grant-150' where user_id='${grantTargetId}';
+      update public.person_profiles set handle='access-lock-revoke-150' where user_id='${revokeTargetId}';
       insert into public.course_access(course_id,user_id,granted_by)
       values('${courseId}','${revokeTargetId}','${ownerId}');
     `));
@@ -652,9 +656,9 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
       begin;
       set local role service_role;
       select set_config('request.jwt.claim.role','service_role',true);
-      select public.manage_course_access_for_actor_v1(
-        '${ownerId}','${courseId}','grant_access','${grantEmail}',null,true,
-        '${grantRequestId}'
+      select public.manage_course_access_for_actor_v3(
+        '${ownerId}','${courseId}','grant_access','access-lock-grant-150','${grantTargetId}',true,
+        '${grantRequestId}',false
       );
       commit;
     `);
@@ -664,18 +668,10 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
       where application_name='aralearn-concurrent-grant-lock-probe'
         and state='active' and wait_event_type='Lock';
     `);
-    const [, grantOutput] = await Promise.all([
+    await Promise.all([
       result(grantTargetDeletion),
-      result(concurrentGrant)
+      assert.rejects(result(concurrentGrant), /Pessoa selecionada mudou/iu)
     ]);
-    const grantResult = JSON.parse(grantOutput.split(/\r?\n/u).at(-1));
-    assert.deepEqual(grantResult, {
-      contract: "aralearn.course-access-grant-request.v1",
-      courseId,
-      operation: "grant_access",
-      accepted: true,
-      idempotent: false
-    });
     assert.equal(await result(psql(`
       select
         (exists(select 1 from auth.users where id='${grantTargetId}'))::text
@@ -705,9 +701,9 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
       begin;
       set local role service_role;
       select set_config('request.jwt.claim.role','service_role',true);
-      select public.manage_course_access_for_actor_v1(
+      select public.manage_course_access_for_actor_v3(
         '${ownerId}','${courseId}','revoke_access',null,'${revokeTargetId}',true,
-        '${revokeRequestId}'
+        '${revokeRequestId}',null
       );
       commit;
     `);
@@ -719,7 +715,7 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
     `);
     await Promise.all([
       result(revokeTargetDeletion),
-      assert.rejects(result(concurrentRevoke), /Perfil inexistente/iu)
+      assert.rejects(result(concurrentRevoke), /Pessoa selecionada mudou/iu)
     ]);
     assert.equal(await result(psql(`
       select
@@ -1039,94 +1035,6 @@ test("PostgreSQL aceita apenas uma alteração concorrente do estado pessoal", {
   }
 });
 
-test("PostgreSQL serializa duas primeiras edições sobre a mesma origem compartilhada", {
-  skip: postgresGate
-}, async () => {
-  const ownerId = "00000000-0000-4000-8000-000000001490";
-  const learnerId = "00000000-0000-4000-8000-000000001491";
-  const ownerEmail = "course-copy-owner-149@aralearn.invalid";
-  const learnerEmail = "course-copy-learner-149@aralearn.invalid";
-  const sourceCourseId = "14900000-0000-4000-8000-000000000001";
-  await createUser(ownerId, ownerEmail);
-  await createUser(learnerId, learnerEmail);
-  try {
-    await result(psql(`
-      insert into public.courses(id,owner_id,title,goal,revision)
-      values(
-        '${sourceCourseId}','${ownerId}','Curso concorrente #149',
-        'Validar a primeira cópia pessoal.',1
-      );
-      insert into private.course_instructional_plans(
-        course_id,audience,instructional_scope,
-        preferred_authoring_part_min,preferred_authoring_part_max,
-        part_count_origin,version
-      ) values('${sourceCourseId}','','',7,12,'automatic',1);
-      insert into private.course_entities(
-        course_id,entity_type,entity_id,parent_type,parent_id,position,content
-      ) values
-        ('${sourceCourseId}','module','module-149',null,null,0,
-          '{"title":"Módulo 149"}'::jsonb),
-        ('${sourceCourseId}','lesson','lesson-149','module','module-149',0,
-          '{"title":"Lição 149"}'::jsonb),
-        ('${sourceCourseId}','microsequence','micro-149','lesson','lesson-149',0,
-          '{"title":"Microssequência 149","dependsOn":[]}'::jsonb),
-        ('${sourceCourseId}','study_unit','unit-149','microsequence','micro-149',1,
-          '{"title":"Unidade original"}'::jsonb);
-      insert into public.course_access(course_id,user_id,granted_by)
-      values('${sourceCourseId}','${learnerId}','${ownerId}');
-    `));
-    const first = psql([
-      "begin;",
-      "select set_config('request.jwt.claim.role','service_role',false);",
-      `select public.commit_personal_course_copy_edit_for_actor_v1(
-        '${learnerId}','${sourceCourseId}',1,1,
-        '{"entityType":"study_unit","entityId":"unit-149","parentType":"microsequence","parentId":"micro-149","position":1,"content":{"title":"Primeira edição"}}'::jsonb,
-        'manual','personal-copy-concurrent-149-a'
-      )->>'targetCourseId';`,
-      "select 'personal-copy-lock-held';",
-      "select pg_sleep(1);",
-      "commit;"
-    ]);
-    const firstResult = result(first);
-    await marker(first, "personal-copy-lock-held");
-    const second = psql(`
-      select set_config('request.jwt.claim.role','service_role',false);
-      select public.commit_personal_course_copy_edit_for_actor_v1(
-        '${learnerId}','${sourceCourseId}',1,1,
-        '{"entityType":"study_unit","entityId":"unit-149","parentType":"microsequence","parentId":"micro-149","position":1,"content":{"title":"Segunda edição"}}'::jsonb,
-        'provider_assistance','personal-copy-concurrent-149-b'
-      );
-    `);
-    await assert.rejects(result(second), /Já existe uma cópia pessoal|P1490/iu);
-    await firstResult;
-    assert.equal(await result(psql(`
-      select count(*) from private.course_personal_copies
-      where actor_id='${learnerId}' and source_course_ref='${sourceCourseId}';
-    `)), "1");
-    assert.equal(await result(psql(`
-      select concat(course.revision,'|',unit.version,'|',unit.content->>'title')
-      from private.course_personal_copies copy_value
-      join public.courses course on course.id=copy_value.target_course_id
-      join private.course_entities unit
-        on unit.course_id=course.id
-       and unit.entity_type='study_unit'
-       and unit.entity_id='unit-149'
-      where copy_value.actor_id='${learnerId}'
-        and copy_value.source_course_ref='${sourceCourseId}';
-    `)), "2|2|Primeira edição");
-    assert.equal(await result(psql(`
-      select concat(revision,'|',content->>'title')
-      from public.courses course
-      join private.course_entities unit on unit.course_id=course.id
-      where course.id='${sourceCourseId}'
-        and unit.entity_type='study_unit' and unit.entity_id='unit-149';
-    `)), "1|Unidade original");
-  } finally {
-    await cleanupUser(learnerId, learnerEmail);
-    await cleanupUser(ownerId, ownerEmail);
-  }
-});
-
 test("PostgreSQL mantém consultas de Curso dentro do orçamento local", {
   skip: postgresGate
 }, async () => {
@@ -1282,11 +1190,11 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
     assert.equal(await result(psql(`
       select has_function_privilege(
         'service_role',
-        'public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+        'public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer,text)',
         'EXECUTE'
       ) || '|' || has_function_privilege(
         'authenticated',
-        'public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer)',
+        'public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer,text)',
         'EXECUTE'
       );
     `)), "true|false");
@@ -1369,7 +1277,7 @@ test("PostgreSQL inspeciona Unidades com cursores, bytes e índice curricular", 
         and entity_type='study_unit'
       order by position,entity_id limit 24;
     `));
-    assert.match(entityPlan, /"Node Type": "Index(?: Only)? Scan"/u);
+    assert.match(entityPlan, /"Node Type": "(?:Index(?: Only)?|Bitmap Index) Scan"/u);
     assert.match(entityPlan,
       /course_entities_(?:parent_v1_idx|sibling_position_v1)/u);
     assert.equal(await result(psql(`

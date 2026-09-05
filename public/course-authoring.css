@@ -4057,6 +4057,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-source-observations > header > button,
 .course-source-pdf-picker,
 .course-source-form-actions button,
+.course-source-file-access-form button,
 .course-source-detail-heading > button,
 .course-source-target-dialog > header > button,
 .course-source-target-dialog > button,
@@ -4111,7 +4112,8 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-source-primary-action,
 .course-source-save-target,
-.course-source-form-actions button[type="submit"] {
+.course-source-form-actions button[type="submit"],
+.course-source-file-access-form button[type="submit"] {
   border-color: var(--action-primary);
   color: var(--text-on-action);
   background: var(--action-primary);
@@ -4154,7 +4156,8 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 }
 
 .course-source-form :is(input, select, textarea),
-.course-source-relation select {
+.course-source-relation select,
+.course-source-file-access-form select {
   width: 100%;
   min-width: 0;
   min-height: var(--tap);

@@ -161,7 +161,7 @@ dimensão lado a lado; cada faixa abre as unidades correspondentes. O inventári
 planejado, a configuração solicitada e a aplicada podem ser consultados
 separadamente na folha de comparação.
 
-Enunciados, descrições e metadados de Fontes são confrontados literalmente,
+Enunciados, descrições e metadados de fontes são confrontados literalmente,
 preservando repetições. Identidades diferentes em cópias não bastam para
 caracterizar mudança de conteúdo. Textos iguais tampouco comprovam equivalência
 semântica ou qualidade: a decisão pedagógica continua exigindo inspeção.

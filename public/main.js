@@ -1166,10 +1166,6 @@ async function renderApplication(root, config, authClient, { visitor = false } =
       } finally {
         studyRefresh = null;
         editorApp?.setSynchronizationState?.({ synchronizing: false });
-        const selectedCourse = editorApp?.getNavigationPosition?.()?.entityPath?.[0];
-        if (repository.loadRuntimeStatus(selectedCourse).conflict) {
-          editorRoot.querySelector(".study-runtime-status-popover")?.showPopover?.();
-        }
       }
     })();
     studyRefresh = task;

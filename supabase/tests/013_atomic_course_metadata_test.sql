@@ -64,7 +64,7 @@ insert into private.course_source_anchors(course_id,anchor_id,revision,source_id
 select is(public.commit_course_composition_for_actor_v1('96000000-0000-4000-8000-000000000001',
  '96000000-0000-4000-8000-000000000101',3,null,
  '[{"entityType":"study_unit","entityId":"u","parentType":"microsequence","parentId":"s","position":1,"content":{"title":"Unidade","topics":[]}}]',
- '[]','[{"studyUnitId":"u","sourceLinks":[{"sourceId":"source","relation":"supported_by","anchors":[{"anchorId":"anchor"}]}]}]',
+ '[]','[{"studyUnitId":"u","sourceLinks":[{"linkId":"metadata-source-link","sourceId":"source","relation":"supported_by","roles":[],"anchors":[{"anchorId":"anchor"}],"occurrences":[]}]}]',
  'application',null,'metadata-source-01','{"title":"Título com fonte","objective":"Objetivo com fonte"}')->>'revision','4','metadados e atribuição sem mudança textual não duplicam revisão');
 select is(public.commit_course_composition_for_actor_v1('96000000-0000-4000-8000-000000000001',
  '96000000-0000-4000-8000-000000000101',4,null,

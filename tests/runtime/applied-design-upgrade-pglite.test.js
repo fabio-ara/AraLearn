@@ -3,7 +3,11 @@ import fs from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 
-const readMigration = (name) => fs.readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), "utf8");
+// As definições e os scripts completos usam a mesma terminação de linha,
+// inclusive no checkout CRLF do Windows; os fragmentos SQL continuam exatos.
+const readMigration = async (name) => (await fs.readFile(
+  new URL(`../../supabase/migrations/${name}`, import.meta.url), "utf8"
+)).replaceAll("\r\n", "\n");
 const [pre, change, correction, compositionSource, wrapperSource, analyticsSource, materializerSource] = await Promise.all([
   "20260905094108_normalize_applied_design_discriminator.sql",
   "20260905094109_preserve_applied_design_on_focal_edits.sql",
@@ -19,7 +23,7 @@ function definition(source, name, metadataArgument = false) {
   assert.ok(start >= 0, name);
   const end = source.indexOf("$function$;", source.indexOf("$function$", start) + 10);
   assert.ok(end > start, name);
-  let value = source.slice(start, end + 11).replaceAll("\r\n", "\n");
+  let value = source.slice(start, end + 11);
   if (metadataArgument) value = value.replace(/p_request_id text(\s*\))/u,
     (_, closing) => `p_request_id text, p_course_metadata jsonb DEFAULT NULL${closing}`);
   return value;

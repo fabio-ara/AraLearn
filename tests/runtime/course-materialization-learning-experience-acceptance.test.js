@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { courseDesignFixture, fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
 
 import {
   materializeHumanCoursePart
@@ -134,44 +135,37 @@ function adapterForFixture(value) {
       return structuredClone(plan);
     },
     async getCourseDesign() {
-      return {
-        targetPlanItems: {
-          instructionalAnalysisUnitIds: value.repertoire.map(({ id }) => id),
-          evidenceRequirementIds: []
-        },
-        parameters: [
+      const design = courseDesignFixture({
+        courseId: value.course.id,
+        moduleId: "module-fixture",
+        lessonId: "lesson-fixture",
+        microsequenceId: value.part.microsequence.id
+      }, { scope: "didactic_microsequence", revision });
+      design.targetPlanItems = {
+        instructionalAnalysisUnitIds: value.repertoire.map(({ id }) => id),
+        evidenceRequirementIds: []
+      };
+      design.parameters = fixtureAppliedParameters([
           ["new_analysis_unit_ceiling_per_expository_study_unit", value.acceptance.newIdeaCeiling],
           ["required_explanation_forms", ["plain_definition"]],
           ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
           ["required_practice_variation_dimensions", []],
           ["authoring_chat_response_word_target", 90],
           ["study_unit_content_word_target", 180]
-        ].map(([parameterId, parameterValue]) => ({
-          parameterId,
+        ], { origin: "author", scope: "didactic_microsequence" }).map(parameter => ({
+          ...parameter,
+          localAssignment: null,
           effectiveAssignment: {
-            value: parameterValue,
-            origin: "author",
+            ...parameter.effectiveAssignment,
+            inherited: parameter.effectiveAssignment.sourceScope.kind === "course",
             sourceScope: {
-              kind: "didactic_microsequence",
-              ref: value.part.microsequence.id
+              kind: parameter.effectiveAssignment.sourceScope.kind,
+              ref: parameter.effectiveAssignment.sourceScope.kind === "course"
+                ? value.course.id : value.part.microsequence.id
             }
           }
-        })),
-        guidance: { effectiveAssignments: [] },
-        componentPolicy: {
-          effectiveAssignment: {
-            policy: {
-              catalogVersion: "fixture",
-              availability: "all",
-              allowedRefs: [],
-              excludedRefs: [],
-              preferredRefs: []
-            },
-            origin: "system_default",
-            sourceScope: null
-          }
-        }
-      };
+        }));
+      return design;
     },
     async getCourseSources() {
       return { items: [], nextCursor: null };
