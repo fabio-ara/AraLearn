@@ -12,7 +12,7 @@ export const COURSE_SOURCES_CONTRACT = "aralearn.course-sources.v2";
 export const COURSE_SOURCE_CHANGE_CONTRACT = "aralearn.course-source-change.v1";
 export const COURSE_STUDY_CITATIONS_CONTRACT = "aralearn.course-study-citations.v1";
 export const COURSE_SOURCE_PDF_DOWNLOAD_CONTRACT =
-  "aralearn.course-source-pdf-download.v1";
+  "aralearn.course-source-pdf-download.v2";
 export const COURSE_SOURCE_PDF_INGESTION_PREPARATION_CONTRACT =
   "aralearn.course-source-pdf-ingestion-preparation.v1";
 export const COURSE_SOURCE_PDF_INGESTION_CONTRACT =
@@ -263,10 +263,11 @@ function pdfStoragePath(value, expectedHash = null, code = "invalid_course_sourc
   return value;
 }
 
-export function normalizeCourseSourceAttachment(value, { persisted = false } = {}) {
+export function normalizeCourseSourceAttachment(value, { persisted = false, policy = persisted } = {}) {
   const attachment = clone(value);
   const fields = ["contentHash", "byteSize", "mediaType", "storagePath"];
   if (persisted) fields.push("createdAt");
+  if (policy) fields.push("publicFileAccess");
   exact(attachment, fields, "invalid_course_source_attachment", "O anexo PDF");
   const hash = contentHash(attachment.contentHash);
   const normalized = {
@@ -283,6 +284,12 @@ export function normalizeCourseSourceAttachment(value, { persisted = false } = {
   };
   if (normalized.mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE) {
     fail("invalid_course_source_attachment", "O anexo precisa ser um PDF.");
+  }
+  if (policy) {
+    if (!["inherit", "restricted", "available"].includes(attachment.publicFileAccess)) {
+      fail("invalid_course_source_attachment", "A política do PDF é inválida.");
+    }
+    normalized.publicFileAccess = attachment.publicFileAccess;
   }
   if (persisted) {
     normalized.createdAt = timestamp(
@@ -313,11 +320,21 @@ function signedStorageUrl(value, { nullable = false } = {}) {
   return value;
 }
 
+export function normalizeCoursePublicPdfAttachment(value) {
+  exact(value, ["contentHash", "byteSize", "mediaType"], "invalid_course_source_attachment", "O PDF autorizado");
+  contentHash(value.contentHash);
+  integer(value.byteSize, 1, COURSE_SOURCE_PDF_MAX_BYTES, "invalid_course_source_attachment", "O tamanho do PDF");
+  if (value.mediaType !== COURSE_SOURCE_PDF_MEDIA_TYPE) {
+    fail("invalid_course_source_attachment", "O anexo precisa ser um PDF.");
+  }
+  return clone(value);
+}
+
 export function normalizeCourseSourcePdfDownload(value) {
   const download = clone(value);
   exact(download, [
     "contract", "courseId", "courseRevision", "sourceId", "sourceRevision",
-    "storageOriginCourseId", "attachment", "signedUrl", "expiresAt"
+    "attachment", "signedUrl", "expiresAt"
   ], "invalid_course_source_pdf_download", "O download do PDF");
   if (download.contract !== COURSE_SOURCE_PDF_DOWNLOAD_CONTRACT) {
     fail("invalid_course_source_pdf_download", "O contrato de download do PDF é inválido.");
@@ -327,16 +344,7 @@ export function normalizeCourseSourcePdfDownload(value) {
     "invalid_course_source_pdf_download",
     "A identidade do Curso"
   );
-  const storageOriginCourseId = uuid(
-    download.storageOriginCourseId,
-    "invalid_course_source_pdf_download",
-    "A identidade do Curso de origem do PDF"
-  );
-  const attachment = normalizeCourseSourceAttachment(download.attachment, { persisted: true });
-  const pathCourseId = COURSE_SOURCE_PDF_PATH_PATTERN.exec(attachment.storagePath)?.[1];
-  if (pathCourseId !== storageOriginCourseId) {
-    fail("invalid_course_source_pdf_download", "O PDF não corresponde à origem armazenada.");
-  }
+  const attachment = normalizeCoursePublicPdfAttachment(download.attachment);
   return {
     contract: download.contract,
     courseId,
@@ -355,7 +363,6 @@ export function normalizeCourseSourcePdfDownload(value) {
       "invalid_course_source_pdf_download",
       "A revisão da Fonte"
     ),
-    storageOriginCourseId,
     attachment,
     signedUrl: signedStorageUrl(download.signedUrl),
     expiresAt: timestamp(
@@ -835,7 +842,7 @@ function validateSource(value, { detailed = false } = {}) {
     "sourceId", "revision", "status", "kind", "sourceRole", "title", "authorship",
     "publicationDate", "identifier", "language", "citationText", "url",
     "editionOrVersion", "origin", "availability", "verificationStatus",
-    "studyVisibility", "anchorCount", "createdAt"
+    "studyVisibility", "publicFileAccess", "anchorCount", "createdAt"
   ];
   if (detailed) fields.push("anchors", "attachments");
   exact(value, fields, "invalid_course_sources_read", "A Fonte");
@@ -844,7 +851,8 @@ function validateSource(value, { detailed = false } = {}) {
   if (!COURSE_SOURCE_STATUSES.includes(value.status) ||
       !COURSE_SOURCE_KINDS.includes(value.kind) ||
       !(value.sourceRole === null || COURSE_SOURCE_ROLES.includes(value.sourceRole)) ||
-      !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility)) {
+      !COURSE_SOURCE_STUDY_VISIBILITIES.includes(value.studyVisibility) ||
+      !["inherit", "restricted", "available"].includes(value.publicFileAccess)) {
     fail("invalid_course_sources_read", "A Fonte possui enumeração inválida.");
   }
   sourceMetadataEnums(value, "invalid_course_sources_read");
@@ -1029,8 +1037,13 @@ export function normalizeCourseStudyCitationsRead(value) {
   opaqueId(read.studyUnitId, 240, "invalid_course_study_citations", "A identidade da Unidade de estudo");
   if (!Array.isArray(read.citations) || read.citations.length > 128) fail("invalid_course_study_citations", "A lista de citações é inválida.");
   read.citations.forEach((citation) => {
-    exact(citation, ["sourceId", "title", "citationText", "url", "editionOrVersion", "anchors"], "invalid_course_study_citations", "A citação");
+    exact(citation, ["sourceId", "sourceRevision", "title", "citationText", "url", "editionOrVersion", "anchors", "attachments"], "invalid_course_study_citations", "A citação");
     sourceId(citation.sourceId);
+    integer(citation.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_study_citations", "A revisão da Fonte");
+    if (!Array.isArray(citation.attachments) || citation.attachments.length > 8) {
+      fail("invalid_course_study_citations", "A lista de PDFs autorizados é inválida.");
+    }
+    citation.attachments.forEach(normalizeCoursePublicPdfAttachment);
     text(citation.title, 300, "invalid_course_study_citations", "O título da Fonte", {
       allowLayoutWhitespace: false
     });

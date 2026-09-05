@@ -115,6 +115,23 @@ textarea {
   gap: 16px;
 }
 
+.handle-onboarding-title {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.35;
+}
+
+.handle-onboarding-description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-brand [data-auth-cancel] {
+  margin-left: auto;
+}
+
 .auth-form {
   display: grid;
   gap: 9px;
@@ -4340,17 +4357,28 @@ button.account-settings-back[hidden] {
   gap: 5px;
 }
 
-.study-manual-edit-dock.is-personal-copy {
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
+.study-draft-recovery {
+  min-width: 0;
+  padding: 12px;
+  overflow-wrap: anywhere;
 }
 
-.study-manual-edit-dock.is-personal-copy > div {
-  justify-content: flex-end;
+.study-draft-recovery summary {
+  min-height: var(--tap);
+  cursor: pointer;
+  font-weight: 600;
 }
 
-.study-manual-edit-dock [data-action="study-manual-save"],
-.study-home-discard-pending {
+.study-draft-recovery-content pre {
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: var(--type-sm);
+}
+
+.study-manual-edit-dock [data-action="study-manual-save"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4362,10 +4390,6 @@ button.account-settings-back[hidden] {
   padding: 0 12px;
   white-space: normal;
   text-align: center;
-}
-
-.study-home-discard-pending {
-  justify-self: end;
 }
 
 .study-manual-status {
@@ -5742,21 +5766,6 @@ button.account-settings-back[hidden] {
   height: 16px;
 }
 
-.study-personal-copy-badge {
-  align-items: center;
-  background: var(--action-primary-subtle);
-  border: 1px solid var(--action-primary);
-  border-radius: 999px;
-  color: var(--action-primary-hover);
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
-  min-height: 24px;
-  padding: 4px 8px;
-}
-
 .home-course-selector-preview .card-subtitle {
   display: -webkit-box;
   margin: 0;
@@ -5944,4 +5953,46 @@ button.account-settings-back[hidden] {
 .runtime-ordering-move .runtime-feedback-icon {
   width: 18px;
   height: 18px;
+}
+
+/* Ajustes de acesso aos arquivos de fontes. */
+.course-source-file-access {
+  margin-block: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #d9dde3);
+  border-radius: 10px;
+}
+.course-source-file-access summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--type-small, 0.875rem);
+}
+.course-source-file-access > p,
+.course-source-file-access-form small {
+  margin-block: 8px;
+  color: var(--text-muted, #64748b);
+  font-size: var(--type-small, 0.875rem);
+  line-height: 1.5;
+}
+.course-source-file-access-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px 10px;
+  padding-block: 8px;
+}
+.course-source-file-access-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  font-size: var(--type-small, 0.875rem);
+}
+.course-source-file-access-form select,
+.course-source-file-access-form button {
+  min-height: 40px;
+  max-width: 100%;
+}
+.course-source-file-access-form small {
+  grid-column: 1 / -1;
+  margin: 0;
 }

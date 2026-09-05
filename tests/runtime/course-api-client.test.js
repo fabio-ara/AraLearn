@@ -98,7 +98,7 @@ function clientWithFetch(fetchImpl, { accessToken = "token", userId = USER_ID } 
 test("lista Cursos com cursor completo e sem expor recipiente indireto", async () => {
   let request = null;
   const fixture = {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items: [{ courseId: COURSE_ID, title: "Curso", revision: 2 }],
     hasMore: false,
     nextCursor: null
@@ -495,7 +495,7 @@ test("não repete alteração sem identidade diante de resposta ambígua", async
   });
 
   await assert.rejects(
-    client.requestCourseApi("/v1/profile", {
+    client.requestCourseApi("/v2/profile", {
       method: "PATCH",
       body: { displayName: "Pessoa" }
     }),
@@ -635,6 +635,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
+      sourceRevision: 1, attachments: [],
       sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
@@ -1010,18 +1011,15 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
   const downloadClient = clientWithFetch(async (url, init) => {
     downloadRequest = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, data: {
-      contract: "aralearn.course-source-pdf-download.v1",
+      contract: "aralearn.course-source-pdf-download.v2",
       courseId: COURSE_ID,
       courseRevision: 5,
       sourceId,
       sourceRevision: 1,
-      storageOriginCourseId: COURSE_ID,
       attachment: {
         contentHash,
         byteSize: pdf.size,
         mediaType: "application/pdf",
-        storagePath,
-        createdAt: "2026-08-20T12:00:00.000Z"
       },
       signedUrl: "https://project.invalid/storage/v1/object/sign/path?token=download-token",
       expiresAt: "2026-08-20T12:01:00.000Z"
@@ -1034,7 +1032,7 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
     sourceRevision: 1,
     contentHash
   });
-  assert.equal(download.contract, "aralearn.course-source-pdf-download.v1");
+  assert.equal(download.contract, "aralearn.course-source-pdf-download.v2");
   assert.match(downloadRequest.url, /\/source-pdf\/download\?/u);
   assert.equal(downloadRequest.body, null);
   assert.deepEqual(Object.fromEntries(new URL(downloadRequest.url).searchParams), {
@@ -1148,11 +1146,11 @@ test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   });
 
   await client.getPersonProfile();
-  await client.updatePersonProfile({ displayName: "Pesquisadora", avatarObjectKey: null });
+  await client.updatePersonProfile({ handle: "pesquisadora", avatarObjectKey: null });
   await client.listCourseAccess(COURSE_ID);
   await client.grantCourseAccess({
     courseId: COURSE_ID,
-    email: "Pessoa@Example.com",
+    handle: "@Pessoa", userId: USER_ID,
     confirmed: true,
     requestId: AVATAR_ID
   });
@@ -1164,20 +1162,20 @@ test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   });
 
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
-    "/functions/v1/aralearn-course-api/v1/profile",
-    "/functions/v1/aralearn-course-api/v1/profile",
+    "/functions/v1/aralearn-course-api/v2/profile",
+    "/functions/v1/aralearn-course-api/v2/profile",
     `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access`,
     `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access`,
     `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access/${USER_ID}`
   ]);
   assert.deepEqual(calls.map(({ method }) => method), ["GET", "PATCH", "GET", "POST", "DELETE"]);
-  assert.equal(calls[3].body.email, "pessoa@example.com");
+  assert.equal(calls[3].body.handle, "pessoa");
   assert.equal(calls[3].body.confirmed, true);
   assert.equal(calls[4].body.confirmed, true);
   assert.throws(
     () => client.grantCourseAccess({
       courseId: COURSE_ID,
-      email: "pessoa@example.com",
+      handle: "pessoa",
       confirmed: false
     }),
     /inválida/u

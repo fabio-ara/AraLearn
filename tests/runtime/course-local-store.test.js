@@ -11,6 +11,38 @@ import { AuthSessionStore } from "../../src/persistence/AuthSessionStore.js";
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const OTHER_USER_ID = "10000000-0000-4000-8000-000000000002";
 
+test("visitante usa compartimento próprio e mantém o estado ao entrar e sair de uma conta", async () => {
+  const indexedDb = new IDBFactory();
+  const guest = await CourseLocalStore.open(indexedDb, { visitor: true });
+  const account = await CourseLocalStore.open(indexedDb, { userId: USER_ID });
+  assert.equal(guest.name, `${COURSE_LOCAL_DATABASE_PREFIX}-visitor`);
+  await guest.putCache("progress", { completed: ["guest-unit"] });
+  assert.equal(await account.getCache("progress"), null);
+  await account.putCache("progress", { completed: ["account-unit"] });
+  guest.close();
+  const reopened = await CourseLocalStore.open(indexedDb, { visitor: true });
+  assert.deepEqual(await reopened.getCache("progress"), { completed: ["guest-unit"] });
+  assert.deepEqual(await account.getCache("progress"), { completed: ["account-unit"] });
+  assert.throws(() => CourseLocalStore.open(indexedDb, { visitor: true, userId: USER_ID }), /visitante/u);
+  reopened.close();
+  await CourseLocalStore.deleteDatabase(indexedDb, { visitor: true });
+  assert.deepEqual(await account.getCache("progress"), { completed: ["account-unit"] });
+  account.close();
+});
+
+test("migração de rascunho é atômica e preserva ambos os registros quando há conflito", async () => {
+  const store = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
+  const draft = { requestId: "original", studyUnit: { text: "Rascunho integral" } };
+  await store.putCache("old-pending", draft);
+  assert.deepEqual(await store.moveCacheValue("old-pending", "recovery"), { value: draft, conflict: false });
+  assert.equal(await store.getCache("old-pending"), null);
+  await store.putCache("old-pending", { requestId: "other", studyUnit: { text: "Outra edição" } });
+  assert.deepEqual(await store.moveCacheValue("old-pending", "recovery"), { value: draft, conflict: true });
+  assert.deepEqual(await store.getCache("old-pending"), { requestId: "other", studyUnit: { text: "Outra edição" } });
+  assert.deepEqual(await store.getCache("recovery"), draft);
+  store.close();
+});
+
 test("abre namespace novo por usuário sem ler o banco relacional anterior", async () => {
   const indexedDb = new IDBFactory();
   const old = indexedDb.open("aralearn-relational-v4-r3");

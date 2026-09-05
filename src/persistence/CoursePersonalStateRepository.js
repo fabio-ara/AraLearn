@@ -418,13 +418,14 @@ export class CoursePersonalStateRepository {
     courseId,
     api,
     cache,
+    localOnly = false,
     course = null,
     clock = () => new Date(),
     uuidFactory = createUuid
   } = {}) {
     this.courseId = requiredUuid(courseId, "Curso");
-    if (!api || typeof api.loadPersonalState !== "function" ||
-        typeof api.mutatePersonalState !== "function") {
+    if (!localOnly && (!api || typeof api.loadPersonalState !== "function" ||
+        typeof api.mutatePersonalState !== "function")) {
       throw new TypeError("CourseApiClient obrigatório para o estado pessoal.");
     }
     if (!cache || typeof cache.getCache !== "function" ||
@@ -435,6 +436,7 @@ export class CoursePersonalStateRepository {
       throw new TypeError("Relógio e gerador de identidade obrigatórios.");
     }
     this.api = api;
+    this.localOnly = localOnly === true;
     this.cache = cache;
     this.clock = clock;
     this.uuidFactory = uuidFactory;
@@ -682,6 +684,7 @@ export class CoursePersonalStateRepository {
 
   refresh() {
     this.#assertInitialized();
+    if (this.localOnly) return Promise.resolve(this.snapshot());
     return this.#enqueue(async () => {
       let remote;
       try {
@@ -720,7 +723,7 @@ export class CoursePersonalStateRepository {
 
   flush() {
     this.#assertInitialized();
-    return this.#enqueue(() => this.#flushUnlocked());
+    return this.#localQueue.then(() => this.#enqueue(() => this.#flushUnlocked()));
   }
 
   async clearLocal() {
@@ -788,6 +791,12 @@ export class CoursePersonalStateRepository {
       );
       const applyMutation = (record, normalized) => {
         record.state = applyOperations(record.state, normalized);
+        if (this.localOnly) {
+          record.pending = null;
+          record.queuedOperations = [];
+          record.needsRemoteRebase = false;
+          return;
+        }
         if (record.pending || record.needsRemoteRebase) {
           record.queuedOperations = mergeOperations(record.queuedOperations, normalized);
           return;
@@ -814,11 +823,12 @@ export class CoursePersonalStateRepository {
       await this.cache.putCache(cacheKey(this.courseId), clone(this.#record));
       return this.snapshot();
     }));
-    if (!synchronize) return persistence;
+    if (this.localOnly || !synchronize) return persistence;
     return persistence.then(() => this.#enqueue(() => this.#flushUnlocked()));
   }
 
   async #flushUnlocked() {
+    if (this.localOnly) return this.snapshot();
     if (this.#record?.needsRemoteRebase) {
       let remote;
       try {

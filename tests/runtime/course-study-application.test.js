@@ -104,8 +104,11 @@ class FakeStudyRoot {
   }
 
   querySelectorAll(selector) {
-    if (selector === "[data-action='open-response-input']") {
+    if (["[data-action='open-response-input']", "[data-action='toggle-citations']", "[data-action='download-citation-attachment']"].includes(selector)) {
       const node = this.querySelector(selector);
+      if (node && selector === "[data-action='download-citation-attachment']") {
+        node.dataset = { citationIndex: "0", attachmentIndex: "0" };
+      }
       return node ? [node] : [];
     }
     return [];
@@ -140,9 +143,6 @@ function applicationRepository(document, flush) {
         revision: 1,
         ownership: "shared",
         canEdit: false,
-        canDerive: false,
-        isPersonalCopy: false,
-        personalCopyCourseId: null,
         moduleCount: 1,
         lessonCount: 1,
         microsequenceCount: 1,
@@ -177,6 +177,124 @@ async function openFirstStudyUnit(app) {
     "unit-a"
   ]);
 }
+
+test("visitante mantém a leitura e pede conta ao abrir observações, sem abrir edição", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  repository.loadRuntimeStatus = () => ({ localOnly: true });
+  const root = new FakeStudyRoot();
+  const events = [];
+  root.dispatchEvent = (event) => { events.push({ type: event.type, detail: event.detail }); return true; };
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true,
+    onSaveManualEdit: () => { throw new Error("Visitante não pode gravar conteúdo"); } });
+  await openFirstStudyUnit(app);
+  const position = app.getNavigationPosition();
+  assert.deepEqual(position.entityPath, [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]);
+  position.entityPath[0] = "changed-outside";
+  assert.equal(app.getNavigationPosition().entityPath[0], COURSE_ID);
+  assert.match(root.innerHTML, /data-action="next-study-unit"/u);
+  assert.match(root.innerHTML, /data-action="toggle-review"/u);
+  assert.doesNotMatch(root.innerHTML, /data-action="study-manual-edit"/u);
+  assert.match(root.innerHTML, /Entre para enviar observações/u);
+  root.click("open-observation");
+  await nextTurn();
+  assert.deepEqual(events, [{ type: "aralearn:request-auth", detail: {
+    entityPath: [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]
+  } }]);
+  assert.doesNotMatch(root.innerHTML, /class="study-observation-overlay"/u);
+  assert.throws(() => app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), /não está disponível/u);
+  app.destroy();
+});
+
+test("estudante autenticado não ganha edição por capacidade antiga de derivar cópia", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "shared", canEdit: true, canDerive: true }];
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    onSaveManualEdit: () => { throw new Error("Estudante não pode gravar conteúdo"); } });
+  await openFirstStudyUnit(app);
+  assert.doesNotMatch(root.innerHTML, /data-action="study-manual-edit"/u);
+  assert.match(root.innerHTML, /data-action="open-observation"/u);
+  assert.throws(() => app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), /não está disponível/u);
+  app.destroy();
+});
+
+test("visitante baixa PDF permitido pela citação sem sair da unidade, e falha mantém as fontes", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const attachment = { contentHash: "a".repeat(64), byteSize: 1_024, mediaType: "application/pdf" };
+  const calls = [];
+  let failure = false;
+  let signedUrl = "https://project.example/authorized.pdf?token=sealed";
+  repository.loadStudyUnitCitations = async () => ({ courseRevision: 4, citations: [{
+    sourceId: "source-a", sourceRevision: 2, title: "Fonte pública", citationText: "Referência.",
+    url: null, editionOrVersion: null, anchors: [], attachments: [attachment]
+  }] });
+  repository.getStudyCitationAttachmentDownload = async (reference, citation) => {
+    calls.push({ reference, citation });
+    if (failure) throw Object.assign(new Error("private storage details"), { code: "course_revision_changed", status: 409 });
+    return { signedUrl };
+  };
+  const downloads = [];
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true,
+    downloadCitationPdf: (...values) => downloads.push(values) });
+  await openFirstStudyUnit(app);
+  root.click("toggle-citations");
+  await nextTurn();
+  root.click("download-citation-attachment");
+  await nextTurn();
+  assert.deepEqual(calls[0], { reference: { courseId: COURSE_ID, moduleId: "module-a", lessonId: "lesson-a", microsequenceId: "micro-a", studyUnitId: "unit-a" },
+    citation: { courseRevision: 4, sourceId: "source-a", sourceRevision: 2, attachment } });
+  assert.equal(downloads.length, 1);
+  assert.equal(downloads[0][0], "https://project.example/authorized.pdf?token=sealed");
+  assert.match(root.innerHTML, /Conteúdo 1\./u);
+  assert.match(root.innerHTML, /Fonte pública/u);
+  for (const host of ["127.0.0.1", "localhost", "10.0.2.2"]) {
+    signedUrl = `http://${host}:54321/authorized.pdf?token=sealed`;
+    root.click("download-citation-attachment");
+    await nextTurn();
+    assert.equal(downloads.at(-1)[0], signedUrl);
+  }
+  signedUrl = "http://external.example/unauthorized.pdf";
+  root.click("download-citation-attachment");
+  await nextTurn();
+  assert.equal(downloads.length, 4);
+  failure = true;
+  root.click("download-citation-attachment");
+  await nextTurn();
+  assert.equal(downloads.length, 4);
+  assert.match(root.innerHTML, /O curso mudou/u);
+  assert.match(root.innerHTML, /data-action="download-citation-attachment"/u);
+  assert.doesNotMatch(root.innerHTML, /private storage details/u);
+  app.destroy();
+});
+
+test("rascunho anterior sem destino comprovado fica visível até descarte explícito", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const draft = { sourceCourseId: COURSE_ID, requestId: "original-request", targetId: "study_unit",
+    studyUnit: structuredClone(document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0]) };
+  draft.studyUnit.title = "Rascunho preservado <com texto>";
+  let clears = 0;
+  repository.loadStudyDraftRecovery = async () => structuredClone(draft);
+  repository.recoverStudyDraft = async () => ({ status: "unresolved", targetCourseId: null });
+  repository.clearStudyDraftRecovery = async (source, request) => {
+    assert.equal(source, COURSE_ID); assert.equal(request, draft.requestId); clears += 1; return true;
+  };
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document });
+  await app.resumePendingManualEdit();
+  assert.equal(clears, 0);
+  assert.match(root.innerHTML, /Rascunho preservado &lt;com texto&gt;/u);
+  assert.doesNotMatch(root.innerHTML, /data-action="study-manual-save"/u);
+  root.click("discard-study-draft-recovery");
+  await nextTurn();
+  assert.equal(clears, 1);
+  assert.doesNotMatch(root.innerHTML, /class="study-draft-recovery /u);
+  app.destroy();
+});
 
 test("flush em background atualiza pendente para sincronizado sem nova interação", async () => {
   const document = project();

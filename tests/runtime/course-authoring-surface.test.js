@@ -92,6 +92,19 @@ function deferredValue() {
   return { promise, resolve, reject };
 }
 
+async function selectAccessCandidate(root, handle = "estudante") {
+  const input = { value: handle, focus() {}, setAttribute() {} };
+  root.querySelector = (selector) => selector === "#course-authoring-access-handle" ? input : null;
+  root.listeners.get("input")({
+    type: "input",
+    target: { value: handle, matches: (selector) => selector === "#course-authoring-access-handle" }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 280));
+  root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: "select-access-person", userId: "40000000-0000-4000-8000-000000000004" } })
+  } });
+}
+
 function courseDetailFixture(overrides = {}) {
   return {
     courseId: COURSE_ID,
@@ -100,6 +113,9 @@ function courseDetailFixture(overrides = {}) {
     revision: 5,
     ownership: "owned",
     canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
     ...overrides
   };
 }
@@ -129,6 +145,9 @@ function outlineFixture(courseId = COURSE_ID) {
     revision: 5,
     ownership: "owned",
     canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
     counts: {
       moduleCount: 1,
       lessonCount: 1,
@@ -163,7 +182,7 @@ function outlineFixture(courseId = COURSE_ID) {
 
 function listPage(overrides = {}) {
   return {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items: [{
       courseId: COURSE_ID,
       title: "Fundamentos",
@@ -171,6 +190,9 @@ function listPage(overrides = {}) {
       revision: 5,
       ownership: "owned",
       canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
       moduleCount: 1,
       lessonCount: 2,
       topicCount: 0,
@@ -182,6 +204,9 @@ function listPage(overrides = {}) {
       revision: 2,
       ownership: "owned",
       canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
       moduleCount: 1,
       lessonCount: 1,
       topicCount: 0,
@@ -528,15 +553,18 @@ function controllerFixture(overrides = {}) {
     },
     async listCourseAccess(courseId) {
       return {
-        contract: "aralearn.course-people.v1",
+        contract: "aralearn.course-people.v2",
         courseId,
         owner: {
           userId: "30000000-0000-4000-8000-000000000003",
-          displayName: "Pessoa proprietária",
+          handle: "proprietario",
           avatarObjectKey: null
         },
         people: []
       };
+    },
+    async searchCourseAccessPeople() {
+      return { items: [{ userId: "40000000-0000-4000-8000-000000000004", handle: "estudante", avatarObjectKey: null }] };
     },
     async grantCourseAccess() {
       return { changed: true };
@@ -1226,11 +1254,11 @@ test("refresh de Pessoas preserva Curso e lista até aplicar o snapshot completo
   let delayed = false;
   let peopleReads = 0;
   const initialPeople = {
-    contract: "aralearn.course-people.v1",
+    contract: "aralearn.course-people.v2",
     courseId: COURSE_ID,
     owner: {
       userId: "30000000-0000-4000-8000-000000000003",
-      displayName: "Pessoa proprietária",
+      handle: "proprietario",
       avatarObjectKey: null
     },
     people: []
@@ -1255,32 +1283,32 @@ test("refresh de Pessoas preserva Curso e lista até aplicar o snapshot completo
   });
 
   assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
   delayed = true;
   root.renderWrites.length = 0;
   const refreshing = surface.refresh();
 
   assert.equal(root.renderWrites.length, 0);
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
   assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
 
   courseRead.resolve(courseDetailFixture({ revision: 6 }));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(peopleReads, 2);
   assert.equal(root.renderWrites.length, 0);
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
 
   peopleRead.resolve({
     ...initialPeople,
     people: [{
       userId: "40000000-0000-4000-8000-000000000004",
-      displayName: "Pessoa revisora",
+      handle: "revisor",
       avatarObjectKey: null
     }]
   });
   assert.equal(await refreshing, true);
   assert.equal(root.renderWrites.length, 1);
-  assert.match(root.innerHTML, /Pessoa revisora/u);
+  assert.match(root.innerHTML, /@revisor/u);
   assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
 });
 
@@ -2107,11 +2135,11 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
     controller: controllerFixture({
       async listCourseAccess(courseId) {
         return {
-          contract: "aralearn.course-people.v1",
+          contract: "aralearn.course-people.v2",
           courseId,
           owner: {
             userId: "30000000-0000-4000-8000-000000000003",
-            displayName: "Pessoa proprietária",
+            handle: "proprietario",
             avatarObjectKey: null
           },
           people
@@ -2121,7 +2149,7 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
         changes.push(["grant", value]);
         people = [{
           userId: "40000000-0000-4000-8000-000000000004",
-          displayName: "Pessoa estudante",
+          handle: "estudante",
           avatarObjectKey: null
         }];
       },
@@ -2145,9 +2173,9 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
     root.innerHTML,
     /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso<\/h2>/u
   );
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
   assert.doesNotMatch(root.innerHTML, /Acesso direto ao Estudo/u);
-  assert.doesNotMatch(root.innerHTML, /@|diretório/iu);
+  assert.doesNotMatch(root.innerHTML, /example\.test|diretório/iu);
 
   root.listeners.get("click")({
     preventDefault() {},
@@ -2157,11 +2185,12 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
       }
     }
   });
+  await selectAccessCandidate(root);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
       matches(selector) { return selector === "[data-course-authoring-grant]"; },
-      elements: { email: { value: "student@example.test" } }
+      elements: { handle: { value: "@estudante" } }
     }
   });
   assert.equal(changes.length, 0, "Conceder acesso deve aguardar a confirmação local.");
@@ -2180,16 +2209,14 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   assert.deepEqual({ ...changes[0][1], requestId: "<uuid>" }, {
     requestId: "<uuid>",
     courseId: COURSE_ID,
-    email: "student@example.test",
+    userId: "40000000-0000-4000-8000-000000000004",
+    handle: "estudante",
     confirmed: true
   });
-  assert.doesNotMatch(root.innerHTML, /Pessoa estudante/u);
-  assert.match(root.innerHTML, /Solicitação recebida/u);
-  assert.match(root.innerHTML, /não informa se o endereço corresponde a uma conta/u);
-  assert.match(root.innerHTML, /Depois, atualize o curso/u);
+  assert.match(root.innerHTML, /Acesso concedido a @estudante/u);
   assert.doesNotMatch(root.innerHTML, /student@example\.test/u);
   await surface.refresh();
-  assert.match(root.innerHTML, /Pessoa estudante/u);
+  assert.match(root.innerHTML, /@estudante/u);
 
   root.listeners.get("click")({
     preventDefault() {},
@@ -2199,7 +2226,7 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
           dataset: {
             courseAuthoringAction: "revoke-access",
             userId: "40000000-0000-4000-8000-000000000004",
-            displayName: "Pessoa estudante"
+            handle: "estudante"
           }
         };
       }
@@ -2254,11 +2281,12 @@ test("resposta ambígua em Pessoas bloqueia navegação e saída até o cancelam
     preventDefault() {},
     target: { closest: () => ({ dataset: { courseAuthoringAction: "open-grant" } }) }
   });
+  await selectAccessCandidate(root);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
       matches: (selector) => selector === "[data-course-authoring-grant]",
-      elements: { email: { value: "student@example.test" } }
+      elements: { handle: { value: "@estudante" } }
     }
   });
   root.listeners.get("click")({
@@ -2571,6 +2599,9 @@ test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasio
     revision: 5,
     ownership: "owned",
     canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
     counts: null
   };
   const markup = renderCourseAuthoringSurface({
@@ -2615,4 +2646,67 @@ test("Meus cursos não repete propriedade em texto visual", () => {
 
   assert.match(markup, /<h1>Meus cursos<\/h1>/u);
   assert.doesNotMatch(markup, /Seu Curso|· Seu Curso/u);
+});
+
+
+test("concessão exige seleção vigente e limite não produz sucesso", async () => {
+  const root = new FakeRoot();
+  let writes = 0;
+  const surface = createCourseAuthoringSurface({ root, controller: controllerFixture({
+    async grantCourseAccess() { writes += 1; return { changed: false, rateLimited: true }; }
+  }), locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" }) }, windowValue: new FakeWindow() });
+  await surface.open();
+  const click = (action) => root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: action } })
+  } });
+  const submit = () => root.listeners.get("submit")({ preventDefault() {}, target: {
+    matches: (selector) => selector === "[data-course-authoring-grant]",
+    elements: { handle: { value: "@estudante" } }
+  } });
+  click("open-grant"); submit(); click("confirm-action-confirmation");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(writes, 0, "Identificador digitado não substitui pessoa selecionada.");
+  await selectAccessCandidate(root);
+  submit(); click("confirm-action-confirmation");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(writes, 1);
+  assert.match(root.innerHTML, /Limite de concessões atingido/u);
+  assert.doesNotMatch(root.innerHTML, /Acesso concedido a/u);
+  surface.destroy();
+});
+
+test("visibilidade confirma política e repete pedido idêntico se a resposta se perde", async () => {
+  const root = new FakeRoot();
+  const writes = [];
+  let visibility = "private";
+  const surface = createCourseAuthoringSurface({ root, controller: controllerFixture({
+    async getCourse() { return courseDetailFixture({ visibility, publicFileAccess: "restricted" }); },
+    async setCourseVisibility(request) {
+      writes.push(request);
+      if (writes.length === 1) throw Object.assign(new TypeError("Failed to fetch"), { code: "network_error" });
+      visibility = request.visibility;
+      return { changed: true, courseRevision: 6 };
+    }
+  }), locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" }) }, windowValue: new FakeWindow() });
+  await surface.open();
+  const submit = () => root.listeners.get("submit")({ preventDefault() {}, target: {
+    matches: (selector) => selector === "[data-course-visibility-form]",
+    elements: { visibility: { value: "public" }, publicFileAccess: { value: "restricted" } }
+  } });
+  const confirm = () => root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: "confirm-action-confirmation" } })
+  } });
+  submit();
+  assert.equal(writes.length, 0);
+  confirm(); await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(writes[0].confirmed, true);
+  assert.equal(writes[0].publicFileAccess, "restricted");
+  assert.equal(writes[0].expectedRevision, 5);
+  submit(); confirm();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(writes[1], writes[0]);
+  assert.match(root.innerHTML, /Acesso ao curso atualizado/u);
+  assert.match(root.innerHTML, /value="public" selected/u);
+  surface.destroy();
 });

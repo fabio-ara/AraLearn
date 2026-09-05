@@ -58,8 +58,9 @@ function attachment(overrides = {}) {
     contentHash: HASH,
     byteSize: 2_048,
     mediaType: "application/pdf",
-    storagePath: `${COURSE_ID}/${HASH}.pdf`,
+    storagePath: `${COURSE_ID}/${overrides.contentHash ?? HASH}.pdf`,
     createdAt: "2026-09-02T12:00:00.000Z",
+    publicFileAccess: "inherit",
     ...overrides
   };
 }
@@ -83,6 +84,7 @@ function source(index = 1, overrides = {}) {
     availability: "open_access",
     verificationStatus: "author_verified",
     studyVisibility: "citation_and_link",
+    publicFileAccess: "inherit",
     anchorCount: 1,
     createdAt: "2026-09-02T12:00:00.000Z",
     ...overrides
@@ -184,6 +186,13 @@ function changeResult(requestId, courseRevision = 5) {
   };
 }
 
+function fileAccessReceipt(request, overrides = {}) {
+  return { contract: "aralearn.course-source-file-access-change.v1", courseId: request.courseId,
+    courseRevision: request.expectedRevision + 1, sourceId: request.sourceId,
+    sourceRevision: request.sourceRevision + 1, contentHash: request.contentHash,
+    publicFileAccess: request.publicFileAccess, changed: true, idempotent: false, ...overrides };
+}
+
 function controllerFixture({
   catalog = [source()],
   details = new Map(catalog.map((item) => [item.sourceId, item])),
@@ -191,7 +200,8 @@ function controllerFixture({
   onRead = () => {},
   onMutate = () => {},
   onUpload = () => {},
-  onDownload = () => {}
+  onDownload = () => {},
+  onFileAccess = (request) => fileAccessReceipt(request)
 } = {}) {
   return {
     async loadCourseSources(_courseId, options) {
@@ -222,6 +232,9 @@ function controllerFixture({
     async mutateCourseSources(value) {
       onMutate(structuredClone(value));
       return changeResult(value.requestId, value.expectedCourseRevision);
+    },
+    async setCourseSourceFileAccess(value) {
+      return onFileAccess(structuredClone(value));
     },
     async loadCourseAnchoredAnnotations(_courseId, options) {
       const page = annotationPage(options.expectedCourseRevision);
@@ -326,6 +339,122 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
 }
+
+test("acesso público de fonte e de cada PDF fica em ajustes e depende de confirmação", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const item = source(1, { publicFileAccess: "restricted", attachments: [attachment({ publicFileAccess: "available" }), attachment({ contentHash: "b".repeat(64) })] });
+  const panel = createCourseSourcesPanel({ root, controller: controllerFixture({ catalog: [item],
+    onFileAccess: (request) => { calls.push(request); return fileAccessReceipt(request); } }),
+    courseId: COURSE_ID, courseRevision: 5, coursePublicFileAccess: "available", initialSourceId: item.sourceId });
+  await panel.open();
+  assert.match(root.innerHTML, /<details class="course-source-file-access">/u);
+  assert.match(root.innerHTML, /escolha do PDF prevalece sobre a fonte/u);
+  assert.equal((root.innerHTML.match(/data-source-form="file-access"/gu) || []).length, 3);
+  assert.match(root.innerHTML, /Herdar da fonte · restringir/u);
+  assert.match(root.innerHTML, /Disponível no curso público/u);
+  submit(root, "file-access", { sourceId: item.sourceId, contentHash: "", publicFileAccess: "available" });
+  assert.equal(calls.length, 0);
+  assert.match(root.innerHTML, /role="alertdialog"/u);
+  assert.match(root.innerHTML, /Confirme que você pode disponibilizá-lo/u);
+  click(root, "cancel-confirmation");
+  assert.equal(calls.length, 0);
+  submit(root, "file-access", { sourceId: item.sourceId, contentHash: "", publicFileAccess: "available" });
+  click(root, "confirm-file-access");
+  await settle();
+  assert.equal(calls.length, 1);
+  assert.deepEqual({ ...calls[0], requestId: "request" }, { courseId: COURSE_ID, expectedRevision: 5,
+    sourceId: item.sourceId, sourceRevision: 1, contentHash: null, publicFileAccess: "available", requestId: "request" });
+  submit(root, "file-access", { sourceId: item.sourceId, contentHash: HASH, publicFileAccess: "inherit" });
+  click(root, "confirm-file-access");
+  await settle();
+  assert.equal(calls[1].contentHash, HASH);
+  assert.equal(calls[1].publicFileAccess, "inherit");
+  assert.equal(calls[1].expectedRevision, 6);
+  assert.notEqual(calls[1].requestId, calls[0].requestId);
+});
+
+test("permissão incerta conserva a mesma revisão e o mesmo pedido, impedindo troca silenciosa", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const writes = [];
+  const item = source(1, { attachments: [attachment()] });
+  const panel = createCourseSourcesPanel({ root, controller: controllerFixture({ catalog: [item], onMutate: (request) => writes.push(request),
+    onFileAccess: (request) => {
+      calls.push(request);
+      if (calls.length === 1) throw new TypeError("Failed to fetch");
+      return fileAccessReceipt(request, { idempotent: true });
+    } }), courseId: COURSE_ID, courseRevision: 5, initialSourceId: item.sourceId });
+  await panel.open();
+  submit(root, "file-access", { sourceId: item.sourceId, contentHash: HASH, publicFileAccess: "available" });
+  click(root, "confirm-file-access");
+  await settle();
+  assert.equal(panel.hasPendingDraft(), true);
+  assert.match(root.innerHTML, /Confirmar a mesma permissão/u);
+  submit(root, "file-access", { sourceId: item.sourceId, contentHash: HASH, publicFileAccess: "restricted" });
+  submit(root, "source", sourceFormValues());
+  await settle();
+  assert.equal(calls.length, 1);
+  assert.equal(writes.length, 0);
+  await panel.refresh(8);
+  click(root, "retry-file-access");
+  await settle();
+  assert.deepEqual(calls[1], calls[0]);
+  assert.match(root.innerHTML, /operação já estava confirmada/u);
+  assert.equal(panel.hasPendingDraft(), false);
+});
+
+test("recibo incompatível mantém a permissão pendente para consultar o mesmo pedido", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const panel = createCourseSourcesPanel({ root, controller: controllerFixture({
+    onFileAccess: (request) => { calls.push(request); return fileAccessReceipt(request, { contentHash: HASH }); }
+  }), courseId: COURSE_ID, courseRevision: 5, initialSourceId: source().sourceId });
+  await panel.open();
+  submit(root, "file-access", { sourceId: source().sourceId, contentHash: "", publicFileAccess: "available" });
+  click(root, "confirm-file-access");
+  await settle();
+  assert.equal(panel.hasPendingDraft(), true);
+  assert.match(root.innerHTML, /confirmação da permissão não chegou/u);
+  click(root, "retry-file-access");
+  await settle();
+  assert.deepEqual(calls[1], calls[0]);
+});
+
+test("conflito conserva a escolha e só permite nova confirmação após atualizar as revisões", async () => {
+  const root = new FakeRoot();
+  const calls = [];
+  const item = source();
+  const details = new Map([[item.sourceId, item]]);
+  const panel = createCourseSourcesPanel({ root, controller: controllerFixture({ details,
+    onFileAccess: (request) => {
+      calls.push(request);
+      if (calls.length === 1) throw Object.assign(new Error("conflict"), { status: 409, code: "course_revision_changed" });
+      return fileAccessReceipt(request);
+    } }), courseId: COURSE_ID, courseRevision: 5, initialSourceId: item.sourceId });
+  await panel.open();
+  const values = { sourceId: item.sourceId, contentHash: "", publicFileAccess: "available" };
+  submit(root, "file-access", values);
+  click(root, "confirm-file-access");
+  await settle();
+  assert.match(root.innerHTML, /O curso mudou/u);
+  assert.match(root.innerHTML, /value="available" selected/u);
+  assert.doesNotMatch(root.innerHTML, /data-source-action="retry-file-access"/u);
+  submit(root, "file-access", values);
+  click(root, "confirm-file-access");
+  await settle();
+  assert.equal(calls.length, 1);
+  details.set(item.sourceId, { ...item, revision: 2 });
+  await panel.refresh(7, "restricted");
+  submit(root, "file-access", values);
+  assert.match(root.innerHTML, /role="alertdialog"/u);
+  assert.equal(calls.length, 1);
+  click(root, "confirm-file-access");
+  await settle();
+  assert.equal(calls[1].expectedRevision, 7);
+  assert.equal(calls[1].sourceRevision, 2);
+  assert.notEqual(calls[0].requestId, calls[1].requestId);
+});
 
 test("falha de contrato das fontes permanece no nível humano da operação", async () => {
   const root = new FakeRoot();

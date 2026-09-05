@@ -4,13 +4,8 @@ import {
 } from "../storage/progressStore.js";
 import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
 import { CourseAnnotationRepository } from "../persistence/CourseAnnotationRepository.js";
-import { normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
-import { createUuid } from "../domain/identifiers.js";
-import {
-  exactStudyUnitSelection,
-  findCourse,
-  selectionForCourse
-} from "./CourseStudyNavigation.js";
+import { normalizeCourseSourcePdfDownload, normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
+import { findCourse } from "./CourseStudyNavigation.js";
 
 const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
 const MAX_LIST_PAGES = 100;
@@ -25,29 +20,6 @@ const STUDY_NAVIGATION_VIEWS = new Set(["course", "module", "lesson", "microsequ
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
-}
-
-function selectionForStudyUnitIdentity(project, courseId, studyUnitId) {
-  const course = findCourse(project, courseId);
-  for (const moduleValue of course?.modules || []) {
-    for (const lesson of moduleValue.lessons || []) {
-      for (const microsequence of lesson.microsequences || []) {
-        const studyUnitIndex = (microsequence.studyUnits || [])
-          .findIndex(({ id }) => id === studyUnitId);
-        if (studyUnitIndex >= 0) {
-          return {
-            courseId,
-            moduleId: moduleValue.id,
-            lessonId: lesson.id,
-            microsequenceId: microsequence.id,
-            studyUnitId,
-            studyUnitIndex
-          };
-        }
-      }
-    }
-  }
-  return null;
 }
 
 function plainObject(value) {
@@ -229,6 +201,7 @@ export class CourseStudyRepository {
     bridge,
     api,
     cache,
+    visitor = false,
     clock = () => new Date(),
     windowValue = globalThis.window
   } = {}) {
@@ -236,13 +209,14 @@ export class CourseStudyRepository {
         typeof bridge.loadCourse !== "function") {
       throw new TypeError("Ponte canônica de Estudo obrigatória.");
     }
-    if (!api || typeof api.loadPersonalState !== "function" ||
-        typeof api.mutatePersonalState !== "function") {
+    if (!api || !visitor && (typeof api.loadPersonalState !== "function" ||
+        typeof api.mutatePersonalState !== "function")) {
       throw new TypeError("API canônica de cursos obrigatória.");
     }
     if (!cache) throw new TypeError("Cache canônico de cursos obrigatório.");
     this.bridge = bridge;
     this.api = api;
+    this.visitor = visitor === true;
     this.cache = cache;
     this.clock = clock;
     this.windowValue = windowValue;
@@ -388,6 +362,10 @@ export class CourseStudyRepository {
   }
 
   async #reviewPage(cursor = null) {
+    if (this.visitor) {
+      const cached = await this.cache.getCache(REVIEW_PAGE_CACHE_KEY);
+      return { items: Array.isArray(cached?.items) ? clone(cached.items) : [], hasMore: false, nextCursor: null };
+    }
     if (typeof this.api.listCourseReviewItems !== "function") {
       return { items: [], hasMore: false, nextCursor: null };
     }
@@ -547,6 +525,7 @@ export class CourseStudyRepository {
   }
 
   async maintainCourse({ courseId, operation, confirmed, requestId } = {}) {
+    if (this.visitor) throw new Error("Entre na sua conta para gerenciar cursos.");
     if (typeof this.bridge.maintainCourse !== "function") {
       throw new TypeError("O ciclo de vida do curso não está disponível.");
     }
@@ -582,7 +561,24 @@ export class CourseStudyRepository {
     return this.loadProject();
   }
 
-  async loadCourse(courseIdentity) {
+  async loadCourseById(courseIdentity) {
+    const courseId = String(courseIdentity || "").trim().toLowerCase();
+    if (!COURSE_ID_PATTERN.test(courseId)) throw new TypeError("Identidade do curso inválida.");
+    let initialResult = null;
+    if (!this.courseList.some((item) => item.courseId === courseId)) {
+      const result = await this.bridge.loadCourse(courseId);
+      initialResult = result;
+      if (result.course?.courseId !== courseId || result.document?.courses?.[0]?.id !== courseId) {
+        throw new TypeError("O curso recebido não corresponde ao endereço solicitado.");
+      }
+      this.courseList.push({ ...clone(result.course),
+        canEdit: !this.visitor && result.course.ownership === "owned" && result.course.canEdit === true });
+      this.#rebuildProject();
+    }
+    return this.loadCourse(courseId, { initialResult });
+  }
+
+  async loadCourse(courseIdentity, { initialResult = null } = {}) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
     if (!descriptor) throw new Error("O curso solicitado não está acessível.");
@@ -593,7 +589,7 @@ export class CourseStudyRepository {
     )) {
       let result;
       try {
-        result = await this.bridge.loadCourse(courseId, {
+        result = initialResult ?? await this.bridge.loadCourse(courseId, {
           verifiedRevision: descriptor.revision
         });
       } catch (error) {
@@ -629,6 +625,7 @@ export class CourseStudyRepository {
         courseId,
         api: this.api,
         cache: this.cache,
+        localOnly: this.visitor,
         course: loaded.course,
         clock: this.clock
       });
@@ -643,7 +640,7 @@ export class CourseStudyRepository {
       personal.setCourse(loaded.course);
     }
     let annotations = this.annotationsByCourseId.get(courseId);
-    if (!annotations && typeof this.api.getMyCourseAnchoredAnnotations === "function" &&
+    if (!this.visitor && !annotations && typeof this.api.getMyCourseAnchoredAnnotations === "function" &&
         typeof this.api.executeMyCourseAnchoredAnnotationCommand === "function") {
       annotations = new CourseAnnotationRepository({
         courseId,
@@ -710,6 +707,27 @@ export class CourseStudyRepository {
     return clone(this.project);
   }
 
+  async getStudyCitationAttachmentDownload(reference, citation) {
+    const courseId = courseIdFromReference(reference);
+    const expectedCourseRevision = this.loadedCourseById.get(courseId)?.revision;
+    if (!expectedCourseRevision || citation?.courseRevision !== expectedCourseRevision ||
+        typeof this.bridge.getCourseSourceAttachmentDownload !== "function") {
+      throw courseRevisionChangedError();
+    }
+    const result = normalizeCourseSourcePdfDownload(await this.bridge.getCourseSourceAttachmentDownload({
+      courseId, expectedCourseRevision, sourceId: citation.sourceId,
+      sourceRevision: citation.sourceRevision, contentHash: citation.attachment?.contentHash
+    }));
+    if (result.courseId !== courseId || result.courseRevision !== expectedCourseRevision ||
+        result.sourceId !== citation.sourceId || result.sourceRevision !== citation.sourceRevision ||
+        result.attachment.contentHash !== citation.attachment?.contentHash ||
+        result.attachment.byteSize !== citation.attachment?.byteSize ||
+        result.attachment.mediaType !== citation.attachment?.mediaType) {
+      throw new TypeError("O PDF não corresponde à citação consultada.");
+    }
+    return result;
+  }
+
   saveProject() {
     throw new Error("O Estudo não altera o conteúdo canônico do curso.");
   }
@@ -725,14 +743,9 @@ export class CourseStudyRepository {
       title: item.title,
       revision: item.revision,
       ownership: item.ownership,
-      canEdit: item.ownership === "owned" && item.canEdit === true,
-      canDerive: item.canDerive === true,
-      isPersonalCopy: item.isPersonalCopy === true,
-      personalCopyCourseId: item.personalCopyCourseId ?? null,
-      ...(item.sourceCourseId == null ? {} : {
-        sourceCourseId: item.sourceCourseId,
-        sourceCourseRevision: item.sourceCourseRevision
-      }),
+      canEdit: !this.visitor && item.ownership === "owned" && item.canEdit === true,
+      canObserve: !this.visitor && item.canObserve === true,
+      ...(item.ownership === "owned" && item.copyOrigin ? { copyOrigin: clone(item.copyOrigin) } : {}),
       moduleCount: Number(item.moduleCount || 0),
       lessonCount: Number(item.lessonCount || 0),
       microsequenceCount: Number(item.microsequenceCount || 0),
@@ -871,205 +884,27 @@ export class CourseStudyRepository {
     });
   }
 
-  loadPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (typeof this.bridge.loadPendingPersonalCopyEdit !== "function") {
+  loadStudyDraftRecovery(sourceCourseId = null) {
+    if (this.visitor || typeof this.bridge.loadStudyDraftRecovery !== "function") {
       return Promise.resolve(null);
     }
-    return this.bridge.loadPendingPersonalCopyEdit(sourceCourseId);
+    return this.bridge.loadStudyDraftRecovery(sourceCourseId);
   }
 
-  clearPendingPersonalCopyEdit(sourceCourseId = null, expectedRequestId = null) {
-    if (typeof this.bridge.clearPendingPersonalCopyEdit !== "function") {
-      return Promise.resolve(false);
-    }
-    return this.bridge.clearPendingPersonalCopyEdit(
-      sourceCourseId,
-      expectedRequestId
-    );
+  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
+    return this.bridge.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId) ?? Promise.resolve(false);
   }
 
-  async transitionToPersonalCopy(receipt, sourceSelection = receipt?.sourceSelection) {
-    if (!plainObject(receipt) || !plainObject(sourceSelection)) {
-      throw new TypeError("Transição para a cópia pessoal inválida.");
+  async recoverStudyDraft(sourceCourseId = null) {
+    if (this.visitor || typeof this.bridge.recoverStudyDraft !== "function") return null;
+    const result = await this.bridge.recoverStudyDraft(sourceCourseId);
+    if (result?.targetCourseId && result.status === "confirmed") {
+      await this.loadCourseById(result.targetCourseId);
+      const descriptor = this.courseList.find((item) => item.courseId === result.targetCourseId);
+      if (descriptor?.ownership !== "owned") throw new Error("O curso recuperado não pertence à sua conta.");
+      return { ...result, project: this.loadProject() };
     }
-    if (receipt.changed !== true) {
-      return {
-        project: this.loadProject(),
-        selection: clone(sourceSelection)
-      };
-    }
-    const sourceCourseId = String(receipt.sourceCourseId || "").trim().toLowerCase();
-    const targetCourseId = String(receipt.courseId || "").trim().toLowerCase();
-    const sourceDescriptor = this.courseList.find((item) =>
-      item.courseId === sourceCourseId);
-    const existing = this.courseList.find((item) => item.courseId === targetCourseId);
-    const receivedCourse = receipt.document?.courses?.[0];
-    if (!COURSE_ID_PATTERN.test(sourceCourseId) || !COURSE_ID_PATTERN.test(targetCourseId) ||
-        targetCourseId === sourceCourseId ||
-        !sourceDescriptor && !existing && receivedCourse?.id !== targetCourseId ||
-        !Number.isSafeInteger(receipt.courseRevision) || receipt.courseRevision < 1 ||
-        String(sourceSelection.courseId || "").trim().toLowerCase() !== sourceCourseId ||
-        String(sourceSelection.studyUnitId || "").trim() !== receipt.studyUnitId) {
-      throw new TypeError("Transição para a cópia pessoal inválida.");
-    }
-    if (sourceDescriptor) {
-      sourceDescriptor.personalCopyCourseId = targetCourseId;
-      sourceDescriptor.canDerive = false;
-    }
-    const targetDescriptor = {
-      ...clone(sourceDescriptor || {}),
-      ...clone(existing || {}),
-      courseId: targetCourseId,
-      title: existing?.title || receivedCourse?.title || sourceDescriptor?.title || "Curso",
-      goal: existing?.goal ?? receivedCourse?.goal ?? sourceDescriptor?.goal ?? null,
-      revision: receipt.courseRevision,
-      ownership: "owned",
-      canEdit: receipt.readOnly !== true,
-      canDerive: false,
-      isPersonalCopy: true,
-      personalCopyCourseId: null,
-      sourceCourseId,
-      sourceCourseRevision: receipt.sourceCourseRevision,
-      completedStudyUnitCount: Number(existing?.completedStudyUnitCount || 0),
-      updatedAt: receipt.updatedAt
-    };
-    if (existing) Object.assign(existing, targetDescriptor);
-    else this.courseList.unshift(targetDescriptor);
-
-    const hasPromotedComposition = receivedCourse?.id === targetCourseId &&
-      Array.isArray(receipt.rows);
-    if (hasPromotedComposition) {
-      const loaded = {
-        revision: receipt.courseRevision,
-        course: clone(receivedCourse),
-        rows: clone(receipt.rows),
-        offline: receipt.offline === true,
-        stale: receipt.stale === true || receipt.reconciled === false,
-        readOnly: receipt.readOnly === true || receipt.reconciled === false
-      };
-      this.loadedCourseById.set(targetCourseId, loaded);
-      let personalStateConfirmed = false;
-      if (!this.personalByCourseId.has(targetCourseId)) {
-        const personal = new CoursePersonalStateRepository({
-          courseId: targetCourseId,
-          api: this.api,
-          cache: this.cache,
-          course: loaded.course,
-          clock: this.clock
-        });
-        try {
-          await personal.initialize({ refresh: true });
-          this.personalByCourseId.set(targetCourseId, personal);
-          personalStateConfirmed = true;
-        } catch (error) {
-          if (networkFailure(error)) this.personalByCourseId.set(targetCourseId, personal);
-          // O snapshot curricular confirmado continua utilizável; o estado pessoal retoma depois.
-        }
-      } else {
-        try {
-          await this.personalByCourseId.get(targetCourseId).refresh();
-          personalStateConfirmed = true;
-        } catch (error) {
-          if (!networkFailure(error)) throw error;
-        }
-      }
-      const targetPersonal = this.personalByCourseId.get(targetCourseId);
-      if (targetPersonal && personalStateConfirmed) {
-        const completedStudyUnitCount = Object.values(targetPersonal.loadProgress().lessons)
-          .reduce((total, entry) => total + entry.completedStudyUnitIds.length, 0);
-        targetDescriptor.completedStudyUnitCount = completedStudyUnitCount;
-        const targetSummary = this.courseList.find(({ courseId }) =>
-          courseId === targetCourseId);
-        if (targetSummary) targetSummary.completedStudyUnitCount = completedStudyUnitCount;
-      }
-      if (!this.annotationsByCourseId.has(targetCourseId) &&
-          typeof this.api.getMyCourseAnchoredAnnotations === "function" &&
-          typeof this.api.executeMyCourseAnchoredAnnotationCommand === "function") {
-        const annotations = new CourseAnnotationRepository({
-          courseId: targetCourseId,
-          courseRevision: loaded.revision,
-          api: this.api,
-          cache: this.cache,
-          clock: this.clock,
-          windowValue: this.windowValue,
-          navigatorValue: this.navigatorValue
-        });
-        try {
-          await annotations.initialize();
-          this.annotationsByCourseId.set(targetCourseId, annotations);
-        } catch (error) {
-          if (networkFailure(error)) {
-            this.annotationsByCourseId.set(targetCourseId, annotations);
-          } else {
-            annotations.close();
-          }
-        }
-      }
-    }
-    this.#rebuildProject();
-    if (!hasPromotedComposition) await this.loadCourse(targetCourseId);
-    const path = [
-      targetCourseId,
-      sourceSelection.moduleId,
-      sourceSelection.lessonId,
-      sourceSelection.microsequenceId,
-      sourceSelection.studyUnitId
-    ];
-    const selection = exactStudyUnitSelection(this.project, path) ||
-      selectionForStudyUnitIdentity(this.project, targetCourseId, receipt.studyUnitId) ||
-      selectionForCourse(this.project, targetCourseId);
-    if (!selection) {
-      throw new TypeError("A cópia pessoal confirmada não está mais acessível.");
-    }
-    return {
-      project: this.loadProject(),
-      selection
-    };
-  }
-
-  async commitPersonalCourseCopyEdit(value = {}) {
-    if (typeof this.bridge.commitPersonalCourseCopyEdit !== "function") {
-      throw new TypeError("A edição em cópia pessoal não está disponível.");
-    }
-    if (!plainObject(value) || !plainObject(value.sourceSelection)) {
-      throw new TypeError("Edição em cópia pessoal inválida.");
-    }
-    const sourceSelection = {
-      courseId: value.sourceSelection.courseId,
-      moduleId: value.sourceSelection.moduleId,
-      lessonId: value.sourceSelection.lessonId,
-      microsequenceId: value.sourceSelection.microsequenceId,
-      studyUnitId: value.sourceSelection.studyUnitId
-    };
-    const receipt = await this.bridge.commitPersonalCourseCopyEdit({
-      requestId: value.requestId ?? createUuid(),
-      sourceCourseId: value.sourceCourseId,
-      expectedSourceCourseRevision: value.expectedSourceCourseRevision,
-      expectedStudyUnitVersion: value.expectedStudyUnitVersion,
-      didacticMicrosequenceId: value.didacticMicrosequenceId,
-      studyUnit: value.studyUnit,
-      origin: value.applicationOrigin,
-      targetId: value.targetId,
-      sourceSelection,
-      ...(value.replacesPendingRequestId
-        ? { replacesPendingRequestId: value.replacesPendingRequestId }
-        : {})
-    });
-    const transitioned = await this.transitionToPersonalCopy(receipt, sourceSelection);
-    return { ...receipt, ...transitioned };
-  }
-
-  async retryPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (typeof this.bridge.retryPendingPersonalCopyEdit !== "function") {
-      throw new TypeError("A retomada da cópia pessoal não está disponível.");
-    }
-    const receipt = await this.bridge.retryPendingPersonalCopyEdit(sourceCourseId);
-    if (!receipt) return null;
-    const transitioned = await this.transitionToPersonalCopy(
-      receipt,
-      receipt.sourceSelection
-    );
-    return { ...receipt, ...transitioned };
+    return result;
   }
 
   loadRuntimeStatus(courseIdentity = "") {
@@ -1080,14 +915,14 @@ export class CourseStudyRepository {
     try {
       pending = personal?.snapshot?.().pending === true;
     } catch {
-      // Uma cópia curricular confirmada pode existir antes de o estado pessoal
-      // terminar a recuperação offline; a barra continua utilizável nesse intervalo.
+      // O estado pessoal pode terminar de carregar depois do conteúdo offline.
     }
     return clone({
       offline: this.listRuntimeStatus.offline || loaded?.offline === true,
       stale: this.listRuntimeStatus.stale || loaded?.stale === true,
       readOnly: this.listRuntimeStatus.readOnly || loaded?.readOnly === true,
-      pending
+      pending,
+      ...(this.visitor ? { visitor: true, localOnly: true } : {})
     });
   }
 
@@ -1099,6 +934,7 @@ export class CourseStudyRepository {
   }
 
   #annotations(reference) {
+    if (this.visitor) throw new Error("Entre na sua conta para enviar observações.");
     const courseId = courseIdFromReference(reference);
     const annotations = this.annotationsByCourseId.get(courseId);
     if (!annotations) throw new Error("As observações deste curso não estão disponíveis.");
@@ -1157,8 +993,13 @@ export class CourseStudyRepository {
     return this.#personal(reference).isStudyUnitMarkedForReview(reference);
   }
 
-  setStudyUnitReviewMark(reference, marked) {
-    return this.#personal(reference).setStudyUnitReviewMark(reference, marked);
+  async setStudyUnitReviewMark(reference, marked) {
+    const result = await this.#personal(reference).setStudyUnitReviewMark(reference, marked);
+    if (this.visitor) {
+      this.reviewItems = this.loadReviewItems().map((item) => ({ ...item, courseId: item.entityPath[0] }));
+      await this.#cacheReviewPage();
+    }
+    return result;
   }
 
   loadReviewItems() {

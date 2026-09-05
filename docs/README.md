@@ -170,6 +170,7 @@ Para examinar uma adoção concreta, continue por:
 | --- | --- |
 | ambientes, configuração e publicação | [Implantação](implantacao.md) |
 | banco, Storage, autenticação e funções | [Supabase](supabase.md) |
+| mudanças de schema, preflight e recuperação | [Alterações do schema](schema-change-log.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 
 Para contribuir com código ou documentação, consulte também o

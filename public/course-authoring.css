@@ -1568,6 +1568,91 @@
   background: var(--input-surface);
 }
 
+.course-access-search-results {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.course-access-search-results [role="listbox"] {
+  display: grid;
+  max-height: 250px;
+  overflow-y: auto;
+  gap: 4px;
+}
+
+.course-access-search-results [role="option"] {
+  width: 100%;
+  height: auto;
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 5px 8px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.course-access-search-results [role="option"]:focus-visible {
+  outline: 2px solid var(--action-primary);
+  outline-offset: -2px;
+}
+
+.course-visibility-form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.course-visibility-form label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--type-sm);
+}
+
+.course-visibility-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 6px 8px;
+  color: var(--text-primary);
+  background: var(--input-surface);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+.course-visibility-form p,
+.course-access-search-results p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  overflow-wrap: anywhere;
+}
+
+.course-visibility-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.course-visibility-actions :is(button, a) {
+  width: var(--tap);
+  min-height: var(--tap);
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
 .course-authoring-write-form {
   min-width: 0;
   display: grid;

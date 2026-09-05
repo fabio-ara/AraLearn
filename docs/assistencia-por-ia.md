@@ -22,7 +22,7 @@ O AraLearn oferece três integrações relacionadas, mas distintas:
   humanas projetadas como caminhos HTTP.
 
 Os três caminhos chegam às mesmas regras de curso. Eles não compartilham
-credencial, sessão ou protocolo. Perfil, acesso, cópia pessoal, ciclo de vida do
+credencial, sessão ou protocolo. Perfil, acesso, ciclo de vida do
 curso e manutenção continuam ações do aplicativo autenticado.
 
 ## A sessão de assistência por IA
@@ -55,10 +55,11 @@ O alvo corrente permanece visível durante edição e prévia. Uma proposta para
 microssequência não recebe autoridade sobre outra microssequência; uma proposta
 para lição não altera módulos, outras lições ou dados pessoais.
 
-Para um curso compartilhado, a edição focal de unidade pode ser salva numa
-cópia pessoal privada. O original, as fontes, PDFs, planejamento, progresso e
-observações não são copiados. Escritas estruturais de microssequência e lição
-permanecem exclusivas do proprietário.
+Edição focal, assistência e alterações estruturais são exclusivas do
+proprietário, também quando ele estuda seu próprio curso. Receber acesso privado
+ou abrir um curso público permite estudar e, com conta, registrar observações;
+isso não concede edição nem cria uma cópia automaticamente. Cópias próprias
+existentes continuam cursos independentes sob a autoridade de seu proprietário.
 
 ## Contexto enviado
 

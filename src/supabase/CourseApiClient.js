@@ -14,8 +14,9 @@ import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.j
 import {
   normalizeFocalStudyUnitCompositionCommand,
   normalizeFocalStudyUnitCompositionReceipt,
-  normalizePersonalCourseCopyEditCommand,
-  normalizePersonalCourseCopyEditReceipt
+  normalizeCourseMetadata,
+  normalizeOwnedCourseCopyRecoveryCommand,
+  normalizeOwnedCourseCopyRecoveryReceipt
 } from "../domain/courseComposition.js";
 import {
   COURSE_SOURCE_PDF_MAX_BYTES,
@@ -609,20 +610,45 @@ function personalStateMutationResult(value, courseId, expectedRevision) {
   return structuredClone(result);
 }
 
+function personHandle(value, { prefix = false } = {}) {
+  const raw = typeof value === "string" ? value.trim().replace(/^@/u, "") : "";
+  const normalized = raw.toLowerCase();
+  if (!/^[A-Za-z0-9._-]+$/u.test(raw) || normalized.length < (prefix ? 2 : 3) || normalized.length > 30 ||
+      !(prefix ? /^[a-z0-9][a-z0-9._-]*$/u : /^[a-z0-9][a-z0-9._-]*[a-z0-9]$/u).test(normalized)) {
+    throw new TypeError("Identificador público inválido.");
+  }
+  return normalized;
+}
+
 export class CourseApiClient {
-  constructor({ projectUrl, publishableKey, authClient, fetchImpl = globalThis.fetch } = {}) {
+  constructor({ projectUrl, publishableKey, authClient, visitor = false, fetchImpl = globalThis.fetch } = {}) {
     if (!authClient || typeof authClient.getAccessToken !== "function") {
       throw new TypeError("Cliente de autenticação obrigatório.");
     }
     this.authClient = authClient;
+    this.visitor = visitor === true;
     this.fetchImpl = fetchImpl;
     this.http = new SupabaseHttpClient({ projectUrl, publishableKey, fetchImpl });
   }
 
+  #authenticatedAccessToken() {
+    if (this.visitor) throw Object.assign(new Error("Entre para realizar esta operação."), {
+      code: "AUTH_REQUIRED", status: 401
+    });
+    return this.authClient.getAccessToken();
+  }
+
   async rpc(name, parameters = {}, options = {}) {
+    const publicRead = this.visitor && new Set([
+      "list_courses_v1", "get_course_v1", "list_course_entities_v1",
+      "get_course_study_citations_v1"
+    ]).has(name);
+    if (this.visitor && !publicRead) throw Object.assign(
+      new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
+    );
     try {
-      const accessToken = await this.authClient.getAccessToken();
-      if (!accessToken) {
+      const accessToken = publicRead ? null : await this.#authenticatedAccessToken();
+      if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
         error.code = "AUTH_REQUIRED";
@@ -630,7 +656,7 @@ export class CourseApiClient {
       }
       return first(await this.http.rpc(name, parameters, { ...options, accessToken }));
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -842,9 +868,14 @@ export class CourseApiClient {
     if (typeof normalizedBody?.requestId === "string") {
       requestHeaders["Idempotency-Key"] = requestIdentity(normalizedBody.requestId);
     }
+    const publicRead = this.visitor && normalizedMethod === "GET" &&
+      /^\/v1\/courses\/[0-9a-f-]{36}\/source-pdf\/download$/u.test(pathname);
+    if (this.visitor && !publicRead) throw Object.assign(
+      new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
+    );
     try {
-      const accessToken = await this.authClient.getAccessToken();
-      if (!accessToken) {
+      const accessToken = publicRead ? null : await this.#authenticatedAccessToken();
+      if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
         throw error;
@@ -872,7 +903,7 @@ export class CourseApiClient {
       }
       return response?.data ?? null;
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -967,7 +998,7 @@ export class CourseApiClient {
       sourceRevision: positiveInteger(sourceRevision, "Revisão da Fonte")
     };
     try {
-      const accessToken = await this.authClient.getAccessToken();
+      const accessToken = await this.#authenticatedAccessToken();
       if (!accessToken) {
         throw Object.assign(new Error("Entre novamente para continuar."), {
           status: 401,
@@ -1021,7 +1052,7 @@ export class CourseApiClient {
       }
       return result;
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -1184,12 +1215,13 @@ export class CourseApiClient {
 
   async commitCourseStructuralComposition(value = {}) {
     const source = exactObject(value, new Set([
-      "requestId", "courseId", "expectedRevision", "upserts", "deletes",
+      "requestId", "courseId", "expectedRevision", "upserts", "deletes", "courseMetadata",
       "sourceAttributionApplications"
     ]), "Alteração estrutural assistida");
+    const courseMetadata = Object.hasOwn(source, "courseMetadata") ? normalizeCourseMetadata(source.courseMetadata) : null;
     const upserts = Array.isArray(source.upserts) ? structuredClone(source.upserts) : null;
     const deletes = Array.isArray(source.deletes) ? structuredClone(source.deletes) : null;
-    if (!upserts || !deletes || !upserts.length && !deletes.length ||
+    if (!upserts || !deletes || !upserts.length && !deletes.length && courseMetadata === null ||
         upserts.length > 200 || deletes.length > 200) {
       throw new TypeError("Alteração estrutural assistida inválida.");
     }
@@ -1201,6 +1233,7 @@ export class CourseApiClient {
       body: {
         requestId,
         expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
+        ...(courseMetadata === null ? {} : { courseMetadata }),
         upserts: bounded.upserts,
         deletes: bounded.deletes,
         sourceAttributionApplications: normalizeSourceAttributionApplications(
@@ -1215,39 +1248,15 @@ export class CourseApiClient {
     };
   }
 
-  async commitPersonalCourseCopyEdit(value = {}) {
-    const command = normalizePersonalCourseCopyEditCommand(value);
-    let result;
-    try {
-      result = await this.requestCourseApi(
-        `${courseResourcePath(command.sourceCourseId)}/personal-copy/composition`,
-        {
-          method: "POST",
-          body: {
-            requestId: command.requestId,
-            sourceCourseId: command.sourceCourseId,
-            expectedSourceCourseRevision: command.expectedSourceCourseRevision,
-            expectedStudyUnitVersion: command.expectedStudyUnitVersion,
-            didacticMicrosequenceId: command.didacticMicrosequenceId,
-            studyUnit: command.studyUnit,
-            applicationOrigin: command.origin
-          }
-        }
-      );
-    } catch (error) {
-      if (String(error?.code || "").toLowerCase() === "personal_copy_exists") {
-        const candidate = String(
-          error?.details?.targetCourseId ??
-          error?.response?.details?.targetCourseId ??
-          error?.response?.error?.details?.targetCourseId ?? ""
-        ).trim().toLowerCase();
-        if (UUID_PATTERN.test(candidate)) error.targetCourseId = candidate;
-      }
-      throw error;
-    }
-    return normalizePersonalCourseCopyEditReceipt(result, command);
+  async recoverOwnedCourseCopy(value = {}) {
+    const command = normalizeOwnedCourseCopyRecoveryCommand(value);
+    const { origin, ...body } = command;
+    const result = await this.requestCourseApi(
+      `${courseResourcePath(command.sourceCourseId)}/copy-recovery`,
+      { method: "POST", body: { ...body, applicationOrigin: origin } }
+    );
+    return normalizeOwnedCourseCopyRecoveryReceipt(result, command);
   }
-
 
   mutateCourseDesign(value = {}) {
     const source = exactObject(
@@ -1328,19 +1337,20 @@ export class CourseApiClient {
   }
 
   getPersonProfile() {
-    return this.requestCourseApi("/v1/profile");
+    return this.requestCourseApi("/v2/profile");
   }
 
   updatePersonProfile(patch) {
     const normalized = plainObject(patch, "Alteração de perfil");
-    const allowed = new Set(["displayName", "avatarObjectKey"]);
+    const allowed = new Set(["handle", "avatarObjectKey"]);
     if (!Object.keys(normalized).length ||
         Object.keys(normalized).some((field) => !allowed.has(field))) {
       throw new TypeError("Alteração de perfil inválida.");
     }
-    return this.requestCourseApi("/v1/profile", {
+    return this.requestCourseApi("/v2/profile", {
       method: "PATCH",
-      body: normalized
+      body: { ...normalized, ...(Object.hasOwn(normalized, "handle")
+        ? { handle: personHandle(normalized.handle) } : {}) }
     });
   }
 
@@ -1348,24 +1358,73 @@ export class CourseApiClient {
     return this.requestCourseApi(`${courseResourcePath(courseId)}/access`);
   }
 
-  grantCourseAccess({
-    courseId,
-    email,
-    confirmed,
-    requestId = createUuid()
-  } = {}) {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    if (confirmed !== true || normalizedEmail.length > 254 ||
-        !/^[^\s@]+@[^\s@]+$/u.test(normalizedEmail)) {
-      throw new TypeError("Concessão de acesso inválida.");
+  async searchCourseAccessPeople(courseId, { query, limit = 10 } = {}) {
+    const course = uuid(courseId, "Curso");
+    const prefix = personHandle(query, { prefix: true });
+    const maximum = positiveInteger(limit, "Limite de pessoas", { maximum: 10 });
+    const result = await this.requestCourseApi(`${courseResourcePath(course)}/access/people`, {
+      query: { query: prefix, limit: maximum }
+    });
+    if (result?.contract !== "aralearn.course-people-search.v1" || result.courseId !== course ||
+        !Array.isArray(result.items) || result.items.length > maximum ||
+        typeof result.rateLimited !== "boolean" || result.rateLimited && result.items.length) {
+      throw new TypeError("Resultado da busca de pessoas inválido.");
     }
+    const items = result.items.map((person) => {
+      const userId = uuid(person.userId, "Pessoa");
+      const handle = personHandle(person.handle);
+      const key = person.avatarObjectKey;
+      if (handle !== person.handle || !handle.startsWith(prefix) ||
+          key !== null && (!AVATAR_OBJECT_KEY.test(key) || !key.startsWith(`${userId}/`))) {
+        throw new TypeError("Pessoa da busca inválida.");
+      }
+      let avatarUrl = null;
+      if (key !== null) {
+        const url = new URL(person.avatarUrl);
+        if (url.origin !== new URL(this.http.projectUrl).origin || url.username || url.password || url.hash ||
+            url.pathname !== `/storage/v1/object/sign/${AVATAR_BUCKET}/${key}` || !url.searchParams.has("token")) {
+          throw new TypeError("Avatar da busca inválido.");
+        }
+        avatarUrl = url.toString();
+      } else if (person.avatarUrl !== null) throw new TypeError("Avatar da busca inválido.");
+      return { userId, handle, avatarObjectKey: key, avatarUrl };
+    });
+    if (new Set(items.map(({ userId }) => userId)).size !== items.length) throw new TypeError("Busca repetiu uma pessoa.");
+    return { contract: result.contract, courseId: course, items, rateLimited: result.rateLimited };
+  }
+
+  grantCourseAccess({ courseId, userId, handle, confirmed, requestId = createUuid() } = {}) {
+    if (confirmed !== true) throw new TypeError("Concessão de acesso inválida.");
     return this.requestCourseApi(`${courseResourcePath(courseId)}/access`, {
       method: "POST",
-      body: {
-        email: normalizedEmail,
-        confirmed: true,
-        requestId: uuid(requestId, "Identidade da alteração")
-      }
+      body: { userId: uuid(userId, "Pessoa"), handle: personHandle(handle), confirmed: true,
+        requestId: uuid(requestId, "Identidade da alteração") }
+    });
+  }
+
+  setCourseVisibility({ courseId, expectedRevision, visibility, publicFileAccess,
+    confirmed, requestId = createUuid() } = {}) {
+    if (!new Set(["private", "public"]).has(visibility) ||
+        !new Set(["restricted", "available"]).has(publicFileAccess) ||
+        confirmed !== true) throw new TypeError("Visibilidade inválida.");
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/visibility`, {
+      method: "PATCH", body: { expectedRevision: positiveInteger(expectedRevision, "Revisão"),
+        visibility, publicFileAccess, confirmed: confirmed === true,
+        requestId: requestIdentity(requestId) }
+    });
+  }
+
+  setCourseSourceFileAccess({ courseId, expectedRevision, sourceId, sourceRevision,
+    contentHash = null, publicFileAccess, requestId = createUuid() } = {}) {
+    if (!new Set(["inherit", "restricted", "available"]).has(publicFileAccess) ||
+        contentHash !== null && !/^[a-f0-9]{64}$/u.test(contentHash)) {
+      throw new TypeError("Permissão do arquivo inválida.");
+    }
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/sources/file-access`, {
+      method: "PATCH", body: { expectedRevision: positiveInteger(expectedRevision, "Revisão"),
+        sourceId: boundedIdentifier(sourceId, "Fonte"),
+        sourceRevision: positiveInteger(sourceRevision, "Revisão da fonte"),
+        contentHash, publicFileAccess, requestId: requestIdentity(requestId) }
     });
   }
 
@@ -1482,7 +1541,7 @@ export class CourseApiClient {
       throw new TypeError("Use uma imagem JPEG, PNG ou WebP de até 512 KiB.");
     }
     const objectKey = `${userId}/${uuid(objectId, "Identidade do avatar")}.${extension}`;
-    const accessToken = await this.authClient.getAccessToken();
+    const accessToken = await this.#authenticatedAccessToken();
     if (!accessToken) {
       const error = new Error("Entre novamente para continuar.");
       error.status = 401;
@@ -1505,7 +1564,7 @@ export class CourseApiClient {
       );
       return { objectKey, contentType, size };
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -1515,7 +1574,7 @@ export class CourseApiClient {
   }
 
   async loadAvatar(objectKey) {
-    const accessToken = await this.authClient.getAccessToken();
+    const accessToken = await this.#authenticatedAccessToken();
     if (!accessToken) throw Object.assign(new Error("Entre novamente para continuar."), {
       status: 401,
       code: "AUTH_REQUIRED"
@@ -1533,7 +1592,7 @@ export class CourseApiClient {
     if (!normalized.startsWith(`${userId}/`)) {
       throw new TypeError("Somente o próprio avatar pode ser removido.");
     }
-    const accessToken = await this.authClient.getAccessToken();
+    const accessToken = await this.#authenticatedAccessToken();
     if (!accessToken) throw Object.assign(new Error("Entre novamente para continuar."), {
       status: 401,
       code: "AUTH_REQUIRED"

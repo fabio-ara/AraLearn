@@ -25,7 +25,8 @@ uma história universal só para reconstruir cada estado anterior.
 
 ## Modelo corrente do Curso
 
-`public.courses` contém identidade, proprietário, título, objetivo e revisão. A
+`public.courses` contém identidade, proprietário, título, objetivo, revisão,
+visibilidade e política de acesso público a arquivos. Cada curso nasce privado. A
 estrutura curricular usa entidades ligadas por curso, tipo, pai e posição. A
 ordem é validada pelo banco; uma StudyUnit não pode pertencer a duas posições no
 mesmo pai.
@@ -71,8 +72,13 @@ a Unit inicial; curso, contexto e posição são preservados ao voltar ou avanç
 
 Uma edição manual envia apenas o segmento alterado e sua versão. Alterações
 assistidas passam pelo mesmo normalizador e renderer antes de serem salvas.
-Editar um curso compartilhado pela primeira vez cria uma cópia pessoal privada;
-o original permanece intacto.
+Somente o proprietário edita. Estudantes e visitantes não criam cursos ao
+tentar alterar conteúdo. Cópias já existentes conservam a propriedade verificada;
+a origem útil migra para `courses.copy_origin`, fora da projeção pública.
+O escritor automático e sua tabela exclusiva são retirados após o preflight.
+Rascunhos locais anteriores são inspecionados por uma operação somente de leitura:
+prova de origem e recibo permitem identificar um resultado confirmado, sem repetir
+a escrita. A ausência de prova preserva o rascunho para inspeção e descarte explícito.
 
 ## Fontes e proveniência
 
@@ -92,7 +98,12 @@ integral de uma Observação ou o PDF privado não é incluído nessa projeção
 ## PDFs privados
 
 O descritor relacional contém fonte, versão, resumo SHA-256, tamanho, tipo e
-caminho. O objeto fica no bucket privado `course-source-pdfs`.
+caminho. O objeto fica no bucket privado `course-source-pdfs`. A autorização de download
+considera o acesso ao curso e a política efetiva: arquivo, fonte e curso, nessa
+ordem. Os dois primeiros níveis aceitam herança; o curso define restrito ou
+disponível. Alterações conferem revisão do curso e da fonte. O cliente de Estudo
+recebe só descritores lógicos autorizados, sem caminho do Storage; cada download
+revalida a política antes de emitir URL assinada de curta duração.
 
 Uma ingestão usa uma intenção curta para reservar cota e selar os dados. O
 serviço envia e relê o objeto pela Storage API antes de ativar o vínculo. Objetos
@@ -192,3 +203,17 @@ reais pela Storage API.
 
 Consulte [Supabase no AraLearn](supabase.md) para o ambiente e a segurança, e
 [Implantação](implantacao.md) para a ordem de promoção.
+
+## Identidade escolhida e visitante
+
+`person_profiles.handle` é único, normalizado em ASCII minúsculo e separado do
+UUID estável. A migração deixa o campo vazio para contas existentes; o onboarding
+exige escolha antes da experiência autenticada. Nomes anteriores são preservados
+num arquivo relacional privado de migração, sem leitor de runtime. O perfil v2
+validado pode ser reaberto offline no cache da própria conta; erro de autenticação
+ou permissão invalida esse cache.
+
+O visitante usa `aralearn-course-v1-visitor`, separado dos bancos por conta.
+Progresso e Rever ficam locais e não chamam endpoints de estado pessoal. Leituras
+públicas usam projeções permitidas; nenhuma tabela privada ganha acesso anônimo.
+Entrar numa conta não associa silenciosamente os dados do visitante.

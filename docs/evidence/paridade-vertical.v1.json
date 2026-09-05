@@ -13,22 +13,23 @@
   "cases": [
     {
       "id": "study-course-experience",
-      "intent": "Encontrar um Curso acessível, percorrer sua hierarquia, estudar suas unidades, conservar progresso e marcações pessoais de revisão e, quando o Curso for compartilhado, continuar uma edição numa cópia pessoal própria.",
+      "intent": "Encontrar um curso público ou autorizado, percorrer sua hierarquia, praticar e conservar progresso e Rever; somente o proprietário edita. Visitante mantém estado separado no dispositivo.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
       "objects": {
         "manifestFeatures": [
           "course-personal-state-v2",
-          "personal-course-copy-edit-v1",
+          "public-course-study-v1",
+          "owned-course-copy-recovery-v1",
           "course-product-operations-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.course_personal_states|private\\.course_personal_state_receipts)$",
-          "^table:private\\.course_personal_copies$",
           "^function:private\\.(?:valid_course_personal_state_v2|list_course_review_items_for_actor_v1)\\(.*\\)$",
           "^function:public\\.(?:list_course_review_items_v1|load_course_personal_state_v2|mutate_course_personal_state_v2)\\(.*\\)$",
-          "^function:public\\.commit_personal_course_copy_edit_for_actor_v1\\(.*\\)$"
+          "^function:public\\.recover_owned_course_copy_for_actor_v1\\(.*\\)$",
+          "^function:private\\.(?:course_list_projection_v2|list_visible_courses_v2|require_course_read_access_v1)\\(.*\\)$"
         ]
       },
       "ui": [
@@ -66,7 +67,7 @@
         },
         {
           "path": "src/supabase/CourseController.js",
-          "token": "commitPersonalCourseCopyEdit"
+          "token": "recoverStudyDraft"
         }
       ],
       "routes": [
@@ -80,17 +81,18 @@
         },
         {
           "path": "src/supabase/CourseApiClient.js",
-          "token": "commitPersonalCourseCopyEdit"
+          "token": "recoverOwnedCourseCopy"
         }
       ],
       "tests": [
         "tests/runtime/course-study-repository.test.js",
         "tests/runtime/course-personal-state-repository.test.js",
-        "tests/runtime/course-personal-copy-client.test.js",
+        "tests/runtime/course-access-public.test.js",
         "tests/e2e/manual-study-unit-edit.spec.js",
-        "tests/e2e/course-study-cutover.spec.js"
+        "tests/e2e/course-study-cutover.spec.js",
+        "tests/e2e/course-access-local.spec.js"
       ],
-      "justification": "O estado pessoal mínimo só é legítimo quando volta à experiência móvel de Estudo. Cache local, sincronização, CAS e idempotência de progresso e Rever são mecanismos internos dessa mesma capacidade, não produtos separados. A edição de um Curso compartilhado materializa uma única cópia pessoal independente, preserva o Curso de origem e permite continuar o Estudo no resultado sem conceder edição sobre a origem. Excluir Curso próprio e sair de Curso compartilhado permanecem ações distintas e explícitas na mesma Home."
+      "justification": "O mesmo percurso recebe projeções públicas ou autorizadas. Progresso e Rever do visitante ficam em IndexedDB separado, sem endpoints pessoais. Somente o proprietário edita. Origem comprovada das cópias anteriores migra para o curso próprio; recuperação somente de leitura preserva rascunhos e não repete o escritor retirado. Remover a réplica local, excluir curso próprio e deixar curso compartilhado continuam ações distintas."
     },
     {
       "id": "course-authoring-experience",
@@ -248,7 +250,8 @@
           "^function:public\\.(?:cancel_course_source_pdf_ingestion_for_actor_v1|claim_course_source_pdf_delete_for_actor_v1|claim_pending_course_source_pdf_delete_for_source_for_actor_v1|complete_course_source_pdf_delete_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_pdf_download_for_actor_v1|get_course_source_pdf_ingestion_receipt_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1|ingest_course_source_pdf_for_actor_v1|prepare_course_source_pdf_ingestion_for_actor_v1|remove_course_source_pdf_for_actor_v1)\\(.*\\)$",
           "^trigger:private\\.course_entities/course_entities_invalidate_source_attribution_v1$",
           "^trigger:private\\.course_instructional_plan_items/course_plan_items_invalidate_source_attribution_v1$",
-          "^bucket:storage\\.course-source-pdfs$"
+          "^bucket:storage\\.course-source-pdfs$",
+          "^function:private\\.can_read_course_file_v1\\(.*\\)$"
         ]
       },
       "ui": [
@@ -582,15 +585,19 @@
         "manifestFeatures": [
           "direct-course-access-v1",
           "study-only-course-access-v1",
-          "person-profile-v1",
+          "person-profile-v2",
           "private-person-avatar-v1",
-          "self-account-deletion-v1"
+          "self-account-deletion-v1",
+          "course-file-access-policy-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.person_profiles|public\\.course_access)$",
           "^function:private\\.(?:course_ownership_v1|require_course_access_v1|can_read_person_v1|touch_person_profile_v1|create_person_profile_v1)\\(.*\\)$",
-          "^function:public\\.(?:get_person_profile_for_actor_v1|update_person_profile_for_actor_v1|list_course_access_for_actor_v1|manage_course_access_for_actor_v1|delete_my_account_v1)\\(.*\\)$",
-          "^bucket:storage\\.person-avatars$"
+          "^function:public\\.(?:get_person_profile_for_actor_v2|update_person_profile_for_actor_v2|list_course_access_for_actor_v2|manage_course_access_for_actor_v2|delete_my_account_v1)\\(.*\\)$",
+          "^bucket:storage\\.person-avatars$",
+          "^function:public\\.(?:search_course_access_people_for_actor_v1|set_course_visibility_for_actor_v1|set_course_source_file_access_for_actor_v1)\\(.*\\)$",
+          "^function:private\\.(?:consume_course_people_rate_v1|normalize_person_handle_v1)\\(.*\\)$",
+          "^table:private\\.person_profile_identity_migration_backup$"
         ]
       },
       "ui": [
@@ -605,6 +612,14 @@
         {
           "path": "src/ui/CourseAuthoringSurface.js",
           "token": "data-course-authoring-action=\"open-grant\""
+        },
+        {
+          "path": "src/ui/PersonHandleOnboarding.js",
+          "token": "data-handle-onboarding"
+        },
+        {
+          "path": "src/ui/CourseSourcesPanel.js",
+          "token": "course-source-file-access"
         }
       ],
       "visibleEffects": [
@@ -615,6 +630,14 @@
         {
           "path": "src/ui/CourseAuthoringSurface.js",
           "token": "revokeCourseAccess"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "setCourseVisibility"
+        },
+        {
+          "path": "src/study/CourseStudyApplication.js",
+          "token": "getStudyCitationAttachmentDownload"
         }
       ],
       "persistence": [
@@ -640,9 +663,11 @@
       "tests": [
         "tests/runtime/course-api-client.test.js",
         "tests/runtime/course-authoring-surface.test.js",
-        "tests/runtime/course-controller.test.js"
+        "tests/runtime/course-controller.test.js",
+        "tests/runtime/person-profile-offline.test.js",
+        "tests/e2e/course-access-local.spec.js"
       ],
-      "justification": "Propriedade e compartilhamento são relações diretas. Perfil, avatar privado, acesso ao Estudo e exclusão da própria conta permanecem exclusivos da aplicação autenticada e não atravessam o catálogo MCP público; continuam observáveis sem introduzir organizações, roles ou capabilities de produto."
+      "justification": "Identificador público escolhido e avatar opcional apresentam a pessoa sem expor e-mail. Busca por prefixo tem cota e resultados mínimos; concessão confirma UUID e identificador. Publicação confirma política de arquivos, com exceção por fonte e PDF, mantendo Storage privado. Escrita pertence somente ao proprietário em todos os canais; observação exige conta autorizada. Perfil e concessões não criam catálogo genérico de papéis. A migração conserva o nome anterior em backup privado sem leitor ou escritor no runtime; identificador escolhido e UUID estável governam o acesso atual."
     },
     {
       "id": "didactic-component-runtime",

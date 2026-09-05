@@ -1,3 +1,4 @@
+import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
 import { AuthoringApiError } from "./errors.js";
 import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
@@ -13,6 +14,7 @@ import {
   COURSE_SOURCE_PDF_MAX_BYTES,
   CourseSourcesError,
   normalizeCourseSourcePdfDownload,
+  normalizeCourseSourceAttachment,
   normalizeCourseSourceChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcePdfIngestion,
@@ -144,13 +146,6 @@ function accountDeletionResult(value) {
   return { contract: result.contract, status: result.status };
 }
 
-const PERSONAL_COURSE_COPY_EDIT_FIELDS = new Set([
-  "contract", "operation", "sourceCourseId", "sourceCourseRevision",
-  "targetCourseId", "targetCourseRevision", "studyUnitId", "studyUnitVersion",
-  "applicationOrigin", "channel", "createdCopy", "changed", "idempotent",
-  "updatedAt"
-]);
-
 function strictUuid(value) {
   return typeof value === "string" && value === value.trim().toLowerCase() &&
     UUID_PATTERN.test(value)
@@ -158,68 +153,6 @@ function strictUuid(value) {
     : null;
 }
 
-function invalidPersonalCourseCopyResponse() {
-  return new AuthoringApiError(
-    503,
-    "course_service_unavailable",
-    "O serviço devolveu uma cópia pessoal inválida."
-  );
-}
-
-function normalizePersonalCourseCopyEdit(value, expected) {
-  const result = first(value);
-  const sourceCourseId = strictUuid(result?.sourceCourseId);
-  const rawTargetCourseId = result?.targetCourseId;
-  const targetCourseId = rawTargetCourseId == null
-    ? null
-    : strictUuid(rawTargetCourseId);
-  const targetCourseRevision = result?.targetCourseRevision == null
-    ? null
-    : result.targetCourseRevision;
-  const targetIsAbsent = rawTargetCourseId === null && targetCourseRevision === null;
-  const targetIsPresent = rawTargetCourseId !== null && targetCourseId !== null &&
-    positiveSafeInteger(targetCourseRevision);
-  const mutationShapeValid = result?.changed === true
-    ? targetIsPresent && targetCourseRevision === 2 && result.studyUnitVersion === 2 &&
-      result.createdCopy === true
-    : result?.changed === false
-      ? targetIsAbsent && result.studyUnitVersion === expected.expectedStudyUnitVersion &&
-        result.createdCopy === false
-      : false;
-  if (!exactRecord(result, PERSONAL_COURSE_COPY_EDIT_FIELDS) ||
-      result.contract !== "aralearn.personal-course-copy-edit.v1" ||
-      result.operation !== "commit_personal_course_copy_edit" ||
-      sourceCourseId !== expected.sourceCourseId ||
-      result.sourceCourseRevision !== expected.expectedSourceCourseRevision ||
-      !mutationShapeValid ||
-      targetCourseId === sourceCourseId ||
-      result.studyUnitId !== expected.studyUnitId ||
-      !positiveSafeInteger(result.studyUnitVersion) ||
-      result.applicationOrigin !== expected.applicationOrigin ||
-      result.channel !== "application" ||
-      typeof result.createdCopy !== "boolean" ||
-      typeof result.changed !== "boolean" ||
-      typeof result.idempotent !== "boolean" ||
-      !validTimestamp(result.updatedAt)) {
-    throw invalidPersonalCourseCopyResponse();
-  }
-  return {
-    contract: result.contract,
-    operation: result.operation,
-    sourceCourseId,
-    sourceCourseRevision: result.sourceCourseRevision,
-    targetCourseId,
-    targetCourseRevision,
-    studyUnitId: result.studyUnitId,
-    studyUnitVersion: result.studyUnitVersion,
-    applicationOrigin: result.applicationOrigin,
-    channel: result.channel,
-    createdCopy: result.createdCopy,
-    changed: result.changed,
-    idempotent: result.idempotent,
-    updatedAt: result.updatedAt
-  };
-}
 
 function positiveSafeInteger(value) {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
@@ -579,6 +512,9 @@ function databaseError(status, body) {
   if (code === "PT404") {
     return new AuthoringApiError(404, "PT404", "O recurso solicitado não foi encontrado.");
   }
+  if (code === "PH409") {
+    return new AuthoringApiError(409, "person_handle_unavailable", "Este identificador público já está em uso.");
+  }
   if (code === "40001") {
     return new AuthoringApiError(
       409,
@@ -592,17 +528,6 @@ function databaseError(status, body) {
       "account_storage_not_empty",
       "A exclusão aguarda a limpeza dos objetos privados da conta."
     );
-  }
-  if (code === "P1490") {
-    const targetCourseId = strictUuid(body?.details);
-    return targetCourseId
-      ? new AuthoringApiError(
-          409,
-          "personal_copy_exists",
-          "Você já possui uma cópia pessoal deste Curso.",
-          { targetCourseId }
-        )
-      : invalidPersonalCourseCopyResponse();
   }
   if (code === "23514" &&
       databaseMessage.startsWith("A cota de 64 MiB de PDFs")) {
@@ -1110,7 +1035,7 @@ function storageObjectPath(value) {
   return String(value || "").split("/").map(encodeURIComponent).join("/");
 }
 
-function signedStorageUrl(baseUrl, value, { download = false } = {}) {
+function signedStorageUrl(baseUrl, value, { download = false, expectedPath = null } = {}) {
   const raw = String(value || "").trim();
   if (!raw) {
     throw new AuthoringApiError(
@@ -1121,7 +1046,9 @@ function signedStorageUrl(baseUrl, value, { download = false } = {}) {
   }
   const url = new URL(raw.startsWith("http") ? raw : `${baseUrl}${raw}`);
   if (download) url.searchParams.set("download", "");
-  if (!url.searchParams.has("token")) {
+  if (!url.searchParams.has("token") || url.origin !== new URL(baseUrl).origin ||
+      url.username || url.password || url.hash ||
+      expectedPath !== null && url.pathname !== expectedPath) {
     throw new AuthoringApiError(
       503,
       "course_storage_unavailable",
@@ -2053,13 +1980,13 @@ export class CourseSupabaseAdapter {
   }
 
   async getPersonProfile({ principal, deadlineAt = null }) {
-    return first(await this.rpc("get_person_profile_for_actor_v1", {
+    return first(await this.rpc("get_person_profile_for_actor_v2", {
       p_actor_id: principal.actorId
     }, { deadlineAt }));
   }
 
   async updatePersonProfile({ principal, patch, deadlineAt = null }) {
-    return first(await this.rpc("update_person_profile_for_actor_v1", {
+    return first(await this.rpc("update_person_profile_for_actor_v2", {
       p_actor_id: principal.actorId,
       p_patch: patch
     }, { deadlineAt }));
@@ -2356,6 +2283,15 @@ export class CourseSupabaseAdapter {
       deadlineAt,
       responseLimitBytes: 32 * 1024
     }));
+    const attachment = normalizeCourseSourcesDatabaseValue(() =>
+      normalizeCourseSourceAttachment(raw?.attachment, { persisted: true, policy: false }));
+    if (raw?.contract !== "aralearn.course-source-pdf-download.v1" ||
+        raw.courseId !== courseId || raw.courseRevision !== expectedRevision ||
+        raw.sourceId !== sourceId || raw.sourceRevision !== sourceRevision ||
+        attachment.contentHash !== contentHash ||
+        attachment.storagePath.split("/")[0] !== strictUuid(raw.storageOriginCourseId)) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "O PDF não corresponde à leitura autorizada.");
+    }
     const storageBaseUrl = `${this.supabaseUrl}/storage/v1`;
     const publicStorageBaseUrl = `${this.publicSupabaseUrl}/storage/v1`;
     const signed = await this.#request(
@@ -2370,11 +2306,14 @@ export class CourseSupabaseAdapter {
     );
     const normalized = normalizeCourseSourcesDatabaseValue(() =>
       normalizeCourseSourcePdfDownload({
-        ...raw,
+        contract: "aralearn.course-source-pdf-download.v2",
+        courseId, courseRevision: expectedRevision, sourceId, sourceRevision,
+        attachment: { contentHash: attachment.contentHash, byteSize: attachment.byteSize,
+          mediaType: attachment.mediaType },
         signedUrl: signedStorageUrl(
           publicStorageBaseUrl,
           signed?.signedURL,
-          { download: true }
+          { download: true, expectedPath: `/storage/v1/object/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/${storageObjectPath(attachment.storagePath)}` }
         ),
         expiresAt: new Date(
           Date.now() + COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS * 1_000
@@ -2571,9 +2510,63 @@ export class CourseSupabaseAdapter {
 
 
   async listCourseAccess({ principal, courseId, deadlineAt = null }) {
-    return first(await this.rpc("list_course_access_for_actor_v1", {
+    return first(await this.rpc("list_course_access_for_actor_v2", {
       p_actor_id: principal.actorId,
       p_course_id: courseId
+    }, { deadlineAt }));
+  }
+
+  async searchCourseAccessPeople({ principal, courseId, query, limit, deadlineAt = null }) {
+    const result = first(await this.rpc("search_course_access_people_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_query: query, p_limit: limit
+    }, { deadlineAt }));
+    const invalid = () => new AuthoringApiError(503, "course_service_unavailable", "A busca devolveu uma pessoa inválida.");
+    if (result?.contract !== "aralearn.course-people-search.v1" || result.courseId !== courseId ||
+        !Array.isArray(result.items) || result.items.length > Math.min(limit, 10) ||
+        result.rateLimited != null && typeof result.rateLimited !== "boolean" ||
+        result.rateLimited === true && result.items.length) throw invalid();
+    const people = result.items.map((person) => {
+      if (!exactRecord(person, new Set(["userId", "handle", "avatarObjectKey"])) ||
+          !strictUuid(person.userId) || !/^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/u.test(person.handle) ||
+          !person.handle.startsWith(query) || person.avatarObjectKey !== null &&
+          (typeof person.avatarObjectKey !== "string" || !person.avatarObjectKey.startsWith(`${person.userId}/`) ||
+            !/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/u.test(person.avatarObjectKey))) throw invalid();
+      return person;
+    });
+    if (new Set(people.map(({ userId }) => userId)).size !== people.length) throw invalid();
+    const items = await Promise.all(people.map(async (person) => {
+      let avatarUrl = null;
+      if (person.avatarObjectKey !== null) {
+        const signed = await this.#request(
+          `${this.supabaseUrl}/storage/v1/object/sign/${PERSON_AVATAR_BUCKET}/` + storageObjectPath(person.avatarObjectKey),
+          { method: "POST", headers: supabaseServerHeaders(this.serverApiKey),
+            body: JSON.stringify({ expiresIn: 60 }) },
+          { retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
+        );
+        avatarUrl = signedStorageUrl(`${this.publicSupabaseUrl}/storage/v1`, signed?.signedURL, {
+          expectedPath: `/storage/v1/object/sign/${PERSON_AVATAR_BUCKET}/${storageObjectPath(person.avatarObjectKey)}`
+        });
+      }
+      return { ...person, avatarUrl };
+    }));
+    return { contract: result.contract, courseId, items, rateLimited: result.rateLimited === true };
+  }
+
+  async setCourseVisibility({ principal, courseId, expectedRevision, visibility,
+    publicFileAccess, confirmed, requestId, deadlineAt = null }) {
+    return first(await this.rpc("set_course_visibility_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
+      p_visibility: visibility, p_public_file_access: publicFileAccess,
+      p_confirmed: confirmed, p_request_id: requestId
+    }, { deadlineAt }));
+  }
+
+  async setCourseSourceFileAccess({ principal, courseId, expectedRevision, sourceId,
+    sourceRevision, contentHash = null, publicFileAccess, requestId, deadlineAt = null }) {
+    return first(await this.rpc("set_course_source_file_access_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
+      p_source_id: sourceId, p_source_revision: sourceRevision, p_content_hash: contentHash,
+      p_public_file_access: publicFileAccess, p_request_id: requestId
     }, { deadlineAt }));
   }
 
@@ -2581,17 +2574,17 @@ export class CourseSupabaseAdapter {
     principal,
     courseId,
     operation,
-    email = null,
+    handle = null,
     targetUserId = null,
     confirmed,
     requestId,
     deadlineAt = null
   }) {
-    return first(await this.rpc("manage_course_access_for_actor_v1", {
+    return first(await this.rpc("manage_course_access_for_actor_v2", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_operation: operation,
-      p_target_email: email,
+      p_target_handle: handle,
       p_target_user_id: targetUserId,
       p_confirmed: confirmed,
       p_request_id: requestId
@@ -3204,6 +3197,7 @@ export class CourseSupabaseAdapter {
     upserts = [],
     deletes = [],
     sourceAttributionApplications = [],
+    courseMetadata = null,
     deadlineAt = null
   }) {
     const channel = authoringChannel(principal);
@@ -3228,10 +3222,19 @@ export class CourseSupabaseAdapter {
         "A origem ou o escopo da composição é inválido."
       );
     }
+    let metadata = null;
+    if (courseMetadata !== null) {
+      if (hasExpectedStudyUnitVersion || hasApplicationOrigin) {
+        throw new AuthoringApiError(422, "invalid_course_metadata", "A edição focal não altera a identidade do curso.");
+      }
+      try { metadata = normalizeCourseMetadata(courseMetadata); }
+      catch { throw new AuthoringApiError(422, "invalid_course_metadata", "A identidade do curso é inválida."); }
+    }
     const normalizedApplications = normalizeCourseSourcesInputValue(() =>
       normalizeSourceAttributionApplications(sourceAttributionApplications)
     );
     const rpcInput = {
+      ...(metadata === null ? {} : { p_course_metadata: metadata }),
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_expected_revision: expectedRevision,
@@ -3251,7 +3254,7 @@ export class CourseSupabaseAdapter {
     return withDeepLink(result, this.publicAppUrl);
   }
 
-  async commitPersonalCourseCopyEdit({
+  async recoverOwnedCourseCopy({
     principal,
     sourceCourseId,
     requestId,
@@ -3272,8 +3275,8 @@ export class CourseSupabaseAdapter {
         !new Set(["manual", "provider_assistance"]).has(applicationOrigin)) {
       throw new AuthoringApiError(
         422,
-        "invalid_personal_course_copy_edit",
-        "A edição da cópia pessoal é inválida."
+        "invalid_owned_course_copy_recovery",
+        "A consulta de recuperação é inválida."
       );
     }
     const { validateCourseEntityContent } = await import(
@@ -3301,7 +3304,7 @@ export class CourseSupabaseAdapter {
       content
     };
     const raw = await this.rpc(
-      "commit_personal_course_copy_edit_for_actor_v1",
+      "recover_owned_course_copy_for_actor_v1",
       {
         p_actor_id: principal.actorId,
         p_source_course_id: sourceCourseId,
@@ -3313,12 +3316,16 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt, timeoutMs: 40_000 }
     );
-    return normalizePersonalCourseCopyEdit(raw, {
-      sourceCourseId,
-      expectedSourceCourseRevision,
-      expectedStudyUnitVersion,
-      studyUnitId: normalizedStudyUnit.id,
-      applicationOrigin
-    });
+    const { normalizeOwnedCourseCopyRecoveryReceipt } = await import(
+      "../aralearn/runtime/domain/courseComposition.js"
+    );
+    try {
+      return normalizeOwnedCourseCopyRecoveryReceipt(first(raw), {
+        sourceCourseId, requestId, expectedSourceCourseRevision, expectedStudyUnitVersion,
+        didacticMicrosequenceId, studyUnit: normalizedStudyUnit, origin: applicationOrigin
+      });
+    } catch {
+      throw new AuthoringApiError(503, "course_service_unavailable", "Resposta de recuperação inválida.");
+    }
   }
 }

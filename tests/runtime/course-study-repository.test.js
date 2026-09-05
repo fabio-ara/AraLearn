@@ -2,9 +2,101 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { CourseStudyRepository } from "../../src/study/CourseStudyRepository.js";
+import { CourseStudyBridge } from "../../src/study/CourseStudyBridge.js";
 
 const COURSE_A = "10000000-0000-4000-8000-000000000001";
 const COURSE_B = "20000000-0000-4000-8000-000000000002";
+
+test("visitante estuda curso público, persiste Rever e não usa endpoints pessoais", async () => {
+  const local = cache();
+  const descriptor = { courseId: COURSE_A, title: "Curso público", revision: 1, ownership: "public", canEdit: false, canObserve: false };
+  const bridge = {
+    async listAccessibleCourses() { return { items: [descriptor], hasMore: false }; },
+    async loadCourse() { return { course: descriptor, revision: 1, document: { courses: [course(COURSE_A, "a")] }, rows: [] }; },
+    async clearCourse() {}
+  };
+  const forbidden = () => { throw new Error("Endpoint pessoal não deve ser chamado"); };
+  const api = {
+    loadPersonalState: forbidden, mutatePersonalState: forbidden, listCourseReviewItems: forbidden,
+    getMyCourseAnchoredAnnotations: forbidden, executeMyCourseAnchoredAnnotationCommand: forbidden
+  };
+  const repository = new CourseStudyRepository({ bridge, cache: local, api, visitor: true, windowValue: null });
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+  const reference = [COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"];
+  await repository.setStudyUnitCompleted(reference, true);
+  await repository.setStudyUnitReviewMark(reference, true);
+  assert.equal(repository.isStudyUnitCompleted(reference), true);
+  assert.equal(repository.loadRuntimeStatus(COURSE_A).localOnly, true);
+  assert.equal(repository.loadRuntimeStatus(COURSE_A).pending, false);
+  assert.equal(repository.loadCourseSummaries()[0].canEdit, false);
+  await assert.rejects(() => repository.createAnnotationForPath(reference, { rawText: "Observação" }), /Entre na sua conta/u);
+  await repository.flush();
+  const reopened = new CourseStudyRepository({ bridge, cache: local, api, visitor: true, windowValue: null });
+  await reopened.initialize();
+  assert.equal(reopened.loadReviewItems()[0].studyUnitId, "unit-a");
+  await reopened.loadCourse(COURSE_A);
+  assert.equal(reopened.isStudyUnitCompleted(reference), true);
+  assert.equal(reopened.isStudyUnitMarkedForReview(reference), true);
+});
+
+test("endereço direto carrega curso acessível ausente da lista uma única vez", async () => {
+  let reads = 0;
+  const repository = new CourseStudyRepository({
+    visitor: true, cache: cache(), api: {}, windowValue: null,
+    bridge: {
+      async listAccessibleCourses() { return { items: [], hasMore: false }; },
+      async loadCourse(courseId) {
+        reads += 1;
+        return { course: { courseId, title: "Curso", revision: 1, ownership: "public" }, revision: 1,
+          document: { courses: [course(courseId, "a")] }, rows: [] };
+      }
+    }
+  });
+  await repository.initialize();
+  await repository.loadCourseById(COURSE_A);
+  assert.equal(reads, 1);
+  assert.equal(repository.loadProject().courses[0].modules[0].id, "module-a");
+  assert.equal(repository.resolveCourseContractKey(COURSE_A), COURSE_A);
+});
+
+test("visitante baixa o PDF lógico pela ponte canônica e recusa resposta divergente", async () => {
+  const calls = [];
+  const descriptor = { courseId: COURSE_A, title: "Curso público", revision: 3, ownership: "public" };
+  const attachment = { contentHash: "a".repeat(64), byteSize: 2_048, mediaType: "application/pdf" };
+  let responseOverride = {};
+  const bridge = new CourseStudyBridge({ controller: {
+    async listCourses() { return { items: [descriptor], hasMore: false }; },
+    async loadCourseDocument() { return { course: descriptor, document: { courses: [course(COURSE_A, "a")] }, rows: [] }; },
+    async clearCourse() {},
+    async getCourseSourceAttachmentDownload(request) {
+      calls.push(request);
+      return { contract: "aralearn.course-source-pdf-download.v2", courseId: COURSE_A,
+        courseRevision: 3, sourceId: "source-a", sourceRevision: 2, attachment,
+        signedUrl: `https://project.example/storage/v1/object/sign/course-source-pdfs/${COURSE_A}/${attachment.contentHash}.pdf?token=sealed`,
+        expiresAt: "2026-09-05T12:01:00Z", ...responseOverride };
+    }
+  } });
+  const repository = new CourseStudyRepository({ bridge, cache: cache(), api: {}, visitor: true, windowValue: null });
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+  const reference = { courseId: COURSE_A, studyUnitId: "unit-a" };
+  const citation = { courseRevision: 3, sourceId: "source-a", sourceRevision: 2, attachment };
+  const download = await repository.getStudyCitationAttachmentDownload(reference, citation);
+  assert.deepEqual(download.attachment, attachment);
+  assert.deepEqual(calls, [{ courseId: COURSE_A, expectedCourseRevision: 3,
+    sourceId: "source-a", sourceRevision: 2, contentHash: attachment.contentHash }]);
+  for (const overrides of [{ sourceId: "other-source" }, { sourceRevision: 4 },
+    { courseId: COURSE_B }, { attachment: { ...attachment, byteSize: 2_049 } }, { signedUrl: "javascript:alert(1)" }]) {
+    responseOverride = overrides;
+    await assert.rejects(() => repository.getStudyCitationAttachmentDownload(reference, citation));
+  }
+  const previousCalls = calls.length;
+  await assert.rejects(() => repository.getStudyCitationAttachmentDownload(reference, { ...citation, courseRevision: 2 }),
+    (error) => error.code === "course_revision_changed");
+  assert.equal(calls.length, previousCalls);
+  assert.equal(repository.loadProject().courses[0].id, COURSE_A);
+});
 
 function course(courseId, suffix) {
   return {
@@ -879,6 +971,8 @@ test("citações são buscadas somente por Unidade carregada e vinculadas à rev
           studyUnitId,
           citations: [{
             sourceId: "fonte-publica",
+            sourceRevision: 1,
+            attachments: [],
             title: "Fonte pública",
             citationText: "Autoria. Fonte pública. 2026.",
             url: "https://example.test/fonte",

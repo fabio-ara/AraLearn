@@ -1,3 +1,4 @@
+import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
 import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 import {
@@ -628,8 +629,16 @@ function validateCreate(body, request) {
 async function validateCompositionChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedRevision", "upserts", "deletes",
-    "sourceAttributionApplications", "expectedStudyUnitVersion", "applicationOrigin"
+    "sourceAttributionApplications", "expectedStudyUnitVersion", "applicationOrigin", "courseMetadata"
   ]));
+  let courseMetadata = null;
+  if (Object.hasOwn(body, "courseMetadata")) {
+    try { courseMetadata = normalizeCourseMetadata(body.courseMetadata); }
+    catch { fail("invalid_course_metadata", "A identidade do curso é inválida."); }
+    if (body.expectedStudyUnitVersion != null || body.applicationOrigin != null) {
+      fail("invalid_course_metadata", "A edição focal não altera a identidade do curso.");
+    }
+  }
   const expectedRevision = positiveInteger(body.expectedRevision, "expectedRevision");
   if (!Array.isArray(body.upserts) || !Array.isArray(body.deletes)) {
     fail("invalid_course_command", "Upserts e exclusões precisam ser listas.");
@@ -641,7 +650,7 @@ async function validateCompositionChange(body, request) {
     validateEntity(value, index, validateCourseEntityContent)
   );
   const deletes = body.deletes.map(validateEntityIdentity);
-  if (!upserts.length && !deletes.length) {
+  if (!upserts.length && !deletes.length && courseMetadata === null) {
     fail("invalid_course_command", "Informe entidades para inserir, alterar ou excluir.");
   }
   if (upserts.length > 200 || deletes.length > 200) {
@@ -669,6 +678,7 @@ async function validateCompositionChange(body, request) {
   return {
     requestId: requestIdFrom(request, body),
     expectedRevision,
+    ...(courseMetadata === null ? {} : { courseMetadata }),
     expectedStudyUnitVersion: body.expectedStudyUnitVersion == null
       ? null
       : positiveInteger(body.expectedStudyUnitVersion, "expectedStudyUnitVersion"),
@@ -690,7 +700,7 @@ async function validateCompositionChange(body, request) {
   };
 }
 
-async function validatePersonalCourseCopyEdit(body, request, sourceCourseId) {
+async function validateOwnedCourseCopyRecovery(body, request, sourceCourseId) {
   exactFields(body, new Set([
     "requestId", "sourceCourseId", "expectedSourceCourseRevision",
     "expectedStudyUnitVersion", "didacticMicrosequenceId", "studyUnit",
@@ -832,17 +842,59 @@ async function validateCourseDesignChange(body, request, courseId) {
   };
 }
 
+function personHandle(value, { prefix = false } = {}) {
+  const raw = typeof value === "string" ? value.trim().replace(/^@/u, "") : "";
+  const normalized = raw.toLowerCase();
+  if (!/^[A-Za-z0-9._-]+$/u.test(raw) || normalized.length < (prefix ? 2 : 3) ||
+      normalized.length > 30 ||
+      !(prefix ? /^[a-z0-9][a-z0-9._-]*$/u : /^[a-z0-9][a-z0-9._-]*[a-z0-9]$/u).test(normalized)) {
+    fail("invalid_person_handle", "O identificador público é inválido.");
+  }
+  return normalized;
+}
+
+function accessPeopleQuery(request) {
+  const params = new URL(request.url).searchParams;
+  if ([...params.keys()].some((key) => !new Set(["query", "limit"]).has(key)) ||
+      [...params.keys()].some((key) => params.getAll(key).length !== 1)) {
+    fail("invalid_people_search", "A busca de pessoas é inválida.");
+  }
+  return { query: personHandle(params.get("query"), { prefix: true }),
+    limit: positiveInteger(params.get("limit"), "limit", { defaultValue: 10, maximum: 10 }) };
+}
+
+function validateFileAccess(body, request, { course = false } = {}) {
+  exactFields(body, new Set(course
+    ? ["requestId", "expectedRevision", "visibility", "publicFileAccess", "confirmed"]
+    : ["requestId", "expectedRevision", "sourceId", "sourceRevision", "contentHash", "publicFileAccess"]));
+  if (!(course ? new Set(["restricted", "available"]) :
+    new Set(["inherit", "restricted", "available"])).has(body.publicFileAccess) ||
+      course && (!new Set(["private", "public"]).has(body.visibility) ||
+        body.confirmed !== true)) {
+    fail("invalid_course_visibility", "Confirme a visibilidade e a política dos arquivos.");
+  }
+  if (!course && body.contentHash != null && !/^[a-f0-9]{64}$/u.test(body.contentHash)) {
+    fail("invalid_course_source_attachment", "O hash do arquivo é inválido.");
+  }
+  return { requestId: requestIdFrom(request, body),
+    expectedRevision: positiveInteger(body.expectedRevision, "expectedRevision"),
+    publicFileAccess: body.publicFileAccess,
+    ...(course ? { visibility: body.visibility, confirmed: body.confirmed }
+      : { contentHash: body.contentHash ?? null, sourceId: text(body.sourceId, "sourceId", { maximum: 240 }),
+        sourceRevision: positiveInteger(body.sourceRevision, "sourceRevision") }) };
+}
+
 function validateProfileUpdate(body) {
-  exactFields(body, new Set(["displayName", "avatarObjectKey"]));
-  const supplied = ["displayName", "avatarObjectKey"].filter((field) =>
+  exactFields(body, new Set(["handle", "avatarObjectKey"]));
+  const supplied = ["handle", "avatarObjectKey"].filter((field) =>
     Object.hasOwn(body, field)
   );
   if (!supplied.length) {
     fail("invalid_person_profile", "Informe ao menos um dado do perfil.");
   }
   const patch = {};
-  if (Object.hasOwn(body, "displayName")) {
-    patch.displayName = text(body.displayName, "displayName", { maximum: 120 });
+  if (Object.hasOwn(body, "handle")) {
+    patch.handle = personHandle(body.handle);
   }
   if (Object.hasOwn(body, "avatarObjectKey")) {
     if (body.avatarObjectKey === null) {
@@ -860,7 +912,7 @@ function validateProfileUpdate(body) {
 
 function validateAccessChange(body, request, operation) {
   if (operation === "grant_access") {
-    exactFields(body, new Set(["requestId", "email", "confirmed"]));
+    exactFields(body, new Set(["requestId", "userId", "handle", "confirmed"]));
   } else {
     exactFields(body, new Set(["requestId", "confirmed"]));
   }
@@ -873,11 +925,8 @@ function validateAccessChange(body, request, operation) {
     confirmed: true
   };
   if (operation === "grant_access") {
-    const email = text(body.email, "email", { maximum: 254 });
-    if (!/^[^\s@]+@[^\s@]+$/u.test(email)) {
-      fail("invalid_course_access", "Informe o e-mail exato da pessoa.");
-    }
-    result.email = email.toLowerCase();
+    result.handle = personHandle(body.handle);
+    result.targetUserId = courseUuid(body.userId, "userId");
   }
   return result;
 }
@@ -1050,7 +1099,7 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
     };
   }
   if (route.name === "getCourseSourcePdfDownload") {
-    assertPrincipal(principal);
+    if (principal?.authenticationKind !== "public" || principal.actorId !== null) assertPrincipal(principal);
     return {
       requestId: null,
       data: await adapter.getCourseSourcePdfDownload({
@@ -1109,6 +1158,20 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         deadlineAt
       })
     };
+  }
+  if (route.name === "searchCourseAccessPeople") {
+    assertApplicationPrincipal(principal);
+    return { requestId: null, data: await adapter.searchCourseAccessPeople({
+      principal, courseId: route.courseId, ...accessPeopleQuery(request), deadlineAt
+    }) };
+  }
+  if (route.name === "setCourseVisibility" || route.name === "setCourseSourceFileAccess") {
+    assertApplicationPrincipal(principal, { write: true });
+    const value = validateFileAccess(await readCourseJsonBody(request), request,
+      { course: route.name === "setCourseVisibility" });
+    return { requestId: value.requestId, data: await adapter[route.name]({
+      principal, courseId: route.courseId, ...value, deadlineAt
+    }) };
   }
   if (route.name === "listCourseAccess") {
     assertPrincipal(principal);
@@ -1227,16 +1290,16 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       })
     };
   }
-  if (route.name === "commitPersonalCourseCopyEdit") {
-    assertApplicationPrincipal(principal, { write: true });
-    const value = await validatePersonalCourseCopyEdit(
+  if (route.name === "recoverOwnedCourseCopy") {
+    assertApplicationPrincipal(principal);
+    const value = await validateOwnedCourseCopyRecovery(
       await readCourseJsonBody(request),
       request,
       route.sourceCourseId
     );
     return {
       requestId: value.requestId,
-      data: await adapter.commitPersonalCourseCopyEdit({
+      data: await adapter.recoverOwnedCourseCopy({
         principal,
         sourceCourseId: route.sourceCourseId,
         ...value,

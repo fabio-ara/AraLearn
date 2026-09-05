@@ -21,7 +21,7 @@ function networkFailure() {
 
 function courseListPage(revision) {
   return {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items: [{
       courseId: COURSE_ID,
       title: "Curso",
@@ -29,6 +29,7 @@ function courseListPage(revision) {
       revision,
       ownership: "owned",
       canEdit: true,
+    canObserve: true, visibility: "private", publicFileAccess: "restricted",
       moduleCount: 1,
       lessonCount: 1,
       topicCount: 0,

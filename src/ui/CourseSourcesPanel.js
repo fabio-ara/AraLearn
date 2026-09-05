@@ -36,6 +36,11 @@ const SOURCE_VISIBILITIES = Object.freeze({
   citation: "Mostrar citação",
   citation_and_link: "Mostrar citação e link"
 });
+const PUBLIC_FILE_ACCESS = Object.freeze({
+  inherit: "Herdar",
+  restricted: "Restringir",
+  available: "Disponibilizar"
+});
 const SOURCE_ORIGINS = Object.freeze({
   external: "Fonte externa",
   author_provided: "Fornecida pela autoria",
@@ -254,7 +259,10 @@ function renderNotice(state) {
     ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.message)}</p>`
     : "") + (state.failure
     ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>`
-    : "") + (state.pendingCommand
+    : "") + (state.pendingFileAccess
+    ? '<button type="button" class="course-source-retry" data-source-action="retry-file-access">' +
+      `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma permissão</span></button>`
+    : state.pendingCommand
     ? '<button type="button" class="course-source-retry" data-source-action="retry-command">' +
       `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma operação</span></button>`
     : state.pendingAnnotation?.sourceId === state.selectedSourceId
@@ -279,8 +287,8 @@ function renderSourceConfirmation(state) {
     '<div class="course-authoring-confirm-actions">' +
     '<button type="button" class="course-authoring-secondary" data-source-action="cancel-confirmation">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
-    `<button type="button" class="is-danger" data-source-action="${escapeHtml(confirmAction)}"${state.busy ? " disabled" : ""}>` +
-    `${renderUiIcon("trash", "course-authoring-button-icon")}<span>${escapeHtml(confirmation.confirmLabel)}</span>` +
+    `<button type="button" class="${confirmation.action === "confirm-file-access" ? "course-authoring-secondary" : "is-danger"}" data-source-action="${escapeHtml(confirmAction)}"${state.busy ? " disabled" : ""}>` +
+    `${renderUiIcon(confirmation.action === "confirm-file-access" ? "ready-state" : "trash", "course-authoring-button-icon")}<span>${escapeHtml(confirmation.confirmLabel)}</span>` +
     "</button></div></section></div>";
 }
 
@@ -740,6 +748,46 @@ function byteSizeLabel(value) {
   return `${(value / (1_024 * 1_024)).toFixed(1).replace(".0", "")} MiB`;
 }
 
+function fileAccessDescription(policy, inheritedPolicy, inheritedLabel) {
+  if (policy === "inherit") {
+    const effective = PUBLIC_FILE_ACCESS[inheritedPolicy];
+    return `Herdar ${inheritedLabel}${effective ? ` · ${effective.toLowerCase()}` : ""}`;
+  }
+  return policy === "available" ? "Disponível no curso público" : "Somente quem tem acesso concedido ao curso";
+}
+
+function renderFileAccessForm(source, attachment, state, label) {
+  const contentHash = attachment?.contentHash ?? null;
+  const policy = attachment?.publicFileAccess ?? source.publicFileAccess;
+  const draft = state.fileAccessDraft;
+  const selected = draft?.sourceId === source.sourceId && draft.contentHash === contentHash
+    ? draft.publicFileAccess : policy;
+  const inherited = contentHash === null ? state.coursePublicFileAccess
+    : source.publicFileAccess === "inherit" ? state.coursePublicFileAccess : source.publicFileAccess;
+  const disabled = state.busy || state.pendingFileAccess || state.fileAccessConflict || source.status !== "active";
+  return '<form class="course-source-file-access-form" data-source-form="file-access">' +
+    `<input type="hidden" name="sourceId" value="${escapeHtml(source.sourceId)}">` +
+    `<input type="hidden" name="contentHash" value="${escapeHtml(contentHash ?? "")}">` +
+    `<label><span>${escapeHtml(label)}</span><select name="publicFileAccess"${disabled ? " disabled" : ""}>` +
+    Object.entries(PUBLIC_FILE_ACCESS).map(([value, title]) =>
+      `<option value="${value}"${value === selected ? " selected" : ""}>${escapeHtml(value === "inherit" ? `${title} ${contentHash === null ? "do curso" : "da fonte"}` : title)}</option>`
+    ).join("") + "</select></label>" +
+    `<button type="submit"${disabled ? " disabled" : ""}>Aplicar</button>` +
+    `<small>${escapeHtml(fileAccessDescription(policy, inherited, contentHash === null ? "do curso" : "da fonte"))}</small></form>`;
+}
+
+function renderFileAccessSettings(source, attachments, state) {
+  if (!state.canSetFileAccess) return "";
+  const opened = state.fileAccessDraft?.sourceId === source.sourceId ||
+    state.pendingFileAccess?.sourceId === source.sourceId;
+  return `<details class="course-source-file-access"${opened ? " open" : ""}>` +
+    '<summary>Acesso público aos PDFs</summary>' +
+    '<p>A escolha do PDF prevalece sobre a fonte; a escolha da fonte prevalece sobre o curso. O acesso público só vale enquanto o curso estiver público.</p>' +
+    renderFileAccessForm(source, null, state, "Padrão desta fonte") +
+    attachments.map((attachment, index) => renderFileAccessForm(source, attachment, state,
+      `PDF ${index + 1} · ${byteSizeLabel(attachment.byteSize)}`)).join("") + "</details>";
+}
+
 function renderSourceAttachments(source, index, state) {
   if (index !== 0) return "";
   const attachments = Array.isArray(source.attachments) ? source.attachments : [];
@@ -751,7 +799,7 @@ function renderSourceAttachments(source, index, state) {
         `${renderUiIcon("upload", "course-authoring-button-icon")}<span class="visually-hidden">${state.busy ? "Aguarde" : "Anexar PDF"}</span>` +
         `<input type="file" accept="application/pdf,.pdf" aria-label="Anexar PDF" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
         "</label>"
-      : "") + "</header>" +
+      : "") + "</header>" + renderFileAccessSettings(source, attachments, state) +
     (attachments.length
       ? '<div class="course-source-attachment-list">' + attachments.map((attachment) =>
         '<button type="button" data-source-action="download-attachment" ' +
@@ -770,8 +818,8 @@ function sourceAvailabilityNote(source) {
   const attachmentCount = Array.isArray(source.attachments) ? source.attachments.length : 0;
   if (attachmentCount > 0) {
     return safeHttpUrl(source.url)
-      ? "A fonte oferece PDF privado e endereço web."
-      : "PDF privado disponível como forma de acesso à fonte.";
+      ? "A fonte oferece PDF e endereço web."
+      : "PDF disponível como forma de acesso à fonte.";
   }
   if (safeHttpUrl(source.url)) {
     return "Referência remota: o endereço pode mudar ou deixar de estar disponível.";
@@ -1088,6 +1136,7 @@ export function createCourseSourcesPanel({
   controller,
   courseId,
   courseRevision,
+  coursePublicFileAccess = null,
   mode = "catalog",
   targetKind = null,
   targetId = null,
@@ -1133,6 +1182,9 @@ export function createCourseSourcesPanel({
     mode,
     courseId,
     courseRevision,
+    coursePublicFileAccess: ["restricted", "available"].includes(coursePublicFileAccess)
+      ? coursePublicFileAccess : null,
+    canSetFileAccess: typeof controller.setCourseSourceFileAccess === "function",
     catalog: null,
     catalogLoading: false,
     catalogFailure: "",
@@ -1166,6 +1218,9 @@ export function createCourseSourcesPanel({
     pendingAnnotation: null,
     observationEditor: null,
     pendingAttachment: null,
+    pendingFileAccess: null,
+    fileAccessDraft: null,
+    fileAccessConflict: null,
     confirmation: null
   };
 
@@ -1284,8 +1339,8 @@ export function createCourseSourcesPanel({
 
   function requestTargetClose() {
     if (state.mode !== "target" || state.busy) return false;
-    if (!targetLinksChanged() && !state.pendingCommand) return closeTarget();
-    const awaitingConfirmation = Boolean(state.pendingCommand);
+    if (!targetLinksChanged() && !state.pendingCommand && !state.pendingFileAccess && !state.fileAccessDraft) return closeTarget();
+    const awaitingConfirmation = Boolean(state.pendingCommand || state.pendingFileAccess);
     requestConfirmation({
       action: "confirm-target-discard",
       title: awaitingConfirmation ? "Abandonar confirmação?" : "Descartar alterações?",
@@ -1703,8 +1758,109 @@ export function createCourseSourcesPanel({
     return catalogRefreshed && detailRefreshed;
   }
 
+  function captureFileAccessDraft(form) {
+    if (!form?.matches?.('[data-source-form="file-access"]') || state.pendingFileAccess) return null;
+    const sourceId = optionalFormValue(form, "sourceId");
+    const contentHash = optionalFormValue(form, "contentHash");
+    const publicFileAccess = optionalFormValue(form, "publicFileAccess");
+    const source = state.detail?.items?.[0];
+    if (!source || source.sourceId !== sourceId || source.status !== "active" ||
+        !Object.hasOwn(PUBLIC_FILE_ACCESS, publicFileAccess) ||
+        contentHash !== null && !source.attachments.some((item) => item.contentHash === contentHash)) return null;
+    state.fileAccessDraft = { sourceId, contentHash, publicFileAccess };
+    return state.fileAccessDraft;
+  }
+
+  function requestFileAccess(form) {
+    if (state.busy || state.pendingFileAccess || state.fileAccessConflict ||
+        state.pendingCommand || state.pendingAttachment || state.pendingAnnotation || !state.canSetFileAccess) return;
+    const draft = captureFileAccessDraft(form);
+    if (!draft) return;
+    const source = state.detail.items[0];
+    const policy = draft.contentHash === null ? source.publicFileAccess
+      : source.attachments.find((item) => item.contentHash === draft.contentHash).publicFileAccess;
+    if (policy === draft.publicFileAccess) {
+      state.fileAccessDraft = null;
+      state.message = "A permissão já está definida assim.";
+      render();
+      return;
+    }
+    requestConfirmation({
+      action: "confirm-file-access",
+      title: draft.contentHash === null ? "Alterar acesso aos PDFs da fonte?" : "Alterar acesso a este PDF?",
+      message: draft.publicFileAccess === "available"
+        ? "O arquivo poderá ser baixado por visitantes enquanto o curso estiver público. Confirme que você pode disponibilizá-lo."
+        : draft.publicFileAccess === "restricted"
+          ? "O arquivo ficará disponível somente para quem tem acesso concedido ao curso."
+          : `O acesso seguirá a escolha ${draft.contentHash === null ? "do curso" : "da fonte"}, respeitando as escolhas próprias de cada PDF.`,
+      confirmLabel: "Confirmar permissão",
+      request: { courseId: state.courseId, expectedRevision: state.courseRevision,
+        sourceRevision: source.revision, ...structuredClone(draft), requestId: createUuid() },
+      returnFocusSelector: '.course-source-file-access summary'
+    });
+  }
+
+  function validateFileAccessReceipt(value, request) {
+    const fields = ["contract", "courseId", "courseRevision", "sourceId", "sourceRevision",
+      "contentHash", "publicFileAccess", "changed", "idempotent"];
+    if (!value || typeof value !== "object" || Object.keys(value).length !== fields.length ||
+        !fields.every((field) => Object.hasOwn(value, field)) ||
+        value.contract !== "aralearn.course-source-file-access-change.v1" ||
+        value.courseId !== request.courseId || value.sourceId !== request.sourceId ||
+        value.contentHash !== request.contentHash || value.publicFileAccess !== request.publicFileAccess ||
+        typeof value.changed !== "boolean" || typeof value.idempotent !== "boolean" ||
+        value.courseRevision !== request.expectedRevision + Number(value.changed) ||
+        value.sourceRevision !== request.sourceRevision + Number(value.changed)) {
+      throw Object.assign(new TypeError("Não foi possível confirmar a permissão recebida."), { ambiguous: true });
+    }
+    return value;
+  }
+
+  async function runFileAccess(request) {
+    if (state.busy || !request || state.pendingFileAccess &&
+        JSON.stringify(state.pendingFileAccess) !== JSON.stringify(request)) return false;
+    const pending = state.pendingFileAccess || structuredClone(request);
+    state.pendingFileAccess = pending;
+    state.busy = true;
+    state.failure = "";
+    state.message = "Confirmando a permissão…";
+    render();
+    let result;
+    try {
+      result = validateFileAccessReceipt(
+        await controller.setCourseSourceFileAccess(structuredClone(pending)), pending
+      );
+    } catch (error) {
+      if (!state.opened) return false;
+      const ambiguous = ambiguousWriteFailure(error);
+      if (!ambiguous) state.pendingFileAccess = null;
+      if (error?.status === 409 || error?.code === "course_revision_changed") {
+        state.fileAccessConflict = pending.expectedRevision;
+      }
+      state.message = "";
+      state.failure = ambiguous
+        ? "A confirmação da permissão não chegou. Confirme a mesma permissão antes de fazer outra alteração."
+        : errorMessage(error, operationErrorContext("alterar o acesso ao PDF"));
+      state.busy = false;
+      render();
+      return false;
+    }
+    if (!state.opened) return false;
+    state.pendingFileAccess = null;
+    state.fileAccessDraft = null;
+    state.fileAccessConflict = null;
+    const refreshed = await refreshAfterChange({ ...result,
+      courseRevision: Math.max(state.courseRevision, result.courseRevision)
+    }).catch(() => false);
+    if (!state.opened) return true;
+    if (!refreshed) reportConfirmedRefreshFailure(sourceChangeMessage(result));
+    state.busy = false;
+    render();
+    return true;
+  }
+
   async function runCommand(command, draft) {
-    if (state.busy) return false;
+    if (state.busy || state.pendingFileAccess) return false;
     const failureContext = commandErrorContext(command);
     const matches = state.pendingCommand &&
       JSON.stringify(state.pendingCommand.draft) === JSON.stringify(draft);
@@ -1768,7 +1924,7 @@ export function createCourseSourcesPanel({
   }
 
   async function uploadPdf(file, pending = null) {
-    if (state.busy) return false;
+    if (state.busy || state.pendingFileAccess) return false;
     const source = state.detail?.items?.[0];
     if (!source || source.status !== "active") {
       state.failure = "A fonte corrente não está disponível.";
@@ -1968,7 +2124,7 @@ export function createCourseSourcesPanel({
   }
 
   async function runAnnotationCommand(command, draft) {
-    if (state.busy) return false;
+    if (state.busy || state.pendingFileAccess) return false;
     const matches = state.pendingAnnotation &&
       state.pendingAnnotation.sourceId === state.selectedSourceId &&
       JSON.stringify(state.pendingAnnotation.draft) === JSON.stringify(draft);
@@ -2108,7 +2264,10 @@ export function createCourseSourcesPanel({
 
   root.addEventListener("submit", (event) => {
     if (!state.opened || state.busy) return;
-    if (event.target.matches?.('[data-source-form="source"]')) {
+    if (event.target.matches?.('[data-source-form="file-access"]')) {
+      event.preventDefault();
+      requestFileAccess(event.target);
+    } else if (event.target.matches?.('[data-source-form="source"]')) {
       event.preventDefault();
       void submitSource(event.target).catch((error) => {
         state.failure = errorMessage(error, operationErrorContext("salvar a fonte"));
@@ -2139,6 +2298,7 @@ export function createCourseSourcesPanel({
 
   root.addEventListener("change", (event) => {
     if (!state.opened) return;
+    captureFileAccessDraft(event.target.form);
     captureEditorDraftFromControl(event.target);
     if (event.target.matches?.("[data-source-pdf-input]")) {
       const file = event.target.files?.[0] || null;
@@ -2184,6 +2344,12 @@ export function createCourseSourcesPanel({
     const action = node.dataset.sourceAction;
     if (action === "cancel-confirmation") {
       cancelConfirmation();
+    } else if (action === "confirm-file-access" && state.confirmation?.action === action) {
+      const request = state.confirmation.request;
+      state.confirmation = null;
+      void runFileAccess(request);
+    } else if (action === "retry-file-access" && state.pendingFileAccess) {
+      void runFileAccess(state.pendingFileAccess);
     } else if (action === "confirm-retirement") {
       confirmRetirement();
     } else if (action === "confirm-target-discard") {
@@ -2432,20 +2598,30 @@ export function createCourseSourcesPanel({
     return loadCatalog();
   }
 
-  async function refresh(courseRevision = state.courseRevision) {
+  async function refresh(courseRevision = state.courseRevision, nextCoursePublicFileAccess = state.coursePublicFileAccess) {
     if (!state.opened || !Number.isSafeInteger(courseRevision) || courseRevision < 1) {
       return false;
     }
     if (state.mode !== "catalog") return false;
-    if (state.selectedSourceId) {
-      return state.initialSourceId === state.selectedSourceId
-        ? loadInitialDetail({ preserveExisting: true, courseRevision })
+    const refreshed = state.selectedSourceId
+      ? state.initialSourceId === state.selectedSourceId
+        ? await loadInitialDetail({ preserveExisting: true, courseRevision })
         : Boolean(await loadDetail(state.selectedSourceId, {
             preserveExisting: true,
             courseRevision
-          }));
+          }))
+      : await loadCatalog({ preserveExisting: true, courseRevision });
+    if (refreshed) {
+      if (state.fileAccessConflict !== null && courseRevision > state.fileAccessConflict) {
+        state.fileAccessConflict = null;
+        state.failure = "";
+        state.message = "Fontes atualizadas. Revise a permissão escolhida e confirme novamente.";
+      }
+      state.coursePublicFileAccess = ["restricted", "available"].includes(nextCoursePublicFileAccess)
+        ? nextCoursePublicFileAccess : null;
+      render();
     }
-    return loadCatalog({ preserveExisting: true, courseRevision });
+    return Boolean(refreshed);
   }
 
   function destroy() {
@@ -2460,7 +2636,7 @@ export function createCourseSourcesPanel({
     const targetChanged = state.mode === "target" &&
       JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks);
     return Boolean(
-      state.pendingCommand || state.pendingAnnotation || state.pendingAttachment ||
+      state.pendingCommand || state.pendingAnnotation || state.pendingAttachment || state.pendingFileAccess || state.fileAccessDraft ||
       state.confirmation || state.sourceEditor?.draft || state.anchorEditor?.draft ||
       state.observationEditor?.draft || targetChanged
     );

@@ -71,6 +71,7 @@ registra a análise de cada componente mantido no catálogo.
 | Tipografia, responsividade e acessibilidade | [Sistema visual](sistema-visual.md) |
 | Ambiente de desenvolvimento e validações | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 | Implantação, migração e publicação | [Implantação](implantacao.md) |
+| Mudanças de schema e recuperação de migrações | [Alterações do schema](schema-change-log.md) |
 | Tratamento de dados pessoais | [Privacidade](privacidade.md) |
 
 O [glossário técnico](glossario-tecnico.md) explica os mecanismos usados nesses

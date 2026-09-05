@@ -110,7 +110,7 @@ function pageState(value) {
 function ownership(value) {
   const normalized = text(value);
   if (!normalized) return null;
-  if (normalized === "shared") {
+  if (normalized === "shared" || normalized === "public") {
     fail("course_not_owned", "Somente cursos próprios pertencem à autoria.");
   }
   if (!OWNERSHIP_VALUES.has(normalized)) {
@@ -126,6 +126,16 @@ function editCapability(value, normalizedOwnership) {
     fail("invalid_course_projection", "A propriedade e a edição do curso são inconsistentes.");
   }
   return expected;
+}
+
+function courseAccessPolicy(value) {
+  const visibility = value.visibility ?? null;
+  const publicFileAccess = value.publicFileAccess ?? null;
+  if ((visibility !== null && !["private", "public"].includes(visibility)) ||
+      (publicFileAccess !== null && !["restricted", "available"].includes(publicFileAccess))) {
+    fail("invalid_course_projection", "A política de acesso do curso é inválida.");
+  }
+  return { visibility, publicFileAccess };
 }
 
 function courseCounts(value) {
@@ -163,6 +173,7 @@ function normalizeListItem(value) {
     revision: itemRevision,
     ownership: normalizedOwnership,
     canEdit: editCapability(value.canEdit, normalizedOwnership),
+    ...courseAccessPolicy(value),
     counts: courseCounts(isPlainObject(value.counts) ? value.counts : value),
     updatedAt: text(value.updatedAt) || null,
     offlineKnown: value.offlineKnown === true || value.offline === true || value.stale === true
@@ -232,6 +243,7 @@ export function normalizeCourseDetail(value, { expectedCourseId = "" } = {}) {
     revision: revision(value.revision),
     ownership: normalizedOwnership,
     canEdit: editCapability(value.canEdit, normalizedOwnership),
+    ...courseAccessPolicy(value),
     counts: courseCounts(value.counts),
     updatedAt: text(value.updatedAt) || null,
     offline: value.offline === true,

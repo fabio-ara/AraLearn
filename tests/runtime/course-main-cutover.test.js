@@ -297,7 +297,7 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   );
   assert.match(
     mainSource,
-    /pendingCompositionCleanup = \(\) =>[\s\S]*?authoringController\.clearPendingCourseCompositions\(\)/u,
+    /pendingCompositionCleanup = visitor \? null : \(\) =>[\s\S]*?authoringController\.clearPendingCourseCompositions\(\)/u,
     "O lifecycle autenticado deve usar a limpeza explícita do Controller."
   );
   assert.match(
@@ -315,15 +315,15 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     /addEventListener\("online"[\s\S]*?void refreshVisibleApplication\(\)/u,
     "A reconexão deve buscar alterações pessoais remotas."
   );
-  assert.match(
+  assert.doesNotMatch(
     mainSource,
-    /value\.createsPersonalCopy === true[\s\S]*?repository\.commitPersonalCourseCopyEdit/u,
-    "A primeira edição do estudante deve usar a operação atômica de cópia pessoal."
+    /createsPersonalCopy|commitPersonalCourseCopyEdit/u,
+    "O shell não pode recriar o escritor automático retirado."
   );
   assert.match(
     mainSource,
     /refreshStudy[\s\S]*?resumePendingManualEdit[\s\S]*?refreshCourses/u,
-    "A reconexão deve confirmar a cópia pessoal pendente antes da atualização comum."
+    "A reconexão deve inspecionar o rascunho preservado antes da atualização comum."
   );
   assert.match(
     mainSource,
@@ -333,7 +333,7 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   assert.match(
     mainSource,
     /createCourseStudyApplication[\s\S]*?await editorApp\.resumePendingManualEdit/u,
-    "A inicialização deve recuperar uma edição pessoal persistida antes de seguir."
+    "A inicialização deve inspecionar rascunhos persistidos antes de seguir."
   );
   assert.match(
     mainSource,

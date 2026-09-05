@@ -4,12 +4,16 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Evidência corrente revisada em **2026-09-02**.
+Identidade e acesso revisados em **2026-09-05**, com provas locais de API, banco
+e políticas. Implantação e clientes hospedados exigem verificação própria.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Estudar, responder, rever e observar | sim | após o primeiro carregamento, não | pessoa com acesso ao curso | sim | sim | sim | produto | estado pessoal sincroniza quando a rede retorna |
-| Editar Unidade no Estudo | sim | para gravar | proprietário ou pessoa apta a criar cópia | sim | sim | sim | produto | acesso compartilhado grava somente numa cópia pessoal |
+| Estudar, responder e rever | sim | após o primeiro carregamento, não | visitante em curso público ou pessoa com acesso | local | sim | sim | produto | visitante conserva progresso e Rever no dispositivo; conta usa estado pessoal |
+| Registrar observação | sim | para enviar | pessoa autenticada com acesso | local | sim | sim | produto | observação própria não concede edição |
+| Editar Unidade no Estudo | sim | para gravar | proprietário | local | sim | sim | produto | estudante alheio não edita nem cria cópia automática |
+| Escolher identificador e compartilhar | sim | sim | titular do perfil; proprietário do curso | local | sim | sim | produto | identificador único; grant confirma a pessoa selecionada |
+| Disponibilizar curso público | sim | para publicar e primeiro acesso | proprietário publica; visitante estuda | local | sim | sim | produto | confirmação e política de arquivos explícitas; bucket privado |
 | Planejar, materializar e revisar curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
 | Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
 | Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | dezessete tarefas humanas; não inclui perfil ou manutenção |
@@ -22,7 +26,7 @@ Evidência corrente revisada em **2026-09-02**.
 ## Estudo
 
 A entrada apresenta um curso por vez. O seletor distingue curso próprio,
-**Curso compartilhado** e **Cópia pessoal** por iconografia e estado acessível;
+compartilhado e público por iconografia e estado acessível;
 o título não recebe sufixo de propriedade. A prévia informa objetivo,
 quantidade de módulos, lições e Unidades e progresso. A disponibilidade offline
 aparece somente quando muda a capacidade de abrir o curso.
@@ -42,7 +46,8 @@ IA**. Os modos de alteração aparecem quando a relação de acesso autoriza ope
 o alvo.
 
 Durante o estudo, a pessoa pode responder às práticas, receber retorno, avançar,
-marcar uma Unidade para rever, registrar Observações e abrir fontes autorizadas.
+marcar uma Unidade para rever e abrir fontes autorizadas. Registrar observações
+exige uma conta com acesso ao curso.
 Progresso, respostas, marcas e Observações são pessoais. Eles não alteram o
 conteúdo compartilhado.
 
@@ -50,9 +55,10 @@ A Unidade ocupa a altura útil da tela e mantém o dock de ações no mesmo luga
 quando o conteúdo cresce, somente o cartão de conteúdo rola. A Home permite
 retirar um item de **Rever** diretamente e desfazer a retirada.
 
-Quando uma pessoa com acesso de Estudo edita uma Unidade compartilhada, a
-primeira gravação material cria uma cópia privada. O original permanece
-inalterado, e o percurso continua na mesma Unidade da nova cópia.
+Edição manual e assistência são exclusivas do proprietário. Cópias próprias
+anteriores permanecem independentes. Um rascunho antigo com resposta perdida
+pode recuperar o alvo comprovado; o aplicativo não reaplica a edição nem cria
+outro curso para resolver a pendência.
 
 ## Autoria
 
@@ -76,7 +82,8 @@ condição fixada pelo pesquisador prevalece. Os alvos de palavras são flexíve
 não limites, e não autorizam compressão. A interface mostra de onde veio cada
 decisão e o valor efetivamente aplicado.
 
-Fontes e Âncoras possuem estado corrente; PDFs são privados. Uma
+Fontes e Âncoras possuem estado corrente; o bucket de PDFs é privado. O autor
+define disponibilidade de arquivos com exceções por fonte e por PDF. Uma
 atribuição liga a Unidade à fonte e às Âncoras exatas usadas. Referências sem
 prova suficiente não aparecem como citação comprovada no Estudo.
 
@@ -133,7 +140,7 @@ quando sua função no curso é clara ou confirmada; depois de incorporado, pode
 recuperado pelo curso em outra sessão sem novo envio. Análise declarada como
 temporária não incorpora o documento.
 
-Perfil, cópia pessoal, ciclo de vida de curso e Manutenção permanecem ações do
+Perfil, acesso, ciclo de vida de curso e Manutenção permanecem ações do
 aplicativo autenticado. Elas não são expostas como ferramentas públicas só para
 aumentar o alcance de um chat.
 
@@ -151,7 +158,7 @@ Na Home, **Ações deste curso** distingue duas relações:
   original.
 
 Excluir a conta é uma ação própria e exige uma confirmação literal. Ela remove
-a conta, cursos próprios, cópias pessoais e objetos vinculados segundo o
+a conta, cursos próprios, inclusive cópias anteriores, e objetos vinculados segundo o
 contrato de exclusão.
 
 Uma identidade administrativa autorizada também encontra **Manutenção** em

@@ -45,6 +45,7 @@ function attachment(overrides = {}) {
     byteSize: 1_024,
     mediaType: "application/pdf",
     storagePath: `${IDS.course}/${HASH_A}.pdf`,
+    ...(overrides.createdAt ? { publicFileAccess: "inherit" } : {}),
     ...overrides
   };
 }
@@ -268,15 +269,12 @@ test("PDF usa ingestão server-side e expõe somente download autorizado", () =>
     contentHash: HASH_A
   });
   const download = {
-    contract: "aralearn.course-source-pdf-download.v1",
+    contract: "aralearn.course-source-pdf-download.v2",
     courseId: IDS.course,
     courseRevision: 7,
     sourceId: "source-a",
     sourceRevision: 2,
-    storageOriginCourseId: IDS.course,
-    attachment: attachment({
-      createdAt: "2026-08-20T12:00:00.000Z"
-    }),
+    attachment: { contentHash: HASH_A, byteSize: 1_024, mediaType: "application/pdf" },
     signedUrl: `https://storage.example.test/object/${HASH_A}.pdf?token=sealed`,
     expiresAt: "2026-08-20T12:01:00.000Z"
   };
@@ -723,6 +721,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       availability: "unknown",
       verificationStatus: "unverified",
       studyVisibility: "hidden",
+      publicFileAccess: "inherit",
       anchorCount: 0,
       createdAt
     }],
@@ -775,6 +774,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       availability: "restricted",
       verificationStatus: "author_verified",
       studyVisibility: "citation",
+      publicFileAccess: "inherit",
       anchorCount: 1,
       createdAt,
       anchors: [{
@@ -822,6 +822,8 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
     studyUnitId: "study-a",
     citations: [{
       sourceId: "source-a",
+      sourceRevision: 1,
+      attachments: [],
       title: "Artigo",
       citationText: "AUTOR. Artigo.",
       url: null,

@@ -4,21 +4,24 @@ Este guia reúne as operações disponíveis no site e no aplicativo Android. O
 [Guia do estudante](guia-estudante.md) e o [Guia do professor e
 autor](guia-professor-autor.md) desenvolvem os dois percursos em separado.
 
-As ações de limpeza local, o envio autenticado de PDF e as respostas genéricas
-de acesso integram o site e o aplicativo Android correntes.
+As ações de limpeza local, o envio autenticado de PDF e o compartilhamento por
+identificador integram o contrato comum do site e do aplicativo Android.
 
 ## Conceitos para começar
 
-Uma **conta** autentica uma pessoa. O perfil contém nome e foto opcionais e
-serve para identificar relações diretas de curso.
+Uma **conta** autentica uma pessoa. O perfil contém um identificador escolhido
+e foto opcional, usados para reconhecer relações diretas de curso. A pessoa
+escolhe o identificador ao concluir o cadastro ou a atualização de perfil antigo.
 
 Um **Curso vivo** é o mesmo objeto em Estudo, Autoria e ferramentas
 conversacionais. O conteúdo pode mudar sob a mesma identidade e fica disponível
 para Estudo assim que contém Unidades válidas.
 
-**Estudo** permite selecionar cursos próprios ou compartilhados, começar,
-continuar ou retomar o percurso, marcar Unidades para rever e registrar
-Observações próprias.
+**Estudo** permite selecionar cursos próprios, compartilhados ou públicos,
+começar, continuar ou retomar o percurso e marcar unidades para rever. Cursos
+públicos também podem ser abertos sem conta, pelo seletor ou endereço direto.
+Visitantes conservam progresso e Rever neste navegador; registrar observações
+exige conta, e editar exige ser proprietário.
 
 **Autoria** apresenta somente cursos próprios e abre diretamente em Conteúdo.
 Planejamento fica sempre à mão; Parâmetros, **Fontes**, Revisão, Analytics e Pessoas
@@ -35,6 +38,7 @@ continua responsável por propriedade, acesso e estado compartilhado.
 3. Envie o formulário.
 4. Se a instalação exigir confirmação, abra a mensagem recebida.
 5. Volte ao aplicativo e entre.
+6. Escolha seu identificador público quando solicitado.
 
 Cada pessoa deve usar a própria conta. Assim, propriedade, acesso e autoria
 continuam associados à identidade correta.
@@ -58,7 +62,11 @@ recusado. Nesse caso, solicite outro link pelo aplicativo.
 
 ## Alterar perfil e aparência
 
-Abra **Conta e aparência**. O nome aceita de 1 a 120 caracteres. A foto pode ser
+Abra **Conta e aparência**. O identificador tem de 3 a 30 caracteres ASCII:
+letras minúsculas, números, ponto, sublinhado ou hífen, com primeiro e último
+caracteres alfanuméricos. A entrada aceita `@` inicial e converte maiúsculas;
+não há segundo nome obrigatório. Se o identificador estiver ocupado, escolha
+outro. A foto pode ser
 JPEG, PNG ou WebP de até 512 KiB. Abra **Foto do perfil** para escolher ou
 substituir uma imagem; **Remover foto** só aparece quando existe algo a remover.
 Use **Voltar** ou `Esc` para retornar à vista principal e salve o perfil.
@@ -214,19 +222,10 @@ Escolha o título ou um trecho autorizado, edite diretamente no renderer e use
 posição e fontes efetivas. **Desfazer** e **Refazer** atuam no rascunho corrente;
 **Cancelar** abandona somente esse rascunho.
 
-A mesma ação aparece em Estudo para quem recebeu acesso
-direto. Antes da primeira gravação,
-a interface informa que
-**Salvar na minha cópia** criará um curso pessoal privado. A operação materializa
-a estrutura e o conteúdo correntes, aplica a mudança e continua na mesma Unidade.
-O curso compartilhado permanece intacto. Planejamento, fontes, PDFs, acessos,
-progresso e Observações não são copiados; esses registros começam próprios no
-novo curso.
-
-Abrir o editor, pedir uma sugestão, cancelar, encontrar uma falha ou confirmar
-conteúdo idêntico não cria a cópia. Depois da gravação confirmada, a Home
-distingue a cópia pessoal e o original compartilhado por iconografia e estado
-acessível ao lado do título, sem alterar o título de nenhum dos dois.
+Quem recebeu acesso privado ou abriu um curso público pode estudar, sem editar
+o curso. Com conta, pode registrar uma observação para o autor. Essas ações não
+criam cópia automática. Cópias próprias existentes continuam cursos
+independentes e podem ser editadas por seus proprietários.
 
 Para trabalhar com a sessão contextual, use **Assistência por IA** na Unidade,
 na microssequência ou na lição:
@@ -312,13 +311,12 @@ identidades geradas e o mesmo identificador de pedido. O servidor devolve o
 recibo anterior em vez de duplicar o efeito. Alterar o formulário inicia uma
 nova intenção e um novo pedido.
 
-Na criação da cópia pessoal, esse envelope delimitado também fica no IndexedDB
-até a confirmação ou o descarte. Ele conserva o curso de origem, a Unidade, as
-versões esperadas, o rascunho final e a origem manual ou assistida. Não conserva
-a conversa, a configuração nem a credencial do provedor. Ao reconectar, o
-AraLearn pode repetir exatamente o mesmo pedido. Duas abas que repetem essa
-intenção recebem o mesmo resultado; intenções diferentes concorrendo pela
-primeira cópia produzem conflito em vez de dois cursos pessoais.
+Rascunhos de cópias antigas com resposta perdida podem continuar guardados no
+dispositivo. O aplicativo consulta a prova da gravação anterior e, quando
+consegue confirmá-la, oferece o curso próprio correspondente. A consulta não
+reaplica a mudança nem cria curso. Sem prova suficiente, conserve o rascunho até
+poder examiná-lo; descartar exige uma escolha explícita. Conversa, configuração
+e credencial do provedor não integram esse registro.
 
 ## Navegar e editar Conteúdo
 
@@ -372,19 +370,22 @@ não é uma cópia completa do curso nem uma medida de aprendizagem. Veja
 
 ## Conceder e revogar acesso
 
-Em **Pessoas**, use **Conceder acesso**, informe o e-mail exato de uma conta
-e confirme. A resposta imediata é a mesma exista ou não a
-conta, inclusive quando o endereço é próprio, o acesso já existe ou o limite foi
-atingido. Há dez tentativas por pessoa autenticada em dez minutos. Quando a
-concessão é válida, a pessoa passa a encontrar o curso em Estudo. A concessão
-mantém propriedade e edição com o autor e não cria organização nem cópia do
-curso. A releitura posterior da lista pode mostrar o acesso efetivamente criado;
-a resposta genérica reduz a enumeração imediata, mas não elimina esse risco
-residual.
+Em **Pessoas**, use **Conceder acesso**, digite ao menos dois caracteres do
+identificador e selecione a pessoa apresentada. Confira identificador e foto,
+quando houver, antes de confirmar. A busca devolve no máximo dez pessoas e só
+existe no contexto de um curso próprio. Se a pessoa trocar de identificador
+durante a escolha, refaça a busca. Há limites de tentativas; aguarde quando a
+interface indicar isso. A concessão mantém propriedade e edição com o autor.
 
-Para revogar, use a ação junto ao nome e confirme. O servidor encerra o acesso.
+Para revogar, use a ação junto ao identificador e confirme. O servidor encerra o acesso privado.
 Uma cópia anteriormente baixada é removida na próxima validação conectada do
-dispositivo dessa pessoa.
+dispositivo dessa pessoa quando ela deixa de ter acesso. Se o curso continuar
+público, ainda poderá ser estudado como tal.
+
+Na mesma área, o proprietário pode tornar o curso público. A confirmação exige
+escolher a política dos arquivos; exceções por fonte ou PDF ficam em **Fontes**.
+Um curso público permite leitura e prática sem conta. Voltar a privado encerra
+novas leituras públicas; pessoas com concessão privada continuam autorizadas.
 
 ## Usar Autoria conversacional
 
@@ -490,13 +491,10 @@ somente a remoção dos dados do dispositivo.
 A edição contextual não altera livremente toda a estrutura interna de uma
 Unidade: somente folhas textuais declaradas pelo componente ficam editáveis.
 Mudanças estruturais, correções auditáveis e materialização usam operações
-próprias. Cursos também não são
-disponibilizados anonimamente: Estudo exige conta própria ou acesso direto
-concedido pelo proprietário.
-
-A cópia pessoal usa a persistência relacional e o Storage
-correntes do AraLearn. Ela não introduz Git, repositório, ramo ou versão técnica
-na interface.
+próprias. Cursos públicos permitem estudo sem conta. O estado do visitante fica
+neste dispositivo, separado de cada conta; entrar não transfere silenciosamente
+esse estado para outra pessoa. Cursos privados exigem propriedade ou concessão
+direta. Disponibilizar o curso não libera automaticamente seus arquivos.
 
 Progresso, cliques, rolagem, tempo, marcas e Observações descrevem eventos ou
 estados observáveis. A interpretação como atenção, engajamento, compreensão ou

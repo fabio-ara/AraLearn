@@ -8,6 +8,7 @@ import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import { createCourseAnalyticsPanel } from "./CourseAnalyticsPanel.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
+import { buildCourseStudyRoute } from "./courseStudyRoute.js";
 import {
   buildCourseAuthoringAnalyticsRoute,
   buildCourseAuthoringRoute,
@@ -66,21 +67,22 @@ function escapeHtml(value) {
     .replaceAll("'", "&apos;");
 }
 
-function normalizePerson(value, label) {
+function normalizePerson(value, label, { searchResult = false } = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${label} inválida.`);
   }
   const userId = String(value.userId || "").trim().toLowerCase();
-  const displayName = String(value.displayName || "").trim() || null;
+  const handle = String(value.handle || "").trim() || null;
   const avatarObjectKey = String(value.avatarObjectKey || "").trim() || null;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(userId) ||
-      (displayName && displayName.length > 120)) {
+      (handle && !/^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/u.test(handle))) {
     throw new TypeError(`${label} inválida.`);
   }
   return Object.freeze({
     userId,
-    displayName,
-    avatarObjectKey,
+    handle,
+      avatarObjectKey,
+      ...(searchResult ? { avatarUrl: value.avatarUrl || null } : {}),
     grantedAt: String(value.grantedAt || "").trim() || null
   });
 }
@@ -341,9 +343,9 @@ function renderActionConfirmation(confirmation) {
 }
 
 function renderPersonAvatar(person, avatarUrls) {
-  const source = person?.avatarObjectKey
+  const source = person?.avatarUrl || (person?.avatarObjectKey
     ? avatarUrls?.get?.(person.avatarObjectKey) || ""
-    : "";
+    : "");
   return source
     ? `<img class="course-authoring-person-avatar" src="${escapeHtml(source)}" alt="">`
     : `<span class="course-authoring-person-avatar is-fallback">${renderUiIcon(
@@ -352,7 +354,7 @@ function renderPersonAvatar(person, avatarUrls) {
 }
 
 function renderPersonRow(person, { owner = false, avatarUrls = null } = {}) {
-  const name = person.displayName || (owner ? "Proprietário sem nome" : "Pessoa sem nome");
+  const name = person.handle ? `@${person.handle}` : "Identificador ainda não escolhido";
   return '<article class="course-authoring-person">' +
     renderPersonAvatar(person, avatarUrls) +
     `<div><strong>${escapeHtml(name)}</strong><span>${owner ? "Proprietário" : "Acesso ao Estudo"}</span></div>` +
@@ -379,19 +381,29 @@ function renderPeopleSection(state) {
         (people.people.length
           ? `<div class="course-authoring-people-list">${people.people.map((person) =>
               renderPersonRow(person, { avatarUrls: state.avatarUrls })).join("")}</div>`
-          : '<p class="course-authoring-people-empty">Somente você tem acesso.</p>');
+          : `<p class="course-authoring-people-empty">${state.course.visibility === "public" ? "Qualquer pessoa pode estudar. Não há concessões individuais." : "Somente você tem acesso."}</p>`);
   const grant = state.grantOpen
     ? '<form class="course-authoring-grant" data-course-authoring-grant>' +
-      '<label class="course-authoring-visually-hidden" for="course-authoring-access-email">E-mail exato</label>' +
-      '<input id="course-authoring-access-email" name="email" type="email" maxlength="254"' +
-      ` autocomplete="email" required placeholder="E-mail exato" value="${escapeHtml(
-        state.grantDraftEmail
+      '<label class="course-authoring-visually-hidden" for="course-authoring-access-handle">Identificador da pessoa</label>' +
+      '<input id="course-authoring-access-handle" name="handle" maxlength="31" role="combobox"' +
+      ' aria-autocomplete="list" aria-controls="course-access-candidates" aria-expanded="false"' +
+      ` autocomplete="off" autocapitalize="none" spellcheck="false" required placeholder="@identificador" value="${escapeHtml(
+        state.grantDraftHandle
       )}">` +
-      '<button type="submit" aria-label="Conceder acesso" title="Conceder acesso">' +
+      `<button type="submit" aria-label="Conceder acesso" title="Conceder acesso"${state.grantSelectedPerson ? "" : " disabled"}>` +
       renderUiIcon("save", "course-authoring-button-icon") + "</button>" +
       '<button type="button" data-course-authoring-action="cancel-grant" aria-label="Cancelar" title="Cancelar">' +
-      renderUiIcon("remove-state", "course-authoring-button-icon") + "</button></form>"
+      renderUiIcon("remove-state", "course-authoring-button-icon") + '</button><div class="course-access-search-results" data-people-search-results>' + renderPeopleSearchResults(state) + "</div></form>"
     : "";
+  const visibility = state.visibilityDraft?.visibility || state.course.visibility || "private";
+  const fileAccess = state.visibilityDraft?.publicFileAccess || state.course.publicFileAccess || "restricted";
+  const policy = `<form class="course-visibility-form" data-course-visibility-form>
+    <label>Acesso ao curso<select name="visibility" data-course-visibility><option value="private"${visibility === "private" ? " selected" : ""}>Privado</option><option value="public"${visibility === "public" ? " selected" : ""}>Público</option></select></label>
+    ${visibility === "public" ? `<label>Arquivos para visitantes<select name="publicFileAccess"><option value="restricted"${fileAccess === "restricted" ? " selected" : ""}>Restritos a pessoas autorizadas</option><option value="available"${fileAccess === "available" ? " selected" : ""}>Disponíveis para estudo</option></select></label>
+    <p>As exceções de cada fonte continuam valendo. Arquivos já abertos ou baixados não podem ser recolhidos.</p>` : ""}
+    <div class="course-visibility-actions"><button type="submit" aria-label="Salvar acesso ao curso" title="Salvar acesso ao curso"${state.peopleBusy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>
+    <a href="${escapeHtml(buildCourseStudyRoute([state.course.courseId]))}" aria-label="Abrir link de estudo" title="Abrir link de estudo">${renderUiIcon("arrow-right", "course-authoring-button-icon")}</a></div>
+  </form>`;
   return '<section class="course-authoring-section course-authoring-people"' +
     ' aria-labelledby="course-authoring-section-title">' +
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso</h2>' +
@@ -399,8 +411,16 @@ function renderPeopleSection(state) {
     '<button type="button" class="course-authoring-people-add"' +
     ' data-course-authoring-action="open-grant" aria-label="Conceder acesso" title="Conceder acesso">' +
     renderUiIcon("add", "course-authoring-button-icon") + "</button></header>" +
-    grant + `<div class="course-authoring-people-content">${content}</div>` +
+    policy + grant + `<div class="course-authoring-people-content">${content}</div>` +
     "</section>";
+}
+
+function renderPeopleSearchResults(state) {
+  if (state.peopleSearchLoading) return '<p role="status">Buscando identificadores…</p>';
+  if (state.peopleSearchError) return `<p role="status">${escapeHtml(state.peopleSearchError)}</p>`;
+  if (!state.peopleCandidates?.length) return "";
+  return '<div id="course-access-candidates" role="listbox" aria-label="Pessoas encontradas">' +
+    state.peopleCandidates.map((person) => `<button type="button" role="option" aria-selected="false" data-course-authoring-action="select-access-person" data-user-id="${escapeHtml(person.userId)}">${renderPersonAvatar(person, state.avatarUrls)}<span>@${escapeHtml(person.handle)}</span></button>`).join("") + "</div>";
 }
 
 function renderPlanningCard({ icon, label, value, emptyLabel }) {
@@ -960,6 +980,8 @@ export function createCourseAuthoringSurface({
   let targetSourcesPanel = null;
   let pendingInspectionComposition = null;
   let refreshPromise = null;
+  let peopleSearchEpoch = 0;
+  let peopleSearchTimer = null;
   const knownCourses = new Map();
   const avatarUrls = new Map();
   const state = {
@@ -984,7 +1006,12 @@ export function createCourseAuthoringSurface({
     peopleMessage: "",
     peopleBusy: false,
     grantOpen: false,
-    grantDraftEmail: "",
+    grantDraftHandle: "",
+    grantSelectedPerson: null,
+    peopleCandidates: [],
+    peopleSearchLoading: false,
+    peopleSearchError: "",
+    visibilityDraft: null,
     pendingPeopleCommand: null,
     createOpen: false,
     createDraft: null,
@@ -1073,6 +1100,24 @@ export function createCourseAuthoringSurface({
 
   function handleRootKeyDown(event) {
     if (!state.opened) return;
+    const accessInput = event.target?.matches?.("#course-authoring-access-handle");
+    const accessOption = event.target?.closest?.("[data-course-authoring-action='select-access-person']");
+    if ((accessInput || accessOption) && ["ArrowDown", "ArrowUp", "Escape"].includes(event.key)) {
+      const options = [...root.querySelectorAll("[data-course-authoring-action='select-access-person']")];
+      if (event.key === "Escape" && options.length) {
+        clearPeopleSearch();
+        paintPeopleSearch();
+        root.querySelector("#course-authoring-access-handle")?.focus();
+      } else if (options.length && event.key !== "Escape") {
+        const index = options.indexOf(accessOption);
+        const next = event.key === "ArrowDown" ? (index + 1) % options.length
+          : index < 0 ? options.length - 1 : (index - 1 + options.length) % options.length;
+        options[next].focus();
+      } else return;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (state.actionConfirmation) {
       if (event?.key === "Escape") {
         closeActionConfirmation();
@@ -1194,6 +1239,7 @@ export function createCourseAuthoringSurface({
       controller,
       courseId: state.course.courseId,
       courseRevision: state.course.revision,
+      coursePublicFileAccess: state.course.publicFileAccess,
       onCourseRevisionChange: acceptSourcesCourseRevision,
       onNavigate: (hash) => navigate(hash)
     };
@@ -1513,6 +1559,58 @@ export function createCourseAuthoringSurface({
     }
   }
 
+  function paintPeopleSearch() {
+    const host = root.querySelector("[data-people-search-results]");
+    if (!host) return;
+    host.innerHTML = renderPeopleSearchResults(state);
+    root.querySelector("#course-authoring-access-handle")?.setAttribute(
+      "aria-expanded", String(state.peopleCandidates.length > 0));
+    const submit = root.querySelector("[data-course-authoring-grant] [type='submit']");
+    if (submit) submit.disabled = state.peopleBusy || !state.grantSelectedPerson;
+  }
+
+  function clearPeopleSearch() {
+    peopleSearchEpoch += 1;
+    if (peopleSearchTimer !== null) globalThis.clearTimeout(peopleSearchTimer);
+    peopleSearchTimer = null;
+    state.grantSelectedPerson = null;
+    state.peopleCandidates = [];
+    state.peopleSearchLoading = false;
+    state.peopleSearchError = "";
+  }
+
+  function searchPeople() {
+    clearPeopleSearch();
+    const query = state.grantDraftHandle.trim().replace(/^@/u, "").toLowerCase();
+    const courseId = state.course?.courseId;
+    if (!courseId || query.length < 2) {
+      state.peopleSearchError = query ? "Digite pelo menos dois caracteres." : "";
+      paintPeopleSearch();
+      return;
+    }
+    const epoch = peopleSearchEpoch;
+    state.peopleSearchLoading = true;
+    paintPeopleSearch();
+    peopleSearchTimer = globalThis.setTimeout(async () => {
+      peopleSearchTimer = null;
+      try {
+        const result = await controller.searchCourseAccessPeople(courseId, { query, limit: 10 });
+        if (epoch !== peopleSearchEpoch || !state.grantOpen || state.course?.courseId !== courseId) return;
+        state.peopleCandidates = result.items.map((person) => normalizePerson(person, "Pessoa encontrada", { searchResult: true }));
+        state.peopleSearchError = result.rateLimited
+          ? "Limite de buscas atingido. Aguarde alguns minutos antes de buscar novamente."
+          : state.peopleCandidates.length ? "" : "Nenhum identificador encontrado.";
+        state.peopleSearchLoading = false;
+        paintPeopleSearch();
+      } catch (error) {
+        if (epoch !== peopleSearchEpoch) return;
+        state.peopleSearchError = publicErrorMessage(error, "Não foi possível buscar identificadores.");
+      } finally {
+        if (epoch === peopleSearchEpoch) { state.peopleSearchLoading = false; paintPeopleSearch(); }
+      }
+    }, 250);
+  }
+
   async function runPeopleCommand({
     draft,
     request,
@@ -1540,9 +1638,14 @@ export function createCourseAuthoringSurface({
     state.peopleMessage = startedMessage;
     render();
     try {
-      await controller[method](structuredClone(pending.request));
+      const result = await controller[method](structuredClone(pending.request));
       state.pendingPeopleCommand = null;
-      afterSuccess();
+      if (result?.rateLimited) {
+        state.peopleFailure = "Limite de concessões atingido. Aguarde alguns minutos antes de tentar novamente.";
+        state.peopleMessage = "";
+        return false;
+      }
+      await afterSuccess(result);
       if (refreshAfterSuccess) await loadPeople(courseId);
       state.peopleMessage = successMessage;
       return true;
@@ -1663,12 +1766,14 @@ export function createCourseAuthoringSurface({
     state.knownCourse = knownCourses.get(courseId) ||
       (state.course?.courseId === courseId ? state.course : null);
     if (state.course?.courseId !== courseId) {
+      clearPeopleSearch();
+      state.visibilityDraft = null;
       state.sourceTarget = null;
       state.people = null;
       state.peopleFailure = "";
       state.peopleMessage = "";
       state.grantOpen = false;
-      state.grantDraftEmail = "";
+      state.grantDraftHandle = "";
       state.pendingPeopleCommand = null;
       state.authoringPlan = null;
       state.planningFailure = "";
@@ -1693,6 +1798,8 @@ export function createCourseAuthoringSurface({
       state.designMessage = "";
     }
     state.course = null;
+    clearPeopleSearch();
+    state.visibilityDraft = null;
     state.failure = null;
     state.loading = true;
     render();
@@ -1831,7 +1938,9 @@ export function createCourseAuthoringSurface({
     state.peopleFailure = "";
     state.peopleMessage = "";
     state.grantOpen = false;
-    state.grantDraftEmail = "";
+    state.grantDraftHandle = "";
+    clearPeopleSearch();
+    state.visibilityDraft = null;
     state.pendingPeopleCommand = null;
     state.authoringPlan = null;
     state.planningFailure = "";
@@ -1932,11 +2041,13 @@ export function createCourseAuthoringSurface({
     ++courseEpoch;
     ++designEpoch;
     state.opened = false;
+    clearPeopleSearch();
+    state.visibilityDraft = null;
     state.routeKey = "";
     state.loading = false;
     state.actionConfirmation = null;
     state.inspectionReturnPosition = null;
-    state.grantDraftEmail = "";
+    state.grantDraftHandle = "";
     state.pendingPeopleCommand = null;
     destroyInspectionSequence();
     destroyReviewPanel();
@@ -2321,7 +2432,7 @@ export function createCourseAuthoringSurface({
           render();
           return true;
         }
-        const refreshed = await panel.refresh(course.revision);
+        const refreshed = await panel.refresh(course.revision, course.publicFileAccess);
         if (!refreshed || !state.opened || panel !== sourcesPanel ||
             state.routeKey !== locationValue.hash) return false;
         rememberCourse(course);
@@ -2733,16 +2844,19 @@ export function createCourseAuthoringSurface({
   }
 
   function preserveDesignFormDraft(event) {
-    if (event.target?.matches?.("#course-authoring-access-email")) {
-      state.grantDraftEmail = String(event.target.value || "");
-      const draft = {
-        operation: "grant_access",
-        courseId: state.course?.courseId || "",
-        email: state.grantDraftEmail.trim().toLowerCase()
+    if (event.target?.matches?.("#course-authoring-access-handle")) {
+      state.grantDraftHandle = String(event.target.value || "");
+      state.pendingPeopleCommand = null;
+      if (event.type === "input") searchPeople();
+      return;
+    }
+    if (event.target?.closest?.("[data-course-visibility-form]")) {
+      const form = event.target.closest("form");
+      state.visibilityDraft = {
+        visibility: form.elements.visibility.value,
+        publicFileAccess: form.elements.publicFileAccess?.value || state.visibilityDraft?.publicFileAccess || state.course.publicFileAccess || "restricted"
       };
-      if (!pendingWriteMatches(state.pendingPeopleCommand, draft)) {
-        state.pendingPeopleCommand = null;
-      }
+      if (event.type === "change" && event.target.matches("[data-course-visibility]")) render({ focus: "[data-course-visibility]" });
       return;
     }
     const form = event.target?.closest?.(DESIGN_FORM_SELECTOR);
@@ -2964,31 +3078,61 @@ export function createCourseAuthoringSurface({
     if (event.target.matches?.("[data-course-authoring-grant]")) {
       event.preventDefault();
       if (!state.course || state.peopleBusy) return;
-      const email = String(event.target.elements?.email?.value || "").trim().toLowerCase();
-      if (!email) return;
+      const selected = state.grantSelectedPerson;
+      const enteredHandle = String(event.target.elements?.handle?.value || "").trim().replace(/^@/u, "").toLowerCase();
+      if (!selected || enteredHandle !== selected.handle) {
+        state.peopleSearchError = "Escolha uma pessoa entre os identificadores encontrados.";
+        paintPeopleSearch();
+        return;
+      }
+      const { userId, handle } = selected;
       const courseId = state.course.courseId;
-      const draft = { operation: "grant_access", courseId, email };
-      state.grantDraftEmail = email;
+      const draft = { operation: "grant_access", courseId, userId, handle };
+      state.grantDraftHandle = handle;
       if (!pendingWriteMatches(state.pendingPeopleCommand, draft)) {
         state.pendingPeopleCommand = null;
       }
       openActionConfirmation({
-        message: `Conceder a ${email} acesso para estudo neste curso?`,
+        message: `Conceder a @${handle} acesso para estudo neste curso?`,
         confirmLabel: "Conceder acesso",
         tone: "primary",
         icon: "account-add",
         execute() {
           void runPeopleCommand({
             draft,
-            request: { courseId, email, confirmed: true },
+            request: { courseId, userId, handle, confirmed: true },
             method: "grantCourseAccess",
             startedMessage: "Concedendo acesso…",
-            successMessage: "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Depois, atualize o curso para conferir o acesso.",
-            refreshAfterSuccess: false,
+            successMessage: `Acesso concedido a @${handle}.`,
             afterSuccess() {
               state.grantOpen = false;
-              state.grantDraftEmail = "";
+              state.grantDraftHandle = "";
+              clearPeopleSearch();
             }
+          });
+        }
+      });
+      return;
+    }
+    if (event.target.matches?.("[data-course-visibility-form]")) {
+      event.preventDefault();
+      if (!state.course || state.peopleBusy) return;
+      const courseId = state.course.courseId;
+      const visibility = event.target.elements.visibility.value;
+      const publicFileAccess = event.target.elements.publicFileAccess?.value || state.course.publicFileAccess || "restricted";
+      const request = { courseId, expectedRevision: state.course.revision, visibility, publicFileAccess, confirmed: true };
+      const draft = { operation: "set_visibility", ...request };
+      openActionConfirmation({
+        message: visibility === "public"
+          ? `Tornar este curso público para leitura e prática? Os arquivos ficarão ${publicFileAccess === "available" ? "disponíveis a visitantes" : "restritos a pessoas autorizadas"}, respeitando as exceções de cada fonte. Observações e dados de autoria continuam privados.`
+          : "Tornar este curso privado? Somente você e as pessoas autorizadas poderão abrir o curso conectado. Conteúdo já baixado não pode ser recolhido.",
+        confirmLabel: visibility === "public" ? "Tornar público" : "Tornar privado",
+        tone: "primary",
+        execute() {
+          void runPeopleCommand({ draft, request, method: "setCourseVisibility",
+            startedMessage: "Salvando acesso…", successMessage: "Acesso ao curso atualizado.",
+            refreshAfterSuccess: false,
+            afterSuccess: async () => { state.visibilityDraft = null; await loadCourse(courseId, { force: true }); }
           });
         }
       });
@@ -3155,20 +3299,33 @@ export function createCourseAuthoringSurface({
         : [];
       openInspectionContentEditor({ entityPath });
     } else if (action === "open-grant") {
+      clearPeopleSearch();
       if (state.pendingPeopleCommand?.draft?.operation !== "grant_access") {
         state.pendingPeopleCommand = null;
-        state.grantDraftEmail = "";
+        state.grantDraftHandle = "";
       } else {
-        state.grantDraftEmail = state.pendingPeopleCommand.draft.email;
+        state.grantDraftHandle = state.pendingPeopleCommand.draft.handle;
+        state.grantSelectedPerson = { userId: state.pendingPeopleCommand.draft.userId, handle: state.pendingPeopleCommand.draft.handle };
       }
       state.grantOpen = true;
       state.peopleFailure = "";
-      render({ focus: "#course-authoring-access-email" });
+      render({ focus: "#course-authoring-access-handle" });
     } else if (action === "cancel-grant") {
+      clearPeopleSearch();
       state.grantOpen = false;
-      state.grantDraftEmail = "";
+      state.grantDraftHandle = "";
       state.pendingPeopleCommand = null;
       render();
+    } else if (action === "select-access-person") {
+      const selected = state.peopleCandidates.find((person) => person.userId === node.dataset.userId);
+      if (!selected) return;
+      clearPeopleSearch();
+      state.grantSelectedPerson = selected;
+      state.grantDraftHandle = selected.handle;
+      const input = root.querySelector("#course-authoring-access-handle");
+      input.value = `@${selected.handle}`;
+      input.focus();
+      paintPeopleSearch();
     } else if (action === "revoke-access" && state.course && !state.peopleBusy) {
       const userId = String(node.dataset.userId || "");
       const displayName = String(node.dataset.displayName || "esta pessoa");

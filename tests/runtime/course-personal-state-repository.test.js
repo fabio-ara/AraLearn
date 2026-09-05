@@ -10,6 +10,29 @@ import {
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const REQUEST_ID = "20000000-0000-4000-8000-000000000002";
 
+test("estado localOnly mantém progresso e Rever após reabertura sem chamar a API", async () => {
+  const cache = memoryCache();
+  const api = {
+    loadPersonalState() { throw new Error("Leitura remota proibida para visitante"); },
+    mutatePersonalState() { throw new Error("Escrita remota proibida para visitante"); }
+  };
+  const personal = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache, api, localOnly: true });
+  await personal.initialize();
+  await personal.setStudyUnitCompleted(reference(), true);
+  await personal.setStudyUnitReviewMark(reference(), true);
+  assert.equal(personal.snapshot().pending, false);
+  await personal.refresh();
+  await personal.flush();
+  const reopened = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache, localOnly: true });
+  await reopened.initialize();
+  assert.equal(reopened.isStudyUnitCompleted(reference()), true);
+  assert.equal(reopened.isStudyUnitMarkedForReview(reference()), true);
+  assert.equal(reopened.snapshot().pending, false);
+  await reopened.clearProgress();
+  assert.equal(reopened.isStudyUnitCompleted(reference()), false);
+  assert.equal(reopened.isStudyUnitMarkedForReview(reference()), true);
+});
+
 function deferred() {
   let resolve;
   let reject;

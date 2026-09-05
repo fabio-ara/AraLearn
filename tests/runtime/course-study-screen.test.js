@@ -558,7 +558,7 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma única entrada"
   }
 });
 
-test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem expor IDs", async () => {
+test("a Home distingue propriedade e preserva cursos copiados como cursos próprios", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const base = project.courses[0];
   const owned = {
@@ -584,14 +584,11 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
     [shared.id]: {
       ownership: "shared",
       canEdit: false,
-      canDerive: true,
-      personalCopyCourseId: personalCopy.id,
       sourceCourseRevision: technicalHash
     },
     [personalCopy.id]: {
       ownership: "owned",
       canEdit: true,
-      isPersonalCopy: true,
       sourceCourseId,
       sourceCourseRevision: technicalHash
     }
@@ -608,7 +605,7 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   assert.match(html, />Curso do autor/u);
   assert.match(html, />Curso compartilhado/u);
   assert.match(html, />Minha continuidade/u);
-  assert.match(html, /home-course-ownership" aria-label="Cópia pessoal"/u);
+  assert.match(html, /home-course-ownership" aria-label="Curso próprio"/u);
   assert.match(html, /<button[^>]+aria-label="Ações deste curso"[^>]+aria-haspopup="menu"/u);
   assert.match(html, /data-action="delete-owned-course"/u);
   assert.match(html, />Excluir este curso<\/span>/u);
@@ -623,7 +620,7 @@ test("a Home distingue Curso compartilhado, Curso do autor e cópia pessoal sem 
   assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
 });
 
-test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do autor", async () => {
+test("a edição em Estudo preserva o fluxo direto do proprietário sem criar cópia", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -660,21 +657,9 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
     error: ""
   };
 
-  const sharedHtml = renderCourseStudyScreen({
-    ...common,
-    manualEditor: { ...manualEditor, createsPersonalCopy: true, isPersonalCopy: false }
-  });
-  assert.match(
-    sharedHtml,
-    /Ao salvar, o AraLearn criará uma cópia privada para você\. O curso compartilhado continuará intacto\./u
-  );
-  assert.match(sharedHtml, /aria-label="Salvar na minha cópia"/u);
-  assert.match(sharedHtml, /<span>Salvar na minha cópia<\/span>/u);
-  assert.doesNotMatch(sharedHtml, /study-personal-copy-badge/u);
-
   const ownedHtml = renderCourseStudyScreen({
     ...common,
-    manualEditor: { ...manualEditor, createsPersonalCopy: false, isPersonalCopy: false }
+    manualEditor
   });
   assert.match(ownedHtml, /Edite diretamente no conteúdo\./u);
   assert.match(ownedHtml, /data-action="study-manual-view"[^>]*aria-label="Visualizar"/u);
@@ -684,20 +669,7 @@ test("a edição em Estudo explica a cópia pessoal e preserva o fluxo direto do
   assert.match(ownedHtml, /aria-label="Salvar edição"/u);
   assert.doesNotMatch(ownedHtml, /Salvar na minha cópia|Sua cópia/u);
 
-  const personalCopyHtml = renderCourseStudyScreen({
-    ...common,
-    manualEditor: {
-      ...manualEditor,
-      editing: false,
-      createsPersonalCopy: false,
-      isPersonalCopy: true
-    }
-  });
-  assert.match(
-    personalCopyHtml,
-    /class="study-personal-copy-badge">Sua cópia<\/span>/u
-  );
-  assert.doesNotMatch(visibleText(personalCopyHtml), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
+
 });
 
 test("Study revela citações redigidas somente quando o painel lazy está aberto", async () => {
@@ -730,6 +702,8 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
     citations: {
       citations: [{
         sourceId: "fonte-citacao",
+        sourceRevision: 1,
+        attachments: [{ contentHash: "a".repeat(64), byteSize: 1_024, mediaType: "application/pdf" }],
         title: "Fonte somente citada",
         citationText: "Autoria. Fonte somente citada. 2026.",
         url: null,
@@ -741,6 +715,8 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
         }]
       }, {
         sourceId: "fonte-com-link",
+        sourceRevision: 2,
+        attachments: [],
         title: "Fonte com link público",
         citationText: "Autoria. Fonte com link público. 2026.",
         url: "https://example.test/fonte",
@@ -763,6 +739,9 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
   assert.match(open, /Capítulo 2 · Figura 4 · pp\. 8–9/u);
   assert.match(open, /href="https:\/\/example\.test\/fonte"/u);
   assert.equal((open.match(/>Abrir fonte<\/a>/gu) || []).length, 1);
+  assert.equal((open.match(/data-action="download-citation-attachment"/gu) || []).length, 1);
+  assert.match(open, /aria-label="Baixar PDF 1 de Fonte somente citada"/u);
+  assert.doesNotMatch(open, /storagePath|signedUrl|contentHash/u);
   assert.doesNotMatch(open, /Fonte oculta|Legado não resolvido|verificationExcerpt|actorId|studyVisibility/u);
   assert.doesNotMatch(open, /edit-source|retire-source|Revisar fonte|Aposentar fonte/u);
 

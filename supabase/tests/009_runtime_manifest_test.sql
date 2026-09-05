@@ -5,10 +5,10 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260903193000','o manifesto identifica o catálogo com resposta aberta');
+  '20260905071622','o manifesto identifica identidade e acesso protegido a avatares');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),41,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),43,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-anchored-annotations-atomic-create-v1",
@@ -21,31 +21,36 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-source-roles-v1",
   "course-source-current-state-v1",
   "course-study-unit-inspection-v2",
-  "single-authoring-runtime-v1"
+  "single-authoring-runtime-v1",
+  "person-profile-v2",
+  "public-course-study-v1",
+  "course-file-access-policy-v1",
+  "owned-course-copy-recovery-v1"
 ]'::jsonb,'o manifesto anuncia o runtime corrente');
 select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
   'authenticated-course-source-pdf-upload-v1',
   'course-audit-cycle-v1','course-authoring-corrections-v1',
   'course-authoring-part-materialization-v1',
   'course-authoring-part-materialization-history-v1',
-  'course-design-parameters-v1','course-variant-comparisons-v1'
+  'course-design-parameters-v1','course-variant-comparisons-v1',
+  'person-profile-v1','personal-course-copy-edit-v1'
 ]),'o manifesto não anuncia mecanismos substituídos');
 
 select ok(
   pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
   ) like '%v_design_preservable_study_unit_ids%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
   ) like '%to_jsonb(entity.updated_at)%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
   ) like '%course_component_refs_from_content_v1(entity.content)%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
   ) ~ 'p_application_origin\s*=\s*''provider_assistance'''
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
   ) like '%course_component_policy_allows_v1%',
   'a composição preserva aplicação corrente somente para correção GPT focal compatível'
 );
@@ -141,7 +146,8 @@ select is(array(
     'private.course_component_policy_changes',
     'private.course_anchored_annotation_events',
     'private.course_anchored_annotation_receipts','private.course_inspection_focuses',
-    'private.course_source_revisions','private.course_source_anchor_revisions'
+    'private.course_source_revisions','private.course_source_anchor_revisions',
+    'private.course_personal_copies'
   ]) name where to_regclass(name) is not null
 ),array[]::text[],'todas as tabelas substituídas foram removidas');
 

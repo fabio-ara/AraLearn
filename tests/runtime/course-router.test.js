@@ -897,7 +897,7 @@ test("composição contextual encaminha somente versão e origem fechada", async
   );
 });
 
-test("cópia pessoal valida a Unidade completa e deriva autoridade somente da aplicação", async () => {
+test("recuperação valida a Unidade completa e deriva autoridade somente da aplicação", async () => {
   const studyUnit = {
     id: "unit-a",
     position: 1,
@@ -922,12 +922,12 @@ test("cópia pessoal valida a Unidade completa e deriva autoridade somente da ap
     studyUnit,
     applicationOrigin: "provider_assistance"
   };
-  const path = `/v1/courses/${COURSE_ID}/personal-copy/composition`;
+  const path = `/v1/courses/${COURSE_ID}/copy-recovery`;
   let call = null;
   const adapter = {
-    async commitPersonalCourseCopyEdit(value) {
+    async recoverOwnedCourseCopy(value) {
       call = value;
-      return { contract: "aralearn.personal-course-copy-edit.v1", changed: true };
+      return { contract: "aralearn.owned-course-copy-recovery.v1", changed: true };
     }
   };
   const principal = {
@@ -1188,7 +1188,7 @@ test("perfil próprio e acesso direto atravessam o mesmo contrato do MCP", async
   const adapter = {
     async getPersonProfile(value) {
       calls.push(["read-profile", value]);
-      return { userId: PRINCIPAL.actorId, displayName: null };
+      return { userId: PRINCIPAL.actorId, handle: null };
     },
     async updatePersonProfile(value) {
       calls.push(["update-profile", value]);
@@ -1205,10 +1205,10 @@ test("perfil próprio e acesso direto atravessam o mesmo contrato do MCP", async
   };
 
   for (const value of [
-    request("/v1/profile"),
-    request("/v1/profile", {
+    request("/v2/profile"),
+    request("/v2/profile", {
       method: "PATCH",
-      body: { displayName: "Pesquisadora", avatarObjectKey: null }
+      body: { handle: "pesquisadora", avatarObjectKey: null }
     }),
     request(`/v1/courses/${COURSE_ID}/access`)
   ]) {
@@ -1225,7 +1225,7 @@ test("perfil próprio e acesso direto atravessam o mesmo contrato do MCP", async
     requestId: "request-access-0001",
     body: {
       requestId: "request-access-0001",
-      email: "Pessoa@Example.com",
+      handle: "@Pessoa", userId: "20000000-0000-4000-8000-000000000002",
       confirmed: true
     }
   });
@@ -1254,7 +1254,7 @@ test("perfil próprio e acesso direto atravessam o mesmo contrato do MCP", async
   assert.deepEqual(calls.map(([name]) => name), [
     "read-profile", "update-profile", "list-access", "manage-access", "manage-access"
   ]);
-  assert.equal(calls[3][1].email, "pessoa@example.com");
+  assert.equal(calls[3][1].handle, "pessoa");
   assert.equal(calls[4][1].targetUserId, "20000000-0000-4000-8000-000000000002");
 });
 
@@ -1267,7 +1267,7 @@ test("conceder ou revogar acesso exige confirmação explícita", async () => {
   for (const [method, path, body] of [
     ["POST", `/v1/courses/${COURSE_ID}/access`, {
       requestId: "request-access-0001",
-      email: "pessoa@example.com",
+      handle: "pessoa",
       confirmed: false
     }],
     ["DELETE", `/v1/courses/${COURSE_ID}/access/20000000-0000-4000-8000-000000000002`, {

@@ -39,7 +39,7 @@ import {
   selectionForModule,
   studyUnitPathKey
 } from "./CourseStudyNavigation.js";
-import { renderCourseStudyScreen } from "./CourseStudyScreen.js";
+import { renderCourseStudyScreen, renderStudyDraftRecovery } from "./CourseStudyScreen.js";
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -115,35 +115,6 @@ function courseAccessWasRevoked(error) {
   return status === 403 || status === 404 || code === "42501" || code === "PT404";
 }
 
-function personalCopyBaseChanged(error) {
-  const code = String(error?.code || error?.response?.code || "").toLowerCase();
-  return new Set(["stale_course_state", "40001", "course_revision_changed"])
-    .has(code);
-}
-
-function selectionForStudyUnitIdentity(project, courseId, studyUnitId) {
-  const course = findCourse(project, courseId);
-  for (const moduleValue of course?.modules || []) {
-    for (const lesson of moduleValue.lessons || []) {
-      for (const microsequence of lesson.microsequences || []) {
-        const studyUnitIndex = (microsequence.studyUnits || [])
-          .findIndex(({ id }) => id === studyUnitId);
-        if (studyUnitIndex >= 0) {
-          return {
-            courseId,
-            moduleId: moduleValue.id,
-            lessonId: lesson.id,
-            microsequenceId: microsequence.id,
-            studyUnitId,
-            studyUnitIndex
-          };
-        }
-      }
-    }
-  }
-  return null;
-}
-
 export function createCourseStudyApplication({
   root,
   repository,
@@ -151,7 +122,17 @@ export function createCourseStudyApplication({
   onViewChange = () => {},
   onSaveManualEdit = null,
   onSaveAssistedStructure = null,
-  providerAssistanceSession = null
+  providerAssistanceSession = null,
+  visitor = false,
+  downloadCitationPdf = (url) => {
+    const anchor = (root?.ownerDocument || globalThis.document)?.createElement?.("a");
+    if (!anchor) throw new TypeError("O navegador não oferece download de arquivos.");
+    anchor.href = url;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.download = "fonte.pdf";
+    anchor.click();
+  }
 } = {}) {
   if (!root || typeof root.querySelector !== "function") {
     throw new TypeError("Raiz de Estudo inválida.");
@@ -162,6 +143,7 @@ export function createCourseStudyApplication({
   if (!initialProject || !Array.isArray(initialProject.courses)) {
     throw new TypeError("Documento de cursos inválido.");
   }
+  if (typeof downloadCitationPdf !== "function") throw new TypeError("Download de fonte inválido.");
   if (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") {
     throw new TypeError("Gravação contextual de unidade de estudo inválida.");
   }
@@ -210,6 +192,8 @@ export function createCourseStudyApplication({
     citationsLoading: false,
     citations: null,
     citationsError: "",
+    citationDownloadPending: false,
+    citationDownloadError: "",
     manualEditing: false,
     manualTargetId: "",
     manualDraft: { pathValues: {} },
@@ -223,10 +207,6 @@ export function createCourseStudyApplication({
     manualHistoryPreview: null,
     manualUnknownSignature: "",
     manualDiscardArmed: false,
-    manualPendingPersonalCopy: false,
-    manualPendingPersonalCopySourceCourseId: "",
-    manualPendingPersonalCopyRequestId: "",
-    manualReplacesPendingPersonalCopyRequestId: "",
     manualVersionByStudyUnit: {},
     manualCourseRevisionByCourse: {},
     accountProfile: null,
@@ -234,8 +214,8 @@ export function createCourseStudyApplication({
     homeLoadingCourseId: "",
     homeError: "",
     homeNotice: "",
-    homePendingPersonalCopyDiscard: false,
-    homePendingPersonalCopyRequestId: "",
+    studyDraftRecovery: null,
+    studyDraftRecoveryError: "",
     reviewQueueOpen: false,
     reviewUndo: null,
     navigationHistory: [],
@@ -547,6 +527,8 @@ export function createCourseStudyApplication({
     state.citationsLoading = false;
     state.citations = null;
     state.citationsError = "";
+    state.citationDownloadPending = false;
+    state.citationDownloadError = "";
   }
 
   function resetObservationSheet() {
@@ -608,10 +590,6 @@ export function createCourseStudyApplication({
     state.manualRestoreFocus = false;
     state.manualUnknownSignature = "";
     state.manualDiscardArmed = false;
-    state.manualPendingPersonalCopy = false;
-    state.manualPendingPersonalCopySourceCourseId = "";
-    state.manualPendingPersonalCopyRequestId = "";
-    state.manualReplacesPendingPersonalCopyRequestId = "";
   }
 
   function resetStudyUnitInteraction() {
@@ -700,6 +678,46 @@ export function createCourseStudyApplication({
     }
   }
 
+  async function downloadCitationAttachment(node) {
+    if (state.citationDownloadPending || !state.citationsOpen ||
+        typeof repository.getStudyCitationAttachmentDownload !== "function") return false;
+    const citationIndex = Number(node.dataset.citationIndex);
+    const attachmentIndex = Number(node.dataset.attachmentIndex);
+    if (!Number.isSafeInteger(citationIndex) || citationIndex < 0 ||
+        !Number.isSafeInteger(attachmentIndex) || attachmentIndex < 0) return false;
+    const citation = state.citations?.citations?.[citationIndex];
+    const attachment = citation?.attachments?.[attachmentIndex];
+    if (!attachment) return false;
+    const epoch = citationsEpoch;
+    state.citationDownloadPending = true;
+    state.citationDownloadError = "";
+    render();
+    try {
+      const result = await repository.getStudyCitationAttachmentDownload(canonicalReference(state.selection), {
+        courseRevision: state.citations.courseRevision, sourceId: citation.sourceId,
+        sourceRevision: citation.sourceRevision, attachment: clone(attachment)
+      });
+      if (epoch !== citationsEpoch || destroyed) return false;
+      const url = new URL(result.signedUrl);
+      const localHttp = url.protocol === "http:" && ["127.0.0.1", "localhost", "10.0.2.2"].includes(url.hostname);
+      if (url.protocol !== "https:" && !localHttp || url.username || url.password) throw new TypeError("URL do PDF inválida.");
+      downloadCitationPdf(url.href, attachment);
+      return true;
+    } catch (error) {
+      if (epoch !== citationsEpoch || destroyed) return false;
+      state.citationDownloadError = publicErrorMessage(error, "Não foi possível baixar este PDF.", {
+        conflict: "O curso mudou. Reabra a unidade para consultar os PDFs atuais.",
+        network: "Sem conexão para baixar este PDF."
+      });
+      return false;
+    } finally {
+      if (epoch === citationsEpoch && !destroyed) {
+        state.citationDownloadPending = false;
+        render();
+      }
+    }
+  }
+
   function selectMicrosequence(microsequenceId, studyUnitIndex = 0) {
     const selection = selectionForMicrosequence(
       state.project,
@@ -717,7 +735,7 @@ export function createCourseStudyApplication({
     if (typeof repository.loadCourse !== "function") return true;
     root.setAttribute("aria-busy", "true");
     try {
-      await repository.loadCourse(courseId);
+      await (repository.loadCourseById?.(courseId) ?? repository.loadCourse(courseId));
       state.project = clone(repository.loadProject());
       rebaseManualCompositionOverrides();
       return true;
@@ -1073,12 +1091,7 @@ export function createCourseStudyApplication({
   function manualEditCapability() {
     const summary = coursePermission();
     return Boolean(
-      onSaveManualEdit && (
-        (summary?.ownership === "owned" && summary.canEdit === true) ||
-        (summary?.ownership === "shared" && (
-          summary.canDerive === true || state.manualPendingPersonalCopy
-        ))
-      ) &&
+      !visitor && onSaveManualEdit && summary?.ownership === "owned" && summary.canEdit === true &&
       state.view === "microsequence" && state.microsequenceMode === "play" && context().studyUnit
     );
   }
@@ -1144,402 +1157,44 @@ export function createCourseStudyApplication({
     return JSON.stringify({ targetId, studyUnit, origin });
   }
 
-  function manualPathValues(studyUnit, targetId) {
-    return Object.fromEntries(
-      listManualStudyUnitEditablePaths(studyUnit, targetId)
-        .map(({ path, value }) => [path, value])
-    );
-  }
-
-  function personalCopyConflict(error) {
-    return String(error?.code || "").toLowerCase() === "personal_copy_exists" &&
-      typeof error?.targetCourseId === "string" && error.targetCourseId;
-  }
-
-  function showPendingPersonalCopyResolution(message, pending = null) {
-    resetStudyUnitInteraction();
-    state.selection = selectionForCourse(state.project, state.selection?.courseId) ||
-      firstSelection(state.project);
-    state.view = "courses";
-    setHomeNotice("");
-    state.homeError = message;
-    state.homePendingPersonalCopyDiscard = true;
-    state.homePendingPersonalCopyRequestId = pending?.requestId || "";
-    queueStudyFocus("[data-action='discard-pending-personal-copy']");
-    render({ preserveFocus: false, captureDraft: false });
+  async function resumeStudyDraftRecovery() {
+    if (visitor || typeof repository.loadStudyDraftRecovery !== "function") return false;
+    const pending = await repository.loadStudyDraftRecovery();
+    if (!pending) return false;
+    state.studyDraftRecovery = { pending, status: "unresolved", targetCourseId: null };
+    if (globalThis.navigator?.onLine !== false) {
+      try {
+        const result = await repository.recoverStudyDraft?.(pending.sourceCourseId);
+        if (result) state.studyDraftRecovery = { ...result, pending };
+        if (result?.project) state.project = clone(result.project);
+      } catch {
+        state.studyDraftRecoveryError = "A confirmação ainda não está disponível. O rascunho continua guardado neste dispositivo.";
+      }
+    }
+    render({ preserveFocus: true, captureDraft: false });
     return true;
   }
 
-  async function rebasePersonalCopyConflict(error, editedStudyUnit, {
-    targetId: requestedTargetId = state.manualTargetId,
-    origin: requestedOrigin = state.manualOrigin,
-    sourceSelection: requestedSourceSelection = canonicalReference(state.selection),
-    pending: requestedPending = error?.pending || null
-  } = {}) {
-    const targetCourseId = personalCopyConflict(error);
-    if (!targetCourseId || typeof repository.refreshCourses !== "function" ||
-        typeof repository.loadCourse !== "function") return false;
-    const sourceSelection = clone(requestedSourceSelection);
-    const targetId = requestedTargetId;
-    const origin = requestedOrigin;
-    if (!targetId || !sourceSelection?.courseId) return false;
+  async function discardStudyDraftRecovery() {
+    const pending = state.studyDraftRecovery?.pending;
+    if (!pending) return false;
     try {
-      const listed = await repository.refreshCourses();
-      state.project = clone(listed);
-      await repository.loadCourse(targetCourseId);
-      const project = clone(repository.loadProject());
-      const targetSelection = exactStudyUnitSelection(project, [
-        targetCourseId,
-        sourceSelection.moduleId,
-        sourceSelection.lessonId,
-        sourceSelection.microsequenceId,
-        sourceSelection.studyUnitId
-      ]) || selectionForStudyUnitIdentity(
-        project,
-        targetCourseId,
-        sourceSelection.studyUnitId
-      );
-      if (!targetSelection) {
-        state.project = project;
-        return showPendingPersonalCopyResolution(
-          "Sua cópia existe, mas a unidade de estudo desta alteração deixou de existir. Descarte o rascunho ou continue pela cópia atual.",
-          requestedPending
-        );
+      const cleared = await repository.clearStudyDraftRecovery?.(pending.sourceCourseId, pending.requestId);
+      if (!cleared) {
+        state.studyDraftRecoveryError = "O rascunho guardado mudou. Reabra esta área antes de descartá-lo.";
+        render();
+        return false;
       }
-      const targetMicrosequence = findMicrosequence(
-        project,
-        targetCourseId,
-        targetSelection.moduleId,
-        targetSelection.lessonId,
-        targetSelection.microsequenceId
-      );
-      const targetStudyUnit = targetMicrosequence?.studyUnits?.find(({ id }) =>
-        id === sourceSelection.studyUnitId);
-      if (!targetStudyUnit || (
-        targetId !== "study_unit" &&
-        !listManualStudyUnitTargetIds(targetStudyUnit).includes(targetId)
-      )) {
-        state.project = project;
-        return showPendingPersonalCopyResolution(
-          "Sua cópia existe, mas o conteúdo desta alteração deixou de existir. Descarte o rascunho ou continue pela cópia atual.",
-          requestedPending
-        );
-      }
-      resetStudyUnitInteraction();
-      state.project = project;
-      state.selection = targetSelection;
-      state.view = "microsequence";
-      state.microsequenceMode = "play";
-      state.manualEditing = true;
-      state.manualTargetId = targetId;
-      state.manualDraft = {
-        pathValues: manualPathValues(editedStudyUnit, targetId)
-      };
-      state.manualOrigin = origin;
-      state.manualPendingPersonalCopy = true;
-      state.manualPendingPersonalCopySourceCourseId = sourceSelection.courseId;
-      state.manualPendingPersonalCopyRequestId = requestedPending?.requestId || "";
-      state.manualReplacesPendingPersonalCopyRequestId = "";
-      state.manualError = "Sua cópia já existia. Revise esta alteração na cópia e salve novamente.";
-      state.manualRestoreFocus = true;
-      persistStudyNavigation();
-      render({ preserveFocus: false, captureDraft: false });
+      state.studyDraftRecovery = null;
+      state.studyDraftRecoveryError = "";
+      setHomeNotice("Rascunho guardado descartado.");
+      render();
       return true;
     } catch {
+      state.studyDraftRecoveryError = "Não foi possível descartar o rascunho. Ele continua guardado.";
+      render();
       return false;
     }
-  }
-
-  async function restorePendingPersonalCopyEdit(pending, message, {
-    retrySameRequest = true
-  } = {}) {
-    if (!pending?.sourceSelection || !pending?.studyUnit || !pending?.targetId) return false;
-    const sourceCourseId = pending.sourceCourseId;
-    if (!findCourse(state.project, sourceCourseId) ||
-        !exactStudyUnitSelection(state.project, [
-          sourceCourseId,
-          pending.sourceSelection.moduleId,
-          pending.sourceSelection.lessonId,
-          pending.sourceSelection.microsequenceId,
-          pending.sourceSelection.studyUnitId
-        ])) {
-      if (!await ensureCourseLoaded(sourceCourseId)) return false;
-    }
-    const exactSelection = exactStudyUnitSelection(state.project, [
-      sourceCourseId,
-      pending.sourceSelection.moduleId,
-      pending.sourceSelection.lessonId,
-      pending.sourceSelection.microsequenceId,
-      pending.sourceSelection.studyUnitId
-    ]);
-    const sourceSelection = exactSelection || selectionForStudyUnitIdentity(
-      state.project,
-      sourceCourseId,
-      pending.sourceSelection.studyUnitId
-    );
-    if (!sourceSelection) {
-      return showPendingPersonalCopyResolution(
-        "A unidade de estudo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
-        pending
-      );
-    }
-    const sourceMicrosequence = findMicrosequence(
-      state.project,
-      sourceCourseId,
-      sourceSelection.moduleId,
-      sourceSelection.lessonId,
-      sourceSelection.microsequenceId
-    );
-    const sourceStudyUnit = sourceMicrosequence?.studyUnits?.find(({ id }) =>
-      id === sourceSelection.studyUnitId);
-    if (!sourceStudyUnit || (
-      pending.targetId !== "study_unit" &&
-      !listManualStudyUnitTargetIds(sourceStudyUnit).includes(pending.targetId)
-    )) {
-      return showPendingPersonalCopyResolution(
-        "O conteúdo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
-        pending
-      );
-    }
-    const pathChanged = !exactSelection;
-    const canRetrySameRequest = retrySameRequest && !pathChanged;
-    resetStudyUnitInteraction();
-    state.selection = sourceSelection;
-    state.view = "microsequence";
-    state.microsequenceMode = "play";
-    state.manualEditing = true;
-    state.manualTargetId = pending.targetId;
-    state.manualDraft = {
-      pathValues: manualPathValues(pending.studyUnit, pending.targetId)
-    };
-    state.manualOrigin = pending.origin;
-    state.manualUnknownSignature = canRetrySameRequest
-      ? manualAttemptSignature(pending.targetId, pending.studyUnit, pending.origin)
-      : "";
-    state.manualPendingPersonalCopy = true;
-    state.manualPendingPersonalCopySourceCourseId = sourceCourseId;
-    state.manualPendingPersonalCopyRequestId = pending.requestId;
-    state.manualReplacesPendingPersonalCopyRequestId = canRetrySameRequest
-      ? ""
-      : pending.requestId;
-    state.manualError = message;
-    state.manualRestoreFocus = false;
-    state.homePendingPersonalCopyDiscard = false;
-    state.homePendingPersonalCopyRequestId = "";
-    persistStudyNavigation();
-    queueStudyFocus("[data-action='study-manual-save']");
-    render({ preserveFocus: false, captureDraft: false });
-    return true;
-  }
-
-  async function rebaseStalePersonalCopyEdit(error, pending) {
-    if (!personalCopyBaseChanged(error) || !pending?.sourceCourseId ||
-        typeof repository.refreshCourses !== "function" ||
-        typeof repository.loadCourse !== "function") return false;
-    try {
-      const listed = await repository.refreshCourses();
-      state.project = clone(listed);
-      await repository.loadCourse(pending.sourceCourseId);
-      state.project = clone(repository.loadProject());
-    } catch {
-      return false;
-    }
-    const currentSelection = selectionForStudyUnitIdentity(
-      state.project,
-      pending.sourceCourseId,
-      pending.studyUnit.id
-    );
-    if (!currentSelection) {
-      return showPendingPersonalCopyResolution(
-        "A unidade de estudo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
-        pending
-      );
-    }
-    const currentMicrosequence = findMicrosequence(
-      state.project,
-      pending.sourceCourseId,
-      currentSelection.moduleId,
-      currentSelection.lessonId,
-      currentSelection.microsequenceId
-    );
-    const currentStudyUnit = currentMicrosequence?.studyUnits?.find(({ id }) =>
-      id === pending.studyUnit.id);
-    if (!currentStudyUnit || (
-      pending.targetId !== "study_unit" &&
-      !listManualStudyUnitTargetIds(currentStudyUnit).includes(pending.targetId)
-    )) {
-      return showPendingPersonalCopyResolution(
-        "O conteúdo da alteração guardada mudou ou deixou de existir. Descarte o rascunho para continuar.",
-        pending
-      );
-    }
-    state.project = clone(repository.loadProject());
-    return restorePendingPersonalCopyEdit({
-      ...clone(pending),
-      didacticMicrosequenceId: currentSelection.microsequenceId,
-      sourceSelection: canonicalReference(currentSelection)
-    }, "O curso mudou. Revise a alteração sobre a unidade de estudo atual e salve novamente.", {
-      retrySameRequest: false
-    });
-  }
-
-  async function discardPendingPersonalCopyFromHome() {
-    try {
-      const cleared = await repository.clearPendingPersonalCopyEdit?.(
-        null,
-        state.homePendingPersonalCopyRequestId || null
-      );
-      if (!cleared) {
-        const currentPending = await repository.loadPendingPersonalCopyEdit?.();
-        if (currentPending) {
-          state.homePendingPersonalCopyRequestId = currentPending.requestId;
-          state.homeError = "Outra versão desta alteração está guardada. Confira a mensagem e descarte novamente se desejar.";
-          render({ preserveFocus: false, captureDraft: false });
-          return false;
-        }
-      }
-    } catch {
-      state.homeError = "Não foi possível descartar a alteração guardada neste dispositivo.";
-      render({ preserveFocus: false, captureDraft: false });
-      return false;
-    }
-    state.homePendingPersonalCopyDiscard = false;
-    state.homePendingPersonalCopyRequestId = "";
-    state.homeError = "";
-    setHomeNotice("Alteração guardada descartada.");
-    queueStudyFocus("[data-field='home-course-select']");
-    render({ preserveFocus: false, captureDraft: false });
-    return true;
-  }
-
-  function acceptRecoveredPersonalCopy(result, pending) {
-    if (!result?.project || !Array.isArray(result.project.courses) ||
-        result.changed !== true || typeof result.courseId !== "string") return false;
-    const sourceSelection = pending?.sourceSelection || result.sourceSelection;
-    const reportedSelection = result.selection?.courseId === result.courseId
-      ? result.selection
-      : null;
-    const targetSelection = reportedSelection || exactStudyUnitSelection(result.project, [
-      result.courseId,
-      sourceSelection?.moduleId,
-      sourceSelection?.lessonId,
-      sourceSelection?.microsequenceId,
-      sourceSelection?.studyUnitId
-    ]) || selectionForStudyUnitIdentity(
-      result.project,
-      result.courseId,
-      result.studyUnitId || sourceSelection?.studyUnitId
-    );
-    if (!targetSelection) return false;
-    resetStudyUnitInteraction();
-    state.project = clone(result.project);
-    state.selection = targetSelection;
-    state.view = targetSelection.studyUnitId ? "microsequence" : "course";
-    state.microsequenceMode = "play";
-    if (Number.isSafeInteger(result.studyUnitVersion)) {
-      state.manualVersionByStudyUnit[
-        manualStudyUnitVersionKey(result.courseId, targetSelection.studyUnitId)
-      ] = result.studyUnitVersion;
-    }
-    if (Number.isSafeInteger(result.courseRevision)) {
-      state.manualCourseRevisionByCourse[result.courseId] = result.courseRevision;
-    }
-    state.manualStatus = targetSelection.studyUnitId
-      ? "Cópia criada. Você continua nesta unidade de estudo."
-      : "Sua cópia foi retomada na versão atual.";
-    state.homePendingPersonalCopyDiscard = false;
-    state.homePendingPersonalCopyRequestId = "";
-    persistStudyNavigation();
-    queueStudyFocus("[data-study-destination-heading]");
-    render({ preserveFocus: false, captureDraft: false });
-    return true;
-  }
-
-  async function resumePendingPersonalCopyEdit({ retry = true } = {}) {
-    if (typeof repository.loadPendingPersonalCopyEdit !== "function") return false;
-    const pending = await repository.loadPendingPersonalCopyEdit();
-    if (!pending) return false;
-    if (retry && globalThis.navigator?.onLine !== false &&
-        typeof repository.retryPendingPersonalCopyEdit === "function") {
-      try {
-        const result = await repository.retryPendingPersonalCopyEdit(
-          pending.sourceCourseId
-        );
-        if (result?.changed === false) {
-          setHomeNotice("A alteração pendente não mudou o curso.");
-          render();
-          return true;
-        }
-        if (acceptRecoveredPersonalCopy(result, pending)) return true;
-      } catch (error) {
-        if (await rebasePersonalCopyConflict(error, pending.studyUnit, {
-          targetId: pending.targetId,
-          origin: pending.origin,
-          sourceSelection: pending.sourceSelection,
-          pending
-        })) return true;
-        if (await rebaseStalePersonalCopyEdit(error, pending)) return true;
-        if (courseAccessWasRevoked(error)) {
-          let remainingPending = null;
-          try {
-            const cleared = await repository.clearPendingPersonalCopyEdit?.(
-              pending.sourceCourseId,
-              pending.requestId
-            );
-            if (!cleared) {
-              remainingPending = await repository.loadPendingPersonalCopyEdit?.() || null;
-            }
-          } catch {
-            remainingPending = pending;
-          }
-          let nextProject;
-          try {
-            nextProject = await repository.refreshCourses?.();
-          } catch {
-            nextProject = {
-              ...clone(state.project),
-              courses: state.project.courses.filter(({ id }) =>
-                id !== pending.sourceCourseId)
-            };
-          }
-          if (nextProject && Array.isArray(nextProject.courses)) {
-            resetStudyUnitInteraction();
-            state.project = {
-              ...clone(nextProject),
-              courses: nextProject.courses.filter(({ id }) =>
-                id !== pending.sourceCourseId)
-            };
-            state.selection = firstSelection(state.project);
-            state.view = "courses";
-            state.homeError = remainingPending
-              ? "Seu acesso ao curso compartilhado foi encerrado. Há outra alteração guardada; descarte-a ou tente confirmá-la novamente."
-              : "";
-            setHomeNotice(remainingPending
-              ? ""
-              : "Seu acesso ao curso compartilhado foi encerrado.");
-            state.homePendingPersonalCopyDiscard = Boolean(remainingPending);
-            state.homePendingPersonalCopyRequestId = remainingPending?.requestId || "";
-            await repository.clearStudyNavigationPosition?.(pending.sourceCourseId);
-            if (state.selection?.courseId) {
-              persistStudyNavigation({ includePosition: false });
-            }
-            queueStudyFocus(remainingPending
-              ? "[data-action='discard-pending-personal-copy']"
-              : "[data-field='home-course-select']");
-            render({ preserveFocus: false, captureDraft: false });
-            return true;
-          }
-        }
-        return restorePendingPersonalCopyEdit(
-          pending,
-          "A alteração ainda não pôde ser confirmada. Tente salvar novamente quando houver conexão."
-        );
-      }
-    }
-    return restorePendingPersonalCopyEdit(
-      pending,
-      "A alteração está guardada neste dispositivo. Conecte-se e salve novamente para criar sua cópia."
-    );
   }
 
   function beginManualEdit(targetId = "study_unit", {
@@ -1670,7 +1325,7 @@ export function createCourseStudyApplication({
     const permission = coursePermission();
     if (scope === "study_unit") return manualEditCapability();
     return Boolean(
-      onSaveAssistedStructure && permission?.ownership === "owned" && permission.canEdit === true
+      !visitor && onSaveAssistedStructure && permission?.ownership === "owned" && permission.canEdit === true
     );
   }
 
@@ -1687,7 +1342,7 @@ export function createCourseStudyApplication({
   function structuralEditCapability() {
     const permission = coursePermission();
     return Boolean(
-      structuralScope() && onSaveAssistedStructure &&
+      !visitor && structuralScope() && onSaveAssistedStructure &&
       permission?.ownership === "owned" && permission.canEdit === true
     );
   }
@@ -2115,47 +1770,6 @@ export function createCourseStudyApplication({
       render({ preserveFocus: false, captureDraft: false });
       return false;
     }
-    let pendingToResume = null;
-    if (state.manualPendingPersonalCopy &&
-        typeof repository.clearPendingPersonalCopyEdit === "function") {
-      const pendingSourceCourseId =
-        state.manualPendingPersonalCopySourceCourseId || state.selection.courseId;
-      try {
-        if (!state.manualPendingPersonalCopyRequestId) {
-          pendingToResume = await repository.loadPendingPersonalCopyEdit?.() || null;
-        } else {
-          const cleared = await repository.clearPendingPersonalCopyEdit(
-            pendingSourceCourseId,
-            state.manualPendingPersonalCopyRequestId
-          );
-          const currentPending = !cleared
-            ? await repository.loadPendingPersonalCopyEdit?.()
-            : null;
-          if (currentPending?.sourceCourseId === pendingSourceCourseId) {
-            state.manualPendingPersonalCopySourceCourseId =
-              currentPending.sourceCourseId;
-            state.manualPendingPersonalCopyRequestId = currentPending.requestId;
-            state.manualReplacesPendingPersonalCopyRequestId = "";
-            state.manualError = "Outra versão deste rascunho está guardada. Revise-a ou descarte-a explicitamente.";
-            render({ preserveFocus: false, captureDraft: false });
-            return false;
-          }
-        }
-      } catch {
-        state.manualError = "Não foi possível descartar o rascunho guardado neste dispositivo.";
-        render({ preserveFocus: false, captureDraft: false });
-        return false;
-      }
-    }
-    if (pendingToResume) {
-      resetManualEditorState({ status: "" });
-      const resumed = await restorePendingPersonalCopyEdit(
-        pendingToResume,
-        "Edição atual cancelada. A alteração que já estava guardada foi retomada."
-      );
-      if (resumed) return true;
-      status = "Edição cancelada. A outra alteração continua guardada neste dispositivo.";
-    }
     resetManualEditorState({ status });
     if (focus) queueStudyFocus(focusSelector);
     render({ preserveFocus: false });
@@ -2163,30 +1777,6 @@ export function createCourseStudyApplication({
   }
 
   async function discardUnknownManualEdit() {
-    try {
-      if (state.manualPendingPersonalCopy &&
-          state.manualPendingPersonalCopyRequestId &&
-          typeof repository.clearPendingPersonalCopyEdit === "function") {
-        const pendingSourceCourseId =
-          state.manualPendingPersonalCopySourceCourseId || state.selection.courseId;
-        const cleared = await repository.clearPendingPersonalCopyEdit(
-          pendingSourceCourseId,
-          state.manualPendingPersonalCopyRequestId
-        );
-        const currentPending = !cleared
-          ? await repository.loadPendingPersonalCopyEdit?.()
-          : null;
-        if (currentPending?.sourceCourseId === pendingSourceCourseId) {
-          state.manualError = "Outra versão deste rascunho está guardada. Retome-a antes de descartar.";
-          render({ preserveFocus: false, captureDraft: false });
-          return false;
-        }
-      }
-    } catch {
-      state.manualError = "Não foi possível descartar o rascunho guardado neste dispositivo.";
-      render({ preserveFocus: false, captureDraft: false });
-      return false;
-    }
     return cancelManualEdit({ confirmUnknownDiscard: true });
   }
 
@@ -2238,10 +1828,10 @@ export function createCourseStudyApplication({
 
   async function commitManualStudyUnit(studyUnit, origin = "manual") {
     const composition = manualCompositionContext();
-    const sourceSelection = canonicalReference(state.selection);
     const permission = coursePermission(composition.courseId);
-    const createsPersonalCopy = permission?.ownership === "shared" &&
-      (permission.canDerive === true || state.manualPendingPersonalCopy);
+    if (visitor || permission?.ownership !== "owned" || permission.canEdit !== true) {
+      throw new Error(visitor ? "Entre na sua conta para editar seus cursos." : "Somente o proprietário pode editar este curso.");
+    }
     const result = await onSaveManualEdit({
       courseId: composition.courseId,
       expectedCourseRevision: composition.courseRevision,
@@ -2250,89 +1840,15 @@ export function createCourseStudyApplication({
       expectedVersion: composition.expectedVersion,
       studyUnit: clone(studyUnit),
       origin,
-      targetId: state.manualTargetId,
-      sourceSelection,
-      createsPersonalCopy,
-      replacesPendingRequestId: createsPersonalCopy
-        ? state.manualReplacesPendingPersonalCopyRequestId || null
-        : null
+      targetId: state.manualTargetId
     });
     const targetCourseId = result?.courseId || composition.courseId;
-    const movedToPersonalCopy = targetCourseId !== composition.courseId;
     if (result != null && (typeof result !== "object" || Array.isArray(result) ||
-        movedToPersonalCopy && (
-          !createsPersonalCopy || result.sourceCourseId !== composition.courseId ||
-          !result.project || !Array.isArray(result.project.courses)
-        ) ||
+        targetCourseId !== composition.courseId ||
         result.studyUnitId && result.studyUnitId !== composition.studyUnitId ||
         result.origin && result.origin !== origin ||
         result.reconciled != null && typeof result.reconciled !== "boolean")) {
       throw new TypeError("A confirmação não corresponde à edição enviada.");
-    }
-    if (createsPersonalCopy && result?.createdCopy === false && result?.changed === false) {
-      return {
-        studyUnit: context().studyUnit,
-        reconciled: true,
-        createdCopy: false,
-        noOp: true
-      };
-    }
-    if (movedToPersonalCopy) {
-      const reportedSelection = result.selection?.courseId === targetCourseId
-        ? result.selection
-        : null;
-      const validatedReportedSelection = reportedSelection?.studyUnitId
-        ? exactStudyUnitSelection(result.project, [
-            targetCourseId,
-            reportedSelection.moduleId,
-            reportedSelection.lessonId,
-            reportedSelection.microsequenceId,
-            reportedSelection.studyUnitId
-          ])
-        : reportedSelection
-          ? selectionForCourse(result.project, targetCourseId)
-          : null;
-      const targetSelection = validatedReportedSelection ||
-        exactStudyUnitSelection(result.project, [
-        targetCourseId,
-        sourceSelection.moduleId,
-        sourceSelection.lessonId,
-        sourceSelection.microsequenceId,
-        sourceSelection.studyUnitId
-        ]) || selectionForStudyUnitIdentity(
-          result.project,
-          targetCourseId,
-          sourceSelection.studyUnitId
-        ) || selectionForCourse(result.project, targetCourseId);
-      if (!targetSelection) {
-        throw new TypeError("A cópia confirmada não está mais acessível.");
-      }
-      state.project = clone(result.project);
-      state.selection = targetSelection;
-      state.view = targetSelection.studyUnitId ? "microsequence" : "course";
-      state.microsequenceMode = "play";
-      state.feedbackOpen = false;
-      resetCitations();
-      resetObservationSheet();
-      persistStudyNavigation();
-    }
-    const personalCopyAlreadyAdvanced = movedToPersonalCopy &&
-      result.idempotent === true && Number(result.courseRevision) > 2;
-    if (movedToPersonalCopy && (
-      result.studyUnit === null || !state.selection.studyUnitId ||
-      personalCopyAlreadyAdvanced
-    )) {
-      if (Number.isSafeInteger(Number(result.courseRevision))) {
-        state.manualCourseRevisionByCourse[targetCourseId] =
-          Number(result.courseRevision);
-      }
-      return {
-        studyUnit: null,
-        reconciled: result?.reconciled !== false,
-        createdCopy: result?.createdCopy === true,
-        noOp: false,
-        superseded: true
-      };
     }
     const confirmedStudyUnit = applyManualStudyUnitEdit(
       result?.studyUnit ?? studyUnit,
@@ -2362,13 +1878,12 @@ export function createCourseStudyApplication({
     return {
       studyUnit: replaceCurrentStudyUnit(confirmedStudyUnit),
       reconciled: result?.reconciled !== false,
-      createdCopy: movedToPersonalCopy && result?.createdCopy === true,
       noOp: false
     };
   }
 
   async function saveManualEdit() {
-    if (!state.manualEditing || state.manualSaving) return false;
+    if (!manualEditCapability() || !state.manualEditing || state.manualSaving) return false;
     const current = context().studyUnit;
     captureManualDraft();
     let edited;
@@ -2396,47 +1911,11 @@ export function createCourseStudyApplication({
       return false;
     }
     const before = clone(current);
-    const permission = coursePermission();
-    state.manualPendingPersonalCopy = state.manualPendingPersonalCopy || (
-      permission?.ownership === "shared" && permission.canDerive === true
-    );
     state.manualSaving = true;
     state.manualError = "";
     render({ preserveFocus: false, captureDraft: false });
     try {
       const committed = await commitManualStudyUnit(edited, state.manualOrigin);
-      let pendingCleanupFailed = false;
-      if (state.manualPendingPersonalCopySourceCourseId &&
-          state.manualPendingPersonalCopyRequestId &&
-          typeof repository.clearPendingPersonalCopyEdit === "function") {
-        try {
-          await repository.clearPendingPersonalCopyEdit(
-            state.manualPendingPersonalCopySourceCourseId,
-            state.manualPendingPersonalCopyRequestId
-          );
-        } catch {
-          pendingCleanupFailed = true;
-        }
-      }
-      if (committed.noOp) {
-        resetManualEditorState({
-          status: pendingCleanupFailed
-            ? "Nenhuma alteração foi necessária, mas o rascunho local ainda precisa ser descartado."
-            : "Nenhuma alteração para salvar."
-        });
-        queueStudyFocus("[data-action='study-manual-edit']");
-        render({ preserveFocus: false, captureDraft: false });
-        return true;
-      }
-      if (committed.superseded) {
-        resetManualEditorState({
-          status: "Sua cópia já avançou. Você está na versão atual."
-        });
-        resetCitations();
-        queueStudyFocus("[data-study-destination-heading]");
-        render({ preserveFocus: false, captureDraft: false });
-        return true;
-      }
       const saved = committed.studyUnit;
       const historyPreview = state.manualHistoryPreview;
       const previewValue = historyPreview
@@ -2460,13 +1939,9 @@ export function createCourseStudyApplication({
           courseId !== state.selection.courseId);
       }
       resetManualEditorState({
-        status: pendingCleanupFailed
-          ? "Edição salva. O rascunho local será reconciliado na próxima abertura."
-          : committed.createdCopy
-            ? "Cópia criada. Você continua nesta unidade de estudo."
-            : committed.reconciled
-              ? "Edição salva."
-            : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
+        status: committed.reconciled
+          ? "Edição salva."
+          : "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
         keepHistoryPreview: acceptedPreview
       });
       resetCitations();
@@ -2477,34 +1952,7 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.manualSaving = false;
-      if (await rebasePersonalCopyConflict(error, edited)) return false;
-      if (personalCopyBaseChanged(error) && state.manualPendingPersonalCopy) {
-        const pending = await repository.loadPendingPersonalCopyEdit?.(
-          state.selection.courseId
-        );
-        if (await rebaseStalePersonalCopyEdit(error, pending)) return false;
-      }
       const ambiguous = isAmbiguousManualStudyUnitWriteFailure(error);
-      if (state.manualPendingPersonalCopy) {
-        try {
-          const pending = await repository.loadPendingPersonalCopyEdit?.();
-          const pendingMatchesAttempt = pending &&
-            pending.sourceCourseId === (
-              state.manualPendingPersonalCopySourceCourseId || state.selection.courseId
-            ) && manualAttemptSignature(
-              pending.targetId,
-              pending.studyUnit,
-              pending.origin
-            ) === attemptSignature;
-          if (pendingMatchesAttempt) {
-            state.manualPendingPersonalCopySourceCourseId = pending.sourceCourseId;
-            state.manualPendingPersonalCopyRequestId = pending.requestId;
-            state.manualReplacesPendingPersonalCopyRequestId = "";
-          }
-        } catch {
-          // O erro original continua sendo a informação útil para a pessoa.
-        }
-      }
       state.manualUnknownSignature = ambiguous ? attemptSignature : "";
       state.manualDiscardArmed = false;
       state.manualError = ambiguous
@@ -2537,22 +1985,12 @@ export function createCourseStudyApplication({
     render({ preserveFocus: false, captureDraft: false });
     try {
       if (draft.scope === "study_unit") {
-        const permission = coursePermission();
         state.manualTargetId = "study_unit";
         state.manualOrigin = "provider_assistance";
-        state.manualPendingPersonalCopy = permission?.ownership === "shared" &&
-          permission.canDerive === true;
-        const committed = await commitManualStudyUnit(
+        await commitManualStudyUnit(
           context().studyUnit,
           "provider_assistance"
         );
-        if (committed.superseded) {
-          state.assistanceDraft = null;
-          state.assistanceSaving = false;
-          state.manualStatus = "Sua cópia já avançou. Você está na versão atual.";
-          render({ preserveFocus: false, captureDraft: false });
-          return true;
-        }
         resetManualEditorState();
       } else {
         if (typeof onSaveAssistedStructure !== "function") {
@@ -2836,6 +2274,12 @@ export function createCourseStudyApplication({
   }
 
   async function openObservations() {
+    if (visitor) {
+      root.dispatchEvent(new CustomEvent("aralearn:request-auth", {
+        bubbles: true, detail: { entityPath: currentNavigationPosition()?.entityPath ?? null }
+      }));
+      return false;
+    }
     const reference = canonicalReference(state.selection);
     const epoch = ++observationsEpoch;
     state.observationItems = repository.loadAnnotationsForPath?.(reference) || [];
@@ -2925,6 +2369,7 @@ export function createCourseStudyApplication({
   }
 
   async function saveObservation() {
+    if (visitor) return false;
     if (state.observationSaving) return;
     const textIssue = validateStudyUnitObservationText(state.observationDraft.rawText);
     if (textIssue) {
@@ -3327,9 +2772,13 @@ export function createCourseStudyApplication({
       "change",
       (event) => void selectHomeCourse(event.currentTarget.value)
     );
-    root.querySelector("[data-action='discard-pending-personal-copy']")?.addEventListener(
+    root.querySelector("[data-action='request-auth']")?.addEventListener("click", () =>
+      root.dispatchEvent(new CustomEvent("aralearn:request-auth", {
+        bubbles: true, detail: { entityPath: currentNavigationPosition()?.entityPath ?? null }
+      })));
+    root.querySelector("[data-action='discard-study-draft-recovery']")?.addEventListener(
       "click",
-      () => void discardPendingPersonalCopyFromHome()
+      () => void discardStudyDraftRecovery()
     );
     root.querySelector(".study-review-queue")?.addEventListener("toggle", (event) => {
       state.reviewQueueOpen = event.currentTarget.open === true;
@@ -3364,6 +2813,13 @@ export function createCourseStudyApplication({
       node.addEventListener("click", () => void resetCourseProgress(
         node.getAttribute("data-course-id")
       )));
+    root.querySelectorAll("[data-action='clear-local-course']").forEach((node) =>
+      node.addEventListener("click", async () => {
+        await repository.clearLocalCourse(node.getAttribute("data-course-id"));
+        state.project = clone(repository.loadProject());
+        state.view = "courses";
+        render();
+      }));
     root.querySelectorAll("[data-action='delete-owned-course']").forEach((node) =>
       node.addEventListener("click", () => void maintainCourseFromHome(
         node.getAttribute("data-course-id"),
@@ -3404,6 +2860,8 @@ export function createCourseStudyApplication({
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
     root.querySelectorAll("[data-action='toggle-citations']").forEach((node) =>
       node.addEventListener("click", () => void toggleCitations()));
+    root.querySelectorAll("[data-action='download-citation-attachment']").forEach((node) =>
+      node.addEventListener("click", () => void downloadCitationAttachment(node)));
     root.querySelector("[data-action='retry-citations']")?.addEventListener(
       "click",
       () => {
@@ -3614,10 +3072,7 @@ export function createCourseStudyApplication({
       const summary = summaries.find((item) => item.courseId === course.id);
       return [course.id, {
         ownership: summary?.ownership || "shared",
-        canEdit: summary?.canEdit === true,
-        canDerive: summary?.canDerive === true,
-        isPersonalCopy: summary?.isPersonalCopy === true,
-        personalCopyCourseId: summary?.personalCopyCourseId || null,
+        canEdit: !visitor && summary?.ownership === "owned" && summary?.canEdit === true,
         moduleCount: summary?.moduleCount || 0,
         lessonCount: summary?.lessonCount || 0,
         studyUnitCount: summary?.studyUnitCount || 0,
@@ -3636,12 +3091,7 @@ export function createCourseStudyApplication({
       : repositoryRuntimeStatus;
     const currentPermission = byCourseId[state.selection.courseId] || {};
     const manualEnabled = Boolean(
-      onSaveManualEdit && (
-        (currentPermission.ownership === "owned" && currentPermission.canEdit === true) ||
-        (currentPermission.ownership === "shared" && (
-          currentPermission.canDerive === true || state.manualPendingPersonalCopy
-        ))
-      )
+      !visitor && onSaveManualEdit && currentPermission.ownership === "owned" && currentPermission.canEdit === true
     );
     if (!manualEnabled && state.manualEditing) resetManualEditorState();
     const currentStudyUnitId = current.studyUnit?.id || "";
@@ -3668,9 +3118,6 @@ export function createCourseStudyApplication({
         currentStudyUnitId
       ) >= 0,
       discardArmed: state.manualDiscardArmed,
-      createsPersonalCopy: currentPermission.ownership === "shared" &&
-        (currentPermission.canDerive === true || state.manualPendingPersonalCopy),
-      isPersonalCopy: currentPermission.isPersonalCopy === true,
       assistance: {
         draft: state.assistanceDraft,
         saving: state.assistanceSaving,
@@ -3681,7 +3128,7 @@ export function createCourseStudyApplication({
       }
     };
     const structuralAssistanceEnabled = Boolean(
-      onSaveAssistedStructure && currentPermission.ownership === "owned" &&
+      !visitor && onSaveAssistedStructure && currentPermission.ownership === "owned" &&
       currentPermission.canEdit === true
     );
     const assistance = {
@@ -3695,7 +3142,7 @@ export function createCourseStudyApplication({
     const activeStructuralScope = structuralScope();
     const activeStructural = structuralTarget(activeStructuralScope, current);
     const structuralEnabled = Boolean(
-      activeStructuralScope && onSaveAssistedStructure &&
+      !visitor && activeStructuralScope && onSaveAssistedStructure &&
       currentPermission.ownership === "owned" && currentPermission.canEdit === true
     );
     if (!structuralEnabled && state.structuralEditing) resetStructuralEditor({
@@ -3749,22 +3196,27 @@ export function createCourseStudyApplication({
       homeLoadingCourseId: state.homeLoadingCourseId,
       homeError: state.homeError,
       homeNotice: state.homeNotice,
-      homePendingPersonalCopyDiscard: state.homePendingPersonalCopyDiscard,
       packageStudyUnitOptions: packageStudyUnitOptions(),
       feedbackOpen: state.feedbackOpen,
       advancePending: state.advancePending,
       advanceError: state.advanceError,
+      visitor,
       observationCount: observationItems.filter(({ state: value }) => value !== "withdrawn").length,
       markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference)),
       citationsOpen: state.citationsOpen,
       citationsLoading: state.citationsLoading,
       citations: state.citations,
       citationsError: state.citationsError,
+      citationDownloadPending: state.citationDownloadPending,
+      citationDownloadError: state.citationDownloadError,
       canAuthorSources: currentPermission.ownership === "owned" && currentPermission.canEdit === true,
       manualEditor,
       assistance,
       structuralEditor
-    }) + (state.observationSheetOpen ? renderStudyUnitObservationSheet({
+    }) + (state.view === "courses" ? renderStudyDraftRecovery({
+      recovery: state.studyDraftRecovery,
+      error: state.studyDraftRecoveryError
+    }) : "") + (state.observationSheetOpen ? renderStudyUnitObservationSheet({
       items: state.observationItems,
       draft: state.observationDraft,
       editingId: state.observationEditingId,
@@ -3857,8 +3309,11 @@ export function createCourseStudyApplication({
     openEntityPath(entityPath) {
       return openCanonicalEntityPath(entityPath);
     },
+    getNavigationPosition() {
+      return clone(currentNavigationPosition());
+    },
     resumePendingManualEdit(options) {
-      return resumePendingPersonalCopyEdit(options);
+      return resumeStudyDraftRecovery(options);
     },
     hasPendingManualEdit() {
       return Boolean(

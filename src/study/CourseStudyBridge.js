@@ -44,34 +44,22 @@ export class CourseStudyBridge {
     return this.controller.hasVerifiedCourseDocument(courseId, options);
   }
 
-  commitPersonalCourseCopyEdit(value) {
-    if (typeof this.controller.commitPersonalCourseCopyEdit !== "function") {
-      throw new TypeError("A edição em cópia pessoal não está disponível.");
+  getCourseSourceAttachmentDownload(values) {
+    if (typeof this.controller.getCourseSourceAttachmentDownload !== "function") {
+      throw new TypeError("O download de fontes não está disponível.");
     }
-    return this.controller.commitPersonalCourseCopyEdit(value);
+    return this.controller.getCourseSourceAttachmentDownload(values);
   }
 
-  loadPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (typeof this.controller.loadPendingPersonalCopyEdit !== "function") {
-      return Promise.resolve(null);
-    }
-    return this.controller.loadPendingPersonalCopyEdit(sourceCourseId);
+  loadStudyDraftRecovery(sourceCourseId = null) {
+    return this.controller.loadStudyDraftRecovery?.(sourceCourseId) ?? Promise.resolve(null);
   }
 
-  retryPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (typeof this.controller.retryPendingPersonalCopyEdit !== "function") {
-      throw new TypeError("A retomada da cópia pessoal não está disponível.");
-    }
-    return this.controller.retryPendingPersonalCopyEdit(sourceCourseId);
+  recoverStudyDraft(sourceCourseId = null) {
+    return this.controller.recoverStudyDraft?.(sourceCourseId) ?? Promise.resolve(null);
   }
 
-  clearPendingPersonalCopyEdit(sourceCourseId = null, expectedRequestId = null) {
-    if (typeof this.controller.clearPendingPersonalCopyEdit !== "function") {
-      return Promise.resolve(false);
-    }
-    return this.controller.clearPendingPersonalCopyEdit(
-      sourceCourseId,
-      expectedRequestId
-    );
+  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
+    return this.controller.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId) ?? Promise.resolve(false);
   }
 }

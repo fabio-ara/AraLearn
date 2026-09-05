@@ -477,7 +477,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260903193000");
+  assert.equal(manifest.schemaRevision, "20260905071622");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), false);
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v3"), true);
   assert.equal(manifest.requiredFeatures.includes("course-curricular-map-v1"), true);
@@ -498,7 +498,12 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     true
   );
   assert.equal(manifest.requiredFeatures.includes("contextual-study-unit-edit-v1"), true);
-  assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("personal-course-copy-edit-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("person-profile-v1"), false);
+  assert.equal(manifest.requiredFeatures.includes("person-profile-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("public-course-study-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-file-access-policy-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("owned-course-copy-recovery-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("current-data-lifecycle-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("isolated-mcp-oauth-principal-v1"), true);
   assert.equal(
@@ -544,8 +549,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260903193000_add_open_response_component.sql",
-    revision: "20260903193000"
+    fileName: "20260905071622_separate_public_file_policy_from_citation_display.sql",
+    revision: "20260905071622"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

@@ -29,7 +29,11 @@ function transactionPromise(transaction) {
   });
 }
 
-function databaseName(userId) {
+function databaseName(userId, visitor = false) {
+  if (visitor === true) {
+    if (userId) throw new TypeError("O compartimento visitante não recebe identidade de conta.");
+    return `${DATABASE_PREFIX}-visitor`;
+  }
   const normalized = String(userId || "").trim().toLowerCase();
   if (!UUID_PATTERN.test(normalized)) throw new TypeError("Identidade do usuário inválida.");
   return `${DATABASE_PREFIX}-${normalized}`;
@@ -42,11 +46,11 @@ function cacheKey(value) {
 }
 
 export class CourseLocalStore {
-  static open(indexedDb, { userId } = {}) {
+  static open(indexedDb, { userId, visitor = false } = {}) {
     if (!indexedDb || typeof indexedDb.open !== "function") {
       throw new TypeError("IndexedDB indisponível.");
     }
-    const name = databaseName(userId);
+    const name = databaseName(userId, visitor);
     return new Promise((resolve, reject) => {
       const request = indexedDb.open(name, DATABASE_VERSION);
       request.onupgradeneeded = () => {
@@ -65,11 +69,11 @@ export class CourseLocalStore {
     });
   }
 
-  static deleteDatabase(indexedDb, { userId } = {}) {
+  static deleteDatabase(indexedDb, { userId, visitor = false } = {}) {
     if (!indexedDb || typeof indexedDb.deleteDatabase !== "function") {
       throw new TypeError("IndexedDB indisponível.");
     }
-    return databaseDeletionPromise(indexedDb.deleteDatabase(databaseName(userId)));
+    return databaseDeletionPromise(indexedDb.deleteDatabase(databaseName(userId, visitor)));
   }
 
   constructor({ indexedDb, database, name }) {
@@ -191,6 +195,18 @@ export class CourseLocalStore {
       };
     });
     await transactionPromise(transaction);
+  }
+
+  async moveCacheValue(sourceKey, targetKey) {
+    sourceKey = cacheKey(sourceKey);
+    targetKey = cacheKey(targetKey);
+    let conflict = false;
+    const result = await this.updateCaches([sourceKey, targetKey], (current) => {
+      conflict = current[sourceKey] != null && current[targetKey] != null;
+      if (current[sourceKey] == null || conflict) return current;
+      return { [sourceKey]: null, [targetKey]: current[sourceKey] };
+    });
+    return { value: result[targetKey], conflict };
   }
 
   async updateCachePrefix(prefix, updater) {

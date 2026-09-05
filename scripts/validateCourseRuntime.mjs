@@ -15,7 +15,10 @@ const REQUIRED_FEATURES = Object.freeze([
   "isolated-mcp-oauth-principal-v1",
   "package-library-v1",
   "package-contract-discovery-v1",
-  "person-profile-v1",
+  "person-profile-v2",
+  "public-course-study-v1",
+  "course-file-access-policy-v1",
+  "owned-course-copy-recovery-v1",
   "study-only-course-access-v1",
   "private-person-avatar-v1",
   "self-account-deletion-v1",
@@ -40,7 +43,6 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-personal-state-v2",
   "course-authoring-analytics-v2",
   "contextual-study-unit-edit-v1",
-  "personal-course-copy-edit-v1",
   "current-data-lifecycle-v1",
   "course-source-current-state-v1",
   "single-authoring-runtime-v1",
@@ -294,7 +296,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260903193000" ||
+  if (manifest.schemaRevision !== "20260905071622" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -575,7 +577,8 @@ async function validateDeploymentPath() {
     "functions deploy aralearn-course-api",
     "ARALEARN_COURSE_API_ALLOWED_ORIGINS",
     "ARALEARN_PUBLIC_APP_URL",
-    "As funções da versão publicada foram preservadas"
+    "As três funções foram atualizadas",
+    "este script não executa rollback automático"
   ]) {
     if (!deployment.includes(required)) {
       fail(`O fluxo de implantação não contém ${required}.`);
@@ -594,7 +597,7 @@ async function validateDeploymentPath() {
       deployment.indexOf("Invoke-WebRequest") >
         deployment.indexOf("runHostedMcpOAuthSmoke.mjs") ||
       deployment.indexOf("runHostedMcpOAuthSmoke.mjs") >
-        deployment.indexOf("As funções da versão publicada foram preservadas") ||
+        deployment.indexOf("As três funções foram atualizadas") ||
       /functions\s+delete|Remove-AraLearnSupabaseFunctionIfPresent/u.test(deployment)) {
     fail("A implantação não preserva a ordem segura entre configuração, smoke e manutenção do runtime publicado.");
   }

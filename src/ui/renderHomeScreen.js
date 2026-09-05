@@ -73,8 +73,7 @@ function coursePresentation(course, progress, permissions = {}) {
     ? countLessons(course)
     : Number(permissions.lessonCount || 0);
   const percentage = total ? Math.round((completed / total) * 100) : 0;
-  const owned = permissions.ownership === "owned" || permissions.canEdit === true;
-  const personalCopy = owned && permissions.isPersonalCopy === true;
+  const owned = permissions.ownership === "owned";
   return {
     course,
     title: String(course.title || "Curso").trim() || "Curso",
@@ -85,12 +84,8 @@ function coursePresentation(course, progress, permissions = {}) {
     lessonCount,
     percentage,
     owned,
-    personalCopy,
-    ownershipLabel: personalCopy
-      ? "Cópia pessoal"
-      : owned
-        ? "Curso próprio"
-        : "Curso compartilhado",
+    publicCourse: permissions.ownership === "public",
+    ownershipLabel: owned ? "Curso próprio" : permissions.ownership === "public" ? "Curso público" : "Curso compartilhado",
     availableOffline: permissions.availableOffline === true
   };
 }
@@ -131,7 +126,7 @@ function renderCoursePreview({
     lessonCount,
     percentage,
     owned,
-    personalCopy,
+    publicCourse,
     ownershipLabel,
     availableOffline
   } = presentation;
@@ -145,7 +140,7 @@ function renderCoursePreview({
         action: "delete-owned-course",
         label: "Excluir este curso",
       }
-    : {
+    : publicCourse ? { action: "clear-local-course", label: "Remover deste dispositivo" } : {
         action: "leave-shared-course",
         label: "Sair deste curso",
       };
@@ -159,7 +154,7 @@ function renderCoursePreview({
     '<div class="home-course-preview-copy">' +
     '<div class="home-course-title-row"><p class="home-course-ownership" aria-label="' +
     escapeHtml(ownershipLabel) + '">' +
-    renderUiIcon(personalCopy ? "copy" : owned ? "key" : "account-add", "home-course-origin-icon") +
+    renderUiIcon(owned ? "key" : publicCourse ? "study" : "account-add", "home-course-origin-icon") +
     '<span class="visually-hidden">' + escapeHtml(ownershipLabel) + "</span></p>" +
     '<h2 class="card-title">' + escapeHtml(title) + "</h2></div>" +
     (goal ? '<p class="card-subtitle">' + escapeHtml(goal) + "</p>" : "") +
@@ -256,15 +251,16 @@ export function renderRuntimeStatusControl(status = {}, {
   const offline = status.offline === true;
   const stale = status.stale === true;
   const pending = status.pending === true;
-  const state = offline ? "offline" : stale ? "stale" : pending ? "pending" : "synced";
-  const label = offline
+  const localOnly = status.localOnly === true || status.visitor === true;
+  const state = localOnly ? "local" : offline ? "offline" : stale ? "stale" : pending ? "pending" : "synced";
+  const label = localOnly ? "Neste dispositivo" : offline
     ? "Sem conexão"
     : stale
       ? "Sincronizando curso"
       : pending
         ? "Sincronização pendente"
         : "Sincronizado";
-  const message = offline
+  const message = localOnly ? "Seu progresso e suas marcações ficam neste dispositivo enquanto você estuda como visitante." : offline
     ? status.availableOffline === false
       ? "Sem conexão. Conecte-se para abrir este curso."
       : pending
@@ -280,7 +276,7 @@ export function renderRuntimeStatusControl(status = {}, {
   return '<button class="icon-ghost study-runtime-status-control" type="button"' +
     ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
     ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '">' +
-    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
+    renderUiIcon(localOnly || offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
     '<div class="study-runtime-status-popover" id="' + escapeHtml(popoverId) + '" popover="auto"' +
     ' role="status"><p>' + escapeHtml(message) + '</p></div>';
 }
@@ -311,7 +307,7 @@ export function renderHomeScreen({
   homeError = "",
   homeNotice = "",
   reviewUndo = null,
-  homePendingPersonalCopyDiscard = false,
+  visitor = false,
   editorSupport = {}
 }) {
   const courses = Array.isArray(project?.courses) ? project.courses : [];
@@ -328,6 +324,7 @@ export function renderHomeScreen({
   const topbarRuntimeStatus = selected
     ? { ...runtimeStatus, availableOffline: selected.availableOffline }
     : runtimeStatus;
+  if (visitor) topbarRuntimeStatus.localOnly = true;
   const selectMarkup = selected
     ? '<section class="clean-card home-course-selector-card" aria-labelledby="home-course-selector-label">' +
       '<label id="home-course-selector-label" class="home-course-selector-label" for="home-course-select">' +
@@ -346,15 +343,15 @@ export function renderHomeScreen({
         loading,
         error: homeError
       }) + "</section>"
-    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">Seus cursos</h2>' +
-      '<p class="empty-state-copy">Nenhum curso está disponível para estudo nesta conta.</p></section>';
+    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">' + (visitor ? "Cursos públicos" : "Seus cursos") + '</h2>' +
+      '<p class="empty-state-copy">' + (visitor ? "Nenhum curso público está disponível para estudo." : "Nenhum curso está disponível para estudo nesta conta.") + '</p></section>';
   return (
     '<section class="screen">' + renderTopbar(topbarRuntimeStatus) +
     '<main class="screen-content courses-home-screen navigation-screen">' +
     '<nav class="home-product-switch" aria-label="Área principal">' +
     '<button class="is-active" type="button" aria-current="page" title="Estudo">' +
     renderUiIcon("study", "home-tab-icon") + '<span>Estudo</span></button>' +
-    '<button type="button" data-action="open-authoring" title="Abrir Autoria">' +
+    '<button type="button" data-action="' + (visitor ? "request-auth" : "open-authoring") + '" title="' + (visitor ? "Entrar para autoria" : "Abrir Autoria") + '">' +
     renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
     '<div class="study-home-feedback-layer">' +
     (homeNotice ? '<div class="study-home-feedback is-notice" role="status"><span>' +
@@ -363,10 +360,7 @@ export function renderHomeScreen({
         : "") + "</div>" : "") +
     (homeError ? '<p class="study-home-feedback is-error" role="alert">' +
       escapeHtml(homeError) + "</p>" : "") +
-    (homePendingPersonalCopyDiscard
-      ? '<button class="open-mini study-home-discard-pending" type="button"' +
-        ' data-action="discard-pending-personal-copy">Descartar alteração guardada</button>'
-      : "") + "</div>" +
+    "</div>" +
     selectMarkup +
     renderReviewQueue(reviewItems, reviewHasMore, selectedId, reviewQueueOpen) +
     "</main></section>"

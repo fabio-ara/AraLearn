@@ -99,6 +99,7 @@ function courseListItem(overrides = {}) {
     revision: 1,
     ownership,
     canEdit: ownership === "owned",
+    canObserve: true, visibility: "private", publicFileAccess: "restricted",
     moduleCount: 0,
     lessonCount: 0,
     topicCount: 0,
@@ -112,7 +113,7 @@ function courseListItem(overrides = {}) {
 
 function courseListPage(items = [courseListItem()], overrides = {}) {
   return {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items,
     hasMore: false,
     nextCursor: null,
@@ -1141,6 +1142,7 @@ test("Controller compartilha citações redigidas e reserva catálogo completo a
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
+      sourceRevision: 1, attachments: [],
       sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
@@ -1324,18 +1326,15 @@ test("Controller owner encaminha upload e download do PDF exato e invalida o Cur
     change: { type: "ingest_pdf", subjectId: sourceId, revision: 2 }
   };
   const access = {
-    contract: "aralearn.course-source-pdf-download.v1",
+    contract: "aralearn.course-source-pdf-download.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
     sourceId,
     sourceRevision: 2,
-    storageOriginCourseId: COURSE_ID,
     attachment: {
       contentHash,
       byteSize: file.size,
       mediaType: "application/pdf",
-      storagePath: `${COURSE_ID}/${contentHash}.pdf`,
-      createdAt: "2026-08-20T12:00:00.000Z"
     },
     signedUrl: "https://project.invalid/storage/file.pdf?token=download-token",
     expiresAt: "2026-08-20T12:01:00.000Z"
@@ -1387,13 +1386,14 @@ test("Controller owner encaminha upload e download do PDF exato e invalida o Cur
     store: new MemoryStateStore(),
     api: {
       async listCourses() { return courseListPage([]); },
-      async getCourse() { throw new Error("não usado"); }
+      async getCourse() { throw new Error("não usado"); },
+      async getCourseSourceAttachmentDownload() { return access; }
     }
   });
-  await assert.rejects(
-    () => shared.getCourseSourceAttachmentDownload({}),
-    /não oferece a leitura de anexos/u
-  );
+  assert.deepEqual(await shared.getCourseSourceAttachmentDownload({
+    courseId: COURSE_ID, expectedCourseRevision: 5, sourceId, sourceRevision: 2, contentHash
+  }), access);
+
 });
 
 test("Controller classifica remove_pdf como mudança da Fonte", async () => {
@@ -2095,14 +2095,16 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
   assert.equal(result.reconciled, true);
 });
 
-test("operações de perfil, acesso, avatar e conta são delegadas sem outra camada", async () => {
+test("perfil escolhido atualiza cache e operações de acesso, avatar e conta chegam à API", async () => {
   const store = new MemoryStateStore();
   const calls = [];
+  const profile = { contract: "aralearn.person-profile.v2", userId: COURSE_B,
+    handle: null, avatarObjectKey: null, updatedAt: "2026-09-05T12:00:00Z" };
   const api = {
     async listCourses() { return courseListPage([]); },
     async getCourse() { return { courseId: COURSE_ID }; },
-    async getPersonProfile() { calls.push(["profile-read"]); return { displayName: null }; },
-    async updatePersonProfile(value) { calls.push(["profile-update", value]); return value; },
+    async getPersonProfile() { calls.push(["profile-read"]); return profile; },
+    async updatePersonProfile(value) { calls.push(["profile-update", value]); return { ...profile, ...value }; },
     async listCourseAccess(value) { calls.push(["access-list", value]); return { items: [] }; },
     async grantCourseAccess(value) { calls.push(["access-grant", value]); return value; },
     async revokeCourseAccess(value) { calls.push(["access-revoke", value]); return value; },
@@ -2116,7 +2118,8 @@ test("operações de perfil, acesso, avatar e conta são delegadas sem outra cam
   const key = "20000000-0000-4000-8000-000000000002/30000000-0000-4000-8000-000000000003.png";
 
   await controller.getPersonProfile();
-  await controller.updatePersonProfile({ displayName: "Pesquisadora" });
+  await controller.updatePersonProfile({ handle: "pesquisadora" });
+  assert.equal((await store.getCache("aralearn.person-profile.v2")).data.handle, "pesquisadora");
   await controller.listCourseAccess(COURSE_ID);
   await controller.grantCourseAccess({ courseId: COURSE_ID });
   await controller.revokeCourseAccess({ courseId: COURSE_ID });

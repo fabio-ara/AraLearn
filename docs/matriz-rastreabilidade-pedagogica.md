@@ -20,7 +20,7 @@ efeito educacional exige investigação com pessoas.
 | Proveniência permanece contestável | Fonte, papel e Âncora aparecem junto do conteúdo e podem ser corrigidos | estado corrente de fontes e autorização de PDF | checagem disciplinar e bibliográfica | link é tratado como prova ou fonte não pode ser questionada |
 | Agência humana é explícita | pessoa aprova separadamente mapa, progressão focal e correção concreta | tarefas de leitura/escrita separadas e respostas curtas | estudo de usabilidade e compreensão das consequências | coordenação técnica oculta efeito ou uma aprovação autoriza níveis seguintes |
 | Analytics descreve sem pontuar | Desenho e Autoria mostram contagens do estado corrente por escopo | contrato v2, painel e JSON equivalente | interpretação dentro de pergunta e protocolo declarados | contagem vira score, autoria percentual ou conclusão sobre aprendizagem |
-| Autoria e acesso não se confundem | proprietário edita; acesso direto concede Estudo; cópia pessoal protege original | RLS, autorização e fluxo de cópia | tarefas de compreensão de propriedade | pessoa com acesso altera o original ou dados privados atravessam cursos |
+| Autoria e acesso não se confundem | proprietário edita; acesso público ou direto concede Estudo; visitante não envia observação | RLS, projeções e autorização comum | tarefas de compreensão de propriedade | pessoa com acesso altera o original ou dados privados atravessam cursos |
 
 ## Relações que não devem ser confundidas
 

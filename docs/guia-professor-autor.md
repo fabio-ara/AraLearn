@@ -15,6 +15,25 @@ A pessoa autora não é presumida como estudante. “O público é iniciante” 
 o curso; “você está começando do zero” atribuiria sem base uma condição à pessoa
 que o está criando.
 
+## Compartilhar estudo e arquivos
+
+Em **Pessoas e acesso**, escolha privado ou público. A mudança exige confirmação;
+ao publicar, confira também se os arquivos ficam restritos às pessoas autorizadas
+ou disponíveis a visitantes. Em **Fontes**, cada fonte e cada PDF podem herdar a
+regra anterior ou definir uma exceção. O arquivo prevalece sobre a fonte, que
+prevalece sobre o curso. Um arquivo já baixado não pode ser recolhido.
+
+Para um acesso individual, use **Conceder acesso**, digite ao menos dois caracteres
+do `@identificador`, escolha o resultado e confirme. A busca mostra somente
+identificador e foto opcional, sem e-mail. O identificador escolhido deve
+continuar o mesmo no momento da confirmação; se mudou, refaça a busca.
+
+A pessoa favorecida pode estudar e enviar observações, sem editar o curso.
+Visitantes de um curso público leem, praticam e marcam Rever localmente; precisam
+entrar numa conta para observar. Retirar uma concessão não impede a leitura se
+o curso continua público. Tornar privado bloqueia novos acessos de visitantes e
+contas não favorecidas, preservando proprietário e acessos individuais.
+
 ## Aprovar o mapa curricular
 
 O primeiro resultado substantivo é o mapa de todo o curso:

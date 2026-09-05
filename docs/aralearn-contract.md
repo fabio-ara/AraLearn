@@ -30,10 +30,34 @@ Módulo, lição, microssequência e unidade de estudo formam a hierarquia didá
 Parte é lote de autoria e não aparece como pai curricular. Salvar ou redimensionar
 uma parte não cria nem reorganiza currículo.
 
+A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
+inclusive sem alterações de entidades. Metadados, entidades e atribuições são
+validados na mesma transação, com uma revisão esperada e um recibo de repetição.
+As contagens da resposta continuam representando entidades. Esse campo não
+pertence à edição focal de uma unidade de estudo.
+
 A cobertura associa cada item obrigatório às microssequências previstas e às
 unidades materializadas que o desenvolveram. O estado aprovado só é aceito para
 um mapa completo quanto ao escopo declarado; nenhuma unidade de estudo é criada
 como efeito dessa aprovação.
+
+## Pessoas e acesso
+
+`aralearn.person-profile.v2` contém UUID, identificador público escolhido, avatar
+opcional e data de atualização. Não expõe e-mail nem segundo nome de exibição.
+Identificadores usam ASCII minúsculo, 3–30 caracteres e extremos alfanuméricos;
+o `@` inicial é aceito na entrada. Perfis ainda sem identificador exigem escolha.
+
+`aralearn.course-list.v2` distingue `owned`, `shared` e `public`, com permissões
+explícitas de editar e observar. Busca de pessoas exige curso próprio, prefixo
+de ao menos dois caracteres e no máximo dez resultados; o grant confirma UUID
+e identificador selecionados. Troca ou reutilização do identificador não
+redireciona permissões já concedidas.
+
+Cursos começam privados. Tornar público exige confirmação e política de acesso
+a arquivos. Visitantes recebem somente projeções de estudo e não podem editar
+nem registrar observações. Pessoas autenticadas com acesso podem enviar suas observações;
+somente o proprietário altera o curso.
 
 ## Desenho
 
@@ -85,12 +109,19 @@ A incorporação server-side usa:
 - `aralearn.course-source-pdf-download.v1` para autorizar o serviço a emitir
   uma URL assinada de leitura.
 
+O aplicativo recebe `aralearn.course-source-pdf-download.v2`, com referência
+lógica do arquivo e URL temporária, sem caminho interno de Storage. A política
+efetiva respeita a exceção do arquivo, depois a da fonte e depois a do curso;
+essa autorização não torna o bucket público.
+
 O caminho e o resumo SHA-256 não são argumentos de uma tarefa humana. O serviço
 os deriva dos bytes. Criar ou revisar a fonte e vincular o PDF ocorre numa única
 transação e avança a revisão do curso uma vez.
 
-`aralearn.course-study-citations.v1` entrega ao Estudo somente citação, endereço
-permitido e seletor de âncora necessários à unidade.
+`aralearn.course-study-citations.v1` entrega ao Estudo citação, endereço
+permitido, seletor e localização legível necessários à unidade, além de
+referências lógicas dos anexos disponíveis. Trechos privados de verificação e
+caminhos de Storage ficam fora dessa projeção.
 
 ## Observações e revisão
 
@@ -116,15 +147,20 @@ um contrato permanente de lote ou de auditoria.
 Não há páginas de fatos ou dicionário separado. O JSON baixado é o próprio
 snapshot normalizado.
 
-## Cópia pessoal e estado de Estudo
+## Recuperação de cópias próprias e estado de Estudo
 
-Uma pessoa com acesso ao Estudo não altera o curso original. A primeira edição
-contextual pode usar `aralearn.personal-course-copy-edit.v1` para criar sua
-cópia privada e aplicar a mudança na mesma transação.
+O comando de criação automática de cópia por estudante foi retirado.
+`aralearn.owned-course-copy-recovery.v1` consulta a prova migrada de uma intenção
+anterior e retorna `confirmed`, `unchanged` ou `unresolved`. A confirmação exige
+origem e edição compatíveis e propriedade atual do alvo; distingue versões
+iniciais das atuais, sem reaplicar conteúdo. Cópias existentes continuam próprias
+e rascunhos sem prova permanecem disponíveis para decisão explícita.
 
 Progresso, posição e marcas para rever usam contratos pessoais e versões
 separadas do curso. Observações próprias têm sincronização distinta porque seu
 texto, autorização e conflitos são diferentes.
+Visitantes reutilizam o armazenamento local em compartimento separado das
+contas, sem enviar estado pessoal à nuvem nem registrar observações.
 
 ## Catálogo humano de Autoria
 

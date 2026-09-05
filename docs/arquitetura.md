@@ -1,9 +1,9 @@
 # Arquitetura do AraLearn
 
-Este capítulo descreve a base publicada `0.0.64`. A
-[matriz de conformidade técnica](matriz-conformidade-tecnica.md) distingue os
-mecanismos encontrados dos destinos aprovados para sua evolução; uma capacidade
-planejada não deve ser tomada como disponível nesta base.
+Este capítulo descreve a implementação corrente. A
+[matriz de conformidade técnica](matriz-conformidade-tecnica.md) distingue
+implementação, conexão e verificação. A [história do schema](schema-change-log.md)
+registra as migrações e os cuidados necessários à implantação.
 
 O AraLearn conserva um curso vivo que pode ser estudado, desenvolvido e revisto
 sob a mesma identidade. A arquitetura separa quatro responsabilidades:
@@ -21,7 +21,7 @@ execução numa segunda autoridade do curso.
 
 Um curso reúne:
 
-- título, objetivo, propriedade e acesso direto;
+- título, objetivo, proprietário, visibilidade e acesso direto;
 - módulos, lições, microssequências e unidades de estudo (`StudyUnit` no código);
 - mapa curricular global e partes operacionais de autoria;
 - repertório de unidades de análise (`AnalysisUnit` no código) e requisitos de evidência;
@@ -31,9 +31,10 @@ Um curso reúne:
 - observações e estado necessário à revisão;
 - estado pessoal de estudo por pessoa.
 
-O curso não possui estágio de publicação. Conteúdo válido fica disponível em
-Estudo assim que existe. Revisar uma unidade de estudo não cria outra identidade nem uma
-árvore de versões.
+Conteúdo válido fica disponível ao proprietário e às pessoas autorizadas assim
+que existe. Tornar o curso público é uma decisão explícita de acesso, com
+política de arquivos, e mantém o mesmo curso mutável. Revisar uma unidade de
+estudo não cria outra identidade nem uma árvore de versões.
 
 ## Superfícies do produto
 
@@ -41,10 +42,15 @@ Estudo assim que existe. Revisar uma unidade de estudo não cria outra identidad
 de estudo por vez, prática, progresso pessoal, marcas para rever e observações.
 Um curso compartilhado pode ser estudado sem conceder autoria no original.
 
-Na base atual, a tentativa de edição de um curso compartilhado pode criar uma
-cópia pessoal. Esse caminho será substituído pela regra aprovada de edição
-exclusiva do proprietário e cópia deliberada pelo autor. Cópias existentes e
-pendências locais precisam ser preservadas na migração, conforme a matriz.
+Somente o proprietário edita, inclusive quando está em Estudo. Estudantes podem
+enviar suas próprias observações; visitantes estudam cursos públicos e conservam
+progresso e marcas no dispositivo. O catálogo compacto também inclui cursos
+públicos, sem criar uma autoridade de conteúdo separada.
+
+Cópias próprias anteriores conservam identidade, conteúdo e propriedade. Sua
+origem útil migra para metadados privados do curso-alvo. Um rascunho antigo só é
+reconciliado com um alvo comprovado; a recuperação não reaplica a edição nem
+cria curso. O comando de cópia automática foi retirado.
 
 **Autoria** apresenta apenas cursos próprios. O curso abre diretamente em
 Conteúdo; Conteúdo e Planejamento permanecem no cabeçalho, enquanto Parâmetros,
@@ -88,6 +94,12 @@ O adaptador usa funções SQL estreitas com credencial de servidor. A função S
 volta a verificar propriedade, versão e formato e executa a transação. Esse
 desenho evita conceder acesso direto às tabelas privadas e mantém a decisão de
 autorização junto do dado.
+
+Visitantes alcançam somente RPCs de leitura com projeção explícita e guarda
+própria. A guarda de escrita continua exigindo ator autorizado. O perfil usa um
+identificador público escolhido pela pessoa e avatar opcional; busca e concessão
+de acesso privado são delimitadas pelo curso do proprietário, sem diretório
+geral de contas. O Storage permanece privado, inclusive para cursos públicos.
 
 MCP usa `aralearn-authoring-mcp` e OAuth 2.1. Actions usa
 `aralearn-authoring-action` e um OAuth próprio para o GPT. Credenciais de um

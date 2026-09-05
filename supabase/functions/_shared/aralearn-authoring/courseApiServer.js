@@ -294,7 +294,10 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
       const actionName = specialRequest ? apiRequest.name : null;
       const accountDeletion = actionName === ACCOUNT_DELETION_ACTION;
       const pdfIngestion = actionName === PDF_INGESTION_ACTION;
-      const authentication = readAuthoringOAuthAuthorization(request);
+      const route = specialRequest ? null : routeCourseRequest(request.method, apiRequest.pathname);
+      const publicDownload = route?.name === "getCourseSourcePdfDownload" &&
+        !request.headers.has("authorization");
+      const authentication = publicDownload ? null : readAuthoringOAuthAuthorization(request);
       const deadlineAt = requestStartedAt + 40_000;
       let result;
       if (accountDeletion) {
@@ -316,10 +319,9 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
           })
         };
       } else {
-        const principal = await adapter.resolveApplicationPrincipal(
-          authentication.credential,
-          { deadlineAt }
-        );
+        const principal = publicDownload
+          ? { actorId: null, authenticationKind: "public", scopes: [] }
+          : await adapter.resolveApplicationPrincipal(authentication.credential, { deadlineAt });
         if (pdfIngestion && !(principal?.actorId && new Set(
           Array.isArray(principal.scopes) ? principal.scopes : []
         ).has("authoring:write"))) {
@@ -363,7 +365,7 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
         } else {
           result = await executeCourseRoute({
             request,
-            route: routeCourseRequest(request.method, apiRequest.pathname),
+            route,
             adapter,
             principal,
             deadlineAt,

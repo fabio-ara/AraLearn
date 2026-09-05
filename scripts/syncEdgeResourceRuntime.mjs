@@ -19,6 +19,8 @@ const fixedFiles = [
   ["src/domain/courseAuthoringAnalytics.js", "domain/courseAuthoringAnalytics.js"],
   ["src/domain/courseDesignParameters.js", "domain/courseDesignParameters.js"],
   ["src/domain/courseEntities.js", "domain/courseEntities.js"],
+  ["src/domain/courseComposition.js", "domain/courseComposition.js"],
+  ["src/domain/identifiers.js", "domain/identifiers.js"],
   ["src/domain/courseSources.js", "domain/courseSources.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
   ["src/flowchart/flowchartStructure.js", "flowchart/flowchartStructure.js"],

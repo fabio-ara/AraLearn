@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createCourseApiHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseApiServer.js";
-import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { CourseSupabaseAdapter } from
   "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
@@ -414,7 +413,7 @@ test("ingestão exige seis campos exatos e um único Blob PDF", async () => {
 });
 
 
-test("expõe criação da cópia pessoal somente como ação autenticada do aplicativo", async () => {
+test("expõe consulta de recuperação somente ao aplicativo autenticado", async () => {
   const studyUnit = {
     id: "unit-a",
     position: 1,
@@ -441,10 +440,10 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
           scopes: ["authoring:write"]
         };
       },
-      async commitPersonalCourseCopyEdit(value) {
+      async recoverOwnedCourseCopy(value) {
         call = value;
         return {
-          contract: "aralearn.personal-course-copy-edit.v1",
+          contract: "aralearn.owned-course-copy-recovery.v1",
           targetCourseId: PART_ID,
           changed: true
         };
@@ -460,7 +459,7 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
     studyUnit,
     applicationOrigin: "manual"
   };
-  const personalCopyPath = `/v1/courses/${COURSE_ID}/personal-copy/composition`;
+  const personalCopyPath = `/v1/courses/${COURSE_ID}/copy-recovery`;
   const response = await handler(request(personalCopyPath, { body }));
   const payload = await response.json();
 
@@ -472,33 +471,8 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
   assert.equal(call.studyUnit.id, "unit-a");
   assert.equal(Object.hasOwn(call, "actorId"), false);
 
-  const conflictHandler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        return {
-          actorId: COURSE_ID,
-          authenticationKind: "application",
-          scopes: ["authoring:write"]
-        };
-      },
-      async commitPersonalCourseCopyEdit() {
-        throw new AuthoringApiError(
-          409,
-          "personal_copy_exists",
-          "Você já possui uma cópia pessoal deste Curso.",
-          { targetCourseId: PART_ID }
-        );
-      }
-    }
-  });
-  const conflictResponse = await conflictHandler(
-    request(personalCopyPath, { body })
-  );
-  const conflictPayload = await conflictResponse.json();
-  assert.equal(conflictResponse.status, 409);
-  assert.equal(conflictPayload.error.code, "personal_copy_exists");
-  assert.equal(conflictPayload.error.details.targetCourseId, PART_ID);
+  const removed = await handler(request(`/v1/courses/${COURSE_ID}/personal-copy/composition`, { body }));
+  assert.equal(removed.status, 404);
 });
 
 test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async () => {

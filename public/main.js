@@ -10,6 +10,9 @@ import { CourseController } from "../src/supabase/CourseController.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
+import { renderPersonHandleOnboarding } from "../src/ui/PersonHandleOnboarding.js";
+import { renderVisitorSettings } from "../src/ui/VisitorSettings.js";
+import { buildCourseStudyRoute, parseCourseStudyRoute } from "../src/ui/courseStudyRoute.js";
 import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.js";
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
@@ -18,6 +21,8 @@ import {
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
+import { publicErrorMessage } from "../src/ui/publicErrorMessage.js";
+import { isAmbiguousManualStudyUnitWriteFailure } from "../src/ui/manualStudyUnitEdit.js";
 import { createCourseProviderSession } from
   "../src/ui/CourseProviderAssistance.js";
 
@@ -315,9 +320,9 @@ function renderSettings(root, authClient, controller, {
               </button>
               <input data-profile-avatar-file type="file" accept="image/jpeg,image/png,image/webp" hidden>
             </div>
-            <label for="account-profile-display-name">Nome</label>
+            <label for="account-profile-handle">Identificador público</label>
             <div class="account-profile-name-row">
-              <input id="account-profile-display-name" data-profile-name maxlength="120" autocomplete="name" required placeholder="Como deseja aparecer">
+              <input id="account-profile-handle" data-profile-handle maxlength="31" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="@identificador">
               <button class="icon-ghost is-primary" type="submit" data-profile-save title="Salvar perfil" aria-label="Salvar perfil">${renderUiIcon("save", "account-settings-action-icon")}</button>
             </div>
           </form>
@@ -377,7 +382,7 @@ function renderSettings(root, authClient, controller, {
   const status = root.querySelector("[data-settings-status]");
   const settingsTitle = root.querySelector("[data-settings-title]");
   const settingsBack = root.querySelector("[data-settings-back]");
-  const profileName = root.querySelector("[data-profile-name]");
+  const profileHandle = root.querySelector("[data-profile-handle]");
   const profileFile = root.querySelector("[data-profile-avatar-file]");
   const profileImage = root.querySelector("[data-profile-avatar-image]");
   const profileFallback = root.querySelector("[data-profile-avatar-fallback]");
@@ -517,7 +522,7 @@ function renderSettings(root, authClient, controller, {
     profileRemove.hidden = !(avatarUrl || profile?.avatarObjectKey || selectedFile);
     profileChooseLabel.textContent = avatarUrl ? "Substituir foto" : "Escolher foto";
     onProfileChange({
-      displayName: profile?.displayName || null,
+      handle: profile?.handle || null,
       avatarUrl
     });
   };
@@ -527,8 +532,8 @@ function renderSettings(root, authClient, controller, {
     const task = (async () => {
       status.textContent = "Carregando perfil…";
       try {
-        profile = await controller.getPersonProfile();
-        profileName.value = profile?.displayName || "";
+        profile = await controller.getPersonProfile({ allowOffline: !force });
+        profileHandle.value = profile?.handle ? `@${profile.handle}` : "";
         let nextAvatarUrl = "";
         if (profile?.avatarObjectKey) {
           try {
@@ -669,10 +674,11 @@ function renderSettings(root, authClient, controller, {
   };
   root.querySelector("[data-profile-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const displayName = String(profileName.value || "").trim();
-    if (!displayName) {
-      status.textContent = "Informe seu nome.";
-      profileName.focus();
+    const enteredHandle = String(profileHandle.value || "");
+    const handle = enteredHandle.trim().replace(/^@/u, "").toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/u.test(handle)) {
+      status.textContent = "Use um identificador de 3 a 30 caracteres, começando e terminando com letra ou número.";
+      profileHandle.focus();
       return;
     }
     const previousAvatarObjectKey = profile?.avatarObjectKey || null;
@@ -691,7 +697,7 @@ function renderSettings(root, authClient, controller, {
         uploadedObjectKey = (await controller.uploadAvatar(selectedFile)).objectKey;
       }
       profile = await controller.updatePersonProfile({
-        displayName,
+        handle,
         ...(uploadedObjectKey ? { avatarObjectKey: uploadedObjectKey } : {})
       });
       profileUpdated = true;
@@ -743,9 +749,8 @@ function renderSettings(root, authClient, controller, {
         if (uploadedAvatarCleanupPending) pendingAvatarCleanupObjectKey = uploadedObjectKey;
       }
       if (!uploadedObjectKey || profileUpdated) await loadProfile({ force: true });
-      const failureMessage = error instanceof Error
-        ? error.message
-        : "Não foi possível salvar o perfil.";
+      if (!profileUpdated) profileHandle.value = enteredHandle;
+      const failureMessage = publicErrorMessage(error, "Não foi possível salvar o perfil.");
       status.dataset.kind = uploadedAvatarCleanupPending ? "warning" : "error";
       status.textContent = uploadedAvatarCleanupPending
         ? `${failureMessage} A foto enviada não foi vinculada e ainda precisa ser removida. Use Salvar novamente para repetir a limpeza antes de outro envio.`
@@ -991,11 +996,12 @@ function clearAuthoringRoute() {
   );
 }
 
-async function renderAuthenticatedApplication(root, config, authClient) {
+async function renderApplication(root, config, authClient, { visitor = false } = {}) {
   const courseApi = new CourseApiClient({
     projectUrl: config.projectUrl,
     publishableKey: config.publishableKey,
-    authClient
+    authClient,
+    visitor
   });
   const studyController = new CourseController({ api: courseApi, store: courseLocalStore });
   const authoringController = new CourseController({
@@ -1003,19 +1009,20 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     store: courseLocalStore,
     ownerOnly: true
   });
-  pendingCompositionCleanup = () =>
+  pendingCompositionCleanup = visitor ? null : () =>
     authoringController.clearPendingCourseCompositions();
   const studyBridge = new CourseStudyBridge({ controller: studyController });
   repository = new CourseStudyRepository({
     bridge: studyBridge,
     api: courseApi,
-    cache: courseLocalStore
+    cache: courseLocalStore,
+    visitor
   });
   updateStartupLoading(root, 68);
   try {
     await repository.initialize();
   } catch (error) {
-    if (authSessionWasRejected(error, authClient)) {
+    if (!visitor && authSessionWasRejected(error, authClient)) {
       if (authClient.getSession()) await authClient.clearSession();
       authClient.emit("SESSION_INVALID");
       return;
@@ -1032,13 +1039,21 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const authoringRoot = root.querySelector("#aralearn-authoring-root");
   const settingsRoot = root.querySelector("#aralearn-settings-root");
-  courseProviderSession = createCourseProviderSession();
+  courseProviderSession = visitor ? null : createCourseProviderSession();
   let editorApp = null;
   let authoringSurface = null;
   let authoringReturnFocus = null;
   let studyAuthoringReturn = null;
   let authoringHistoryReturn = false;
-  const settings = renderSettings(settingsRoot, authClient, authoringController, {
+  const requestAuthentication = async ({ entityPath = null } = {}) => {
+    await repository.flush();
+    const url = new URL(globalThis.location.href);
+    const returnPath = entityPath || editorApp?.getNavigationPosition?.()?.entityPath;
+    if (returnPath) url.hash = buildCourseStudyRoute(returnPath);
+    url.searchParams.set("acesso", "entrar");
+    globalThis.location.assign(url.href);
+  };
+  const settings = visitor ? renderVisitorSettings(settingsRoot, { onSignIn: requestAuthentication }) : renderSettings(settingsRoot, authClient, authoringController, {
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
     },
@@ -1066,21 +1081,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
 
   let pendingStudyComposition = null;
   let pendingStudyStructure = null;
-  let pendingStudyCourseMetadata = null;
   const saveStudyManualEdit = async (value) => {
-    if (value.createsPersonalCopy === true) {
-      return repository.commitPersonalCourseCopyEdit({
-        sourceCourseId: value.courseId,
-        expectedSourceCourseRevision: value.expectedCourseRevision,
-        expectedStudyUnitVersion: value.expectedVersion,
-        didacticMicrosequenceId: value.didacticMicrosequenceId,
-        studyUnit: value.studyUnit,
-        applicationOrigin: value.origin,
-        targetId: value.targetId,
-        sourceSelection: value.sourceSelection,
-        replacesPendingRequestId: value.replacesPendingRequestId || null
-      });
-    }
     const intent = {
       courseId: value.courseId,
       expectedCourseRevision: value.expectedCourseRevision,
@@ -1102,57 +1103,47 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   };
 
   const saveStudyAssistedStructure = async (value) => {
-    let expectedCourseRevision = value.expectedCourseRevision;
-    let result = null;
-    if (value.scope === "course" && value.metadataChanged === true) {
-      const authoringPlan = await authoringController.loadAuthoringPlan(value.courseId);
-      const currentTitle = String(authoringPlan?.plan?.title || "");
-      const currentObjective = String(authoringPlan?.plan?.objective || "");
-      expectedCourseRevision = Number(authoringPlan?.courseRevision);
-      if (currentTitle !== value.title || currentObjective !== value.objective) {
-        const metadataIntent = {
-          courseId: value.courseId,
-          expectedCourseRevision,
-          expectedPlanVersion: Number(authoringPlan?.plan?.version),
-          operation: "update_plan",
-          title: value.title,
-          objective: value.objective
-        };
-        const metadataSignature = JSON.stringify(metadataIntent);
-        if (pendingStudyCourseMetadata?.signature !== metadataSignature) {
-          pendingStudyCourseMetadata = { signature: metadataSignature, requestId: createUuid() };
-        }
-        result = await authoringController.mutateAuthoringPlan({
-          requestId: pendingStudyCourseMetadata.requestId,
-          ...metadataIntent
-        });
-        pendingStudyCourseMetadata = null;
-        expectedCourseRevision = Number(result?.courseRevision);
-      }
-    }
+    const before = value.originalProject?.courses?.find(({ id }) => id === value.courseId);
+    const after = value.proposedProject?.courses?.find(({ id }) => id === value.courseId);
+    const metadataChanged = value.scope === "course" && (value.metadataChanged === true ||
+      before && after && (before.title !== after.title || before.goal !== after.goal));
     const intent = {
       courseId: value.courseId,
-      expectedCourseRevision,
+      expectedCourseRevision: value.expectedCourseRevision,
       upserts: value.upserts,
-      deletes: value.deletes
+      deletes: value.deletes,
+      ...(metadataChanged ? { courseMetadata: {
+        title: value.title ?? after?.title,
+        objective: value.objective ?? after?.goal
+      } } : {})
     };
-    if (intent.upserts.length || intent.deletes.length) {
-      const signature = JSON.stringify(intent);
-      if (pendingStudyStructure?.signature !== signature) {
-        pendingStudyStructure = { signature, requestId: createUuid() };
+    const signature = JSON.stringify(intent);
+    if (pendingStudyStructure && pendingStudyStructure.signature !== signature) {
+      throw new Error("Confirme a mesma edição anterior antes de salvar uma alteração diferente.");
+    }
+    if (!pendingStudyStructure && (intent.upserts.length || intent.deletes.length || metadataChanged)) {
+      pendingStudyStructure = { signature,
+        request: structuredClone({ requestId: createUuid(), ...intent }), result: null };
+    }
+    const pending = pendingStudyStructure;
+    if (pending && !pending.result) {
+      try {
+        pending.result = await authoringController.commitCourseStructuralComposition(
+          structuredClone(pending.request)
+        );
+      } catch (error) {
+        if (!isAmbiguousManualStudyUnitWriteFailure(error)) pendingStudyStructure = null;
+        throw error;
       }
-      result = await authoringController.commitCourseStructuralComposition({
-        requestId: pendingStudyStructure.requestId,
-        ...intent
-      });
-      pendingStudyStructure = null;
     }
     await repository.refreshCourses();
     await repository.loadCourse(value.courseId);
+    const result = pending?.result;
+    pendingStudyStructure = null;
     return {
       ...result,
       courseId: value.courseId,
-      courseRevision: Number(result?.courseRevision || expectedCourseRevision),
+      courseRevision: Number(result?.courseRevision || intent.expectedCourseRevision),
       project: repository.loadProject()
     };
   };
@@ -1161,14 +1152,15 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     root: editorRoot,
     repository,
     initialProject: project,
-    onSaveManualEdit: saveStudyManualEdit,
-    onSaveAssistedStructure: saveStudyAssistedStructure,
+    visitor,
+    onSaveManualEdit: visitor ? null : saveStudyManualEdit,
+    onSaveAssistedStructure: visitor ? null : saveStudyAssistedStructure,
     providerAssistanceSession: courseProviderSession
   });
   await editorApp.resumePendingManualEdit?.().catch((error) => {
-    console.warn("A edição pessoal pendente poderá ser retomada na próxima conexão.", error);
+    console.warn("O rascunho preservado poderá ser inspecionado na próxima conexão.", error);
   });
-  void settings.loadProfile();
+  if (!visitor) void settings.loadProfile();
   const restoreStudyAfterAuthoring = () => {
     authoringRoot.hidden = true;
     editorRoot.hidden = false;
@@ -1186,7 +1178,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       console.warn("A lista de cursos será atualizada na próxima conexão.", error);
     }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
   };
-  authoringSurface = createCourseAuthoringSurface({
+  authoringSurface = visitor ? null : createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
     providerAssistanceSession: courseProviderSession,
@@ -1261,6 +1253,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   };
 
   const openAuthoring = ({ returnThroughHistory = false } = {}) => {
+    if (visitor) { void requestAuthentication(); return; }
     studyAuthoringReturn = null;
     settings.close();
     if (!authoringSurface.opened) authoringHistoryReturn = returnThroughHistory;
@@ -1302,6 +1295,7 @@ async function renderAuthenticatedApplication(root, config, authClient) {
   };
   editorRoot.addEventListener("aralearn:open-settings", () => settings.open());
   editorRoot.addEventListener("aralearn:open-authoring", openAuthoring);
+  editorRoot.addEventListener("aralearn:request-auth", (event) => void requestAuthentication(event.detail || {}));
 
   lifecycleAbortController = new AbortController();
   editorRoot.addEventListener("click", (event) => {
@@ -1336,8 +1330,14 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     authoringSurface?.setOfflineStatus?.(true);
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("hashchange", (event) => {
+    const studyPath = parseCourseStudyRoute(globalThis.location.hash);
+    if (studyPath) {
+      if (authoringSurface?.opened) { authoringSurface.destroy(); restoreStudyAfterAuthoring(); }
+      void editorApp.openEntityPath(studyPath);
+      return;
+    }
     if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) {
-      if (!authoringSurface.opened) {
+      if (!authoringSurface?.opened) {
         const previousHash = event.oldURL ? new URL(event.oldURL).hash : "";
         openAuthoring({
           returnThroughHistory: !isCourseAuthoringRouteCandidate(previousHash) &&
@@ -1346,10 +1346,10 @@ async function renderAuthenticatedApplication(root, config, authClient) {
       }
       return;
     }
-    if (!authoringHistoryReturn || !authoringSurface.opened) return;
+    if (!authoringHistoryReturn || !authoringSurface?.opened) return;
     globalThis.queueMicrotask?.(() => {
       if (isCourseAuthoringRouteCandidate(globalThis.location.hash) ||
-          !authoringHistoryReturn || !authoringSurface.opened) return;
+          !authoringHistoryReturn || !authoringSurface?.opened) return;
       authoringHistoryReturn = false;
       authoringSurface.destroy();
       restoreStudyAfterAuthoring();
@@ -1374,6 +1374,8 @@ async function renderAuthenticatedApplication(root, config, authClient) {
     }
   };
   if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) openAuthoring();
+  const studyPath = parseCourseStudyRoute(globalThis.location.hash);
+  if (studyPath) await editorApp.openEntityPath(studyPath);
 }
 
 async function start(root) {
@@ -1396,22 +1398,49 @@ async function start(root) {
     }
   });
   const session = await authClient.initialize();
+  const returnToStudy = () => {
+    const url = new URL(globalThis.location.href);
+    url.searchParams.delete("acesso");
+    if (url.href === globalThis.location.href) globalThis.location.reload();
+    else globalThis.location.replace(url.href);
+  };
   if (!session && authClient.sessionInvalidated) {
     await shutDownAuthenticatedRuntime(root);
     return;
   }
   if (!session || authClient.recoveryMode) {
-    renderAuthGate({
-      root,
-      authClient,
-      configured: true,
-      onAuthenticated() { globalThis.location.reload(); }
-    });
+    const loginRequested = new URL(globalThis.location.href).searchParams.get("acesso") === "entrar";
+    if (authClient.recoveryMode || oauthAuthorizationRequest.authorizationId || loginRequested) {
+      renderAuthGate({ root, authClient, configured: true,
+        onAuthenticated: returnToStudy,
+        onCancel: oauthAuthorizationRequest.authorizationId ? null : returnToStudy });
+      return;
+    }
+    renderStartupLoading(root);
+    courseLocalStore = await CourseLocalStore.open(globalThis.indexedDB, { visitor: true });
+    watchLocalConnection(courseLocalStore);
+    await renderApplication(root, config, authClient, { visitor: true });
     return;
   }
   if (!session.user?.id) {
     await authClient.clearSession();
-    renderAuthGate({ root, authClient, configured: true });
+    renderAuthGate({ root, authClient, configured: true, onCancel: returnToStudy });
+    return;
+  }
+  activeUserId = session.user.id;
+  renderStartupLoading(root);
+  updateStartupLoading(root, 36);
+  courseLocalStore = await CourseLocalStore.open(globalThis.indexedDB, { userId: activeUserId });
+  watchLocalConnection(courseLocalStore);
+  const profileController = new CourseController({
+    api: new CourseApiClient({ projectUrl: config.projectUrl, publishableKey: config.publishableKey, authClient }),
+    store: courseLocalStore
+  });
+  const profile = await profileController.getPersonProfile();
+  if (!profile?.handle) {
+    renderPersonHandleOnboarding({ root, controller: profileController,
+      onComplete: returnToStudy,
+      onSignOut: () => authClient.signOut() });
     return;
   }
   if (oauthAuthorizationRequest.authorizationId) {
@@ -1423,12 +1452,12 @@ async function start(root) {
     });
     return;
   }
-  activeUserId = session.user.id;
-  renderStartupLoading(root);
-  updateStartupLoading(root, 36);
-  courseLocalStore = await CourseLocalStore.open(globalThis.indexedDB, { userId: activeUserId });
-  watchLocalConnection(courseLocalStore);
-  await renderAuthenticatedApplication(root, config, authClient);
+  if (new URL(globalThis.location.href).searchParams.has("acesso")) {
+    const url = new URL(globalThis.location.href);
+    url.searchParams.delete("acesso");
+    globalThis.history.replaceState(globalThis.history.state, "", url.href);
+  }
+  await renderApplication(root, config, authClient);
 }
 
 const root = document.getElementById("app-root");
