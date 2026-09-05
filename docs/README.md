@@ -34,7 +34,8 @@ funções disponíveis e os limites que afetam seu uso.
 1. [Modelo didático](modelo-didatico.md): Microssequência didática,
    microteoria, prática e progressão;
 2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
-   propriedades pedagógicas, escopo e limites;
+   propriedades pedagógicas, escopo e limites, com
+   [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md);
 3. [Revisão de literatura](revisao-de-literatura.md): bases, controvérsias e
    lacunas;
 4. [Quadro teórico](quadro-teorico.md): construtos e relações propostas;

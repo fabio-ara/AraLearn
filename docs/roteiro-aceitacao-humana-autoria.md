@@ -4,13 +4,70 @@ Este roteiro avalia se uma pessoa encontra e conclui as tarefas reais de autoria
 sem aprender a arquitetura interna. Automação verifica contratos e geometria;
 não substitui observação de compreensão e uso.
 
+## Contrato de jornadas
+
+Os critérios abaixo definem o destino de [#295](https://github.com/fabio-ara/AraLearn/issues/295).
+São condições refutáveis de engenharia, não um registro de testes executados.
+O conteúdo de teste é sintético. A revisão e os ambientes exercitados delimitam
+a validade de cada prova.
+
+| Jornada | Ação e permissão | Resultado exigido |
+| --- | --- | --- |
+| J1 — entrada pública | visitante abre home e link de curso público | prática e feedback completos; progresso/Rever locais; observar requer conta, editar requer propriedade |
+| J2 — identificação e acesso | proprietário seleciona identificador público único | avatar opcional, sem segundo nome obrigatório; destinatário lê, terceiro não lê; revogação impede novo acesso conectado |
+| J3 — planejar e produzir | autor examina mapa, altera escopo e autoriza lote | cobertura e dependências inspecionáveis; lote não muda currículo; sem mandato ampliado, concluir lote e aguardar |
+| J4 — perfis e cadência | criar/aplicar/editar/excluir perfil; ajustar lote e pausas | aplicação copia preferências; editar/excluir perfil não muda curso anterior; reaplicar declara alcance/exceções; lotes e pausas independentes |
+| J5 — contexto | abrir unidade indicada, parâmetros, fontes e observações | retorno ao mesmo alvo, rolagem e acionador; tarefa global acessível pelo menu |
+| J6 — seleção | selecionar unidades anteriores e posteriores | sequência vertical mostra vizinhança; sair restaura unidade inicial; seleção não cria entidade persistente |
+| J7 — edição | proprietário edita título, prosa e rótulos de prática | mesmo renderer e geometria na entrada; crescimento natural sem corte, fonte menor ou prática oculta; salvar/reabrir preserva texto |
+| J8 — assistência | proprietário em Estudo discute alteração focal por API | alvo preservado, proposta verificável e domínio comum; falha conserva original/rascunho; chave nunca entra no curso |
+| J9 — observação | estudante autenticado observa e tenta editar | observação chega ao autor/GPT; edição recusada sem cópia automática; visitante não envia observação |
+| J10 — fontes | abrir URL, PDF, slides e referência incompleta | metadados conhecidos, localizador e alcance legíveis; estilo não muda identidade; publicação escolhe política de arquivos/exceções |
+| J11 — corrigir | observação afeta explicação e prática posterior | GPT lê dependências, discute mudança material, aplica dentro do mandato e relê resultado; HTTP 200 não resolve semanticamente a observação |
+| J12 — parametrizar | autor fixa condição e compara distribuição | pedido, resolução e aplicação distintos; automático calibra contexto; valor fixado prevalece; inventário não é fundido para cumprir teto |
+| J13 — ferramentas | chinês/pinyin com áudio e leitura; matemática com calculadora | idiomas/notação preservados; múltiplos itens; indisponibilidade/custo explícitos; contratos focais e acessibilidade |
+| J14 — sincronizar | duas abas, alteração remota, rascunho e rede intermitente | manual suspende intercâmbio de estudo em fundo e conteúdo aberto; nuvem sincroniza; conflito não perde dados; escrita autoral/acesso continuam |
+| J15 — copiar e comparar | autor copia curso e inspeciona dados | cópias independentes preservam conteúdo, mapa, repertório, configuração e fontes; não copiam acesso/progresso/observações pessoais; tela/export têm mesmos objetos e denominadores |
+| J16 — retomar pelos canais | mesma intenção em MCP e Actions novos | mesma autorização/efeito; texto literal disponível; retorno breve e endereçável; reenvio não duplica conteúdo |
+| J17 — entregar | candidata integrada e documentação | revisão, configuração e artefatos correspondem; runtime substituído removido; prova técnica não se apresenta como avaliação educacional |
+
+## Continuidade e geometria
+
+Estudo conserva home, módulos, lições, microssequências e unidade. Autoria entra
+no conteúdo e oferece planejamento progressivo e tarefas globais pelo menu.
+Um módulo revela lições; uma lição revela microssequências, pressupostos e
+cobertura. Ajustes e fontes locais abrem sobreposição. Dados começam por uma
+distribuição selecionável e revelam objetos e tabela completa sob demanda.
+
+Barras principais usam ícones com nomes e estados acessíveis; menus e ajustes
+revelados admitem texto. A coluna permanece até 430 px também no desktop.
+Em 360, 390, 430 e 1280 px, sob o mesmo zoom, fontes carregadas e estado,
+coordenadas/dimensões de controles equivalentes e caixa de conteúdo admitem até
+1 CSS px de arredondamento ao entrar/sair da edição sem alterar texto. Medir
+antes/depois no mesmo ambiente. Texto novo pode aumentar altura; largura,
+âncora e controles fixos continuam preservados.
+
+Sobreposições mantêm foco e devolvem-no ao acionador; se ele deixou de existir
+por ação explícita, testar o destino lógico. Esc fecha detalhe sem descartar
+silenciosamente rascunho. Cabeçalho reserva espaço para controles ausentes;
+título longo não desloca irmãos. Validar teclado, alvos de toque, reflow e zoom
+200%; estabilidade não impede ampliação. As referências são
+[WCAG 2.2](https://www.w3.org/TR/WCAG22/) e o
+[padrão de diálogo WAI-ARIA](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+
+Carregamento mantém conteúdo confirmado. A nuvem indica pendência, andamento,
+sucesso ou falha; sucesso e adiamento normal não geram aviso persistente.
+Falha recuperável conserva campos e permite repetição idempotente; conflito
+material revela alternativas antes de substituir conteúdo. Sem acesso, a
+mensagem explica a restrição correta; criar conta não concede autoria.
+
 ## Pré-condições
 
 Reprove a revisão se:
 
 - a autoria deixa de abrir diretamente em Conteúdo;
 - aparece dashboard, sidebar, segunda coluna permanente ou segundo rolador;
-- uma unidade de estudo deixa de dominar o leitor;
+- uma unidade de estudo deixa de dominar o leitor fora da seleção múltipla;
 - ações somente por ícone não possuem nome acessível, foco e estado corretos;
 - a página cria rolagem horizontal em 360, 390 ou 430 px;
 - Estudo perde navegação, renderer, prática, progresso ou funcionamento offline;
@@ -44,19 +101,20 @@ efetivamente importado:
 5. a pessoa altera cobertura ou ordem;
 6. o GPT ajusta a mesma arquitetura, sem materializar unidades;
 7. a pessoa aprova o mapa visível;
-8. o GPT apresenta brevemente a progressão da primeira parte;
+8. o GPT apresenta brevemente a primeira parte e pede autorização, podendo
+   receber mandato de continuidade para outros lotes;
 9. a pessoa corrige uma ênfase;
 10. o GPT materializa a parte e devolve o link do conteúdo;
 11. a pessoa inspeciona todas as unidades na ordem;
-12. o GPT apresenta a segunda parte;
+12. o GPT apresenta a segunda parte, avançando dentro da cadência autorizada;
 13. a pessoa altera uma decisão e acrescenta uma fonte técnica;
 14. o GPT materializa e a pessoa inspeciona o resultado;
 15. o repertório acumulado distingue ideias novas, usadas e retomadas.
 
 O chat deve parecer conversa com uma pessoa que desconhece o mecanismo do
 AraLearn. A pessoa autora não pode ser tratada como estudante. A aprovação do
-mapa não aprova a parte; a aprovação da parte não aprova silenciosamente
-correções futuras.
+mapa não autoriza automaticamente produção. O mandato pode abranger vários
+lotes e correções rotineiras; conteúdo inexistente não foi revisado factualmente.
 
 ## Tarefas
 

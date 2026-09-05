@@ -335,6 +335,14 @@ Murilo Gazzola; Sidney Leal; Breno Pedroni; Fábio Theoto Rocha; Sabine Pompéia
 
 Chave bibliográfica: `gazzola2022textcomplexity`.
 
+<a id="ref-gilardi2023annotation"></a>
+
+### Gilardi et al. (2023)
+
+Fabrizio Gilardi; Meysam Alizadeh; Maël Kubli (2023). **ChatGPT Outperforms Crowd Workers for Text-Annotation Tasks.** *Proceedings of the National Academy of Sciences*, 120(30), p. e2305016120. [DOI 10.1073/pnas.2305016120](https://doi.org/10.1073/pnas.2305016120) · [acesso ao documento](https://pmc.ncbi.nlm.nih.gov/articles/PMC10372638/).
+
+Chave bibliográfica: `gilardi2023annotation`.
+
 <a id="ref-ginns2006contiguity"></a>
 
 ### Ginns (2006)
@@ -358,6 +366,14 @@ Chave bibliográfica: `graesser2004cohmetrix`.
 Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355. [DOI 10.25300/misq/2013/37.2.01](https://doi.org/10.25300/misq/2013/37.2.01).
 
 Chave bibliográfica: `gregor2013positioning`.
+
+<a id="ref-greimas1966recit"></a>
+
+### Greimas (1966)
+
+Algirdas Julien Greimas (1966). **Éléments pour une théorie de l'interprétation du récit mythique.** *Communications*, 8(1), p. 28–59. [DOI 10.3406/comm.1966.1114](https://doi.org/10.3406/comm.1966.1114) · [acesso ao documento](https://www.persee.fr/doc/comm_0588-8018_1966_num_8_1_1114).
+
+Chave bibliográfica: `greimas1966recit`.
 
 <a id="ref-han2025genaimeta"></a>
 
@@ -639,6 +655,14 @@ Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and F
 
 Chave bibliográfica: `panadero2017selfregulated`.
 
+<a id="ref-pangakis2023validation"></a>
+
+### Pangakis et al. (2023)
+
+Nicholas Pangakis; Samuel Wolken; Neil Fasching (2023). **Automated Annotation with Generative AI Requires Validation.** arXiv. [DOI 10.48550/arxiv.2306.00176](https://doi.org/10.48550/arxiv.2306.00176) · [acesso ao documento](https://arxiv.org/abs/2306.00176).
+
+Chave bibliográfica: `pangakis2023validation`.
+
 <a id="ref-parasuraman2010automation"></a>
 
 ### Parasuraman e Manzey (2010)
@@ -759,6 +783,14 @@ Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation fro
 
 Chave bibliográfica: `ryan2020motivation`.
 
+<a id="ref-saussure1916cours"></a>
+
+### Saussure (1916)
+
+Ferdinand de Saussure (1916). **Cours de linguistique générale.** Lausanne and Paris, Payot. [acesso ao documento](https://fr.wikisource.org/wiki/Cours_de_linguistique_g%C3%A9n%C3%A9rale/Deuxi%C3%A8me_partie).
+
+Chave bibliográfica: `saussure1916cours`.
+
 <a id="ref-schneider2018signaling"></a>
 
 ### Schneider et al. (2018)
@@ -782,6 +814,14 @@ Chave bibliográfica: `schnotz2003representations`.
 Neil Selwyn; Marita Ljungqvist; Anders Sonesson (2025). **When the Prompting Stops: Exploring Teachers' Work Around the Educational Frailties of Generative AI Tools.** *Learning, Media and Technology*, 50(3), p. 310–323. [DOI 10.1080/17439884.2025.2537959](https://doi.org/10.1080/17439884.2025.2537959).
 
 Chave bibliográfica: `selwyn2025prompting`.
+
+<a id="ref-sennrich2016subwords"></a>
+
+### Sennrich et al. (2016)
+
+Rico Sennrich; Barry Haddow; Alexandra Birch (2016). **Neural Machine Translation of Rare Words with Subword Units.** In: *Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, Association for Computational Linguistics, p. 1715–1725. [DOI 10.18653/v1/p16-1162](https://doi.org/10.18653/v1/p16-1162) · [acesso ao documento](https://aclanthology.org/P16-1162/).
+
+Chave bibliográfica: `sennrich2016subwords`.
 
 <a id="ref-shadish2002experimental"></a>
 

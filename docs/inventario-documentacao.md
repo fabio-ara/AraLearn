@@ -126,6 +126,7 @@ produto.
 | --- | --- |
 | [`docs/modelo-didatico.md`](modelo-didatico.md) | capítulo conceitual do percurso didático |
 | [`docs/desenho-instrucional-parametrizado.md`](desenho-instrucional-parametrizado.md) | capítulo conceitual e técnico dos parâmetros de desenho |
+| [`docs/corpus-unidades-de-analise.md`](corpus-unidades-de-analise.md) | exemplos sintéticos de recorte, contexto, idioma e distribuição de prática; não validação educacional |
 | [`docs/componentes-didaticos.md`](componentes-didaticos.md) | capítulo conceitual e técnico das representações e respostas |
 | [`docs/fundamentacao-pedagogica-dos-resources.md`](fundamentacao-pedagogica-dos-resources.md) | capítulo acadêmico das decisões representacionais |
 | [`docs/estado-de-estudo-nao-punitivo.md`](estado-de-estudo-nao-punitivo.md) | capítulo conceitual sobre continuidade e estado pessoal |

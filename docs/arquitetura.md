@@ -1,5 +1,10 @@
 # Arquitetura do AraLearn
 
+Este capítulo descreve a base publicada `0.0.64`. A
+[matriz de conformidade técnica](matriz-conformidade-tecnica.md) distingue os
+mecanismos encontrados dos destinos aprovados para sua evolução; uma capacidade
+planejada não deve ser tomada como disponível nesta base.
+
 O AraLearn conserva um curso vivo que pode ser estudado, desenvolvido e revisto
 sob a mesma identidade. A arquitetura separa quatro responsabilidades:
 
@@ -35,6 +40,11 @@ Estudo assim que existe. Revisar uma unidade de estudo não cria outra identidad
 **Estudo** apresenta os cursos acessíveis, a hierarquia curricular, uma unidade
 de estudo por vez, prática, progresso pessoal, marcas para rever e observações.
 Um curso compartilhado pode ser estudado sem conceder autoria no original.
+
+Na base atual, a tentativa de edição de um curso compartilhado pode criar uma
+cópia pessoal. Esse caminho será substituído pela regra aprovada de edição
+exclusiva do proprietário e cópia deliberada pelo autor. Cópias existentes e
+pendências locais precisam ser preservadas na migração, conforme a matriz.
 
 **Autoria** apresenta apenas cursos próprios. O curso abre diretamente em
 Conteúdo; Conteúdo e Planejamento permanecem no cabeçalho, enquanto Parâmetros,
@@ -216,6 +226,12 @@ o conteúdo.
 
 O build sincroniza o runtime necessário às Edge Functions e impede que versões
 de navegador e servidor divirjam silenciosamente.
+
+O registro já delega contratos e apresentação aos pacotes, mas a separação não
+é completa: o envelope ainda verifica nominalmente a combinação de pergunta de
+escolha com parágrafo, e o editor conhece lacunas e ordenação. A evolução
+transfere essas regras específicas ao contrato do pacote, conservando sua
+validação e edição. Composição, posições e ciclo de vida continuam comuns.
 
 ## Segurança por fronteira
 
