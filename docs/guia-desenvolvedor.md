@@ -193,9 +193,21 @@ segurança em nível de linha.
 
 ## Testes e integração
 
-Comece pelo arquivo focal com `node --test`. PGlite verifica transformações SQL
-e contratos próximos de PostgreSQL; Auth, RLS, Storage e concorrência real
-precisam do Supabase local. Para o navegador, use:
+Durante o desenvolvimento, escolha explicitamente os arquivos que exercitam a
+mudança. O runner comum aceita arquivos de `tests/kernel` e `tests/runtime`,
+recusa seleção vazia ou inválida e mantém o código de saída de uma falha:
+
+```powershell
+npm.cmd run test:focal -- tests/runtime/course-design-parameters.test.js
+npm.cmd run test:focal -- tests/runtime/ci-path-classification.test.js tests/runtime/test-runner.test.js
+```
+
+O modo focal não executa as auditorias e integrações completas de `npm test` nem
+produz aprovação da candidata. Sem argumentos, `scripts/runTests.mjs` continua
+executando todos os arquivos das duas suítes; `npm test` conserva também seus
+verificadores anteriores. PGlite verifica transformações SQL e contratos próximos
+de PostgreSQL; Auth, RLS, Storage e concorrência real precisam do Supabase local.
+Para o navegador, use:
 
 ```powershell
 npm.cmd run test:e2e

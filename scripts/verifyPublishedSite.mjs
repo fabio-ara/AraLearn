@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import {
   DEFAULT_ASSIST_ALLOWED_ORIGINS,
@@ -150,14 +151,27 @@ async function request(url, { fetchImpl, redirect = "error", waitImpl = wait } =
   throw new Error(`Não foi possível consultar ${new URL(url).pathname}.`);
 }
 
-async function readSuccessfulText(response, assetPath) {
+async function readCandidateBytes(response, assetPath, candidateFile) {
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length !== candidateFile.size) {
+    throw new Error(`${assetPath} tem tamanho diferente do arquivo aprovado na candidata.`);
+  }
+  if (createHash("sha256").update(bytes).digest("hex") !== candidateFile.sha256) {
+    throw new Error(`${assetPath} tem SHA-256 diferente do arquivo aprovado na candidata.`);
+  }
+  return bytes;
+}
+
+async function readSuccessfulText(response, assetPath, candidateFile) {
   if (!response.ok) throw new Error(`${assetPath} não está disponível (HTTP ${response.status}).`);
   assertMime(response, assetPath);
   const declaredLength = Number(response.headers?.get?.("content-length") || 0);
   if (declaredLength > MAX_TEXT_ASSET_BYTES) {
     throw new Error(`${assetPath} excede o limite de verificação por arquivo.`);
   }
-  const text = await response.text();
+  const text = candidateFile
+    ? (await readCandidateBytes(response, assetPath, candidateFile)).toString("utf8")
+    : await response.text();
   if (Buffer.byteLength(text, "utf8") > MAX_TEXT_ASSET_BYTES) {
     throw new Error(`${assetPath} excede o limite de verificação por arquivo.`);
   }
@@ -326,9 +340,47 @@ function assertVersionedServiceWorker(source, expectedRevision) {
   }
 }
 
+function isSafeRelativePath(value) {
+  return typeof value === "string" && value.length > 0 &&
+    !/[\\:%?#\p{Cc}]/u.test(value) &&
+    value.split("/").every((segment) => segment && segment !== "." && segment !== "..");
+}
+
+function validateCandidateManifest(manifest, siteUrl, expectedVersion) {
+  const files = manifest?.artifacts?.pages?.files;
+  const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+  if (manifest?.schemaVersion !== 1 || typeof manifest.version !== "string" ||
+      !semver.test(manifest.version) || !Array.isArray(files) ||
+      files.length === 0 || files.length > MAX_ASSET_COUNT) {
+    throw new Error("O manifesto da candidata não contém schema, versão ou lista Pages válidos.");
+  }
+  if (manifest.version !== expectedVersion) {
+    throw new Error(`O manifesto da candidata não corresponde à versão esperada ${expectedVersion}.`);
+  }
+  const approved = new Map();
+  let previousPath;
+  for (const file of files) {
+    if (!isSafeRelativePath(file?.path) || typeof file?.sha256 !== "string" ||
+        !/^[a-f0-9]{64}$/u.test(file.sha256) ||
+        !Number.isSafeInteger(file?.size) || file.size < 0 ||
+        (previousPath !== undefined && previousPath >= file.path)) {
+      throw new Error("O manifesto da candidata contém arquivo Pages inválido, caminho inseguro ou lista fora de ordem.");
+    }
+    const url = new URL(`./${file.path.split("/").map(encodeURIComponent).join("/")}`, siteUrl);
+    approved.set(file.path, { ...file, url });
+    previousPath = file.path;
+  }
+  const missing = ["asset-manifest.json", ...REQUIRED_ASSETS.map((asset) => asset.slice(2))]
+    .filter((asset) => !approved.has(asset));
+  if (missing.length) {
+    throw new Error(`O manifesto da candidata não contém os arquivos obrigatórios: ${missing.join(", ")}.`);
+  }
+  return approved;
+}
+
 function normalizeManifestAsset(siteUrl, value) {
-  const asset = requiredText(value, "Um caminho de asset-manifest.json").replaceAll("\\", "/");
-  if (!asset.startsWith("./") || asset.includes("\0") || asset.split("/").includes("..")) {
+  const asset = requiredText(value, "Um caminho de asset-manifest.json");
+  if (asset !== value || !asset.startsWith("./") || !isSafeRelativePath(asset.slice(2))) {
     throw new Error(`asset-manifest.json contém caminho inseguro: ${asset}.`);
   }
   const url = new URL(asset, siteUrl);
@@ -338,7 +390,7 @@ function normalizeManifestAsset(siteUrl, value) {
   return { asset, url };
 }
 
-function validateAssetManifest(source, siteUrl, expectedVersion) {
+function validateAssetManifest(source, siteUrl, expectedVersion, approvedFiles) {
   let manifest;
   try {
     manifest = JSON.parse(source);
@@ -356,8 +408,23 @@ function validateAssetManifest(source, siteUrl, expectedVersion) {
   }
   const assets = manifest.assets.map((asset) => normalizeManifestAsset(siteUrl, asset));
   const names = new Set(assets.map(({ asset }) => asset));
+  if (names.size !== assets.length) {
+    throw new Error("asset-manifest.json contém recursos duplicados.");
+  }
   const missing = REQUIRED_ASSETS.filter((asset) => !names.has(asset));
   if (missing.length) throw new Error(`asset-manifest.json não contém: ${missing.join(", ")}.`);
+  if (approvedFiles) {
+    const unapproved = assets.find(({ asset }) => !approvedFiles.has(asset.slice(2)));
+    if (unapproved) {
+      throw new Error(`asset-manifest.json anuncia arquivo fora da candidata aprovada: ${unapproved.asset}.`);
+    }
+    const omitted = [...approvedFiles.keys()].find((asset) =>
+      asset !== "asset-manifest.json" && !asset.endsWith(".map") && !names.has(`./${asset}`)
+    );
+    if (omitted) {
+      throw new Error(`asset-manifest.json omite arquivo da candidata aprovada: ${omitted}.`);
+    }
+  }
   const catalogFiles = assets
     .map(({ asset }) => asset)
     .filter((asset) => /(?:^|\/)(?:fixtures?|embedded-courses?|seed-course)(?:\/|$)|(?:seed-)?courses?(?:[.-][^/]*)?\.json$|catalog.*\.json$/iu.test(asset));
@@ -414,7 +481,7 @@ function cacheBustedUrl(value, key) {
   return url;
 }
 
-async function verifyCallback(siteUrl, fetchImpl, waitImpl) {
+async function verifyCallback(siteUrl, fetchImpl, waitImpl, candidateIndex) {
   const callbackUrl = new URL(siteUrl);
   for (const [key, value] of Object.entries(CALLBACK_PARAMETERS)) callbackUrl.searchParams.set(key, value);
   let currentUrl = callbackUrl;
@@ -436,7 +503,7 @@ async function verifyCallback(siteUrl, fetchImpl, waitImpl) {
     if (contentType(response) !== "text/html") {
       throw new Error("O callback de autenticação não devolve HTML.");
     }
-    const source = await readSuccessfulText(response, "callback de autenticação");
+    const source = await readSuccessfulText(response, "callback de autenticação", candidateIndex);
     if (!/<div\s+id=["']app-root["']/iu.test(source)) {
       throw new Error("O callback de autenticação não devolve o shell do AraLearn.");
     }
@@ -449,14 +516,18 @@ export async function verifyPublishedSite({
   siteUrl,
   fetchImpl = globalThis.fetch,
   waitImpl = wait,
-  expectedVersion = EXPECTED_APP_VERSION
+  expectedVersion = EXPECTED_APP_VERSION,
+  candidateManifest
 }) {
   if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
   const baseUrl = normalizeSiteUrl(siteUrl);
   const normalizedExpectedVersion = requiredText(expectedVersion, "a versão esperada");
+  const approvedFiles = candidateManifest === undefined
+    ? undefined
+    : validateCandidateManifest(candidateManifest, baseUrl, normalizedExpectedVersion);
   const publicationCheck = `${normalizedExpectedVersion}-${Date.now().toString(36)}`;
   const indexResponse = await request(cacheBustedUrl(baseUrl, publicationCheck), { fetchImpl, waitImpl });
-  const indexSource = await readSuccessfulText(indexResponse, "index.html");
+  const indexSource = await readSuccessfulText(indexResponse, "index.html", approvedFiles?.get("index.html"));
   assertNoSecrets(indexSource, "index.html");
   if (!/<div\s+id=["']app-root["']/iu.test(indexSource)) {
     throw new Error("index.html não contém o ponto de montagem do AraLearn.");
@@ -464,7 +535,9 @@ export async function verifyPublishedSite({
 
   const runtimeUrl = cacheBustedUrl(new URL("./runtime-config.js", baseUrl), publicationCheck);
   const runtimeResponse = await request(runtimeUrl, { fetchImpl, waitImpl });
-  const runtimeSource = await readSuccessfulText(runtimeResponse, "runtime-config.js");
+  const runtimeSource = await readSuccessfulText(
+    runtimeResponse, "runtime-config.js", approvedFiles?.get("runtime-config.js")
+  );
   assertNoSecrets(runtimeSource, "runtime-config.js");
   const runtimeConfig = parsePublicRuntimeConfig(runtimeSource);
   validatePublishedCsp(
@@ -475,25 +548,35 @@ export async function verifyPublishedSite({
 
   const manifestUrl = cacheBustedUrl(new URL("./asset-manifest.json", baseUrl), publicationCheck);
   const manifestResponse = await request(manifestUrl, { fetchImpl, waitImpl });
-  const manifestSource = await readSuccessfulText(manifestResponse, "asset-manifest.json");
+  const manifestSource = await readSuccessfulText(
+    manifestResponse, "asset-manifest.json", approvedFiles?.get("asset-manifest.json")
+  );
   assertNoSecrets(manifestSource, "asset-manifest.json");
   const { assets, revision } = validateAssetManifest(
     manifestSource,
     baseUrl,
-    normalizedExpectedVersion
+    normalizedExpectedVersion,
+    approvedFiles
   );
 
   let totalTextBytes = Buffer.byteLength(indexSource, "utf8") + Buffer.byteLength(runtimeSource, "utf8") + Buffer.byteLength(manifestSource, "utf8");
   let checkedResources = 3;
-  for (const { asset, url } of assets) {
-    if (asset === "./runtime-config.js") continue;
+  const resources = approvedFiles
+    ? [...approvedFiles.values()].map((file) => ({ asset: `./${file.path}`, url: file.url }))
+    : assets;
+  for (const { asset, url } of resources) {
+    if (asset === "./runtime-config.js" || asset === "./asset-manifest.json") continue;
     const checkedUrl = cacheBustedUrl(url, revision);
     const response = await request(checkedUrl, { fetchImpl, waitImpl });
     if (!response.ok) throw new Error(`${asset} não está disponível (HTTP ${response.status}).`);
     assertMime(response, asset);
     checkedResources += 1;
-    if (!TEXT_EXTENSIONS.has(path.posix.extname(url.pathname).toLowerCase())) continue;
-    const source = await readSuccessfulText(response, asset);
+    const candidateFile = approvedFiles?.get(asset.slice(2));
+    if (!TEXT_EXTENSIONS.has(path.posix.extname(url.pathname).toLowerCase())) {
+      if (candidateFile) await readCandidateBytes(response, asset, candidateFile);
+      continue;
+    }
+    const source = await readSuccessfulText(response, asset, candidateFile);
     totalTextBytes += Buffer.byteLength(source, "utf8");
     if (totalTextBytes > MAX_TOTAL_TEXT_BYTES) {
       throw new Error("Os recursos textuais excedem o limite total de verificação.");
@@ -509,14 +592,15 @@ export async function verifyPublishedSite({
     }
   }
 
-  await verifyCallback(baseUrl, fetchImpl, waitImpl);
+  await verifyCallback(baseUrl, fetchImpl, waitImpl, approvedFiles?.get("index.html"));
   return {
     siteUrl: baseUrl.href,
     version: normalizedExpectedVersion,
     artifactRevision: revision,
     projectUrl: runtimeConfig.projectOrigin,
     resourcesChecked: checkedResources,
-    callbackChecked: true
+    callbackChecked: true,
+    ...(approvedFiles ? { candidateManifestChecked: true, candidateFilesChecked: approvedFiles.size } : {})
   };
 }
 
@@ -526,6 +610,13 @@ export function parseCommandLine(argv, env = process.env) {
     const argument = argv[index];
     if (argument === "--url") {
       options.siteUrl = String(argv[index + 1] || "").trim();
+      index += 1;
+    } else if (argument === "--candidate-manifest") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("Falta informar o caminho do manifesto da candidata (--candidate-manifest).");
+      }
+      options.candidateManifestPath = requiredText(value, "o caminho do manifesto da candidata");
       index += 1;
     } else if (argument === "--json") {
       options.json = true;
@@ -539,7 +630,15 @@ export function parseCommandLine(argv, env = process.env) {
 
 async function main() {
   const options = parseCommandLine(process.argv.slice(2));
-  const result = await verifyPublishedSite({ siteUrl: options.siteUrl });
+  let candidateManifest;
+  if (options.candidateManifestPath) {
+    try {
+      candidateManifest = JSON.parse(readFileSync(options.candidateManifestPath, "utf8"));
+    } catch (error) {
+      throw new Error("Não foi possível ler o manifesto JSON da candidata.", { cause: error });
+    }
+  }
+  const result = await verifyPublishedSite({ siteUrl: options.siteUrl, candidateManifest });
   if (options.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } else {

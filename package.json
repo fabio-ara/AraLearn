@@ -8,6 +8,7 @@
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
     "test": "node ./scripts/buildReadableReferences.mjs --check && node ./scripts/buildVegaInterpreterVendor.mjs --check && node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/buildResourceCatalogCourse.mjs --check && node ./scripts/buildResourceGalleryFixture.mjs --check && node ./scripts/buildChatGptActionOpenApi.mjs --check && node ./scripts/auditCurrentArchitecture.mjs && node ./scripts/auditTerminology.mjs && node ./scripts/auditFrontendStyles.mjs && node ./scripts/auditFrontendResidues.mjs && node ./scripts/auditVerticalParity.mjs && node ./scripts/auditChoicePromptDuplication.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs",
+    "test:focal": "node ./scripts/runTests.mjs --focal",
     "test:supabase:smoke": "node ./scripts/validateCourseRuntime.mjs && node --test ./tests/runtime/course-human-task-executor.test.js ./tests/runtime/course-human-materialization.test.js ./tests/runtime/course-human-corrections.test.js",
     "test:authoring:mcp:local": "node --test ./tests/runtime/course-human-mcp.test.js ./tests/runtime/course-human-task-executor.test.js ./tests/runtime/course-human-materialization.test.js ./tests/runtime/course-human-corrections.test.js",
     "test:authoring:mcp:local:oauth": "node ./scripts/runLocalMcpOAuthSmoke.mjs",

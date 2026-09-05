@@ -310,7 +310,7 @@ test("implantação publica MCP OAuth, API de Curso e Actions sob os gates do co
   assert.match(source, /course-human-mcp\.test\.js/u);
   assert.doesNotMatch(source, /functions deploy aralearn-course-revisions/u);
   assert.doesNotMatch(source, /functions delete|Remove-AraLearnSupabaseFunctionIfPresent/u);
-  assert.match(source, /funções da versão publicada foram preservadas/u);
+  assert.match(source, /este script não executa rollback automático/u);
   assert.match(source, /function Resolve-AllowedOrigins/u);
   assert.match(source, /\$lintOutput = @\(& npx\.cmd[^\r\n]+db lint[^\r\n]+2>&1\)/u);
   assert.match(source, /\$lintExitCode = \[int\]\$LASTEXITCODE/u);
@@ -829,8 +829,7 @@ test("verificação detecta artefato gerado para outro projeto", {
 });
 
 test("verificação aprova configuração e CSP válidas dentro do APK", {
-  skip: !powerShellAvailable,
-  todo: "oráculo pós-auditoria preparado antes da implementação"
+  skip: !powerShellAvailable
 }, () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-safe-"));
   try {
@@ -867,8 +866,7 @@ test("verificador exige APK e runtime atual nos destinos finais", () => {
 });
 
 test("verificação aprova a identidade atual e as duas saídas conhecidas do apksigner", {
-  skip: !powerShellAvailable,
-  todo: "oráculo pós-auditoria preparado antes da implementação"
+  skip: !powerShellAvailable
 }, () => {
   for (const [label, signatureLine] of [
     ["atual", "V2 Signer: certificate SHA-256 digest: "],
@@ -909,62 +907,20 @@ test("versões publicáveis permanecem alinhadas entre npm e Android", () => {
   assert.match(currentAndroidVersionCode, /^\d+$/u);
 });
 
-test("release Android parte do push de versão em main e usa exatamente seu SHA", () => {
+test("Android só prepara assinatura pelo coordenador e retoma APK existente", () => {
   const source = fs.readFileSync(scripts.androidWorkflow, "utf8");
   const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
-  const jobEnvironment = source.slice(
-    source.indexOf("    env:"),
-    source.indexOf("    steps:")
-  );
-  assert.match(triggers, /push:\s*\n\s*branches:\s*\n\s*- main/u);
-  assert.match(triggers, /paths:\s*\n\s*- package\.json\s*\n\s*- android\/app\/build\.gradle\.kts/u);
-  assert.doesNotMatch(source, /workflow_run:|Validar repositório/u);
-  assert.match(source, /github\.ref == 'refs\/heads\/main'/u);
-  assert.match(source, /permissions:\s*\n\s*contents: write/u);
-  assert.match(source, /ref: \$\{\{ env\.ARALEARN_RELEASE_SHA \}\}/u);
-  assert.match(source, /ARALEARN_RELEASE_SHA: \$\{\{ github\.sha \}\}/u);
+  assert.match(triggers, /workflow_call:/u);
+  assert.doesNotMatch(triggers, /push:|workflow_dispatch:|workflow_run:/u);
   assert.match(source, /persist-credentials: false/u);
-  assert.doesNotMatch(jobEnvironment, /GH_TOKEN|ARALEARN_ANDROID_KEYSTORE_/u);
-  assert.equal(
-    source.match(/git fetch origin \+refs\/heads\/main:refs\/remotes\/origin\/main --no-tags/gu)?.length,
-    2
-  );
-  assert.match(source, /refs\/remotes\/origin\/main/u);
-  assert.match(source, /steps\.freshness\.outputs\.current == 'true'/u);
-  assert.doesNotMatch(source, /actions\/workflows\/validacao\.yml|Confirmar validação da revisão/u);
-  assert.match(source, /--target \$env:ARALEARN_RELEASE_SHA/u);
+  assert.match(source, /releaseCandidate\.mjs reuse-apk/u);
+  assert.match(source, /releaseCandidate\.mjs stage-release/u);
   assert.match(source, /verifyDeploymentArtifacts\.ps1/u);
-  assert.match(source, /git ls-remote --tags origin \$tagRef/u);
-  assert.match(source, /releases\/tags[\s\S]+Invoke-RestMethod/u);
-  assert.match(source, /\$statusCode -ne 404/u);
-  assert.match(source, /\$tagExists -xor \$releaseExists/u);
-  assert.match(source, /\$remoteTagSha -cne \$env:ARALEARN_RELEASE_SHA/u);
-  assert.match(source, /\[bool\]\$release\.draft/u);
-  assert.match(source, /\[bool\]\$release\.prerelease/u);
-  assert.match(source, /AraLearn-\$version\.apk/u);
-  assert.match(source, /\[int64\]\$asset\[0\]\.size -le 0/u);
-  assert.match(source, /\[string\]\$asset\[0\]\.state -cne 'uploaded'/u);
-  assert.match(source, /gh release download[\s\S]+--pattern \$asset/u);
-  assert.ok(
-    source.lastIndexOf("gh release download") <
-      source.lastIndexOf("verifyDeploymentArtifacts.ps1")
-  );
-  assert.match(source, /npm run deployment:verify-hosted/u);
-  assert.match(
-    source,
-    /- name: Compilar APK de release[\s\S]+?env:[\s\S]+?ARALEARN_ANDROID_KEYSTORE_PASSWORD:[\s\S]+?ARALEARN_ANDROID_KEY_ALIAS:[\s\S]+?ARALEARN_ANDROID_KEY_PASSWORD:[\s\S]+?run: npm run android:release/u
-  );
-  assert.ok(
-    source.indexOf("npm run deployment:verify-hosted") < source.indexOf("npm test") &&
-      source.indexOf("npm test") < source.indexOf("npm run lint") &&
-      source.indexOf("npm run deployment:verify-hosted") < source.indexOf("npm run android:release")
-  );
-  assert.match(source, /- name: Executar testes antes da release[\s\S]+run: npm test/u);
-  assert.match(source, /- name: Analisar código antes da release[\s\S]+run: npm run lint/u);
-  assert.doesNotMatch(source, /run:\s*\|\s*\r?\n\s*npm test\s*\r?\n\s*npm run lint/u);
-  assert.match(source, /android-release-\$\{\{[\s\S]+\|\| github\.run_id \}\}/u);
-  assert.doesNotMatch(source, /certificate SHA-256 digest/u);
-  assert.doesNotMatch(source, /compatibilidade para materialização/u);
+  assert.match(source, /RequireExplicitConfiguration/u);
+  assert.doesNotMatch(source, /npm test|npm run lint|finalize-release|gh release create/u);
+  assert.ok(source.indexOf("releaseCandidate.mjs reuse-apk") < source.indexOf("secrets.ARALEARN_ANDROID_KEYSTORE_BASE64"));
+  assert.ok(source.indexOf("verifyDeploymentArtifacts.ps1") < source.indexOf("releaseCandidate.mjs stage-release"));
+  assert.match(source, /always\(\)[\s\S]+Remove-Item -LiteralPath \$keystorePath/u);
 });
 
 test("Android expõe callback móvel e salvamento textual local restrito", () => {
@@ -1035,41 +991,23 @@ test("validação local atravessa MCP OAuth, API direta e Supabase real", () => 
   assert.doesNotMatch(source, /test:authoring:supabase:e2e/u);
 });
 
-test("Pages publica diretamente o push não documental protegido em main", () => {
+test("uma promoção exige candidata exata e ordena Android, Pages e Release", () => {
   const source = fs.readFileSync(scripts.pagesWorkflow, "utf8");
   const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
-  assert.match(triggers, /push:\s*\n\s*branches:\s*\n\s*- main/u);
-  assert.match(triggers, /paths-ignore:[\s\S]+docs\/\*\*\/\*\.md/u);
-  assert.doesNotMatch(source, /workflow_run:|Validar repositório/u);
-  assert.match(
-    source,
-    /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/u
-  );
-  assert.match(source, /permissions:\s*\n\s*contents: read/u);
-  assert.equal(
-    source.match(/ref: \$\{\{ env\.ARALEARN_PAGES_SHA \}\}/gu)?.length,
-    2
-  );
-  assert.match(source, /ARALEARN_PAGES_SHA: \$\{\{ github\.sha \}\}/u);
-  assert.doesNotMatch(source, /actions\/workflows\/validacao\.yml|Confirmar validação da revisão/u);
-  assert.match(
-    source,
-    /group: pages-\$\{\{[\s\S]+\|\| github\.run_id \}\}/u
-  );
-  assert.match(source, /npm run deployment:verify-hosted/u);
-  assert.match(source, /npm run pages:build/u);
-  assert.ok(
-    source.indexOf("npm run deployment:verify-hosted") <
-      source.indexOf("npm run pages:build") &&
-    source.indexOf("npm run pages:build") <
-      source.indexOf("verifyDeploymentArtifacts.ps1")
-  );
-  assert.doesNotMatch(
-    source,
-    /npm test|npm run lint|npm run validate:course-runtime|npm run test:e2e|playwright install/u
-  );
-  assert.match(source, /node \.\/scripts\/verifyPublishedSite\.mjs --url/u);
-  assert.doesNotMatch(source, /Start-Sleep|\$attempts/u);
+  assert.match(triggers, /workflow_dispatch:/u);
+  assert.match(triggers, /candidate_run_id:[\s\S]+candidate_run_attempt:/u);
+  assert.doesNotMatch(triggers, /push:|workflow_run:|pull_request/u);
+  assert.match(source, /needs: candidate[\s\S]+uses: \.\/\.github\/workflows\/android-release\.yml/u);
+  assert.match(source, /needs: \[candidate, android\]/u);
+  assert.match(source, /needs: \[candidate, android, pages\]/u);
+  assert.match(source, /releaseCandidate\.mjs prepare/u);
+  assert.match(source, /releaseCandidate\.mjs verify-backend/u);
+  assert.match(source, /releaseCandidate\.mjs verify-pages/u);
+  assert.match(source, /--candidate-manifest \.candidate\/candidate\.json/u);
+  assert.match(source, /releaseCandidate\.mjs finalize-release/u);
+  assert.match(source, /site_current != 'true'/u);
+  assert.doesNotMatch(source, /npm test|npm run lint|pages:build|continue-on-error/u);
+  assert.match(source, /cancel-in-progress: false/u);
 });
 
 test("validação do repositório usa permissão mínima", () => {
@@ -1118,20 +1056,18 @@ test("validação obrigatória distingue documentação sem omitir os jobs exist
   assert.match(source, /always\(\) && steps\.paths\.outputs\.docs_only != 'true'/u);
 });
 
-test("PR conserva a prévia web e o APK debug sem promover uma release", () => {
+test("PR conserva artefatos e apenas o gate integral sela a candidata", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
-  assert.ok(Array.from(source.matchAll(/steps\.paths\.outputs\.docs_only != 'true'/gu)).length >= 20);
-  assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_URL: \$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/gu)).length, 2);
-  assert.equal(Array.from(source.matchAll(/ARALEARN_SUPABASE_PUBLISHABLE_KEY: \$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/gu)).length, 2);
-  assert.equal(Array.from(source.matchAll(/-RequireRuntimeConfig/gu)).length, 2);
-  assert.match(
-    source,
-    /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-pages-candidate\s*\n\s*path: \.pages\s*\n\s*include-hidden-files: true/u
-  );
-  assert.equal(Array.from(source.matchAll(/include-hidden-files: true/gu)).length, 1);
-  assert.match(source, /uses: actions\/upload-artifact@v4[\s\S]+name: aralearn-android-debug-candidate[\s\S]+path: android\/app\/build\/outputs\/apk\/debug\/app-debug\.apk/u);
-  assert.equal(Array.from(source.matchAll(/retention-days: 7/gu)).length, 2);
-  assert.doesNotMatch(source, /actions\/deploy-pages|gh release create|app-release\.apk/u);
+  assert.match(source, /name: Testar e validar\s*\n\s*needs: \[web, supabase\]\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
+  assert.match(source, /test "\$WEB_RESULT" = success/u);
+  assert.match(source, /test "\$SUPABASE_RESULT" = success/u);
+  assert.match(source, /aralearn-pages-candidate-\$\{\{ github\.run_attempt \}\}/u);
+  assert.match(source, /aralearn-candidate-manifest-\$\{\{ github\.run_attempt \}\}/u);
+  assert.match(source, /releaseCandidate\.mjs record/u);
+  assert.match(source, /releaseCandidate\.mjs seal/u);
+  assert.match(source, /PAGES_ARTIFACT_DIGEST: \$\{\{ needs\.web\.outputs\.pages_digest \}\}/u);
+  assert.match(source, /aralearn-android-debug-candidate/u);
+  assert.doesNotMatch(source, /actions\/deploy-pages|gh release create|app-release\.apk|secrets\.ARALEARN_ANDROID/u);
 });
 
 test("workflows usam Actions mantidas sobre o runtime atual do GitHub", () => {

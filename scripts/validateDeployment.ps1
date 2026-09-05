@@ -52,7 +52,7 @@ try {
   )
 
   if ($Scope -in @('Web', 'Full')) {
-    Invoke-CheckedCommand 'Build web' 'npm.cmd' @('run', 'pages:build')
+    Invoke-CheckedCommand 'Gerar e testar o artefato web' 'npm.cmd' @('run', 'test:e2e')
     $artifactArguments = @(
       '-NoProfile',
       '-File',
@@ -64,7 +64,6 @@ try {
       $artifactArguments += '-RequireRuntimeConfig'
     }
     Invoke-CheckedCommand 'Inspeção do artefato web' 'pwsh' $artifactArguments
-    Invoke-CheckedCommand 'Testes no navegador' 'npm.cmd' @('run', 'test:e2e')
   }
 
   if ($Scope -eq 'Full') {

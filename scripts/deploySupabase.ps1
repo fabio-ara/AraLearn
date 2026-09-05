@@ -204,7 +204,7 @@ process.stdout.write(COURSE_HUMAN_TASK_CATALOG_HEADER);
         $courseApiPreflight.StatusCode -ge 300 -or
         $courseApiPreflight.Headers['Access-Control-Allow-Origin'] -ne
           'https://fabio-ara.github.io') {
-      throw 'O preflight hospedado da API de Cursos falhou; as funções antigas foram preservadas.'
+      throw 'O preflight hospedado da API de Cursos falhou após o deploy; interrompa a publicação e verifique ou recupere o backend conforme o plano de implantação.'
     }
 
     foreach ($actionOrigin in $RequiredActionOrigins) {
@@ -232,10 +232,10 @@ process.stdout.write(COURSE_HUMAN_TASK_CATALOG_HEADER);
     Write-Host 'Validando o MCP OAuth hospedado...'
     & node .\scripts\runHostedMcpOAuthSmoke.mjs
     if ($LASTEXITCODE -ne 0) {
-      throw 'O smoke hospedado do runtime de Cursos falhou; as funções antigas foram preservadas.'
+      throw 'O smoke hospedado do runtime de Cursos falhou após o deploy; interrompa a publicação e verifique ou recupere o backend conforme o plano de implantação.'
     }
 
-    Write-Host 'As funções da versão publicada foram preservadas até a verificação do novo site.'
+    Write-Host 'As três funções foram atualizadas. A publicação do site depende dos gates restantes; este script não executa rollback automático.'
   }
 
   Write-Host 'Implantação concluída.'

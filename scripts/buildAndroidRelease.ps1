@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param([switch]$RequireExplicitConfiguration)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -11,6 +14,9 @@ function Set-PublicRuntimeConfigIfMissing {
   $currentKey = [string]$env:ARALEARN_SUPABASE_PUBLISHABLE_KEY
   if (-not [string]::IsNullOrWhiteSpace($currentUrl) -and -not [string]::IsNullOrWhiteSpace($currentKey)) {
     return $false
+  }
+  if ($RequireExplicitConfiguration) {
+    throw 'A promoção exige configuração pública explícita vinculada à candidata.'
   }
 
   try {
@@ -54,6 +60,9 @@ function Select-AndroidSigningCapability {
   $configuredKeystoreExists = $hasCompleteValues -and (Test-Path -LiteralPath $values["ARALEARN_ANDROID_KEYSTORE_PATH"] -PathType Leaf)
   if ($configuredKeystoreExists) {
     return
+  }
+  if ($RequireExplicitConfiguration) {
+    throw 'A promoção exige a configuração completa da assinatura histórica.'
   }
 
   if (Test-Path -LiteralPath $historicalDebugKeystorePath -PathType Leaf) {
