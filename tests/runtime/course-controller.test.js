@@ -1,4 +1,5 @@
 import test from "node:test";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
@@ -28,21 +29,16 @@ const COURSE_B = "20000000-0000-4000-8000-000000000002";
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
-    contract: "aralearn.course-authoring-analytics.v2",
+    contract: "aralearn.course-authoring-analytics.v3",
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
       studyUnitCount: 0,
-      parameters: [[
-        "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
-      ], ["required_explanation_forms", "Formas", "string_list"], [
-        "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-      ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
-        "authoring_chat_response_word_target", "Extensão da conversa", "integer"
-      ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
-        .map(([parameterId, label, valueKind]) => ({
-          parameterId, label, valueKind, effectiveValues: []
-        })),
+      parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      definition: structuredClone(definition), effectiveValues: []
+    })),
       editorialDirections: [],
       analysisUnits: [],
       introductionsByStudyUnit: [],
@@ -51,7 +47,8 @@ function analyticsSnapshot() {
       practiceByRequirement: [],
       practiceVariationDimensions: [],
       sourcesByRole: [],
-      wordCountsByStudyUnit: []
+      wordCountsByStudyUnit: [],
+      practiceSequence: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -1047,7 +1044,7 @@ test("desenho exige leitura corrente, mantém DTO exato e mutação limpa o Curs
   let online = true;
   let revoked = false;
   const design = {
-    contract: "aralearn.course-design.v1",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision: 4,
     scopeContext: { current: { kind: "lesson", ref: "lesson-a", label: "Lição A" } }

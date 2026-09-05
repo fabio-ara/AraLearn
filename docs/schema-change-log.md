@@ -1,5 +1,55 @@
 # Alterações do schema
 
+## 20260905083846 — escolha automática na aplicação contextual
+
+A migration `20260905083846_contextual_automatic_design_application.sql` permite
+que a materialização existente selecione valores automáticos no contexto da
+unidade, registrando valor, origem e motivo no snapshot v2. Parte, lote e pausa
+mantêm escopo de curso e valores independentes, sem exigir gravação prévia da
+intenção delegada. Somente parâmetros cujo catálogo admite unidade podem gerar
+atribuição local. Uma condição fixa conserva valor, origem, motivo e escopo;
+conflitos de pesquisa precisam ser resolvidos antes de aplicar.
+
+Conteúdo, escolhas e recibo permanecem na mesma transação e revisão. A repetição
+de uma requisição confirmada retorna o recibo; uma nova requisição com revisão
+antiga falha. A correção não altera dados existentes. Antes de aplicar, mantenha
+backup com restauração ensaiada e confira que somente as migrations esperadas
+estão pendentes; o manifesto final deste recorte é `20260905083846`.
+
+O ensaio transacional passou 16 verificações. Após a aplicação local,
+`009_runtime_manifest_test.sql` e
+`015_contextual_automatic_design_application_test.sql` passaram 41 verificações,
+incluindo aplicação pelo writer público, rejeição sem conteúdo parcial, fixação
+preservada e resposta perdida. Fixtures sintéticas são revertidas ao terminar;
+essa evidência não declara implantação hospedada.
+
+## 20260905080544 — parâmetros por escopo e perfis de autoria
+
+A migration `20260905080544_scoped_authoring_preferences_and_profiles.sql` projeta
+o catálogo único 1.2.0, distingue intenção automática de valor fixo e substitui
+os leitores e escritores de desenho e Analytics por contratos v3. Atribuições
+existentes conservam valor e justificativa; o modo é derivado da origem anterior.
+Condições de pesquisa incompatíveis são expostas e bloqueiam aplicação silenciosa.
+
+Snapshots existentes passam ao contrato v2 mantendo somente o que foi registrado:
+catálogo 1.0.0 para quatro parâmetros ou 1.1.0 para seis, com motivo nulo quando
+ausente. Não se acrescentam escolhas retroativas, nem se alteram conteúdo,
+versões ou aplicações. Recibos de desenho são migrados para permitir reconciliar
+uma resposta perdida mesmo após a substituição das RPCs.
+
+Perfis pertencem à conta, com até 32 nomes distintos e preferências tipadas.
+CRUD usa revisão corrente e recibos existentes de 14 dias. A aplicação compara
+as revisões do curso e do perfil, copia preferências e conserva exceções, salvo
+remoção explicitamente selecionada. Pesquisa fica protegida. Reaplicação
+equivalente é inócua; excluir ou editar o perfil não altera as cópias.
+
+Antes do corte, confira as migrations pendentes e mantenha backup com restauração
+ensaiada. Formatos históricos desconhecidos bloqueiam a migração para investigação.
+O ensaio transacional de upgrade passou sete verificações; o banco local aplicado
+passou 77 verificações focais em `009_runtime_manifest_test.sql` e
+`014_authoring_preferences_and_profiles_test.sql`. Essas provas locais não
+certificam implantação hospedada.
+
 ## 20260905062817 — identidade e acesso público
 
 A migration `20260905062817_public_course_access_and_identity.sql` introduz identificadores escolhidos pelas pessoas e leitura pública de cursos. Perfis conservam UUID e avatar; o identificador inicial fica vazio até a escolha. Os nomes anteriores são preservados em `private.person_profile_identity_migration_backup`, sem permissão para clientes nem leitor de runtime. Cursos existentes e novos permanecem privados por padrão.

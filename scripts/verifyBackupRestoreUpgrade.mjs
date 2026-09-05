@@ -609,7 +609,7 @@ function assertAfterState(state, expectedManifestRevision) {
   assert.equal(state.parts, 1);
   assert.equal(state.partMicrosequences, 1);
   assert.deepEqual(state.studyUnitDesign, {
-    snapshotContract: "aralearn.study-unit-design-snapshot.v1",
+    snapshotContract: "aralearn.study-unit-design-snapshot.v2",
     applicationContract: "aralearn.study-unit-design-application.v1",
     ceiling: 1,
     introduced: ["74000000-0000-4000-8000-000000000012"],

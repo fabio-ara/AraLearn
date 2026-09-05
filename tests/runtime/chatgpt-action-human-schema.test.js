@@ -1,3 +1,4 @@
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
@@ -42,6 +43,11 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 });
 
 const samples = {
+  consultar_perfis: {},
+  salvar_perfil: { nome: "Exposição e prática", automaticos: ["distribuicao_da_pratica"] },
+  excluir_perfil: { perfil: "Exposição e prática" },
+  prever_aplicacao_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática" },
+  aplicar_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática", previa: "a".repeat(64) },
   retomar_curso: { titulo: "Redes para iniciantes" },
   consultar_planejamento: { curso: "Redes para iniciantes", parte: 2 },
   preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets" },
@@ -109,15 +115,14 @@ const samples = {
       posicao: 1,
       conteudo: SAMPLE_THEORY_CONTENT,
       configuracao: {
-        parametrosPedagogicos: {
-          tetoNovasUnidadesDeAnalise: 1,
-          formasDeExplicacao: ["plain_definition"],
-          minimoDePraticasPorRequisito: 1,
-          dimensoesDeVariacaoDaPratica: ["case_or_data"]
-        },
-        parametrosEditoriais: {
-          alvoDePalavrasPorResposta: 90,
-          alvoDePalavrasPorUnidade: 180
+    motivo: "Escolha contextual sintética deste teste.",
+        parametros: {
+          maximo_ideias_novas_por_unidade: 1,
+          formas_de_explicacao: ["plain_definition"],
+          oportunidades_distintas_por_requisito: 1,
+          dimensoes_de_variacao_da_pratica: ["case_or_data"],
+          alvo_palavras_conversa: 90,
+          alvo_palavras_unidade: 180
         },
         direcaoEditorial: "Explique o mecanismo antes de nomear exceções."
       },
@@ -138,7 +143,7 @@ const samples = {
     curso: "Redes para iniciantes",
     microssequencia: "Sockets",
     condicao: "fixada_pelo_autor",
-    parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
+    parametros: { maximo_ideias_novas_por_unidade: 1 }
   },
   registrar_observacao: {
     curso: "Redes para iniciantes",
@@ -171,8 +176,22 @@ const samples = {
   }
 };
 
+function resolveReferences(value) {
+  if (Array.isArray(value)) return value.map(resolveReferences);
+  if (!value || typeof value !== "object") return value;
+  if (value.$ref) {
+    assert.ok(value.$ref.startsWith("#/components/"), value.$ref);
+    const target = value.$ref.slice(2).split("/").reduce((object, key) => object[key], openApi);
+    assert.ok(target, value.$ref);
+    const rest = { ...value };
+    delete rest.$ref;
+    return { ...resolveReferences(target), ...resolveReferences(rest) };
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, resolveReferences(entry)]));
+}
+
 function operation(name) {
-  return openApi.paths[`/${name}`]?.post;
+  return resolveReferences(openApi.paths[`/${name}`]?.post);
 }
 
 function visit(value, callback, path = "$") {
@@ -182,14 +201,14 @@ function visit(value, callback, path = "$") {
   else Object.entries(value).forEach(([key, entry]) => visit(entry, callback, `${path}.${key}`));
 }
 
-test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
+test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
   assert.deepEqual(Object.keys(openApi.paths), COURSE_HUMAN_TASKS.map(({ name }) => `/${name}`));
   assert.equal(openApi.info["x-aralearn-task-catalog"], COURSE_HUMAN_TASK_CATALOG_METADATA.id);
   assert.equal(
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.5");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.4.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -204,7 +223,7 @@ test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real"
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
-      task.name === "manter_fonte",
+      ["manter_fonte", "excluir_perfil"].includes(task.name),
       task.name
     );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
@@ -297,7 +316,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /estado default[\s\S]*calibr[\s\S]*(?:em silêncio|silenciosamente)/iu
+    /em automático[\s\S]*calibr[\s\S]*(?:em silêncio|silenciosamente)/iu
   );
   assert.match(
     openApi.info.description,
@@ -367,15 +386,10 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
   ].map((schema) => schema.properties.unidades.items.properties.configuracao);
   for (const schema of schemas) {
     assert.equal(schema.additionalProperties, false);
-    assert.deepEqual(Object.keys(schema.properties.parametrosPedagogicos.properties).sort(), [
-      "dimensoesDeVariacaoDaPratica", "formasDeExplicacao",
-      "minimoDePraticasPorRequisito", "tetoNovasUnidadesDeAnalise"
-    ]);
-    assert.deepEqual(Object.keys(schema.properties.parametrosEditoriais.properties).sort(), [
-      "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
-    ]);
+    assert.deepEqual(Object.keys(schema.properties.parametros.properties).sort(),
+      COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField).sort());
     assert.deepEqual(
-      schema.properties.parametrosPedagogicos.properties.formasDeExplicacao.items.enum,
+      schema.properties.parametros.properties.formas_de_explicacao.items.enum,
       [
         "plain_definition", "concrete_example", "mechanism", "contrast",
         "application_condition", "limit_or_exception", "worked_example",
@@ -383,8 +397,8 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
       ]
     );
     assert.deepEqual(
-      schema.properties.parametrosPedagogicos.properties
-        .dimensoesDeVariacaoDaPratica.items.enum,
+      schema.properties.parametros.properties
+        .dimensoes_de_variacao_da_pratica.items.enum,
       ["case_or_data", "context", "task_feature", "external_representation", "support_level"]
     );
     assert.deepEqual(schema.properties.direcaoEditorial, {
@@ -399,34 +413,21 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
     actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
     operation("materializar_parte").requestBody.content["application/json"].schema
   ];
-  const expectedPedagogical = [
-    "dimensoesDeVariacaoDaPratica",
-    "formasDeExplicacao",
-    "minimoDePraticasPorRequisito",
-    "tetoNovasUnidadesDeAnalise"
-  ];
-  const expectedEditorial = [
-    "alvoDePalavrasPorResposta",
-    "alvoDePalavrasPorUnidade"
-  ];
+  const expectedFields = COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField).sort();
 
   for (const schema of schemas) {
     const unit = schema.properties.unidades.items;
     const configuration = unit.properties.configuracao;
-    const pedagogical = configuration.properties.parametrosPedagogicos;
-    const editorial = configuration.properties.parametrosEditoriais;
+    const parameters = configuration.properties.parametros;
 
     assert.ok(unit.required.includes("configuracao"));
     assert.deepEqual(
       [...(configuration.required ?? [])].sort(),
-      ["parametrosEditoriais", "parametrosPedagogicos"]
+      ["motivo", "parametros"]
     );
-    assert.deepEqual([...(pedagogical.required ?? [])].sort(), expectedPedagogical);
-    assert.deepEqual([...(editorial.required ?? [])].sort(), expectedEditorial);
-    for (const property of [
-      ...Object.values(pedagogical.properties),
-      ...Object.values(editorial.properties)
-    ]) {
+    assert.deepEqual(Object.keys(parameters.properties).sort(), expectedFields);
+    assert.equal(parameters.minProperties, 1);
+    for (const property of Object.values(parameters.properties)) {
       assert.equal(
         Array.isArray(property.type) && property.type.includes("null"),
         false,
@@ -443,12 +444,12 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
     const validate = new Ajv2020({ allErrors: true, strict: false })
       .compile(validationSchema);
     assert.equal(validate(samples.materializar_parte), true, JSON.stringify(validate.errors));
-    for (const group of ["parametrosPedagogicos", "parametrosEditoriais"]) {
+    for (const group of ["parametros"]) {
       const fields = Object.keys(configuration.properties[group].properties);
       for (const field of fields) {
         const missing = structuredClone(samples.materializar_parte);
-        delete missing.unidades[0].configuracao[group][field];
-        assert.equal(validate(missing), false, `${group}.${field} ausente`);
+        delete missing.unidades[0].configuracao.motivo;
+        assert.equal(validate(missing), false, "Toda escolha contextual requer motivo.");
 
         const nullValue = structuredClone(samples.materializar_parte);
         nullValue.unidades[0].configuracao[group][field] = null;
@@ -564,7 +565,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   assert.match(flow.authorizationUrl, /\/oauth\/authorize$/u);
   assert.match(flow.tokenUrl, /\/oauth\/token$/u);
   for (const task of COURSE_HUMAN_TASKS) {
-    assert.deepEqual(operation(task.name).responses, {
+    assert.deepEqual(openApi.paths[`/${task.name}`].post.responses, {
       "200": { $ref: "#/components/responses/Success" },
       default: { $ref: "#/components/responses/Error" }
     });
@@ -590,4 +591,18 @@ test("#272 golden set cobre prompts diretos, indiretos e negativos", () => {
     )).length, 1, `${task.name}: indirect`);
   }
   assert.equal(negative.every(({ class: className }) => className === "negative"), true);
+});
+
+
+test("schemas compartilhados de Actions preservam integralmente os argumentos do catálogo", () => {
+  const constraints = (value) => {
+    if (Array.isArray(value)) return value.map(constraints);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "description")
+      .map(([key, entry]) => [key, constraints(entry)]));
+  };
+  for (const task of actionTools) {
+    assert.deepEqual(constraints(operation(task.name).requestBody.content["application/json"].schema),
+      constraints(task.inputSchema), task.name);
+  }
 });

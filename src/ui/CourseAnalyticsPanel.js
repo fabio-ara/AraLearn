@@ -318,6 +318,36 @@ function practiceAndSourceRows(design) {
   ];
 }
 
+function practiceDistributionRows(design) {
+  const observed = design.practiceDistribution;
+  const order = new Map([...design.practiceSequence].sort((left, right) => left.position - right.position)
+    .map(({ position }, index) => [position, index + 1]));
+  const positions = (values) => values.length
+    ? values.map((position) => `${formatCount(order.get(position))}ª`).join(", ")
+    : "Nenhuma";
+  let relativePosition = "Sem explicação declarada, a posição relativa da prática não está definida.";
+  if (observed.expositionPositions.length && !observed.practicePositions.length) {
+    relativePosition = "Não há prática declarada para comparar com a explicação.";
+  } else if (observed.expositionPositions.length && observed.practicePositions.length) {
+    relativePosition = `${formatCount(observed.practiceBeforeExpositionCount)} antes da primeira explicação · ` +
+      `${formatCount(observed.practiceBetweenExpositionsCount)} entre a primeira e a última · ` +
+      `${formatCount(observed.practiceAfterExpositionCount)} depois da última. ` +
+      "Na mesma unidade, explicação e prática são contadas como mistas.";
+  }
+  return [
+    { label: "Somente explicação", value: plural(observed.expositoryOnlyCount, "unidade de estudo", "unidades de estudo") },
+    { label: "Somente prática", value: plural(observed.practiceOnlyCount, "unidade de estudo", "unidades de estudo") },
+    { label: "Explicação e prática na mesma unidade", value: plural(observed.mixedCount, "unidade mista", "unidades mistas") },
+    { label: "Função não declarada", value: plural(observed.undeclaredCount, "unidade de estudo", "unidades de estudo") },
+    { label: "Posições com explicação, incluindo mistas", value: positions(observed.expositionPositions) },
+    { label: "Posições com prática, incluindo mistas", value: positions(observed.practicePositions) },
+    { label: "Trechos consecutivos somente de explicação", value: observed.expositoryRunLengths.length
+      ? observed.expositoryRunLengths.map((length) => plural(length, "unidade", "unidades")).join(" · ") : "Nenhum" },
+    { label: "Maior trecho somente de explicação", value: plural(observed.longestExpositoryRun, "unidade", "unidades") },
+    { label: "Posição da prática em relação à explicação", value: relativePosition }
+  ];
+}
+
 function authorshipRows(authorship) {
   return [
     {
@@ -369,6 +399,12 @@ function renderDesign(design) {
       title: "Conteúdo e representações",
       definition: "Introduções, usos, retomadas, formas explicativas e componentes do escopo.",
       rows: structureRows(design)
+    }) + renderTableDetails({
+      title: "Distribuição de explicação e prática",
+      definition: "Funções declaradas nas unidades, em ordem neste escopo. As posições começam em 1. " +
+        "Unidades mistas aparecem nas duas listas de posições; funções não declaradas permanecem distintas. " +
+        "Essas contagens não avaliam qualidade, alternância nem atendimento à preferência de distribuição.",
+      rows: practiceDistributionRows(design)
     }) + renderTableDetails({
       title: "Prática e fontes",
       definition: "Oportunidades, variações e sustentação por papel.",

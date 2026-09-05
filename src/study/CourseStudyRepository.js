@@ -1163,6 +1163,13 @@ export class CourseStudyRepository {
     return this.loadProject();
   }
 
+  loadCourseDesign(courseId, options = {}) {
+    if (this.visitor || typeof this.bridge.loadCourseDesign !== "function") {
+      throw new TypeError("Os ajustes de autoria exigem uma conta proprietária.");
+    }
+    return this.bridge.loadCourseDesign(courseId, options);
+  }
+
   async checkAccess() {
     const revokedCourseIds = [];
     for (const courseId of this.loadedCourseById.keys()) {

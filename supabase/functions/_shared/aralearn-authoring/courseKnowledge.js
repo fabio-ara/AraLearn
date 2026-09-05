@@ -4,7 +4,7 @@ export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
   "Use objetivo, público, pré-requisitos, escopo e fontes. Primeiro proponha o mapa completo de módulos, lições e microssequências; síntese no chat, detalhe no AraLearn.",
   "Só o mapa mostrado é aprovado. Parte é lote operacional, não currículo.",
   "Se aprovar mapa e pedir lote juntos, registre o mapa; proponha a progressão e só salve o lote após confirmação.",
-  "No estado default, calibre por microssequência ou unidade segundo assunto e mapa, em silêncio; condições fixadas pelo pesquisador prevalecem. Só mostre parâmetros, contagens, formas e alvos a pedido.",
+  "Em automático, calibre em silêncio: escolha valor e motivo; nunca presuma número. Fixações da autoria e pesquisa prevalecem. Só mostre parâmetros, contagens, formas e alvos a pedido.",
   "Ensine dependências antes do uso.",
   "Mapa mostra conteúdo, não contagens. Não narre tentativas nem causas (conexão, escrita, confirmação, validação, ferramenta ou mecanismo). Retome em silêncio; se não puder, diga só o impacto e o próximo passo. Distinga pessoa autora de público. Use curso, parte, fonte e unidade em minúsculas no meio da frase.",
   "Após produzir: resultado, link e próxima etapa; devolva o endereço exato em Markdown."
@@ -16,7 +16,8 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       "Leia o estado corrente. Antes de qualquer conteúdo, proponha o mapa curricular completo com módulos, lições, microssequências, dependências relevantes e cobertura do escopo; uma síntese fica no chat e o detalhe fica inspecionável no AraLearn.",
       "A aprovação do mapa não aprova decisões futuras. Se aprovação e pedido do lote vierem juntos, registre primeiro o mapa; apresente uma parte operacional por vez e só a salve após a pessoa confirmar sua progressão. Redefinir o lote não altera o mapa.",
-      "Recolha apenas contexto que possa mudar o desenho: objetivo, público, pré-requisitos, escopo, profundidade, restrições e fontes. No estado default, calibre a configuração para cada microssequência ou unidade conforme assunto e planejamento; uma condição fixada pelo pesquisador prevalece. Preserve decisões anteriores e pergunte só quando uma alternativa mudar materialmente o curso.",
+      "Recolha apenas contexto que possa mudar o desenho: objetivo, público, pré-requisitos, escopo, profundidade, restrições e fontes. Em automático, escolha valores e motivos conforme assunto e planejamento; preserve fixações da autoria e da pesquisa e não invente valor quando houver conflito. Preserve decisões anteriores e pergunte só quando uma alternativa mudar materialmente o curso.",
+      "Perfis guardam preferências por cópia. Consulte a prévia antes de aplicar; preserve exceções salvo seleção explícita e nunca retire uma condição de pesquisa. Editar ou excluir o perfil não muda cursos anteriores.",
       "Uma unidade de análise é uma ideia, distinção, relação, regra ou operação necessária ao percurso. Se houver dois conceitos novos e a relação essencial entre eles, acompanhe as três unidades de análise; conceitos fundamentais ainda não estabelecidos também pertencem ao repertório.",
       "Não use tópico agregado para esconder novidades: decomponha quando necessário. O teto conta ideias semanticamente novas, não palavras, altura, dificuldade ou carga cognitiva. Conhecimentos já estabelecidos podem ser mobilizados livremente. O produtor declara o julgamento semântico; o servidor confere somente propriedades determinísticas."
     ])
@@ -24,10 +25,10 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   materialization: Object.freeze({
     title: "Materialização",
     instructions: Object.freeze([
-      "Antes de produzir, consulte a parte, a configuração focal e o repertório acumulado. No estado default, calibre cada unidade nova no próprio pedido de materialização, sem etapa persistente separada nem narração no chat. Distinga o que será introduzido, apenas utilizado ou deliberadamente retomado.",
+      "Antes de produzir, consulte a parte, a configuração focal e o repertório acumulado. Em automático, calibre cada unidade nova no próprio pedido de materialização com valores do catálogo e motivo, sem etapa persistente separada nem narração no chat. Considere também as preferências efetivas de conversa, produção e prática. Não use um número padrão no lugar de escolha contextual. Distinga o que será introduzido, apenas utilizado ou deliberadamente retomado.",
       "Ensine cada dependência antes do uso. Mesmo quando fundamental para alicerçar outra novidade, uma ideia ainda não estabelecida precisa de preparação suficiente.",
       "Crie experiências focalizadas e conectadas: divida uma unidade densa e funda fragmentos que não cumprem função didática sozinhos. A quantidade deve emergir do conteúdo.",
-      "Distribua prática e consolidação perto do menor bloco de novidades e pré-requisitos que já as torne compreensíveis; não deixe toda a prática para depois de uma longa sequência teórica.",
+      "Distribua prática e consolidação considerando pré-requisitos, função e preferências de distribuição e posição. Uma preferência por alternância ou blocos não certifica aprendizagem nem autoriza mover prática para antes de seus pré-requisitos.",
       "Prática de consolidação pode existir sem avaliação formal; não invente requisito de evidência para justificá-la.",
       "Escolha cada componente pela função: relações espaciais pedem diagrama, estado pode pedir tabela, mudança temporal pode pedir sequência, comparação pode pedir lado a lado e raciocínio pode pedir resposta aberta.",
       "Faça leitura sequencial como estudante antes de concluir: procure saltos, densidade, fragmentação, repetição, prática prematura e falta de integração; mova, divida, funda ou reescreva quando necessário."

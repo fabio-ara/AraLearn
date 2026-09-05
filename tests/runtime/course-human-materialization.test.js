@@ -1,3 +1,5 @@
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
+import { fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -107,21 +109,14 @@ function adapterFixture() {
           instructionalAnalysisUnitIds: [ANALYSIS_ID],
           evidenceRequirementIds: []
         },
-        parameters: [
+        parameters: fixtureAppliedParameters([
           ["new_analysis_unit_ceiling_per_expository_study_unit", 1],
           ["required_explanation_forms", ["plain_definition"]],
           ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
           ["required_practice_variation_dimensions", ["case_or_data"]],
           ["authoring_chat_response_word_target", 90],
           ["study_unit_content_word_target", 180]
-        ].map(([parameterId, value]) => ({
-          parameterId,
-          effectiveAssignment: {
-            value,
-            origin: "author",
-            sourceScope: { kind: "didactic_microsequence", ref: "micro-dns" }
-          }
-        })),
+        ], { origin: "author" }),
         guidance: {
           effectiveAssignments: [{
             guidance: "Parágrafos curtos, sem eliminar explicações necessárias.",
@@ -247,21 +242,14 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
       instructionalAnalysisUnitIds: analysis.map(({ id }) => id),
       evidenceRequirementIds: withEvidence ? [EVIDENCE_ID] : []
     },
-    parameters: [
+    parameters: fixtureAppliedParameters([
       ["new_analysis_unit_ceiling_per_expository_study_unit", ceiling],
       ["required_explanation_forms", ["plain_definition", "mechanism"]],
       ["minimum_distinct_practice_opportunities_per_evidence_requirement", 2],
       ["required_practice_variation_dimensions", ["case_or_data", "context"]],
       ["authoring_chat_response_word_target", 100],
       ["study_unit_content_word_target", 200]
-    ].map(([parameterId, parameterValue]) => ({
-      parameterId,
-      effectiveAssignment: {
-        value: parameterValue,
-        origin: "automatic",
-        sourceScope: { kind: "didactic_microsequence", ref: "micro-dns" }
-      }
-    })),
+    ], { origin: "automatic" }),
     guidance: { effectiveAssignments: [] },
     componentPolicy: {
       effectiveAssignment: {
@@ -367,7 +355,7 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   assert.equal(receipt.result, "Primeira parte produzida.");
   assert.equal(receipt.deepLink, `#/authoring/courses/${COURSE_ID}?section=content`);
   assert.equal(receipt.nextDecision, "Posso preparar a próxima parte.");
-  assert.equal(Object.hasOwn(receipt, "context"), false);
+  assert.equal(receipt.context.distribuicaoDaPratica[0].observacao.studyUnitCount, 1);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes(COURSE_ID), false);
 });
 
@@ -456,7 +444,7 @@ test("materialização exige uma decisão contextual para valores ainda no padr�
     const target = design.parameters.find(({ parameterId }) =>
       parameterId === "authoring_chat_response_word_target");
     target.effectiveAssignment = {
-      value: 120,
+      mode: "automatic", value: null,
       origin: "system_default",
       sourceScope: null
     };
@@ -567,15 +555,14 @@ test("prática realista cria pelo texto um requisito ausente do mapa", async () 
   practice.conteudo.response.data.question =
     "Por qual porta o quadro deve sair? Justifique usando o estado da tabela.";
   practice.configuracao = {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 1,
-      formasDeExplicacao: ["plain_definition", "mechanism"],
-      minimoDePraticasPorRequisito: 2,
-      dimensoesDeVariacaoDaPratica: ["case_or_data", "context"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 100,
-      alvoDePalavrasPorUnidade: 200
+    motivo: "Escolha contextual sintética deste teste.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 1,
+      formas_de_explicacao: ["plain_definition", "mechanism"],
+      oportunidades_distintas_por_requisito: 2,
+      dimensoes_de_variacao_da_pratica: ["case_or_data", "context"],
+      alvo_palavras_conversa: 100,
+      alvo_palavras_unidade: 200
     }
   };
 
@@ -623,15 +610,14 @@ test("calibração contextual pode variar uma unidade nova sem substituir condi�
     }]
   });
   content.configuracao = {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 2,
-      formasDeExplicacao: ["plain_definition", "mechanism"],
-      minimoDePraticasPorRequisito: 2,
-      dimensoesDeVariacaoDaPratica: ["case_or_data", "context"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 100,
-      alvoDePalavrasPorUnidade: 260
+    motivo: "Escolha contextual sintética deste teste.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 2,
+      formas_de_explicacao: ["plain_definition", "mechanism"],
+      oportunidades_distintas_por_requisito: 2,
+      dimensoes_de_variacao_da_pratica: ["case_or_data", "context"],
+      alvo_palavras_conversa: 100,
+      alvo_palavras_unidade: 260
     },
     direcaoEditorial: "Conserve as duas ideias relacionadas no mesmo exemplo em evolução."
   };
@@ -654,6 +640,7 @@ test("calibração contextual pode variar uma unidade nova sem substituir condi�
     parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
     value: 2,
     origin: "automatic",
+    reason: "Escolha contextual sintética deste teste.",
     sourceScopeKind: "study_unit"
   });
   assert.equal(effective.get("study_unit_content_word_target").value, 260);
@@ -670,7 +657,7 @@ test("calibração contextual pode variar uma unidade nova sem substituir condi�
     const ceiling = design.parameters.find(({ parameterId }) =>
       parameterId === "new_analysis_unit_ceiling_per_expository_study_unit");
     ceiling.effectiveAssignment = {
-      value: 1,
+      mode: "fixed", value: 1,
       origin: "research_condition",
       sourceScope: { kind: "didactic_microsequence", ref: "micro-dns" }
     };
@@ -982,9 +969,13 @@ function unitScopedPedagogicalAdapter({
     design.parameters = design.parameters.map((parameter) => ({
       ...parameter,
       effectiveAssignment: {
-        value: values.get(parameter.parameterId),
+        mode: existingOrigin === "automatic" ? "automatic" : "fixed",
+        value: values.has(parameter.parameterId) ? values.get(parameter.parameterId) : parameter.effectiveAssignment.value,
+        reason: "Condição sintética preservada.",
         origin: existingOrigin,
-        sourceScope: { kind: "study_unit", ref: studyUnitId }
+        sourceScope: COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId)
+          .supportedScopes.includes("study_unit")
+          ? { kind: "study_unit", ref: studyUnitId } : { kind: "course", ref: COURSE_ID }
       }
     }));
     design.componentPolicy.effectiveAssignment = {
@@ -1035,27 +1026,25 @@ test("configuração completa preserva condição fixa e sela a calibração da 
   const adapter = unitScopedPedagogicalAdapter();
   const units = unitScopedMaterialization();
   units[0].configuracao = {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 1,
-      formasDeExplicacao: ["contrast"],
-      minimoDePraticasPorRequisito: 3,
-      dimensoesDeVariacaoDaPratica: ["support_level"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 72,
-      alvoDePalavrasPorUnidade: 140
+    motivo: "Escolha contextual sintética deste teste.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 1,
+      formas_de_explicacao: ["contrast"],
+      oportunidades_distintas_por_requisito: 3,
+      dimensoes_de_variacao_da_pratica: ["support_level"],
+      alvo_palavras_conversa: 72,
+      alvo_palavras_unidade: 140
     }
   };
   units[1].configuracao = {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 2,
-      formasDeExplicacao: ["plain_definition", "mechanism"],
-      minimoDePraticasPorRequisito: 2,
-      dimensoesDeVariacaoDaPratica: ["case_or_data", "context"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 100,
-      alvoDePalavrasPorUnidade: 200
+    motivo: "Escolha contextual sintética deste teste.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 2,
+      formas_de_explicacao: ["plain_definition", "mechanism"],
+      oportunidades_distintas_por_requisito: 2,
+      dimensoes_de_variacao_da_pratica: ["case_or_data", "context"],
+      alvo_palavras_conversa: 100,
+      alvo_palavras_unidade: 200
     }
   };
   await materializeHumanCoursePart({
@@ -1069,28 +1058,28 @@ test("configuração completa preserva condição fixa e sela a calibração da 
   assert.equal(existing.studyUnitId, "70000000-0000-4000-8000-000000000001");
   assert.equal(existing.designSnapshot.parameters.every(({ origin }) =>
     origin === "research_condition"), true);
-  assert.equal(existing.designSnapshot.parameters.every(({ sourceScopeKind }) =>
-    sourceScopeKind === "study_unit"), true);
+  assert.equal(existing.designSnapshot.parameters.every(({ parameterId, sourceScopeKind }) =>
+    sourceScopeKind === (COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameterId)
+      .supportedScopes.includes("study_unit") ? "study_unit" : "course")), true);
   assert.equal(existing.designSnapshot.componentPolicy.sourceScopeKind, "study_unit");
   assert.equal(created.designSnapshot.parameters.every(({ origin }) =>
     origin === "automatic"), true);
   assert.equal(created.designSnapshot.parameters.every(({ sourceScopeKind }) =>
-    sourceScopeKind === "study_unit"), true);
+    ["study_unit", "didactic_microsequence", "course"].includes(sourceScopeKind)), true);
 });
 
 test("revisão de unidade existente reproduz a configuração vigente em vez de prometer recalibração", async () => {
   const adapter = unitScopedPedagogicalAdapter({ existingOrigin: "automatic" });
   const units = unitScopedMaterialization();
   units[0].configuracao = {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 2,
-      formasDeExplicacao: ["contrast"],
-      minimoDePraticasPorRequisito: 3,
-      dimensoesDeVariacaoDaPratica: ["support_level"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 72,
-      alvoDePalavrasPorUnidade: 140
+    motivo: "Escolha contextual sintética deste teste.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 2,
+      formas_de_explicacao: ["contrast"],
+      oportunidades_distintas_por_requisito: 3,
+      dimensoes_de_variacao_da_pratica: ["support_level"],
+      alvo_palavras_conversa: 72,
+      alvo_palavras_unidade: 140
     }
   };
   await assert.rejects(() => materializeHumanCoursePart({
@@ -1483,21 +1472,14 @@ test("item focal percorre a microssequência e chega às unidades como introduç
         instructionalAnalysisUnitIds: ids,
         evidenceRequirementIds: []
       },
-      parameters: [
+      parameters: fixtureAppliedParameters([
         ["new_analysis_unit_ceiling_per_expository_study_unit", 2],
         ["required_explanation_forms", ["plain_definition"]],
         ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
-        ["required_practice_variation_dimensions", []],
+        ["required_practice_variation_dimensions", ["case_or_data"]],
         ["authoring_chat_response_word_target", 100],
         ["study_unit_content_word_target", 180]
-      ].map(([parameterId, value]) => ({
-        parameterId,
-        effectiveAssignment: {
-          value,
-          origin: "automatic",
-          sourceScope: { kind: "didactic_microsequence", ref: scopeRef }
-        }
-      })),
+      ]),
       guidance: { effectiveAssignments: [] },
       componentPolicy: {
         effectiveAssignment: {
@@ -1593,4 +1575,47 @@ test("item focal percorre a microssequência e chega às unidades como introduç
     developedForms: ["contrast"],
     notApplicable: []
   }]);
+});
+
+
+test("cadência delegada recebe escolha e motivo no snapshot sem escritor anterior", async () => {
+  const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 1 });
+  const load = adapter.getCourseDesign;
+  const ids = ["authoring_part_microsequence_target", "authoring_batch_part_target", "authoring_pause_frequency"];
+  adapter.getCourseDesign = async (request) => {
+    const design = await load(request);
+    for (const parameter of design.parameters) {
+      if (ids.includes(parameter.parameterId)) parameter.effectiveAssignment = {
+        mode: "automatic", value: null, origin: "author", reason: "Escolha delegada pela autoria.",
+        sourceScope: { kind: "course", ref: COURSE_ID }, inherited: true
+      };
+    }
+    return design;
+  };
+  const content = pedagogicalUnit(1, { novelty: [1],
+    explanations: [{ ideia: 1, formas: ["plain_definition", "mechanism"] }] });
+  content.configuracao = { motivo: "Produção sintética em blocos pequenos.", parametros: {
+    alvo_microssequencias_por_parte: 3, alvo_partes_por_lote: 2, frequencia_de_pausa: "each_part"
+  } };
+  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [content] });
+  assert.equal(adapter.calls.length, 1);
+  const applied = adapter.calls[0].units[0].designSnapshot.parameters.filter(({ parameterId }) => ids.includes(parameterId));
+  assert.deepEqual(applied.map(({ value }) => value), [3, 2, "each_part"]);
+  assert.ok(applied.every(({ origin, sourceScopeKind, reason }) => origin === "automatic" &&
+    sourceScopeKind === "course" && reason === content.configuracao.motivo));
+});
+
+test("conflito entre fixação e exceção bloqueia toda materialização", async () => {
+  const adapter = adapterFixture();
+  const load = adapter.getCourseDesign;
+  adapter.getCourseDesign = async (request) => {
+    const design = await load(request);
+    design.parameters[0].conflicts = [{ fixedScope: { kind: "course", ref: COURSE_ID }, fixedValue: 1,
+      exceptionScope: { kind: "didactic_microsequence", ref: "micro-dns" }, exceptionValue: 2 }];
+    return design;
+  };
+  await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [unit()] }),
+  (error) => error.code === "human_materialization_configuration_conflict");
+  assert.deepEqual(adapter.calls, []);
 });

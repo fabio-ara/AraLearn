@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
-import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from
   "../../src/domain/courseDesignParameters.js";
 import { RESOURCE_PACKAGE_REGISTRY } from
   "../../src/resources/catalog/resourceCatalog.js";
@@ -23,21 +23,16 @@ const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
-    contract: "aralearn.course-authoring-analytics.v2",
+    contract: "aralearn.course-authoring-analytics.v3",
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
       studyUnitCount: 0,
-      parameters: [[
-        "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
-      ], ["required_explanation_forms", "Formas", "string_list"], [
-        "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-      ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
-        "authoring_chat_response_word_target", "Extensão da conversa", "integer"
-      ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
-        .map(([parameterId, label, valueKind]) => ({
-          parameterId, label, valueKind, effectiveValues: []
-        })),
+      parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      definition: structuredClone(definition), effectiveValues: []
+    })),
       editorialDirections: [],
       analysisUnits: [],
       introductionsByStudyUnit: [],
@@ -46,7 +41,8 @@ function analyticsSnapshot() {
       practiceByRequirement: [],
       practiceVariationDimensions: [],
       sourcesByRole: [],
-      wordCountsByStudyUnit: []
+      wordCountsByStudyUnit: [],
+      practiceSequence: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -366,7 +362,7 @@ test("configuração de serviço recusa schemes executáveis nos deep links", ()
   }));
 });
 
-test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do banco", async () => {
+test("Analytics usa o RPC snapshot v3 e acrescenta somente o deep link fora do banco", async () => {
   const calls = [];
   const query = {
     scope: { kind: "course", ref: null }
@@ -382,14 +378,14 @@ test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do b
     query
   });
 
-  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v2$/u);
+  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v3$/u);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
     p_course_id: COURSE_ID,
     p_expected_course_revision: 7,
     p_query: query
   });
-  assert.equal(page.contract, "aralearn.course-authoring-analytics.v2");
+  assert.equal(page.contract, "aralearn.course-authoring-analytics.v3");
   assert.equal(page.design.studyUnitCount, 0);
   assert.equal(Object.hasOwn(page, "facts"), false);
   assert.equal(page.deepLink,
@@ -779,10 +775,10 @@ function defaultComponentPolicy(excludedRefs = []) {
 
 function courseDesignRead() {
   return {
-    contract: "aralearn.course-design.v2",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision: 5,
-    parameterCatalogVersion: "1.1.0",
+    parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
     scopeContext: {
       current: { kind: "course", ref: COURSE_ID, label: "Curso" },
       ancestors: [],
@@ -796,8 +792,10 @@ function courseDesignRead() {
     parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
       parameterId: definition.id,
       localAssignment: null,
+      conflicts: [],
       effectiveAssignment: {
-        value: structuredClone(definition.defaultValue),
+        mode: "automatic",
+        value: null,
         origin: "system_default",
         reason: "Hipótese padrão de produto.",
         sourceScope: null,
@@ -1698,12 +1696,12 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
   const value = adapter(async (url, init) => {
     const payload = JSON.parse(init.body);
     calls.push({ name: url.split("/").at(-1), payload });
-    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v2")) {
+    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v3")) {
       return json(courseDesignRead());
     }
-    if (url.endsWith("/rpc/apply_course_design_command_for_actor_v2")) {
+    if (url.endsWith("/rpc/apply_course_design_command_for_actor_v3")) {
       return json({
-        contract: "aralearn.course-design-change.v2",
+        contract: "aralearn.course-design-change.v3",
         courseId: COURSE_ID,
         courseRevision: 6,
         requestId: "request-design-0001",
@@ -1767,8 +1765,8 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
   assert.equal(changed.changed, true);
   assert.equal(Object.hasOwn(changed, "deepLink"), false);
   assert.deepEqual(calls.map(({ name }) => name), [
-    "get_owned_course_design_for_actor_v2",
-    "apply_course_design_command_for_actor_v2"
+    "get_owned_course_design_for_actor_v3",
+    "apply_course_design_command_for_actor_v3"
   ]);
   assert.deepEqual(calls[0].payload, {
     p_actor_id: USER_ID,
@@ -2946,7 +2944,7 @@ test("recuperação rejeita recibos incompatíveis e não converte ambiguidade e
 test("leitura de Design da StudyUnit conserva o inventário da Microssequência", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {
-    assert.match(url, /\/rpc\/get_owned_course_design_for_actor_v2$/u);
+    assert.match(url, /\/rpc\/get_owned_course_design_for_actor_v3$/u);
     payload = JSON.parse(init.body);
     return json(studyUnitCourseDesignRead());
   });
@@ -3127,9 +3125,9 @@ test("normaliza targetPlanItems somente para leitura e rejeita segundo writer", 
   const value = adapter(async (url, init) => {
     const body = JSON.parse(init.body);
     calls.push(body);
-    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v2")) return json(readFixture);
+    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v3")) return json(readFixture);
     return json({
-      contract: "aralearn.course-design-change.v2",
+      contract: "aralearn.course-design-change.v3",
       courseId: COURSE_ID,
       courseRevision: 6,
       requestId: "request-target-items-0001",

@@ -477,7 +477,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260905071622");
+  assert.equal(manifest.schemaRevision, "20260905083846");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), false);
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v3"), true);
   assert.equal(manifest.requiredFeatures.includes("course-curricular-map-v1"), true);
@@ -492,7 +492,10 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     true
   );
   assert.equal(manifest.requiredFeatures.includes("course-study-unit-inspection-v2"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-authoring-configuration-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-configuration-v2"), false);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-configuration-v3"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v3"), true);
+  assert.equal(manifest.requiredFeatures.includes("authoring-preference-profiles-v1"), true);
   assert.equal(
     manifest.requiredFeatures.includes("course-anchored-annotations-atomic-create-v1"),
     true
@@ -534,7 +537,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-source-human-locators-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-roles-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v1"), false);
-  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v2"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v2"), false);
   assert.equal(manifest.requiredFeatures.includes("course-variant-factual-comparison-v1"), false);
   assert.equal(manifest.requiredFeatures.includes("course-source-current-state-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("single-authoring-runtime-v1"), true);
@@ -549,8 +552,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260905071622_separate_public_file_policy_from_citation_display.sql",
-    revision: "20260905071622"
+    fileName: "20260905083846_contextual_automatic_design_application.sql",
+    revision: "20260905083846"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

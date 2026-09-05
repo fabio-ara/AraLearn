@@ -5,6 +5,13 @@ import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
 import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
+import { formatProfilePreference } from "./CourseAuthoringProfiles.js";
+import { readDesignValue, updateDesignModeControl } from "./courseDesignControls.js";
+import { normalizeCourseDesignPreference } from "../domain/courseDesignParameters.js";
+import {
+  normalizeAuthoringProfileList, normalizeAuthoringProfileChange,
+  normalizeAuthoringProfilePreferences, normalizeCourseAuthoringProfilePreview
+} from "../domain/authoringProfiles.js";
 import { createCourseSourcesPanel } from "./CourseSourcesPanel.js";
 import { createCourseAnalyticsPanel } from "./CourseAnalyticsPanel.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
@@ -218,7 +225,8 @@ function renderCourseList(state) {
     '<div class="course-authoring-list-actions"><div class="course-authoring-runtime-status"' +
     ' data-authoring-runtime-status>' + renderRuntimeStatusControl({
       offline: state.syncOffline === true,
-      stale: state.syncing === true || state.syncStale === true
+      synchronizing: state.syncing === true,
+      stale: state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<button type="button" class="course-authoring-header-action"' +
     ' data-course-authoring-action="open-create" aria-label="Criar curso" title="Criar curso">' +
@@ -301,7 +309,8 @@ function renderCourseHeader(course, state) {
     '<div class="course-authoring-runtime-status" data-authoring-runtime-status>' +
     renderRuntimeStatusControl({
       offline: state.syncOffline === true,
-      stale: state.syncing === true || state.syncStale === true
+      synchronizing: state.syncing === true,
+      stale: state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
     ' aria-label="Abrir tarefas do curso" title="Tarefas">' +
@@ -1027,6 +1036,16 @@ export function createCourseAuthoringSurface({
     designFormFocus: null,
     pendingCreateCommand: null,
     pendingDesignCommands: new Map(),
+    authoringProfiles: null,
+    profilesLoading: false,
+    profilesOpen: false,
+    profileBusy: false,
+    profileEditor: null,
+    profilePreview: null,
+    profileRemovedExceptions: [],
+    profileFailure: "",
+    profileMessage: "",
+    pendingProfileMutation: null,
     sourceTarget: null,
     actionConfirmation: null,
     writeBusy: false,
@@ -1041,7 +1060,8 @@ export function createCourseAuthoringSurface({
   function authoringRuntimeStatusMarkup() {
     return renderRuntimeStatusControl({
       offline: state.syncOffline === true,
-      stale: state.syncing === true || state.syncStale === true
+      synchronizing: state.syncing === true,
+      stale: state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" });
   }
 
@@ -1459,6 +1479,10 @@ export function createCourseAuthoringSurface({
     root.innerHTML = renderCourseAuthoringSurface(state);
     root.setAttribute?.("aria-busy", String(state.loading));
     restoreDesignFormDrafts({ restoreFocus: !focus });
+    if (state.designBusy || state.profileBusy || state.pendingProfileMutation || state.pendingDesignCommands.size) {
+      root.querySelectorAll?.(".course-design form input, .course-design form select, .course-design form textarea, .course-design form button")
+        .forEach((control) => { control.disabled = true; });
+    }
     mountInspectionSequence();
     mountReviewPanel();
     mountAnalyticsPanel();
@@ -1722,7 +1746,10 @@ export function createCourseAuthoringSurface({
       state.courseDesign = append && state.courseDesign
         ? mergeCourseDesignScopePages(state.courseDesign, page)
         : page;
+      if (state.profilePreview && (state.profilePreview.courseId !== page.courseId ||
+          state.profilePreview.courseRevision !== page.courseRevision)) state.profilePreview = null;
       state.designMessage = "";
+      if (state.authoringProfiles === null && !state.profilesLoading) void loadAuthoringProfiles();
       return true;
     } catch (error) {
       if (!state.opened || epoch !== designEpoch || state.course?.courseId !== courseId ||
@@ -1779,6 +1806,7 @@ export function createCourseAuthoringSurface({
       state.planningFailure = "";
       ++designEpoch;
       state.courseDesign = null;
+      state.profilePreview = null;
       state.designLoading = false;
       state.designFailure = "";
       state.designMessage = "";
@@ -2149,14 +2177,14 @@ export function createCourseAuthoringSurface({
 
   function hasTransientAuthoringDraft() {
     return Boolean(
-      state.actionConfirmation || state.createOpen || state.grantOpen
+      state.actionConfirmation || state.createOpen || state.grantOpen || state.profileEditor || state.profilePreview || state.profileBusy
     );
   }
 
   function hasPendingWriteEnvelope() {
     return Boolean(
       state.pendingCreateCommand ||
-        state.pendingPeopleCommand || state.pendingDesignCommands.size > 0
+        state.pendingPeopleCommand || state.pendingDesignCommands.size > 0 || state.pendingProfileMutation
     );
   }
 
@@ -2170,7 +2198,7 @@ export function createCourseAuthoringSurface({
   }
 
   function isPersistedDesignScopeNavigation(hash) {
-    if (state.designBusy || hasTransientAuthoringDraft() ||
+    if (state.designBusy || state.pendingProfileMutation || hasTransientAuthoringDraft() ||
         mountedPanelHasPendingDraft() ||
         root.querySelector?.('[role="dialog"], [role="alertdialog"]')) {
       return false;
@@ -2671,6 +2699,7 @@ export function createCourseAuthoringSurface({
         control.value = saved.value;
       });
       const details = form.closest?.("details");
+      updateDesignModeControl(form);
       if (details && draft.detailsOpen) details.open = true;
       if (restoreFocus && state.designFormFocus?.key === key) {
         focusControl = controls[state.designFormFocus.index] || null;
@@ -2688,29 +2717,41 @@ export function createCourseAuthoringSurface({
     }
   }
 
+  function mutateDesignRequest({ courseId, expectedCourseRevision, requestId, command }) {
+    return command.type === "apply_profile" ? controller.applyCourseAuthoringProfile({
+      courseId, expectedCourseRevision, requestId, profileId: command.profileId, profileRevision: command.profileRevision,
+      exceptionPolicy: command.exceptionPolicy
+    }) : controller.mutateCourseDesign({ courseId, expectedCourseRevision, requestId, command });
+  }
+
   async function runDesignCommand({
     draft,
     command,
     formKey = "",
     startedMessage,
-    successMessage
+    successMessage,
+    expectedCourseRevision = state.courseDesign?.courseRevision
   }) {
     if (!state.course || !state.courseDesign || state.designBusy) return false;
     const pendingKey = formKey || `${designDraftScopeKey()}:command:${command.type}`;
     const pending = state.pendingDesignCommands.get(pendingKey);
-    if (!pendingWriteMatches(pending, draft)) {
-      state.pendingDesignCommands.delete(pendingKey);
+    if (state.pendingProfileMutation || state.profileBusy ||
+        state.pendingDesignCommands.size > 0 && !pendingWriteMatches(pending, draft)) {
+      state.designFailure = "Confirme a gravação anterior usando Repetir gravação antes de enviar outra alteração.";
+      render();
+      return false;
     }
     const retained = state.pendingDesignCommands.get(pendingKey)?.request || {
       requestId: createUuid(),
       courseId: state.course.courseId,
-      expectedCourseRevision: state.courseDesign.courseRevision,
+      expectedCourseRevision,
       command: structuredClone(command)
     };
     if (!state.pendingDesignCommands.has(pendingKey)) {
       state.pendingDesignCommands.set(pendingKey, {
         draft: structuredClone(draft),
-        request: structuredClone(retained)
+        request: structuredClone(retained),
+        startedMessage, successMessage
       });
     }
     state.designBusy = true;
@@ -2720,7 +2761,7 @@ export function createCourseAuthoringSurface({
     let mutationConfirmed = false;
     try {
       const result = normalizeCourseDesignChange(
-        await controller.mutateCourseDesign(structuredClone(retained)),
+        await mutateDesignRequest(structuredClone(retained)),
         {
           expectedCourseId: retained.courseId,
           expectedRequestId: retained.requestId
@@ -2784,6 +2825,91 @@ export function createCourseAuthoringSurface({
     });
   }
 
+  async function loadAuthoringProfiles() {
+    if (state.profilesLoading) return;
+    state.profilesLoading = true;
+    state.profileFailure = "";
+    try {
+      const result = normalizeAuthoringProfileList(await controller.listAuthoringProfiles());
+      if (!state.opened) return;
+      state.authoringProfiles = result.profiles;
+    } catch (error) {
+      state.profileFailure = writeFailureMessage(error);
+    } finally {
+      state.profilesLoading = false;
+      if (state.opened) render();
+    }
+  }
+
+  function captureProfileEditor(form) {
+    if (!state.profileEditor) return;
+    state.profileEditor.name = formValue(form, "name");
+    state.profileEditor.preferences = state.courseDesign.definitions.flatMap((definition) => {
+      const mode = formValue(form, `mode:${definition.id}`);
+      if (mode === "omit") return [];
+      return [{ parameterId: definition.id, mode,
+        value: mode === "automatic" ? null : readDesignValue(form, definition, `value:${definition.id}`) }];
+    });
+  }
+
+  async function mutateProfile(draft, { deleted = false } = {}) {
+    if (state.profileBusy || state.designBusy) return;
+    state.profilesOpen = true;
+    const intent = { ...draft, deleted };
+    if (state.pendingDesignCommands.size || state.pendingProfileMutation && !pendingWriteMatches(state.pendingProfileMutation, intent)) {
+      state.profileFailure = "Confirme a gravação anterior usando Repetir gravação antes de alterar o perfil.";
+      render(); return;
+    }
+    if (!state.pendingProfileMutation) {
+      state.pendingProfileMutation = { draft: structuredClone(intent), request: { ...draft, requestId: createUuid() } };
+    }
+    const request = structuredClone(state.pendingProfileMutation.request);
+    state.profileBusy = true;
+    state.profileFailure = "";
+    state.profileMessage = "";
+    render();
+    try {
+      const result = normalizeAuthoringProfileChange(await (deleted
+        ? controller.deleteAuthoringProfile(request) : controller.mutateAuthoringProfile(request)), { ...request, deleted });
+      state.pendingProfileMutation = null;
+      state.profileEditor = null;
+      state.profilePreview = null;
+      state.authoringProfiles = (state.authoringProfiles || []).filter((item) => item.profileId !== result.profileId);
+      if (result.profile) state.authoringProfiles.push(result.profile);
+      state.profileMessage = deleted ? "Perfil excluído. As preferências já copiadas para cursos foram preservadas." : "Perfil salvo.";
+    } catch (error) {
+      if (!ambiguousWriteFailure(error)) state.pendingProfileMutation = null;
+      state.profileFailure = ambiguousWriteFailure(error) ? ambiguousWriteFailureMessage(error) : writeFailureMessage(error);
+    } finally {
+      state.profileBusy = false;
+      if (state.opened) render();
+    }
+  }
+
+  async function previewProfile(profile) {
+    if (state.profileBusy || state.designBusy || !state.courseDesign) return;
+    state.profileBusy = true;
+    state.profilesOpen = true;
+    state.profileFailure = "";
+    state.profileMessage = "";
+    state.profilePreview = null;
+    state.profileRemovedExceptions = [];
+    const request = { courseId: state.courseDesign.courseId, expectedCourseRevision: state.courseDesign.courseRevision,
+      profileId: profile.profileId, profileRevision: profile.revision };
+    render();
+    try {
+      const preview = normalizeCourseAuthoringProfilePreview(await controller.previewCourseAuthoringProfile(request), request);
+      if (state.courseDesign?.courseId === request.courseId && state.courseDesign?.courseRevision === request.expectedCourseRevision) {
+        state.profilePreview = preview;
+      }
+    } catch (error) {
+      state.profileFailure = writeFailureMessage(error);
+    } finally {
+      state.profileBusy = false;
+      if (state.opened) render();
+    }
+  }
+
   function setRequestFeedback(message = "", { error = false } = {}) {
     const value = String(message || "").trim();
     root.querySelectorAll?.("[data-course-authoring-request-feedback]").forEach((notice) => {
@@ -2844,6 +2970,20 @@ export function createCourseAuthoringSurface({
   }
 
   function preserveDesignFormDraft(event) {
+    if (event.target?.closest?.("[data-course-profile-apply]")) {
+      state.profileRemovedExceptions = checkedFormValues(event.target.closest("form"), "removeException");
+      return;
+    }
+    if (event.target?.closest?.("[data-course-profile-editor]")) {
+      const form = event.target.closest("form");
+      captureProfileEditor(form);
+      updateDesignModeControl(form);
+      const row = event.target.closest(".course-profile-preference");
+      const definition = state.courseDesign.definitions.find((item) => item.id === row?.dataset.parameterId);
+      if (definition) row.querySelector("summary > span").textContent = formatProfilePreference(definition,
+        state.profileEditor.preferences.find((item) => item.parameterId === definition.id));
+      return;
+    }
     if (event.target?.matches?.("#course-authoring-access-handle")) {
       state.grantDraftHandle = String(event.target.value || "");
       state.pendingPeopleCommand = null;
@@ -2862,12 +3002,17 @@ export function createCourseAuthoringSurface({
     const form = event.target?.closest?.(DESIGN_FORM_SELECTOR);
     if (!form) return;
     captureDesignFormDraft(form, event.target);
+    updateDesignModeControl(form);
   }
 
   function resetDesignFormDraft(event) {
     const key = designFormKey(event.target);
     if (!key) return;
     event.preventDefault();
+    if (state.pendingDesignCommands.has(key)) {
+      state.designFailure = "A gravação anterior pode ter sido aplicada. Use Repetir gravação para confirmar o resultado.";
+      render(); return;
+    }
     forgetDesignFormDraft(key);
     state.pendingDesignCommands.delete(key);
     state.designFailure = "";
@@ -2879,10 +3024,38 @@ export function createCourseAuthoringSurface({
   root.addEventListener("input", preserveDesignFormDraft);
   root.addEventListener("change", preserveDesignFormDraft);
   root.addEventListener("reset", resetDesignFormDraft);
+  root.addEventListener("toggle", (event) => {
+    if (event.target.matches?.(".course-authoring-profiles")) state.profilesOpen = event.target.open;
+  }, true);
 
   root.addEventListener("submit", (event) => {
     if (!state.opened) return;
     const submittedDesignFormKey = captureDesignFormDraft(event.target);
+    if (event.target.matches?.("[data-course-profile-editor]")) {
+      event.preventDefault();
+      if (state.profileBusy || state.designBusy || !state.profileEditor) return;
+      captureProfileEditor(event.target);
+      try {
+        const preferences = normalizeAuthoringProfilePreferences(state.profileEditor.preferences);
+        void mutateProfile({ profileId: state.profileEditor.profileId, expectedRevision: state.profileEditor.revision,
+          name: state.profileEditor.name, preferences });
+      } catch (error) { state.profileFailure = writeFailureMessage(error); render(); }
+      return;
+    }
+    if (event.target.matches?.("[data-course-profile-apply]")) {
+      event.preventDefault();
+      const preview = state.profilePreview;
+      if (!preview || preview.conflicts.length || state.profileBusy || state.designBusy) return;
+      const exceptions = state.profileRemovedExceptions.map((index) => preview.exceptions[Number(index)])
+        .filter((entry) => entry && entry.assignment.origin !== "research_condition")
+        .map(({ parameterId, scope }) => ({ parameterId, scope }));
+      const command = { type: "apply_profile", profileId: preview.profile.profileId, profileRevision: preview.profile.revision,
+        exceptionPolicy: { mode: exceptions.length ? "remove_selected" : "preserve", exceptions } };
+      void runDesignCommand({ draft: command, command, expectedCourseRevision: preview.courseRevision,
+        startedMessage: "Aplicando perfil…", successMessage: "Preferências copiadas. Conteúdo existente preservado."
+      }).then((applied) => { if (applied) { state.profilePreview = null; render(); } });
+      return;
+    }
     if (event.target.matches?.("[data-course-authoring-create]")) {
       event.preventDefault();
       if (state.writeBusy) return;
@@ -2962,26 +3135,20 @@ export function createCourseAuthoringSurface({
       }
       const origin = formValue(event.target, "origin");
       const reason = formValue(event.target, "reason");
-      let value;
-      if (definition.valueSchema.type === "integer") {
-        value = Number(formValue(event.target, "parameterValue"));
-        if (!Number.isSafeInteger(value) || value < definition.valueSchema.minimum ||
-            value > definition.valueSchema.maximum) {
-          state.designFailure = "Revise o valor do parâmetro.";
-          render();
-          return;
+      const mode = formValue(event.target, "mode") || "fixed";
+      if (mode === "automatic") {
+        if (!reason || reason.length > 1_000) {
+          state.designFailure = "Justifique a escolha automática neste escopo."; render(); return;
         }
-      } else {
-        value = checkedFormValues(event.target, "parameterValue");
-        const allowed = new Set(definition.valueSchema.allowedValues);
-        if (value.length < definition.valueSchema.minimumItems ||
-            value.length > definition.valueSchema.maximumItems ||
-            new Set(value).size !== value.length || value.some((item) => !allowed.has(item))) {
-          state.designFailure = "Revise os valores exigidos pelo parâmetro.";
-          render();
-          return;
-        }
+        const command = { type: "delegate_parameter", scope, parameterId, reason };
+        void runDesignCommand({ draft: command, command, formKey: submittedDesignFormKey,
+          startedMessage: "Delegando escolha contextual…", successMessage: "Escolha automática registrada. O valor será explicado antes da produção." });
+        return;
       }
+      let value;
+      try {
+        value = normalizeCourseDesignPreference({ parameterId, mode, value: readDesignValue(event.target, definition) }).value;
+      } catch (error) { state.designFailure = writeFailureMessage(error); render(); return; }
       if (!new Set(["author", "research_condition"]).has(origin) ||
           !reason || reason.length > 1_000) {
         state.designFailure = "Informe a origem e uma justificativa clara.";
@@ -3153,6 +3320,45 @@ export function createCourseAuthoringSurface({
     const node = event.target.closest?.("[data-course-authoring-action]");
     if (!node || (typeof root.contains === "function" && !root.contains(node))) return;
     const action = node.dataset.courseAuthoringAction;
+    if (action === "retry-profile-mutation" && state.pendingProfileMutation && !state.profileBusy && !state.designBusy) {
+      const { deleted, ...draft } = structuredClone(state.pendingProfileMutation.draft);
+      void mutateProfile(draft, { deleted }); return;
+    }
+    if (action === "retry-design-mutation" && !state.profileBusy && !state.designBusy) {
+      const [key, pending] = [...state.pendingDesignCommands][0] || [];
+      if (pending) void runDesignCommand({ draft: pending.draft, command: pending.request.command, formKey: key,
+        expectedCourseRevision: pending.request.expectedCourseRevision,
+        startedMessage: pending.startedMessage, successMessage: pending.successMessage }).then((applied) => {
+          if (applied && pending.request.command.type === "apply_profile") { state.profilePreview = null; render(); }
+        });
+      return;
+    }
+    if (["new-authoring-profile", "edit-authoring-profile", "delete-authoring-profile", "preview-authoring-profile",
+      "refresh-authoring-profiles", "cancel-profile-editor", "cancel-profile-preview"].includes(action)) {
+      if (state.profileBusy || state.designBusy || state.pendingProfileMutation || state.pendingDesignCommands.size || !state.courseDesign) return;
+      state.profilesOpen = true;
+      state.profileFailure = "";
+      state.profileMessage = "";
+      const profile = state.authoringProfiles?.find((item) => item.profileId === node.dataset.profileId);
+      if (action === "refresh-authoring-profiles") { void loadAuthoringProfiles(); return; }
+      if (action === "preview-authoring-profile" && profile) { void previewProfile(profile); return; }
+      if (action === "delete-authoring-profile" && profile) {
+        openActionConfirmation({ message: `Excluir o perfil ${profile.name}? As preferências copiadas para cursos serão preservadas.`,
+          confirmLabel: "Excluir perfil", tone: "danger", icon: "trash",
+          execute: () => mutateProfile({ profileId: profile.profileId, expectedRevision: profile.revision }, { deleted: true }) });
+        return;
+      }
+      if (action === "new-authoring-profile") {
+        state.profileEditor = { profileId: createUuid(), revision: 0, name: "", preferences: [] };
+        state.profilePreview = null;
+      } else if (action === "edit-authoring-profile" && profile) {
+        state.profileEditor = structuredClone(profile);
+        state.profilePreview = null;
+      } else if (action === "cancel-profile-editor") state.profileEditor = null;
+      else if (action === "cancel-profile-preview") state.profilePreview = null;
+      render({ focus: state.profileEditor ? '[data-course-profile-editor] input[name="name"]' : "" });
+      return;
+    }
     if (["open-course", "change-section", "change-design-scope"].includes(action)) {
       event.preventDefault();
     }

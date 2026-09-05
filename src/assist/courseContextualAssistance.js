@@ -13,6 +13,7 @@ import {
   validateStudyUnitEnvelope
 } from "../resources/kernel/studyUnitEnvelope.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
+import { projectCourseDesignContext } from "../domain/courseDesignContext.js";
 
 const SCOPES = new Set(["study_unit", "didactic_microsequence", "lesson"]);
 const MAX_TURNS = 8;
@@ -172,12 +173,20 @@ function targetSelectionIds(target, scope, requested = []) {
 export function buildCourseAssistanceContext({
   project,
   selection,
+  configuration,
   scope = "study_unit",
   writeTargetId = "",
   writeTargetIds = []
 } = {}) {
   if (!SCOPES.has(scope)) throw new TypeError("Escopo de assistência inválido.");
   const path = findPath(project, selection);
+  const resolvedConfiguration = projectCourseDesignContext(configuration);
+  if (resolvedConfiguration.courseId !== path.course.id ||
+      resolvedConfiguration.scope.kind !== scope ||
+      resolvedConfiguration.scope.ref !== targetForScope(path, scope)?.id) {
+    throw new StudyUnitProviderError("assistance_configuration_mismatch",
+      "A configuração recebida pertence a outro alvo. Reabra a assistência neste conteúdo.");
+  }
   const target = targetForScope(path, scope);
   if (!target) {
     throw new StudyUnitProviderError(
@@ -198,6 +207,7 @@ export function buildCourseAssistanceContext({
       )
     },
     readOnlyContext: {
+      configuration: resolvedConfiguration,
       target: projectAssistanceTarget(target, scope),
       ...(path.studyUnit ? { completeStudyUnit: clone(path.studyUnit) } : {}),
       microsequence: path.microsequence ? {
@@ -340,6 +350,7 @@ async function providerCall({ providerConfig, runtimeConfig, fetchImpl, signal, 
 export async function requestCourseAssistanceDiscussion({
   project,
   selection,
+  configuration,
   scope = "study_unit",
   writeTargetId = "",
   writeTargetIds = [],
@@ -359,7 +370,7 @@ export async function requestCourseAssistanceDiscussion({
     );
   }
   const { context } = buildCourseAssistanceContext({
-    project, selection, scope, writeTargetId, writeTargetIds
+    project, selection, configuration, scope, writeTargetId, writeTargetIds
   });
   const envelope = {
     ...context,
@@ -374,6 +385,7 @@ export async function requestCourseAssistanceDiscussion({
     signal,
     prompt: {
       system: "Você participa de uma conversa curta de edição curricular situada, adequada a modelos leves. " +
+        "A configuração focal já está resolvida pelo software: respeite valores fixados, distinga escolhas automáticas ainda pendentes e nunca recalcule heranças. " +
         "Responda com brevidade e abertura ao debate. Quando o autor pedir explicação ou discussão sem mudança, " +
         "responda à questão e devolva proposal:null. Quando houver uma mudança solicitada, proponha ou refine " +
         "de uma a seis mudanças objetivas e liste " +
@@ -798,6 +810,7 @@ function normalizedGenerated(raw) {
 export async function prepareCourseAssistanceProposal({
   project,
   selection,
+  configuration,
   confirmedProposal,
   conversation = [],
   writeTargetIds = [],
@@ -814,8 +827,12 @@ export async function prepareCourseAssistanceProposal({
     throw new TypeError("Confirme uma proposta válida antes de preparar a mudança.");
   }
   const { context, path } = buildCourseAssistanceContext({
-    project, selection, scope, writeTargetIds
+    project, selection, configuration, scope, writeTargetIds
   });
+  if (context.readOnlyContext.configuration.parameters.some(({ conflicts }) => conflicts.length)) {
+    throw new StudyUnitProviderError("assistance_configuration_conflict",
+      "Resolva as condições de configuração conflitantes antes de preparar uma alteração.");
+  }
   const target = targetForScope(path, scope);
   const contracts = discoverContracts(target, confirmedProposal);
   if (!contracts.length) {
@@ -842,6 +859,8 @@ export async function prepareCourseAssistanceProposal({
         signal,
         prompt: {
           system: "Prepare uma composição curricular tipada somente no escopo confirmado. " +
+            "Use a configuração focal resolvida fornecida: valores fixados não podem ser substituídos; automático delega o julgamento ao contexto. " +
+            "Alvos editoriais são flexíveis: redistribua o desenvolvimento sem truncar conhecimento ou alterar o repertório para satisfazer contagens. " +
             "Use exclusivamente os contratos exatos fornecidos. Preserve identidades existentes quando o objeto continuar existindo, " +
             "use posições consecutivas a partir de 1 e não invente fontes. Devolva somente o objeto no formato solicitado.",
           prompt: JSON.stringify({

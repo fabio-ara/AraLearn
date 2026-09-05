@@ -2,6 +2,10 @@ import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseCompos
 import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 import {
+  AuthoringProfilesError, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
+  normalizeCourseAuthoringProfileRequest
+} from "../aralearn/runtime/domain/authoringProfiles.js";
+import {
   CourseDesignParametersError,
   normalizeCourseDesignCommand
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
@@ -44,6 +48,14 @@ const AUTHORING_ANALYTICS_REQUEST_TARGET_LIMIT_BYTES = 8 * 1024;
 
 function fail(code, message, details = null, status = 422) {
   throw new AuthoringApiError(status, code, message, details);
+}
+
+function normalizeProfileInput(operation) {
+  try { return operation(); }
+  catch (error) {
+    if (!(error instanceof AuthoringProfilesError) && !(error instanceof CourseDesignParametersError)) throw error;
+    throw new AuthoringApiError(422, error.code, error.message);
+  }
 }
 
 function scopes(principal) {
@@ -994,6 +1006,37 @@ function validateMaintenanceAction(body) {
 
 export async function executeCourseRoute({ request, route, adapter, principal, deadlineAt = null }) {
   if (!adapter) throw new TypeError("Adaptador de Curso obrigatório.");
+  if (route.name === "listAuthoringProfiles") {
+    assertPrincipal(principal);
+    if ([...new URL(request.url).searchParams.keys()].length) fail("invalid_authoring_profile", "A lista de perfis não recebe filtros.");
+    return { requestId: null, data: await adapter.listAuthoringProfiles({ principal, deadlineAt }) };
+  }
+  if (new Set(["createAuthoringProfile", "updateAuthoringProfile", "deleteAuthoringProfile"]).has(route.name)) {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    const create = route.name === "createAuthoringProfile";
+    const deleted = route.name === "deleteAuthoringProfile";
+    exactFields(body, new Set(["requestId", "expectedRevision",
+      ...(create ? ["profileId"] : []), ...(deleted ? [] : ["name", "preferences"])]));
+    const command = normalizeProfileInput(() => (deleted ? normalizeAuthoringProfileDelete : normalizeAuthoringProfileSave)({
+      ...body, profileId: create ? body.profileId : route.profileId, requestId: requestIdFrom(request, body)
+    }));
+    if (create !== (command.expectedRevision === 0)) fail("invalid_authoring_profile", "A revisão não corresponde à operação do perfil.");
+    return { requestId: command.requestId, data: await adapter[deleted ? "deleteAuthoringProfile" : "saveAuthoringProfile"]({
+      principal, ...command, deadlineAt
+    }) };
+  }
+  if (new Set(["previewCourseAuthoringProfile", "applyCourseAuthoringProfile"]).has(route.name)) {
+    const apply = route.name === "applyCourseAuthoringProfile";
+    assertPrincipal(principal, { write: apply });
+    const body = await readCourseJsonBody(request);
+    exactFields(body, new Set(["expectedCourseRevision", "profileId", "profileRevision",
+      ...(apply ? ["exceptionPolicy", "requestId"] : [])]));
+    const command = normalizeProfileInput(() => normalizeCourseAuthoringProfileRequest({
+      ...body, courseId: route.courseId, ...(apply ? { requestId: requestIdFrom(request, body) } : {})
+    }, { apply }));
+    return { requestId: command.requestId || null, data: await adapter[route.name]({ principal, ...command, deadlineAt }) };
+  }
   if (route.name === "getPersonProfile") {
     assertPrincipal(principal);
     return {

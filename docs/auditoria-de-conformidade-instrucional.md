@@ -64,8 +64,8 @@ verdade da afirmação.
 
 ## Parâmetros e próxima revisão
 
-Os quatro parâmetros pedagógicos, os dois alvos editoriais quantitativos e a
-direção editorial são consultados no escopo efetivo. Uma definição feita na
+As escolhas de conteúdo, prática, conversa e cadência do catálogo, os alvos
+editoriais e a direção editorial são consultados no escopo efetivo. Uma definição feita na
 microssequência ou unidade de estudo rege a próxima geração ou revisão daquele
 escopo. No estado `default`, o GPT precisa calibrá-los automaticamente para esse
 contexto. Alvos de palavras e direção editorial podem orientar extensão, estilo

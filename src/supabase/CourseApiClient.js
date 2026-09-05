@@ -12,6 +12,11 @@ import {
 } from "../domain/courseAuthoringAnalytics.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
+  normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
+  normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
+  normalizeCourseAuthoringProfileChange
+} from "../domain/authoringProfiles.js";
+import {
   normalizeFocalStudyUnitCompositionCommand,
   normalizeFocalStudyUnitCompositionReceipt,
   normalizeCourseMetadata,
@@ -933,6 +938,43 @@ export class CourseApiClient {
         cursor: cursor == null ? null : boundedIdentifier(cursor, "Cursor de subescopos")
       }
     });
+  }
+
+  listAuthoringProfiles() {
+    return this.requestCourseApi("/v1/authoring-profiles").then(normalizeAuthoringProfileList);
+  }
+
+  mutateAuthoringProfile(value = {}) {
+    const command = normalizeAuthoringProfileSave(value);
+    const create = command.expectedRevision === 0;
+    const { profileId, ...body } = command;
+    return this.requestCourseApi(create ? "/v1/authoring-profiles" : `/v1/authoring-profiles/${profileId}`, {
+      method: create ? "POST" : "PATCH", body: create ? command : body
+    }).then((result) => normalizeAuthoringProfileChange(result, { ...command, deleted: false }));
+  }
+
+  deleteAuthoringProfile(value = {}) {
+    const command = normalizeAuthoringProfileDelete(value);
+    const { profileId, ...body } = command;
+    return this.requestCourseApi(`/v1/authoring-profiles/${profileId}`, {
+      method: "DELETE", body
+    }).then((result) => normalizeAuthoringProfileChange(result, { ...command, deleted: true }));
+  }
+
+  previewCourseAuthoringProfile(value = {}) {
+    const command = normalizeCourseAuthoringProfileRequest(value);
+    const { courseId, ...body } = command;
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-profile/preview`, {
+      method: "POST", body
+    }).then((result) => normalizeCourseAuthoringProfilePreview(result, command));
+  }
+
+  applyCourseAuthoringProfile(value = {}) {
+    const command = normalizeCourseAuthoringProfileRequest(value, { apply: true });
+    const { courseId, ...body } = command;
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-profile/applications`, {
+      method: "POST", body
+    }).then((result) => normalizeCourseAuthoringProfileChange(result, command));
   }
 
   async loadCourseSources(courseId, options = {}) {

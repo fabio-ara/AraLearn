@@ -17,7 +17,7 @@ import { createStudySynchronizationPreference } from "../src/ui/studySynchroniza
 import { buildCourseStudyRoute, parseCourseStudyRoute } from "../src/ui/courseStudyRoute.js";
 import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.js";
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
-import { isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
+import { buildCourseAuthoringRoute, isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
 import {
   readOAuthAuthorizationRequest,
   renderOAuthAuthorizationConsent
@@ -300,6 +300,7 @@ function renderSettings(root, authClient, controller, {
   previewVisitorState = null,
   adoptVisitorState = null,
   onVisitorStateAdopted = () => {},
+  getContextualDesign = () => null,
   onQuiescedFailure = ({ error } = {}) => renderQuiescedOperationRecovery(root, { error }),
   onDeletedAccountCleanupFailure = (error) => renderDeletedAccountCleanupFailure(root, error),
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
@@ -333,6 +334,10 @@ function renderSettings(root, authClient, controller, {
             </div>
           </form>
           <div data-study-device-settings></div>
+          <button class="account-settings-subview-entry" type="button" data-settings-contextual-design hidden>
+            <span>${renderUiIcon("tags", "account-settings-action-icon")}<strong data-settings-contextual-design-label>Parâmetros de autoria</strong></span>
+            ${renderUiIcon("arrow-right", "account-settings-action-icon")}
+          </button>
           <button class="account-settings-subview-entry" type="button" data-settings-open-view="account">
             <span>${renderUiIcon("account", "account-settings-action-icon")}<strong>Dados e conta</strong></span>
             ${renderUiIcon("arrow-right", "account-settings-action-icon")}
@@ -976,6 +981,13 @@ function renderSettings(root, authClient, controller, {
     }
   ) : null;
   syncTheme();
+  const contextualDesign = root.querySelector("[data-settings-contextual-design]");
+  contextualDesign.addEventListener("click", () => {
+    const target = getContextualDesign();
+    if (!target || target.disabled) return;
+    close();
+    globalThis.location.hash = target.route;
+  });
   return Object.freeze({
     loadProfile,
     destroy() { deviceSettings?.destroy(); },
@@ -986,6 +998,11 @@ function renderSettings(root, authClient, controller, {
         ? activeElement
         : null;
       syncTheme();
+      const target = getContextualDesign();
+      contextualDesign.hidden = !target;
+      contextualDesign.disabled = target?.disabled === true;
+      contextualDesign.title = target?.disabled ? "Salve ou descarte a edição atual antes de abrir os parâmetros." : "Parâmetros do escopo atual";
+      root.querySelector("[data-settings-contextual-design-label]").textContent = target?.label || "Parâmetros de autoria";
       showSettingsView("main");
       overlay.hidden = false;
       void loadProfile();
@@ -1085,6 +1102,17 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     previewVisitorState: () => withVisitorCache((cache) => repository.previewVisitorState(cache)),
     adoptVisitorState: (options) => withVisitorCache((cache) => repository.adoptVisitorState(cache, options)),
     onVisitorStateAdopted: () => editorApp?.refreshPersonalState?.(),
+    getContextualDesign() {
+      if (editorRoot.hidden) return null;
+      const context = editorApp?.getCourseDesignContext?.();
+      if (!context) return null;
+      const options = { section: "parameters" };
+      const field = { module: "moduleId", lesson: "lessonId",
+        didactic_microsequence: "didacticMicrosequenceId", study_unit: "studyUnitId" }[context.scope.kind];
+      if (field) options[field] = context.scope.ref;
+      return { route: buildCourseAuthoringRoute(context.courseId, options), label: `Parâmetros · ${context.label}`,
+        disabled: editorApp?.hasPendingManualEdit?.() === true };
+    },
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
     },

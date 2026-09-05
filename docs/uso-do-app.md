@@ -91,9 +91,8 @@ Use o seletor **Estudo / Autoria** na tela inicial.
 - **Autoria** mostra somente cursos próprios.
 
 A ausência de um curso compartilhado em Autoria indica o alcance da concessão:
-a pessoa pode estudar, mas não alterar o original. Uma
-gravação contextual feita em Estudo cria um curso pessoal privado; ele passa a
-aparecer em Autoria como curso próprio.
+a pessoa pode estudar e registrar observações. A edição contextual está disponível
+somente ao proprietário e altera o mesmo curso.
 
 ## Abrir e percorrer um Curso
 
@@ -169,21 +168,37 @@ histórico de execução.
 
 ## Configurar o desenho do curso
 
-Em **Parâmetros**, consulte o curso, a lição, a microssequência ou a unidade de
-estudo focal. Cada decisão mostra o valor efetivo e o escopo que o definiu. Uma
-unidade usa a configuração aplicável mais específica. Remover uma definição
-local restaura a herança.
+Em **Parâmetros**, escolha o escopo e abra o ajuste desejado. Cada decisão mostra
+valor, origem e escopo de aplicação. Em Estudo, o proprietário também encontra
+**Parâmetros · escopo atual** em **Conta e aparência**, depois de salvar ou
+descartar qualquer edição aberta. A entrada preserva os níveis do Estudo.
 
-Quatro parâmetros pedagógicos controlam distribuição de novidade, formas de
-explicação, oportunidades de prática e dimensões de variação. Dois alvos
-editoriais quantitativos flexíveis orientam palavras por resposta de autoria e
-por unidade de estudo. Eles não são limites e não autorizam compressão. O estado
-`default` exige que o GPT calibre automaticamente cada microssequência ou
-unidade segundo seu conteúdo e função; não é um preset fixo. Um valor
-deliberadamente fixado pelo pesquisador prevalece. Direção editorial fica
-separada e nunca elimina conteúdo necessário. A política de componentes
-pode restringir ou preferir pacotes, mas a escolha final continua ligada à
-função instrucional.
+O catálogo organiza as escolhas por conteúdo, prática, conversa e cadência.
+Além de novidade, explicações, quantidade e variação de prática, permite escolher
+distribuição e posição das práticas. Granularidade de partes e lotes e frequência
+de pausa são decisões independentes. A conversa pode favorecer concisão, debate
+ou explicação; isso não reduz o material didático. Alvos de palavras são flexíveis
+e não autorizam compressão. Direção editorial e componentes têm ajustes próprios.
+
+**Fixar valor** registra uma decisão sua ou uma condição de pesquisa, com
+justificativa. **Automático pelo contexto** delega uma escolha explicada à IA
+antes da produção e pode ficar sem valor enquanto essa escolha está pendente.
+**Restaurar herança** remove a decisão local. Uma condição de pesquisa não pode
+ser contrariada silenciosamente por uma exceção mais específica; a configuração
+mostra o conflito para resolução antes da produção. O conteúdo já produzido
+preserva os valores e motivos que foram usados naquela produção.
+
+Em **Perfis de autoria**, crie um nome e escolha quais preferências copiar:
+valor fixo, escolha automática ou não incluir o parâmetro. Edite ou exclua o
+perfil quando necessário. A prévia de aplicação mostra as escolhas do perfil e
+as exceções do curso; por padrão, as exceções ficam preservadas. Na reaplicação,
+marque explicitamente somente as exceções que deseja retirar. Condições de
+pesquisa ficam protegidas e conflitos exigem resolução prévia.
+
+Aplicar um perfil copia preferências para o curso. Não reescreve conteúdo
+existente nem cria vínculo permanente: editar ou excluir o perfil depois não
+altera cursos que já receberam a cópia. Perfis não incluem identidade, acesso,
+tema ou sincronização do dispositivo.
 
 ## Manter Fontes, PDFs e proveniência
 

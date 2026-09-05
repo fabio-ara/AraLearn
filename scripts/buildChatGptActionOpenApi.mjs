@@ -58,6 +58,24 @@ if (!studyUnitContentSchema) {
   throw new TypeError("A materialização perdeu o contrato de conteúdo da unidade de estudo.");
 }
 
+const designParametersSchema = structuredClone(actionTools
+  .find(({ name }) => name === "materializar_parte")
+  .inputSchema.properties.unidades.items.properties.configuracao.properties.parametros);
+const DESIGN_PARAMETERS_REF = "#/components/schemas/HumanDesignParameters";
+
+const humanReferenceSchema = structuredClone(actionTools
+  .find(({ name }) => name === "preparar_materializacao").inputSchema.properties.parte);
+delete humanReferenceSchema.description;
+function shareHumanReferences(value) {
+  if (Array.isArray(value)) return value.map(shareHumanReferences);
+  if (!value || typeof value !== "object") return value;
+  const { description, ...shape } = value;
+  if (JSON.stringify(shape) === JSON.stringify(humanReferenceSchema)) {
+    return { $ref: "#/components/schemas/HumanReference", ...(description ? { description } : {}) };
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, shareHumanReferences(entry)]));
+}
+
 function inputSchemaWithSharedContent(tool) {
   const schema = structuredClone(tool.inputSchema);
   if (tool.name === "materializar_parte") {
@@ -70,7 +88,24 @@ function inputSchemaWithSharedContent(tool) {
       $ref: STUDY_UNIT_CONTENT_REF
     };
   }
-  return schema;
+  if (tool.name === "materializar_parte") {
+    schema.properties.unidades.items.properties.configuracao.properties.parametros = {
+      $ref: DESIGN_PARAMETERS_REF
+    };
+  }
+  if (tool.name === "salvar_perfil") {
+    schema.properties.parametros = { $ref: DESIGN_PARAMETERS_REF,
+      description: schema.properties.parametros.description };
+  }
+  if (tool.name === "ajustar_configuracao") {
+    schema.properties.parametros.properties = Object.fromEntries(
+      Object.entries(schema.properties.parametros.properties).map(([field, definition]) => [
+        field, { anyOf: [{ $ref: `${DESIGN_PARAMETERS_REF}/properties/${field}` }, { type: "null" }],
+          description: definition.description }
+      ])
+    );
+  }
+  return shareHumanReferences(schema);
 }
 
 const paths = Object.fromEntries(actionTools.map((tool) => [
@@ -113,7 +148,9 @@ const document = {
     schemas: {
       HumanTaskResult: resultSchema,
       HumanTaskError: errorSchema,
-      HumanStudyUnitContent: studyUnitContentSchema
+      HumanStudyUnitContent: studyUnitContentSchema,
+      HumanDesignParameters: designParametersSchema,
+      HumanReference: humanReferenceSchema
     },
     responses: {
       Success: {

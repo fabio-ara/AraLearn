@@ -25,8 +25,8 @@ Um curso reúne:
 - módulos, lições, microssequências e unidades de estudo (`StudyUnit` no código);
 - mapa curricular global e partes operacionais de autoria;
 - repertório de unidades de análise (`AnalysisUnit` no código) e requisitos de evidência;
-- quatro parâmetros pedagógicos, dois alvos editoriais quantitativos e direção
-  editorial;
+- parâmetros tipados de conteúdo, prática, conversa e cadência, com direção
+  editorial separada;
 - fontes, âncoras, PDFs e atribuições;
 - observações e estado necessário à revisão;
 - estado pessoal de estudo por pessoa.
@@ -140,7 +140,8 @@ muda a distribuição da novidade, não o inventário nem a profundidade necess�
 
 ## Desenho aplicado à unidade de estudo
 
-Parâmetros pedagógicos, alvos editoriais e direção editorial possuem atribuição
+O catálogo único fornece tipos, unidades, escopos, grupos e rótulos para UI,
+integrações e projeção SQL. Parâmetros e direção editorial possuem atribuição
 corrente por escopo. Limpar uma definição restaura herança e remove a atribuição
 local; não cria uma linha histórica de “limpeza”.
 
@@ -155,11 +156,18 @@ a unidade apenas utiliza. Retomadas são derivadas das explicações de ideias j
 estabelecidas. Identidade, nome, descrição curta e referências às unidades
 permitem consultar o repertório sem criar ontologia, grafo ou ledger paralelo.
 
-O estado `default` exige que o GPT calibre automaticamente cada parâmetro para a
-microssequência ou unidade, conforme conteúdo, função e público. Ele não é um
-preset fixo. Uma definição deliberadamente fixada pelo pesquisador prevalece.
-Os alvos de palavras orientam a extensão, mas não são limites e não autorizam
-comprimir nem omitir conteúdo necessário.
+O modo automático delega ao GPT a escolha contextual, antes da produção, para a
+microssequência ou unidade conforme conteúdo, função e repertório acumulado.
+A intenção pode ter valor nulo; o snapshot aplicado exige valor e justificativa.
+Ausência local significa herança. Fixações de autoria e pesquisa prevalecem
+sobre calibração automática; exceções incompatíveis com pesquisa não podem
+aplicar-se silenciosamente. Alvos de palavras não autorizam omissão ou compressão.
+
+Perfis de autoria guardam somente preferências tipadas por conta. Aplicar copia
+as preferências ao curso numa transação com comparação das revisões do perfil
+e do curso; exceções são preservadas ou removidas por seleção explícita.
+Condições de pesquisa ficam protegidas. Editar ou excluir um perfil não altera
+as cópias, e a aplicação não reescreve conteúdo nem snapshots existentes.
 
 Fluxo global antes dos lotes, aprovação apenas do artefato inspecionável e
 fronteira pública em linguagem humana são invariantes. Distribuição editorial,

@@ -5,34 +5,22 @@ import {
 } from "./courseHumanTaskExecutor.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
+import { observeCoursePracticeDistribution } from
+  "../aralearn/runtime/domain/coursePracticeDistribution.js";
 import {
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
+  COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
   EXPLANATION_FORMS,
   PRACTICE_VARIATION_DIMENSIONS,
   normalizeCourseDesignParameterValue
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 
 const MAX_PART_STUDY_UNIT_PAGES = 100;
-const UNIT_PARAMETER_FIELD_TO_ID = Object.freeze({
-  tetoNovasUnidadesDeAnalise:
-    "new_analysis_unit_ceiling_per_expository_study_unit",
-  formasDeExplicacao: "required_explanation_forms",
-  minimoDePraticasPorRequisito:
-    "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  dimensoesDeVariacaoDaPratica: "required_practice_variation_dimensions",
-  alvoDePalavrasPorResposta: "authoring_chat_response_word_target",
-  alvoDePalavrasPorUnidade: "study_unit_content_word_target"
-});
-const EXPLANATION_FORM_LABELS = Object.freeze({
-  plain_definition: "definição em linguagem direta",
-  concrete_example: "exemplo concreto",
-  mechanism: "mecanismo",
-  contrast: "contraste",
-  application_condition: "condição de aplicação",
-  limit_or_exception: "limite ou exceção",
-  worked_example: "exemplo resolvido",
-  representation_link: "relação entre representações"
-});
+const UNIT_PARAMETER_FIELD_TO_ID = Object.freeze(Object.fromEntries(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField, id }) => [humanField, id])
+));
+const EXPLANATION_FORM_LABELS = COURSE_DESIGN_PARAMETER_DEFINITIONS
+  .find(({ id }) => id === "required_explanation_forms").optionLabels;
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -386,38 +374,19 @@ function componentRefs(content) {
 
 function validateUnitConfiguration(configuration) {
   if (configuration === undefined) return;
-  const allowed = new Set([
-    "parametrosPedagogicos", "parametrosEditoriais", "direcaoEditorial"
-  ]);
-  if (!plainObject(configuration) ||
-      Object.keys(configuration).some((field) => !allowed.has(field))) {
+  if (!plainObject(configuration) || Object.keys(configuration).some((field) =>
+    !["parametros", "motivo", "direcaoEditorial"].includes(field)) ||
+    !plainObject(configuration.parametros) || !Object.keys(configuration.parametros).length ||
+    Object.keys(configuration.parametros).some((field) => !Object.hasOwn(UNIT_PARAMETER_FIELD_TO_ID, field))) {
     fail("invalid_human_materialization", "A calibração da unidade de estudo é inválida.");
   }
-  const groups = [{
-    value: configuration.parametrosPedagogicos,
-    fields: [
-      "tetoNovasUnidadesDeAnalise", "formasDeExplicacao",
-      "minimoDePraticasPorRequisito", "dimensoesDeVariacaoDaPratica"
-    ]
-  }, {
-    value: configuration.parametrosEditoriais,
-    fields: ["alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"]
-  }];
-  for (const group of groups) {
-    const expected = new Set(group.fields);
-    if (!plainObject(group.value) ||
-        group.fields.some((field) => !Object.hasOwn(group.value, field) ||
-          group.value[field] === null) ||
-        Object.keys(group.value).some((field) => !expected.has(field))) {
-      fail(
-        "human_materialization_contextual_calibration_required",
-        "Uma unidade nova ainda está sem calibração contextual.",
-        409
-      );
-    }
+  boundedText(configuration.motivo, "O motivo da escolha contextual", 1000);
+  for (const [field, value] of Object.entries(configuration.parametros)) {
+    try { normalizeCourseDesignParameterValue(UNIT_PARAMETER_FIELD_TO_ID[field], value); }
+    catch { fail("invalid_human_materialization", "A escolha contextual diverge do catálogo."); }
   }
   if (configuration.direcaoEditorial !== undefined) {
-    boundedText(configuration.direcaoEditorial, "A direção editorial da unidade", 4_000);
+    boundedText(configuration.direcaoEditorial, "A direção editorial", 4000);
   }
 }
 
@@ -635,12 +604,12 @@ function existingConfigurationConflict() {
 }
 
 function applyUnitContextualCalibration(design, configuration, { existing = false } = {}) {
+  if (design?.parameters?.some((parameter) => parameter.conflicts?.length)) {
+    fail("human_materialization_configuration_conflict", "Resolva a condição fixa e sua exceção antes de produzir.", 409);
+  }
   if (configuration === undefined) return design;
   const calibrated = structuredClone(design);
-  const requestedParameters = [
-    ...Object.entries(configuration.parametrosPedagogicos ?? {}),
-    ...Object.entries(configuration.parametrosEditoriais ?? {})
-  ];
+  const requestedParameters = Object.entries(configuration.parametros);
   const fixedOrigins = new Set(["author", "research_condition"]);
   for (const [field, requestedValue] of requestedParameters) {
     if (requestedValue === null) continue;
@@ -665,7 +634,7 @@ function applyUnitContextualCalibration(design, configuration, { existing = fals
       }
       continue;
     }
-    if (fixedOrigins.has(parameter.effectiveAssignment.origin)) {
+    if (parameter.effectiveAssignment.mode === "fixed" && fixedOrigins.has(parameter.effectiveAssignment.origin)) {
       if (!sameJson(parameter.effectiveAssignment.value, value)) {
         fail(
           "human_materialization_fixed_configuration_conflict",
@@ -674,12 +643,16 @@ function applyUnitContextualCalibration(design, configuration, { existing = fals
       }
       continue;
     }
+    const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameterId);
     parameter.effectiveAssignment = {
+      mode: "automatic",
       value: structuredClone(value),
       inherited: false,
       origin: "automatic",
-      reason: "Valor calibrado automaticamente para esta unidade de estudo.",
-      sourceScope: { kind: "study_unit", ref: "pending-study-unit" }
+      reason: configuration.motivo.trim(),
+      sourceScope: definition.supportedScopes.includes("study_unit")
+        ? { kind: "study_unit", ref: "pending-study-unit" }
+        : { kind: "course", ref: design.courseId }
     };
   }
   if (configuration.direcaoEditorial !== undefined) {
@@ -738,7 +711,8 @@ function designSnapshot(design, microsequenceId) {
     );
   }
   if (parameters.some((parameter) =>
-    parameter?.effectiveAssignment?.origin === "system_default")) {
+    parameter?.effectiveAssignment?.value === null ||
+    parameter?.effectiveAssignment?.value === undefined)) {
     fail(
       "human_materialization_contextual_calibration_required",
       "Uma unidade nova ainda está sem calibração contextual.",
@@ -746,7 +720,8 @@ function designSnapshot(design, microsequenceId) {
     );
   }
   return {
-    contract: "aralearn.study-unit-design-snapshot.v1",
+    contract: "aralearn.study-unit-design-snapshot.v2",
+    parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
     didacticMicrosequenceId: microsequenceId,
     instructionalAnalysisUnitIds: [...targetPlanItems.instructionalAnalysisUnitIds],
     evidenceRequirementIds: [...targetPlanItems.evidenceRequirementIds],
@@ -754,6 +729,7 @@ function designSnapshot(design, microsequenceId) {
       parameterId: parameter.parameterId,
       value: structuredClone(parameter.effectiveAssignment.value),
       origin: parameter.effectiveAssignment.origin,
+      reason: parameter.effectiveAssignment.reason,
       sourceScopeKind: parameter.effectiveAssignment.sourceScope?.kind ?? null
     })),
     editorialDirections: directions.map((direction) => ({
@@ -1156,6 +1132,7 @@ export async function materializeHumanCoursePart({
 }) {
   validateUnits(units);
   let producedPartPosition = null;
+  let practiceObservations = [];
   const receipt = await executeTrustedCourseWrite({
     load: () => resolveHumanCourseContext({
       adapter,
@@ -1236,6 +1213,13 @@ export async function materializeHumanCoursePart({
         }
       }
       const targetPlanItems = applyGroupTargetPlans(groups, context.plan);
+      practiceObservations = groups.map((group, index) => ({
+        microssequencia: index + 1,
+        observacao: observeCoursePracticeDistribution(group.units.map((unit) => ({
+          studyUnitRef: String(unit.inputIndex), position: unit.source.posicao,
+          mode: pedagogicalMode(unit.source)
+        })))
+      }));
       validatePedagogicalPart(
         groups,
         context.plan,
@@ -1283,6 +1267,7 @@ export async function materializeHumanCoursePart({
       ? "Primeira parte produzida."
       : `Parte ${producedPartPosition} produzida.`,
     deepLink: receipt.deepLink ?? null,
-    nextDecision: "Posso preparar a próxima parte."
+    nextDecision: "Posso preparar a próxima parte.",
+    context: { distribuicaoDaPratica: practiceObservations }
   };
 }

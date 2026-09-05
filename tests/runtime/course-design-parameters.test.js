@@ -9,7 +9,11 @@ import {
   normalizeCourseComponentPolicy,
   normalizeCourseDesignChange,
   normalizeCourseDesignCommand,
+  normalizeCourseDesignPreference,
+  normalizeCourseDesignParameterAssignment,
+  normalizeCourseDesignParameterValue,
 } from "../../src/domain/courseDesignParameters.js";
+import { renderCourseDesignParameterCatalogSql } from "../../scripts/syncCourseDesignParameterCatalog.mjs";
 import { normalizeCourseDesignCommand as normalizeEdgeCommand } from
   "../../supabase/functions/_shared/aralearn/runtime/domain/courseDesignParameters.js";
 
@@ -23,8 +27,8 @@ const ANALYSIS_IDS = Array.from(
 const EVIDENCE = "30000000-0000-4000-8000-000000000001";
 
 
-test("catálogo v1.1 mantém quatro hipóteses pedagógicas e dois alvos editoriais flexíveis", () => {
-  assert.equal(COURSE_DESIGN_PARAMETER_CATALOG_VERSION, "1.1.0");
+test("catálogo v1.2 reúne definições tipadas com metadados para todos os consumidores", () => {
+  assert.equal(COURSE_DESIGN_PARAMETER_CATALOG_VERSION, "1.2.0");
   assert.deepEqual(
     COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, defaultStatus }) => [id, defaultStatus]),
     [
@@ -33,20 +37,32 @@ test("catálogo v1.1 mantém quatro hipóteses pedagógicas e dois alvos editori
       ["minimum_distinct_practice_opportunities_per_evidence_requirement", "product_hypothesis"],
       ["required_practice_variation_dimensions", "product_hypothesis"],
       ["authoring_chat_response_word_target", "product_hypothesis"],
-      ["study_unit_content_word_target", "product_hypothesis"]
+      ["study_unit_content_word_target", "product_hypothesis"],
+      ["practice_distribution", "product_hypothesis"],
+      ["practice_position", "product_hypothesis"],
+      ["authoring_part_microsequence_target", "product_hypothesis"],
+      ["authoring_batch_part_target", "product_hypothesis"],
+      ["authoring_pause_frequency", "product_hypothesis"],
+      ["authoring_chat_interaction", "product_hypothesis"]
     ]
   );
   const catalogText = JSON.stringify(COURSE_DESIGN_PARAMETER_DEFINITIONS);
   assert.ok(COURSE_DESIGN_PARAMETER_DEFINITIONS.every(({ valueSchema }) => (
-    ["integer", "set"].includes(valueSchema.type)
+    ["integer", "set", "enum"].includes(valueSchema.type)
   )));
-  const editorial = COURSE_DESIGN_PARAMETER_DEFINITIONS.slice(-2);
+  const editorial = COURSE_DESIGN_PARAMETER_DEFINITIONS.slice(4, 6);
   assert.deepEqual(editorial.map(({ defaultValue }) => defaultValue), [120, 180]);
   assert.ok(editorial.every(({ valueSchema }) => valueSchema.type === "integer"));
   assert.match(catalogText, /não é limite rígido|não é máximo/iu);
+  assert.equal(new Set(COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({humanField}) => humanField)).size, 12);
+  for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+    assert.ok(definition.group && definition.groupLabel && definition.unitLabel);
+    for (const option of definition.valueSchema.allowedValues || []) assert.ok(definition.optionLabels[option]);
+    assert.deepEqual(normalizeCourseDesignParameterValue(definition.id, definition.defaultValue), definition.defaultValue);
+  }
 });
 
-test("orientação qualitativa permanece separada dos seis parâmetros quantitativos", () => {
+test("orientação livre permanece separada dos parâmetros tipados", () => {
   const scope = { kind: "didactic_microsequence", ref: MICROSEQUENCE };
   const editorial = normalizeCourseDesignCommand({
     type: "set_guidance",
@@ -178,7 +194,7 @@ test("condição de pesquisa pode fixar todos os 33 componentes correntes", () =
 
 test("change DTO conserva somente o fato corrente sem identidade de histórico", () => {
   const valid = {
-    contract: "aralearn.course-design-change.v2",
+    contract: "aralearn.course-design-change.v3",
     courseId: COURSE,
     courseRevision: 9,
     requestId: "design-change-001",
@@ -211,4 +227,48 @@ test("change DTO conserva somente o fato corrente sem identidade de histórico",
     }),
     /tipo da mudança é inválido/iu
   );
+});
+
+test('normalização de preferências é idempotente em todos os tipos e rejeita autoridade extra', () => {
+  for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+    const fixed = { parameterId: definition.id, mode: 'fixed', value: definition.defaultValue };
+    const automatic = { parameterId: definition.id, mode: 'automatic', value: null };
+    for (const preference of [fixed, automatic]) {
+      const first = normalizeCourseDesignPreference(preference);
+      assert.deepEqual(normalizeCourseDesignPreference(first), first);
+      assert.throws(() => normalizeCourseDesignPreference({ ...preference, origin: 'research_condition' }));
+    }
+    assert.throws(() => normalizeCourseDesignPreference({ ...automatic, value: definition.defaultValue }));
+    assert.throws(() => normalizeCourseDesignPreference({ ...fixed, mode: null }));
+  }
+});
+
+test('delegação sem valor e escolha aplicada são estados distintos sem substituir fixação', () => {
+  const command = { type: 'delegate_parameter', scope: { kind: 'course', ref: COURSE },
+    parameterId: 'practice_distribution', reason: 'Discutir a sequência conforme o repertório.' };
+  assert.deepEqual(normalizeCourseDesignCommand(command), command);
+  assert.deepEqual(normalizeEdgeCommand(command), command);
+  assert.throws(() => normalizeCourseDesignCommand({ ...command, value: 'interleaved' }));
+  const applied = { mode: 'automatic', value: 'interleaved', origin: 'automatic', reason: 'As exposições permitem prática entre os casos.' };
+  assert.deepEqual(normalizeCourseDesignParameterAssignment(applied, command.parameterId), applied);
+  assert.throws(() => normalizeCourseDesignParameterAssignment({ ...applied, mode: 'fixed' }, command.parameterId));
+  assert.throws(() => normalizeCourseDesignParameterAssignment({ ...applied, origin: 'research_condition' }, command.parameterId));
+});
+
+test('granularidade da parte, lote e pausa não se substituem e só aceitam curso', () => {
+  for (const parameterId of ['authoring_part_microsequence_target', 'authoring_batch_part_target', 'authoring_pause_frequency']) {
+    const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({id}) => id === parameterId);
+    const command = { type: 'set_parameter', parameterId, scope: { kind: 'course', ref: COURSE }, value: definition.defaultValue, origin: 'author', reason: 'Preferência de cadência.' };
+    assert.deepEqual(normalizeCourseDesignCommand(command), command);
+    assert.throws(() => normalizeCourseDesignCommand({ ...command, scope: { kind: 'lesson', ref: LESSON } }));
+  }
+});
+
+test('SQL é projeção integral e determinística das mesmas definições do catálogo', () => {
+  const sql = renderCourseDesignParameterCatalogSql();
+  assert.equal(renderCourseDesignParameterCatalogSql(), sql);
+  for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+    assert.ok(sql.includes(JSON.stringify(definition).replaceAll("'", "''")));
+  }
+  assert.ok(sql.includes('on conflict(parameter_id) do update'));
 });

@@ -7,6 +7,8 @@ import test from "node:test";
 import {
   COURSE_AUTHORING_ANALYTICS_CONTRACT
 } from "../../src/domain/courseAuthoringAnalytics.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
+import { observeCoursePracticeDistribution } from "../../src/domain/coursePracticeDistribution.js";
 import { createCourseAnalyticsPanel } from "../../src/ui/CourseAnalyticsPanel.js";
 
 const COURSE_ID = "123e4567-e89b-42d3-a456-426614174000";
@@ -40,6 +42,7 @@ function analyticsPage({
   editorialScopeKind = "course",
   unitWordTarget = 140,
   wordCounts = null,
+  practiceModes = null,
   missingData = ["Uma direção editorial não informou origem."]
 } = {}) {
   const courseScope = { kind: "course", ref: null, label: "Curso inteiro" };
@@ -54,7 +57,7 @@ function analyticsPage({
     title: index === 0 ? "O que é um servidor" : "Pedido e resposta",
     introducedCount: 1
   }));
-  return {
+  const page = {
     contract: COURSE_AUTHORING_ANALYTICS_CONTRACT,
     course: { id: courseId, revision, title: courseTitle },
     scope: { selected, options: [courseScope, microScope] },
@@ -75,7 +78,7 @@ function analyticsPage({
         label: "Formas de explicação requeridas",
         valueKind: "string_list",
         effectiveValues: [{
-          value: ["definition", "contrast"],
+          value: ["plain_definition", "contrast"],
           origin: "automatic",
           sourceScopeKind: "didactic_microsequence",
           studyUnitCount
@@ -95,7 +98,7 @@ function analyticsPage({
         label: "Dimensões de variação requeridas",
         valueKind: "string_list",
         effectiveValues: [{
-          value: ["context", "representation"],
+          value: ["context", "external_representation"],
           origin: "automatic",
           sourceScopeKind: "study_unit",
           studyUnitCount
@@ -187,6 +190,20 @@ function analyticsPage({
     missingData,
     deepLink: null
   };
+  page.design.parameters = COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => {
+    const entry = page.design.parameters.find(({ parameterId }) => parameterId === definition.id) || {
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      effectiveValues: []
+    };
+    return { ...entry, definition: structuredClone(definition),
+      effectiveValues: entry.effectiveValues.map((value) => ({ ...value, reason: null })) };
+  });
+  page.design.practiceSequence = units.map(({ studyUnitRef, position }, index) => ({
+    studyUnitRef, position, mode: practiceModes?.[index] ?? null
+  }));
+  page.design.practiceDistribution = observeCoursePracticeDistribution(page.design.practiceSequence);
+  return page;
 }
 
 async function submitScope(root, index) {
@@ -234,8 +251,8 @@ test("dados de autoria mostram somente desenho e autoria em uma leitura quantita
     /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|courseRevision|componentRef|studyUnitRef|Representation/u
   );
   assert.doesNotMatch(root.innerHTML, /Reparos aceitos|Reparos rejeitados/u);
-  assert.equal((root.innerHTML.match(/<table /gu) || []).length, 4);
-  assert.equal((root.innerHTML.match(/<details /gu) || []).length, 4);
+  assert.equal((root.innerHTML.match(/<table /gu) || []).length, 5);
+  assert.equal((root.innerHTML.match(/<details /gu) || []).length, 5);
   assert.doesNotMatch(root.innerHTML, new RegExp(MICRO_REF, "u"));
   assert.doesNotMatch(root.innerHTML, /Fatos do recorte|timeline|dashboard|sidebar|role="dialog"/iu);
   panel.destroy();
@@ -270,6 +287,62 @@ test("parâmetros categóricos ficam em português na fronteira pública", async
     root.innerHTML,
     /Plain definition|Concrete example|Application condition|Representation link|Case or data|Task feature|External representation|Support level/u
   );
+  panel.destroy();
+});
+
+test("distribuição mostra funções exclusivas, unidades mistas e posições ordenadas sem expor identidades", async () => {
+  const root = new FakeRoot();
+  const page = analyticsPage({ studyUnitCount: 6,
+    practiceModes: ["practice", "expository", "expository", "mixed", null, "practice"] });
+  page.design.practiceSequence = page.design.practiceSequence.map((row) => ({ ...row, position: row.position * 10 })).reverse();
+  page.design.practiceDistribution = observeCoursePracticeDistribution(page.design.practiceSequence);
+  const downloads = [];
+  const panel = createCourseAnalyticsPanel({ root, course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() { return page; } },
+    download: (file) => downloads.push(file) });
+  await panel.open();
+  assert.match(root.innerHTML, /<summary><span>Distribuição de explicação e prática<\/span>/u);
+  assert.match(root.innerHTML, /Somente explicação<\/th><td>2 unidades de estudo/u);
+  assert.match(root.innerHTML, /Somente prática<\/th><td>2 unidades de estudo/u);
+  assert.match(root.innerHTML, /Explicação e prática na mesma unidade<\/th><td>1 unidade mista/u);
+  assert.match(root.innerHTML, /Função não declarada<\/th><td>1 unidade de estudo/u);
+  assert.match(root.innerHTML, /Posições com explicação, incluindo mistas<\/th><td>2ª, 3ª, 4ª/u);
+  assert.match(root.innerHTML, /Posições com prática, incluindo mistas<\/th><td>1ª, 4ª, 6ª/u);
+  assert.match(root.innerHTML, /Maior trecho somente de explicação<\/th><td>2 unidades/u);
+  assert.match(root.innerHTML, /1 antes da primeira explicação · 0 entre a primeira e a última · 1 depois da última/u);
+  assert.match(root.innerHTML, /não avaliam qualidade, alternância nem atendimento à preferência/u);
+  assert.doesNotMatch(root.innerHTML, /study-unit:|expository|practiceSequence|practiceDistribution/u);
+  panel.export();
+  const exported = JSON.parse(downloads[0].content);
+  assert.deepEqual(exported.design.practiceSequence, page.design.practiceSequence);
+  assert.deepEqual(exported.design.practiceDistribution, page.design.practiceDistribution);
+  panel.destroy();
+});
+
+test("somente prática ou somente explicação não recebe classificação de ordem", async () => {
+  for (const [mode, notice] of [
+    ["practice", /Sem explicação declarada, a posição relativa da prática não está definida/u],
+    ["expository", /Não há prática declarada para comparar com a explicação/u]
+  ]) {
+    const root = new FakeRoot();
+    const panel = createCourseAnalyticsPanel({ root, course: { courseId: COURSE_ID, revision: 7 },
+      controller: { async loadCourseAuthoringAnalytics() { return analyticsPage({ practiceModes: [mode, mode] }); } } });
+    await panel.open();
+    assert.match(root.innerHTML, notice);
+    assert.doesNotMatch(root.innerHTML, /0 antes da primeira|ao final|intercalada|distribuição correta/u);
+    panel.destroy();
+  }
+});
+
+test("respostas existentes não substituem declaração ausente de função didática", async () => {
+  const root = new FakeRoot();
+  const panel = createCourseAnalyticsPanel({ root, course: { courseId: COURSE_ID, revision: 7 },
+    controller: { async loadCourseAuthoringAnalytics() { return analyticsPage(); } } });
+  await panel.open();
+  assert.match(root.innerHTML, /Prática<small>Oportunidades produzidas\.<\/small><\/dt><dd>3<\/dd>/u);
+  assert.match(root.innerHTML, /Função não declarada<\/th><td>2 unidades de estudo/u);
+  assert.match(root.innerHTML, /Somente prática<\/th><td>0 unidades de estudo/u);
+  assert.match(root.innerHTML, /Posições com prática, incluindo mistas<\/th><td>Nenhuma/u);
   panel.destroy();
 });
 
@@ -477,8 +550,8 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
     "Intervenções por origem"
   ]) assert.match(root.innerHTML, new RegExp(`table aria-label="${table}"`, "u"));
   assert.match(root.innerHTML, /Novidades por unidade de estudo expositiva<\/th><td>1 · 2 unidades de estudo · condição de pesquisa · origem na microssequência/u);
-  assert.match(root.innerHTML, /Formas de explicação requeridas<\/th><td>Definição, contraste · 2 unidades de estudo · calibração automática · origem na microssequência/u);
-  assert.match(root.innerHTML, /Dimensões de variação requeridas<\/th><td>Contexto, representação · 2 unidades de estudo · calibração automática · origem na unidade de estudo/u);
+  assert.match(root.innerHTML, /Formas de explicação requeridas<\/th><td>Definição em linguagem direta, contraste · 2 unidades de estudo · calibração automática · origem na microssequência/u);
+  assert.match(root.innerHTML, /Dimensões de variação requeridas<\/th><td>Contexto, representação externa · 2 unidades de estudo · calibração automática · origem na unidade de estudo/u);
   assert.match(root.innerHTML, /Alvo de palavras por unidade de estudo<\/th><td>140 · 2 unidades de estudo · condição de pesquisa · origem no curso/u);
   assert.match(
     root.innerHTML,
@@ -514,7 +587,7 @@ test("tabelas simples preservam os números do desenho e intervenções explíci
   );
 });
 
-test("download JSON usa o mesmo snapshot v2 e os mesmos números da interface", async () => {
+test("download JSON usa o mesmo snapshot v3 e os mesmos números da interface", async () => {
   const root = new FakeRoot();
   const downloads = [];
   const expected = analyticsPage();
@@ -675,36 +748,29 @@ test("exports explícitos distinguem desenhos aplicados entre revisões e cópia
     snapshots.map(({ design }) => design.wordCountsByStudyUnit.map(({ wordCount }) => wordCount)),
     [[72, 88], [104, 136], [74, 86], [108, 132]]
   );
-  const parameterIds = [
-    "new_analysis_unit_ceiling_per_expository_study_unit",
-    "required_explanation_forms",
-    "minimum_distinct_practice_opportunities_per_evidence_requirement",
-    "required_practice_variation_dimensions",
-    "authoring_chat_response_word_target",
-    "study_unit_content_word_target"
-  ];
+  const parameterIds = COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id);
   assert.deepEqual(
     snapshots.map(({ design }) => design.parameters.map(({ parameterId }) => parameterId)),
     snapshots.map(() => parameterIds)
   );
   assert.deepEqual(
-    Object.fromEntries(first.design.parameters.map(({ parameterId, effectiveValues }) => [
+    Object.fromEntries(first.design.parameters.filter(({ effectiveValues }) => effectiveValues.length).map(({ parameterId, effectiveValues }) => [
       parameterId,
-      effectiveValues[0]
+      (({ reason, ...applied }) => { assert.equal(reason, null); return applied; })(effectiveValues[0])
     ])),
     {
       new_analysis_unit_ceiling_per_expository_study_unit: {
         value: 1, origin: "research_condition", sourceScopeKind: "study_unit", studyUnitCount: 2
       },
       required_explanation_forms: {
-        value: ["definition", "contrast"], origin: "automatic",
+        value: ["plain_definition", "contrast"], origin: "automatic",
         sourceScopeKind: "didactic_microsequence", studyUnitCount: 2
       },
       minimum_distinct_practice_opportunities_per_evidence_requirement: {
         value: 3, origin: "author", sourceScopeKind: "course", studyUnitCount: 2
       },
       required_practice_variation_dimensions: {
-        value: ["context", "representation"], origin: "automatic",
+        value: ["context", "external_representation"], origin: "automatic",
         sourceScopeKind: "study_unit", studyUnitCount: 2
       },
       authoring_chat_response_word_target: {

@@ -1,4 +1,9 @@
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
+import {
+  AuthoringProfilesError, normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
+  normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
+  normalizeCourseAuthoringProfileChange
+} from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AuthoringApiError } from "./errors.js";
 import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
@@ -515,6 +520,12 @@ function databaseError(status, body) {
   if (code === "PH409") {
     return new AuthoringApiError(409, "person_handle_unavailable", "Este identificador público já está em uso.");
   }
+  if (code === "PD409") {
+    return new AuthoringApiError(409, "course_design_research_conflict", "Resolva as condições de pesquisa antes de aplicar o perfil.");
+  }
+  if (code === "PN409") {
+    return new AuthoringApiError(409, "authoring_profile_name_unavailable", "Já existe um perfil com este nome nesta conta.");
+  }
   if (code === "40001") {
     return new AuthoringApiError(
       409,
@@ -920,6 +931,16 @@ function normalizeCourseDesignDatabaseValue(normalize) {
       "course_service_unavailable",
       "O serviço devolveu um contrato de parâmetros inválido."
     );
+  }
+}
+
+function normalizeProfileValue(normalize, { database = false } = {}) {
+  try { return normalize(); }
+  catch (error) {
+    if (!(error instanceof AuthoringProfilesError) && !(error instanceof CourseDesignParametersError)) throw error;
+    throw new AuthoringApiError(database ? 503 : 422,
+      database ? "course_service_unavailable" : error.code,
+      database ? "O serviço devolveu um contrato de perfil inválido." : error.message);
   }
 }
 
@@ -2027,6 +2048,63 @@ export class CourseSupabaseAdapter {
     return withDeepLink(result, this.publicAppUrl, "planning");
   }
 
+  async listAuthoringProfiles({ principal, deadlineAt = null }) {
+    const value = first(await this.rpc("list_authoring_profiles_for_actor_v1", {
+      p_actor_id: principal.actorId
+    }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    return normalizeProfileValue(() => normalizeAuthoringProfileList(value), { database: true });
+  }
+
+  saveAuthoringProfile(value) {
+    return this.#writeAuthoringProfile(value, false);
+  }
+
+  deleteAuthoringProfile(value) {
+    return this.#writeAuthoringProfile(value, true);
+  }
+
+  async #writeAuthoringProfile({ principal, deadlineAt = null, ...input }, deleted) {
+    const command = normalizeProfileValue(() => (deleted ? normalizeAuthoringProfileDelete : normalizeAuthoringProfileSave)(input));
+    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify({ operation: deleted ? "delete" : "save", ...command })));
+    let value;
+    try {
+      value = first(await this.rpc(deleted ? "delete_authoring_profile_for_actor_v1" : "save_authoring_profile_for_actor_v1", {
+        p_actor_id: principal.actorId, p_profile_id: command.profileId, p_expected_revision: command.expectedRevision,
+        ...(deleted ? {} : { p_name: command.name, p_preferences: command.preferences }),
+        p_request_id: command.requestId, p_request_hash: requestHash
+      }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    } catch (error) {
+      if (error?.code === "stale_course_state") {
+        throw new AuthoringApiError(409, "stale_authoring_profile", "O perfil mudou. Releia antes de salvar.");
+      }
+      throw error;
+    }
+    return normalizeProfileValue(() => normalizeAuthoringProfileChange(value, { ...command, deleted }), { database: true });
+  }
+
+  async previewCourseAuthoringProfile({ principal, deadlineAt = null, ...input }) {
+    const command = normalizeProfileValue(() => normalizeCourseAuthoringProfileRequest(input));
+    const value = first(await this.rpc("preview_course_authoring_profile_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: command.courseId,
+      p_expected_course_revision: command.expectedCourseRevision,
+      p_profile_id: command.profileId, p_profile_revision: command.profileRevision
+    }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    return normalizeProfileValue(() => normalizeCourseAuthoringProfilePreview(value, command), { database: true });
+  }
+
+  async applyCourseAuthoringProfile({ principal, deadlineAt = null, ...input }) {
+    const command = normalizeProfileValue(() => normalizeCourseAuthoringProfileRequest(input, { apply: true }));
+    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify(command)));
+    const value = first(await this.rpc("apply_course_authoring_profile_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: command.courseId,
+      p_expected_course_revision: command.expectedCourseRevision,
+      p_profile_id: command.profileId, p_profile_revision: command.profileRevision,
+      p_exception_policy: command.exceptionPolicy, p_request_id: command.requestId,
+      p_request_hash: requestHash, p_channel: authoringChannel(principal)
+    }, { deadlineAt, timeoutMs: 40_000, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    return normalizeProfileValue(() => normalizeCourseAuthoringProfileChange(value, command), { database: true });
+  }
+
   async getCourseDesign({
     principal,
     courseId,
@@ -2038,7 +2116,7 @@ export class CourseSupabaseAdapter {
   }) {
     let result;
     try {
-      result = first(await this.rpc("get_owned_course_design_for_actor_v2", {
+      result = first(await this.rpc("get_owned_course_design_for_actor_v3", {
         p_actor_id: principal.actorId,
         p_course_id: courseId,
         p_scope_kind: scopeKind,
@@ -2416,7 +2494,7 @@ export class CourseSupabaseAdapter {
     let raw;
     try {
       raw = first(await this.rpc(
-        "get_owned_course_authoring_analytics_for_actor_v2",
+        "get_owned_course_authoring_analytics_for_actor_v3",
         {
           p_actor_id: principal.actorId,
           p_course_id: courseId,
@@ -2857,7 +2935,7 @@ export class CourseSupabaseAdapter {
       expectedCourseRevision,
       command: normalizedCommand
     })));
-    const result = first(await this.rpc("apply_course_design_command_for_actor_v2", {
+    const result = first(await this.rpc("apply_course_design_command_for_actor_v3", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_expected_course_revision: expectedCourseRevision,

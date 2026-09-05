@@ -32,6 +32,20 @@ export function routeCourseRequest(method, pathname) {
     if (verb === "GET") return { name: "listCourses" };
     if (verb === "POST") return { name: "createCourse" };
   }
+  if (path === "/v1/authoring-profiles") {
+    if (verb === "GET") return { name: "listAuthoringProfiles" };
+    if (verb === "POST") return { name: "createAuthoringProfile" };
+  }
+  const authoringProfile = path.match(/^\/v1\/authoring-profiles\/([^/]+)$/u);
+  if (authoringProfile && new Set(["PATCH", "DELETE"]).has(verb)) {
+    return { name: verb === "PATCH" ? "updateAuthoringProfile" : "deleteAuthoringProfile",
+      profileId: courseUuid(authoringProfile[1], "profileId") };
+  }
+  const courseProfile = path.match(/^\/v1\/courses\/([^/]+)\/authoring-profile\/(preview|applications)$/u);
+  if (courseProfile && verb === "POST") {
+    return { name: courseProfile[2] === "preview" ? "previewCourseAuthoringProfile" : "applyCourseAuthoringProfile",
+      courseId: courseUuid(courseProfile[1]) };
+  }
   const instructionalPlan = path.match(/^\/v1\/courses\/([^/]+)\/instructional-plan$/u);
   if (instructionalPlan && verb === "GET") {
     return {

@@ -111,22 +111,24 @@ conclusão de exemplo e integração conforme o objetivo.
 
 ## Ajustar o desenho
 
-O AraLearn mantém quatro dimensões pedagógicas configuráveis:
+A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
+conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
+produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
-- teto de ideias novas por unidade expositiva;
-- formas de explicação;
-- oportunidades mínimas de prática por requisito;
-- dimensões de variação da prática.
+Automático é uma intenção sem valor numérico implícito. Antes de materializar,
+o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+função, público e planejamento. Fixações da autoria e condições de pesquisa
+prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
+A aplicação conserva os valores e motivos daquela decisão. Alterar a
+configuração corrente não reescreve essa evidência histórica.
 
-Também mantém dois alvos editoriais quantitativos flexíveis: palavras por
-resposta de autoria e palavras por unidade de estudo. Eles orientam a extensão,
-mas não são limites e não autorizam resumir, omitir ou fragmentar conteúdo para
-atingir uma contagem.
-
-No estado `default`, o GPT precisa calibrar automaticamente os valores para cada
-microssequência ou unidade conforme conteúdo, função e público; não aplica um
-preset fixo. Em pesquisa, a pessoa pode fixar valores deliberadamente, e esses
-valores prevalecem.
+Você pode salvar um perfil de preferências e copiá-lo para um curso após
+examinar a prévia. As exceções existentes são preservadas, salvo seleção
+explícita, e condições de pesquisa continuam protegidas. Editar ou excluir o
+perfil depois não muda cursos já configurados. Distribuição e posição da
+prática orientam o desenho; as observações calculadas mostram o que foi
+declarado e onde aparece, sem atribuir uma nota pedagógica.
 
 Direção editorial é separada. Ela pode orientar extensão, estilo, títulos e
 organização, mas não retirar conteúdo necessário.

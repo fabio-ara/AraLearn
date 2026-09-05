@@ -178,13 +178,24 @@ recorte. Ele diferencia ideias introduzidas, ideias estabelecidas apenas usadas
 e retomadas deliberadas. A resposta coordenadora informa o resultado, abre o
 destino pertinente e formula no máximo uma decisão seguinte.
 
-O estado `default` dos parâmetros exige calibração contextual automática pelo
-GPT para cada microssequência ou unidade, conforme conteúdo e função; não é um
-preset fixo. Isso inclui os quatro parâmetros pedagógicos e os dois alvos
-editoriais quantitativos flexíveis. Valores deliberadamente fixados pelo
-pesquisador prevalecem. Assim, o AraLearn continua geral para pesquisa em
-design instrucional, sem tomar uma finalidade específica, como concurso, por
-padrão pedagógico universal.
+A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
+conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
+produção orientam o trabalho; não são licença para omitir conteúdo necessário.
+
+Automático é uma intenção sem valor numérico implícito. Antes de materializar,
+o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+função, público e planejamento. Fixações da autoria e condições de pesquisa
+prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
+A aplicação conserva os valores e motivos daquela decisão. Alterar a
+configuração corrente não reescreve essa evidência histórica.
+
+Ao abrir o minichat, o aplicativo lê a configuração efetiva do foco pela mesma
+revisão do conteúdo original. Ele não calcula herança nem preenche valores
+pendentes. Se a revisão divergir, pede sincronização e reabertura; a leitura não
+promove a revisão original do rascunho. A conversa recebe fixações, delegações,
+motivos e conflitos. Uma proposta de edição não segue enquanto houver conflito
+de configuração.
 
 Os alvos de palavras por resposta de autoria e por unidade de estudo orientam a
 extensão, mas não são limites e não autorizam esconder decisões ou comprimir

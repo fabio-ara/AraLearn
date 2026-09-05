@@ -450,10 +450,10 @@ function courseDesignFixture({
   const currentScope = { kind: scope.kind, ref: scope.ref };
   const inherited = scope.kind !== "course";
   return {
-    contract: "aralearn.course-design.v2",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision,
-    parameterCatalogVersion: "1.1.0",
+    parameterCatalogVersion: "1.2.0",
     scopeContext: {
       current: scope,
       ancestors,
@@ -465,19 +465,22 @@ function courseDesignFixture({
     definitions,
     parameters: definitions.map((definition, index) => {
       const local = index === 0 && localParameter ? {
+        mode: localParameter.mode || "fixed",
         value: structuredClone(localParameter.value),
         origin: localParameter.origin,
         reason: localParameter.reason
       } : null;
       return {
         parameterId: definition.id,
+        conflicts: [],
         localAssignment: local,
         effectiveAssignment: local ? {
           ...structuredClone(local),
           sourceScope: currentScope,
           inherited: false
         } : {
-          value: structuredClone(definition.defaultValue),
+          mode: inherited ? "fixed" : "automatic",
+          value: inherited ? structuredClone(definition.defaultValue) : null,
           origin: inherited ? "author" : "system_default",
           reason: inherited ? "Decisão definida no Curso." : "Hipótese inicial do produto.",
           sourceScope: inherited ? { kind: "course", ref: COURSE_ID } : null,
@@ -526,6 +529,7 @@ function courseDesignFixture({
 
 function controllerFixture(overrides = {}) {
   const controller = {
+    async listAuthoringProfiles() { return { contract: "aralearn.authoring-profiles.v1", profiles: [] }; },
     async listCourses() {
       return listPage();
     },
@@ -583,7 +587,7 @@ function controllerFixture(overrides = {}) {
     },
     async mutateCourseDesign() {
       return {
-        contract: "aralearn.course-design-change.v2",
+        contract: "aralearn.course-design-change.v3",
         courseId: COURSE_ID,
         courseRevision: 5,
         requestId: "93000000-0000-4000-8000-000000000039",
@@ -1371,32 +1375,12 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
     root.innerHTML,
     /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*><svg/u
   );
-  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 6);
-  const pedagogicalStart = root.innerHTML.indexOf(
-    'aria-labelledby="course-design-pedagogical-parameters-title"'
-  );
-  const editorialStart = root.innerHTML.indexOf(
-    'aria-labelledby="course-design-editorial-parameters-title"'
-  );
-  const guidanceStart = root.innerHTML.indexOf('class="course-design-guidance"');
-  assert.ok(pedagogicalStart >= 0 && editorialStart > pedagogicalStart);
-  assert.ok(guidanceStart > editorialStart);
-  const pedagogicalParameters = root.innerHTML.slice(pedagogicalStart, editorialStart);
-  const editorialParameters = root.innerHTML.slice(editorialStart, guidanceStart);
-  assert.equal(
-    (pedagogicalParameters.match(/class="course-design-parameter"/gu) || []).length,
-    4
-  );
-  assert.equal(
-    (editorialParameters.match(/class="course-design-parameter"/gu) || []).length,
-    2
-  );
-  assert.match(pedagogicalParameters, /Parâmetros pedagógicos/u);
-  assert.doesNotMatch(pedagogicalParameters, /Alvo de palavras/u);
-  assert.match(editorialParameters, /Parâmetros editoriais/u);
-  assert.match(editorialParameters, /Alvo de palavras por resposta de autoria/u);
-  assert.match(editorialParameters, /Alvo de palavras por unidade de estudo/u);
-  assert.doesNotMatch(editorialParameters, /Novas unidades de análise/u);
+  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, COURSE_DESIGN_PARAMETER_DEFINITIONS.length);
+  for (const group of new Set(COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => definition.group))) {
+    assert.ok(root.innerHTML.includes(`aria-labelledby="course-design-${group}-parameters-title"`));
+  }
+  assert.match(root.innerHTML, /Automático pelo contexto/u);
+  assert.match(root.innerHTML, /Perfis de autoria/u);
   assert.match(root.innerHTML, /Alvo de palavras por resposta de autoria/u);
   assert.match(root.innerHTML, /Alvo de palavras por unidade de estudo/u);
   assert.match(root.innerHTML, /aria-label="Editar direção editorial neste escopo"[^>]*><svg/u);
@@ -1501,8 +1485,8 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.deepEqual(calls[0].options.scope, { kind: "module", ref: "module-a" });
   assert.match(root.innerHTML, /Módulo: Base/u);
   assert.match(root.innerHTML, /Herdado de Fundamentos · Definido pelo autor/u);
-  assert.match(root.innerHTML, /não são definidos em módulo/u);
-  assert.match(root.innerHTML, /<fieldset disabled>/u);
+  assert.match(root.innerHTML, /Ajuste disponível em: Curso/u);
+  assert.match(root.innerHTML, /aria-disabled="true"/u);
   assert.doesNotMatch(root.innerHTML, /data-course-design-parameter/u);
   assert.match(root.innerHTML, /Decisão definida no Curso/u);
 });
@@ -1569,8 +1553,8 @@ test("Microssequência mostra parâmetros em linguagem humana sem expor o metamo
   });
 
   assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /unidades de estudo desta microssequência usam estes valores/iu);
-  assert.match(root.innerHTML, /Cada unidade preserva a configuração usada na produção/iu);
+  assert.match(root.innerHTML, /respeitadas as exceções de cada unidade/iu);
+  assert.match(root.innerHTML, /A configuração usada anteriormente fica preservada/iu);
   assert.match(root.innerHTML, /Abrir unidade de estudo/iu);
   assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
   assert.doesNotMatch(root.innerHTML, /Requisitos de evidência|Unidades de análise instrucional/u);
@@ -1610,6 +1594,7 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         const parameter = design.parameters[0];
         if (request.command.type === "set_parameter") {
           const assignment = {
+            mode: "fixed",
             value: request.command.value,
             origin: request.command.origin,
             reason: request.command.reason
@@ -1623,7 +1608,8 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         } else {
           parameter.localAssignment = null;
           parameter.effectiveAssignment = {
-            value: 2,
+            mode: "automatic",
+            value: null,
             origin: "system_default",
             reason: "Hipótese inicial do produto.",
             sourceScope: null,
@@ -1632,7 +1618,7 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         }
         design.courseRevision = revision;
         return {
-          contract: "aralearn.course-design-change.v2",
+          contract: "aralearn.course-design-change.v3",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
@@ -1660,7 +1646,7 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
   assert.match(parameterForm, /name="reason"/u);
   assert.match(parameterForm, /aria-label="Salvar neste escopo"/u);
   assert.doesNotMatch(parameterForm, /Este formulário fixa uma decisão explícita/iu);
-  assert.doesNotMatch(parameterForm, /<option value="automatic"/u);
+  assert.match(parameterForm, /<option value="automatic"/u);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
@@ -1764,7 +1750,8 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
         }
         revision = 6;
         const assignment = {
-          value: request.command.value,
+          mode: "fixed",
+            value: request.command.value,
           origin: request.command.origin,
           reason: request.command.reason
         };
@@ -1782,7 +1769,7 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
           } : parameter)
         };
         const result = {
-          contract: "aralearn.course-design-change.v2",
+          contract: "aralearn.course-design-change.v3",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
@@ -1876,7 +1863,7 @@ test("desenho mantém o envelope até a releitura e não reaplica escrita já co
         mutationCalls += 1;
         revision = 6;
         return {
-          contract: "aralearn.course-design-change.v2",
+          contract: "aralearn.course-design-change.v3",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,

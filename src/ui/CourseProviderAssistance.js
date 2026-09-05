@@ -395,6 +395,7 @@ export function createCourseProviderAssistance({
       const response = await requestCourseAssistanceDiscussion({
         project: active.project,
         selection: active.selection,
+        configuration: active.configuration,
         scope: active.scope,
         writeTargetId: active.writeTargetId,
         writeTargetIds: active.writeTargetIds,
@@ -446,6 +447,7 @@ export function createCourseProviderAssistance({
       const candidate = await prepareCourseAssistanceProposal({
         project: active.project,
         selection: active.selection,
+        configuration: active.configuration,
         confirmedProposal: acceptedProposal,
         conversation,
         writeTargetIds: active.writeTargetIds,
@@ -591,6 +593,7 @@ export function createCourseProviderAssistance({
       trigger = null,
       project,
       selection,
+      configuration,
       scope,
       targetTitle,
       writeTargetId = "",
@@ -603,6 +606,7 @@ export function createCourseProviderAssistance({
           typeof onApplyDraft !== "function") return false;
       active = {
         trigger, project: structuredClone(project), selection: structuredClone(selection),
+        configuration: structuredClone(configuration),
         scope, targetTitle: text(targetTitle) || SCOPE_LABELS[scope], writeTargetId,
         writeTargetIds: (() => {
           const normalized = [...new Set((Array.isArray(writeTargetIds) ? writeTargetIds : [])

@@ -1,4 +1,6 @@
 import { COURSE_SOURCE_ROLES } from "./courseSources.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS, normalizeCourseDesignParameterValue } from "./courseDesignParameters.js";
+import { observeCoursePracticeDistribution } from "./coursePracticeDistribution.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const IDENTIFIER = /^[a-z][a-z0-9._:-]{0,159}$/u;
@@ -6,7 +8,7 @@ const INTERNAL_PUBLIC_LANGUAGE =
   /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bAnalytics\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
 
 export const COURSE_AUTHORING_ANALYTICS_CONTRACT =
-  "aralearn.course-authoring-analytics.v2";
+  "aralearn.course-authoring-analytics.v3";
 
 export const COURSE_AUTHORING_ANALYTICS_SCOPE_KINDS = Object.freeze([
   "course",
@@ -15,14 +17,9 @@ export const COURSE_AUTHORING_ANALYTICS_SCOPE_KINDS = Object.freeze([
   "study_unit"
 ]);
 
-export const COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS = Object.freeze([
-  "new_analysis_unit_ceiling_per_expository_study_unit",
-  "required_explanation_forms",
-  "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  "required_practice_variation_dimensions",
-  "authoring_chat_response_word_target",
-  "study_unit_content_word_target"
-]);
+export const COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS = Object.freeze(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id)
+);
 
 const SCOPE_KIND_SET = new Set(COURSE_AUTHORING_ANALYTICS_SCOPE_KINDS);
 const PARAMETER_ID_SET = new Set(COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS);
@@ -40,14 +37,11 @@ const EDITORIAL_SOURCE_SCOPE_KIND_SET = new Set([
   "didactic_microsequence",
   "study_unit"
 ]);
-const PARAMETER_VALUE_KINDS = Object.freeze({
-  new_analysis_unit_ceiling_per_expository_study_unit: "integer",
-  required_explanation_forms: "string_list",
-  minimum_distinct_practice_opportunities_per_evidence_requirement: "integer",
-  required_practice_variation_dimensions: "string_list",
-  authoring_chat_response_word_target: "integer",
-  study_unit_content_word_target: "integer"
-});
+const PARAMETER_VALUE_KINDS = Object.freeze(Object.fromEntries(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id, valueSchema }) => [
+    id, valueSchema.type === "set" ? "string_list" : valueSchema.type
+  ])
+));
 
 export class CourseAuthoringAnalyticsError extends Error {
   constructor(code, message) {
@@ -213,15 +207,15 @@ function normalizeScope(value) {
   return { selected, options };
 }
 
-function normalizeParameterValue(value, valueKind, label) {
+function normalizeParameterValue(value, parameterId) {
   if (value === null) return null;
-  if (valueKind === "integer") return positiveInteger(value, label);
-  return uniqueTexts(value, 16, 80, label);
+  try { return normalizeCourseDesignParameterValue(parameterId, value); }
+  catch { fail("invalid_course_authoring_analytics", "O valor aplicado diverge do catálogo."); }
 }
 
 function normalizeParameter(value) {
   const source = exact(value, [
-    "parameterId", "label", "valueKind", "effectiveValues"
+    "parameterId", "label", "valueKind", "definition", "effectiveValues"
   ], "Um parâmetro pedagógico");
   const parameterId = identifier(source.parameterId, "O parâmetro");
   if (!PARAMETER_ID_SET.has(parameterId)) {
@@ -231,6 +225,12 @@ function normalizeParameter(value) {
     );
   }
   const valueKind = identifier(source.valueKind, "O tipo do valor do parâmetro");
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameterId);
+  const canonical = (item) => Array.isArray(item) ? item.map(canonical) :
+    item && typeof item === "object" ? Object.fromEntries(Object.keys(item).sort().map((key) => [key, canonical(item[key])])) : item;
+  if (JSON.stringify(canonical(source.definition)) !== JSON.stringify(canonical(definition))) {
+    fail("invalid_course_authoring_analytics", "A definição exportada diverge do catálogo de parâmetros.");
+  }
   if (valueKind !== PARAMETER_VALUE_KINDS[parameterId]) {
     fail("invalid_course_authoring_analytics", "O tipo do valor não corresponde ao parâmetro.");
   }
@@ -240,18 +240,20 @@ function normalizeParameter(value) {
     (entry) => [
       JSON.stringify(entry.value),
       entry.origin ?? "",
+      entry.reason ?? "",
       entry.sourceScopeKind ?? ""
     ].join("\0"),
     "Os valores efetivos do parâmetro",
     (entry) => {
       const row = exact(
         entry,
-        ["value", "origin", "sourceScopeKind", "studyUnitCount"],
+        ["value", "origin", "reason", "sourceScopeKind", "studyUnitCount"],
         "Um valor efetivo"
       );
       return {
-        value: normalizeParameterValue(row.value, valueKind, "O valor pedagógico efetivo"),
+        value: normalizeParameterValue(row.value, parameterId),
         origin: row.origin === null ? null : identifier(row.origin, "A origem do valor efetivo"),
+        reason: row.reason === null ? null : text(row.reason, 1000, "O motivo da escolha aplicada"),
         sourceScopeKind: nullableScopeKind(
           row.sourceScopeKind,
           PARAMETER_SOURCE_SCOPE_KIND_SET,
@@ -268,6 +270,7 @@ function normalizeParameter(value) {
     parameterId,
     label: text(source.label, 240, "O rótulo do parâmetro"),
     valueKind,
+    definition: structuredClone(definition),
     effectiveValues
   };
 }
@@ -430,12 +433,25 @@ function normalizeDesign(value) {
     "studyUnitCount", "parameters", "editorialDirections", "analysisUnits",
     "introductionsByStudyUnit", "explanationForms", "components",
     "practiceByRequirement", "practiceVariationDimensions", "sourcesByRole",
-    "wordCountsByStudyUnit"
+    "wordCountsByStudyUnit", "practiceSequence",
+    ...(Object.hasOwn(value, "practiceDistribution") ? ["practiceDistribution"] : [])
   ], "O desenho quantitativo");
   const studyUnitCount = nonnegativeInteger(
     source.studyUnitCount,
     "A quantidade de unidades de estudo"
   );
+  let practiceDistribution;
+  try { practiceDistribution = observeCoursePracticeDistribution(source.practiceSequence); }
+  catch { fail("invalid_course_authoring_analytics", "A sequência de práticas declaradas é inválida."); }
+  if (practiceDistribution.studyUnitCount !== studyUnitCount) {
+    fail("invalid_course_authoring_analytics", "A distribuição de práticas não corresponde ao recorte.");
+  }
+  if (Object.hasOwn(source, "practiceDistribution") && (!source.practiceDistribution ||
+    Object.keys(practiceDistribution).some((key) =>
+      JSON.stringify(practiceDistribution[key]) !== JSON.stringify(source.practiceDistribution[key])) ||
+    Object.keys(source.practiceDistribution).length !== Object.keys(practiceDistribution).length)) {
+    fail("invalid_course_authoring_analytics", "A observação da prática diverge da sequência declarada.");
+  }
   const parameters = uniqueRows(
     source.parameters,
     COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.length,
@@ -495,6 +511,8 @@ function normalizeDesign(value) {
   }
   return {
     studyUnitCount,
+    practiceSequence: source.practiceSequence.map((row) => ({ ...row })),
+    practiceDistribution,
     parameters,
     editorialDirections,
     analysisUnits,

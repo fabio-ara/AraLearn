@@ -111,6 +111,11 @@
       "terminologyReview": "#116",
       "objects": {
         "mcpTools": [
+          "consultar_perfis",
+          "salvar_perfil",
+          "excluir_perfil",
+          "prever_aplicacao_perfil",
+          "aplicar_perfil",
           "retomar_curso",
           "consultar_planejamento",
           "preparar_materializacao",
@@ -131,7 +136,8 @@
           "course-authoring-part-save-v1",
           "course-authoring-part-materialization-atomic-v2",
           "course-study-unit-inspection-v2",
-          "course-authoring-configuration-v2",
+          "course-authoring-configuration-v3",
+          "authoring-preference-profiles-v1",
           "contextual-study-unit-edit-v1",
           "single-authoring-runtime-v1"
         ],
@@ -139,7 +145,10 @@
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_design_parameter_definitions|private\\.course_design_parameter_assignments|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_assignments|private\\.course_component_policy_assignments)$",
           "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|list_course_study_units_for_actor_v1|list_course_study_units_for_actor_continuous_v2|decorate_course_inspection_page_v2|assert_course_lesson_dependencies_v1|delete_course_authoring_relations_before_course_v1|delete_course_design_assignments_before_entity_v1|commit_course_composition_core_v1|course_authoring_part_progress_v1|course_component_catalog_v1|reject_course_design_parameter_definition_change_v1|course_design_json_hash_v1|valid_course_design_parameter_value_v1|canonical_course_design_parameter_value_v1|valid_course_component_policy_v1|course_design_scope_path_v1|course_design_scope_context_v1|course_component_refs_from_content_v1|valid_course_component_refs_in_content_v1|course_component_policy_allows_v1|course_current_design_parameters_v1|course_current_authoring_guidance_v1|course_current_component_policy_v1|current_course_curricular_map_v1|get_course_instructional_plan_for_actor_v3|materialize_course_authoring_part_core_v1|valid_course_authoring_progression_v1|valid_course_curricular_map_shape_v1|assert_course_materialization_pedagogy_v1)\\(.*\\)$",
           "^trigger:private\\.course_entities/course_entities_delete_design_assignments_v1$",
-          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|save_course_curricular_map_for_actor_v1|save_course_authoring_part_for_actor_v1|materialize_course_authoring_part_for_actor_v2|get_owned_course_instructional_plan_for_actor_v3|get_owned_course_design_for_actor_v2|apply_course_design_command_for_actor_v2|list_owned_course_study_units_for_actor_v2|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$"
+          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|save_course_curricular_map_for_actor_v1|save_course_authoring_part_for_actor_v1|materialize_course_authoring_part_for_actor_v2|get_owned_course_instructional_plan_for_actor_v3|get_owned_course_design_for_actor_v3|apply_course_design_command_for_actor_v3|list_owned_course_study_units_for_actor_v2|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$",
+          "^table:private\\.authoring_profiles$",
+          "^function:private\\.(?:authoring_profile_payload_v1|course_design_research_conflicts_v1|mutate_authoring_profile_v1|normalize_authoring_profile_preferences_v1|valid_applied_course_design_parameters_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_authoring_profiles_for_actor_v1|save_authoring_profile_for_actor_v1|delete_authoring_profile_for_actor_v1|preview_course_authoring_profile_for_actor_v1|apply_course_authoring_profile_for_actor_v1)\\(.*\\)$"
         ]
       },
       "ui": [
@@ -154,6 +163,14 @@
         {
           "path": "src/ui/CourseDesignPanel.js",
           "token": "renderCourseDesignPanel"
+        },
+        {
+          "path": "src/ui/CourseAuthoringProfiles.js",
+          "token": "renderCourseAuthoringProfiles"
+        },
+        {
+          "path": "src/ui/courseDesignControls.js",
+          "token": "renderDesignValueInput"
         }
       ],
       "visibleEffects": [
@@ -215,6 +232,7 @@
         }
       ],
       "tests": [
+        "tests/runtime/course-human-profiles.test.js",
         "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-authoring-surface.test.js",
         "tests/runtime/course-design-parameters.test.js",
@@ -477,11 +495,11 @@
       "terminologyReview": "#127",
       "objects": {
         "manifestFeatures": [
-          "course-authoring-analytics-v2"
+          "course-authoring-analytics-v3"
         ],
         "databasePatterns": [
           "^function:private\\.count_course_component_authorial_words_v1\\(.*\\)$",
-          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v2\\(.*\\)$"
+          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v3\\(.*\\)$"
         ]
       },
       "ui": [
@@ -514,8 +532,8 @@
           "token": "loadCourseAuthoringAnalytics"
         },
         {
-          "path": "supabase/migrations/20260902040050_simplify_course_authoring_analytics.sql",
-          "token": "get_owned_course_authoring_analytics_for_actor_v2"
+          "path": "supabase/migrations/20260905080544_scoped_authoring_preferences_and_profiles.sql",
+          "token": "get_owned_course_authoring_analytics_for_actor_v3"
         }
       ],
       "routes": [

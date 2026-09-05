@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260905071622",
+  "schemaRevision": "20260905083846",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -24,7 +24,7 @@
     "course-authoring-part-save-v1",
     "course-authoring-part-materialization-atomic-v2",
     "course-study-unit-inspection-v2",
-    "course-authoring-configuration-v2",
+    "course-authoring-configuration-v3",
     "course-sources-v1",
     "course-source-roles-v1",
     "course-source-provenance-v1",
@@ -37,13 +37,14 @@
     "course-anchored-annotations-atomic-create-v1",
     "course-annotation-subject-classification-v1",
     "course-personal-state-v2",
-    "course-authoring-analytics-v2",
+    "course-authoring-analytics-v3",
     "contextual-study-unit-edit-v1",
     "current-data-lifecycle-v1",
     "course-source-current-state-v1",
     "single-authoring-runtime-v1",
     "course-product-operations-v1",
     "current-administrative-maintenance-v1",
-    "gpt-actions-openapi-v1"
+    "gpt-actions-openapi-v1",
+    "authoring-preference-profiles-v1"
   ]
 }

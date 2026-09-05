@@ -1,12 +1,13 @@
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  buildCourseAssistanceContext,
+  buildCourseAssistanceContext as rawBuildContext,
   COURSE_ASSISTANCE_LIMITS,
-  prepareCourseAssistanceProposal,
-  requestCourseAssistanceDiscussion
+  prepareCourseAssistanceProposal as rawPrepare,
+  requestCourseAssistanceDiscussion as rawDiscussion
 } from "../../src/assist/courseContextualAssistance.js";
 import { buildCourseAssistanceCompositionChange } from
   "../../src/domain/courseAssistanceComposition.js";
@@ -17,12 +18,22 @@ const fixture = JSON.parse(readFileSync(new URL(
 ), "utf8"));
 
 const selection = Object.freeze({
-  courseId: "course-fixture-minimal",
+  courseId: "10000000-0000-4000-8000-000000000001",
   moduleId: "module-fixture-minimal",
   lessonId: "lesson-fixture-minimal",
   microsequenceId: "micro-fixture-minimal",
   studyUnitId: "card-fixture-minimal-regra"
 });
+
+fixture.courses[0].id = selection.courseId;
+function withConfiguration(value) {
+  return { configuration: courseDesignFixture(value.selection, {
+    scope: value.scope || value.confirmedProposal?.scope || "study_unit"
+  }), ...value };
+}
+const buildCourseAssistanceContext = (value) => rawBuildContext(withConfiguration(value));
+const prepareCourseAssistanceProposal = async (value) => rawPrepare(value.selection ? withConfiguration(value) : value);
+const requestCourseAssistanceDiscussion = (value) => rawDiscussion(withConfiguration(value));
 
 const runtimeConfig = Object.freeze({
   developmentRuntime: true,
@@ -72,6 +83,40 @@ function validChangedStudyUnit() {
   unit.content[0].data.text = "Uma regra relaciona condições e consequências observáveis.";
   return unit;
 }
+
+test("contexto envia configuração focal resolvida sem substituir automático por defaults", async () => {
+  const configuration = courseDesignFixture(selection);
+  configuration.parameters[0].effectiveAssignment = {
+    mode: "fixed", value: 3, origin: "research_condition", reason: "Condição comparativa fixada.",
+    sourceScope: { kind: "course", ref: selection.courseId }, inherited: true
+  };
+  const requests = [];
+  await rawDiscussion({ project: fixture, selection, configuration, message: "Discuta esta condição.",
+    providerConfig, runtimeConfig, fetchImpl: sequenceFetch([{ message: "Condição preservada.", proposal: null }], requests) });
+  const sent = JSON.parse(requests[0].body.input).readOnlyContext.configuration;
+  assert.equal(sent.parameters[0].value, 3);
+  assert.equal(sent.parameters[0].origin, "research_condition");
+  assert.equal(sent.parameters[1].value, null);
+  assert.equal(sent.parameters[1].mode, "automatic");
+  assert.equal(sent.courseRevision, 1);
+  assert.equal(sent.parameters[0].reason, "Condição comparativa fixada.");
+  assert.throws(() => rawBuildContext({ project: fixture, selection }), /leitura|desenho/iu);
+  const wrongScope = courseDesignFixture(selection, { scope: "lesson" });
+  assert.throws(() => rawBuildContext({ project: fixture, selection, configuration: wrongScope }),
+    (error) => error.code === "assistance_configuration_mismatch");
+});
+
+test("conflito fixo permite discussão e impede preparar conteúdo antes de qualquer geração", async () => {
+  const configuration = courseDesignFixture(selection);
+  configuration.parameters[0].conflicts = [{ fixedScope: { kind: "course", ref: selection.courseId },
+    fixedValue: 2, exceptionScope: { kind: "study_unit", ref: selection.studyUnitId }, exceptionValue: 3 }];
+  const requests = [];
+  await assert.rejects(() => rawPrepare({ project: fixture, selection, configuration,
+    confirmedProposal: { scope: "study_unit", summary: "Explicar", changes: ["Explicar o conteúdo"], componentNeeds: [] },
+    providerConfig, runtimeConfig, fetchImpl: sequenceFetch([], requests) }),
+    (error) => error.code === "assistance_configuration_conflict");
+  assert.equal(requests.length, 0);
+});
 
 test("contexto separa escrita de leitura e inclui Unidade inteira sem Fontes ou PDFs", () => {
   const { context } = buildCourseAssistanceContext({

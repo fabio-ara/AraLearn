@@ -83,8 +83,8 @@ expositiva introduz. Ele não exige uma quantidade exata, não transforma práti
 em exposição e não autoriza alterar artificialmente a granularidade das ideias.
 
 `materializar_parte` recebe unidades completas e sua aplicação de desenho. Cada
-unidade enviada traz os quatro valores pedagógicos e os dois alvos editoriais
-calibrados para seu contexto; o papel do conteúdo determina se a aplicação é
+unidade enviada traz os valores contextuais ainda pendentes em
+`configuracao.parametros` e o motivo em `configuracao.motivo`; o papel do conteúdo determina se a aplicação é
 expositiva, prática ou mista, sem uma segunda declaração. Uma atividade
 formativa pode permanecer sem requisito formal; quando uma prática precisa de
 um requisito novo, seu texto entra no inventário já existente. O servidor
@@ -98,25 +98,17 @@ virado fragmentação textual. Não existe quantidade-alvo de unidades.
 
 ## Configuração para uso e pesquisa
 
-O catálogo corrente reúne quatro parâmetros pedagógicos:
+A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
+conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
+produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
-- teto de ideias novas por unidade expositiva;
-- formas de explicação requeridas;
-- mínimo de oportunidades distintas de prática por requisito;
-- dimensões de variação requeridas para a prática.
-
-E dois alvos editoriais quantitativos flexíveis:
-
-- palavras por resposta de autoria;
-- palavras por unidade de estudo.
-
-No estado `default`, o GPT precisa calibrar automaticamente esses valores para
-cada microssequência ou unidade conforme conteúdo, função e público; não aplica
-um preset fixo. Pesquisadores podem fixar condições explícitas para comparação,
-e essas definições prevalecem. Direção editorial permanece separada e nunca
-autoriza comprimir conhecimento necessário. Os alvos de palavras também não são
-limites: podem ser ultrapassados e não autorizam ocultar decisões nem compactar
-conteúdo.
+Automático é uma intenção sem valor numérico implícito. Antes de materializar,
+o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+função, público e planejamento. Fixações da autoria e condições de pesquisa
+prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
+A aplicação conserva os valores e motivos daquela decisão. Alterar a
+configuração corrente não reescreve essa evidência histórica.
 
 A ordem global do fluxo, a aprovação somente do que estava inspecionável e a
 fronteira pública em linguagem humana são invariantes, não parâmetros. As
@@ -126,6 +118,20 @@ entidade para cada heurística.
 Esses parâmetros são mecanismos de calibração geral de design instrucional.
 Uma finalidade específica, como concurso, pode orientar o conteúdo e a prática
 de um curso sem se tornar padrão global do AraLearn.
+
+## Perfis da conta
+
+As tarefas `consultar_perfis`, `salvar_perfil` e `excluir_perfil` guardam e
+organizam preferências por cópia. Editar o perfil não altera cursos anteriores.
+`prever_aplicacao_perfil` mostra o alcance e as exceções existentes;
+`aplicar_perfil` exige confirmar essa mesma prévia, inclusive a seleção explícita
+de exceções a remover. Condições de pesquisa permanecem protegidas. Se o curso
+ou o perfil mudar, a aplicação exige nova inspeção. Não há candidato paralelo
+nem herança viva entre perfil e curso.
+
+`ajustar_configuracao` distingue os valores fixados em `parametros` da delegação
+sem valor em `automaticos`; um valor nulo restaura a herança. Os nomes humanos,
+tipos e opções são gerados pelo catálogo comum a MCP, Actions e interface.
 
 ## Fontes, observações e revisão
 

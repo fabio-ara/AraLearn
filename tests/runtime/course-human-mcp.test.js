@@ -1,3 +1,4 @@
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
@@ -41,6 +42,7 @@ const READ_PRINCIPAL = Object.freeze({
   scopes: Object.freeze(["authoring:read"])
 });
 const EXPECTED_NAMES = Object.freeze([
+  "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
   "retomar_curso",
   "consultar_planejamento",
   "preparar_materializacao",
@@ -353,13 +355,13 @@ function internalMapEntities(planRead) {
 
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 17);
+  assert.equal(new Set(EXPECTED_NAMES).size, 22);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.5");
-  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 32_000);
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.4.0");
+  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -1060,7 +1062,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
-      task.name === "manter_fonte",
+      ["manter_fonte", "excluir_perfil"].includes(task.name),
       task.name
     );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
@@ -1128,15 +1130,14 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
       posicao: 1,
       conteudo: content,
       configuracao: {
-        parametrosPedagogicos: {
-          tetoNovasUnidadesDeAnalise: 1,
-          formasDeExplicacao: ["plain_definition"],
-          minimoDePraticasPorRequisito: 1,
-          dimensoesDeVariacaoDaPratica: ["case_or_data"]
-        },
-        parametrosEditoriais: {
-          alvoDePalavrasPorResposta: 90,
-          alvoDePalavrasPorUnidade: 180
+    motivo: "Escolha contextual sintética deste teste.",
+        parametros: {
+          maximo_ideias_novas_por_unidade: 1,
+          formas_de_explicacao: ["plain_definition"],
+          oportunidades_distintas_por_requisito: 1,
+          dimensoes_de_variacao_da_pratica: ["case_or_data"],
+          alvo_palavras_conversa: 90,
+          alvo_palavras_unidade: 180
         }
       },
       aplicacaoPedagogica: {
@@ -1186,40 +1187,34 @@ test("materializar_parte descreve integralmente a calibração própria de uma u
   const schema = task.inputSchema.properties.unidades.items.properties.configuracao;
   assert.equal(schema.additionalProperties, false);
   assert.deepEqual(Object.keys(schema.properties).sort(), [
-    "direcaoEditorial", "parametrosEditoriais", "parametrosPedagogicos"
+    "direcaoEditorial", "motivo", "parametros"
   ]);
-  assert.deepEqual(Object.keys(schema.properties.parametrosPedagogicos.properties).sort(), [
-    "dimensoesDeVariacaoDaPratica", "formasDeExplicacao",
-    "minimoDePraticasPorRequisito", "tetoNovasUnidadesDeAnalise"
-  ]);
-  assert.deepEqual(Object.keys(schema.properties.parametrosEditoriais.properties).sort(), [
-    "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
-  ]);
+  assert.deepEqual(Object.keys(schema.properties.parametros.properties).sort(),
+    COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField).sort());
 
   const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
   const complete = {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 2,
-      formasDeExplicacao: ["plain_definition", "mechanism"],
-      minimoDePraticasPorRequisito: 3,
-      dimensoesDeVariacaoDaPratica: ["context", "support_level"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 80,
-      alvoDePalavrasPorUnidade: 180
+    motivo: "Escolha contextual explícita e sintética.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 2,
+      formas_de_explicacao: ["plain_definition", "mechanism"],
+      oportunidades_distintas_por_requisito: 3,
+      dimensoes_de_variacao_da_pratica: ["context", "support_level"],
+      alvo_palavras_conversa: 80,
+      alvo_palavras_unidade: 180
     },
     direcaoEditorial: "Preserve uma situação concreta ao longo da sequência."
   };
   assert.equal(validate(complete), true, JSON.stringify(validate.errors));
   for (const invalid of [
     { ...complete, mecanismoInterno: true },
-    { parametrosPedagogicos: { parametroInterno: 2 } },
-    { parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 0 } },
-    { parametrosPedagogicos: { formasDeExplicacao: ["forma_inexistente"] } },
-    { parametrosPedagogicos: { minimoDePraticasPorRequisito: 65 } },
-    { parametrosPedagogicos: { dimensoesDeVariacaoDaPratica: ["aparencia"] } },
-    { parametrosEditoriais: { alvoDePalavrasPorResposta: 19 } },
-    { parametrosEditoriais: { alvoDePalavrasPorUnidade: 1001 } },
+    { parametros: { parametroInterno: 2 } },
+    { parametros: { maximo_ideias_novas_por_unidade: 0 } },
+    { parametros: { formas_de_explicacao: ["forma_inexistente"] } },
+    { parametros: { oportunidades_distintas_por_requisito: 65 } },
+    { parametros: { dimensoes_de_variacao_da_pratica: ["aparencia"] } },
+    { parametros: { alvo_palavras_conversa: 19 } },
+    { parametros: { alvo_palavras_unidade: 1001 } },
     { direcaoEditorial: null }
   ]) {
     assert.equal(validate(invalid), false, JSON.stringify(invalid));
@@ -1392,7 +1387,7 @@ test("#275 consultar_componentes faz filtros estruturados regerem a função ins
 test("#272 autorização filtra writes e recusa input mecânico antes do domínio", async () => {
   assert.equal(courseHumanTaskIsAllowed("retomar_curso", READ_PRINCIPAL), true);
   assert.equal(courseHumanTaskIsAllowed("criar_curso", READ_PRINCIPAL), false);
-  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 8);
+  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 10);
   assert.equal(courseHumanTasksForPrincipal({ actorId: PRINCIPAL.actorId, scopes: [] }).length, 0);
   await assert.rejects(
     () => executeHumanCourseTask({
@@ -1438,7 +1433,7 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
 
   const readResponse = await mcpHandler(READ_PRINCIPAL)(request("tools/list"));
   const read = await readResponse.json();
-  assert.equal(read.result.tools.length, 8);
+  assert.equal(read.result.tools.length, 10);
   assert.equal(read.result.tools.every(({ annotations }) => annotations.readOnlyHint), true);
 
   const invalidResponse = await mcpHandler()(request("tools/list", { cursor: "legacy" }));
@@ -2412,16 +2407,16 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
     rawArguments: {
       curso: "Redes para iniciantes",
       condicao: "automatica",
-      parametrosPedagogicos: {
-        tetoNovasUnidadesDeAnalise: 2,
-        formasDeExplicacao: ["forma-inexistente"]
+      parametros: {
+        maximo_ideias_novas_por_unidade: 2,
+        formas_de_explicacao: ["forma-inexistente"]
       }
     }
   }), (error) => typeof error.code === "string");
   assert.equal(writes, 0);
 });
 
-test("configuração default calibra o foco, condição de pesquisa prevalece e Observações são focais", async () => {
+test("fixação explícita configura o foco, condição de pesquisa prevalece e Observações são focais", async () => {
   const designCommands = [];
   const observationBatches = [];
   const writeAdapter = {
@@ -2462,17 +2457,20 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
       return {
         definitions: [{
           id: "new_analysis_unit_ceiling_per_expository_study_unit",
-          label: "Novas unidades de análise"
+          label: "Novas unidades de análise",
+          humanField: "maximo_ideias_novas_por_unidade", unitLabel: "ideias novas por unidade"
         }],
         parameters: [{
           parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
           localAssignment: currentParameter ? {
+            mode: "fixed",
             value: currentParameter.value,
             origin: currentParameter.origin,
             reason: currentParameter.reason
           } : null,
           effectiveAssignment: {
-            value: currentParameter?.value ?? 1,
+            mode: currentParameter ? "fixed" : "automatic",
+            value: currentParameter?.value ?? null,
             inherited: false,
             origin: currentParameter?.origin ?? "system_default",
             reason: currentParameter?.reason ?? "Ainda sem calibração contextual.",
@@ -2513,11 +2511,10 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     name: "ajustar_configuracao",
     rawArguments: {
       curso: "Redes para iniciantes",
-      condicao: "automatica",
-      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 },
-      parametrosEditoriais: {
-        alvoDePalavrasPorResposta: 75,
-        alvoDePalavrasPorUnidade: 190
+      condicao: "fixada_pelo_autor",
+      parametros: { maximo_ideias_novas_por_unidade: 1,
+        alvo_palavras_conversa: 75,
+        alvo_palavras_unidade: 190
       },
       direcaoEditorial: "Use títulos informativos; crie mais unidades se necessário."
     }
@@ -2525,7 +2522,7 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
   assert.deepEqual(designCommands.map(({ type }) => type), [
     "set_parameter", "set_parameter", "set_parameter", "set_guidance"
   ]);
-  assert.equal(designCommands.every(({ origin }) => origin === "automatic"), true);
+  assert.equal(designCommands.every(({ origin }) => origin === "author"), true);
   assert.deepEqual(designCommands.slice(1, 3).map(({ parameterId, value }) => ({
     parameterId,
     value
@@ -2545,8 +2542,8 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     rawArguments: {
       curso: "Redes para iniciantes",
       microssequencia: "Sockets",
-      condicao: "automatica",
-      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 }
+      condicao: "fixada_pelo_autor",
+      parametros: { maximo_ideias_novas_por_unidade: 2 }
     }
   });
   assert.deepEqual(designCommands.at(-1), {
@@ -2554,8 +2551,8 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     scope: { kind: "didactic_microsequence", ref: "micro-sockets" },
     parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
     value: 2,
-    origin: "automatic",
-    reason: "Valor calibrado automaticamente para o contexto corrente."
+    origin: "author",
+    reason: "Condição fixada explicitamente pela pessoa autora."
   });
   assert.ok(JSON.stringify(calibratedMicrosequence.context).length < 2500);
   assert.doesNotMatch(
@@ -2566,11 +2563,14 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     calibratedMicrosequence.context.configuracao.parametros[0],
     {
       nome: "Novas unidades de análise",
+      campo: "maximo_ideias_novas_por_unidade", unidade: "ideias novas por unidade",
       valorLocal: 2,
       valorEfetivo: 2,
       herdado: false,
-      origem: "calibração contextual",
-      motivo: "Valor calibrado automaticamente para o contexto corrente.",
+      modo: "fixed",
+      origem: "definida pela pessoa autora",
+      motivo: "Condição fixada explicitamente pela pessoa autora.",
+      conflitos: [],
       escopoDeOrigem: "microssequência"
     }
   );
@@ -2583,7 +2583,7 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
       curso: "Redes para iniciantes",
       unidade: "Unidade um",
       condicao: "pesquisa",
-      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 2 }
+      parametros: { maximo_ideias_novas_por_unidade: 2 }
     }
   });
   assert.deepEqual(designCommands.at(-1), {
@@ -2614,7 +2614,7 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
       curso: "Redes para iniciantes",
       unidade: "Unidade um",
       condicao: "automatica",
-      parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
+      parametros: { maximo_ideias_novas_por_unidade: null }
     }
   });
   assert.equal(designCommands.length, commandCountBeforeAutomaticRetry);
@@ -2625,31 +2625,11 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
     preservedResearchCondition.context.configuracao.parametros[0].origem,
     "condição de pesquisa"
   );
-  assert.deepEqual({
-    curso: {
-      deepLink: configured.deepLink,
-      nextDecision: configured.nextDecision,
-      manteveContexto: Boolean(configured.context?.configuracao)
-    },
-    microssequencia: {
-      deepLink: calibratedMicrosequence.deepLink,
-      nextDecision: calibratedMicrosequence.nextDecision,
-      manteveContexto: Boolean(calibratedMicrosequence.context?.configuracao)
-    },
-    condicaoPreservadaDuranteAjusteAutomatico: {
-      deepLink: preservedResearchCondition.deepLink,
-      nextDecision: preservedResearchCondition.nextDecision,
-      manteveContexto: Boolean(preservedResearchCondition.context?.configuracao)
-    }
-  }, {
-    curso: { deepLink: null, nextDecision: null, manteveContexto: true },
-    microssequencia: { deepLink: null, nextDecision: null, manteveContexto: true },
-    condicaoPreservadaDuranteAjusteAutomatico: {
-      deepLink: null,
-      nextDecision: null,
-      manteveContexto: true
-    }
-  });
+  for (const result of [configured, calibratedMicrosequence]) {
+    assert.match(result.deepLink, /section=parameters/u);
+    assert.match(result.nextDecision, /comparar/iu);
+    assert.ok(result.context.configuracao);
+  }
 
   const observed = await executeHumanCourseTask({
     adapter: writeAdapter,
@@ -2671,4 +2651,23 @@ test("configuração default calibra o foco, condição de pesquisa prevalece e 
   assert.equal(new Set(observationBatches[0].commands.map(({ capturedAt }) =>
     capturedAt)).size, 1);
   assert.match(observed.result, /separadamente em 2 unidades/u);
+});
+
+
+test("delegação humana não inventa valor e rejeita ajuste automático numérico", async () => {
+  const commands = [];
+  const writer = { ...adapter(),
+    getCourseDesign: async () => ({ definitions: [], parameters: [], guidance: { effectiveAssignments: [] } }),
+    applyCourseDesignCommand: async ({ command }) => { commands.push(command); return { changed: true }; } };
+  await executeHumanCourseTask({ adapter: writer, principal: PRINCIPAL, name: "ajustar_configuracao",
+    rawArguments: { curso: "Redes para iniciantes", condicao: "automatica", automaticos: ["distribuicao_da_pratica"] } });
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0].type, "delegate_parameter");
+  assert.equal(commands[0].parameterId, "practice_distribution");
+  assert.equal(Object.hasOwn(commands[0], "value"), false);
+  assert.match(commands[0].reason, /delegou/u);
+  await assert.rejects(() => executeHumanCourseTask({ adapter: writer, principal: PRINCIPAL, name: "ajustar_configuracao",
+    rawArguments: { curso: "Redes para iniciantes", condicao: "automatica", parametros: { maximo_ideias_novas_por_unidade: 2 } } }),
+  (error) => error.code === "invalid_human_task_argument");
+  assert.equal(commands.length, 1);
 });

@@ -1,3 +1,4 @@
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
@@ -6,6 +7,11 @@ const fixture = JSON.parse(await readFile(new URL(
   import.meta.url
 ), "utf8"));
 
+fixture.courses[0].id = "10000000-0000-4000-8000-000000000001";
+const fixtureConfiguration = courseDesignFixture({ courseId: fixture.courses[0].id,
+  moduleId: "module-fixture-minimal", lessonId: "lesson-fixture-minimal",
+  microsequenceId: "micro-fixture-minimal", studyUnitId: "card-fixture-minimal-regra" });
+
 async function installHarness(page, { delayed = false, configured = true } = {}) {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
@@ -13,13 +19,14 @@ async function installHarness(page, { delayed = false, configured = true } = {})
     body: ""
   }));
   await page.goto("/");
-  await page.evaluate(async ({ project, delayed, configured }) => {
+  await page.evaluate(async ({ project, configuration, delayed, configured }) => {
+    globalThis.__courseAssistanceConfiguration = structuredClone(configuration);
     const {
       createCourseProviderAssistance,
       createCourseProviderSession
     } = await import("/src/ui/CourseProviderAssistance.js");
     const selection = {
-      courseId: "course-fixture-minimal",
+      courseId: "10000000-0000-4000-8000-000000000001",
       moduleId: "module-fixture-minimal",
       lessonId: "lesson-fixture-minimal",
       microsequenceId: "micro-fixture-minimal",
@@ -125,6 +132,7 @@ async function installHarness(page, { delayed = false, configured = true } = {})
     document.querySelector("#trigger").addEventListener("click", (event) => assistance.open({
       trigger: event.currentTarget,
       project,
+      configuration,
       selection,
       scope: "study_unit",
       targetTitle: original.title,
@@ -137,7 +145,7 @@ async function installHarness(page, { delayed = false, configured = true } = {})
     globalThis.__courseAssistanceProbe = probe;
     globalThis.__courseAssistance = assistance;
     globalThis.__courseAssistanceSession = session;
-  }, { project: fixture, delayed, configured });
+  }, { project: fixture, configuration: fixtureConfiguration, delayed, configured });
 }
 
 test("minichat refina, prepara prévia comparável e aplica somente por escolha explícita", async ({ page }, testInfo) => {
@@ -259,7 +267,7 @@ test("debate não cria proposta e prévia descartada ou inválida preserva origi
   expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.drafts)).toBe(0);
 });
 
-test("rascunho de assistência conserva revisão original, bloqueia refresh e mantém conteúdo em conflito", async ({ page }) => {
+test("rascunho de assistência conserva revisão original, bloqueia refresh e mantém conteúdo em conflito", async ({ page }, testInfo) => {
   await installHarness(page);
   await page.evaluate(async (project) => {
     const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
@@ -283,7 +291,8 @@ test("rascunho de assistência conserva revisão original, bloqueia refresh e ma
       loadProject: () => structuredClone(project), loadCourse: async () => structuredClone(project),
       refreshPersonalState: async () => { state.refreshes += 1; return structuredClone(project); }
     };
-    const app = createCourseStudyApplication({ root: document.querySelector("main"), repository,
+    const app = createCourseStudyApplication({
+      loadAssistanceConfiguration: async () => structuredClone(globalThis.__courseAssistanceConfiguration), root: document.querySelector("main"), repository,
       initialProject: project, providerAssistanceSession: globalThis.__courseAssistanceSession,
       onSaveManualEdit: async (value) => {
         state.writes.push(value);
@@ -294,6 +303,16 @@ test("rascunho de assistência conserva revisão original, bloqueia refresh e ma
     await app.openEntityPath([course.id, moduleValue.id, lesson.id, microsequence.id, unit.id]);
     globalThis.__assistanceStudyProof = { app, state };
   }, fixture);
+  await page.evaluate(() => { globalThis.__courseAssistanceConfiguration.courseRevision = 2; });
+  await page.getByRole("button", { name: "Assistência por IA", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir edição com IA", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Edição com IA" })).toHaveCount(0);
+  await expect(page.locator("#study-proof")).toContainText("Sincronize e reabra a assistência");
+  expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.calls)).toBe(0);
+  const mismatchScreenshot = testInfo.outputPath("minichat-configuracao-divergente.png");
+  await page.screenshot({ path: mismatchScreenshot });
+  await testInfo.attach("minichat-configuracao-divergente.png", { path: mismatchScreenshot, contentType: "image/png" });
+  await page.evaluate(() => { globalThis.__courseAssistanceConfiguration.courseRevision = 1; });
   await page.getByRole("button", { name: "Assistência por IA", exact: true }).click();
   await page.getByRole("button", { name: "Abrir edição com IA", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Edição com IA" });

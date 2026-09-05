@@ -485,11 +485,11 @@ test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async ()
       },
       async getCourseDesign(value) {
         calls.push(["read", value]);
-        return { contract: "aralearn.course-design.v1", courseId: COURSE_ID };
+        return { contract: "aralearn.course-design.v3", courseId: COURSE_ID };
       },
       async applyCourseDesignCommand(value) {
         calls.push(["write", value]);
-        return { contract: "aralearn.course-design-change.v1", changed: true };
+        return { contract: "aralearn.course-design-change.v3", changed: true };
       }
     }
   });

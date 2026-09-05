@@ -192,6 +192,7 @@ test("visitante mantém a leitura e pede conta ao abrir observações, sem abrir
   assert.deepEqual(position.entityPath, [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]);
   position.entityPath[0] = "changed-outside";
   assert.equal(app.getNavigationPosition().entityPath[0], COURSE_ID);
+  assert.equal(app.getCourseDesignContext(), null);
   assert.match(root.innerHTML, /data-action="next-study-unit"/u);
   assert.match(root.innerHTML, /data-action="toggle-review"/u);
   assert.doesNotMatch(root.innerHTML, /data-action="study-manual-edit"/u);
@@ -216,7 +217,58 @@ test("estudante autenticado não ganha edição por capacidade antiga de derivar
   await openFirstStudyUnit(app);
   assert.doesNotMatch(root.innerHTML, /data-action="study-manual-edit"/u);
   assert.match(root.innerHTML, /data-action="open-observation"/u);
+  assert.equal(app.getCourseDesignContext(), null);
   assert.throws(() => app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), /não está disponível/u);
+  app.destroy();
+});
+
+test("contexto dos parâmetros acompanha tela e unidade atuais sem depender do hash", async (context) => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  let owned = true;
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1,
+    ownership: owned ? "owned" : "shared", canEdit: true }];
+  const locationDescriptor = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const oldHash = `#/estudo/${COURSE_ID}/module-a/lesson-a/micro-a/unit-a`;
+  Object.defineProperty(globalThis, "location", { configurable: true, value: { hash: oldHash } });
+  context.after(() => {
+    if (locationDescriptor) Object.defineProperty(globalThis, "location", locationDescriptor);
+    else delete globalThis.location;
+  });
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document });
+  context.after(() => app.destroy());
+  assert.equal(app.getCourseDesignContext(), null);
+  const path = [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"];
+  for (const [length, kind, label] of [
+    [1, "course", "curso"], [2, "module", "módulo"], [3, "lesson", "lição"],
+    [4, "didactic_microsequence", "microssequência"], [5, "study_unit", "unidade de estudo"]
+  ]) {
+    assert.equal(await app.openEntityPath(path.slice(0, length)), true);
+    assert.deepEqual(app.getCourseDesignContext(), { courseId: COURSE_ID,
+      scope: { kind, ref: path[length - 1] }, label });
+  }
+  root.click("next-study-unit");
+  await nextTurn();
+  assert.equal(app.getCourseDesignContext().scope.ref, "unit-b");
+  assert.equal(globalThis.location.hash, oldHash);
+  const returned = app.getCourseDesignContext();
+  returned.scope.ref = "changed-outside";
+  assert.equal(app.getCourseDesignContext().scope.ref, "unit-b");
+  owned = false;
+  assert.equal(app.getCourseDesignContext(), null);
+});
+
+test("curso vazio oferece parâmetros ao proprietário sem posição completa de leitura", async () => {
+  const document = project();
+  document.courses[0].modules = [];
+  const repository = applicationRepository(document, async () => {});
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "owned", canEdit: true }];
+  const app = createCourseStudyApplication({ root: new FakeStudyRoot(), repository, initialProject: document });
+  await app.openCourse(COURSE_ID);
+  assert.equal(app.getNavigationPosition(), null);
+  assert.deepEqual(app.getCourseDesignContext(), { courseId: COURSE_ID,
+    scope: { kind: "course", ref: COURSE_ID }, label: "curso" });
   app.destroy();
 });
 

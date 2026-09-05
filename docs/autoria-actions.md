@@ -93,24 +93,43 @@ novidades limita apenas introduções semanticamente novas em unidades
 expositivas. Ele não exige a mesma quantidade em toda unidade nem transforma
 cada ideia em uma tela.
 
-O valor `default` de um parâmetro não representa um preset pedagógico fixo. Ele
-exige calibração automática pelo GPT para cada microssequência ou unidade,
-conforme conteúdo, função e público. Um valor deliberadamente fixado pelo
-pesquisador prevalece e torna a condição observável. O catálogo reúne quatro
-parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis: palavras
-por resposta de autoria e por unidade de estudo. Esses alvos não são limites e
-não autorizam esconder decisões nem comprimir conteúdo.
+A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
+conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
+produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
-Na materialização, os seis valores aparecem juntos em cada unidade para que a
-decisão contextual seja completa e comparável. O papel do conteúdo basta para
-derivar exposição, prática ou combinação das duas; a pessoa autora não precisa
-operar essa classificação. Práticas formativas não fabricam requisito de
-evidência, enquanto um requisito realmente novo pode ser declarado pelo texto
-da operação que se pretende observar.
+Automático é uma intenção sem valor numérico implícito. Antes de materializar,
+o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+função, público e planejamento. Fixações da autoria e condições de pesquisa
+prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
+A aplicação conserva os valores e motivos daquela decisão. Alterar a
+configuração corrente não reescreve essa evidência histórica.
+
+Cada unidade leva `configuracao.parametros`, com os campos humanos publicados
+pelo catálogo, e `configuracao.motivo`. Valores já fixados continuam protegidos;
+nenhum automático pendente pode ser convertido silenciosamente em um padrão.
+O papel declarado do conteúdo determina exposição, prática ou combinação das
+duas. As contagens e posições observadas descrevem essa sequência; não medem
+qualidade nem certificam aderência a uma preferência. Práticas formativas não
+fabricam requisito de evidência.
 
 Finalidade de concurso, formação profissional ou outra aplicação pode orientar
 vocabulário e prática, mas não altera o caráter geral do AraLearn como ambiente
 de pesquisa em design instrucional.
+
+## Perfis reutilizáveis
+
+`consultar_perfis`, `salvar_perfil` e `excluir_perfil` operam os perfis da conta.
+O perfil guarda preferências, e sua edição não modifica cursos em que elas já
+foram copiadas. Para aplicar, use `prever_aplicacao_perfil`, examine o alcance e
+as exceções e confirme essa mesma prévia em `aplicar_perfil`. Exceções são
+preservadas, salvo seleção explícita das removíveis; condições de pesquisa não
+são removidas por essa operação. Mudança do curso ou perfil exige nova prévia.
+
+Para delegar um ajuste, `ajustar_configuracao` recebe `automaticos` com os campos
+do catálogo. Fixação usa `parametros` e uma condição explícita de autoria ou
+pesquisa; valor nulo restaura a herança. Delegar não inventa valor e aplicar um
+perfil não reescreve conteúdo.
 
 ## Resultado comum
 

@@ -61,18 +61,33 @@ somente o proprietário altera o curso.
 
 ## Desenho
 
-`aralearn.course-design.v2` consulta configuração corrente por escopo.
-`aralearn.course-design-change.v2` confirma uma definição ou restauração de
+`aralearn.course-design.v3` consulta configuração corrente por escopo.
+`aralearn.course-design-change.v3` confirma uma definição ou restauração de
 herança.
 
-O catálogo 1.1.0 identifica de forma estável quatro parâmetros pedagógicos e
-dois alvos editoriais quantitativos flexíveis: palavras por resposta de autoria
-e por unidade de estudo. Os alvos não são limites e não autorizam compressão.
-Direção editorial e política de componentes permanecem campos distintos.
+O catálogo 1.2.0 define identidades, tipos, valores permitidos, unidades, grupos,
+escopos e rótulos usados pela UI, pelas integrações e pela projeção SQL. Reúne
+conteúdo, prática, conversa e cadência. Direção editorial e política de componentes
+permanecem campos distintos. Alvos de palavras são flexíveis e não autorizam
+compressão. Partes, lotes e pausas não são acoplados entre si.
+
+Uma atribuição com `mode: automatic` pode ter `value: null`: trata-se de intenção
+local de delegar a escolha, distinta da ausência de atribuição, que restaura
+herança. Uma escolha automática aplicada exige valor tipado e motivo; fixações
+de autoria e pesquisa não são substituídas pela calibração automática.
+Conflitos com condições de pesquisa em escopos ancestrais bloqueiam a escrita
+incompatível e a produção até serem resolvidos.
+
+Perfis de autoria pertencem à conta. CRUD usa revisão corrente e recibo para
+repetição do mesmo pedido. A prévia e a aplicação verificam as revisões do curso
+e do perfil. Aplicar copia preferências de catálogo, conserva exceções por
+padrão e remove somente exceções selecionadas que não sejam de pesquisa.
+Reaplicar valores equivalentes não aumenta a revisão; conteúdo e snapshots
+existentes ficam preservados. A cópia não mantém referência viva ao perfil.
 
 Uma unidade de estudo produzida guarda:
 
-- `aralearn.study-unit-design-snapshot.v1`, com o recorte aplicado de plano e
+- `aralearn.study-unit-design-snapshot.v2`, com o recorte aplicado de plano e
   configuração;
 - `aralearn.study-unit-design-application.v1`, com ideias introduzidas, ideias
   estabelecidas utilizadas, formas, componentes e prática observada.

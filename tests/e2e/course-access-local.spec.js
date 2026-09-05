@@ -509,6 +509,152 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await removeUser(owner?.id);
   });
 
+  test("parâmetros e perfis reais distinguem automático, herança e cópia sem reescrever conteúdo", async ({ browser }, testInfo) => {
+    const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken }, fetchImpl: (url, init) => {
+        const requestHeaders = new Headers(init.headers); requestHeaders.set("Origin", APPLICATION_ORIGIN);
+        return fetch(url, { ...init, headers: requestHeaders });
+      } });
+    const designCourseId = (await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Curso de parâmetros e perfis local", objective: "Testar cópia de preferências sem reescrita."
+    } }, ownerToken)).data.courseId;
+    const rows = courseRows(designCourseId);
+    await courseApi(`/v1/courses/${designCourseId}/composition`, { method: "POST", body: {
+      requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+      sourceAttributionApplications: rows.filter((row) => row.entityType === "study_unit")
+        .map(({ entityId }) => ({ studyUnitId: entityId, sourceLinks: [] }))
+    } }, ownerToken);
+    const initialContent = (await client.getCourseEntities(designCourseId, { revision: 2 })).items;
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const failures = captureBrowserFailures(page);
+    const novelty = "new_analysis_unit_ceiling_per_expository_study_unit";
+    const chat = "authoring_chat_interaction";
+    const unitId = "study-unit-access-local-1";
+    const readDesign = (kind = "course", ref = designCourseId) => client.loadCourseDesign(designCourseId, { scope: { kind, ref } });
+    const parameter = (design, id) => design.parameters.find((entry) => entry.parameterId === id);
+    try {
+      await browserSignIn(page, owner.email);
+      await page.goto(`/#/estudo/${designCourseId}/module-access-local/lesson-access-local/microsequence-access-local/${unitId}`);
+      await expect(page.locator(".runtime-card-title")).toBeVisible();
+      await page.getByRole("button", { name: "Conta e aparência" }).click();
+      await page.getByRole("button", { name: "Parâmetros · unidade de estudo" }).click();
+      await expect(page.locator(".course-design-scope strong")).toContainText("unidade de estudo");
+      const card = page.locator(`.course-design-parameter[data-parameter-id="${novelty}"]`);
+      await card.locator("summary").click();
+      await card.locator('[name="mode"]').selectOption("automatic");
+      await card.locator('[name="reason"]').fill("Ajustar novidade ao repertório acumulado desta unidade.");
+      await card.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await expect(page.locator(".course-authoring-notice")).toContainText(["Escolha automática registrada."]);
+      let design = await readDesign("study_unit", unitId);
+      expect(parameter(design, novelty).localAssignment).toMatchObject({ mode: "automatic", value: null });
+      await card.locator("summary").click();
+      await card.locator('[name="mode"]').selectOption("fixed");
+      await card.locator('[name="parameterValue"]').fill("5");
+      await card.locator('[name="reason"]').fill("Exceção local a preservar na cópia do perfil.");
+      await card.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await expect(card.locator("header strong")).toHaveText("5");
+      await page.goto(`/#/authoring/courses/${designCourseId}?section=parameters`);
+      await expect(page.locator(".course-design-parameter")).toHaveCount(12);
+      await page.locator(".course-authoring-profiles > summary").click();
+      await page.getByRole("button", { name: "Criar perfil", exact: true }).click();
+      const editor = page.locator("[data-course-profile-editor]");
+      await editor.locator('[name="name"]').fill("Explicação e debate");
+      await editor.locator(`[data-parameter-id="${novelty}"] > summary`).click();
+      await editor.locator(`[name="mode:${novelty}"]`).selectOption("automatic");
+      await editor.locator(`[data-parameter-id="${chat}"] > summary`).click();
+      await editor.locator(`[name="mode:${chat}"]`).selectOption("fixed");
+      await editor.locator(`[name="value:${chat}"]`).selectOption("debate");
+      await editor.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+      await expect(editor).toHaveCount(0);
+      const profile = (await client.listAuthoringProfiles()).profiles.find((item) => item.name === "Explicação e debate");
+      expect(profile.preferences).toEqual([{ parameterId: novelty, mode: "automatic", value: null },
+        { parameterId: chat, mode: "fixed", value: "debate" }]);
+      const previewButton = page.getByRole("button", { name: "Aplicar perfil Explicação e debate", exact: true });
+      await previewButton.click();
+      const preview = page.locator("[data-course-profile-apply]");
+      await expect(preview.locator('[name="removeException"]')).toHaveCount(1);
+      await expect(preview.locator('[name="removeException"]')).not.toBeChecked();
+      await attachScreenshot(page, testInfo, "perfis-previa-excecao-claro-390.png");
+      await expectNoHorizontalOverflow(page, ".course-design");
+      await preview.getByRole("button", { name: "Confirmar aplicação do perfil" }).click();
+      await expect(preview).toHaveCount(0);
+      design = await readDesign("study_unit", unitId);
+      expect(parameter(design, novelty).effectiveAssignment.value).toBe(5);
+      expect(parameter(design, chat).effectiveAssignment.value).toBe("debate");
+      await previewButton.click();
+      await preview.locator('[name="removeException"]').check();
+      const applicationRequests = [];
+      let dropApplicationResponse = true;
+      await page.route("**/authoring-profile/applications", async (route) => {
+        applicationRequests.push(route.request().postDataJSON());
+        if (dropApplicationResponse) {
+          const response = await route.fetch();
+          expect(response.ok()).toBe(true);
+          dropApplicationResponse = false;
+          await route.abort("failed");
+        } else await route.continue();
+      });
+      await preview.getByRole("button", { name: "Confirmar aplicação do perfil" }).click();
+      await expect(page.getByRole("button", { name: "Repetir gravação", exact: true })).toBeVisible();
+      await expect(preview.locator('[name="removeException"]')).toBeChecked();
+      await page.getByRole("button", { name: "Repetir gravação", exact: true }).click();
+      await expect(preview).toHaveCount(0);
+      expect(applicationRequests).toHaveLength(2);
+      expect(applicationRequests[1]).toEqual(applicationRequests[0]);
+      expect(applicationRequests[0].exceptionPolicy.mode).toBe("remove_selected");
+      await page.unroute("**/authoring-profile/applications");
+      design = await readDesign("study_unit", unitId);
+      expect(parameter(design, novelty).localAssignment).toBeNull();
+      expect(parameter(design, novelty).effectiveAssignment).toMatchObject({ mode: "automatic", value: null, inherited: true });
+      const revision = design.courseRevision;
+      await previewButton.click();
+      await preview.getByRole("button", { name: "Confirmar aplicação do perfil" }).click();
+      await expect(preview).toHaveCount(0);
+      expect((await readDesign()).courseRevision).toBe(revision);
+      await page.getByRole("button", { name: "Editar perfil Explicação e debate", exact: true }).click();
+      await editor.locator('[name="name"]').fill("Debate revisado");
+      const profileRequests = [];
+      let dropProfileResponse = true;
+      await page.route(`**/v1/authoring-profiles/${profile.profileId}`, async (route) => {
+        profileRequests.push(route.request().postDataJSON());
+        if (dropProfileResponse) {
+          const response = await route.fetch(); expect(response.ok()).toBe(true);
+          dropProfileResponse = false;
+          await route.abort("failed");
+        } else await route.continue();
+      });
+      await editor.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Repetir gravação do perfil", exact: true })).toBeVisible();
+      await expect(editor.locator('[name="name"]')).toBeDisabled();
+      await page.getByRole("button", { name: "Repetir gravação do perfil", exact: true }).click();
+      await expect(editor).toHaveCount(0);
+      expect(profileRequests).toHaveLength(2);
+      expect(profileRequests[1]).toEqual(profileRequests[0]);
+      await page.unroute(`**/v1/authoring-profiles/${profile.profileId}`);
+      expect((await client.listAuthoringProfiles()).profiles[0].revision).toBe(2);
+      await page.getByRole("button", { name: "Excluir perfil Debate revisado", exact: true }).click();
+      await page.getByRole("button", { name: "Excluir perfil", exact: true }).click();
+      await expect(page.locator(".course-profile-list > li")).toHaveCount(0);
+      design = await readDesign();
+      expect(parameter(design, chat).effectiveAssignment.value).toBe("debate");
+      expect((await client.getCourseEntities(designCourseId, { revision: design.courseRevision })).items).toEqual(initialContent);
+      expect(failures.failures).toEqual([
+        `network: POST ${PROJECT_URL}/functions/v1/aralearn-course-api/v1/courses/${designCourseId}/authoring-profile/applications net::ERR_FAILED`,
+        "console: Failed to load resource: net::ERR_FAILED",
+        `network: PATCH ${PROJECT_URL}/functions/v1/aralearn-course-api/v1/authoring-profiles/${profile.profileId} net::ERR_FAILED`,
+        "console: Failed to load resource: net::ERR_FAILED"
+      ]);
+    } finally {
+      await context.close();
+      await courseApi(`/v1/courses/${designCourseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
+  });
+
   test("Estudo real percorre a hierarquia, persiste o Curso e mantém a entrada uniforme", async ({
     browser
   }, testInfo) => {

@@ -214,6 +214,9 @@ function renderModeControls({
 }
 
 function renderAssistanceDraftDock(assistance = {}, scope) {
+  if (!assistance.draft && assistance.error) {
+    return `<p class="study-assistance-draft-dock" role="alert">${escapeHtml(assistance.error)}</p>`;
+  }
   if (!assistance.draft || assistance.draft.scope !== scope) return "";
   return '<section class="study-assistance-draft-dock" aria-label="Rascunho da assistência por IA">' +
     '<div><p>Proposta aplicada ao rascunho</p><strong>' +

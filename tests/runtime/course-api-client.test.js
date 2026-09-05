@@ -1,4 +1,5 @@
 import test from "node:test";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
@@ -37,18 +38,13 @@ function parsedBody(init) {
 }
 
 function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }) {
-  const parameters = [[
-    "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
-  ], ["required_explanation_forms", "Formas", "string_list"], [
-    "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-  ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
-    "authoring_chat_response_word_target", "Extensão da conversa", "integer"
-  ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
-    .map(([parameterId, label, valueKind]) => ({
-      parameterId, label, valueKind, effectiveValues: []
+  const parameters = COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      definition: structuredClone(definition), effectiveValues: []
     }));
   return {
-    contract: "aralearn.course-authoring-analytics.v2",
+    contract: "aralearn.course-authoring-analytics.v3",
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
@@ -62,7 +58,8 @@ function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }
       practiceByRequirement: [],
       practiceVariationDimensions: [],
       sourcesByRole: [],
-      wordCountsByStudyUnit: []
+      wordCountsByStudyUnit: [],
+      practiceSequence: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -1545,10 +1542,14 @@ test("cliente owner lê Analytics pela rota quantitativa", async () => {
     return jsonResponse({ ok: true, data: page });
   });
 
-  assert.deepEqual(await client.loadCourseAuthoringAnalytics(COURSE_ID, {
+  const result = await client.loadCourseAuthoringAnalytics(COURSE_ID, {
     expectedCourseRevision: 7,
     query
-  }), page);
+  });
+  const { practiceDistribution, ...design } = result.design;
+  assert.deepEqual({ ...result, design }, page);
+  assert.equal(practiceDistribution.studyUnitCount, 0);
+  assert.deepEqual(practiceDistribution.practicePositions, []);
   assert.match(calls[0].url, new RegExp(
     `/v1/courses/${COURSE_ID}/research\\?`, "u"
   ));

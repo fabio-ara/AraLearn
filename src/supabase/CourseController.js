@@ -1,6 +1,11 @@
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
 import {
+  normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
+  normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
+  normalizeCourseAuthoringProfileChange
+} from "../domain/authoringProfiles.js";
+import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
   normalizeCourseAnchoredAnnotationPage,
@@ -1778,6 +1783,32 @@ export class CourseController {
     }
   }
 
+  async listAuthoringProfiles() {
+    return normalizeAuthoringProfileList(await this.api.listAuthoringProfiles());
+  }
+
+  async mutateAuthoringProfile(value) {
+    const command = normalizeAuthoringProfileSave(value);
+    return normalizeAuthoringProfileChange(await this.api.mutateAuthoringProfile(command), { ...command, deleted: false });
+  }
+
+  async deleteAuthoringProfile(value) {
+    const command = normalizeAuthoringProfileDelete(value);
+    return normalizeAuthoringProfileChange(await this.api.deleteAuthoringProfile(command), { ...command, deleted: true });
+  }
+
+  async previewCourseAuthoringProfile(value) {
+    const command = normalizeCourseAuthoringProfileRequest(value);
+    return normalizeCourseAuthoringProfilePreview(await this.api.previewCourseAuthoringProfile(command), command);
+  }
+
+  async applyCourseAuthoringProfile(value) {
+    const command = normalizeCourseAuthoringProfileRequest(value, { apply: true });
+    const result = normalizeCourseAuthoringProfileChange(await this.api.applyCourseAuthoringProfile(command), command);
+    await this.#clearCourseDesignCache(command.courseId);
+    return result;
+  }
+
   async loadCourseSources(courseId, options = {}) {
     if (!this.ownerOnly || typeof this.api.loadCourseSources !== "function") {
       throw new TypeError("A API de Autoria não oferece o catálogo privado de Fontes.");
@@ -2343,7 +2374,12 @@ export class CourseController {
       expectedRevision: expectedCourseRevision,
       designCommand: command
     });
-    await Promise.all([
+    await this.#clearCourseDesignCache(courseId);
+    return result;
+  }
+
+  #clearCourseDesignCache(courseId) {
+    return Promise.all([
       this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
@@ -2352,7 +2388,6 @@ export class CourseController {
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
     ]);
-    return result;
   }
 
   async mutateCourseSources(value = {}) {

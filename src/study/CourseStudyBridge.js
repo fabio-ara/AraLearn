@@ -12,6 +12,10 @@ export class CourseStudyBridge {
     return this.controller.listCourses(options);
   }
 
+  loadCourseDesign(courseId, options = {}) {
+    return this.controller.loadCourseDesign(courseId, options);
+  }
+
   async loadCourse(courseId, options = {}) {
     const result = await this.controller.loadCourseDocument(courseId, options);
     return {

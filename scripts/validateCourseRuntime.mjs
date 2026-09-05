@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "espree";
+import { renderCourseDesignParameterCatalogSql } from "./syncCourseDesignParameterCatalog.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -28,7 +29,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-part-save-v1",
   "course-authoring-part-materialization-atomic-v2",
   "course-study-unit-inspection-v2",
-  "course-authoring-configuration-v2",
+  "course-authoring-configuration-v3",
+  "authoring-preference-profiles-v1",
   "course-sources-v1",
   "course-source-roles-v1",
   "course-source-provenance-v1",
@@ -41,7 +43,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-anchored-annotations-atomic-create-v1",
   "course-annotation-subject-classification-v1",
   "course-personal-state-v2",
-  "course-authoring-analytics-v2",
+  "course-authoring-analytics-v3",
   "contextual-study-unit-edit-v1",
   "current-data-lifecycle-v1",
   "course-source-current-state-v1",
@@ -74,6 +76,8 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "src/ui/CourseAnalyticsPanel.js",
   "src/ui/downloadTextFile.js",
   "src/ui/CourseDesignPanel.js",
+  "src/ui/CourseAuthoringProfiles.js",
+  "src/ui/courseDesignControls.js",
   "src/ui/CourseInspectionSequence.js",
   "src/ui/CourseObservationsPanel.js",
   "src/ui/CourseSourcesPanel.js",
@@ -296,7 +300,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260905071622" ||
+  if (manifest.schemaRevision !== "20260905083846" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -305,6 +309,10 @@ async function validateManifest() {
     fail("O manifesto estático não descreve exatamente o runtime final de Curso.");
   }
   await validateRuntimeManifestRevision(manifest);
+  const catalogMigration = await read("supabase/migrations/20260905080544_scoped_authoring_preferences_and_profiles.sql");
+  if (!catalogMigration.replaceAll("\r\n", "\n").includes(renderCourseDesignParameterCatalogSql())) {
+    fail("A projeção SQL de parâmetros diverge do catálogo canônico.");
+  }
 
   const cut = await read(
     "supabase/migrations/20260902044404_cut_legacy_authoring_runtime.sql"
@@ -555,6 +563,7 @@ async function validateEdgeAndMcp() {
   )).href);
   const names = toolsModule.COURSE_HUMAN_TASKS.map(({ name }) => name);
   const expected = [
+    "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
     "retomar_curso", "consultar_planejamento", "preparar_materializacao",
     "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
     "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_mapa_curricular",
@@ -563,7 +572,7 @@ async function validateEdgeAndMcp() {
     "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às dezessete tarefas humanas esperadas.");
+    fail("O catálogo MCP não corresponde às vinte e duas tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");
