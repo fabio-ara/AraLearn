@@ -3950,7 +3950,8 @@ button.account-settings-back[hidden] {
   color: transparent;
 }
 
-.package-formula > .package-formula-fence {
+.package-formula > .package-formula-fence,
+.package-rich-math > .package-formula-fence {
   position: absolute;
   z-index: 1;
   display: block;
@@ -3997,32 +3998,52 @@ button.account-settings-back[hidden] {
   font-size: var(--type-sm);
 }
 
-.package-reaction-conditions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 8px;
-  margin: 0;
-  color: var(--resource-text-secondary);
-  font-size: var(--type-base);
-}
-
 .package-flowchart {
+  min-width: 0;
   max-width: 100%;
-  max-height: min(48dvh, 430px);
-  padding: 10px;
-  overflow: auto;
-  border: 1px solid var(--resource-border);
-  border-radius: 15px;
-  background: var(--resource-surface-subtle);
-  overscroll-behavior-inline: contain;
-  overscroll-behavior-block: auto;
-  touch-action: pan-x pan-y;
-  -webkit-overflow-scrolling: touch;
 }
 
 .package-flow-canvas {
-  min-width: 100%;
-  min-height: 120px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 10px;
+  overflow: auto;
+  border-top: 1px solid var(--resource-border);
+  overscroll-behavior: contain;
+  touch-action: none;
+  cursor: grab;
+  -webkit-overflow-scrolling: touch;
+}
+
+.package-flow-canvas.is-diagram-panning {
+  cursor: grabbing;
+}
+
+.package-flow-canvas:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.package-flowchart .package-diagram-frame {
+  height: clamp(300px, 48dvh, 460px);
+}
+
+.package-flowchart .package-diagram-modal[open] .package-diagram-frame {
+  height: 100%;
+}
+
+.package-flowchart .package-diagram-modal {
+  width: 100dvw;
+  max-width: 100dvw;
+}
+
+.package-flow-outline:not(.visually-hidden) {
+  margin: 0;
+  padding-inline-start: 24px;
+  color: var(--resource-text);
+  overflow-wrap: anywhere;
 }
 
 .package-flow-svg {
@@ -4375,6 +4396,49 @@ button.account-settings-back[hidden] {
   pointer-events: none;
 }
 
+.package-rich-paragraph {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.package-rich-paragraph > * + * {
+  margin-block-start: 8px;
+}
+
+.package-rich-paragraph ruby {
+  ruby-align: center;
+}
+
+.package-rich-paragraph rt {
+  font-size: 0.8em;
+}
+
+.package-rich-math {
+  position: relative;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  color: var(--resource-text);
+}
+
+.package-rich-math.is-inline {
+  display: inline-block;
+  vertical-align: middle;
+  padding-block: 2px;
+}
+
+.package-rich-math.is-block {
+  display: block;
+  margin-inline: 0;
+  padding: 12px 4px;
+}
+
+.package-rich-math math {
+  min-width: max-content;
+  color: inherit;
+  font-size: inherit;
+}
+
 .open-response-placeholder [data-manual-edit-path] {
   pointer-events: auto;
 }
@@ -4383,6 +4447,13 @@ button.account-settings-back[hidden] {
   min-width: 0;
   padding: 12px;
   overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+}
+
+.package-flow-label-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 .study-manual-edit-dock > p {
@@ -6011,6 +6082,7 @@ button.account-settings-back[hidden] {
   display: flex;
   align-items: center;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .study-state-adoption label {

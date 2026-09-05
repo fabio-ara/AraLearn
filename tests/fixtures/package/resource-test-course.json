@@ -10139,6 +10139,83 @@
               ]
             }
           ]
+        },
+        {
+          "id": "response-open-test-module",
+          "title": "Resposta aberta",
+          "guide": {
+            "goal": "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação-alvo da tarefa"
+            ],
+            "notation": [
+              "representação legível"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "response-open-test-lesson",
+              "title": "Resposta aberta",
+              "guide": {
+                "goal": "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "representação legível"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "response-open-test-microsequence",
+                  "title": "Resposta aberta",
+                  "goal": "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "confirmação da resposta"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "open-card",
+                      "position": 1,
+                      "title": "Explique a decisão do switch",
+                      "role": "practice",
+                      "content": [],
+                      "response": {
+                        "id": "response-open",
+                        "package": "aralearn.response.open",
+                        "version": "1.0.0",
+                        "data": {
+                          "prompt": "Explique com suas palavras por que o switch aprende pela origem e consulta o destino.",
+                          "placeholder": "Relacione origem, tabela MAC e decisão de saída."
+                        }
+                      },
+                      "feedback": [],
+                      "topics": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }

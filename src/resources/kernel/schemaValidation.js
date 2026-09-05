@@ -13,13 +13,20 @@ function resolvePointer(root, pointer) {
   ), root);
 }
 
-function validateNode(value, schema, root, path, depth = 0) {
-  if (depth > 80) return `${path} excedeu a profundidade do schema.`;
+function validateNode(value, schema, root, path, depth = 0, schemaTrail = []) {
+  if (depth > 80) return `${path} excedeu a profundidade dos dados.`;
   if (!schema || typeof schema !== "object") return "";
+  // Referências e alternativas descrevem o mesmo valor; não são mais um
+  // nível dos dados. O caminho separado impede ciclos sem consumir o limite
+  // de uma AST válida a cada passagem por $ref e oneOf.
+  if (schemaTrail.length >= 100 || schemaTrail.includes(schema)) {
+    return `${path} usa schema cíclico ou excessivamente encadeado.`;
+  }
+  const nextTrail = [...schemaTrail, schema];
   const referenceRoot = schema.$id ? schema : root;
   if (schema.$ref) {
     const resolved = resolvePointer(referenceRoot, schema.$ref);
-    return resolved ? validateNode(value, resolved, referenceRoot, path, depth + 1) : `${path} usa referência inexistente.`;
+    return resolved ? validateNode(value, resolved, referenceRoot, path, depth, nextTrail) : `${path} usa referência inexistente.`;
   }
   if (Object.hasOwn(schema, "const") && !Object.is(value, schema.const)) {
     return `${path} precisa ser ${JSON.stringify(schema.const)}.`;
@@ -30,17 +37,17 @@ function validateNode(value, schema, root, path, depth = 0) {
   for (const keyword of ["allOf"]) {
     if (Array.isArray(schema[keyword])) {
       for (const branch of schema[keyword]) {
-        const error = validateNode(value, branch, referenceRoot, path, depth + 1);
+        const error = validateNode(value, branch, referenceRoot, path, depth, nextTrail);
         if (error) return error;
       }
     }
   }
   if (Array.isArray(schema.anyOf)) {
-    const valid = schema.anyOf.some((branch) => !validateNode(value, branch, referenceRoot, path, depth + 1));
+    const valid = schema.anyOf.some((branch) => !validateNode(value, branch, referenceRoot, path, depth, nextTrail));
     if (!valid) return `${path} não satisfaz nenhuma forma permitida.`;
   }
   if (Array.isArray(schema.oneOf)) {
-    const matches = schema.oneOf.filter((branch) => !validateNode(value, branch, referenceRoot, path, depth + 1)).length;
+    const matches = schema.oneOf.filter((branch) => !validateNode(value, branch, referenceRoot, path, depth, nextTrail)).length;
     if (matches !== 1) return `${path} precisa satisfazer exatamente uma forma.`;
   }
   const expectedTypes = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];

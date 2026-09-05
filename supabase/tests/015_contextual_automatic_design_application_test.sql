@@ -102,7 +102,14 @@ select ok(not private.valid_applied_course_design_parameters_v1(jsonb_set(payloa
 select ok(not private.valid_applied_course_design_parameters_v1(jsonb_set(payload.units#>'{0,designSnapshot,parameters}','{0,reason}','""'),resolved.parameters),'valor escolhido exige motivo') from payload,resolved;
 select throws_ok($$select pg_temp.materialize_contextual('context-invalid-fixed',jsonb_set(units,'{0,designSnapshot,parameters,5,value}','241')) from payload$$,'22023',null,'writer atômico recusa divergência fixa sem gravar a unidade');
 select is((select count(*) from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_type='study_unit'),0::bigint,'rejeição não deixa conteúdo parcial');
+select throws_ok($$select pg_temp.materialize_contextual('context-old-policy',jsonb_set(units,'{0,designSnapshot,componentPolicy,policy,catalogVersion}','"1-4616b2e5"')) from payload$$,
+ '40001','A direção editorial ou política de componentes divergiu da configuração corrente.',
+ 'materialização nova exige política corrente mesmo quando as referências continuam iguais');
+select ok(not exists(select 1 from private.course_change_receipts where actor_id='95000000-0000-4000-8000-000000000001' and request_id='context-old-policy'),
+ 'política antiga não deixa recibo de materialização');
 select lives_ok($$select pg_temp.materialize_contextual('context-automatic-01',units) from payload$$,'writer materializa escolha automática contextual sem mutação prévia das preferências');
+select is((select design_application->>'contract' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
+ 'aralearn.study-unit-design-application.v1','aplicação persistida inclui o discriminador do contrato');
 select is((select revision from public.courses where id='95000000-0000-4000-8000-000000000301'),2::bigint,'materialização usa uma revisão atômica');
 select is((select count(*) from private.course_design_parameter_assignments where course_id='95000000-0000-4000-8000-000000000301' and parameter_id in('authoring_part_microsequence_target','authoring_batch_part_target','authoring_pause_frequency')),0::bigint,'cadência aplicada não altera a intenção corrente no curso');
 select is((select jsonb_agg(parameter.value->'value' order by parameter.ordinal) from private.course_entities unit cross join lateral jsonb_array_elements(unit.design_snapshot->'parameters') with ordinality parameter(value,ordinal) where unit.course_id='95000000-0000-4000-8000-000000000301' and unit.entity_id='unit-contextual' and parameter.value->>'parameterId' in('authoring_part_microsequence_target','authoring_batch_part_target','authoring_pause_frequency')),'[3,2,"each_part"]'::jsonb,'snapshot preserva valores independentes de parte, lote e pausa');

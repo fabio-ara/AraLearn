@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "espree";
 import { renderCourseDesignParameterCatalogSql } from "./syncCourseDesignParameterCatalog.mjs";
+import { checkResourcePackageCatalog } from "./syncResourcePackageCatalog.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -300,7 +301,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260905083846" ||
+  if (manifest.schemaRevision !== "20260905095110" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -309,6 +310,7 @@ async function validateManifest() {
     fail("O manifesto estático não descreve exatamente o runtime final de Curso.");
   }
   await validateRuntimeManifestRevision(manifest);
+  checkResourcePackageCatalog(repositoryRoot);
   const catalogMigration = await read("supabase/migrations/20260905080544_scoped_authoring_preferences_and_profiles.sql");
   if (!catalogMigration.replaceAll("\r\n", "\n").includes(renderCourseDesignParameterCatalogSql())) {
     fail("A projeção SQL de parâmetros diverge do catálogo canônico.");

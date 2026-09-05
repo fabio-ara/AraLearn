@@ -1,3 +1,4 @@
+import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -94,11 +95,6 @@ function courseDesignFixture({
   nextChildCursor = null
 } = {}) {
   const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
-  const componentOptions = Array.from({ length: 33 }, (_, index) => ({
-    ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
-    label: `Componente ${index + 1}`,
-    purpose: `Finalidade acadêmica ${index + 1}.`
-  }));
   return {
     contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
@@ -140,12 +136,12 @@ function courseDesignFixture({
         inherited: false
       }]
     },
-    componentCatalog: { version: "1-4616b2e5", options: componentOptions },
+    componentCatalog: structuredClone(COURSE_COMPONENT_CATALOG),
     componentPolicy: {
       localAssignment: null,
       effectiveAssignment: {
         policy: {
-          catalogVersion: "1-4616b2e5",
+          catalogVersion: COURSE_COMPONENT_CATALOG.version,
           availability: "all",
           allowedRefs: [],
           excludedRefs: [],

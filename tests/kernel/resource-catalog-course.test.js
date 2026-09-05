@@ -59,18 +59,18 @@ function collectPackageUses(value, uses = new Map()) {
   return uses;
 }
 
-async function javascriptRuntimeMetrics() {
-  const runtimeRoot = path.join(
-    PROJECT_ROOT,
-    "supabase/functions/_shared/aralearn/runtime/resources"
-  );
+async function javascriptRuntimeMetrics(relativeRoot) {
+  const runtimeRoot = path.join(PROJECT_ROOT, relativeRoot);
   const entries = await readdir(runtimeRoot, { recursive: true, withFileTypes: true });
   const files = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".js"));
   let bytes = 0;
   for (const entry of files) {
     bytes += (await stat(path.join(entry.parentPath, entry.name))).size;
   }
-  return { files: files.length, bytes };
+  return {
+    files: files.map((entry) => path.relative(runtimeRoot, path.join(entry.parentPath, entry.name))).sort(),
+    bytes
+  };
 }
 
 function allManifests() {
@@ -270,7 +270,11 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
   assert.equal(defaultSearch.candidates.length, 8);
   assert.throws(() => RESOURCE_CATALOG.search({ limit: 9 }), /entre 1 e 8/u);
 
-  const inspected = RESOURCE_CATALOG.inspect(manifests.slice(0, 8).map(({ id, version }) => ({
+  const largestProfiles = [...manifests].sort((left, right) => (
+    byteLength(RESOURCE_CATALOG.inspect([{ packageId: right.id, version: right.version }]))
+      - byteLength(RESOURCE_CATALOG.inspect([{ packageId: left.id, version: left.version }]))
+  )).slice(0, 8);
+  const inspected = RESOURCE_CATALOG.inspect(largestProfiles.map(({ id, version }) => ({
     packageId: id,
     version
   })));
@@ -310,10 +314,13 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
 });
 
 test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", async () => {
-  const runtime = await javascriptRuntimeMetrics();
-  assert.equal(COURSE_HUMAN_TASKS.length, 17);
-  assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 32_000);
-  assert.equal(runtime.files, 52);
+  const [source, runtime] = await Promise.all([
+    javascriptRuntimeMetrics("src/resources"),
+    javascriptRuntimeMetrics("supabase/functions/_shared/aralearn/runtime/resources")
+  ]);
+  assert.equal(COURSE_HUMAN_TASKS.length, 22);
+  assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 48 * 1024);
+  assert.deepEqual(runtime.files, source.files);
   assert.ok(runtime.bytes <= 560 * 1024);
 });
 

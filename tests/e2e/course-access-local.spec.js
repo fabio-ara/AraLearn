@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import { richParagraphInstance } from "../fixtures/package/rich-paragraph.js";
 
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
 const PROJECT_URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
@@ -507,6 +508,89 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await removeUser(learner?.id);
     await removeUser(outsider?.id);
     await removeUser(owner?.id);
+  });
+
+  test("parágrafo rico persiste no curso real e conserva notação ao editar texto", async ({ browser }, testInfo) => {
+    const created = await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Notação da jornada local", objective: "Verificar escrita e matemática pelo contrato corrente."
+    } }, ownerToken);
+    const notationCourseId = created.data.courseId;
+    const unitId = "study-unit-access-local-1";
+    const rows = courseRows(notationCourseId);
+    rows.find((row) => row.entityId === unitId).content.content = [structuredClone(richParagraphInstance)];
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const failures = captureBrowserFailures(page);
+    const studyRoute = `/#/estudo/${notationCourseId}/module-access-local/lesson-access-local/microsequence-access-local/${unitId}`;
+    const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken } });
+    const loadRows = async () => {
+      const descriptor = await client.getCourse(notationCourseId);
+      return (await client.getCourseEntities(notationCourseId, { revision: descriptor.revision })).items;
+    };
+    const currentRich = async () => (await loadRows()).find((row) => row.entityId === unitId).content.content[0];
+    try {
+      const composed = await courseApi(`/v1/courses/${notationCourseId}/composition`, { method: "POST", body: {
+        requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+        sourceAttributionApplications: rows.filter((row) => row.entityType === "study_unit")
+          .map((row) => ({ studyUnitId: row.entityId, sourceLinks: [] }))
+      } }, ownerToken);
+      expect(composed.data.revision).toBe(2);
+      expect(await currentRich()).toEqual(richParagraphInstance);
+      await browserSignIn(page, owner.email);
+      await page.goto(studyRoute);
+      await expect(page.locator(".package-rich-paragraph ruby")).toHaveCount(2);
+      await expect(page.locator("math[display='inline']")).toBeVisible();
+      await expect(page.locator("math[display='block']")).toBeVisible();
+      await expect(page.locator(".package-rich-paragraph [lang='ar']")).toHaveAttribute("dir", "rtl");
+      const modes = page.locator("header .study-mode-actions");
+      const geometry = () => page.locator(".package-rich-paragraph").evaluate((root) => {
+        const rect = (node) => { const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height }; };
+        return [root, ...root.querySelectorAll("math, ruby, p")].map(rect);
+      });
+      for (const theme of ["claro", "escuro"]) {
+        await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+        await page.getByRole("button", { name: `Tema ${theme}`, exact: true }).click();
+        await page.getByRole("button", { name: "Fechar", exact: true }).click();
+        for (const width of [360, 390, 430, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        const before = await geometry();
+        await modes.getByRole("button", { name: "Editar", exact: true }).click();
+        await page.locator('[data-resource-target-id="content:rich-explanation"]').click();
+        await expect(page.locator('[data-manual-edit-path="blocks[0].inlines[0].text"]')).toBeVisible();
+        const after = await geometry();
+        expect(after.length).toBe(before.length);
+        for (let index = 0; index < before.length; index += 1) {
+          for (const key of ["x", "y", "width", "height"]) expect(Math.abs(before[index][key] - after[index][key])).toBeLessThanOrEqual(1);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await modes.getByRole("button", { name: "Visualizar", exact: true }).click();
+        }
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+      await modes.getByRole("button", { name: "Editar", exact: true }).click();
+      await page.locator('[data-resource-target-id="content:rich-explanation"]').click();
+      const revisedText = "A razão expressa a comparação de duas grandezas. Em ";
+      await page.locator('[data-manual-edit-path="blocks[0].inlines[0].text"]').fill(revisedText);
+      await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+      await expect.poll(async () => (await currentRich()).data.blocks[0].inlines[0].text).toBe(revisedText);
+      const expected = structuredClone(richParagraphInstance);
+      expected.data.blocks[0].inlines[0].text = revisedText;
+      expect(await currentRich()).toEqual(expected);
+      await page.reload();
+      await page.goto(studyRoute);
+      await expect(page.locator(".package-rich-paragraph")).toContainText(revisedText.trim());
+      await expect(page.locator("math[display='inline'] mfrac")).toHaveCount(1);
+      await attachScreenshot(page, testInfo, "notacao-real-editada-390.png");
+      expect(failures.failures).toEqual([]);
+    } finally {
+      await context.close();
+      await courseApi(`/v1/courses/${notationCourseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
   });
 
   test("parâmetros e perfis reais distinguem automático, herança e cópia sem reescrever conteúdo", async ({ browser }, testInfo) => {

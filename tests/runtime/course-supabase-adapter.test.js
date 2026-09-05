@@ -1,3 +1,4 @@
+import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -5,8 +6,6 @@ import { createHash } from "node:crypto";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from
   "../../src/domain/courseDesignParameters.js";
-import { RESOURCE_PACKAGE_REGISTRY } from
-  "../../src/resources/catalog/resourceCatalog.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
@@ -750,19 +749,12 @@ test("replay idempotente aceita revisão corrente sem relaxar identidade e alvo"
 });
 
 function componentCatalog() {
-  return {
-    version: "1-4616b2e5",
-    options: RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest) => ({
-      ref: `${manifest.id}@${manifest.version}`,
-      label: manifest.label,
-      purpose: manifest.purpose
-    }))
-  };
+  return structuredClone(COURSE_COMPONENT_CATALOG);
 }
 
 function defaultComponentPolicy(excludedRefs = []) {
   return {
-    catalogVersion: "1-4616b2e5",
+    catalogVersion: COURSE_COMPONENT_CATALOG.version,
     availability: "all",
     allowedRefs: [],
     excludedRefs,
@@ -1791,6 +1783,15 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     }),
     (error) => error.code === "component_catalog_drift"
   );
+
+  for (const fingerprint of [undefined, "sha256:" + "0".repeat(64)]) {
+    const wrongFingerprint = courseDesignRead();
+    if (fingerprint === undefined) delete wrongFingerprint.componentCatalog.schemaFingerprint;
+    else wrongFingerprint.componentCatalog.schemaFingerprint = fingerprint;
+    await assert.rejects(adapter(async () => json(wrongFingerprint)).getCourseDesign({
+      principal: { actorId: USER_ID }, courseId: COURSE_ID, scopeKind: "course", scopeRef: COURSE_ID
+    }), (error) => error.code === "component_catalog_drift");
+  }
 
   const oversized = adapter(async () => json({
     code: "54000",

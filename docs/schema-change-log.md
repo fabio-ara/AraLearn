@@ -1,5 +1,65 @@
 # Alterações do schema
 
+## 20260905094108–20260905095110 — decisão histórica e aplicação corrente
+
+A preparação `20260905094108_normalize_applied_design_discriminator.sql`
+identifica a forma produzida pelo escritor anterior e acrescenta o discriminador
+que uma expressão SQL omitia. Nenhum valor, identidade ou horário é reinterpretado.
+Formas desconhecidas interrompem o corte para reconciliação. A ordem dessa
+preparação antes de `20260905094109_preserve_applied_design_on_focal_edits.sql`
+é obrigatória no upgrade.
+
+A decisão pedagógica histórica passa a ser preservada literalmente nas edições.
+O core da composição conserva a aplicação semântica corrente somente quando
+conteúdo, exceto o título, e posição na estrutura continuam idênticos. Mudanças
+substantivas invalidam essa aplicação, sem apagar a decisão histórica. O wrapper
+deixa de reescrever a data e de supor validade pelos componentes usados. Analytics
+consome a aplicação corrente mantida pelo escritor. Aplicações que já estavam
+fora da análise corrente permanecem excluídas após a mudança de critério.
+
+A correção `20260905095110_correct_applied_design_discriminator.sql` agrupa
+explicitamente o acesso ao objeto nas duas expressões de materialização e
+comparação. Novas aplicações persistem o discriminador obrigatório, e o
+constraint rejeita estados inválidos em vez de aceitar resultado SQL desconhecido.
+Não há novo histórico universal, coluna de conteúdo ou caminho alternativo.
+
+Antes do corte, mantenha backup privado com restauração ensaiada, confira a lista
+completa e a ordem das migrations e valide o manifesto final `20260905095110`.
+Não remova a preparação nem marque uma migration como aplicada sem executá-la.
+
+No banco local, os testes focais de materialização e edição passaram 46
+verificações, e o manifesto passou 25. Incluem discriminação válida, título sem
+alterar a decisão, prosa alterada com snapshot preservado e aplicação invalidada,
+Analytics, repetição do recibo e conflito de revisão. As fixtures são revertidas
+ao terminar. Essas provas não certificam a aplicação hospedada.
+
+## 20260905091101 e 20260905092640 — catálogo único de componentes
+
+O catálogo de componentes do banco passa a ser gerado pelo mesmo registro usado
+pelo domínio e pelos clientes. Opções, versão e fingerprint dos esquemas são
+projetados juntos; uma leitura corrente sem o fingerprint esperado ou com valor
+divergente é rejeitada. As identidades e versões dos 33 pacotes permanecem
+compatíveis. O parágrafo aceita a forma textual existente e a nova forma rica,
+sem converter nem resumir o texto armazenado.
+
+A migration `20260905091101_generated_resource_package_catalog.sql` atualiza
+somente a versão do catálogo nas preferências correntes. Conserva valores,
+origens, justificativas, horários, conteúdo e snapshots históricos. O preflight
+rejeita referências removidas ou uma revisão de runtime inesperada, em vez de
+descartar uma escolha existente. O catálogo gerado é conferido por
+`scripts/syncResourcePackageCatalog.mjs` e pelo validador do runtime.
+
+A correção incremental `20260905092640_deduplicate_rich_paragraph_catalog.sql`
+deduplica a definição matemática no esquema rico, usando referências internas.
+Atualiza o fingerprint e o manifesto sem alterar tabelas de conteúdo ou decisões.
+A primeira migration, já aplicada localmente, permanece intacta.
+
+O ensaio de upgrade PGlite passou três verificações: migração compatível,
+preservação literal dos dados úteis e recusa dos estados incompatíveis. O
+inventário real do banco local conservou os mesmos 552 objetos classificados.
+Essa prova local não substitui backup, restauração ensaiada e conferência das
+migrations pendentes antes da aplicação hospedada.
+
 ## 20260905083846 — escolha automática na aplicação contextual
 
 A migration `20260905083846_contextual_automatic_design_application.sql` permite

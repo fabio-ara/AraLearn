@@ -4,6 +4,9 @@ import test from "node:test";
 
 import { PGlite } from "@electric-sql/pglite";
 
+// Checkpoint histórico isolado: conserva a prova da migration 20260902160602.
+// A semântica corrente é coberta por applied-design-upgrade-pglite.test.js e
+// supabase/tests/018_component_policy_snapshot_preservation_test.sql.
 const migrationUrl = new URL(
   "../../supabase/migrations/20260902160602_preserve_course_design_on_focal_mcp_corrections.sql",
   import.meta.url

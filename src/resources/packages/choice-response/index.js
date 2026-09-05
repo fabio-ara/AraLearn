@@ -1,3 +1,4 @@
+import { choiceResponseInteraction } from "./interaction.js";
 import {
   escapePackageAttribute,
   renderPackageActionIcon,
@@ -27,6 +28,14 @@ function responseFeedback(blockKey, feedback) {
 }
 
 export const choiceResponsePackage = Object.freeze({
+  responseInteraction: choiceResponseInteraction,
+  validateStudyUnit(studyUnit) {
+    const comparable = (value) => String(value ?? "").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
+    const question = comparable(studyUnit.response?.data?.question);
+    const repeated = (studyUnit.content || []).some((instance) =>
+      instance.package === "aralearn.resource.paragraph" && comparable(instance.data?.text) === question);
+    return question && repeated ? ["content não pode repetir a mesma pergunta de response.choice."] : [];
+  },
   manifest: Object.freeze({
     id: "aralearn.response.choice", version: "1.0.0", label: "Escolha",
     purpose: "Pedir que o estudante discrimine uma ou mais alternativas plausíveis.", slots: Object.freeze(["response"]),

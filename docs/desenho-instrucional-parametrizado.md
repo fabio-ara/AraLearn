@@ -18,23 +18,25 @@ Um parâmetro de desenho instrucional possui:
 - limites de interpretação;
 - referências que fundamentam a dimensão investigada.
 
-No estado `default`, o GPT precisa calibrar automaticamente cada valor para a
-microssequência ou unidade, conforme público, conteúdo, função e planejamento.
-Esse estado não é um preset fixo, e a produção não considera a configuração
-pronta enquanto a calibração contextual não estiver registrada. Evidência
+No modo automático, o assistente precisa escolher cada valor conforme público,
+conteúdo, função, planejamento e escopo admitido pelo catálogo. A ausência de
+escolha é explícita; não representa um preset fixo. Herdar conserva a intenção
+do escopo anterior, enquanto uma escolha fixa conserva o valor deliberado.
+A produção registra a calibração contextual junto ao conteúdo. Evidência
 externa pode justificar a investigação de uma dimensão, mas não estabelece
 automaticamente o melhor valor para toda população, conteúdo ou tarefa. Uma
 definição deliberadamente fixada pelo pesquisador prevalece no escopo pertinente.
 
 Limites de caracteres, bytes, elementos de página e tamanho de lote continuam
 relevantes para ergonomia e segurança. A quantidade de partes organiza a
-produção, mas não é meta pedagógica. Esses controles não integram a herança dos
-parâmetros pedagógicos.
+produção, mas não é meta pedagógica. As preferências de parte, lote e pausa têm
+escopo de curso e não viram atribuições locais de uma unidade de estudo.
 
 ## Catálogo corrente
 
-O catálogo 1.1.0 contém quatro parâmetros pedagógicos e dois alvos editoriais
-quantitativos flexíveis. Comandos não criam definições livres.
+O catálogo 1.2.0 contém doze decisões organizadas em conteúdo, prática, conversa
+e cadência. Interface, MCP, Actions e banco usam essas mesmas definições.
+Comandos não criam definições livres.
 
 | Parâmetro | Forma e exemplos de valores | Escopos | Decisão representada |
 | --- | --- | --- | --- |
@@ -44,13 +46,26 @@ quantitativos flexíveis. Comandos não criam definições livres.
 | `required_practice_variation_dimensions` | conjunto; por exemplo, caso, contexto, representação ou apoio | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
 | `authoring_chat_response_word_target` | inteiro; por exemplo, `80` ou `120` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para uma resposta de autoria |
 | `study_unit_content_word_target` | inteiro; por exemplo, `140` ou `180` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para o conteúdo de uma unidade de estudo |
+| `practice_distribution` | intercalada ou agrupada | curso, lição, microssequência e unidade de estudo | organização das práticas na sequência |
+| `practice_position` | antes, depois ou antes e depois | curso, lição, microssequência e unidade de estudo | posição da prática em relação à explicação |
+| `authoring_part_microsequence_target` | inteiro | curso | quantidade pretendida de microssequências por parte |
+| `authoring_batch_part_target` | inteiro | curso | quantidade pretendida de partes por lote |
+| `authoring_pause_frequency` | preferência enumerada | curso | pontos de discussão e revisão durante a produção |
+| `authoring_chat_interaction` | concisão, debate ou explicação | curso, lição, microssequência e unidade de estudo | forma da conversa de autoria |
 
 Os quatro primeiros parâmetros alteram decisões pedagógicas observáveis. Os dois
-últimos tornam a extensão editorial comparável sem transformá-la em medida de
+alvos de palavras tornam a extensão editorial comparável sem transformá-la em medida de
 qualidade. Um alvo de palavras não é mínimo nem máximo: respostas e unidades
 podem ultrapassá-lo quando a decisão ou o conteúdo exigirem. Ele nunca autoriza
 ocultar uma decisão educacional, truncar conteúdo necessário, compactar várias
 novidades ou atomizar uma explicação para satisfazer a contagem.
+
+Distribuição e posição descrevem a intenção da sequência, sem certificar sua
+adequação pela contagem. Cadência organiza o trabalho de autoria. Preferência
+de conversa orienta a resposta do assistente e não reduz o material didático.
+Perfis pertencem à conta e copiam essas preferências para um curso; editar ou
+excluir o perfil não modifica as cópias já aplicadas. Exceções locais permanecem,
+salvo remoção explícita, e condições de pesquisa impedem substituição silenciosa.
 
 O protocolo abaixo define o significado de **unidade de análise** e das contagens.
 Ele fecha a operacionalização para a evolução do produto; sua existência não
@@ -386,6 +401,13 @@ A gravação conserva com as unidades de estudo a aplicação instrucional corre
 - operação mantida e dimensões variadas;
 - componentes usados;
 - alvos editoriais aplicados e extensão observada.
+
+Uma edição apenas do título, sem mudar conteúdo ou posição na estrutura,
+conserva a decisão e os mapeamentos registrados, incluindo sua data original.
+Uma mudança de prosa, resposta, referências ou hierarquia conserva a decisão
+histórica, mas invalida a aplicação semântica corrente. As mesmas referências de
+componentes não provam que a análise continua pertinente ao conteúdo alterado.
+Somente uma nova materialização validada registra uma nova aplicação.
 
 Uma introdução marca somente a primeira apresentação de cada unidade de análise. O
 desenvolvimento pode continuar em duas ou mais unidades de estudo sem repetir a

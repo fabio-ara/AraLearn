@@ -1,3 +1,4 @@
+import { openResponseInteraction } from "./interaction.js";
 import {
   escapePackageAttribute,
   renderPackageInline,
@@ -20,6 +21,7 @@ function feedbackHtml(feedback) {
 }
 
 export const openResponsePackage = Object.freeze({
+  responseInteraction: openResponseInteraction,
   manifest: Object.freeze({
     id: "aralearn.response.open",
     version: "1.0.0",

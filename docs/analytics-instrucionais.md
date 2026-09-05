@@ -35,18 +35,24 @@ sequencial do conteúdo.
 
 ### Configuração aplicada
 
-A tabela mostra as seis definições do catálogo efetivamente usadas. Quatro são
-parâmetros pedagógicos:
+A tabela usa as doze definições do catálogo 1.2.0 e mostra as escolhas
+efetivamente registradas. Quatro delas são parâmetros pedagógicos:
 
 - teto de ideias novas por unidade expositiva;
 - formas de explicação requeridas;
 - mínimo de oportunidades distintas de prática por requisito;
 - dimensões de variação requeridas para a prática.
 
-As outras duas definições são alvos editoriais quantitativos flexíveis:
+Duas definições são alvos editoriais quantitativos flexíveis:
 
 - palavras por resposta de autoria;
 - palavras por unidade de estudo.
+
+As demais orientam distribuição e posição das práticas, granularidade de parte
+e lote, frequência de pausa e preferência da conversa. Parte, lote e pausa têm
+escopo de curso. O catálogo organiza essas decisões em conteúdo, prática,
+conversa e cadência; não presume que uma intenção automática ainda sem valor
+tenha sido aplicada.
 
 Quando unidades do mesmo escopo usam valores diferentes, a distribuição informa
 quantas receberam cada valor, sua origem — calibração contextual, decisão da
@@ -61,10 +67,10 @@ unidade pode receber, por exemplo, uma direção do curso e outra da
 microssequência. Portanto, suas contagens podem se sobrepor e não formam uma
 partição das unidades do recorte.
 
-O estado `default` não representa um preset fixo: ele exige que o GPT calibre
-automaticamente o valor no contexto de cada microssequência ou unidade. Um
-valor fixado deliberadamente pelo pesquisador prevalece e deve aparecer como
-definição explícita. Isso permite investigar diferentes desenhos sem
+O modo automático exige uma escolha contextual registrada; a ausência de valor
+não representa um preset fixo. Herdar e fixar são intenções distintas. Um valor
+fixado deliberadamente pelo pesquisador prevalece e aparece como definição
+explícita. Isso permite investigar diferentes desenhos sem
 transformar uma aplicação específica em padrão universal.
 
 Os alvos de palavras não são mínimos ou máximos, não medem qualidade e não
@@ -122,7 +128,14 @@ estrutura, planejamento, configuração efetiva, unidades, componentes, fontes,
 âncoras e observações. Intervenções humanas entram apenas quando o estado
 corrente conserva origem explícita com significado estável.
 
-O contrato técnico `aralearn.course-authoring-analytics.v2` contém somente o
+A decisão histórica de desenho e a aplicação semântica corrente são distintas.
+Editar apenas o título conserva ambas sem atualizar a data da decisão. Alterar
+o conteúdo ou a posição na estrutura conserva a decisão histórica, mas retira
+os mapeamentos anteriores da análise corrente até uma nova aplicação validada.
+Essa ausência é informada; não se deduz que o conteúdo novo conserva as mesmas
+ideias somente porque usa os mesmos componentes.
+
+O contrato técnico `aralearn.course-authoring-analytics.v3` contém somente o
 curso e o escopo, desenho quantitativo, autoria quantitativa, dados ausentes e
 um endereço opcional.
 

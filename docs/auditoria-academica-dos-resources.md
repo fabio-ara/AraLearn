@@ -244,10 +244,11 @@ autoriza uso fora desse recorte.
 | `ordering` | `restringir` | atua somente em alvos textuais de `paragraph` e `table`, sem representar ordem espacial | 0 |
 | `open` | `manter` | permite produção livre sem afirmar correção semântica automática | 0 |
 
-Os artefatos atuais não demonstram motivo para fundir, redesenhar ou retirar
-um pacote. Essa conclusão pode mudar diante de revisão disciplinar, defeito
-estrutural ou equivalência representacional demonstrada. Pouco uso, por si só,
-não decide a retirada.
+O inventário não demonstra motivo para fundir ou retirar um pacote. Isso não
+dispensa correções de contrato, apresentação ou interação: a auditoria móvel
+identifica problemas dentro de gramáticas que continuam justificadas. Uma
+revisão disciplinar ou equivalência representacional demonstrada pode mudar
+a decisão. Pouco uso, por si só, não decide a retirada.
 
 ### Corpus de Cursos
 
@@ -274,6 +275,71 @@ pedem apenas a finalidade ou o nome do pacote são recusadas pelo teste. Essa
 evidência comprova cobertura e validade de contrato. Não mede eficácia nem
 substitui avaliação por especialistas e estudantes.
 
+As fixtures de [estresse acadêmico](../tests/fixtures/pedagogy/academic-stress-courses.json)
+e de [notação matemática e química](../tests/fixtures/formulas-matematica-quimica.json)
+complementam esses dez cursos; não entram naquela contagem. A matriz visual é
+construída pelo [gerador de curso de teste](../scripts/buildResourceTestCourse.mjs),
+com exemplos dos pacotes instalados. Ela inclui produção textual com `open`,
+além de escolha, lacuna e ordenação. Acrescentar um caso de prova não instala
+um pacote no produto nem altera as identidades do corpus.
+
+### Legendas, instruções e prova por pacote
+
+“Necessário” abaixo significa necessário para interpretar o caso, não uma
+exigência de preencher todo campo opcional do contrato. Uma orientação é útil
+quando situa o objeto ou a operação; repetir “observe a figura” ou explicar o
+motor de desenho não acrescenta essa função. A mesma regra preserva termos
+técnicos quando eles são o objeto estudado.
+
+Todos os pacotes passam pela prova de contrato, exemplo, descrição acessível e
+alvos editáveis no [teste do núcleo de pacotes](../tests/kernel/resource-package-kernel.test.js)
+e pela composição disciplinar no [teste do curso de catálogo](../tests/kernel/resource-catalog-course.test.js).
+A [matriz móvel](../tests/resource-course/resource-test-matrix.spec.js) acrescenta
+prova de geometria nos temas claro e escuro. A coluna final indica o caso real
+ou a regressão focal que distingue a gramática; não afirma cobertura de toda
+notação possível nem avaliação com leitor de tela humano.
+
+| Pacote | Rótulos, legendas e instruções a preservar | Caso ou prova focal |
+| --- | --- | --- |
+| `paragraph` | encadeamento do argumento e orientação quando necessária; sem título automático que apenas diga “texto” | prosa e expressões situadas; rich text, idiomas e notação têm regressão própria |
+| `annotated_text` | vínculo entre trecho e nota, rótulo e categoria quando informativa; numeração relaciona ocorrências | cliente e requisição; [toque, teclado e isolamento entre instâncias](../tests/resource-course/resource-annotations-open.spec.js) |
+| `interlinear_gloss` | alinhamento, abreviações e tradução; rótulo de língua quando distingue camadas | forma, morfema e glosa alinhados no exemplo do catálogo |
+| `code` | orientação da leitura, espaços e quebras do programa; não converter sintaxe em prosa | busca binária; [renderização em Estudo e edição textual](../tests/runtime/package-study-rendering-regressions.test.js) |
+| `flow` | condição, Sim/Não, casos e ordem de repetição; sem legenda paralela que duplique o fluxograma | [ramos, teclado, edição e viewport móvel](../tests/e2e/flow-viewport.spec.js) |
+| `tree` | rótulos e relação pai–filho; legenda opcional para delimitar o recorte | ancestralidade e caminho na árvore do catálogo |
+| `formula` | símbolos, estrutura e descrição acessível; contexto quando a expressão sozinha não explica a tarefa | [árvore da expressão e semântica da notação](../tests/runtime/formula-semantic-contract.test.js) |
+| `matrix` | delimitadores, entradas e posição algébrica; orientação quando define a operação | dimensões e entradas no exemplo do catálogo |
+| `plane` | eixos, escala, unidades e identificação de objetos quando declaradas | pontos, vetores e trajetórias no plano do catálogo |
+| `graph` | vértices, direção e pesos; rótulo de aresta quando tem significado | caminhos e topologia no corpus de teoria dos grafos |
+| `truth_table` | variáveis, fórmulas e valorações; explicação dos símbolos quando ainda não ensinados | comparação entre implicação e disjunção no catálogo |
+| `set_diagram` | chave dos conjuntos e marcadores das regiões; não usar tamanho da área como cardinalidade | [regiões e legenda ancorada na matriz móvel](../tests/resource-course/resource-test-matrix.spec.js) |
+| `relation_map` | domínio, contradomínio e incidências; legenda opcional de contexto | imagem e preimagem no catálogo e no corpus |
+| `table` | cabeçalhos, unidades e chave de linha quando necessária; caption se delimita o recorte | comparação de atributos; lacunas e ordenação na matriz |
+| `entity_relationship` | entidades, relações, papéis e cardinalidades; caption contextual opcional | modelagem conceitual no estresse acadêmico |
+| `database_schema` | tabelas, colunas, chaves, nulabilidade e referências | esquema relacional no estresse acadêmico |
+| `memory_layout` | intervalos, base e direção dos endereços; contexto de regiões omitidas ou sem escala | mapa do espaço virtual de um processo no catálogo |
+| `call_stack` | topo ativo, base, quadros suspensos e continuação; não retirar esses estados como decoração | [chamada recursiva e ordem dos quadros](../tests/resource-course/resource-test-matrix.spec.js) |
+| `packet_layout` | offset, largura, unidade e nome de campo; descrição ancorada quando explica sua função | cabeçalho binário no estresse acadêmico |
+| `network_topology` | equipamentos, interfaces, segmentos e enlaces; protocolo quando distingue a conexão | topologia de rede no estresse acadêmico |
+| `state_machine` | estado inicial/final, evento, guarda e ação; caption somente se acrescenta contexto | comportamento reativo no estresse acadêmico |
+| `state_transition_table` | origem, evento e destino; legenda dos estados quando os símbolos precisam de expansão | [duas transições com o mesmo destino e lacunas independentes](../tests/resource-course/resource-test-matrix.spec.js) |
+| `terminal_session` | ambiente, ordem das entradas, fluxos de saída e efeitos observados | [sessão não executável, espaços e lacuna no comando](../tests/resource-course/resource-test-matrix.spec.js) |
+| `bpmn_process` | eventos, tarefas, gateways, raias e fluxos com significado; caption contextual opcional | processo organizacional no estresse acadêmico |
+| `reaction` | espécies, coeficientes, estados, carga e condição sobre a seta; retirar a repetição da condição em legenda | [condição como alvo único e leitura acessível](../tests/runtime/reaction-representation.test.js); [digitação na seta no celular](../tests/resource-course/resource-annotations-open.spec.js) |
+| `software_system_context` | pessoas, sistemas, fronteira e relações; contexto de responsabilidade | fronteira externa do sistema no catálogo |
+| `software_container` | unidades executáveis, armazenamentos, responsabilidade e comunicação | arquitetura em contêineres no catálogo |
+| `system_internal_block` | partes, portas, conectores e itens; não substituir incidência lateral por uma lista | conexões internas no catálogo |
+| `chart` | eixos, escalas, unidades, séries, incerteza e nota metodológica quando declaradas | observações quantitativas no catálogo; descrição acessível acompanha as marcas |
+| `choice` | pergunta, critério e modo de seleção; sem segundo botão de confirmação no pacote | discriminação entre alternativas na matriz e no corpus |
+| `gap` | contexto do alvo e opções da lacuna ativa; sem repetir o estímulo numa lista de respostas | [preenchimento independente no próprio conteúdo](../tests/resource-course/resource-test-matrix.spec.js) |
+| `ordering` | orientação da sequência e controles junto aos trechos; sem segunda lista duplicada | reconstrução da resolução no parágrafo da matriz |
+| `open` | pergunta que pede produção livre; campo inicial sem resposta-modelo | explicação do encaminhamento de um switch; [digitação e foco no celular](../tests/resource-course/resource-annotations-open.spec.js) |
+
+Essas escolhas não autorizam apagar legendas por correspondência de palavras.
+Também não equiparam uma alternativa textual produzida pelo pacote a um teste
+com tecnologia assistiva: relação, ordem, foco e leitura real precisam ser
+confrontados com o caso em uso.
+
 ### Descoberta, degradação e limites técnicos
 
 A busca de componentes devolve no máximo oito candidatos. A inspeção admite oito
@@ -290,12 +356,23 @@ pelo modelo (tokens).
 | Medida | Estado corrente | Limite automatizado |
 | --- | ---: | ---: |
 | resumo exploratório do catálogo | 9.069 bytes | 10 KiB |
-| busca mais pesada entre as facetas correntes, com oito candidatos | 5.542 bytes | 8 KiB |
+| busca mais pesada entre as facetas correntes, com oito candidatos | 5.652 bytes | 8 KiB |
 | inspeção dos oito perfis individuais mais extensos | 14.461 bytes | 16 KiB |
-| maior resposta de um contrato exato | 13.117 bytes | 16 KiB |
-| soma das 33 respostas de contrato, consultadas separadamente | até 200 KiB | 200 KiB |
-| Curso de catálogo completo em disco | 361.088 bytes | lido por recortes no produto |
-| código dos componentes espelhado no navegador e na Edge | 51 arquivos; 548.156 bytes | 560 KiB |
+| maior resposta de um contrato exato (`flow`) | 13.376 bytes | 16 KiB |
+| soma das 33 respostas de contrato, consultadas separadamente | 201.893 bytes | 200 KiB |
+| Curso de catálogo completo em disco | 364.788 bytes | lido por recortes no produto |
+| descritores das tarefas humanas, incluindo os cinco comandos de perfis de autoria | 22 tarefas; 41.921 bytes | 48 KiB |
+| código dos componentes na árvore `resources`, na origem e no espelho | 60 arquivos; 572.712 bytes | mesmos caminhos na origem e no espelho; 560 KiB |
+
+O orçamento de código cobre a árvore `resources`, não o conjunto completo da
+Edge nem as bibliotecas externas de apresentação. A extração das interações de
+resposta para seus pacotes e os módulos de texto estruturado e matemática
+acrescentam arquivos, preservando o teto de 560 KiB. O teste compara os caminhos
+relativos entre origem e espelho, sem exigir uma quantidade fixa de pacotes ou
+arquivos. Os descritores das tarefas humanas têm orçamento separado; seu
+crescimento incorpora os comandos de perfis de autoria. O esquema matemático
+compartilhado do parágrafo usa uma definição referenciada, evitando repetir a
+árvore de expressão em cada posição de fórmula.
 
 O fluxo conversacional consulta componentes sob demanda por
 `consultar_componentes`; a representação escolhida é gravada com a StudyUnit e

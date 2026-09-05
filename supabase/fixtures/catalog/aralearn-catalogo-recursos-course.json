@@ -555,7 +555,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Texto explicado: Desenvolver uma explicação progressiva em prosa, listas curtas e literais inequívocos. É apropriado quando a relação espacial não acrescenta significado. Na leitura, observe esta convenção: prosa acadêmica contínua. Limite importante: Não representa relações espaciais ou tabulares.",
+                            "text": "Texto explicado: Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada. É apropriado quando a relação espacial não acrescenta significado. Na leitura, observe esta convenção: prosa acadêmica contínua. Limite importante: Não representa relações espaciais ou tabulares.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -616,7 +616,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Texto explicado: a representação deve realizar a finalidade declarada — Desenvolver uma explicação progressiva em prosa, listas curtas e literais inequívocos. A operação-alvo da tarefa é explicar e situar. Evite este recurso quando a estrutura do objeto exige notação própria.",
+                            "text": "Critério de revisão para Texto explicado: a representação deve realizar a finalidade declarada — Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada. A operação-alvo da tarefa é explicar e situar. Evite este recurso quando a estrutura do objeto exige notação própria.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }

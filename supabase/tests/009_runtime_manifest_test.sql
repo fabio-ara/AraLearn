@@ -5,7 +5,7 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260905083846','o manifesto identifica preferências e aplicação contextual atuais');
+  '20260905095110','o manifesto identifica o catálogo de componentes gerado atual');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),44,
@@ -40,20 +40,17 @@ select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
 select ok(
   pg_get_functiondef(
     'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
-  ) like '%v_design_preservable_study_unit_ids%'
+  ) not like '%v_design_preservable_study_unit_ids%'
   and pg_get_functiondef(
     'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
-  ) like '%to_jsonb(entity.updated_at)%'
+  ) not like '%to_jsonb(entity.updated_at)%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
-  ) like '%course_component_refs_from_content_v1(entity.content)%'
+    'private.commit_course_composition_core_v1(uuid,uuid,bigint,jsonb,jsonb,text,jsonb)'::regprocedure
+  ) like '%design_application = case when row(%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
-  ) ~ 'p_application_origin\s*=\s*''provider_assistance'''
-  and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
-  ) like '%course_component_policy_allows_v1%',
-  'a composição preserva aplicação corrente somente para correção GPT focal compatível'
+    'private.commit_course_composition_core_v1(uuid,uuid,bigint,jsonb,jsonb,text,jsonb)'::regprocedure
+  ) like '%private.course_entities.content-''title''%',
+  'a composição mantém a validade no core sem reescrever a data histórica por canal'
 );
 
 select ok(

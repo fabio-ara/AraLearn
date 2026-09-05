@@ -1,12 +1,22 @@
+import { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY } from "../resources/catalog/resourceCatalog.js";
+import { RESOURCE_PACKAGE_CONTRACT_FINGERPRINT } from "../resources/packages/generated.js";
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
-const COMPONENT_REF_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+@(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
+const COMPONENT_REF_PATTERN = /^aralearn\.(?:resource|response)\.[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*@(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
 const encoder = new TextEncoder();
 
 export const COURSE_DESIGN_CONTRACT = "aralearn.course-design.v3";
 export const COURSE_DESIGN_CHANGE_CONTRACT = "aralearn.course-design-change.v3";
 export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.2.0";
-export const COURSE_COMPONENT_CATALOG_VERSION = "1-4616b2e5";
+export const COURSE_COMPONENT_CATALOG_VERSION = RESOURCE_CATALOG.catalogVersion;
+export const COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT = RESOURCE_PACKAGE_CONTRACT_FINGERPRINT;
+export const COURSE_COMPONENT_CATALOG = Object.freeze({
+  version: COURSE_COMPONENT_CATALOG_VERSION,
+  schemaFingerprint: COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT,
+  options: Object.freeze(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id, version, label, purpose }) =>
+    Object.freeze({ ref: `${id}@${version}`, label, purpose })))
+});
 
 export const EXPLANATION_FORMS = Object.freeze([
   "plain_definition",
@@ -786,13 +796,18 @@ function validateGuidance(value, scopePath, currentScope) {
 }
 
 function validateComponentCatalog(value) {
-  exact(value, ["version", "options"], "invalid_course_design_read", "O catálogo de componentes");
+  exact(value, ["version", "schemaFingerprint", "options"], "invalid_course_design_read", "O catálogo de componentes");
   if (value.version !== COURSE_COMPONENT_CATALOG_VERSION ||
-      !Array.isArray(value.options) || value.options.length !== 33) {
+      value.schemaFingerprint !== COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT ||
+      !Array.isArray(value.options) || value.options.length !== COURSE_COMPONENT_CATALOG.options.length) {
     fail("course_component_catalog_drift", "O catálogo de componentes divergiu da revisão corrente.");
   }
   const refs = new Set();
-  for (const option of value.options) {
+  for (const [index, option] of value.options.entries()) {
+    const expected = COURSE_COMPONENT_CATALOG.options[index];
+    if (option?.ref !== expected.ref || option?.label !== expected.label || option?.purpose !== expected.purpose) {
+      fail("course_component_catalog_drift", "A opção de componente diverge do catálogo instalado.");
+    }
     exact(option, ["ref", "label", "purpose"], "invalid_course_design_read", "Uma opção de componente");
     const ref = identity(option.ref, 200, "invalid_course_design_read", "A referência do componente");
     if (!COMPONENT_REF_PATTERN.test(ref) || refs.has(ref)) {

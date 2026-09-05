@@ -9,6 +9,7 @@ import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
 import {
+  COURSE_COMPONENT_CATALOG,
   CourseDesignParametersError,
   normalizeCourseDesignChange,
   normalizeCourseDesignCommand,
@@ -998,12 +999,7 @@ function normalizeCourseAnchoredAnnotationsInputValue(normalize) {
 }
 
 function validateComponentCatalogProjection(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }) {
-  const componentCatalogOptions = RESOURCE_PACKAGE_REGISTRY.listCatalog()
-    .map((manifest) => ({
-      ref: `${manifest.id}@${manifest.version}`,
-      label: manifest.label,
-      purpose: manifest.purpose
-    }));
+  const componentCatalogOptions = COURSE_COMPONENT_CATALOG.options;
   const catalog = value?.componentCatalog;
   const options = Array.isArray(catalog?.options) ? catalog.options : [];
   const validOptions = options.length === componentCatalogOptions.length &&
@@ -1014,8 +1010,9 @@ function validateComponentCatalogProjection(value, { RESOURCE_CATALOG, RESOURCE_
           option.purpose !== expected.purpose) return false;
       return true;
     });
-  if (!jsonRecord(value) || !exactRecord(catalog, new Set(["version", "options"])) ||
+  if (!jsonRecord(value) || !exactRecord(catalog, new Set(["version", "schemaFingerprint", "options"])) ||
       catalog.version !== RESOURCE_CATALOG.catalogVersion ||
+      catalog.schemaFingerprint !== COURSE_COMPONENT_CATALOG.schemaFingerprint ||
       !validOptions) {
     throw new AuthoringApiError(
       503,

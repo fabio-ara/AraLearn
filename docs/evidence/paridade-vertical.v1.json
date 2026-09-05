@@ -724,12 +724,24 @@
         {
           "path": "src/study/CourseStudyScreen.js",
           "token": "renderPackageStudyUnitFeedback"
+        },
+        {
+          "path": "src/study/CourseStudyApplication.js",
+          "token": "bindResponseInteraction"
         }
       ],
       "persistence": [
         {
           "path": "src/resources/packages/generated.js",
           "token": "RESOURCE_PACKAGE_DEFINITIONS"
+        },
+        {
+          "path": "src/domain/courseDesignParameters.js",
+          "token": "COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT"
+        },
+        {
+          "path": "scripts/syncResourcePackageCatalog.mjs",
+          "token": "checkResourcePackageCatalog"
         }
       ],
       "routes": [
@@ -740,9 +752,15 @@
       ],
       "tests": [
         "tests/runtime/course-human-mcp.test.js",
-        "tests/runtime/package-study-rendering-regressions.test.js"
+        "tests/runtime/package-study-rendering-regressions.test.js",
+        "tests/kernel/resource-package-extension.test.js",
+        "tests/kernel/package-schema-depth.test.js",
+        "tests/runtime/generated-package-catalog-upgrade-pglite.test.js",
+        "tests/runtime/paragraph-rich-notation.test.js",
+        "tests/e2e/flow-viewport.spec.js",
+        "tests/runtime/applied-design-upgrade-pglite.test.js"
       ],
-      "justification": "O catálogo modular só entrega valor se o contrato descoberto pelo MCP for o mesmo que o runtime valida e renderiza; a ferramenta não cria uma taxonomia paralela."
+      "justification": "O catálogo entrega o mesmo contrato aos canais de Autoria, ao validador e ao Estudo. A interação específica pertence ao pacote; a prova de extensão temporária atravessa descoberta, persistência e apresentação sem alterar o núcleo. A projeção SQL gerada e seu fingerprint recusam divergência, preservando literalmente snapshots já aplicados. Texto simples, notação rica e fluxos mantêm seus formatos compatíveis e a geometria é verificada no navegador."
     },
     {
       "id": "course-shared-transports",

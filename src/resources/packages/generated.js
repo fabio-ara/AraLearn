@@ -33,6 +33,8 @@ import { callStackPackage } from "./call-stack/index.js";
 import { terminalSessionPackage } from "./terminal-session/index.js";
 import { openResponsePackage } from "./open-response/index.js";
 
+export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "sha256:3d44a51d949e0c014e686038b0c16e8b79aa33cec276214cb234ab1139ef5c3b";
+
 export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   paragraphPackage,
   codePackage,

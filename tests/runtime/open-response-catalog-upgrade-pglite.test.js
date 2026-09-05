@@ -22,7 +22,7 @@ const COURSE = "10000000-0000-4000-8000-000000000001";
 test("catálogo de aplicação e catálogo de componentes têm uma revisão corrente", () => {
   assert.equal(COURSE_COMPONENT_CATALOG_VERSION, RESOURCE_CATALOG.catalogVersion);
   assert.equal(EDGE_COMPONENT_CATALOG_VERSION, COURSE_COMPONENT_CATALOG_VERSION);
-  assert.equal(RESOURCE_CATALOG.catalogVersion, "1-4616b2e5");
+  assert.match(RESOURCE_CATALOG.catalogVersion, /^1-[a-f0-9]{8}$/u);
   assert.equal(RESOURCE_CATALOG.explore().packageCount, 33);
   assert.equal(
     RESOURCE_CATALOG.getProfile("aralearn.response.open", "1.0.0").label,

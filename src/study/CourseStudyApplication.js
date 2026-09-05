@@ -1,4 +1,3 @@
-import { getCorrectExerciseOptionIds } from "../core/exerciseOptions.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import {
   getPackageStudyUnitFeedbackEntry,
@@ -55,42 +54,8 @@ function canonicalReference(selection) {
   };
 }
 
-function responseKind(entry) {
-  if (!entry?.instance) return "";
-  if (entry.instance.package === "aralearn.response.choice") return "choice";
-  if (entry.instance.package === "aralearn.response.gap") return "gap";
-  if (entry.instance.package === "aralearn.response.ordering") return "ordering";
-  if (entry.instance.package === "aralearn.response.open") return "open";
-  return "";
-}
-
 function defaultResponseState(entry) {
-  if (responseKind(entry) === "choice") return { selected: [], feedback: null };
-  if (responseKind(entry) === "gap") return { values: [], feedback: null };
-  if (responseKind(entry) === "open") return { text: "", feedback: null };
-  if (responseKind(entry) === "ordering") {
-    const ids = (entry.block?.targets || []).map(({ id }) => String(id));
-    return {
-      order: ids.length > 1 ? [...ids.slice(1), ids[0]] : ids,
-      feedback: null
-    };
-  }
-  return null;
-}
-
-function normalizeTextGapContentEditableValue(node) {
-  if (!node) return "";
-  return String(node.textContent || "")
-    .replace(/[\u00a0\u2007]/g, " ")
-    .replace(/[\r\n]+/g, "")
-    .trim();
-}
-
-function annotationIndexes(node) {
-  return String(node?.getAttribute?.("data-annotation-indexes") || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  return entry?.instance ? RESOURCE_PACKAGE_REGISTRY.createResponseState(entry.instance) : null;
 }
 
 function runForwardStudyInteraction(event, action) {
@@ -475,7 +440,7 @@ export function createCourseStudyApplication({
   }
 
   function ensureResponseState(entry = currentResponseEntry()) {
-    if (!entry || !responseKind(entry)) return null;
+    if (!entry) return null;
     state.responseByBlockKey[entry.blockKey] ??= defaultResponseState(entry);
     return state.responseByBlockKey[entry.blockKey];
   }
@@ -2196,65 +2161,13 @@ export function createCourseStudyApplication({
   function validateResponse({ rerender = true } = {}) {
     const entry = currentResponseEntry();
     if (!entry) return true;
-    const exercise = ensureResponseState(entry);
-    const kind = responseKind(entry);
-    let payload;
-    if (kind === "choice") {
-      if (!exercise.selected.length) {
-        exercise.feedback = "incomplete";
-        queueStudyFocus("[data-action='choice-toggle']", {
-          "data-choice-block-key": entry.blockKey
-        });
-        if (rerender) render();
-        return false;
-      }
-      payload = { selectedIds: [...exercise.selected] };
-    } else if (kind === "gap") {
-      const blanks = Array.isArray(entry.block?.blanks) ? entry.block.blanks : [];
-      const values = blanks.map((_, index) => String(exercise.values[index] ?? "").trim());
-      const incompleteIndex = values.findIndex((value) => !value);
-      if (incompleteIndex >= 0) {
-        exercise.feedback = "incomplete";
-        const blank = blanks[incompleteIndex];
-        if (blank?.responseMode === "choice") {
-          state.activeGapPrompt = { blockKey: entry.blockKey, blankIndex: incompleteIndex };
-          queueStudyFocus("[data-action='text-gap-set-choice']", {
-            "data-complete-block-key": entry.blockKey,
-            "data-complete-blank-index": incompleteIndex
-          });
-        } else {
-          queueStudyFocus("[data-action='complete-input']", {
-            "data-complete-block-key": entry.blockKey,
-            "data-complete-blank-index": incompleteIndex
-          });
-        }
-        if (rerender) render();
-        return false;
-      }
-      payload = { values: Object.fromEntries(blanks.map((blank, index) => [blank.id, values[index]])) };
-    } else if (kind === "ordering") {
-      payload = { order: [...exercise.order] };
-    } else if (kind === "open") {
-      const text = String(exercise.text || "").trim();
-      if (!text) {
-        exercise.feedback = "incomplete";
-        queueStudyFocus("[data-action='open-response-input']");
-        if (rerender) render();
-        return false;
-      }
-      payload = { text };
-    } else {
-      return true;
-    }
-    const evaluated = RESOURCE_PACKAGE_REGISTRY.evaluateResponse(entry.instance, payload);
-    if (kind === "open") {
-      exercise.feedback = evaluated.complete ? "recorded" : "incomplete";
-      if (rerender) render();
-      return evaluated.complete === true;
-    }
-    exercise.feedback = evaluated.correct ? "correct" : "wrong";
+    const complete = RESOURCE_PACKAGE_REGISTRY.submitResponseState(entry.instance, ensureResponseState(entry), {
+      blockKey: entry.blockKey,
+      focus: queueStudyFocus,
+      setActivePrompt: (prompt) => { state.activeGapPrompt = prompt; }
+    });
     if (rerender) render();
-    return exercise.feedback === "correct";
+    return complete;
   }
 
   async function stepStudyUnit(delta) {
@@ -2504,144 +2417,24 @@ export function createCourseStudyApplication({
     ).then(() => render());
   }
 
-  function bindGapInputs(scope) {
-    scope.querySelectorAll("[data-action='complete-input']").forEach((node) => {
-      if (node.dataset.studyBound === "true") return;
-      node.dataset.studyBound = "true";
-      const contentEditable = node.getAttribute("contenteditable") === "true";
-      const readValue = () => contentEditable
-        ? normalizeTextGapContentEditableValue(node)
-        : String(node.value ?? node.textContent ?? "");
-      const update = () => {
-        const entry = currentResponseEntry();
-        const exercise = ensureResponseState(entry);
-        const index = Number(node.getAttribute("data-complete-blank-index"));
-        if (!exercise || !Number.isInteger(index) || index < 0) return;
-        const values = [...exercise.values];
-        values[index] = readValue();
-        exercise.values = values;
-        exercise.feedback = null;
-        if (contentEditable) {
-          node.setAttribute("data-empty", values[index] ? "false" : "true");
-        }
-      };
-      if (contentEditable) {
-        node.setAttribute(
-          "data-empty",
-          normalizeTextGapContentEditableValue(node) ? "false" : "true"
-        );
-        node.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") event.preventDefault();
-        });
-        node.addEventListener("beforeinput", (event) => {
-          if (["insertParagraph", "insertLineBreak"].includes(event.inputType)) {
-            event.preventDefault();
-          }
-        });
-        node.addEventListener("blur", () => {
-          if (normalizeTextGapContentEditableValue(node)) return;
-          node.textContent = "";
-          node.setAttribute("data-empty", "true");
-          update();
-        });
-      }
-      node.addEventListener("input", update);
-    });
-  }
-
-  function bindOpenResponseInputs(scope) {
-    scope.querySelectorAll("[data-action='open-response-input']").forEach((node) => {
-      if (node.dataset.studyBound === "true") return;
-      node.dataset.studyBound = "true";
-      node.addEventListener("input", () => {
-        const entry = currentResponseEntry();
-        const exercise = ensureResponseState(entry);
-        if (!exercise || responseKind(entry) !== "open") return;
-        exercise.text = String(node.value || "");
-        exercise.feedback = null;
-      });
-    });
-  }
-
-  function bindTextGapChoiceActions(scope) {
-    scope.querySelectorAll("[data-action='text-gap-open-choice']").forEach((node) => {
-      if (node.dataset.studyChoiceBound === "true") return;
-      node.dataset.studyChoiceBound = "true";
-      const openPrompt = () => {
-        const entry = currentResponseEntry();
-        const exercise = ensureResponseState(entry);
-        const blockKey = node.getAttribute("data-complete-block-key");
-        const blankIndex = Number(node.getAttribute("data-complete-blank-index"));
-        if (!exercise || !Number.isInteger(blankIndex)) return;
-        if (exercise.values[blankIndex]) {
-          exercise.values[blankIndex] = "";
-          exercise.feedback = null;
-          state.activeGapPrompt = null;
-          queueStudyFocus("[data-action='text-gap-open-choice']", {
-            "data-complete-block-key": blockKey,
-            "data-complete-blank-index": String(blankIndex)
-          });
-          render({ preserveFocus: false });
-          return;
-        }
-        state.activeGapPrompt = {
-          blockKey,
-          blankIndex
-        };
-        queueStudyFocus("[data-action='text-gap-set-choice']", {
-          "data-complete-block-key": blockKey,
-          "data-complete-blank-index": String(blankIndex)
-        });
-        render({ preserveFocus: false });
-      };
-      node.addEventListener("click", openPrompt);
-      node.addEventListener("keydown", (event) => {
-        if (node.getAttribute("role") !== "button" ||
-            !["Enter", " "].includes(event.key)) return;
-        event.preventDefault();
-        openPrompt();
-      });
-    });
-    scope.querySelectorAll("[data-action='text-gap-set-choice']").forEach((node) => {
-      if (node.dataset.studyChoiceBound === "true") return;
-      node.dataset.studyChoiceBound = "true";
-      node.addEventListener("click", () => {
-        const entry = currentResponseEntry();
-        const exercise = ensureResponseState(entry);
-        const index = Number(node.getAttribute("data-complete-blank-index"));
-        if (!exercise || !Number.isInteger(index)) return;
-        exercise.values[index] = node.getAttribute("data-text-gap-value") || "";
-        exercise.feedback = null;
-        state.activeGapPrompt = null;
-        queueStudyFocus("[data-action='text-gap-open-choice']", {
-          "data-complete-block-key": node.getAttribute("data-complete-block-key"),
-          "data-complete-blank-index": String(index)
-        });
-        render({ preserveFocus: false });
-      });
-    });
-  }
-
-  function selectChoice(node, { forceSelected = false, focusAfterRender = true } = {}) {
+  function bindResponseInteraction(scope) {
     const entry = currentResponseEntry();
-    const exercise = ensureResponseState(entry);
-    const id = node.getAttribute("data-choice-option-id");
-    const blockKey = node.getAttribute("data-choice-block-key");
-    if (!exercise || !id) return false;
-    const selected = new Set(exercise.selected);
-    if (entry.block?.selectionMode === "single") selected.clear();
-    if (forceSelected || !exercise.selected.includes(id)) selected.add(id);
-    else selected.delete(id);
-    exercise.selected = [...selected];
-    exercise.feedback = null;
-    if (focusAfterRender) {
-      queueStudyFocus("[data-action='choice-toggle']", {
-        "data-choice-option-id": id,
-        "data-choice-block-key": blockKey
-      });
-    }
-    render({ preserveFocus: false });
-    return true;
+    if (!entry) return;
+    const isCurrent = () => currentResponseEntry()?.blockKey === entry.blockKey;
+    RESOURCE_PACKAGE_REGISTRY.bindResponseInteraction(entry.instance, scope, {
+      blockKey: entry.blockKey,
+      getState: () => isCurrent() ? ensureResponseState(entry) : null,
+      focus: queueStudyFocus,
+      render,
+      setActivePrompt: (prompt) => { if (isCurrent()) state.activeGapPrompt = prompt; },
+      submit: () => { if (isCurrent()) validateResponse(); },
+      reset: () => {
+        if (!isCurrent()) return;
+        state.responseByBlockKey[entry.blockKey] = defaultResponseState(entry);
+        state.activeGapPrompt = null;
+        render();
+      }
+    });
   }
 
   function bindActions() {
@@ -2926,97 +2719,6 @@ export function createCourseStudyApplication({
       }
     );
 
-    root.querySelectorAll("[data-action='choice-toggle']").forEach((node) => {
-      node.addEventListener("click", () => selectChoice(node));
-      node.addEventListener("keydown", (event) => {
-        if (node.getAttribute("role") !== "radio" ||
-            !["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
-        const group = node.closest("[role='radiogroup']");
-        const options = [...(group?.querySelectorAll(
-          "[data-action='choice-toggle'][role='radio']"
-        ) || [])];
-        const currentIndex = options.indexOf(node);
-        if (currentIndex < 0 || !options.length) return;
-        event.preventDefault();
-        const direction = ["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1;
-        const next = options[(currentIndex + direction + options.length) % options.length];
-        selectChoice(next, { forceSelected: true, focusAfterRender: true });
-      });
-    });
-    root.querySelectorAll("[data-action='choice-validate'], [data-action='complete-validate']")
-      .forEach((node) => node.addEventListener("click", () => validateResponse()));
-    root.querySelectorAll("[data-action='choice-try-again'], [data-action='complete-try-again']")
-      .forEach((node) => node.addEventListener("click", () => {
-        const entry = currentResponseEntry();
-        if (entry) state.responseByBlockKey[entry.blockKey] = defaultResponseState(entry);
-        state.activeGapPrompt = null;
-        render();
-      }));
-    root.querySelector("[data-action='choice-view-answer']")?.addEventListener("click", () => {
-      const entry = currentResponseEntry();
-      const exercise = ensureResponseState(entry);
-      if (!exercise) return;
-      exercise.selected = getCorrectExerciseOptionIds(entry.block?.options, entry.block?.answerIds);
-      exercise.feedback = "correct";
-      render();
-    });
-    root.querySelector("[data-action='complete-view-answer']")?.addEventListener("click", () => {
-      const entry = currentResponseEntry();
-      const exercise = ensureResponseState(entry);
-      if (!exercise) return;
-      exercise.values = (entry.block?.blanks || []).map((blank) => String(blank.answer || ""));
-      exercise.feedback = "correct";
-      state.activeGapPrompt = null;
-      render();
-    });
-    bindTextGapChoiceActions(root);
-    root.querySelectorAll("[data-action='ordering-move']").forEach((node) =>
-      node.addEventListener("click", () => {
-        const entry = currentResponseEntry();
-        const exercise = ensureResponseState(entry);
-        if (!exercise) return;
-        const id = node.getAttribute("data-ordering-item-id");
-        const index = exercise.order.indexOf(id);
-        const delta = node.getAttribute("data-ordering-direction") === "left" ? -1 : 1;
-        const target = index + delta;
-        if (index < 0 || target < 0 || target >= exercise.order.length) return;
-        [exercise.order[index], exercise.order[target]] = [exercise.order[target], exercise.order[index]];
-        exercise.feedback = null;
-        queueStudyFocus(".runtime-ordering-slot", { "data-ordering-item-id": id });
-        render({ preserveFocus: false });
-      }));
-    root.querySelector("[data-action='ordering-view-answer']")?.addEventListener("click", () => {
-      const entry = currentResponseEntry();
-      const exercise = ensureResponseState(entry);
-      if (!exercise) return;
-      exercise.order = (entry.block?.targets || []).map(({ id }) => String(id));
-      exercise.feedback = "correct";
-      render();
-    });
-    root.querySelector("[data-action='ordering-try-again']")?.addEventListener("click", () => {
-      const entry = currentResponseEntry();
-      if (entry) state.responseByBlockKey[entry.blockKey] = defaultResponseState(entry);
-      render();
-    });
-    root.querySelectorAll("[data-action='annotation-toggle']").forEach((node) =>
-      node.addEventListener("click", () => {
-        const packageRoot = node.closest(".package-instance");
-        if (!packageRoot) return;
-        const indexes = new Set(annotationIndexes(node));
-        const shouldActivate = !node.classList.contains("is-active");
-        packageRoot?.querySelectorAll("[data-action='annotation-toggle']").forEach((target) => {
-          const active = shouldActivate && annotationIndexes(target)
-            .some((index) => indexes.has(index));
-          target.classList.toggle("is-active", active);
-          target.setAttribute("aria-pressed", String(active));
-        });
-        if (shouldActivate && node.classList.contains("runtime-annotated-text-segment")) {
-          const note = [...packageRoot.querySelectorAll(".runtime-annotated-text-note")]
-            .find((target) => annotationIndexes(target).some((index) => indexes.has(index)));
-          note?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-        }
-      }));
-
     root.querySelector(".study-reader-screen")?.addEventListener("click", (event) => {
       if (!state.feedbackOpen || typeof event.target?.closest !== "function") return;
       if (event.target.closest(".study-continue-popup") ||
@@ -3106,8 +2808,7 @@ export function createCourseStudyApplication({
         first.focus({ preventScroll: true });
       }
     });
-    bindGapInputs(root);
-    bindOpenResponseInputs(root);
+    bindResponseInteraction(root);
   }
 
   function render({ preserveFocus = true, captureDraft = true } = {}) {
@@ -3296,9 +2997,7 @@ export function createCourseStudyApplication({
     bindActions();
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
       activateManualEditing();
-      bindGapInputs(root);
-      bindOpenResponseInputs(root);
-      bindTextGapChoiceActions(root);
+      bindResponseInteraction(root);
     }).catch((error) => {
       root.dispatchEvent(new CustomEvent("aralearn:package-hydration-error", {
         bubbles: true,
