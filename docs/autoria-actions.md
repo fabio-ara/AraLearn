@@ -88,6 +88,14 @@ seus limites podem mudar sem alterar o mapa. Para cada parte, o GPT apresenta a
 progressão local, materializa depois da decisão e devolve um link para o
 conteúdo real antes de seguir ao próximo lote.
 
+Divisão, reunião e reordenação reutilizam `salvar_parte`, com referências às
+microssequências existentes e posição opcional do lote. O contrato focal admite
+até 64 microssequências e conserva o texto da intenção e da progressão para
+revisão antes de salvar. No AraLearn, **Reorganizar lotes** mostra a prévia desses
+agrupamentos. A operação não recria as unidades nem modifica suas configurações
+aplicadas; mudanças concorrentes e respostas incertas mantêm a disciplina de
+revisão e recuperação do mesmo pedido.
+
 A aprovação num nível não autoriza silenciosamente o nível seguinte. Decisões
 rotineiras de redação e representação não viram perguntas; alterações
 substantivas do currículo voltam à pessoa autora.

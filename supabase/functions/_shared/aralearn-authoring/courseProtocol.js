@@ -46,6 +46,8 @@ export function routeCourseRequest(method, pathname) {
     return { name: courseProfile[2] === "preview" ? "previewCourseAuthoringProfile" : "applyCourseAuthoringProfile",
       courseId: courseUuid(courseProfile[1]) };
   }
+  const authoringPart = path.match(/^\/v1\/courses\/([^/]+)\/authoring-parts$/u);
+  if (authoringPart && verb === "POST") return { name: "saveCourseAuthoringPart", courseId: courseUuid(authoringPart[1]) };
   const instructionalPlan = path.match(/^\/v1\/courses\/([^/]+)\/instructional-plan$/u);
   if (instructionalPlan && verb === "GET") {
     return {

@@ -20,6 +20,7 @@ const fixedFiles = [
   ["src/domain/aralearnProject.js", "domain/aralearnProject.js"],
   ["src/domain/courseAnchoredAnnotations.js", "domain/courseAnchoredAnnotations.js"],
   ["src/domain/courseAuthoringAnalytics.js", "domain/courseAuthoringAnalytics.js"],
+  ["src/domain/courseAuthoringParts.js", "domain/courseAuthoringParts.js"],
   ["src/domain/courseDesignParameters.js", "domain/courseDesignParameters.js"],
   ["src/domain/authoringProfiles.js", "domain/authoringProfiles.js"],
   ["src/domain/courseDesignContext.js", "domain/courseDesignContext.js"],

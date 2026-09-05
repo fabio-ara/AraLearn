@@ -154,17 +154,30 @@ privado e abre em Conteúdo. A barra superior conserva o contexto; Conteúdo e
 Planejamento usam atalhos permanentes, e o menu reúne as tarefas ocasionais. A
 superfície mantém uma coluna útil de até 430 px também no computador.
 
-Em **Planejamento**, o mapa curricular mostra primeiro todos os módulos, lições
-e microssequências. A cobertura relaciona os itens obrigatórios do escopo aos
-pontos em que serão ensinados. Confira o mapa completo antes de aprová-lo; essa
-aprovação não inclui exercícios, componentes ou unidades futuras que ainda não
-existem.
+Em **Planejamento**, o mapa curricular começa pelos módulos recolhidos. Abra
+somente o módulo e a lição que deseja examinar para revelar suas microssequências.
+**Objetivo** mostra o texto completo de cada nível. Os pré-requisitos e a
+**Cobertura do escopo** oferecem links para os pontos correspondentes do curso;
+ao voltar, o mapa conserva os ramos abertos, a posição e o foco.
+
+Confira o mapa completo antes de aprová-lo. Expandir um ramo é apenas uma ação
+de leitura e não exige aprová-lo separadamente. A aprovação global não inclui
+exercícios, componentes ou unidades futuras que ainda não existem.
 
 Depois da aprovação global, **Lotes de produção** mostra as partes usadas para
 materializar e revisar o curso aos poucos. Uma parte pode agrupar uma ou mais
 microssequências, mas não pertence à hierarquia curricular. Dividir, unir ou
 reordenar lotes preserva o mapa. O conteúdo confirmado fica em Conteúdo, não num
 histórico de execução.
+
+Use **Reorganizar lotes** para **Dividir**, **Reunir** ou **Reordenar** uma parte.
+Confira a prévia **Microssequências no lote**, o título, a intenção e a progressão
+antes de **Salvar reorganização**. A reunião conserva os textos dos lotes para
+sua revisão; ela não resume nem reescreve as unidades. **Descartar reorganização**
+abandona a proposta. Se houver uma mudança concorrente, o rascunho permanece
+disponível para comparação com o planejamento relido. Se a confirmação do envio
+for incerta, repita a mesma tentativa para recuperar o resultado, sem preparar
+uma reorganização diferente sobre a dúvida.
 
 ## Usar áudio e ferramentas da unidade
 
@@ -196,8 +209,10 @@ offline do aplicativo. Veja os formatos, privacidade e limites em [Áudio](audio
 
 ## Configurar o desenho do curso
 
-Em **Parâmetros**, escolha o escopo e abra o ajuste desejado. Cada decisão mostra
-valor, origem e escopo de aplicação. Em Estudo, o proprietário também encontra
+Em **Parâmetros**, escolha o escopo e abra o ajuste desejado. O valor vigente
+aparece primeiro; origem, justificativa e definição ficam no ajuste revelado.
+Em Conteúdo, o atalho da unidade abre uma folha sobre a leitura, preservando o
+editor e seu rascunho. Em Estudo, o proprietário também encontra
 **Parâmetros · escopo atual** em **Conta e aparência**, depois de salvar ou
 descartar qualquer edição aberta. A entrada preserva os níveis do Estudo.
 
@@ -387,8 +402,9 @@ Se a rede cair depois do envio e não for possível saber se o servidor confirmo
 a mudança, a mensagem oferece a repetição natural pelo mesmo formulário. Sem
 editar os campos, essa nova tentativa reutiliza o comando, as versões, as
 identidades geradas e o mesmo identificador de pedido. O servidor devolve o
-recibo anterior em vez de duplicar o efeito. Alterar o formulário inicia uma
-nova intenção e um novo pedido.
+recibo anterior em vez de duplicar o efeito. Recupere o resultado dessa tentativa
+antes de preparar uma alteração diferente; uma nova intenção precisa partir do
+estado confirmado.
 
 Rascunhos de cópias antigas com resposta perdida podem continuar guardados no
 dispositivo. O aplicativo consulta a prova da gravação anterior e, quando
@@ -399,16 +415,40 @@ e credencial do provedor não integram esse registro.
 
 ## Navegar e editar Conteúdo
 
-**Conteúdo** percorre curso, módulos, lições, microssequências e Unidades e usa
-o mesmo renderer de Estudo com respostas desativadas. O recorte pode abranger o
-curso, uma parte, Unidades sem parte, um módulo, uma lição ou uma
-microssequência.
+**Conteúdo** mostra normalmente uma unidade por vez, com anterior, próxima e
+localizador de contexto. Usa o mesmo renderer de Estudo, com a prática inativa
+e as respostas esperadas disponíveis para inspeção. O recorte pode abranger o
+curso, uma parte, unidades sem parte, um módulo, uma lição ou uma microssequência.
 
-A sequência mantém uma janela limitada de Unidades e conserva a posição no
-dispositivo. Ao mudar de revisão, procura a mesma identidade de Unidade.
-**Editar**, **Fontes**, **Observações** e **Parâmetros** trabalham sobre o alvo
-exato. No curso, módulo, lição e microssequência, Editar abre os metadados e a
-composição autorizados para aquele nível e exige salvamento explícito.
+As ferramentas da unidade ficam à esquerda das ações de inspeção. Áudio,
+calculadora e materiais de apoio abrem sobre o conteúdo e devolvem o foco ao
+fechar. Durante a edição, esses atalhos conservam suas posições e ficam
+desabilitados; os títulos e demais textos do recurso podem ser editados no
+próprio conteúdo.
+
+No localizador, **Ir à atualização mais recente** abre a unidade modificada mais
+recentemente no escopo corrente. **Atualizado em** informa essa atualização,
+não a data de criação. A partir desse ponto, anterior e próxima continuam pela
+ordem curricular. Se o escopo ainda não tem unidades, **Abrir mapa curricular**
+oferece uma próxima ação.
+
+**Fontes**, **Observações** e **Parâmetros** abrem folhas sobre a unidade corrente.
+Fechar a folha devolve a leitura, a posição e o foco sem abandonar o rascunho de
+edição que estava aberto. Consultar contexto não salva nem aplica uma correção
+automaticamente. No curso, módulo, lição e microssequência, **Editar** abre os
+metadados e a composição autorizados para aquele nível e exige salvamento explícito.
+
+Para comparar várias unidades ou registrar a mesma observação nelas, use o ícone
+**Selecionar várias unidades**. A leitura passa a uma sequência vertical; a unidade de
+entrada fica identificada como **Referência**. Marque os alvos e, quando necessário,
+use **Carregar unidades anteriores** ou **Carregar unidades posteriores**.
+**Registrar observação nas unidades selecionadas** conserva os alvos escolhidos;
+uma falha parcial permite repetir somente o que ainda não foi confirmado.
+
+**Cancelar seleção** volta à unidade de referência, ao foco e à posição de entrada.
+A seleção é temporária e não cria um lote de produção. A inspeção mantém uma
+janela limitada de unidades e conserva a posição no dispositivo; ao mudar de
+revisão, procura a mesma identidade de unidade.
 
 ## Usar Revisão
 
@@ -426,6 +466,10 @@ abertas, prepara uma revisão com progressão, pré-requisitos, transições,
 exemplos e prática afetados e apresenta uma proposta. Depois da decisão,
 `aplicar_correcoes` grava o conjunto aprovado. Volte ao deep link e reinspecione
 as unidades de estudo; aplicação não demonstra que a questão foi resolvida.
+
+A identificação da pessoa acompanha a observação; uma contribuição do estudante
+não autoriza a edição do curso. Não haver observações pendentes também não
+significa que a unidade foi revisada ou validada.
 
 Revisão autoral exige conexão. A cópia e a fila de Anotações próprias pertencem
 ao percurso de Estudo; a consulta do curso e as correções usam o estado remoto

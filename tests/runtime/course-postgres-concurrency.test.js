@@ -823,6 +823,45 @@ test("PostgreSQL confirma hierarquia fora de ordem somente ao fechar a transaç�
   }
 });
 
+test("PostgreSQL aceita somente uma reorganização de partes concorrente no mesmo CAS", {
+  skip: postgresGate
+}, async () => {
+  const ownerId = "30400000-0000-4000-8000-000000000093";
+  const courseId = "30400000-0000-4000-8000-000000000094";
+  const email = "parts-cas-304@aralearn.invalid";
+  await createUser(ownerId, email);
+  try {
+    await result(psql(`
+      begin;
+      insert into public.courses(id,owner_id,title,goal) values('${courseId}','${ownerId}','Lotes CAS','Reorganizar grupos');
+      insert into private.course_instructional_plans(course_id,curriculum_map_status) values('${courseId}','approved');
+      insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content) values
+        ('${courseId}','module','m',null,null,0,'{"title":"Módulo"}'),
+        ('${courseId}','lesson','l','module','m',0,'{"title":"Lição"}'),
+        ('${courseId}','microsequence','s','lesson','l',0,'{"title":"Sequência","dependsOn":[]}');
+      commit;
+    `));
+    const mutation = suffix => result(psql(`
+      begin;
+      select set_config('request.jwt.claim.role','service_role',true);
+      select public.save_course_authoring_part_for_actor_v1('${ownerId}','${courseId}',1,1,
+        '{"partId":null,"position":0,"title":"Lote ${suffix}","intent":"Mesma sequência.","progression":["Produzir."],"microsequences":[{"microsequenceId":"s","position":0}]}',
+        'parts-concurrent-${suffix}',repeat('${suffix}',64));
+      commit;
+    `));
+    const attempts = await Promise.allSettled([mutation("a"), mutation("b")]);
+    assert.equal(attempts.filter(item => item.status === "fulfilled").length, 1);
+    assert.equal(attempts.filter(item => item.status === "rejected").length, 1);
+    assert.match(attempts.find(item => item.status === "rejected").reason.message, /mudou/iu);
+    assert.equal(await result(psql(`select revision||'|'||
+      (select version from private.course_instructional_plans where course_id='${courseId}')||'|'||
+      (select count(*) from private.course_authoring_parts where course_id='${courseId}')||'|'||
+      (select count(*) from private.course_authoring_part_didactic_microsequences where course_id='${courseId}')||'|'||
+      (select count(*) from private.course_entities where course_id='${courseId}')
+      from public.courses where id='${courseId}'`)), "2|2|1|1|3");
+  } finally { await cleanupUser(ownerId, email); }
+});
+
 test("PostgreSQL aceita apenas uma composição concorrente na mesma versão", {
   skip: postgresGate
 }, async () => {

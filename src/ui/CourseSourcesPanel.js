@@ -919,6 +919,7 @@ function renderTargetLink(state, link, index) {
     '<div class="course-source-compact-actions">' +
     `<button type="button" data-source-action="move-target-source-up" data-link-id="${escapeHtml(link.linkId)}"${index === 0 ? " disabled" : ""} aria-label="Mover fonte para cima">${renderUiIcon("arrow-up", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="move-target-source-down" data-link-id="${escapeHtml(link.linkId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
+    `<button type="button" data-source-action="open-source" data-source-id="${escapeHtml(link.sourceId)}" aria-label="Abrir fonte: ${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}" title="Abrir fonte">${renderUiIcon("study", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="remove-target-source" data-link-id="${escapeHtml(link.linkId)}" aria-label="Remover vínculo">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
     (source ? referenceMarkup(source, state) : "") +
     (unavailableReference
@@ -946,7 +947,7 @@ function renderTargetPanel(state) {
     ? `<div class="course-source-target-links">${state.sourceLinks.map((link, index) =>
         renderTargetLink(state, link, index)).join("")}</div>`
     : '<p class="course-source-empty">Sem fontes vinculadas.</p>';
-  return '<section class="course-source-target-dialog" data-source-target-dialog tabindex="-1"' +
+  const header = '<section class="course-source-target-dialog" data-source-target-dialog tabindex="-1"' +
     ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title">' +
     '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
     '<div>' +
@@ -954,7 +955,11 @@ function renderTargetPanel(state) {
       ? `Fontes de ${escapeHtml(state.targetLabel)}`
       : "Fontes deste item"}</h2></div>` +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>`;
+  if (state.selectedSourceId) {
+    return header + '<div class="course-source-target-body">' + renderSourceDetail(state) + '</div></section>';
+  }
+  return header +
     '<div class="course-source-target-body">' +
     renderNotice(state) + renderSourceConfirmation(state) +
     (state.targetLoading
@@ -1712,8 +1717,10 @@ export function createCourseSourcesPanel({
     return true;
   }
 
-  async function loadTarget() {
+  async function loadTarget({ preserveDraft = false } = {}) {
     const requestEpoch = epoch;
+    const draft = preserveDraft && JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks)
+      ? structuredClone(state.sourceLinks) : null;
     state.targetLoading = true;
     state.targetFailure = "";
     render();
@@ -1740,8 +1747,8 @@ export function createCourseSourcesPanel({
       if (attribution && attribution.targetVersion !== state.targetVersion) {
         throw new TypeError("O item mudou. Feche esta janela e abra as fontes novamente.");
       }
-      state.sourceLinks = structuredClone(attribution?.sourceLinks || []);
-      state.initialSourceLinks = structuredClone(state.sourceLinks);
+      state.initialSourceLinks = structuredClone(attribution?.sourceLinks || []);
+      state.sourceLinks = draft || structuredClone(state.initialSourceLinks);
       void Promise.all(state.sourceLinks.map(({ sourceId }) =>
         loadDetail(sourceId, {
           target: true,
@@ -1785,8 +1792,9 @@ export function createCourseSourcesPanel({
     state.targetDetails.clear();
     applyCourseRevision(change.courseRevision);
     if (state.mode === "target") {
-      const refreshed = await Promise.all([loadCatalog(), loadTarget()]);
-      return refreshed.every(Boolean);
+      const refreshed = await Promise.all([loadCatalog(), loadTarget({ preserveDraft: true })]);
+      const detailRefreshed = state.selectedSourceId ? Boolean(await loadDetail(state.selectedSourceId)) : true;
+      return refreshed.every(Boolean) && detailRefreshed;
     }
     const selectedSourceId = state.selectedSourceId;
     const catalogRefreshed = await loadCatalog();
@@ -1948,14 +1956,14 @@ export function createCourseSourcesPanel({
     if (!state.opened) return false;
     state.pendingCommand = null;
     if (pending.command.type === "set_bibliography_style") state.bibliographyStyleDraft = null;
-    if (state.mode === "target") {
+    if (state.mode === "target" && pending.command.type === "set_target_sources") {
       state.initialSourceLinks = structuredClone(state.sourceLinks);
     }
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
     if (!refreshed) {
       reportConfirmedRefreshFailure(sourceChangeMessage(result));
-    } else if (state.mode === "target") {
+    } else if (state.mode === "target" && pending.command.type === "set_target_sources") {
       onTargetSaved(result);
     }
     state.busy = false;
@@ -2521,7 +2529,7 @@ export function createCourseSourcesPanel({
     } else if (action === "retry-catalog") {
       void loadCatalog();
     } else if (action === "retry-target") {
-      void loadTarget();
+      void loadTarget({ preserveDraft: true });
     } else if (action === "retry-command" && state.pendingCommand) {
       void runCommand(state.pendingCommand.command, state.pendingCommand.draft);
     } else if (action === "retry-annotation" && state.pendingAnnotation) {

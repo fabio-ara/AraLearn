@@ -1387,7 +1387,7 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
   );
   assert.match(
     root.innerHTML,
-    /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*>[\s\S]*?<\/summary><p class="course-design-reason">Hipótese inicial do produto\.<\/p>/u
+    /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*>[\s\S]*?<\/summary><dl class="course-design-resolution">[\s\S]*?<\/dl><p class="course-design-reason">Hipótese inicial do produto\.<\/p>/u
   );
   assert.match(root.innerHTML, /Valor vigente/u);
   assert.match(root.innerHTML, /Direção editorial/u);
@@ -1398,7 +1398,7 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
   assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
   assert.match(root.innerHTML, /<h3 id="course-design-policy-title">Componentes<\/h3>/u);
   assert.doesNotMatch(root.innerHTML, /Planejado × aplicado|materialização|contextHash/iu);
-  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 33);
+  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 38);
   assert.doesNotMatch(root.innerHTML, /<pre|\{\s*"/u);
 });
 

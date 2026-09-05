@@ -1,4 +1,4 @@
-import { escapePackageAttribute, escapePackageHtml, renderPackageProse } from "../../sdk/html.js";
+import { escapePackageAttribute, renderPackageLiteral, renderPackageProse } from "../../sdk/html.js";
 
 const bindings = new WeakMap();
 const text = (value) => String(value ?? "").trim();
@@ -67,7 +67,7 @@ export function validateAuxiliaryLinks(data) {
 }
 
 export function renderAuxiliaryLinks(data) {
-  return `<section class="runtime-block package-auxiliary-links"><h3>${escapePackageHtml(data.title)}</h3>${data.prompt ? renderPackageProse(data.prompt) : ""}<ol>${data.items.map((item, index) => `<li><button type="button" data-tool-link-index="${index}"${item.languageTag ? ` lang="${escapePackageAttribute(item.languageTag)}"` : ""} dir="auto">${escapePackageHtml(item.label)}</button>${item.description ? `<div class="package-tool-description" dir="auto">${renderPackageProse(item.description)}</div>` : ""}<p class="package-tool-status" data-tool-link-status="${index}" role="status" aria-live="polite" aria-atomic="true"></p></li>`).join("")}</ol></section>`;
+  return `<section class="runtime-block package-auxiliary-links"><h3>${renderPackageLiteral(data.title)}</h3>${data.prompt ? renderPackageProse(data.prompt) : ""}<ol>${data.items.map((item, index) => `<li><button type="button" data-tool-link-index="${index}"${item.languageTag ? ` lang="${escapePackageAttribute(item.languageTag)}"` : ""} dir="auto">${renderPackageLiteral(item.label)}</button>${item.description ? `<div class="package-tool-description" dir="auto">${renderPackageProse(item.description)}</div>` : ""}<p class="package-tool-status" data-tool-link-status="${index}" role="status" aria-live="polite" aria-atomic="true"></p></li>`).join("")}</ol></section>`;
 }
 
 export const auxiliaryLinksInteraction = Object.freeze({ bind(root, data, host) {

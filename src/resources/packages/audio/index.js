@@ -1,4 +1,4 @@
-import { escapePackageHtml, escapePackageAttribute } from "../../sdk/html.js";
+import { escapePackageHtml, escapePackageAttribute, renderPackageLiteral } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
 import { COURSE_AUDIO_MEDIA_TYPES, COURSE_MEDIA_MAX_BYTES, normalizeCourseMediaReference } from "../../../domain/courseMedia.js";
 import { bindAudioTool } from "./interaction.js";
@@ -84,14 +84,14 @@ export const audioPackage = Object.freeze({
       '<button type="button" data-audio-action="retry-configuration" hidden>Consultar configuração novamente</button>' +
       '<ol class="package-audio-tracks">' + data.tracks.map(track =>
         `<li data-audio-track="${escapePackageAttribute(track.id)}" lang="${escapePackageAttribute(track.locale)}" dir="auto">` +
-        `<h3>${escapePackageHtml(track.label)}</h3><p>${track.kind === "native" ? "Voz do dispositivo" : "Arquivo de áudio"} · ${escapePackageHtml(track.locale)}</p>` +
+        `<h3>${renderPackageLiteral(track.label)}</h3><p>${track.kind === "native" ? "Voz do dispositivo" : "Arquivo de áudio"} · ${escapePackageHtml(track.locale)}</p>` +
         `<div class="package-audio-controls"><button type="button" data-audio-action="play" disabled aria-label="${escapePackageAttribute(`Reproduzir ${track.label}`)}">Reproduzir</button>` +
         `<button type="button" data-audio-action="stop" disabled aria-label="${escapePackageAttribute(`Parar ${track.label}`)}">Parar</button></div>` +
         (track.kind === "native" ? '<label class="package-audio-remote-consent" hidden><input type="checkbox" data-audio-remote-consent><span></span></label>' : "") +
         (track.kind === "file" ? `<audio controls preload="none" hidden aria-label="${escapePackageAttribute(track.label)}"></audio>` : "") +
         '<p data-audio-track-status role="status"></p>' +
-        (options.manualEditing && track.kind === "native" ? `<p class="package-audio-script">${escapePackageHtml(track.text)}</p>` : "") +
-        (canReveal(track, options) ? `<p class="package-audio-alternative">${escapePackageHtml(track.alternative.text)}</p>` :
+        (options.manualEditing && track.kind === "native" ? `<p class="package-audio-script">${renderPackageLiteral(track.text)}</p>` : "") +
+        (canReveal(track, options) ? `<p class="package-audio-alternative">${renderPackageLiteral(track.alternative.text)}</p>` :
           track.alternative.visibility === "on_request" ? '<button type="button" data-audio-action="show-alternative">Mostrar alternativa textual</button><div data-audio-alternative></div>' :
             '<p data-audio-alternative>Alternativa textual disponível após responder.</p>') + "</li>"
       ).join("") + "</ol></section>";

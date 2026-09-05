@@ -149,13 +149,13 @@ function renderParameterCard(design, definition, resolution, busy) {
     '<header><div>' +
     `<h3>${escapeHtml(definition.label)}</h3><p class="course-authoring-visually-hidden">Valor vigente</p></div>` +
     `<strong>${escapeHtml(effective.value === null ? "Automático" : formatDesignValue(definition, effective.value))}</strong></header>` +
-    '<dl class="course-design-resolution"><div>' +
-    '<dt class="course-authoring-visually-hidden">Origem e escopo</dt>' +
-    `<dd>${escapeHtml(resolutionLabel)}</dd></div></dl>` +
     `<details><summary class="course-authoring-icon-action" aria-label="Ajustar ${escapeHtml(
       definition.label
     )}" title="Ajustar ${escapeHtml(definition.label)}">` +
     renderUiIcon("edit", "course-authoring-button-icon") + "</summary>" +
+    '<dl class="course-design-resolution"><div>' +
+    '<dt class="course-authoring-visually-hidden">Origem e escopo</dt>' +
+    `<dd>${escapeHtml(resolutionLabel)}</dd></div></dl>` +
     `<p class="course-design-reason">${escapeHtml(effective.reason)}</p>` +
     `<div class="course-design-parameter-explanation"><p>${escapeHtml(definition.construct)}</p>` +
     `<p><strong>Como é aplicado:</strong> ${escapeHtml(definition.operationalization)}</p>` +

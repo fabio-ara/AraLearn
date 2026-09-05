@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 
 const COURSE_IDS = Object.freeze([
   "10000000-0000-4000-8000-000000000001",
@@ -323,6 +324,7 @@ async function mountCourseAuthoring(page, {
   sourceMutationScenario = "default",
   peopleMutationScenario = "default",
   annotationMutationScenario = "default",
+  inspectionTools = false,
   objective = "Compreender relações essenciais por meio de exemplos graduais.",
   courseTitle = "Fundamentos de relações"
 } = {}) {
@@ -340,6 +342,7 @@ async function mountCourseAuthoring(page, {
     requestedSourceMutationScenario,
     requestedPeopleMutationScenario,
     requestedAnnotationMutationScenario,
+    requestedInspectionTools,
     requestedObjective,
     requestedCourseTitle,
     courseIds,
@@ -645,6 +648,36 @@ async function mountCourseAuthoring(page, {
         topics: []
       };
     });
+    if (requestedInspectionTools) {
+      const { wrapGeminiPcmAsWav } = await import("/src/generation/providers/geminiSpeechProvider.js");
+      const pcm = new Uint8Array(24000);
+      const view = new DataView(pcm.buffer);
+      for (let index = 0; index < 12000; index++) view.setInt16(index * 2, Math.round(Math.sin(index * Math.PI * 880 / 24000) * 1200), true);
+      const wav = wrapGeminiPcmAsWav(pcm);
+      const contentHash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", wav))].map(byte => byte.toString(16).padStart(2, "0")).join("");
+      globalThis.__inspectionToolProbe = { wav: [...wav], media: { contentHash, byteSize: wav.length, mediaType: "audio/wav" }, configs: [], downloads: [], pdfs: [], urls: [], revoked: [] };
+      const originalCreate = URL.createObjectURL.bind(URL), originalRevoke = URL.revokeObjectURL.bind(URL);
+      URL.createObjectURL = blob => { const url = originalCreate(blob); globalThis.__inspectionToolProbe.urls.push(url); return url; };
+      URL.revokeObjectURL = url => { globalThis.__inspectionToolProbe.revoked.push(url); originalRevoke(url); };
+      for (const ordinal of [12, 13]) {
+        studyUnits[ordinal - 1].content.push(
+          { id: "calculator", package: "aralearn.resource.calculator", version: "1.0.0", data: { title: `Cálculo da unidade ${ordinal}`, initialExpression: "2+3", angleUnit: "radians" } },
+          { id: "grammar", package: "aralearn.resource.grammar", version: "1.0.0", data: { title: "Consulte as duas explicações", items: [
+            { id: "web", label: "Explicação na web", target: { kind: "url", url: `${location.origin}/synthetic-grammar` } },
+            { id: "pdf", label: "PDF da construção", target: { kind: "source_attachment", sourceId: "source-01", sourceRevision: 1, contentHash: "a".repeat(64) } }
+          ] } },
+          { id: "audio", package: "aralearn.resource.audio", version: "1.0.0", data: { tracks: [
+            { id: "file", label: "Tom sintético", locale: "pt-BR", kind: "file", media: globalThis.__inspectionToolProbe.media, alternative: { text: "Alternativa inspecionável pelo proprietário.", visibility: "after_response" } }
+          ] } }
+        );
+        if (requestedInspectionTools === "single") {
+          studyUnits[ordinal - 1].content = studyUnits[ordinal - 1].content.filter(instance =>
+            !["grammar", "audio"].includes(instance.id));
+          studyUnits[ordinal - 1].content.find(instance => instance.id === "calculator").data.prompt =
+            "Estime o resultado, compare sua previsão com o cálculo e explique a relação entre as quantidades. ".repeat(12);
+        }
+      }
+    }
     const studyUnitVersions = new Map(studyUnits.map(({ id }) => [id, 1]));
     const sourceCatalog = Array.from({ length: 60 }, (_, index) => {
       const ordinal = index + 1;
@@ -776,65 +809,13 @@ async function mountCourseAuthoring(page, {
         counts
       };
     };
-    const designDefinitions = [{
-      id: "new_analysis_unit_ceiling_per_expository_study_unit",
-      label: "Novas unidades de análise por Unidade expositiva",
-      valueSchema: { type: "integer", minimum: 1, maximum: 8 },
-      defaultValue: 2
-    }, {
-      id: "required_explanation_forms",
-      label: "Formas exigidas de explicação",
-      valueSchema: {
-        type: "set",
-        allowedValues: [
-          "plain_definition", "concrete_example", "mechanism", "contrast",
-          "application_condition", "limit_or_exception", "worked_example", "representation_link"
-        ],
-        minimumItems: 1,
-        maximumItems: 8
-      },
-      defaultValue: ["plain_definition", "concrete_example", "mechanism", "contrast"]
-    }, {
-      id: "minimum_distinct_practice_opportunities_per_evidence_requirement",
-      label: "Oportunidades distintas de prática",
-      valueSchema: { type: "integer", minimum: 1, maximum: 16 },
-      defaultValue: 2
-    }, {
-      id: "required_practice_variation_dimensions",
-      label: "Dimensões exigidas de variação",
-      valueSchema: {
-        type: "set",
-        allowedValues: [
-          "case_or_data", "context", "task_feature", "external_representation", "support_level"
-        ],
-        minimumItems: 1,
-        maximumItems: 5
-      },
-      defaultValue: ["case_or_data"]
-    }, {
-      id: "authoring_chat_response_word_target",
-      label: "Alvo de palavras por resposta de autoria",
-      valueSchema: { type: "integer", minimum: 20, maximum: 500 },
-      defaultValue: 120
-    }, {
-      id: "study_unit_content_word_target",
-      label: "Alvo de palavras por unidade de estudo",
-      valueSchema: { type: "integer", minimum: 40, maximum: 1000 },
-      defaultValue: 180
-    }].map((definition) => ({
-      ...definition,
-      construct: `Construto de ${definition.label}.`,
-      operationalization: "Usa a aplicação pedagógica corrente das StudyUnits.",
-      limitations: "O registro não prova qualidade nem aprendizagem.",
-      defaultStatus: "product_hypothesis",
-      evidenceRefs: ["https://doi.org/10.1111/j.1467-9280.2006.01693.x"],
-      supportedScopes: ["course", "lesson", "didactic_microsequence", "study_unit"]
-    }));
-    const componentOptions = Array.from({ length: 33 }, (_, index) => ({
-      ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
-      label: `Componente ${index + 1}`,
-      purpose: `Finalidade acadêmica ${index + 1}.`
-    }));
+    const {
+      COURSE_DESIGN_PARAMETER_DEFINITIONS: designDefinitions,
+      COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
+      COURSE_COMPONENT_CATALOG,
+      COURSE_DESIGN_CONTRACT,
+      COURSE_DESIGN_CHANGE_CONTRACT
+    } = await import("/src/domain/courseDesignParameters.js");
     const moduleScopes = [
       { kind: "module", ref: "module-a", label: "Base conceitual", position: 0 },
       ...Array.from({ length: 54 }, (_, index) => ({
@@ -948,15 +929,17 @@ async function mountCourseAuthoring(page, {
         const selected = explicit || automatic || null;
         return {
           parameterId: definition.id,
+          conflicts: [],
           localAssignment: localAssignment ? structuredClone(localAssignment) : null,
           effectiveAssignment: selected ? {
             ...structuredClone(selected.assignment),
             sourceScope: { kind: selected.scope.kind, ref: selected.scope.ref },
             inherited: scopeKey(selected.scope) !== scopeKey(current)
           } : {
-            value: structuredClone(definition.defaultValue),
+            mode: "automatic",
+            value: null,
             origin: "system_default",
-            reason: "Hipótese operacional inicial do produto.",
+            reason: "Escolha contextual ainda não definida nesta fixture.",
             sourceScope: null,
             inherited: false
           }
@@ -976,10 +959,10 @@ async function mountCourseAuthoring(page, {
         scope: candidate
       })).find(({ change }) => change) || null;
       return {
-        contract: "aralearn.course-design.v2",
+        contract: COURSE_DESIGN_CONTRACT,
         courseId,
         courseRevision: course.revision,
-        parameterCatalogVersion: "1.1.0",
+        parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
         scopeContext: {
           current,
           ancestors: path.slice(0, -1),
@@ -994,7 +977,7 @@ async function mountCourseAuthoring(page, {
           localAssignment: structuredClone(store.guidance.get(scopeKey(current)) || null),
           effectiveAssignments
         },
-        componentCatalog: { version: "1-4616b2e5", options: structuredClone(componentOptions) },
+        componentCatalog: structuredClone(COURSE_COMPONENT_CATALOG),
         targetPlanItems: ["didactic_microsequence", "study_unit"].includes(current.kind) ? {
           instructionalAnalysisUnitIds: ["79000000-0000-4000-8000-000000000019"],
           evidenceRequirementIds: []
@@ -1010,7 +993,7 @@ async function mountCourseAuthoring(page, {
             inherited: scopeKey(selectedPolicy.scope) !== scopeKey(current)
           } : {
             policy: {
-              catalogVersion: "1-4616b2e5",
+              catalogVersion: COURSE_COMPONENT_CATALOG.version,
               availability: "all",
               allowedRefs: [],
               excludedRefs: [],
@@ -1430,6 +1413,29 @@ async function mountCourseAuthoring(page, {
       };
     };
     const controller = {
+      async loadCourseMedia(courseId, options) {
+        const probe = globalThis.__inspectionToolProbe;
+        probe.configs.push({ courseId, ...options });
+        if (probe.failConfig) { probe.failConfig = false; throw new Error("Configuração indisponível na fixture."); }
+        return { contract: "aralearn.course-media.v1", courseId, courseRevision: options.expectedRevision, mode: "configuration",
+          audioConfig: { nativeVoiceURI: null, rate: 1.25, locale: "pt-BR", allowRemoteNativeVoice: false, service: null }, storage: null, items: [], nextCursor: null };
+      },
+      async getCourseMediaDownload(input) {
+        const probe = globalThis.__inspectionToolProbe;
+        probe.downloads.push(structuredClone(input));
+        return { contract: "aralearn.course-media-download.v1", courseId: input.courseId, courseRevision: input.expectedRevision,
+          studyUnitId: probe.wrongUnit ? "study-unit-11" : input.studyUnitId, media: probe.media,
+          signedUrl: `${location.origin}/storage/v1/object/sign/course-media/${input.courseId}/${probe.media.contentHash}.wav?token=synthetic`, expiresAt: "2099-01-01T00:00:00.000Z" };
+      },
+      async getCourseSourceAttachmentDownload(input) {
+        const probe = globalThis.__inspectionToolProbe;
+        probe.pdfs.push(structuredClone(input));
+        if (probe.deferPdf) await new Promise(resolve => { probe.releasePdf = resolve; });
+        return { contract: "aralearn.course-source-pdf-download.v2", courseId: input.courseId, courseRevision: input.expectedCourseRevision,
+          sourceId: input.sourceId, sourceRevision: probe.wrongPdf ? 2 : input.sourceRevision,
+          attachment: { contentHash: input.contentHash, byteSize: 10, mediaType: "application/pdf" },
+          signedUrl: `${location.origin}/synthetic-source.pdf?token=synthetic`, expiresAt: "2099-01-01T00:00:00.000Z" };
+      },
       async listCourses({ query = "" } = {}) {
         probe.listReads += 1;
         const normalizedQuery = String(query).trim().toLocaleLowerCase("pt-BR");
@@ -1611,7 +1617,7 @@ async function mountCourseAuthoring(page, {
           throw error;
         }
         const source = courseId === courseIds[0] ? studyUnits : [];
-        const anchorIndex = options.anchorStudyUnitId
+        const anchorIndex = options.entry === "latest_updated" ? 49 : options.anchorStudyUnitId
           ? source.findIndex(({ id }) => id === options.anchorStudyUnitId)
           : -1;
         const cursorIndex = options.cursor
@@ -1636,7 +1642,8 @@ async function mountCourseAuthoring(page, {
         const items = selected.map((studyUnit, index) => ({
           studyUnit: structuredClone(studyUnit),
           version: studyUnitVersions.get(studyUnit.id),
-          updatedAt: "2026-08-17T12:00:00.000Z",
+          updatedAt: studyUnit.id === "study-unit-50"
+            ? "2026-09-05T10:00:00.000Z" : "2026-08-17T12:00:00.000Z",
           ordinal: start + index + 1,
           curriculumPath: {
             module: { id: "module-a", position: 0, title: "Base conceitual" },
@@ -2002,11 +2009,12 @@ async function mountCourseAuthoring(page, {
         const store = ensureDesignState(request.courseId);
         const command = request.command;
         let changeScope = command.scope ? structuredClone(command.scope) : null;
-        if (command.type === "set_parameter") {
+        if (command.type === "set_parameter" || command.type === "delegate_parameter") {
           const key = scopeKey(command.scope);
           const assignments = store.parameterAssignments.get(key) || new Map();
           assignments.set(command.parameterId, {
-            value: structuredClone(command.value),
+            mode: command.type === "delegate_parameter" ? "automatic" : "fixed",
+            value: command.type === "delegate_parameter" ? null : structuredClone(command.value),
             origin: command.origin,
             reason: command.reason
           });
@@ -2034,7 +2042,7 @@ async function mountCourseAuthoring(page, {
         }
         course.revision += 1;
         const result = {
-          contract: "aralearn.course-design-change.v2",
+          contract: COURSE_DESIGN_CHANGE_CONTRACT,
           courseId: request.courseId,
           courseRevision: course.revision,
           requestId: request.requestId,
@@ -2043,7 +2051,7 @@ async function mountCourseAuthoring(page, {
           change: {
             type: command.type,
             scope: changeScope,
-            parameterId: new Set(["set_parameter", "clear_parameter"])
+            parameterId: new Set(["set_parameter", "clear_parameter", "delegate_parameter"])
               .has(command.type) ? command.parameterId : null
           }
         };
@@ -2180,6 +2188,7 @@ async function mountCourseAuthoring(page, {
     requestedSourceMutationScenario: sourceMutationScenario,
     requestedPeopleMutationScenario: peopleMutationScenario,
     requestedAnnotationMutationScenario: annotationMutationScenario,
+    requestedInspectionTools: inspectionTools,
     requestedObjective: objective,
     requestedCourseTitle: courseTitle,
     courseIds: COURSE_IDS,
@@ -2192,6 +2201,207 @@ async function mountCourseAuthoring(page, {
     "false"
   );
 }
+
+test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm edição completa", async ({ page, context }) => {
+  const errors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 850 });
+  await context.route("**/synthetic-grammar", route => route.fulfill({ status: 200, contentType: "text/plain", body: "Explicação sintética." }));
+  await context.route("**/synthetic-source.pdf?*", route => route.fulfill({ status: 200, contentType: "text/plain", body: "PDF autorizado sintético." }));
+  await mountCourseAuthoring(page, { inspectionTools: true,
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const wav = await page.evaluate(() => globalThis.__inspectionToolProbe.wav);
+  await page.route("**/storage/v1/object/sign/course-media/**", route => route.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from(wav) }));
+  const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
+  await expect(card.locator(".study-tool-actions button")).toHaveCount(3);
+  await expect(card.locator("[data-calculator-form], .package-auxiliary-links, [data-audio-track]")).toHaveCount(0);
+  const calculator = card.getByRole("button", { name: "Calculadora", exact: true });
+  await calculator.focus();
+  const before = await calculator.boundingBox();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Calculadora", exact: true })).toBeVisible();
+  await expect(page.locator(".course-authoring-surface")).toHaveAttribute("inert", "");
+  await dialog.getByRole("button", { name: "Calcular", exact: true }).click();
+  await expect(dialog.locator("output")).toHaveText("Resultado aproximado: 5");
+  await dialog.getByRole("button", { name: "Fechar ferramenta" }).focus();
+  await page.keyboard.press("Shift+Tab");
+  expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(calculator).toBeFocused();
+  const after = await calculator.boundingBox();
+  for (const key of ["x", "y", "width", "height"]) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+
+  await card.getByRole("button", { name: "Gramática", exact: true }).tap();
+  await expect(dialog.locator("[data-tool-link-index]")).toHaveCount(2);
+  for (const [label, expected] of [["Explicação na web", "/synthetic-grammar"], ["PDF da construção", "/synthetic-source.pdf?token=synthetic"]]) {
+    const opened = page.waitForEvent("popup");
+    await dialog.getByRole("button", { name: label, exact: true }).click();
+    const popup = await opened;
+    await expect(popup).toHaveURL(new RegExp(expected.replace(/[?]/gu, "\\?")));
+    await popup.close();
+  }
+  expect(await page.evaluate(() => globalThis.__inspectionToolProbe.pdfs[0])).toEqual({ courseId: COURSE_IDS[0], expectedCourseRevision: 5, sourceId: "source-01", sourceRevision: 1, contentHash: "a".repeat(64) });
+  await page.keyboard.press("Escape");
+  await card.getByRole("button", { name: "Mais ferramentas" }).tap();
+  await expect(dialog.locator("[data-open-study-tool]")).toHaveCount(3);
+  await dialog.locator('[data-open-study-tool="audio"]').tap();
+  await expect(dialog.locator(".package-audio-alternative")).toHaveText("Alternativa inspecionável pelo proprietário.");
+  await dialog.locator('[data-audio-action="play"]').tap();
+  await expect.poll(() => dialog.locator("audio").evaluate(node => node.readyState)).toBeGreaterThanOrEqual(2);
+  expect(await dialog.locator("audio").evaluate(node => ({ rate: node.playbackRate, error: node.error }))).toEqual({ rate: 1.25, error: null });
+  expect(await page.evaluate(() => globalThis.__inspectionToolProbe.downloads[0])).toMatchObject({ courseId: COURSE_IDS[0], expectedRevision: 5, studyUnitId: "study-unit-12" });
+  await page.keyboard.press("Escape");
+  expect(await page.evaluate(() => globalThis.__inspectionToolProbe.urls.every(url => globalThis.__inspectionToolProbe.revoked.includes(url)))).toBe(true);
+
+  await card.locator('[data-inspection-selection-action="toggle-current"]').tap();
+  const second = page.locator('[data-inspection-study-unit="study-unit-13"]');
+  const secondCalculator = second.getByRole("button", { name: "Calculadora", exact: true });
+  await secondCalculator.tap();
+  await expect(dialog.getByRole("heading", { name: "Cálculo da unidade 13" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(secondCalculator).toBeFocused();
+  await page.getByRole("button", { name: "Cancelar seleção", exact: true }).tap();
+
+  await card.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(3);
+  await expect(card.locator("[data-calculator-form]")).toHaveCount(1);
+  await expect(card.locator("[data-audio-track]")).toHaveCount(1);
+  await expect(card.locator('[data-resource-target-id="content:calculator"]')).toHaveAttribute("aria-label", "Selecionar recurso para edição");
+  await card.locator('[data-resource-target-id="content:calculator"]').click();
+  const titleField = card.getByRole("textbox", { name: "Editar título da calculadora", exact: true });
+  await expect(titleField).toBeVisible();
+  await expect(card.locator('[data-resource-target-id="content:calculator"]')).toHaveCount(0);
+  await titleField.fill("Cálculo <literal> **sem markup**");
+  await card.getByRole("button", { name: "Salvar edição", exact: true }).click();
+  await expect(card.locator(".study-tool-actions button")).toHaveCount(3);
+  await calculator.click();
+  await expect(dialog.getByRole("heading", { name: "Cálculo <literal> **sem markup**", exact: true })).toBeVisible();
+  await expect(dialog.locator("h3 strong, h3 literal")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  expect(errors).toEqual([]);
+});
+
+test("#304 ferramentas ficam à esquerda e preservam D4 nas oito combinações", async ({ page }, info) => {
+  await mountCourseAuthoring(page, { inspectionTools: true,
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
+  for (const width of [360, 390, 430, 1280]) for (const colorMode of ["light", "dark"]) {
+    await page.setViewportSize({ width, height: 850 });
+    await page.evaluate(mode => { document.documentElement.dataset.colorMode = mode; }, colorMode);
+    await expectNoHorizontalOverflow(page);
+    const tools = await card.locator(".study-tool-actions").boundingBox();
+    const usual = await card.locator(".course-inspection-mode-actions").boundingBox();
+    expect(Math.abs(tools.y - usual.y)).toBeLessThanOrEqual(1);
+    expect(tools.x + tools.width).toBeLessThanOrEqual(usual.x);
+
+    const geometry = await card.locator(".course-inspection-item-actions button").evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })));
+    for (const control of geometry) { expect(control.width).toBeGreaterThanOrEqual(44); expect(control.height).toBeGreaterThanOrEqual(44); }
+    await page.screenshot({ path: info.outputPath(`inspection-tools-${width}-${colorMode}.png`) });
+    const readBoxes = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => {
+      const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height };
+    }));
+    await card.getByRole("button", { name: "Editar", exact: true }).click();
+    await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(3);
+    const editBoxes = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => {
+      const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height };
+    }));
+    expect(editBoxes).toHaveLength(readBoxes.length);
+    readBoxes.forEach((box, index) => { for (const key of ["x", "y", "width", "height"]) expect(Math.abs(box[key] - editBoxes[index][key])).toBeLessThanOrEqual(1); });
+    await card.getByRole("button", { name: "Visualizar", exact: true }).click();
+  }
+  await page.setViewportSize({ width: 390, height: 850 });
+  await mountCourseAuthoring(page, { inspectionTools: "single",
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  await expect(card.locator(".study-tool-actions button")).toHaveCount(1);
+  const tools = await card.locator(".study-tool-actions").boundingBox();
+  const usual = await card.locator(".course-inspection-mode-actions").boundingBox();
+  expect(Math.abs(tools.y - usual.y)).toBeLessThanOrEqual(1);
+  expect(tools.x + tools.width).toBeLessThanOrEqual(usual.x);
+  await page.screenshot({ path: info.outputPath("inspection-single-tool-390.png") });
+});
+
+test("#304 resultado da calculadora longa é alcançado por rolagem no modal390", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  await mountCourseAuthoring(page, { inspectionTools: "single",
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
+  const calculator = card.getByRole("button", { name: "Calculadora", exact: true });
+  await calculator.tap();
+  const dialog = page.getByRole("dialog", { name: "Calculadora", exact: true });
+  await expect(dialog.locator("[data-calculator-form]")).toBeVisible();
+  expect(await dialog.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+  await dialog.getByRole("button", { name: "Calcular", exact: true }).scrollIntoViewIfNeeded();
+  await dialog.getByRole("button", { name: "Calcular", exact: true }).click();
+  const output = dialog.locator("output");
+  await expect(output).toHaveText("Resultado aproximado: 5");
+  await dialog.evaluate(node => { node.scrollTop = 0; });
+  const hiddenResult = await output.boundingBox();
+  const viewport = await dialog.boundingBox();
+  expect(hiddenResult.y).toBeGreaterThanOrEqual(viewport.y + viewport.height);
+  await dialog.hover();
+  await page.mouse.wheel(0, 1200);
+  await expect.poll(() => dialog.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => output.evaluate(node => {
+    const result = node.getBoundingClientRect(), frame = node.closest(".study-tools-panel").getBoundingClientRect();
+    return result.top >= frame.top && result.bottom <= frame.bottom;
+  })).toBe(true);
+  await page.screenshot({ path: info.outputPath("inspection-calculator-result-scroll-390.png") });
+  await page.keyboard.press("Escape");
+  await expect(calculator).toBeFocused();
+});
+
+test("#304 ferramentas recusam identidade divergente e PDF tardio após fechar", async ({ page, context }) => {
+  await mountCourseAuthoring(page, { inspectionTools: true,
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
+  const dialog = page.getByRole("dialog");
+  await page.evaluate(() => { globalThis.__inspectionToolProbe.wrongPdf = true; });
+  await card.getByRole("button", { name: "Gramática", exact: true }).tap();
+  await dialog.getByRole("button", { name: "PDF da construção" }).tap();
+  await expect(dialog.locator('[data-tool-link-status="1"]')).toContainText("Não foi possível abrir");
+  expect(context.pages()).toHaveLength(1);
+  await page.evaluate(() => { globalThis.__inspectionToolProbe.wrongPdf = false; globalThis.__inspectionToolProbe.deferPdf = true; });
+  await dialog.getByRole("button", { name: "PDF da construção" }).tap();
+  await expect(dialog.locator('[data-tool-link-status="1"]')).toContainText("Abrindo");
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => globalThis.__inspectionToolProbe.releasePdf());
+  await expect(card.getByRole("button", { name: "Gramática", exact: true })).toBeFocused();
+  expect(context.pages()).toHaveLength(1);
+  await page.evaluate(() => { globalThis.__inspectionToolProbe.failConfig = true; globalThis.__inspectionToolProbe.wrongUnit = true; });
+  await card.getByRole("button", { name: "Mais ferramentas" }).tap();
+  await dialog.locator('[data-open-study-tool="audio"]').tap();
+  await expect(dialog.getByRole("button", { name: "Consultar configuração novamente" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Consultar configuração novamente" }).tap();
+  await dialog.locator('[data-audio-action="play"]').tap();
+  await expect(dialog.locator("[data-audio-track-status]")).toContainText("Não foi possível obter ou reproduzir");
+  expect(await page.evaluate(() => globalThis.__inspectionToolProbe.urls.length)).toBe(0);
+  let releaseFile;
+  const fileWait = new Promise(resolve => { releaseFile = resolve; });
+  const wav = await page.evaluate(() => {
+    const probe = globalThis.__inspectionToolProbe;
+    probe.wrongUnit = false;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (url, options) => {
+      if (String(url).includes("/sign/course-media/")) {
+        probe.fetchStarted = true;
+        options.signal.addEventListener("abort", () => { probe.fetchAborted = true; });
+      }
+      return originalFetch(url, options);
+    };
+    return probe.wav;
+  });
+  await page.route("**/storage/v1/object/sign/course-media/**", async route => {
+    await fileWait;
+    await route.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from(wav) });
+  });
+  await dialog.locator('[data-audio-action="play"]').tap();
+  await expect.poll(() => page.evaluate(() => globalThis.__inspectionToolProbe.fetchStarted)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.evaluate(() => globalThis.__inspectionToolProbe.fetchAborted)).toBe(true);
+  releaseFile();
+  await expect(card.getByRole("button", { name: "Mais ferramentas" })).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__inspectionToolProbe.urls.length)).toBe(0);
+});
 
 test.describe("Autoria canônica mobile-first", () => {
   for (const width of [360, 390, 430, 1280]) {
@@ -2847,6 +3057,104 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   expect(clientErrors).toEqual([]);
 });
 
+test.describe("#304 seleção vertical e retorno contextual", () => {
+  for (const width of [360, 390, 430, 1280]) {
+    for (const colorScheme of ["light", "dark"]) {
+      test(`${width} px ${colorScheme}: janela anterior/posterior, referência e entrada recente`, async ({ page }, info) => {
+        const errors = captureClientErrors(page);
+        await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
+        await page.emulateMedia({ colorScheme });
+        await mountCourseAuthoring(page, {
+          hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12`,
+          courseTitle: "Um curso de relações com título extenso, contexto preservado e inspeção progressiva"
+        });
+        await page.evaluate(() => document.fonts.ready);
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
+        const reference = page.locator('[data-inspection-study-unit="study-unit-12"]');
+        const initialSelection = reference.locator('[data-inspection-selection-action="toggle-current"]');
+        await initialSelection.focus();
+        const baseline = await reference.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const sticky = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
+          const actions = [...element.querySelectorAll(".course-inspection-mode-actions > :is(button,a)")]
+            .map((control) => {
+              const rect = control.getBoundingClientRect();
+              return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+            });
+          return { x: bounds.x, width: bounds.width, offset: bounds.top - sticky.bottom, actions };
+        });
+        await page.keyboard.press("Enter");
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+        await expect(reference.getByText("Unidade de referência", { exact: true })).toBeVisible();
+        await page.getByRole("button", { name: "Carregar unidades anteriores", exact: true }).tap();
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(23);
+        const practice = page.locator('[data-inspection-study-unit="study-unit-01"] .package-instance[data-package="aralearn.response.choice"]');
+        await expect(practice).toHaveAttribute("inert", "");
+        await expect(practice.locator(".multiple-choice-option")).toHaveCount(2);
+        await expect(practice.locator(".selected-correct .multiple-choice-label")).toHaveText("y");
+        await expect(practice.locator("button, input, select, textarea")).toHaveCount(0);
+        await page.locator('[data-inspection-study-unit="study-unit-11"] [data-inspection-selection-action="toggle-current"]').tap();
+        const nextPage = page.getByRole("button", { name: "Carregar unidades posteriores", exact: true });
+        await nextPage.tap();
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(35);
+        await nextPage.tap();
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
+        await page.locator('[data-inspection-study-unit="study-unit-47"] [data-inspection-selection-action="toggle-current"]').tap();
+        await nextPage.tap();
+        await expect(reference).toHaveCount(0);
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
+        const selection = page.locator("[data-inspection-selection-bar]");
+        await expect(selection).toContainText("3 unidades selecionadas");
+        await expect(selection).toContainText("Referência: Unidade curricular 12");
+        await selection.scrollIntoViewIfNeeded();
+        await expectNoHorizontalOverflow(page);
+        await expectAuthoringOwnsVerticalScroll(page);
+        expect(await page.evaluate(() => document.documentElement.dataset.colorMode)).toBe(colorScheme);
+        await page.screenshot({ path: info.outputPath(`inspection-selection-${width}-${colorScheme}.png`) });
+        await page.getByRole("button", { name: "Cancelar seleção", exact: true }).focus();
+        await page.keyboard.press("Enter");
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
+        await expect(initialSelection).toBeFocused();
+        const restored = await reference.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const sticky = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
+          const actions = [...element.querySelectorAll(".course-inspection-mode-actions > :is(button,a)")]
+            .map((control) => {
+              const rect = control.getBoundingClientRect();
+              return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+            });
+          return { x: bounds.x, width: bounds.width, offset: bounds.top - sticky.bottom, actions };
+        });
+        for (const key of ["x", "width", "offset"]) {
+          expect(Math.abs(restored[key] - baseline[key]), `retorno ${key}`).toBeLessThanOrEqual(1);
+        }
+        expect(restored.actions.length).toBe(baseline.actions.length);
+        for (let index = 0; index < baseline.actions.length; index += 1) {
+          for (const key of ["x", "y", "width", "height"]) {
+            expect(Math.abs(restored.actions[index][key] - baseline.actions[index][key]),
+              `controle ${index} ${key}`).toBeLessThanOrEqual(1);
+          }
+          expect(restored.actions[index].height).toBeGreaterThanOrEqual(44);
+        }
+        await page.locator(".course-inspection-context-selector > summary").focus();
+        await page.keyboard.press("Enter");
+        await page.getByRole("button", { name: "Ir à atualização mais recente", exact: true }).tap();
+        await expect(page.locator('[data-inspection-study-unit="study-unit-50"]')).toBeVisible();
+        await expect(page.locator("[data-inspection-context-position]")).toHaveText("50/60");
+        const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
+        expect(probe.inspectionReads.at(-1)).toMatchObject({
+          entry: "latest_updated", cursor: null, direction: "forward", limit: 12
+        });
+        expect(probe.annotationMutations).toEqual([]);
+        expect(probe.sourceMutations).toEqual([]);
+        expect(probe.designMutations).toEqual([]);
+        await expectNoHorizontalOverflow(page);
+        expect(errors).toEqual([]);
+      });
+    }
+  }
+});
+
 for (const width of [360, 390, 430, 1280]) {
   test(`Observações mantêm caixa de entrada, filtros e rota própria sem overflow em ${width} px`, async ({
     page
@@ -3076,8 +3384,8 @@ test("Observação em lote contém o foco, fecha com Escape e retorna à seleç�
   await mountCourseAuthoring(page, { cardinality: "many", hash });
 
   await page.locator('[data-inspection-selection-action="toggle-current"]').click();
-  await page.getByRole("button", { name: "Próxima unidade" }).click();
-  await page.locator('[data-inspection-selection-action="toggle-current"]').click();
+  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+  await page.locator('[data-inspection-study-unit="study-unit-02"] [data-inspection-selection-action="toggle-current"]').click();
   const batchTrigger = page.getByRole("button", {
     name: "Registrar Observação nas Unidades selecionadas"
   });
@@ -3100,7 +3408,7 @@ test("Observação em lote contém o foco, fecha com Escape e retorna à seleç�
   await expect(batchTrigger).toBeFocused();
 });
 
-test("Inspeção abre os Parâmetros da StudyUnit e retorna pelo cabeçalho", async ({
+test("Inspeção abre os Parâmetros da StudyUnit em folha e retorna ao mesmo controle", async ({
   page
 }) => {
   const clientErrors = captureClientErrors(page);
@@ -3109,21 +3417,25 @@ test("Inspeção abre os Parâmetros da StudyUnit e retorna pelo cabeçalho", as
   await mountCourseAuthoring(page, { cardinality: "many", hash });
 
   const item = page.locator("[data-inspection-study-unit]").first();
-  const designAction = item.getByRole("link", {
+  const designAction = item.getByRole("button", {
     name: "Parâmetros aplicáveis a Exemplo guiado com diagrama",
     exact: true
   });
   await designAction.click();
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
-  await expect(page.getByRole("heading", { name: "Parâmetros pedagógicos" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true })).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
+  await expectModalDialogOwnsTopLayer(dialog);
+  await expect(dialog.getByRole("heading", { name: "Conteúdo", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("region", { name: "Escopo atual", exact: true }))
+    .toContainText("unidade de estudo: Exemplo guiado com diagrama");
+  await expect(dialog.getByRole("button", { name: "Fechar parâmetros", exact: true })).toBeVisible();
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
   expect(probe.planReads).toBe(0);
   expect(probe.designReads).toHaveLength(1);
 
-  await page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true }).click();
-  await expect(page).toHaveURL(new RegExp("section=content&studyUnitId=study-unit-01"));
-  await expect(page.getByRole("link", {
+  await dialog.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp("section=content"));
+  await expect(page.getByRole("button", {
     name: "Parâmetros aplicáveis a Exemplo guiado com diagrama",
     exact: true
   })).toBeFocused();
@@ -3968,7 +4280,7 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
     origin: "research_condition"
   });
   expect(mutations[2].command.policy).toMatchObject({
-    catalogVersion: "1-4616b2e5",
+    catalogVersion: COURSE_COMPONENT_CATALOG.version,
     availability: "allow_only"
   });
   expect(mutations[2].command.policy.allowedRefs).toEqual([

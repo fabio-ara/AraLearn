@@ -128,6 +128,13 @@ function manualFieldMarkup(path, html, tagName = "span") {
   return `<${tagName} data-package-manual-field-path="${escapePackageAttribute(encodeURIComponent(path))}">${html}</${tagName}>`;
 }
 
+/** Texto literal editável: conserva marcadores de folha, sem interpretar markup. */
+export function renderPackageLiteral(value) {
+  return parsePackageManualTextSegments(value).map((segment) =>
+    manualFieldMarkup(segment.path, escapePackageHtmlText(segment.value))
+  ).join("");
+}
+
 function manualFieldAttribute(path) {
   return ` data-package-manual-field-path="${escapePackageAttribute(encodeURIComponent(path))}"`;
 }

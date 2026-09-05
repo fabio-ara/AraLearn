@@ -1,3 +1,4 @@
+import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
@@ -582,6 +583,7 @@ function normalizeInspectionPosition(courseId, value) {
 function inspectionRequestOptions({
   expectedRevision,
   scope = { kind: "course", id: null },
+  entry = null,
   anchorStudyUnitId = null,
   cursor = null,
   direction = "forward",
@@ -598,7 +600,9 @@ function inspectionRequestOptions({
     : { studyUnitId: String(cursor?.studyUnitId || "").trim() };
   const normalizedLimit = Number(limit);
   const normalizedMaxBytes = Number(maxBytes);
-  if (!Number.isSafeInteger(revision) || revision < 1 ||
+  if (entry != null && (entry !== "latest_updated" || normalizedAnchor != null ||
+      normalizedCursor != null || normalizedDirection !== "forward") ||
+      !Number.isSafeInteger(revision) || revision < 1 ||
       !new Set(["forward", "backward"]).has(normalizedDirection) ||
       (normalizedAnchor != null && (!normalizedAnchor || normalizedAnchor.length > 240)) ||
       (normalizedCursor != null && (
@@ -615,6 +619,7 @@ function inspectionRequestOptions({
   return {
     expectedRevision: revision,
     scope: normalizedScope,
+    ...(entry == null ? {} : { entry }),
     anchorStudyUnitId: normalizedAnchor,
     cursor: normalizedCursor,
     direction: normalizedDirection,
@@ -1076,7 +1081,7 @@ export class CourseController {
 
   #pendingInspectionPage(pending, options) {
     const item = pending?.inspectionItem;
-    if (!item || options.expectedRevision !== pending.courseRevision || options.cursor != null ||
+    if (!item || options.entry != null || options.expectedRevision !== pending.courseRevision || options.cursor != null ||
         options.anchorStudyUnitId != null &&
           options.anchorStudyUnitId !== pending.studyUnit.id) return null;
     const path = item.curriculumPath;
@@ -1744,6 +1749,25 @@ export class CourseController {
 
   clearCourse(courseId, { clearLists = true } = {}) {
     return this.#purgeCoursePrivacyCache(courseId, { clearLists: clearLists !== false });
+  }
+
+  async saveCourseAuthoringPart(value) {
+    if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite reorganizar os lotes.");
+    const request = normalizeCourseAuthoringPartRequest(value);
+    try {
+      const result = normalizeCourseAuthoringPartChange(await this.api.saveCourseAuthoringPart(request), request);
+      await Promise.all([
+        this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+        this.store.deleteCachePrefix(courseCacheKey(request.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(instructionalPlanCacheKey(request.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(authoringInspectionCacheKey(request.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${request.courseId}:`)
+      ]);
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(request.courseId, { clearLists: true });
+      throw error;
+    }
   }
 
   loadAuthoringPlan(courseId) {

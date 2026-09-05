@@ -94,6 +94,28 @@ test("expõe somente a inspeção focal v2", async () => {
   assert.equal(calls, 1);
 });
 
+test("rota de reorganização compartilha CAS e recibo sem permitir campos ou escopo indevidos", async () => {
+  let calls = 0, allowed = true;
+  const body = { requestId: "parts-api-304", expectedCourseRevision: 3, expectedPlanVersion: 2,
+    part: { partId: null, title: "Lote", intent: "Produzir.", progression: ["Aplicar."], position: 0,
+      microsequences: [{ microsequenceId: "m", position: 0 }] } };
+  const handler = createCourseApiHandler({ allowedOrigins: new Set([ORIGIN]), adapter: {
+    async resolveApplicationPrincipal() { return { actorId: COURSE_ID, scopes: allowed ? ["authoring:write"] : ["authoring:read"] }; },
+    async saveCourseAuthoringPart(value) {
+      calls++; assert.equal(value.courseId, COURSE_ID); assert.equal(value.expectedPlanVersion, 2);
+      assert.equal(value.part.partId, null); assert.equal(value.requestId, body.requestId);
+      return { contract: "aralearn.course-authoring-part-change.v1", courseId: COURSE_ID, courseRevision: 4,
+        planVersion: 3, authoringPartId: PART_ID, changed: true, idempotent: false };
+    }
+  } });
+  const path = `/v1/courses/${COURSE_ID}/authoring-parts`;
+  assert.equal((await handler(request(path, { body }))).status, 200);
+  assert.equal((await handler(request(path, { body: { ...body, courseId: PART_ID } }))).status, 422);
+  allowed = false;
+  assert.equal((await handler(request(path, { body }))).status, 403);
+  assert.equal(calls, 1);
+});
+
 test("expõe exclusão de conta somente na rota interna autenticada do aplicativo", async () => {
   let call = null;
   const handler = createCourseApiHandler({

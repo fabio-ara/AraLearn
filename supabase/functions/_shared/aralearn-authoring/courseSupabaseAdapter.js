@@ -1,3 +1,4 @@
+import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../aralearn/runtime/domain/courseAuthoringParts.js";
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
 import { COURSE_MEDIA_BUCKET, COURSE_MEDIA_MAX_BYTES, CourseMediaError, inspectCourseAudioBytes,
   normalizeCourseAudioFileName, normalizeCourseMediaReference, normalizeCourseMediaRead,
@@ -2707,6 +2708,7 @@ export class CourseSupabaseAdapter {
     expectedRevision,
     scopeKind,
     scopeId = null,
+    entry = null,
     anchorStudyUnitId = null,
     cursorStudyUnitId = null,
     direction = "forward",
@@ -2714,6 +2716,10 @@ export class CourseSupabaseAdapter {
     maxBytes = 512 * 1024,
     deadlineAt = null
   }) {
+    if (entry != null && (entry !== "latest_updated" || anchorStudyUnitId != null ||
+        cursorStudyUnitId != null || direction !== "forward")) {
+      throw new AuthoringApiError(400, "invalid_pagination", "Entrada da inspeção inválida.");
+    }
     const result = first(await this.rpc(
       "list_owned_course_study_units_for_actor_v2",
       {
@@ -2722,6 +2728,7 @@ export class CourseSupabaseAdapter {
         p_expected_revision: expectedRevision,
         p_scope_kind: scopeKind,
         p_scope_id: scopeId,
+        ...(entry == null ? {} : { p_entry: entry }),
         p_anchor_study_unit_id: anchorStudyUnitId,
         p_cursor_study_unit_id: cursorStudyUnitId,
         p_direction: direction,
@@ -3040,14 +3047,10 @@ export class CourseSupabaseAdapter {
     part,
     deadlineAt = null
   }) {
-    if (!jsonRecord(part)) {
-      throw new AuthoringApiError(
-        422,
-        "invalid_course_authoring_part",
-        "A Parte aprovada é inválida."
-      );
-    }
-    const normalizedPart = structuredClone(part);
+    let command;
+    try { command = normalizeCourseAuthoringPartRequest({ courseId, requestId, expectedCourseRevision, expectedPlanVersion, part }); }
+    catch (error) { throw new AuthoringApiError(422, "invalid_course_authoring_part", error.message); }
+    const normalizedPart = command.part;
     const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify({
       courseId,
       expectedCourseRevision,
@@ -3067,30 +3070,10 @@ export class CourseSupabaseAdapter {
       },
       { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024 }
     ));
-    const fields = new Set([
-      "contract", "courseId", "courseRevision", "planVersion",
-      "authoringPartId", "changed", "idempotent"
-    ]);
-    if (!jsonRecord(result) || Object.keys(result).length !== fields.size ||
-        Object.keys(result).some((field) => !fields.has(field)) ||
-        result.contract !== "aralearn.course-authoring-part-change.v1" ||
-        result.courseId !== courseId || result.authoringPartId !== normalizedPart.partId ||
-        typeof result.changed !== "boolean" || typeof result.idempotent !== "boolean" ||
-        !Number.isSafeInteger(result.courseRevision) ||
-        !Number.isSafeInteger(result.planVersion) ||
-        result.courseRevision < expectedCourseRevision ||
-        result.planVersion < expectedPlanVersion ||
-        !result.idempotent && (
-          result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
-          result.planVersion !== expectedPlanVersion + (result.changed ? 1 : 0)
-        )) {
-      throw new AuthoringApiError(
-        503,
-        "course_service_unavailable",
-        "A confirmação da Parte aprovada é inválida."
-      );
-    }
-    return withDeepLink(result, this.publicAppUrl, "planning");
+    let normalized;
+    try { normalized = normalizeCourseAuthoringPartChange(result, command); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "A confirmação da reorganização é inválida."); }
+    return withDeepLink(normalized, this.publicAppUrl, "planning");
   }
 
   async applyCourseDesignCommand({

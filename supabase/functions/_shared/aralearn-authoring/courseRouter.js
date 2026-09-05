@@ -1,3 +1,4 @@
+import { CourseAuthoringPartsError, normalizeCourseAuthoringPartRequest } from "../aralearn/runtime/domain/courseAuthoringParts.js";
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
 import { CourseMediaError, normalizeCourseMediaCommand } from "../aralearn/runtime/domain/courseMedia.js";
 import { AuthoringApiError } from "./errors.js";
@@ -273,6 +274,12 @@ function courseStudyUnitQuery(request) {
     fail("invalid_pagination", "Âncora e cursor são mutuamente exclusivos.");
   }
   const direction = String(url.searchParams.get("direction") || "forward").trim();
+  const entry = url.searchParams.get("entry");
+  if (url.searchParams.getAll("entry").length > 1 || entry != null &&
+      (entry !== "latest_updated" || anchorStudyUnitId != null ||
+       cursorStudyUnitId != null || direction !== "forward")) {
+    fail("invalid_pagination", "Entrada da inspeção inválida.");
+  }
   if (!new Set(["forward", "backward"]).has(direction)) {
     fail("invalid_pagination", "direction é inválida.");
   }
@@ -287,6 +294,7 @@ function courseStudyUnitQuery(request) {
     expectedRevision,
     scopeKind,
     scopeId,
+    ...(entry == null ? {} : { entry }),
     anchorStudyUnitId,
     cursorStudyUnitId,
     direction,
@@ -1100,6 +1108,16 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         deadlineAt
       })
     };
+  }
+  if (route.name === "saveCourseAuthoringPart") {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    exactFields(body, new Set(["requestId", "expectedCourseRevision", "expectedPlanVersion", "part"]));
+    const requestId = requestIdFrom(request, body);
+    let command;
+    try { command = normalizeCourseAuthoringPartRequest({ ...body, courseId: route.courseId, requestId }); }
+    catch (error) { if (!(error instanceof CourseAuthoringPartsError)) throw error; fail(error.code, error.message); }
+    return { requestId, data: await adapter.saveCourseAuthoringPart({ principal, ...command, deadlineAt }) };
   }
   if (route.name === "getCourseInstructionalPlan") {
     assertPrincipal(principal);

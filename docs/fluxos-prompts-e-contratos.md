@@ -62,6 +62,14 @@ Cada fase recebe o menor recorte que sustenta sua decisão:
 O contexto completo pode permanecer estruturado sem ser repetido como texto
 longo. Links levam ao mapa, lote, unidade, fonte ou área pertinente.
 
+Na inspeção do aplicativo, uma unidade permanece como foco normal. Fontes,
+parâmetros e observações são consultas em folhas que preservam esse foco e o
+rascunho em edição. A seleção múltipla revela uma sequência vertical temporária,
+com unidade de referência para o retorno; ela não constitui uma parte de produção.
+Observações em lote mantêm seus alvos individuais. A entrada pela atualização
+mais recente escolhe uma âncora no escopo; a continuação permanece curricular,
+sem criar uma lista temporal ou inferir a data de criação.
+
 ## Mapa curricular antes da produção
 
 O GPT reúne objetivo, público, pré-requisitos, escopo e fontes e propõe a
@@ -75,6 +83,11 @@ O mapa registra progressão, dependências relevantes e correspondência entre
 escopo e currículo. Pode ser salvo como rascunho para inspeção. Só a versão
 completa que a pessoa efetivamente viu pode ser marcada como aprovada.
 
+No AraLearn, essa visão começa pelos módulos e revela lições e microssequências
+sob demanda. Objetivos permanecem completos; vínculos de pré-requisito e cobertura
+abrem o contexto correspondente. O retorno preserva expansão e posição do mapa.
+Abrir um ramo não cria uma etapa adicional de aprovação.
+
 Não são materializadas unidades de estudo nessa fase. Unidades de análise,
 exercícios, componentes e formulações futuras também não recebem aprovação
 implícita.
@@ -85,6 +98,13 @@ Depois da aprovação global, uma parte agrupa microssequências já existentes 
 planejamento focal, materialização, revisão e publicação incremental. A parte
 não é pai de módulo, lição ou microssequência. Redimensioná-la não altera o
 currículo.
+
+A interface oferece **Reorganizar lotes**, com divisão, reunião e reordenação
+seguidas de prévia e salvamento explícito. Nos canais conversacionais, a mesma
+alteração usa `salvar_parte`: referências resolvidas do curso, ordem desejada e
+conteúdo da parte, sem criar uma nova hierarquia. A reunião conserva títulos,
+intenções e progressões para revisão antes de gravar. Revisão concorrente exige
+releitura, e a repetição de um envio incerto conserva o mesmo pedido.
 
 ```text
 mapa curricular aprovado

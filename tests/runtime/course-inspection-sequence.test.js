@@ -101,6 +101,13 @@ class FakeBroadcastChannel {
   }
 }
 
+function clickInspection(root, selector, dataset) {
+  return root.listeners.get("click")({
+    preventDefault() {},
+    target: { closest(value) { return value === selector ? { dataset } : null; } }
+  });
+}
+
 function studyUnit(index) {
   return {
     id: `unit-${String(index).padStart(2, "0")}`,
@@ -456,6 +463,7 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   const sequence = createCourseInspectionSequence({
     root,
     controller,
+    onOpenParameters() {},
     course: {
       courseId: COURSE_ID,
       revision: REVISION,
@@ -472,7 +480,7 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   assert.match(root.innerHTML, /class="course-inspection-mode-actions" role="group" aria-label="Ações da unidade de estudo"/u);
   assert.match(
     root.innerHTML,
-    /<a href="[^"]*section=parameters&amp;studyUnitId=unit-01" data-inspection-route data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/a>/u
+    /<button type="button" data-inspection-open-parameters data-study-unit-id="unit-01" data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/button>/u
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e âncoras de Unidade 1" title="Fontes e âncoras"><svg/u);
@@ -1226,7 +1234,15 @@ test("Inspeção abre atribuição completa da versão exata da Unidade", async 
     targetKind: "study_unit",
     targetId: "unit-01",
     targetVersion: 1,
-    targetLabel: "Unidade 1"
+    targetLabel: "Unidade 1",
+    targetStudyUnit: studyUnit(1),
+    returnFocusKey: "sources:unit-01",
+    returnPosition: {
+      scope: { kind: "course", id: null },
+      studyUnitId: "unit-01",
+      offsetFromStickyTop: 0,
+      courseRevision: REVISION
+    }
   }]);
   sequence.destroy();
 });
@@ -1561,7 +1577,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
     }
   });
   assert.equal(await clickSelection("toggle-current", "unit-01"), true);
-  assert.equal(await clickSelection("next"), true);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 2);
   assert.equal(await clickSelection("toggle-current", "unit-02"), true);
   assert.match(root.innerHTML, /2 unidades selecionadas/u);
   assert.doesNotMatch(
@@ -1579,6 +1595,10 @@ test("seleção temporária registra Observação em lote por chamadas individua
       closest() { return null; }
     }
   });
+  assert.equal(await clickInspection(root, "[data-observation-action]", { observationAction: "close" }), true);
+  assert.equal(await clickSelection("observe-selected"), true);
+  assert.match(root.innerHTML, /Rever a transição entre as duas Unidades\./u,
+    "reabrir o conjunto não apaga o texto ainda não enviado");
   root.listeners.get("submit")({
     preventDefault() {},
     target: { matches(selector) { return selector === "[data-observation-composer]"; } }
@@ -1590,6 +1610,9 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.deepEqual(requests.map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
   assert.match(root.innerHTML, /1 de 2 Observações foram registradas/iu);
   const failedRequestId = requests[1].requestId;
+  assert.equal(await clickSelection("cancel"), false, "encerrar não descarta um envio parcial");
+  assert.equal(await clickSelection("toggle-current", "unit-02"), false);
+  assert.match(root.innerHTML, /2 unidades selecionadas/u);
 
   root.listeners.get("submit")({
     preventDefault() {},
@@ -1625,6 +1648,221 @@ test("seleção temporária registra Observação em lote por chamadas individua
   }
   assert.deepEqual(requests.slice(3).map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
   assert.notEqual(requests[3].command.annotationId, requests[0].command.annotationId);
+  sequence.destroy();
+});
+
+test("seleção vertical pagina nos dois sentidos e retorna à referência fora da janela sem perder os alvos", async () => {
+  const root = new FakeRoot();
+  const saved = [];
+  const focusKeys = [];
+  let failReturn = false;
+  root.querySelector = (selector) => {
+    if (selector === ".course-inspection-sticky-context") {
+      return { getBoundingClientRect: () => ({ bottom: 40 }) };
+    }
+    if (selector.startsWith("[data-inspection-study-unit=")) {
+      return { getBoundingClientRect: () => ({ top: 112, bottom: 900 }) };
+    }
+    if (selector.startsWith("[data-inspection-control-key=")) {
+      return { focus() { focusKeys.push(selector); } };
+    }
+    return null;
+  };
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      if (failReturn && options.anchorStudyUnitId === "unit-25") {
+        failReturn = false;
+        throw new Error("Falha sintética ao recuperar a referência.");
+      }
+      return pageFor(options, 84);
+    },
+    async saveAuthoringInspectionPosition(_courseId, value) { saved.push(value); }
+  });
+  const sequence = createCourseInspectionSequence({
+    root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    routeTarget: { kind: "study_unit", id: "unit-25" },
+    windowValue: new FakeWindow(), documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  const select = (action, studyUnitId) => clickInspection(root,
+    "[data-inspection-selection-action]", { inspectionSelectionAction: action, studyUnitId });
+  assert.equal(await select("toggle-current", "unit-25"), true);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 12);
+  assert.match(root.innerHTML, /Unidade de referência/u);
+  assert.equal(await select("backward"), true);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-13"/u);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-36"/u);
+  assert.equal(await select("forward"), true);
+  assert.equal(await select("forward"), true);
+  assert.equal(await select("toggle-current", "unit-60"), true);
+  assert.equal(await select("forward"), true);
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 36);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-25"/u);
+  assert.match(root.innerHTML, /Referência: Unidade 25/u);
+  assert.match(root.innerHTML, /2 unidades selecionadas/u);
+  await sequence.savePosition();
+  assert.equal(saved.at(-1).studyUnitId, "unit-25");
+  failReturn = true;
+  assert.equal(await select("cancel"), false);
+  assert.match(root.innerHTML, /2 unidades selecionadas/u, "falha mantém conjunto e referência");
+  assert.equal(await select("cancel"), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-25"/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-selection-bar/u);
+  assert.equal(saved.at(-1).offsetFromStickyTop, 72);
+  assert.ok(focusKeys.includes('[data-inspection-control-key="selection:unit-25"]'));
+  sequence.destroy();
+});
+
+test("contexto preserva rascunho e só atualiza CAS depois de reler texto e hierarquia equivalentes", async () => {
+  const root = new FakeRoot();
+  const contexts = [];
+  const writes = [];
+  let version = 1;
+  let contentChanged = false;
+  let unavailable = false;
+  const sequence = createCourseInspectionSequence({
+    root,
+    controller: controllerFixture({
+      async loadAuthoringStudyUnits(_courseId, options) {
+        if (unavailable) throw Object.assign(new Error("Unidade ausente"), { status: 404 });
+        const page = pageFor(options, 1);
+        page.courseRevision = options.expectedRevision;
+        page.items[0].version = version;
+        if (contentChanged) page.items[0].studyUnit.content[0].data.text = "Texto externo concorrente.";
+        return page;
+      }
+    }),
+    course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+    onOpenParameters(payload) { contexts.push(payload); },
+    onEditSources(payload) { contexts.push(payload); },
+    onSaveManualEdit(payload) {
+      writes.push(payload);
+      return { studyUnit: payload.studyUnit, version: version + 1, courseRevision: REVISION + 2 };
+    },
+    windowValue: new FakeWindow(), documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  sequence.previewManualEdit({
+    studyUnitId: "unit-01", targetId: "study_unit", pathValues: { title: "Título local ainda em edição" },
+    origin: "manual"
+  });
+  await clickInspection(root, "[data-inspection-open-parameters]", { studyUnitId: "unit-01" });
+  await clickInspection(root, "[data-inspection-edit-sources]", { studyUnitId: "unit-01" });
+  assert.equal(contexts.length, 2);
+  assert.equal(writes.length, 0);
+  assert.equal(sequence.hasPendingDraft(), true);
+  assert.match(root.innerHTML, /Título local ainda em edição/u);
+  version = 2;
+  assert.equal(await sequence.refreshContext(REVISION + 1, {
+    returnPosition: contexts[1].returnPosition, returnFocusKey: contexts[1].returnFocusKey
+  }), true, "vínculo atualizado sem alteração textual pode avançar a base");
+  assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
+  assert.match(root.innerHTML, /Título local ainda em edição/u);
+  contentChanged = true;
+  version = 3;
+  assert.equal(await sequence.refreshContext(REVISION + 2), false);
+  assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
+  assert.match(root.innerHTML, /Título local ainda em edição/u);
+  assert.doesNotMatch(root.innerHTML, /Texto externo concorrente/u);
+  unavailable = true;
+  assert.equal(await sequence.refreshContext(REVISION + 3), false);
+  assert.match(root.innerHTML, /Título local ainda em edição/u, "alvo removido não apaga o rascunho");
+  assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
+  assert.equal(await clickInspection(root, "[data-inspection-manual-action]", {
+    inspectionManualAction: "save"
+  }), true);
+  assert.equal(writes[0].expectedVersion, 2, "recusa de refresh não substitui a versão comprovada");
+  assert.equal(writes[0].expectedCourseRevision, REVISION + 1);
+  assert.equal(writes[0].studyUnit.title, "Título local ainda em edição");
+  sequence.destroy();
+});
+
+test("contexto não muda a revisão de uma gravação ambígua nem repete o escritor", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture();
+  let writes = 0;
+  const sequence = createCourseInspectionSequence({
+    root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+    onSaveManualEdit() {
+      writes += 1;
+      throw Object.assign(new Error("Resposta perdida"), { code: "network_error" });
+    },
+    windowValue: new FakeWindow(), documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  sequence.previewManualEdit({
+    studyUnitId: "unit-01", targetId: "study_unit", pathValues: { title: "Trabalho ainda sem recibo" },
+    origin: "manual"
+  });
+  assert.equal(await clickInspection(root, "[data-inspection-manual-action]", {
+    inspectionManualAction: "save"
+  }), false);
+  assert.equal(await sequence.refreshContext(REVISION + 1), false);
+  assert.equal(controller.calls.length, 1);
+  assert.equal(writes, 1);
+  assert.equal(sequence.snapshot().courseRevision, REVISION);
+  assert.match(root.innerHTML, /Trabalho ainda sem recibo/u);
+  sequence.destroy();
+});
+
+test("vazio oferece o mapa existente e parâmetros sem callback não geram rota substituta", async () => {
+  const root = new FakeRoot();
+  const sequence = createCourseInspectionSequence({
+    root, controller: controllerFixture({}, { totalCount: 0 }),
+    course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+    windowValue: new FakeWindow(), documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  assert.match(root.innerHTML, /section=planning[^>]*data-inspection-route[^>]*>Abrir mapa curricular/u);
+  assert.doesNotMatch(root.innerHTML, /section=parameters/u);
+  sequence.destroy();
+});
+
+test("entrada recente pede âncora global de atualização e mantém ordem curricular e rascunho", async () => {
+  const root = new FakeRoot();
+  const changes = [];
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(courseId, options) {
+      controller.calls.push({ courseId, options: structuredClone(options) });
+      return pageFor(options.entry === "latest_updated"
+        ? { ...options, anchorStudyUnitId: "unit-50" }
+        : options);
+    }
+  });
+  const sequence = createCourseInspectionSequence({
+    root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+    onStudyUnitChange(id) { changes.push(id); }, onSaveManualEdit() {},
+    windowValue: new FakeWindow(), documentValue: { activeElement: null }
+  });
+  await sequence.open();
+  assert.equal(await clickInspection(root, "[data-inspection-action]", {
+    inspectionAction: "latest-updated"
+  }), true);
+  const latest = controller.calls.at(-1).options;
+  assert.equal(latest.entry, "latest_updated");
+  assert.equal(Object.hasOwn(latest, "anchorStudyUnitId"), false);
+  assert.equal(latest.cursor, null);
+  assert.equal(latest.expectedRevision, REVISION);
+  assert.deepEqual(latest.scope, { kind: "course", id: null });
+  assert.equal(sequence.snapshot().studyUnitId, "unit-50");
+  assert.deepEqual(changes, ["unit-50"]);
+  assert.match(root.innerHTML, /Atualizado em/u);
+  assert.doesNotMatch(root.innerHTML, /Produzido em|Data de produção/u);
+  assert.equal(await clickInspection(root, "[data-inspection-action]", { inspectionAction: "next" }), true);
+  assert.equal(sequence.snapshot().studyUnitId, "unit-51");
+  sequence.previewManualEdit({
+    studyUnitId: "unit-51", targetId: "study_unit", pathValues: { title: "Rascunho preservado" }, origin: "manual"
+  });
+  assert.equal(await clickInspection(root, "[data-inspection-action]", {
+    inspectionAction: "latest-updated"
+  }), false);
+  assert.equal(controller.calls.length, 2);
+  assert.match(root.innerHTML, /Rascunho preservado/u);
   sequence.destroy();
 });
 
@@ -2210,20 +2448,17 @@ test("ação contextual de parâmetros abre a StudyUnit e preserva retorno", asy
         events.push(["save", structuredClone(position)]);
       }
     }),
-    course: { courseId: COURSE_ID, revision: REVISION },
-    onNavigate(hash, options) {
-      events.push(["navigate", hash, structuredClone(options)]);
+    course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+    onOpenParameters(options) {
+      events.push(["context", structuredClone(options)]);
     },
     windowValue: new FakeWindow(),
     documentValue: { activeElement }
   });
   await sequence.open();
 
-  const studyUnitRoute = `#/authoring/courses/${COURSE_ID}` +
-    "?section=parameters&studyUnitId=unit-02";
   const routeNode = {
-    dataset: { inspectionControlKey: "design:unit-02" },
-    getAttribute: () => studyUnitRoute,
+    dataset: { inspectionControlKey: "design:unit-02", studyUnitId: "unit-02" },
     closest(selector) {
       return selector === "[data-inspection-study-unit]"
         ? { dataset: { inspectionStudyUnit: "unit-02" } }
@@ -2234,20 +2469,21 @@ test("ação contextual de parâmetros abre a StudyUnit e preserva retorno", asy
     preventDefault() {},
     target: {
       closest(selector) {
-        return selector === "[data-inspection-route]"
+        return selector === "[data-inspection-open-parameters]"
           ? routeNode
           : null;
       }
     }
   });
 
-  assert.deepEqual(events.map(([kind]) => kind), ["save", "navigate"]);
+  assert.deepEqual(events.map(([kind]) => kind), ["save", "context"]);
   assert.equal(events[0][1].studyUnitId, "unit-02");
   assert.deepEqual(events[1], [
-    "navigate",
-    studyUnitRoute,
+    "context",
     {
-      returnTo: inspectionItem(2).deepLink,
+      studyUnitId: "unit-02",
+      targetScope: { kind: "study_unit", ref: "unit-02" },
+      targetLabel: "Unidade 2",
       returnPosition: {
         scope: { kind: "course", id: null },
         studyUnitId: "unit-02",

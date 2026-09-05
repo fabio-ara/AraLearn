@@ -82,6 +82,15 @@ Uma parte é um lote operacional. Módulo, lição e microssequência formam a
 arquitetura curricular. Alterar limites de uma parte não deve, por si só, alterar
 essa arquitetura.
 
+Para dividir, reunir ou reordenar lotes, use `salvar_parte` com as microssequências
+já existentes e na ordem desejada. `posicao`, quando informada, escolhe a posição
+do lote entre 1 e 64. A tarefa aceita até 64 microssequências e uma intenção de
+até 4.000 caracteres. Na reunião, conserve títulos, intenções e progressões dos
+lotes na proposta para revisão; não resuma conteúdo para caber no agrupamento.
+A prévia e o retorno no aplicativo ficam em **Reorganizar lotes**. Uma revisão
+concorrente exige releitura; um envio incerto deve recuperar o mesmo pedido antes
+de preparar outra reorganização.
+
 ## Repertório e materialização
 
 Antes de produzir unidades, `preparar_materializacao` traz somente o recorte

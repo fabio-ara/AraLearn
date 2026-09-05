@@ -3,17 +3,18 @@ import { escapePackageHtml as escape } from "../resources/sdk/html.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 
-export function renderStudyToolActions(studyUnit, registry = RESOURCE_PACKAGE_REGISTRY) {
+export function renderStudyToolActions(studyUnit, registry = RESOURCE_PACKAGE_REGISTRY, { disabled = false } = {}) {
   const tools = registry.listStudyTools(studyUnit);
   if (!tools.length) return "";
   const button = ({ instance, label, icon }) =>
     `<button class="icon-ghost study-tool-button" type="button" data-study-tool-id="${escape(instance.id)}"` +
-    ` aria-label="${escape(label)}" title="${escape(label)}" aria-haspopup="dialog">` +
+    ` aria-label="${escape(label)}" title="${escape(label)}" aria-haspopup="dialog"${disabled ? ' disabled aria-disabled="true"' : ""}>` +
     renderUiIcon(icon, "home-tab-icon") + "</button>";
   return '<div class="study-tool-actions" role="group" aria-label="Ferramentas da unidade">' +
     tools.slice(0, 2).map(button).join("") + (tools.length > 2
       ? '<button class="icon-ghost study-tool-button" type="button" data-study-tool-id=""' +
-        ' aria-label="Mais ferramentas" title="Mais ferramentas" aria-haspopup="dialog">' +
+        ' aria-label="Mais ferramentas" title="Mais ferramentas" aria-haspopup="dialog"' +
+        (disabled ? ' disabled aria-disabled="true">' : ">") +
         renderUiIcon("more", "home-tab-icon") + "</button>" : "") + "</div>";
 }
 
@@ -31,9 +32,14 @@ export function openStudyResourceUrl(value, documentValue = globalThis.document)
 
 /** A ferramenta mantém sua interação no pacote; este anfitrião cuida do retorno ao card. */
 export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
-  canOpen = () => true, onOpen = () => {}, registry = RESOURCE_PACKAGE_REGISTRY }) {
+  canOpen = () => true, onOpen = () => {}, registry = RESOURCE_PACKAGE_REGISTRY,
+  getOverlayHost = () => root.querySelector(".app-shell"),
+  getBackground = () => root.querySelector(".app-shell > .screen"),
+  getReturnControl = (toolId) => [...root.querySelectorAll("[data-study-tool-id]")]
+    .find((node) => node.dataset.studyToolId === toolId) }) {
   let overlay = null;
   let cleanup = null;
+  let interactionAbort = null;
   let contextKey = "";
   let unitKey = "";
   let returnState = null;
@@ -42,12 +48,14 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
   let activeToolId = "";
 
   function disposeInteraction() {
+    interactionAbort?.abort();
+    interactionAbort = null;
     if (typeof cleanup === "function") cleanup();
     cleanup = null;
   }
 
   function inertScreen(inert) {
-    const screen = root.querySelector(".app-shell > .screen");
+    const screen = getBackground();
     if (!screen) return;
     screen.inert = inert;
     if (inert) screen.setAttribute("aria-hidden", "true");
@@ -60,11 +68,11 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
     disposeInteraction();
     overlay.remove();
     overlay = null;
+    root.ownerDocument.removeEventListener("keydown", handleKeyDown, true);
     inertScreen(false);
     if (restore) {
       restoreRenderState(root, returnState, { restoreFocus: false, restorePageScroll: true });
-      const button = [...root.querySelectorAll("[data-study-tool-id]")]
-        .find((node) => node.dataset.studyToolId === returnId);
+      const button = getReturnControl(returnId, contextKey);
       button?.focus({ preventScroll: true });
     }
     return true;
@@ -75,6 +83,20 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
     if (!error) return;
     error.textContent = message;
     error.hidden = !message;
+  }
+
+  function handleKeyDown(event) {
+    if (!overlay) return;
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); return; }
+    if (event.key !== "Tab") return;
+    const focusable = [...overlay.querySelectorAll("button, a[href], input, select, textarea, [tabindex='0']")]
+      .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length);
+    const index = focusable.indexOf(root.ownerDocument.activeElement);
+    if (!focusable.length) return;
+    if (event.shiftKey && index <= 0) { event.preventDefault(); focusable.at(-1).focus(); }
+    else if (!event.shiftKey && (index < 0 || index === focusable.length - 1)) {
+      event.preventDefault(); focusable[0].focus();
+    }
   }
 
   async function showTool(toolId) {
@@ -101,7 +123,8 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
     title.textContent = tool.label;
     body.innerHTML = '<p role="status">Preparando ferramenta…</p>';
     try {
-      const host = await getHost(tool.instance);
+      interactionAbort = new AbortController();
+      const host = await getHost(tool.instance, { signal: interactionAbort.signal });
       if (epoch !== ownEpoch || !overlay) return;
       body.innerHTML = registry.renderInstance(tool.instance, "content", {
         studyUnit: getStudyUnit(), canRevealAnswers: host.canRevealAnswers === true,
@@ -120,7 +143,7 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
   }
 
   function open(button) {
-    if (!canOpen() || !getStudyUnit()) return false;
+    if (!canOpen() || !getStudyUnit(button)) return false;
     onOpen();
     close({ restore: false });
     returnState = captureRenderState(root);
@@ -134,22 +157,11 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
       '<button class="icon-ghost" type="button" data-close-study-tool aria-label="Fechar ferramenta" title="Fechar ferramenta">' +
       renderUiIcon("remove-state", "home-tab-icon") + '</button><h2 id="study-tool-title">Ferramenta</h2>' +
       '</header><div class="editor-body study-tool-body"></div></article>';
-    root.querySelector(".app-shell").append(overlay);
+    getOverlayHost().append(overlay);
     inertScreen(true);
     overlay.querySelector("[data-close-study-tool]").addEventListener("click", () => close());
     overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
-    overlay.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
-      if (event.key !== "Tab") return;
-      const focusable = [...overlay.querySelectorAll("button, a[href], input, select, textarea, [tabindex='0']")]
-        .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length);
-      const index = focusable.indexOf(root.ownerDocument.activeElement);
-      if (!focusable.length) return;
-      if (event.shiftKey && index <= 0) { event.preventDefault(); focusable.at(-1).focus(); }
-      else if (!event.shiftKey && (index < 0 || index === focusable.length - 1)) {
-        event.preventDefault(); focusable[0].focus();
-      }
-    });
+    root.ownerDocument.addEventListener("keydown", handleKeyDown, true);
     overlay.querySelector("[data-close-study-tool]").focus();
     void showTool(returnId);
     return true;
@@ -166,7 +178,7 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
       if (!canOpen() || contextKey !== getContextKey() || unitKey !== JSON.stringify(getStudyUnit())) {
         close({ restore: false }); return;
       }
-      root.querySelector(".app-shell")?.append(overlay);
+      getOverlayHost()?.append(overlay);
       inertScreen(true);
     },
     refresh() { if (overlay) void showTool(activeToolId); },

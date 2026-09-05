@@ -1,3 +1,4 @@
+import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
@@ -923,6 +924,14 @@ export class CourseApiClient {
     }
   }
 
+  saveCourseAuthoringPart(value) {
+    const request = normalizeCourseAuthoringPartRequest(value);
+    const { courseId, ...body } = request;
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-parts`, {
+      method: "POST", body
+    }).then(result => normalizeCourseAuthoringPartChange(result, request));
+  }
+
   loadAuthoringPlan(courseId) {
     return this.requestCourseApi(`${courseResourcePath(courseId)}/instructional-plan`);
   }
@@ -1231,6 +1240,7 @@ export class CourseApiClient {
   loadAuthoringStudyUnits(courseId, {
     expectedRevision,
     scope = { kind: "course", id: null },
+    entry = null,
     anchorStudyUnitId = null,
     cursor: cursorValue = null,
     direction = "forward",
@@ -1243,7 +1253,9 @@ export class CourseApiClient {
       ? null
       : boundedIdentifier(anchorStudyUnitId, "Unidade de âncora");
     const normalizedDirection = String(direction || "").trim();
-    if (!new Set(["forward", "backward"]).has(normalizedDirection) ||
+    if (entry != null && (entry !== "latest_updated" || normalizedAnchor != null ||
+        normalizedCursor != null || normalizedDirection !== "forward") ||
+        !new Set(["forward", "backward"]).has(normalizedDirection) ||
         (normalizedAnchor && normalizedCursor)) {
       throw new TypeError("Paginação da inspeção inválida.");
     }
@@ -1252,6 +1264,7 @@ export class CourseApiClient {
       `/v2/courses/${encodeURIComponent(normalizedCourseId)}/study-units`, {
       query: {
         expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
+        ...(entry == null ? {} : { entry }),
         scopeKind: normalizedScope.kind,
         scopeId: normalizedScope.id,
         anchorStudyUnitId: normalizedAnchor,

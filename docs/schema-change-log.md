@@ -1,5 +1,26 @@
 # Alterações do schema
 
+## 20260905125617 — reorganização de partes e entrada contextual da inspeção
+
+A reorganização reutiliza o escritor de partes existente para dividir, reunir
+e reordenar agrupamentos de microssequências. O ajuste torna a ordem determinística
+e preserva IDs, hierarquia, conteúdo, fontes, decisões aplicadas e snapshots
+históricos das unidades. Revisão concorrente é recusada; recibos recuperam o
+resultado original sem repetir a mudança.
+
+O leitor de inspeção v2 recebe a opção `latest_updated`. Ela escolhe, dentro do
+escopo autorizado e da revisão solicitada, a unidade com atualização mais recente;
+empates seguem a ordem curricular. A página e seus cursores continuam usando essa
+ordem. A opção não se combina com âncora ou cursor explícitos e exige direção
+forward. Chamadas anteriores conservam os defaults. As três assinaturas antigas
+foram substituídas, sem overload paralelo nem tabela ou lista temporal nova.
+
+A migração altera funções e conserva 599 objetos classificados no inventário e
+44 capacidades no manifesto. O upgrade foi ensaiado sobre backup local restaurado,
+e a prova SQL focal passou 46 verificações de reorganização, preservação histórica,
+paginação, concorrência e permissões. A revisão foi aplicada localmente; isso não
+certifica implantação hospedada ou jornada conversacional em cliente externo.
+
 ## 20260905114027 — áudio e ferramentas do catálogo
 
 O curso passa a guardar a configuração explícita de voz e uma biblioteca privada

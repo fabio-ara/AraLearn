@@ -7,6 +7,10 @@ import {
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
+import { normalizeCourseMediaRead } from "../domain/courseMedia.js";
+import { normalizeCourseSourcePdfDownload } from "../domain/courseSources.js";
+import { readCourseMediaBlob } from "../supabase/readCourseMediaBlob.js";
+import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "../study/studyTools.js";
 import { renderPackageStudyUnitBlocksWithDock } from
   "../render/renderPackageStudyUnit.js";
 import {
@@ -491,7 +495,10 @@ function renderContext(state, item) {
     '<span class="course-inspection-context-level">' +
     `<a href="${escapeHtml(routeForPath(state.courseId, "study_unit", item.studyUnit.id))}" data-inspection-route` +
     ` data-inspection-context-study-unit>Unidade · ${escapeHtml(item.studyUnit.title)}</a>` +
-    "</span></nav></details>";
+    '</span><button type="button" data-inspection-action="latest-updated"' +
+    ' data-inspection-control-key="latest-updated"' +
+    `${state.initialLoading || state.loadingDirection ? ' disabled aria-disabled="true"' : ""}>` +
+    'Ir à atualização mais recente</button></nav></details>';
 }
 
 function sameStudyUnit(left, right) {
@@ -521,10 +528,6 @@ function renderManualTitle(item, state, editing, targetId) {
 function renderManualModeActions(item, state, editing, observationCount) {
   const id = escapeHtml(item.studyUnit.id);
   const selectedForBatch = state.selectedStudyUnitIds.has(item.studyUnit.id);
-  const designRoute = buildCourseAuthoringRoute(state.courseId, {
-    section: "parameters",
-    studyUnitId: item.studyUnit.id
-  });
   const canUndo = state.manualUndo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   const canRedo = state.manualRedo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   return '<nav class="course-inspection-mode-actions" role="group" aria-label="Ações da unidade de estudo">' +
@@ -533,11 +536,11 @@ function renderManualModeActions(item, state, editing, observationCount) {
     `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
     `${renderUiIcon("preview", "course-authoring-button-icon")}</button>` +
     (state.canAccessDesign
-      ? `<a href="${escapeHtml(designRoute)}" data-inspection-route` +
+      ? `<button type="button" data-inspection-open-parameters data-study-unit-id="${id}"` +
         ` data-inspection-control-key="design:${id}" aria-label="Parâmetros aplicáveis a ${escapeHtml(
           item.studyUnit.title
         )}" title="Parâmetros da unidade de estudo">` +
-        `${renderUiIcon("tags", "course-authoring-button-icon")}</a>`
+        `${renderUiIcon("tags", "course-authoring-button-icon")}</button>`
       : "") +
     `<button type="button" data-inspection-observations data-study-unit-id="${id}"` +
     ` data-inspection-control-key="observations:${id}" aria-label="Observações de ${escapeHtml(
@@ -928,16 +931,21 @@ function renderStudyUnit(
     resourceSelectionTargetIds: resourceTargetIds,
     selectedResourceTargetIds,
     revealPracticeAnswers: true,
+    toolsInActionBar: !editing,
     manualEditingTargetId: editing && selectedResourceTargetIds.length
       ? state.manualTargetId
       : ""
   });
-  const selected = state.selectedStudyUnitId === item.studyUnit.id;
+  const selected = state.selectionMode
+    ? state.selectedStudyUnitIds.has(item.studyUnit.id)
+    : state.selectedStudyUnitId === item.studyUnit.id;
+  const reference = state.selectionMode && state.selectionReturn?.anchor.studyUnitId === item.studyUnit.id;
   return `<li class="course-inspection-item${selected ? " is-selected" : ""}" data-inspection-study-unit="${escapeHtml(item.studyUnit.id)}"` +
     ` data-inspection-ordinal="${item.ordinal}" aria-posinset="${item.ordinal}" aria-setsize="${totalCount}">` +
     `<article aria-labelledby="inspection-study-unit-${escapeHtml(item.studyUnit.id)}"` +
     `${selected ? ' aria-current="true"' : ""}>` +
     '<header class="course-inspection-item-heading"><div>' +
+    (reference ? '<p class="course-inspection-selection-reference">Unidade de referência</p>' : "") +
     `<p>${escapeHtml(path.didacticMicrosequence.title)} · unidade ${item.ordinal} de ${totalCount}</p>` +
     `${renderManualTitle(item, state, editing, state.manualTargetId)}</div>` +
     `<details class="course-inspection-item-details"><summary aria-label="Abrir detalhes de ${escapeHtml(item.studyUnit.title)}"` +
@@ -946,11 +954,16 @@ function renderStudyUnit(
     '<div class="course-inspection-item-detail-panel"><dl>' +
     `<div><dt>Módulo</dt><dd>${escapeHtml(path.module.title)}</dd></div>` +
     `<div><dt>Lição</dt><dd>${escapeHtml(path.lesson.title)}</dd></div>` +
-    `<div><dt>Microssequência</dt><dd>${escapeHtml(path.didacticMicrosequence.title)}</dd></div></dl>` +
+    `<div><dt>Microssequência</dt><dd>${escapeHtml(path.didacticMicrosequence.title)}</dd></div>` +
+    `<div><dt>Atualizado em</dt><dd><time datetime="${escapeHtml(item.updatedAt)}">` +
+    `${escapeHtml(new Date(item.updatedAt).toLocaleString("pt-BR"))}</time></dd></div></dl>` +
     renderAnalysisIdeas(item) +
     renderStudyUnitContextActions(item) +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
+    renderStudyToolActions(item.studyUnit, RESOURCE_PACKAGE_REGISTRY, {
+      disabled: Boolean(state.manualStudyUnitId || state.assistanceDraft || state.assistanceSaving)
+    }) +
     renderManualModeActions(item, state, editing, observationCount) +
     "</div>" +
     renderAuthorshipState(item, observationCount) +
@@ -1120,11 +1133,12 @@ function renderInspectionSyncState(state) {
 function renderTemporarySelection(state) {
   if (!state.selectionMode) return "";
   const count = state.selectedStudyUnitIds.size;
-  return '<aside class="course-authoring-notice" data-inspection-selection-bar' +
-    ' role="status" aria-label="Seleção temporária de unidades de estudo">' +
-    `<span>${count > 0
+  return '<aside class="course-inspection-selection" data-inspection-selection-bar' +
+    ' aria-label="Seleção temporária de unidades de estudo">' +
+    `<div><span role="status">${count > 0
       ? `${count} ${count === 1 ? "unidade selecionada" : "unidades selecionadas"}`
       : "Selecione ao menos duas unidades"}</span>` +
+    `<small>Referência: ${escapeHtml(state.selectionReturn?.title || "")}</small></div>` +
     '<div class="course-authoring-compact-actions">' +
     `<button type="button" class="course-authoring-icon-action"` +
     ' data-inspection-selection-action="observe-selected"' +
@@ -1133,9 +1147,23 @@ function renderTemporarySelection(state) {
     `${count < 2 ? ' disabled aria-disabled="true"' : ""}>` +
     `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>` +
     '<button type="button" class="course-authoring-icon-action"' +
-    ' data-inspection-selection-action="cancel" aria-label="Cancelar seleção" title="Cancelar seleção">' +
+    ' data-inspection-selection-action="cancel" data-inspection-control-key="selection:cancel"' +
+    ' aria-label="Cancelar seleção" title="Voltar à unidade de referência">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
     "</div></aside>";
+}
+
+function renderSelectionPagination(state, direction) {
+  const previous = direction === "backward";
+  const available = previous ? state.hasPrevious : state.hasMore;
+  if (!available) return "";
+  const label = previous ? "Carregar unidades anteriores" : "Carregar unidades posteriores";
+  return '<div class="course-inspection-selection-pagination">' +
+    `<button type="button" data-inspection-selection-action="${direction}"` +
+    ` data-inspection-control-key="selection:${direction}" aria-label="${label}"` +
+    `${state.loadingDirection ? ' disabled aria-disabled="true"' : ""}>` +
+    `${renderUiIcon(previous ? "arrow-left" : "arrow-right", "course-authoring-button-icon")}` +
+    `<span>${label}</span></button></div>`;
 }
 
 function renderSequence(state) {
@@ -1172,17 +1200,22 @@ function renderSequence(state) {
     body = '<section class="course-authoring-state is-empty" role="status">' +
       `${renderUiIcon("folder", "course-authoring-state-icon")}` +
       '<h3>Nenhuma unidade de estudo materializada</h3>' +
-      '<p>Este escopo ainda não possui materialização para conferir.</p></section>';
+      '<p>Consulte o mapa para localizar a próxima microssequência a produzir.</p>' +
+      `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, { section: "planning" }))}"` +
+      ' data-inspection-route data-inspection-control-key="empty:curriculum">Abrir mapa curricular</a></section>';
   } else {
-    body = '<ol class="course-inspection-sequence" aria-label="Sequência curricular de unidades">' +
-      renderStudyUnit(
-        active,
+    body = (state.selectionMode ? renderSelectionPagination(state, "backward") : "") +
+      `<ol class="course-inspection-sequence${state.selectionMode ? " course-inspection-selection-sequence" : ""}"` +
+      ' aria-label="Sequência curricular de unidades">' +
+      (state.selectionMode ? state.items : [active]).map((item) => renderStudyUnit(
+        item,
         state.totalCount,
         state,
-        Object.hasOwn(state.observationCounts, active.studyUnit.id)
-          ? state.observationCounts[active.studyUnit.id]
+        Object.hasOwn(state.observationCounts, item.studyUnit.id)
+          ? state.observationCounts[item.studyUnit.id]
           : null
-      ) + "</ol>";
+      )).join("") + "</ol>" +
+      (state.selectionMode ? renderSelectionPagination(state, "forward") : "");
   }
   return '<section class="course-authoring-section course-authoring-inspection"' +
     ' aria-label="Unidades de estudo">' +
@@ -1257,6 +1290,7 @@ export function createCourseInspectionSequence({
   onNavigate = () => {},
   onStudyUnitChange = () => true,
   onEditSources = () => {},
+  onOpenParameters = null,
   onEditContent = null,
   onSaveManualEdit = null,
   windowValue = globalThis.window || null,
@@ -1272,6 +1306,7 @@ export function createCourseInspectionSequence({
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
       typeof onNavigate !== "function" || typeof onStudyUnitChange !== "function" ||
       typeof onEditSources !== "function" ||
+      (onOpenParameters !== null && typeof onOpenParameters !== "function") ||
       (onEditContent !== null && typeof onEditContent !== "function") ||
       (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") ||
       (providerAssistanceSession !== null &&
@@ -1291,7 +1326,8 @@ export function createCourseInspectionSequence({
     courseTitle: typeof course.title === "string" ? course.title.trim() : "",
     pinnedRevision: course.revision,
     canEditSources: course.ownership === "owned" && course.canEdit === true,
-    canAccessDesign: course.ownership === "owned" && course.canEdit === true,
+    canAccessDesign: course.ownership === "owned" && course.canEdit === true &&
+      typeof onOpenParameters === "function",
     canEditContent: course.ownership === "owned" && course.canEdit === true &&
       typeof onEditContent === "function",
     canEditManually: course.ownership === "owned" && course.canEdit === true &&
@@ -1324,6 +1360,7 @@ export function createCourseInspectionSequence({
     hydrationFailure: "",
     observationCounts: {},
     selectionMode: false,
+    selectionReturn: null,
     selectedStudyUnitIds: new Set(),
     observationStudyUnitId: null,
     observationTargetIds: [],
@@ -1380,6 +1417,80 @@ export function createCourseInspectionSequence({
   let courseSearchIndexFailed = false;
   let manualInlineController = null;
   let providerAssistance = null;
+  let toolStudyUnitId = "";
+  let toolReturnScroll = null;
+  const studyTools = createStudyTools({
+    root,
+    getStudyUnit(button) {
+      if (button) toolStudyUnitId = button.closest("[data-inspection-study-unit]")?.dataset.inspectionStudyUnit || "";
+      return state.items.find(({ studyUnit }) => studyUnit.id === toolStudyUnitId)?.studyUnit || null;
+    },
+    getContextKey: () => `${state.courseId}:${state.pinnedRevision}:${toolStudyUnitId}`,
+    canOpen: () => !state.destroyed && !state.manualStudyUnitId && !state.assistanceDraft &&
+      !state.assistanceSaving && !providerAssistance?.opened,
+    getOverlayHost: () => root.closest?.(".course-authoring-root") || root,
+    getBackground: () => root.closest?.(".course-authoring-surface") || root.querySelector(".course-authoring-inspection"),
+    onOpen() {
+      toolReturnScroll = scrollTarget && "scrollTop" in scrollTarget ? scrollTarget.scrollTop : null;
+    },
+    getReturnControl(toolId) {
+      if (toolReturnScroll !== null) scrollTarget.scrollTop = toolReturnScroll;
+      return [...root.querySelectorAll("[data-study-tool-id]")].find((button) =>
+        button.dataset.studyToolId === toolId &&
+        button.closest("[data-inspection-study-unit]")?.dataset.inspectionStudyUnit === toolStudyUnitId);
+    },
+    getHost(_instance, { signal }) {
+      const courseId = state.courseId;
+      const revision = state.pinnedRevision;
+      const studyUnitId = toolStudyUnitId;
+      const assertContext = () => {
+        if (signal.aborted || state.destroyed || state.pinnedRevision !== revision || studyUnitId !== toolStudyUnitId) {
+          throw new Error("A unidade mudou. Abra a ferramenta novamente.");
+        }
+      };
+      return {
+        canRevealAnswers: true,
+        async loadAudioConfiguration() {
+          assertContext();
+          const result = normalizeCourseMediaRead(await controller.loadCourseMedia(courseId, {
+            expectedRevision: revision, mode: "configuration"
+          }));
+          assertContext();
+          if (result.courseId !== courseId || result.courseRevision !== revision || result.mode !== "configuration") {
+            throw new Error("A configuração de áudio não corresponde a esta revisão do curso.");
+          }
+          return result.audioConfig;
+        },
+        async downloadMedia(media, options) {
+          assertContext();
+          const result = await controller.getCourseMediaDownload({
+            courseId, expectedRevision: revision, studyUnitId, contentHash: media.contentHash
+          });
+          assertContext();
+          if (result.courseId !== courseId || result.courseRevision !== revision || result.studyUnitId !== studyUnitId) {
+            throw new Error("O áudio autorizado não corresponde a esta unidade.");
+          }
+          const file = await readCourseMediaBlob(result, media, options);
+          assertContext();
+          return file;
+        },
+        openExternalUrl: (url) => { assertContext(); openStudyResourceUrl(url, documentValue); },
+        async openSourceAttachment(target) {
+          assertContext();
+          const result = normalizeCourseSourcePdfDownload(await controller.getCourseSourceAttachmentDownload({
+            courseId, expectedCourseRevision: revision, ...target
+          }));
+          assertContext();
+          if (result.courseId !== courseId || result.courseRevision !== revision ||
+              result.sourceId !== target.sourceId || result.sourceRevision !== target.sourceRevision ||
+              result.attachment.contentHash !== target.contentHash) {
+            throw new Error("O PDF autorizado não corresponde à referência escolhida.");
+          }
+          openStudyResourceUrl(result.signedUrl, documentValue);
+        }
+      };
+    }
+  });
 
   function markInteraction() {
     lastInteractionAt = Date.now();
@@ -1547,7 +1658,12 @@ export function createCourseInspectionSequence({
   function captureAnchor() {
     const activeElement = documentValue?.activeElement;
     const focusedUnit = activeElement?.closest?.("[data-inspection-study-unit]");
+    const visibleUnit = state.selectionMode
+      ? [...(root.querySelectorAll?.("[data-inspection-study-unit]") || [])]
+        .find((element) => element.getBoundingClientRect?.().bottom > stickyTop())
+      : null;
     const selectedId = focusedUnit?.dataset?.inspectionStudyUnit ||
+      visibleUnit?.dataset?.inspectionStudyUnit ||
       state.activeStudyUnitId;
     const escapedId = selectedId && globalThis.CSS?.escape
       ? globalThis.CSS.escape(selectedId)
@@ -1663,7 +1779,9 @@ export function createCourseInspectionSequence({
     state.restoreObservationCloseFocus = false;
     manualInlineController?.destroy?.();
     manualInlineController = null;
+    studyTools.beforeRender();
     root.innerHTML = renderSequence(state);
+    studyTools.afterRender();
     if (snapshot?.controlKey || snapshot?.openControlKeys?.length) {
       restoreControlState(snapshot, { focus: false });
     }
@@ -1744,11 +1862,12 @@ export function createCourseInspectionSequence({
     }
   }
 
-  function pageOptions({ anchorStudyUnitId = null, cursor = null, direction = "forward" } = {}) {
+  function pageOptions({ anchorStudyUnitId = null, cursor = null, direction = "forward", entry = null } = {}) {
     return {
       expectedRevision: state.pinnedRevision,
       scope: state.scope,
       ...(anchorStudyUnitId ? { anchorStudyUnitId } : {}),
+      ...(entry ? { entry } : {}),
       cursor,
       direction,
       limit: PAGE_SIZE,
@@ -1918,6 +2037,14 @@ export function createCourseInspectionSequence({
   function openBatchObservations() {
     const targetIds = [...state.selectedStudyUnitIds];
     if (targetIds.length < 2 || state.observationSaving) return false;
+    const preserveDraft = hasObservationDraft() || Boolean(state.pendingBatchObservation);
+    if (preserveDraft && state.observationDraftStudyUnitId !== targetIds[0]) {
+      state.observationError = "Conclua a observação em rascunho antes de mudar de alvo.";
+      state.observationSheetOpen = true;
+      state.restoreObservationFocus = true;
+      render();
+      return false;
+    }
     const anchor = captureAnchor();
     anchor.controlKey = "";
     anchor.openControlKeys = [];
@@ -1927,13 +2054,13 @@ export function createCourseInspectionSequence({
     state.observationSheetOpen = true;
     state.observationItems = [];
     state.observationCollectionSummary = null;
-    state.observationDraft = { category: null, rawText: "" };
+    if (!preserveDraft) state.observationDraft = { category: null, rawText: "" };
     state.observationDraftStudyUnitId = targetIds[0];
     state.observationEditingId = null;
     state.observationError = "";
     state.observationMessage = "";
     state.pendingObservationMutation = null;
-    state.pendingBatchObservation = null;
+    if (!preserveDraft) state.pendingBatchObservation = null;
     state.observationLoading = false;
     state.restoreObservationFocus = true;
     render({ anchor });
@@ -2098,7 +2225,8 @@ export function createCourseInspectionSequence({
   async function loadInitial({
     anchorStudyUnitId = state.requestedAnchorStudyUnitId,
     offset = 0,
-    allowRebase = true
+    allowRebase = true,
+    entry = null
   } = {}) {
     const hasRequestedPosition = Boolean(anchorStudyUnitId);
     const epoch = ++requestEpoch;
@@ -2108,7 +2236,7 @@ export function createCourseInspectionSequence({
     state.targetMissing = false;
     render({ anchor: { studyUnitId: anchorStudyUnitId, offsetFromStickyTop: offset }, initial: true });
     try {
-      const page = await readPage(pageOptions({ anchorStudyUnitId }));
+      const page = await readPage(pageOptions({ anchorStudyUnitId, entry }));
       if (state.destroyed || epoch !== requestEpoch) return false;
       if (anchorStudyUnitId && page.items.length === 0 && page.totalCount > 0) {
         if (state.explicitAnchor) {
@@ -2334,7 +2462,7 @@ export function createCourseInspectionSequence({
       clearTimeout(saveTimer);
       saveTimer = null;
     }
-    const anchor = snapshot || captureAnchor();
+    const anchor = state.selectionReturn?.anchor || snapshot || captureAnchor();
     if (!anchor.studyUnitId) return Promise.resolve(false);
     return Promise.resolve(controller.saveAuthoringInspectionPosition(state.courseId, {
       scope: state.scope,
@@ -2378,7 +2506,7 @@ export function createCourseInspectionSequence({
     };
     if (!selectStudyUnit(target.studyUnit.id, { anchor: targetAnchor })) return false;
     restoreAnchor(targetAnchor, { initial: true });
-    await Promise.resolve(onStudyUnitChange(target.studyUnit.id));
+    if (!state.selectionMode) await Promise.resolve(onStudyUnitChange(target.studyUnit.id));
     scheduleSave();
     return true;
   }
@@ -2461,6 +2589,95 @@ export function createCourseInspectionSequence({
     return navigateFromCurrentPoint(route);
   }
 
+  async function openUnitContext(control, kind) {
+    const item = state.items.find(({ studyUnit }) =>
+      studyUnit.id === String(control.dataset.studyUnitId || ""));
+    if (!item || (kind === "parameters" ? !state.canAccessDesign : !state.canEditSources)) return false;
+    if (state.manualSaving || state.assistanceSaving) return false;
+    captureManualDraft();
+    closeOpenMenus();
+    const anchor = captureAnchor();
+    anchor.studyUnitId = item.studyUnit.id;
+    const escapedId = item.studyUnit.id.replace(/["\\]/gu, "\\$&");
+    const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
+    if (element?.getBoundingClientRect) {
+      anchor.offsetFromStickyTop = element.getBoundingClientRect().top - stickyTop();
+    }
+    const returnFocusKey = String(control.dataset.inspectionControlKey ||
+      `${kind === "parameters" ? "design" : "sources"}:${item.studyUnit.id}`);
+    const returnPosition = {
+      scope: state.scope,
+      studyUnitId: item.studyUnit.id,
+      offsetFromStickyTop: anchor.offsetFromStickyTop,
+      courseRevision: state.pinnedRevision
+    };
+    await savePositionNow(anchor);
+    try {
+      return await Promise.resolve(kind === "parameters"
+        ? onOpenParameters({
+          studyUnitId: item.studyUnit.id,
+          targetScope: { kind: "study_unit", ref: item.studyUnit.id },
+          targetLabel: item.studyUnit.title,
+          returnFocusKey,
+          returnPosition
+        })
+        : onEditSources({
+          targetKind: "study_unit",
+          targetId: item.studyUnit.id,
+          targetVersion: item.version,
+          targetLabel: item.studyUnit.title,
+          targetStudyUnit: structuredClone(item.studyUnit),
+          returnFocusKey,
+          returnPosition
+        }));
+    } catch (error) {
+      state.manualStatus = publicErrorMessage(error, "Não foi possível abrir este contexto.");
+      render({ anchor: { ...anchor, controlKey: returnFocusKey }, captureDraft: false });
+      return false;
+    }
+  }
+
+  async function leaveSelection() {
+    const reference = state.selectionReturn;
+    if (!reference || state.loadingDirection || state.observationSaving) return false;
+    if (state.pendingBatchObservation || hasObservationDraft()) {
+      state.observationError = "Conclua ou apague a observação em rascunho antes de encerrar a seleção.";
+      state.observationSheetOpen = true;
+      state.restoreObservationFocus = true;
+      render();
+      return false;
+    }
+    if (!state.items.some(({ studyUnit }) => studyUnit.id === reference.anchor.studyUnitId)) {
+      const epoch = ++requestEpoch;
+      state.loadingDirection = "reference";
+      render();
+      try {
+        const page = await readPage(pageOptions({ anchorStudyUnitId: reference.anchor.studyUnitId }));
+        if (state.destroyed || epoch !== requestEpoch) return false;
+        if (!page.items.some(({ studyUnit }) => studyUnit.id === reference.anchor.studyUnitId)) {
+          throw new Error("A unidade de referência não está disponível. Atualize a leitura para conferir o curso.");
+        }
+        state.items = [];
+        mergePage(page, "initial");
+      } catch (error) {
+        state.manualStatus = publicErrorMessage(error, "Não foi possível retornar à unidade de referência.");
+        return false;
+      } finally {
+        state.loadingDirection = "";
+        render();
+      }
+    }
+    state.selectionMode = false;
+    state.selectionReturn = null;
+    state.selectedStudyUnitIds.clear();
+    state.activeStudyUnitId = reference.anchor.studyUnitId;
+    state.selectedStudyUnitId = reference.anchor.studyUnitId;
+    state.manualStatus = "";
+    render({ anchor: reference.anchor });
+    await savePositionNow(reference.anchor);
+    return true;
+  }
+
   function restoreManualHistoryPreview() {
     const preview = state.manualHistoryPreview;
     if (!preview) return;
@@ -2516,6 +2733,11 @@ export function createCourseInspectionSequence({
     { pathValues = {}, origin = "manual", restoreFocus = true, status = "" } = {}
   ) {
     if (!state.canEditManually || state.manualSaving) return false;
+    if (state.selectionMode) {
+      state.manualStatus = "Volte à unidade de referência antes de iniciar a edição.";
+      render();
+      return false;
+    }
     const item = manualItem(studyUnitId);
     if (!item) return false;
     state.manualStudyUnitId = studyUnitId;
@@ -2896,6 +3118,10 @@ export function createCourseInspectionSequence({
   }
 
   async function handleClick(event) {
+    const parameters = event.target.closest?.("[data-inspection-open-parameters]");
+    if (parameters) return openUnitContext(parameters, "parameters");
+    const sources = event.target.closest?.("[data-inspection-edit-sources]");
+    if (sources) return openUnitContext(sources, "sources");
     const contextSummary = event.target.closest?.(
       ".course-inspection-context-selector > summary"
     );
@@ -3019,6 +3245,20 @@ export function createCourseInspectionSequence({
       if (action === "toggle-current") {
         const studyUnitId = String(selectionAction.dataset.studyUnitId || "");
         if (!state.items.some(({ studyUnit }) => studyUnit.id === studyUnitId)) return false;
+        if (state.manualStudyUnitId || state.assistanceDraft || state.pendingBatchObservation ||
+            hasObservationDraft()) {
+          state.manualStatus = "Conclua a edição ou observação em rascunho antes de mudar a seleção.";
+          render();
+          return false;
+        }
+        const anchor = captureAnchor();
+        anchor.controlKey = `selection:${studyUnitId}`;
+        if (!state.selectionMode) {
+          state.selectionReturn = {
+            anchor: { ...anchor, studyUnitId },
+            title: state.items.find(({ studyUnit }) => studyUnit.id === studyUnitId).studyUnit.title
+          };
+        }
         state.selectionMode = true;
         if (state.selectedStudyUnitIds.has(studyUnitId)) {
           state.selectedStudyUnitIds.delete(studyUnitId);
@@ -3027,20 +3267,12 @@ export function createCourseInspectionSequence({
         } else {
           state.manualStatus = "A seleção temporária aceita até 64 unidades.";
         }
-        const anchor = captureAnchor();
-        anchor.controlKey = `selection:${studyUnitId}`;
         render({ anchor });
         return true;
       }
       if (action === "observe-selected") return openBatchObservations();
-      if (action === "cancel") {
-        state.selectionMode = false;
-        state.selectedStudyUnitIds.clear();
-        state.pendingBatchObservation = null;
-        state.manualStatus = "";
-        render({ anchor: captureAnchor() });
-        return true;
-      }
+      if (action === "cancel") return leaveSelection();
+      if (state.selectionMode && ["forward", "backward"].includes(action)) return loadDirection(action);
     }
     const observations = event.target.closest?.("[data-inspection-observations]");
     if (observations) {
@@ -3138,29 +3370,24 @@ export function createCourseInspectionSequence({
       }
       return;
     }
-    const editSources = event.target.closest?.("[data-inspection-edit-sources]");
-    if (editSources) {
-      const item = state.items.find(({ studyUnit }) =>
-        studyUnit.id === String(editSources.dataset.studyUnitId || ""));
-      if (item) {
-        closeOpenMenus();
-        state.activeStudyUnitId = item.studyUnit.id;
-        state.selectedStudyUnitId = item.studyUnit.id;
-        await savePositionNow(captureAnchor());
-        onEditSources({
-          targetKind: "study_unit",
-          targetId: item.studyUnit.id,
-          targetVersion: item.version,
-          targetLabel: item.studyUnit.title,
-          targetStudyUnit: item.studyUnit,
-          ...(editSources.dataset.inspectionControlKey
-            ? { returnFocusKey: String(editSources.dataset.inspectionControlKey) }
-            : {})
-        });
-      }
-      return;
-    }
     const action = event.target.closest?.("[data-inspection-action]")?.dataset?.inspectionAction;
+    if (action === "latest-updated") {
+      if (hasPendingDraft() || state.selectionMode) {
+        state.manualStatus = "Conclua a edição, observação ou seleção antes de mudar de ponto.";
+        render();
+        return false;
+      }
+      closeOpenMenus();
+      state.explicitAnchor = false;
+      state.requestedAnchorStudyUnitId = null;
+      pendingInitialFocusKey = "context";
+      const loaded = await loadInitial({ anchorStudyUnitId: null, entry: "latest_updated" });
+      if (loaded && state.activeStudyUnitId) {
+        await Promise.resolve(onStudyUnitChange(state.activeStudyUnitId));
+        scheduleSave();
+      }
+      return loaded;
+    }
     if (action === "previous" || action === "next") return moveActive(action);
     if (action === "retry") return loadInitial();
     if (action === "start") {
@@ -3270,7 +3497,7 @@ export function createCourseInspectionSequence({
         signal.courseId !== state.courseId || signal.revision !== state.pinnedRevision ||
         typeof signal.studyUnitId !== "string" ||
         Date.now() - lastInteractionAt < 1_500 || state.initialLoading || state.loadingDirection ||
-        state.manualStudyUnitId) {
+        hasPendingDraft() || state.selectionMode) {
       return;
     }
     let position;
@@ -3421,6 +3648,9 @@ export function createCourseInspectionSequence({
     focusControl(controlKey) {
       return restoreControlState({ controlKey });
     },
+    refreshContext(nextRevision, { returnPosition = null, returnFocusKey = "" } = {}) {
+      return this.refresh(nextRevision, { contextual: true, returnPosition, returnFocusKey });
+    },
     previewManualEdit({
       studyUnitId,
       targetId,
@@ -3429,12 +3659,21 @@ export function createCourseInspectionSequence({
     } = {}) {
       return previewManualDraft({ studyUnitId, targetId, pathValues, origin });
     },
-    async refresh(nextRevision = state.pinnedRevision) {
+    async refresh(nextRevision = state.pinnedRevision, {
+      contextual = false, returnPosition = null, returnFocusKey = ""
+    } = {}) {
       const revision = natural(nextRevision, "A revisão do curso", { minimum: 1 });
+      if (state.manualSaving || state.assistanceSaving || state.manualUnknownSignature ||
+          state.pendingBatchObservation || state.pendingObservationMutation) return false;
       resetFailedCourseSearchIndex();
       const epoch = ++requestEpoch;
-      const anchor = captureAnchor();
-      const manualEditId = manualDraftChanged() ? state.manualStudyUnitId : null;
+      const position = returnPosition == null ? null : normalizeInspectionPosition(returnPosition);
+      const anchor = {
+        ...(position || captureAnchor()),
+        ...(returnFocusKey ? { controlKey: returnFocusKey } : {})
+      };
+      captureManualDraft();
+      const manualEditId = state.manualStudyUnitId;
       const assistanceEditId = state.assistanceDraft?.studyUnitId || null;
       const localEditId = manualEditId || assistanceEditId;
       const localEditItem = assistanceEditId
@@ -3452,8 +3691,10 @@ export function createCourseInspectionSequence({
         if (localEditItem) {
           const refreshed = page.items.find(({ studyUnit }) =>
             studyUnit.id === localEditItem.studyUnit.id) || null;
-          if (!refreshed || refreshed.version !== localEditItem.version ||
-              !sameStudyUnit(refreshed.studyUnit, localEditItem.studyUnit)) {
+          const sameContext = refreshed && ["module", "lesson", "didacticMicrosequence"]
+            .every((kind) => refreshed.curriculumPath[kind].id === localEditItem.curriculumPath[kind].id);
+          if (!refreshed || (!contextual && refreshed.version !== localEditItem.version) ||
+              !sameContext || !sameStudyUnit(refreshed.studyUnit, localEditItem.studyUnit)) {
             state.pinnedRevision = previousRevision;
             state.stale = true;
             state.loadingDirection = "";
@@ -3481,6 +3722,13 @@ export function createCourseInspectionSequence({
         }
         state.items = [];
         mergePage(page, "initial");
+        if (state.assistanceDraft) {
+          const refreshed = state.items.find(({ studyUnit }) => studyUnit.id === assistanceEditId);
+          state.assistanceDraft.baselineItem = structuredClone(refreshed);
+          state.items = state.items.map((item) => item.studyUnit.id === assistanceEditId
+            ? { ...item, studyUnit: structuredClone(state.assistanceDraft.proposedStudyUnit) }
+            : item);
+        }
         state.activeStudyUnitId = page.items.some(({ studyUnit }) => studyUnit.id === anchor.studyUnitId)
           ? anchor.studyUnitId
           : page.items[0]?.studyUnit.id || null;
@@ -3499,6 +3747,17 @@ export function createCourseInspectionSequence({
         return true;
       } catch (error) {
         if (state.destroyed || epoch !== requestEpoch) return false;
+        if (localEditItem) {
+          state.pinnedRevision = previousRevision;
+          state.stale = true;
+          state.loadingDirection = "";
+          const message = "Não foi possível conferir a unidade atual. Seu rascunho foi preservado. " +
+            statusMessage(error);
+          if (manualEditId) state.manualError = message;
+          else state.assistanceError = message;
+          render({ anchor, captureDraft: false });
+          return false;
+        }
         let refreshError = error;
         if (statusMessage(error) === "Ponto não encontrado.") {
           if (state.explicitTarget) {
@@ -3563,6 +3822,7 @@ export function createCourseInspectionSequence({
       if (state.destroyed) return;
       void savePositionNow();
       state.destroyed = true;
+      studyTools.destroy();
       ++requestEpoch;
       manualInlineController?.destroy?.();
       manualInlineController = null;

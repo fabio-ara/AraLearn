@@ -171,6 +171,14 @@
         {
           "path": "src/ui/courseDesignControls.js",
           "token": "renderDesignValueInput"
+        },
+        {
+          "path": "src/ui/CourseCurriculumMap.js",
+          "token": "renderCourseCurriculumMap"
+        },
+        {
+          "path": "src/ui/CoursePartsPanel.js",
+          "token": "createCoursePartsPanel"
         }
       ],
       "visibleEffects": [
@@ -189,6 +197,14 @@
         {
           "path": "src/ui/CourseInspectionSequence.js",
           "token": "onSaveManualEdit"
+        },
+        {
+          "path": "src/ui/CourseInspectionSequence.js",
+          "token": "course-inspection-selection-sequence"
+        },
+        {
+          "path": "src/ui/CourseCurriculumMap.js",
+          "token": "restorePosition"
         },
         {
           "path": "src/ui/CourseDesignPanel.js",
@@ -215,6 +231,14 @@
         {
           "path": "src/supabase/CourseController.js",
           "token": "commitCourseComposition"
+        },
+        {
+          "path": "src/domain/courseAuthoringParts.js",
+          "token": "normalizeCourseAuthoringPartRequest"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "saveCourseAuthoringPart"
         }
       ],
       "routes": [
@@ -229,6 +253,14 @@
         {
           "path": "src/supabase/CourseApiClient.js",
           "token": "commitCourseComposition"
+        },
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "saveCourseAuthoringPart"
+        },
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "latest_updated"
         }
       ],
       "tests": [
@@ -236,6 +268,9 @@
         "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-authoring-surface.test.js",
         "tests/runtime/course-design-parameters.test.js",
+        "tests/runtime/course-curriculum-map.test.js",
+        "tests/runtime/course-authoring-parts.test.js",
+        "tests/runtime/course-inspection-latest-updated.test.js",
         "tests/runtime/course-inspection-sequence.test.js",
         "tests/runtime/course-controller.test.js",
         "tests/runtime/course-controller-authoring-indexeddb-parity.test.js",
@@ -243,9 +278,11 @@
         "tests/runtime/course-router.test.js",
         "tests/runtime/course-supabase-adapter.test.js",
         "tests/runtime/manual-study-unit-edit.test.js",
-        "tests/e2e/course-authoring-cutover.spec.js"
+        "tests/e2e/course-authoring-cutover.spec.js",
+        "tests/e2e/course-curriculum-map.spec.js",
+        "tests/e2e/course-parts-local.spec.js"
       ],
-      "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental; controles de concorrência, recibos e paginação permanecem detalhes internos."
+      "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental. Expansão do mapa, folhas de contexto e seleção vertical preservam a leitura; a seleção não cria parte. Dividir, reunir e reordenar partes reutiliza o escritor com revisão e recibo, preservando currículo e aplicações históricas. A entrada pela atualização mais recente escolhe a âncora no leitor curricular existente, sem lista temporal paralela."
     },
     {
       "id": "course-audio-media",

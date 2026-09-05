@@ -35,7 +35,7 @@ function wrapInstance(instance, slot, html, options = {}, renderKey = "", editTa
   if (!options.resourceSelectionEnabled || !id) return packageHtml;
   if (Array.isArray(options.resourceSelectionTargetIds) &&
       !options.resourceSelectionTargetIds.includes(id)) return packageHtml;
-  const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo");
+  const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso da seleção" : "Selecionar recurso para edição");
   return `<section class="runtime-resource-edit-target${selected ? " is-selected" : ""}${inlineEditing ? " is-inline-editing" : ""}" data-resource-edit-target="${escapePackageAttribute(id)}" data-package-id="${escapePackageAttribute(instance.package)}"${inlineEditing ? ` data-manual-target-id="${escapePackageAttribute(id)}"` : ""}>${inlineEditing ? `<div class="runtime-resource-selection-content">${packageHtml}</div>` : `<button class="runtime-resource-selection-surface" type="button" data-action="toggle-study-unit-assistance-resource" data-resource-target-id="${escapePackageAttribute(id)}" aria-pressed="${selected ? "true" : "false"}" data-study-unit-authoring-focus="resource:${escapePackageAttribute(id)}" aria-label="${escapePackageAttribute(label)}" title="${escapePackageAttribute(label)}"${options.resourceSelectionDisabled ? " disabled aria-disabled=\"true\"" : ""}></button><div class="runtime-resource-selection-content">${packageHtml}</div>`}</section>`;
 }
 

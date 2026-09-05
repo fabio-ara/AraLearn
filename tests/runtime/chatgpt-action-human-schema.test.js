@@ -210,7 +210,7 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.6.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.7.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash

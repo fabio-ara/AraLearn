@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { renderPackageStudyUnitBlocks } from "../../src/render/renderPackageStudyUnit.js";
 import {
   applyManualStudyUnitEdit,
   buildManualStudyUnitEditModel,
@@ -16,6 +17,50 @@ const fixture = JSON.parse(fs.readFileSync(
 ));
 const sourceStudyUnit = fixture.courses[0].modules[0].lessons[0]
   .microsequences[0].studyUnits[0];
+
+test("seleção para edição é neutra e preserva parágrafo e ferramenta válidos", () => {
+  const unit = structuredClone(sourceStudyUnit);
+  unit.content.push({ id: "calculator", package: "aralearn.resource.calculator", version: "1.0.0",
+    data: { title: "Verificação numérica", angleUnit: "radians", initialExpression: "2+3" } });
+  const targets = listManualStudyUnitTargetIds(unit);
+  const selected = renderPackageStudyUnitBlocks(unit, { resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: targets, selectedResourceTargetIds: ["content:calculator"] });
+  assert.match(selected, /Selecionar recurso para edição/u);
+  assert.match(selected, /Retirar recurso da seleção/u);
+  assert.doesNotMatch(selected, /reparo/u);
+  assert.match(selected, /data-calculator-input/u);
+  const inline = renderPackageStudyUnitBlocks(unit, { resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: targets, selectedResourceTargetIds: ["content:calculator"],
+    manualEditingTargetId: "content:calculator" });
+  assert.match(inline, /data-manual-target-id="content:calculator"/u);
+  assert.match(inline, /data-package-manual-targets=/u);
+  assert.match(inline, /data-package-manual-field-path="title"/u);
+  assert.doesNotMatch(inline, /data-resource-target-id="content:calculator"/u);
+  assert.match(inline, /Verificação numérica/u);
+  assert.match(inline, /aralearn.resource.paragraph/u);
+});
+
+test("ferramentas renderizam cada folha declarada para edição sem interpretar texto literal", () => {
+  for (const packageName of ["calculator", "grammar", "dictionary", "reading", "audio"]) {
+    const definition = RESOURCE_PACKAGE_REGISTRY.get(`aralearn.resource.${packageName}`, "1.0.0");
+    const instance = { id: "tool", package: definition.manifest.id, version: "1.0.0",
+      data: structuredClone(definition.authoringContract.example) };
+    const unit = { id: "literal-tool", position: 1, title: "Ferramenta sintética", role: "theory",
+      content: [instance], response: null, feedback: [], topics: [] };
+    const targetId = "content:tool";
+    const html = renderPackageStudyUnitBlocks(unit, { resourceSelectionEnabled: true,
+      resourceSelectionTargetIds: [targetId], selectedResourceTargetIds: [targetId], manualEditingTargetId: targetId });
+    for (const { path } of listManualStudyUnitEditablePaths(unit, targetId)) {
+      assert.ok(html.includes(`data-package-manual-field-path="${encodeURIComponent(path)}"`), `${packageName}: ${path}`);
+    }
+    const first = listManualStudyUnitEditablePaths(unit, targetId)[0];
+    const changed = applyManualStudyUnitEdit(unit, targetId, { pathValues: { [first.path]: "Literal <img src=x> **sem formato**" } });
+    const rendered = renderPackageStudyUnitBlocks(changed);
+    assert.match(rendered, /Literal &lt;img src=x&gt; \*\*sem formato\*\*/u);
+    assert.doesNotMatch(rendered, /<img src=x>|<strong>sem formato/u);
+    assert.doesNotMatch(JSON.stringify(changed), /data-package-manual|\uE002|\uE003/u);
+  }
+});
 
 test("edição manual usa a identidade da instância e preserva o envelope atual", () => {
   const targetId = `content:${sourceStudyUnit.content[0].id}`;

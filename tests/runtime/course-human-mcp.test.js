@@ -361,7 +361,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.6.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.7.0");
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
 });
 
@@ -700,6 +700,7 @@ test("salvar_parte pode redefinir lotes sem alterar a arquitetura curricular", a
     rawArguments: {
       curso: GLOBAL_AUTHORING_FIXTURE.course.title,
       titulo: "Novo limite operacional",
+      posicao: 1,
       intencao: "Reagrupar o trabalho sem mudar o currículo.",
       microssequencias: [secondMicrosequence.title],
       progressao: [secondMicrosequence.title]
@@ -707,6 +708,7 @@ test("salvar_parte pode redefinir lotes sem alterar a arquitetura curricular", a
   });
 
   assert.ok(savedPart);
+  assert.equal(savedPart.position, 0);
   assert.deepEqual(
     savedPart.microsequences.map(({ microsequenceId }) => microsequenceId),
     [secondMicrosequence.id]
@@ -1434,7 +1436,7 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
 
   const readResponse = await mcpHandler(READ_PRINCIPAL)(request("tools/list"));
   const read = await readResponse.json();
-  assert.equal(read.result.tools.length, 10);
+  assert.equal(read.result.tools.length, 11);
   assert.equal(read.result.tools.every(({ annotations }) => annotations.readOnlyHint), true);
 
   const invalidResponse = await mcpHandler()(request("tools/list", { cursor: "legacy" }));

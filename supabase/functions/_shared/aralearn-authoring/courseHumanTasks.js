@@ -61,7 +61,7 @@ const COURSE_SCHEMA = Object.freeze({
   type: "string",
   minLength: 1,
   maxLength: 300,
-  description: "Nome do curso."
+  description: "Nome"
 });
 const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   type: "array",
@@ -665,14 +665,15 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "Use após confirmar a progressão; não para propô-la.",
+    "Após confirmar, divida, reúna ou reordene lotes, preservando intenções e progressão. Só muda a ordem de produção.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
+      posicao: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
       microssequencias: Object.freeze({
-        type: "array", minItems: 1, maxItems: 32,
+        type: "array", minItems: 1, maxItems: 64,
         uniqueItems: true,
         items: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
       }),
@@ -895,9 +896,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.6.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.7.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:78c98f24e250445fa5576256a28b982cfe1277b21443d8540feedc2235ca1ade";
+  "sha256:e0e63006bc9351ee489063d526b6f63cfc2579da28e995bf891a64614121dccf";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1745,12 +1746,12 @@ async function buildCurricularMapWrite({ state, input, newId }) {
 function normalizePartMicrosequenceTitles(value) {
   return textList(value, "microssequencias", {
     minimum: 1,
-    maximum: 32,
+    maximum: 64,
     itemMaximum: 300
   });
 }
 
-async function buildProductionPart({ state, titles, progression, title, intent, newId }) {
+async function buildProductionPart({ state, titles, progression, title, intent, position, newId }) {
   const map = curricularMapFromPlan(state.plan);
   if (!map || map.approval !== "approved") {
     fail(
@@ -1803,7 +1804,7 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
     expectedPlanVersion: planVersion(state.plan),
     part: {
       partId,
-      position: state.part?.position ?? parts.length,
+      position: position ?? state.part?.position ?? parts.length,
       title,
       intent,
       progression,
@@ -2780,7 +2781,10 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   const course = humanCourseTitle(args);
   const partReference = optionalReference(args.parte, "parte");
   const title = text(args.titulo, "titulo", 300);
-  const intent = text(args.intencao, "intencao", 2000);
+  const intent = text(args.intencao, "intencao", 4000);
+  if (args.posicao != null && (!Number.isSafeInteger(args.posicao) || args.posicao < 1 || args.posicao > 64)) {
+    fail("invalid_authoring_part_position", "A posição do lote deve estar entre 1 e 64.");
+  }
   const titles = normalizePartMicrosequenceTitles(args.microssequencias);
   const progression = textList(args.progressao, "progressao", {
     minimum: 1,
@@ -2819,7 +2823,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     },
     build: async (state, { newId }) => {
       const built = await buildProductionPart({
-        state, titles, progression, title, intent, newId
+        state, titles, progression, title, intent, position: args.posicao == null ? null : args.posicao - 1, newId
       });
       savedPartId = built.part.partId;
       return built;
