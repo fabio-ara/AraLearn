@@ -108,7 +108,7 @@ pela composição e pelos parâmetros existentes quando pertinentes.
 
 ## Fontes e PDFs
 
-`aralearn.course-sources.v2` pagina o catálogo corrente e devolve, de forma
+`aralearn.course-sources.v3` pagina o catálogo corrente e devolve, de forma
 singular, a fonte focal ou a atribuição corrente de um alvo.
 Fonte e âncora têm uma versão corrente usada para concorrência. Uma atribuição
 relaciona o alvo atual a fontes, papéis e âncoras.
@@ -133,10 +133,41 @@ O caminho e o resumo SHA-256 não são argumentos de uma tarefa humana. O servi�
 os deriva dos bytes. Criar ou revisar a fonte e vincular o PDF ocorre numa única
 transação e avança a revisão do curso uma vez.
 
-`aralearn.course-study-citations.v1` entrega ao Estudo citação, endereço
+`aralearn.course-study-citations.v2` entrega ao Estudo citação, endereço
 permitido, seletor e localização legível necessários à unidade, além de
 referências lógicas dos anexos disponíveis. Trechos privados de verificação e
 caminhos de Storage ficam fora dessa projeção.
+
+## Áudio e ferramentas de estudo
+
+Ferramentas são instâncias de pacotes de conteúdo em `content[]`, identificadas
+por `manifest.tool` e ativadas por `toolInteraction.bind`. O núcleo oferece
+abertura, foco, fechamento e serviços de acesso; cada pacote fornece a própria
+interação. Áudio, calculadora, gramática, dicionário e leitura compartilham os
+contratos de descoberta, normalização, materialização e edição dos demais
+pacotes. Uma consulta instrucional não cria automaticamente uma atribuição de
+fonte.
+
+`aralearn.course-media.v1` oferece configuração de áudio na revisão solicitada
+ou catálogo paginado exclusivo do proprietário. A configuração contém idioma,
+velocidade, preferência de voz nativa, permissão para voz remota e serviço
+opcional; não contém credenciais. Faixas nativas guardam texto, enquanto faixas
+de arquivo guardam somente SHA-256, tamanho e tipo validados pelo serviço.
+
+`aralearn.course-media-ingestion.v1` confirma o envio de WAV PCM ou MP3.
+`aralearn.course-media-change.v1` confirma configuração e remoção. As mutações
+usam revisão esperada, identidade da solicitação e recibo idempotente; o limite
+conjunto de PDFs e áudios é verificado com reservas sob concorrência. Remoção e
+exclusão de conta conservam intenção de limpeza recuperável no Storage privado.
+
+`aralearn.course-media-download.v1` liga o endereço temporário ao curso, à
+revisão, à Unidade e ao trio binário do arquivo. Estudantes só acessam arquivos
+referenciados na Unidade corrente; visitantes também dependem da política
+pública de arquivos do curso. O cliente confere tamanho, formato e hash antes
+de criar um Blob local, que é descartado ao fechar a ferramenta. Não há URL de
+Storage persistida no conteúdo nem cópia de bytes no IndexedDB. A configuração
+nativa pode ser reutilizada offline somente na mesma revisão do curso e é
+purgada quando o acesso é retirado.
 
 ## Observações e revisão
 

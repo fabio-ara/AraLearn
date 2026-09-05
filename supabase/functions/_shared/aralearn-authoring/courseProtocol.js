@@ -72,6 +72,11 @@ export function routeCourseRequest(method, pathname) {
   const courseSourceChange = path.match(
     /^\/v1\/courses\/([^/]+)\/sources\/changes$/u
   );
+  const media = path.match(/^\/v1\/courses\/([^/]+)\/media(?:\/(changes)|\/([a-f0-9]{64})\/download)?$/u);
+  if (media && ((!media[2] && verb === "GET") || (media[2] && verb === "POST"))) {
+    return { name: media[2] ? "executeCourseMediaCommand" : media[3] ? "getCourseMediaDownload" : "getCourseMedia",
+      courseId: courseUuid(media[1]), ...(media[3] ? { contentHash: media[3] } : {}) };
+  }
   if (courseSourceChange && verb === "POST") {
     return {
       name: "executeCourseSourceCommand",

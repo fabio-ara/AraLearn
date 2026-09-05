@@ -6,6 +6,10 @@
     "classes": ["direct", "indirect", "negative"]
   },
   "cases": [
+    { "id": "guardar_audio_direct", "class": "direct", "prompt": "Guarde o WAV anexado à conversa na biblioteca do curso Fonética.", "expectedTool": "guardar_audio" },
+    { "id": "guardar_audio_indirect", "class": "indirect", "prompt": "Quero usar esta gravação MP3 já anexada como exemplo de pronúncia no meu curso; mantenha o arquivo para compor a unidade.", "expectedTool": "guardar_audio" },
+    { "id": "consultar_audios_direct", "class": "direct", "prompt": "Consulte os áudios já guardados no curso Fonética.", "expectedTool": "consultar_audios" },
+    { "id": "consultar_audios_indirect", "class": "indirect", "prompt": "Retomei a conversa e preciso reutilizar a gravação que mantive neste curso, sem reenviar o arquivo.", "expectedTool": "consultar_audios" },
     {"id": "consultar_perfis_direct", "class": "direct", "prompt": "Liste meus perfis de autoria salvos.", "expectedTool": "consultar_perfis"},
     {"id": "consultar_perfis_indirect", "class": "indirect", "prompt": "Quais conjuntos de preferências posso reutilizar em outro curso?", "expectedTool": "consultar_perfis"},
     {"id": "salvar_perfil_direct", "class": "direct", "prompt": "Salve estas preferências como perfil Exposição e prática.", "expectedTool": "salvar_perfil"},

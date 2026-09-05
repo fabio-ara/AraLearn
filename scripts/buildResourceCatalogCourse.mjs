@@ -62,6 +62,21 @@ function targetLabelSignature(value) {
 }
 
 const PRACTICE_BLUEPRINTS = Object.freeze({
+  "aralearn.resource.calculator": Object.freeze({
+    feedbackText: "A expressão calcula √(3² + 4²) = √25 = 5. Os catetos não se somam diretamente: a diagonal é a hipotenusa do triângulo retângulo. O cálculo confere a estimativa, mas a relação geométrica justifica a expressão."
+  }),
+  "aralearn.resource.grammar": Object.freeze({
+    feedbackText: "A consulta pertinente é sobre voz ativa e passiva. Em ‘A pesquisadora revisou o texto’, a pesquisadora é sujeito e agente; em ‘O texto foi revisado pela pesquisadora’, o texto é sujeito, mas a pesquisadora continua sendo o agente. A mudança de construção não troca quem realizou a revisão."
+  }),
+  "aralearn.resource.dictionary": Object.freeze({
+    feedbackText: "Na passagem, ‘sustenta’ significa oferecer apoio à hipótese. A continuação sobre novos testes impede confundir esse apoio com comprovação definitiva; o verbo também não se reduz a enunciar a hipótese ou deixar de avaliá-la. A ferramenta abre a consulta, mas escolher o sentido exige considerar a frase inteira."
+  }),
+  "aralearn.resource.reading": Object.freeze({
+    feedbackText: "Comparar explicações exige reconstruir como cada mecanismo liga causas e efeito e localizar as condições em que suas previsões ou razões divergem. Contar argumentos, fundir mecanismos antes de examiná-los ou preferir automaticamente o texto adicional não realiza esse contraste. A leitura complementar também não confirma uma fonte por ter sido indicada."
+  }),
+  "aralearn.resource.audio": Object.freeze({
+    feedbackText: "Good morning é uma saudação da manhã; How are you? pergunta como a outra pessoa está. A alternativa escrita permite analisar a mesma fala quando a voz do dispositivo não está disponível."
+  }),
   "aralearn.resource.matrix": Object.freeze({
     targetPath: "values[0][1]",
     data: Object.freeze({
@@ -173,6 +188,7 @@ function feedbackText(manifest) {
   const taskOperation = TASK_OPERATION_LABELS.get(profile?.taskOperationIds?.[0]);
   const avoidWhen = manifest.academic?.avoidWhen?.[0];
   return [
+    PRACTICE_BLUEPRINTS[manifest.id]?.feedbackText || "",
     `Critério de revisão para ${manifest.label}: a representação deve realizar a finalidade declarada — ${manifest.purpose}`,
     taskOperation
       ? `A operação-alvo da tarefa é ${taskOperation.toLocaleLowerCase("pt-BR")}.`
@@ -183,6 +199,56 @@ function feedbackText(manifest) {
 
 function semanticChoiceResponse(id, manifest) {
   const choices = {
+    "aralearn.resource.calculator": {
+      question: "Estime a diagonal de um retângulo com lados 3 e 4. Use a expressão já preparada na calculadora para conferir: qual é o comprimento da diagonal?",
+      options: [
+        { id: "diagonal", text: "5 unidades de comprimento." },
+        { id: "largest-side", text: "4 unidades de comprimento." },
+        { id: "sum", text: "7 unidades de comprimento." },
+        { id: "squares", text: "25 unidades de comprimento." }
+      ],
+      answerIds: ["diagonal"]
+    },
+    "aralearn.resource.grammar": {
+      question: "Compare ‘A pesquisadora revisou o texto’ e ‘O texto foi revisado pela pesquisadora’. Qual consulta gramatical ajuda a explicar a mudança de posição dos constituintes sem trocar quem realizou a ação?",
+      options: [
+        { id: "voice", text: "Voz ativa e passiva: a relação entre sujeito e agente da ação." },
+        { id: "tense", text: "Tempo verbal: a passagem do passado para o presente." },
+        { id: "agreement", text: "Concordância: a correção de um verbo flexionado incorretamente." },
+        { id: "lexicon", text: "Sentido lexical: uma mudança no significado de revisar." }
+      ],
+      answerIds: ["voice"]
+    },
+    "aralearn.resource.dictionary": {
+      question: "Considere: ‘O relatório sustenta a hipótese, mas novos testes ainda são necessários’. Ao consultar os usos de ‘sustentar’, qual paráfrase preserva o sentido da passagem inteira?",
+      options: [
+        { id: "support", text: "O relatório oferece apoio à hipótese sem encerrar sua verificação." },
+        { id: "proof", text: "O relatório comprova definitivamente a hipótese, independentemente de novos testes." },
+        { id: "suspend", text: "O relatório deixa a hipótese sem avaliação por não apresentar argumentos sobre ela." },
+        { id: "mention", text: "O relatório apenas enuncia a hipótese, sem tomar posição a seu respeito." }
+      ],
+      answerIds: ["support"]
+    },
+    "aralearn.resource.reading": {
+      question: "A ‘Perspectiva complementar’ apresenta outro mecanismo para o mesmo fenômeno. Ao voltar à unidade, qual resultado atende à orientação de comparar as explicações?",
+      options: [
+        { id: "mechanisms", text: "Mostrar como cada mecanismo liga causas ao efeito e em que condições as explicações divergem." },
+        { id: "count", text: "Contar os argumentos e tomar a explicação com mais itens como a mais forte." },
+        { id: "merge", text: "Fundir os dois mecanismos em uma explicação antes de examinar suas diferenças." },
+        { id: "replace", text: "Substituir a explicação da unidade pela adicional porque ela foi recomendada." }
+      ],
+      answerIds: ["mechanisms"]
+    },
+    "aralearn.resource.audio": {
+      question: "Ouça a faixa ou abra a alternativa textual. Qual é o sentido da saudação em inglês?",
+      options: [
+        { id: "morning", text: "Bom dia. Como você está?" },
+        { id: "farewell", text: "Até logo. Nos vemos amanhã." },
+        { id: "thanks", text: "Obrigado. O prazer foi meu." },
+        { id: "night", text: "Boa noite. Durma bem." }
+      ],
+      answerIds: ["morning"]
+    },
     "aralearn.resource.formula": {
       question: "Na expressão exibida, qual termo está contraído com a derivada parcial de uᵢ em relação a xⱼ?",
       options: [

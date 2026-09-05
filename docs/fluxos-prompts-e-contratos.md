@@ -24,7 +24,7 @@ da mudança.
 
 ## Tarefas conversacionais
 
-MCP e Actions compartilham dezessete tarefas:
+MCP e Actions compartilham 24 tarefas:
 
 | Fase | Leituras | Escritas |
 | --- | --- | --- |
@@ -32,12 +32,19 @@ MCP e Actions compartilham dezessete tarefas:
 | mapa curricular | `consultar_planejamento` | `salvar_mapa_curricular` |
 | produção em lotes | `consultar_planejamento`, `preparar_materializacao` | `salvar_parte`, `materializar_parte` |
 | configuração | `consultar_configuracao` | `ajustar_configuracao` |
+| perfis de preferências | `consultar_perfis`, `prever_aplicacao_perfil` | `salvar_perfil`, `excluir_perfil`, `aplicar_perfil` |
 | revisão | `consultar_observacoes`, `preparar_revisao` | `registrar_observacao`, `aplicar_correcoes` |
 | fontes | `consultar_fontes` | `manter_fonte`, `incorporar_pdf_como_fonte` |
 | representação | `consultar_componentes` | gravação ocorre junto da unidade |
+| biblioteca de áudio | `consultar_audios` | `guardar_audio` |
 
-Perfil, avatar, acesso direto, exclusão de conta e manutenção permanecem ações
+Perfil da pessoa, avatar, acesso direto, exclusão de conta e manutenção permanecem ações
 da aplicação autenticada.
+
+Os pacotes de ferramentas usam o mesmo contrato de conteúdo em todos os canais.
+Receber um arquivo de áudio já existente não aciona síntese de voz, transcrição
+ou credenciais de provedor. O transporte temporário e a prova local estão
+descritos em [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
 
 ## Seleção progressiva de contexto
 

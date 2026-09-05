@@ -166,6 +166,34 @@ microssequências, mas não pertence à hierarquia curricular. Dividir, unir ou
 reordenar lotes preserva o mapa. O conteúdo confirmado fica em Conteúdo, não num
 histórico de execução.
 
+## Usar áudio e ferramentas da unidade
+
+Em Estudo, as ferramentas aparecem à esquerda dos controles habituais da
+Unidade. Os dois primeiros atalhos ficam visíveis; **Mais ferramentas** revela
+as restantes. Fechar uma ferramenta devolve o foco e a posição de leitura.
+A calculadora trabalha com expressões e explicita a precisão aproximada.
+Gramática, dicionário e leitura podem oferecer várias consultas relacionadas
+ao conteúdo, independentes das referências bibliográficas.
+
+Em Autoria, abra **Áudio** no menu do curso. **Configuração** define idioma,
+velocidade e voz nativa preferida. A disponibilidade das vozes depende do
+dispositivo; uma voz escolhida indisponível pede uma escolha explícita. Vozes
+remotas exigem permissão no curso e consentimento do estudante ao usar a
+ferramenta. Uma voz local disponível pode funcionar sem rede.
+
+Em **Arquivos**, selecione WAV PCM ou MP3, confira a prévia e use **Guardar
+áudio**. Cada arquivo aceita até 20 MiB; PDFs e áudios compartilham 64 MiB por
+curso. Guardar um arquivo não o inclui automaticamente numa Unidade: escolha
+o áudio ao compor o conteúdo. Uma Unidade pode conter várias faixas e uma
+alternativa textual sempre visível, sob demanda ou depois da resposta.
+
+**Gerar voz** usa o serviço configurado no curso. Informe o texto, forneça a
+chave apenas para a solicitação e autorize o envio e o uso da sua cota. Confira
+o áudio gerado antes de guardá-lo. A chave não é persistida no curso e uma
+falha não repete a geração automaticamente. Arquivos guardados exigem conexão
+para autorização e transferência; não são copiados para o armazenamento
+offline do aplicativo. Veja os formatos, privacidade e limites em [Áudio](audio.md).
+
 ## Configurar o desenho do curso
 
 Em **Parâmetros**, escolha o escopo e abra o ajuste desejado. Cada decisão mostra
@@ -496,7 +524,7 @@ confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitu
 igual normaliza a cópia; uma revisão superior a descarta como superada. Sair da
 conta, limpar o curso ou perder acesso purga esse estado.
 
-Parâmetros, catálogo privado de fontes, metadados e bytes de PDFs, caixa autoral
+Parâmetros, catálogos privados de fontes e áudios, metadados e bytes de arquivos, caixa autoral
 de Observações, revisão, correções, Analytics, gestão de acesso e mutações
 autorais dependem do servidor. O Storage não é reproduzido no
 IndexedDB. A tela inicial pode mostrar um curso conhecido, mas a própria prévia
@@ -529,11 +557,11 @@ preserva texto que ainda exista apenas num formulário aberto.
 
 A operação exige conexão e é irreversível. O aplicativo envia uma única
 solicitação confirmada; a API autentica a pessoa, localiza seus cursos e remove
-os avatares e PDFs correspondentes. O banco recusa a exclusão enquanto algum
+os avatares, PDFs e áudios correspondentes. O banco recusa a exclusão enquanto algum
 desses objetos permanecer. Depois, remove a conta, os cursos próprios e as
 relações dependentes; contribuições em cursos alheios são retiradas e redigidas
 conforme a política de retenção. Uma falha intermediária conserva a conta para
-nova tentativa. Se a limpeza do Storage já tiver começado, alguns PDFs ou a foto
+nova tentativa. Se a limpeza do Storage já tiver começado, alguns arquivos ou a foto
 podem ter sido removidos e a conta pode já ter sido excluída ou ainda aguardar a
 etapa final. A tela informa essa ambiguidade; repetir **Excluir conta** confirma
 ou conclui a mesma operação. A cópia local só é limpa depois da confirmação do servidor.

@@ -9,6 +9,9 @@ import {
 } from "../persistence/CoursePersonalStateRepository.js";
 import { CourseAnnotationRepository } from "../persistence/CourseAnnotationRepository.js";
 import { normalizeCourseSourcePdfDownload, normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
+import { readCourseMediaBlob } from "../supabase/readCourseMediaBlob.js";
+import { normalizeCourseAudioConfig, normalizeCourseMediaRead, normalizeCourseMediaReference,
+  normalizeCourseMediaDownload } from "../domain/courseMedia.js";
 import { findCourse } from "./CourseStudyNavigation.js";
 
 const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
@@ -436,6 +439,7 @@ export class CourseStudyRepository {
       }
       this.personalByCourseId.delete(courseId);
       this.annotationsByCourseId.delete(courseId);
+      await this.cache.putCache(`course.v1.audio-configuration:${courseId}`, null);
       this.loadedCourseById.delete(courseId);
       this.offlineCourseRevisionById.delete(courseId);
       this.courseList = this.courseList.filter((item) => item.courseId !== courseId);
@@ -581,6 +585,7 @@ export class CourseStudyRepository {
     }
     this.personalByCourseId.delete(courseId);
     this.annotationsByCourseId.delete(courseId);
+    await this.cache.putCache(`course.v1.audio-configuration:${courseId}`, null);
     this.loadedCourseById.delete(courseId);
     this.offlineCourseRevisionById.delete(courseId);
     this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
@@ -743,6 +748,74 @@ export class CourseStudyRepository {
 
   loadProject() {
     return clone(this.project);
+  }
+
+  async loadStudyAudioConfiguration(reference) {
+    const courseId = courseIdFromReference(reference);
+    const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
+    if (!expectedRevision) throw courseRevisionChangedError();
+    const key = `course.v1.audio-configuration:${courseId}`;
+    try {
+      const value = normalizeCourseMediaRead(await this.bridge.loadCourseMedia(courseId, {
+        expectedRevision, mode: "configuration"
+      }));
+      if (value.courseId !== courseId || value.courseRevision !== expectedRevision ||
+          value.mode !== "configuration") throw courseRevisionChangedError();
+      if (this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
+      await this.cache.putCache(key, value);
+      if (this.loadedCourseById.get(courseId)?.revision !== expectedRevision) {
+        await this.cache.putCache(key, null);
+        throw courseRevisionChangedError();
+      }
+      return value.audioConfig;
+    } catch (error) {
+      if (courseAccessRevoked(error)) await this.#purgeRevokedCourses([courseId]);
+      if (networkFailure(error)) {
+        const cached = await this.cache.getCache(key);
+        if (this.loadedCourseById.get(courseId)?.revision === expectedRevision &&
+            cached?.courseId === courseId && cached.courseRevision === expectedRevision) {
+          return normalizeCourseAudioConfig(cached.audioConfig);
+        }
+      }
+      throw error;
+    }
+  }
+
+  async downloadStudyMedia(reference, declaredMedia, { signal } = {}) {
+    const courseId = courseIdFromReference(reference);
+    const studyUnitId = studyUnitIdFromReference(reference);
+    const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
+    const media = normalizeCourseMediaReference(declaredMedia);
+    if (!expectedRevision || !studyUnitId) throw courseRevisionChangedError();
+    const result = normalizeCourseMediaDownload(await this.bridge.getCourseMediaDownload({
+      courseId, expectedRevision, studyUnitId, contentHash: media.contentHash
+    }), { projectUrl: this.api.http?.projectUrl });
+    if (result.courseId !== courseId || result.courseRevision !== expectedRevision ||
+        result.studyUnitId !== studyUnitId || Object.keys(media).some((field) => result.media[field] !== media[field])) {
+      throw new TypeError("O áudio recebido não corresponde à unidade aberta.");
+    }
+    if (this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
+    const downloaded = await readCourseMediaBlob(result, media, {
+      projectUrl: this.api.http?.projectUrl, fetchImpl: this.api.http?.fetchImpl || globalThis.fetch, signal
+    });
+    if (this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
+    return downloaded;
+  }
+
+  async getStudyInstructionalAttachmentDownload(reference, target) {
+    const courseId = courseIdFromReference(reference);
+    const expectedCourseRevision = this.loadedCourseById.get(courseId)?.revision;
+    if (!expectedCourseRevision) throw courseRevisionChangedError();
+    const result = normalizeCourseSourcePdfDownload(await this.bridge.getCourseSourceAttachmentDownload({
+      courseId, expectedCourseRevision, sourceId: target.sourceId,
+      sourceRevision: target.sourceRevision, contentHash: target.contentHash
+    }));
+    if (result.courseId !== courseId || result.courseRevision !== expectedCourseRevision ||
+        result.sourceId !== target.sourceId || result.sourceRevision !== target.sourceRevision ||
+        result.attachment.contentHash !== target.contentHash) {
+      throw new TypeError("O PDF não corresponde à leitura solicitada.");
+    }
+    return result;
   }
 
   async getStudyCitationAttachmentDownload(reference, citation) {

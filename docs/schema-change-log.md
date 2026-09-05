@@ -1,5 +1,35 @@
 # Alterações do schema
 
+## 20260905114027 — áudio e ferramentas do catálogo
+
+O curso passa a guardar a configuração explícita de voz e uma biblioteca privada
+de áudio. As faixas usam hash, tamanho e tipo do arquivo; o catálogo também
+preserva seu nome legível. WAV PCM e MP3 têm limite de 20 MiB por arquivo e
+compartilham a cota de 64 MiB do curso com os PDFs.
+
+A ingestão prepara uma reserva, confere os bytes armazenados e confirma a
+identidade sob a revisão e o recibo do pedido. Retentativas conservam a mesma
+intenção; envios expirados e remoções mantêm a identidade necessária à limpeza.
+Uma exclusão de curso não admite que um upload tardio recrie objetos. A remoção
+do arquivo conserva as referências das faixas, que passam a indicar indisponibilidade.
+
+O proprietário pode consultar a biblioteca. Outros leitores recebem somente a
+configuração de reprodução e os áudios vinculados à unidade autorizada. O acesso
+público exige também a escolha explícita de arquivos disponíveis no curso.
+URLs assinadas duram 60 segundos; revogação impede novas autorizações, sem
+prometer retirar bytes já recebidos ou invalidar retroativamente uma URL emitida.
+
+O catálogo gerado acrescenta áudio e quatro ferramentas compatíveis, totalizando
+38 pacotes. A migração atualiza a versão das políticas correntes e conserva
+literalmente as decisões históricas, referências, conteúdo, rascunhos e recibos.
+Não acrescenta um segundo escritor de composição nem credenciais ao curso.
+
+O upgrade foi ensaiado sobre backup local restaurado em contêiner sem rede.
+Testes de banco verificam permissões, cotas, concorrência e recuperação; testes
+de transporte distinguem prova simulada de leitura e reprodução reais. A revisão
+`20260905114027` aplicada localmente não certifica implantação hospedada. A cópia
+independente completa de cursos e arquivos será integrada à sua operação própria.
+
 ## 20260905101903 — referências e vínculos contextuais
 
 O curso passa a definir o estilo das referências geradas. A fonte mantém sua

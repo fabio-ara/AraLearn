@@ -259,7 +259,7 @@ function toolSuccess(value) {
 }
 
 function retryableError(error) {
-  if (error.code === "course_source_pdf_write_uncertain") return false;
+  if (["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
   if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
   return new Set([
     "course_service_unavailable", "request_timeout", "network_error"
@@ -290,6 +290,8 @@ function toolFailure(
         ? "Escolha um curso, uma parte, uma microssequência ou uma unidade de estudo mais específica."
         : normalized.code === "course_source_pdf_write_uncertain"
           ? "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
+          : normalized.code === "course_media_write_uncertain"
+            ? "Consulte os áudios do curso antes de decidir se ainda precisa guardar o arquivo."
           : normalized.code === "human_materialization_contextual_calibration_required"
             ? "Inclua a calibração contextual nas unidades e refaça a produção da parte."
             : retryable

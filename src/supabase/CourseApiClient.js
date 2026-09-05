@@ -36,6 +36,9 @@ import {
   normalizeCourseStudyCitationsRead
 } from "../domain/courseSources.js";
 import { SupabaseHttpClient } from "./SupabaseHttpClient.js";
+import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
+  boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
+import { inspectCourseAudioBytes } from "../domain/courseMedia.js";
 
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -875,7 +878,9 @@ export class CourseApiClient {
       requestHeaders["Idempotency-Key"] = requestIdentity(normalizedBody.requestId);
     }
     const publicRead = this.visitor && normalizedMethod === "GET" &&
-      /^\/v1\/courses\/[0-9a-f-]{36}\/source-pdf\/download$/u.test(pathname);
+      (/^\/v1\/courses\/[0-9a-f-]{36}\/source-pdf\/download$/u.test(pathname) ||
+        /^\/v1\/courses\/[0-9a-f-]{36}\/media\/[a-f0-9]{64}\/download$/u.test(pathname) ||
+        /^\/v1\/courses\/[0-9a-f-]{36}\/media$/u.test(pathname) && query?.mode === "configuration");
     if (this.visitor && !publicRead) throw Object.assign(
       new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
     );
@@ -976,6 +981,55 @@ export class CourseApiClient {
     return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-profile/applications`, {
       method: "POST", body
     }).then((result) => normalizeCourseAuthoringProfileChange(result, command));
+  }
+
+  async loadCourseMedia(courseId, options = {}) {
+    const request = courseMediaReadRequest(courseId, options);
+    const query = { expectedRevision: request.expectedRevision, mode: request.mode, cursor: request.cursor, limit: request.limit };
+    return boundCourseMediaRead(await this.requestCourseApi(`${courseResourcePath(courseId)}/media`, { query }), request);
+  }
+
+  async getCourseMediaDownload(value) {
+    const request = courseMediaDownloadRequest(value);
+    return boundCourseMediaDownload(await this.requestCourseApi(
+      `${courseResourcePath(request.courseId)}/media/${request.contentHash}/download`, {
+        query: { expectedRevision: request.expectedRevision, studyUnitId: request.studyUnitId }
+      }), request, { projectUrl: this.http.projectUrl });
+  }
+
+  async mutateCourseMedia(value) {
+    const request = courseMediaWriteRequest(value);
+    return boundCourseMediaChange(await this.requestCourseApi(`${courseResourcePath(request.courseId)}/media/changes`, {
+      method: "POST", body: { requestId: request.requestId, expectedRevision: request.expectedCourseRevision, command: request.command }
+    }), request);
+  }
+
+  async uploadCourseAudio(value) {
+    if (this.visitor) throw Object.assign(new Error("Entre para guardar o áudio."), { status: 401, code: "AUTH_REQUIRED" });
+    const request = courseMediaWriteRequest(value, { upload: true });
+    const bytes = new Uint8Array(await request.file.arrayBuffer());
+    const inspected = inspectCourseAudioBytes(bytes, { declaredMediaType: request.file.type });
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+    const media = { contentHash: [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join(""),
+      byteSize: inspected.byteSize, mediaType: inspected.mediaType };
+    try {
+      const accessToken = await this.#authenticatedAccessToken();
+      if (!accessToken) throw Object.assign(new Error("Entre novamente para guardar o áudio."), { status: 401, code: "AUTH_REQUIRED" });
+      const body = new FormData();
+      body.set("requestId", request.requestId); body.set("courseId", request.courseId);
+      body.set("expectedRevision", String(request.expectedCourseRevision));
+      body.set("file", request.file, request.file.name);
+      const response = await this.http.request("/functions/v1/aralearn-course-api/app/ingerirAudio", {
+        method: "POST", body, rawBody: true, accessToken, timeoutMs: COURSE_SOURCE_PDF_TIMEOUT_MS
+      });
+      return boundCourseMediaChange(response?.data, request, media);
+    } catch (error) {
+      if (!this.visitor && authenticationFailure(error)) {
+        await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
+        this.authClient.emit?.("SESSION_INVALID"); error.authRequired = true;
+      }
+      throw error;
+    }
   }
 
   async loadCourseSources(courseId, options = {}) {

@@ -1,5 +1,7 @@
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
+  boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
 import {
   normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
   normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
@@ -1184,6 +1186,7 @@ export class CourseController {
       this.store.deleteCachePrefix(verifiedCompositionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
       this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
@@ -1807,6 +1810,52 @@ export class CourseController {
     const command = normalizeCourseAuthoringProfileRequest(value, { apply: true });
     const result = normalizeCourseAuthoringProfileChange(await this.api.applyCourseAuthoringProfile(command), command);
     await this.#clearCourseDesignCache(command.courseId);
+    return result;
+  }
+
+  async loadCourseMedia(courseId, options = {}) {
+    const request = courseMediaReadRequest(courseId, options);
+    if (request.mode === "catalog" && !this.ownerOnly) throw new TypeError("Somente a Autoria oferece a biblioteca de áudio.");
+    try {
+      return boundCourseMediaRead(await this.api.loadCourseMedia(courseId, options), request);
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
+  async getCourseMediaDownload(value) {
+    const request = courseMediaDownloadRequest(value);
+    return boundCourseMediaDownload(await this.api.getCourseMediaDownload(request), request,
+      { projectUrl: this.api.http?.projectUrl });
+  }
+
+  async #invalidateCourseMedia(courseId) {
+    await Promise.all([
+      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(verifiedCompositionCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
+    ]);
+  }
+
+  async mutateCourseMedia(value) {
+    if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite alterar o áudio.");
+    const request = courseMediaWriteRequest(value);
+    const result = boundCourseMediaChange(await this.api.mutateCourseMedia(request), request);
+    await this.#invalidateCourseMedia(request.courseId);
+    return result;
+  }
+
+  async uploadCourseAudio(value) {
+    if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite guardar o áudio.");
+    const request = courseMediaWriteRequest(value, { upload: true });
+    const result = boundCourseMediaChange(await this.api.uploadCourseAudio(request), request);
+    await this.#invalidateCourseMedia(request.courseId);
     return result;
   }
 

@@ -408,7 +408,7 @@ test("#272 transporte de PDF aceita as origens oficiais sem expor a URL", async 
     })(request("incorporar_pdf_como_fonte", {
       curso: "Redes para iniciantes",
       titulo: "Manual do proxy",
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       intencao: "Manter o PDF como Fonte.",
       openaiFileIdRefs: [{
         id: "file-official",

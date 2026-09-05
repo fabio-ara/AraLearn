@@ -16,6 +16,14 @@ export class CourseStudyBridge {
     return this.controller.loadCourseDesign(courseId, options);
   }
 
+  loadCourseMedia(courseId, options = {}) {
+    return this.controller.loadCourseMedia(courseId, options);
+  }
+
+  getCourseMediaDownload(values) {
+    return this.controller.getCourseMediaDownload(values);
+  }
+
   async loadCourse(courseId, options = {}) {
     const result = await this.controller.loadCourseDocument(courseId, options);
     return {

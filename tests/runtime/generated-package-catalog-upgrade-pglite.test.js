@@ -9,11 +9,14 @@ const migration = await fs.readFile(new URL(
   "../../supabase/migrations/20260905091101_generated_resource_package_catalog.sql", import.meta.url), "utf8");
 const correction = await fs.readFile(new URL(
   "../../supabase/migrations/20260905092640_deduplicate_rich_paragraph_catalog.sql", import.meta.url), "utf8");
+const audioMigration = await fs.readFile(new URL(
+  "../../supabase/migrations/20260905114027_course_audio_media.sql", import.meta.url), "utf8");
+const historicalCatalog = JSON.parse(correction.match(/as \$catalog\$ select '((?:[^']|'')+)'::jsonb \$catalog\$/u)[1].replaceAll("''", "'"));
 const quote = (value) => "'" + JSON.stringify(value).replaceAll("'", "''") + "'::jsonb";
 
 async function previousDatabase({ extraRef = false, revision = "20260905083846" } = {}) {
   const database = new PGlite();
-  const options = structuredClone(COURSE_COMPONENT_CATALOG.options);
+  const options = structuredClone(historicalCatalog.options);
   if (extraRef) options.push({ ref: "aralearn.resource.removed@1.0.0", label: "Anterior", purpose: "Prova negativa." });
   const policy = { catalogVersion: "1-4616b2e5", availability: "all", allowedRefs: [], excludedRefs: [], preferredRefs: [] };
   const snapshot = { contract: "aralearn.study-unit-design-snapshot.v2", parameters: [{ value: 3, reason: "Decisão anterior." }],
@@ -51,15 +54,35 @@ test("catálogo SQL gerado acompanha registro e migra só metadados compatíveis
     const recoveryBefore = (await database.query("select * from private.unrelated_recovery_fixture")).rows;
     await database.exec(migration);
     await database.exec(correction);
-    assert.deepEqual((await database.query("select private.course_component_catalog_v1() catalog")).rows[0].catalog, COURSE_COMPONENT_CATALOG);
+    assert.deepEqual((await database.query("select private.course_component_catalog_v1() catalog")).rows[0].catalog, historicalCatalog);
     const after = (await database.query("select * from private.course_component_policy_assignments order by id")).rows;
-    assert.deepEqual(after, before.map((row) => ({ ...row, policy: { ...row.policy, catalogVersion: COURSE_COMPONENT_CATALOG.version } })));
+    assert.deepEqual(after, before.map((row) => ({ ...row, policy: { ...row.policy, catalogVersion: historicalCatalog.version } })));
     const entityAfter = (await database.query("select * from private.course_entities")).rows[0];
     assert.deepEqual(entityAfter, entityBefore);
     assert.deepEqual((await database.query("select * from private.unrelated_recovery_fixture")).rows, recoveryBefore);
     assert.deepEqual((await database.query("select public.get_aralearn_runtime_manifest() manifest")).rows[0].manifest,
       { schemaRevision: "20260905092640", features: ["existing"] });
     await assert.rejects(database.exec("insert into private.course_component_policy_assignments(id,policy) values(4,'{\"catalogVersion\":\"unexpected\"}')"), /check constraint/u);
+  } finally { await database.close(); }
+});
+
+test("extensão áudio e ferramentas atualiza catálogo/política corrente e preserva decisão histórica literal", async () => {
+  const database = await previousDatabase();
+  try {
+    await database.exec(migration);
+    await database.exec(correction);
+    const beforePolicy = (await database.query("select * from private.course_component_policy_assignments order by id")).rows;
+    const beforeEntities = (await database.query("select * from private.course_entities")).rows;
+    const beforeRecovery = (await database.query("select * from private.unrelated_recovery_fixture")).rows;
+    const start = audioMigration.indexOf("lock table private.course_component_policy_assignments in access exclusive mode;");
+    const end = audioMigration.indexOf("-- Snapshots e aplicações históricos", start);
+    assert.ok(start >= 0 && end > start);
+    await database.exec(`begin;\n${audioMigration.slice(start, end)}\ncommit;`);
+    assert.deepEqual((await database.query("select private.course_component_catalog_v1() catalog")).rows[0].catalog, COURSE_COMPONENT_CATALOG);
+    assert.deepEqual((await database.query("select * from private.course_component_policy_assignments order by id")).rows,
+      beforePolicy.map(row => ({ ...row, policy: { ...row.policy, catalogVersion: COURSE_COMPONENT_CATALOG.version } })));
+    assert.deepEqual((await database.query("select * from private.course_entities")).rows, beforeEntities);
+    assert.deepEqual((await database.query("select * from private.unrelated_recovery_fixture")).rows, beforeRecovery);
   } finally { await database.close(); }
 });
 

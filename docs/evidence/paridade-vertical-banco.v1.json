@@ -3,6 +3,10 @@
   "source": "pg_catalog(public, private: relações, funções, índices, restrições, triggers não internos, policies e estado RLS) + storage.buckets",
   "objects": [
     {
+      "object": "bucket:storage.course-media",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "bucket:storage.course-source-pdfs",
       "caseId": "course-source-provenance"
     },
@@ -311,7 +315,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v13[check]",
+      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v14[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -545,6 +549,86 @@
     {
       "object": "constraint:private.course_instructional_plans/course_instructional_plans_version_v1[check]",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_byte_size_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_content_hash_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_course_id_fkey[foreign_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_file_name_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_media_type_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_pkey[primary_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media/course_media_status_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_delete_intents/course_media_delete_intents_course_id_fkey[foreign_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_delete_intents/course_media_delete_intents_media_type_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_delete_intents/course_media_delete_intents_pkey[primary_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_actor_id_fkey[foreign_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_byte_size_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_content_hash_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_course_id_content_hash_key[unique]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_course_id_fkey[foreign_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_course_revision_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_media_type_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_pkey[primary_key]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_request_hash_check[check]",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "constraint:private.course_media_upload_intents/course_media_upload_intents_request_id_check[check]",
+      "caseId": "course-audio-media"
     },
     {
       "object": "constraint:private.course_personal_state_receipts/course_personal_state_receipts_course_id_fkey[foreign_key]",
@@ -819,6 +903,10 @@
       "caseId": "study-course-experience"
     },
     {
+      "object": "constraint:public.courses/course_audio_config_v1[check]",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "constraint:public.courses/courses_annotation_set_version_v1[check]",
       "caseId": "course-anchored-annotations"
     },
@@ -963,6 +1051,10 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "function:private.course_audio_object_path_v1(p_course_id uuid, p_hash text, p_type text)",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "function:private.course_authoring_part_progress_v1(p_course_id uuid, p_authoring_part_id uuid)",
       "caseId": "course-authoring-experience"
     },
@@ -1013,6 +1105,10 @@
     {
       "object": "function:private.course_list_projection_v2(p_course_id uuid, p_actor_id uuid)",
       "caseId": "study-course-experience"
+    },
+    {
+      "object": "function:private.course_media_reference_v1(p_media private.course_media)",
+      "caseId": "course-audio-media"
     },
     {
       "object": "function:private.course_ownership_v1(p_course_id uuid, p_actor_id uuid)",
@@ -1089,6 +1185,10 @@
     {
       "object": "function:private.get_course_study_citations_core_v1(p_course_id uuid, p_expected_revision bigint, p_study_unit_id text)",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "function:private.guard_course_audio_object_write_v1()",
+      "caseId": "course-audio-media"
     },
     {
       "object": "function:private.guard_course_source_attachment_lifecycle_v1()",
@@ -1219,6 +1319,10 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "function:private.valid_course_audio_config_v1(p_value jsonb)",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "function:private.valid_course_authoring_progression_v1(p_value jsonb)",
       "caseId": "course-authoring-experience"
     },
@@ -1291,6 +1395,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:public.claim_course_media_delete_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_content_hash text)",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "function:public.claim_course_source_pdf_delete_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_request_id text)",
       "caseId": "course-source-provenance"
     },
@@ -1305,6 +1413,10 @@
     {
       "object": "function:public.commit_course_composition_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_upserts jsonb, p_deletes jsonb, p_source_attribution_applications jsonb, p_request_id text, p_course_metadata jsonb)",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.complete_course_media_delete_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_content_hash text)",
+      "caseId": "course-audio-media"
     },
     {
       "object": "function:public.complete_course_source_pdf_delete_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_request_id text, p_storage_path text)",
@@ -1359,6 +1471,10 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "function:public.execute_course_media_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_request_id text)",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "function:public.execute_course_source_command_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
       "caseId": "course-source-provenance"
     },
@@ -1377,6 +1493,14 @@
     {
       "object": "function:public.get_course_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_include_outline boolean)",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_course_media_download_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_study_unit_id text, p_content_hash text)",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "function:public.get_course_media_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_mode text, p_cursor text, p_limit integer)",
+      "caseId": "course-audio-media"
     },
     {
       "object": "function:public.get_course_source_pdf_download_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_source_id text, p_source_revision bigint, p_content_hash text)",
@@ -1509,6 +1633,10 @@
     {
       "object": "function:public.mutate_course_personal_state_v2(p_course_id uuid, p_expected_revision bigint, p_operations jsonb, p_request_id uuid)",
       "caseId": "study-course-experience"
+    },
+    {
+      "object": "function:public.prepare_course_audio_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_content_hash text, p_byte_size bigint, p_media_type text, p_file_name text, p_request_id text)",
+      "caseId": "course-audio-media"
     },
     {
       "object": "function:public.prepare_course_source_pdf_ingestion_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_content_hash text, p_byte_size bigint, p_media_type text, p_request_id text)",
@@ -1753,6 +1881,22 @@
     {
       "object": "index:private.course_instructional_plans/course_instructional_plans_pkey",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "index:private.course_media/course_media_pkey",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "index:private.course_media_delete_intents/course_media_delete_intents_pkey",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "index:private.course_media_upload_intents/course_media_upload_intents_course_id_content_hash_key",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "index:private.course_media_upload_intents/course_media_upload_intents_pkey",
+      "caseId": "course-audio-media"
     },
     {
       "object": "index:private.course_personal_state_receipts/course_personal_state_receipts_expiry_v1_idx",
@@ -2019,6 +2163,18 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "rls:private.course_media=forced",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "rls:private.course_media_delete_intents=forced",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "rls:private.course_media_upload_intents=forced",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "rls:private.course_personal_state_receipts=disabled",
       "caseId": "study-course-experience"
     },
@@ -2145,6 +2301,18 @@
     {
       "object": "table:private.course_instructional_plans",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "table:private.course_media",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "table:private.course_media_delete_intents",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "table:private.course_media_upload_intents",
+      "caseId": "course-audio-media"
     },
     {
       "object": "table:private.course_personal_state_receipts",

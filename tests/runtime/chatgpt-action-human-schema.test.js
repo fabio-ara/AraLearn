@@ -43,6 +43,8 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 });
 
 const samples = {
+  guardar_audio: { curso: "Fonética", [HUMAN_ACTION_FILE_FIELD]: ["file-reference"] },
+  consultar_audios: { curso: "Fonética", pagina: 1 },
   consultar_perfis: {},
   salvar_perfil: { nome: "Exposição e prática", automaticos: ["distribuicao_da_pratica"] },
   excluir_perfil: { perfil: "Exposição e prática" },
@@ -208,7 +210,7 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.5.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.6.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -238,7 +240,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   for (const task of actionTools) {
     const schema = task.inputSchema;
     for (const [name, property] of Object.entries(schema.properties || {})) {
-      if (task.name === "incorporar_pdf_como_fonte" && name === HUMAN_ACTION_FILE_FIELD) continue;
+      if (name === HUMAN_ACTION_FILE_FIELD) continue;
       assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
       assert.equal(typeof property.description, "string", `${task.name}.${name} sem descrição`);
       assert.ok(property.description.trim().length >= 12, `${task.name}.${name} descrição curta`);
@@ -328,7 +330,7 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   );
   assert.match(
     operation("materializar_parte").description,
-    /calibração contextual[\s\S]*(?:cada|por) unidade[\s\S]*sem etapa separada/iu
+    /calibração contextual por unidade na materialização/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
@@ -345,7 +347,7 @@ test("Actions documenta context como memória de continuação e não como fala"
   );
 });
 
-test("#272 os dezessete inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
+test("os 24 inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   for (const task of actionTools) {
     const validate = ajv.compile(task.inputSchema);
@@ -515,7 +517,7 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
   assert.match(materializationTask.description, /marque formas/iu);
   assert.match(
     materializationTask.description,
-    /não duplique (?:a )?identificação local.*componentes/iu
+    /identidades locais únicas/iu
   );
   const componentsTask = actionTools.find(({ name }) => name === "consultar_componentes");
   assert.match(componentsTask.description, /inspecionar.*antes do uso/iu);
@@ -607,6 +609,26 @@ test("schemas compartilhados de Actions preservam integralmente os argumentos do
     assert.deepEqual(constraints(operation(task.name).requestBody.content["application/json"].schema),
       constraints(task.inputSchema), task.name);
   }
+});
+
+test("#303 áudio publica descritor real MCP e referência de arquivo Actions sem TTS ou caminho local", () => {
+  const tool = COURSE_HUMAN_TASKS.find(task => task.name === "guardar_audio");
+  assert.deepEqual(tool._meta["openai/fileParams"], ["audio"]);
+  assert.deepEqual(tool.inputSchema.properties.audio.required, ["download_url", "file_id"]);
+  assert.deepEqual(Object.keys(tool.inputSchema.properties.audio.properties).sort(), ["download_url", "file_id", "file_name", "mime_type"]);
+  const validate = new Ajv2020({ strict: false }).compile(tool.inputSchema);
+  const valid = { curso: "Fonética", audio: { download_url: "https://files.oaiusercontent.com/audio", file_id: "file-fixture", mime_type: "audio/wav" } };
+  assert.equal(validate(valid), true);
+  for (const invalid of [
+    { ...valid, audio: "C:/audio.wav" }, { ...valid, audio: { file_id: "file-fixture" } },
+    { ...valid, audio: { ...valid.audio, mime_type: "application/pdf" } },
+    { ...valid, textoParaSintetizar: "não autorizado" }, { ...valid, apiKey: "não aceito" }
+  ]) assert.equal(validate(invalid), false);
+  const projected = operation("guardar_audio").requestBody.content["application/json"].schema;
+  assert.equal(Object.hasOwn(projected.properties, "audio"), false);
+  assert.deepEqual(projected.properties.openaiFileIdRefs.items, { type: "string" });
+  assert.equal(projected.properties.openaiFileIdRefs.maxItems, 1);
+  assert.match(projected.properties.openaiFileIdRefs.description, /WAV PCM.*MP3/u);
 });
 
 test('#302 Actions e MCP validam fontes estruturadas, papéis do vínculo e trecho sem status inventado',()=>{

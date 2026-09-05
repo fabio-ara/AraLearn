@@ -15,6 +15,7 @@ import {
   COURSE_SOURCE_ROLES,
   COURSE_BIBLIOGRAPHY_STYLES,
   createEmptyCourseSourceBibliographicMetadata,
+  normalizeCourseSourceAttachment,
   normalizeCourseSourceCommand,
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
@@ -29,6 +30,9 @@ import {
   RESOURCE_VOCABULARIES
 } from "../aralearn/runtime/resources/catalog/vocabularies.js";
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
+import { resolveOpenAiTemporaryAudio } from "./openAiTemporaryAudio.js";
+import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeCourseMediaRead } from
+  "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
   resolveHumanSourceOccurrences } from "./courseHumanMaterialization.js";
 import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
@@ -487,7 +491,7 @@ function annotations(readOnly, destructive = false) {
 function task(name, title, description, schema, {
   readOnly,
   destructive = false,
-  file = false
+  file = null
 } = {}) {
   return Object.freeze({
     name,
@@ -496,7 +500,7 @@ function task(name, title, description, schema, {
     inputSchema: Object.freeze(describeTopLevelArguments(schema)),
     outputSchema: HUMAN_TASK_OUTPUT_SCHEMA,
     annotations: annotations(readOnly, destructive),
-    ...(file ? { _meta: Object.freeze({ "openai/fileParams": Object.freeze(["pdf"]) }) } : {})
+    ...(file ? { _meta: Object.freeze({ "openai/fileParams": Object.freeze([file]) }) } : {})
   });
 }
 
@@ -682,7 +686,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use o recorte preparado. Faça a calibração contextual de cada unidade na mesma materialização, sem etapa separada; marque formas, cobertura, novidade, uso e retomada. Não duplique a identificação local entre componentes. Não narre a chamada; no chat, só resultado, link e próxima etapa.",
+    "Use o recorte preparado com calibração contextual por unidade na materialização. Marque formas, cobertura, novidade, uso e retomada; identidades locais únicas. Não narre a chamada: resultado, link e próxima etapa.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -864,14 +868,36 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         Object.freeze({ required: Object.freeze(["titulo", "papeisSugeridos"]) })
       ])
     }),
-    { readOnly: false, file: true }
+    { readOnly: false, file: "pdf" }
+  ),
+  task(
+    "guardar_audio", "Guardar áudio no curso",
+    "Use para guardar WAV PCM/MP3 e reutilizar no curso. Não sintetiza nem transcreve.",
+    inputSchema({ curso: COURSE_SCHEMA,
+      audio: { type: "object", additionalProperties: false,
+        description: "Áudio WAV PCM ou MP3, até 20 MiB.", required: ["download_url", "file_id"],
+        properties: {
+          download_url: { type: "string", minLength: 1, maxLength: 8192 },
+          file_id: { type: "string", minLength: 1, maxLength: 240 },
+          file_name: { type: "string", minLength: 1, maxLength: 180 },
+          mime_type: { type: "string", enum: ["audio/wav", "audio/mpeg"] }
+        }
+      }
+    }, ["curso", "audio"]), { readOnly: false, file: "audio" }
+  ),
+  task(
+    "consultar_audios", "Consultar áudios do curso",
+    "Use para consultar áudios guardados. Não lê nem transcreve.",
+    inputSchema({ curso: COURSE_SCHEMA,
+      pagina: { type: "integer", minimum: 1, maximum: 100, description: "Página da biblioteca, a partir de 1." }
+    }, ["curso"]), { readOnly: true }
   )
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.5.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.6.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:39eb3123f56fd2cb8d45b601ccede65a29bb665d3eaddd2e068e40478de09f5b";
+  "sha256:78c98f24e250445fa5576256a28b982cfe1277b21443d8540feedc2235ca1ade";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1003,6 +1029,22 @@ function withoutTechnicalState(value) {
       continue;
     }
     if (normalizedKey === "component_authoring_contract") {
+      projected[key] = structuredClone(entry);
+      continue;
+    }
+    if (normalizedKey === "stored_audio") {
+      projected[key] = normalizeCourseMediaCatalogItem(entry);
+      continue;
+    }
+    if (normalizedKey === "source_attachment_target") {
+      exactFields(entry, new Set(["kind", "sourceId", "sourceRevision", "contentHash"]));
+      if (entry.kind !== "source_attachment" || typeof entry.sourceId !== "string" ||
+          !entry.sourceId.trim() || entry.sourceId !== entry.sourceId.trim() || entry.sourceId.length > 240 ||
+          [...entry.sourceId].some(character => { const code = character.codePointAt(0); return code <= 31 || code >= 127 && code <= 159; }) ||
+          !Number.isSafeInteger(entry.sourceRevision) || entry.sourceRevision < 1 ||
+          !/^[a-f0-9]{64}$/u.test(entry.contentHash)) {
+        throw new AuthoringApiError(503, "invalid_course_source_attachment", "A referência do PDF não pôde ser confirmada.");
+      }
       projected[key] = structuredClone(entry);
       continue;
     }
@@ -2528,7 +2570,14 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     deepLink: courseDeepLink(adapter, resolved.course, "content",
       unit ? [["studyUnitId", unit.id]] : []),
     nextDecision: "Quer adotar, contestar ou vincular alguma fonte?",
-    context: { sources: context }
+    context: { sources: context,
+      ...(mode === "source" ? { arquivosParaConteudo: (context.items ?? []).flatMap(source =>
+        (source.attachments ?? []).map((value, index) => {
+          const attachment = normalizeCourseSourceAttachment(value, { persisted: true });
+          return { rotulo: `PDF ${index + 1}`, sourceAttachmentTarget: { kind: "source_attachment",
+            sourceId: source.sourceId, sourceRevision: source.revision, contentHash: attachment.contentHash } };
+        })) } : {})
+    }
   });
 };
 
@@ -2632,6 +2681,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
             rotulo: definition.manifest.label,
             finalidade: definition.manifest.purpose,
             slots: definition.manifest.slots,
+            ...(definition.manifest.tool ? { ferramenta: structuredClone(definition.manifest.tool) } : {}),
             compatibilidadeDeResposta: definition.manifest.responseCompatibility,
             limitacoes: definition.manifest.limitations,
             contrato: definition.contract,
@@ -3641,5 +3691,80 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
       stored: receipt?.stored !== false,
       recipient: projectionRecipient === "connected_mcp_client" ? "connected_client" : "action"
     }
+  });
+};
+
+HUMAN_TASK_HANDLERS.guardar_audio = async ({ adapter, principal, args, deadlineAt }) => {
+  const course = humanCourseTitle(args);
+  const descriptor = plainObject(args.audio, "audio");
+  exactFields(descriptor, new Set(["file_id", "file_name", "mime_type", "download_url"]));
+  let received = null;
+  let resolvedCourse;
+  const receipt = await executeTrustedCourseWrite({
+    load: async () => {
+      const state = await resolveHumanCourseContext({ adapter, principal, course, deadlineAt });
+      resolvedCourse = state.course;
+      return state;
+    },
+    build: async (state) => ({ courseId: state.course.id, expectedCourseRevision: state.course.revision }),
+    commit: async (value) => {
+      if (typeof adapter?.ingestCourseAudio !== "function") {
+        throw new AuthoringApiError(503, "course_media_unavailable", "Não foi possível guardar o áudio agora.");
+      }
+      // Retry da escrita mantém os mesmos bytes mesmo que o acesso temporário expire.
+      received ??= await resolveOpenAiTemporaryAudio({ descriptor, fetchImpl: adapter.fetchImpl, deadlineAt });
+      const raw = await adapter.ingestCourseAudio({ ...value, ...received, principal, deadlineAt });
+      let saved;
+      try { saved = normalizeCourseMediaChange(raw); } catch {
+        throw new AuthoringApiError(409, "course_media_write_uncertain", "Não foi possível confirmar o áudio guardado. Consulte a biblioteca antes de repetir.");
+      }
+      if (saved.operation !== "ingest_audio" || saved.courseId !== value.courseId ||
+          saved.courseRevision !== value.expectedCourseRevision + Number(saved.changed) ||
+          saved.requestId !== value.requestId || saved.media.byteSize !== received.bytes.length ||
+          saved.media.mediaType !== received.mediaType ||
+          saved.media.contentHash !== await sha256Hex(received.bytes)) {
+        throw new AuthoringApiError(409, "course_media_write_uncertain", "Não foi possível confirmar o áudio guardado. Consulte a biblioteca antes de repetir.");
+      }
+      return saved;
+    }
+  });
+  return result("Guardei o áudio na biblioteca do curso.", {
+    deepLink: courseDeepLink(adapter, resolvedCourse, "content"),
+    nextDecision: "Use o arquivo no pacote de áudio com uma alternativa textual apropriada.",
+    context: { storedAudio: { ...receipt.media, fileName: receipt.fileName } }
+  });
+};
+
+HUMAN_TASK_HANDLERS.consultar_audios = async ({ adapter, principal, args, deadlineAt }) => {
+  const pageNumber = args.pagina ?? 1;
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > 100) {
+    fail("invalid_human_task_argument", "A página precisa estar entre 1 e 100.");
+  }
+  const { course } = await resolveHumanCourseContext({ adapter, principal, course: humanCourseTitle(args), deadlineAt });
+  if (typeof adapter?.getCourseMedia !== "function") {
+    throw new AuthoringApiError(503, "course_media_unavailable", "Não foi possível consultar a biblioteca de áudio.");
+  }
+  let cursor = null;
+  let page;
+  const seen = new Set();
+  for (let index = 1; index <= pageNumber; index++) {
+    const raw = await adapter.getCourseMedia({ principal, courseId: course.id,
+      expectedRevision: course.revision, mode: "catalog", cursor, limit: 20, deadlineAt });
+    try { page = normalizeCourseMediaRead(raw); } catch {
+      throw new AuthoringApiError(503, "course_media_unavailable", "Não foi possível ler a biblioteca de áudio.");
+    }
+    if (page.courseId !== course.id || page.courseRevision !== course.revision || page.mode !== "catalog" ||
+        page.nextCursor !== null && seen.has(page.nextCursor)) {
+      throw new AuthoringApiError(409, "stale_course_state", "A biblioteca mudou. Consulte a página novamente.");
+    }
+    if (index < pageNumber && page.nextCursor === null) fail("human_reference_not_found", "Esta página não existe na biblioteca.", null, 404);
+    cursor = page.nextCursor;
+    seen.add(cursor);
+  }
+  return result(page.items.length ? "Consultei os arquivos de áudio do curso." : "Este curso ainda não tem arquivos de áudio.", {
+    deepLink: courseDeepLink(adapter, course, "content"),
+    nextDecision: page.nextCursor ? `Consulte a página ${pageNumber + 1} ou use um destes áudios.` : "Use um arquivo no pacote de áudio ou guarde uma nova gravação.",
+    context: { pagina: pageNumber, temMais: page.nextCursor !== null,
+      audios: page.items.map(item => ({ storedAudio: item })) }
   });
 };

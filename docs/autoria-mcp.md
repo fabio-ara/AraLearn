@@ -9,11 +9,13 @@ alteram o mesmo estado, sem manter uma cópia paralela da conversa.
 
 ## Tarefas disponíveis
 
-As dezessete tarefas formam o catálogo público
+As 24 tarefas formam o catálogo público
 `aralearn.human-authoring-tasks`.
 
 | Leitura | Quando usar |
 | --- | --- |
+| `consultar_perfis` | listar perfis de preferências desta conta |
+| `prever_aplicacao_perfil` | examinar alcance e exceções antes de aplicar um perfil ao curso |
 | `retomar_curso` | localizar ou continuar um curso pelo título |
 | `consultar_planejamento` | ler o mapa curricular completo e, quando pertinente, uma parte operacional |
 | `preparar_materializacao` | reunir o recorte aprovado, o repertório acumulado e a configuração antes de produzir conteúdo |
@@ -22,9 +24,13 @@ As dezessete tarefas formam o catálogo público
 | `preparar_revisao` | reunir também unidades afetadas por progressão, exemplos ou prática |
 | `consultar_fontes` | localizar fontes, âncoras e proveniência |
 | `consultar_componentes` | buscar representações pela função e ler o contrato exato do componente escolhido |
+| `consultar_audios` | recuperar uma página da biblioteca de áudios do curso para reutilização |
 
 | Escrita | Quando usar |
 | --- | --- |
+| `salvar_perfil` | criar ou editar preferências por cópia, sem alterar cursos |
+| `excluir_perfil` | excluir um perfil sem alterar cópias já aplicadas |
+| `aplicar_perfil` | aplicar a prévia examinada, preservando exceções salvo seleção explícita |
 | `criar_curso` | criar um curso privado após confirmar título e objetivo |
 | `salvar_mapa_curricular` | salvar ou aprovar o mapa completo, sem produzir unidades de estudo |
 | `salvar_parte` | agrupar microssequências já previstas num lote operacional e registrar sua progressão local |
@@ -34,14 +40,22 @@ As dezessete tarefas formam o catálogo público
 | `aplicar_correcoes` | aplicar o conjunto coerente de correções já revisado |
 | `manter_fonte` | salvar ou retirar fonte, PDFs, âncoras, verificação e vínculos de proveniência |
 | `incorporar_pdf_como_fonte` | guardar um PDF anexado como fonte ou vinculá-lo a uma fonte existente |
+| `guardar_audio` | guardar WAV PCM ou MP3 já existente na biblioteca do curso |
 
 Os schemas vêm do mesmo catálogo projetado para Actions. Não há aliases para
 ferramentas antigas nem um comando genérico que exponha a estrutura do banco.
 
-No MCP, o PDF anexado chega como o objeto oficial de arquivo gerido pelo
-ChatGPT. Nome, caminho local ou URL digitada não substituem esse objeto; o
-servidor aceita somente a origem temporária autorizada e valida os bytes antes
-de persistir a fonte.
+No cliente compatível, PDF e áudio chegam como objetos oficiais de arquivo
+declarados por `_meta["openai/fileParams"]`. Nome, caminho local ou identificador
+de artefato não substituem `{download_url, file_id, mime_type?, file_name?}`.
+O servidor aceita a origem temporária autorizada e valida bytes antes de
+persistir. Essa extensão depende da capacidade do cliente MCP; não se presume
+acesso a arquivos locais. Ingerir áudio não chama síntese ou transcrição.
+
+As ferramentas do Estudo são pacotes do catálogo comum, compostos no `content`
+da unidade. A consulta focal de componentes fornece um contrato por vez; a de
+fontes fornece alvos lógicos de PDF; a biblioteca fornece referências de áudio
+sem URLs de Storage. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
 
 ## Fluxo de conversa
 

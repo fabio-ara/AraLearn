@@ -60,7 +60,7 @@ const EXPECTED_NAMES = Object.freeze([
   "registrar_observacao",
   "aplicar_correcoes",
   "manter_fonte",
-  "incorporar_pdf_como_fonte"
+  "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
 ]);
 
 function adapter(principal = PRINCIPAL) {
@@ -356,12 +356,12 @@ function internalMapEntities(planRead) {
 
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 22);
+  assert.equal(new Set(EXPECTED_NAMES).size, 24);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.5.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.6.0");
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
 });
 

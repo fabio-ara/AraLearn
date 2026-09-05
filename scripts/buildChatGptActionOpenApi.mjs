@@ -71,6 +71,7 @@ const sourceMetadataSchema = sourceTaskSchema.properties.metadados;
 const sourceLinksSchema = actionTools.find(({ name }) => name === "materializar_parte")
   .inputSchema.properties.unidades.items.properties.fontes;
 const sharedInputSchemas = {
+  HumanCourseTitle: sourceTaskSchema.properties.curso,
   HumanSourceLinks: sourceLinksSchema,
   HumanSourceOccurrences: sourceLinksSchema.items.properties.ocorrencias,
   HumanSourceNames: sourceMetadataSchema.properties.autores,

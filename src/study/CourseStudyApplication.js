@@ -15,6 +15,7 @@ import { publicErrorMessage } from "../ui/publicErrorMessage.js";
 import { courseSourceOccurrenceTextTargets, resolveCourseSourceOccurrences } from "../domain/courseSourceOccurrences.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { placeStudyCitationMarkers, renderStudyCitations } from "./studyCitations.js";
+import { createStudyTools, openStudyResourceUrl } from "./studyTools.js";
 import {
   activateManualStudyUnitEdit,
   applyManualStudyUnitEdit,
@@ -213,6 +214,26 @@ export function createCourseStudyApplication({
   let synchronizationState = {};
   let studyRenderGeneration = 0;
   const citationMarkerBindings = new WeakSet();
+  const studyTools = createStudyTools({
+    root,
+    getStudyUnit: () => context().studyUnit,
+    getContextKey: () => studyUnitPathKey(state.selection),
+    canOpen: () => !destroyed && !state.manualEditing && !state.assistanceSelection &&
+      state.view === "microsequence" && state.microsequenceMode === "play",
+    onOpen: () => { closeCitations(); closeObservationSheet(); },
+    getHost: async () => ({
+      canRevealAnswers: context().studyUnit?.role !== "practice" || state.feedbackOpen ||
+        Boolean(ensureResponseState()?.feedback),
+      loadAudioConfiguration: () => repository.loadStudyAudioConfiguration(canonicalReference(state.selection)),
+      downloadMedia: (media, options) => repository.downloadStudyMedia(canonicalReference(state.selection), media, options),
+      openExternalUrl: (url) => openStudyResourceUrl(url, root.ownerDocument),
+      openSourceAttachment: async (target) => {
+        const result = await repository.getStudyInstructionalAttachmentDownload(
+          canonicalReference(state.selection), target);
+        downloadCitationPdf(result.signedUrl, result.attachment);
+      }
+    })
+  });
 
   function setHomeNotice(message, reviewUndo = null) {
     state.homeNotice = message;
@@ -226,7 +247,7 @@ export function createCourseStudyApplication({
     existing?.remove();
     const screen = root.querySelector(".app-shell > .screen");
     if (screen) {
-      screen.inert = state.citationsOpen || state.observationSheetOpen;
+      screen.inert = state.citationsOpen || state.observationSheetOpen || studyTools.isOpen();
       if (screen.inert) screen.setAttribute("aria-hidden", "true");
       else screen.removeAttribute("aria-hidden");
     }
@@ -559,6 +580,7 @@ export function createCourseStudyApplication({
   }
 
   function resetCitations() {
+    studyTools.close({ restore: false });
     ++citationsEpoch;
     state.citationsOpen = false;
     state.citationsLoading = false;
@@ -3025,6 +3047,7 @@ export function createCourseStudyApplication({
     };
     manualInlineController?.destroy?.();
     manualInlineController = null;
+    studyTools.beforeRender();
     root.innerHTML = '<div class="app-shell">' + renderCourseStudyScreen({
       project: state.project,
       view: state.view,
@@ -3084,6 +3107,7 @@ export function createCourseStudyApplication({
     syncAccountControl();
     bindActions();
     updateCitationsOverlay();
+    studyTools.afterRender();
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
       if (generation !== studyRenderGeneration || destroyed) return;
       placeStudyCitationMarkers(root, context().studyUnit, state.citations);
@@ -3259,6 +3283,7 @@ export function createCourseStudyApplication({
     flushPersonalState,
     destroy() {
       destroyed = true;
+      studyTools.destroy();
       providerAssistance?.destroy?.();
       providerAssistance = null;
       manualInlineController?.destroy?.();

@@ -229,6 +229,140 @@
                   ]
                 },
                 {
+                  "id": "catalog-aralearn-resource-audio-microsequence",
+                  "title": "Áudio",
+                  "goal": "Compreender quando usar Áudio e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.resource.audio"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "catalog-aralearn-resource-audio-theory-card",
+                      "position": 1,
+                      "title": "Como ler: Áudio",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-audio-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Áudio: Escutar e comparar falas ou gravações quando o som participa da aprendizagem. É apropriado quando o som fornece informação necessária à tarefa. Na leitura, observe esta convenção: faixas identificadas. Limite importante: Voz nativa depende do dispositivo e não gera arquivo exportável.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-resource-audio-theory-example",
+                          "package": "aralearn.resource.audio",
+                          "version": "1.0.0",
+                          "data": {
+                            "tracks": [
+                              {
+                                "id": "greeting",
+                                "label": "Saudação em inglês",
+                                "locale": "en-US",
+                                "kind": "native",
+                                "text": "Good morning. How are you?",
+                                "alternative": {
+                                  "text": "Good morning. How are you?",
+                                  "visibility": "on_request"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    },
+                    {
+                      "id": "catalog-aralearn-resource-audio-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Áudio",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-audio-practice-example",
+                          "package": "aralearn.resource.audio",
+                          "version": "1.0.0",
+                          "data": {
+                            "tracks": [
+                              {
+                                "id": "greeting",
+                                "label": "Saudação em inglês",
+                                "locale": "en-US",
+                                "kind": "native",
+                                "text": "Good morning. How are you?",
+                                "alternative": {
+                                  "text": "Good morning. How are you?",
+                                  "visibility": "on_request"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "catalog-aralearn-resource-audio-practice-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Ouça a faixa ou abra a alternativa textual. Qual é o sentido da saudação em inglês?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "morning",
+                              "kind": "text",
+                              "text": "Bom dia. Como você está?"
+                            },
+                            {
+                              "id": "farewell",
+                              "kind": "text",
+                              "text": "Até logo. Nos vemos amanhã."
+                            },
+                            {
+                              "id": "thanks",
+                              "kind": "text",
+                              "text": "Obrigado. O prazer foi meu."
+                            },
+                            {
+                              "id": "night",
+                              "kind": "text",
+                              "text": "Boa noite. Durma bem."
+                            }
+                          ],
+                          "answerIds": [
+                            "morning"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-resource-audio-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Good morning é uma saudação da manhã; How are you? pergunta como a outra pessoa está. A alternativa escrita permite analisar a mesma fala quando a voz do dispositivo não está disponível. Critério de revisão para Áudio: a representação deve realizar a finalidade declarada — Escutar e comparar falas ou gravações quando o som participa da aprendizagem. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando ler a prosa oferece toda a informação necessária.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": []
+                    }
+                  ]
+                },
+                {
                   "id": "catalog-aralearn-resource-code-microsequence",
                   "title": "Código",
                   "goal": "Compreender quando usar Código e experimentar sua interação canônica.",
@@ -316,6 +450,276 @@
                           "version": "1.0.0",
                           "data": {
                             "text": "Critério de revisão para Código: a representação deve realizar a finalidade declarada — Apresentar código cuja sintaxe, indentação e execução mental são relevantes. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando pseudocódigo ou prosa expressam melhor a ideia.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": []
+                    }
+                  ]
+                },
+                {
+                  "id": "catalog-aralearn-resource-dictionary-microsequence",
+                  "title": "Dicionário",
+                  "goal": "Compreender quando usar Dicionário e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.resource.dictionary"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "catalog-aralearn-resource-dictionary-theory-card",
+                      "position": 1,
+                      "title": "Como ler: Dicionário",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-dictionary-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Dicionário: Abrir um ou mais dicionários configurados pela autoria para consultar sentidos, pronúncia e exemplos adequados ao contexto. É apropriado quando a consulta lexical ajuda a compreender uma passagem ou escolher um uso. Na leitura, observe esta convenção: idioma identificado. Limite importante: Abre a consulta configurada; não escolhe um sentido nem transmite automaticamente o texto da unidade.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-resource-dictionary-theory-example",
+                          "package": "aralearn.resource.dictionary",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare os usos da palavra",
+                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
+                            "items": [
+                              {
+                                "id": "lexicon",
+                                "label": "Dicionário escolhido para a unidade",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/dicionario"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    },
+                    {
+                      "id": "catalog-aralearn-resource-dictionary-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Dicionário",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-dictionary-practice-example",
+                          "package": "aralearn.resource.dictionary",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare os usos da palavra",
+                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
+                            "items": [
+                              {
+                                "id": "lexicon",
+                                "label": "Dicionário escolhido para a unidade",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/dicionario"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "catalog-aralearn-resource-dictionary-practice-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Considere: ‘O relatório sustenta a hipótese, mas novos testes ainda são necessários’. Ao consultar os usos de ‘sustentar’, qual paráfrase preserva o sentido da passagem inteira?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "support",
+                              "kind": "text",
+                              "text": "O relatório oferece apoio à hipótese sem encerrar sua verificação."
+                            },
+                            {
+                              "id": "proof",
+                              "kind": "text",
+                              "text": "O relatório comprova definitivamente a hipótese, independentemente de novos testes."
+                            },
+                            {
+                              "id": "suspend",
+                              "kind": "text",
+                              "text": "O relatório deixa a hipótese sem avaliação por não apresentar argumentos sobre ela."
+                            },
+                            {
+                              "id": "mention",
+                              "kind": "text",
+                              "text": "O relatório apenas enuncia a hipótese, sem tomar posição a seu respeito."
+                            }
+                          ],
+                          "answerIds": [
+                            "support"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-resource-dictionary-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Na passagem, ‘sustenta’ significa oferecer apoio à hipótese. A continuação sobre novos testes impede confundir esse apoio com comprovação definitiva; o verbo também não se reduz a enunciar a hipótese ou deixar de avaliá-la. A ferramenta abre a consulta, mas escolher o sentido exige considerar a frase inteira. Critério de revisão para Dicionário: a representação deve realizar a finalidade declarada — Abrir um ou mais dicionários configurados pela autoria para consultar sentidos, pronúncia e exemplos adequados ao contexto. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando o exercício exige recuperar o sentido sem consulta.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": []
+                    }
+                  ]
+                },
+                {
+                  "id": "catalog-aralearn-resource-grammar-microsequence",
+                  "title": "Gramática",
+                  "goal": "Compreender quando usar Gramática e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.resource.grammar"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "catalog-aralearn-resource-grammar-theory-card",
+                      "position": 1,
+                      "title": "Como ler: Gramática",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-grammar-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Gramática: Abrir explicações gramaticais escolhidas para apoiar a análise de formas, construções e usos no contexto da tarefa. É apropriado quando o estudante precisa consultar uma regra, construção ou contraste enquanto estuda. Na leitura, observe esta convenção: idioma identificado. Limite importante: Não analisa a frase nem corrige a produção automaticamente.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-resource-grammar-theory-example",
+                          "package": "aralearn.resource.grammar",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Consulte a construção antes de responder",
+                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
+                            "items": [
+                              {
+                                "id": "construction",
+                                "label": "Explicação da construção",
+                                "description": "Leia a seção indicada e volte para justificar sua análise.",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/gramatica/construcao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    },
+                    {
+                      "id": "catalog-aralearn-resource-grammar-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Gramática",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-grammar-practice-example",
+                          "package": "aralearn.resource.grammar",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Consulte a construção antes de responder",
+                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
+                            "items": [
+                              {
+                                "id": "construction",
+                                "label": "Explicação da construção",
+                                "description": "Leia a seção indicada e volte para justificar sua análise.",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/gramatica/construcao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "catalog-aralearn-resource-grammar-practice-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Compare ‘A pesquisadora revisou o texto’ e ‘O texto foi revisado pela pesquisadora’. Qual consulta gramatical ajuda a explicar a mudança de posição dos constituintes sem trocar quem realizou a ação?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "voice",
+                              "kind": "text",
+                              "text": "Voz ativa e passiva: a relação entre sujeito e agente da ação."
+                            },
+                            {
+                              "id": "tense",
+                              "kind": "text",
+                              "text": "Tempo verbal: a passagem do passado para o presente."
+                            },
+                            {
+                              "id": "agreement",
+                              "kind": "text",
+                              "text": "Concordância: a correção de um verbo flexionado incorretamente."
+                            },
+                            {
+                              "id": "lexicon",
+                              "kind": "text",
+                              "text": "Sentido lexical: uma mudança no significado de revisar."
+                            }
+                          ],
+                          "answerIds": [
+                            "voice"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-resource-grammar-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A consulta pertinente é sobre voz ativa e passiva. Em ‘A pesquisadora revisou o texto’, a pesquisadora é sujeito e agente; em ‘O texto foi revisado pela pesquisadora’, o texto é sujeito, mas a pesquisadora continua sendo o agente. A mudança de construção não troca quem realizou a revisão. Critério de revisão para Gramática: a representação deve realizar a finalidade declarada — Abrir explicações gramaticais escolhidas para apoiar a análise de formas, construções e usos no contexto da tarefa. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando o texto da unidade já oferece toda a orientação necessária.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -502,13 +906,8 @@
                               "targetInstanceId": "catalog-aralearn-resource-interlinear-gloss-practice-example",
                               "targetPath": "units[0].form",
                               "label": "Lacuna na forma 1",
-                              "responseMode": "choice",
-                              "answer": "Gila",
-                              "distractors": [
-                                "ferma",
-                                "güǧüna",
-                                "abur-u-n"
-                              ]
+                              "responseMode": "text",
+                              "answer": "Gila"
                             }
                           ]
                         }
@@ -617,6 +1016,140 @@
                           "version": "1.0.0",
                           "data": {
                             "text": "Critério de revisão para Texto explicado: a representação deve realizar a finalidade declarada — Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada. A operação-alvo da tarefa é explicar e situar. Evite este recurso quando a estrutura do objeto exige notação própria.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": []
+                    }
+                  ]
+                },
+                {
+                  "id": "catalog-aralearn-resource-reading-microsequence",
+                  "title": "Leitura complementar",
+                  "goal": "Compreender quando usar Leitura complementar e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.resource.reading"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "catalog-aralearn-resource-reading-theory-card",
+                      "position": 1,
+                      "title": "Como ler: Leitura complementar",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-reading-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Leitura complementar: Oferecer leituras selecionadas com orientação para ampliar, contrastar ou aplicar o conteúdo da tarefa e depois retomar o estudo. É apropriado quando outra leitura acrescenta uma perspectiva ou explicação necessária ao percurso. Na leitura, observe esta convenção: finalidade da leitura explícita. Limite importante: Não resume nem verifica automaticamente o material indicado.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-resource-reading-theory-example",
+                          "package": "aralearn.resource.reading",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Amplie a comparação",
+                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
+                            "items": [
+                              {
+                                "id": "reading",
+                                "label": "Perspectiva complementar",
+                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/leitura/comparacao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    },
+                    {
+                      "id": "catalog-aralearn-resource-reading-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Leitura complementar",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-reading-practice-example",
+                          "package": "aralearn.resource.reading",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Amplie a comparação",
+                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
+                            "items": [
+                              {
+                                "id": "reading",
+                                "label": "Perspectiva complementar",
+                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/leitura/comparacao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "catalog-aralearn-resource-reading-practice-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "A ‘Perspectiva complementar’ apresenta outro mecanismo para o mesmo fenômeno. Ao voltar à unidade, qual resultado atende à orientação de comparar as explicações?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "mechanisms",
+                              "kind": "text",
+                              "text": "Mostrar como cada mecanismo liga causas ao efeito e em que condições as explicações divergem."
+                            },
+                            {
+                              "id": "count",
+                              "kind": "text",
+                              "text": "Contar os argumentos e tomar a explicação com mais itens como a mais forte."
+                            },
+                            {
+                              "id": "merge",
+                              "kind": "text",
+                              "text": "Fundir os dois mecanismos em uma explicação antes de examinar suas diferenças."
+                            },
+                            {
+                              "id": "replace",
+                              "kind": "text",
+                              "text": "Substituir a explicação da unidade pela adicional porque ela foi recomendada."
+                            }
+                          ],
+                          "answerIds": [
+                            "mechanisms"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-resource-reading-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Comparar explicações exige reconstruir como cada mecanismo liga causas e efeito e localizar as condições em que suas previsões ou razões divergem. Contar argumentos, fundir mecanismos antes de examiná-los ou preferir automaticamente o texto adicional não realiza esse contraste. A leitura complementar também não confirma uma fonte por ter sido indicada. Critério de revisão para Leitura complementar: a representação deve realizar a finalidade declarada — Oferecer leituras selecionadas com orientação para ampliar, contrastar ou aplicar o conteúdo da tarefa e depois retomar o estudo. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando o conteúdo necessário só foi deslocado para fora da unidade sem orientação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -736,6 +1269,122 @@
               },
               "topics": [],
               "microsequences": [
+                {
+                  "id": "catalog-aralearn-resource-calculator-microsequence",
+                  "title": "Calculadora",
+                  "goal": "Compreender quando usar Calculadora e experimentar sua interação canônica.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [
+                    "aralearn.resource.calculator"
+                  ],
+                  "checks": [
+                    "a representação comunica a estrutura pretendida",
+                    "a prática usa uma modalidade declarada pelo package"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "catalog-aralearn-resource-calculator-theory-card",
+                      "position": 1,
+                      "title": "Como ler: Calculadora",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-calculator-theory-introduction",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Calculadora: Disponibilizar cálculo numérico real para verificar resultados, explorar valores e comparar uma previsão com um cálculo explícito. É apropriado quando o cálculo apoia o raciocínio da tarefa, sem substituir a justificativa. Na leitura, observe esta convenção: precedência explícita. Limite importante: Cálculo real aproximado, com até 12 algarismos significativos na exibição. Não resolve equações nem calcula com unidades ou números complexos.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        },
+                        {
+                          "id": "catalog-aralearn-resource-calculator-theory-example",
+                          "package": "aralearn.resource.calculator",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare a estimativa com o cálculo",
+                            "angleUnit": "radians",
+                            "prompt": "Estime a diagonal antes de calcular a raiz da soma dos quadrados dos catetos.",
+                            "initialExpression": "sqrt(3^2 + 4^2)"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    },
+                    {
+                      "id": "catalog-aralearn-resource-calculator-practice-card",
+                      "position": 2,
+                      "title": "Pratique: Calculadora",
+                      "role": "practice",
+                      "content": [
+                        {
+                          "id": "catalog-aralearn-resource-calculator-practice-example",
+                          "package": "aralearn.resource.calculator",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare a estimativa com o cálculo",
+                            "angleUnit": "radians",
+                            "prompt": "Estime a diagonal antes de calcular a raiz da soma dos quadrados dos catetos.",
+                            "initialExpression": "sqrt(3^2 + 4^2)"
+                          }
+                        }
+                      ],
+                      "response": {
+                        "id": "catalog-aralearn-resource-calculator-practice-response",
+                        "package": "aralearn.response.choice",
+                        "version": "1.0.0",
+                        "data": {
+                          "question": "Estime a diagonal de um retângulo com lados 3 e 4. Use a expressão já preparada na calculadora para conferir: qual é o comprimento da diagonal?",
+                          "selectionMode": "single",
+                          "selectionCriterion": "correct",
+                          "options": [
+                            {
+                              "id": "diagonal",
+                              "kind": "text",
+                              "text": "5 unidades de comprimento."
+                            },
+                            {
+                              "id": "largest-side",
+                              "kind": "text",
+                              "text": "4 unidades de comprimento."
+                            },
+                            {
+                              "id": "sum",
+                              "kind": "text",
+                              "text": "7 unidades de comprimento."
+                            },
+                            {
+                              "id": "squares",
+                              "kind": "text",
+                              "text": "25 unidades de comprimento."
+                            }
+                          ],
+                          "answerIds": [
+                            "diagonal"
+                          ]
+                        }
+                      },
+                      "feedback": [
+                        {
+                          "id": "catalog-aralearn-resource-calculator-practice-feedback",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "A expressão calcula √(3² + 4²) = √25 = 5. Os catetos não se somam diretamente: a diagonal é a hipotenusa do triângulo retângulo. O cálculo confere a estimativa, mas a relação geométrica justifica a expressão. Critério de revisão para Calculadora: a representação deve realizar a finalidade declarada — Disponibilizar cálculo numérico real para verificar resultados, explorar valores e comparar uma previsão com um cálculo explícito. A operação-alvo da tarefa é calcular e avaliar. Evite este recurso quando a tarefa avalia cálculo mental sem apoio.",
+                            "languageTag": "pt-BR",
+                            "textDirection": "auto"
+                          }
+                        }
+                      ],
+                      "topics": []
+                    }
+                  ]
+                },
                 {
                   "id": "catalog-aralearn-resource-chart-microsequence",
                   "title": "Gráfico estatístico",
@@ -1043,11 +1692,8 @@
                               "targetInstanceId": "catalog-aralearn-resource-chart-practice-example",
                               "targetPath": "series[0].name",
                               "label": "Lacuna na série 1",
-                              "responseMode": "choice",
-                              "answer": "Controle centralizado",
-                              "distractors": [
-                                "Particionamento adaptativo"
-                              ]
+                              "responseMode": "text",
+                              "answer": "Controle centralizado"
                             }
                           ]
                         }
@@ -1523,12 +2169,8 @@
                               "targetInstanceId": "catalog-aralearn-resource-matrix-practice-example",
                               "targetPath": "values[0][1]",
                               "label": "Lacuna na entrada 1, 1, 2",
-                              "responseMode": "choice",
-                              "answer": "−sin θ",
-                              "distractors": [
-                                "cos θ",
-                                "sin θ"
-                              ]
+                              "responseMode": "text",
+                              "answer": "−sin θ"
                             }
                           ]
                         }
@@ -2078,12 +2720,8 @@
                               "targetInstanceId": "catalog-aralearn-resource-reaction-practice-example",
                               "targetPath": "reactants[0].formula",
                               "label": "Lacuna na fórmula 1 de reagente",
-                              "responseMode": "choice",
-                              "answer": "H₂",
-                              "distractors": [
-                                "O₂",
-                                "H₂O"
-                              ]
+                              "responseMode": "text",
+                              "answer": "H₂"
                             }
                           ]
                         }
@@ -2243,8 +2881,13 @@
                               "targetInstanceId": "catalog-aralearn-resource-table-practice-example",
                               "targetPath": "rows[0][0]",
                               "label": "Lacuna na célula 1, 1",
-                              "responseMode": "text",
-                              "answer": "Slow start"
+                              "responseMode": "choice",
+                              "answer": "Slow start",
+                              "distractors": [
+                                "Timeout",
+                                "Fast retransmit",
+                                "ACKs duplicados"
+                              ]
                             }
                           ]
                         }
@@ -2456,13 +3099,8 @@
                               "targetInstanceId": "catalog-aralearn-resource-truth-table-practice-example",
                               "targetPath": "rows[0].values[0]",
                               "label": "Lacuna na valoração 1.1",
-                              "responseMode": "choice",
-                              "answer": "true",
-                              "distractors": [
-                                "P → Q",
-                                "false",
-                                "¬P"
-                              ]
+                              "responseMode": "text",
+                              "answer": "true"
                             }
                           ]
                         }

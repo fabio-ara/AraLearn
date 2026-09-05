@@ -121,6 +121,7 @@ function publicProfile(manifest) {
     label: manifest.label,
     purpose: manifest.purpose,
     slots: Object.freeze([...manifest.slots]),
+    ...(manifest.tool ? { tool: Object.freeze({ ...manifest.tool }) } : {}),
     primaryFamilyId: taxonomy.primaryFamilyId,
     familyIds: Object.freeze([...taxonomy.familyIds]),
     disciplineIds: Object.freeze([...taxonomy.disciplineIds]),

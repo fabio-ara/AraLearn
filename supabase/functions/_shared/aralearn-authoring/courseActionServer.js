@@ -12,11 +12,10 @@ import {
   readAuthoringOAuthAuthorization,
   sha256Hex
 } from "./security.js";
-import { isTrustedOpenAiFileHost } from "./openAiTemporaryPdf.js";
+import { isTrustedOpenAiFileHost } from "./openAiTemporaryFile.js";
 
 const BODY_LIMIT = 512 * 1024;
 const RESPONSE_LIMIT = 512 * 1024;
-const FILE_TASK = "incorporar_pdf_como_fonte";
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -87,9 +86,9 @@ async function readBody(request) {
   }
 }
 
-function actionFileReference(value) {
+function actionFileReference(value, fieldSchema) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new AuthoringApiError(422, "invalid_openai_file", "O PDF anexado não chegou em formato utilizável.");
+    throw new AuthoringApiError(422, "invalid_openai_file", "O arquivo anexado não chegou em formato utilizável.");
   }
   const fileId = String(value.id || value.file_id || "").trim();
   const fileName = String(value.name || value.file_name || "").trim();
@@ -101,12 +100,14 @@ function actionFileReference(value) {
   } catch {
     downloadUrl = null;
   }
-  if (!fileId || mediaType && mediaType !== "application/pdf" ||
+  const mimeSchema = fieldSchema.properties.mime_type;
+  const mediaTypes = mimeSchema.enum ?? [mimeSchema.const];
+  if (!fileId || mediaType && !mediaTypes.includes(mediaType) ||
       downloadUrl?.protocol !== "https:" ||
       !isTrustedOpenAiFileHost(downloadUrl.hostname) ||
       downloadUrl.username || downloadUrl.password || downloadUrl.hash ||
       downloadUrl.port && downloadUrl.port !== "443") {
-    throw new AuthoringApiError(422, "invalid_openai_file", "A referência precisa apontar para um PDF.");
+    throw new AuthoringApiError(422, "invalid_openai_file", "A referência precisa apontar para o tipo de arquivo aceito pela tarefa.");
   }
   return {
     download_url: downloadUrl.href,
@@ -117,21 +118,25 @@ function actionFileReference(value) {
 }
 
 function normalizeActionArguments(taskName, rawArguments) {
-  if (taskName !== FILE_TASK) return rawArguments;
-  if (Object.hasOwn(rawArguments, "pdf")) {
+  const definition = courseHumanTaskDefinition(taskName);
+  const fields = definition?._meta?.["openai/fileParams"];
+  if (!fields) return rawArguments;
+  if (fields.length !== 1) throw new TypeError("Transporte de arquivo inválido.");
+  const [field] = fields;
+  if (Object.hasOwn(rawArguments, field)) {
     throw new AuthoringApiError(
       422,
       "invalid_openai_file",
-      "O campo do PDF é preenchido pelo transporte do ChatGPT."
+      "O campo do arquivo é preenchido pelo transporte do ChatGPT."
     );
   }
   const references = rawArguments.openaiFileIdRefs;
   if (!Array.isArray(references) || references.length !== 1) {
-    throw new AuthoringApiError(422, "openai_file_count_invalid", "Escolha um único PDF anexado.");
+    throw new AuthoringApiError(422, "openai_file_count_invalid", "Escolha um único arquivo anexado.");
   }
   const normalized = {
     ...rawArguments,
-    pdf: actionFileReference(references[0])
+    [field]: actionFileReference(references[0], definition.inputSchema.properties[field])
   };
   delete normalized.openaiFileIdRefs;
   return normalized;
@@ -151,7 +156,7 @@ function normalizedResult(value) {
 }
 
 function retryableError(error) {
-  if (error.code === "course_source_pdf_write_uncertain") return false;
+  if (["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
   if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
   return new Set([
     "course_service_unavailable", "request_timeout", "network_error"
@@ -173,6 +178,9 @@ function nextDecisionForError(error, retryable) {
   }
   if (error.code === "course_source_pdf_write_uncertain") {
     return "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.";
+  }
+  if (error.code === "course_media_write_uncertain") {
+    return "Consulte os áudios do curso antes de decidir se ainda precisa guardar o arquivo.";
   }
   if (error.code === "human_materialization_contextual_calibration_required") {
     return "Inclua a calibração contextual nas unidades e refaça a produção da parte.";

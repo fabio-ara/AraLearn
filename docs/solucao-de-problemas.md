@@ -216,7 +216,7 @@ expirar, anexe novamente o mesmo arquivo numa mensagem nova.
 Para abrir um anexo, releia a fonte e solicite um novo endereço assinado. O
 endereço expira em 60 segundos, não pode ser revogado individualmente durante
 essa janela e não deve ser guardado como identidade do arquivo. Confira
-também a cota de 64 MiB de conteúdo único por curso e o limite de oito anexos
+também a cota conjunta de 64 MiB de PDFs e áudios por curso e o limite de oito anexos
 por fonte.
 
 Envio, remoção e reativação de bytes passam pelo serviço e pela API do Storage;

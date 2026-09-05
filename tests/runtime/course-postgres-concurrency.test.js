@@ -126,6 +126,60 @@ const parsedDatabaseUrl = (() => {
 const runnerPassword = parsedDatabaseUrl
   ? decodeURIComponent(parsedDatabaseUrl.password || "")
   : "";
+
+test("PostgreSQL serializa áudio preparado, Storage e exclusões sem recriar órfão", {
+  skip: postgresGate
+}, async () => {
+  const owner = "30300000-0000-4000-8000-000000002001";
+  const session = "30300000-0000-4000-8000-000000002002";
+  const course = "30300000-0000-4000-8000-000000002003";
+  const email = "audio-lock-303@example.test";
+  const hash = "9".repeat(64);
+  const object = `${course}/${hash}.wav`;
+  const context = `select set_config('request.jwt.claim.sub','${owner}',true);
+    select set_config('request.jwt.claim.role','authenticated',true);
+    select set_config('request.jwt.claims','{"sub":"${owner}","role":"authenticated","session_id":"${session}"}',true);`;
+  await createUser(owner, email);
+  try {
+    await result(psql(`insert into auth.sessions(id,user_id,created_at,updated_at,not_after)
+      values('${session}','${owner}',now(),now(),now()+interval '1 hour');
+      insert into public.courses(id,owner_id,title,goal) values('${course}','${owner}','Áudio sintético concorrente','Provar serialização de arquivo.');
+      select set_config('request.jwt.claim.role','service_role',false);
+      select public.prepare_course_audio_for_actor_v1('${owner}','${course}',1,'${hash}',524,'audio/wav','sinal.wav','audio-lock-303-prepare');`));
+    const upload = psql([
+      `begin; set local application_name='aralearn-audio-303-upload';
+       insert into storage.objects(bucket_id,name,metadata) values('course-media','${object}','{"size":524,"mimetype":"audio/wav"}');`,
+      "select 'audio-storage-held';", "select pg_sleep(3); commit;"
+    ]);
+    await marker(upload, "audio-storage-held");
+    const accountDeletion = psql(`set application_name='aralearn-audio-303-account-delete'; begin; set local role authenticated;
+      ${context} select public.delete_my_account_v1('EXCLUIR MINHA CONTA'); commit;`);
+    await waitForDatabaseCondition(`select (count(*)=1)::integer from pg_stat_activity
+      where application_name='aralearn-audio-303-account-delete' and state='active' and wait_event_type='Lock';`);
+    await Promise.all([result(upload), assert.rejects(result(accountDeletion), /Remova os arquivos privados/iu)]);
+    assert.equal(await result(psql(`select (exists(select 1 from auth.users where id='${owner}'))::text||'|'||
+      (exists(select 1 from storage.objects where bucket_id='course-media' and name='${object}'))::text;`)), "true|true");
+    await result(psql(`begin; select set_config('storage.allow_delete_query','true',true);
+      delete from storage.objects where bucket_id='course-media' and name='${object}'; commit;`));
+    const courseDeletion = psql([
+      `begin; select set_config('request.jwt.claim.role','service_role',true);
+       select public.maintain_course_for_actor_v1('${owner}','${course}','delete_owned_course',true,'audio-lock-303-delete');`,
+      "select 'audio-course-delete-held';", "select pg_sleep(3); commit;"
+    ]);
+    await marker(courseDeletion, "audio-course-delete-held");
+    const lateUpload = psql(`set application_name='aralearn-audio-303-late-upload'; begin;
+      insert into storage.objects(bucket_id,name,metadata) values('course-media','${object}','{"size":524,"mimetype":"audio/wav"}'); commit;`);
+    await waitForDatabaseCondition(`select (count(*)=1)::integer from pg_stat_activity
+      where application_name='aralearn-audio-303-late-upload' and state='active' and wait_event_type='Lock';`);
+    await Promise.all([result(courseDeletion), assert.rejects(result(lateUpload), /preparação vigente|Curso inexistente/iu)]);
+    assert.equal(await result(psql(`select (exists(select 1 from public.courses where id='${course}'))::text||'|'||
+      (exists(select 1 from storage.objects where bucket_id='course-media' and name='${object}'))::text;`)), "false|false");
+  } finally {
+    await result(psql(`begin; select set_config('storage.allow_delete_query','true',true);
+      delete from storage.objects where bucket_id='course-media' and name='${object}'; commit;`));
+    await cleanupUser(owner, email);
+  }
+});
 const localCutoverGate = postgresGate || !runnerPassword
   ? "o gate do corte exige PostgreSQL local com senha na URL"
   : false;

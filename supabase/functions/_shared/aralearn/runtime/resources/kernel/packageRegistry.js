@@ -133,6 +133,15 @@ export function assertPackageDefinition(definition) {
   }
   assertNonEmptyList(manifest.taskOperations, `${manifest.id}.manifest.taskOperations`);
   assertAcademicManifest(manifest);
+  if (manifest.tool !== undefined) {
+    if (!manifest.tool || typeof manifest.tool !== "object" || Array.isArray(manifest.tool) ||
+        Object.keys(manifest.tool).some((key) => !["label", "icon"].includes(key)) ||
+        !text(manifest.tool.label) || !/^[a-z][a-z0-9-]*$/u.test(text(manifest.tool.icon)) ||
+        manifest.slots.length !== 1 || manifest.slots[0] !== "content" ||
+        typeof definition.toolInteraction?.bind !== "function") {
+      throw new TypeError(`${manifest.id} precisa de ferramenta com rótulo, ícone e interação no conteúdo.`);
+    }
+  }
   if (!definition.schema || typeof definition.schema !== "object") {
     throw new TypeError(`${manifest.id} precisa de schema.`);
   }
@@ -180,6 +189,7 @@ function publicManifest(definition) {
     responseCompatibility: manifest.responseCompatibility || [],
     limitations: manifest.limitations || [],
     accessibility: manifest.accessibility || "",
+    ...(manifest.tool ? { tool: manifest.tool } : {}),
     academic: {
       ...academic,
       taxonomy: inferAcademicTaxonomy({
@@ -286,6 +296,20 @@ export function createPackageRegistry(packageDefinitions = []) {
       });
     },
     get,
+    listStudyTools(studyUnit) {
+      return (studyUnit?.content || []).filter((instance) =>
+        Boolean(get(instance.package, instance.version)?.manifest.tool)).map((instance) => ({
+        instance: clone(instance),
+        ...clone(get(instance.package, instance.version).manifest.tool)
+      }));
+    },
+    bindToolInteraction(instance, root, host = {}) {
+      const definition = requirePackage(instance.package, instance.version);
+      const validation = validateInstance(instance, "content");
+      if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+      if (!definition.manifest.tool) throw new TypeError("O recurso não é uma ferramenta.");
+      return definition.toolInteraction.bind(root, clone(instance.data), host);
+    },
     normalizeInstance(instance, slot) {
       const definition = requirePackage(instance?.package, instance?.version);
       const normalized = {

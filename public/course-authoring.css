@@ -3933,7 +3933,8 @@
 .course-source-form-actions button,
 .course-source-detail-heading > button,
 .course-source-target-dialog > header > button,
-.course-source-target-dialog > button {
+.course-source-target-dialog > button,
+.course-audio-panel button {
   min-height: var(--tap);
   display: inline-flex;
   align-items: center;
@@ -3961,7 +3962,8 @@
 .course-source-form-actions button,
 .course-source-detail-heading > button,
 .course-source-target-dialog > header > button,
-.course-sources-panel .course-authoring-more {
+.course-sources-panel .course-authoring-more,
+.course-audio-panel button[aria-label] {
   width: var(--tap);
   min-width: var(--tap);
   height: var(--tap);
@@ -4799,3 +4801,34 @@
     gap: 2px;
   }
 }
+
+.course-audio-panel { display: grid; gap: 16px; min-width: 0; }
+.course-audio-panel h2 { margin: 0; font-size: var(--type-heading, 1.25rem); }
+.course-audio-content { border: 0; margin: 0; padding: 0; min-width: 0; }
+.course-audio-tabs, .course-audio-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.course-audio-tabs button[aria-pressed='true'] { border-color: var(--border-strong); background: var(--surface-raised); }
+.course-audio-form, .course-audio-form label { display: grid; gap: 8px; min-width: 0; }
+.course-audio-form { gap: 16px; }
+.course-audio-form label { font-size: var(--type-small, 0.875rem); }
+.course-audio-form :is(input, select, textarea), .course-audio-panel button { min-height: 44px; max-width: 100%; }
+.course-audio-form :is(input, select, textarea) { width: 100%; min-width: 0; }
+.course-audio-form :is(input:not([type='checkbox']), select, textarea) {
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  font: inherit;
+}
+.course-audio-panel :is(button, input, select, textarea):disabled { cursor: default; opacity: 0.62; }
+.course-audio-form .course-audio-check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); }
+.course-audio-check input { flex: 0 0 20px; width: 20px; min-height: 20px; }
+.course-audio-form details > summary { cursor: pointer; min-height: 44px; }
+.course-audio-form details[open] { display: grid; gap: 12px; }
+.course-audio-panel p { line-height: 1.5; overflow-wrap: anywhere; }
+.course-audio-files { list-style: none; padding: 0; display: grid; gap: 8px; }
+.course-audio-files li { display: flex; align-items: center; gap: 8px; padding-block: 12px; border-bottom: 1px solid var(--border-default); }
+.course-audio-files li > div { flex: 1; min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.course-audio-files li span { font-size: var(--type-small, 0.875rem); color: var(--text-secondary); }
+.course-audio-panel audio { max-width: 100%; width: 100%; }
+.course-audio-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

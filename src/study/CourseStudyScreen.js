@@ -13,6 +13,7 @@ import {
 } from "../ui/renderHomeScreen.js";
 import { renderStudySourceMarkers, studyCitationMarkers } from "./studyCitations.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
+import { renderStudyToolActions } from "./studyTools.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -599,6 +600,7 @@ function renderStudyUnit({
     : [];
   const runtime = renderPackageStudyUnitBlocksWithDock(studyUnit, {
     omitRepeatedHeading: true,
+    toolsInActionBar: !manualEditor.editing && !assistanceSelection,
     resourceSelectionEnabled: manualEditor.editing || Boolean(assistanceSelection),
     resourceSelectionDisabled: manualEditor.saving,
     resourceSelectionTargetIds: manualTargetIds,
@@ -672,6 +674,8 @@ function renderStudyUnit({
     assistanceSelection ? renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") :
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
+    renderStudyToolActions(studyUnit) +
+    '<div class="study-usual-actions">' +
     '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
     ` aria-expanded="${String(citationsOpen)}" title="Fontes" aria-label="Fontes">` +
     renderUiIcon("study", "home-tab-icon") + "</button>" +
@@ -698,7 +702,7 @@ function renderStudyUnit({
       ? ' disabled aria-disabled="true"'
       : ""}>` + renderUiIcon(advancePending ? "rotate" : "play", "home-tab-icon") +
     "</button>" +
-    feedbackMarkup + "</div></div></div></section>") +
+    feedbackMarkup + "</div></div></div></div></section>") +
     "</section></div></section>" +
     "</main></section>";
 }

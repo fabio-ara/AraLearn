@@ -185,7 +185,7 @@ os bytes, enquanto os vínculos apontam à fonte corrente. Antes de
 registrar o vínculo, a API lê o objeto privado com a credencial do servidor e
 confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivos
 vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada fonte
-até oito anexos e o curso até 64 MiB de conteúdo único.
+até oito anexos e o curso até 64 MiB de conteúdo único, somando PDFs e áudios.
 
 O preparo de envio cria uma intenção privada e curta para pessoa, curso,
 caminho, tamanho, tipo e fonte exatos. A Edge Function envia os bytes pela

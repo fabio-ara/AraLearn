@@ -17,22 +17,22 @@ function actionSchema(value) {
   return projected;
 }
 
-function projectPdfTransport(inputSchema) {
+function projectFileTransport(inputSchema, field) {
   const schema = clone(inputSchema);
-  const pdf = schema.properties?.pdf;
-  if (!pdf) throw new TypeError("A tarefa de PDF perdeu o parâmetro MCP pdf.");
-  delete schema.properties.pdf;
+  const file = schema.properties?.[field];
+  if (!file) throw new TypeError("A tarefa perdeu o parâmetro MCP de arquivo.");
+  delete schema.properties[field];
   schema.properties[ACTION_FILE_FIELD] = {
     type: "array",
     minItems: 1,
     maxItems: 1,
     items: { type: "string" },
     description:
-      "O único PDF anexado pela pessoa nesta conversa. O ChatGPT preenche " +
+      `${file.description} Um único arquivo desta conversa. O ChatGPT preenche ` +
       "automaticamente esta referência temporária."
   };
-  schema.required = (schema.required || []).map((field) => (
-    field === "pdf" ? ACTION_FILE_FIELD : field
+  schema.required = (schema.required || []).map((name) => (
+    name === field ? ACTION_FILE_FIELD : name
   ));
   return schema;
 }
@@ -42,8 +42,12 @@ export function projectHumanAuthoringTaskForActions(task) {
       typeof task.name !== "string" || !task.inputSchema || !task.outputSchema) {
     throw new TypeError("Tarefa humana inválida para Actions.");
   }
-  const inputSchema = task.name === "incorporar_pdf_como_fonte"
-    ? projectPdfTransport(task.inputSchema)
+  const files = task._meta?.["openai/fileParams"];
+  if (files && (!Array.isArray(files) || files.length !== 1)) {
+    throw new TypeError("A projeção recebe um único arquivo por tarefa.");
+  }
+  const inputSchema = files
+    ? projectFileTransport(task.inputSchema, files[0])
     : clone(task.inputSchema);
   return Object.freeze({
     name: task.name,

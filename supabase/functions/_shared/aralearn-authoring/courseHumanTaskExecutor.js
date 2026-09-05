@@ -436,7 +436,7 @@ function ambiguousWriteFailure(error) {
     new Set([
       "REQUEST_TIMEOUT", "NETWORK_ERROR", "FETCH_FAILED", "ETIMEDOUT",
       "ECONNRESET", "ECONNREFUSED", "ENETUNREACH", "EAI_AGAIN",
-      "COURSE_SOURCE_PDF_WRITE_UNCERTAIN"
+      "COURSE_SOURCE_PDF_WRITE_UNCERTAIN", "COURSE_MEDIA_WRITE_UNCERTAIN"
     ]).has(code) || error?.name === "AbortError" ||
     error?.name === "TypeError" && /fetch|network|load failed/iu.test(String(error.message || ""));
 }
@@ -531,7 +531,7 @@ export async function executeTrustedCourseWrite({
           // Depois de uma confirmação divergente, qualquer falha no replay
           // ainda deixa a escrita original incerta. Publicar o segundo erro
           // como transitório permitiria uma nova identidade e outra Fonte.
-          error = firstError?.code === "course_source_pdf_write_uncertain"
+          error = ["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(firstError?.code)
             ? firstError
             : replayError;
         }

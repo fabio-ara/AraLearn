@@ -239,6 +239,11 @@ autoriza uso fora desse recorte.
 | `software_container` | `manter` | representa unidades executáveis e armazenamentos no nível de contêiner C4 | 0 |
 | `system_internal_block` | `restringir` | cobre partes, portas, conectores e itens do diagrama interno de bloco, não toda a SysML | 0 |
 | `chart` | `restringir` | admite linhas, dispersão e barras; distribuições e painéis exigem outro contrato | 0 |
+| `audio` | `manter` | conserva faixas, idioma e alternativa acessível quando a escuta participa da tarefa; voz do dispositivo não promete gravação exportável | 0 |
+| `calculator` | `restringir` | confere expressões numéricas finitas com funções permitidas; não executa código nem substitui demonstração algébrica | 0 |
+| `dictionary` | `restringir` | abre dicionários selecionados para o contexto; não afirma analisar ou verificar automaticamente o verbete externo | 0 |
+| `grammar` | `restringir` | oferece consultas gramaticais escolhidas pela autoria; não certifica a análise linguística do estudante | 0 |
+| `reading` | `restringir` | relaciona leitura complementar e orientação de uso; a disponibilidade e a autorização do documento continuam explícitas | 0 |
 | `choice` | `manter` | discriminação entre alternativas plausíveis constitui operação de resposta própria | 2.386 |
 | `gap` | `manter` | completa um alvo semântico no componente de conteúdo, com estado independente por lacuna | 604 |
 | `ordering` | `restringir` | atua somente em alvos textuais de `paragraph` e `table`, sem representar ordem espacial | 0 |
@@ -260,15 +265,16 @@ Estudo, `project-minimal` e `project-visual`. Esses cursos contêm 10.388
 instâncias de onze pacotes. A contagem da tabela registra instâncias, não
 número de cursos nem frequência de uso por pessoas.
 
-Os outros 22 pacotes aparecem no curso de catálogo, mas ainda não no corpus
+Os outros 27 pacotes aparecem no curso de catálogo, mas ainda não no corpus
 de dez cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
 `reaction`, `truth_table`, `set_diagram`, `bpmn_process`, `call_stack`,
 `state_machine`, `state_transition_table`, `terminal_session`,
 `database_schema`, `entity_relationship`, `software_container`,
 `software_system_context`, `system_internal_block`, `memory_layout`,
-`network_topology`, `packet_layout`, `ordering` e `open`.
+`network_topology`, `packet_layout`, `ordering`, `open`, `audio`, `calculator`,
+`dictionary`, `grammar` e `reading`.
 
-O curso de catálogo deriva os 33 pacotes do registro. Cada pacote possui uma
+O curso de catálogo deriva os 38 pacotes do registro. Cada pacote possui uma
 microssequência independente com uma Unidade de teoria e outra de prática. Os
 exemplos e as respostas usam conteúdo disciplinar concreto; perguntas que
 pedem apenas a finalidade ou o nome do pacote são recusadas pelo teste. Essa
@@ -355,22 +361,28 @@ pelo modelo (tokens).
 
 | Medida | Estado corrente | Limite automatizado |
 | --- | ---: | ---: |
-| resumo exploratório do catálogo | 9.069 bytes | 10 KiB |
-| busca mais pesada entre as facetas correntes, com oito candidatos | 5.652 bytes | 8 KiB |
+| resumo exploratório do catálogo | 9.071 bytes | 10 KiB |
+| busca mais pesada entre as facetas correntes, com oito candidatos | 5.397 bytes | 8 KiB |
 | inspeção dos oito perfis individuais mais extensos | 14.461 bytes | 16 KiB |
 | maior resposta de um contrato exato (`flow`) | 13.376 bytes | 16 KiB |
-| soma das 33 respostas de contrato, consultadas separadamente | 201.893 bytes | 200 KiB |
-| Curso de catálogo completo em disco | 364.788 bytes | lido por recortes no produto |
-| descritores das tarefas humanas, incluindo os cinco comandos de perfis de autoria | 22 tarefas; 41.921 bytes | 48 KiB |
-| código dos componentes na árvore `resources`, na origem e no espelho | 60 arquivos; 572.712 bytes | mesmos caminhos na origem e no espelho; 560 KiB |
+| soma das 38 respostas de contrato, consultadas separadamente | 220.775 bytes | 224 KiB |
+| Curso de catálogo completo em disco | 400.394 bytes | lido por recortes no produto |
+| descritores das tarefas humanas, incluindo perfis de autoria e biblioteca de áudio | 24 tarefas; 48.000 bytes | 48.000 bytes |
+| código dos componentes na árvore `resources`, na origem e no espelho | 68 arquivos; 625.898 bytes | mesmos caminhos na origem e no espelho; 640 KiB |
 
 O orçamento de código cobre a árvore `resources`, não o conjunto completo da
-Edge nem as bibliotecas externas de apresentação. A extração das interações de
-resposta para seus pacotes e os módulos de texto estruturado e matemática
-acrescentam arquivos, preservando o teto de 560 KiB. O teste compara os caminhos
+Edge nem as bibliotecas externas de apresentação. Os cinco pacotes de ferramentas
+acrescentam 53.186 bytes à árvore e 18.882 bytes à soma de contratos em relação
+ao catálogo anterior. Os limites agregados passam a 640 KiB e 224 KiB para
+acomodar esses consumidores implementados; os limites de cada resposta
+continuam iguais. O teste compara os caminhos
 relativos entre origem e espelho, sem exigir uma quantidade fixa de pacotes ou
 arquivos. Os descritores das tarefas humanas têm orçamento separado; seu
-crescimento incorpora os comandos de perfis de autoria. O esquema matemático
+crescimento incorpora perfis de autoria e duas tarefas para guardar/consultar
+áudio existente. Em #303, redundância verbal foi removida sem reduzir contratos
+focais; o limite de 48.000 bytes foi mantido. O OpenAPI com as 24 tarefas ocupa
+41.740 caracteres minificados e 94.343 formatados, abaixo dos limites de 42.000
+e 96.000, respectivamente. O esquema matemático
 compartilhado do parágrafo usa uma definição referenciada, evitando repetir a
 árvore de expressão em cada posição de fórmula.
 

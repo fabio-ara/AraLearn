@@ -879,7 +879,7 @@ function renderCatalogPanel(state) {
     `<button type="submit" aria-label="Salvar estilo" title="Salvar estilo"${state.busy || state.pendingCommand || state.sourceEditor ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></form>` +
     (state.sourceEditor ? '<p>Salve ou cancele a referência aberta antes de aplicar outro estilo.</p>' : "") +
     '<p>O estilo formata as referências geradas. As referências escritas pelo autor são preservadas.</p>' +
-    (pdfStorage ? `<p>PDFs: ${byteSizeLabel(pdfStorage.uniqueBytes)} de ${byteSizeLabel(pdfStorage.maxUniqueBytes)}.</p>` : "") + '</details>' +
+    (pdfStorage ? `<p>Arquivos do curso (PDFs e áudios): ${byteSizeLabel(pdfStorage.uniqueBytes)} de ${byteSizeLabel(pdfStorage.maxUniqueBytes)}.</p>` : "") + '</details>' +
     renderSourceForm(state) + renderCatalog(state) + "</section>";
 }
 

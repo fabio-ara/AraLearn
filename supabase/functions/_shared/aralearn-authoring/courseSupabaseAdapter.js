@@ -1,4 +1,8 @@
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
+import { COURSE_MEDIA_BUCKET, COURSE_MEDIA_MAX_BYTES, CourseMediaError, inspectCourseAudioBytes,
+  normalizeCourseAudioFileName, normalizeCourseMediaReference, normalizeCourseMediaRead,
+  normalizeCourseMediaChange, normalizeCourseMediaCommand, normalizeCourseMediaDownload
+} from "../aralearn/runtime/domain/courseMedia.js";
 import {
   AuthoringProfilesError, normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
   normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
@@ -45,6 +49,7 @@ import {
 } from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
 
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
+const sameCourseMedia = (left, right) => ["contentHash", "byteSize", "mediaType"].every(key => left?.[key] === right?.[key]);
 const COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES = 512 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const INSPECTION_FIELDS = new Set([
@@ -132,7 +137,7 @@ function maintenanceObjectPath(value, bucket) {
     ? /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/u
     : bucket === COURSE_SOURCE_ATTACHMENT_BUCKET
       ? /^[0-9a-f-]{36}\/[a-f0-9]{64}\.pdf$/u
-      : null;
+      : bucket === COURSE_MEDIA_BUCKET ? /^[0-9a-f-]{36}\/[a-f0-9]{64}\.(?:wav|mp3)$/u : null;
   if (!pattern?.test(normalized) || normalized.length > 500) {
     throw new AuthoringApiError(
       503,
@@ -541,6 +546,10 @@ function databaseError(status, body) {
       "account_storage_not_empty",
       "A exclusão aguarda a limpeza dos objetos privados da conta."
     );
+  }
+  if (code === "AR002") return new AuthoringApiError(422, "course_storage_not_empty", "A exclusão aguarda a limpeza dos áudios do Curso.");
+  if (code === "23514" && databaseMessage.startsWith("A cota conjunta de 64 MiB")) {
+    return new AuthoringApiError(413, "course_file_quota_exceeded", "O Curso atingiria a cota conjunta de 64 MiB de arquivos.");
   }
   if (code === "23514" &&
       databaseMessage.startsWith("A cota de 64 MiB de PDFs")) {
@@ -1307,7 +1316,10 @@ export class CourseSupabaseAdapter {
     return preparation;
   }
 
-  async #uploadCourseSourcePdf(attachment, bytes, { deadlineAt = null } = {}) {
+  async #uploadCourseFile(attachment, bytes, { deadlineAt = null, bucket = COURSE_SOURCE_ATTACHMENT_BUCKET } = {}) {
+    const unavailable = bucket === COURSE_MEDIA_BUCKET
+      ? () => new AuthoringApiError(503, "course_media_unavailable", "Não foi possível confirmar o envio do áudio; retome o mesmo pedido.")
+      : unavailableCourseSourcePdf;
     const remaining = deadlineAt == null ? this.requestTimeoutMs : deadlineAt - Date.now();
     if (remaining <= 0) return "uncertain";
     const controller = new AbortController();
@@ -1317,17 +1329,18 @@ export class CourseSupabaseAdapter {
     );
     try {
       const response = await this.fetchImpl(
-        `${this.supabaseUrl}/storage/v1/object/${COURSE_SOURCE_ATTACHMENT_BUCKET}/` +
+        `${this.supabaseUrl}/storage/v1/object/${bucket}/` +
           storageObjectPath(attachment.storagePath),
         {
           method: "POST",
           headers: {
             ...supabaseServerHeaders(this.serverApiKey, { contentType: false }),
-            "Content-Type": COURSE_SOURCE_PDF_MEDIA_TYPE,
+            "Content-Type": attachment.mediaType,
             "Cache-Control": "no-store",
             "x-upsert": "false"
           },
           body: bytes,
+          redirect: "error",
           signal: controller.signal
         }
       );
@@ -1341,7 +1354,7 @@ export class CourseSupabaseAdapter {
       if (response.ok) return "created";
       if (courseSourcePdfUploadConflict(response.status, body)) return "conflict";
       if (retryableStatus(response.status)) return "uncertain";
-      throw unavailableCourseSourcePdf();
+      throw unavailable();
     } catch (error) {
       if (controller.signal.aborted || !(error instanceof AuthoringApiError)) {
         return "uncertain";
@@ -1925,6 +1938,7 @@ export class CourseSupabaseAdapter {
           `${courseId}/`,
           { deadlineAt }
         );
+        await this.#deleteAccountStoragePrefix(COURSE_MEDIA_BUCKET, `${courseId}/`, { deadlineAt });
       }
       await this.#deleteAccountStoragePrefix(
         PERSON_AVATAR_BUCKET,
@@ -2233,6 +2247,149 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  #mediaValue(operation) {
+    try { return operation(); }
+    catch (error) {
+      if (!(error instanceof CourseMediaError)) throw error;
+      throw new AuthoringApiError(503, "course_media_unavailable", "O serviço devolveu dados de áudio inválidos.");
+    }
+  }
+
+  #confirmedMedia(raw, { courseId, expectedCourseRevision, requestId, command }) {
+    try {
+      const result = normalizeCourseMediaChange(raw);
+      if (result.courseId !== courseId || result.requestId !== requestId || result.operation !== command.type ||
+          result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
+          command.type === "ingest_audio" && !sameCourseMedia(result.media, command.media) ||
+          command.type === "remove_media" && result.media.contentHash !== command.contentHash) throw new CourseMediaError("Recibo divergente.");
+      return result;
+    } catch {
+      throw new AuthoringApiError(409, "course_media_write_uncertain", "A confirmação do áudio ficou inconclusiva. Preserve o pedido e consulte a biblioteca.");
+    }
+  }
+
+  async getCourseMedia({ principal, courseId, expectedRevision, mode, cursor = null, limit = 20, deadlineAt = null }) {
+    if (mode === "catalog") await this.resumeCourseMediaDeletes({ principal, courseId, deadlineAt });
+    const raw = first(await this.rpc("get_course_media_for_actor_v1", { p_actor_id: principal.actorId, p_course_id: courseId,
+      p_expected_revision: expectedRevision, p_mode: mode, p_cursor: cursor, p_limit: limit }, { deadlineAt, responseLimitBytes: 65536 }));
+    const result = this.#mediaValue(() => normalizeCourseMediaRead(raw));
+    if (result.courseId !== courseId || result.courseRevision !== expectedRevision || result.mode !== mode || result.items.length > limit ||
+        cursor !== null && result.items.some(item => item.contentHash <= cursor)) {
+      throw new AuthoringApiError(503, "course_media_unavailable", "A leitura de áudio diverge do pedido.");
+    }
+    return result;
+  }
+
+  async executeCourseMediaCommand({ principal, courseId, expectedCourseRevision, requestId, command, deadlineAt = null }) {
+    let normalized;
+    try { normalized = normalizeCourseMediaCommand(command); }
+    catch (error) { if (!(error instanceof CourseMediaError)) throw error; throw new AuthoringApiError(422, error.code, error.message); }
+    const raw = first(await this.rpc("execute_course_media_for_actor_v1", { p_actor_id: principal.actorId,
+      p_course_id: courseId, p_expected_revision: expectedCourseRevision, p_request_id: requestId, p_command: normalized }, { deadlineAt }));
+    const result = this.#confirmedMedia(raw, { courseId, expectedCourseRevision, requestId, command: normalized });
+    if (normalized.type === "remove_media") await this.resumeCourseMediaDeletes({ principal, courseId, deadlineAt });
+    return result;
+  }
+
+  async resumeCourseMediaDeletes({ principal, courseId, deadlineAt = null }) {
+    for (let index = 0; index < 100; index += 1) {
+      const claimed = first(await this.rpc("claim_course_media_delete_for_actor_v1", {
+        p_actor_id: principal.actorId, p_course_id: courseId, p_content_hash: null
+      }, { deadlineAt, responseLimitBytes: 4096 }));
+      if (claimed === null) return;
+      if (!exactRecord(claimed, new Set(["contentHash", "storagePath"])) || !/^[a-f0-9]{64}$/u.test(claimed.contentHash) ||
+          !new Set([`${courseId}/${claimed.contentHash}.wav`, `${courseId}/${claimed.contentHash}.mp3`]).has(claimed.storagePath)) {
+        throw new AuthoringApiError(503, "course_media_unavailable", "A remoção do áudio não foi confirmada.");
+      }
+      await this.#deleteMaintenanceObject(COURSE_MEDIA_BUCKET, claimed.storagePath, { deadlineAt });
+      const completed = first(await this.rpc("complete_course_media_delete_for_actor_v1", { p_actor_id: principal.actorId,
+        p_course_id: courseId, p_content_hash: claimed.contentHash }, { deadlineAt, responseLimitBytes: 4096 }));
+      if (completed !== true) throw new AuthoringApiError(503, "course_media_unavailable", "A remoção do áudio está pendente.");
+    }
+    throw new AuthoringApiError(503, "course_media_unavailable", "Há remoções pendentes; abra a biblioteca novamente.");
+  }
+
+  async #verifyCourseAudio(media, storagePath, { deadlineAt = null } = {}) {
+    const controller = new AbortController();
+    const remaining = deadlineAt === null ? 40_000 : Math.max(1, Math.min(40_000, deadlineAt - Date.now()));
+    const timer = setTimeout(() => controller.abort(), remaining);
+    try {
+      const response = await this.fetchImpl(`${this.supabaseUrl}/storage/v1/object/authenticated/${COURSE_MEDIA_BUCKET}/${storagePath}`, {
+        headers: { ...supabaseServerHeaders(this.serverApiKey, { contentType: false }), "Cache-Control": "no-store" },
+        cache: "no-store", redirect: "error", signal: controller.signal
+      });
+      if (!response.ok) { await response.body?.cancel?.(); throw new Error("Áudio indisponível."); }
+      const actual = await readBoundedResponseBytes(response, COURSE_MEDIA_MAX_BYTES);
+      inspectCourseAudioBytes(actual, { declaredMediaType: media.mediaType });
+      if (actual.byteLength !== media.byteSize || await sha256Hex(actual) !== media.contentHash) throw new Error("Bytes divergentes.");
+    } catch {
+      throw new AuthoringApiError(503, "course_media_unavailable", "Os bytes do áudio ainda não foram confirmados; retome o mesmo pedido.");
+    } finally { clearTimeout(timer); }
+  }
+
+  async ingestCourseAudio({ principal, courseId, expectedCourseRevision, requestId, bytes, mediaType, fileName, deadlineAt = null }) {
+    let inspected;
+    try {
+      inspected = inspectCourseAudioBytes(bytes, { declaredMediaType: mediaType });
+      fileName = normalizeCourseAudioFileName(fileName);
+    } catch (error) { if (!(error instanceof CourseMediaError)) throw error; throw new AuthoringApiError(422, error.code, error.message); }
+    const media = { contentHash: await sha256Hex(bytes), byteSize: inspected.byteSize, mediaType: inspected.mediaType };
+    const command = { type: "ingest_audio", media, fileName };
+    const identity = { courseId, expectedCourseRevision, requestId, command };
+    const storagePath = `${courseId}/${media.contentHash}.${inspected.extension}`;
+    await this.resumeCourseMediaDeletes({ principal, courseId, deadlineAt });
+    let preparation;
+    const prepare = async () => {
+      const raw = first(await this.rpc("prepare_course_audio_for_actor_v1", { p_actor_id: principal.actorId,
+        p_course_id: courseId, p_expected_revision: expectedCourseRevision, p_request_id: requestId,
+        p_content_hash: media.contentHash, p_byte_size: media.byteSize, p_media_type: media.mediaType, p_file_name: fileName
+      }, { deadlineAt, responseLimitBytes: 16384 }));
+      if (exactRecord(raw, new Set(["receipt"]))) return { receipt: this.#confirmedMedia(raw.receipt, identity) };
+      if (!exactRecord(raw, new Set(["receipt", "courseId", "courseRevision", "requestId", "media", "storagePath", "uploadRequired"])) ||
+          raw.receipt !== null || raw.courseId !== courseId || raw.courseRevision !== expectedCourseRevision || raw.requestId !== requestId ||
+          raw.storagePath !== storagePath || typeof raw.uploadRequired !== "boolean" ||
+          !sameCourseMedia(this.#mediaValue(() => normalizeCourseMediaReference(raw.media)), media)) {
+        throw new AuthoringApiError(503, "course_media_unavailable", "A preparação do áudio diverge do envio.");
+      }
+      return raw;
+    };
+    preparation = await prepare();
+    if (preparation.receipt) { await this.#verifyCourseAudio(media, storagePath, { deadlineAt }); return preparation.receipt; }
+    for (let attempt = 1; preparation.uploadRequired; attempt += 1) {
+      const outcome = await this.#uploadCourseFile({ ...media, storagePath }, bytes, { deadlineAt, bucket: COURSE_MEDIA_BUCKET });
+      if (outcome === "created" || outcome === "conflict") break;
+      preparation = await prepare();
+      if (preparation.receipt) { await this.#verifyCourseAudio(media, storagePath, { deadlineAt }); return preparation.receipt; }
+      if (preparation.uploadRequired && attempt >= this.attempts) throw new AuthoringApiError(503, "course_media_unavailable", "O envio não foi confirmado; retome o mesmo pedido.");
+    }
+    await this.#verifyCourseAudio(media, storagePath, { deadlineAt });
+    const raw = first(await this.rpc("execute_course_media_for_actor_v1", { p_actor_id: principal.actorId,
+      p_course_id: courseId, p_expected_revision: expectedCourseRevision, p_request_id: requestId, p_command: command }, { deadlineAt }));
+    return this.#confirmedMedia(raw, identity);
+  }
+
+  async getCourseMediaDownload({ principal, courseId, expectedRevision, studyUnitId = null, contentHash, deadlineAt = null }) {
+    const raw = first(await this.rpc("get_course_media_download_for_actor_v1", { p_actor_id: principal.actorId,
+      p_course_id: courseId, p_expected_revision: expectedRevision, p_study_unit_id: studyUnitId, p_content_hash: contentHash
+    }, { deadlineAt, responseLimitBytes: 16384 }));
+    const media = this.#mediaValue(() => normalizeCourseMediaReference(raw?.media));
+    const path = `${courseId}/${contentHash}.${media.mediaType === "audio/wav" ? "wav" : "mp3"}`;
+    if (!exactRecord(raw, new Set(["contract", "courseId", "courseRevision", "studyUnitId", "media", "storagePath"])) ||
+        raw.contract !== "aralearn.course-media-download-internal.v1" || raw.courseId !== courseId || raw.courseRevision !== expectedRevision ||
+        raw.studyUnitId !== studyUnitId || media.contentHash !== contentHash || raw.storagePath !== path) {
+      throw new AuthoringApiError(503, "course_media_unavailable", "O áudio não corresponde à leitura autorizada.");
+    }
+    const signed = await this.#request(`${this.supabaseUrl}/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/${path}`, {
+      method: "POST", headers: supabaseServerHeaders(this.serverApiKey), body: JSON.stringify({ expiresIn: 60 })
+    }, { retry: false, deadlineAt, responseLimitBytes: 16384 });
+    return this.#mediaValue(() => normalizeCourseMediaDownload({ contract: "aralearn.course-media-download.v1", courseId,
+      courseRevision: expectedRevision, studyUnitId, media,
+      signedUrl: signedStorageUrl(`${this.publicSupabaseUrl}/storage/v1`, signed?.signedURL, {
+        expectedPath: `/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/${path}` }),
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    }, { projectUrl: this.publicSupabaseUrl }));
+  }
+
   async ingestCourseSourcePdf({
     principal,
     courseId,
@@ -2296,7 +2453,7 @@ export class CourseSupabaseAdapter {
       }
 
       for (let attempt = 1; preparation.uploadRequired; attempt += 1) {
-        const outcome = await this.#uploadCourseSourcePdf(attachment, pdfBytes, {
+        const outcome = await this.#uploadCourseFile(attachment, pdfBytes, {
           deadlineAt
         });
         if (outcome === "created" || outcome === "conflict") break;
@@ -2675,13 +2832,23 @@ export class CourseSupabaseAdapter {
     requestId,
     deadlineAt = null
   }) {
-    const result = first(await this.rpc("maintain_course_for_actor_v1", {
+    const execute = () => this.rpc("maintain_course_for_actor_v1", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_operation: operation,
       p_confirmed: confirmed,
       p_request_id: requestId
-    }, { deadlineAt, timeoutMs: 60_000 }));
+    }, { deadlineAt, timeoutMs: 60_000 });
+    let raw;
+    try { raw = await execute(); }
+    catch (error) {
+      if (error?.code !== "course_storage_not_empty" || operation !== "delete_owned_course" || confirmed !== true) throw error;
+      // O primeiro writer já verificou proprietário e confirmação. Áudio nunca
+      // compartilha prefixo físico entre Cursos; os PDFs mantêm a coleta própria.
+      await this.#deleteAccountStoragePrefix(COURSE_MEDIA_BUCKET, `${courseId}/`, { deadlineAt });
+      raw = await execute();
+    }
+    const result = first(raw);
     if (!exactRecord(result, new Set([
       "contract", "courseId", "operation", "status", "changed", "requestId"
     ])) || result.contract !== "aralearn.course-lifecycle.v1" ||
@@ -2697,7 +2864,16 @@ export class CourseSupabaseAdapter {
     // Um PDF sob o prefixo do Curso excluído pode continuar legitimamente
     // vinculado a outro Curso por deduplicação. A limpeza física precisa passar
     // pela manutenção que revalida cada objeto, nunca por delete amplo de prefixo.
-    const fileCleanupPending = operation === "delete_owned_course" && result.changed;
+    let fileCleanupPending = false;
+    if (operation === "delete_owned_course" && result.changed) {
+      const remaining = await this.#request(`${this.supabaseUrl}/storage/v1/object/list/${COURSE_SOURCE_ATTACHMENT_BUCKET}`, {
+        method: "POST", headers: supabaseServerHeaders(this.serverApiKey),
+        body: JSON.stringify({ prefix: `${courseId}/`, limit: 1, offset: 0, sortBy: { column: "name", order: "asc" } })
+      }, { deadlineAt, responseLimitBytes: 16384 });
+      if (!Array.isArray(remaining) || remaining.length > 1) throw accountDeletionUnavailable();
+      remaining.forEach(item => accountStorageObjectKey(item, `${courseId}/`));
+      fileCleanupPending = remaining.length > 0;
+    }
     return { ...result, fileCleanupPending };
   }
 

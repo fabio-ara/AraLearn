@@ -1,5 +1,6 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import { fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/catalog/resourceCatalog.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -415,6 +416,22 @@ test("materializa prática de resposta aberta na primeira tentativa sem resposta
     "aralearn.resource.paragraph@1.0.0",
     "aralearn.response.open@1.0.0"
   ]);
+});
+
+test("#303 materialização aceita os5 pacotes ferramenta pelo contrato comum sem writer por tipo", async () => {
+  const adapter = adapterFixture();
+  const value = unit();
+  const additions = ["calculator", "grammar", "dictionary", "reading", "audio"].map(id => {
+    const definition = RESOURCE_PACKAGE_REGISTRY.get(`aralearn.resource.${id}`, "1.0.0");
+    return { id: `tool-${id}`, package: definition.manifest.id, version: definition.manifest.version,
+      data: structuredClone(definition.authoringContract.example) };
+  });
+  value.conteudo.content.push(...additions);
+  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [value] });
+  assert.equal(adapter.calls.length, 1);
+  const stored = adapter.calls[0].units[0];
+  assert.deepEqual(stored.content.content.slice(1), additions);
+  for (const resource of additions) assert.ok(stored.designApplication.componentRefs.includes(`${resource.package}@${resource.version}`));
 });
 
 test("erro de elemento repetido orienta a retomada sem expor sua identificação interna", async () => {

@@ -6181,3 +6181,122 @@ button.account-settings-back[hidden] {
   grid-column: 1 / -1;
   margin: 0;
 }
+
+/* Ferramentas dos pacotes: acionáveis, com retorno ao ponto de leitura. */
+.study-next-wrap:has(.study-tool-actions) {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.study-tool-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-end: auto;
+}
+.study-tool-actions .study-tool-button {
+  flex: 0 0 var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+}
+.study-tools-panel {
+  width: min(100%, 640px);
+  min-width: 0;
+  max-height: 100%;
+}
+.study-tool-body {
+  min-width: 0;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+.study-tool-body :is(input, select, textarea, button, audio) {
+  max-width: 100%;
+  min-width: 0;
+}
+.study-tool-body :is(button, input, select) {
+  min-height: var(--tap);
+}
+.study-tool-menu {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.study-tool-menu button {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  text-align: start;
+}
+.study-tool-menu small {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+}
+.study-tool-error,
+.package-tool-status {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+.package-calculator form,
+.package-calculator label {
+  display: grid;
+  gap: 8px;
+}
+.package-calculator form { gap: 14px; }
+.package-calculator output {
+  display: block;
+  white-space: pre-wrap;
+  font-variant-numeric: tabular-nums;
+}
+.package-calculator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.package-calculator-limits,
+.package-tool-description {
+  color: var(--text-secondary);
+  font-size: var(--type-small);
+  line-height: 1.5;
+}
+.package-auxiliary-links ol { padding-inline-start: 1.5em; }
+.package-auxiliary-links li { margin-block: 14px; }
+.package-auxiliary-links button {
+  text-align: start;
+  white-space: normal;
+}
+.package-audio-tool { min-width: 0; overflow-wrap: anywhere; }
+.package-audio-tracks { display: grid; gap: 22px; padding-inline-start: 1.5em; }
+.package-audio-tracks > li { min-width: 0; }
+.package-audio-tracks h3 { margin-block: 0 8px; }
+.package-audio-tracks :is(p, span) { white-space: pre-wrap; }
+.package-audio-tracks audio { display: block; width: 100%; max-width: 100%; margin-block: 12px; }
+.package-audio-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.package-audio-tool button { min-height: var(--tap); max-width: 100%; white-space: normal; }
+.package-audio-remote-consent { display: flex; align-items: start; gap: 10px; margin-block: 14px; line-height: 1.5; }
+.package-audio-remote-consent input { flex: 0 0 auto; min-height: var(--tap); margin: 0; }
+.package-audio-remote-consent span { min-width: 0; }
+.package-audio-tool [hidden] { display: none; }
+.study-usual-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-inline-start: auto; }
+.study-next-wrap:has(.study-tool-actions) .study-usual-actions { gap: 4px; }
+.study-tool-body :is(input, select, textarea) {
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+}
+.study-tool-body button {
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+}
+.study-tool-body button:focus-visible,
+.study-tool-body :is(input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

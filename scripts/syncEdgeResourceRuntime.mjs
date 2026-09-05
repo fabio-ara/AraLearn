@@ -30,6 +30,7 @@ const fixedFiles = [
   ["src/domain/courseSources.js", "domain/courseSources.js"],
   ["src/domain/courseSourceReference.js", "domain/courseSourceReference.js"],
   ["src/domain/courseSourceOccurrences.js", "domain/courseSourceOccurrences.js"],
+  ["src/domain/courseMedia.js", "domain/courseMedia.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
   ["src/flowchart/flowchartStructure.js", "flowchart/flowchartStructure.js"],
   ["src/persistence/contractToRelationalRows.js", "persistence/contractToRelationalRows.js"],

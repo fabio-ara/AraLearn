@@ -74,7 +74,7 @@ enquanto a estrutura permanece protegida.
 
 ## 3. Catálogo como vocabulário controlado
 
-O registro instalado reúne 33 pacotes: 29 de conteúdo e quatro de resposta.
+O registro instalado reúne 38 pacotes: 34 de conteúdo e quatro de resposta.
 O inventário e a decisão de manter ou restringir cada gramática estão na
 [auditoria dos componentes](auditoria-academica-dos-resources.md#6-decisão-corrente-e-uso-observado).
 Diretórios auxiliares, como `system-diagrams`, não são pacotes adicionais.
@@ -481,10 +481,22 @@ A prova de extensão em `tests/kernel/resource-package-extension.test.js`
 acrescenta um pacote apenas a uma cópia temporária: verifica descoberta,
 contrato, normalização, ida e volta relacional, apresentação e interação, além
 de conferir que o núcleo não mudou. Esse pacote de teste não integra o produto.
-Uma futura ferramenta de áudio, cálculo ou leitura deverá usar o mesmo registro:
-a extensão mínima será a identidade `aralearn.tool.*` e a posição própria na
-Unidade quando existir a primeira ferramenta consumidora. Esta etapa não instala
-um executor ou metadados de ferramentas sem uso.
+Áudio, calculadora, gramática, dicionário e leitura são pacotes de conteúdo do
+mesmo registro, com identidade `aralearn.resource.*`. Uma ferramenta declara
+`manifest.tool` com rótulo e ícone e implementa
+`toolInteraction.bind(root, data, host)`, que devolve sua função de limpeza.
+Essas instâncias continuam em `content[]`; Estudo as apresenta na barra da
+Unidade, com dois atalhos e um menu para as demais. O aplicativo conserva a
+Unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
+sua interação. Nenhum enum adicional por canal determina as ferramentas.
+
+Os textos instrucionais usam os mesmos contratos de edição e acessibilidade.
+Esses cinco pacotes não oferecem campos de prática. Gramática, dicionário e
+leitura comportam várias consultas, com URL validada ou referência lógica a um
+PDF de fonte. O papel de consulta não cria atribuição bibliográfica. Áudio
+comporta várias faixas nativas ou arquivos incorporados ao curso e alternativas
+textuais com momento de exibição explícito. Consulte [Áudio](audio.md) e
+[Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
 
 <!-- referências locais: início -->
 

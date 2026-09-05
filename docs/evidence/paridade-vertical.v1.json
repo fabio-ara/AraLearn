@@ -248,6 +248,93 @@
       "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental; controles de concorrência, recibos e paginação permanecem detalhes internos."
     },
     {
+      "id": "course-audio-media",
+      "intent": "Guardar e reutilizar arquivos de áudio pelo conteúdo, configurar vozes explicitamente e reproduzir somente arquivos autorizados da unidade, preservando alternativas acessíveis e a recuperação de envios e remoções.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#303",
+      "objects": {
+        "mcpTools": [
+          "guardar_audio",
+          "consultar_audios"
+        ],
+        "databasePatterns": [
+          "^bucket:storage\\.course-media$",
+          "^table:private\\.course_media(?:_upload_intents|_delete_intents)?$",
+          "^function:private\\.(?:valid_course_audio_config_v1|course_audio_object_path_v1|course_media_reference_v1|guard_course_audio_object_write_v1)\\(.*\\)$",
+          "^function:public\\.(?:get_course_media_for_actor_v1|get_course_media_download_for_actor_v1|prepare_course_audio_for_actor_v1|execute_course_media_for_actor_v1|claim_course_media_delete_for_actor_v1|complete_course_media_delete_for_actor_v1)\\(.*\\)$",
+          "^constraint:public\\.courses/course_audio_config_v1\\[check\\]$"
+        ]
+      },
+      "ui": [
+        {
+          "path": "src/ui/CourseAudioPanel.js",
+          "token": "uploadCourseAudio"
+        },
+        {
+          "path": "src/resources/packages/audio/index.js",
+          "token": "aralearn.resource.audio"
+        }
+      ],
+      "visibleEffects": [
+        {
+          "path": "src/resources/packages/audio/interaction.js",
+          "token": "downloadMedia"
+        },
+        {
+          "path": "src/study/studyTools.js",
+          "token": "renderStudyToolActions"
+        }
+      ],
+      "persistence": [
+        {
+          "path": "src/domain/courseMedia.js",
+          "token": "normalizeCourseMediaReference"
+        },
+        {
+          "path": "src/supabase/CourseController.js",
+          "token": "mutateCourseMedia"
+        },
+        {
+          "path": "supabase/migrations/20260905114027_course_audio_media.sql",
+          "token": "course_media_upload_intents"
+        },
+        {
+          "path": "supabase/tests/020_course_audio_media_test.sql",
+          "token": "select finish();"
+        }
+      ],
+      "routes": [
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "uploadCourseAudio"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseApiServer.js",
+          "token": "ingerirAudio"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
+          "token": "executeCourseMediaCommand"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
+          "token": "getCourseMediaDownload"
+        }
+      ],
+      "tests": [
+        "tests/runtime/course-media.test.js",
+        "tests/runtime/course-audio-transport.test.js",
+        "tests/runtime/course-human-audio.test.js",
+        "tests/runtime/openai-temporary-audio.test.js",
+        "tests/runtime/resource-audio.test.js",
+        "tests/runtime/course-postgres-concurrency.test.js",
+        "tests/runtime/generated-package-catalog-upgrade-pglite.test.js",
+        "tests/e2e/course-audio-local.spec.js"
+      ],
+      "justification": "WAV PCM e MP3 usam Storage privado, hash e cota conjunta de64MiB com PDFs, até20MiB por arquivo. O serviço deriva e reverifica bytes antes da confirmação, usa revisão e recibo únicos e retoma limpeza por intenção. Leituras públicas exigem política disponível e trio vinculado à unidade; voz nativa não promete arquivo exportável e serviços externos só geram áudio por ação explícita do proprietário."
+    },
+    {
       "id": "course-source-provenance",
       "intent": "Manter metadados bibliográficos, referências manuais e geradas por estilo do curso, vínculos com papéis explícitos e ocorrências textuais preservadas; mostrar no Estudo somente referências e arquivos autorizados.",
       "classification": "ui",

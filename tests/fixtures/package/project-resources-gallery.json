@@ -2931,11 +2931,203 @@
                     {
                       "id": "gallery-32",
                       "position": 32,
-                      "title": "Sessão de terminal",
+                      "title": "Áudio",
                       "role": "theory",
                       "content": [
                         {
                           "id": "instance-32",
+                          "package": "aralearn.resource.audio",
+                          "version": "1.0.0",
+                          "data": {
+                            "tracks": [
+                              {
+                                "id": "greeting",
+                                "label": "Saudação em inglês",
+                                "locale": "en-US",
+                                "kind": "native",
+                                "text": "Good morning. How are you?",
+                                "alternative": {
+                                  "text": "Good morning. How are you?",
+                                  "visibility": "on_request"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-32",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Faixas têm nome e idioma; transcrição ou alternativa obedece à condição declarada, sem antecipar resposta auditiva."
+                          }
+                        }
+                      ],
+                      "topics": []
+                    },
+                    {
+                      "id": "gallery-33",
+                      "position": 33,
+                      "title": "Calculadora",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-33",
+                          "package": "aralearn.resource.calculator",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare a estimativa com o cálculo",
+                            "angleUnit": "radians",
+                            "prompt": "Estime a diagonal antes de calcular a raiz da soma dos quadrados dos catetos.",
+                            "initialExpression": "sqrt(3^2 + 4^2)"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-33",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Expressão e unidade angular têm rótulos; Enter calcula e resultado ou erro é anunciado sem deslocar o foco."
+                          }
+                        }
+                      ],
+                      "topics": []
+                    },
+                    {
+                      "id": "gallery-34",
+                      "position": 34,
+                      "title": "Dicionário",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-34",
+                          "package": "aralearn.resource.dictionary",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare os usos da palavra",
+                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
+                            "items": [
+                              {
+                                "id": "lexicon",
+                                "label": "Dicionário escolhido para a unidade",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/dicionario"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-34",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Dicionários têm rótulos distintos e orientação textual; falhas de abertura são anunciadas."
+                          }
+                        }
+                      ],
+                      "topics": []
+                    },
+                    {
+                      "id": "gallery-35",
+                      "position": 35,
+                      "title": "Gramática",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-35",
+                          "package": "aralearn.resource.grammar",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Consulte a construção antes de responder",
+                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
+                            "items": [
+                              {
+                                "id": "construction",
+                                "label": "Explicação da construção",
+                                "description": "Leia a seção indicada e volte para justificar sua análise.",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/gramatica/construcao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-35",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada recurso tem botão com rótulo próprio, idioma quando informado e aviso de abertura ou falha."
+                          }
+                        }
+                      ],
+                      "topics": []
+                    },
+                    {
+                      "id": "gallery-36",
+                      "position": 36,
+                      "title": "Leitura complementar",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-36",
+                          "package": "aralearn.resource.reading",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Amplie a comparação",
+                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
+                            "items": [
+                              {
+                                "id": "reading",
+                                "label": "Perspectiva complementar",
+                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/leitura/comparacao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [
+                        {
+                          "id": "feedback-36",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Leituras têm identificação e orientação próprias; cada botão anuncia o recurso e o resultado da abertura."
+                          }
+                        }
+                      ],
+                      "topics": []
+                    },
+                    {
+                      "id": "gallery-37",
+                      "position": 37,
+                      "title": "Sessão de terminal",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "instance-37",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -2979,7 +3171,7 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-32",
+                          "id": "feedback-37",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
@@ -2990,8 +3182,8 @@
                       "topics": []
                     },
                     {
-                      "id": "gallery-33",
-                      "position": 33,
+                      "id": "gallery-38",
+                      "position": 38,
                       "title": "Resposta aberta",
                       "role": "practice",
                       "content": [
@@ -3005,7 +3197,7 @@
                         }
                       ],
                       "response": {
-                        "id": "instance-33",
+                        "id": "instance-38",
                         "package": "aralearn.response.open",
                         "version": "1.0.0",
                         "data": {
@@ -3015,7 +3207,7 @@
                       },
                       "feedback": [
                         {
-                          "id": "feedback-33",
+                          "id": "feedback-38",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {

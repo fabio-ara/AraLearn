@@ -85,10 +85,10 @@ test("fixture publicada do catálogo não diverge do gerador determinístico", a
   assert.equal(current, serializeResourceCatalogCourse());
 });
 
-test("registry oferece 33 exemplos e contratos exatos estruturalmente válidos", () => {
+test("registry oferece 38 exemplos e contratos exatos estruturalmente válidos", () => {
   const manifests = allManifests();
-  assert.equal(manifests.length, 33);
-  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).length, 29);
+  assert.equal(manifests.length, 38);
+  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).length, 34);
   assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" }).length, 4);
 
   for (const manifest of manifests) {
@@ -201,7 +201,7 @@ test("curso deriva as famílias correntes sem fixar o crescimento do catálogo",
           }
         } else {
           assert.ok(
-            ["aralearn.resource.formula", "aralearn.resource.plane"].includes(packageId),
+            manifest.tool || ["aralearn.resource.formula", "aralearn.resource.plane"].includes(packageId),
             `${packageId} deixou de praticar dentro do próprio resource.`
           );
           assert.equal(practice.response.package, "aralearn.response.choice");
@@ -255,12 +255,12 @@ test("dez Cursos correntes distinguem uso observado da cobertura do Curso de cat
       moduleValue.lessons[0].microsequences.flatMap(({ covers }) => covers)
     ))
   );
-  assert.equal(catalogPackages.size, 33);
+  assert.equal(catalogPackages.size, 38);
   assert.deepEqual(
     catalogPackages,
     new Set(allManifests().map(({ id }) => id))
   );
-  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 22);
+  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 27);
 });
 
 test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => {
@@ -299,7 +299,7 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
   assert.ok(largestSearch <= 8 * 1024);
   assert.ok(byteLength(inspected) <= 16 * 1024);
   assert.ok(Math.max(...contractBytes) <= 16 * 1024);
-  assert.ok(contractBytes.reduce((total, bytes) => total + bytes, 0) <= 200 * 1024);
+  assert.ok(contractBytes.reduce((total, bytes) => total + bytes, 0) <= 224 * 1024);
 
   const substitute = RESOURCE_CATALOG.search({
     query: "árvore sintática",
@@ -318,10 +318,10 @@ test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", a
     javascriptRuntimeMetrics("src/resources"),
     javascriptRuntimeMetrics("supabase/functions/_shared/aralearn/runtime/resources")
   ]);
-  assert.equal(COURSE_HUMAN_TASKS.length, 22);
-  assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 48 * 1024);
+  assert.equal(COURSE_HUMAN_TASKS.length, 24);
+  assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 48_000);
   assert.deepEqual(runtime.files, source.files);
-  assert.ok(runtime.bytes <= 560 * 1024);
+  assert.ok(runtime.bytes <= 640 * 1024);
 });
 
 test("documento registra uma decisão estática para cada pacote sem confundi-la com adequação", async () => {
@@ -332,8 +332,8 @@ test("documento registra uma decisão estática para cada pacote sem confundi-la
   const rows = [...document.matchAll(
     /^\| `([a-z][a-z0-9_]*)` \| `(manter|restringir)` \|/gmu
   )].map((match) => ({ packageName: match[1], decision: match[2] }));
-  assert.equal(rows.length, 33);
-  assert.equal(new Set(rows.map(({ packageName }) => packageName)).size, 33);
+  assert.equal(rows.length, 38);
+  assert.equal(new Set(rows.map(({ packageName }) => packageName)).size, 38);
   assert.deepEqual(
     new Set(rows.map(({ packageName }) => packageName)),
     new Set(allManifests().map(({ id }) => id.split(".").at(-1)))

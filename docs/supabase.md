@@ -123,8 +123,8 @@ A fonte e o vínculo são uma única mudança confirmada e, por isso, avançam a
 revisão do curso uma vez.
 
 Download é uma operação separada. Depois de verificar o vínculo ativo e a
-propriedade do curso, a API emite URL assinada de curta duração. Cada PDF aceita
-até 20 MiB; o conteúdo único vinculado a um curso aceita até 64 MiB.
+permissão de leitura do curso, a API emite URL assinada de curta duração. Cada PDF
+aceita até 20 MiB; PDFs e áudios compartilham a cota de 64 MiB de conteúdo único por curso.
 
 Remover um PDF primeiro desativa o vínculo e cria uma intenção de exclusão. O
 serviço reivindica essa intenção, remove o objeto pela Storage API e confirma a

@@ -5,6 +5,7 @@ import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { createCourseInspectionSequence } from "./CourseInspectionSequence.js";
 import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
+import { createCourseAudioPanel } from "./CourseAudioPanel.js";
 import { formatProfilePreference } from "./CourseAuthoringProfiles.js";
 import { readDesignValue, updateDesignModeControl } from "./courseDesignControls.js";
 import { normalizeCourseDesignPreference } from "../domain/courseDesignParameters.js";
@@ -55,6 +56,7 @@ const AUTHORING_TASKS = Object.freeze([
   Object.freeze({ key: "planning", label: "Planejamento", icon: "intent", ownerOnly: true, primary: true }),
   Object.freeze({ key: "parameters", label: "Parâmetros", icon: "tags", ownerOnly: true }),
   Object.freeze({ key: "sources", label: "Fontes", icon: "study", ownerOnly: true }),
+  Object.freeze({ key: "audio", label: "Áudio", icon: "audio", ownerOnly: true }),
   Object.freeze({ key: "review", label: "Revisão", icon: "preview" }),
   Object.freeze({ key: "research", label: "Dados de autoria", icon: "experiment", ownerOnly: true }),
   Object.freeze({ key: "people", label: "Pessoas e acesso", icon: "account-add" })
@@ -754,6 +756,11 @@ function renderResearchSection() {
 }
 
 function renderCourseSection(state) {
+  if (state.section === "audio" && state.course) {
+    return canAccessPlanning(state.course) ? '<div data-course-audio-host></div>' : statusPanel({
+      kind: "error", title: "Áudio indisponível", message: "Somente a pessoa proprietária pode configurar e guardar áudios neste curso."
+    });
+  }
   if (state.section === "people" && state.course) {
     return renderPeopleSection(state);
   }
@@ -986,6 +993,7 @@ export function createCourseAuthoringSurface({
   let reviewPanel = null;
   let analyticsPanel = null;
   let sourcesPanel = null;
+  let audioPanel = null;
   let targetSourcesPanel = null;
   let pendingInspectionComposition = null;
   let refreshPromise = null;
@@ -1185,6 +1193,8 @@ export function createCourseAuthoringSurface({
   function destroyAnalyticsPanel() { analyticsPanel?.destroy?.(); analyticsPanel = null; }
 
   function destroySourcesPanels() {
+    audioPanel?.destroy?.();
+    audioPanel = null;
     sourcesPanel?.destroy?.();
     targetSourcesPanel?.destroy?.();
     sourcesPanel = null;
@@ -1264,6 +1274,13 @@ export function createCourseAuthoringSurface({
       onCourseRevisionChange: acceptSourcesCourseRevision,
       onNavigate: (hash) => navigate(hash)
     };
+    if (state.section === "audio" && canAccessPlanning(state.course)) {
+      const host = root.querySelector?.("[data-course-audio-host]");
+      if (host) {
+        audioPanel = createCourseAudioPanel({ root: host, windowValue, ...shared });
+        void audioPanel.open();
+      }
+    }
     if (state.section === "sources" && canAccessPlanning(state.course)) {
       const host = root.querySelector?.("[data-course-sources-host]");
       if (host) {
@@ -2191,6 +2208,7 @@ export function createCourseAuthoringSurface({
 
   function mountedPanelHasPendingDraft() {
     return [
+      audioPanel,
       sourcesPanel,
       targetSourcesPanel,
       inspectionSequence,

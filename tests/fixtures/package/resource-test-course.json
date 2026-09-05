@@ -9601,6 +9601,468 @@
         },
         {
           "id": "resource-test-29-module",
+          "title": "Áudio",
+          "guide": {
+            "goal": "Avaliar aralearn.resource.audio somente nas modalidades declaradas pelo próprio package.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação-alvo da tarefa"
+            ],
+            "notation": [
+              "faixas identificadas",
+              "idioma explícito",
+              "alternativa textual com condição de apresentação"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "resource-test-29-lesson",
+              "title": "Áudio",
+              "guide": {
+                "goal": "Avaliar aralearn.resource.audio somente nas modalidades declaradas pelo próprio package.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "faixas identificadas",
+                  "idioma explícito",
+                  "alternativa textual com condição de apresentação"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "resource-test-29-microsequence",
+                  "title": "Áudio",
+                  "goal": "Avaliar aralearn.resource.audio somente nas modalidades declaradas pelo próprio package.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "confirmação da resposta"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "resource-test-29-exposition",
+                      "position": 1,
+                      "title": "Exposição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "resource-test-29-exposition-content",
+                          "package": "aralearn.resource.audio",
+                          "version": "1.0.0",
+                          "data": {
+                            "tracks": [
+                              {
+                                "id": "greeting",
+                                "label": "Saudação em inglês",
+                                "locale": "en-US",
+                                "kind": "native",
+                                "text": "Good morning. How are you?",
+                                "alternative": {
+                                  "text": "Good morning. How are you?",
+                                  "visibility": "on_request"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "resource-test-30-module",
+          "title": "Calculadora",
+          "guide": {
+            "goal": "Avaliar aralearn.resource.calculator somente nas modalidades declaradas pelo próprio package.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação-alvo da tarefa"
+            ],
+            "notation": [
+              "precedência explícita",
+              "unidade angular visível",
+              "precisão limitada"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "resource-test-30-lesson",
+              "title": "Calculadora",
+              "guide": {
+                "goal": "Avaliar aralearn.resource.calculator somente nas modalidades declaradas pelo próprio package.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "precedência explícita",
+                  "unidade angular visível",
+                  "precisão limitada"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "resource-test-30-microsequence",
+                  "title": "Calculadora",
+                  "goal": "Avaliar aralearn.resource.calculator somente nas modalidades declaradas pelo próprio package.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "confirmação da resposta"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "resource-test-30-exposition",
+                      "position": 1,
+                      "title": "Exposição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "resource-test-30-exposition-content",
+                          "package": "aralearn.resource.calculator",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare a estimativa com o cálculo",
+                            "angleUnit": "radians",
+                            "prompt": "Estime a diagonal antes de calcular a raiz da soma dos quadrados dos catetos.",
+                            "initialExpression": "sqrt(3^2 + 4^2)"
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "resource-test-31-module",
+          "title": "Dicionário",
+          "guide": {
+            "goal": "Avaliar aralearn.resource.dictionary somente nas modalidades declaradas pelo próprio package.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação-alvo da tarefa"
+            ],
+            "notation": [
+              "idioma identificado",
+              "obra de consulta explícita",
+              "sentido interpretado no contexto"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "resource-test-31-lesson",
+              "title": "Dicionário",
+              "guide": {
+                "goal": "Avaliar aralearn.resource.dictionary somente nas modalidades declaradas pelo próprio package.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "idioma identificado",
+                  "obra de consulta explícita",
+                  "sentido interpretado no contexto"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "resource-test-31-microsequence",
+                  "title": "Dicionário",
+                  "goal": "Avaliar aralearn.resource.dictionary somente nas modalidades declaradas pelo próprio package.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "confirmação da resposta"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "resource-test-31-exposition",
+                      "position": 1,
+                      "title": "Exposição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "resource-test-31-exposition-content",
+                          "package": "aralearn.resource.dictionary",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Compare os usos da palavra",
+                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
+                            "items": [
+                              {
+                                "id": "lexicon",
+                                "label": "Dicionário escolhido para a unidade",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/dicionario"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "resource-test-32-module",
+          "title": "Gramática",
+          "guide": {
+            "goal": "Avaliar aralearn.resource.grammar somente nas modalidades declaradas pelo próprio package.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação-alvo da tarefa"
+            ],
+            "notation": [
+              "idioma identificado",
+              "recurso com propósito explícito",
+              "consulta ligada à tarefa"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "resource-test-32-lesson",
+              "title": "Gramática",
+              "guide": {
+                "goal": "Avaliar aralearn.resource.grammar somente nas modalidades declaradas pelo próprio package.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "idioma identificado",
+                  "recurso com propósito explícito",
+                  "consulta ligada à tarefa"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "resource-test-32-microsequence",
+                  "title": "Gramática",
+                  "goal": "Avaliar aralearn.resource.grammar somente nas modalidades declaradas pelo próprio package.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "confirmação da resposta"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "resource-test-32-exposition",
+                      "position": 1,
+                      "title": "Exposição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "resource-test-32-exposition-content",
+                          "package": "aralearn.resource.grammar",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Consulte a construção antes de responder",
+                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
+                            "items": [
+                              {
+                                "id": "construction",
+                                "label": "Explicação da construção",
+                                "description": "Leia a seção indicada e volte para justificar sua análise.",
+                                "languageTag": "pt-BR",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/gramatica/construcao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "resource-test-33-module",
+          "title": "Leitura complementar",
+          "guide": {
+            "goal": "Avaliar aralearn.resource.reading somente nas modalidades declaradas pelo próprio package.",
+            "include": [
+              "representação canônica e interação declarada"
+            ],
+            "exclude": [
+              "adaptação artificial de outra operação-alvo da tarefa"
+            ],
+            "notation": [
+              "finalidade da leitura explícita",
+              "recurso identificado",
+              "retorno à tarefa"
+            ],
+            "avoid": [
+              "usar a forma quando ela não acrescenta significado"
+            ]
+          },
+          "lessons": [
+            {
+              "id": "resource-test-33-lesson",
+              "title": "Leitura complementar",
+              "guide": {
+                "goal": "Avaliar aralearn.resource.reading somente nas modalidades declaradas pelo próprio package.",
+                "include": [
+                  "exposição e práticas semanticamente suportadas"
+                ],
+                "exclude": [
+                  "práticas universais presumidas"
+                ],
+                "notation": [
+                  "finalidade da leitura explícita",
+                  "recurso identificado",
+                  "retorno à tarefa"
+                ],
+                "avoid": [
+                  "lacuna fora da representação"
+                ]
+              },
+              "topics": [],
+              "microsequences": [
+                {
+                  "id": "resource-test-33-microsequence",
+                  "title": "Leitura complementar",
+                  "goal": "Avaliar aralearn.resource.reading somente nas modalidades declaradas pelo próprio package.",
+                  "role": "practice",
+                  "dependsOn": [],
+                  "covers": [],
+                  "checks": [
+                    "sem sobreposição",
+                    "alvo de prática dentro da representação",
+                    "confirmação da resposta"
+                  ],
+                  "errors": [],
+                  "studyUnits": [
+                    {
+                      "id": "resource-test-33-exposition",
+                      "position": 1,
+                      "title": "Exposição",
+                      "role": "theory",
+                      "content": [
+                        {
+                          "id": "resource-test-33-exposition-content",
+                          "package": "aralearn.resource.reading",
+                          "version": "1.0.0",
+                          "data": {
+                            "title": "Amplie a comparação",
+                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
+                            "items": [
+                              {
+                                "id": "reading",
+                                "label": "Perspectiva complementar",
+                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
+                                "target": {
+                                  "kind": "url",
+                                  "url": "https://example.org/leitura/comparacao"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "response": null,
+                      "feedback": [],
+                      "topics": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "resource-test-34-module",
           "title": "Sessão de terminal",
           "guide": {
             "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
@@ -9623,7 +10085,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-29-lesson",
+              "id": "resource-test-34-lesson",
               "title": "Sessão de terminal",
               "guide": {
                 "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
@@ -9647,7 +10109,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-29-microsequence",
+                  "id": "resource-test-34-microsequence",
                   "title": "Sessão de terminal",
                   "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -9661,13 +10123,13 @@
                   "errors": [],
                   "studyUnits": [
                     {
-                      "id": "resource-test-29-exposition",
+                      "id": "resource-test-34-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-29-exposition-content",
+                          "id": "resource-test-34-exposition-content",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -9713,13 +10175,13 @@
                       "topics": []
                     },
                     {
-                      "id": "resource-test-29-choice",
+                      "id": "resource-test-34-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-29-choice-content",
+                          "id": "resource-test-34-choice-content",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -9761,14 +10223,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-29-choice-response",
+                        "id": "resource-test-34-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-29-choice-content",
+                              "targetInstanceId": "resource-test-34-choice-content",
                               "targetPath": "interactions[0].input",
                               "label": "Lacuna de escolha na entrada 1",
                               "responseMode": "choice",

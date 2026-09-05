@@ -301,7 +301,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260905101903" ||
+  if (manifest.schemaRevision !== "20260905114027" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -571,10 +571,10 @@ async function validateEdgeAndMcp() {
     "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_mapa_curricular",
     "salvar_parte",
     "materializar_parte", "ajustar_configuracao", "registrar_observacao",
-    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte"
+    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às vinte e duas tarefas humanas esperadas.");
+    fail("O catálogo MCP não corresponde às vinte e quatro tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

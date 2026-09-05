@@ -29,6 +29,10 @@ científica nem representa endosso institucional.
 A página [Capacidades e limites atuais](estado-atual-e-roadmap.md) reúne as
 funções disponíveis e os limites que afetam seu uso.
 
+[Áudio](audio.md) distingue vozes do navegador, arquivos e geração por serviço.
+[Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md) apresenta
+a calculadora, dicionários, gramática e leituras escolhidas para a unidade.
+
 [Fontes, citações e referências](fontes-e-citacoes.md) explica os dados
 bibliográficos, os estilos e os vínculos entre obras e conteúdo didático.
 

@@ -1,6 +1,6 @@
 # Autoria por Actions
 
-Actions oferece no ChatGPT os mesmos dezessete casos de uso humanos do MCP. O
+Actions oferece no ChatGPT os mesmos 24 casos de uso humanos do MCP. O
 transporte muda; o curso, as regras de autorização e os efeitos permanecem os
 mesmos.
 
@@ -11,6 +11,8 @@ O OpenAPI publicável está em
 
 As leituras são:
 
+- `consultar_perfis`;
+- `prever_aplicacao_perfil`;
 - `retomar_curso`;
 - `consultar_planejamento`;
 - `preparar_materializacao`;
@@ -18,10 +20,14 @@ As leituras são:
 - `consultar_observacoes`;
 - `preparar_revisao`;
 - `consultar_fontes`;
-- `consultar_componentes`.
+- `consultar_componentes`;
+- `consultar_audios`.
 
 As escritas são:
 
+- `salvar_perfil`;
+- `excluir_perfil`;
+- `aplicar_perfil`;
 - `criar_curso`;
 - `salvar_mapa_curricular`;
 - `salvar_parte`;
@@ -30,7 +36,8 @@ As escritas são:
 - `registrar_observacao`;
 - `aplicar_correcoes`;
 - `manter_fonte`;
-- `incorporar_pdf_como_fonte`.
+- `incorporar_pdf_como_fonte`;
+- `guardar_audio`.
 
 Cada descrição informa quando usar e quando não usar a operação. Isso permite ao
 modelo distinguir, por exemplo, salvar o mapa curricular de definir um lote de
@@ -155,15 +162,21 @@ Depois de trocar o contrato, substitua integralmente o OpenAPI no editor e salve
 o GPT. Importar o schema e renovar o login OAuth são estados separados. A
 importação real pertence ao corte publicado, não a cada mudança local.
 
-## PDF anexado pelo ChatGPT
+## Arquivos da conversa
 
-`incorporar_pdf_como_fonte` é a única operação com adaptação de transporte. O
-ChatGPT fornece em runtime a referência temporária do arquivo anexado. O servidor
-aceita somente um PDF, confere a origem autorizada, baixa com limite de tamanho e
-não devolve a URL transitória.
+`incorporar_pdf_como_fonte` recebe um PDF; `guardar_audio` recebe um WAV PCM ou
+MP3 já existente. Cada tarefa aceita um arquivo de até 20 MiB. O ChatGPT
+preenche `openaiFileIdRefs` com o descritor temporário da conversa. O servidor
+confere origem, prazo, MIME e bytes, bloqueia redirecionamentos e não devolve a
+URL transitória. A adaptação é derivada do metadado da tarefa, com o mesmo
+contrato humano do MCP.
 
-O arquivo só é guardado quando a conversa deixa clara a intenção de mantê-lo
-como fonte. Uma leitura pontual não deve chamar essa operação.
+O PDF só é guardado quando existe a intenção de mantê-lo como fonte; uma
+leitura pontual não chama essa operação. Áudio pertence à biblioteca do curso;
+sua ingestão não cria uma fonte de evidência, não sintetiza voz e não transcreve
+o arquivo. `consultar_audios` recupera referências lógicas para reutilização em
+uma conversa posterior. Os detalhes de transporte e seus limites estão na
+[ficha de ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
 
 ## Gerar e validar o OpenAPI
 
@@ -174,7 +187,7 @@ npm run test:authoring:actions
 ```
 
 O gerador projeta diretamente o catálogo compartilhado. A validação confere as
-dezessete tarefas, OAuth, hints, limites, schemas importáveis, respostas e
+24 tarefas, OAuth, hints, limites, schemas importáveis, respostas e
 intenções diretas, indiretas e negativas.
 
 ## Importar no ChatGPT

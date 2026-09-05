@@ -1,4 +1,5 @@
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
+import { CourseMediaError, normalizeCourseMediaCommand } from "../aralearn/runtime/domain/courseMedia.js";
 import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 import {
@@ -1140,6 +1141,37 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         deadlineAt
       })
     };
+  }
+  if (route.name === "getCourseMedia" || route.name === "getCourseMediaDownload") {
+    const query = new URL(request.url).searchParams;
+    const download = route.name === "getCourseMediaDownload";
+    const allowed = new Set(download ? ["expectedRevision", "studyUnitId"] : ["expectedRevision", "mode", "cursor", "limit"]);
+    if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1)) fail("invalid_course_media", "Consulta de áudio inválida.");
+    const expectedRevision = positiveInteger(query.get("expectedRevision"), "expectedRevision");
+    const mode = query.get("mode") || "configuration";
+    if (!download && !["catalog", "configuration"].includes(mode)) fail("invalid_course_media", "Leitura de áudio desconhecida.");
+    if (!download && mode === "catalog" || principal?.authenticationKind !== "public" || principal.actorId !== null) assertPrincipal(principal);
+    if (download) {
+      const studyUnitId = query.get("studyUnitId") || null;
+      if (studyUnitId !== null && !boundedCourseSourceId(studyUnitId)) fail("invalid_course_media", "Unidade de áudio inválida.");
+      return { requestId: null, data: await adapter.getCourseMediaDownload({ principal, courseId: route.courseId,
+        expectedRevision, studyUnitId, contentHash: route.contentHash, deadlineAt }) };
+    }
+    const cursor = query.get("cursor") || null;
+    if (cursor !== null && !/^[a-f0-9]{64}$/u.test(cursor)) fail("invalid_course_media", "Cursor de áudio inválido.");
+    return { requestId: null, data: await adapter.getCourseMedia({ principal, courseId: route.courseId,
+      expectedRevision, mode, cursor, limit: positiveInteger(query.get("limit"), "limit", { defaultValue: 20, maximum: 50 }), deadlineAt }) };
+  }
+  if (route.name === "executeCourseMediaCommand") {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    exactFields(body, new Set(["requestId", "expectedRevision", "command"]));
+    let command;
+    try { command = normalizeCourseMediaCommand(body.command); }
+    catch (error) { if (!(error instanceof CourseMediaError)) throw error; fail(error.code, error.message); }
+    const requestId = requestIdFrom(request, body);
+    return { requestId, data: await adapter.executeCourseMediaCommand({ principal, courseId: route.courseId,
+      expectedCourseRevision: positiveInteger(body.expectedRevision, "expectedRevision"), requestId, command, deadlineAt }) };
   }
   if (route.name === "getCourseSourcePdfDownload") {
     if (principal?.authenticationKind !== "public" || principal.actorId !== null) assertPrincipal(principal);

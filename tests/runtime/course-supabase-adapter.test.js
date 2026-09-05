@@ -3543,6 +3543,7 @@ test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado
         requestId: "request-delete-course-0001"
       });
     }
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) return json([{ name: `${"a".repeat(64)}.pdf` }]);
     assert.fail(`Requisição inesperada: ${url}`);
   });
   assert.deepEqual(await value.maintainCourse({
@@ -3560,8 +3561,24 @@ test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado
     requestId: "request-delete-course-0001",
     fileCleanupPending: true
   });
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
   assert.equal(calls[0].url.includes("/storage/v1/object"), false);
+  assert.equal(calls.some(call => call.init.method === "DELETE"), false);
+  assert.equal(calls[1].body.limit, 1);
+});
+
+test("exclusão sem arquivos não inventa limpeza pendente", async () => {
+  const value = adapter(async url => {
+    if (url.endsWith("/rest/v1/rpc/maintain_course_for_actor_v1")) return json({
+      contract: "aralearn.course-lifecycle.v1", courseId: COURSE_ID, operation: "delete_owned_course",
+      status: "completed", changed: true, requestId: "delete-empty-course-303"
+    });
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) return json([]);
+    assert.fail(url);
+  });
+  const result = await value.maintainCourse({ principal: { actorId: USER_ID }, courseId: COURSE_ID,
+    operation: "delete_owned_course", confirmed: true, requestId: "delete-empty-course-303" });
+  assert.equal(result.fileCleanupPending, false);
 });
 
 test("repetição de exclusão já concluída não ganha autoridade sobre Storage órfão", async () => {

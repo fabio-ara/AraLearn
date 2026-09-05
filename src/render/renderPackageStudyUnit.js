@@ -76,7 +76,8 @@ export function renderPackageStudyUnitBlocks(studyUnit, options = {}) {
   const dockExerciseParts = Array.isArray(options.dockExerciseParts)
     ? options.dockExerciseParts
     : null;
-  const content = studyUnit.content.map((instance, index) =>
+  const content = studyUnit.content.filter((instance) => !options.toolsInActionBar ||
+    !RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool).map((instance, index) =>
     renderInstance(studyUnit, instance, "content", index, options, dockExerciseParts)
   ).join("");
   const response = studyUnit.response
