@@ -1,5 +1,12 @@
 # Alterações do schema
 
+## 20260905163000 — ordem canônica das capacidades
+
+O manifesto conserva suas 47 capacidades e as ordena com collation `C`, sem
+depender da configuração linguística do banco restaurado. O complemento não
+altera conteúdo, permissões ou arquivos. A verificação das fronteiras passa a
+exigir o leitor de analytics v4, que substituiu v3 na etapa de comparação.
+
 ## 20260905162000 — grupos de ajustes e catálogo 1.2.1
 
 A apresentação separa explicações, prática, leitura e estilo, conversa e

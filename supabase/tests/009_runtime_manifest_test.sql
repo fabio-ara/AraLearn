@@ -5,7 +5,7 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260905162000','o manifesto identifica cópias independentes, comparação e ajustes por função');
+  '20260905163000','o manifesto identifica as capacidades correntes em ordem canônica');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),47,
@@ -162,7 +162,7 @@ select is(array(
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
-    'public.get_owned_course_authoring_analytics_for_actor_v3(uuid,uuid,bigint,jsonb)',
+    'public.get_owned_course_authoring_analytics_for_actor_v4(uuid,uuid,bigint,jsonb)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
     'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
   ]) signature where to_regprocedure(signature) is null
@@ -283,7 +283,7 @@ select ok(not exists(select 1 from pg_proc procedure_value
     )),'helpers de acesso direto ao PDF foram removidos');
 
 select is((select public.get_aralearn_runtime_manifest()->'features'),
-  (select jsonb_agg(to_jsonb(value) order by value)
+  (select jsonb_agg(to_jsonb(value) order by value collate "C")
     from jsonb_array_elements_text(
       public.get_aralearn_runtime_manifest()->'features'
     ) feature(value)),

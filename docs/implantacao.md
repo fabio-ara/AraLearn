@@ -353,6 +353,15 @@ são recuperados pelo Git e por uma release anterior; dados são recuperados por
 backup do ambiente. Trocar a chave de assinatura Android impede atualização
 direta e, portanto, não é um mecanismo comum de reversão.
 
+Antes do upgrade de um backup restaurado, confira os proprietários do banco,
+esquemas e objetos, as permissões e associações de papéis, a codificação e o
+provedor, localidade e versão da ordenação textual (collation). Execute as
+migrations com o mesmo papel da implantação, sem permissões extras herdadas
+da stack usada no ensaio.
+
+Se uma constraint `CHECK` consulta um catálogo persistido, carregue esse catálogo
+antes das linhas dependentes, conservando todas as entradas do dump e a constraint.
+
 Se o site foi publicado antes do backend compatível, interrompa a promoção e
 republique o cliente anterior pelo Git. Se o backend novo já foi aplicado,
 investigue compatibilidade e dados antes de qualquer restauração. Não mantenha
