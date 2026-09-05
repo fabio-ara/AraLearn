@@ -56,7 +56,9 @@ async function expectNoHorizontalOverflow(page) {
 
 async function expectModalDialogOwnsTopLayer(dialog) {
   await expect(dialog).toBeVisible();
-  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  if (await dialog.evaluate(element => element.tagName === "DIALOG")) {
+    expect(await dialog.evaluate(element => element.matches(":modal"))).toBe(true);
+  } else await expect(dialog).toHaveAttribute("aria-modal", "true");
   await expect.poll(() => dialog.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     const x = Math.min(window.innerWidth - 1, Math.max(0, bounds.left + bounds.width / 2));
@@ -103,6 +105,10 @@ async function expectVisibleTouchTargets(page) {
   const failures = await page.locator(".course-authoring-surface").evaluate((surface) => {
     const selector = "button, a, summary, input, select, textarea";
     return [...surface.querySelectorAll(selector)].flatMap((element) => {
+      for (let ancestor = element.parentElement; ancestor && ancestor !== surface; ancestor = ancestor.parentElement) {
+        if (ancestor.matches("details:not([open])") &&
+            !ancestor.querySelector(":scope > summary")?.contains(element)) return [];
+      }
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       if (style.visibility === "hidden" || style.display === "none" ||
@@ -153,7 +159,7 @@ async function expectFinalPlanningContentReachable(page) {
   await expect.poll(finalContentVisible).toBe(true);
 
   await root.evaluate((element) => { element.scrollTop = 0; });
-  await page.getByRole("link", { name: "Planejamento", exact: true }).first().focus();
+  await page.locator(".course-authoring-primary-navigation a:visible").first().focus();
   for (let index = 0; index < 24; index += 1) {
     await page.keyboard.press("PageDown");
   }
@@ -180,16 +186,24 @@ async function expectResponsiveAuthoringNavigation(page, width) {
   await expect(menu.locator(":scope > summary")).toHaveCount(1);
   await expect(menu.locator(":scope > nav > a")).toHaveCount(8);
   await expect(menu.locator(":scope > summary")).toHaveAccessibleName("Abrir tarefas do curso");
-  await menu.locator(":scope > summary").click();
-  await expect(menu.getByRole("button", { name: "Atualizar curso" })).toBeVisible();
+  const designDialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
+  const dialogOpen = await designDialog.isVisible();
+  if (dialogOpen) await expectModalDialogOwnsTopLayer(designDialog);
+  else {
+    await menu.locator(":scope > summary").click();
+    await expect(menu.getByRole("button", { name: "Atualizar curso" })).toBeVisible();
+    await expect(menu.locator("#course-current-identity")).toBeVisible();
+  }
   await expect(menu.getByRole("button", {
     name: "Planejar este curso no ChatGPT"
   })).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" })).toHaveCount(0);
-  await menu.locator(":scope > summary").click();
+  if (!dialogOpen) await menu.locator(":scope > summary").click();
   await expect(page.locator(".course-authoring-sidebar-navigation")).toHaveCount(0);
-  await expect(page.locator(".course-authoring-primary-navigation")).toHaveCount(1);
-  await expect(page.locator(".course-authoring-primary-navigation > a")).toHaveCount(2);
+  const section = await page.locator(".course-authoring-surface").getAttribute("data-section");
+  const primary = ["content", "planning"].includes(section);
+  await expect(page.locator(".course-authoring-primary-navigation")).toHaveCount(primary ? 1 : 0);
+  await expect(page.locator(".course-authoring-primary-navigation > a")).toHaveCount(primary ? 2 : 0);
   const geometry = await page.locator(".course-authoring-surface").evaluate((surface) => {
     const frame = surface.querySelector(".course-authoring-frame");
     const layout = surface.querySelector(".course-authoring-layout");
@@ -197,7 +211,7 @@ async function expectResponsiveAuthoringNavigation(page, width) {
     const header = surface.querySelector(".course-authoring-course-header");
     const heading = header?.querySelector(".course-authoring-course-heading");
     const title = heading?.querySelector("h1");
-    const contextTitle = heading?.querySelector(".course-authoring-context-title");
+    const contextTitle = header?.querySelector("#course-current-identity");
     const surfaceRect = surface.getBoundingClientRect();
     const frameRect = frame.getBoundingClientRect();
     const layoutRect = layout.getBoundingClientRect();
@@ -210,8 +224,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
       layoutColumns: getComputedStyle(layout).gridTemplateColumns,
       mainAligned: Math.abs(mainRect.left - layoutRect.left) <= 1 &&
         Math.abs(mainRect.width - layoutRect.width) <= 1,
-      titleHasFullLabel: Boolean(title &&
-        title.getAttribute("title") === title.textContent.trim()),
+      titleHasFullLabel: Boolean(title && contextTitle &&
+        title.getAttribute("aria-describedby") === contextTitle.id),
       titleTransform: title ? getComputedStyle(title).textTransform : null,
       contextTitle: contextTitle?.textContent?.trim() || "",
       contextTransform: contextTitle ? getComputedStyle(contextTitle).textTransform : null
@@ -260,6 +274,11 @@ async function authoringAreaLink(page, section) {
 async function navigateToAuthoringArea(page, section) {
   const close = page.getByRole("button", { name: "Fechar parâmetros", exact: true });
   if (await close.isVisible()) await close.click();
+  const source = page.getByRole("dialog", { name: "Fonte", exact: true });
+  if (await source.isVisible()) {
+    await source.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+    await expect(source).toHaveCount(0);
+  }
   await (await authoringAreaLink(page, section)).click();
 }
 
@@ -333,6 +352,10 @@ async function mountCourseAuthoring(page, {
     contentType: "text/javascript",
     body: ""
   }));
+  await page.route("**/tests/helpers/courseAuthoringAnalyticsFixture.js", async (route) =>
+    route.fulfill({ contentType: "application/javascript", body: await readFile(
+      new URL("../helpers/courseAuthoringAnalyticsFixture.js", import.meta.url), "utf8"
+    ) }));
   await page.goto(hash ? `/${hash}` : "/");
   await page.evaluate(async ({
     requestedCardinality,
@@ -364,6 +387,12 @@ async function mountCourseAuthoring(page, {
     );
     const { createEmptyCourseSourceBibliographicMetadata } = await import(
       "/src/domain/courseSources.js"
+    );
+    const { courseAuthoringAnalyticsFixture } = await import(
+      "/tests/helpers/courseAuthoringAnalyticsFixture.js"
+    );
+    const { assembleCourseAuthoringExport } = await import(
+      "/src/domain/courseAuthoringComparison.js"
     );
 
     const definitions = [{
@@ -771,6 +800,8 @@ async function mountCourseAuthoring(page, {
       annotationReads: [],
       annotationMutations: [],
       analyticsReads: [],
+      analyticsExports: [],
+      analyticsExportOutcome: null,
       positionLoads: 0,
       positionSaves: [],
       peopleReads: 0,
@@ -1233,6 +1264,10 @@ async function mountCourseAuthoring(page, {
       };
     };
     const analyticsPage = (courseId, options) => {
+      const course = courseDetail(courseId);
+      if (course.revision !== options.expectedCourseRevision) {
+        throw Object.assign(new Error("Revisão alterada"), { code: "course_revision_changed" });
+      }
       const selected = options.query.scope.kind === "course"
         ? { kind: "course", ref: null, label: "Curso inteiro" }
         : {
@@ -1241,12 +1276,53 @@ async function mountCourseAuthoring(page, {
           label: "Microssequência · Comparação orientada"
         };
       const studyUnitCount = selected.kind === "course" ? 2 : 1;
-      return {
-        contract: "aralearn.course-authoring-analytics.v2",
+      const canonical = courseAuthoringAnalyticsFixture({
+        courseId, revision: course.revision, title: course.title,
+        studyUnits: studyUnits.slice(0, studyUnitCount).map((unit, index) => ({
+          studyUnitRef: unit.id, title: unit.title, wordCount: 120,
+          declaration: {
+            mode: index === 0 ? "mixed" : "expository",
+            introducedInstructionalAnalysisUnitIds: [`analysis-${index + 1}`],
+            usedInstructionalAnalysisUnitIds: ["analysis-1"],
+            explanationApplications: [{ instructionalAnalysisUnitId: `analysis-${index + 1}`,
+              developedForms: ["plain_definition"], notApplicable: [] }],
+            practiceApplications: index === 0 ? [1, 2, 3].map(position => ({
+              evidenceRequirementId: "requirement-1", opportunityId: `opportunity-${position}`,
+              variedDimensions: [position === 3 ? "external_representation" : "context"]
+            })) : []
+          },
+          sourceLinks: [1, 2].map(position => ({
+            linkId: `link-${index + 1}-${position}`, sourceId: `source-0${position}`,
+            relation: "supported_by", roles: ["technical_conceptual"],
+            anchors: [{ anchorId: `anchor-source-0${position}` }], occurrences: []
+          }))
+        }))
+      });
+      canonical.basis.analysisUnits = [
+        "Comparação exige um critério comum.",
+        "Contraste explicita uma diferença relevante."
+      ].map((statement, index) => ({ ref: `analysis-${index + 1}`, position: index + 1,
+        statement, description: "Definição planejada integral, inclusive fora do recorte." }));
+      canonical.basis.evidenceRequirements = [{ ref: "requirement-1", position: 1,
+        statement: "Comparar explicações com um critério explícito.", description: "" }];
+      canonical.basis.sources = [...sourceDetails.values()].slice(0, 2).map(source => ({
+        sourceRef: source.sourceId, revision: source.revision,
+        document: Object.fromEntries([
+          "kind", "defaultRoles", "title", "authors", "publicationDate", "identifier", "language",
+          "citationMode", "citationText", "bibliographic", "url", "editionOrVersion", "origin",
+          "availability", "verificationStatus", "studyVisibility"
+        ].map(key => [key, structuredClone(source[key])])),
+        attachments: [], anchors: source.anchors.map(anchor => ({
+          anchorRef: anchor.anchorId, contentHash: anchor.contentHash,
+          selector: structuredClone(anchor.selector), humanLocator: anchor.humanLocator
+        }))
+      }));
+      const reading = {
+        ...canonical,
         course: {
           id: courseId,
           revision: options.expectedCourseRevision,
-          title: "Fundamentos de relações"
+          title: course.title
         },
         scope: {
           selected,
@@ -1261,6 +1337,7 @@ async function mountCourseAuthoring(page, {
           }]
         },
         design: {
+          ...canonical.design,
           studyUnitCount,
           parameters: [{
             parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
@@ -1277,7 +1354,7 @@ async function mountCourseAuthoring(page, {
             label: "Formas de explicação requeridas",
             valueKind: "string_list",
             effectiveValues: [{
-              value: ["definition", "contrast"],
+              value: ["plain_definition", "contrast"],
               origin: "automatic",
               sourceScopeKind: "didactic_microsequence",
               studyUnitCount
@@ -1297,7 +1374,7 @@ async function mountCourseAuthoring(page, {
             label: "Dimensões de variação requeridas",
             valueKind: "string_list",
             effectiveValues: [{
-              value: ["context", "representation"],
+              value: ["context", "external_representation"],
               origin: "automatic",
               sourceScopeKind: "study_unit",
               studyUnitCount
@@ -1345,7 +1422,7 @@ async function mountCourseAuthoring(page, {
             introducedCount: 1
           })),
           explanationForms: [{
-            form: "definition",
+            form: "plain_definition",
             studyUnitCount,
             applicationCount: studyUnitCount
           }, {
@@ -1375,13 +1452,13 @@ async function mountCourseAuthoring(page, {
             dimension: "context",
             opportunityCount: 2
           }, {
-            dimension: "representation",
+            dimension: "external_representation",
             opportunityCount: 1
           }],
           sourcesByRole: [{
             role: "technical_conceptual",
             sourceCount: 2,
-            anchorCount: 3,
+            anchorCount: 2,
             studyUnitCount
           }],
           wordCountsByStudyUnit: [{
@@ -1412,6 +1489,22 @@ async function mountCourseAuthoring(page, {
         ],
         deepLink: `${window.location.origin}/#/authoring/courses/${courseId}?section=research`
       };
+      reading.design.parameters = canonical.design.parameters.map(parameter => ({
+        ...parameter,
+        effectiveValues: (reading.design.parameters.find(entry =>
+          entry.parameterId === parameter.parameterId)?.effectiveValues || []).map(value => ({
+          ...value, reason: "Escolha registrada na fixture de autoria."
+        }))
+      }));
+      for (const unit of reading.basis.studyUnits) {
+        unit.appliedParameters = reading.design.parameters.flatMap(parameter =>
+          parameter.effectiveValues.map(({ value, origin, reason, sourceScopeKind }) => ({
+            parameterId: parameter.parameterId, value, origin, reason,
+            sourceScope: { kind: sourceScopeKind, ref: sourceScopeKind === "course" ? null :
+              sourceScopeKind === "study_unit" ? unit.studyUnitRef : "microsequence-a" }
+          })));
+      }
+      return reading;
     };
     const controller = {
       async loadCourseMedia(courseId, options) {
@@ -1454,6 +1547,7 @@ async function mountCourseAuthoring(page, {
       },
       async getCourse(courseId) {
         probe.headerReads += 1;
+        if (window.failInspectionRefresh) throw Object.assign(new Error("Falha sintética de conexão"), { code: "network_error" });
         return courseDetail(courseId);
       },
       async loadAuthoringOutline(courseId) {
@@ -1471,23 +1565,25 @@ async function mountCourseAuthoring(page, {
         const source = courseId === courseIds[0] ? studyUnits : [];
         return {
           document: {
-            contract: "aralearn.course-project.v1",
+            contract: "aralearn.course.v1",
             courses: [{
               id: courseId,
-              position: 0,
               title: detail.title,
+              goal: detail.goal,
               modules: [{
                 id: "module-a",
-                position: 0,
                 title: "Base conceitual",
+                guide: { goal: "Organizar as relações fundamentais.", include: [], exclude: [], notation: [], avoid: [] },
                 lessons: [{
                   id: "lesson-a",
-                  position: 0,
                   title: "Relações e evidências",
+                  guide: { goal: "Distinguir relações e seus limites.", include: [], exclude: [], notation: [], avoid: [] },
+                  topics: [],
                   microsequences: [{
                     id: "microsequence-a",
-                    position: 0,
                     title: "Comparação orientada",
+                    goal: "Explicar a relação por uma comparação orientada.",
+                    role: "explain", dependsOn: [], covers: [], checks: [],
                     studyUnits: structuredClone(source)
                   }]
                 }]
@@ -2070,6 +2166,23 @@ async function mountCourseAuthoring(page, {
         probe.analyticsReads.push({ courseId, options: structuredClone(options) });
         return analyticsPage(courseId, options);
       },
+      async exportCourseAuthoring(request) {
+        probe.analyticsExports.push(structuredClone(request));
+        try {
+          const analytics = analyticsPage(request.courseId, {
+            expectedCourseRevision: request.expectedRevision, query: { scope: request.scope }
+          });
+          const { document } = await controller.loadCourseDocument(request.courseId, {
+            verifiedRevision: request.expectedRevision
+          });
+          const result = assembleCourseAuthoringExport({ analytics, document });
+          probe.analyticsExportOutcome = "complete";
+          return result;
+        } catch (error) {
+          probe.analyticsExportOutcome = { code: error.code, message: error.message, details: error.details };
+          throw error;
+        }
+      },
       async clearCourse() {},
       async listCourseAccess(courseId) {
         probe.peopleReads += 1;
@@ -2160,6 +2273,7 @@ async function mountCourseAuthoring(page, {
     });
     globalThis.__courseAuthoringHarness = {
       surface,
+      controller,
       probe,
       updateInspectionStudyUnit(studyUnitId, title) {
         const studyUnit = studyUnits.find(({ id }) => id === studyUnitId);
@@ -2405,6 +2519,91 @@ test("#304 ferramentas ficam à esquerda e preservam D4 nas oito combinações",
   await page.screenshot({ path: info.outputPath("inspection-single-tool-390.png") });
 });
 
+test("#304 avisos da inspeção não deslocam o card e falhas só abrem por escolha", async ({ page }, info) => {
+  test.setTimeout(90000);
+  const errors = captureClientErrors(page);
+  await mountCourseAuthoring(page, { inspectionTools: "single",
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
+  const notice = page.locator(".course-authoring-transient-feedback");
+  const frameGeometry = () => page.locator(".course-authoring-frame").evaluate(node => {
+    const selectors = [".course-authoring-course-header", ".course-inspection-item", ".course-inspection-item-actions"];
+    return { scrollHeight: node.scrollHeight, boxes: selectors.map(selector => {
+      const rect = node.querySelector(selector).getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }) };
+  });
+  for (const width of [360, 390, 430, 1280]) for (const colorMode of ["light", "dark"]) {
+    await page.setViewportSize({ width, height: 850 });
+    await page.evaluate(mode => { document.documentElement.dataset.colorMode = mode; }, colorMode);
+    await expect(card).toBeVisible();
+    const before = await frameGeometry();
+    await card.getByRole("button", { name: "Editar", exact: true }).click();
+    await card.getByRole("button", { name: "Visualizar", exact: true }).click();
+    await expect(notice).toContainText("Edição cancelada.");
+    expect(await frameGeometry()).toEqual(before);
+    const liveRegion = await page.locator(".course-inspection-copy-status").boundingBox();
+    expect(liveRegion.width).toBeLessThanOrEqual(1);
+    expect(liveRegion.height).toBeLessThanOrEqual(1);
+    const toast = await notice.boundingBox();
+    expect(toast.x).toBeGreaterThanOrEqual(0);
+    expect(toast.y).toBeGreaterThanOrEqual(0);
+    expect(toast.x + toast.width).toBeLessThanOrEqual(width);
+    expect(toast.y + toast.height).toBeLessThanOrEqual(850);
+    expect(await notice.locator("p").evaluate(node => getComputedStyle(node).fontSize)).toBe("13px");
+    const dismiss = notice.getByRole("button", { name: "Fechar aviso", exact: true });
+    const button = await dismiss.boundingBox();
+    expect(button.width).toBe(44); expect(button.height).toBe(44);
+    await page.screenshot({ path: info.outputPath(`inspection-notice-${width}-${colorMode}.png`) });
+    if (width === 360 && colorMode === "light") await expect(notice).toHaveCount(0, { timeout: 5000 });
+    else await dismiss.click();
+    await expect(notice).toHaveCount(0);
+    expect(await frameGeometry()).toEqual(before);
+  }
+  await page.setViewportSize({ width: 390, height: 850 });
+  const beforeRefresh = await frameGeometry();
+  await page.evaluate(() => { window.failInspectionRefresh = true; });
+  expect(await page.evaluate(() => window.__courseAuthoringHarness.surface.refresh())).toBe(false);
+  await expect(page.locator("[data-course-feedback-indicator]")).toBeVisible();
+  await expect(page.locator(".course-authoring-task-menu")).not.toHaveAttribute("open", "");
+  expect(await frameGeometry()).toEqual(beforeRefresh);
+  await page.evaluate(() => { window.failInspectionRefresh = false; });
+  expect(await page.evaluate(() => window.__courseAuthoringHarness.surface.refresh())).toBe(true);
+  await expect(page.locator("[data-course-feedback-indicator]")).toBeHidden();
+  expect(await frameGeometry()).toEqual(beforeRefresh);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: async () => { throw new Error("Falha sintética de cópia"); }
+    } });
+  });
+  const beforeError = await frameGeometry();
+  await card.locator(".course-inspection-item-details > summary").click();
+  await card.getByRole("button", { name: "Copiar link", exact: true }).click();
+  const menu = page.locator(".course-authoring-task-menu");
+  await expect(menu.locator("[data-course-feedback-indicator]")).toBeVisible();
+  await expect(menu).not.toHaveAttribute("open", "");
+  await expect(notice).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  expect(await frameGeometry()).toEqual(beforeError);
+  await menu.locator(":scope > summary").click();
+  await expect(menu.getByRole("alert")).toHaveText("Não foi possível copiar o link.");
+  await page.screenshot({ path: info.outputPath("inspection-copy-error-revealed.png") });
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = () => new Promise(resolve => { window.finishLateClipboard = resolve; });
+  });
+  await card.locator(".course-inspection-item-details > summary").click();
+  await card.getByRole("button", { name: "Copiar link", exact: true }).click();
+  await menu.locator(":scope > summary").click();
+  await menu.getByRole("link", { name: "Pessoas e acesso", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Pessoas e acesso", exact: true, level: 1 })).toBeVisible();
+  await expect(page.locator("[data-course-feedback-indicator]")).toBeHidden();
+  await expect(page.getByText("Não foi possível copiar o link.", { exact: true })).toHaveCount(0);
+  await page.evaluate(async () => { window.finishLateClipboard(); await Promise.resolve(); });
+  await expect(page.getByText("Link copiado.", { exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("#304 resultado da calculadora longa é alcançado por rolagem no modal390", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 850 });
   await mountCourseAuthoring(page, { inspectionTools: "single",
@@ -2591,7 +2790,7 @@ test.describe("Autoria canônica mobile-first", () => {
       const sourcesHash = `#/authoring/courses/${COURSE_IDS[0]}?section=sources`;
       await mountCourseAuthoring(page, { cardinality: "many", hash: sourcesHash });
 
-      await expect(page.locator(".course-authoring-course-header h1"))
+      await expect(page.locator("#course-current-identity"))
         .toHaveText("Fundamentos de relações");
       await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Fontes");
       await expect(page.locator(".course-source-card")).toHaveCount(10);
@@ -2616,20 +2815,20 @@ test.describe("Autoria canônica mobile-first", () => {
         exact: true
       }).click();
       await expect(page.locator("#course-source-detail-title")).toHaveText(
-        "Fonte verificável 1"
+        "Fonte"
       );
+      await expect(page.locator(".course-source-display-title")).toHaveText("Fonte verificável 1");
+      await expectSourceMetadataDoesNotOverlap(page);
       await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText(
         "Autoria 1. Fonte verificável 1. 2026."
       );
-      await expectSourceMetadataDoesNotOverlap(page);
+      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras$/u }).click();
       await expect(page.getByText("Capítulo 2, seção 3 · Páginas 10–12", {
         exact: true
       })).toBeVisible();
       await expect(page.getByText("Trecho mínimo para conferência.", {
         exact: true
       })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Observação", exact: true }))
-        .toBeVisible();
       if (width === 390) {
         await page.getByRole("button", { name: "Editar âncora", exact: true }).click();
         const humanLocator = page.getByLabel("Localizador para pessoas");
@@ -2649,6 +2848,8 @@ test.describe("Autoria canônica mobile-first", () => {
           humanLocator: "Capítulo 2, seção 4",
           selector: { kind: "page_range", startPage: 10, endPage: 12 }
         });
+        await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Observações$/u }).click();
+        await expect(page.getByRole("heading", { name: "Observação", exact: true })).toBeVisible();
         const observationForm = page.locator('[data-source-form="observation"]');
         await observationForm.getByLabel("Tipo").selectOption("contestation");
         await observationForm.getByLabel("Alvo").selectOption("anchor-source-01");
@@ -2675,6 +2876,11 @@ test.describe("Autoria canônica mobile-first", () => {
           category: "possible_error"
         });
       }
+      const observations = page.locator(".course-source-detail-section").filter({
+        has: page.locator("summary", { hasText: /^Observações$/u })
+      });
+      if (await observations.getAttribute("open") === null) await observations.locator(":scope > summary").click();
+      await expect(page.getByRole("heading", { name: "Observação", exact: true })).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
       await page.screenshot({
@@ -2692,6 +2898,7 @@ test.describe("Autoria canônica mobile-first", () => {
         { limit: 10, cursor: "source-page-30" },
         { limit: 10, cursor: "source-page-40" },
         { limit: 10, cursor: "source-page-50" },
+        { limit: 10, cursor: null }, // A rota da fonte lê catálogo e detalhe juntos.
         ...(width === 390 ? [{ limit: 10, cursor: null }] : [])
       ]);
       expect(clientErrors).toEqual([]);
@@ -2818,8 +3025,9 @@ test.describe("aceite focal do shell simples da Autoria", () => {
               exact: true
             }).click();
             await expect(page.locator("#course-source-detail-title")).toHaveText(
-              "Fonte verificável 1"
+              "Fonte"
             );
+            await expect(page.locator(".course-source-display-title")).toHaveText("Fonte verificável 1");
             await expect(page.getByRole("button", {
               name: /Trabalhar com o ChatGPT/u
             })).toHaveCount(0);
@@ -2889,7 +3097,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     expect(clientErrors).toEqual([]);
   });
 
-  test("rerender preserva a posição e mudança de área inicia o conteúdo no topo", async ({
+  test("rerender preserva a posição do card e mudança de área inicia o conteúdo no topo", async ({
     page
   }) => {
     const clientErrors = captureClientErrors(page);
@@ -2897,8 +3105,9 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
     await mountCourseAuthoring(page, { cardinality: "many", hash });
     const root = page.locator(".course-authoring-root");
+    const cardContent = page.locator("[data-inspection-study-unit] .card-sheet-content");
 
-    const beforeRefresh = await root.evaluate((element) => {
+    const beforeRefresh = await cardContent.evaluate((element) => {
       element.scrollTop = Math.min(480, element.scrollHeight - element.clientHeight);
       return element.scrollTop;
     });
@@ -2908,18 +3117,18 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       "aria-busy",
       "false"
     );
-    await expect.poll(() => root.evaluate((element) => element.scrollTop))
+    await expect.poll(() => cardContent.evaluate((element) => element.scrollTop))
       .toBe(beforeRefresh);
 
     await navigateToAuthoringArea(page, "parameters");
-    await expect(page.locator(".course-authoring-course-header h1"))
+    await expect(page.locator("#course-current-identity"))
       .toHaveText("Fundamentos de relações");
     await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
     await expect.poll(() => root.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
     expect(clientErrors).toEqual([]);
   });
 
-  test("Inspeção usa o rolador principal e encerra ao trocar de área", async ({
+  test("Inspeção limita a rolagem interna ao conteúdo do card e encerra ao trocar de área", async ({
     page
   }) => {
     const clientErrors = captureClientErrors(page);
@@ -2936,10 +3145,15 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       return ["auto", "scroll"].includes(overflow) &&
         element.scrollHeight > element.clientHeight + 1;
     }).map((element) => element.className));
-    expect(nestedVerticalScrollers).toEqual([]);
+    expect(nestedVerticalScrollers).toEqual(["card-sheet-content"]);
+    const cardContent = page.locator("[data-inspection-study-unit] .card-sheet-content");
+    expect(await cardContent.evaluate(node => {
+      node.scrollTop = node.scrollHeight;
+      return node.scrollTop > 0 && node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+    })).toBe(true);
 
     await navigateToAuthoringArea(page, "planning");
-    await expect(page.locator(".course-authoring-course-header h1"))
+    await expect(page.locator("#course-current-identity"))
       .toHaveText("Fundamentos de relações");
     await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toHaveCount(0);
@@ -3031,7 +3245,7 @@ test.describe("entrada e Conteúdo cotidiano da Autoria", () => {
   }
 });
 
-test("Conteúdo mantém cabeçalhos separados em 360 px com título longo", async ({ page }) => {
+test("Conteúdo mantém cabeçalho compacto e revela o título completo do curso em 360 px", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   const courseTitle = "Dataprev: Gestão de Servidores e Segurança da Informação";
   await page.setViewportSize({ width: 360, height: 780 });
@@ -3039,7 +3253,8 @@ test("Conteúdo mantém cabeçalhos separados em 360 px com título longo", asyn
   await mountCourseAuthoring(page, { cardinality: "many", hash, courseTitle });
 
   const courseHeading = page.locator(".course-authoring-course-header h1");
-  await expect(courseHeading).toHaveText(courseTitle);
+  await expect(courseHeading).toHaveText("Conteúdo");
+  await expect(courseHeading).toHaveAttribute("aria-describedby", "course-current-identity");
   await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
 
@@ -3068,7 +3283,14 @@ test("Conteúdo mantém cabeçalhos separados em 360 px com título longo", asyn
     titleTextOverflow: "ellipsis",
     titleInsideHeader: true
   });
-  await expect(courseHeading).toHaveAttribute("title", courseTitle);
+  const menu = page.locator(".course-authoring-task-menu");
+  await menu.locator(":scope > summary").click();
+  const identity = menu.locator("#course-current-identity");
+  await expect(identity).toBeVisible();
+  await expect(identity).toHaveText(courseTitle);
+  expect(await identity.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(menu).not.toHaveAttribute("open", "");
 
   await page.locator(".course-authoring-root").evaluate((root) => {
     root.scrollTop = 640;
@@ -4495,6 +4717,7 @@ test("rascunho e criação ambígua na lista bloqueiam atualização, Back e sa�
   });
 
   const openCreate = page.getByRole("button", { name: "Criar curso" }).last();
+  await page.locator(".course-authoring-task-menu > summary").click();
   await openCreate.click();
   const title = page.getByLabel("Título", { exact: true });
   const objective = page.getByLabel("Objetivo", { exact: true });
@@ -4503,7 +4726,7 @@ test("rascunho e criação ambígua na lista bloqueiam atualização, Back e sa�
 
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.surface.refresh())).toBe("deferred");
-  await expect(page.locator("[data-course-authoring-request-feedback]")).toContainText(
+  await expect(page.locator(".course-authoring-transient-feedback")).toContainText(
     "Atualização adiada para preservar sua edição"
   );
   await expect(title).toHaveValue("Rascunho protegido na lista");
@@ -4520,14 +4743,17 @@ test("rascunho e criação ambígua na lista bloqueiam atualização, Back e sa�
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.surface.refresh())).toBe(true);
 
+  await page.locator(".course-authoring-task-menu > summary").click();
   await page.getByRole("button", { name: "Criar curso" }).last().click();
   const retryTitle = page.getByLabel("Título", { exact: true });
   const retryObjective = page.getByLabel("Objetivo", { exact: true });
   await retryTitle.fill("Curso criado uma só vez");
   await retryObjective.fill("Confirmar a criação com identidade estável.");
   await page.getByRole("button", { name: "Criar curso" }).last().click();
+  await page.locator(".course-authoring-task-menu > summary").click();
   await expect(page.getByText(/Tente novamente para confirmar a mesma operação/u))
     .toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(retryTitle).toHaveValue("Curso criado uma só vez");
   await expect(retryObjective).toHaveValue("Confirmar a criação com identidade estável.");
   expect(await page.evaluate(() =>
@@ -4536,7 +4762,7 @@ test("rascunho e criação ambígua na lista bloqueiam atualização, Back e sa�
     globalThis.__courseAuthoringHarness.surface.handleBack())).toBe(true);
 
   await page.getByRole("button", { name: "Criar curso" }).last().click();
-  await expect(page.locator(".course-authoring-course-header h1"))
+  await expect(page.locator("#course-current-identity"))
     .toHaveText("Curso criado uma só vez");
   await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   const calls = await page.evaluate(() =>
@@ -4551,11 +4777,12 @@ test("criação abre Conteúdo e mantém Planejamento consultivo", async ({ page
   await page.setViewportSize({ width: 430, height: 860 });
   await mountCourseAuthoring(page, { cardinality: "one" });
 
+  await page.locator(".course-authoring-task-menu > summary").click();
   await page.getByRole("button", { name: "Criar curso" }).last().click();
   await page.getByLabel("Título").fill("Curso criado na Autoria");
   await page.getByLabel("Objetivo").fill("Investigar a comparação de explicações.");
   await page.getByRole("button", { name: "Criar curso" }).last().click();
-  await expect(page.locator(".course-authoring-course-header h1"))
+  await expect(page.locator("#course-current-identity"))
     .toHaveText("Curso criado na Autoria");
   await expect(page.locator(".course-authoring-course-heading h1"))
     .toHaveText("Conteúdo");
@@ -4569,13 +4796,66 @@ test("criação abre Conteúdo e mantém Planejamento consultivo", async ({ page
   });
 
   await page.getByRole("link", { name: /Planejamento/u }).first().click();
-  await expect(page.locator(".course-authoring-course-header h1"))
+  await expect(page.locator("#course-current-identity"))
     .toHaveText("Curso criado na Autoria");
   await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
   await expect(page.getByRole("button", { name: "Editar planejamento" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Salvar planejamento" })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
+});
+
+test("Fonte retorna ao catálogo e restaura o foco sem alterar metadados", async ({ page }, testInfo) => {
+  const errors = captureClientErrors(page);
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 820 });
+  await mountCourseAuthoring(page, { cardinality: "many",
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=sources` });
+  await page.getByRole("button", { name: "Abrir fonte: Fonte verificável 1", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Fonte", exact: true });
+  await expect(dialog).toBeVisible();
+  await expectSourceMetadataDoesNotOverlap(page);
+  await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).hash).toBe(
+    `#/authoring/courses/${COURSE_IDS[0]}?section=sources`
+  );
+  await expect(page.getByRole("button", { name: "Abrir fonte: Fonte verificável 1", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations)).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("source-return-catalog-390-light.png"), animations: "disabled" });
+  expect(errors).toEqual([]);
+});
+
+test("Fonte conserva edição e pedido incerto ao cancelar fechamento", async ({ page }) => {
+  const errors = captureClientErrors(page);
+  await page.setViewportSize({ width: 390, height: 820 });
+  await mountCourseAuthoring(page, { cardinality: "many", sourceMutationScenario: "ambiguous-once",
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=sources` });
+  await page.getByRole("button", { name: "Abrir fonte: Fonte verificável 1", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Fonte", exact: true });
+  await dialog.getByRole("button", { name: "Editar fonte", exact: true }).click();
+  const title = dialog.getByRole("textbox", { name: "Título, quando conhecido", exact: true });
+  await title.fill("Referência revisada sem perder o trabalho");
+  await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+  const confirmation = page.getByRole("alertdialog", { name: "Fechar fonte?", exact: true });
+  await expect(confirmation).toContainText("ainda não foram salvas");
+  await confirmation.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await expect(title).toHaveValue("Referência revisada sem perder o trabalho");
+  await dialog.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Confirmar a mesma operação" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+  await expect(confirmation).toContainText("A alteração pode ter sido salva");
+  await confirmation.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await expect(title).toHaveValue("Referência revisada sem perder o trabalho");
+  await dialog.getByRole("button", { name: "Confirmar a mesma operação" }).click();
+  await expect(dialog.locator(".course-source-display-title")).toHaveText("Referência revisada sem perder o trabalho");
+  const mutations = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations);
+  expect(mutations).toHaveLength(2);
+  expect(mutations[1]).toEqual(mutations[0]);
+  await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Abrir fonte: Referência revisada sem perder o trabalho", exact: true })).toBeFocused();
+  expect(errors).toEqual([]);
 });
 
 test("Dados de autoria em 390 px preservam escopo, números e exportação do recorte", async ({
@@ -4596,20 +4876,22 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   const analyticsHash = `#/authoring/courses/${COURSE_IDS[0]}?section=research`;
   await mountCourseAuthoring(page, { cardinality: "many", hash: analyticsHash });
   const analytics = page.locator(".course-analytics");
-  const scope = analytics.getByRole("combobox", { name: "Escopo", exact: true });
   await expect(analytics).toBeVisible();
-  await expect(scope).toHaveValue("0");
-  await expect(analytics.getByRole("heading", { name: "Desenho", exact: true })).toBeVisible();
-  await expect(analytics.getByRole("heading", { name: "Autoria", exact: true })).toBeVisible();
-  await expect(analytics.getByRole("heading", { level: 3 })).toHaveCount(2);
-  await expect(analytics.locator(".course-analytics-metrics")).toHaveCount(2);
-  await expect(analytics.locator('.course-analytics-metrics[aria-label="Resumo do desenho"] dt', {
+  await expect(analytics.getByRole("heading", { name: "Novidade declarada" })).toBeVisible();
+  await expect(analytics.getByRole("combobox")).toHaveCount(0);
+  await analytics.getByRole("button", { name: "Abrir dados e definições" }).click();
+  const dialog = page.getByRole("dialog", { name: "Dados e definições" });
+  await expectModalDialogOwnsTopLayer(dialog);
+  await expect(dialog.getByRole("heading", { name: "Desenho", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Autoria", exact: true })).toBeVisible();
+  await expect(dialog.locator(".course-analytics-metrics")).toHaveCount(2);
+  await expect(dialog.locator('.course-analytics-metrics[aria-label="Resumo do desenho"] dt', {
     hasText: "Unidades de estudo"
   })).toBeVisible();
-  await expect(analytics.locator('.course-analytics-metrics[aria-label="Resumo do desenho"] dt', {
+  await expect(dialog.locator('.course-analytics-metrics[aria-label="Resumo do desenho"] dt', {
     hasText: "Unidades de análise"
   })).toBeVisible();
-  await expect(analytics.locator('.course-analytics-metrics[aria-label="Resumo da autoria"] dt', {
+  await expect(dialog.locator('.course-analytics-metrics[aria-label="Resumo da autoria"] dt', {
     hasText: "Observações abertas"
   })).toBeVisible();
   await expect(analytics).toContainText("Unidades no escopo.");
@@ -4618,17 +4900,18 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
     /Fatos do recorte|execução|etapa|duração|hash|payload|percentual de autoria/iu
   );
 
-  const details = analytics.locator("details.course-analytics-details");
-  await expect(details).toHaveCount(4);
-  await expect(details.filter({ hasText: "Configuração aplicada" })).not.toHaveAttribute("open", "");
-  await details.filter({ hasText: "Configuração aplicada" }).locator("summary").click();
-  const configuration = analytics.getByRole("table", { name: "Configuração aplicada" });
+  const applied = dialog.locator("details.course-analytics-details").filter({
+    has: page.locator("summary", { hasText: /^Configuração aplicada/u })
+  });
+  await expect(applied).not.toHaveAttribute("open", "");
+  await applied.locator("summary").click();
+  const configuration = dialog.getByRole("table", { name: "Configuração aplicada" });
   await expect(configuration).toBeVisible();
-  await expect(configuration).toContainText("Novidades por unidade de estudo expositiva");
+  await expect(configuration).toContainText("Novas unidades de análise");
   await expect(configuration).toContainText(
     "1 · 2 unidades de estudo · condição de pesquisa · origem na microssequência"
   );
-  await expect(configuration).toContainText("Definição, contraste");
+  await expect(configuration).toContainText("Definição em linguagem direta, contraste");
   await expect(configuration).toContainText(
     "240 palavras no total · mínimo 120 · mediana 120 · média 120 · máximo 120"
   );
@@ -4636,8 +4919,13 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
     /new_analysis_unit_ceiling|provider_assistance|componentRef|studyUnitRef|aralearn\.resource/iu
   );
 
+  await dialog.getByRole("button", { name: "Fechar análise contextual" }).click();
+  await analytics.getByRole("button", { name: "Escolher dimensão e escopo" }).click();
+  const scopeDialog = page.getByRole("dialog", { name: "Dimensão e escopo" });
+  const scope = scopeDialog.getByRole("combobox", { name: "Escopo", exact: true });
+  await expect(scope).toHaveValue("0");
   await scope.selectOption("1");
-  await analytics.getByRole("button", { name: "Aplicar escopo" }).click();
+  await scopeDialog.getByRole("button", { name: "Aplicar leitura" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
   const scopedRead = await page.evaluate(() =>
@@ -4654,41 +4942,86 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
       }
     }
   });
-  await expect(scope).toHaveValue("1");
+  await expect(scopeDialog).toHaveCount(0);
+  await expect(analytics.locator(".course-analytics-toolbar")).toContainText(
+    "Microssequência · Comparação orientada · edição 5"
+  );
+  await analytics.getByRole("button", { name: "Abrir dados e definições" }).click();
   await expect(analytics.locator(
     '.course-analytics-metrics[aria-label="Resumo do desenho"] dd'
-  )).toHaveText(["1", "1", "1", "2"]);
+  )).toHaveText(["1", "2", "3", "2"]);
   await analytics.locator("details.course-analytics-details", {
     hasText: "Prática e fontes"
   }).locator("summary").click();
   await expect(analytics.getByRole("table", { name: "Prática e fontes" }))
     .toContainText("Modalidade · escolha");
+  const body = dialog.locator(".course-analytics-sheet-body");
+  await body.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  expect(await body.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await expect(dialog.getByRole("button", { name: "Fechar análise contextual" })).toBeInViewport();
+  await dialog.getByRole("button", { name: "Fechar análise contextual" }).click();
 
+  await analytics.getByRole("button", { name: "Exportar curso e análise" }).click();
+  const exportDialog = page.getByRole("dialog", { name: "Exportar curso e análise" });
+  await expectModalDialogOwnsTopLayer(exportDialog);
   const jsonStarted = page.waitForEvent("download");
-  await analytics.getByRole("button", { name: "Baixar dados de autoria" }).click();
+  await exportDialog.getByRole("button", { name: "Baixar arquivo JSON" }).click();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsExportOutcome)).toBe("complete");
   const jsonDownload = await jsonStarted;
   const jsonPath = await jsonDownload.path();
   const exported = JSON.parse(await readFile(jsonPath, "utf8"));
-  expect(jsonDownload.suggestedFilename()).toBe("aralearn-dados-de-autoria-edicao-5.json");
-  expect(exported.contract).toBe("aralearn.course-authoring-analytics.v2");
-  expect(exported.scope.selected).toEqual({
+  expect(jsonDownload.suggestedFilename()).toBe("aralearn-curso-e-analise-edicao-5.json");
+  expect(exported.contract).toBe("aralearn.course-authoring-export.v1");
+  expect(exported.analytics.contract).toBe("aralearn.course-authoring-analytics.v4");
+  expect(exported.scope).toEqual({
     kind: "didactic_microsequence",
     ref: "microsequence-a",
     label: "Microssequência · Comparação orientada"
   });
-  expect(exported.design.studyUnitCount).toBe(1);
-  expect(exported.design.analysisUnits).toHaveLength(1);
-  expect(exported.design.practiceByRequirement[0].opportunityCount).toBe(3);
-  expect(exported.design.sourcesByRole[0].sourceCount).toBe(2);
-  expect(exported.authorship).toMatchObject({
+  expect(exported.analytics.design.studyUnitCount).toBe(1);
+  expect(exported.analytics.design.analysisUnits).toHaveLength(1);
+  expect(exported.analytics.basis.analysisUnits).toHaveLength(2);
+  expect(exported.analytics.basis.studyUnits).toHaveLength(1);
+  expect(exported.analytics.basis.studyUnits[0].declaration.practiceApplications).toHaveLength(3);
+  expect(exported.analytics.design.practiceByRequirement[0].opportunityCount).toBe(3);
+  expect(exported.analytics.design.sourcesByRole[0].sourceCount).toBe(2);
+  expect(exported.analytics.authorship).toMatchObject({
     observations: { createdCount: 4, openCount: 1, resolvedCount: 3 },
     explicitParameterOverrideCount: 1,
     manuallyRevisedStudyUnitCount: 2,
     studyUnitsByOrigin: expect.any(Array)
   });
-  expect(JSON.stringify(exported)).not.toMatch(
-    /"facts"|"runs"|"steps"|"duration"|"hash"|"payload"/iu
-  );
+  expect(await page.evaluate(() =>
+    globalThis.__courseAuthoringHarness.probe.analyticsExports)).toEqual([{
+    courseId: COURSE_IDS[0], expectedRevision: 5,
+    scope: { kind: "didactic_microsequence", ref: "microsequence-a" }
+  }]);
+  const currentDocument = await page.evaluate(async courseId => {
+    const { document } = await globalThis.__courseAuthoringHarness.controller.loadCourseDocument(
+      courseId, { verifiedRevision: 5 }
+    );
+    const { flattenCourseDocument, composeCourseDocument } = await import("/src/domain/courseEntities.js");
+    const flattened = flattenCourseDocument(document);
+    return composeCourseDocument(flattened.course, flattened.rows);
+  }, COURSE_IDS[0]);
+  expect(exported.artifact.document).toEqual(currentDocument);
+  const literalUnits = exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits;
+  expect(literalUnits).toHaveLength(60);
+  const originalSlots = await page.evaluate(async courseId => {
+    const { document } = await globalThis.__courseAuthoringHarness.controller.loadCourseDocument(courseId);
+    return document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits
+      .map(({ content, response, feedback }) => ({ content, response, feedback }));
+  }, COURSE_IDS[0]);
+  expect(literalUnits.map(({ content, response, feedback }) => ({ content, response, feedback })))
+    .toEqual(originalSlots);
+  expect(literalUnits[0].content[0]).toMatchObject({
+    id: "set-diagram-1", package: "aralearn.resource.set_diagram", version: "1.0.0",
+    data: { prompt: "Compare os conjuntos.", regions: expect.any(Array) }
+  });
+  expect(Object.keys(exported)).toEqual(["contract", "course", "scope", "analytics", "artifact"]);
+  expect(JSON.stringify(exported)).not.toMatch(/"accessToken"|"actorId"|"requestId"|\/storage\/v1\/object\/sign/iu);
+  await exportDialog.getByRole("button", { name: "Fechar análise contextual" }).click();
 
   const nestedVerticalScrollers = await analytics.evaluate((root) =>
     [...root.querySelectorAll("*")].filter((element) => {
@@ -4717,7 +5050,9 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
 
   const analytics = page.locator(".course-analytics");
   await expect(analytics).toBeVisible();
-  await expect(analytics.getByRole("combobox", { name: "Escopo", exact: true })).toHaveValue("1");
+  await expect(analytics.locator(".course-analytics-toolbar")).toContainText(
+    "Microssequência · Comparação orientada · edição 5"
+  );
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(1);
   await expect.poll(() => new URL(page.url()).hash).toBe(analyticsHash);
@@ -4735,8 +5070,12 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
     }
   });
 
-  await analytics.getByRole("combobox", { name: "Escopo", exact: true }).selectOption("0");
-  await analytics.getByRole("button", { name: "Aplicar escopo" }).click();
+  await analytics.getByRole("button", { name: "Escolher dimensão e escopo" }).click();
+  const scopeDialog = page.getByRole("dialog", { name: "Dimensão e escopo" });
+  const scope = scopeDialog.getByRole("combobox", { name: "Escopo", exact: true });
+  await expect(scope).toHaveValue("1");
+  await scope.selectOption("0");
+  await scopeDialog.getByRole("button", { name: "Aplicar leitura" }).click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(2);
   await expect.poll(() => new URL(page.url()).hash).toBe(

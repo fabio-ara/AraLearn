@@ -1415,10 +1415,12 @@ export function createCourseSourcesPanel({
     state.anchorEditor = null;
     state.observationEditor = null;
     state.detailSections = [];
+    // Close the local dialog before the shell checks whether navigation would
+    // leave an active editor. Actual drafts are handled by requestDetailClose.
+    render();
     if (typeof onNavigate === "function") {
       invokeSafely(onNavigate, buildCourseAuthoringRoute(state.courseId, { section: "sources" }), { sourceReturnFocusId: sourceId });
     } else {
-      render();
       const restore = () => sourceId
         ? focusByIdentity({ selector: '[data-source-action="open-source"]', datasetKey: "sourceId", datasetValue: sourceId })
         : focus('[data-source-action="add-source"]');

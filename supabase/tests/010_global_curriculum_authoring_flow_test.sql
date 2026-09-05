@@ -572,7 +572,7 @@ select is(
   'Analytics distingue introducao, uso e retomada no recorte corrente'
 )
 from (
-  select public.get_owned_course_authoring_analytics_for_actor_v3(
+  select public.get_owned_course_authoring_analytics_for_actor_v4(
     '91000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000201',1,
     '{"scope":{"kind":"course","ref":null}}'::jsonb
@@ -838,11 +838,11 @@ cross join lateral (
 -- tipado precisa permitir que o guard de citacoes posterior seja avaliado
 -- sem acessar um record nao atribuido.
 insert into private.course_sources(
-  course_id,source_id,revision,status,kind,source_role,title,origin,
+  course_id,source_id,revision,status,kind,default_roles,title,origin,
   availability,verification_status,study_visibility
 ) values(
   '91000000-0000-4000-8000-000000000301','source-retire-anchor',1,
-  'active','document','technical_conceptual','Fonte tecnica descartavel',
+  'active','document','["technical_conceptual"]'::jsonb,'Fonte tecnica descartavel',
   'author_provided','private','author_verified','hidden'
 );
 insert into private.course_source_anchors(
@@ -929,7 +929,7 @@ insert into private.course_entities(
     }'::jsonb);
 
 select is(
-  (public.get_owned_course_authoring_analytics_for_actor_v3(
+  (public.get_owned_course_authoring_analytics_for_actor_v4(
     '91000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000401',1,
     '{"scope":{"kind":"course","ref":null}}'::jsonb
@@ -940,7 +940,7 @@ select is(
 
 select is(
   jsonb_path_query_array(
-    public.get_owned_course_authoring_analytics_for_actor_v3(
+    public.get_owned_course_authoring_analytics_for_actor_v4(
       '91000000-0000-4000-8000-000000000001',
       '91000000-0000-4000-8000-000000000401',1,
       '{"scope":{"kind":"course","ref":null}}'::jsonb

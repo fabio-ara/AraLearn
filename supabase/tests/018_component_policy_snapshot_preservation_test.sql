@@ -49,7 +49,7 @@ create function pg_temp.edit_historical_unit(request_id text) returns jsonb lang
  '[]','[{"studyUnitId":"u","sourceLinks":[]}]','application','manual',request_id)
 $f$;
 create function pg_temp.historical_analytics(expected_revision bigint) returns jsonb language sql as $f$
- select public.get_owned_course_authoring_analytics_for_actor_v3(
+ select public.get_owned_course_authoring_analytics_for_actor_v4(
  '98000000-0000-4000-8000-000000000001','98000000-0000-4000-8000-000000000101',expected_revision,
  '{"scope":{"kind":"course","ref":null}}')
 $f$;
