@@ -128,9 +128,7 @@ function courseMeta(course) {
     courseCountsLabel(course?.counts)
   ]
     .filter(Boolean);
-  return values.length
-    ? `<p class="course-authoring-meta">${values.map(escapeHtml).join(" · ")}</p>`
-    : "";
+  return `<p class="course-authoring-meta">${values.map(escapeHtml).join(" · ")}</p>`;
 }
 
 function initialSectionForCourse() {
@@ -162,7 +160,7 @@ function renderCourseCard(course) {
     `<span class="course-authoring-course-icon">${renderUiIcon("folder", "course-authoring-icon")}</span>` +
     '<div class="course-authoring-course-copy">' +
     `<strong>${escapeHtml(course.title)}</strong>` +
-    (course.goal ? `<span>${escapeHtml(course.goal)}</span>` : "") +
+    `<span>${escapeHtml(course.goal || "")}</span>` +
     courseMeta(course) +
     "</div>" +
     renderUiIcon("arrow-right", "course-authoring-arrow") +
@@ -221,7 +219,7 @@ function renderCourseList(state) {
     ' data-course-authoring-action="close-surface" aria-label="Voltar ao Estudo"' +
     ' title="Voltar ao Estudo">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button><div>" +
-    '<p class="course-authoring-eyebrow">Autoria</p><h1>Meus cursos</h1></div>' +
+    '<p class="course-authoring-visually-hidden">Autoria</p><h1>Meus cursos</h1></div>' +
     '<div class="course-authoring-list-actions"><div class="course-authoring-runtime-status"' +
     ' data-authoring-runtime-status>' + renderRuntimeStatusControl({
       offline: state.syncOffline === true,
@@ -288,8 +286,11 @@ function renderCourseHeader(course, state) {
       '<button type="button" class="course-authoring-back" data-course-authoring-action="show-list"' +
       ' aria-label="Voltar aos cursos" title="Voltar aos cursos">' +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button>" +
-      '<div class="course-authoring-course-heading"><p class="course-authoring-eyebrow">Autoria</p>' +
-      `<h1>${escapeHtml(title)}</h1></div></header>`;
+      '<div class="course-authoring-course-heading">' +
+      `<h1>${escapeHtml(title)}</h1></div>` +
+      '<div class="course-authoring-header-actions" aria-hidden="true">' +
+      '<span class="course-authoring-header-slot"></span>'.repeat(["content", "planning"].includes(state.section) ? 3 : 2) +
+      '</div></header>';
   }
   const backSection = state.contextualReturn && state.contextualReturn.route === state.routeKey
     ? parseCourseAuthoringRoute(state.contextualReturn.returnTo)?.section
@@ -318,10 +319,10 @@ function renderCourseHeader(course, state) {
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
     ` aria-label="Abrir tarefas do curso${courseFeedbackFailure(state) ? ': há um aviso' : ''}" title="Tarefas">` +
     renderUiIcon("more", "course-authoring-button-icon") +
-    (courseFeedbackFailure(state) ? '<span class="course-authoring-feedback-indicator" aria-hidden="true">!</span>' : '') +
+    `<span class="course-authoring-feedback-indicator" data-course-feedback-indicator aria-hidden="true"${courseFeedbackFailure(state) ? '' : ' hidden'}>!</span>` +
     '</summary><nav aria-label="Tarefas do curso">' +
     `<div class="course-authoring-course-identity" tabindex="0"><span>Curso</span><p id="course-current-identity">${escapeHtml(course.title)}</p></div>` +
-    renderCourseFeedbackExplanation(state) +
+    '<div data-course-feedback-explanation>' + renderCourseFeedbackExplanation(state) + '</div>' +
     '<button type="button" data-course-authoring-action="refresh-course">' +
     `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar curso</span></button>` +
     (course.canCopy === true && state.canCopyCourse
@@ -754,7 +755,7 @@ function renderCourseSection(state) {
 }
 
 function courseFeedbackFailure(state) {
-  return state.writeFailure || (state.section === "people" ? state.peopleFailure : "") || "";
+  return state.requestFailure || state.writeFailure || (state.section === "people" ? state.peopleFailure : "") || "";
 }
 
 function renderCourseFeedbackExplanation(state) {
@@ -771,7 +772,7 @@ function renderCourseFeedbackExplanation(state) {
 }
 
 function renderTransientCourseFeedback(state) {
-  const message = state.writeMessage || (state.section === "people" ? state.peopleMessage : "");
+  const message = state.requestMessage || state.writeMessage || (state.section === "people" ? state.peopleMessage : "");
   return message ? '<div class="course-authoring-notice course-authoring-transient-feedback">' +
     `<p role="status">${escapeHtml(message)}</p>` +
     '<button type="button" data-course-authoring-action="dismiss-feedback" aria-label="Fechar aviso" title="Fechar aviso">' +
@@ -784,8 +785,7 @@ function renderCourseDetail(state) {
     renderCourseHeader(visibleCourse, state) +
     '<div class="course-authoring-layout">' +
     '<div class="course-authoring-main-pane">' +
-    '<div class="course-authoring-feedback-layer"><p class="course-authoring-notice" data-course-authoring-request-feedback' +
-    ' role="status" aria-live="polite" hidden></p>' +
+    '<div class="course-authoring-feedback-layer" data-course-feedback-layer>' +
     renderTransientCourseFeedback(state) + "</div>" +
     `<main class="course-authoring-course-content">${renderCourseSection(state)}</main></div></div>` +
     `<div data-course-authoring-confirm-host>${renderActionConfirmation(state.actionConfirmation)}</div></div>`;
@@ -1019,6 +1019,8 @@ export function createCourseAuthoringSurface({
     writeBusy: false,
     writeMessage: "",
     writeFailure: "",
+    requestMessage: "",
+    requestFailure: "",
     syncing: false,
     syncOffline: navigatorValue?.onLine === false,
     syncStale: false,
@@ -1489,6 +1491,7 @@ export function createCourseAuthoringSurface({
           : null,
         initialFocusKey,
         onNavigate: (hash, options) => navigate(hash, options),
+        onFeedback: setRequestFeedback,
         onStudyUnitChange(studyUnitId) {
           const explicitTarget = Boolean(state.routeTarget);
           const hash = buildCourseAuthoringRoute(state.course.courseId, {
@@ -1615,6 +1618,7 @@ export function createCourseAuthoringSurface({
   function dismissFeedback({ restoreFocus = false } = {}) {
     state.writeMessage = "";
     state.peopleMessage = "";
+    state.requestMessage = "";
     if (feedbackTimer !== null) globalThis.clearTimeout(feedbackTimer);
     feedbackTimer = null;
     root.querySelectorAll?.(".course-authoring-transient-feedback").forEach(notice => notice.remove?.());
@@ -1624,12 +1628,13 @@ export function createCourseAuthoringSurface({
   function scheduleFeedbackDismissal() {
     if (feedbackTimer !== null) globalThis.clearTimeout(feedbackTimer);
     feedbackTimer = null;
-    if (state.writeBusy || state.peopleBusy || !state.writeMessage && !state.peopleMessage) return;
+    if (state.writeBusy || state.peopleBusy || !state.writeMessage && !state.peopleMessage && !state.requestMessage) return;
     const message = state.writeMessage;
     const peopleMessage = state.peopleMessage;
+    const requestMessage = state.requestMessage;
     feedbackTimer = globalThis.setTimeout(() => {
       feedbackTimer = null;
-      if (!state.opened || state.writeMessage !== message || state.peopleMessage !== peopleMessage) return;
+      if (!state.opened || state.writeMessage !== message || state.peopleMessage !== peopleMessage || state.requestMessage !== requestMessage) return;
       const notice = root.querySelector?.(".course-authoring-transient-feedback");
       if (notice?.contains?.(documentValue?.activeElement)) return;
       dismissFeedback();
@@ -2080,6 +2085,8 @@ export function createCourseAuthoringSurface({
       ++courseEpoch;
       destroyInspectionSequence();
       state.routeKey = `invalid:${hash}`;
+      state.requestMessage = "";
+      state.requestFailure = "";
       state.view = "invalid";
       state.loading = false;
       state.failure = null;
@@ -2093,6 +2100,8 @@ export function createCourseAuthoringSurface({
       const routeChanged = Boolean(state.routeKey && state.routeKey !== nextKey);
       if (routeChanged) {
         destroyInspectionSequence();
+        state.requestMessage = "";
+        state.requestFailure = "";
         state.sourceTarget = null;
         state.actionConfirmation = null;
         root.scrollTop = 0;
@@ -2143,6 +2152,8 @@ export function createCourseAuthoringSurface({
     }
     ++courseEpoch;
     state.routeKey = "list";
+    state.requestMessage = "";
+    state.requestFailure = "";
     state.view = "list";
     state.course = null;
     state.knownCourse = null;
@@ -2745,15 +2756,17 @@ export function createCourseAuthoringSurface({
         knownCourses.set(course.courseId, course);
         const refreshed = await sequence.refresh(course.revision);
         if (sequence === inspectionSequence) {
+          if (refreshed) setRequestFeedback("");
           const header = root.querySelector?.(".course-authoring-course-header");
           if (header) header.outerHTML = renderCourseHeader(course, state);
         }
         return refreshed;
       } catch (error) {
-        const notice = root.querySelector?.(".course-inspection-copy-status");
-        if (notice) notice.textContent = classifyCourseAuthoringError(error, {
-          knownCourse: state.course
-        }).message;
+        if (state.opened && sequence === inspectionSequence) {
+          setRequestFeedback(classifyCourseAuthoringError(error, {
+            knownCourse: state.course
+          }).message, { error: true });
+        }
         return false;
       }
     }
@@ -3145,12 +3158,17 @@ export function createCourseAuthoringSurface({
       scheduleFeedbackDismissal();
       return;
     }
-    root.querySelectorAll?.("[data-course-authoring-request-feedback]").forEach((notice) => {
-      notice.hidden = !value;
-      notice.textContent = value;
-      notice.classList?.toggle("is-error", error);
-      notice.setAttribute?.("role", error ? "alert" : "status");
-    });
+    state.requestFailure = error ? value : "";
+    state.requestMessage = error ? "" : value;
+    const notice = courseFeedbackFailure(state);
+    const explanation = root.querySelector?.("[data-course-feedback-explanation]");
+    if (explanation) explanation.innerHTML = renderCourseFeedbackExplanation(state);
+    const indicator = root.querySelector?.("[data-course-feedback-indicator]");
+    if (indicator) indicator.hidden = !notice;
+    root.querySelector?.(".course-authoring-task-menu > summary")?.setAttribute?.("aria-label", `Abrir tarefas do curso${notice ? ': há um aviso' : ''}`);
+    const layer = root.querySelector?.("[data-course-feedback-layer]");
+    if (layer) layer.innerHTML = renderTransientCourseFeedback(state);
+    scheduleFeedbackDismissal();
   }
 
   function updateActionConfirmationHost({ focus = false } = {}) {

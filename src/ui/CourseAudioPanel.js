@@ -71,8 +71,12 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
 
   function uploadHtml() {
     return '<section><p>WAV ou MP3, até 20 MiB por arquivo.</p>' +
-      '<form id="course-audio-upload-form" data-audio-upload class="course-audio-form"><label>Arquivo de áudio<input type="file" name="audioFile" accept="audio/wav,audio/mpeg,.wav,.mp3"></label>' +
-      (state.file ? `<p>${escape(state.file.name)} · ${sizeLabel(state.file.size)}${state.generated ? " · gerado, ainda não guardado" : ""}</p>` : "") +
+      '<form id="course-audio-upload-form" data-audio-upload class="course-audio-form"><div class="course-audio-file-choice">' +
+      '<input type="file" name="audioFile" aria-label="Arquivo de áudio" accept="audio/wav,audio/mpeg,.wav,.mp3" hidden>' +
+      '<button type="button" data-audio-action="choose-file" aria-label="Escolher arquivo de áudio" title="Escolher arquivo de áudio">' +
+      renderUiIcon("folder", "course-authoring-button-icon") + '</button>' +
+      `<p class="course-audio-file-name" data-audio-focus="file-name" tabindex="${state.file ? "0" : "-1"}" aria-label="Arquivo selecionado" aria-live="polite">` +
+      (state.file ? `${escape(state.file.name)} · ${sizeLabel(state.file.size)}${state.generated ? " · gerado, ainda não guardado" : ""}` : "") + '</p></div>' +
       '</form>' +
       (state.storage ? `<p>PDFs e áudios: ${sizeLabel(state.storage.uniqueBytes)} de ${sizeLabel(state.storage.maxUniqueBytes)}.</p>` : "") +
       '<div data-audio-preview></div></section>';
@@ -128,6 +132,8 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
     const active = root.ownerDocument.activeElement;
     const restoreName = previousDialog?.contains(active) ? active.name : null;
     const restoreAction = previousDialog?.contains(active) ? active.dataset.audioAction : null;
+    const restoreFileName = previousDialog?.contains(active) && active.dataset.audioFocus === "file-name";
+    const fileNameScrollTop = previousDialog?.querySelector(".course-audio-file-name")?.scrollTop || 0;
     const scrollTop = previousDialog?.querySelector(".course-audio-sheet-body")?.scrollTop || 0;
     const ephemeralKey = root.querySelector("input[name='apiKey']")?.value || "";
     const consent = root.querySelector("input[name='consent']")?.checked === true;
@@ -168,9 +174,13 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
         trapAuthoringConfirmationTab({ event, root, confirmationSelector: ".course-audio-sheet" });
       });
       dialog.showModal();
-      const focus = restoreName ? dialog.querySelector(`[name='${restoreName}']`) :
+      const focus = restoreFileName ? dialog.querySelector(".course-audio-file-name") :
+        restoreName === "audioFile" ? dialog.querySelector("[data-audio-action='choose-file']") :
+        restoreName ? dialog.querySelector(`[name='${restoreName}']`) :
         restoreAction ? dialog.querySelector(`[data-audio-action='${restoreAction}']`) : null;
       focus?.focus({ preventScroll: true });
+      const fileName = dialog.querySelector(".course-audio-file-name");
+      if (fileName) fileName.scrollTop = fileNameScrollTop;
       dialog.querySelector(".course-audio-sheet-body").scrollTop = scrollTop;
     }
     const keyInput = root.querySelector("input[name='apiKey']");
@@ -302,7 +312,10 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
       try { readConfig(event.target.form); } catch { /* A pessoa ainda está preenchendo o idioma. */ }
     }
     if (event.target.name === "audioFile") {
-      state.file = event.target.files?.[0] || null; state.generated = false; state.message = ""; render();
+      state.file = event.target.files?.[0] || null; state.generated = false; state.message = "";
+      const fileName = root.querySelector(".course-audio-file-name");
+      if (fileName) fileName.scrollTop = 0;
+      render();
     }
   }
 
@@ -325,6 +338,7 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
     }
     if (state.pending) return;
     try {
+      if (action === "choose-file") { root.querySelector("input[name='audioFile']")?.click(); return; }
       if (action === "section") { state.section = button.dataset.section; returnSection = state.section; }
       if (action === "reset-config") state.config = structuredClone(state.baseline || createDefaultCourseAudioConfig());
       if (action === "discard-file") { state.file = null; state.generated = false; }

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import { renderCourseStudyScreen } from "../../src/study/CourseStudyScreen.js";
 import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
+import { renderStudyCitations } from "../../src/study/studyCitations.js";
 
 const fixtureUrl = new URL("../fixtures/package/project-minimal.json", import.meta.url);
 
@@ -673,7 +674,7 @@ test("a edição em Estudo preserva o fluxo direto do proprietário sem criar c�
 
 });
 
-test("Study revela citações redigidas somente quando o painel lazy está aberto", async () => {
+test("Study conserva a unidade e revela as citações somente na folha lazy externa", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -706,11 +707,13 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
         sourceRevision: 1,
         attachments: [{ contentHash: "a".repeat(64), byteSize: 1_024, mediaType: "application/pdf" }],
         title: "Fonte somente citada",
+        citationMode: "manual",
         citationText: "Autoria. Fonte somente citada. 2026.",
         url: null,
         editionOrVersion: "2ª edição",
         anchors: [{
           anchorId: "anchor-publica",
+          contentHash: "a".repeat(64),
           selector: { kind: "page_range", startPage: 8, endPage: 9 },
           humanLocator: "Capítulo 2 · Figura 4"
         }]
@@ -719,6 +722,7 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
         sourceRevision: 2,
         attachments: [],
         title: "Fonte com link público",
+        citationMode: "manual",
         citationText: "Autoria. Fonte com link público. 2026.",
         url: "https://example.test/fonte",
         editionOrVersion: null,
@@ -731,7 +735,14 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
   assert.match(closed, /data-action="toggle-citations"/u);
   assert.doesNotMatch(closed, /Fonte somente citada|Fonte com link público/u);
 
-  const open = renderCourseStudyScreen({ ...common, citationsOpen: true });
+  const activeScreen = renderCourseStudyScreen({ ...common, citationsOpen: true });
+  assert.match(activeScreen, /data-action="toggle-citations" aria-expanded="true"/u);
+  assert.doesNotMatch(activeScreen, /study-citations-overlay|Fonte somente citada|Fonte com link público/u);
+  const sheet = { value: common.citations, courseId: course.id, studyUnit };
+  assert.equal(renderStudyCitations({ ...sheet, open: false }), "");
+  const open = renderStudyCitations({ ...sheet, open: true });
+  assert.match(open, /role="dialog" aria-modal="true" aria-labelledby="study-citations-title"/u);
+  assert.match(open, /data-action="toggle-citations" aria-label="Fechar fontes"/u);
   assert.doesNotMatch(open, /Proveniência desta Unidade/u);
   assert.match(open, /<h2 id="study-citations-title">Fontes<\/h2>/u);
   assert.match(open, /Fonte somente citada/u);
@@ -741,30 +752,28 @@ test("Study revela citações redigidas somente quando o painel lazy está abert
   assert.match(open, /href="https:\/\/example\.test\/fonte"/u);
   assert.equal((open.match(/>Abrir fonte<\/a>/gu) || []).length, 1);
   assert.equal((open.match(/data-action="download-citation-attachment"/gu) || []).length, 1);
-  assert.match(open, /aria-label="Baixar PDF 1 de Fonte somente citada"/u);
+  assert.match(open, /aria-label="Abrir PDF em pp\. 8–9 de Fonte somente citada"/u);
+  assert.match(open, /data-citation-page="8"/u);
+  assert.match(open, /Autoria\. Fonte somente citada\. 2026\./u);
   assert.doesNotMatch(open, /storagePath|signedUrl|contentHash/u);
   assert.doesNotMatch(open, /Fonte oculta|Legado não resolvido|verificationExcerpt|actorId|studyVisibility/u);
   assert.doesNotMatch(open, /edit-source|retire-source|Revisar fonte|Aposentar fonte/u);
 
-  const empty = renderCourseStudyScreen({
-    ...common,
-    citationsOpen: true,
-    citations: { citations: [] }
+  const empty = renderStudyCitations({
+    ...sheet,
+    open: true,
+    value: { citations: [] }
   });
   assert.match(empty, /<p class="study-citations-status">Nenhuma fonte\.<\/p>/u);
   assert.doesNotMatch(empty, /não possui fontes públicas|Proveniência desta Unidade/iu);
 
-  const ownedOpen = renderCourseStudyScreen({
-    ...common,
-    course: { ...course, id: "10000000-0000-4000-8000-000000000001" },
-    selection: {
-      ...common.selection,
-      courseId: "10000000-0000-4000-8000-000000000001"
-    },
-    citationsOpen: true,
+  const ownedOpen = renderStudyCitations({
+    ...sheet,
+    courseId: "10000000-0000-4000-8000-000000000001",
+    open: true,
     canAuthorSources: true
   });
-  assert.match(ownedOpen, /section=sources&amp;sourceId=fonte-citacao&amp;anchorId=anchor-publica/u);
-  assert.match(ownedOpen, /Revisar esta âncora/u);
-  assert.match(ownedOpen, /Revisar fonte no curso/u);
+  assert.match(ownedOpen, /section=sources&amp;sourceId=fonte-citacao/u);
+  assert.equal((ownedOpen.match(/data-study-source-return>Revisar fonte<\/a>/gu) || []).length, 2);
+  assert.match(ownedOpen, /data-citation-page="8"/u);
 });

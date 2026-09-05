@@ -49,10 +49,11 @@ async function mount(page, theme) {
         host.querySelector("[data-study-tool-id]").click();
       };
     };
-    window.renderAuthorHeader = (long = false) => {
-      document.querySelector("#aralearn-editor-root").innerHTML = '<main class="course-authoring-root">' + renderCourseAuthoringSurface({ view: "course", section: "people", routeKey: "synthetic-people",
-        course: { courseId: "e3060000-0000-4000-8000-000000000001", title: long ? "Título extenso do curso ".repeat(20) : "Curso", revision: 1,
-          ownership: "owned", canEdit: true, visibility: "private", publicFileAccess: "restricted" },
+    window.renderAuthorHeader = (long = false, section = "people", status = "loaded") => {
+      document.querySelector("#aralearn-editor-root").innerHTML = '<main class="course-authoring-root">' + renderCourseAuthoringSurface({ view: section === "list" ? "list" : "course", section, routeKey: `synthetic-${section}`,
+        course: status === "loaded" ? { courseId: "e3060000-0000-4000-8000-000000000001", title: long ? "Título extenso do curso ".repeat(20) : "Curso", revision: 1,
+          ownership: "owned", canEdit: true, visibility: "private", publicFileAccess: "restricted" } : null,
+        loading: status === "loading", failure: status === "error" ? { kind: "error", message: "Curso indisponível." } : null,
         ...(long ? { writeMessage: "Mensagem que aparece depois da gravação. ".repeat(10) } : {}) }) + '</main>';
     };
     let mode = "automatic";
@@ -128,6 +129,51 @@ async function box(page, selector) {
 function sameBox(actual, expected, label) {
   for (const key of ["x", "y", "width", "height"]) expect(Math.abs(actual[key] - expected[key]), `${label} ${key}`).toBeLessThanOrEqual(1);
 }
+
+test("cabeçalho conserva título e retorno durante carga e erro", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mount(page, "dark");
+  for (const section of ["content", "people"]) {
+    await page.evaluate(section => window.renderAuthorHeader(false, section), section);
+    const title = await box(page, ".course-authoring-course-heading h1");
+    const back = await box(page, ".course-authoring-back");
+    for (const status of ["loading", "error"]) {
+      await page.evaluate(({ section, status }) => window.renderAuthorHeader(false, section, status), { section, status });
+      sameBox(await box(page, ".course-authoring-course-heading h1"), title, `${section}/${status}: título`);
+      sameBox(await box(page, ".course-authoring-back"), back, `${section}/${status}: retorno`);
+      if (section === "content") await page.screenshot({ path: info.outputPath(`course-header-${status}-390-dark.png`) });
+    }
+  }
+});
+
+test("cabeçalhos de todas as áreas conservam os controles nos mesmos pixels", async ({ page }, testInfo) => {
+  for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+    await page.setViewportSize({ width, height: 844 });
+    await mount(page, theme);
+    await page.evaluate(() => window.renderFrameProbe("course", false));
+    const anchors = {
+      back: await box(page, '[data-action="go-back"]'),
+      sync: await box(page, '.study-runtime-status-control'),
+      menu: await box(page, '[data-action="open-settings"]')
+    };
+    for (const section of ["list", "content", "planning", "parameters", "sources", "audio", "review", "research", "people"]) {
+      for (const long of [false, true]) {
+        await page.evaluate(({ section, long }) => window.renderAuthorHeader(long, section), { section, long });
+        const actual = {
+          back: await box(page, section === "list" ? '[data-course-authoring-action="close-surface"]' : '[data-course-authoring-action="back"]'),
+          sync: await box(page, '.study-runtime-status-control'),
+          menu: await box(page, '.course-authoring-task-menu > summary')
+        };
+        for (const key of Object.keys(anchors)) sameBox(actual[key], anchors[key], `${section} ${long} ${key}`);
+        const title = await box(page, section === "list" ? '.course-authoring-list-header h1' : '.course-authoring-course-heading h1');
+        expect(Math.abs(title.y + title.height / 2 - actual.back.y - actual.back.height / 2), `${section}: título centralizado verticalmente`).toBeLessThanOrEqual(1);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      }
+    }
+    await page.evaluate(() => window.renderAuthorHeader(false, "list"));
+    await page.screenshot({ path: testInfo.outputPath(`all-headers-list-${width}-${theme}.png`) });
+  }
+});
 
 for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
   test(`frames e tipografia independem de texto em ${width} ${theme}`, async ({ page }, testInfo) => {

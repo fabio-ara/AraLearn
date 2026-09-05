@@ -1208,7 +1208,7 @@ function renderSequence(state) {
     (navigationFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(navigationFailure)}</p>`
       : "") + body +
-    '<p class="course-inspection-copy-status" role="status" aria-live="polite">' +
+    '<p class="course-inspection-copy-status course-authoring-visually-hidden" role="status" aria-live="polite">' +
     `${escapeHtml(state.manualStatus)}</p>` +
     renderInspectionObservationSheet(state) + "</section>";
 }
@@ -1264,6 +1264,7 @@ export function createCourseInspectionSequence({
   onOpenParameters = null,
   onEditContent = null,
   onSaveManualEdit = null,
+  onFeedback = () => {},
   windowValue = globalThis.window || null,
   documentValue = root?.ownerDocument || globalThis.document || null,
   navigatorValue = globalThis.navigator || null
@@ -1275,7 +1276,7 @@ export function createCourseInspectionSequence({
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
       typeof onNavigate !== "function" || typeof onStudyUnitChange !== "function" ||
-      typeof onEditSources !== "function" ||
+      typeof onEditSources !== "function" || typeof onFeedback !== "function" ||
       (onOpenParameters !== null && typeof onOpenParameters !== "function") ||
       (onEditContent !== null && typeof onEditContent !== "function") ||
       (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function")) {
@@ -1349,6 +1350,7 @@ export function createCourseInspectionSequence({
     manualSaving: false,
     manualError: "",
     manualStatus: "",
+    manualStatusError: false,
     manualRestoreFocus: "",
     manualUndo: [],
     manualRedo: [],
@@ -1364,6 +1366,17 @@ export function createCourseInspectionSequence({
     destroyed: false
   };
   let renderEpoch = 0;
+  let lastFeedbackKey = "";
+
+  function reportFeedback(message, { error = false } = {}) {
+    if (state.destroyed) return;
+    state.manualStatus = message;
+    state.manualStatusError = error;
+    const live = root.querySelector?.(".course-inspection-copy-status");
+    if (live) live.textContent = message;
+    lastFeedbackKey = JSON.stringify([message, error]);
+    onFeedback(message, { error });
+  }
   let saveTimer = null;
   let requestEpoch = 0;
   let positionChannel = null;
@@ -1628,8 +1641,14 @@ export function createCourseInspectionSequence({
     const element = selectedId
       ? root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`)
       : null;
+    const content = element?.querySelector?.(".card-sheet-content");
     return {
       studyUnitId: selectedId || null,
+      contentScroll: content ? {
+        studyUnitId: selectedId,
+        top: content.scrollTop,
+        left: content.scrollLeft
+      } : null,
       offsetFromStickyTop: element?.getBoundingClientRect
         ? element.getBoundingClientRect().top - stickyTop()
         : 0,
@@ -1676,6 +1695,11 @@ export function createCourseInspectionSequence({
     const escapedId = globalThis.CSS?.escape ? globalThis.CSS.escape(id) : id.replace(/["\\]/gu, "\\$&");
     const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
     if (!element?.getBoundingClientRect) return;
+    const content = element.querySelector?.(".card-sheet-content");
+    if (content && snapshot?.contentScroll?.studyUnitId === id) {
+      content.scrollTop = snapshot.contentScroll.top;
+      content.scrollLeft = snapshot.contentScroll.left;
+    }
     const expectedOffset = Number(snapshot?.offsetFromStickyTop || 0);
     const delta = element.getBoundingClientRect().top - stickyTop() - expectedOffset;
     if ((initial || Math.abs(delta) > 0.5) && typeof scrollTarget?.scrollBy === "function") {
@@ -1715,8 +1739,7 @@ export function createCourseInspectionSequence({
     } catch {
       if (state.destroyed || epoch !== renderEpoch) return;
       state.hydrationFailure = "Uma representação não pôde ser materializada.";
-      const notice = root.querySelector?.(".course-inspection-copy-status");
-      if (notice) notice.textContent = state.hydrationFailure;
+      reportFeedback(state.hydrationFailure, { error: true });
     }
   }
 
@@ -1738,6 +1761,11 @@ export function createCourseInspectionSequence({
     manualInlineController = null;
     studyTools.beforeRender();
     root.innerHTML = renderSequence(state);
+    const feedbackKey = JSON.stringify([state.manualStatus, state.manualStatusError]);
+    if (!state.manualStatus) lastFeedbackKey = "";
+    else if (feedbackKey !== lastFeedbackKey) {
+      reportFeedback(state.manualStatus, { error: state.manualStatusError });
+    }
     studyTools.afterRender();
     if (snapshot?.controlKey || snapshot?.openControlKeys?.length) {
       restoreControlState(snapshot, { focus: false });
@@ -2155,8 +2183,7 @@ export function createCourseInspectionSequence({
       state.observationItems = observations.items;
       state.observationCollectionSummary = observations;
       state.observationCounts[studyUnitId] = observations.pendingTotal;
-      const status = root.querySelector?.(".course-inspection-copy-status");
-      if (status) status.textContent = successMessage;
+      reportFeedback(successMessage);
       state.observationMessage = `${successMessage} Você pode registrar outra Observação.`;
       return true;
     } catch (error) {
@@ -2588,6 +2615,7 @@ export function createCourseInspectionSequence({
         }));
     } catch (error) {
       state.manualStatus = publicErrorMessage(error, "Não foi possível abrir este contexto.");
+      state.manualStatusError = true;
       render({ anchor: { ...anchor, controlKey: returnFocusKey }, captureDraft: false });
       return false;
     }
@@ -2617,6 +2645,7 @@ export function createCourseInspectionSequence({
         mergePage(page, "initial");
       } catch (error) {
         state.manualStatus = publicErrorMessage(error, "Não foi possível retornar à unidade de referência.");
+        state.manualStatusError = true;
         return false;
       } finally {
         state.loadingDirection = "";
@@ -2629,6 +2658,7 @@ export function createCourseInspectionSequence({
     state.activeStudyUnitId = reference.anchor.studyUnitId;
     state.selectedStudyUnitId = reference.anchor.studyUnitId;
     state.manualStatus = "";
+    state.manualStatusError = false;
     render({ anchor: reference.anchor });
     await savePositionNow(reference.anchor);
     return true;
@@ -2671,6 +2701,7 @@ export function createCourseInspectionSequence({
     state.manualSaving = false;
     state.manualError = "";
     state.manualStatus = status;
+    state.manualStatusError = false;
     state.manualRestoreFocus = "";
     state.manualUnknownSignature = "";
     state.manualDiscardArmed = false;
@@ -2691,6 +2722,7 @@ export function createCourseInspectionSequence({
     if (!state.canEditManually || state.manualSaving) return false;
     if (state.selectionMode) {
       state.manualStatus = "Volte à unidade de referência antes de iniciar a edição.";
+      state.manualStatusError = true;
       render();
       return false;
     }
@@ -2702,6 +2734,7 @@ export function createCourseInspectionSequence({
     state.manualOrigin = origin;
     state.manualError = "";
     state.manualStatus = status;
+    state.manualStatusError = false;
     state.manualRestoreFocus = restoreFocus ? "field" : "";
     render({ captureDraft: false });
     return true;
@@ -3001,6 +3034,7 @@ export function createCourseInspectionSequence({
         return true;
       } catch (error) {
         state.manualStatus = publicErrorMessage(error, "Não foi possível abrir a edição.");
+        state.manualStatusError = true;
         render();
         return false;
       }
@@ -3065,6 +3099,7 @@ export function createCourseInspectionSequence({
         if (state.manualStudyUnitId || state.pendingBatchObservation ||
             hasObservationDraft()) {
           state.manualStatus = "Conclua a edição ou observação em rascunho antes de mudar a seleção.";
+          state.manualStatusError = true;
           render();
           return false;
         }
@@ -3083,6 +3118,7 @@ export function createCourseInspectionSequence({
           state.selectedStudyUnitIds.add(studyUnitId);
         } else {
           state.manualStatus = "A seleção temporária aceita até 64 unidades.";
+          state.manualStatusError = true;
         }
         render({ anchor });
         return true;
@@ -3175,15 +3211,14 @@ export function createCourseInspectionSequence({
     }
     const copy = event.target.closest?.("[data-inspection-copy-link]");
     if (copy) {
-      const status = root.querySelector?.(".course-inspection-copy-status");
       try {
         if (typeof navigatorValue?.clipboard?.writeText !== "function") {
           throw new Error("Clipboard indisponível.");
         }
         await navigatorValue.clipboard.writeText(copy.dataset.deepLink);
-        if (status) status.textContent = "Link copiado.";
+        reportFeedback("Link copiado.");
       } catch {
-        if (status) status.textContent = "Não foi possível copiar o link.";
+        reportFeedback("Não foi possível copiar o link.", { error: true });
       }
       return;
     }
@@ -3191,6 +3226,7 @@ export function createCourseInspectionSequence({
     if (action === "latest-updated") {
       if (hasPendingDraft() || state.selectionMode) {
         state.manualStatus = "Conclua a edição, observação ou seleção antes de mudar de ponto.";
+        state.manualStatusError = true;
         render();
         return false;
       }

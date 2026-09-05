@@ -304,13 +304,22 @@ export function renderRuntimeStatusControl(status = {}, {
         escapeHtml(conflictValue.id) + '">' + text + '</button>').join("")
     : "";
   return '<button class="icon-ghost study-runtime-status-control" type="button"' +
-    (localOnly ? "" : ' data-action="synchronize-study"') +
+    (localOnly || failed || conflict ? "" : ' data-action="synchronize-study"') +
     ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
     ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '"' +
     (synchronizing ? ' aria-busy="true"' : "") + '>' +
     renderUiIcon(localOnly || offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
     '<div class="study-runtime-status-popover" id="' + escapeHtml(popoverId) + '" popover="auto"' +
-    ' role="status"><p>' + escapeHtml(message) + '</p>' + conflictControls + '</div>';
+    ' role="region" aria-label="Estado da sincronização">' +
+    '<div class="study-runtime-status-heading"><span>' + label + '</span>' +
+    '<button class="icon-ghost" type="button" popovertarget="' + escapeHtml(popoverId) + '"' +
+    ' popovertargetaction="hide" aria-label="Fechar estado da sincronização" title="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") + '</button></div>' +
+    '<p role="status">' + escapeHtml(message) + '</p>' + conflictControls +
+    (failed && !localOnly && !conflict
+      ? '<button class="study-runtime-status-retry" type="button" data-action="synchronize-study"' +
+        ' popovertarget="' + escapeHtml(popoverId) + '" popovertargetaction="hide">Tentar novamente</button>'
+      : "") + '</div>';
 }
 
 function renderTopbar(runtimeStatus) {

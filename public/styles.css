@@ -1143,6 +1143,11 @@ button.account-settings-back[hidden] {
   color: var(--status-warning);
 }
 
+.study-runtime-status-control[data-runtime-state="failed"],
+.study-runtime-status-control[data-runtime-state="conflict"] {
+  color: var(--status-warning);
+}
+
 .study-runtime-status-control[data-runtime-state="stale"],
 .study-runtime-status-control[data-runtime-state="pending"] {
   color: var(--action-primary);
@@ -1154,11 +1159,14 @@ button.account-settings-back[hidden] {
 
 .study-runtime-status-popover[popover] {
   position: fixed;
-  top: calc(max(var(--safe-top), 8px) + var(--tap) + 12px);
+  /* A explicação revelada começa depois das ações e do seletor de área. */
+  top: calc(max(var(--safe-top), 10px) + var(--tap) * 2 + 32px);
   right: max(10px, calc((100vw - 430px) / 2 + 10px));
   bottom: auto;
   left: auto;
-  width: min(280px, calc(100vw - 20px));
+  width: min(320px, calc(100vw - 20px));
+  max-height: calc(100dvh - max(var(--safe-top), 10px) - var(--tap) * 2 - 42px);
+  overflow-y: auto;
   margin: 0;
   padding: 9px 11px;
   border: 1px solid var(--border-default);
@@ -1166,6 +1174,34 @@ button.account-settings-back[hidden] {
   background: var(--surface-raised);
   color: var(--text-secondary);
   box-shadow: var(--shadow-floating);
+}
+
+.study-runtime-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--type-base);
+  font-weight: 600;
+}
+
+.study-runtime-status-heading > .icon-ghost {
+  flex: 0 0 var(--tap);
+  width: var(--tap);
+  height: var(--tap);
+}
+
+.study-runtime-status-retry {
+  min-height: var(--tap);
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-sm);
 }
 
 .study-runtime-status-popover p {
