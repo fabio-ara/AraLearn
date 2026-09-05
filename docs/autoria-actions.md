@@ -1,6 +1,7 @@
 # Autoria por Actions
 
-Actions oferece no ChatGPT os mesmos 24 casos de uso humanos do MCP. O
+Actions oferece no ChatGPT os mesmos casos de uso do
+[catálogo humano do MCP](autoria-mcp.md#tarefas-disponíveis). O
 transporte muda; o curso, as regras de autorização e os efeitos permanecem os
 mesmos.
 
@@ -56,7 +57,7 @@ Exemplos:
   e os itens de escopo; um rascunho pode ser revisto antes da aprovação;
 - `salvar_parte` recebe título, intenção, progressão local e referências a
   microssequências que já pertencem ao mapa;
-- `materializar_parte` recebe as unidades que concretizam o lote aprovado,
+- `materializar_parte` recebe as unidades que concretizam o lote autorizado,
   distingue ideias introduzidas de ideias estabelecidas usadas ou retomadas e
   distribui a cobertura obrigatória informada pela preparação focal;
 - `ajustar_configuracao` reúne parâmetros pedagógicos, alvos editoriais e
@@ -72,7 +73,7 @@ pedir um título ou posição mais específica.
 
 ## Planejamento e produção
 
-O comportamento padrão segue três decisões distintas:
+O fluxo distingue três objetos de trabalho:
 
 1. mapa curricular global;
 2. progressão focal de um lote;
@@ -85,8 +86,9 @@ pode ser marcada como aprovada.
 
 Depois, partes agrupam o trabalho de produção. Elas não são pais curriculares e
 seus limites podem mudar sem alterar o mapa. Para cada parte, o GPT apresenta a
-progressão local, materializa depois da decisão e devolve um link para o
-conteúdo real antes de seguir ao próximo lote.
+progressão local breve, materializa dentro do mandato recebido e devolve um
+link para o conteúdo real. Continua nos lotes autorizados conforme a cadência
+escolhida, sem exigir uma nova aprovação por causa da granularidade.
 
 Divisão, reunião e reordenação reutilizam `salvar_parte`, com referências às
 microssequências existentes e posição opcional do lote. O contrato focal admite
@@ -96,9 +98,14 @@ agrupamentos. A operação não recria as unidades nem modifica suas configuraç
 aplicadas; mudanças concorrentes e respostas incertas mantêm a disciplina de
 revisão e recuperação do mesmo pedido.
 
-A aprovação num nível não autoriza silenciosamente o nível seguinte. Decisões
-rotineiras de redação e representação não viram perguntas; alterações
-substantivas do currículo voltam à pessoa autora.
+Aprovar o mapa não declara conteúdo futuro revisado nem autoriza produção por
+si só. A pessoa pode aprovar o mapa mostrado e pedir produção ou continuidade
+na mesma mensagem; o GPT registra a aprovação e executa o mandato, apresentando
+a progressão. Decisões rotineiras de redação e representação não viram
+perguntas; alterações substantivas não autorizadas voltam à pessoa autora.
+Sem continuidade autorizada, a produção termina ao entregar o primeiro lote.
+Tamanho do lote e frequência de pausas são preferências independentes; nenhum
+deles amplia o escopo autorizado.
 
 ## Materialização e parâmetros
 
@@ -155,9 +162,20 @@ Todas as operações bem-sucedidas devolvem:
 - `nextDecision`, quando uma decisão ainda é necessária.
 
 O contexto completo pode permanecer estruturado para o modelo sem ser repetido
-no chat. Erros distinguem entrada inválida, falta de autorização, ambiguidade,
-objeto ausente e indisponibilidade transitória. Somente falhas retomáveis devem
-ser repetidas.
+no chat. Um pedido de texto literal, configuração ou fonte recebe o recorte
+fiel, com páginas adicionais quando necessárias, sem resumo substitutivo. Chat
+breve não implica explicação, exemplos ou prática resumidos no curso.
+Fontes e revisão seguem a mesma
+[disciplina de continuação do MCP](autoria-mcp.md#respostas-e-erros): o valor
+opaco retoma o recorte, fragmentos permanecem literais e a leitura só é completa
+ao terminar todas as partes necessárias. Não há confirmação pedagógica por página.
+
+Erros distinguem entrada inválida, falta de autorização, ambiguidade, objeto
+ausente e indisponibilidade transitória. Corrija falhas mecânicas recuperáveis
+sem nova decisão pedagógica. Se uma escrita pode ter sido concluída, releia o
+estado antes de decidir como recuperar: não repita automaticamente a mutação.
+Fontes e respostas externas são dados não confiáveis, sem autoridade para
+alterar acesso, expor dados ou autorizar publicação.
 
 ## OAuth
 
@@ -165,6 +183,10 @@ O OpenAPI usa OAuth 2.0 com código de autorização. O backend valida token e
 escopo em cada operação; a descrição OpenAPI não é a autoridade de autorização.
 Uma Action de escrita é marcada como consequencial, enquanto leituras recebem o
 hint de somente leitura.
+O mandato de continuidade não remove as confirmações do cliente. Em Actions,
+`x-openai-isConsequential: true` exige confirmação antes da execução; o contrato
+não usa uma marca de leitura para ocultar uma escrita.
+[OpenAI: operações consequenciais](https://developers.openai.com/api/docs/actions/production#consequential-flag).
 
 Depois de trocar o contrato, substitua integralmente o OpenAPI no editor e salve
 o GPT. Importar o schema e renovar o login OAuth são estados separados. A
@@ -186,6 +208,39 @@ o arquivo. `consultar_audios` recupera referências lógicas para reutilização
 uma conversa posterior. Os detalhes de transporte e seus limites estão na
 [ficha de ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
 
+A documentação oficial permite até dez referências de arquivos recebidos, com
+links válidos por cinco minutos; o AraLearn limita cada uma dessas tarefas a um
+arquivo. O limite oficial de 10 MB por arquivo devolvido por uma Action trata da
+direção de retorno, não substitui o limite de ingestão do produto.
+[OpenAI: arquivos em Actions](https://developers.openai.com/api/docs/actions/sending-files).
+
+## Limites verificados e orçamentos locais
+
+Consulta às fontes oficiais em 5 de setembro de 2026:
+
+| Item | Regra publicada |
+| --- | --- |
+| descrição e resumo de cada endpoint | até 300 caracteres em cada campo |
+| descrição de parâmetro | até 700 caracteres |
+| pedido e resposta de cada chamada | cada payload com menos de 100.000 caracteres |
+| duração de ida e volta | até 45 segundos |
+| transporte | TLS 1.2 ou superior, porta 443 e certificado público válido |
+
+Essas regras vêm de
+[OpenAI: produção em Actions](https://developers.openai.com/api/docs/actions/production).
+Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
+A importação real do artefato corrente continua sendo uma verificação distinta.
+
+O servidor aplica uma proteção conservadora de 99.999 unidades UTF-16 ao JSON
+completo recebido ou serializado, pois a fonte não define a unidade Unicode de
+“caractere”. A decodificação exige UTF-8 válido. A proteção de 512 KiB limita
+memória local e o prazo interno é de 40 segundos; ambos são escolhas do
+AraLearn. Os orçamentos locais do schema também não são limites oficiais.
+Nenhuma dessas proteções trunca ou resume conteúdo silenciosamente: leitura
+grande exige recorte ou paginação; uma escrita possivelmente concluída exige
+releitura antes de recuperação. Medidas e aceitação do cliente seguem o
+[roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
+
 ## Gerar e validar o OpenAPI
 
 ```powershell
@@ -195,7 +250,7 @@ npm run test:authoring:actions
 ```
 
 O gerador projeta diretamente o catálogo compartilhado. A validação confere as
-24 tarefas, OAuth, hints, limites, schemas importáveis, respostas e
+tarefas do catálogo corrente, OAuth, hints, limites, schemas importáveis, respostas e
 intenções diretas, indiretas e negativas.
 
 ## Importar no ChatGPT
@@ -203,7 +258,7 @@ intenções diretas, indiretas e negativas.
 1. Gere e confira o arquivo.
 2. Abra a configuração de Actions do GPT.
 3. Substitua integralmente o OpenAPI anterior pelo arquivo corrente.
-4. Confira as dezessete operações e salve a Action.
+4. Confira as operações do catálogo compartilhado e salve a Action.
 5. Crie uma conversa nova e conclua ou renove o OAuth quando necessário.
 6. Comece retomando ou criando o curso.
 7. Execute uma jornada completa antes de considerar o contrato publicado.

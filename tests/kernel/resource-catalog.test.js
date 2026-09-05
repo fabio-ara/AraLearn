@@ -119,6 +119,41 @@ test("faceta operacional explícita prevalece sobre coincidência lexical em con
   });
   assert.equal(result.coverage.status, "canonical");
   assert.equal(result.candidates[0].packageId, "aralearn.response.ordering");
+  assert.ok(result.candidates[0].matched.includes("taskOperation:task_operation.order"));
+  assert.equal(result.candidates[0].missing.includes("taskOperation:task_operation.transform"), false);
+});
+
+test("operação inicial distingue explicação principal de ferramentas auxiliares textuais", () => {
+  const result = RESOURCE_CATALOG.search({
+    query: "Explicar uma sequência linear de passos sem decisão.",
+    structureIds: ["structure.prose"],
+    studyUnitRole: "theory",
+    slot: "content"
+  });
+  assert.equal(result.candidates[0].packageId, "aralearn.resource.paragraph");
+  assert.equal(result.candidates[0].fit, "canonical");
+  assert.ok(result.candidates[0].matched.includes("taskOperation:task_operation.explain"));
+
+  for (const packageId of ["aralearn.resource.dictionary", "aralearn.resource.grammar", "aralearn.resource.reading"]) {
+    const profile = RESOURCE_CATALOG.getProfile(packageId, "1.0.0");
+    assert.ok(profile, packageId);
+    const direct = RESOURCE_CATALOG.search({ query: profile.label, slot: "content" });
+    assert.equal(direct.candidates[0].packageId, packageId, profile.label);
+  }
+});
+
+test("operação omitida não é inventada a partir de negações ou menções internas", () => {
+  for (const query of [
+    "Não explicar o procedimento.",
+    "Sem explicar o procedimento.",
+    "Texto de consulta sem calcular resultados.",
+    "Dicionário para comparar significados."
+  ]) {
+    const result = RESOURCE_CATALOG.search({ query, slot: "content" });
+    assert.equal(result.candidates.some(({ matched, missing }) => (
+      [...matched, ...missing].some((facet) => facet.startsWith("taskOperation:"))
+    )), false, query);
+  }
 });
 
 test("versão do catálogo incorpora perfis, vocabulários e política", () => {
@@ -148,7 +183,8 @@ test("inspeção em lote e contrato exato mantêm os limites progressivos", () =
     { packageId: "aralearn.resource.paragraph" }
   ]);
   assert.equal(contracts.items.length, 1);
-  assert.equal(contracts.items[0].definition.schema.type, "object");
+  assert.deepEqual(contracts.items[0].definition,
+    RESOURCE_PACKAGE_REGISTRY.getAuthoringContract("aralearn.resource.paragraph", "1.0.0"));
   assert.throws(() => RESOURCE_CATALOG.contracts([
     "aralearn.resource.paragraph",
     "aralearn.resource.chart"

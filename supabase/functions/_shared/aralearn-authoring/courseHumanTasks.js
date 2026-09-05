@@ -38,6 +38,7 @@ import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles
 import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
+import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
@@ -173,6 +174,8 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   type: "array", maxItems: COURSE_SOURCE_ROLES.length, uniqueItems: true,
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
+const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
+  description: 'Continuação opaca da leitura.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -505,21 +508,21 @@ function task(name, title, description, schema, {
 }
 
 export const COURSE_HUMAN_TASKS = Object.freeze([
-  task("consultar_perfis", "Consultar perfis de autoria", "Use para listar preferências desta conta. Não altera cursos.",
+  task("consultar_perfis", "Consultar perfis de autoria", "Lista preferências desta conta.",
     inputSchema({}), { readOnly: true }),
-  task("salvar_perfil", "Salvar um perfil de autoria", "Use para criar ou editar preferências por cópia. Não altera cursos existentes.",
+  task("salvar_perfil", "Salvar um perfil de autoria", "Salva um perfil; não muda cursos existentes.",
     inputSchema({ nome: { type: "string", minLength: 1, maxLength: 120 },
       perfil: { type: "string", minLength: 1, maxLength: 120 }, parametros: parametersSchema(),
       automaticos: { type: "array", maxItems: PARAMETER_FIELDS.length, uniqueItems: true,
         items: { type: "string", enum: PARAMETER_FIELDS } }
     }, ["nome"]), { readOnly: false }),
-  task("excluir_perfil", "Excluir um perfil de autoria", "Use para excluir o perfil. Não altera as preferências já copiadas aos cursos.",
+  task("excluir_perfil", "Excluir um perfil de autoria", "Exclui perfil; preserva preferências já copiadas aos cursos.",
     inputSchema({ perfil: { type: "string", minLength: 1, maxLength: 120 } }, ["perfil"]),
     { readOnly: false, destructive: true }),
-  task("prever_aplicacao_perfil", "Examinar a aplicação de um perfil", "Use para examinar alcance e exceções antes da cópia. Não altera o curso.",
+  task("prever_aplicacao_perfil", "Examinar a aplicação de um perfil", "Mostra alcance e exceções antes da cópia.",
     inputSchema({ curso: COURSE_SCHEMA, perfil: { type: "string", minLength: 1, maxLength: 120 } },
       ["curso", "perfil"]), { readOnly: true }),
-  task("aplicar_perfil", "Aplicar um perfil ao curso", "Use para aplicar a prévia examinada. Preserva exceções salvo seleção explícita; não reescreve conteúdo.",
+  task("aplicar_perfil", "Aplicar um perfil ao curso", "Aplica a prévia; mantém exceções salvo escolha explícita e preserva conteúdo.",
     inputSchema({ curso: COURSE_SCHEMA, perfil: { type: "string", minLength: 1, maxLength: 120 },
       previa: { type: "string", pattern: "^[a-f0-9]{64}$", description: "Confirmação devolvida pela prévia examinada." },
       excecoesRemover: { type: "array", maxItems: 128, uniqueItems: true,
@@ -528,30 +531,31 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "retomar_curso",
     "Retomar um curso",
-    "Use para retomar curso. Não altera.",
+    "Lista cursos ou retoma o título informado.",
     inputSchema({
-      titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
+      titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300, description: 'Nome do curso.' }),
+      continuacao: READ_CONTINUATION_SCHEMA
     }),
     { readOnly: true }
   ),
   task(
     "consultar_planejamento",
     "Consultar o planejamento",
-    "Use para ler mapa/lote. Não altera.",
+    "Lê mapa e lote.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use para ler o lote antes da produção. Não grava.",
+    "Lê o lote antes da produção.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Use para ler configuração. Não altera.",
+    "Lê configuração.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -562,7 +566,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_observacoes",
     "Consultar observações",
-    "Use para ler observações. Não registra.",
+    "Lê observações.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -575,31 +579,33 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Use para preparar revisão. Não corrige.",
+    "Lê conteúdo literal e contexto da revisão.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
-      unidades: HUMAN_REFERENCE_LIST_SCHEMA
+      unidades: HUMAN_REFERENCE_LIST_SCHEMA,
+      continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "consultar_fontes",
     "Consultar fontes e âncoras",
-    "Use para ler fontes/âncoras. Não altera.",
+    "Lê fontes e âncoras em páginas.",
     inputSchema({
       curso: COURSE_SCHEMA,
       fonte: HUMAN_REFERENCE_SCHEMA,
       busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      unidade: HUMAN_REFERENCE_SCHEMA
+      unidade: HUMAN_REFERENCE_SCHEMA,
+      continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "consultar_componentes",
     "Consultar componentes didáticos",
-    "Use para inspecionar componente antes do uso. Não grava.",
+    "Inspeciona o componente antes do uso.",
     Object.freeze({
       ...inputSchema({
         busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
@@ -632,7 +638,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "criar_curso",
     "Criar um curso",
-    "Use para criar curso confirmado. Não copia.",
+    "Cria curso autorizado. Não copia.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
       objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
@@ -642,7 +648,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Use para propor/aprovar o mapa antes do lote; não produz.",
+    "Propõe ou aprova o mapa antes do lote; não produz.",
     inputSchema({
       curso: COURSE_SCHEMA,
       aprovado: Object.freeze({ type: "boolean" }),
@@ -665,7 +671,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "Após confirmar, divida, reúna ou reordene lotes, preservando intenções e progressão. Só muda a ordem de produção.",
+    "No mandato recebido, divida, reúna ou reordene lotes. Preserve intenções e progressão; não muda o currículo.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -727,7 +733,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "registrar_observacao",
     "Registrar observação",
-    "Use para anotar unidades. Não corrige.",
+    "Anota unidades; não corrige.",
     inputSchema({
       curso: COURSE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
@@ -744,7 +750,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Use para aplicar correções aprovadas. Não configura.",
+    "Aplica correções autorizadas; não configura.",
     inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -896,9 +902,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.7.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.8.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:e0e63006bc9351ee489063d526b6f63cfc2579da28e995bf891a64614121dccf";
+  "sha256:751a2c5ead0af623a6060ab32cd7f52c279e8b54f4ba80f423f19a33946cdbc4";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1027,6 +1033,12 @@ function withoutTechnicalState(value) {
         entry.every((role) => COURSE_SOURCE_ROLES.includes(role))) {
       projected[normalizedKey === "default_roles" ? "papeisSugeridos" : "papeis"] =
         Array.isArray(entry) ? entry.map((role) => SOURCE_ROLE_HUMAN_NAMES.get(role)) : [];
+      continue;
+    }
+    if (normalizedKey === "study_units" && Array.isArray(entry)) {
+      projected[key] = entry.map(({ studyUnit, ...metadata }) => ({
+        ...withoutTechnicalState(metadata), studyUnit: structuredClone(studyUnit)
+      }));
       continue;
     }
     if (normalizedKey === "component_authoring_contract") {
@@ -1909,6 +1921,26 @@ function projectedPlanContext(plan, part) {
   };
 }
 
+function focusedReviewPlan(plan, part, units) {
+  const projected = projectedPlanContext(plan, part);
+  const titles = new Set(units.map(item => item.curriculumPath?.didacticMicrosequence?.title).filter(Boolean));
+  const modules = projected.mapaCurricular.modulos ?? [];
+  const micros = modules.flatMap(module => module.licoes.flatMap(lesson => lesson.microssequencias));
+  const relevant = new Set(titles);
+  micros.filter(micro => titles.has(micro.titulo)).forEach(micro =>
+    micro.dependencias.forEach(title => relevant.add(title)));
+  return {
+    titulo: projected.titulo, objetivo: projected.objetivo,
+    mapaCurricular: { ...projected.mapaCurricular, modulos: modules.map(module => ({ ...module,
+      licoes: module.licoes.map(lesson => ({ ...lesson,
+        microssequencias: lesson.microssequencias.filter(micro => relevant.has(micro.titulo))
+      })).filter(lesson => lesson.microssequencias.length)
+    })).filter(module => module.licoes.length) },
+    cobertura: projected.cobertura.filter(item => item.previstaEm.some(location => titles.has(location.microssequencia))),
+    parteEmFoco: projected.parteEmFoco
+  };
+}
+
 async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, limit = 24 }) {
   const scopeKind = resolved.microsequence
     ? "didactic_microsequence"
@@ -2339,28 +2371,41 @@ function projectMaterializationPart(planRead, part, designReads, unitDesignReads
 
 HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineAt }) => {
   if (args.titulo === undefined) {
-    exactFields(args, new Set(["titulo"]));
+    exactFields(args, new Set(["titulo", "continuacao"]));
+    const continuation = await openHumanReadContinuation({ args,
+      course: { id: principal.actorId, revision: 0 }, task: 'retomar_curso' });
+    let cursor = null;
+    try {
+      cursor = continuation.p === null ? null : JSON.parse(continuation.p);
+      if (cursor !== null && (typeof cursor.beforeId !== 'string' || typeof cursor.beforeUpdatedAt !== 'string' ||
+          Object.keys(cursor).sort().join(',') !== 'beforeId,beforeUpdatedAt')) throw Error();
+    } catch { fail('invalid_read_continuation', 'A continuação da lista de cursos é inválida.'); }
     const page = await adapter.listCourses({
       principal,
       query: "",
       limit: 12,
-      beforeUpdatedAt: null,
-      beforeId: null,
+      beforeUpdatedAt: cursor?.beforeUpdatedAt ?? null,
+      beforeId: cursor?.beforeId ?? null,
       deadlineAt
     });
+    if (!Array.isArray(page?.items) || page.hasMore && (!page.nextCursor ||
+        typeof page.nextCursor.beforeId !== 'string' || typeof page.nextCursor.beforeUpdatedAt !== 'string' ||
+        JSON.stringify(page.nextCursor) === continuation.p)) {
+      fail('course_service_unavailable', 'A lista de cursos perdeu o ponto de continuação.', null, 503);
+    }
     return result(
       page?.items?.length === 1
         ? "Encontrei um curso para retomar."
-        : `Encontrei ${page?.items?.length ?? 0} cursos para retomar.`,
+        : `Este trecho contém ${page?.items?.length ?? 0} cursos para retomar.`,
       {
-        nextDecision: page?.items?.length === 1
-          ? "Quer continuar do ponto atual?"
-          : "Qual curso você quer retomar?",
-        context: { courses: page?.items ?? [] }
+        nextDecision: page?.items?.length > 1 ? "Qual curso você quer retomar?" : null,
+        context: await paginateHumanReadContext(withoutTechnicalState({ courses: page.items }),
+          { state: continuation, nextPage: page.hasMore ? JSON.stringify(page.nextCursor) : null })
       }
     );
   }
   const titulo = text(args.titulo, "titulo", 300);
+  if (args.continuacao !== undefined) fail('invalid_read_continuation', 'A continuação pertence à lista de cursos; abra o curso pelo título.');
   const resolved = await resolveHumanCourseContext({
     adapter, principal, course: titulo, deadlineAt
   });
@@ -2370,13 +2415,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
   return result(`Retomei o curso “${resolved.course.title}”.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: map?.approval !== "approved"
-      ? map
-        ? "Quer revisar ou aprovar o mapa curricular?"
-        : "Quer propor o mapa curricular global?"
-      : part
-        ? `Quer revisar a parte ${Number(part.position) + 1} ou preparar a próxima?`
-        : "A etapa seguinte é a progressão focal da primeira parte de produção.",
+    nextDecision: map && map.approval !== "approved" ? "Quer revisar ou aprovar o mapa curricular?" : null,
     context: projectedPlanContext(plan, part)
   });
 };
@@ -2392,15 +2431,8 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   return result(`Li o mapa curricular global; ele está ${mapStatus}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: map?.approval !== "approved"
-      ? map
-        ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?"
-        : "Quer propor o mapa curricular completo?"
-      : args.parte === undefined
-        ? part
-          ? "Quer revisar esta parte ou preparar a próxima?"
-          : "A etapa seguinte é a progressão focal da primeira parte de produção."
-        : "Quer alterar a progressão desta parte?",
+    nextDecision: map && map.approval !== "approved"
+      ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?" : null,
     context: projectedPlanContext(plan, part)
   });
 };
@@ -2516,25 +2548,36 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
 }) => {
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   const unitPage = units.length
-    ? { items: resolved.studyUnits }
-    : await listUnitsForContext({ adapter, principal, resolved, deadlineAt });
-  const observations = await readObservations({
+    ? { items: resolved.studyUnits, hasMore: false, nextCursor: null }
+    : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
+      expectedRevision: resolved.course.revision,
+      scopeKind: resolved.microsequence ? 'didactic_microsequence' : resolved.part ? 'authoring_part' : 'course',
+      scopeId: resolved.microsequence?.id ?? resolved.part?.id ?? null,
+      cursorStudyUnitId: continuation.p, direction: 'forward', limit: 12, maxBytes: 65536,
+      inspectionVersion: 2, deadlineAt });
+  if (!Array.isArray(unitPage?.items) || unitPage.hasMore &&
+      (typeof unitPage.nextCursor?.studyUnitId !== 'string' ||
+       !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
+    fail('course_service_unavailable', 'A página da revisão perdeu o ponto de continuação.', null, 503);
+  }
+  const observations = unitPage.items.length ? await readObservations({
     adapter,
     principal,
-    resolved,
+    resolved: { ...resolved, studyUnits: unitPage.items },
     args: { ...args, somenteAbertas: true },
     deadlineAt,
     scopeUnits: unitPage.items
-  });
-  return result("Preparei o contexto pedagógico da revisão sem aplicar mudanças.", {
+  }) : { items: [] };
+  const context = await paginateHumanReadContext(withoutTechnicalState({
+    observations, studyUnits: unitPage.items,
+    plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items) : null
+  }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
+  return result("Preparei este recorte da revisão sem aplicar mudanças.", {
     deepLink: courseDeepLink(adapter, resolved.course, "review"),
-    nextDecision: "Quais correções coerentes você quer aplicar?",
-    context: {
-      observations,
-      studyUnits: unitPage?.items ?? [],
-      plan: resolved.plan ? projectedPlanContext(resolved.plan, resolved.part) : null
-    }
+    nextDecision: null,
+    context
   });
 };
 
@@ -2545,6 +2588,7 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     ? []
     : [humanReference(args.unidade, "unidade")];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'consultar_fontes' });
   const unit = resolved.studyUnits[0]?.studyUnit ?? null;
   const mode = resolved.source ? "source" : unit ? "target" : "catalog";
   const sources = await adapter.getCourseSources({
@@ -2555,10 +2599,11 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     sourceId: resolved.source?.sourceId ?? null,
     targetKind: unit ? "study_unit" : null,
     targetId: unit?.id ?? null,
-    cursor: null,
+    cursor: continuation.p,
     limit: mode === "catalog" ? 24 : 1,
     deadlineAt
   });
+  if (!Array.isArray(sources?.items)) fail('course_service_unavailable', 'A página de fontes é inválida.', null, 503);
   const context = args.busca === undefined || !Array.isArray(sources?.items)
     ? sources
     : {
@@ -2567,18 +2612,24 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
           .toLocaleLowerCase("pt-BR")
           .includes(text(args.busca, "busca", 300).toLocaleLowerCase("pt-BR")))
       };
-  return result("Li as fontes e âncoras do recorte solicitado.", {
+  if (sources?.nextCursor != null && (typeof sources.nextCursor !== 'string' ||
+      !sources.nextCursor || sources.nextCursor === continuation.p)) {
+    fail('course_service_unavailable', 'A página de fontes perdeu o ponto de continuação.', null, 503);
+  }
+  const readContext = await paginateHumanReadContext(withoutTechnicalState({ sources: context,
+    ...(mode === 'source' ? { arquivosParaConteudo: (context.items ?? []).flatMap(source =>
+      (source.attachments ?? []).map((value, index) => {
+        const attachment = normalizeCourseSourceAttachment(value, { persisted: true });
+        return { rotulo: `PDF ${index + 1}`, sourceAttachmentTarget: { kind: 'source_attachment',
+          sourceId: source.sourceId, sourceRevision: source.revision, contentHash: attachment.contentHash } };
+      })) } : {})
+  }), { state: continuation, nextPage: sources?.nextCursor ?? null });
+  return result(args.busca !== undefined && context.items?.length === 0
+    ? 'Nenhuma fonte corresponde à busca neste trecho.' : "Li as fontes e âncoras deste trecho.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content",
       unit ? [["studyUnitId", unit.id]] : []),
-    nextDecision: "Quer adotar, contestar ou vincular alguma fonte?",
-    context: { sources: context,
-      ...(mode === "source" ? { arquivosParaConteudo: (context.items ?? []).flatMap(source =>
-        (source.attachments ?? []).map((value, index) => {
-          const attachment = normalizeCourseSourceAttachment(value, { persisted: true });
-          return { rotulo: `PDF ${index + 1}`, sourceAttachmentTarget: { kind: "source_attachment",
-            sourceId: source.sourceId, sourceRevision: source.revision, contentHash: attachment.contentHash } };
-        })) } : {})
-    }
+    nextDecision: null,
+    context: readContext
   });
 };
 

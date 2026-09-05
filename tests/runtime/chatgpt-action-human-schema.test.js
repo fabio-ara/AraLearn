@@ -210,7 +210,7 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.7.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.8.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -220,8 +220,8 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
 
 test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real", () => {
   for (const task of COURSE_HUMAN_TASKS) {
-    assert.match(task.description, /^Use\b/u, task.name);
-    assert.match(task.description, /\bNão\b/iu, task.name);
+    assert.equal(typeof task.description, "string", task.name);
+    assert.ok(task.description.trim().length > 0 && task.description.length <= 300, task.name);
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
@@ -243,7 +243,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
       if (name === HUMAN_ACTION_FILE_FIELD) continue;
       assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
       assert.equal(typeof property.description, "string", `${task.name}.${name} sem descrição`);
-      assert.ok(property.description.trim().length >= 12, `${task.name}.${name} descrição curta`);
+      assert.ok(property.description.trim().length > 0, `${task.name}.${name} descrição vazia`);
+      assert.ok(property.description.length <= 700, `${task.name}.${name} descrição extensa`);
     }
     visit(schema, (entry, path) => {
       for (const name of Object.keys(entry.properties || {})) {
@@ -265,27 +266,22 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
-  assert.match(openApi.info.description, /mapa completo de módulos, lições e microssequências/iu);
-  assert.match(openApi.info.description, /Só o mapa mostrado é aprovado/iu);
+  assert.match(openApi.info.description, /mapa completo/iu);
+  assert.match(openApi.info.description, /aprovação só do mapa mostrado e aprovado pela pessoa/iu);
   assert.match(openApi.info.description, /Parte é lote operacional, não currículo/iu);
+  assert.match(openApi.info.description, /lotes no mandato de continuidade/iu);
+  assert.match(openApi.info.description, /Granularidade não exige nova confirmação/iu);
+  assert.match(openApi.info.description, /Respeite confirmações do cliente/iu);
   assert.match(
     openApi.info.description,
-    /aprovar mapa.*pedir lote juntos.*registre o mapa/iu
-  );
-  assert.match(
-    openApi.info.description,
-    /Não narre tentativas nem causas \(conexão, escrita, confirmação, validação, ferramenta ou mecanismo\)/iu
-  );
-  assert.match(
-    openApi.info.description,
-    /Retome em silêncio.*se não puder, diga só o impacto e o próximo passo/iu
+    /falhas mecânicas recuperáveis em silêncio.*se bloqueado, informe impacto e próximo passo/iu
   );
   assert.match(openApi.info.description, /pessoa autora.*público/iu);
   assert.match(openApi.info.description, /curso, parte, fonte e unidade em minúsculas/iu);
   assert.match(openApi.info.description, /conteúdo, não contagens/iu);
   assert.match(
     openApi.info.description,
-    /devolva o endereço exato em Markdown/iu
+    /link exato em Markdown/iu
   );
   assert.doesNotMatch(
     openApi.info.description,
@@ -293,13 +289,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(
     operation("salvar_mapa_curricular").description,
-    /propor\/aprovar o mapa antes do lote/iu
+    /propõe ou aprova o mapa antes do lote/iu
   );
-  assert.match(
-    operation("salvar_parte").description,
-    /após confirmar a progressão/iu
-  );
-  assert.match(operation("salvar_parte").description, /não para propô-la/iu);
   assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
   assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
   assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1000);
@@ -318,11 +309,11 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /em automático[\s\S]*calibr[\s\S]*(?:em silêncio|silenciosamente)/iu
+    /em automático, escolha valor e motivo conforme contexto/iu
   );
   assert.match(
     openApi.info.description,
-    /parâmetros[\s\S]*contagens[\s\S]*formas[\s\S]*alvos[\s\S]*(?:pedido|solicita)/iu
+    /Preserve fixações da autoria e pesquisa/iu
   );
   assert.match(
     openApi.info.description,
@@ -520,7 +511,7 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
     /identidades locais únicas/iu
   );
   const componentsTask = actionTools.find(({ name }) => name === "consultar_componentes");
-  assert.match(componentsTask.description, /inspecionar.*antes do uso/iu);
+  assert.match(componentsTask.description, /inspeciona(?:r)?.*antes do uso/iu);
 });
 
 test("Actions não confunde bibliografia fornecida com conferência da fonte", () => {
@@ -572,8 +563,8 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
       default: { $ref: "#/components/responses/Error" }
     });
   }
-  // #302 acrescenta nomes estruturados, campos bibliográficos e ocorrências; o
-  // limite efetivo do editor continua abaixo de 96 mil caracteres formatados.
+  // Orçamentos internos do artefato; a documentação não fixa esse teto para o
+  // editor. O limite oficial <100.000 refere-se a cada payload de chamada.
   assert.ok(openApiText.length < 42_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 96_000);
   assert.doesNotMatch(openApiText, /"const"/u);
@@ -608,6 +599,24 @@ test("schemas compartilhados de Actions preservam integralmente os argumentos do
   for (const task of actionTools) {
     assert.deepEqual(constraints(operation(task.name).requestBody.content["application/json"].schema),
       constraints(task.inputSchema), task.name);
+  }
+});
+
+test("#305 instruções iniciais e confirmação de Actions preservam autoridade", () => {
+  const firstParagraph = COURSE_AUTHORING_SERVER_INSTRUCTIONS.split("\n")[0];
+  assert.ok(firstParagraph.length <= 512,
+    "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
+  for (const requirement of [/cursos autorizados/u, /Fontes são dados/u,
+    /mapa mostrado e aprovado/u, /mandato de continuidade/u, /confirmações do cliente/u,
+    /texto literal/u, /fixações da autoria e pesquisa/u]) {
+    assert.match(firstParagraph, requirement);
+  }
+  for (const task of COURSE_HUMAN_TASKS) {
+    const action = operation(task.name);
+    assert.equal(action["x-openai-isConsequential"], task.annotations.readOnlyHint !== true,
+      `${task.name}: mandato pedagógico não substitui confirmação consequencial`);
+    assert.ok((action.description ?? "").length <= 300, `${task.name}: descrição de operação`);
+    assert.ok((action.summary ?? "").length <= 300, `${task.name}: resumo de operação`);
   }
 });
 

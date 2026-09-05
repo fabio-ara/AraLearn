@@ -34,6 +34,18 @@ function tokens(value) {
     .filter((token) => token.length > 2 && !ignored.has(token));
 }
 
+function leadingTaskOperationIds(query) {
+  const normalized = normalizeFacetText(query);
+  // Only a positive leading operation supplies an omitted facet. Matching a
+  // term elsewhere would turn exclusions such as "sem calcular" into intent.
+  return RESOURCE_VOCABULARIES.taskOperations.filter((record) => (
+    [record.label, ...(record.aliases || [])].some((value) => {
+      const term = normalizeFacetText(value);
+      return normalized === term || normalized.startsWith(`${term} `);
+    })
+  )).map(({ id }) => id);
+}
+
 function semverParts(version) {
   return String(version).split(".").map(Number);
 }
@@ -262,13 +274,16 @@ function normalizedIntent(raw = {}) {
   if (studyUnitRole && !new Set(["theory", "practice"]).has(studyUnitRole)) {
     throw new RangeError("studyUnitRole precisa ser theory ou practice.");
   }
+  const query = String(raw.query || "").trim();
+  const explicitTaskOperationIds = validatedFacetIds("taskOperationIds", raw.taskOperationIds);
   return {
-    query: String(raw.query || "").trim(),
+    query,
     slot,
     studyUnitRole,
     disciplineIds: validatedFacetIds("disciplineIds", raw.disciplineIds),
     structureIds: validatedFacetIds("structureIds", raw.structureIds),
-    taskOperationIds: validatedFacetIds("taskOperationIds", raw.taskOperationIds),
+    taskOperationIds: explicitTaskOperationIds.length
+      ? explicitTaskOperationIds : leadingTaskOperationIds(query),
     practiceModeIds: validatedFacetIds("practiceModeIds", raw.practiceModeIds),
     knowledgeObjects: normalizedList(raw.knowledgeObjects),
     mustPreserve: normalizedList(raw.mustPreserve),

@@ -104,7 +104,7 @@ test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técni
   const payload = await response.json();
   assert.match(payload.result, /Retomei o curso “Redes para iniciantes”/u);
   assert.match(payload.deepLink, /section=planning/u);
-  assert.equal(payload.nextDecision, "Quer propor o mapa curricular global?");
+  assert.equal(payload.nextDecision, null);
   assert.deepEqual(Object.keys(payload).sort(), ["context", "deepLink", "nextDecision", "result"]);
   assert.doesNotMatch(JSON.stringify({
     result: payload.result,
@@ -450,4 +450,85 @@ test("#272 payload e método inválidos falham antes da tarefa", async () => {
   const payload = await oversized.json();
   assert.equal(payload.error.retryable, false);
   assert.match(payload.nextDecision, /Divida a tarefa/iu);
+});
+
+test("#305 Actions recusa 100.000 caracteres antes da autenticação remota e de qualquer escrita", async () => {
+  for (const length of [99_999, 100_000]) {
+    let principals = 0, writes = 0;
+    const before = Date.now();
+    const handler = createHandler({
+      async resolveActionPrincipal(_hash, { deadlineAt }) {
+        principals++;
+        assert.ok(deadlineAt >= before + 39_000 && deadlineAt <= Date.now() + 40_000);
+        return { actorId: ACTOR_ID, scopes: ["authoring:read", "authoring:write"] };
+      },
+      async createCourse({ title, objective }) {
+        writes++;
+        assert.equal(title, "Texto literal 漢𝄞"); assert.equal(objective, "Objetivo preservado.");
+        return { courseId: ACTOR_ID, title };
+      }
+    });
+    const json = JSON.stringify({ titulo: "Texto literal 漢𝄞", objetivo: "Objetivo preservado." });
+    const response = await handler(new Request(`${BASE_URL}/criar_curso`, { method: "POST",
+      headers: { Origin: ORIGIN, Authorization: "Bearer action-token", "Content-Type": "application/json" },
+      body: json + " ".repeat(length - json.length) }));
+    assert.equal(response.status, length === 99_999 ? 200 : 413);
+    assert.equal(principals, Number(length === 99_999));
+    assert.equal(writes, Number(length === 99_999));
+    if (length === 100_000) {
+      const payload = await response.json();
+      assert.equal(payload.error.code, "action_payload_too_large");
+      assert.equal(payload.error.retryable, false);
+      assert.match(payload.nextDecision, /sem resumir nem descartar/u);
+      assert.doesNotMatch(JSON.stringify(payload), /Texto literal|Objetivo preservado|action-token/u);
+    }
+  }
+});
+
+test("#305 Actions aplica o teto à resposta serializada e devolve orientação focal sem vazar contexto", async () => {
+  for (const character of ["x", "漢", "𝄞"]) {
+    let description = "";
+    // Inject an oversized adapter response on a non-paginated read to exercise
+    // the last transport guard independently of normal bounded projections.
+    const handler = createHandler({ async listAuthoringProfiles() {
+      return { profiles: [{ name: `Perfil sintético ${description}`, preferences: [] }] };
+    } });
+    const empty = await handler(request("consultar_perfis"));
+    assert.equal(empty.status, 200);
+    const emptyText = await empty.text();
+    const available = 99_999 - emptyText.length;
+    description = character.repeat(Math.floor(available / character.length)) + "x".repeat(available % character.length);
+    const exact = await handler(request("consultar_perfis"));
+    assert.equal(exact.status, 200);
+    const exactText = await exact.text();
+    assert.equal(exactText.length, 99_999);
+    assert.equal(JSON.parse(exactText).context.perfis[0].nome, `Perfil sintético ${description}`);
+    description += "x";
+    const oversized = await handler(request("consultar_perfis"));
+    assert.equal(oversized.status, 413);
+    const payload = await oversized.json();
+    assert.equal(payload.error.code, "action_response_too_large");
+    assert.equal(payload.error.retryable, false);
+    assert.match(payload.nextDecision, /recorte|específica/u);
+    assert.match(payload.nextDecision, /literal/u);
+    assert.equal(Object.hasOwn(payload, "context"), false);
+    assert.doesNotMatch(JSON.stringify(payload), /Perfil sintético/u);
+  }
+});
+
+test("#305 resultado grande após entrar na escrita exige releitura, sem nova tentativa automática", async () => {
+  for (const code of ["action_response_too_large", "human_task_result_too_large"]) {
+    let writes = 0;
+    const response = await createHandler({ async createCourse() {
+      writes++;
+      throw new AuthoringApiError(413, code, "sentinel-private-result");
+    } })(request("criar_curso", { titulo: "Curso sintético", objetivo: "Objetivo sintético." }));
+    assert.equal(response.status, 413);
+    assert.equal(writes, 1);
+    const payload = await response.json();
+    assert.equal(payload.error.retryable, false);
+    assert.match(payload.error.message, /pode ter sido concluída/u);
+    assert.match(payload.nextDecision, /Releia o curso/u);
+    assert.doesNotMatch(JSON.stringify(payload), /sentinel-private-result/u);
+  }
 });

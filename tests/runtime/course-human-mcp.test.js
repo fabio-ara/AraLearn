@@ -361,7 +361,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.7.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.8.0");
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
 });
 
@@ -376,7 +376,7 @@ test("MCP orienta o chat a reproduzir o link retornado", async () => {
   assert.equal(payload.result.instructions, COURSE_AUTHORING_SERVER_INSTRUCTIONS);
   assert.match(
     payload.result.instructions,
-    /devolva o endereço exato em Markdown/iu
+    /link exato em Markdown/iu
   );
 });
 
@@ -1060,8 +1060,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
   const authorAsStudent = /\b(?:você (?:está começando|é iniciante|já sabe)|seu conhecimento prévio)\b/iu;
   for (const task of COURSE_HUMAN_TASKS) {
     assert.doesNotThrow(() => ajv.compile(task.inputSchema), task.name);
-    assert.match(task.description, /^Use\b/u, task.name);
-    assert.match(task.description, /\bNão\b/iu, task.name);
+    assert.ok(typeof task.description === 'string' && task.description.trim().length > 0 &&
+      task.description.length <= 300, task.name);
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
@@ -1084,7 +1084,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     }
     for (const [name, property] of Object.entries(task.inputSchema.properties || {})) {
       assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
-      assert.ok(property.description?.length >= 12, `${task.name}.${name}`);
+      assert.ok(property.description?.trim().length > 0 && property.description.length <= 700, `${task.name}.${name}`);
     }
     visit(task.inputSchema, (entry, path) => {
       for (const name of Object.keys(entry.properties || {})) {
@@ -1390,7 +1390,7 @@ test("#275 consultar_componentes faz filtros estruturados regerem a função ins
 test("#272 autorização filtra writes e recusa input mecânico antes do domínio", async () => {
   assert.equal(courseHumanTaskIsAllowed("retomar_curso", READ_PRINCIPAL), true);
   assert.equal(courseHumanTaskIsAllowed("criar_curso", READ_PRINCIPAL), false);
-  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 10);
+  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 11);
   assert.equal(courseHumanTasksForPrincipal({ actorId: PRINCIPAL.actorId, scopes: [] }).length, 0);
   await assert.rejects(
     () => executeHumanCourseTask({
@@ -2337,8 +2337,8 @@ test("resultado final remove maquinaria técnica e não anexa manual de operaç�
   assert.doesNotMatch(serialized, /guidance|authoring-guidance|instructions/iu);
 });
 
-test("o limite continua valendo para todo o envelope humano", async () => {
-  await assert.rejects(() => executeHumanCourseTask({
+test("uma fonte extensa continua recuperável por fragmentos literais limitados", async () => {
+  const output = await executeHumanCourseTask({
     adapter: {
       ...adapter(),
       async getCourseSources() {
@@ -2351,7 +2351,12 @@ test("o limite continua valendo para todo o envelope humano", async () => {
     principal: PRINCIPAL,
     name: "consultar_fontes",
     rawArguments: { curso: "Redes para iniciantes" }
-  }), (error) => error.status === 413 && error.code === "human_task_result_too_large");
+  });
+  assert.equal(output.context.fragmento.formato, 'application/json');
+  assert.ok(output.context.fragmento.total > 522_000);
+  assert.ok(JSON.stringify(output).length < 100_000);
+  assert.equal(output.context.temMais, true);
+  assert.equal(typeof output.context.continuacao, 'string');
 });
 
 test("#272 Observações de uma Parte paginam todas as Units e excluem outros alvos", async () => {

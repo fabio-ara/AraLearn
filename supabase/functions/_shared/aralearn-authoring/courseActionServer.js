@@ -13,9 +13,8 @@ import {
   sha256Hex
 } from "./security.js";
 import { isTrustedOpenAiFileHost } from "./openAiTemporaryFile.js";
+import { readActionPayload, serializeActionPayload } from "./courseActionPayload.js";
 
-const BODY_LIMIT = 512 * 1024;
-const RESPONSE_LIMIT = 512 * 1024;
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -26,7 +25,7 @@ const JSON_HEADERS = Object.freeze({
 export const ARALEARN_ACTION_CONTRACT_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
 
 function jsonResponse(status, payload, headers = {}) {
-  return new Response(JSON.stringify(payload), {
+  return new Response(serializeActionPayload(payload), {
     status,
     headers: { ...JSON_HEADERS, ...headers }
   });
@@ -50,40 +49,6 @@ function routeFromPath(pathname) {
     .map((segment) => decodeURIComponent(segment));
   const slugIndex = segments.lastIndexOf("aralearn-authoring-action");
   return slugIndex >= 0 ? segments.slice(slugIndex + 1) : segments;
-}
-
-async function readBody(request) {
-  if (!String(request.headers.get("content-type") || "").toLowerCase()
-    .startsWith("application/json")) {
-    throw new AuthoringApiError(415, "unsupported_media_type", "A Action exige application/json.");
-  }
-  const reader = request.body?.getReader();
-  if (!reader) return {};
-  const chunks = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > BODY_LIMIT) {
-      await reader.cancel();
-      throw new AuthoringApiError(413, "action_payload_too_large", "Divida a tarefa em partes menores.");
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  try {
-    const body = total ? JSON.parse(new TextDecoder().decode(bytes)) : {};
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
-    return body;
-  } catch {
-    throw new AuthoringApiError(400, "invalid_json", "O corpo da Action deve formar um objeto JSON.");
-  }
 }
 
 function actionFileReference(value, fieldSchema) {
@@ -174,7 +139,10 @@ function nextDecisionForError(error, retryable) {
     return "Escolha um curso, uma parte, uma microssequência ou uma unidade de estudo mais específica.";
   }
   if (error.code === "action_payload_too_large") {
-    return "Divida a tarefa em um conjunto menor de unidades de estudo ou correções.";
+    return "Divida a tarefa em um conjunto menor de unidades de estudo ou correções, sem resumir nem descartar o texto.";
+  }
+  if (error.code === "action_response_too_large") {
+    return "Consulte uma parte, microssequência ou unidade específica, ou a próxima página do recorte, preservando o texto literal.";
   }
   if (error.code === "course_source_pdf_write_uncertain") {
     return "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.";
@@ -189,8 +157,8 @@ function nextDecisionForError(error, retryable) {
   return null;
 }
 
-function publicError(error, { completedWrite = false } = {}) {
-  if (completedWrite && error.code === "action_response_too_large") {
+function publicError(error, { writeTaskStarted = false } = {}) {
+  if (writeTaskStarted && ["action_response_too_large", "human_task_result_too_large"].includes(error.code)) {
     return {
       error: {
         code: error.code,
@@ -229,7 +197,7 @@ export function createAuthoringActionHandler({
 
   return async function handleAction(request) {
     let cors = { Vary: "Origin" };
-    let completedWrite = false;
+    let writeTaskStarted = false;
     try {
       if (request.method === "OPTIONS") {
         return new Response(null, {
@@ -254,6 +222,7 @@ export function createAuthoringActionHandler({
       if (!task) throw new AuthoringApiError(404, "unknown_human_task", "Tarefa de autoria inexistente.");
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = Date.now() + 40_000;
+      const rawArguments = normalizeActionArguments(taskName, await readActionPayload(request));
       const principal = await adapter.resolveActionPrincipal(
         await sha256Hex(authentication.credential),
         { deadlineAt }
@@ -261,7 +230,7 @@ export function createAuthoringActionHandler({
       if (!courseHumanTaskIsAllowed(taskName, principal)) {
         throw new AuthoringApiError(403, "insufficient_scope", "A conta conectada não permite esta tarefa.");
       }
-      const rawArguments = normalizeActionArguments(taskName, await readBody(request));
+      writeTaskStarted = task.annotations?.readOnlyHint !== true;
       const result = normalizedResult(await executeHumanCourseTask({
         adapter,
         principal,
@@ -270,10 +239,6 @@ export function createAuthoringActionHandler({
         deadlineAt,
         projectionRecipient: "connected_actions_gpt"
       }));
-      completedWrite = task.annotations?.readOnlyHint !== true;
-      if (new TextEncoder().encode(JSON.stringify(result)).byteLength >= RESPONSE_LIMIT) {
-        throw new AuthoringApiError(413, "action_response_too_large", "A resposta excedeu o limite.");
-      }
       return jsonResponse(200, result, cors);
     } catch (error) {
       const normalized = asAuthoringApiError(error);
@@ -283,7 +248,7 @@ export function createAuthoringActionHandler({
       if (normalized.status === 405) headers.Allow = "POST, OPTIONS";
       return jsonResponse(
         normalized.status,
-        publicError(normalized, { completedWrite }),
+        publicError(normalized, { writeTaskStarted }),
         headers
       );
     }
