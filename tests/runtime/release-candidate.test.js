@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  buildReleaseNotes,
   configurationDigest,
   extractArtifactArchive,
   releasePlan,
@@ -30,6 +31,24 @@ const ENV = {
   ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic-test-value"
 };
 const digest = (value) => createHash("sha256").update(value).digest("hex");
+
+test("notas da release usam apenas a versão exata e conservam texto e links", () => {
+  const notes = buildReleaseNotes([
+    "# Mudanças", "## [Não publicado]", "- Próxima alteração.",
+    "## [0.1.0] - 2026-09-05", "### Alterado", "- Texto da versão, com [guia](https://example.test/guia).",
+    "  Continuação integral.", "## [0.0.9] - 2026-09-04", "### Corrigido", "- Texto antigo."
+  ].join("\r\n"), "0.1.0");
+  assert.match(notes, /Texto da versão, com \[guia\]\(https:\/\/example\.test\/guia\)\.\n {2}Continuação integral\./u);
+  assert.match(notes, /blob\/v0\.1\.0\/docs\/implantacao\.md/u);
+  assert.doesNotMatch(notes, /Próxima alteração|Texto antigo|Não publicado/u);
+});
+
+test("notas da release recusam ausência, duplicação ou seção vazia sem usar versão antiga", () => {
+  assert.throws(() => buildReleaseNotes("## [Não publicado]\n- Futuro.", "0.1.0"), /ausentes/u);
+  const section = "## [0.1.0] - 2026-09-05\n### Alterado\n- Texto.\n";
+  assert.throws(() => buildReleaseNotes(section + section, "0.1.0"), /duplicadas/u);
+  assert.throws(() => buildReleaseNotes("## [0.1.0] - 2026-09-05\n", "0.1.0"), /vazias/u);
+});
 const PAGES = {
   "asset-manifest.json": Buffer.from('{"version":"0.1.0","assets":["./index.html"]}\n'),
   "index.html": Buffer.from("<!doctype html><div id=app-root></div>\n")

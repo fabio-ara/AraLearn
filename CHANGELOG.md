@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.65] - 2026-09-05
+
 ### Adicionado
 
 - estudo de cursos públicos sem conta, identificador pessoal e compartilhamento
@@ -36,6 +38,14 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   resposta perdida, evitando duplicação e substituição silenciosa;
 - remoção de arquivos considera todos os vínculos e cópias antes de apagar os bytes;
 - migrações preservam dados úteis e desenho aplicado ao retirar caminhos substituídos.
+
+### Atualização
+
+- no Android, instale o APK sobre a versão existente para conservar os dados locais;
+- para continuar a autoria pelo ChatGPT, reconecte o MCP ou atualize as Actions e
+  abra uma conversa nova;
+- métricas descrevem o conteúdo e as decisões de autoria; não medem aprendizagem
+  nem comprovam equivalência semântica entre cursos.
 
 ## [0.0.64] - 2026-09-04
 

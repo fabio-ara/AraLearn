@@ -369,6 +369,18 @@ async function reuseApk() {
   await output("reused", Boolean(bytes));
 }
 
+export function buildReleaseNotes(changelog, version) {
+  demand(/^\d+\.\d+\.\d+$/u.test(version), "Versão das notas inválida.");
+  const sections = String(changelog).replace(/\r\n/gu, "\n").split(/^## /mu);
+  const matching = sections.filter(section => section.startsWith(`[${version}] - `));
+  demand(matching.length === 1, "Notas da versão ausentes ou duplicadas no registro de mudanças.");
+  const content = matching[0].slice(matching[0].indexOf("\n") + 1).trim();
+  demand(content.startsWith("### ") && /^- /mu.test(content), "Notas da versão estão vazias.");
+  return `${content}\n\n[Usar o AraLearn](https://fabio-ara.github.io/AraLearn/) · ` +
+    `[Orientações de atualização](https://github.com/fabio-ara/AraLearn/blob/v${version}/docs/implantacao.md)\n\n` +
+    "O APK mantém o certificado das versões anteriores. O checksum e o manifesto anexos identificam os artefatos desta versão.\n";
+}
+
 async function stageRelease(apk) {
   const manifest = await requirePromotion();
   demand(manifest.promotion.backend?.schemaRevision, "Backend hospedado ainda não foi conferido.");
@@ -383,8 +395,8 @@ async function stageRelease(apk) {
   await writeJson(receiptName, receipt);
   let state = await releaseState(manifest);
   if (state.create) {
-    const notes = await api("releases/generate-notes", { method: "POST", body: { tag_name: state.tag, target_commitish: manifest.promotion.targetSha } });
-    await fs.writeFile(".candidate/release-notes.md", `${notes.body}\n\nSite: https://fabio-ara.github.io/AraLearn/\n\nO APK conserva o certificado das versões anteriores. O arquivo de manifesto e o checksum identificam os artefatos desta versão.\n`);
+    const notes = buildReleaseNotes(await fs.readFile(path.join(ROOT, "CHANGELOG.md"), "utf8"), manifest.version);
+    await fs.writeFile(".candidate/release-notes.md", notes);
     run("gh", ["release", "create", state.tag, "--repo", process.env.GITHUB_REPOSITORY, "--target", manifest.promotion.targetSha, "--draft", "--title", `AraLearn v${manifest.version}`, "--notes-file", ".candidate/release-notes.md"]);
     state = await releaseState(manifest);
   }
