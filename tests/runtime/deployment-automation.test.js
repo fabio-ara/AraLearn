@@ -1010,7 +1010,8 @@ test("uma promoção exige candidata exata e ordena Android, Pages e Release", (
   assert.doesNotMatch(triggers, /push:|workflow_run:|pull_request/u);
   assert.match(source, /needs: candidate[\s\S]+uses: \.\/\.github\/workflows\/android-release\.yml/u);
   assert.match(source, /needs: \[candidate, android\]/u);
-  assert.match(source, /needs: \[candidate, android, pages\]/u);
+  assert.match(source, /needs: \[candidate, android, android-native\]/u);
+  assert.match(source, /needs: \[candidate, android, android-native, pages\]/u);
   assert.match(source, /releaseCandidate\.mjs prepare/u);
   assert.match(source, /releaseCandidate\.mjs verify-backend/u);
   assert.match(source, /releaseCandidate\.mjs verify-pages/u);

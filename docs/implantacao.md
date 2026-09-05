@@ -286,9 +286,31 @@ A suíte e o lint já aprovados não são repetidos no publicador. O build assin
 sua identidade e sua configuração continuam sendo provas próprias.
 
 O APK, seu arquivo `.sha256` e o manifesto de procedência ficam primeiro em uma
-Release em rascunho. O coordenador só a torna pública depois de conferir backend
-e Pages. As notas são geradas a partir das mudanças da versão. Instale primeiro
-em dispositivo descartável ou autorizado e confira login,
+Release em rascunho. Antes de Pages, o job `android-native` instala esses bytes
+exatos em dois emuladores descartáveis no runner Ubuntu 24.04. Ele confere
+pacote, certificado, versão, SHA-256 e UID: instalação limpa da candidata e
+upgrade do APK público 0.0.64 (código 210). A versão candidata vem do manifesto
+aprovado e deve avançar em relação à base.
+
+O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada,
+verifica que as licenças não mudaram e exige KVM. Não aceita novas licenças nem
+substitui a aceleração indisponível. O aplicativo é aberto sem rede, conta ou
+curso, e as ações usam os limites observados pela hierarquia nativa. O tema
+escolhido na candidata precisa sobreviver à reabertura e à reinstalação `-r`.
+Essa prova não cobre dispositivo físico nem retenção de preferência da versão
+0.0.64, cuja interface exige login antes dos ajustes.
+
+O JSON de prova liga o APK ao manifesto, revisão, run e tentativa da promoção;
+os hashes das capturas e hierarquias também são conferidos. Pages e Release
+baixam essa prova por ID, verificam seu digest e reconferem o APK. Falha ou
+evidência de outra tentativa bloqueia a publicação. O artifact nativo é mantido
+por sete dias, incluindo diagnósticos técnicos de falha sem tokens. Ao retomar,
+execute os jobs da promoção juntos para produzir prova da tentativa corrente.
+
+O coordenador só torna a Release pública depois de conferir backend, gate
+nativo e Pages. As notas são geradas a partir das mudanças da versão. As
+jornadas conectadas continuam separadas: em dispositivo descartável ou
+autorizado, confira login,
 retomada, área segura, teclado, rolagem, PDFs, exportação e a Assistência por IA
 com stubs determinísticos dos providers. O guia [Aplicativo Android](../android/README.md) explica
 assinatura, retorno móvel, rede e recuperação do build.
@@ -304,7 +326,7 @@ Para GitHub Pages com Supabase hospedado, a sequência é:
 5. integrar a revisão aprovada e confirmar os checks do SHA exato;
 6. aplicar migrations e publicar as Edge Functions;
 7. verificar o backend hospedado;
-8. promover a candidata identificada, preparando o APK e publicando os bytes do site;
+8. promover a candidata identificada: preparar o APK, aprovar instalação/upgrade nativos e publicar os bytes do site;
 9. conferir os artefatos e concluir a Release; percorrer as jornadas críticas.
 
 O corte precisa definir o comportamento dos clientes instalados enquanto o
