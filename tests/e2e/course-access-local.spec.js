@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import { richParagraphInstance } from "../fixtures/package/rich-paragraph.js";
@@ -508,6 +510,146 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await removeUser(learner?.id);
     await removeUser(outsider?.id);
     await removeUser(owner?.id);
+  });
+
+  test("fontes contextuais persistem referência, estilo, PDF e usos independentes no curso real", async ({ browser }, testInfo) => {
+    const created = await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Fontes da jornada local", objective: "Conferir referências e vínculos no curso de ensaio."
+    } }, ownerToken);
+    const courseId = created.data.courseId;
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const { failures } = captureBrowserFailures(page);
+    const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken } });
+    const title = "Um estudo sintético sobre relações entre conceitos";
+    const manual = "Grupo de pesquisa.\nReferência conferida pelo autor <literal>.";
+    const sourcesRoute = `/#/authoring/courses/${courseId}?section=sources`;
+    const revision = async () => (await client.getCourse(courseId)).revision;
+    const readSources = async options => {
+      for (let attempt = 0; ; attempt += 1) {
+        try { return await client.loadCourseSources(courseId, { ...options, expectedRevision: await revision() }); }
+        catch (error) { if (error.status !== 409 || attempt >= 2) throw error; }
+      }
+    };
+    const catalog = () => readSources({ mode: "catalog" });
+    let sourceId;
+    const detail = async () => (await readSources({ mode: "source", sourceId })).items[0];
+    try {
+      const rows = courseRows(courseId);
+      await courseApi(`/v1/courses/${courseId}/composition`, { method: "POST", body: {
+        requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+        sourceAttributionApplications: rows.filter(row => row.entityType === "study_unit")
+          .map(row => ({ studyUnitId: row.entityId, sourceLinks: [] }))
+      } }, ownerToken);
+      await browserSignIn(page, owner.email);
+      await page.goto(sourcesRoute);
+      await page.getByRole("button", { name: "Nova fonte", exact: true }).click();
+      const form = page.locator('[data-source-form="source"]');
+      await form.getByLabel("Título, quando conhecido", { exact: true }).fill(title);
+      await form.getByLabel("Link", { exact: true }).fill("https://example.test/estudo-sintetico");
+      await form.getByText("Dados da referência", { exact: true }).click();
+      await form.getByRole("combobox", { name: "Tipo", exact: true }).selectOption("article");
+      await form.locator('[data-source-action="add-contributor"][data-contributor-list="authors"]').click();
+      await form.getByLabel("Nome como consta na fonte", { exact: true }).fill("Grupo de pesquisa sintético");
+      await form.getByLabel("Publicação", { exact: true }).fill("2025");
+      await form.getByLabel("Livro, periódico ou publicação", { exact: true }).fill("Revista sintética de ensino");
+      await form.getByLabel("Identificador do artigo", { exact: true }).fill("e12345");
+      await form.getByText("Uso e acesso", { exact: true }).click();
+      await form.getByLabel("Sustentação do conteúdo", { exact: true }).check();
+      await form.getByRole("button", { name: "Conferir referência", exact: true }).click();
+      await expect(form.locator("[data-source-reference-preview]")).toContainText("e12345");
+      for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.evaluate(mode => { document.documentElement.dataset.colorMode = mode; }, theme);
+        expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(theme);
+        await expectNoHorizontalOverflow(page);
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+      await attachScreenshot(page, testInfo, "source-form-390-dark.png");
+      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await expect(page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true })).toBeVisible();
+      sourceId = (await catalog()).items[0].sourceId;
+      await page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true }).click();
+      await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
+      await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("manual");
+      await form.getByLabel("Referência escrita pelo autor", { exact: true }).fill(manual);
+      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await expect(page.locator(".course-source-current .source-formatted-reference")).toHaveText(manual);
+      const beforeStyle = await detail();
+      await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+      await page.getByText("Estilo das referências", { exact: true }).click();
+      await page.getByRole("combobox", { name: "Estilo do curso", exact: true }).selectOption("apa7");
+      await page.getByRole("button", { name: "Salvar estilo", exact: true }).click();
+      await expect.poll(async () => (await catalog()).bibliographyStyle).toBe("apa7");
+      expect(await detail()).toEqual(beforeStyle);
+      await page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true }).click();
+      await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
+      await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("generated");
+      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText("(2025)");
+      expect((await detail()).citationText).toBe(manual);
+      await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url)));
+      await expect.poll(async () => (await detail()).attachments.length).toBe(1);
+      const attached = await detail();
+      await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
+      await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
+      await page.getByLabel("Página inicial", { exact: true }).fill("1");
+      await page.getByLabel("Página final", { exact: true }).fill("1");
+      await page.getByLabel("Arquivo a que este trecho se refere", { exact: true }).selectOption(attached.attachments[0].contentHash);
+      await page.getByLabel("Localizador para pessoas", { exact: true }).fill("Página usada no ensaio local");
+      await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
+      await expect.poll(async () => (await detail()).anchors.length).toBe(1);
+      const sourceWithAnchor = await detail();
+      expect(sourceWithAnchor.anchors[0].contentHash).toBe(attached.attachments[0].contentHash);
+      await page.goto(`/#/authoring/courses/${courseId}?section=content&studyUnitId=study-unit-access-local-1`);
+      await page.getByRole("button", { name: "Fontes e âncoras de Primeira Unidade compartilhada", exact: true }).click();
+      const dialog = page.locator("[data-source-target-dialog]");
+      await dialog.getByRole("button", { name: `Vincular fonte: ${title}`, exact: true }).click();
+      let links = dialog.locator(".course-source-target-link");
+      await links.first().getByRole("button", { name: "Vincular a um trecho", exact: true }).click();
+      const selection = links.first().getByRole("textbox", { name: "Selecione o trecho", exact: true });
+      await selection.focus(); await page.keyboard.press("ControlOrMeta+A");
+      const relation = links.first().getByRole("combobox", { name: "Relação com o item", exact: true });
+      await relation.focus(); await relation.selectOption("adapted_from");
+      await expect(relation).toBeFocused();
+      expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
+        .toBe("Conteúdo privado liberado somente para a pessoa escolhida.");
+      await links.first().getByRole("button", { name: "Usar trecho selecionado", exact: true }).click();
+      await expect(links.first()).toContainText("Trecho localizado");
+      await dialog.getByRole("button", { name: `Adicionar outro vínculo: ${title}`, exact: true }).click();
+      links = dialog.locator(".course-source-target-link");
+      await expect(links).toHaveCount(2);
+      await links.nth(1).getByRole("combobox", { name: "Relação com o item", exact: true }).selectOption("quoted_from");
+      await links.nth(1).getByLabel(/Página usada no ensaio local/u).check();
+      await expectNoHorizontalOverflow(page);
+      await attachScreenshot(page, testInfo, "source-links-390-dark.png");
+      await dialog.getByRole("button", { name: "Salvar fontes", exact: true }).click();
+      await expect(dialog).toBeHidden();
+      const attribution = await client.loadCourseSources(courseId, { mode: "target", targetKind: "study_unit",
+        targetId: "study-unit-access-local-1", expectedRevision: await revision() });
+      expect(attribution.items[0].sourceLinks).toHaveLength(2);
+      expect(new Set(attribution.items[0].sourceLinks.map(link => link.linkId)).size).toBe(2);
+      expect(attribution.items[0].sourceLinks[0].occurrences[0].quote).toBe("Conteúdo privado liberado somente para a pessoa escolhida.");
+      expect(attribution.items[0].sourceLinks[1].anchors[0].anchorId).toBe(sourceWithAnchor.anchors[0].anchorId);
+      await page.goto(`/#/estudo/${courseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`);
+      await page.getByRole("button", { name: "Referência 1", exact: true }).click();
+      await expect(page.getByRole("dialog", { name: "Referência", exact: true })).toContainText(title);
+      await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Referência 1", exact: true })).toBeFocused();
+      expect(failures).toEqual([]);
+    } catch (error) {
+      await testInfo.attach("fontes-failure-state", { body: (await page.locator("main").allInnerTexts()).join("\n\n"), contentType: "text/plain" }).catch(() => {});
+      await attachScreenshot(page, testInfo, "source-failure.png").catch(() => {});
+      throw error;
+    } finally {
+      await context.close();
+      await courseApi(`/v1/courses/${courseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
   });
 
   test("parágrafo rico persiste no curso real e conserva notação ao editar texto", async ({ browser }, testInfo) => {
@@ -1165,8 +1307,9 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     const sourceId = "pdf-publico-local";
     await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 2, sourceCommand: {
       type: "save_source", sourceId, expectedSourceRevision: 0, source: {
-        kind: "document", sourceRole: "technical_conceptual", title: "Documento público de teste",
-        authorship: null, publicationDate: null, identifier: null, language: "pt-BR",
+        kind: "document", defaultRoles: ["technical_conceptual"], title: "Documento público de teste",
+        authors: [], publicationDate: null, identifier: null, language: "pt-BR",
+        bibliographic: createEmptyCourseSourceBibliographicMetadata(), citationMode: "manual",
         citationText: "Documento usado na prova local de acesso.", url: null, editionOrVersion: null,
         origin: "author_provided", availability: "private", verificationStatus: "author_verified", studyVisibility: "citation"
       }
@@ -1177,11 +1320,13 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       sourceId, sourceRevision: 1, file: new Blob([pdfBytes], { type: "application/pdf" }) });
     await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 4, sourceCommand: {
       type: "save_anchor", anchorId: "pagina-local", sourceId, sourceRevision: 1, expectedAnchorRevision: 0,
-      selector: { kind: "page_range", startPage: 1, endPage: 1 }, humanLocator: null, verificationExcerpt: null
+      selector: { kind: "page_range", startPage: 1, endPage: 1 }, humanLocator: null, verificationExcerpt: null,
+      contentHash: hash
     } });
     await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 5, sourceCommand: {
       type: "set_target_sources", targetKind: "study_unit", targetId: "study-unit-access-local-1",
-      expectedTargetVersion: 1, sourceLinks: [{ sourceId, relation: "informed_by", anchors: [{ anchorId: "pagina-local" }] }]
+      expectedTargetVersion: 1, sourceLinks: [{ linkId: "vinculo-pdf-publico-local", sourceId,
+        relation: "informed_by", roles: ["technical_conceptual"], occurrences: [], anchors: [{ anchorId: "pagina-local" }] }]
     } });
     await ownerClient.setCourseVisibility({ courseId: publicCourseId, expectedRevision: 6,
       visibility: "public", publicFileAccess: "restricted", confirmed: true });
@@ -1236,7 +1381,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Fontes", exact: true }).click();
       await expect(page.getByText("Documento usado na prova local de acesso.", { exact: true })).toBeVisible();
       const browserDownload = page.waitForEvent("download");
-      await page.getByRole("button", { name: "Baixar PDF 1 de Documento público de teste", exact: true }).click();
+      await page.getByRole("button", { name: "Abrir PDF em p. 1 de Documento público de teste", exact: true }).click();
       const transfer = await browserDownload;
       expect(await transfer.failure()).toBeNull();
       const transferredBytes = await readFile(await transfer.path());

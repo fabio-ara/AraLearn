@@ -29,6 +29,9 @@ científica nem representa endosso institucional.
 A página [Capacidades e limites atuais](estado-atual-e-roadmap.md) reúne as
 funções disponíveis e os limites que afetam seu uso.
 
+[Fontes, citações e referências](fontes-e-citacoes.md) explica os dados
+bibliográficos, os estilos e os vínculos entre obras e conteúdo didático.
+
 ## Estudar o modelo pedagógico
 
 1. [Modelo didático](modelo-didatico.md): Microssequência didática,

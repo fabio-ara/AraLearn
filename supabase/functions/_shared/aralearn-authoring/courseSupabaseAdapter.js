@@ -224,7 +224,8 @@ function normalizeComponentPolicy(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_RE
   };
 }
 
-function courseSourceCommandSubjectId(command) {
+function courseSourceCommandSubjectId(command, courseId) {
+  if (command.type === "set_bibliography_style") return courseId;
   return command.type === "save_source" || command.type === "retire_source" ||
     command.type === "remove_pdf"
     ? command.sourceId
@@ -3000,7 +3001,7 @@ export class CourseSupabaseAdapter {
           expectedCourseRevision + (normalized.changed ? 1 : 0) ||
         normalized.change != null && (
           normalized.change.type !== normalizedCommand.type ||
-          normalized.change.subjectId !== courseSourceCommandSubjectId(normalizedCommand) ||
+          normalized.change.subjectId !== courseSourceCommandSubjectId(normalizedCommand, courseId) ||
           normalizedCommand.type === "set_target_sources" &&
             normalized.change.targetVersion !== normalizedCommand.expectedTargetVersion
         )) {

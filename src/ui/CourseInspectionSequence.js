@@ -3152,6 +3152,7 @@ export function createCourseInspectionSequence({
           targetId: item.studyUnit.id,
           targetVersion: item.version,
           targetLabel: item.studyUnit.title,
+          targetStudyUnit: item.studyUnit,
           ...(editSources.dataset.inspectionControlKey
             ? { returnFocusKey: String(editSources.dataset.inspectionControlKey) }
             : {})

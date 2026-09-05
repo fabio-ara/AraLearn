@@ -31,7 +31,7 @@ function wrapInstance(instance, slot, html, options = {}, renderKey = "", editTa
   const encodedTargets = inlineEditing && editTargets.length
     ? encodeURIComponent(JSON.stringify(editTargets))
     : "";
-  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}${encodedTargets ? ` data-package-manual-targets="${escapePackageAttribute(encodedTargets)}"` : ""}>${html}</section>`;
+  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}" data-package-slot="${escapePackageAttribute(slot)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}${encodedTargets ? ` data-package-manual-targets="${escapePackageAttribute(encodedTargets)}"` : ""}>${html}</section>`;
   if (!options.resourceSelectionEnabled || !id) return packageHtml;
   if (Array.isArray(options.resourceSelectionTargetIds) &&
       !options.resourceSelectionTargetIds.includes(id)) return packageHtml;
@@ -49,6 +49,7 @@ function renderInstance(studyUnit, instance, slot, index, options, dockExerciseP
   const id = targetId(slot, instance);
   const inlineEditing = options.manualEditingTargetId === id;
   const editTargets = inlineEditing ? manualTargets(instance, slot) : [];
+  const referenceTargets = (options.sourceTextTargets || []).filter(target => target.slot === slot && target.resourceId === instance.id);
   const html = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot, {
     ...options,
     studyUnit,
@@ -60,7 +61,7 @@ function renderInstance(studyUnit, instance, slot, index, options, dockExerciseP
     studyUnitResponse: slot === "content" ? studyUnit.response : null,
     dockExerciseParts,
     manualEditing: inlineEditing,
-    manualEditTargets: editTargets
+    manualEditTargets: inlineEditing ? editTargets : referenceTargets
   });
   return wrapInstance(instance, slot, html, options, blockKey, editTargets);
 }

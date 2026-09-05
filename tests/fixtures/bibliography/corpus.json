@@ -1,0 +1,11 @@
+[
+  {"id":"article","type":"article-journal","title":"Citation.js: a format-independent, modular bibliography tool for the browser and command line","author":[{"family":"Willighagen","given":"Lars"}],"issued":{"date-parts":[[2019]]},"container-title":"PeerJ Computer Science","volume":"5","number":"e214","DOI":"10.7717/peerj-cs.214"},
+  {"id":"manual","type":"book","title":"Publication manual of the American Psychological Association","author":[{"literal":"American Psychological Association"}],"issued":{"date-parts":[[2019]]},"edition":"7","publisher":"American Psychological Association","ISBN":"9781433832161"},
+  {"id":"institution-guide","type":"report","title":"Orientações básicas para fazer citações e referências","author":[{"literal":"Instituto de Educação da Universidade de Lisboa. Biblioteca"}],"issued":{"date-parts":[[2023]]},"URL":"https://www.ie.ulisboa.pt/sites/default/files/documents/document/default/apa-7-2023.pdf"},
+  {"id":"webpage","type":"webpage","title":"Citation Style Language 1.0.2 Specification","URL":"https://docs.citationstyles.org/en/v1.0.2/specification.html"},
+  {"id":"slides-synthetic","type":"speech","title":"Slides — ensaio sintético de renderer","genre":"Slides"},
+  {"id":"notice-synthetic","type":"report","title":"Edital — ensaio sintético de renderer","genre":"Edital","number":"01"},
+  {"id":"incomplete","type":"document","title":"Material de referência com autoria e data não informadas"},
+  {"id":"markup-probe","type":"book","title":"Texto <img src=x onerror=\"globalThis.__cslExecuted=1\"> <script>globalThis.__cslExecuted=1</script> & <i>ênfase</i>","author":[{"literal":"<svg onload=\"globalThis.__cslExecuted=1\">作者</svg>"}]},
+  {"id":"multilingual-synthetic","type":"book","title":"漢字 pīnyīn /ɐ/ العربية <i>texto</i>","author":[{"literal":"Autor de ensaio"}]}
+]

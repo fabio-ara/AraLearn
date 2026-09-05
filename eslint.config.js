@@ -12,7 +12,9 @@ export default [
       "test-results/**",
       "tests/fixtures/**",
       "tests/reports/**",
-      "public/vendor/**"
+      "public/vendor/**",
+      "src/bibliography/vendor/citeproc.generated.js",
+      "supabase/functions/_shared/aralearn/runtime/bibliography/vendor/citeproc.generated.js"
     ]
   },
   {

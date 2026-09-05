@@ -1,3 +1,4 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import test from "node:test";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
@@ -162,6 +163,7 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
   const updatedAt = "2026-08-20T22:45:00.000Z";
   const sourceLinks = [{
     sourceId: "source-current",
+    linkId: "source-current", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -608,7 +610,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   const calls = [];
   const currentSourceId = "source-current";
   const read = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "target",
@@ -627,19 +630,23 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     change: { type: "set_target_sources", subjectId: "unit-a", targetVersion: 1 }
   };
   const citations = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
       sourceRevision: 1, attachments: [],
+      linkId: "link-fixture", kind: "document", authors: [], publicationDate: null, identifier: null, language: null,
+      citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      relation: "informed_by", roles: [], occurrences: [],
       sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
       url: "https://example.test/fonte-a",
       editionOrVersion: null,
       anchors: [{
-        anchorId: "anchor-a",
+        anchorId: "anchor-a", contentHash: null, humanLocator: null,
         selector: { kind: "page_range", startPage: 3, endPage: 4 }
       }]
     }]
@@ -671,6 +678,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     expectedTargetVersion: 1,
     sourceLinks: [{
       sourceId: currentSourceId,
+      linkId: currentSourceId, roles: [], occurrences: [],
       relation: "quoted_from",
       anchors: [{ anchorId: "anchor-a" }]
     }]
@@ -719,7 +727,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   const contextualSourceId = "source-current-context";
   let contextualRequest = null;
   const contextualRead = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "source",
@@ -763,7 +772,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
 
   const astralTargetId = "🔎".repeat(240);
   const astralTargetRead = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "target",
@@ -791,7 +801,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   );
 
   const astralCitationRead = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     studyUnitId: astralTargetId,
@@ -842,9 +853,9 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
         expectedSourceRevision: 0,
         source: {
           kind: "web_page",
-          sourceRole: "technical_conceptual",
+          defaultRoles: ["technical_conceptual"], citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
           title: "Fonte A",
-          authorship: "Autoria",
+          authors: [{ literal: "Autoria" }],
           publicationDate: "2026",
           identifier: null,
           language: "pt-BR",
@@ -886,6 +897,25 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     }),
     /não corresponde ao pedido/u
   );
+});
+
+test("estilo bibliográfico confirma o curso no mesmo writer e rejeita receipt de outra fonte", async () => {
+  const requestId = "request-bibliography-style-1";
+  let subjectId = COURSE_ID;
+  const { client } = clientWithFetch(async (url, init) => {
+    assert.ok(new URL(url).pathname.endsWith("/sources/changes"));
+    assert.deepEqual(parsedBody(init).command, { type: "set_bibliography_style", style: "apa7" });
+    return jsonResponse({ ok: true, data: {
+      contract: "aralearn.course-source-change.v1", courseId: COURSE_ID,
+      courseRevision: 5, requestId, idempotent: false, changed: true,
+      change: { type: "set_bibliography_style", subjectId, revision: 5 }
+    } });
+  });
+  const request = { courseId: COURSE_ID, expectedRevision: 4, requestId,
+    sourceCommand: { type: "set_bibliography_style", style: "apa7" } };
+  assert.equal((await client.mutateCourseSources(request)).change.subjectId, COURSE_ID);
+  subjectId = "source-unrelated";
+  await assert.rejects(client.mutateCourseSources(request), /confirmação de Fontes/u);
 });
 
 test("remoção de PDF usa a Fonte relida sem transportar caminho de Storage", async () => {

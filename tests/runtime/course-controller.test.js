@@ -1,3 +1,4 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import test from "node:test";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
@@ -390,6 +391,7 @@ test("mutação owner liga o replay à revisão original sem rejeitar avanço co
 
   const consideredSourceLinks = [{
     sourceId: "source-a",
+    linkId: "source-a", roles: [], occurrences: [],
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-a" }]
   }];
@@ -1143,7 +1145,8 @@ test("Controller compartilha citações redigidas e reserva catálogo completo a
   const calls = [];
   const currentSourceId = "source-current";
   const sources = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "catalog",
@@ -1171,12 +1174,16 @@ test("Controller compartilha citações redigidas e reserva catálogo completo a
     change: { type: "retire_source", subjectId: currentSourceId, revision: 2 }
   };
   const citations = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
       sourceRevision: 1, attachments: [],
+      linkId: "link-fixture", kind: "document", authors: [], publicationDate: null, identifier: null, language: null,
+      citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      relation: "informed_by", roles: [], occurrences: [],
       sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
@@ -1676,6 +1683,7 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
   const store = new MemoryStateStore();
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -1686,7 +1694,8 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
     async loadCourseSources(courseId, options) {
       calls.push(["sources", courseId, structuredClone(options)]);
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1820,7 +1829,8 @@ test("edição contextual de Unidade sem atribuição preserva proveniência vaz
     async getCourse() { throw new Error("não usado"); },
     async loadCourseSources(courseId) {
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1898,6 +1908,7 @@ test("edição estrutural assistida preserva proveniência por Unidade e é rest
   const calls = [];
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -1907,7 +1918,8 @@ test("edição estrutural assistida preserva proveniência por Unidade e é rest
     async loadCourseSources(courseId, options) {
       calls.push(["sources", options.targetId]);
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1977,7 +1989,8 @@ test("falha transitória da releitura não transforma receipt confirmado em escr
     async getCourse() { throw new Error("não usado"); },
     async loadCourseSources(courseId) {
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -2029,6 +2042,7 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
   const store = new MemoryStateStore();
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -2046,7 +2060,8 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
         });
       }
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",

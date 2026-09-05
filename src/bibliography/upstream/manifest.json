@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "engine": {
+    "package": "citeproc",
+    "version": "2.4.63",
+    "license": "CPAL-1.0",
+    "url": "https://registry.npmjs.org/citeproc/-/citeproc-2.4.63.tgz",
+    "archiveSha256": "7f2b7714bfd1f4480aad9c34972eb5d48dc1b85876ba21b5aa9aee74156e2ccf",
+    "file": "citeproc-2.4.63.cjs",
+    "sha256": "55abba1a8b8b48c14323fd053f9646013b4b7a0c977938064ecf5195a502b9f1"
+  },
+  "assets": [
+    {
+      "key": "apa7",
+      "kind": "style",
+      "file": "apa.csl",
+      "url": "https://raw.githubusercontent.com/citation-style-language/styles/32078ede72b9224e1ed02c546668e20ee7c75585/apa.csl",
+      "sha256": "1ece4fb3c295e66d04b4394e295aa58a87741ceeef1658192437eb9953c2f13e"
+    },
+    {
+      "key": "abnt-2025",
+      "kind": "style",
+      "file": "abnt-ufrgs.csl",
+      "url": "https://raw.githubusercontent.com/citation-style-language/styles/1a16445a22e1ca8aff67cab74fb6077513d67cc0/associacao-brasileira-de-normas-tecnicas-ufrgs-initials.csl",
+      "sha256": "8d4f2e916a3f97d1cb8f68b441091c98738d23d9afffcc524c6f6abda6aa3d1b",
+      "patches": [
+        "aralearn-abnt-elocation-v1",
+        "aralearn-abnt-access-punctuation-v1",
+        "aralearn-abnt-empty-separator-v1"
+      ]
+    },
+    {
+      "key": "en-US",
+      "kind": "locale",
+      "file": "locales-en-US.xml",
+      "url": "https://raw.githubusercontent.com/citation-style-language/locales/938c09c164a60b3cfeabe61089f1bf4c3ea6a4ed/locales-en-US.xml",
+      "sha256": "ac864c7c21166b4390d82c31792cdc509400727fa0060b43d8aa17e07f9cb079"
+    },
+    {
+      "key": "pt-BR",
+      "kind": "locale",
+      "file": "locales-pt-BR.xml",
+      "url": "https://raw.githubusercontent.com/citation-style-language/locales/938c09c164a60b3cfeabe61089f1bf4c3ea6a4ed/locales-pt-BR.xml",
+      "sha256": "f67d781260405ea7617d43e20eb0c363e4e3db4e420d9b017ba9c9c2b797e12b"
+    }
+  ],
+  "notices": [
+    {
+      "file": "public/vendor/bibliography/CPAL-1.0.txt",
+      "sha256": "54cef60295bdffd5d41904338632538db1f3cdcd4c5f7ea5bb021d04eef14d92",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/main/text/CPAL-1.0.txt"
+    },
+    {
+      "file": "public/vendor/bibliography/CC-BY-SA-3.0.txt",
+      "sha256": "3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f",
+      "url": "https://creativecommons.org/licenses/by-sa/3.0/legalcode.txt"
+    }
+  ]
+}

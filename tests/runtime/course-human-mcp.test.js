@@ -1,4 +1,5 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
@@ -360,7 +361,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.4.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.5.0");
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
 });
 
@@ -1648,7 +1649,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
     revision: 2,
     title: "Manual duplicado",
     kind: "document",
-    authorship: null,
+    authors: [],
     publicationDate: null,
     identifier: null,
     language: null,
@@ -1699,8 +1700,11 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
         return {
           items: [{
             sourceLinks: [{
+              linkId: "link-other",
               sourceId: "source-other",
               relation: "supported_by",
+              roles: ["technical_conceptual"],
+              occurrences: [],
               anchors: [{ anchorId: "anchor-other" }]
             }]
           }],
@@ -1733,7 +1737,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
       metadados: {
         tipo: "document",
         titulo: "Manual duplicado",
-        papel: "tecnica_conceitual"
+        papeisSugeridos: ["tecnica_conceitual"]
       }
     }
   });
@@ -1752,6 +1756,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
       vinculos: [{
         unidade: "Unidade um",
         relacao: "informed_by",
+        papeis: ["tecnica_conceitual"],
         ancoras: ["Seção 4.2"]
       }]
     }
@@ -2018,10 +2023,10 @@ test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
   assert.deepEqual(pdfTask._meta, { "openai/fileParams": ["pdf"] });
   assert.deepEqual(pdfTask.inputSchema.oneOf, [
     { required: ["fonte"] },
-    { required: ["titulo", "papel"] }
+    { required: ["titulo", "papeisSugeridos"] }
   ]);
-  assert.deepEqual(pdfTask.inputSchema.properties.papel.enum, [
-    "escopo_curricular", "evidencia_de_avaliacao", "tecnica_conceitual"
+  assert.deepEqual(pdfTask.inputSchema.properties.papeisSugeridos.items.enum, [
+    "escopo_curricular", "evidencia_de_avaliacao", "tecnica_conceitual", "leitura_complementar"
   ]);
   assert.match(pdfTask.description, /guardar PDF/u);
   assert.match(pdfTask.inputSchema.properties.fonte.description, /fonte existente/u);
@@ -2105,7 +2110,7 @@ test("MCP rejeita Fonte existente e título novo juntos antes de qualquer efeito
     curso: "Redes para iniciantes",
     fonte: "Manual existente",
     titulo: "Manual duplicado",
-    papel: "tecnica_conceitual",
+    papeisSugeridos: ["tecnica_conceitual"],
     intencao: "Anexar o documento.",
     pdf: {
       file_id: "file-123",
@@ -2174,7 +2179,7 @@ test("MCP recebe o descritor oficial e mantém o download_url fora do envelope",
     rawArguments: {
       curso: "Redes para iniciantes",
       titulo: "Manual do proxy",
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       intencao: "Manter o documento entre as Fontes.",
       pdf: {
         file_id: "file-123",
@@ -2242,7 +2247,7 @@ test("PDF em nova Fonte homônima relê a escrita pela identidade interna", asyn
     rawArguments: {
       curso: "Redes para iniciantes",
       titulo: "Manual do proxy",
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       intencao: "Manter outro documento como nova Fonte homônima.",
       pdf: {
         file_id: "file-homonymous",
@@ -2310,7 +2315,7 @@ test("resultado final remove maquinaria técnica e não anexa manual de operaç�
         return {
           items: [{
             title: "Fonte legível",
-            sourceRole: "technical_conceptual",
+            defaultRoles: ["technical_conceptual"],
             steps: [{ payload: { requestId: "internal" } }],
             runs: [{ duration: 12 }],
             materialization: { hash: "a".repeat(64) }
@@ -2324,8 +2329,8 @@ test("resultado final remove maquinaria técnica e não anexa manual de operaç�
     rawArguments: { curso: "Redes para iniciantes" }
   });
   const serialized = JSON.stringify(output.context);
-  assert.match(serialized, /"papel":"tecnica_conceitual"/u);
-  assert.doesNotMatch(serialized, /sourceRole|technical_conceptual/u);
+  assert.match(serialized, /"papeisSugeridos":\["tecnica_conceitual"\]/u);
+  assert.doesNotMatch(serialized, /defaultRoles|technical_conceptual/u);
   assert.doesNotMatch(serialized, /steps|payload|requestId|runs|duration|materialization|hash/iu);
   assert.doesNotMatch(serialized, /guidance|authoring-guidance|instructions/iu);
 });
@@ -2670,4 +2675,131 @@ test("delegação humana não inventa valor e rejeita ajuste automático numéri
     rawArguments: { curso: "Redes para iniciantes", condicao: "automatica", parametros: { maximo_ideias_novas_por_unidade: 2 } } }),
   (error) => error.code === "invalid_human_task_argument");
   assert.equal(commands.length, 1);
+});
+
+function contextualSourceAdapter() {
+  const source = {
+    sourceId: 'source-context', revision: 3, title: 'Referência contextual', kind: 'article',
+    defaultRoles: ['technical_conceptual'], authors: [{literal:'Instituição fornecida'}],
+    publicationDate: null, identifier: null, language: null, citationMode:'manual', citationText:'Referência redigida deliberadamente.',
+    url: null, editionOrVersion: null, bibliographic:createEmptyCourseSourceBibliographicMetadata(),
+    origin:'external', availability:'unknown', verificationStatus:'unverified', studyVisibility:'citation',
+    anchors:[{anchorId:'anchor-context',revision:2,humanLocator:'Seção 2',verificationExcerpt:'Trecho da fonte',contentHash:null}]
+  };
+  const occurrence = {occurrenceId:'occurrence-kept',slot:'content',resourceId:'paragraph-context',path:'text',quote:'literal',prefix:null,suffix:null};
+  const links = [
+    {linkId:'link-first',sourceId:source.sourceId,relation:'informed_by',roles:['curricular_scope'],anchors:[],occurrences:[occurrence]},
+    {linkId:'link-second',sourceId:source.sourceId,relation:'supported_by',roles:['technical_conceptual'],anchors:[],occurrences:[]}
+  ];
+  const commands=[];
+  const value = {
+    ...adapter(),source,links,commands,
+    async listCourseStudyUnits() {
+      return {items:[{ordinal:1,version:4,studyUnit:{id:'unit-context',title:'Unidade contextual',version:4,
+        content:[{id:'paragraph-context',package:'aralearn.resource.paragraph',version:'1.0.0',data:{text:'Texto literal do curso.'}}],response:null,feedback:[]}}],hasMore:false,nextCursor:null};
+    },
+    async getCourseSources({mode}) {
+      return {items: mode==='target'?[{sourceLinks:structuredClone(links)}]:[structuredClone(source)],nextCursor:null};
+    },
+    async executeCourseSourceCommand(request) {commands.push(structuredClone(request));return {changed:true};}
+  };
+  return value;
+}
+
+const sourceTask = (sourceAdapter, args) => executeHumanCourseTask({adapter:sourceAdapter,principal:PRINCIPAL,name:'manter_fonte',
+  rawArguments:{curso:'Redes para iniciantes',...args}});
+
+test('#302 fonte permite metadados estruturados e estilo sem reinterpretar referência manual', async () => {
+  const value=contextualSourceAdapter();
+  await sourceTask(value,{fonte:1,metadados:{titulo:null,modoCitacao:'gerada',papeisSugeridos:['leitura_complementar'],
+    autores:[{sobrenome:'Silva',nomes:'Ana'},{literal:'Organização informada'}],
+    bibliografia:{editora:'Editora fornecida',localizacaoEletronica:'e12345',editores:[{literal:'Equipe editora'}]}}});
+  const stored=value.commands[0].command.source;
+  assert.equal(stored.title,null);
+  assert.equal(stored.citationMode,'generated');
+  assert.equal(stored.citationText,value.source.citationText);
+  assert.equal(stored.origin,'external');
+  assert.deepEqual(stored.defaultRoles,['recommended_reading']);
+  assert.deepEqual(stored.authors,[{family:'Silva',given:'Ana'},{literal:'Organização informada'}]);
+  assert.equal(stored.bibliographic.articleNumber,'e12345');
+  assert.deepEqual(stored.bibliographic.editors,[{literal:'Equipe editora'}]);
+  assert.equal(value.commands[0].expectedCourseRevision,7);
+  assert.equal(value.commands[0].command.expectedSourceRevision,3);
+  const result=await sourceTask(value,{estilo:'apa7'});
+  assert.deepEqual(value.commands.at(-1).command,{type:'set_bibliography_style',style:'apa7'});
+  assert.match(result.result,/estilo das referências/u);
+  for(const metadados of [{autoria:'Não decompor automaticamente'},{autores:[{literal:'Nome',sobrenome:'Mistura'}]},
+    {bibliografia:{campoInventado:'Não aceitar'}},{modoCitacao:'silencioso'}]) {
+    const before=value.commands.length;
+    await assert.rejects(()=>sourceTask(value,{fonte:1,metadados}));
+    assert.equal(value.commands.length,before);
+  }
+});
+
+test('#302 fonte conserva vínculos distintos e ocorrências; novo vínculo recebe papéis explícitos', async () => {
+  const value=contextualSourceAdapter();
+  const original=structuredClone(value.links);
+  await sourceTask(value,{fonte:1,vinculos:[{unidade:1,vinculo:1,relacao:'supported_by',papeis:['leitura_complementar']}]});
+  const edited=value.commands.at(-1).command.sourceLinks;
+  assert.equal(edited.length,2);
+  assert.deepEqual(edited[1],original[1]);
+  assert.equal(edited[0].linkId,original[0].linkId);
+  assert.deepEqual(edited[0].occurrences,original[0].occurrences);
+  await sourceTask(value,{fonte:1,vinculos:[{unidade:1,relacao:'informed_by',papeis:['evidencia_de_avaliacao'],
+    ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'literal',prefixo:'Texto ',sufixo:' do curso.'}]}]});
+  const appended=value.commands.at(-1).command.sourceLinks;
+  assert.deepEqual(appended.slice(0,2),original);
+  assert.equal(appended.length,3);
+  assert(!original.some(link=>link.linkId===appended[2].linkId));
+  assert.deepEqual(appended[2].roles,['assessment_evidence']);
+  assert.equal(appended[2].occurrences[0].resourceId,'paragraph-context');
+  assert.equal(appended[2].occurrences[0].quote,'literal');
+  assert.equal(Object.hasOwn(appended[2].occurrences[0],'status'),false);
+  assert.equal(value.commands.at(-1).command.expectedTargetVersion,4);
+  for(const invalid of [
+    {unidade:1,relacao:'informed_by'},
+    {unidade:1,vinculo:3,relacao:'informed_by',papeis:['tecnica_conceitual']},
+    {unidade:1,relacao:'quoted_from',papeis:['tecnica_conceitual']},
+    {unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual'],ocorrencias:[{lugar:'conteudo',recurso:2,folha:'text',trecho:'literal'}]}
+  ]) {
+    const before=value.commands.length;
+    await assert.rejects(()=>sourceTask(value,{fonte:1,vinculos:[invalid]}));
+    assert.equal(value.commands.length,before);
+  }
+});
+
+test('#302 fonte retenta escrita incerta com mesmas identidades de vínculo e ocorrência', async () => {
+  const value=contextualSourceAdapter();
+  const attempts=[];
+  value.executeCourseSourceCommand=async request=>{
+    attempts.push(structuredClone(request));
+    if(attempts.length===1) throw new AuthoringApiError(503,'course_service_unavailable','Resposta perdida.');
+    return {changed:true,idempotent:true};
+  };
+  await sourceTask(value,{fonte:1,vinculos:[{unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual'],
+    ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'literal'}]}]});
+  assert.equal(attempts.length,2);
+  assert.deepEqual(attempts[1],attempts[0]);
+});
+
+test('#302 âncora associa PDF apenas por hash explícito e preserva associação ao editar', async () => {
+  const value=contextualSourceAdapter();
+  const contentHash='a'.repeat(64);
+  await sourceTask(value,{fonte:1,ancoras:[{seletor:{tipo:'paginas',paginaInicial:2,paginaFinal:3},hashDoPdf:contentHash}]});
+  assert.equal(value.commands.at(-1).command.contentHash,contentHash);
+  value.source.anchors[0].contentHash=contentHash;
+  await sourceTask(value,{fonte:1,ancoras:[{ancora:1,seletor:{tipo:'paginas',paginaInicial:3,paginaFinal:3}}]});
+  assert.equal(value.commands.at(-1).command.contentHash,contentHash);
+  assert.equal(value.commands.at(-1).command.expectedAnchorRevision,2);
+  await sourceTask(value,{fonte:1,ancoras:[{ancora:1,seletor:{tipo:'paginas',paginaInicial:3,paginaFinal:3},hashDoPdf:null}]});
+  assert.equal(value.commands.at(-1).command.contentHash,null);
+  const before=value.commands.length;
+  await assert.rejects(()=>sourceTask(value,{fonte:1,ancoras:[{ancora:2,seletor:{tipo:'paginas',paginaInicial:1,paginaFinal:1}}]}),
+    error=>error.code==='human_reference_not_found');
+  assert.equal(value.commands.length,before);
+  for (const invalid of [{ancoras:[]},{ancoras:Array(9).fill({seletor:{tipo:'paginas',paginaInicial:1,paginaFinal:1}})},
+    {vinculos:[]},{vinculos:Array(65).fill({unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual']})}]) {
+    await assert.rejects(()=>sourceTask(value,{fonte:1,...invalid}),error=>error.code==='invalid_human_task_argument');
+    assert.equal(value.commands.length,before);
+  }
 });

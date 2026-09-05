@@ -530,7 +530,8 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
       async getCourseSources(value) {
         calls.push(["read", value]);
         return {
-          contract: "aralearn.course-sources.v2",
+          contract: "aralearn.course-sources.v3",
+          bibliographyStyle: "abnt-2025",
           courseId: COURSE_ID,
           courseRevision: 5,
           mode: "target",

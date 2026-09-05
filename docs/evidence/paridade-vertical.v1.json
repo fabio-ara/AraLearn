@@ -249,7 +249,7 @@
     },
     {
       "id": "course-source-provenance",
-      "intent": "Manter Fontes e Âncoras correntes, atribuí-las a itens e Unidades e mostrar no Estudo somente a citação autorizada.",
+      "intent": "Manter metadados bibliográficos, referências manuais e geradas por estilo do curso, vínculos com papéis explícitos e ocorrências textuais preservadas; mostrar no Estudo somente referências e arquivos autorizados.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#116",
@@ -272,7 +272,7 @@
         ],
         "databasePatterns": [
           "^table:private\\.(?:course_sources|course_source_(?:anchors|attributions|attribution_sources|attribution_anchors|attachments|pdf_upload_intents|pdf_delete_intents))$",
-          "^function:private\\.(?:apply_course_source_attribution_v2|assert_course_source_target_citation_budget_v1|course_effective_source_attribution_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|execute_course_source_command_core_v1|get_course_study_citations_core_v1|invalidate_course_source_attribution_after_target_v1|valid_course_source_links_shape_v2|valid_course_source_publication_date_v1)\\(.*\\)$",
+          "^function:private\\.(?:apply_course_source_attribution_v2|assert_course_source_target_citation_budget_v1|course_effective_source_attribution_v1|course_source_json_hash_v1|course_source_links_v1|course_source_target_state_v1|course_study_citations_payload_v1|execute_course_source_command_core_v1|get_course_study_citations_core_v1|invalidate_course_source_attribution_after_target_v1|valid_course_source_links_shape_v2|valid_course_source_document_v3|valid_course_source_publication_date_v1)\\(.*\\)$",
           "^function:private\\.(?:consume_course_source_pdf_upload_intent_v1|course_source_pdf_reserved_bytes_v1|course_source_pdf_unique_bytes_v1|guard_course_source_attachment_lifecycle_v1|ingest_course_source_pdf_core_v1|prepare_course_source_pdf_ingestion_core_v1|valid_course_source_pdf_file_identity_v1|valid_course_source_pdf_ingestion_intent_v2|valid_course_source_pdf_object_v1)\\(.*\\)$",
           "^function:public\\.(?:cancel_course_source_pdf_ingestion_for_actor_v1|claim_course_source_pdf_delete_for_actor_v1|claim_pending_course_source_pdf_delete_for_source_for_actor_v1|complete_course_source_pdf_delete_for_actor_v1|execute_course_source_command_for_actor_v1|get_course_source_pdf_download_for_actor_v1|get_course_source_pdf_ingestion_receipt_for_actor_v1|get_course_study_citations_v1|get_owned_course_sources_for_actor_v1|ingest_course_source_pdf_for_actor_v1|prepare_course_source_pdf_ingestion_for_actor_v1|remove_course_source_pdf_for_actor_v1)\\(.*\\)$",
           "^trigger:private\\.course_entities/course_entities_invalidate_source_attribution_v1$",
@@ -301,8 +301,16 @@
           "token": "data-source-pdf-input"
         },
         {
-          "path": "src/study/CourseStudyScreen.js",
-          "token": "study-citations-panel"
+          "path": "src/study/studyCitations.js",
+          "token": "renderStudyCitations"
+        },
+        {
+          "path": "src/domain/courseSourceReference.js",
+          "token": "formatCourseSourceReference"
+        },
+        {
+          "path": "src/domain/courseSourceOccurrences.js",
+          "token": "resolveCourseSourceOccurrences"
         }
       ],
       "persistence": [
@@ -349,6 +357,10 @@
         {
           "path": "supabase/migrations/20260903025658_harden_course_source_pdf_lifecycle.sql",
           "token": "claim_pending_course_source_pdf_delete_for_source_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20260905101903_contextual_course_sources.sql",
+          "token": "set_bibliography_style"
         }
       ],
       "routes": [
@@ -372,6 +384,10 @@
       "tests": [
         "tests/runtime/course-sources.test.js",
         "tests/runtime/course-sources-panel.test.js",
+        "tests/runtime/course-source-occurrences.test.js",
+        "tests/runtime/course-source-reference.test.js",
+        "tests/runtime/course-sources-upgrade-pglite.test.js",
+        "tests/runtime/bibliography-renderer.test.js",
         "tests/runtime/course-api-client.test.js",
         "tests/runtime/course-api-server.test.js",
         "tests/runtime/course-storage-lifecycle-smoke.test.js",

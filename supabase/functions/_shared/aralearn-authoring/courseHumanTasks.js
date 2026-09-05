@@ -13,6 +13,8 @@ import {
   COURSE_SOURCE_KINDS,
   COURSE_SOURCE_RELATIONS,
   COURSE_SOURCE_ROLES,
+  COURSE_BIBLIOGRAPHY_STYLES,
+  createEmptyCourseSourceBibliographicMetadata,
   normalizeCourseSourceCommand,
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
@@ -27,7 +29,8 @@ import {
   RESOURCE_VOCABULARIES
 } from "../aralearn/runtime/resources/catalog/vocabularies.js";
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
-import { materializeHumanCoursePart } from "./courseHumanMaterialization.js";
+import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
+  resolveHumanSourceOccurrences } from "./courseHumanMaterialization.js";
 import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
@@ -40,11 +43,7 @@ const MAX_CONTEXT_PAGES = 100;
 const MCP_OAUTH_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["offline_access"]) })
 ]);
-const SOURCE_ROLES_BY_HUMAN_NAME = Object.freeze({
-  escopo_curricular: "curricular_scope",
-  evidencia_de_avaliacao: "assessment_evidence",
-  tecnica_conceitual: "technical_conceptual"
-});
+const SOURCE_ROLES_BY_HUMAN_NAME = HUMAN_SOURCE_ROLES;
 const SOURCE_ROLE_HUMAN_NAMES = new Map(Object.entries(SOURCE_ROLES_BY_HUMAN_NAME)
   .map(([humanName, internalName]) => [internalName, humanName]));
 
@@ -166,18 +165,69 @@ const SOURCE_SELECTOR_SCHEMA = Object.freeze({
   })
 });
 
+const SOURCE_ROLES_SCHEMA = Object.freeze({
+  type: "array", maxItems: COURSE_SOURCE_ROLES.length, uniqueItems: true,
+  items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
+});
+const SOURCE_NAMES_SCHEMA = Object.freeze({
+  type: "array", maxItems: 32,
+  items: Object.freeze({ oneOf: Object.freeze([
+    Object.freeze({ type: "object", additionalProperties: false, required: Object.freeze(["literal"]),
+      properties: Object.freeze({ literal: Object.freeze({ type: "string", minLength: 1, maxLength: 500 }) }) }),
+    Object.freeze({ type: "object", additionalProperties: false, required: Object.freeze(["sobrenome"]),
+      properties: Object.freeze({ sobrenome: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
+        nomes: Object.freeze({ type: ["string", "null"], maxLength: 240 }) }) })
+  ]) })
+});
+const HUMAN_BIBLIOGRAPHIC_FIELDS = Object.freeze({
+  tituloDoVeiculo: "containerTitle", editora: "publisher", localDaEditora: "publisherPlace",
+  volume: "volume", fasciculo: "issue", paginas: "pages", localizacaoEletronica: "articleNumber",
+  doi: "doi", isbn: "isbn", issn: "issn", dataDeAcesso: "accessedDate", genero: "genre", numero: "number"
+});
+const SOURCE_BIBLIOGRAPHIC_SCHEMA = Object.freeze({
+  type: "object", additionalProperties: false,
+  properties: Object.freeze({
+    editores: SOURCE_NAMES_SCHEMA,
+    ...Object.fromEntries(Object.entries(HUMAN_BIBLIOGRAPHIC_FIELDS).map(([name, field]) => [name, Object.freeze({
+      type: ["string", "null"], maxLength: ["containerTitle", "publisher"].includes(field) ? 500 : field === "accessedDate" ? 10 : 240
+    })]))
+  })
+});
+const SOURCE_OCCURRENCES_SCHEMA = Object.freeze({
+  type: "array", maxItems: 16,
+  items: Object.freeze({ type: "object", additionalProperties: false,
+    required: Object.freeze(["lugar", "recurso", "folha", "trecho"]), properties: Object.freeze({
+      lugar: Object.freeze({ type: "string", enum: Object.freeze(["conteudo", "resposta", "feedback"]) }),
+      recurso: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
+      folha: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
+      trecho: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
+      prefixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
+      sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 })
+    }) })
+});
+const SOURCE_LINK_PROPERTIES = Object.freeze({
+  relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
+  papeis: Object.freeze({ ...SOURCE_ROLES_SCHEMA, minItems: 1 }),
+  ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA }),
+  ocorrencias: SOURCE_OCCURRENCES_SCHEMA
+});
+const SOURCE_LINKS_SCHEMA = Object.freeze({
+  type: "array", maxItems: 32,
+  items: Object.freeze({ type: "object", additionalProperties: false,
+    required: Object.freeze(["fonte", "relacao", "papeis"]),
+    properties: Object.freeze({ fonte: HUMAN_REFERENCE_SCHEMA, ...SOURCE_LINK_PROPERTIES }) })
+});
 const SOURCE_METADATA_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze(["titulo", "papel"]),
+  minProperties: 1,
   properties: Object.freeze({
     tipo: Object.freeze({ type: "string", enum: COURSE_SOURCE_KINDS }),
-    papel: Object.freeze({
-      type: "string",
-      enum: Object.freeze(Object.keys(SOURCE_ROLES_BY_HUMAN_NAME))
-    }),
-    titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-    autoria: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
+    papeisSugeridos: Object.freeze({ ...SOURCE_ROLES_SCHEMA, description: "Sugestões; os papéis de cada vínculo são explícitos." }),
+    titulo: Object.freeze({ type: ["string", "null"], minLength: 1, maxLength: 300 }),
+    autores: SOURCE_NAMES_SCHEMA,
+    bibliografia: SOURCE_BIBLIOGRAPHIC_SCHEMA,
+    modoCitacao: Object.freeze({ type: "string", enum: Object.freeze(["manual", "gerada"]) }),
     dataDePublicacao: Object.freeze({ type: ["string", "null"], maxLength: 10 }),
     identificador: Object.freeze({ type: ["string", "null"], maxLength: 240 }),
     idioma: Object.freeze({ type: ["string", "null"], maxLength: 48 }),
@@ -353,21 +403,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         })
       })
     }),
-    fontes: Object.freeze({
-      type: "array", maxItems: 32,
-      items: Object.freeze({
-        type: "object", additionalProperties: false,
-        required: Object.freeze(["fonte", "relacao"]),
-        properties: Object.freeze({
-          fonte: HUMAN_REFERENCE_SCHEMA,
-          relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
-          ancoras: Object.freeze({
-            type: "array", maxItems: 8, uniqueItems: true,
-            items: HUMAN_REFERENCE_SCHEMA
-          })
-        })
-      })
-    })
+    fontes: SOURCE_LINKS_SCHEMA
   })
 });
 
@@ -419,7 +455,9 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   categoria: "Categoria da observação.",
   correcoes: "Conteúdos corrigidos.",
   metadados: "Dados da fonte.",
-  papel: "Papel da fonte.",
+  papel: "Papel didático.",
+  papeisSugeridos: "Sugestões para futuros vínculos; não atribuem um uso.",
+  estilo: "Estilo das referências do curso.",
   ancoras: "Trechos da fonte.",
   vinculos: "Vínculos com unidades.",
   retirar: "Retirada solicitada.",
@@ -712,21 +750,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
             conteudo: STUDY_UNIT_CONTENT_SCHEMA,
-            fontes: Object.freeze({
-              type: "array", maxItems: 32,
-              items: Object.freeze({
-                type: "object", additionalProperties: false,
-                required: Object.freeze(["fonte", "relacao"]),
-                properties: Object.freeze({
-                  fonte: HUMAN_REFERENCE_SCHEMA,
-                  relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
-                  ancoras: Object.freeze({
-                    type: "array", maxItems: 8, uniqueItems: true,
-                    items: HUMAN_REFERENCE_SCHEMA
-                  })
-                })
-              })
-            })
+            fontes: SOURCE_LINKS_SCHEMA
           })
         })
       })
@@ -741,6 +765,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       ...inputSchema({
         curso: COURSE_SCHEMA,
         fonte: HUMAN_REFERENCE_SCHEMA,
+        estilo: Object.freeze({ type: "string", enum: COURSE_BIBLIOGRAPHY_STYLES }),
         metadados: SOURCE_METADATA_SCHEMA,
         ancoras: Object.freeze({
         type: "array", minItems: 1, maxItems: 8,
@@ -750,6 +775,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           properties: Object.freeze({
             ancora: HUMAN_REFERENCE_SCHEMA,
             seletor: SOURCE_SELECTOR_SCHEMA,
+            hashDoPdf: Object.freeze({ type: ["string", "null"], pattern: "^[a-f0-9]{64}$" }),
             localizadorHumano: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
             trechoDeVerificacao: Object.freeze({ type: ["string", "null"], maxLength: 2000 })
           })
@@ -759,14 +785,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "array", minItems: 1, maxItems: 64,
         items: Object.freeze({
           type: "object", additionalProperties: false,
-          required: Object.freeze(["unidade", "relacao"]),
+          required: Object.freeze(["unidade", "relacao", "papeis"]),
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
-            relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
-            ancoras: Object.freeze({
-              type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
-              items: HUMAN_REFERENCE_SCHEMA
-            })
+            vinculo: Object.freeze({ type: "integer", minimum: 1, maximum: 32 }),
+            ...SOURCE_LINK_PROPERTIES
           })
         })
         }),
@@ -780,7 +803,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         Object.freeze({ required: Object.freeze(["metadados"]) }),
         Object.freeze({ required: Object.freeze(["ancoras"]) }),
         Object.freeze({ required: Object.freeze(["vinculos"]) }),
-        Object.freeze({ required: Object.freeze(["retirar"]) })
+        Object.freeze({ required: Object.freeze(["retirar"]) }),
+        Object.freeze({ required: Object.freeze(["estilo"]) })
       ]),
       allOf: Object.freeze([Object.freeze({
         if: Object.freeze({ required: Object.freeze(["retirar"]) }),
@@ -789,7 +813,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           not: Object.freeze({ anyOf: Object.freeze([
             Object.freeze({ required: Object.freeze(["metadados"]) }),
             Object.freeze({ required: Object.freeze(["ancoras"]) }),
-            Object.freeze({ required: Object.freeze(["vinculos"]) })
+            Object.freeze({ required: Object.freeze(["vinculos"]) }),
+            Object.freeze({ required: Object.freeze(["estilo"]) })
           ]) })
         })
       })
@@ -809,15 +834,12 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           description: "Referência: fonte existente."
         }),
         titulo: Object.freeze({
-          type: "string",
+          type: ["string", "null"],
           minLength: 1,
           maxLength: 300,
           description: "Nova fonte a criar."
         }),
-        papel: Object.freeze({
-          type: "string",
-          enum: Object.freeze(Object.keys(SOURCE_ROLES_BY_HUMAN_NAME))
-        }),
+        papeisSugeridos: SOURCE_ROLES_SCHEMA,
         intencao: Object.freeze({
           type: "string",
           minLength: 1,
@@ -839,7 +861,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       }, ["curso", "intencao", "pdf"]),
       oneOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["fonte"]) }),
-        Object.freeze({ required: Object.freeze(["titulo", "papel"]) })
+        Object.freeze({ required: Object.freeze(["titulo", "papeisSugeridos"]) })
       ])
     }),
     { readOnly: false, file: true }
@@ -847,9 +869,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.4.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.5.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:fc0838bdb132bac400cefd814e5d99c756638faab8680bbd71a1c571ef85387d";
+  "sha256:39eb3123f56fd2cb8d45b601ccede65a29bb665d3eaddd2e068e40478de09f5b";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -974,8 +996,10 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
-    if (normalizedKey === "source_role") {
-      projected.papel = entry === null ? null : SOURCE_ROLE_HUMAN_NAMES.get(entry) ?? null;
+    if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
+        entry.every((role) => COURSE_SOURCE_ROLES.includes(role))) {
+      projected[normalizedKey === "default_roles" ? "papeisSugeridos" : "papeis"] =
+        Array.isArray(entry) ? entry.map((role) => SOURCE_ROLE_HUMAN_NAMES.get(role)) : [];
       continue;
     }
     if (normalizedKey === "component_authoring_contract") {
@@ -3072,6 +3096,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
 
 function sourceDocument(publicValue, previous = null) {
   const value = plainObject(publicValue, "metadados");
+  exactFields(value, new Set(Object.keys(SOURCE_METADATA_SCHEMA.properties)));
   const availability = Object.freeze({
     aberta: "open_access",
     restrita: "restricted",
@@ -3087,17 +3112,42 @@ function sourceDocument(publicValue, previous = null) {
     citacao: "citation",
     citacao_e_link: "citation_and_link"
   });
-  const sourceRole = SOURCE_ROLES_BY_HUMAN_NAME[value.papel] ?? previous?.sourceRole;
-  if (!COURSE_SOURCE_ROLES.includes(sourceRole)) {
-    fail("invalid_human_task_argument", "metadados.papel é inválido.", {
-      field: "metadados.papel"
+  const names = (items) => {
+    if (!Array.isArray(items)) fail("invalid_human_task_argument", "Informe os nomes em uma lista.");
+    return items.map((item) => {
+      plainObject(item, "nome");
+      exactFields(item, new Set(["literal", "sobrenome", "nomes"]));
+      if (Object.hasOwn(item, "literal")) {
+        if (Object.hasOwn(item, "sobrenome") || Object.hasOwn(item, "nomes")) {
+          fail("invalid_human_task_argument", "Use nome literal ou componentes fornecidos, sem combiná-los.");
+        }
+        return { literal: item.literal };
+      }
+      return { family: item.sobrenome, given: item.nomes ?? null };
     });
+  };
+  const bibliographic = { ...createEmptyCourseSourceBibliographicMetadata(), ...previous?.bibliographic };
+  if (value.bibliografia !== undefined) {
+    const fields = plainObject(value.bibliografia, "bibliografia");
+    exactFields(fields, new Set(Object.keys(SOURCE_BIBLIOGRAPHIC_SCHEMA.properties)));
+    for (const [human, canonical] of Object.entries(HUMAN_BIBLIOGRAPHIC_FIELDS)) {
+      if (Object.hasOwn(fields, human)) bibliographic[canonical] = fields[human];
+    }
+    if (Object.hasOwn(fields, "editores")) bibliographic.editors = names(fields.editores);
   }
+  const mapped = (mapping, field, fallback) => {
+    if (value[field] === undefined) return fallback;
+    if (!Object.hasOwn(mapping, value[field])) fail("invalid_human_task_argument", `metadados.${field} é inválido.`);
+    return mapping[value[field]];
+  };
   return {
     kind: value.tipo ?? previous?.kind ?? "document",
-    sourceRole,
-    title: text(value.titulo, "metadados.titulo", 300),
-    authorship: value.autoria === undefined ? previous?.authorship ?? null : value.autoria,
+    defaultRoles: value.papeisSugeridos === undefined ? previous?.defaultRoles ?? []
+      : resolveHumanSourceRoles(value.papeisSugeridos, { allowEmpty: true }),
+    title: value.titulo === undefined ? previous?.title ?? null : value.titulo,
+    authors: value.autores === undefined ? previous?.authors ?? [] : names(value.autores),
+    bibliographic,
+    citationMode: mapped({ manual: "manual", gerada: "generated" }, "modoCitacao", previous?.citationMode ?? "manual"),
     publicationDate: value.dataDePublicacao === undefined
       ? previous?.publicationDate ?? null
       : value.dataDePublicacao,
@@ -3108,12 +3158,10 @@ function sourceDocument(publicValue, previous = null) {
     editionOrVersion: value.edicaoOuVersao === undefined
       ? previous?.editionOrVersion ?? null
       : value.edicaoOuVersao,
-    origin: "author_provided",
-    availability: availability[value.disponibilidade] ?? previous?.availability ?? "unknown",
-    verificationStatus: verification[value.verificacao] ??
-      previous?.verificationStatus ?? "unverified",
-    studyVisibility: visibility[value.visibilidadeNoEstudo] ??
-      previous?.studyVisibility ?? "hidden"
+    origin: previous?.origin ?? "author_provided",
+    availability: mapped(availability, "disponibilidade", previous?.availability ?? "unknown"),
+    verificationStatus: mapped(verification, "verificacao", previous?.verificationStatus ?? "unverified"),
+    studyVisibility: mapped(visibility, "visibilidadeNoEstudo", previous?.studyVisibility ?? "hidden")
   };
 }
 
@@ -3228,7 +3276,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     if (sourceReference === undefined) {
       fail("missing_human_task_argument", "Informe fonte para realizar a retirada.", { field: "fonte" });
     }
-    if (args.metadados !== undefined || args.ancoras !== undefined || args.vinculos !== undefined) {
+    if (args.metadados !== undefined || args.ancoras !== undefined || args.vinculos !== undefined || args.estilo !== undefined) {
       fail(
         "invalid_human_task_arguments",
         "A retirada não pode ser combinada com outras mudanças da fonte.",
@@ -3296,8 +3344,12 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
       context: { source: { title, status: withdrawal === "fonte" ? "retired" : initial.source.status } }
     });
   }
-  if (args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined) {
-    fail("missing_human_task_argument", "Informe metadados, ancoras, vinculos ou retirar.");
+  if (args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined && args.estilo === undefined) {
+    fail("missing_human_task_argument", "Informe metadados, ancoras, vinculos, estilo ou retirar.");
+  }
+  if (args.estilo !== undefined) {
+    await executeSourceWrite({ adapter, principal, course, deadlineAt,
+      build: () => ({ type: "set_bibliography_style", style: args.estilo }) });
   }
   if (args.metadados !== undefined) {
     const metadata = safeClone(args.metadados, "metadados", 32 * 1024);
@@ -3321,11 +3373,15 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     sourceReference = undefined;
   }
   const anchors = args.ancoras === undefined ? [] : safeClone(args.ancoras, "ancoras", 64 * 1024);
+  if (!Array.isArray(anchors) || anchors.length > 8 || args.ancoras !== undefined && anchors.length === 0) {
+    fail("invalid_human_task_argument", "Informe de uma a oito âncoras.");
+  }
   for (let index = 0; index < anchors.length; index += 1) {
     if (sourceReference === undefined && internalSourceId === null) {
       fail("missing_human_task_argument", "Informe fonte para manter âncoras.");
     }
     const anchor = plainObject(anchors[index], `ancoras[${index}]`);
+    exactFields(anchor, new Set(["ancora", "seletor", "localizadorHumano", "trechoDeVerificacao", "hashDoPdf"]));
     await executeSourceWrite({
       adapter,
       principal,
@@ -3339,6 +3395,9 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           : matchAnchor(state.sourceDetail?.anchors ?? [], humanReference(
               anchor.ancora, `ancoras[${index}].ancora`
             ));
+        if (anchor.ancora !== undefined && !existing) {
+          throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
+        }
         return {
           type: "save_anchor",
           anchorId: existing?.anchorId ?? await newId(`anchor:${index}`),
@@ -3346,6 +3405,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           sourceRevision: Number(state.sourceDetail?.revision ?? state.source.revision),
           expectedAnchorRevision: Number(existing?.revision ?? 0),
           selector: sourceSelector(anchor.seletor),
+          contentHash: anchor.hashDoPdf === undefined ? existing?.contentHash ?? null : anchor.hashDoPdf,
           humanLocator: anchor.localizadorHumano ?? null,
           verificationExcerpt: anchor.trechoDeVerificacao ?? null
         };
@@ -3353,11 +3413,15 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     });
   }
   const bindings = args.vinculos === undefined ? [] : safeClone(args.vinculos, "vinculos", 128 * 1024);
+  if (!Array.isArray(bindings) || bindings.length > 64 || args.vinculos !== undefined && bindings.length === 0) {
+    fail("invalid_human_task_argument", "Informe de um a 64 vínculos por chamada.");
+  }
   for (let index = 0; index < bindings.length; index += 1) {
     if (sourceReference === undefined && internalSourceId === null) {
       fail("missing_human_task_argument", "Informe fonte para vincular proveniência.");
     }
     const binding = plainObject(bindings[index], `vinculos[${index}]`);
+    exactFields(binding, new Set(["unidade", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
     const unitReference = humanReference(binding.unidade, `vinculos[${index}].unidade`);
     await executeTrustedCourseWrite({
       load: async () => {
@@ -3374,8 +3438,11 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           adapter, principal, resolved, deadlineAt
         ) };
       },
-      build: async (state) => {
+      build: async (state, { newId }) => {
         const unit = state.studyUnits[0];
+        if (binding.ancoras !== undefined && (!Array.isArray(binding.ancoras) || binding.ancoras.length > 8)) {
+          fail("invalid_human_task_argument", "Informe até oito âncoras do vínculo.");
+        }
         const selectedAnchors = (binding.ancoras ?? []).map((reference) => {
           const matched = matchAnchor(state.sourceDetail?.anchors ?? [], reference);
           if (!matched) {
@@ -3398,10 +3465,25 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
         const currentAttribution = Array.isArray(targetRead?.items) &&
           targetRead.items.length === 1 ? targetRead.items[0] : null;
         const currentLinks = currentAttribution?.sourceLinks ?? [];
+        let existing = null;
+        if (binding.vinculo !== undefined) {
+          if (!Number.isSafeInteger(binding.vinculo) || binding.vinculo < 1) {
+            fail("invalid_human_reference", "Informe a posição do vínculo a partir de 1.");
+          }
+          existing = currentLinks[binding.vinculo - 1];
+          if (!existing || existing.sourceId !== state.source.sourceId) {
+            throw new AuthoringApiError(404, "human_reference_not_found", "O vínculo desta fonte não foi localizado.");
+          }
+        }
         const requestedLink = {
+          linkId: existing?.linkId ?? await newId(`source-link:${index}`),
           sourceId: state.source.sourceId,
           relation: text(binding.relacao, "vinculos.relacao", 80),
-          anchors: selectedAnchors
+          roles: resolveHumanSourceRoles(binding.papeis),
+          anchors: binding.ancoras === undefined ? existing?.anchors ?? [] : selectedAnchors,
+          occurrences: binding.ocorrencias === undefined ? existing?.occurrences ?? [] :
+            await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: unit.studyUnit,
+              newId, identityPrefix: `source-link:${index}` })
         };
         return {
           courseId: state.course.id,
@@ -3411,12 +3493,9 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
             targetKind: "study_unit",
             targetId: unit.studyUnit.id,
             expectedTargetVersion: Number(unit.version ?? unit.studyUnit.version ?? 1),
-            sourceLinks: [
-              ...(Array.isArray(currentLinks)
-                ? currentLinks.filter((link) => link.sourceId !== state.source.sourceId)
-                : []),
-              requestedLink
-            ]
+            sourceLinks: existing
+              ? currentLinks.map((link) => link.linkId === existing.linkId ? requestedLink : link)
+              : [...currentLinks, requestedLink]
           })
         };
       },
@@ -3433,10 +3512,11 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     internalSourceId,
     deadlineAt
   });
-  return result("Atualizei a fonte, suas âncoras e vínculos solicitados.", {
+  const styleOnly = args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined;
+  return result(styleOnly ? "Atualizei o estilo das referências do curso." : "Atualizei a fonte, suas âncoras e vínculos solicitados.", {
     deepLink: courseDeepLink(adapter, resolved.course, "sources"),
     nextDecision: "Quer revisar esta fonte no contexto de uma unidade?",
-    context: { source: resolved.source ?? { title: sourceReference } }
+    context: styleOnly ? { bibliographyStyle: args.estilo } : { source: resolved.source ?? { title: sourceReference } }
   });
 };
 
@@ -3446,7 +3526,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
   const hasSourceReference = args.fonte !== undefined;
   const hasNewSourceTitle = args.titulo !== undefined;
   if (hasSourceReference === hasNewSourceTitle ||
-      hasSourceReference && args.papel !== undefined) {
+      hasSourceReference && args.papeisSugeridos !== undefined) {
     fail(
       "invalid_human_task_arguments",
       "Informe exatamente um destino para o PDF: fonte existente ou título da nova fonte.",
@@ -3456,7 +3536,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
   const course = humanCourseTitle(args);
   const sourceReference = optionalReference(args.fonte, "fonte");
   const newSourceTitle = sourceReference === undefined
-    ? text(args.titulo, "titulo", 300)
+    ? args.titulo === null ? null : text(args.titulo, "titulo", 300)
     : undefined;
   text(args.intencao, "intencao", 1000);
   const pdf = plainObject(args.pdf, "pdf");
@@ -3488,7 +3568,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
             expectedSourceRevision: 0,
             source: sourceDocument({
               titulo: newSourceTitle,
-              papel: args.papel,
+              papeisSugeridos: args.papeisSugeridos,
               tipo: "document",
               disponibilidade: "desconhecida",
               verificacao: "nao_verificada",

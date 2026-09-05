@@ -108,9 +108,9 @@ todas pertencem à mesma revisão e valida o documento. Depois, mantém uma cóp
 local para retomada.
 
 Quando a Unidade possuir proveniência pública, use **Fontes**. A consulta
-apresenta somente as fontes e localizações autorizadas. Uma fonte oculta ou
-pendente de comprovação não aparece; **Mostrar citação** omite o endereço e
-**Mostrar citação e link** pode entregá-lo.
+apresenta somente as fontes e localizações autorizadas. Uma fonte oculta não
+aparece. Um uso pendente de verificação é identificado como tal. **Referência**
+omite o endereço; **Referência e acesso** permite os meios autorizados.
 
 ## Responder, avançar e rever
 
@@ -202,18 +202,32 @@ tema ou sincronização do dispositivo.
 
 ## Manter Fontes, PDFs e proveniência
 
-Em **Fontes**, crie, atualize, conteste ou retire fontes e mantenha Âncoras. A
-fonte é a referência corrente; URL e PDF são formas opcionais de acesso. Uma
-Âncora pode localizar página, tempo, fragmento de endereço ou trecho. O papel
-explica por que a fonte foi ligada ao objeto: apoio, contexto, contraste,
-exemplo ou outra relação declarada.
+Em **Fontes**, use **Nova fonte** para informar o título conhecido e um link,
+ou escolher uma referência escrita pelo autor. **Dados da referência** revela
+os campos opcionais: tipo de material, autoria, publicação e outros dados
+pertinentes. Um nome pode ser mantido literalmente, inclusive quando pertence
+a uma instituição. Preencha sobrenome e prenomes somente quando conhecidos.
+**Conferir referência** mostra a apresentação antes de salvar.
+
+**Estilo das referências** permite escolher ABNT ou APA para o curso. A troca
+reformata as referências geradas e preserva os textos escritos pelo autor.
+Alternar entre os modos também conserva esse texto. Uma fonte incompleta pode
+permanecer sem título, data ou autoria; esses dados não são inventados para
+completar a apresentação. Veja os critérios e limites em
+[Fontes, citações e referências](fontes-e-citacoes.md).
+
+A fonte mantém sua identidade; URL e PDF são formas opcionais de acesso.
+Uma âncora localiza página, tempo, fragmento de endereço ou trecho. Ao criar uma
+âncora, escolha o PDF específico quando houver um arquivo correspondente. Essa
+referência ao arquivo permanece mesmo quando seu endereço de acesso é renovado.
 
 No detalhe, **Registrar observação** permite acrescentar uma nota, contestar a
 interpretação ou solicitar reformulação. Escolha a fonte inteira ou uma Âncora
 ativa como alvo. A revisão posterior precisa considerar esse contexto antes de
 alterar as unidades relacionadas.
 
-Para incorporar um PDF, envie um único arquivo na conversa que executará
+No detalhe da fonte, **Anexar PDF** incorpora o arquivo. Em uma conversa, envie
+um único arquivo para a operação
 `incorporar_pdf_como_fonte`. O serviço valida os bytes e grava no Storage
 privado. O download autorizado usa um endereço temporário. Remover o PDF revoga
 novas leituras, preservando fonte, Âncoras e vínculos; o mesmo conteúdo pode ser
@@ -221,13 +235,29 @@ reativado por uma nova incorporação confirmada. Numa conversa, peça a
 `manter_fonte` para retirar somente os PDFs ou para retirar a fonte inteira; esta
 segunda opção remove primeiro todos os PDFs ativos vinculados à fonte.
 
-Use **Definir fontes** numa unidade de estudo para revisar o conjunto corrente. Salvar
-substitui as relações daquele alvo. Identidades técnicas, caminhos de Storage e
-endereços assinados não aparecem no uso normal.
+No conteúdo, abra **Fontes e âncoras** da unidade para revisar seus vínculos.
+Cada uso distingue a relação com o texto, como adaptação ou contraste, e os
+papéis que cumpre: escopo do estudo, avaliação, sustentação do conteúdo ou
+leitura complementar. Os papéis sugeridos no cadastro apenas preenchem um novo
+vínculo; os usos existentes mantêm suas escolhas.
 
-Uma referência anterior pendente de comprovação fica oculta em Estudo. Para
-resolvê-la, preserve a identidade apresentada e acrescente metadados e Âncoras
-comprovados.
+É possível relacionar uma obra ao item inteiro ou selecionar um trecho da parte
+pertinente. Uma citação direta também exige um localizador na fonte. Use
+**Adicionar outro vínculo** quando a mesma obra cumprir outro uso ou sustentar
+outra localização. Salvar confirma o conjunto de vínculos desse item. Se o texto
+mudar e o trecho não puder ser localizado com precisão, a referência é
+conservada e marcada para conferência.
+
+No Estudo, os números junto ao conteúdo abrem a referência em uma sobreposição.
+Fechá-la devolve o foco e a posição de leitura. O acesso à página ou ao PDF
+depende das permissões correntes; a existência de uma referência não certifica
+a afirmação didática. Identidades técnicas, caminhos de Storage e endereços
+assinados não aparecem no uso normal.
+
+Uma fonte configurada para não aparecer no Estudo continua oculta. Aposentar a
+fonte impede novos vínculos e conserva as referências existentes; retirar o
+acesso a um PDF é uma ação separada. Para completar uma referência, mantenha sua
+identidade e acrescente somente metadados e localizações conhecidos.
 
 ## Editar uma Unidade no próprio conteúdo
 

@@ -1,3 +1,4 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -121,9 +122,9 @@ function syntheticPdf(label = "fixture") {
 function pdfSourceDocument(overrides = {}) {
   return {
     kind: "document",
-    sourceRole: "technical_conceptual",
+    defaultRoles: ["technical_conceptual"], citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
     title: "Documento autorizado",
-    authorship: null,
+    authors: [],
     publicationDate: null,
     identifier: null,
     language: null,
@@ -457,6 +458,7 @@ test("Adapter consulta Fonte e envia a proveniência declarada da reformulação
   });
   const consideredSourceLinks = [{
     sourceId: "source-a",
+    linkId: "source-a", roles: [], occurrences: [],
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-a" }]
   }];
@@ -1863,7 +1865,8 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   const calls = [];
   const currentSourceId = "source-current";
   const readResult = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 5,
     mode: "catalog",
@@ -1874,9 +1877,9 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
       revision: 1,
       status: "active",
       kind: "web_page",
-      sourceRole: "technical_conceptual",
+      defaultRoles: ["technical_conceptual"], citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
       title: "Fonte A",
-      authorship: "Autoria",
+      authors: [{ literal: "Autoria" }],
       publicationDate: "2026",
       identifier: null,
       language: "pt-BR",
@@ -1998,6 +2001,7 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   });
   const currentLinks = [{
     sourceId: currentSourceId,
+    linkId: currentSourceId, roles: [], occurrences: [],
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-a" }]
   }];
@@ -2143,7 +2147,7 @@ test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bib
       });
     }
     if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
-      assert.equal(body.p_source_intent.source.authorship, null);
+      assert.deepEqual(body.p_source_intent.source.authors, []);
       assert.equal(body.p_source_intent.source.publicationDate, null);
       assert.equal(body.p_source_intent.source.identifier, null);
       assert.equal(body.p_source_intent.source.url, null);
@@ -3301,6 +3305,7 @@ test("composição da aplicação deriva canal e aceita somente metadado fechado
   let rpc = null;
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];

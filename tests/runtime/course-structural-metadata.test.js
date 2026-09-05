@@ -61,7 +61,7 @@ test("resposta perdida preserva proveniência, CAS e metadados sem preflight na 
     async loadCourseSources() {
       reads += 1;
       if (reads > 1) throw Object.assign(new Error("revisão antiga"), { status: 409 });
-      return { contract: "aralearn.course-sources.v2", courseId: COURSE, courseRevision: 4,
+      return { contract: "aralearn.course-sources.v3", bibliographyStyle: "abnt-2025", courseId: COURSE, courseRevision: 4,
         mode: "target", query: { sourceId: null, targetKind: "study_unit", targetId: "unit-a" },
         pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 }, items: [], nextCursor: null };
     },

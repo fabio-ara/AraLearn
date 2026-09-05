@@ -4043,6 +4043,135 @@
   resize: vertical;
 }
 
+.course-source-form > label,
+.source-reference-fields > label,
+.source-contributor > label,
+.course-source-form-grid > label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.source-reference-fields {
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-default);
+}
+
+.source-reference-fields > summary {
+  min-height: var(--tap);
+  align-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.source-reference-fields > :not(summary) {
+  margin: 10px 0 0;
+}
+
+.source-reference-fields > p {
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+}
+
+.source-contributors,
+.source-default-roles {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.source-contributors > legend,
+.source-default-roles > legend {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.source-contributor {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+
+.source-contributor > button {
+  justify-self: end;
+}
+
+.source-contributor > button,
+.source-add-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 7px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  font: inherit;
+}
+
+.source-default-roles > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+}
+
+.source-default-roles input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+  padding: 0;
+}
+
+.source-reference-preview {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.source-reference-preview:empty {
+  display: none;
+}
+
+.source-formatted-reference {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-weight: 400;
+  text-align: start;
+}
+
+.source-occurrences h4 { margin-block: 0.75rem 0.35rem; }
+.source-occurrences ul { list-style: none; padding: 0; }
+.source-occurrences li { margin-block: 0.7rem; }
+.source-occurrences blockquote {
+  margin: 0 0 0.35rem;
+  padding-inline-start: 0.7rem;
+  border-inline-start: 2px solid currentColor;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.source-occurrences button,
+[data-source-form="bibliography-style"] button { min-width: 44px; min-height: 44px; }
+.source-occurrences li > button { margin-inline-start: 0.4rem; }
+.source-occurrence-editor { display: grid; gap: 0.6rem; }
+.source-occurrence-editor label,
+[data-source-form="bibliography-style"] label { display: grid; gap: 0.35rem; min-width: 0; }
+.source-occurrence-editor select,
+.source-occurrence-editor textarea,
+[data-source-form="bibliography-style"] select { width: 100%; min-width: 0; max-width: 100%; }
+.source-occurrence-editor textarea { cursor: text; user-select: text; line-height: 1.5; }
+
 .course-source-form-grid {
   min-width: 0;
   display: grid;
@@ -4622,117 +4751,6 @@
   gap: 8px;
 }
 
-.study-citations-panel {
-  width: min(100%, 680px);
-  display: grid;
-  gap: 10px;
-  margin: 10px auto 0;
-  padding: 12px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-card);
-}
-
-.study-citations-panel > header {
-  min-width: 0;
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.study-citations-panel > header p,
-.study-citations-panel > header h2,
-.study-citations-status,
-.study-citation-list,
-.study-citation-list :is(h3, p, ul) {
-  margin: 0;
-}
-
-.study-citations-panel > header p {
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-}
-
-.study-citations-panel > header h2 {
-  font-size: var(--type-md);
-}
-
-.study-citations-panel > header button,
-.study-citations-panel > button,
-.study-citation-list a {
-  min-height: var(--tap);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px 10px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  background: var(--surface-raised);
-  text-decoration: none;
-}
-
-.study-citations-status {
-  color: var(--text-secondary);
-  font-size: var(--type-sm);
-}
-
-.study-citations-status.is-error {
-  color: var(--status-danger);
-}
-
-.study-citation-list {
-  display: grid;
-  gap: 8px;
-  padding: 0;
-  list-style: none;
-}
-
-.study-citation-list article {
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-  padding: 9px 10px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-  background: var(--surface-sunken);
-}
-
-.study-citation-list :is(h3, p, li, small) {
-  overflow-wrap: anywhere;
-}
-
-.study-citation-list h3 {
-  font-size: var(--type-sm);
-}
-
-.study-citation-list p,
-.study-citation-list li,
-.study-citation-list small {
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  line-height: var(--leading-normal);
-}
-
-.study-citation-list ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 0;
-  list-style: none;
-}
-
-.study-citation-list ul li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--surface-raised);
-}
-
 .course-source-availability-note {
   margin: 0;
   color: var(--text-secondary);
@@ -4740,12 +4758,7 @@
   line-height: var(--leading-normal);
 }
 
-.study-citation-list a {
-  justify-self: start;
-  min-height: var(--tap);
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
+
 
 @media (max-width: 700px) {
   .course-source-catalog,

@@ -8,8 +8,11 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 
 function sourceLink(suffix) {
   return {
+    linkId: `link-${suffix}`,
     sourceId: `source-${suffix}`,
     relation: "supported_by",
+    roles: ["technical_conceptual"],
+    occurrences: [],
     anchors: [{ anchorId: `anchor-${suffix}` }]
   };
 }
@@ -169,6 +172,7 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
       fontes: [{
         fonte: "RFC 1035",
         relacao: "supported_by",
+        papeis: ["tecnica_conceitual"],
         ancoras: ["Seção 2"]
       }]
     }]
@@ -177,9 +181,14 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
   const commit = adapter.commits[0];
   assert.equal(commit.expectedStudyUnitVersion, 2);
   assert.equal(commit.applicationOrigin, "provider_assistance");
+  const [link] = commit.sourceAttributionApplications[0].sourceLinks;
+  assert.equal(typeof link.linkId, "string");
   assert.deepEqual(commit.sourceAttributionApplications[0].sourceLinks, [{
+    linkId: link.linkId,
     sourceId: "source-rfc",
     relation: "supported_by",
+    roles: ["technical_conceptual"],
+    occurrences: [],
     anchors: [{ anchorId: "anchor-rfc-section-2" }]
   }]);
   assert.equal(receipt.context.sourceMode, "explicit");

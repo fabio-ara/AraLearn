@@ -317,6 +317,7 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
     units: [unit([{
       fonte: "RFC 1035",
       relacao: "supported_by",
+      papeis: ["tecnica_conceitual"],
       ancoras: ["Seção 2 — Introdução"]
     }])]
   });
@@ -347,7 +348,11 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   assert.equal(stored.designSnapshot.parameters[0].sourceScopeKind,
     "didactic_microsequence");
   assert.equal(stored.designSnapshot.componentPolicy.sourceScopeKind, null);
+  assert.equal(typeof stored.sourceLinks[0].linkId, "string");
   assert.deepEqual(stored.sourceLinks, [{
+    linkId: stored.sourceLinks[0].linkId,
+    roles: ["technical_conceptual"],
+    occurrences: [],
     sourceId: "source-rfc-1035",
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-rfc-1035-section-2" }]
@@ -766,10 +771,31 @@ test("#272 materialização falha cedo quando a Âncora humana não existe", asy
     units: [unit([{
       fonte: "RFC 1035",
       relacao: "supported_by",
+      papeis: ["tecnica_conceitual"],
       ancoras: ["Seção inexistente"]
     }])]
   }), (error) => error.status === 404 && error.code === "human_reference_not_found");
   assert.deepEqual(adapter.calls, []);
+});
+
+test("#302 materialização conserva dois usos da mesma fonte, trecho literal e identidade própria", async () => {
+  const adapter = adapterFixture();
+  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [unit([
+      { fonte: "RFC 1035", relacao: "informed_by", papeis: ["leitura_complementar"] },
+      { fonte: "RFC 1035", relacao: "quoted_from", papeis: ["tecnica_conceitual"], ancoras: [1],
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "registros", prefixo: "consulta ", sufixo: " para obter" }] }
+    ])] });
+  const links = adapter.calls[0].units[0].sourceLinks;
+  assert.equal(links.length, 2);
+  assert.equal(links[0].sourceId, links[1].sourceId);
+  assert.notEqual(links[0].linkId, links[1].linkId);
+  assert.deepEqual(links[0].anchors, [], "não escolher a única âncora automaticamente");
+  assert.deepEqual(links[0].roles, ["recommended_reading"]);
+  assert.equal(links[1].occurrences[0].resourceId, "dns-paragraph");
+  assert.equal(links[1].occurrences[0].quote, "registros");
+  assert.equal(links[1].occurrences[0].path, "text");
+  assert.equal(Object.hasOwn(links[1].occurrences[0], "status"), false);
 });
 
 test("fonte sem localização confirmada permanece não verificada e não exige âncora inventada", async () => {
@@ -795,10 +821,14 @@ test("fonte sem localização confirmada permanece não verificada e não exige 
     part: 1,
     units: [unit([{
       fonte: "RFC 1035",
-      relacao: "needs_verification"
+      relacao: "needs_verification",
+      papeis: ["tecnica_conceitual"]
     }])]
   });
   assert.deepEqual(safe.calls[0].units[0].sourceLinks, [{
+    linkId: safe.calls[0].units[0].sourceLinks[0].linkId,
+    roles: ["technical_conceptual"],
+    occurrences: [],
     sourceId: "source-rfc-1035",
     relation: "needs_verification",
     anchors: []
@@ -812,12 +842,12 @@ test("fonte sem localização confirmada permanece não verificada e não exige 
     part: 1,
     units: [unit([{
       fonte: "RFC 1035",
-      relacao: "supported_by"
+      relacao: "quoted_from",
+      papeis: ["tecnica_conceitual"]
     }])]
   }), (error) => {
-    assert.equal(error.code, "human_reference_not_found");
-    assert.match(error.message, /precisa de verificação/iu);
-    assert.match(error.message, /não invente.*localização/iu);
+    assert.equal(error.code, "invalid_human_source_anchor");
+    assert.match(error.message, /citação direta exige/iu);
     return true;
   });
   assert.deepEqual(unsafe.calls, []);
@@ -827,10 +857,12 @@ test("#272 IDs de Fonte e Âncora não voltam a ser referências humanas", async
   for (const fontes of [[{
     fonte: "source-rfc-1035",
     relacao: "supported_by",
+      papeis: ["tecnica_conceitual"],
     ancoras: ["Seção 2 — Introdução"]
   }], [{
     fonte: "RFC 1035",
     relacao: "supported_by",
+      papeis: ["tecnica_conceitual"],
     ancoras: ["anchor-rfc-1035-section-2"]
   }]]) {
     const adapter = adapterFixture();

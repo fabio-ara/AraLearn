@@ -279,6 +279,9 @@ async function expectAuthoringAreaEndReachable(page) {
 }
 
 async function expectSourceMetadataDoesNotOverlap(page) {
+  const fields = page.locator(".course-source-current .source-reference-fields");
+  if (await fields.getAttribute("open") === null) await fields.locator(":scope > summary").click();
+  await expect(page.locator(".course-source-metadata")).toBeVisible();
   const failures = await page.locator(".course-source-metadata > div").evaluateAll((rows) =>
     rows.flatMap((row) => {
       const term = row.querySelector("dt");
@@ -355,6 +358,9 @@ async function mountCourseAuthoring(page, {
 
     const { createCourseAuthoringSurface } = await import(
       "/src/ui/CourseAuthoringSurface.js"
+    );
+    const { createEmptyCourseSourceBibliographicMetadata } = await import(
+      "/src/domain/courseSources.js"
     );
 
     const definitions = [{
@@ -647,9 +653,11 @@ async function mountCourseAuthoring(page, {
         revision: 1,
         status: "active",
         kind: ordinal % 2 === 0 ? "article" : "book",
-        sourceRole: ordinal % 3 === 0 ? "assessment_evidence" : "technical_conceptual",
+        defaultRoles: [ordinal % 3 === 0 ? "assessment_evidence" : "technical_conceptual"],
         title: `Fonte verificável ${ordinal}`,
-        authorship: `Autoria ${ordinal}`,
+        authors: [{ literal: `Autoria ${ordinal}` }],
+        citationMode: "manual",
+        bibliographic: createEmptyCourseSourceBibliographicMetadata(),
         publicationDate: "2026",
         identifier: null,
         language: "pt-BR",
@@ -660,6 +668,7 @@ async function mountCourseAuthoring(page, {
         availability: "open_access",
         verificationStatus: "author_verified",
         studyVisibility: "citation_and_link",
+        publicFileAccess: "inherit",
         anchorCount: ordinal <= 2 ? 1 : 0,
         createdAt: "2026-08-17T12:00:00.000Z"
       };
@@ -674,6 +683,7 @@ async function mountCourseAuthoring(page, {
           sourceRevision: 1,
           status: "active",
           selector: { kind: "page_range", startPage: index + 10, endPage: index + 12 },
+          contentHash: null,
           humanLocator: index === 0 ? "Capítulo 2, seção 3" : null,
           verificationExcerpt: index === 0 ? "Trecho mínimo para conferência." : null,
           needsReverification: false,
@@ -691,13 +701,17 @@ async function mountCourseAuthoring(page, {
       targetId: "79000000-0000-4000-8000-000000000019",
       targetVersion: 1,
       sourceLinks: [{
+        linkId: "link-plan-source-01",
         sourceId: "source-01",
         relation: "supported_by",
+        roles: ["technical_conceptual"],
+        occurrences: [],
         anchors: [{ anchorId: "anchor-source-01" }]
       }],
       createdAt: "2026-08-17T12:00:00.000Z"
     }]]);
     const sourceReceipts = new Map();
+    const sourceStyles = new Map();
     const designReceipts = new Map();
     const peopleReceipts = new Map();
     const createReceipts = new Map();
@@ -1788,7 +1802,8 @@ async function mountCourseAuthoring(page, {
           };
         }
         return {
-          contract: "aralearn.course-sources.v2",
+          contract: "aralearn.course-sources.v3",
+          bibliographyStyle: sourceStyles.get(courseId) || "abnt-2025",
           courseId,
           courseRevision: detail.revision,
           mode: options.mode,
@@ -1829,6 +1844,7 @@ async function mountCourseAuthoring(page, {
             revision,
             status: "active",
             ...structuredClone(command.source),
+            publicFileAccess: current?.publicFileAccess || "inherit",
             anchorCount: current?.anchors.filter(({ status }) => status === "active").length || 0,
             createdAt: "2026-08-17T12:20:00.000Z",
             anchors: (current?.anchors || []).map((anchor) => ({
@@ -1862,9 +1878,7 @@ async function mountCourseAuthoring(page, {
             ...structuredClone(current),
             revision,
             status: "retired",
-            anchorCount: 0,
-            createdAt: "2026-08-17T12:21:00.000Z",
-            anchors: []
+            createdAt: "2026-08-17T12:21:00.000Z"
           };
           sourceDetails.set(command.sourceId, retired);
           const {
@@ -1894,6 +1908,7 @@ async function mountCourseAuthoring(page, {
             sourceRevision: command.sourceRevision,
             status: "active",
             selector: structuredClone(command.selector),
+            contentHash: command.contentHash,
             humanLocator: command.humanLocator,
             verificationExcerpt: command.verificationExcerpt,
             needsReverification: false,
@@ -1930,6 +1945,10 @@ async function mountCourseAuthoring(page, {
           const catalog = sourceCatalog.find(({ sourceId }) => sourceId === source.sourceId);
           if (catalog?.revision === source.revision) catalog.anchorCount = source.anchorCount;
           subjectId = command.anchorId;
+        } else if (command.type === "set_bibliography_style") {
+          sourceStyles.set(request.courseId, command.style);
+          subjectId = request.courseId;
+          revision = course.revision + 1;
         } else if (command.type === "set_target_sources") {
           const key = sourceTargetKey(command.targetKind, command.targetId);
           sourceTargets.set(key, {
@@ -2305,6 +2324,10 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator("#course-source-detail-title")).toHaveText(
         "Fonte verificável 1"
       );
+      await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText(
+        "Autoria 1. Fonte verificável 1. 2026."
+      );
+      await expectSourceMetadataDoesNotOverlap(page);
       await expect(page.getByText("Capítulo 2, seção 3 · Páginas 10–12", {
         exact: true
       })).toBeVisible();
@@ -2328,6 +2351,7 @@ test.describe("Autoria canônica mobile-first", () => {
         expect(anchorMutation.command).toMatchObject({
           type: "save_anchor",
           anchorId: "anchor-source-01",
+          contentHash: null,
           humanLocator: "Capítulo 2, seção 4",
           selector: { kind: "page_range", startPage: 10, endPage: 12 }
         });
@@ -2812,8 +2836,11 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
     targetId: "study-unit-01",
     expectedTargetVersion: 1,
     sourceLinks: [{
+      linkId: expect.any(String),
       sourceId: "source-01",
       relation: "supported_by",
+      roles: ["technical_conceptual"],
+      occurrences: [],
       anchors: [{ anchorId: "anchor-source-01" }]
     }]
   });

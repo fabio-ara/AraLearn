@@ -235,7 +235,8 @@ function courseAnchoredAnnotationReadOptions(courseId, value = {}) {
   });
 }
 
-function courseSourceCommandSubjectId(command) {
+function courseSourceCommandSubjectId(command, courseId) {
+  if (command.type === "set_bibliography_style") return courseId;
   return command.type === "save_source" || command.type === "retire_source" ||
     command.type === "remove_pdf"
     ? command.sourceId
@@ -2419,7 +2420,7 @@ export class CourseController {
         result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
         result.change != null && (
           result.change.type !== command.type ||
-          result.change.subjectId !== courseSourceCommandSubjectId(command)
+          result.change.subjectId !== courseSourceCommandSubjectId(command, courseId)
         )) {
       throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
     }

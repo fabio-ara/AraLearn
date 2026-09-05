@@ -1245,10 +1245,11 @@ export function createCourseAuthoringSurface({
     targetId,
     targetVersion,
     targetLabel,
+    targetStudyUnit = null,
     returnFocusKey = ""
   }) {
     if (!state.course || !canAccessPlanning(state.course)) return;
-    state.sourceTarget = { targetKind, targetId, targetVersion, targetLabel, returnFocusKey };
+    state.sourceTarget = { targetKind, targetId, targetVersion, targetLabel, targetStudyUnit, returnFocusKey };
     state.writeFailure = "";
     render();
   }

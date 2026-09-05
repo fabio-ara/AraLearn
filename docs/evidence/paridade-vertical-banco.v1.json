@@ -575,6 +575,10 @@
       "caseId": "study-course-experience"
     },
     {
+      "object": "constraint:private.course_source_anchors/course_source_anchors_content_hash_check[check]",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "constraint:private.course_source_anchors/course_source_anchors_course_id_fkey[foreign_key]",
       "caseId": "course-source-provenance"
     },
@@ -675,6 +679,14 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "constraint:private.course_source_attribution_sources/course_source_link_identity_shape_v1[check]",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "constraint:private.course_source_attribution_sources/course_source_link_identity_v1[unique]",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "constraint:private.course_source_attributions/course_source_attributions_course_id_fkey[foreign_key]",
       "caseId": "course-source-provenance"
     },
@@ -743,7 +755,7 @@
       "caseId": "course-source-provenance"
     },
     {
-      "object": "constraint:private.course_sources/course_sources_metadata_v2[check]",
+      "object": "constraint:private.course_sources/course_sources_metadata_v3[check]",
       "caseId": "course-source-provenance"
     },
     {
@@ -755,11 +767,7 @@
       "caseId": "course-source-provenance"
     },
     {
-      "object": "constraint:private.course_sources/course_sources_role_v1[check]",
-      "caseId": "course-source-provenance"
-    },
-    {
-      "object": "constraint:private.course_sources/course_sources_status_v2[check]",
+      "object": "constraint:private.course_sources/course_sources_status_v3[check]",
       "caseId": "course-source-provenance"
     },
     {
@@ -816,6 +824,10 @@
     },
     {
       "object": "constraint:public.courses/courses_audit_set_version_v1[check]",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "constraint:public.courses/courses_bibliography_style_check[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1229,6 +1241,10 @@
     {
       "object": "function:private.valid_course_personal_state_v2(p_state jsonb)",
       "caseId": "study-course-experience"
+    },
+    {
+      "object": "function:private.valid_course_source_document_v3(v jsonb)",
+      "caseId": "course-source-provenance"
     },
     {
       "object": "function:private.valid_course_source_links_shape_v2(p_links jsonb)",
@@ -1800,6 +1816,10 @@
     },
     {
       "object": "index:private.course_source_attribution_sources/course_source_attribution_sources_pkey",
+      "caseId": "course-source-provenance"
+    },
+    {
+      "object": "index:private.course_source_attribution_sources/course_source_link_identity_v1",
       "caseId": "course-source-provenance"
     },
     {

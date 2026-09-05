@@ -6,6 +6,7 @@ import { CoursePersonalStateRepository, COURSE_PERSONAL_STATE_CACHE_CONTRACT } f
 
 import { CourseStudyRepository } from "../../src/study/CourseStudyRepository.js";
 import { CourseStudyBridge } from "../../src/study/CourseStudyBridge.js";
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 
 const COURSE_A = "10000000-0000-4000-8000-000000000001";
 const COURSE_B = "20000000-0000-4000-8000-000000000002";
@@ -1063,11 +1064,15 @@ test("citações são buscadas somente por Unidade carregada e vinculadas à rev
           });
         }
         return {
-          contract: "aralearn.course-study-citations.v1",
+          contract: "aralearn.course-study-citations.v2",
+          bibliographyStyle: "abnt-2025",
           courseId,
           courseRevision: 4,
           studyUnitId,
           citations: [{
+            linkId: "link-fonte-publica", kind: "document", authors: [], publicationDate: null,
+            identifier: null, language: null, bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+            citationMode: "manual", relation: "informed_by", roles: ["technical_conceptual"], occurrences: [],
             sourceId: "fonte-publica",
             sourceRevision: 1,
             attachments: [],
@@ -1077,7 +1082,7 @@ test("citações são buscadas somente por Unidade carregada e vinculadas à rev
             editionOrVersion: null,
             anchors: [{
               anchorId: "anchor-publica",
-              selector: { kind: "page_range", startPage: 8, endPage: 9 }
+              selector: { kind: "page_range", startPage: 8, endPage: 9 }, humanLocator: null, contentHash: null
             }]
           }]
         };

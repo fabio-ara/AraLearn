@@ -1,5 +1,34 @@
 # Alterações do schema
 
+## 20260905101903 — referências e vínculos contextuais
+
+O curso passa a definir o estilo das referências geradas. A fonte mantém sua
+identidade e conserva o texto manual separadamente dos metadados bibliográficos.
+Os nomes anteriormente informados em um campo único são preservados como nomes
+literais, sem deduzir sobrenomes, instituições ou autoria adicional.
+
+Os papéis efetivos pertencem a cada vínculo; o cadastro guarda somente sugestões
+para novos usos. A migração transporta os papéis conhecidos para os vínculos
+existentes e atribui identidades estáveis a esses usos. Uma obra pode aparecer
+mais de uma vez no mesmo item, com relações, localizadores e trechos diferentes.
+As âncoras podem identificar o arquivo lógico, independentemente da URL assinada.
+
+Edição e reorganização mantêm a atribuição; ocorrências textuais conservam a
+citação literal e seu contexto. A leitura resolve o trecho no catálogo de
+componentes e sinaliza ambiguidade. Retirar um arquivo conserva sua referência
+lógica; aposentar uma fonte mantém as citações já vinculadas. A exclusão de um
+alvo com referências exige resolução explícita desses vínculos.
+
+As leituras de fontes usam `aralearn.course-sources.v3`; as citações de Estudo
+usam `aralearn.course-study-citations.v2`. O escritor corrente, suas permissões,
+controle de revisão e recibos continuam sendo a única via de alteração. As
+colunas substituídas são removidas após a conversão dos dados úteis.
+
+Antes de aplicar, restaure um backup em ambiente isolado e ensaie a atualização
+com dados existentes. Os testes de upgrade e SQL verificam conservação,
+retentativa, conflitos, referências incompletas e permissões. O manifesto desta
+etapa é `20260905101903`; a aplicação local não certifica a migração hospedada.
+
 ## 20260905094108–20260905095110 — decisão histórica e aplicação corrente
 
 A preparação `20260905094108_normalize_applied_design_discriminator.sql`
@@ -24,7 +53,7 @@ constraint rejeita estados inválidos em vez de aceitar resultado SQL desconheci
 Não há novo histórico universal, coluna de conteúdo ou caminho alternativo.
 
 Antes do corte, mantenha backup privado com restauração ensaiada, confira a lista
-completa e a ordem das migrations e valide o manifesto final `20260905095110`.
+completa e a ordem das migrations e valide o manifesto dessa etapa `20260905095110`.
 Não remova a preparação nem marque uma migration como aplicada sem executá-la.
 
 No banco local, os testes focais de materialização e edição passaram 46

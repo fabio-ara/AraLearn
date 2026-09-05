@@ -163,14 +163,14 @@ const samples = {
     curso: "Redes para iniciantes",
     metadados: {
       tipo: "document",
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       titulo: "Manual do proxy"
     }
   },
   incorporar_pdf_como_fonte: {
     curso: "Redes para iniciantes",
     titulo: "Manual do proxy",
-    papel: "tecnica_conceitual",
+    papeisSugeridos: ["tecnica_conceitual"],
     intencao: "Manter o PDF como referência técnica do Curso.",
     [HUMAN_ACTION_FILE_FIELD]: ["file-reference"]
   }
@@ -208,7 +208,7 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.4.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.5.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -526,16 +526,16 @@ test("Actions não confunde bibliografia fornecida com conferência da fonte", (
   assert.equal(validate({
     curso: "Redes para iniciantes",
     metadados: {
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       titulo: "Computer Networking: A Top-Down Approach",
-      autoria: "James Kurose e Keith Ross",
+      autores: [{ sobrenome: "Kurose", nomes: "James" }, { sobrenome: "Ross", nomes: "Keith" }],
       edicaoOuVersao: "8ª edição"
     }
   }), true);
   assert.equal(validate({
     curso: "Redes para iniciantes",
     metadados: {
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       titulo: "Computer Networking: A Top-Down Approach",
       verificacao: "adotada_pelo_autor"
     }
@@ -570,7 +570,9 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
       default: { $ref: "#/components/responses/Error" }
     });
   }
-  assert.ok(openApiText.length < 40_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  // #302 acrescenta nomes estruturados, campos bibliográficos e ocorrências; o
+  // limite efetivo do editor continua abaixo de 96 mil caracteres formatados.
+  assert.ok(openApiText.length < 42_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 96_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
@@ -604,5 +606,26 @@ test("schemas compartilhados de Actions preservam integralmente os argumentos do
   for (const task of actionTools) {
     assert.deepEqual(constraints(operation(task.name).requestBody.content["application/json"].schema),
       constraints(task.inputSchema), task.name);
+  }
+});
+
+test('#302 Actions e MCP validam fontes estruturadas, papéis do vínculo e trecho sem status inventado',()=>{
+  const sample={curso:'Redes para iniciantes',estilo:'abnt-2025',fonte:1,
+    metadados:{titulo:null,tipo:'internal_document',modoCitacao:'gerada',autores:[{literal:'Instituição'}],
+      papeisSugeridos:['leitura_complementar'],bibliografia:{doi:'10.1000/exemplo',dataDeAcesso:'2026-09-05'}},
+    ancoras:[{seletor:{tipo:'paginas',paginaInicial:1,paginaFinal:2},hashDoPdf:'a'.repeat(64)}],
+    vinculos:[{unidade:1,vinculo:2,relacao:'quoted_from',papeis:['tecnica_conceitual'],ancoras:[1],
+      ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'Trecho literal'}]}]};
+  const schemas=[COURSE_HUMAN_TASKS.find(task=>task.name==='manter_fonte').inputSchema,
+    operation('manter_fonte').requestBody.content['application/json'].schema];
+  for(const schema of schemas){
+    const validate=new Ajv2020({strict:false}).compile(schema);
+    assert.equal(validate(sample),true,JSON.stringify(validate.errors));
+    const noRoles=structuredClone(sample);delete noRoles.vinculos[0].papeis;
+    assert.equal(validate(noRoles),false);
+    const inferredStatus=structuredClone(sample);inferredStatus.vinculos[0].ocorrencias[0].status='resolved';
+    assert.equal(validate(inferredStatus),false);
+    const legacy=structuredClone(sample);legacy.metadados.autoria='Nome não decomposto';
+    assert.equal(validate(legacy),false);
   }
 });

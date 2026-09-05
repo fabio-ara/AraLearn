@@ -144,7 +144,8 @@ function requestIdentity(value) {
   return value;
 }
 
-function courseSourceCommandSubjectId(command) {
+function courseSourceCommandSubjectId(command, courseId) {
+  if (command.type === "set_bibliography_style") return courseId;
   return command.type === "save_source" || command.type === "retire_source" ||
     command.type === "remove_pdf"
     ? command.sourceId
@@ -1352,7 +1353,7 @@ export class CourseApiClient {
         result.courseRevision !== expectedRevision + (result.changed ? 1 : 0) ||
         result.change != null && (
           result.change.type !== sourceCommand.type ||
-          result.change.subjectId !== courseSourceCommandSubjectId(sourceCommand)
+          result.change.subjectId !== courseSourceCommandSubjectId(sourceCommand, source.courseId)
         )) {
       throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
     }

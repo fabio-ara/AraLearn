@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 
 import { runPsql } from "../helpers/runPsql.mjs";
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 
 const databaseUrl = String(process.env.ARALEARN_TEST_DATABASE_URL || "").trim();
 const nativePsqlAvailable = spawnSync("psql", ["--version"], {
@@ -414,9 +415,11 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
         jsonb_build_object(
           'mode','save','sourceId','source-lock','expectedSourceRevision',0,
           'source',jsonb_build_object(
-            'kind','document','sourceRole','technical_conceptual',
+            'kind','document','defaultRoles','["technical_conceptual"]'::jsonb,
             'title','Fonte do lock de PDF',
-            'authorship',null,'publicationDate',null,'identifier',null,
+            'authors','[]'::jsonb,'citationMode','manual',
+            'bibliographic','${JSON.stringify(createEmptyCourseSourceBibliographicMetadata())}'::jsonb,
+            'publicationDate',null,'identifier',null,
             'language',null,'citationText',null,'url',null,
             'editionOrVersion',null,'origin','author_provided',
             'availability','private','verificationStatus','unverified',

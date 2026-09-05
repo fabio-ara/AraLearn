@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   COURSE_SOURCE_ROLES,
+  createEmptyCourseSourceBibliographicMetadata,
   CourseSourcesError,
   normalizeCourseSourceAttachment,
   normalizeCourseSourcePdfDownload,
@@ -32,9 +33,12 @@ function anchor(anchorId = "anchor-a") {
 
 function sourceLink(overrides = {}) {
   return {
+    linkId: "link-a",
     sourceId: "source-a",
     relation: "supported_by",
+    roles: ["technical_conceptual"],
     anchors: [anchor()],
+    occurrences: [],
     ...overrides
   };
 }
@@ -52,10 +56,12 @@ function attachment(overrides = {}) {
 
 function sourceDocument(overrides = {}) {
   return {
-    sourceRole: "technical_conceptual",
+    defaultRoles: ["technical_conceptual"],
     kind: "article",
     title: "Artigo de referência",
-    authorship: "Autoria",
+    authors: [{ literal: "Autoria" }],
+    citationMode: "manual",
+    bibliographic: createEmptyCourseSourceBibliographicMetadata(),
     publicationDate: "2026-08",
     identifier: "doi:10.0000/exemplo",
     language: "pt-BR",
@@ -72,23 +78,23 @@ function sourceDocument(overrides = {}) {
 
 test("papel da fonte é distinto da relação de proveniência", () => {
   assert.deepEqual(COURSE_SOURCE_ROLES, [
-    "curricular_scope", "assessment_evidence", "technical_conceptual"
+    "curricular_scope", "assessment_evidence", "technical_conceptual", "recommended_reading"
   ]);
   for (const sourceRole of COURSE_SOURCE_ROLES) {
     const normalized = normalizeCourseSourceCommand({
       type: "save_source",
       sourceId: `source-${sourceRole}`,
       expectedSourceRevision: 0,
-      source: sourceDocument({ sourceRole })
+      source: sourceDocument({ defaultRoles: [sourceRole] })
     });
-    assert.equal(normalized.source.sourceRole, sourceRole);
+    assert.deepEqual(normalized.source.defaultRoles, [sourceRole]);
     assert.equal(sourceLink().relation, "supported_by");
   }
   assert.throws(() => normalizeCourseSourceCommand({
     type: "save_source",
     sourceId: "source-invalid-role",
     expectedSourceRevision: 0,
-    source: sourceDocument({ sourceRole: "supported_by" })
+    source: sourceDocument({ defaultRoles: ["supported_by"] })
   }), (error) => error.code === "invalid_course_source");
 });
 
@@ -108,7 +114,7 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     sourceId: null,
     expectedSourceRevision: 0,
     source: sourceDocument({
-      authorship: null,
+      authors: [],
       publicationDate: null,
       identifier: null,
       language: null,
@@ -127,16 +133,18 @@ test("ingestão de PDF fecha intenção bibliográfica, preparação e resultado
     mode: "save",
     sourceId: null,
     expectedSourceRevision: 0,
-    source: { title: "Edital Dataprev 2026", sourceRole: "curricular_scope" }
+    source: { title: "Edital Dataprev 2026", defaultRoles: ["curricular_scope"] }
   }), {
     mode: "save",
     sourceId: null,
     expectedSourceRevision: 0,
     source: {
       kind: "document",
-      sourceRole: "curricular_scope",
+      citationMode: "manual",
+      bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      defaultRoles: ["curricular_scope"],
       title: "Edital Dataprev 2026",
-      authorship: null,
+      authors: [],
       publicationDate: null,
       identifier: null,
       language: null,
@@ -376,7 +384,7 @@ test("metadados estruturados aceitam precisão declarada e rejeitam valores inve
     kind: "document",
     citationText: "Material de síntese fornecido pela pessoa autora; não publicado.",
     overrides: {
-      authorship: null,
+      authors: [],
       publicationDate: null,
       identifier: null,
       url: null,
@@ -387,7 +395,7 @@ test("metadados estruturados aceitam precisão declarada e rejeitam valores inve
     kind: "media",
     citationText: "Imagem sem autoria ou data declaradas, fornecida pela pessoa autora.",
     overrides: {
-      authorship: null,
+      authors: [],
       publicationDate: null,
       identifier: null,
       url: null,
@@ -467,6 +475,7 @@ test("metadados estruturados aceitam precisão declarada e rejeitam valores inve
 
   const locatedAnchor = normalizeCourseSourceCommand({
     type: "save_anchor",
+    contentHash: null,
     anchorId: "anchor-human-locator",
     sourceId: "source-book",
     sourceRevision: 1,
@@ -519,11 +528,13 @@ test("limites textuais de Fontes contam escalares Unicode e preservam o teto em 
 
   const anchorCommand = ({ exact, verificationExcerpt }) => ({
     type: "save_anchor",
+    contentHash: null,
     anchorId: "anchor-unicode",
     sourceId: "source-unicode",
     sourceRevision: 1,
     expectedAnchorRevision: 0,
     selector: { kind: "text_quote", exact, prefix: null, suffix: null },
+    humanLocator: null,
     verificationExcerpt
   });
   assert.deepEqual(
@@ -607,28 +618,32 @@ test("controles de layout seguem a mesma semântica textual do SQL", () => {
   );
   assert.equal(normalizeCourseSourceCommand({
     type: "save_anchor",
+    contentHash: null,
     anchorId: "anchor-controls",
     sourceId: "source-controls",
     sourceRevision: 1,
     expectedAnchorRevision: 0,
     selector: { kind: "page_range", startPage: 1, endPage: 1 },
+    humanLocator: null,
     verificationExcerpt: " \ttrecho\r\nconferido "
   }).verificationExcerpt, " \ttrecho\r\nconferido ");
   assert.throws(
     () => normalizeCourseSourceCommand({
       type: "save_anchor",
+      contentHash: null,
       anchorId: "anchor-controls",
       sourceId: "source-controls",
       sourceRevision: 1,
       expectedAnchorRevision: 0,
       selector: { kind: "page_range", startPage: 1, endPage: 1 },
+      humanLocator: null,
       verificationExcerpt: "trecho\u0001inválido"
     }),
     (error) => error.code === "invalid_course_source_command"
   );
 });
 
-test("vínculos exigem Âncora salvo quando aguardam verificação", () => {
+test("referência à obra inteira dispensa Âncora; citação direta exige localização", () => {
   assert.deepEqual(normalizeCourseSourceLinks([sourceLink()]), [sourceLink()]);
   assert.throws(
     () => normalizeCourseSourceLinks([{ ...sourceLink(), sourceRevision: 1 }]),
@@ -641,10 +656,7 @@ test("vínculos exigem Âncora salvo quando aguardam verificação", () => {
     }]),
     (error) => error.code === "invalid_course_source_link"
   );
-  assert.throws(
-    () => normalizeCourseSourceLinks([sourceLink({ anchors: [] })]),
-    (error) => error.code === "invalid_course_source_link"
-  );
+  assert.deepEqual(normalizeCourseSourceLinks([sourceLink({ anchors: [] })]), [sourceLink({ anchors: [] })]);
   assert.throws(
     () => normalizeCourseSourceLinks([sourceLink(), sourceLink()]),
     (error) => error.code === "duplicate_course_source_link"
@@ -697,7 +709,8 @@ test("mudança de proveniência confirma a versão do alvo sem contador paralelo
 test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () => {
   const createdAt = "2026-08-17T12:00:00.000Z";
   const catalog = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: IDS.course,
     courseRevision: 2,
     mode: "catalog",
@@ -708,9 +721,11 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       revision: 1,
       status: "active",
       kind: "other",
-      sourceRole: null,
+      citationMode: "manual",
+      bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      defaultRoles: [],
       title: "Referência importada",
-      authorship: null,
+      authors: [],
       publicationDate: null,
       identifier: null,
       language: null,
@@ -761,9 +776,11 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       revision: 105,
       status: "active",
       kind: "document",
-      sourceRole: "assessment_evidence",
+      citationMode: "manual",
+      bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      defaultRoles: ["assessment_evidence"],
       title: "Fonte pinada",
-      authorship: "Autoria",
+      authors: [{ literal: "Autoria" }],
       publicationDate: "2026",
       identifier: null,
       language: "pt-BR",
@@ -782,6 +799,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
         revision: 1,
         sourceRevision: 105,
         status: "active",
+        contentHash: null,
         selector: { kind: "page_range", startPage: 3, endPage: 4 },
         humanLocator: null,
         verificationExcerpt: null,
@@ -816,11 +834,16 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
   );
 
   const citations = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: IDS.course,
     courseRevision: 2,
     studyUnitId: "study-a",
     citations: [{
+      linkId: "link-a", kind: "article", authors: [], publicationDate: null,
+      identifier: null, language: null, citationMode: "manual",
+      bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      relation: "supported_by", roles: ["technical_conceptual"], occurrences: [],
       sourceId: "source-a",
       sourceRevision: 1,
       attachments: [],
@@ -831,6 +854,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
       anchors: [{
         anchorId: "anchor-a",
         selector: { kind: "page_range", startPage: 3, endPage: 4 },
+        contentHash: null,
         humanLocator: "Capítulo 1 · Tabela 2"
       }]
     }]
@@ -838,7 +862,7 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
   assert.deepEqual(normalizeCourseStudyCitationsRead(citations), citations);
   const legacyCitations = {
     ...citations,
-    citations: Array.from({ length: 128 }, () => citations.citations[0])
+    citations: Array.from({ length: 128 }, (_, index) => ({ ...citations.citations[0], linkId: `link-${index}` }))
   };
   assert.equal(
     normalizeCourseStudyCitationsRead(legacyCitations).citations.length,

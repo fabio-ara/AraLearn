@@ -5054,19 +5054,20 @@ button.account-settings-back[hidden] {
   font-weight: 800;
 }
 
-.card-sheet-content .study-citations-panel > header {
+.study-citations-panel > header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--tap);
+  grid-template-columns: var(--tap) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 
-.card-sheet-content .study-citations-panel > header > h2 {
+.study-citations-panel > header > h2 {
   min-width: 0;
   margin: 0;
+  font-size: var(--type-md);
 }
 
-.card-sheet-content .study-citations-panel > header > .icon-ghost {
+.study-citations-panel > header > .icon-ghost {
   width: var(--tap);
   min-width: var(--tap);
   height: var(--tap);
@@ -5074,6 +5075,52 @@ button.account-settings-back[hidden] {
   padding: 0;
   border-radius: var(--radius-control);
 }
+
+.study-citations-overlay {
+  z-index: 90;
+  padding: max(8px, var(--safe-top)) max(8px, var(--safe-right)) max(8px, var(--safe-bottom)) max(8px, var(--safe-left));
+}
+
+.study-citations-panel {
+  width: min(100%, 680px);
+  max-height: calc(100dvh - 24px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.study-citations-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  padding: 8px 12px 18px;
+}
+
+.study-citation-list {
+  margin: 0;
+  padding-inline-start: 1.5em;
+}
+
+.study-citation-list > li { padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+.study-citation-list > li + li { margin-top: 24px; }
+.study-citation-list h3 { margin: 0 0 8px; font-size: 1rem; }
+.study-citation-reference { line-height: 1.65; margin-block: 8px; }
+.study-citation-quote { margin: 8px 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--border-default); white-space: pre-wrap; }
+.study-citation-roles, .study-citations-status { color: var(--text-secondary); font-size: .88rem; line-height: 1.5; }
+.study-citations-status.is-error { color: var(--status-danger); }
+.study-citation-locations { padding-inline-start: 1.2em; }
+.study-citation-locations > li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-block: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.study-citation-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.study-citation-actions a, .study-citation-download { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
+.study-citation-download { padding: 6px 10px; margin: 4px; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-subtle); color: var(--text-primary); font: inherit; cursor: pointer; }
+.source-marker-group { display: inline-flex; flex-wrap: wrap; align-items: center; vertical-align: baseline; gap: 2px; }
+.source-marker { min-width: 44px; min-height: 44px; padding: 4px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--action-primary); font-size: .8rem; cursor: pointer; }
+.source-marker sup { font-size: inherit; font-weight: 700; }
+.source-marker:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 1px; }
+.source-marker:hover { background: var(--action-secondary-hover); }
 
 @media (max-width: 390px) {
   .study-observation-overlay {

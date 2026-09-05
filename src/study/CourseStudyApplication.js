@@ -12,6 +12,9 @@ import {
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { publicErrorMessage } from "../ui/publicErrorMessage.js";
+import { courseSourceOccurrenceTextTargets, resolveCourseSourceOccurrences } from "../domain/courseSourceOccurrences.js";
+import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
+import { placeStudyCitationMarkers, renderStudyCitations } from "./studyCitations.js";
 import {
   activateManualStudyUnitEdit,
   applyManualStudyUnitEdit,
@@ -160,6 +163,12 @@ export function createCourseStudyApplication({
     citationsError: "",
     citationDownloadPending: false,
     citationDownloadError: "",
+    citationsReferenceKey: "",
+    selectedCitationLinkId: "",
+    selectedCitationOccurrenceId: "",
+    formattedReferences: {},
+    citationReturnState: null,
+    citationReturnFocus: null,
     manualEditing: false,
     manualTargetId: "",
     manualDraft: { pathValues: {} },
@@ -202,18 +211,75 @@ export function createCourseStudyApplication({
   let providerAssistance = null;
   let destroyed = false;
   let synchronizationState = {};
+  let studyRenderGeneration = 0;
+  const citationMarkerBindings = new WeakSet();
 
   function setHomeNotice(message, reviewUndo = null) {
     state.homeNotice = message;
     state.reviewUndo = reviewUndo;
   }
 
-  function revealStudyCitations() {
-    const content = root.querySelector?.(".card-sheet-content");
-    const panel = content?.querySelector?.(".study-citations-panel");
-    if (!content || !panel) return;
-    content.scrollTop += panel.getBoundingClientRect().top -
-      content.getBoundingClientRect().top;
+  function updateCitationsOverlay({ focus = false } = {}) {
+    const existing = root.querySelector(".study-citations-overlay");
+    const previousFocus = existing?.contains(root.ownerDocument.activeElement) ? currentStudyFocusTarget() : null;
+    const scrollTop = existing?.querySelector(".study-citations-body")?.scrollTop || 0;
+    existing?.remove();
+    const screen = root.querySelector(".app-shell > .screen");
+    if (screen) {
+      screen.inert = state.citationsOpen || state.observationSheetOpen;
+      if (screen.inert) screen.setAttribute("aria-hidden", "true");
+      else screen.removeAttribute("aria-hidden");
+    }
+    root.querySelector(".study-citations-btn")?.setAttribute("aria-expanded", String(state.citationsOpen));
+    if (!state.citationsOpen) return;
+    root.querySelector(".app-shell")?.insertAdjacentHTML("beforeend", renderStudyCitations({
+      open: true, loading: state.citationsLoading, value: state.citations, error: state.citationsError,
+      courseId: state.selection.courseId, canAuthorSources: coursePermission().ownership === "owned" && coursePermission().canEdit === true,
+      downloadPending: state.citationDownloadPending, downloadError: state.citationDownloadError,
+      selectedLinkId: state.selectedCitationLinkId, selectedOccurrenceId: state.selectedCitationOccurrenceId,
+      formattedReferences: state.formattedReferences, studyUnit: context().studyUnit
+    }));
+    const overlay = root.querySelector(".study-citations-overlay");
+    if (!overlay) return;
+    overlay.querySelector(".study-citations-body").scrollTop = scrollTop;
+    overlay.querySelector("[data-action='toggle-citations']")?.addEventListener("click", closeCitations);
+    overlay.querySelector("[data-action='retry-citations']")?.addEventListener("click", () => void loadStudyCitations({ retry: true }));
+    overlay.querySelectorAll("[data-action='download-citation-attachment']").forEach(node =>
+      node.addEventListener("click", () => void downloadCitationAttachment(node)));
+    overlay.addEventListener("click", event => { if (event.target === overlay) closeCitations(); });
+    overlay.addEventListener("keydown", event => {
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeCitations(); return; }
+      if (event.key !== "Tab") return;
+      const buttons = [...overlay.querySelectorAll("button:not([disabled]), a[href]")];
+      const first = buttons[0]; const last = buttons.at(-1);
+      if (event.shiftKey && root.ownerDocument.activeElement === first) {
+        event.preventDefault(); last?.focus({ preventScroll: true });
+      } else if (!event.shiftKey && root.ownerDocument.activeElement === last) {
+        event.preventDefault(); first?.focus({ preventScroll: true });
+      }
+    });
+    if (focus) overlay.querySelector("[aria-label='Fechar fontes']")?.focus({ preventScroll: true });
+    else if (previousFocus) focusStudyTarget(previousFocus);
+  }
+
+  function closeCitations() {
+    if (!state.citationsOpen) return false;
+    state.citationsOpen = false;
+    updateCitationsOverlay();
+    restoreRenderState(root, state.citationReturnState, { restoreFocus: false });
+    focusStudyTarget(state.citationReturnFocus || { selector: ".study-citations-btn", attributes: {} });
+    return true;
+  }
+
+  function bindCitationMarkers() {
+    root.querySelectorAll("[data-action='open-citation']").forEach(node => {
+      if (citationMarkerBindings.has(node)) return;
+      citationMarkerBindings.add(node);
+      node.addEventListener("click", event => {
+        event.preventDefault(); event.stopPropagation();
+        void toggleCitations(node);
+      });
+    });
   }
 
   function navigationSnapshot() {
@@ -486,6 +552,8 @@ export function createCourseStudyApplication({
         ? { [entry.blockKey]: responseState }
         : {},
       activeTextGapPrompt: state.activeGapPrompt,
+      sourceTextTargets: courseSourceOccurrenceTextTargets(context().studyUnit,
+        (state.citations?.citations || []).flatMap(citation => citation.occurrences || [])),
       exerciseShuffleSeed: `${studyUnitPathKey(state.selection)}::study`
     };
   }
@@ -498,6 +566,12 @@ export function createCourseStudyApplication({
     state.citationsError = "";
     state.citationDownloadPending = false;
     state.citationDownloadError = "";
+    state.citationsReferenceKey = "";
+    state.selectedCitationLinkId = "";
+    state.selectedCitationOccurrenceId = "";
+    state.formattedReferences = {};
+    state.citationReturnState = null;
+    state.citationReturnFocus = null;
   }
 
   function resetObservationSheet() {
@@ -601,37 +675,58 @@ export function createCourseStudyApplication({
     return true;
   }
 
-  async function toggleCitations() {
+  async function toggleCitations(node = null) {
+    if (state.citationsOpen) return closeCitations();
     const reference = canonicalReference(state.selection);
     if (!reference || typeof repository.loadStudyUnitCitations !== "function") return false;
-    if (state.citationsOpen) {
-      state.citationsOpen = false;
-      queueStudyFocus(".study-citations-btn");
-      render({ preserveFocus: false });
-      return true;
-    }
+    state.selectedCitationLinkId = node?.dataset?.citationLinkId || "";
+    state.selectedCitationOccurrenceId = node?.dataset?.citationOccurrenceId || "";
+    state.citationReturnState = captureRenderState(root);
+    state.citationReturnFocus = node?.dataset?.citationLinkId ? {
+      selector: "[data-action='open-citation']", attributes: {
+        "data-citation-link-id": node.dataset.citationLinkId,
+        "data-citation-occurrence-id": node.dataset.citationOccurrenceId || ""
+      }
+    } : currentStudyFocusTarget();
     state.citationsOpen = true;
-    queueStudyFocus("[aria-label='Fechar fontes']");
-    if (state.citations) {
-      render({ preserveFocus: false });
-      revealStudyCitations();
-      return true;
-    }
+    state.citationDownloadError = "";
+    updateCitationsOverlay({ focus: true });
+    await loadStudyCitations();
+    return true;
+  }
+
+  async function loadStudyCitations({ retry = false } = {}) {
+    const reference = canonicalReference(state.selection);
+    if (!reference || destroyed || !root.querySelector(".study-reader-screen") ||
+        typeof repository.loadStudyUnitCitations !== "function") return false;
+    const key = studyUnitPathKey(state.selection);
+    if (!retry && state.citationsReferenceKey === key) return true;
     const epoch = ++citationsEpoch;
+    state.citationsReferenceKey = key;
     state.citationsLoading = true;
     state.citationsError = "";
-    render({ preserveFocus: false });
-    revealStudyCitations();
+    updateCitationsOverlay();
     try {
       const result = await repository.loadStudyUnitCitations(reference);
-      if (epoch !== citationsEpoch) return false;
-      state.citations = result;
+      if (epoch !== citationsEpoch || destroyed) return false;
+      state.citations = { ...result, citations: result.citations.map(citation => ({
+        ...citation, occurrences: resolveCourseSourceOccurrences(context().studyUnit,
+          (citation.occurrences || []).map(occurrence => Object.fromEntries(
+            Object.entries(occurrence).filter(([field]) => field !== "status"))))
+      })) };
+      state.citationsLoading = false;
+      render();
+      const formatted = await Promise.all(state.citations.citations.map(async citation => {
+        try { return [citation.linkId, await formatCourseSourceReference(citation, { style: result.bibliographyStyle })]; }
+        catch { return [citation.linkId, { text: citation.citationMode === "manual" ? citation.citationText : "Não foi possível preparar esta referência. Consulte a fonte.", runs: [] }]; }
+      }));
+      if (epoch !== citationsEpoch || destroyed) return false;
+      state.formattedReferences = Object.fromEntries(formatted);
+      updateCitationsOverlay();
       return true;
     } catch (error) {
-      if (epoch !== citationsEpoch) return false;
-      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) {
-        return false;
-      }
+      if (epoch !== citationsEpoch || destroyed) return false;
+      if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
       const code = String(error?.code || "").toLowerCase();
       state.citationsError = code === "course_revision_changed"
         ? "O curso mudou. Reabra esta unidade de estudo para consultar as fontes atuais."
@@ -640,10 +735,9 @@ export function createCourseStudyApplication({
           : "Não foi possível consultar as fontes desta unidade de estudo.";
       return false;
     } finally {
-      if (epoch === citationsEpoch) {
+      if (epoch === citationsEpoch && !destroyed) {
         state.citationsLoading = false;
-        render();
-        revealStudyCitations();
+        updateCitationsOverlay();
       }
     }
   }
@@ -661,7 +755,7 @@ export function createCourseStudyApplication({
     const epoch = citationsEpoch;
     state.citationDownloadPending = true;
     state.citationDownloadError = "";
-    render();
+    updateCitationsOverlay();
     try {
       const result = await repository.getStudyCitationAttachmentDownload(canonicalReference(state.selection), {
         courseRevision: state.citations.courseRevision, sourceId: citation.sourceId,
@@ -671,6 +765,8 @@ export function createCourseStudyApplication({
       const url = new URL(result.signedUrl);
       const localHttp = url.protocol === "http:" && ["127.0.0.1", "localhost", "10.0.2.2"].includes(url.hostname);
       if (url.protocol !== "https:" && !localHttp || url.username || url.password) throw new TypeError("URL do PDF inválida.");
+      const page = Number(node.dataset.citationPage);
+      if (Number.isSafeInteger(page) && page > 0 && page <= 1_000_000) url.hash = `page=${page}`;
       downloadCitationPdf(url.href, attachment);
       return true;
     } catch (error) {
@@ -683,7 +779,7 @@ export function createCourseStudyApplication({
     } finally {
       if (epoch === citationsEpoch && !destroyed) {
         state.citationDownloadPending = false;
-        render();
+        updateCitationsOverlay();
       }
     }
   }
@@ -1189,7 +1285,7 @@ export function createCourseStudyApplication({
     state.manualStatus = status;
     state.manualRestoreFocus = restoreFocus;
     state.feedbackOpen = false;
-    resetCitations();
+    if (state.citationsOpen) closeCitations();
     queueStudyFocus("[data-action='study-manual-edit']");
     render({ preserveFocus: false, captureDraft: false });
     return true;
@@ -2708,16 +2804,7 @@ export function createCourseStudyApplication({
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
     root.querySelectorAll("[data-action='toggle-citations']").forEach((node) =>
       node.addEventListener("click", () => void toggleCitations()));
-    root.querySelectorAll("[data-action='download-citation-attachment']").forEach((node) =>
-      node.addEventListener("click", () => void downloadCitationAttachment(node)));
-    root.querySelector("[data-action='retry-citations']")?.addEventListener(
-      "click",
-      () => {
-        state.citations = null;
-        state.citationsOpen = false;
-        void toggleCitations();
-      }
-    );
+    bindCitationMarkers();
 
     root.querySelector(".study-reader-screen")?.addEventListener("click", (event) => {
       if (!state.feedbackOpen || typeof event.target?.closest !== "function") return;
@@ -2812,6 +2899,7 @@ export function createCourseStudyApplication({
   }
 
   function render({ preserveFocus = true, captureDraft = true } = {}) {
+    const generation = ++studyRenderGeneration;
     if (captureDraft) captureManualDraft();
     const pendingStudyFocus = state.pendingStudyFocus;
     state.pendingStudyFocus = null;
@@ -2995,7 +3083,11 @@ export function createCourseStudyApplication({
     onViewChange(state.view);
     syncAccountControl();
     bindActions();
+    updateCitationsOverlay();
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
+      if (generation !== studyRenderGeneration || destroyed) return;
+      placeStudyCitationMarkers(root, context().studyUnit, state.citations);
+      bindCitationMarkers();
       activateManualEditing();
       bindResponseInteraction(root);
     }).catch((error) => {
@@ -3011,6 +3103,7 @@ export function createCourseStudyApplication({
       });
     }
     focusStudyTarget(pendingStudyFocus);
+    void loadStudyCitations();
   }
 
   render({ preserveFocus: false });

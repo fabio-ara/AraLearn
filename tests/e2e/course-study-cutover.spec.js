@@ -220,11 +220,17 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
       isStudyUnitMarkedForReview: () => false,
       loadRuntimeStatus: () => ({ offline: false, stale: false, readOnly: false }),
       loadStudyUnitCitations: async (reference) => ({
-        contract: "aralearn.course-study-citations.v1",
+        contract: "aralearn.course-study-citations.v2",
+        bibliographyStyle: "abnt-2025",
         courseId: reference.courseId,
         courseRevision: 1,
         studyUnitId: reference.studyUnitId,
         citations: [{
+          linkId: "vinculo-exclusivo-a", sourceRevision: 1, kind: "document",
+          authors: [], publicationDate: null, identifier: null, language: null,
+          bibliographic: (await import("/src/domain/courseSources.js")).createEmptyCourseSourceBibliographicMetadata(),
+          citationMode: "manual", relation: "informed_by", roles: ["recommended_reading"],
+          occurrences: [], attachments: [],
           sourceId: "fonte-exclusiva-a",
           title: "Fonte exclusiva do Curso anterior",
           citationText: "Fonte exibida apenas para comprovar o isolamento entre Cursos.",
@@ -547,8 +553,10 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
           });
         }
         const revisedProjection = state.citationRevision === 5;
+        const { createEmptyCourseSourceBibliographicMetadata } = await import("/src/domain/courseSources.js");
         return {
-          contract: "aralearn.course-study-citations.v1",
+          contract: "aralearn.course-study-citations.v2",
+          bibliographyStyle: "abnt-2025",
           courseId: reference.courseId,
           courseRevision: state.citationRevision,
           studyUnitId: reference.studyUnitId,
@@ -581,7 +589,13 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
             url: null,
             editionOrVersion: null,
             anchors: []
-          }))]
+          }))].map((source) => ({
+            ...source, linkId: `link-${source.sourceId}`, sourceRevision: 1, kind: "document",
+            authors: [], publicationDate: null, identifier: null, language: null,
+            bibliographic: createEmptyCourseSourceBibliographicMetadata(), citationMode: "manual",
+            relation: "informed_by", roles: ["technical_conceptual"], occurrences: [], attachments: [],
+            anchors: source.anchors.map((anchor) => ({ ...anchor, contentHash: null }))
+          }))
         };
       },
       loadAnnotationsForPath: (reference) => structuredClone(annotationItems(reference)),
@@ -705,7 +719,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.loadedCourses.length)).toBe(1);
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toBeVisible();
 
-  expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads)).toEqual([]);
+  await expect.poll(() => page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.locator("[data-action='toggle-citations']").click();
   await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
   await expect(page.getByText("Fonte somente citada", { exact: true })).toBeVisible();
@@ -723,19 +737,21 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeInViewport();
   await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeInViewport();
   expect(await page.locator(".study-citations-panel").evaluate((panel) =>
-    panel.parentElement?.classList.contains("card-sheet-content"))).toBe(true);
+    panel.parentElement?.classList.contains("study-citations-overlay"))).toBe(true);
+  await expect(page.getByRole("dialog", { name: "Fontes", exact: true })).toBeVisible();
+  expect(await page.locator(".app-shell > .screen").evaluate((screen) => screen.inert)).toBe(true);
   expect(await page.evaluate(() => ({
     documentFits: document.documentElement.scrollHeight <= innerHeight + 1,
     outerScrollable: document.querySelector(".microsequence-generator-screen").scrollHeight >
       document.querySelector(".microsequence-generator-screen").clientHeight + 1,
     contentOverflowY: getComputedStyle(document.querySelector(".card-sheet-content")).overflowY
   }))).toEqual({ documentFits: true, outerScrollable: false, contentOverflowY: "auto" });
-  await page.locator(".card-sheet-content").evaluate((content) => {
+  await page.locator(".study-citations-body").evaluate((content) => {
     content.scrollTop = content.scrollHeight;
   });
   await expect(page.getByText("Fonte extensa 18", { exact: true })).toBeInViewport();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fontes", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Fontes", exact: true }).click();
   await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();

@@ -59,3 +59,6 @@ Configuração do Supabase, banco local, testes, estrutura do código e desenvol
 ## Licença
 
 O código-fonte é distribuído nos termos de [`LICENSE.md`](LICENSE.md).
+Componentes de terceiros preservam suas próprias licenças; os
+[avisos do motor bibliográfico e dos estilos](public/vendor/bibliography/NOTICE.txt)
+identificam o código sob CPAL 1.0 e os estilos sob CC BY-SA 3.0.

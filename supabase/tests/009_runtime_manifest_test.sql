@@ -5,7 +5,7 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260905095110','o manifesto identifica o catálogo de componentes gerado atual');
+  '20260905101903','o manifesto identifica as fontes contextuais atuais');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),44,

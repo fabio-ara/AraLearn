@@ -11,7 +11,7 @@ import {
   renderHomeScreen,
   renderRuntimeStatusControl
 } from "../ui/renderHomeScreen.js";
-import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
+import { renderStudySourceMarkers, studyCitationMarkers } from "./studyCitations.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 
 function escapeHtml(value) {
@@ -513,77 +513,6 @@ function renderMicrosequenceOverview(
     renderAssistanceDraftDock(assistance, "didactic_microsequence") + "</main></section>";
 }
 
-function citationSelectorLabel(selector) {
-  if (selector.kind === "page_range") {
-    return selector.startPage === selector.endPage
-      ? `p. ${selector.startPage}`
-      : `pp. ${selector.startPage}–${selector.endPage}`;
-  }
-  if (selector.kind === "time_range") {
-    return `${selector.startMilliseconds / 1_000}–${selector.endMilliseconds / 1_000} s`;
-  }
-  if (selector.kind === "uri_fragment") return `trecho #${selector.fragment}`;
-  return `“${selector.exact}”`;
-}
-
-function citationAnchorLabel(anchor) {
-  const exact = citationSelectorLabel(anchor.selector);
-  return anchor.humanLocator ? `${anchor.humanLocator} · ${exact}` : exact;
-}
-
-function renderStudyCitations({ open, loading, value, error, courseId, canAuthorSources, downloadPending, downloadError }) {
-  if (!open) return "";
-  let content;
-  if (loading) {
-    content = '<p class="study-citations-status" role="status">Carregando fontes…</p>';
-  } else if (error) {
-    content = `<p class="study-citations-status is-error" role="alert">${escapeHtml(error)}</p>` +
-      '<button type="button" data-action="retry-citations">Tentar novamente</button>';
-  } else if (!value?.citations?.length) {
-    content = '<p class="study-citations-status">Nenhuma fonte.</p>';
-  } else {
-    content = '<ol class="study-citation-list">' + value.citations.map((citation, citationIndex) =>
-      '<li><article><h3>' + escapeHtml(citation.title) + "</h3>" +
-      `<p class="study-citation-reference">${escapeHtml(citation.citationText)}</p>` +
-      (citation.editionOrVersion
-        ? `<small>${escapeHtml(citation.editionOrVersion)}</small>`
-        : "") +
-      `<small>${citation.url ? "Link externo disponível" : "Referência sem link público"}</small>` +
-      (citation.anchors.length
-        ? `<ul>${citation.anchors.map((anchor) =>
-            `<li><span>${escapeHtml(citationAnchorLabel(anchor))}</span>` +
-            (canAuthorSources
-              ? `<a href="${escapeHtml(buildCourseAuthoringRoute(courseId, {
-                  section: "sources",
-                  sourceId: citation.sourceId,
-                  anchorId: anchor.anchorId
-                }))}" data-study-source-return aria-label="Revisar esta âncora">Revisar</a>`
-              : "") + "</li>").join("")}</ul>`
-        : "") +
-      (citation.url
-        ? `<a href="${escapeHtml(citation.url)}" target="_blank" rel="noreferrer">Abrir fonte</a>`
-        : "") +
-      (citation.attachments || []).map((_attachment, attachmentIndex) =>
-        '<button class="icon-ghost study-citation-download" type="button" data-action="download-citation-attachment"' +
-        ` data-citation-index="${citationIndex}" data-attachment-index="${attachmentIndex}"` +
-        ` aria-label="Baixar PDF ${attachmentIndex + 1} de ${escapeHtml(citation.title)}" title="Baixar PDF ${attachmentIndex + 1}"${downloadPending ? " disabled" : ""}>` +
-        renderUiIcon("download", "home-tab-icon") + '</button>'
-      ).join("") +
-      (canAuthorSources
-        ? `<a href="${escapeHtml(buildCourseAuthoringRoute(courseId, {
-            section: "sources", sourceId: citation.sourceId
-          }))}" data-study-source-return>Revisar fonte no curso</a>`
-        : "") + "</article></li>").join("") + "</ol>";
-  }
-  return '<section class="study-citations-panel" aria-labelledby="study-citations-title">' +
-    '<header><h2 id="study-citations-title">Fontes</h2>' +
-    '<button class="icon-ghost" type="button" data-action="toggle-citations"' +
-    ' aria-label="Fechar fontes" title="Fechar fontes">' +
-    renderUiIcon("remove-state", "home-tab-icon") + "</button></header>" + content +
-    (downloadPending ? '<p class="study-citations-status" role="status">Preparando PDF…</p>' : "") +
-    (downloadError ? `<p class="study-citations-status is-error" role="alert">${escapeHtml(downloadError)}</p>` : "") + "</section>";
-}
-
 function renderStudyManualTitle(studyUnit, manualEditor) {
   if (!manualEditor.editing) {
     return `<div class="runtime-card-title">${escapeHtml(studyUnit.title || "Unidade de estudo")}</div>`;
@@ -656,12 +585,7 @@ function renderStudyUnit({
   markedForReview,
   runtimeStatus,
   citationsOpen,
-  citationsLoading,
   citations,
-  citationsError,
-  citationDownloadPending,
-  citationDownloadError,
-  canAuthorSources,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   const units = microsequence.studyUnits || [];
@@ -730,16 +654,8 @@ function renderStudyUnit({
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     '<div class="runtime-card-rendered-content"><div class="card-sheet-content">' +
-    renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml + renderStudyCitations({
-      open: citationsOpen,
-      loading: citationsLoading,
-      value: citations,
-      error: citationsError,
-      downloadPending: citationDownloadPending,
-      downloadError: citationDownloadError,
-      courseId: course.id,
-      canAuthorSources
-    }) + "</div>" + runtime.dockHtml + "</div></article></section>" +
+    renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml +
+    renderStudySourceMarkers(studyCitationMarkers(studyUnit, citations).filter(marker => !marker.target)) + "</div>" + runtime.dockHtml + "</div></article></section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade de estudo ' +
     String(studyUnitIndex + 1) + " de " + String(units.length) + '">' +
     renderUiIcon("study-unit", "study-reader-count-icon") +
@@ -816,12 +732,7 @@ export function renderCourseStudyScreen({
   observationCount = 0,
   markedForReview = false,
   citationsOpen = false,
-  citationsLoading = false,
   citations = null,
-  citationsError = "",
-  citationDownloadPending = false,
-  citationDownloadError = "",
-  canAuthorSources = false,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } },
   assistance = { enabled: false, activeScope: "", draft: null, saving: false, error: "" },
   structuralEditor = { enabled: false, editing: false, saving: false }
@@ -875,12 +786,7 @@ export function renderCourseStudyScreen({
     markedForReview,
     runtimeStatus,
     citationsOpen,
-    citationsLoading,
     citations,
-    citationsError,
-    citationDownloadPending,
-    citationDownloadError,
-    canAuthorSources,
     manualEditor
   });
 }

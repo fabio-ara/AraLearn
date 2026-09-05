@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 
 import { routeCourseRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseProtocol.js";
 import { executeCourseRoute } from "../../supabase/functions/_shared/aralearn-authoring/courseRouter.js";
@@ -469,9 +470,11 @@ test("Fontes usam consulta cercada e comando discriminado sem campos de autorida
     expectedSourceRevision: 0,
     source: {
       kind: "web_page",
-      sourceRole: "technical_conceptual",
+      defaultRoles: ["technical_conceptual"],
       title: "Fonte A",
-      authorship: "Autoria",
+      authors: [{ literal: "Autoria" }],
+      citationMode: "manual",
+      bibliographic: createEmptyCourseSourceBibliographicMetadata(),
       publicationDate: "2026",
       identifier: null,
       language: "pt-BR",

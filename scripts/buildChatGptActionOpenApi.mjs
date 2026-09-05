@@ -66,18 +66,56 @@ const DESIGN_PARAMETERS_REF = "#/components/schemas/HumanDesignParameters";
 const humanReferenceSchema = structuredClone(actionTools
   .find(({ name }) => name === "preparar_materializacao").inputSchema.properties.parte);
 delete humanReferenceSchema.description;
+const sourceTaskSchema = actionTools.find(({ name }) => name === "manter_fonte").inputSchema;
+const sourceMetadataSchema = sourceTaskSchema.properties.metadados;
+const sourceLinksSchema = actionTools.find(({ name }) => name === "materializar_parte")
+  .inputSchema.properties.unidades.items.properties.fontes;
+const sharedInputSchemas = {
+  HumanSourceLinks: sourceLinksSchema,
+  HumanSourceOccurrences: sourceLinksSchema.items.properties.ocorrencias,
+  HumanSourceNames: sourceMetadataSchema.properties.autores,
+  HumanSourceRoles: sourceMetadataSchema.properties.papeisSugeridos,
+  HumanBibliographicText: sourceMetadataSchema.properties.bibliografia.properties.doi,
+  HumanResourceInstance: studyUnitContentSchema.properties.content.items,
+  HumanParameterName: actionTools.find(({ name }) => name === "salvar_perfil")
+    .inputSchema.properties.automaticos.items
+};
+for (const [name, value] of Object.entries(sharedInputSchemas)) {
+  const schema = structuredClone(value);
+  delete schema.description;
+  sharedInputSchemas[name] = schema;
+}
 function shareHumanReferences(value) {
   if (Array.isArray(value)) return value.map(shareHumanReferences);
   if (!value || typeof value !== "object") return value;
   const { description, ...shape } = value;
+  if (shape.minItems === 1) {
+    const { minItems, ...optionalRoles } = shape;
+    if (JSON.stringify(optionalRoles) === JSON.stringify(sharedInputSchemas.HumanSourceRoles)) {
+      return { $ref: "#/components/schemas/HumanSourceRoles", minItems,
+        ...(description ? { description } : {}) };
+    }
+  }
   if (JSON.stringify(shape) === JSON.stringify(humanReferenceSchema)) {
     return { $ref: "#/components/schemas/HumanReference", ...(description ? { description } : {}) };
+  }
+  for (const [name, schema] of Object.entries(sharedInputSchemas)) {
+    if (JSON.stringify(shape) === JSON.stringify(schema)) {
+      return { $ref: `#/components/schemas/${name}`, ...(description ? { description } : {}) };
+    }
   }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, shareHumanReferences(entry)]));
 }
 
 function inputSchemaWithSharedContent(tool) {
   const schema = structuredClone(tool.inputSchema);
+  if (tool.name === "manter_fonte") {
+    for (const field of ["relacao", "papeis", "ancoras", "ocorrencias"]) {
+      schema.properties.vinculos.items.properties[field] = {
+        $ref: `#/components/schemas/HumanSourceLinks/items/properties/${field}`
+      };
+    }
+  }
   if (tool.name === "materializar_parte") {
     schema.properties.unidades.items.properties.conteudo = {
       $ref: STUDY_UNIT_CONTENT_REF
@@ -148,9 +186,12 @@ const document = {
     schemas: {
       HumanTaskResult: resultSchema,
       HumanTaskError: errorSchema,
-      HumanStudyUnitContent: studyUnitContentSchema,
+      HumanStudyUnitContent: shareHumanReferences(studyUnitContentSchema),
       HumanDesignParameters: designParametersSchema,
-      HumanReference: humanReferenceSchema
+      HumanReference: humanReferenceSchema,
+      ...Object.fromEntries(Object.entries(sharedInputSchemas).map(([name, schema]) => [name,
+        Object.fromEntries(Object.entries(schema).map(([key, value]) => [key, shareHumanReferences(value)]))
+      ]))
     },
     responses: {
       Success: {
