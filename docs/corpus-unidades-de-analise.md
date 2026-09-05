@@ -18,6 +18,16 @@ As identidades abaixo são locais a cada caso. `I` significa introdução, `U` u
 textual. Desenvolvimento é informado por trecho; não se deduz dessas letras.
 Uma mesma identidade introduzida e aplicada na unidade conta uma introdução.
 
+Na comparação estrutural, conservar todos os recortes. Por exemplo, se A
+descreve uma relação X e B a divide em X1 e X2 no mesmo trecho, registrar
+inventário A com uma identidade, inventário B com duas e a proposta de divisão
+X → {X1, X2}, acompanhada da justificativa. Nenhuma identidade é eliminada para
+produzir pares um a um; não se calcula percentual de concordância. Se somente
+X1 corresponder parcialmente a X, X2 continua visível como diferença, e não sai
+de um denominador selecionado depois da leitura. Trocar A e B descreve a mesma
+divergência como fusão. Essa comparação pode orientar revisão sem constituir
+estimativa de confiabilidade ou validade cognitiva.
+
 ## 1. Redes: rótulo, objeto e relação
 
 **Finalidade e repertório.** Reconhecer os elementos de um exemplo simplificado

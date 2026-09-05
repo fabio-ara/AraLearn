@@ -61,6 +61,55 @@ Falha recuperável conserva campos e permite repetição idempotente; conflito
 material revela alternativas antes de substituir conteúdo. Sem acesso, a
 mensagem explica a restrição correta; criar conta não concede autoria.
 
+## Lote, pausa e mandato
+
+Lote é o conjunto finito de unidades a produzir e revisar numa operação autoral,
+organizado depois do mapa. Sua fronteira é o recorte curricular escolhido para
+essa produção; não acrescenta nível didático. Pausa é o ponto em que a produção
+aguarda nova orientação humana. Ela pode ocorrer após uma microssequência, após
+um lote ou somente diante de decisão material, conforme a cadência autorizada.
+
+Mandato delimita o que pode ser feito: escopo, lotes ou recorte curricular
+autorizados e restrições explícitas. Termina quando esse conjunto é concluído,
+quando o autor o interrompe ou quando uma mudança material exige decisão.
+Na ausência de continuidade autorizada, termina ao entregar o primeiro lote.
+Uma preferência de pausa não amplia o escopo do mandato. Alterar o tamanho do
+lote também não autoriza produzir além desse escopo. Correções mecânicas e
+retentativas permanecem no mesmo mandato, sem certificar revisão factual.
+
+Caso refutável: num mapa com seis microssequências, autorizar somente as quatro
+primeiras. Primeiro usar dois lotes de duas e pausar após cada lote; depois
+manter os mesmos lotes e autorizar execução contínua. O conteúdo autorizado e
+o limite final são iguais, mas há uma pausa intermediária apenas no primeiro
+caso. Em seguida, manter execução contínua e usar quatro lotes de uma: muda a
+granularidade, não a pausa nem o escopo. Nos três casos, a quinta
+microssequência não pode ser produzida sem novo mandato. Uma fonte necessária
+indisponível ou mudança de objetivo interrompe também a execução contínua.
+
+## Alcance da sincronização manual
+
+| Estado/operação | Com manual ativo | Nuvem ou retorno explícito ao automático |
+| --- | --- | --- |
+| conteúdo e descritores de cursos já abertos | nenhuma atualização de fundo por foco, reconexão, temporizador ou aviso de outra aba; preservar leitura e rascunho | consultar revisão e reconciliar sem sobrescrever edição concorrente |
+| posição, progresso e Rever pessoais | gravação local e pendência por conta/dispositivo; não enviar nem receber em fundo | intercambiar e resolver conflito material antes de descartar valores |
+| resposta e feedback da prática em curso | interação local continua; esta preferência não cria coleta ou histórico de respostas | não acrescentar sincronização de respostas inexistente no contrato de estado pessoal |
+| observação escrita pelo estudante autenticado | o ato explícito de enviar continua permitido; sem rede, conservar texto pendente, sem reenvio automático em fundo | enviar pendência por ação explícita, com repetição segura; visitante não envia |
+| observações já recebidas e revisão do autor | não substituir em fundo a inspeção de Estudo; abrir/atualizar a tarefa é leitura explícita | reler no alvo e conservar rascunhos |
+| salvar edição autoral, publicar acesso ou chamar assistência | rede explícita continua; falha preserva original/rascunho | não esperar sincronização pessoal para executar escrita autorizada |
+| sessão, autorização e revogação | verificações de segurança permanecem; manual não conserva direito revogado | conferir acesso antes de intercambiar ou gravar |
+| abrir fonte web, baixar arquivo ou curso ainda não disponível | rede solicitada explicitamente, sujeita a acesso | não classificar esse pedido como atualização de fundo |
+
+Visitante conserva posição, progresso e Rever apenas localmente. Ao entrar numa
+conta, não associar seu estado a essa pessoa silenciosamente; oferecer
+incorporação explícita, preservando a alternativa local. Sair da conta não
+transporta sua fila para outro usuário do dispositivo. Avisos entre abas podem
+marcar a nuvem como pendente, mas não aplicar o conteúdo recebido em manual.
+
+J14 deve provocar cada linha em duas abas, com rede interrompida e alteração
+remota. O teste distingue chamadas de autorização das leituras/escritas de
+estado suspensas, verifica a fila após reiniciar e confirma que acionar a nuvem
+não elimina rascunho nem ultrapassa a conta ou o curso autorizados.
+
 ## Pré-condições
 
 Reprove a revisão se:

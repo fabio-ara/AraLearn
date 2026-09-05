@@ -183,11 +183,18 @@ unidades ou dimensões internas não identifica conceitos humanos.
 Para investigar estabilidade, fixar conteúdo, contexto, protocolo, modelo,
 configuração e instrução efetivamente enviados; comparar identidades alinhadas
 pelo significado, localizadores, divisões/fusões e rótulos, não só totais.
-Concordância por ocorrência usa como denominador os pares comparáveis de
-identidade e localizador; itens sem alinhamento são relatados separadamente.
+Nesta definição, a comparação de inventários não produz taxa de concordância:
+divisões e fusões impedem pressupor um universo comum de pares. Relatar os dois
+inventários completos, correspondências propostas, divisões, fusões, omissões e
+dúvidas com seus localizadores, sem excluir discordâncias para calcular um
+percentual. Contagens descritivas têm como base cada inventário integral, e não
+somente o subconjunto que foi possível alinhar. A regra vale também quando
+nenhuma correspondência é encontrada: o resultado é comparação não resolvida,
+não concordância zero ou perfeita.
 Repetições do mesmo modelo não são codificadores humanos independentes.
 Um estudo de confiabilidade exigirá corpus próprio, codificação humana
-independente e regra de alinhamento/adjudicação declaradas. Não foi realizado
+independente e regra de alinhamento/adjudicação e denominador definidos antes
+da codificação. Não foi realizado
 esse estudo nesta etapa, nem estimada validade cognitiva.
 
 O [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md) torna
