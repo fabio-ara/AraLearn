@@ -529,6 +529,12 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
     const pdfAccountDeletion = psql([
       `set application_name='aralearn-pdf-account-delete-lock-holder';
        begin;
+       set local role service_role;
+       select set_config('request.jwt.claim.role','service_role',true);
+       select public.maintain_course_for_actor_v1(
+         '${pdfOwnerId}','${pdfCourseId}','delete_owned_course',true,
+         'pdf-lock-delete-course-150'
+       );
        set local role authenticated;
        ${authenticatedContext(pdfOwnerId, pdfSessionId)}
        select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
@@ -576,11 +582,16 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
     ]);
     assert.equal(await result(psql(`
       select (exists(select 1 from auth.users where id='${pdfOwnerId}'))::text
+        ||'|'||(exists(select 1 from public.courses where id='${pdfCourseId}'))::text
+        ||'|'||(exists(
+          select 1 from private.course_source_pdf_upload_intents
+          where course_id='${pdfCourseId}'
+        ))::text
         ||'|'||(exists(
           select 1 from storage.objects
           where bucket_id='course-source-pdfs' and name='${pdfObjectName}'
         ))::text;
-    `)), "false|false");
+    `)), "false|false|false|false");
   } finally {
     await result(psql(`
       begin;
