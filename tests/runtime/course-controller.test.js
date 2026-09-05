@@ -1,4 +1,6 @@
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
+import { buildCourseAuthoringComparison, assembleCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 import test from "node:test";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
@@ -30,7 +32,8 @@ const COURSE_B = "20000000-0000-4000-8000-000000000002";
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
-    contract: "aralearn.course-authoring-analytics.v3",
+    contract: "aralearn.course-authoring-analytics.v4",
+    basis: courseAuthoringBasisFixture(),
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
@@ -1517,6 +1520,47 @@ test("Analytics é owner-only, remoto e ligado à revisão solicitada", async ()
   }), /não oferece (?:Analytics|Pesquisa)/u);
 });
 
+
+test("Controller comparação/export são owner-only e validam seleção sem cache ou fallback", async () => {
+  const left = analyticsSnapshot(); const right = analyticsSnapshot(); right.course.id = COURSE_B;
+  const comparison = buildCourseAuthoringComparison({ left, right });
+  const artifact = assembleCourseAuthoringExport({ analytics: left, document: { contract: "aralearn.course.v1", courses: [{ id: COURSE_ID, title: "Curso", goal: "Objetivo", modules: [] }] } });
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  const request = { left: selection, right: { ...selection, courseId: COURSE_B } };
+  const calls = []; let offline = false;
+  const api = { async listCourses() { return courseListPage([]); }, async getCourse() { throw new Error("não usado"); }, async loadCourseAuthoringComparison(value) { calls.push(value); if (offline) throw networkFailure(); return comparison; }, async exportCourseAuthoring(value) { calls.push(value); if (offline) throw networkFailure(); return artifact; } };
+  const store = new MemoryStateStore(); const owner = new CourseController({ api, store, ownerOnly: true }); const reader = new CourseController({ api, store, ownerOnly: false });
+  assert.deepEqual(await owner.loadCourseAuthoringComparison(request), comparison); assert.deepEqual(await owner.exportCourseAuthoring(selection), artifact);
+  assert.deepEqual(calls, [request, selection]); assert.equal(store.values.size, 0);
+  await assert.rejects(reader.loadCourseAuthoringComparison(request), /exige acesso de autoria/u); await assert.rejects(reader.exportCourseAuthoring(selection), /exige acesso de autoria/u); assert.equal(calls.length, 2);
+  offline = true; await assert.rejects(owner.loadCourseAuthoringComparison(request), (error) => error.code === "network_error"); await assert.rejects(owner.exportCourseAuthoring(selection), (error) => error.code === "network_error");
+});
+
+test("Controller comparação recusa curso/revisão/escopo trocado e mantém cache em conflito", async () => {
+  const left = analyticsSnapshot(); const right = analyticsSnapshot(); right.course.id = COURSE_B;
+  const result = buildCourseAuthoringComparison({ left, right });
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } }; const request = { left: selection, right: { ...selection, courseId: COURSE_B } };
+  const store = new MemoryStateStore(); await store.putCache(`course-authoring.v1.header:${COURSE_ID}`, { sensitive: true });
+  const api = { async listCourses() { return courseListPage([]); }, async getCourse() {}, async loadCourseAuthoringComparison() { return result; } };
+  const owner = new CourseController({ api, store, ownerOnly: true });
+  result.right.course.revision = 8; await assert.rejects(owner.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+  result.right.course.revision = 7; result.right.course.id = COURSE_ID; await assert.rejects(owner.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+  result.right.course.id = COURSE_B; result.right.scope = { kind: "study_unit", ref: "unit-a", label: "Unidade" }; await assert.rejects(owner.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+  assert.equal(store.values.size, 1);
+});
+
+test("Controller comparação revogada purga ambos cursos e listas; exportação purga somente seu curso", async () => {
+  const store = new MemoryStateStore(); const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  const denied = () => { throw Object.assign(new Error("Curso inacessível"), { status: 404, code: "PT404" }); };
+  const owner = new CourseController({ store, ownerOnly: true, api: { async listCourses() { return courseListPage([]); }, async getCourse() {}, loadCourseAuthoringComparison: denied, exportCourseAuthoring: denied } });
+  const keys = [`course-authoring.v1.header:${COURSE_ID}`, `course-authoring.v1.header:${COURSE_B}`, "course-authoring.v1.list::start"];
+  for (const key of keys) await store.putCache(key, { sensitive: true });
+  await assert.rejects(owner.loadCourseAuthoringComparison({ left: selection, right: { ...selection, courseId: COURSE_B } }), (error) => error.status === 404);
+  assert.equal(store.values.size, 0);
+  for (const key of keys) await store.putCache(key, { sensitive: true });
+  await assert.rejects(owner.exportCourseAuthoring(selection), (error) => error.status === 404);
+  assert.deepEqual([...store.values.keys()], [`course-authoring.v1.header:${COURSE_B}`]);
+});
 
 test("Controller preserva caches no conflito de citações e purga somente a revogação real", async () => {
   const store = new MemoryStateStore();

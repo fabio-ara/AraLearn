@@ -16,6 +16,7 @@ import { mountStudyDeviceSettings } from "../src/ui/StudyDeviceSettings.js";
 import { createStudySynchronizationPreference } from "../src/ui/studySynchronizationPreference.js";
 import { buildCourseStudyRoute, parseCourseStudyRoute } from "../src/ui/courseStudyRoute.js";
 import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.js";
+import { createCourseCopyDialog } from "../src/ui/CourseCopyDialog.js";
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
 import { buildCourseAuthoringRoute, isCourseAuthoringRouteCandidate } from "../src/ui/courseAuthoringRoute.js";
 import {
@@ -423,10 +424,14 @@ function renderSettings(root, authClient, controller, {
     avatar_profile_unlinked: "Avatar sem vínculo de perfil",
     pdf_course_missing: "PDF de curso ausente",
     pdf_unlinked: "PDF sem vínculo",
-    pdf_object_missing: "Registro de PDF sem arquivo"
+    pdf_object_missing: "Registro de PDF sem arquivo",
+    audio_course_missing: "Áudio de curso ausente",
+    audio_unlinked: "Áudio sem vínculo",
+    audio_object_missing: "Registro de áudio sem arquivo"
   });
   const removableMaintenanceClasses = new Set([
-    "avatar_owner_missing", "avatar_profile_unlinked", "pdf_course_missing", "pdf_unlinked"
+    "avatar_owner_missing", "avatar_profile_unlinked", "pdf_course_missing", "pdf_unlinked",
+    "audio_course_missing", "audio_unlinked"
   ]);
 
   const renderMaintenance = () => {
@@ -1081,6 +1086,13 @@ async function renderApplication(root, config, authClient, { visitor = false } =
   courseProviderSession = visitor ? null : createCourseProviderSession();
   let editorApp = null;
   let authoringSurface = null;
+  const courseCopyDialog = visitor ? null : createCourseCopyDialog({
+    root, controller: studyController,
+    onCopied(course) {
+      location.hash = buildCourseAuthoringRoute(course.courseId);
+      openAuthoring();
+    }
+  });
   let authoringReturnFocus = null;
   let studyAuthoringReturn = null;
   let authoringHistoryReturn = false;
@@ -1243,6 +1255,13 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     visitor,
     onSaveManualEdit: visitor ? null : saveStudyManualEdit,
     onSaveAssistedStructure: visitor ? null : saveStudyAssistedStructure,
+    onAuthoringContextReturn({ reason }) {
+      if (reason === "cancelled") {
+        pendingStudyComposition = null;
+        pendingStudyStructure = null;
+      }
+      returnFromStudyToAuthoring();
+    },
     providerAssistanceSession: courseProviderSession
   });
   await editorApp.resumePendingManualEdit?.().catch((error) => {
@@ -1269,7 +1288,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
   authoringSurface = visitor ? null : createCourseAuthoringSurface({
     root: authoringRoot,
     controller: authoringController,
-    providerAssistanceSession: courseProviderSession,
+    onCopyCourse: courseId => courseCopyDialog.open(courseId),
     async onOpenStudyContent({ entityPath, returnRoute, returnFocusKey = "" }) {
       const origin = authoringRoot.contains(document.activeElement)
         ? document.activeElement
@@ -1287,18 +1306,23 @@ async function renderApplication(root, config, authClient, { visitor = false } =
             }
           : null
       };
-      const opened = await editorApp?.openEntityPath?.(entityPath);
-      if (!opened) throw new Error("Não foi possível abrir este objeto no editor contextual.");
       studyAuthoringReturn = returnState;
+      const opened = await editorApp?.openEntityPath?.(entityPath, {
+        editing: true, authoringContext: { returnRoute }
+      });
+      if (!opened) {
+        studyAuthoringReturn = null;
+        throw new Error("Não foi possível abrir este objeto no editor contextual.");
+      }
       if (returnFocusKey) {
         authoringSurface?.rememberInspectionReturnFocus?.({
           route: returnRoute,
           key: returnFocusKey
         });
       }
-      authoringSurface?.destroy?.();
       authoringRoot.hidden = true;
       editorRoot.hidden = false;
+      editorApp.focusAuthoringContext();
     },
     onClose() {
       const returnThroughHistory = authoringHistoryReturn &&
@@ -1319,7 +1343,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     }
     editorRoot.hidden = true;
     authoringRoot.hidden = false;
-    void authoringSurface.open().then(() => {
+    void (authoringSurface.opened ? authoringSurface.refresh() : authoringSurface.open()).then(() => {
       authoringRoot.scrollTop = pending.scrollTop;
       authoringRoot.scrollLeft = pending.scrollLeft;
       const focus = pending.focus;
@@ -1385,6 +1409,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     visibleRefreshTimer = null;
     authoringSurface?.destroy?.();
     authoringSurface = null;
+    courseCopyDialog?.destroy();
     editorApp?.destroy?.();
     editorApp = null;
   };
@@ -1401,6 +1426,11 @@ async function renderApplication(root, config, authClient, { visitor = false } =
   };
   editorRoot.addEventListener("aralearn:open-settings", () => settings.open());
   editorRoot.addEventListener("click", (event) => {
+    const copyAction = event.target?.closest?.("[data-action='copy-course']");
+    if (copyAction && courseCopyDialog) {
+      void courseCopyDialog.open(copyAction.dataset.courseId);
+      return;
+    }
     const resolution = event.target?.closest?.("[data-action='resolve-study-sync-conflict']");
     if (resolution) {
       resolution.disabled = true;
@@ -1420,13 +1450,6 @@ async function renderApplication(root, config, authClient, { visitor = false } =
   editorRoot.addEventListener("aralearn:request-auth", (event) => void requestAuthentication(event.detail || {}));
 
   lifecycleAbortController = new AbortController();
-  editorRoot.addEventListener("click", (event) => {
-    if (!studyAuthoringReturn || !event.target?.closest?.("[data-action='go-back']")) return;
-    const handled = editorApp?.handleBack?.() === true;
-    if (!handled && !editorApp?.hasPendingManualEdit?.()) returnFromStudyToAuthoring();
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }, { capture: true, signal: lifecycleAbortController.signal });
   lifecycleAbortController.signal.addEventListener("abort", () => {
     if (authenticatedApplicationCleanup !== cleanupApplication) return;
     authenticatedApplicationCleanup = null;
@@ -1453,6 +1476,14 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     authoringSurface?.setOfflineStatus?.(true);
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("hashchange", (event) => {
+    if (studyAuthoringReturn) {
+      event.stopImmediatePropagation();
+      if (globalThis.location.hash !== studyAuthoringReturn.route) {
+        history.replaceState(history.state ?? null, "", studyAuthoringReturn.route);
+        editorApp.handleBack();
+      }
+      return;
+    }
     const studyPath = parseCourseStudyRoute(globalThis.location.hash);
     if (studyPath) {
       if (authoringSurface?.opened) { authoringSurface.destroy(); restoreStudyAfterAuthoring(); }
@@ -1477,7 +1508,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
       authoringSurface.destroy();
       restoreStudyAfterAuthoring();
     });
-  }, { signal: lifecycleAbortController.signal });
+  }, { capture: true, signal: lifecycleAbortController.signal });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") settings.handleBack();
   }, { signal: lifecycleAbortController.signal });
@@ -1487,7 +1518,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     handleBackPress() {
       const destination = dispatchApplicationBack({
         closeOverlay: () => settings.handleBack(),
-        handleAuthoringBack: () => authoringSurface?.handleBack?.() === true,
+        handleAuthoringBack: () => !authoringRoot.hidden && authoringSurface?.handleBack?.() === true,
         handleStudyBack: () => editorApp?.handleBack?.() === true ||
           (!editorApp?.hasPendingManualEdit?.() && returnFromStudyToAuthoring())
       });

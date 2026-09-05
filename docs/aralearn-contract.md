@@ -65,7 +65,7 @@ somente o proprietário altera o curso.
 `aralearn.course-design-change.v3` confirma uma definição ou restauração de
 herança.
 
-O catálogo 1.2.0 define identidades, tipos, valores permitidos, unidades, grupos,
+O catálogo 1.2.1 define identidades, tipos, valores permitidos, unidades, grupos,
 escopos e rótulos usados pela UI, pelas integrações e pela projeção SQL. Reúne
 conteúdo, prática, conversa e cadência. Direção editorial e política de componentes
 permanecem campos distintos. Alvos de palavras são flexíveis e não autorizam

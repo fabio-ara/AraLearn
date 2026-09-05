@@ -1,6 +1,7 @@
 import { COURSE_SOURCE_ROLES } from "./courseSources.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS, normalizeCourseDesignParameterValue } from "./courseDesignParameters.js";
 import { observeCoursePracticeDistribution } from "./coursePracticeDistribution.js";
+import { normalizeCourseAuthoringBasis, observeCourseAuthoringDimensions, canonicalAuthoringValue } from "./courseAuthoringBasis.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const IDENTIFIER = /^[a-z][a-z0-9._:-]{0,159}$/u;
@@ -8,7 +9,7 @@ const INTERNAL_PUBLIC_LANGUAGE =
   /StudyUnits?|AnalysisUnits?|analysisUnits|evidenceRequirements|missingData|snapshot|schema|\bCAS\b|requestId|courseRevision|componentRef|studyUnitRef|\bUUID\b|\bAnalytics\b|\bSupabase\b|\bHTTP\b|\bRPC\b|\bSQL\b|\bAPI\b/iu;
 
 export const COURSE_AUTHORING_ANALYTICS_CONTRACT =
-  "aralearn.course-authoring-analytics.v3";
+  "aralearn.course-authoring-analytics.v4";
 
 export const COURSE_AUTHORING_ANALYTICS_SCOPE_KINDS = Object.freeze([
   "course",
@@ -605,10 +606,12 @@ function nullableDeepLink(value) {
 
 export function normalizeCourseAuthoringAnalyticsPage(value, {
   expectedCourseId = null,
+  expectedRevision = null,
   expectedQuery = null
 } = {}) {
-  const source = exact(value, [
-    "contract", "course", "scope", "design", "authorship", "missingData", "deepLink"
+  const suppliedDimensions = value?.dimensions;
+  const source = exact(suppliedDimensions === undefined ? value : Object.fromEntries(Object.entries(value).filter(([key]) => key !== "dimensions")), [
+    "contract", "course", "scope", "design", "authorship", "missingData", "deepLink", "basis"
   ], "A leitura dos dados de autoria");
   if (source.contract !== COURSE_AUTHORING_ANALYTICS_CONTRACT) {
     fail("invalid_course_authoring_analytics", "O formato dos dados de autoria não é reconhecido.");
@@ -622,6 +625,9 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
   if (expectedCourseId !== null && normalizedCourse.id !== uuid(expectedCourseId, "O curso esperado")) {
     fail("course_authoring_analytics_mismatch", "A resposta pertence a outro curso.");
   }
+  if (expectedRevision !== null && normalizedCourse.revision !== positiveInteger(expectedRevision, "A edição esperada")) {
+    fail("course_revision_conflict", "O curso mudou; releia antes de comparar ou exportar.");
+  }
   const scope = normalizeScope(source.scope);
   if (expectedQuery !== null) {
     const expected = normalizeCourseAuthoringAnalyticsQuery(expectedQuery).scope;
@@ -630,6 +636,11 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
     }
   }
   const design = normalizeDesign(source.design);
+  const basis = normalizeCourseAuthoringBasis(source.basis, { courseTitle: normalizedCourse.title, studyUnitCount: design.studyUnitCount });
+  const dimensions = observeCourseAuthoringDimensions(basis);
+  if (suppliedDimensions !== undefined && canonicalAuthoringValue(suppliedDimensions) !== canonicalAuthoringValue(dimensions)) {
+    fail("invalid_course_authoring_analytics", "As distribuições não correspondem aos dados observados.");
+  }
   const authorship = normalizeAuthorship(source.authorship);
   const missingData = uniqueTexts(source.missingData, 64, 500, "Os dados ausentes");
   if (missingData.some((message) => INTERNAL_PUBLIC_LANGUAGE.test(message))) {
@@ -656,6 +667,8 @@ export function normalizeCourseAuthoringAnalyticsPage(value, {
     course: normalizedCourse,
     scope,
     design,
+    basis,
+    dimensions,
     authorship,
     missingData,
     deepLink: nullableDeepLink(source.deepLink)
@@ -670,10 +683,12 @@ function analyticsBaseUrl(publicAppUrl) {
 export function assembleCourseAuthoringAnalyticsPage(rawValue, {
   publicAppUrl = null,
   expectedCourseId = null,
+  expectedRevision = null,
   expectedQuery = null
 } = {}) {
   const snapshot = normalizeCourseAuthoringAnalyticsPage(rawValue, {
     expectedCourseId,
+    expectedRevision,
     expectedQuery
   });
   if (snapshot.deepLink !== null || publicAppUrl === null) return snapshot;

@@ -453,7 +453,7 @@ test("traduz cada alvo de rota para um único scope ou âncora", () => {
 });
 
 
-test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações imediatas", async () => {
+test("Unidade oferece parâmetros, fontes e observações imediatas e revisão no menu", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
@@ -484,7 +484,8 @@ test("Unidade oferece parâmetros, Fontes, Observações e revisão como ações
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e âncoras de Unidade 1" title="Fontes e âncoras"><svg/u);
-  assert.match(root.innerHTML, /aria-label="Revisar Unidade 1" title="Revisar"><svg/u);
+  assert.match(root.innerHTML, /data-inspection-control-key="review:unit-01">[\s\S]*?<span>Revisar unidade<\/span>/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-provider-assistance/u);
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
   assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
   assert.doesNotMatch(root.innerHTML, new RegExp("a{64}|b{64}", "u"));
@@ -1495,7 +1496,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   assert.match(root.innerHTML, /class="course-inspection-item-menu"/u);
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1"/u);
   assert.match(root.innerHTML, /aria-label="Visualizar"/u);
-  assert.doesNotMatch(root.innerHTML, /<span>Visualizar<\/span>/u);
+  assert.doesNotMatch(root.innerHTML.match(/<nav class="course-inspection-mode-actions"[\s\S]*?<\/nav>/u)?.[0], /<span>Visualizar<\/span>/u);
   assert.match(root.innerHTML, /data-inspection-selection-action="toggle-current"[^>]*aria-pressed="false"/u);
   assert.equal(annotationCalls.length, 0);
 

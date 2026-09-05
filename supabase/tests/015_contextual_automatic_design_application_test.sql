@@ -119,5 +119,19 @@ select is((select pg_temp.materialize_contextual('context-automatic-01',units)->
 select is((select revision from public.courses where id='95000000-0000-4000-8000-000000000301'),2::bigint,'repetição não reaplica conteúdo nem muda revisão');
 select throws_ok($$select pg_temp.materialize_contextual('context-stale-0001',units) from payload$$,'40001',null,'nova aplicação não adota revisão mais recente silenciosamente');
 select ok(not private.valid_applied_course_design_parameters_v1(payload.units#>'{0,designSnapshot,parameters}',jsonb_set(resolved.parameters,'{0,conflicts}','[{"fixedValue":1,"exceptionValue":2}]')),'conflito de pesquisa exige resolução antes da aplicação contextual') from payload,resolved;
+select is((select design_snapshot->>'parameterCatalogVersion' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
+  '1.2.0','aplicação compatível conserva a versão histórica literal');
+select lives_ok($$select public.materialize_course_authoring_part_for_actor_v2(
+  '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',2,1,'[]'::jsonb,
+  '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
+  jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"'),'context-catalog-121',
+  encode(extensions.digest(jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"')::text,'sha256'),'hex')) from payload$$,
+  'o mesmo writer aceita aplicação de catálogo1.2.1 com valores e controles preservados');
+select is((select design_snapshot->>'parameterCatalogVersion' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
+  '1.2.1','nova decisão registra a versão efetivamente aplicada');
+select is(public.get_owned_course_design_for_actor_v3('95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','course','95000000-0000-4000-8000-000000000301',32,null)->>'parameterCatalogVersion',
+  '1.2.1','leitor publica catálogo corrente');
+select throws_ok($$update private.course_design_parameter_definitions set definition=jsonb_set(definition,'{label}','"Mudança fora de migration"')$$,
+  '55000',null,'a definição continua imutável fora da migration');
 select * from finish();
 rollback;

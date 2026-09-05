@@ -222,6 +222,82 @@ test("estudante autenticado não ganha edição por capacidade antiga de derivar
   app.destroy();
 });
 
+test("entrada de edição da Autoria abre o editor autorizado no alvo exato", async () => {
+  const path = [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"];
+  for (const length of [1, 4, 5]) for (const owned of [true, false]) {
+    const document = project();
+    const repository = applicationRepository(document, async () => {});
+    repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1,
+      ownership: owned ? "owned" : "shared", canEdit: owned }];
+    repository.loadStudyUnitCompositionContext = () => ({ studyUnitVersion: 1, courseRevision: 1, didacticMicrosequenceId: "micro-a" });
+    const root = new FakeStudyRoot();
+    const app = createCourseStudyApplication({ root, repository, initialProject: document,
+      onSaveManualEdit: async () => { throw new Error("Esta entrada não deve gravar."); },
+      onSaveAssistedStructure: async () => { throw new Error("Esta entrada não deve gravar."); } });
+    assert.equal(await app.openEntityPath(path.slice(0, length), { editing: true }), owned);
+    assert.equal(app.hasPendingManualEdit(), owned);
+    if (owned) assert.match(root.innerHTML, new RegExp(`data-action="${length === 5 ? "study-manual-edit" : "study-level-edit"}"[^>]*aria-pressed="true"`, "u"));
+    app.destroy();
+  }
+});
+
+test("editor contextual mantém Autoria nos cinco níveis e retorna sem gravar percurso de Estudo", async () => {
+  const path = [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"];
+  const returnRoute = `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`;
+  for (const length of [1, 2, 3, 4, 5]) for (const exit of ["back", "save", "cancel"]) {
+    const document = project();
+    const repository = applicationRepository(document, async () => {});
+    repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "owned", canEdit: true }];
+    repository.loadStudyUnitCompositionContext = () => ({ studyUnitVersion: 1, courseRevision: 1, didacticMicrosequenceId: "micro-a" });
+    const navigationWrites = [], returns = [];
+    repository.saveStudyNavigation = async (...args) => { navigationWrites.push(args); };
+    const root = new FakeStudyRoot();
+    const app = createCourseStudyApplication({ root, repository, initialProject: document,
+      onAuthoringContextReturn: result => returns.push(result),
+      onSaveManualEdit: async () => { throw new Error("Edição intacta não escreve."); },
+      onSaveAssistedStructure: async () => { throw new Error("Edição intacta não escreve."); } });
+    await openFirstStudyUnit(app);
+    const previous = app.getNavigationPosition();
+    const writeCount = navigationWrites.length;
+    assert.equal(await app.openEntityPath(path.slice(0, length), { editing: true, authoringContext: { returnRoute } }), true);
+    assert.match(root.innerHTML, /course-authoring-context-shell/u);
+    assert.match(root.innerHTML, /<h1[^>]*>Conteúdo<\/h1>/u);
+    assert.match(root.innerHTML, /data-action="authoring-context-back"/u);
+    assert.doesNotMatch(root.innerHTML, /data-action="(?:go-home|study-level-view|study-manual-view|next-study-unit|reset-course-progress)"/u);
+    if (exit === "back") assert.equal(app.handleBack(), true);
+    else root.click(length === 5 ? `study-manual-${exit}` : `${exit}-study-structure`);
+    await nextTurn();
+    assert.equal(app.hasPendingManualEdit(), false);
+    assert.equal(returns.length, 1);
+    assert.deepEqual(returns[0], { courseId: COURSE_ID, returnRoute,
+      reason: exit === "save" ? "saved" : "cancelled", discardedUnknown: false });
+    assert.deepEqual(app.getNavigationPosition(), previous);
+    assert.equal(navigationWrites.length, writeCount);
+    app.destroy();
+  }
+});
+
+test("editor contextual recusa contexto estranho, compartilhado e alvo sem escritor mantendo navegação", async () => {
+  const document = project(), root = new FakeStudyRoot();
+  const repository = applicationRepository(document, async () => {});
+  let ownership = "shared";
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership, canEdit: true }];
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    onAuthoringContextReturn: () => { throw new Error("Entrada recusada não retorna um editor aberto."); } });
+  await openFirstStudyUnit(app);
+  const previous = app.getNavigationPosition();
+  const localContext = { returnRoute: `#/authoring/courses/${COURSE_ID}?section=content` };
+  assert.equal(await app.openEntityPath([COURSE_ID], { editing: true, authoringContext: localContext }), false);
+  ownership = "owned";
+  assert.equal(await app.openEntityPath([COURSE_ID], { editing: true,
+    authoringContext: { returnRoute: "#/authoring/courses/20000000-0000-4000-8000-000000000001?section=content" } }), false);
+  assert.equal(await app.openEntityPath([COURSE_ID], { authoringContext: localContext }), false);
+  assert.equal(await app.openEntityPath([COURSE_ID], { editing: true, authoringContext: localContext }), false);
+  assert.deepEqual(app.getNavigationPosition(), previous);
+  assert.doesNotMatch(root.innerHTML, /course-authoring-context-shell/u);
+  app.destroy();
+});
+
 test("contexto dos parâmetros acompanha tela e unidade atuais sem depender do hash", async (context) => {
   const document = project();
   const repository = applicationRepository(document, async () => {});

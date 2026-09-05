@@ -5,10 +5,10 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260905125617','o manifesto identifica reorganização de lotes e entrada por atualização');
+  '20260905162000','o manifesto identifica cópias independentes, comparação e ajustes por função');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),44,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),47,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-anchored-annotations-atomic-create-v1",
@@ -26,7 +26,11 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "person-profile-v2",
   "public-course-study-v1",
   "course-file-access-policy-v1",
-  "owned-course-copy-recovery-v1"
+  "owned-course-copy-recovery-v1",
+  "course-independent-copy-v1",
+  "course-authoring-analytics-v4",
+  "course-authoring-comparison-v1",
+  "course-authoring-export-v1"
 ]'::jsonb,'o manifesto anuncia o runtime corrente');
 select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
   'authenticated-course-source-pdf-upload-v1',

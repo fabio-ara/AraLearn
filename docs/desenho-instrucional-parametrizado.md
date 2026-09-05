@@ -6,6 +6,26 @@ o MCP e a produção em partes usam a mesma resolução. O propósito é tornar 
 intenção examinável, sem converter preferência editorial em resultado
 científico ou conformidade técnica em prova de aprendizagem.
 
+## Acesso e organização
+
+Na inspeção do curso, o menu de tarefas abre Parâmetros e Fontes diretamente.
+O ícone da unidade abre os ajustes daquele escopo sem perder a posição da
+inspeção. A folha mantém dimensões e ações estáveis, apresenta um grupo por vez
+e revela a definição, origem e limites ao abrir uma decisão.
+
+Explicações e Prática reúnem decisões pedagógicas; Leitura e estilo contém a
+extensão do material e a direção editorial. Produção organiza partes, lotes e
+pausas; Conversa regula as respostas do assistente. Recursos delimita componentes
+permitidos, e Perfis reutiliza preferências explicitamente. Essa organização não
+altera o significado dos parâmetros nem converte escolhas operacionais em
+medidas de aprendizagem.
+
+O controle de alcance identifica curso, lição, microssequência ou unidade e
+permite navegar entre os escopos. Rascunhos permanecem ao trocar de grupo;
+fechar ou navegar com alterações pendentes exige salvá-las ou descartá-las.
+Preferências do aplicativo, como aparência e sincronização deste dispositivo,
+continuam na tela inicial, em Conta e aparência.
+
 ## O que constitui um parâmetro
 
 Um parâmetro de desenho instrucional possui:
@@ -34,8 +54,8 @@ escopo de curso e não viram atribuições locais de uma unidade de estudo.
 
 ## Catálogo corrente
 
-O catálogo 1.2.0 contém doze decisões organizadas em conteúdo, prática, conversa
-e cadência. Interface, MCP, Actions e banco usam essas mesmas definições.
+O catálogo 1.2.1 contém doze decisões organizadas em explicações, prática, leitura e estilo,
+conversa e produção. Interface, MCP, Actions e banco usam essas mesmas definições.
 Comandos não criam definições livres.
 
 | Parâmetro | Forma e exemplos de valores | Escopos | Decisão representada |
@@ -261,6 +281,14 @@ qualquer agregado, informar quantos itens foram analisados e quantos faltam.
 Denominador vazio produz “não se aplica”, nunca zero por divisão implícita.
 Classificação incompleta permite somente resultado parcial identificado como tal.
 
+O diagnóstico corrente implementa um subconjunto dessas definições. Em particular,
+`revisits` conta aplicações explicativas de identidades não introduzidas na mesma
+unidade; não distingue continuação do desenvolvimento de reativação intencional.
+As oportunidades registradas são contadas por requisito de evidência, sem cobrir
+toda prática informal prevista pelo protocolo. O [dicionário das
+medidas](dicionario-metricas-datasets.md) explicita o cálculo e as ausências; as
+anotações do corpus não devem ser apresentadas como campos já observados pelo produto.
+
 | Medida | Numerador, denominador e escopo | Limite de interpretação |
 | --- | --- | --- |
 | introduções por unidade | Identidades introduzidas / uma unidade de estudo, inclusive mista ou prática com novidade no retorno. | Novidade declarada, não carga cognitiva. O teto corrente de expositivas não dispensa examinar os outros casos. |
@@ -325,8 +353,9 @@ na lição, na microssequência ou na unidade de estudo. Uma unidade recebe o va
 efetivo de seu contexto. Sem definição deliberada, o GPT precisa calibrar o
 desenho conforme público, tarefa, conteúdo e função.
 Quando uma pessoa fixa uma condição, essa decisão explícita prevalece no escopo
-pertinente. Remover a definição restaura o estado `default`; não cria uma
-narrativa histórica de alteração.
+pertinente. Remover a definição local restaura a herança do escopo ancestral
+aplicável. Sem valor definido nessa cadeia, permanece a intenção automática,
+a ser calibrada no contexto; a remoção não cria uma narrativa histórica.
 
 ### Exemplo de herança
 
@@ -353,8 +382,10 @@ retomada.
 
 Direção editorial é um texto curto e explícito no curso ou num escopo didático.
 Ela orienta extensão, estilo, títulos e organização da próxima geração ou
-revisão. O valor efetivo segue a hierarquia de escopos e usa a direção aplicável
-mais próxima.
+revisão. As direções aplicáveis são reunidas em camadas, na ordem dos escopos
+ancestrais até o local. Uma direção local não apaga as demais. Instruções
+incompatíveis exigem resolução explícita, sem presumir que a mais próxima
+substitua silenciosamente uma condição de pesquisa.
 
 Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
 de interpretações. Ele complementa os dois alvos quantitativos com orientação
@@ -441,7 +472,8 @@ ou na unidade de estudo e mostra:
 
 - valor efetivo e escopo que o definiu;
 - definição local e ação para restaurar a herança;
-- quatro parâmetros pedagógicos e dois alvos editoriais flexíveis;
+- as definições do catálogo canônico aplicáveis ao escopo, organizadas por
+  explicações, prática, leitura e estilo, produção e conversa;
 - direção editorial separada;
 - política de componentes com nomes legíveis;
 - unidades de análise e requisitos atribuídos à microssequência;
@@ -470,7 +502,7 @@ protocolo e suas incertezas; não constituiu revisão sistemática da literatura
 
 | Fonte e localização consultada | Argumento delimitado | Decisão no AraLearn | Medida e limite |
 | --- | --- | --- | --- |
-| [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli), [KLI, §§ 2.1–2.2](https://doi.org/10.1111/j.1551-6709.2012.01245.x) | O quadro separa eventos observáveis e mudanças de conhecimento não observáveis; análises de conhecimento orientam escolhas instrucionais. | Descrever o conhecimento-alvo e suas relações segundo tarefa e público; não identificar anotação editorial com componente cognitivo. | Introduções por unidade e cobertura do inventário, sem inferência de aprendizagem. |
+| [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli), [KLI, §§ 2.1 e 3](https://doi.org/10.1111/j.1551-6709.2012.01245.x) | O quadro separa eventos observáveis e mudanças de conhecimento não observáveis; análises de conhecimento orientam escolhas instrucionais. | Descrever o conhecimento-alvo e suas relações segundo tarefa e público; não identificar anotação editorial com componente cognitivo. | Introduções por unidade e cobertura do inventário, sem inferência de aprendizagem. |
 | [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity), [“Element Interactivity” e “Expertise, Strategy Use, and Element Interactivity”](https://link.springer.com/article/10.1007/s10648-023-09782-w) | Interatividade depende do que precisa ser processado conjuntamente e do conhecimento prévio; a mesma informação pode ser agrupada de modos diferentes conforme a experiência. | Registrar repertório e relações de coordenação; contagem editorial permanece distinta da estimativa de interatividade do artigo. | Identidades mobilizadas por unidade, sem conversão em carga; não transferir a contagem de símbolos de um exemplo do artigo como algoritmo geral. |
 | [McNamara e Kintsch (1996)](referencias.md#ref-mcnamara1996coherence), [resumo dos dois experimentos](https://www.tandfonline.com/doi/abs/10.1080/01638539609544975) | Coerência, inferência e conhecimento prévio interagem; resultados diferem conforme tarefa, e parte dos resultados do primeiro experimento não se repetiu no segundo. | Localizar as relações necessárias e o apoio ao público, sem regra “mais explícito sempre é melhor”. | Lacunas e desenvolvimento localizados, não escore de coerência por palavras. A consulta deste estudo foi ao resumo, não reanálise de seus dados. |
 | [Saussure (1916)](referencias.md#ref-saussure1916cours), [segunda parte, cap. IV, §§ 1–2](https://fr.wikisource.org/wiki/Cours_de_linguistique_g%C3%A9n%C3%A9rale/Deuxi%C3%A8me_partie) | Valor linguístico envolve relações no sistema; equivalências entre palavras de línguas diferentes não são necessariamente exatas. | Tratar rótulo, sentido e identidade separadamente; testar equivalência no contexto antes de fundir tradução ou sinônimo. | Identidades alinhadas no corpus, sem contar palavras como conceitos. A análise linguística não fornece unidade cognitiva nem valida o inventário do curso. |

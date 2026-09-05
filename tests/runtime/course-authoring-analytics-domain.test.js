@@ -1,4 +1,5 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
@@ -111,6 +112,7 @@ function snapshot({
   }
   return {
     contract: COURSE_AUTHORING_ANALYTICS_CONTRACT,
+    basis: courseAuthoringBasisFixture({ title: "Curso de Redes", studyUnits: studyUnits.map(({ studyUnitRef, position, title }) => ({ studyUnitRef, position, title })) }),
     course: { id: COURSE_ID, revision: 9, title: "Curso de Redes" },
     scope: {
       selected: scope,
@@ -304,12 +306,12 @@ test("#273 teto 1 e 2 preservam o inventário e mudam somente a distribuição",
       introducedCount: 1
     }, {
       studyUnitRef: "unit-mechanism",
-      position: 1,
+      position: 2,
       title: "Mecanismo",
       introducedCount: 1
     }, {
       studyUnitRef: "unit-condition",
-      position: 1,
+      position: 3,
       title: "Condição",
       introducedCount: 1
     }]

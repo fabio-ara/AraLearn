@@ -43,6 +43,7 @@ const READ_PRINCIPAL = Object.freeze({
   scopes: Object.freeze(["authoring:read"])
 });
 const EXPECTED_NAMES = Object.freeze([
+  "copiar_curso", "comparar_cursos", "exportar_autoria",
   "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
   "retomar_curso",
   "consultar_planejamento",
@@ -356,12 +357,12 @@ function internalMapEntities(planRead) {
 
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 24);
+  assert.equal(new Set(EXPECTED_NAMES).size, 27);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.8.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.9.0");
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
 });
 
@@ -1390,7 +1391,7 @@ test("#275 consultar_componentes faz filtros estruturados regerem a função ins
 test("#272 autorização filtra writes e recusa input mecânico antes do domínio", async () => {
   assert.equal(courseHumanTaskIsAllowed("retomar_curso", READ_PRINCIPAL), true);
   assert.equal(courseHumanTaskIsAllowed("criar_curso", READ_PRINCIPAL), false);
-  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 11);
+  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 13);
   assert.equal(courseHumanTasksForPrincipal({ actorId: PRINCIPAL.actorId, scopes: [] }).length, 0);
   await assert.rejects(
     () => executeHumanCourseTask({
@@ -1436,7 +1437,7 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
 
   const readResponse = await mcpHandler(READ_PRINCIPAL)(request("tools/list"));
   const read = await readResponse.json();
-  assert.equal(read.result.tools.length, 11);
+  assert.equal(read.result.tools.length, 13);
   assert.equal(read.result.tools.every(({ annotations }) => annotations.readOnlyHint), true);
 
   const invalidResponse = await mcpHandler()(request("tools/list", { cursor: "legacy" }));

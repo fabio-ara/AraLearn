@@ -431,7 +431,7 @@ test("acesso público de fonte e de cada PDF fica em ajustes e depende de confir
     courseId: COURSE_ID, courseRevision: 5, coursePublicFileAccess: "available", initialSourceId: item.sourceId });
   await panel.open();
   assert.match(root.innerHTML, /<details class="course-source-file-access">/u);
-  assert.match(root.innerHTML, /escolha do PDF prevalece sobre a fonte/u);
+  assert.match(root.innerHTML, /exceção no PDF prevalece sobre a fonte e o curso/u);
   assert.equal((root.innerHTML.match(/data-source-form="file-access"/gu) || []).length, 3);
   assert.match(root.innerHTML, /Herdar da fonte · restringir/u);
   assert.match(root.innerHTML, /Disponível no curso público/u);
@@ -676,7 +676,7 @@ test("edição de Fonte usa revisão somente como cerca interna", async () => {
   click(root, "open-source", { sourceId: "source-01" });
   await settle();
   click(root, "edit-source");
-  assert.match(root.innerHTML, /Editar fonte/u);
+  assert.match(root.innerHTML, /Editar referência/u);
   assert.doesNotMatch(root.innerHTML, /Nova revisão/u);
   submit(root, "source", sourceFormValues({ sourceId: "source-01" }));
   await settle();

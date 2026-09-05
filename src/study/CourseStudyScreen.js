@@ -24,7 +24,18 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function topbar(title, backTitle = "Voltar", modeControls = "", runtimeStatus = {}) {
+function topbar(title, backTitle = "Voltar", modeControls = "", runtimeStatus = {}, authoringContext = null) {
+  if (authoringContext) return '<div class="course-authoring-context-topbar"><header class="course-authoring-course-header">' +
+    '<button class="course-authoring-back" type="button" data-action="authoring-context-back" aria-label="Voltar ao Conteúdo" title="Voltar ao Conteúdo">' +
+    renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button><div class="course-authoring-course-heading">' +
+    '<h1 aria-describedby="context-editor-course-identity">Conteúdo</h1></div><div class="course-authoring-header-actions">' +
+    renderRuntimeStatusControl(runtimeStatus) + '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action" aria-label="Abrir tarefas do curso" title="Tarefas">' +
+    renderUiIcon("more", "course-authoring-button-icon") + '</summary><nav aria-label="Tarefas do curso">' +
+    '<div class="course-authoring-course-identity" tabindex="0"><span>Curso</span><p id="context-editor-course-identity">' +
+    escapeHtml(authoringContext.courseTitle) + '</p></div><button type="button" data-action="authoring-context-back">' +
+    renderUiIcon("arrow-left", "course-authoring-button-icon") + '<span>Voltar ao Conteúdo</span></button>' +
+    '<button type="button" data-action="open-settings">' + renderUiIcon("account", "course-authoring-button-icon") +
+    '<span>Conta e aparência</span></button></nav></details></div></header></div>';
   return (
     '<header class="topbar lesson-topbar navigation-topbar">' +
     '<nav class="navigation-primary-actions" aria-label="Navegação">' +
@@ -90,7 +101,8 @@ function navigationCard({
   resetLabel = "",
   studyUnitIndex = null,
   assistanceSelection = null,
-  structuralEdit = null
+  structuralEdit = null,
+  authoring = false
 }) {
   const percentage = total ? Math.round((completed / total) * 100) : 0;
   const attributes = Object.entries(ids).map(([name, value]) =>
@@ -101,16 +113,16 @@ function navigationCard({
     (structuralEdit?.selected ? " is-structure-selected" : "") + '" data-study-level="' +
     escapeHtml(level) + '"' + attributes + ">" +
     '<div class="card-progress-fill" style="width:' + String(percentage) + '%"></div>' +
-    '<div class="lesson-copy structure-copy navigation-main">' +
+    '<div class="lesson-copy structure-copy navigation-main" tabindex="0" role="region" aria-label="Descrição">' +
     '<div class="structure-title-row navigation-title-row"><h3 class="card-title">' +
     escapeHtml(title) + "</h3></div>" +
     (description ? '<p class="card-subtitle">' + escapeHtml(description) + "</p>" : "") +
-    '<p class="muted tiny progress-meta">' +
+    (authoring ? "" : '<p class="muted tiny progress-meta">' +
     metric("progress", `${completed}/${total}`, `Progresso: ${completed} de ${total}`) +
     (detailIcon
       ? '<span class="progress-meta-separator" aria-hidden="true">·</span>' +
         metric(detailIcon, String(detailCount), "Quantidade")
-      : "") + "</p></div>" +
+      : "") + "</p>") + '</div>' +
     '<div class="lesson-actions structure-actions navigation-actions">' +
     (assistanceSelection?.enabled
       ? '<button class="icon-ghost" type="button" data-action="toggle-assistance-target"' +
@@ -138,16 +150,16 @@ function navigationCard({
             renderUiIcon("arrow-down", "home-tab-icon") + '</button>'
           : "")
       : "") +
-    (completed > 0 && resetLabel
+    (!authoring && completed > 0 && resetLabel
       ? '<button class="icon-ghost" type="button" data-action="reset-study-progress"' +
         attributes + ' data-reset-level="' + escapeHtml(level) + '" title="' +
         escapeHtml(resetLabel) + '" aria-label="' + escapeHtml(resetLabel) + '">' +
         renderUiIcon("reset", "home-tab-icon") + "</button>"
       : "") +
-    '<button class="open-mini" type="button" data-action="' + escapeHtml(openAction) + '"' +
+    (authoring ? "" : '<button class="open-mini" type="button" data-action="' + escapeHtml(openAction) + '"' +
     attributes + (studyUnitIndex == null ? "" : ` data-study-unit-index="${studyUnitIndex}"`) +
     ' title="' + escapeHtml(openLabel) + '" aria-label="' + escapeHtml(openLabel) + '">' +
-    renderUiIcon("play", "home-tab-icon") + "</button></div></article>"
+    renderUiIcon("play", "home-tab-icon") + "</button>") + '</div></article>'
   );
 }
 
@@ -156,7 +168,7 @@ function levelHeading(label) {
 }
 
 function summary(title, description) {
-  return '<section class="clean-card entity-summary-card"><h2 class="card-title"' +
+  return '<section class="clean-card entity-summary-card" tabindex="0" aria-label="Resumo"><h2 class="card-title"' +
     ' data-study-destination-heading tabindex="-1">' +
     escapeHtml(title) + "</h2>" +
     (description ? '<p class="card-subtitle">' + escapeHtml(description) + "</p>" : "") +
@@ -311,6 +323,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
     openAction: "open-module",
     openLabel: "Abrir módulo",
     resetLabel: "Zerar progresso deste módulo",
+    authoring: Boolean(structuralEditor?.authoringContext),
     structuralEdit: structuralEditor?.editing ? {
       enabled: true,
       id: moduleValue.id,
@@ -325,7 +338,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Curso", "Voltar", modes, runtimeStatus) +
+  return '<section class="screen">' + topbar("Curso", "Voltar", modes, runtimeStatus, structuralEditor?.authoringContext) +
     '<main class="screen-content course-screen">' +
     levelHeading("Curso") +
     (structuralEditor?.editing
@@ -337,7 +350,7 @@ function renderCourse(course, progress, runtimeStatus, structuralEditor) {
       : summary(course.title || "Curso", course.goal || "")) +
     '<h2 class="section-heading">Módulos</h2><section class="navigation-list">' +
     (modules || '<p class="empty-state-copy">Sem módulos.</p>') + "</section>" +
-    renderStructuralEditDock(structuralEditor) + "</main></section>";
+    "</main>" + renderStructuralEditDock(structuralEditor) + "</section>";
 }
 
 function renderModule(course, moduleValue, progress, runtimeStatus, structuralEditor) {
@@ -354,6 +367,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
     openAction: "open-lesson",
     openLabel: "Abrir lição",
     resetLabel: "Zerar progresso desta lição",
+    authoring: Boolean(structuralEditor?.authoringContext),
     structuralEdit: structuralEditor?.editing ? {
       enabled: true,
       id: lesson.id,
@@ -368,7 +382,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
     editable: structuralEditor?.enabled,
     disabled: structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Módulo", "Voltar", modes, runtimeStatus) +
+  return '<section class="screen">' + topbar("Módulo", "Voltar", modes, runtimeStatus, structuralEditor?.authoringContext) +
     '<main class="screen-content course-screen">' +
     levelHeading("Módulo") +
     (structuralEditor?.editing
@@ -380,7 +394,7 @@ function renderModule(course, moduleValue, progress, runtimeStatus, structuralEd
       : summary(moduleValue.title || "Módulo", moduleValue.guide?.goal || "")) +
     '<h2 class="section-heading">Lições</h2><section class="navigation-list">' +
     (lessons || '<p class="empty-state-copy">Sem lições.</p>') + "</section>" +
-    renderStructuralEditDock(structuralEditor) + "</main></section>";
+    "</main>" + renderStructuralEditDock(structuralEditor) + "</section>";
 }
 
 function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assistance, structuralEditor) {
@@ -412,7 +426,8 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
         id: microsequence.id,
         selected: assistance.selection.ids.includes(microsequence.id)
       } : null,
-      structuralEdit: structuralEditor?.editing ? {
+      authoring: Boolean(structuralEditor?.authoringContext),
+    structuralEdit: structuralEditor?.editing ? {
         enabled: true,
         id: microsequence.id,
         selected: structuralEditor.selectedChildId === microsequence.id,
@@ -428,7 +443,7 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
     assistanceAction: assistance.enabled ? "open-lesson-assistance" : "",
     disabled: assistance.saving || structuralEditor?.saving
   });
-  return '<section class="screen">' + topbar("Lição", "Voltar", modes, runtimeStatus) +
+  return '<section class="screen">' + topbar("Lição", "Voltar", modes, runtimeStatus, structuralEditor?.authoringContext) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
     levelHeading("Lição") +
     (structuralEditor?.editing
@@ -440,9 +455,8 @@ function renderLesson(course, moduleValue, lesson, progress, runtimeStatus, assi
       : summary(lesson.title || "Lição", lesson.guide?.goal || "")) +
     '<h2 class="section-heading">Microssequências didáticas</h2><section class="navigation-list">' +
     (rows || '<p class="empty-state-copy">Sem microssequências.</p>') + "</section>" +
-    renderStructuralEditDock(structuralEditor) +
     renderAssistanceSelectionDock(assistance, "lesson") +
-    renderAssistanceDraftDock(assistance, "lesson") + "</main></section>";
+    renderAssistanceDraftDock(assistance, "lesson") + "</main>" + renderStructuralEditDock(structuralEditor) + "</section>";
 }
 
 function renderMicrosequenceOverview(
@@ -481,6 +495,7 @@ function renderMicrosequenceOverview(
       id: studyUnit.id,
       selected: assistance.selection.ids.includes(studyUnit.id)
     } : null,
+    authoring: Boolean(structuralEditor?.authoringContext),
     structuralEdit: structuralEditor?.editing ? {
       enabled: true,
       id: studyUnit.id,
@@ -497,7 +512,7 @@ function renderMicrosequenceOverview(
     disabled: assistance.saving || structuralEditor?.saving
   });
   return '<section class="screen microsequence-overview-screen">' +
-    topbar("Microssequência didática", "Voltar", modes, runtimeStatus) +
+    topbar("Microssequência didática", "Voltar", modes, runtimeStatus, structuralEditor?.authoringContext) +
     '<main class="screen-content microsequence-overview-content navigation-screen">' +
     levelHeading("Microssequência") +
     (structuralEditor?.editing
@@ -509,9 +524,8 @@ function renderMicrosequenceOverview(
       : summary(microsequence.title || "Microssequência didática", microsequence.goal || "")) +
     '<h2 class="section-heading">Unidades de estudo</h2><section class="navigation-list">' +
     (units || '<p class="empty-state-copy">Sem unidades de estudo.</p>') + "</section>" +
-    renderStructuralEditDock(structuralEditor) +
     renderAssistanceSelectionDock(assistance, "didactic_microsequence") +
-    renderAssistanceDraftDock(assistance, "didactic_microsequence") + "</main></section>";
+    renderAssistanceDraftDock(assistance, "didactic_microsequence") + "</main>" + renderStructuralEditDock(structuralEditor) + "</section>";
 }
 
 function renderStudyManualTitle(studyUnit, manualEditor) {
@@ -642,7 +656,7 @@ function renderStudyUnit({
     unit: true
   });
   return '<section class="screen microsequence-workbench-screen">' +
-    topbar(course.title || "Curso", "Voltar", modes, runtimeStatus) +
+    topbar(course.title || "Curso", "Voltar", modes, runtimeStatus, manualEditor.authoringContext) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen"' +
@@ -793,6 +807,18 @@ export function renderCourseStudyScreen({
     citations,
     manualEditor
   });
+}
+
+export function renderAuthoringEditorExitConfirmation({ unknown = false } = {}) {
+  return '<div class="course-authoring-confirm-backdrop"><section class="course-authoring-confirm-dialog" data-authoring-editor-exit' +
+    ' role="alertdialog" aria-modal="true" aria-labelledby="authoring-editor-exit-title" aria-describedby="authoring-editor-exit-message">' +
+    '<h2 id="authoring-editor-exit-title">Voltar ao Conteúdo?</h2><p id="authoring-editor-exit-message">' +
+    (unknown ? 'A gravação pode ter sido concluída. Sair descarta a recuperação deste pedido, sem desfazer o que foi salvo no curso.' :
+      'As alterações ainda não foram salvas. Descartar este rascunho e voltar?') +
+    '</p><div class="course-authoring-confirm-actions"><button type="button" data-action="cancel-authoring-exit">' +
+    renderUiIcon("remove-state", "course-authoring-button-icon") + '<span>Continuar editando</span></button>' +
+    '<button type="button" class="is-danger" data-action="confirm-authoring-exit">' +
+    renderUiIcon("trash", "course-authoring-button-icon") + '<span>Descartar e voltar</span></button></div></section></div>';
 }
 
 export function renderStudyDraftRecovery({ recovery, error = "" } = {}) {

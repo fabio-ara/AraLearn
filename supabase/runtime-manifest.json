@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260905125617",
+  "schemaRevision": "20260905162000",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -37,7 +37,10 @@
     "course-anchored-annotations-atomic-create-v1",
     "course-annotation-subject-classification-v1",
     "course-personal-state-v2",
-    "course-authoring-analytics-v3",
+    "course-authoring-analytics-v4",
+    "course-independent-copy-v1",
+    "course-authoring-comparison-v1",
+    "course-authoring-export-v1",
     "contextual-study-unit-edit-v1",
     "current-data-lifecycle-v1",
     "course-source-current-state-v1",

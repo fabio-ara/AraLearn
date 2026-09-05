@@ -245,11 +245,6 @@ async function authoringAreaLink(page, section) {
     inspection: "content",
     observations: "review"
   })[section] || section;
-  if (canonical === "content" || canonical === "planning") {
-    return page.locator(
-      `.course-authoring-primary-navigation > a[data-section="${canonical}"]`
-    );
-  }
   const menu = page.locator(".course-authoring-task-menu");
   const link = menu.locator(`:scope > nav > a[data-section="${canonical}"]`);
   if (!await menu.evaluate((element) => element.open)) {
@@ -260,6 +255,8 @@ async function authoringAreaLink(page, section) {
 }
 
 async function navigateToAuthoringArea(page, section) {
+  const close = page.getByRole("button", { name: "Fechar parâmetros", exact: true });
+  if (await close.isVisible()) await close.click();
   await (await authoringAreaLink(page, section)).click();
 }
 
@@ -750,7 +747,8 @@ async function mountCourseAuthoring(page, {
     const createReceipts = new Map();
     const people = [{
       userId: studentId,
-      displayName: "Pessoa estudante",
+      handle: "estudante",
+      canCopy: false,
       avatarObjectKey: null,
       grantedAt: "2026-08-17T12:00:00.000Z"
     }];
@@ -2073,15 +2071,18 @@ async function mountCourseAuthoring(page, {
       async listCourseAccess(courseId) {
         probe.peopleReads += 1;
         return {
-          contract: "aralearn.course-people.v1",
+          contract: "aralearn.course-people.v3",
           courseId,
           owner: {
             userId: ownerId,
-            displayName: "Pessoa proprietária",
+            handle: "autor",
             avatarObjectKey: null
           },
           people: structuredClone(people)
         };
+      },
+      async searchCourseAccessPeople() {
+        return { items: [{ userId: grantedPersonId, handle: "nova.pessoa", avatarObjectKey: null }] };
       },
       async grantCourseAccess(request) {
         probe.peopleMutations.push({ method: "grant", request: structuredClone(request) });
@@ -2090,7 +2091,8 @@ async function mountCourseAuthoring(page, {
         probe.peopleAppliedMutations += 1;
         people.push({
           userId: grantedPersonId,
-          displayName: "Pessoa recém-convidada",
+          handle: request.handle,
+          canCopy: request.canCopy,
           avatarObjectKey: null,
           grantedAt: "2026-08-20T12:00:00.000Z"
         });
@@ -2202,6 +2204,75 @@ async function mountCourseAuthoring(page, {
   );
 }
 
+async function selectDesignGroup(page, name) {
+  const back = page.getByRole("button", { name: "Voltar aos ajustes", exact: true });
+  if (await back.isVisible()) await back.click();
+  await page.getByLabel("Escolher grupo de ajustes").click();
+  await page.getByRole("button", { name, exact: true }).click();
+}
+
+test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito combinações", async ({ page }, info) => {
+  for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+    await page.setViewportSize({ width, height: 844 });
+    await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=parameters` });
+    await page.evaluate(theme => { document.documentElement.dataset.colorMode = theme; }, theme);
+    const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
+    await expect(dialog).toBeVisible();
+    const initial = await dialog.boundingBox();
+    const close = dialog.getByRole("button", { name: "Fechar parâmetros", exact: true });
+    const closeBox = await close.boundingBox();
+    const visited = new Set();
+    for (const group of ["Explicações", "Prática", "Leitura e estilo", "Produção", "Conversa", "Recursos", "Perfis"]) {
+      await dialog.locator(".course-design-category-menu > summary").click();
+      await dialog.getByRole("button", { name: group, exact: true }).click();
+      expect(await dialog.boundingBox()).toEqual(initial);
+      expect(await close.boundingBox()).toEqual(closeBox);
+      for (const id of await dialog.locator(".course-design-parameter").evaluateAll(nodes => nodes.map(node => node.dataset.parameterId))) visited.add(id);
+      const geometry = await dialog.evaluate(node => {
+        const group = node.querySelector(".course-design-category-menu > summary").getBoundingClientRect();
+        const scope = node.querySelector(".course-design-scope").getBoundingClientRect();
+        return { topDifference: Math.abs(group.y - scope.y), scopeHeight: scope.height,
+          buttons: [...node.querySelectorAll(".course-design-parameter > button")].map(button => {
+            const box = button.getBoundingClientRect(), style = getComputedStyle(button);
+            return { width: box.width, height: box.height, radius: parseFloat(style.borderRadius), background: style.backgroundColor };
+          }) };
+      });
+      expect(geometry.topDifference).toBeLessThanOrEqual(1);
+      expect(geometry.scopeHeight).toBe(44);
+      for (const button of geometry.buttons) { expect(button.width).toBe(44); expect(button.height).toBe(44); expect(button.radius).toBeGreaterThan(0); }
+
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({ path: info.outputPath(`parameters-${group}-${width}-${theme}.png`) });
+    }
+    expect(visited.size).toBe(12);
+    await dialog.locator(".course-design-category-menu > summary").click();
+    await dialog.getByRole("button", { name: "Explicações", exact: true }).click();
+    await dialog.getByRole("button", { name: "Ajustar Novas unidades de análise", exact: true }).click();
+    const form = dialog.locator("[data-course-design-parameter]");
+    await page.screenshot({ path: info.outputPath(`parameter-editor-${width}-${theme}.png`) });
+    await form.locator("select[name=mode]").selectOption("fixed");
+    await form.locator("input[name=parameterValue]").fill("3");
+    await form.locator("textarea[name=reason]").fill("Distribuir a novidade para este público.");
+    await dialog.getByRole("button", { name: "Voltar aos ajustes", exact: true }).click();
+    await dialog.getByRole("button", { name: "Ajustar Novas unidades de análise", exact: true }).click();
+    await expect(form.locator("input[name=parameterValue]")).toHaveValue("3");
+    await expect(form.locator("textarea[name=reason]")).toHaveValue("Distribuir a novidade para este público.");
+    const save = form.getByRole("button", { name: "Salvar neste escopo", exact: true });
+    const saveBox = await save.boundingBox();
+    expect(saveBox.y + saveBox.height).toBeLessThan(initial.y + initial.height);
+    await save.click();
+    await expect(dialog.getByRole("status")).toContainText("Parâmetro salvo");
+    expect(await save.boundingBox()).toEqual(saveBox);
+    expect(await dialog.boundingBox()).toEqual(initial);
+    await close.focus();
+    await page.keyboard.press("Shift+Tab");
+    expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true);
+    await close.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/section=content$/u);
+  }
+});
+
 test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm edição completa", async ({ page, context }) => {
   const errors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 850 });
@@ -2212,13 +2283,14 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   const wav = await page.evaluate(() => globalThis.__inspectionToolProbe.wav);
   await page.route("**/storage/v1/object/sign/course-media/**", route => route.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from(wav) }));
   const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
-  await expect(card.locator(".study-tool-actions button")).toHaveCount(3);
+  await expect(card.locator(".study-tool-actions button")).toHaveCount(1);
   await expect(card.locator("[data-calculator-form], .package-auxiliary-links, [data-audio-track]")).toHaveCount(0);
-  const calculator = card.getByRole("button", { name: "Calculadora", exact: true });
+  const calculator = card.getByRole("button", { name: "Ferramentas da unidade", exact: true });
   await calculator.focus();
   const before = await calculator.boundingBox();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
+  await dialog.locator('[data-open-study-tool="calculator"]').click();
   await expect(dialog.getByRole("heading", { name: "Calculadora", exact: true })).toBeVisible();
   await expect(page.locator(".course-authoring-surface")).toHaveAttribute("inert", "");
   await dialog.getByRole("button", { name: "Calcular", exact: true }).click();
@@ -2231,7 +2303,8 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   const after = await calculator.boundingBox();
   for (const key of ["x", "y", "width", "height"]) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
 
-  await card.getByRole("button", { name: "Gramática", exact: true }).tap();
+  await calculator.tap();
+  await dialog.locator('[data-open-study-tool="grammar"]').tap();
   await expect(dialog.locator("[data-tool-link-index]")).toHaveCount(2);
   for (const [label, expected] of [["Explicação na web", "/synthetic-grammar"], ["PDF da construção", "/synthetic-source.pdf?token=synthetic"]]) {
     const opened = page.waitForEvent("popup");
@@ -2242,7 +2315,7 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   }
   expect(await page.evaluate(() => globalThis.__inspectionToolProbe.pdfs[0])).toEqual({ courseId: COURSE_IDS[0], expectedCourseRevision: 5, sourceId: "source-01", sourceRevision: 1, contentHash: "a".repeat(64) });
   await page.keyboard.press("Escape");
-  await card.getByRole("button", { name: "Mais ferramentas" }).tap();
+  await calculator.tap();
   await expect(dialog.locator("[data-open-study-tool]")).toHaveCount(3);
   await dialog.locator('[data-open-study-tool="audio"]').tap();
   await expect(dialog.locator(".package-audio-alternative")).toHaveText("Alternativa inspecionável pelo proprietário.");
@@ -2255,15 +2328,16 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
 
   await card.locator('[data-inspection-selection-action="toggle-current"]').tap();
   const second = page.locator('[data-inspection-study-unit="study-unit-13"]');
-  const secondCalculator = second.getByRole("button", { name: "Calculadora", exact: true });
+  const secondCalculator = second.getByRole("button", { name: "Ferramentas da unidade", exact: true });
   await secondCalculator.tap();
+  await dialog.locator('[data-open-study-tool="calculator"]').tap();
   await expect(dialog.getByRole("heading", { name: "Cálculo da unidade 13" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(secondCalculator).toBeFocused();
   await page.getByRole("button", { name: "Cancelar seleção", exact: true }).tap();
 
   await card.getByRole("button", { name: "Editar", exact: true }).click();
-  await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(3);
+  await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(1);
   await expect(card.locator("[data-calculator-form]")).toHaveCount(1);
   await expect(card.locator("[data-audio-track]")).toHaveCount(1);
   await expect(card.locator('[data-resource-target-id="content:calculator"]')).toHaveAttribute("aria-label", "Selecionar recurso para edição");
@@ -2273,8 +2347,9 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await expect(card.locator('[data-resource-target-id="content:calculator"]')).toHaveCount(0);
   await titleField.fill("Cálculo <literal> **sem markup**");
   await card.getByRole("button", { name: "Salvar edição", exact: true }).click();
-  await expect(card.locator(".study-tool-actions button")).toHaveCount(3);
+  await expect(card.locator(".study-tool-actions button")).toHaveCount(1);
   await calculator.click();
+  await dialog.locator('[data-open-study-tool="calculator"]').click();
   await expect(dialog.getByRole("heading", { name: "Cálculo <literal> **sem markup**", exact: true })).toBeVisible();
   await expect(dialog.locator("h3 strong, h3 literal")).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -2294,14 +2369,21 @@ test("#304 ferramentas ficam à esquerda e preservam D4 nas oito combinações",
     expect(Math.abs(tools.y - usual.y)).toBeLessThanOrEqual(1);
     expect(tools.x + tools.width).toBeLessThanOrEqual(usual.x);
 
-    const geometry = await card.locator(".course-inspection-item-actions button").evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })));
+    const geometry = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => { const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height }; }));
+    expect(geometry).toHaveLength(7);
+    const cardFrame = await card.boundingBox();
+    for (const control of geometry) {
+      expect(Math.abs(control.y - geometry[0].y)).toBeLessThanOrEqual(1);
+      expect(control.x).toBeGreaterThanOrEqual(cardFrame.x);
+      expect(control.x + control.width).toBeLessThanOrEqual(cardFrame.x + cardFrame.width);
+    }
     for (const control of geometry) { expect(control.width).toBeGreaterThanOrEqual(44); expect(control.height).toBeGreaterThanOrEqual(44); }
     await page.screenshot({ path: info.outputPath(`inspection-tools-${width}-${colorMode}.png`) });
     const readBoxes = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => {
       const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height };
     }));
     await card.getByRole("button", { name: "Editar", exact: true }).click();
-    await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(3);
+    await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(1);
     const editBoxes = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => {
       const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height };
     }));
@@ -2329,20 +2411,21 @@ test("#304 resultado da calculadora longa é alcançado por rolagem no modal390"
   await calculator.tap();
   const dialog = page.getByRole("dialog", { name: "Calculadora", exact: true });
   await expect(dialog.locator("[data-calculator-form]")).toBeVisible();
-  expect(await dialog.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+  const body = dialog.locator(".study-tool-body");
+  expect(await body.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
   await dialog.getByRole("button", { name: "Calcular", exact: true }).scrollIntoViewIfNeeded();
   await dialog.getByRole("button", { name: "Calcular", exact: true }).click();
   const output = dialog.locator("output");
   await expect(output).toHaveText("Resultado aproximado: 5");
-  await dialog.evaluate(node => { node.scrollTop = 0; });
+  await body.evaluate(node => { node.scrollTop = 0; });
   const hiddenResult = await output.boundingBox();
-  const viewport = await dialog.boundingBox();
+  const viewport = await body.boundingBox();
   expect(hiddenResult.y).toBeGreaterThanOrEqual(viewport.y + viewport.height);
-  await dialog.hover();
+  await body.hover();
   await page.mouse.wheel(0, 1200);
-  await expect.poll(() => dialog.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => body.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
   await expect.poll(() => output.evaluate(node => {
-    const result = node.getBoundingClientRect(), frame = node.closest(".study-tools-panel").getBoundingClientRect();
+    const result = node.getBoundingClientRect(), frame = node.closest(".study-tool-body").getBoundingClientRect();
     return result.top >= frame.top && result.bottom <= frame.bottom;
   })).toBe(true);
   await page.screenshot({ path: info.outputPath("inspection-calculator-result-scroll-390.png") });
@@ -2356,7 +2439,8 @@ test("#304 ferramentas recusam identidade divergente e PDF tardio após fechar",
   const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
   const dialog = page.getByRole("dialog");
   await page.evaluate(() => { globalThis.__inspectionToolProbe.wrongPdf = true; });
-  await card.getByRole("button", { name: "Gramática", exact: true }).tap();
+  await card.getByRole("button", { name: "Ferramentas da unidade", exact: true }).tap();
+  await dialog.locator('[data-open-study-tool="grammar"]').tap();
   await dialog.getByRole("button", { name: "PDF da construção" }).tap();
   await expect(dialog.locator('[data-tool-link-status="1"]')).toContainText("Não foi possível abrir");
   expect(context.pages()).toHaveLength(1);
@@ -2365,10 +2449,10 @@ test("#304 ferramentas recusam identidade divergente e PDF tardio após fechar",
   await expect(dialog.locator('[data-tool-link-status="1"]')).toContainText("Abrindo");
   await page.keyboard.press("Escape");
   await page.evaluate(() => globalThis.__inspectionToolProbe.releasePdf());
-  await expect(card.getByRole("button", { name: "Gramática", exact: true })).toBeFocused();
+  await expect(card.getByRole("button", { name: "Ferramentas da unidade", exact: true })).toBeFocused();
   expect(context.pages()).toHaveLength(1);
   await page.evaluate(() => { globalThis.__inspectionToolProbe.failConfig = true; globalThis.__inspectionToolProbe.wrongUnit = true; });
-  await card.getByRole("button", { name: "Mais ferramentas" }).tap();
+  await card.getByRole("button", { name: "Ferramentas da unidade" }).tap();
   await dialog.locator('[data-open-study-tool="audio"]').tap();
   await expect(dialog.getByRole("button", { name: "Consultar configuração novamente" })).toBeVisible();
   await dialog.getByRole("button", { name: "Consultar configuração novamente" }).tap();
@@ -2399,7 +2483,7 @@ test("#304 ferramentas recusam identidade divergente e PDF tardio após fechar",
   await page.keyboard.press("Escape");
   await expect.poll(() => page.evaluate(() => globalThis.__inspectionToolProbe.fetchAborted)).toBe(true);
   releaseFile();
-  await expect(card.getByRole("button", { name: "Mais ferramentas" })).toBeFocused();
+  await expect(card.getByRole("button", { name: "Ferramentas da unidade" })).toBeFocused();
   expect(await page.evaluate(() => globalThis.__inspectionToolProbe.urls.length)).toBe(0);
 });
 
@@ -2469,14 +2553,11 @@ test.describe("Autoria canônica mobile-first", () => {
       const parametersHash = `#/authoring/courses/${COURSE_IDS[0]}?section=parameters`;
       await mountCourseAuthoring(page, { cardinality: "many", hash: parametersHash });
 
-      await expect(page.locator(".course-authoring-course-header h1"))
-        .toHaveText("Fundamentos de relações");
-      await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
-      await expect(page.locator(".course-design-parameter")).toHaveCount(6);
-      await expect(page.locator(".course-design-component-option")).toHaveCount(33);
-      await expect(page.locator(".course-design-parameters").getByLabel(/^Ajustar /u))
-        .toHaveCount(6);
-      await expect(page.getByRole("heading", { name: "Componentes", exact: true })).toBeVisible();
+      await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
+      await expect(page.locator(".course-design-parameter")).toHaveCount(2);
+      await expect(page.locator(".course-design-parameters").getByLabel(/^Ajustar /u)).toHaveCount(2);
+      await selectDesignGroup(page, "Recursos");
+      await expect(page.locator(".course-design-component-option")).toHaveCount(COURSE_COMPONENT_CATALOG.options.length);
       await expectNoHorizontalOverflow(page);
       expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe)).toMatchObject({
         outlineReads: 0,
@@ -2509,7 +2590,7 @@ test.describe("Autoria canônica mobile-first", () => {
 
       await expect(page.locator(".course-authoring-course-header h1"))
         .toHaveText("Fundamentos de relações");
-      await expect(page.locator(".course-authoring-context-title")).toHaveText("Fontes");
+      await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Fontes");
       await expect(page.locator(".course-source-card")).toHaveCount(10);
       await page.getByRole("button", { name: "Carregar mais fontes" }).click();
       await expect(page.locator(".course-source-card")).toHaveCount(20);
@@ -2684,7 +2765,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             "aria-busy",
             "false"
           );
-          await expect(page.locator(".course-authoring-context-title")).toHaveText(
+          await expect(page.locator(".course-authoring-course-heading h1")).toHaveText(
             area.heading
           );
           await expect(page.locator(area.ready).first()).toBeVisible();
@@ -2823,7 +2904,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await navigateToAuthoringArea(page, "parameters");
     await expect(page.locator(".course-authoring-course-header h1"))
       .toHaveText("Fundamentos de relações");
-    await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
+    await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
     await expect.poll(() => root.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
     expect(clientErrors).toEqual([]);
   });
@@ -2850,7 +2931,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await navigateToAuthoringArea(page, "planning");
     await expect(page.locator(".course-authoring-course-header h1"))
       .toHaveText("Fundamentos de relações");
-    await expect(page.locator(".course-authoring-context-title")).toHaveText("Planejamento");
+    await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toHaveCount(0);
 
     await navigateToAuthoringArea(page, "inspection");
@@ -2923,7 +3004,7 @@ test.describe("entrada e Conteúdo cotidiano da Autoria", () => {
         });
 
         await page.locator(".course-authoring-course-card").first().click();
-        await expect(page.locator(".course-authoring-context-title")).toHaveText("Conteúdo");
+        await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
         await expect(page.locator(".course-authoring-task-menu > summary"))
           .toHaveAccessibleName("Abrir tarefas do curso");
@@ -2949,7 +3030,7 @@ test("Conteúdo mantém cabeçalhos separados em 360 px com título longo", asyn
 
   const courseHeading = page.locator(".course-authoring-course-header h1");
   await expect(courseHeading).toHaveText(courseTitle);
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Conteúdo");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   await expect(page.locator(".course-inspection-sticky-context")).toBeVisible();
 
   const geometry = async () => page.locator(".course-authoring-surface").evaluate((surface) => {
@@ -3424,8 +3505,9 @@ test("Inspeção abre os Parâmetros da StudyUnit em folha e retorna ao mesmo co
   await designAction.click();
   const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
   await expectModalDialogOwnsTopLayer(dialog);
-  await expect(dialog.getByRole("heading", { name: "Conteúdo", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("region", { name: "Escopo atual", exact: true }))
+  await expect(dialog.getByLabel("Escolher grupo de ajustes")).toContainText("Explicações");
+  await dialog.locator(".course-design-scope > summary").click();
+  await expect(dialog.locator(".course-design-scope"))
     .toContainText("unidade de estudo: Exemplo guiado com diagrama");
   await expect(dialog.getByRole("button", { name: "Fechar parâmetros", exact: true })).toBeVisible();
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
@@ -3983,9 +4065,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   const planningHash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
   await mountCourseAuthoring(page, { cardinality: "many", hash: planningHash });
 
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Planejamento");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
   const planningContext = page.locator(".course-authoring-planning-context");
   await expect(planningContext).not.toHaveAttribute("open", "");
   await planningContext.locator(":scope > summary").click();
@@ -3998,10 +4078,8 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   });
 
   await navigateToAuthoringArea(page, "parameters", 390);
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
-  await expect(page.locator(".course-design-parameter")).toHaveCount(6);
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
+  await expect(page.locator(".course-design-parameter")).toHaveCount(2);
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe)).toMatchObject({
     outlineReads: 0,
     planReads: 1,
@@ -4012,6 +4090,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
       cursor: null
     }]
   });
+  await page.locator(".course-design-scope > summary").click();
   await page.locator("#course-design-child-scope").focus();
   const parametersScroll = await page.evaluate(() => {
     const scroller = document.querySelector(".course-authoring-root");
@@ -4019,9 +4098,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
     return scroller.scrollTop;
   });
   await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Parâmetros");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}?section=parameters`
   );
@@ -4036,9 +4113,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   await expect(page.getByRole("dialog", { name: "Trabalhar no ChatGPT" }))
     .toHaveCount(0);
   await navigateToAuthoringArea(page, "content", 390);
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Conteúdo");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   await expect(page.getByRole("heading", { name: "Exemplo guiado com diagrama" })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.outlineReads)).toBe(0);
   await page.evaluate(({ courseId }) => {
@@ -4062,9 +4137,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
     return scroller.scrollTop;
   });
   await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Conteúdo");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   await expect.poll(() => page.evaluate(() =>
     document.querySelector(".course-authoring-root").scrollTop))
     .toBe(scrollBeforeRefresh);
@@ -4073,11 +4146,9 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   );
 
   await navigateToAuthoringArea(page, "people", 390);
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Pessoas e acesso");
-  await expect(page.getByText("Pessoa proprietária")).toBeVisible();
-  await expect(page.getByText("Pessoa estudante")).toBeVisible();
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Pessoas e acesso");
+  await expect(page.getByText("@autor", { exact: true })).toBeVisible();
+  await expect(page.getByText("@estudante", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.peopleReads)).toBe(1);
   expect(await page.evaluate(() => ({
     outlineReads: globalThis.__courseAuthoringHarness.probe.outlineReads,
@@ -4085,9 +4156,7 @@ test("deep link separa Planejamento, Parâmetros, Conteúdo e Pessoas", async ({
   }))).toEqual({ outlineReads: 0, inspectionReads: 3 });
 
   await page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true }).click();
-  await expect(page.locator(".course-authoring-course-header h1"))
-    .toHaveText("Fundamentos de relações");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Conteúdo");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   await page.getByRole("button", { name: "Voltar aos cursos" }).click();
   await expect(page.getByRole("heading", { name: "Meus cursos" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("");
@@ -4104,8 +4173,9 @@ test("Pessoas repete a mesma concessão após commit com resposta ambígua", asy
 
   await page.locator('[data-course-authoring-action="open-grant"]').click();
   const form = page.locator("[data-course-authoring-grant]");
-  const email = form.getByLabel("E-mail exato");
-  await email.fill("nova@example.test");
+  const handle = form.getByLabel("Identificador da pessoa");
+  await handle.fill("nova.pessoa");
+  await page.getByRole("option", { name: /nova\.pessoa/u }).click();
   await form.getByRole("button", { name: "Conceder acesso", exact: true }).click();
   const firstConfirmation = page.getByRole("alertdialog");
   await expect(firstConfirmation).toHaveAttribute("data-confirmation-tone", "primary");
@@ -4113,10 +4183,12 @@ test("Pessoas repete a mesma concessão após commit com resposta ambígua", asy
     name: "Conceder acesso",
     exact: true
   }).click();
+  await page.locator(".course-authoring-task-menu > summary").click();
   await expect(page.getByText(/Tente novamente para confirmar a mesma operação/u))
     .toBeVisible();
-  await expect(email).toHaveValue("nova@example.test");
-  await navigateToAuthoringArea(page, "structure");
+  await page.keyboard.press("Escape");
+  await expect(handle).toHaveValue("nova.pessoa");
+  await navigateToAuthoringArea(page, "content");
   await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
     "data-section",
     "people"
@@ -4127,18 +4199,15 @@ test("Pessoas repete a mesma concessão após commit com resposta ambígua", asy
     globalThis.__courseAuthoringHarness.surface.close())).toBe("deferred");
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.closeCalls)).toBe(0);
-  await expect(email).toHaveValue("nova@example.test");
+  await expect(handle).toHaveValue("nova.pessoa");
 
   await form.getByRole("button", { name: "Conceder acesso", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", {
     name: "Conceder acesso",
     exact: true
   }).click();
-  await expect(page.getByText("Pessoa recém-convidada", { exact: true })).toHaveCount(0);
-  await expect(page.getByText(
-    "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Depois, atualize o curso para conferir o acesso.",
-    { exact: true }
-  )).toBeVisible();
+  await expect(page.getByText("@nova.pessoa", { exact: true })).toBeVisible();
+  await expect(page.getByText("Acesso concedido a @nova.pessoa.", { exact: true })).toBeVisible();
 
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
   expect(probe.peopleMutations).toHaveLength(2);
@@ -4148,7 +4217,9 @@ test("Pessoas repete a mesma concessão após commit com resposta ambígua", asy
     method: "grant",
     request: {
       courseId: COURSE_IDS[0],
-      email: "nova@example.test",
+      userId: "8d000000-0000-4000-8000-00000000001d",
+      handle: "nova.pessoa",
+      canCopy: false,
       confirmed: true
     }
   });
@@ -4163,7 +4234,7 @@ test("Pessoas repete a mesma revogação após commit com resposta ambígua", as
   });
 
   const revoke = page.getByRole("button", {
-    name: "Revogar acesso de Pessoa estudante",
+    name: "Revogar acesso de @estudante",
     exact: true
   });
   await revoke.click();
@@ -4171,16 +4242,20 @@ test("Pessoas repete a mesma revogação após commit com resposta ambígua", as
     name: "Revogar acesso",
     exact: true
   }).click();
+  await page.locator(".course-authoring-task-menu > summary").click();
   await expect(page.getByText(/Tente novamente para confirmar a mesma operação/u))
     .toBeVisible();
-  await expect(page.getByText("Pessoa estudante", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("@estudante", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-course-authoring-action="set-copy-permission"]')).toBeDisabled();
+  await expect(page.locator('[data-course-authoring-action="open-grant"]')).toBeDisabled();
 
   await revoke.click();
   await page.getByRole("alertdialog").getByRole("button", {
     name: "Revogar acesso",
     exact: true
   }).click();
-  await expect(page.getByText("Pessoa estudante", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("@estudante", { exact: true })).toHaveCount(0);
   await expect(page.getByText(
     "Acesso revogado; o estado pessoal foi preservado.",
     { exact: true }
@@ -4213,7 +4288,8 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
     '[data-parameter-id="new_analysis_unit_ceiling_per_expository_study_unit"]'
   );
   await parameter.getByLabel(/^Ajustar /u).click();
-  await parameter.getByRole("spinbutton", { name: "Valor", exact: true }).fill("4");
+  await parameter.getByLabel("Decisão neste escopo", { exact: true }).selectOption("fixed");
+  await parameter.getByRole("spinbutton", { name: /^Valor · /u }).fill("4");
   await parameter.getByLabel("Origem", { exact: true }).selectOption("research_condition");
   await parameter.getByLabel("Justificativa").fill(
     "Condição experimental registrada antes da produção."
@@ -4221,6 +4297,7 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
   await parameter.getByRole("button", { name: "Salvar neste escopo" }).click();
   await expect(page.getByText("Parâmetro salvo neste escopo.")).toBeVisible();
 
+  await selectDesignGroup(page, "Leitura e estilo");
   await page.getByLabel("Editar direção editorial neste escopo", { exact: true }).click();
   const guidanceEditor = page.locator(".course-design-local-editor");
   await guidanceEditor.getByRole("textbox", {
@@ -4239,6 +4316,7 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
     "Defina DNS, mostre resolução de nomes e contraste com DHCP."
   );
 
+  await selectDesignGroup(page, "Recursos");
   await page.getByLabel("Ajustar componentes neste escopo", { exact: true }).click();
   const policy = page.locator(".course-design-policy");
   await policy.getByLabel("Disponibilidade").selectOption("allow_only");
@@ -4253,6 +4331,7 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
   await policy.getByRole("button", { name: "Salvar componentes" }).click();
   await expect(page.getByText("Política de componentes salva neste escopo.")).toBeVisible();
 
+  await selectDesignGroup(page, "Recursos");
   await page.getByLabel("Ajustar componentes neste escopo", { exact: true }).click();
   await page.locator('[data-course-authoring-action="clear-design-policy"]').click();
   const restorePolicy = page.getByRole("alertdialog", { name: "Confirmar ação" });
@@ -4284,13 +4363,13 @@ test("Parâmetros salva condição, direção editorial e política local", asyn
     availability: "allow_only"
   });
   expect(mutations[2].command.policy.allowedRefs).toEqual([
-    "aralearn.resource.component_01@1.0.0"
+    COURSE_COMPONENT_CATALOG.options[0].ref
   ]);
   expect(mutations[2].command.policy.excludedRefs).toEqual([
-    "aralearn.resource.component_02@1.0.0"
+    COURSE_COMPONENT_CATALOG.options[1].ref
   ]);
   expect(mutations[2].command.policy.preferredRefs).toEqual([
-    "aralearn.resource.component_01@1.0.0"
+    COURSE_COMPONENT_CATALOG.options[0].ref
   ]);
   await expectNoHorizontalOverflow(page);
   expect(clientErrors).toEqual([]);
@@ -4309,7 +4388,8 @@ test("Parâmetros preserva o formulário e repete a mesma operação após respo
     '[data-parameter-id="new_analysis_unit_ceiling_per_expository_study_unit"]'
   );
   await parameter.getByLabel(/^Ajustar /u).click();
-  const value = parameter.getByRole("spinbutton", { name: "Valor", exact: true });
+  await parameter.getByLabel("Decisão neste escopo", { exact: true }).selectOption("fixed");
+  const value = parameter.getByRole("spinbutton", { name: /^Valor · /u });
   const origin = parameter.getByLabel("Origem", { exact: true });
   const reason = parameter.getByLabel("Justificativa");
   await value.fill("4");
@@ -4321,8 +4401,9 @@ test("Parâmetros preserva o formulário e repete a mesma operação após respo
   await expect(value).toHaveValue("4");
   await expect(origin).toHaveValue("research_condition");
   await expect(reason).toHaveValue("Condição preservada para confirmar a mesma gravação.");
-  await expect(reason).toBeFocused();
-  await navigateToAuthoringArea(page, "structure");
+  await expect(reason).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Repetir gravação", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
   await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
     "data-section",
     "parameters"
@@ -4337,7 +4418,7 @@ test("Parâmetros preserva o formulário e repete a mesma operação após respo
   await expect(origin).toHaveValue("research_condition");
   await expect(reason).toHaveValue("Condição preservada para confirmar a mesma gravação.");
 
-  await parameter.getByRole("button", { name: "Salvar neste escopo" }).click();
+  await page.getByRole("button", { name: "Repetir gravação", exact: true }).click();
   await expect(page.getByText("Parâmetro salvo neste escopo.")).toBeVisible();
   const mutations = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.designMutations);
@@ -4354,6 +4435,7 @@ test("Parâmetros mantém direção editorial e política após validação loca
     hash: `#/authoring/courses/${COURSE_IDS[0]}?section=parameters`
   });
 
+  await selectDesignGroup(page, "Leitura e estilo");
   const guidance = page.locator(".course-design-local-editor");
   await guidance.getByLabel("Editar direção editorial neste escopo", { exact: true }).click();
   await guidance.getByRole("textbox", {
@@ -4379,6 +4461,7 @@ test("Parâmetros mantém direção editorial e política após validação loca
   await expect(guidance.getByLabel("Justificativa")).toHaveValue("Razão ainda em revisão.");
   await expect(guidance.getByLabel("Justificativa")).toBeFocused();
 
+  await selectDesignGroup(page, "Recursos");
   const policy = page.locator(".course-design-policy");
   await policy.getByLabel("Ajustar componentes neste escopo", { exact: true }).click();
   await policy.getByLabel("Disponibilidade").selectOption("allow_only");
@@ -4445,7 +4528,7 @@ test("rascunho e criação ambígua na lista bloqueiam atualização, Back e sa�
   await page.getByRole("button", { name: "Criar curso" }).last().click();
   await expect(page.locator(".course-authoring-course-header h1"))
     .toHaveText("Curso criado uma só vez");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Conteúdo");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Conteúdo");
   const calls = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.createCalls);
   expect(calls).toHaveLength(2);
@@ -4464,7 +4547,7 @@ test("criação abre Conteúdo e mantém Planejamento consultivo", async ({ page
   await page.getByRole("button", { name: "Criar curso" }).last().click();
   await expect(page.locator(".course-authoring-course-header h1"))
     .toHaveText("Curso criado na Autoria");
-  await expect(page.locator(".course-authoring-course-heading .course-authoring-context-title"))
+  await expect(page.locator(".course-authoring-course-heading h1"))
     .toHaveText("Conteúdo");
   const createCalls = await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.createCalls);
@@ -4478,7 +4561,7 @@ test("criação abre Conteúdo e mantém Planejamento consultivo", async ({ page
   await page.getByRole("link", { name: /Planejamento/u }).first().click();
   await expect(page.locator(".course-authoring-course-header h1"))
     .toHaveText("Curso criado na Autoria");
-  await expect(page.locator(".course-authoring-context-title")).toHaveText("Planejamento");
+  await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
   await expect(page.getByRole("button", { name: "Editar planejamento" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Salvar planejamento" })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);

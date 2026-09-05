@@ -91,20 +91,17 @@ function renderScopeContext(design) {
       ' data-course-authoring-action="load-more-design-scopes" aria-label="Carregar mais escopos"' +
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
-  const contextualNote = context.current.kind === "study_unit"
-    ? "Estes valores orientam a próxima produção desta unidade. A configuração usada anteriormente fica preservada."
-    : context.current.kind === "didactic_microsequence"
-    ? "Estes valores orientam a microssequência, respeitadas as exceções de cada unidade. A configuração usada anteriormente fica preservada."
-    : "Escolha um escopo para consultar o valor vigente e, quando necessário, sobrescrever ou restaurar a herança.";
-  return '<section class="course-design-scope" aria-labelledby="course-design-scope-title">' +
-    '<div><p id="course-design-scope-title">Escopo atual</p>' +
+  return '<details class="course-design-scope"><summary title="Alcance dos ajustes">' +
+    renderUiIcon("intent", "course-authoring-button-icon") +
+    `<span>${escapeHtml(SCOPE_LABELS[context.current.kind])}</span></summary>` +
+    '<div><p id="course-design-scope-title">Aplicar em</p>' +
     `<strong>${escapeHtml(SCOPE_LABELS[context.current.kind])}: ` +
     `${escapeHtml(context.current.label)}</strong>` +
-    `<span class="course-design-context-note">${escapeHtml(contextualNote)}</span></div>` +
-    `<nav aria-label="Caminho do escopo">${breadcrumbs}</nav>${selector}${more}</section>`;
+    '<span class="course-design-context-note">Orienta a próxima produção. Exceções locais são preservadas.</span></div>' +
+    `<nav aria-label="Caminho do escopo">${breadcrumbs}</nav>${selector}${more}</details>`;
 }
 
-function renderParameterCard(design, definition, resolution, busy) {
+function renderParameterCard(design, definition, resolution, busy, { editing = false } = {}) {
   const local = resolution.localAssignment;
   const effective = resolution.effectiveAssignment;
   const supported = definition.supportedScopes.includes(design.scopeContext.current.kind);
@@ -122,7 +119,7 @@ function renderParameterCard(design, definition, resolution, busy) {
       `<select id="course-design-mode-${definition.id}" name="mode" data-design-mode>` +
       `<option value="fixed"${automatic ? "" : " selected"}>Fixar valor</option>` +
       `<option value="automatic"${automatic ? " selected" : ""}>Automático pelo contexto</option></select>` +
-      '<p class="course-design-reason">Automático delega uma escolha explicada à IA antes da produção. Herança usa a decisão do escopo anterior.</p>' +
+      '<p class="course-design-reason">Automático: a IA escolhe e justifica antes de produzir.</p>' +
       `<div class="course-design-fixed-values" data-design-values${automatic ? " hidden" : ""}>` +
       renderDesignValueInput(definition, draftValue, { disabled: automatic }) +
       `<label for="course-design-origin-${escapeHtml(definition.id)}">Origem</label>` +
@@ -133,33 +130,31 @@ function renderParameterCard(design, definition, resolution, busy) {
       `<label for="course-design-reason-${escapeHtml(definition.id)}">Justificativa</label>` +
       `<textarea id="course-design-reason-${escapeHtml(definition.id)}" name="reason" maxlength="1000"` +
       ` rows="3" required>${escapeHtml(local?.reason || "")}</textarea>` +
-      '<div class="course-design-form-actions"><button type="submit" aria-label="Salvar neste escopo" title="Salvar neste escopo"' +
-      `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+      '<div class="course-design-form-actions">' +
+      '<button type="button" class="is-secondary" data-course-authoring-action="clear-design-parameter"' +
+      ` data-parameter-id="${escapeHtml(definition.id)}" aria-label="Restaurar herança" title="Restaurar herança"${busy || !local ? " disabled" : ""}>` +
+      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>` +
       '<button type="reset" class="is-secondary" aria-label="Descartar alterações" title="Descartar alterações">' +
       `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
-      (local
-        ? '<button type="button" class="is-secondary" data-course-authoring-action="clear-design-parameter"' +
-          ` data-parameter-id="${escapeHtml(definition.id)}" aria-label="Restaurar herança" title="Restaurar herança"${busy ? " disabled" : ""}>` +
-          `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
-        : "") + "</div></form>"
+      '<button type="submit" aria-label="Salvar neste escopo" title="Salvar neste escopo"' +
+      `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></div></form>`
     : '<div class="course-design-disabled-editor" aria-disabled="true"><p>' +
       `Ajuste disponível em: ${escapeHtml(definition.supportedScopes.map((kind) => SCOPE_LABELS[kind]).join(", "))}. ` +
       "O valor herdado continua visível neste escopo.</p></div>";
+  if (editing) return `<section class="course-design-parameter-editor" data-parameter-id="${escapeHtml(definition.id)}">` +
+    `<h3>${escapeHtml(definition.label)}</h3>${editor}` +
+    '<details class="course-design-explanation"><summary>Definição e origem</summary>' +
+    `<p>${escapeHtml(definition.construct)}</p><p>${escapeHtml(definition.operationalization)}</p>` +
+    `<p>${escapeHtml(definition.limitations)}</p><p>${escapeHtml(resolutionLabel)}</p>` +
+    `<p>${escapeHtml(effective.reason)}</p></details></section>`;
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
-    '<header><div>' +
+    '<header tabindex="0"><div>' +
     `<h3>${escapeHtml(definition.label)}</h3><p class="course-authoring-visually-hidden">Valor vigente</p></div>` +
     `<strong>${escapeHtml(effective.value === null ? "Automático" : formatDesignValue(definition, effective.value))}</strong></header>` +
-    `<details><summary class="course-authoring-icon-action" aria-label="Ajustar ${escapeHtml(
+    `<button type="button" data-course-authoring-action="edit-design-parameter" data-parameter-id="${escapeHtml(definition.id)}" class="course-authoring-icon-action" aria-label="Ajustar ${escapeHtml(
       definition.label
     )}" title="Ajustar ${escapeHtml(definition.label)}">` +
-    renderUiIcon("edit", "course-authoring-button-icon") + "</summary>" +
-    '<dl class="course-design-resolution"><div>' +
-    '<dt class="course-authoring-visually-hidden">Origem e escopo</dt>' +
-    `<dd>${escapeHtml(resolutionLabel)}</dd></div></dl>` +
-    `<p class="course-design-reason">${escapeHtml(effective.reason)}</p>` +
-    `<div class="course-design-parameter-explanation"><p>${escapeHtml(definition.construct)}</p>` +
-    `<p><strong>Como é aplicado:</strong> ${escapeHtml(definition.operationalization)}</p>` +
-    `<p><strong>Limite:</strong> ${escapeHtml(definition.limitations)}</p></div>${editor}</details></article>`;
+    renderUiIcon("edit", "course-authoring-button-icon") + "</button></article>";
 }
 
 function renderParameterGroup(design, busy, {
@@ -195,7 +190,7 @@ function renderGuidance(design, busy) {
   const local = guidance.localAssignment;
   return '<section class="course-design-guidance" aria-labelledby="course-design-guidance-title">' +
     '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Direção editorial</h3>' +
-    '<p>Extensão, parágrafos, títulos e estilo. Nunca comprime nem remove conteúdo necessário; quando preciso, distribui em mais unidades de estudo.</p></div></header>' + stack +
+    '</div></header>' + stack +
     '<details class="course-design-local-editor"><summary class="course-authoring-icon-action"' +
     ` aria-label="${local ? "Editar" : "Adicionar"} direção editorial neste escopo"` +
     ` title="${local ? "Editar" : "Adicionar"} direção editorial neste escopo">` +
@@ -299,9 +294,30 @@ export function renderCourseDesignPanel(state) {
   const conflicts = design.parameters.flatMap((parameter) => parameter.conflicts.map((conflict) => ({
     ...conflict, parameterId: parameter.parameterId
   })));
+  const groups = [...new Map(design.definitions.map(definition => [definition.group, definition.groupLabel]))]
+    .map(([id, label]) => ({ id, label }));
+  groups.push({ id: "resources", label: "Recursos" }, { id: "profiles", label: "Perfis" });
+  const selected = groups.find(group => group.id === state.designCategory) || groups[0];
+  const edited = design.definitions.find(definition => definition.id === state.designParameterId);
+  const categoryMenu = '<details class="course-design-category-menu"><summary aria-label="Escolher grupo de ajustes" title="Grupos de ajustes">' +
+    renderUiIcon("module", "course-authoring-button-icon") + `<span>${escapeHtml(selected.label)}</span></summary>` +
+    '<nav aria-label="Grupos de ajustes">' + groups.map(group =>
+      `<button type="button" data-course-authoring-action="select-design-category" data-design-category="${escapeHtml(group.id)}"` +
+      `${group.id === selected.id ? ' aria-current="page"' : ""}>${escapeHtml(group.label)}</button>`).join("") + '</nav></details>';
+  const content = edited ? renderParameterCard(design, edited,
+    design.parameters.find(parameter => parameter.parameterId === edited.id), state.designBusy, { editing: true }) :
+    selected.id === "resources" ? renderComponentPolicy(design, state.designBusy) :
+    selected.id === "profiles" ? renderCourseAuthoringProfiles({ ...state, profilesOpen: true }) :
+    renderParameterGroup(design, state.designBusy, { group: selected.id,
+      titleId: `course-design-${selected.id}-parameters-title`, title: escapeHtml(selected.label) }) +
+      (selected.id === "editorial" ? renderGuidance(design, state.designBusy) : "");
   return '<section class="course-authoring-section course-design"' +
     ' aria-labelledby="course-authoring-section-title">' +
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros, direção editorial e componentes</h2>' +
+    '<div class="course-design-settings-nav">' +
+    (edited ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="design-group-back" aria-label="Voltar aos ajustes" title="Voltar aos ajustes">' +
+      renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button><span>' + escapeHtml(selected.label) + '</span>' : categoryMenu) +
+    renderScopeContext(design) + '</div><div class="course-design-feedback" aria-live="polite">' +
     (state.designMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.designMessage)}</p>`
       : "") +
@@ -309,17 +325,10 @@ export function renderCourseDesignPanel(state) {
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.designFailure)}</p>`
       : "") +
     (state.pendingDesignCommands?.size && !state.designBusy ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="retry-design-mutation" aria-label="Repetir gravação" title="Repetir gravação">' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : "") +
-    renderScopeContext(design) +
-    renderCourseAuthoringProfiles(state) +
+    '</div><div class="course-design-settings-body">' +
     (conflicts.length ? '<aside class="course-authoring-notice is-error" role="alert">' +
-      'Há exceções incompatíveis com condições de pesquisa. Resolva os valores nos escopos indicados antes de produzir ou aplicar um perfil.' +
+      'Resolva as exceções incompatíveis antes de produzir ou aplicar um perfil.' +
       '<ul>' + conflicts.map((conflict) => `<li>${escapeHtml(design.definitions.find((item) => item.id === conflict.parameterId)?.label)} · ` +
         `<a href="${escapeHtml(scopeRoute(design.courseId, conflict.exceptionScope))}">Abrir ${escapeHtml(SCOPE_LABELS[conflict.exceptionScope.kind])}</a></li>`).join("") + '</ul></aside>' : "") +
-    [...new Map(design.definitions.map((definition) => [definition.group, definition.groupLabel]))].map(([group, title]) =>
-      renderParameterGroup(design, state.designBusy, {
-        group, titleId: `course-design-${group}-parameters-title`, title: escapeHtml(title)
-      })).join("") +
-    renderGuidance(design, state.designBusy) +
-    renderComponentPolicy(design, state.designBusy) +
-    "</section>";
+    content + "</div></section>";
 }

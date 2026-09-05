@@ -44,7 +44,10 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-anchored-annotations-atomic-create-v1",
   "course-annotation-subject-classification-v1",
   "course-personal-state-v2",
-  "course-authoring-analytics-v3",
+  "course-authoring-analytics-v4",
+  "course-independent-copy-v1",
+  "course-authoring-comparison-v1",
+  "course-authoring-export-v1",
   "contextual-study-unit-edit-v1",
   "current-data-lifecycle-v1",
   "course-source-current-state-v1",
@@ -301,7 +304,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260905125617" ||
+  if (manifest.schemaRevision !== "20260905162000" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -311,7 +314,13 @@ async function validateManifest() {
   }
   await validateRuntimeManifestRevision(manifest);
   checkResourcePackageCatalog(repositoryRoot);
-  const catalogMigration = await read("supabase/migrations/20260905080544_scoped_authoring_preferences_and_profiles.sql");
+  const migrations = (await fs.readdir(path.join(repositoryRoot, "supabase/migrations")))
+    .filter(name => name.endsWith(".sql")).sort().reverse();
+  let catalogMigration = "";
+  for (const name of migrations) {
+    const source = await read(`supabase/migrations/${name}`);
+    if (source.includes("-- COURSE_DESIGN_CATALOG_BEGIN")) { catalogMigration = source; break; }
+  }
   if (!catalogMigration.replaceAll("\r\n", "\n").includes(renderCourseDesignParameterCatalogSql())) {
     fail("A projeção SQL de parâmetros diverge do catálogo canônico.");
   }
@@ -565,6 +574,7 @@ async function validateEdgeAndMcp() {
   )).href);
   const names = toolsModule.COURSE_HUMAN_TASKS.map(({ name }) => name);
   const expected = [
+    "copiar_curso", "comparar_cursos", "exportar_autoria",
     "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
     "retomar_curso", "consultar_planejamento", "preparar_materializacao",
     "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
@@ -574,7 +584,7 @@ async function validateEdgeAndMcp() {
     "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às vinte e quatro tarefas humanas esperadas.");
+    fail("O catálogo MCP não corresponde às vinte e sete tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

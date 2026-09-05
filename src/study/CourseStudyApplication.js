@@ -12,6 +12,8 @@ import {
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { publicErrorMessage } from "../ui/publicErrorMessage.js";
+import { parseCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
+import { trapAuthoringConfirmationTab } from "../ui/courseAuthoringConfirmation.js";
 import { courseSourceOccurrenceTextTargets, resolveCourseSourceOccurrences } from "../domain/courseSourceOccurrences.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { placeStudyCitationMarkers, renderStudyCitations } from "./studyCitations.js";
@@ -42,7 +44,7 @@ import {
   selectionForModule,
   studyUnitPathKey
 } from "./CourseStudyNavigation.js";
-import { renderCourseStudyScreen, renderStudyDraftRecovery } from "./CourseStudyScreen.js";
+import { renderCourseStudyScreen, renderStudyDraftRecovery, renderAuthoringEditorExitConfirmation } from "./CourseStudyScreen.js";
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -89,6 +91,7 @@ export function createCourseStudyApplication({
   repository,
   initialProject,
   onViewChange = () => {},
+  onAuthoringContextReturn = null,
   onSaveManualEdit = null,
   onSaveAssistedStructure = null,
   loadAssistanceConfiguration = null,
@@ -114,6 +117,7 @@ export function createCourseStudyApplication({
     throw new TypeError("Documento de cursos inválido.");
   }
   if (typeof downloadCitationPdf !== "function") throw new TypeError("Download de fonte inválido.");
+  if (onAuthoringContextReturn !== null && typeof onAuthoringContextReturn !== "function") throw new TypeError("Retorno contextual de Autoria inválido.");
   if (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") {
     throw new TypeError("Gravação contextual de unidade de estudo inválida.");
   }
@@ -137,6 +141,10 @@ export function createCourseStudyApplication({
     ? initialNavigation.selectedCourseId
     : initialProject.courses[0]?.id || null;
   const state = {
+    authoringContext: null,
+    authoringExitConfirmation: false,
+    authoringExitReturnState: null,
+    structuralUnknown: false,
     project: clone(initialProject),
     view: "courses",
     selection: initialCourseId
@@ -476,6 +484,7 @@ export function createCourseStudyApplication({
   }
 
   function persistStudyNavigation({ includePosition = true } = {}) {
+    if (state.authoringContext) return;
     const courseId = state.selection?.courseId;
     if (!courseId || typeof repository.saveStudyNavigation !== "function") return;
     void repository.saveStudyNavigation({
@@ -488,6 +497,7 @@ export function createCourseStudyApplication({
   }
 
   function syncAccountControl() {
+    if (state.authoringContext) return;
     root.querySelectorAll("[data-action='open-settings']").forEach((node) => {
       const avatarUrl = String(state.accountProfile?.avatarUrl || "").trim();
       node.innerHTML = avatarUrl
@@ -1043,14 +1053,20 @@ export function createCourseStudyApplication({
     }
   }
 
-  async function openCanonicalEntityPath(entityPath) {
+  async function openCanonicalEntityPath(entityPath, { editing = false, authoringContext = null } = {}) {
     if (!Array.isArray(entityPath) || entityPath.length < 1 || entityPath.length > 5 ||
         entityPath.some((identity) => typeof identity !== "string" || !identity)) {
       return false;
     }
     if (state.manualEditing || state.manualSaving || state.structuralEditing ||
         state.structuralSaving || providerAssistance?.opened) return false;
+    const previousNavigation = navigationSnapshot();
+    const previousHistory = clone(state.navigationHistory);
+    const returnRoute = authoringContext && parseCourseAuthoringRoute(authoringContext.returnRoute);
+    if (authoringContext && (!editing || !onAuthoringContextReturn || returnRoute?.courseId !== entityPath[0])) return false;
     if (!await ensureCourseLoaded(entityPath[0])) return false;
+    const permission = coursePermission(entityPath[0]);
+    if (authoringContext && (visitor || permission?.ownership !== "owned" || permission.canEdit !== true)) return false;
     let selection = selectionForCourse(state.project, entityPath[0]);
     let view = "course";
     let microsequenceMode = "play";
@@ -1073,12 +1089,28 @@ export function createCourseStudyApplication({
       microsequenceMode = "play";
     }
     if (!selection) return false;
+    state.authoringContext = authoringContext ? {
+      returnRoute: authoringContext.returnRoute, courseId: entityPath[0],
+      previousNavigation, previousHistory
+    } : null;
     state.navigationHistory = [];
     state.selection = selection;
     state.view = view;
     state.microsequenceMode = microsequenceMode;
     resetStudyUnitInteraction();
     persistStudyNavigation();
+    if (editing) {
+      const opened = entityPath.length === 5 ? beginManualEdit() : beginStructuralEdit();
+      if (!opened && state.authoringContext) {
+        state.authoringContext = null;
+        state.selection = previousNavigation.selection;
+        state.view = previousNavigation.view;
+        state.microsequenceMode = previousNavigation.microsequenceMode;
+        state.navigationHistory = previousHistory;
+        render({ preserveFocus: false, captureDraft: false });
+      }
+      return opened;
+    }
     queueStudyFocus("[data-study-destination-heading]");
     render({ preserveFocus: false });
     return true;
@@ -1478,7 +1510,8 @@ export function createCourseStudyApplication({
     state.structuralEditing = true;
     state.structuralSelectedChildId = structuralTarget().children[0]?.id || "";
     state.structuralError = "";
-    queueStudyFocus("[data-action='study-level-edit']");
+    state.structuralUnknown = false;
+    queueStudyFocus(state.authoringContext ? "[data-study-structure-field='title']" : "[data-action='study-level-edit']");
     render({ preserveFocus: false, captureDraft: false });
     return true;
   }
@@ -1488,7 +1521,9 @@ export function createCourseStudyApplication({
     focusSelector = "[data-action='study-level-edit']"
   } = {}) {
     if (!state.structuralEditing || state.structuralSaving) return false;
+    if (state.authoringContext && state.structuralUnknown) return requestAuthoringContextExit();
     resetStructuralEditor({ restoreBaseline: true });
+    if (state.authoringContext) return finishAuthoringContext("cancelled");
     state.manualStatus = status;
     queueStudyFocus(focusSelector);
     render({ preserveFocus: false, captureDraft: false });
@@ -1588,6 +1623,7 @@ export function createCourseStudyApplication({
     );
     if (!change.changed && !metadataChanged) {
       resetStructuralEditor();
+      if (state.authoringContext) return finishAuthoringContext("saved");
       state.manualStatus = "Nenhuma alteração para salvar.";
       render({ preserveFocus: false, captureDraft: false });
       return true;
@@ -1620,12 +1656,14 @@ export function createCourseStudyApplication({
         state.manualCourseRevisionByCourse[selection.courseId] = nextRevision;
       }
       resetStructuralEditor();
+      if (state.authoringContext) return finishAuthoringContext("saved");
       state.manualStatus = "Edição salva.";
       queueStudyFocus("[data-action='study-level-edit']");
       render({ preserveFocus: false, captureDraft: false });
       return true;
     } catch (error) {
       state.structuralSaving = false;
+      state.structuralUnknown = isAmbiguousManualStudyUnitWriteFailure(error);
       state.structuralError = publicErrorMessage(error, "Não foi possível salvar a edição.");
       queueStudyFocus("[data-action='save-study-structure']");
       render({ preserveFocus: false, captureDraft: false });
@@ -1891,6 +1929,7 @@ export function createCourseStudyApplication({
       return false;
     }
     resetManualEditorState({ status });
+    if (state.authoringContext) return finishAuthoringContext("cancelled", { discardedUnknown: confirmUnknownDiscard });
     if (focus) queueStudyFocus(focusSelector);
     render({ preserveFocus: false });
     return true;
@@ -2016,6 +2055,10 @@ export function createCourseStudyApplication({
       return false;
     }
     if (JSON.stringify(current) === JSON.stringify(edited)) {
+      if (state.authoringContext) {
+        resetManualEditorState();
+        return finishAuthoringContext("saved");
+      }
       await cancelManualEdit({ status: "Nenhuma alteração para salvar." });
       return true;
     }
@@ -2067,6 +2110,7 @@ export function createCourseStudyApplication({
       resetCitations();
       const responseKey = currentResponseEntry(saved)?.blockKey;
       if (responseKey) delete state.responseByBlockKey[responseKey];
+      if (state.authoringContext) return finishAuthoringContext("saved");
       queueStudyFocus("[data-action='study-manual-edit']");
       render({ preserveFocus: false, captureDraft: false });
       return true;
@@ -2216,8 +2260,60 @@ export function createCourseStudyApplication({
     return opened;
   }
 
+  function finishAuthoringContext(reason, { discardedUnknown = false } = {}) {
+    const authoring = state.authoringContext;
+    if (!authoring) return false;
+    state.authoringContext = null;
+    state.authoringExitConfirmation = false;
+    state.authoringExitReturnState = null;
+    state.structuralUnknown = false;
+    const retained = retainContext(state.project, authoring.previousNavigation.selection, authoring.previousNavigation.view);
+    state.selection = retained.selection;
+    state.view = retained.view;
+    state.microsequenceMode = authoring.previousNavigation.microsequenceMode;
+    state.navigationHistory = authoring.previousHistory;
+    onAuthoringContextReturn({ returnRoute: authoring.returnRoute, courseId: authoring.courseId, reason, discardedUnknown });
+    render({ preserveFocus: false, captureDraft: false });
+    return true;
+  }
+
+  function requestAuthoringContextExit() {
+    if (!state.authoringContext) return false;
+    if (state.manualSaving || state.structuralSaving) return true;
+    const changed = state.manualUnknownSignature || state.structuralUnknown || manualDraftChanged() ||
+      state.structuralEditing && JSON.stringify(state.structuralBaselineProject) !== JSON.stringify(state.project);
+    if (changed) {
+      state.authoringExitReturnState = captureRenderState(root);
+      state.authoringExitConfirmation = true;
+      queueStudyFocus("[data-action='cancel-authoring-exit']");
+      render({ preserveFocus: false });
+      return true;
+    }
+    resetStructuralEditor({ restoreBaseline: true });
+    resetManualEditorState();
+    return finishAuthoringContext("cancelled");
+  }
+
+  function cancelAuthoringContextExit() {
+    const preserved = state.authoringExitReturnState;
+    state.authoringExitConfirmation = false;
+    state.authoringExitReturnState = null;
+    render({ preserveFocus: false, captureDraft: false });
+    if (preserved) restoreRenderState(root, preserved, { restoreFocus: true, restorePageScroll: true });
+  }
+
+  function confirmAuthoringContextExit() {
+    if (!state.authoringContext || !state.authoringExitConfirmation || state.manualSaving || state.structuralSaving) return;
+    const discardedUnknown = Boolean(state.manualUnknownSignature || state.structuralUnknown);
+    resetStructuralEditor({ restoreBaseline: true });
+    resetManualEditorState();
+    finishAuthoringContext("cancelled", { discardedUnknown });
+  }
+
   function goBack() {
     if (providerAssistance?.handleBack?.()) return true;
+    if (state.authoringExitConfirmation) { cancelAuthoringContextExit(); return true; }
+    if (state.authoringContext) return requestAuthoringContextExit();
     if (state.assistanceDraft) {
       state.assistanceError = "Salve ou descarte a proposta antes de sair do alvo.";
       render();
@@ -2247,6 +2343,7 @@ export function createCourseStudyApplication({
   }
 
   function goHome() {
+    if (state.authoringContext) return requestAuthoringContextExit();
     if (providerAssistance?.opened) return false;
     if (state.assistanceDraft) {
       state.assistanceError = "Salve ou descarte a proposta antes de ir para a Home.";
@@ -2556,6 +2653,22 @@ export function createCourseStudyApplication({
   }
 
   function bindActions() {
+    root.querySelectorAll("[data-action='authoring-context-back']").forEach(node => node.addEventListener("click", requestAuthoringContextExit));
+    root.querySelector("[data-action='cancel-authoring-exit']")?.addEventListener("click", cancelAuthoringContextExit);
+    root.querySelector("[data-action='confirm-authoring-exit']")?.addEventListener("click", confirmAuthoringContextExit);
+    root.querySelector("[data-authoring-editor-exit]")?.addEventListener("keydown", event => {
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); cancelAuthoringContextExit(); }
+      else trapAuthoringConfirmationTab({ event, root, confirmationSelector: "[data-authoring-editor-exit]" });
+    });
+    const authoringMenu = state.authoringContext && root.querySelector(".course-authoring-task-menu");
+    authoringMenu?.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      event.preventDefault(); event.stopPropagation(); authoringMenu.open = false;
+      authoringMenu.querySelector("summary")?.focus({ preventScroll: true });
+    });
+    authoringMenu?.addEventListener("focusout", () => globalThis.queueMicrotask?.(() => {
+      if (!authoringMenu.contains(root.ownerDocument?.activeElement)) authoringMenu.open = false;
+    }));
     root.querySelector("[data-action='go-back']")?.addEventListener("click", goBack);
     root.querySelector("[data-action='go-home']")?.addEventListener("click", goHome);
     root.querySelector("[data-action='study-level-edit']")?.addEventListener(
@@ -2969,6 +3082,7 @@ export function createCourseStudyApplication({
     const currentStudyUnitId = current.studyUnit?.id || "";
     const currentCourseId = current.course?.id || "";
     const manualEditor = {
+      authoringContext: state.authoringContext ? { courseTitle: current.course?.title || "Curso" } : null,
       enabled: manualEnabled,
       editing: manualEnabled && state.manualEditing,
       mode: providerAssistance?.opened || state.assistanceSelection?.scope === "study_unit"
@@ -3028,6 +3142,7 @@ export function createCourseStudyApplication({
           ? "Lição"
           : "Microssequência didática";
     const structuralEditor = {
+      authoringContext: state.authoringContext ? { courseTitle: current.course?.title || "Curso" } : null,
       enabled: structuralEnabled,
       editing: structuralEnabled && state.structuralEditing,
       saving: state.structuralSaving,
@@ -3048,7 +3163,7 @@ export function createCourseStudyApplication({
     manualInlineController?.destroy?.();
     manualInlineController = null;
     studyTools.beforeRender();
-    root.innerHTML = '<div class="app-shell">' + renderCourseStudyScreen({
+    root.innerHTML = `<div class="app-shell${state.authoringContext ? ' course-authoring-context-shell' : ''}">` + renderCourseStudyScreen({
       project: state.project,
       view: state.view,
       selection: state.selection,
@@ -3097,9 +3212,11 @@ export function createCourseStudyApplication({
       saving: state.observationSaving,
       loading: state.observationLoading,
       stale: state.observationStale
+    }) : "") + (state.authoringExitConfirmation ? renderAuthoringEditorExitConfirmation({
+      unknown: Boolean(state.manualUnknownSignature || state.structuralUnknown)
     }) : "") + "</div>";
     const studyScreen = root.querySelector(".app-shell > .screen");
-    if (state.observationSheetOpen && studyScreen) {
+    if ((state.observationSheetOpen || state.authoringExitConfirmation) && studyScreen) {
       studyScreen.inert = true;
       studyScreen.setAttribute("aria-hidden", "true");
     }
@@ -3183,8 +3300,17 @@ export function createCourseStudyApplication({
       return true;
     },
     openCourse,
-    openEntityPath(entityPath) {
-      return openCanonicalEntityPath(entityPath);
+    openEntityPath(entityPath, options) {
+      return openCanonicalEntityPath(entityPath, options);
+    },
+    focusAuthoringContext() {
+      if (!state.authoringContext) return false;
+      const selector = state.structuralEditing ? "[data-study-structure-field='title']"
+        : state.manualTargetId === "study_unit" ? "[data-study-manual-title]"
+          : ".runtime-resource-edit-target.is-inline-editing [contenteditable='true']";
+      const target = root.querySelector(selector) || root.querySelector("[data-action='authoring-context-back']");
+      target?.focus?.({ preventScroll: true });
+      return Boolean(target);
     },
     getNavigationPosition() {
       return clone(currentNavigationPosition());

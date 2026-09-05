@@ -59,7 +59,7 @@ test("ingestão verifica bytes do Storage e confirma trio; replay não faz segun
   const value = adapter(async (url, options) => {
     calls.push({ url, options });
     if (url.includes("claim_course_media_delete")) return json(null);
-    if (url.includes("prepare_course_audio")) return json(replay ? { receipt: { ...receipt, idempotent: true } } : {
+    if (url.includes("prepare_course_audio")) return json(replay ? { receipt: { ...receipt, idempotent: true }, storagePath: `${courseId}/${media.contentHash}.wav` } : {
       receipt: null, courseId, courseRevision: 1, requestId, media: { mediaType: media.mediaType, byteSize: media.byteSize, contentHash: media.contentHash },
       storagePath: `${courseId}/${media.contentHash}.wav`, uploadRequired: true });
     if (url.includes("/object/authenticated/")) return new Response(bytes);
@@ -98,17 +98,17 @@ test("bytes divergentes e recibo incompatível falham sem confirmar gravação",
   });
   await assert.rejects(value.ingestCourseAudio(input), error => error.code === "course_media_unavailable");
   assert.equal(finalized, 0);
-  const wrongReceipt = adapter(async url => url.includes("claim_course_media_delete") ? json(null) : json({ receipt: { ...receipt, requestId: "another-request-303" } }));
+  const wrongReceipt = adapter(async url => url.includes("claim_course_media_delete") ? json(null) : json({ receipt: { ...receipt, requestId: "another-request-303" }, storagePath: `${courseId}/${media.contentHash}.wav` }));
   await assert.rejects(wrongReceipt.ingestCourseAudio(input), error => error.code === "course_media_write_uncertain");
 });
 
 test("download assina apenas a identidade autorizada e remove path interno do DTO", async () => {
   let signed = 0;
   let wrong = false;
-  const path = `${courseId}/${media.contentHash}.wav`;
+  const path = `${principal.actorId.replace("303", "304")}/${media.contentHash}.wav`;
   const value = adapter(async url => {
     if (url.includes("get_course_media_download")) return json({ contract: "aralearn.course-media-download-internal.v1",
-      courseId, courseRevision: 1, studyUnitId: "unit-audio", media, storagePath: wrong ? path.replace(courseId, principal.actorId.replace("303", "304")) : path });
+      courseId, courseRevision: 1, studyUnitId: "unit-audio", media, storagePath: wrong ? path.replace(media.contentHash, "b".repeat(64)) : path });
     if (url.includes("/object/sign/")) { signed++; return json({ signedURL: `/object/sign/course-media/${path}?token=fixture` }); }
     assert.fail(url);
   });

@@ -1,5 +1,8 @@
 import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
+import { normalizeCourseAuthoringSelection, normalizeCourseAuthoringComparisonRequest,
+  normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
@@ -1231,6 +1234,20 @@ export class CourseApiClient {
     return result;
   }
 
+  async loadCourseAuthoringComparison(value) {
+    const request = normalizeCourseAuthoringComparisonRequest(value);
+    return normalizeCourseAuthoringComparison(await this.requestCourseApi("/v1/authoring-comparison", {
+      method: "POST", body: request
+    }), { expectedRequest: request });
+  }
+
+  async exportCourseAuthoring(value) {
+    const selection = normalizeCourseAuthoringSelection(value);
+    return normalizeCourseAuthoringExport(await this.requestCourseApi(`${courseResourcePath(selection.courseId)}/authoring-export`, {
+      query: { expectedRevision: selection.expectedRevision, scopeKind: selection.scope.kind, scopeRef: selection.scope.ref }
+    }), { expectedSelection: selection });
+  }
+
   loadAuthoringOutline(courseId) {
     return this.requestCourseApi(courseResourcePath(courseId), {
       query: { view: "outline" }
@@ -1368,6 +1385,14 @@ export class CourseApiClient {
     return normalizeOwnedCourseCopyRecoveryReceipt(result, command);
   }
 
+  async copyCourse(value) {
+    const request = normalizeCourseCopyRequest(value);
+    const result = await this.requestCourseApi(`${courseResourcePath(request.sourceCourseId)}/copies`, {
+      method: "POST", body: request
+    });
+    return normalizeCourseCopyResult(result, request);
+  }
+
   mutateCourseDesign(value = {}) {
     const source = exactObject(
       value,
@@ -1503,11 +1528,11 @@ export class CourseApiClient {
     return { contract: result.contract, courseId: course, items, rateLimited: result.rateLimited };
   }
 
-  grantCourseAccess({ courseId, userId, handle, confirmed, requestId = createUuid() } = {}) {
-    if (confirmed !== true) throw new TypeError("Concessão de acesso inválida.");
+  grantCourseAccess({ courseId, userId, handle, canCopy, confirmed, requestId = createUuid() } = {}) {
+    if (confirmed !== true || typeof canCopy !== "boolean") throw new TypeError("Concessão de acesso inválida.");
     return this.requestCourseApi(`${courseResourcePath(courseId)}/access`, {
       method: "POST",
-      body: { userId: uuid(userId, "Pessoa"), handle: personHandle(handle), confirmed: true,
+      body: { userId: uuid(userId, "Pessoa"), handle: personHandle(handle), canCopy, confirmed: true,
         requestId: uuid(requestId, "Identidade da alteração") }
     });
   }
@@ -1627,7 +1652,7 @@ export class CourseApiClient {
     const normalizedPath = String(objectPath || "").trim();
     if (!new Set([
       "avatar_owner_missing", "avatar_profile_unlinked",
-      "pdf_course_missing", "pdf_unlinked"
+      "pdf_course_missing", "pdf_unlinked", "audio_course_missing", "audio_unlinked"
     ]).has(normalizedClassification) || !normalizedPath || normalizedPath.length > 500) {
       throw new TypeError("Resíduo de Manutenção inválido.");
     }

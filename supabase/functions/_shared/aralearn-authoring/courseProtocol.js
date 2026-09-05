@@ -32,6 +32,11 @@ export function routeCourseRequest(method, pathname) {
     if (verb === "GET") return { name: "listCourses" };
     if (verb === "POST") return { name: "createCourse" };
   }
+  if (path === "/v1/authoring-comparison" && verb === "POST") return { name: "compareCourseAuthoring" };
+  const authoringExport = path.match(/^\/v1\/courses\/([^/]+)\/authoring-export$/u);
+  if (authoringExport && verb === "GET") return { name: "getCourseAuthoringExport", courseId: courseUuid(authoringExport[1]) };
+  const courseCopy = path.match(/^\/v1\/courses\/([^/]+)\/copies$/u);
+  if (courseCopy && verb === "POST") return { name: "copyCourse", sourceCourseId: courseUuid(courseCopy[1], "sourceCourseId") };
   if (path === "/v1/authoring-profiles") {
     if (verb === "GET") return { name: "listAuthoringProfiles" };
     if (verb === "POST") return { name: "createAuthoringProfile" };

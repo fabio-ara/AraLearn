@@ -1,6 +1,5 @@
 import { COURSE_DESIGN_CONTRACT, COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
-  COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_COMPONENT_CATALOG_VERSION } from "../../src/domain/courseDesignParameters.js";
-import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/catalog/resourceCatalog.js";
+  COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_COMPONENT_CATALOG_VERSION, COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 
 export function courseDesignFixture(selection, { scope = "study_unit", revision = 1 } = {}) {
   const path = [
@@ -23,9 +22,7 @@ export function courseDesignFixture(selection, { scope = "study_unit", revision 
       }
     })),
     guidance: { localAssignment: null, effectiveAssignments: [] },
-    componentCatalog: { version: COURSE_COMPONENT_CATALOG_VERSION,
-      options: RESOURCE_PACKAGE_REGISTRY.listCatalog().map((item) => ({ ref: `${item.id}@${item.version}`,
-        label: item.label || item.id, purpose: item.purpose || "Componente sintético de teste." })) },
+    componentCatalog: structuredClone(COURSE_COMPONENT_CATALOG),
     componentPolicy: { localAssignment: null, effectiveAssignment: {
       policy: { catalogVersion: COURSE_COMPONENT_CATALOG_VERSION, availability: "all", allowedRefs: [], excludedRefs: [], preferredRefs: [] },
       origin: "system_default", reason: "Política sintética de teste.", sourceScope: null, inherited: false

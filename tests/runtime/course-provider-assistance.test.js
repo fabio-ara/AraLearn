@@ -67,13 +67,13 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
   assert.throws(() => session.read(), /sessão de assistência foi encerrada/u);
 });
 
-test("runtime autenticado compartilha a sessão contextual entre Estudo e Autoria", () => {
+test("runtime autenticado oferece assistência no Estudo e conserva retorno da inspeção", () => {
   const source = readFileSync(new URL("../../public/main.js", import.meta.url), "utf8");
   assert.match(source, /courseProviderSession\s*=\s*visitor\s*\?\s*null\s*:\s*createCourseProviderSession\(\)/u);
   assert.match(source,
     /createCourseStudyApplication\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
-  assert.match(source,
-    /createCourseAuthoringSurface\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
+  const inspection = readFileSync(new URL("../../src/ui/CourseInspectionSequence.js", import.meta.url), "utf8");
+  assert.doesNotMatch(inspection, /createCourseProviderAssistance|provider-assistance|providerAssistanceSession/u);
   assert.match(source, /onOpenStudyContent\(\{\s*entityPath,\s*returnRoute,\s*returnFocusKey/u);
   assert.match(source,
     /authoringSurface\?\.rememberInspectionReturnFocus\?\.\(\{[\s\S]*?route:\s*returnRoute,[\s\S]*?key:\s*returnFocusKey/u);

@@ -1,6 +1,7 @@
 import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
   boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
 import {
@@ -19,6 +20,8 @@ import {
   normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../domain/courseAuthoringAnalytics.js";
+import { normalizeCourseAuthoringSelection, normalizeCourseAuthoringComparisonRequest,
+  normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import {
   normalizeCourseSourcePdfDownload,
   normalizeCourseSourceChange,
@@ -345,6 +348,7 @@ function projectListItem(value) {
     revision,
     ownership,
     canEdit: value.canEdit,
+    canCopy: value.canCopy === true,
     canObserve,
     visibility,
     publicFileAccess: value.publicFileAccess,
@@ -2031,6 +2035,36 @@ export class CourseController {
     }
   }
 
+  async loadCourseAuthoringComparison(value) {
+    if (!this.ownerOnly || typeof this.api.loadCourseAuthoringComparison !== "function") {
+      throw new TypeError("A comparação exige acesso de autoria.");
+    }
+    const request = normalizeCourseAuthoringComparisonRequest(value);
+    try {
+      return normalizeCourseAuthoringComparison(await this.api.loadCourseAuthoringComparison(request), { expectedRequest: request });
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        for (const courseId of new Set([request.left.courseId, request.right.courseId])) {
+          await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+        }
+      }
+      throw error;
+    }
+  }
+
+  async exportCourseAuthoring(value) {
+    if (!this.ownerOnly || typeof this.api.exportCourseAuthoring !== "function") {
+      throw new TypeError("A exportação exige acesso de autoria.");
+    }
+    const selection = normalizeCourseAuthoringSelection(value);
+    try {
+      return normalizeCourseAuthoringExport(await this.api.exportCourseAuthoring(selection), { expectedSelection: selection });
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(selection.courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
   loadAuthoringOutline(courseId) {
     if (typeof this.api.loadAuthoringOutline !== "function") {
       throw new TypeError("A API de Cursos não oferece a estrutura autoral.");
@@ -2623,6 +2657,50 @@ export class CourseController {
 
   createCourse(values) {
     return this.api.createCourse(values);
+  }
+
+  async loadPendingCourseCopy(sourceCourseId) {
+    if (!UUID_PATTERN.test(String(sourceCourseId || ""))) throw new TypeError("Curso inválido.");
+    const pending = cachedPayload(await this.store.getCache(`course-copy.pending.v1:${sourceCourseId}`));
+    return pending === null ? null : normalizeCourseCopyRequest(pending);
+  }
+
+  async loadCourseCopySource(sourceCourseId) {
+    if (!UUID_PATTERN.test(String(sourceCourseId || ""))) throw new TypeError("Curso inválido.");
+    // Permission and revision must come from a current authenticated read, never an offline cache.
+    return this.api.getCourse(sourceCourseId, { ownerOnly: false });
+  }
+
+  async copyCourse(value) {
+    const request = normalizeCourseCopyRequest(value);
+    const key = `course-copy.pending.v1:${request.sourceCourseId}`;
+    const pending = await this.loadPendingCourseCopy(request.sourceCourseId);
+    if (pending && JSON.stringify(pending) !== JSON.stringify(request)) {
+      throw new TypeError("Confirme o resultado da cópia pendente antes de criar outra.");
+    }
+    // CourseLocalStore is partitioned by account. Persist before dispatch so a lost
+    // response or reload cannot turn a retry into a second independent course.
+    await this.store.putCache(key, request);
+    let receipt;
+    try {
+      receipt = await this.api.copyCourse(request);
+    } catch (error) {
+      if ([400, 401, 403, 404, 409, 410, 422].includes(Number(error?.status))) {
+        await this.store.putCache(key, null);
+      }
+      throw error;
+    }
+    receipt = normalizeCourseCopyResult(receipt, request);
+    const course = await this.api.getCourse(receipt.targetCourseId, { ownerOnly: true });
+    if (course?.courseId !== receipt.targetCourseId || course.ownership !== "owned" ||
+        course.canEdit !== true || !Number.isSafeInteger(course.revision) || course.revision < 1 ||
+        course.offline === true || course.stale === true || typeof course.title !== "string") {
+      throw new TypeError("Não foi possível confirmar o estado atual da cópia. Repita o mesmo pedido.");
+    }
+    await this.store.deleteCachePrefix(`${CACHE_PREFIX}.list:`);
+    await this.store.deleteCachePrefix("course-authoring.v1.list:");
+    await this.store.putCache(key, null);
+    return { ...receipt, course };
   }
 
   getPersonProfile({ allowOffline = true } = {}) {

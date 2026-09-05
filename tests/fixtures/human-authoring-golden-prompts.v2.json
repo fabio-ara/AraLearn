@@ -6,6 +6,12 @@
     "classes": ["direct", "indirect", "negative"]
   },
   "cases": [
+    {"id": "copiar_curso_direct", "class": "direct", "prompt": "Prepare uma cópia independente do curso Redes com o título Redes para revisão.", "expectedTool": "copiar_curso"},
+    {"id": "copiar_curso_indirect", "class": "indirect", "prompt": "O autor me concedeu a cópia deste curso; quero trabalhar no meu próprio artefato, preservando fontes e arquivos.", "expectedTool": "copiar_curso"},
+    {"id": "comparar_cursos_direct", "class": "direct", "prompt": "Compare os cursos Redes e Redes para revisão.", "expectedTool": "comparar_cursos"},
+    {"id": "comparar_cursos_indirect", "class": "indirect", "prompt": "Quais diferenças de inventário e configuração existem entre estes dois recortes de autoria?", "expectedTool": "comparar_cursos"},
+    {"id": "exportar_autoria_direct", "class": "direct", "prompt": "Exporte a autoria do curso Redes.", "expectedTool": "exportar_autoria"},
+    {"id": "exportar_autoria_indirect", "class": "indirect", "prompt": "Preciso guardar o artefato literal e os dados autorais deste recorte para análise fora da conversa.", "expectedTool": "exportar_autoria"},
     { "id": "guardar_audio_direct", "class": "direct", "prompt": "Guarde o WAV anexado à conversa na biblioteca do curso Fonética.", "expectedTool": "guardar_audio" },
     { "id": "guardar_audio_indirect", "class": "indirect", "prompt": "Quero usar esta gravação MP3 já anexada como exemplo de pronúncia no meu curso; mantenha o arquivo para compor a unidade.", "expectedTool": "guardar_audio" },
     { "id": "consultar_audios_direct", "class": "direct", "prompt": "Consulte os áudios já guardados no curso Fonética.", "expectedTool": "consultar_audios" },

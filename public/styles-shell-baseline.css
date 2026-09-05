@@ -8,6 +8,12 @@
   overflow-x: clip;
 }
 
+#aralearn-editor-root {
+  width: 100%;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 .app-shell {
   width: min(100%, 430px);
   margin-inline: auto;

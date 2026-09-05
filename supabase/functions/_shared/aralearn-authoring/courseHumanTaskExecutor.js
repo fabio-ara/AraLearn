@@ -83,7 +83,7 @@ function pageCursorKey(cursor) {
   return cursor == null ? "null" : JSON.stringify(cursor);
 }
 
-async function allCourseMatches({ adapter, principal, title, deadlineAt }) {
+async function allCourseMatches({ adapter, principal, title, deadlineAt, copySourcesOnly = false }) {
   const matches = [];
   const seenCursors = new Set();
   let cursor = null;
@@ -103,7 +103,8 @@ async function allCourseMatches({ adapter, principal, title, deadlineAt }) {
       limit: 50,
       beforeUpdatedAt: cursor?.beforeUpdatedAt ?? null,
       beforeId: cursor?.beforeId ?? null,
-      deadlineAt
+      deadlineAt,
+      ...(copySourcesOnly ? { copySourcesOnly: true } : {})
     });
     if (!plainObject(page) || !Array.isArray(page.items)) {
       throw new AuthoringApiError(503, "course_service_unavailable", "A lista de cursos é inválida.");
@@ -123,20 +124,21 @@ async function allCourseMatches({ adapter, principal, title, deadlineAt }) {
   );
 }
 
-async function resolveCourse({ adapter, principal, course, deadlineAt }) {
+async function resolveCourse({ adapter, principal, course, deadlineAt, copySourcesOnly = false }) {
   const reference = humanReference(course, "O curso", { stringOnly: true });
   const listed = uniqueBy(await allCourseMatches({
     adapter,
     principal,
     title: reference.value,
-    deadlineAt
+    deadlineAt, copySourcesOnly
   }), (item) => item.courseId);
   const match = textMatches(listed, reference, (item) => [item.title], "O curso");
   const detail = await adapter.getCourse({
     principal,
     courseId: match.courseId,
     includeOutline: false,
-    deadlineAt
+    deadlineAt,
+    ...(copySourcesOnly ? { copySourcesOnly: true } : {})
   });
   const revision = Number(detail?.revision ?? detail?.courseRevision);
   if (!plainObject(detail) || detail.courseId !== match.courseId ||
@@ -364,13 +366,14 @@ export async function resolveHumanCourseContext({
   studyUnits = [],
   source = null,
   internalSourceId = null,
+  copySourcesOnly = false,
   deadlineAt = null
 }) {
   if (!adapter || !principal) throw new TypeError("Dependências da resolução humana são inválidas.");
   if (source !== null && internalSourceId !== null) {
     throw new TypeError("A resolução da fonte recebeu duas autoridades.");
   }
-  const resolvedCourse = await resolveCourse({ adapter, principal, course, deadlineAt });
+  const resolvedCourse = await resolveCourse({ adapter, principal, course, deadlineAt, copySourcesOnly });
   let plan = null;
   let resolvedPart = null;
   let resolvedMicrosequence = null;

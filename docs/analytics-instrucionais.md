@@ -13,9 +13,12 @@ ações observáveis.
 
 1. Abra um curso próprio em **Autoria**.
 2. Entre em **Analytics**.
-3. Selecione o escopo: curso, parte, microssequência ou unidade de estudo.
-4. Leia os números de **Desenho** e **Autoria**.
-5. Expanda somente a tabela necessária para conferir sua composição.
+3. A entrada mostra **Novidade declarada**, com distribuição por unidade.
+4. Use **Escolher dimensão e escopo** para mudar a propriedade observada ou
+   selecionar curso, parte, microssequência ou unidade de estudo.
+5. Abra uma faixa da distribuição para inspecionar as unidades por seus títulos.
+6. **Abrir dados e definições** revela a configuração solicitada, os dados
+   aplicados e as intervenções explícitas.
 
 Uma referência interna localiza o recorte, mas a interface mostra seu nome
 humano. Parte, nesse seletor, é apenas um lote de produção; não é nível do mapa
@@ -35,7 +38,7 @@ sequencial do conteúdo.
 
 ### Configuração aplicada
 
-A tabela usa as doze definições do catálogo 1.2.0 e mostra as escolhas
+A tabela usa as doze definições do catálogo 1.2.1 e mostra as escolhas
 efetivamente registradas. Quatro delas são parâmetros pedagógicos:
 
 - teto de ideias novas por unidade expositiva;
@@ -50,9 +53,9 @@ Duas definições são alvos editoriais quantitativos flexíveis:
 
 As demais orientam distribuição e posição das práticas, granularidade de parte
 e lote, frequência de pausa e preferência da conversa. Parte, lote e pausa têm
-escopo de curso. O catálogo organiza essas decisões em conteúdo, prática,
-conversa e cadência; não presume que uma intenção automática ainda sem valor
-tenha sido aplicada.
+escopo de curso. Os grupos seguem o catálogo canônico: explicações, prática,
+leitura e estilo, produção e conversa. Uma intenção automática ainda sem valor
+não é tratada como escolha aplicada.
 
 Quando unidades do mesmo escopo usam valores diferentes, a distribuição informa
 quantas receberam cada valor, sua origem — calibração contextual, decisão da
@@ -89,6 +92,13 @@ As tabelas relacionam:
 - formas explicativas aplicadas;
 - componentes e representações usados.
 
+“Retomadas” tem aqui um cálculo restrito: aplicações explicativas de ideias não
+introduzidas na mesma unidade. A contagem pode incluir continuação do
+desenvolvimento, sem demonstrar reativação intencional; também não detecta toda
+retomada realizada em uma prática. Para interpretar a função didática, é preciso
+inspecionar o trecho e a sequência. Esse agregado não substitui a codificação
+mais detalhada do [protocolo de análise](desenho-instrucional-parametrizado.md).
+
 Comparar tetos diferentes não autoriza agrupar ideias independentes numa unidade
 de análise maior. O repertório pode permanecer igual enquanto sua distribuição
 entre unidades muda.
@@ -99,10 +109,12 @@ A última tabela de desenho apresenta:
 
 - oportunidades por requisito de evidência;
 - oportunidades que exercitam cada dimensão de variação;
-- fontes, âncoras e unidades relacionadas, agrupadas pelo papel da fonte.
+- fontes, âncoras e unidades relacionadas, agrupadas pelo papel de cada vínculo.
 
 Contar uma oportunidade não demonstra que alguém aprendeu. O número informa
 apenas que o artefato oferece aquela prática.
+Uma solicitação ligada a dois requisitos entra na contagem de cada um; somar
+essas linhas não produz o número de solicitações únicas do curso.
 
 ## Autoria
 
@@ -135,25 +147,41 @@ os mapeamentos anteriores da análise corrente até uma nova aplicação validad
 Essa ausência é informada; não se deduz que o conteúdo novo conserva as mesmas
 ideias somente porque usa os mesmos componentes.
 
-O contrato técnico `aralearn.course-authoring-analytics.v3` contém somente o
-curso e o escopo, desenho quantitativo, autoria quantitativa, dados ausentes e
-um endereço opcional.
+O contrato técnico `aralearn.course-authoring-analytics.v4` contém curso e
+escopo, desenho e autoria quantitativos, dados ausentes, base observada e
+distribuições. O inventário planejado abrange o curso inteiro e inclui itens
+ainda não aplicados. Enunciados e descrições permanecem literais; a leitura não
+reinterpreta uma ideia para fazê-la caber em um limite numérico.
+
+## Comparar
+
+**Comparar cursos** revela uma seleção de cursos próprios e seus escopos. A
+leitura confirma a revisão dos dois cursos. Os resultados apresentam a mesma
+dimensão lado a lado; cada faixa abre as unidades correspondentes. O inventário
+planejado, a configuração solicitada e a aplicada podem ser consultados
+separadamente na folha de comparação.
+
+Enunciados, descrições e metadados de Fontes são confrontados literalmente,
+preservando repetições. Identidades diferentes em cópias não bastam para
+caracterizar mudança de conteúdo. Textos iguais tampouco comprovam equivalência
+semântica ou qualidade: a decisão pedagógica continua exigindo inspeção.
 
 O AraLearn não transforma conversa, raciocínio privado, cliques, rolagem ou
 tempo em tela numa segunda história do curso.
 
 ## Exportar
 
-O botão **Baixar dados de autoria** salva um JSON com o mesmo snapshot
-normalizado mostrado na tela, incluindo a configuração efetivamente aplicada e
-selada na materialização das unidades. Esse estado pode ser confrontado entre
-publicações ou cópias experimentais, desde que o protocolo preserve também o
-artefato correspondente.
+**Exportar curso e análise** pede uma ação explícita e salva um JSON com o
+conteúdo integral do curso e a leitura quantitativa do escopo selecionado.
+Inclui configuração solicitada e aplicada, inventário planejado, declarações e
+contagens, sempre com curso e revisão identificados. A exportação falha inteira
+se a revisão mudar enquanto as entidades são lidas.
 
-O arquivo não é uma cópia completa do curso, não congela sozinho o artefato e
-não cria uma versão imutável. Uma investigação que precise reproduzir conteúdo,
-parâmetros e condições deve usar também uma exportação explícita do artefato.
-Isso dispensa ledger ou histórico universal dentro do curso corrente.
+Os arquivos PDF e áudio não são incorporados: permanecem suas referências
+lógicas. O arquivo também não inclui pessoas, progresso pessoal, credenciais
+ou conversas. Guardar esse artefato não cria uma versão imutável dentro do
+curso; uma investigação deve conservar separadamente os materiais e as
+condições necessários à reprodução de seu protocolo.
 
 ## Limites de interpretação
 

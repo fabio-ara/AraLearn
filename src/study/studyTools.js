@@ -3,13 +3,18 @@ import { escapePackageHtml as escape } from "../resources/sdk/html.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 
-export function renderStudyToolActions(studyUnit, registry = RESOURCE_PACKAGE_REGISTRY, { disabled = false } = {}) {
+export function renderStudyToolActions(studyUnit, registry = RESOURCE_PACKAGE_REGISTRY, { disabled = false, compact = false } = {}) {
   const tools = registry.listStudyTools(studyUnit);
   if (!tools.length) return "";
   const button = ({ instance, label, icon }) =>
     `<button class="icon-ghost study-tool-button" type="button" data-study-tool-id="${escape(instance.id)}"` +
     ` aria-label="${escape(label)}" title="${escape(label)}" aria-haspopup="dialog"${disabled ? ' disabled aria-disabled="true"' : ""}>` +
     renderUiIcon(icon, "home-tab-icon") + "</button>";
+  if (compact && tools.length > 1) return '<div class="study-tool-actions" role="group" aria-label="Ferramentas da unidade">' +
+    '<button class="icon-ghost study-tool-button" type="button" data-study-tool-id=""' +
+    ' aria-label="Ferramentas da unidade" title="Ferramentas da unidade" aria-haspopup="dialog"' +
+    (disabled ? ' disabled aria-disabled="true">' : ">") +
+    renderUiIcon("panel", "home-tab-icon") + "</button></div>";
   return '<div class="study-tool-actions" role="group" aria-label="Ferramentas da unidade">' +
     tools.slice(0, 2).map(button).join("") + (tools.length > 2
       ? '<button class="icon-ghost study-tool-button" type="button" data-study-tool-id=""' +

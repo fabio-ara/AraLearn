@@ -1,8 +1,9 @@
-# Referência do snapshot de Analytics
+# Referência da leitura de autoria
 
 Analytics descreve o estado corrente de um curso. O contrato
-`aralearn.course-authoring-analytics.v3` organiza a leitura em **Desenho** e
-**Autoria**; não possui conjuntos de eventos nem paginação.
+`aralearn.course-authoring-analytics.v4` conserva **Desenho** e **Autoria** e
+acrescenta uma base explícita para comparar configurações, declarações e
+contagens. Não possui conjuntos de eventos ou percurso histórico.
 
 ## Escopo
 
@@ -13,6 +14,64 @@ Analytics descreve o estado corrente de um curso. O contrato
 | `scope.options` | opções humanas disponíveis para mudar o recorte |
 | `missingData` | ausências que não podem ser convertidas em zero |
 | `deepLink` | endereço da área, quando a borda pode fornecê-lo |
+| `basis` | inventário planejado integral do curso e observações por unidade do escopo |
+| `dimensions` | distribuições calculadas pelo mesmo observador usado na comparação |
+
+## Base e dimensões
+
+`basis.inventoryScope` informa o alcance do inventário: sempre o curso inteiro,
+inclusive quando a observação está limitada a uma unidade. `analysisUnits` e
+`evidenceRequirements` incluem itens ainda não aplicados, com enunciado,
+descrição e referência. `sources` contém metadados bibliográficos, âncoras e
+identificadores lógicos dos anexos, sem caminhos internos ou links temporários.
+
+Cada entrada de `basis.studyUnits` distingue `requestedParameters` (resolução
+canônica atual), `appliedParameters` (valores registrados na aplicação),
+`declaration` (composição declarada pelo produtor), `components`, `wordCount` e
+`sourceLinks` (presença observável). Valores ou motivos históricos ausentes
+permanecem nulos; não são preenchidos com a configuração atual.
+
+| Dimensão | Cálculo por unidade | Base |
+| --- | --- | --- |
+| `novelty` | número de unidades de análise declaradas como introduzidas | declaração |
+| `reuse` | número de unidades de análise declaradas como utilizadas | declaração |
+| `revisits` | aplicações explicativas de ideias não declaradas como introduzidas na mesma unidade | declaração |
+| `explanations` | soma das formas desenvolvidas declaradas | declaração |
+| `practice` | pares distintos de exigência de evidência e oportunidade | declaração |
+| `practice_position` | modo declarado e referências em ordem curricular | declaração |
+| `representations` | instâncias nos espaços de conteúdo, resposta e feedback | contagem do conteúdo |
+| `extent` | palavras nos campos autorais dos recursos | contagem do conteúdo |
+| `sources` | Fontes distintas efetivamente vinculadas à unidade | contagem do conteúdo |
+
+Cada dimensão inclui definição, unidade, total, denominador e distribuição com
+referências para inspeção. Ausência de declaração é `missingCount`; novidade,
+explicação e retomada não se aplicam à unidade declarada somente prática, e
+oportunidades de prática não se aplicam à unidade somente expositiva. Esses
+casos são `notApplicableCount`. Sem observação aplicável, o total é nulo. A
+posição da prática é categórica e não recebe total ou diferença numérica.
+
+`revisits` é um indicador da declaração disponível, não uma classificação da
+intenção do trecho. Pode incluir o desenvolvimento continuado de uma ideia e
+não cobre toda reativação feita durante a prática. O protocolo editorial
+distingue esses casos por leitura contextual; o cálculo atual não os resolve
+semanticamente.
+
+Em `practice`, a identidade contada é o par requisito–oportunidade, dentro de
+cada unidade. Uma solicitação que atende a dois requisitos contribui com dois
+pares; repetir a mesma oportunidade em outra unidade também contribui para a
+soma das observações. Portanto, o total não é uma deduplicação global de
+solicitações nem comprova sua distinção semântica. Prática informal sem essa
+declaração não é estimada pelo observador.
+
+`wordCount` e `extent` usam o contador
+`private.count_course_component_authorial_words_v1`: ele percorre strings dos
+dados dos componentes, exclui campos por nome e conta sequências alfanuméricas
+com apóstrofos ou hífens internos. É uma aproximação operacional, sem
+segmentação específica por idioma nem leitura do texto renderizado. Notação,
+marcação e campos textuais novos podem alterar o resultado; uma sequência de
+caracteres chineses não é segmentada em palavras linguísticas por essa regra.
+Comparações devem conservar algoritmo, idioma e convenções do conteúdo. O
+total não representa extensão visual, tempo de leitura ou complexidade.
 
 ## Desenho
 
@@ -29,7 +88,7 @@ Analytics descreve o estado corrente de um curso. O contrato
 | `practiceVariationDimensions` | quais dimensões variam na prática? |
 | `practiceSequence` | qual função didática foi declarada em cada unidade, na ordem do escopo? |
 | `practiceDistribution` | como essas declarações se distribuem por função, posição e trechos consecutivos? |
-| `sourcesByRole` | quantas fontes, Âncoras e Units aparecem por papel? |
+| `sourcesByRole` | quantas fontes, âncoras e unidades aparecem por papel do vínculo? |
 | `wordCountsByStudyUnit` | como a extensão observada em palavras se distribui entre unidades de estudo? |
 
 `parameters` acompanha o [catálogo canônico de parâmetros](../src/domain/courseDesignParameters.js).
@@ -87,11 +146,28 @@ Uma contagem conhecida pode ser zero. Uma origem que o estado corrente não
 permite atribuir aparece em `missingData` e não entra numa categoria inventada.
 Consumidores devem manter essa diferença na interface e na exportação.
 
-## Exportação
+## Comparação e exportação
 
-**Exportar Analytics** salva o mesmo snapshot JSON que alimenta a tela. Não há
-CSV nem coleta de linhas adicionais. O arquivo não contém a composição completa
-do curso e não congela um artefato para pesquisa.
+`aralearn.course-authoring-comparison.v1` compara duas seleções explícitas de
+curso, revisão e escopo. Distribuições, configuração solicitada e aplicada
+permanecem separadas. A diferença numérica é o total da direita menos o da
+esquerda, somente quando ambos estão disponíveis. A comparação de inventários
+usa os campos semânticos literais e a multiplicidade; ignora identidades locais
+e não certifica equivalência semântica. `onlyLeft` e `onlyRight` conservam os
+valores, as quantidades e as referências das diferenças.
+
+**Exportar curso e análise** produz `aralearn.course-authoring-export.v1`:
+`course`, `scope`, `analytics` e `artifact.document`. O documento inclui o
+conteúdo integral do curso; a leitura quantitativa mantém o escopo escolhido.
+O leitor percorre entidades com a mesma revisão e confere novamente a revisão
+ao terminar. Falha ou mudança interrompe a exportação inteira; não há retorno
+parcial ou substituição por cache. O arquivo não inclui bytes PDF/áudio,
+registros de pessoas, progresso pessoal, credenciais ou transcrições.
+
+Os contratos são compartilhados pela interface, pelos canais humanos e pela
+exportação em [courseAuthoringComparison.js](../src/domain/courseAuthoringComparison.js).
+As dimensões são calculadas em
+[courseAuthoringBasis.js](../src/domain/courseAuthoringBasis.js).
 
 Consulte [Analytics da Autoria](analytics-instrucionais.md) para interpretar os
 números e [Arquitetura](arquitetura.md#analytics) para sua derivação.

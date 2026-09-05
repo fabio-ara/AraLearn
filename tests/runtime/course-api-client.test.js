@@ -1,4 +1,7 @@
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
+import { normalizeCourseAuthoringAnalyticsPage } from "../../src/domain/courseAuthoringAnalytics.js";
+import { buildCourseAuthoringComparison, assembleCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 import test from "node:test";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
@@ -45,7 +48,8 @@ function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }
       definition: structuredClone(definition), effectiveValues: []
     }));
   return {
-    contract: "aralearn.course-authoring-analytics.v3",
+    contract: "aralearn.course-authoring-analytics.v4",
+    basis: courseAuthoringBasisFixture(),
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
@@ -1576,8 +1580,8 @@ test("cliente owner lê Analytics pela rota quantitativa", async () => {
     expectedCourseRevision: 7,
     query
   });
-  const { practiceDistribution, ...design } = result.design;
-  assert.deepEqual({ ...result, design }, page);
+  const { practiceDistribution } = result.design;
+  assert.deepEqual(result, normalizeCourseAuthoringAnalyticsPage(page));
   assert.equal(practiceDistribution.studyUnitCount, 0);
   assert.deepEqual(practiceDistribution.practicePositions, []);
   assert.match(calls[0].url, new RegExp(
@@ -1589,6 +1593,40 @@ test("cliente owner lê Analytics pela rota quantitativa", async () => {
     scopeKind: "didactic_microsequence",
     scopeRef: "micro-dns"
   });
+});
+
+test("cliente comparação liga JSON normalizado a dois cursos, revisões e escopos sem identidade de ator", async () => {
+  const calls = []; const left = analyticsSnapshot(); const right = analyticsSnapshot(); right.course.id = USER_ID;
+  const request = { left: { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } }, right: { courseId: USER_ID, expectedRevision: 7, scope: { kind: "course", ref: null } } };
+  const response = buildCourseAuthoringComparison({ left, right });
+  const { client } = clientWithFetch(async (url, init) => { calls.push({ url, method: init.method, body: parsedBody(init), headers: init.headers }); return jsonResponse({ ok: true, data: response }); });
+  assert.deepEqual(await client.loadCourseAuthoringComparison(request), response);
+  assert.match(calls[0].url, /\/v1\/authoring-comparison$/u); assert.equal(calls[0].method, "POST"); assert.deepEqual(calls[0].body, request);
+  assert.equal(new Headers(calls[0].headers).has("Idempotency-Key"), false);
+  await assert.rejects(client.loadCourseAuthoringComparison({ ...request, actorId: USER_ID }));
+  assert.equal(calls.length, 1);
+  response.right.scope = { kind: "study_unit", ref: "unit-a", label: "Unidade" };
+  await assert.rejects(client.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+});
+
+test("cliente exportação envia seleção CAS na query e recusa artefato de outra revisão", async () => {
+  const calls = []; const analytics = analyticsSnapshot();
+  const data = assembleCourseAuthoringExport({ analytics, document: { contract: "aralearn.course.v1", courses: [{ id: COURSE_ID, title: "Curso", goal: "Objetivo integral", modules: [] }] } });
+  const { client } = clientWithFetch(async (url, init) => { calls.push({ url, method: init.method, body: parsedBody(init) }); return jsonResponse({ ok: true, data }); });
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  assert.deepEqual(await client.exportCourseAuthoring(selection), data);
+  assert.match(calls[0].url, new RegExp(`/v1/courses/${COURSE_ID}/authoring-export\\?`, "u"));
+  assert.equal(calls[0].method, "GET"); assert.equal(calls[0].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), { expectedRevision: "7", scopeKind: "course" });
+  data.course.revision = 8;
+  await assert.rejects(client.exportCourseAuthoring(selection), /outro curso, edição ou escopo/u);
+});
+
+test("cliente comparação e exportação preservam negação de acesso, sem baixar resultado", async () => {
+  const { client } = clientWithFetch(async () => jsonResponse({ ok: false, error: { code: "course_not_found", message: "Curso indisponível." } }, 404));
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  await assert.rejects(client.exportCourseAuthoring(selection), (error) => error.status === 404);
+  await assert.rejects(client.loadCourseAuthoringComparison({ left: selection, right: { ...selection, courseId: USER_ID } }), (error) => error.status === 404);
 });
 
 test("retry após resposta perdida aceita receipt idempotente na revisão corrente", async () => {

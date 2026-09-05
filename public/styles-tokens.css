@@ -71,15 +71,15 @@
   --font-ui: "Aptos", "Segoe UI Variable Text", "SF Pro Text", "Inter", "Noto Sans", "Roboto", sans-serif;
   --font-display: "Aptos Display", "Segoe UI Variable Display", "SF Pro Display", "Inter", "Noto Sans", "Roboto", sans-serif;
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --type-xs: 0.84rem;
-  --type-sm: 0.91rem;
+  --type-xs: 0.8125rem;
+  --type-sm: 0.875rem;
   --type-dense: 0.9375rem;
   --type-prose: 0.96875rem;
   --type-diagram: 16px;
   --type-diagram-secondary: 14.5px;
   --type-diagram-detail: 13.5px;
   --type-base: 1rem;
-  --type-md: 1.05rem;
+  --type-md: 1rem;
   --type-lg: 1.16rem;
   --leading-snug: 1.32;
   --leading-dense: 1.44;

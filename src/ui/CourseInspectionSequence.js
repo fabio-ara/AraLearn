@@ -21,7 +21,6 @@ import {
   listManualStudyUnitTargetIds,
   readManualStudyUnitEditPathValues
 } from "./manualStudyUnitEdit.js";
-import { createCourseProviderAssistance } from "./CourseProviderAssistance.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
@@ -528,10 +527,8 @@ function renderManualTitle(item, state, editing, targetId) {
 function renderManualModeActions(item, state, editing, observationCount) {
   const id = escapeHtml(item.studyUnit.id);
   const selectedForBatch = state.selectedStudyUnitIds.has(item.studyUnit.id);
-  const canUndo = state.manualUndo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
-  const canRedo = state.manualRedo.at(-1)?.studyUnitId === item.studyUnit.id && !state.manualSaving;
   return '<nav class="course-inspection-mode-actions" role="group" aria-label="Ações da unidade de estudo">' +
-    `<button type="button" data-inspection-unit-mode="view" data-study-unit-id="${id}"` +
+    `<button type="button" class="course-inspection-view-action" data-inspection-unit-mode="view" data-study-unit-id="${id}"` +
     ` aria-pressed="${editing ? "false" : "true"}" aria-label="Visualizar" title="Visualizar"` +
     `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
     `${renderUiIcon("preview", "course-authoring-button-icon")}</button>` +
@@ -555,12 +552,6 @@ function renderManualModeActions(item, state, editing, observationCount) {
         )}" title="Fontes e âncoras">` +
         `${renderUiIcon("study", "course-authoring-button-icon")}</button>`
       : "") +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, {
-      section: "review",
-      studyUnitId: item.studyUnit.id
-    }))}" data-inspection-route data-inspection-control-key="review:${id}"` +
-    ` aria-label="Revisar ${escapeHtml(item.studyUnit.title)}" title="Revisar">` +
-    `${renderUiIcon("review", "course-authoring-button-icon")}</a>` +
     `<button type="button" data-inspection-selection-action="toggle-current"` +
     ` data-study-unit-id="${id}" data-inspection-control-key="selection:${id}"` +
     ` aria-pressed="${selectedForBatch}"` +
@@ -573,23 +564,6 @@ function renderManualModeActions(item, state, editing, observationCount) {
         ` aria-pressed="${editing ? "true" : "false"}" aria-label="Editar" title="Editar"` +
         `${state.manualSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
         `${renderUiIcon("edit", "course-authoring-button-icon")}</button>`
-      : "") +
-    (state.canUseProviderAssistance
-      ? `<button type="button" data-inspection-provider-assistance data-study-unit-id="${id}"` +
-        ` aria-pressed="${state.assistanceActiveStudyUnitId === item.studyUnit.id}"` +
-        ' aria-label="Assistência por IA" title="Assistência por IA"' +
-        `${state.manualSaving || state.assistanceSaving ? " disabled aria-disabled=\"true\"" : ""}>` +
-        `${renderUiIcon("sparkles", "course-authoring-button-icon")}</button>`
-      : "") +
-    (state.canEditManually && canUndo
-      ? `<button type="button" data-inspection-manual-history="undo" data-study-unit-id="${id}"` +
-        ' aria-label="Desfazer última edição" title="Desfazer">' +
-        `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button>`
-      : "") +
-    (state.canEditManually && canRedo
-      ? `<button type="button" data-inspection-manual-history="redo" data-study-unit-id="${id}"` +
-        ' aria-label="Refazer edição" title="Refazer">' +
-        `${renderUiIcon("arrow-right", "course-authoring-button-icon")}</button>`
       : "") +
     "</nav>";
 }
@@ -833,30 +807,28 @@ export function searchCourseInspectionIndex(index, query, limit = SEARCH_RESULT_
     Object.freeze({ ...entry, matchExcerpt })));
 }
 
-function renderStudyUnitContextActions(item) {
+function renderStudyUnitContextActions(item, state) {
   const studyUnitId = escapeHtml(item.studyUnit.id);
   return `<nav class="course-inspection-item-menu" aria-label="Mais ações para ${escapeHtml(item.studyUnit.title)}">` +
     `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
     ` data-inspection-control-key="copy:${studyUnitId}">` +
     `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
+    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, { section: "review", studyUnitId: item.studyUnit.id }))}"` +
+    ` data-inspection-route data-inspection-control-key="review:${studyUnitId}">` +
+    `${renderUiIcon("review", "course-authoring-button-icon")}<span>Revisar unidade</span></a>` +
+    `<button type="button" class="course-inspection-view-menu" data-inspection-unit-mode="view"` +
+    ` data-study-unit-id="${studyUnitId}"${state.manualSaving ? " disabled" : ""}>` +
+    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Visualizar</span></button>` +
+    [
+      ["undo", state.manualUndo, "Desfazer última edição", "arrow-left"],
+      ["redo", state.manualRedo, "Refazer edição", "arrow-right"]
+    ].map(([action, history, label, icon]) => state.canEditManually && history.at(-1)?.studyUnitId === item.studyUnit.id
+      ? `<button type="button" data-inspection-manual-history="${action}" data-study-unit-id="${studyUnitId}"` +
+        `${state.manualSaving ? " disabled" : ""}>${renderUiIcon(icon, "course-authoring-button-icon")}<span>${label}</span></button>` : "").join("") +
     "</nav>";
 }
 
-function renderAssistanceDraftDock(item, state) {
-  if (state.assistanceDraft?.studyUnitId !== item.studyUnit.id) return "";
-  return '<footer class="course-inspection-manual-dock" aria-label="Rascunho da Assistência por IA">' +
-    `<p><strong>${escapeHtml(state.assistanceDraft.summary || "Proposta preparada")}</strong></p>` +
-    (state.assistanceError
-      ? `<p class="course-inspection-manual-error" role="alert">${escapeHtml(state.assistanceError)}</p>`
-      : "") +
-    '<div><button type="button" data-inspection-assistance-action="discard"' +
-    ` aria-label="Descartar proposta" title="Descartar proposta"${state.assistanceSaving ? " disabled" : ""}>` +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
-    '<button type="button" data-inspection-assistance-action="save"' +
-    ` aria-label="Salvar proposta" title="Salvar proposta"${state.assistanceSaving ? " disabled" : ""}>` +
-    `${renderUiIcon(state.assistanceSaving ? "rotate" : "save", "course-authoring-button-icon")}` +
-    '<span>Salvar</span></button></div></footer>';
-}
+
 
 function renderManualEditDock(item, state, editing, resourceTargetIds) {
   if (!editing) return "";
@@ -944,7 +916,7 @@ function renderStudyUnit(
     ` data-inspection-ordinal="${item.ordinal}" aria-posinset="${item.ordinal}" aria-setsize="${totalCount}">` +
     `<article aria-labelledby="inspection-study-unit-${escapeHtml(item.studyUnit.id)}"` +
     `${selected ? ' aria-current="true"' : ""}>` +
-    '<header class="course-inspection-item-heading"><div>' +
+    '<header class="course-inspection-item-heading"><div tabindex="0">' +
     (reference ? '<p class="course-inspection-selection-reference">Unidade de referência</p>' : "") +
     `<p>${escapeHtml(path.didacticMicrosequence.title)} · unidade ${item.ordinal} de ${totalCount}</p>` +
     `${renderManualTitle(item, state, editing, state.manualTargetId)}</div>` +
@@ -958,12 +930,12 @@ function renderStudyUnit(
     `<div><dt>Atualizado em</dt><dd><time datetime="${escapeHtml(item.updatedAt)}">` +
     `${escapeHtml(new Date(item.updatedAt).toLocaleString("pt-BR"))}</time></dd></div></dl>` +
     renderAnalysisIdeas(item) +
-    renderStudyUnitContextActions(item) +
+    renderStudyUnitContextActions(item, state) +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
-    renderStudyToolActions(item.studyUnit, RESOURCE_PACKAGE_REGISTRY, {
-      disabled: Boolean(state.manualStudyUnitId || state.assistanceDraft || state.assistanceSaving)
-    }) +
+    (renderStudyToolActions(item.studyUnit, RESOURCE_PACKAGE_REGISTRY, {
+      disabled: Boolean(state.manualStudyUnitId), compact: true
+    }) || '<div class="study-tool-actions" aria-hidden="true"></div>') +
     renderManualModeActions(item, state, editing, observationCount) +
     "</div>" +
     renderAuthorshipState(item, observationCount) +
@@ -973,7 +945,6 @@ function renderStudyUnit(
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
     `<div class="card-sheet-content">${runtime.bodyHtml}</div>${runtime.dockHtml}</div>` +
     renderManualEditDock(item, state, editing, resourceTargetIds) +
-    renderAssistanceDraftDock(item, state) +
     `<footer><small>Unidade ${item.ordinal}</small></footer></article></li>`;
 }
 
@@ -1295,8 +1266,7 @@ export function createCourseInspectionSequence({
   onSaveManualEdit = null,
   windowValue = globalThis.window || null,
   documentValue = root?.ownerDocument || globalThis.document || null,
-  navigatorValue = globalThis.navigator || null,
-  providerAssistanceSession = null
+  navigatorValue = globalThis.navigator || null
 } = {}) {
   if (!root || typeof root.addEventListener !== "function" ||
       typeof controller?.loadAuthoringStudyUnits !== "function" ||
@@ -1308,11 +1278,7 @@ export function createCourseInspectionSequence({
       typeof onEditSources !== "function" ||
       (onOpenParameters !== null && typeof onOpenParameters !== "function") ||
       (onEditContent !== null && typeof onEditContent !== "function") ||
-      (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") ||
-      (providerAssistanceSession !== null &&
-       (typeof providerAssistanceSession?.read !== "function" ||
-        typeof providerAssistanceSession?.update !== "function" ||
-        typeof providerAssistanceSession?.snapshot !== "function"))) {
+      (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function")) {
     throw new TypeError("Dependências da sequência de conteúdo são inválidas.");
   }
   const scrollTarget = root.closest?.(".course-authoring-root") || windowValue;
@@ -1332,9 +1298,6 @@ export function createCourseInspectionSequence({
       typeof onEditContent === "function",
     canEditManually: course.ownership === "owned" && course.canEdit === true &&
       typeof onSaveManualEdit === "function",
-    canUseProviderAssistance: course.ownership === "owned" && course.canEdit === true &&
-      typeof onSaveManualEdit === "function" &&
-      typeof controller.loadCourseDocument === "function",
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
@@ -1392,10 +1355,6 @@ export function createCourseInspectionSequence({
     manualHistoryPreview: null,
     manualUnknownSignature: "",
     manualDiscardArmed: false,
-    assistanceActiveStudyUnitId: "",
-    assistanceDraft: null,
-    assistanceSaving: false,
-    assistanceError: "",
     searchQuery: "",
     searchResults: [],
     searchOpen: false,
@@ -1416,7 +1375,6 @@ export function createCourseInspectionSequence({
   let courseSearchIndexPromise = null;
   let courseSearchIndexFailed = false;
   let manualInlineController = null;
-  let providerAssistance = null;
   let toolStudyUnitId = "";
   let toolReturnScroll = null;
   const studyTools = createStudyTools({
@@ -1426,8 +1384,7 @@ export function createCourseInspectionSequence({
       return state.items.find(({ studyUnit }) => studyUnit.id === toolStudyUnitId)?.studyUnit || null;
     },
     getContextKey: () => `${state.courseId}:${state.pinnedRevision}:${toolStudyUnitId}`,
-    canOpen: () => !state.destroyed && !state.manualStudyUnitId && !state.assistanceDraft &&
-      !state.assistanceSaving && !providerAssistance?.opened,
+    canOpen: () => !state.destroyed && !state.manualStudyUnitId,
     getOverlayHost: () => root.closest?.(".course-authoring-root") || root,
     getBackground: () => root.closest?.(".course-authoring-surface") || root.querySelector(".course-authoring-inspection"),
     onOpen() {
@@ -2079,7 +2036,7 @@ export function createCourseInspectionSequence({
       render();
       return false;
     }
-    if (state.manualStudyUnitId || state.assistanceDraft) {
+    if (state.manualStudyUnitId) {
       state.manualError = "Salve ou cancele a edição antes de mudar de unidade.";
       render();
       return false;
@@ -2418,7 +2375,7 @@ export function createCourseInspectionSequence({
       render();
       return false;
     }
-    if (state.manualStudyUnitId || state.assistanceDraft) {
+    if (state.manualStudyUnitId) {
       state.manualError = "Salve ou cancele a edição antes de mudar de unidade.";
       render();
       return false;
@@ -2525,8 +2482,7 @@ export function createCourseInspectionSequence({
       render();
       return false;
     }
-    if ((state.manualStudyUnitId && state.manualStudyUnitId !== studyUnitId) ||
-        (state.assistanceDraft && state.assistanceDraft.studyUnitId !== studyUnitId)) {
+    if (state.manualStudyUnitId && state.manualStudyUnitId !== studyUnitId) {
       state.manualError = "Salve ou cancele a edição antes de mudar de unidade.";
       render();
       return false;
@@ -2593,7 +2549,7 @@ export function createCourseInspectionSequence({
     const item = state.items.find(({ studyUnit }) =>
       studyUnit.id === String(control.dataset.studyUnitId || ""));
     if (!item || (kind === "parameters" ? !state.canAccessDesign : !state.canEditSources)) return false;
-    if (state.manualSaving || state.assistanceSaving) return false;
+    if (state.manualSaving) return false;
     captureManualDraft();
     closeOpenMenus();
     const anchor = captureAnchor();
@@ -2775,141 +2731,15 @@ export function createCourseInspectionSequence({
     });
   }
 
-  function ensureProviderAssistance() {
-    if (providerAssistance) return providerAssistance;
-    providerAssistance = createCourseProviderAssistance({
-      documentValue,
-      windowValue,
-      session: providerAssistanceSession
-    });
-    return providerAssistance;
-  }
 
-  function providerTriggerFocus(studyUnitId) {
-    return Object.freeze({
-      focus(options) {
-        [...(root.querySelectorAll?.("[data-inspection-provider-assistance]") || [])]
-          .find((button) => button.dataset.studyUnitId === studyUnitId)
-          ?.focus?.(options);
-      }
-    });
-  }
 
-  async function openProviderAssistance(trigger) {
-    if (!state.canUseProviderAssistance || state.manualSaving || state.assistanceSaving ||
-        state.assistanceDraft || providerAssistance?.opened) return false;
-    if (state.manualUnknownSignature) {
-      state.manualDiscardArmed = true;
-      state.manualError = "Confirme a mesma gravação ou descarte o pedido incerto antes de pedir outra alteração.";
-      render({ captureDraft: false });
-      return false;
-    }
-    const studyUnitId = String(trigger?.dataset?.studyUnitId || "");
-    const item = manualItem(studyUnitId);
-    if (!item) return false;
-    if (state.manualStudyUnitId && manualDraftChanged()) {
-      state.manualError = "Salve ou cancele a edição atual antes de usar a assistência.";
-      render();
-      return false;
-    }
-    if (state.manualStudyUnitId) resetManualEditor({ focusEdit: false });
-    state.assistanceActiveStudyUnitId = studyUnitId;
-    state.assistanceError = "";
-    render({ captureDraft: false });
-    try {
-      const loaded = await controller.loadCourseDocument(state.courseId, {
-        verifiedRevision: state.pinnedRevision
-      });
-      if (state.destroyed || state.assistanceActiveStudyUnitId !== studyUnitId) return false;
-      const project = loaded?.document;
-      const selection = {
-        courseId: state.courseId,
-        moduleId: item.curriculumPath.module.id,
-        lessonId: item.curriculumPath.lesson.id,
-        microsequenceId: item.curriculumPath.didacticMicrosequence.id,
-        studyUnitId,
-        studyUnitIndex: Math.max(0, Number(item.studyUnit.position) - 1)
-      };
-      const baselineItem = structuredClone(item);
-      return ensureProviderAssistance().open({
-        trigger: providerTriggerFocus(studyUnitId),
-        project,
-        selection,
-        scope: "study_unit",
-        targetTitle: item.studyUnit.title,
-        writeTargetId: "study_unit",
-        onApplyDraft: (prepared) => {
-          replaceManualItem(baselineItem, prepared.candidate, baselineItem.version);
-          state.assistanceDraft = {
-            studyUnitId,
-            baselineItem,
-            proposedStudyUnit: structuredClone(prepared.candidate),
-            summary: prepared.message
-          };
-          state.assistanceError = "";
-          render({ captureDraft: false });
-        },
-        onClosed: () => {
-          state.assistanceActiveStudyUnitId = "";
-          render({ captureDraft: false });
-        }
-      });
-    } catch (error) {
-      state.assistanceActiveStudyUnitId = "";
-      state.manualError = publicErrorMessage(error, "A assistência por IA não está disponível.");
-      render({ captureDraft: false });
-      return false;
-    }
-  }
 
-  function discardAssistanceDraft() {
-    const draft = state.assistanceDraft;
-    if (!draft || state.assistanceSaving) return false;
-    replaceManualItem(draft.baselineItem, draft.baselineItem.studyUnit, draft.baselineItem.version);
-    state.assistanceDraft = null;
-    state.assistanceError = "";
-    state.manualStatus = "Proposta descartada.";
-    render({ captureDraft: false });
-    return true;
-  }
 
-  async function saveAssistanceDraft() {
-    const draft = state.assistanceDraft;
-    if (!draft || state.assistanceSaving) return false;
-    state.assistanceSaving = true;
-    state.assistanceError = "";
-    render({ captureDraft: false });
-    try {
-      const committed = await commitManualStudyUnit(
-        draft.baselineItem,
-        draft.proposedStudyUnit,
-        "provider_assistance"
-      );
-      replaceManualItem(
-        draft.baselineItem,
-        committed.item.studyUnit,
-        committed.item.version
-      );
-      state.manualUndo.push({
-        studyUnitId: draft.studyUnitId,
-        targetId: "study_unit",
-        before: structuredClone(draft.baselineItem.studyUnit),
-        after: structuredClone(committed.item.studyUnit)
-      });
-      if (state.manualUndo.length > 20) state.manualUndo.shift();
-      state.manualRedo = [];
-      state.assistanceDraft = null;
-      state.assistanceSaving = false;
-      state.manualStatus = "Proposta salva.";
-      render({ captureDraft: false });
-      return true;
-    } catch (error) {
-      state.assistanceSaving = false;
-      state.assistanceError = publicErrorMessage(error, "Não foi possível salvar a proposta.");
-      render({ captureDraft: false });
-      return false;
-    }
-  }
+
+
+
+
+
 
   function manualDraftChanged() {
     const item = manualItem();
@@ -3175,19 +3005,6 @@ export function createCourseInspectionSequence({
         return false;
       }
     }
-    const assistanceAction = event.target.closest?.("[data-inspection-assistance-action]");
-    if (assistanceAction) {
-      return assistanceAction.dataset.inspectionAssistanceAction === "save"
-        ? saveAssistanceDraft()
-        : discardAssistanceDraft();
-    }
-    if (state.assistanceDraft) {
-      state.assistanceError = "Salve ou descarte a proposta antes de mudar de contexto.";
-      render({ captureDraft: false });
-      return false;
-    }
-    const providerTrigger = event.target.closest?.("[data-inspection-provider-assistance]");
-    if (providerTrigger) return openProviderAssistance(providerTrigger);
     const mode = event.target.closest?.("[data-inspection-unit-mode]");
     if (mode) {
       const studyUnitId = String(mode.dataset.studyUnitId || "");
@@ -3245,7 +3062,7 @@ export function createCourseInspectionSequence({
       if (action === "toggle-current") {
         const studyUnitId = String(selectionAction.dataset.studyUnitId || "");
         if (!state.items.some(({ studyUnit }) => studyUnit.id === studyUnitId)) return false;
-        if (state.manualStudyUnitId || state.assistanceDraft || state.pendingBatchObservation ||
+        if (state.manualStudyUnitId || state.pendingBatchObservation ||
             hasObservationDraft()) {
           state.manualStatus = "Conclua a edição ou observação em rascunho antes de mudar a seleção.";
           render();
@@ -3590,8 +3407,7 @@ export function createCourseInspectionSequence({
     return Boolean(
       state.pendingObservationMutation || state.pendingBatchObservation || state.confirmation ||
       state.observationSaving || draftChanged || state.manualSaving ||
-      state.manualStudyUnitId || manualDraftChanged() || providerAssistance?.opened ||
-      state.assistanceDraft || state.assistanceSaving
+      state.manualStudyUnitId || manualDraftChanged()
     );
   }
 
@@ -3663,7 +3479,7 @@ export function createCourseInspectionSequence({
       contextual = false, returnPosition = null, returnFocusKey = ""
     } = {}) {
       const revision = natural(nextRevision, "A revisão do curso", { minimum: 1 });
-      if (state.manualSaving || state.assistanceSaving || state.manualUnknownSignature ||
+      if (state.manualSaving || state.manualUnknownSignature ||
           state.pendingBatchObservation || state.pendingObservationMutation) return false;
       resetFailedCourseSearchIndex();
       const epoch = ++requestEpoch;
@@ -3674,13 +3490,8 @@ export function createCourseInspectionSequence({
       };
       captureManualDraft();
       const manualEditId = state.manualStudyUnitId;
-      const assistanceEditId = state.assistanceDraft?.studyUnitId || null;
-      const localEditId = manualEditId || assistanceEditId;
-      const localEditItem = assistanceEditId
-        ? state.assistanceDraft.baselineItem
-        : localEditId
-          ? state.items.find(({ studyUnit }) => studyUnit.id === localEditId) || null
-          : null;
+      const localEditItem = manualEditId
+        ? state.items.find(({ studyUnit }) => studyUnit.id === manualEditId) || null : null;
       const previousRevision = state.pinnedRevision;
       state.stale = true;
       state.loadingDirection = "refresh";
@@ -3700,8 +3511,7 @@ export function createCourseInspectionSequence({
             state.loadingDirection = "";
             const message =
               "Esta unidade mudou fora desta tela. Cancele a edição local para carregar a versão atual.";
-            if (manualEditId) state.manualError = message;
-            else state.assistanceError = message;
+            state.manualError = message;
             render({ anchor, captureDraft: false });
             return false;
           }
@@ -3722,13 +3532,6 @@ export function createCourseInspectionSequence({
         }
         state.items = [];
         mergePage(page, "initial");
-        if (state.assistanceDraft) {
-          const refreshed = state.items.find(({ studyUnit }) => studyUnit.id === assistanceEditId);
-          state.assistanceDraft.baselineItem = structuredClone(refreshed);
-          state.items = state.items.map((item) => item.studyUnit.id === assistanceEditId
-            ? { ...item, studyUnit: structuredClone(state.assistanceDraft.proposedStudyUnit) }
-            : item);
-        }
         state.activeStudyUnitId = page.items.some(({ studyUnit }) => studyUnit.id === anchor.studyUnitId)
           ? anchor.studyUnitId
           : page.items[0]?.studyUnit.id || null;
@@ -3753,8 +3556,7 @@ export function createCourseInspectionSequence({
           state.loadingDirection = "";
           const message = "Não foi possível conferir a unidade atual. Seu rascunho foi preservado. " +
             statusMessage(error);
-          if (manualEditId) state.manualError = message;
-          else state.assistanceError = message;
+          state.manualError = message;
           render({ anchor, captureDraft: false });
           return false;
         }
@@ -3826,8 +3628,6 @@ export function createCourseInspectionSequence({
       ++requestEpoch;
       manualInlineController?.destroy?.();
       manualInlineController = null;
-      providerAssistance?.destroy?.();
-      providerAssistance = null;
       root.removeEventListener?.("click", handleClick);
       root.removeEventListener?.("change", handleChange);
       root.removeEventListener?.("input", handleInput);

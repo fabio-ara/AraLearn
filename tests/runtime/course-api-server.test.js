@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { createCourseApiHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseApiServer.js";
 import { CourseSupabaseAdapter } from
   "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { COURSE_AUTHORING_EXPORT_CONTRACT, COURSE_AUTHORING_EXPORT_MAX_BYTES } from
+  "../../src/domain/courseAuthoringComparison.js";
 
 const ORIGIN = "https://app.example";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
@@ -18,6 +20,29 @@ function jwt(payload) {
     "assinatura-de-teste"
   ].join(".");
 }
+
+test("somente a rota autenticada de exportação aceita artefato maior que 2 MiB até 32 MiB UTF-8", async () => {
+  const payload = { contract: COURSE_AUTHORING_EXPORT_CONTRACT, text: "" };
+  const overhead = Buffer.byteLength(JSON.stringify(payload));
+  payload.text = "漢字á😀" + "x".repeat(COURSE_AUTHORING_EXPORT_MAX_BYTES - overhead - 12);
+  const handler = createCourseApiHandler({ allowedOrigins: new Set([ORIGIN]), adapter: {
+    async resolveApplicationPrincipal() { return { actorId: COURSE_ID, scopes: ["authoring:write"] }; },
+    async getCourseAuthoringExport() { return payload; },
+    async getCourse() { return payload; }
+  } });
+  const exportPath = `/v1/courses/${COURSE_ID}/authoring-export?expectedRevision=1&scopeKind=course`;
+  const response = await handler(request(exportPath, { method: "GET" }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).data.text, payload.text);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const ordinary = await handler(request(`/v1/courses/${COURSE_ID}?view=summary`, { method: "GET" }));
+  assert.equal(ordinary.status, 413);
+  assert.equal((await ordinary.json()).error.code, "response_too_large");
+  payload.text += "á";
+  const exceeded = await handler(request(exportPath, { method: "GET" }));
+  assert.equal(exceeded.status, 413);
+  assert.equal((await exceeded.json()).error.code, "course_export_too_large");
+});
 
 function request(path, {
   method = "POST",

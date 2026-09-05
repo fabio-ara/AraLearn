@@ -3,6 +3,7 @@ import { createDefaultCourseAudioConfig, normalizeCourseAudioConfig, normalizeCo
 import { renderUiIcon } from "./renderUiIcons.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
 import { readCourseMediaBlob } from "../supabase/readCourseMediaBlob.js";
+import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 
 const escape = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -18,12 +19,20 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
   const state = { opened: false, revision: courseRevision, items: [], nextCursor: null,
     config: createDefaultCourseAudioConfig(), baseline: null, storage: null, loading: false,
     busy: false, pending: null, file: null, generated: false, error: "", message: "",
-    confirmingHash: null, section: "configuration", generationText: "", generationName: "",
+    confirmingHash: null, section: "files", generationText: "", generationName: "",
     serviceVoices: [], generationController: null };
   let epoch = 0;
   let previewUrl = null;
   let activePreview = null;
   let previewController = null;
+  let returnSection = "configuration";
+
+  function closeSection() {
+    if (state.busy) return;
+    state.section = "files"; state.confirmingHash = null;
+    render();
+    root.querySelector(`[data-section='${returnSection}']`)?.focus({ preventScroll: true });
+  }
 
   function clearPreview() {
     previewController?.abort(); previewController = null;
@@ -35,7 +44,7 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
   function voiceOptions() {
     const voices = windowValue?.speechSynthesis?.getVoices?.() || [];
     const selected = state.config.nativeVoiceURI;
-    return '<option value="">Escolha local disponível para o idioma</option>' +
+    return '<option value="">Automática · voz local</option>' +
       (selected && !voices.some((voice) => voice.voiceURI === selected)
         ? `<option value="${escape(selected)}" selected>Voz escolhida · indisponível neste dispositivo</option>` : "") +
       voices.map((voice) => `<option value="${escape(voice.voiceURI)}"${selected === voice.voiceURI ? " selected" : ""}>` +
@@ -44,90 +53,126 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
 
   function configHtml() {
     const config = state.config;
-    return '<form data-audio-config class="course-audio-form"><p>As faixas podem usar a voz do dispositivo ou um arquivo. ' +
-      'A voz nativa reproduz texto; ela não cria um arquivo para guardar.</p>' +
+    return '<form id="course-audio-config-form" data-audio-config class="course-audio-form">' +
       `<label>Idioma padrão<input name="locale" value="${escape(config.locale)}" maxlength="100" required autocomplete="off"></label>` +
       `<label>Velocidade de reprodução<select name="rate">${[...new Set([0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, config.rate])].sort((a, b) => a - b).map((rate) =>
         `<option value="${rate}"${config.rate === rate ? " selected" : ""}>${String(rate).replace(".", ",")}×</option>`).join("")}</select></label>` +
       `<label>Voz no navegador<select name="nativeVoiceURI">${voiceOptions()}</select></label>` +
-      '<p>Vozes e idiomas variam conforme o dispositivo. Uma voz local já instalada pode funcionar sem rede; ' +
-      'uma voz remota envia o texto ao serviço do navegador. A pessoa que estuda confirma esse envio antes de ouvir.</p>' +
+      '<p>Vozes dependem do dispositivo. Voz remota envia o texto ao serviço, com confirmação antes de ouvir.</p>' +
       `<label class="course-audio-check"><input type="checkbox" name="allowRemoteNativeVoice"${config.allowRemoteNativeVoice ? " checked" : ""}>Permitir oferecer vozes remotas</label>` +
       '<details data-audio-service><summary>Geração de arquivo por serviço</summary>' +
       `<label>Serviço<select name="service"><option value=""${!config.service ? " selected" : ""}>Não configurado</option>` +
       `<option value="gemini"${config.service ? " selected" : ""}>Gemini · síntese de voz</option></select></label>` +
       `<label>Voz do serviço<select name="serviceVoice">${(state.serviceVoices.length ? state.serviceVoices : [config.service?.voice || "Kore"])
         .map((voice) => `<option value="${escape(voice)}"${(config.service?.voice || "Kore") === voice ? " selected" : ""}>${escape(voice)}</option>`).join("")}</select></label>` +
-      '<p>O serviço requer rede e credencial própria. A voz e a qualidade diferem da síntese do navegador; ' +
-      'o modelo configurado é de prévia e pode mudar de disponibilidade. A gravação gerada fica guardada como arquivo.</p>' +
-      '</details><div class="course-audio-actions"><button type="submit" aria-label="Salvar configuração de áudio" title="Salvar configuração de áudio">' +
-      renderUiIcon("save", "course-authoring-button-icon") + '</button><button type="button" data-audio-action="reset-config"' +
-      ' aria-label="Descartar configuração" title="Descartar configuração">' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></div></form>';
+      '<p>Requer internet e chave própria. Gera um arquivo para guardar.</p>' +
+      '</details></form>';
+  }
+
+  function uploadHtml() {
+    return '<section><p>WAV ou MP3, até 20 MiB por arquivo.</p>' +
+      '<form id="course-audio-upload-form" data-audio-upload class="course-audio-form"><label>Arquivo de áudio<input type="file" name="audioFile" accept="audio/wav,audio/mpeg,.wav,.mp3"></label>' +
+      (state.file ? `<p>${escape(state.file.name)} · ${sizeLabel(state.file.size)}${state.generated ? " · gerado, ainda não guardado" : ""}</p>` : "") +
+      '</form>' +
+      (state.storage ? `<p>PDFs e áudios: ${sizeLabel(state.storage.uniqueBytes)} de ${sizeLabel(state.storage.maxUniqueBytes)}.</p>` : "") +
+      '<div data-audio-preview></div></section>';
   }
 
   function filesHtml() {
-    return '<section><h3>Arquivos de áudio</h3><p>Envie WAV com PCM inteiro ou MP3, até 20 MiB. ' +
-      'A cota de 64 MiB do curso é compartilhada com PDFs. No Estudo, cada abertura confirma o acesso; ' +
-      'o áudio baixado permanece em memória enquanto a ferramenta está aberta.</p>' +
-      '<form data-audio-upload class="course-audio-form"><label>Arquivo de áudio<input type="file" name="audioFile" accept="audio/wav,audio/mpeg,.wav,.mp3"></label>' +
-      (state.file ? `<p>${escape(state.file.name)} · ${sizeLabel(state.file.size)}${state.generated ? " · gerado, ainda não guardado" : ""}</p>` : "") +
-      (state.file ? '<button type="button" data-audio-action="preview-file">Ouvir arquivo selecionado</button>' : "") +
-      '<div class="course-audio-actions"><button type="submit" aria-label="Guardar áudio" title="Guardar áudio"' +
-      `${!state.file ? " disabled" : ""}>${renderUiIcon("upload", "course-authoring-button-icon")}</button>` +
-      '<button type="button" data-audio-action="discard-file" aria-label="Descartar arquivo selecionado" title="Descartar arquivo selecionado">' +
-      renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></div></form>' +
-      (state.storage ? `<p>Arquivos do curso: ${sizeLabel(state.storage.uniqueBytes)} de ${sizeLabel(state.storage.maxUniqueBytes)}.</p>` : "") +
-      '<ul class="course-audio-files">' + state.items.map((item, index) => `<li><div><strong>${escape(item.fileName || `Áudio ${index + 1}`)}</strong>` +
+    return '<ul class="course-audio-files">' + state.items.map((item, index) => `<li><div tabindex="0"><strong>${escape(item.fileName || `Áudio ${index + 1}`)}</strong>` +
         `<span>${item.mediaType === "audio/wav" ? "WAV" : "MP3"} · ${sizeLabel(item.byteSize)}</span></div>` +
         `<button type="button" data-audio-action="preview" data-media-hash="${item.contentHash}" aria-label="Ouvir ${escape(item.fileName || `áudio ${index + 1}`)}" title="Ouvir">` +
         renderUiIcon("play", "course-authoring-button-icon") + '</button>' +
         `<button type="button" data-audio-action="remove" data-media-hash="${item.contentHash}" aria-label="Remover ${escape(item.fileName || `áudio ${index + 1}`)}" title="Remover">` +
         renderUiIcon("trash", "course-authoring-button-icon") + '</button></li>').join("") + '</ul>' +
-      (state.nextCursor ? '<button type="button" data-audio-action="more">Carregar mais áudios</button>' : "") +
-      '<div data-audio-preview></div>' + (state.confirmingHash ? '<section role="alertdialog" aria-label="Remover áudio">' +
-        '<p>Remover este arquivo do curso? As faixas que o usam precisarão de outro áudio. A cópia de outro curso, quando existente, é independente.</p>' +
-        '<button type="button" data-audio-action="confirm-remove">Remover arquivo</button> ' +
-        '<button type="button" data-audio-action="cancel-remove">Cancelar</button></section>' : "") + '</section>';
+      (!state.items.length ? '<div class="course-audio-empty" role="img" aria-label="Nenhum áudio guardado">' + renderUiIcon("audio", "course-authoring-button-icon") + '</div>' : "") +
+      (state.nextCursor ? '<button type="button" data-audio-action="more" aria-label="Carregar mais áudios" title="Carregar mais áudios">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + '</button>' : "") +
+      (state.section === "files" && !state.confirmingHash ? '<div data-audio-preview></div>' : "");
   }
 
   function generationHtml() {
     const configured = state.baseline?.service;
-    return '<section><h3>Gerar arquivo de voz</h3>' + (!configured
+    return '<section>' + (!configured
       ? '<p>Escolha o serviço e a voz na configuração e salve antes de gerar.</p>'
       : '<p>O texto será enviado ao Gemini com a voz ' + escape(configured.voice) +
         '. No plano gratuito, entradas e saídas podem ser usadas para melhorar produtos; evite material confidencial. ' +
         'A cobrança e a cota dependem da sua conta. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener noreferrer">Consultar oferta e preços</a>.</p>' +
-        '<form data-audio-generation class="course-audio-form">' +
+        '<form id="course-audio-generation-form" data-audio-generation class="course-audio-form">' +
         `<label>Nome do arquivo<input name="generationName" maxlength="120" value="${escape(state.generationName)}" placeholder="Exemplo: saudações.wav" required></label>` +
         `<label>Texto a falar<textarea name="generationText" rows="6" maxlength="16000" required>${escape(state.generationText)}</textarea></label>` +
         '<label>Chave do serviço<input type="password" name="apiKey" autocomplete="off" spellcheck="false" required></label>' +
-        '<p>A chave permanece apenas neste formulário e é descartada após a tentativa. A gravação usa ritmo normal; ' +
-        'a velocidade do curso controla a reprodução.</p>' +
+        '<p>A chave é descartada após a tentativa.</p>' +
         '<label class="course-audio-check"><input type="checkbox" name="consent" required>Autorizo enviar este texto e usar a cota ou cobrança da minha conta.</label>' +
-        '<button type="submit">Gerar áudio</button></form>') +
+        '</form>') +
       '</section>';
+  }
+
+  function sheetActions(disabled) {
+    const button = (action, label, icon, { form = null, unavailable = false } = {}) =>
+      `<button type="${form ? "submit" : "button"}"${form ? ` form="${form}"` : ` data-audio-action="${action}"`}` +
+      ` aria-label="${label}" title="${label}"${disabled || unavailable ? " disabled" : ""}>${renderUiIcon(icon, "course-authoring-button-icon")}</button>`;
+    if (state.confirmingHash) return button("confirm-remove", "Remover arquivo", "trash");
+    if (state.section === "configuration") return button("reset-config", "Descartar configuração", "remove-state") +
+      button(null, "Salvar configuração de áudio", "save", { form: "course-audio-config-form" });
+    if (state.section === "upload") return button("preview-file", "Ouvir arquivo selecionado", "play", { unavailable: !state.file }) +
+      button("discard-file", "Descartar arquivo selecionado", "remove-state", { unavailable: !state.file }) +
+      button(null, "Guardar áudio", "save", { form: "course-audio-upload-form", unavailable: !state.file });
+    return state.generationController ? '<button type="button" data-audio-action="cancel-generation" aria-label="Cancelar geração" title="Cancelar geração">' +
+      renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>' :
+      button(null, "Gerar áudio", "audio", { form: "course-audio-generation-form", unavailable: !state.baseline?.service });
   }
 
   function render() {
     if (!state.opened) return;
+    const previousDialog = root.querySelector("dialog");
+    const active = root.ownerDocument.activeElement;
+    const restoreName = previousDialog?.contains(active) ? active.name : null;
+    const restoreAction = previousDialog?.contains(active) ? active.dataset.audioAction : null;
+    const scrollTop = previousDialog?.querySelector(".course-audio-sheet-body")?.scrollTop || 0;
     const ephemeralKey = root.querySelector("input[name='apiKey']")?.value || "";
     const consent = root.querySelector("input[name='consent']")?.checked === true;
     clearPreview();
-    root.innerHTML = '<section class="course-audio-panel" aria-label="Áudio"><header><h2>Áudio</h2>' +
-      '<button type="button" data-audio-action="refresh" aria-label="Atualizar biblioteca" title="Atualizar biblioteca"' +
-      (state.loading || state.busy ? " disabled" : "") + '>' +
-      renderUiIcon("rotate", "course-authoring-button-icon") + '</button></header>' +
-      '<nav class="course-audio-tabs" aria-label="Tarefas de áudio">' +
-      [["configuration", "Configuração"], ["files", "Arquivos"], ["generation", "Gerar voz"]].map(([id, label]) =>
-        `<button type="button" data-audio-action="section" data-section="${id}" aria-pressed="${state.section === id}">${label}</button>`).join("") + '</nav>' +
+    const sheet = state.section !== "files" || state.confirmingHash;
+    const disabled = state.busy || state.pending || state.loading || !state.baseline;
+    const feedback = '<div class="course-audio-feedback" aria-live="polite">' +
       (state.message ? `<p role="status">${escape(state.message)}</p>` : "") +
       (state.error ? `<p role="alert">${escape(state.error)}</p>` : "") +
-      (state.pending ? '<button type="button" data-audio-action="retry">Confirmar operação pendente</button>' : "") +
       (state.loading ? '<p role="status">Carregando áudios…</p>' : "") +
-      '<fieldset class="course-audio-content"' + (state.busy || state.pending || state.loading || !state.baseline ? " disabled" : "") + '>' +
-      (state.section === "configuration" ? configHtml() : state.section === "files" ? filesHtml() : generationHtml()) + '</fieldset>' +
-      (state.generationController ? '<button type="button" data-audio-action="cancel-generation">Cancelar geração</button>' : "") +
-      (state.busy ? '<p role="status">Processando áudio…</p>' : "") + '</section>';
+      (state.busy ? '<p role="status">Processando áudio…</p>' : "") + '</div>';
+    root.innerHTML = '<section class="course-audio-panel" aria-label="Áudio"><header>' +
+      '<nav class="course-audio-tabs" aria-label="Tarefas de áudio">' +
+      [["configuration", "Configuração", "tags"], ["upload", "Enviar áudio", "upload"], ["generation", "Gerar voz", "audio"]]
+        .map(([id, label, icon]) => `<button type="button" data-audio-action="section" data-section="${id}"` +
+          ` aria-label="${label}" title="${label}" aria-pressed="${state.section === id}">` +
+          renderUiIcon(icon, "course-authoring-button-icon") + '</button>').join("") + '</nav>' +
+      `<button type="button" data-audio-action="${state.pending ? "retry" : "refresh"}" aria-label="${state.pending ? "Confirmar operação pendente" : "Atualizar biblioteca"}" title="${state.pending ? "Confirmar operação pendente" : "Atualizar biblioteca"}"` +
+      (state.loading || state.busy ? " disabled" : "") + '>' +
+      renderUiIcon("rotate", "course-authoring-button-icon") + '</button></header>' +
+      (!sheet ? feedback : '<div class="course-audio-feedback"></div>') +
+      '<fieldset class="course-audio-content"' + (disabled ? " disabled" : "") + '>' + filesHtml() + '</fieldset>' +
+      (sheet ? '<dialog class="course-audio-sheet" aria-labelledby="course-audio-sheet-title"><header>' +
+        `<h2 id="course-audio-sheet-title">${state.confirmingHash ? "Remover áudio" : ({ configuration: "Configuração", upload: "Enviar áudio", generation: "Gerar voz" })[state.section]}</h2>` +
+        '<button type="button" data-audio-action="close-section" aria-label="Fechar ajustes de áudio" title="Fechar"' +
+        (state.busy ? " disabled" : "") + '>' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></header>' +
+        feedback + '<div class="course-audio-sheet-body">' +
+        (state.pending ? '<button type="button" data-audio-action="retry">Confirmar operação pendente</button>' : "") +
+        '<fieldset class="course-audio-content"' + (disabled ? " disabled" : "") + '>' +
+        (state.confirmingHash ? '<p>Remover o arquivo? As faixas que o usam precisarão de outro áudio. Outras cópias do curso são preservadas.</p>' :
+          state.section === "configuration" ? configHtml() : state.section === "upload" ? uploadHtml() : generationHtml()) + '</fieldset>' +
+        '</div><footer class="course-audio-actions">' + sheetActions(disabled) + '</footer></dialog>' : '') + '</section>';
+    const dialog = root.querySelector("dialog");
+    if (dialog) {
+      dialog.addEventListener("cancel", event => { event.preventDefault(); event.stopPropagation(); closeSection(); });
+      dialog.addEventListener("keydown", event => {
+        event.stopPropagation();
+        trapAuthoringConfirmationTab({ event, root, confirmationSelector: ".course-audio-sheet" });
+      });
+      dialog.showModal();
+      const focus = restoreName ? dialog.querySelector(`[name='${restoreName}']`) :
+        restoreAction ? dialog.querySelector(`[data-audio-action='${restoreAction}']`) : null;
+      focus?.focus({ preventScroll: true });
+      dialog.querySelector(".course-audio-sheet-body").scrollTop = scrollTop;
+    }
     const keyInput = root.querySelector("input[name='apiKey']");
     if (keyInput && !state.busy) {
       keyInput.value = ephemeralKey;
@@ -233,7 +278,7 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
       if (!state.opened) return;
       const fileName = /\.wav$/iu.test(state.generationName) ? state.generationName : `${state.generationName}.wav`;
       state.file = new File([result.blob], fileName, { type: "audio/wav" });
-      state.generated = true; state.section = "files";
+      state.generated = true; state.section = "upload";
       state.message = "Áudio gerado. Confira a gravação e guarde o arquivo para usá-lo no curso.";
     } finally { state.generationController = null; state.busy = false; render(); }
   }
@@ -266,6 +311,7 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
     if (!button || !state.opened) return;
     const action = button.dataset.audioAction;
     if (action === "cancel-generation") { state.generationController?.abort(); return; }
+    if (action === "close-section") { closeSection(); return; }
     if (state.busy || state.loading) return;
     if (action === "retry") { await submitPending(); return; }
     if (action === "refresh") {
@@ -279,10 +325,10 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
     }
     if (state.pending) return;
     try {
-      if (action === "section") state.section = button.dataset.section;
+      if (action === "section") { state.section = button.dataset.section; returnSection = state.section; }
       if (action === "reset-config") state.config = structuredClone(state.baseline || createDefaultCourseAudioConfig());
       if (action === "discard-file") { state.file = null; state.generated = false; }
-      if (action === "remove") state.confirmingHash = button.dataset.mediaHash;
+      if (action === "remove") { state.confirmingHash = button.dataset.mediaHash; returnSection = "upload"; }
       if (action === "cancel-remove") state.confirmingHash = null;
       if (action === "confirm-remove") { await mutate({ type: "remove_media", contentHash: state.confirmingHash }); return; }
       if (action === "more") { await read({ append: true }); return; }

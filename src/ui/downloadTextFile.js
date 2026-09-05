@@ -1,4 +1,4 @@
-export const TEXT_EXPORT_MAX_BYTES = 8 * 1024 * 1024;
+export const TEXT_EXPORT_MAX_BYTES = 32 * 1024 * 1024;
 const TEXT_EXPORT_MAX_FILE_NAME_LENGTH = 160;
 const TEXT_EXPORT_TYPES = Object.freeze({
   "application/json": ".json",
@@ -25,7 +25,7 @@ export function normalizeTextFileDownload({ name, type, content } = {}) {
   const byteSize = new Blob([content]).size;
   if (byteSize > TEXT_EXPORT_MAX_BYTES) {
     throw new RangeError(
-      "A exportação excede 8 MiB. Restrinja o período, o conjunto ou o canal e tente novamente."
+      "A exportação excede o limite de 32 MiB."
     );
   }
   return Object.freeze({ name: fileName, type: mediaType, content, byteSize });

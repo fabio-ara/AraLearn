@@ -855,6 +855,7 @@ export class CourseStudyRepository {
       revision: item.revision,
       ownership: item.ownership,
       canEdit: !this.visitor && item.ownership === "owned" && item.canEdit === true,
+      canCopy: !this.visitor && item.canCopy === true,
       canObserve: !this.visitor && item.canObserve === true,
       ...(item.ownership === "owned" && item.copyOrigin ? { copyOrigin: clone(item.copyOrigin) } : {}),
       moduleCount: Number(item.moduleCount || 0),

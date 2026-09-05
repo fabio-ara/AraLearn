@@ -300,7 +300,8 @@
           "^table:private\\.course_media(?:_upload_intents|_delete_intents)?$",
           "^function:private\\.(?:valid_course_audio_config_v1|course_audio_object_path_v1|course_media_reference_v1|guard_course_audio_object_write_v1)\\(.*\\)$",
           "^function:public\\.(?:get_course_media_for_actor_v1|get_course_media_download_for_actor_v1|prepare_course_audio_for_actor_v1|execute_course_media_for_actor_v1|claim_course_media_delete_for_actor_v1|complete_course_media_delete_for_actor_v1)\\(.*\\)$",
-          "^constraint:public\\.courses/course_audio_config_v1\\[check\\]$"
+          "^constraint:public\\.courses/course_audio_config_v1\\[check\\]$",
+          "^function:private\\.guard_shared_course_media_v1\\(.*\\)$"
         ]
       },
       "ui": [
@@ -629,17 +630,23 @@
     },
     {
       "id": "course-authoring-research",
-      "intent": "Caracterizar quantitativamente o desenho instrucional e as intervenções humanas explícitas no Curso corrente.",
+      "intent": "Comparar o inventário completo e os recortes autorais por contagens determinísticas, declarações e configuração solicitada/aplicada, exportando o artefato literal sem certificar equivalência pedagógica.",
       "classification": "ui",
       "status": "current",
       "terminologyReview": "#127",
       "objects": {
         "manifestFeatures": [
-          "course-authoring-analytics-v3"
+          "course-authoring-analytics-v4",
+          "course-authoring-comparison-v1",
+          "course-authoring-export-v1"
         ],
         "databasePatterns": [
           "^function:private\\.count_course_component_authorial_words_v1\\(.*\\)$",
-          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v3\\(.*\\)$"
+          "^function:public\\.get_owned_course_authoring_analytics_for_actor_v4\\(.*\\)$"
+        ],
+        "mcpTools": [
+          "comparar_cursos",
+          "exportar_autoria"
         ]
       },
       "ui": [
@@ -672,8 +679,12 @@
           "token": "loadCourseAuthoringAnalytics"
         },
         {
-          "path": "supabase/migrations/20260905080544_scoped_authoring_preferences_and_profiles.sql",
-          "token": "get_owned_course_authoring_analytics_for_actor_v3"
+          "path": "supabase/migrations/20260905154944_authoring_comparison_exports.sql",
+          "token": "get_owned_course_authoring_analytics_for_actor_v4"
+        },
+        {
+          "path": "supabase/tests/023_authoring_comparison_export_test.sql",
+          "token": "no_plan()"
         }
       ],
       "routes": [
@@ -684,11 +695,17 @@
         {
           "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
           "token": "getCourseAuthoringAnalytics"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanCourseOperations.js",
+          "token": "compareHumanCourses"
         }
       ],
       "tests": [
         "tests/runtime/course-authoring-analytics-domain.test.js",
-        "tests/runtime/course-analytics-panel.test.js"
+        "tests/runtime/course-analytics-panel.test.js",
+        "tests/runtime/course-authoring-comparison.test.js",
+        "tests/runtime/course-human-course-operations.test.js"
       ],
       "justification": "O snapshot deriva do Curso corrente, da aplicação pedagógica selada e de intervenções humanas já explícitas no fluxo. A exportação JSON é deliberada e pontual; não cria histórico, ledger, telemetria ou estado de pesquisa paralelo."
     },
@@ -760,7 +777,7 @@
         "databasePatterns": [
           "^table:(?:public\\.person_profiles|public\\.course_access)$",
           "^function:private\\.(?:course_ownership_v1|require_course_access_v1|can_read_person_v1|touch_person_profile_v1|create_person_profile_v1)\\(.*\\)$",
-          "^function:public\\.(?:get_person_profile_for_actor_v2|update_person_profile_for_actor_v2|list_course_access_for_actor_v2|manage_course_access_for_actor_v2|delete_my_account_v1)\\(.*\\)$",
+          "^function:public\\.(?:get_person_profile_for_actor_v2|update_person_profile_for_actor_v2|list_course_access_for_actor_v3|manage_course_access_for_actor_v3|delete_my_account_v1)\\(.*\\)$",
           "^bucket:storage\\.person-avatars$",
           "^function:public\\.(?:search_course_access_people_for_actor_v1|set_course_visibility_for_actor_v1|set_course_source_file_access_for_actor_v1)\\(.*\\)$",
           "^function:private\\.(?:consume_course_people_rate_v1|normalize_person_handle_v1)\\(.*\\)$",
@@ -947,6 +964,78 @@
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
       "justification": "Aplicativo, MCP e Actions usam os mesmos casos de uso humanos sobre o Curso vivo. MCP mantém seu transporte e principal OAuth; Actions projeta as mesmas dezessete tarefas em HTTP/OpenAPI, sem expor o mecanismo interno nem criar segundo motor de autoria."
+    },
+    {
+      "id": "course-independent-copy",
+      "intent": "Criar cópia independente de curso próprio ou com concessão explícita, preservando inventário, conteúdo, configuração, fontes e bytes imutáveis; novos acessos e estado pessoal ficam fora da cópia.",
+      "classification": "ui",
+      "status": "current",
+      "terminologyReview": "#306",
+      "objects": {
+        "mcpTools": [
+          "copiar_curso"
+        ],
+        "manifestFeatures": [
+          "course-independent-copy-v1"
+        ],
+        "databasePatterns": [
+          "^function:public\\.copy_course_for_actor_v1\\(.*\\)$",
+          "^function:private\\.(?:can_copy_course_v1|remap_copied_design_v1|course_file_is_referenced_v1|guard_referenced_course_file_delete_v1|current_object_orphan_classification_v1)\\(.*\\)$",
+          "^function:public\\.(?:claim_pending_course_pdf_delete_for_actor_v1|complete_current_orphan_removal_for_actor_v1)\\(.*\\)$",
+          "^index:public\\.courses/courses_copy_request_identity_v1$"
+        ]
+      },
+      "ui": [
+        {
+          "path": "src/ui/CourseCopyDialog.js",
+          "token": "createCourseCopyDialog"
+        }
+      ],
+      "visibleEffects": [
+        {
+          "path": "src/ui/CourseCopyDialog.js",
+          "token": "onCopied"
+        },
+        {
+          "path": "src/ui/CourseAuthoringSurface.js",
+          "token": "canCopy"
+        }
+      ],
+      "persistence": [
+        {
+          "path": "src/domain/courseCopy.js",
+          "token": "createCourseCopyRequestIdentity"
+        },
+        {
+          "path": "supabase/migrations/20260905145236_independent_course_copies.sql",
+          "token": "copy_course_for_actor_v1"
+        },
+        {
+          "path": "supabase/tests/022_independent_course_copy_test.sql",
+          "token": "no_plan()"
+        }
+      ],
+      "routes": [
+        {
+          "path": "src/supabase/CourseApiClient.js",
+          "token": "copyCourse"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseRouter.js",
+          "token": "copyCourse"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/courseHumanCourseOperations.js",
+          "token": "copyHumanCourse"
+        }
+      ],
+      "tests": [
+        "tests/runtime/course-copy-transport.test.js",
+        "tests/runtime/course-human-course-operations.test.js",
+        "tests/runtime/course-copy-files-local.test.js",
+        "tests/runtime/course-postgres-concurrency.test.js"
+      ],
+      "justification": "Um writer valida autorização, revisão e identidade temporal da intenção. O alvo conserva prova de recuperação além do recibo; referências globais de arquivos impedem a limpeza enquanto outra cópia os utiliza. A última referência usa as intenções existentes para confirmar remoção física. Não copia acessos, progresso, anotações pessoais ou credenciais."
     }
   ]
 }

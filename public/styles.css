@@ -512,6 +512,8 @@ textarea {
   min-height: 0;
   overflow-y: auto;
   padding: 4px 2px 10px;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
 }
 
 .account-settings-footer {
@@ -805,13 +807,15 @@ button.account-settings-back[hidden] {
 
 .study-mode-actions {
   display: inline-grid;
-  grid-template-columns: repeat(3, var(--tap));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--tap);
   align-items: center;
   gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border-subtle);
+  padding: 0;
+  border: 0;
   border-radius: 11px;
   background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 
 .study-mode-button {
@@ -1065,6 +1069,11 @@ button.account-settings-back[hidden] {
 .entity-summary-card {
   display: grid;
   gap: 7px;
+  height: 160px;
+  flex: 0 0 160px;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .entity-summary-card .card-title {
@@ -1190,15 +1199,11 @@ button.account-settings-back[hidden] {
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "main main"
-    "meta actions";
-  column-gap: 10px;
-  row-gap: 8px;
-  align-items: end;
-  padding: 10px 12px;
+  display: block;
+  position: relative;
+  padding: 10px 12px calc(var(--tap) + 18px);
   min-height: 0;
+  height: 184px;
 }
 
 .navigation-main {
@@ -1207,6 +1212,12 @@ button.account-settings-back[hidden] {
   gap: 4px;
   padding-right: 0;
   min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .navigation-title-row {
@@ -1259,6 +1270,13 @@ button.account-settings-back[hidden] {
   align-items: center;
   flex-direction: row;
   gap: 6px;
+}
+
+.navigation-list-card > .navigation-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  height: var(--tap);
 }
 
 .navigation-actions .icon-ghost,
@@ -4645,6 +4663,8 @@ button.account-settings-back[hidden] {
 }
 
 .editor-sheet {
+  height: min(640px, calc(100dvh - 24px));
+  grid-template-rows: auto minmax(0, 1fr);
   width: min(100%, 430px);
   max-height: min(94dvh, 860px);
   overflow: auto;
@@ -4667,6 +4687,14 @@ button.account-settings-back[hidden] {
   padding-bottom: 8px;
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.editor-head > h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--type-md);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
 }
 
 .editor-body {
@@ -5222,10 +5250,14 @@ button.account-settings-back[hidden] {
 }
 
 .study-structure-edit-dock {
-  position: sticky;
-  bottom: max(8px, var(--safe-bottom-tappable));
+  display: flex;
+  flex: 0 0 var(--tap);
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: var(--tap);
+  width: 100%;
   z-index: 10;
-  padding-top: 6px;
   background: var(--surface-canvas);
 }
 
@@ -5591,12 +5623,15 @@ button.account-settings-back[hidden] {
 
 .home-course-selector-card,
 .home-course-selector-empty {
+  height: 320px;
+  flex: 0 0 320px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
 .home-course-selector-card {
+  grid-template-rows: 20px var(--tap) minmax(0, 1fr);
   display: grid;
   gap: 8px;
   padding: 10px 12px 12px;
@@ -5846,6 +5881,7 @@ button.account-settings-back[hidden] {
 }
 
 .home-course-selector-preview {
+  grid-template-rows: minmax(0, 1fr) auto;
   display: grid;
   gap: 10px;
   width: 100%;
@@ -5857,6 +5893,10 @@ button.account-settings-back[hidden] {
 }
 
 .home-course-preview-copy {
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -5892,6 +5932,7 @@ button.account-settings-back[hidden] {
 
 .home-course-ownership {
   font-weight: 700;
+  flex: 0 0 16px;
 }
 
 .home-course-origin-icon {
@@ -5900,14 +5941,14 @@ button.account-settings-back[hidden] {
 }
 
 .home-course-selector-preview .card-subtitle {
-  display: -webkit-box;
+  display: block;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--text-secondary);
   font-size: var(--type-sm);
   line-height: 1.38;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: unset;
 }
 
 .home-course-preview-actions {
@@ -6015,6 +6056,8 @@ button.account-settings-back[hidden] {
 }
 
 .home-course-selector-empty {
+  align-content: start;
+  overflow-y: auto;
   display: grid;
   gap: 7px;
   padding: 18px 14px;
@@ -6109,6 +6152,20 @@ button.account-settings-back[hidden] {
   min-width: 0;
 }
 
+.study-device-settings h2 {
+  font-size: var(--type-md);
+  line-height: var(--leading-snug);
+}
+
+.account-settings-content :is(p, small),
+.study-device-settings details {
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
+}
+
+.study-device-settings details > p { margin-block: 8px; }
+.study-sync-explanation summary { min-height: var(--tap); cursor: pointer; list-style-position: inside; padding-block: 10px; }
+
 .study-device-settings :is(h2, p),
 .study-state-adoption :is(p, small) {
   margin: 0;
@@ -6123,11 +6180,18 @@ button.account-settings-back[hidden] {
 .study-device-settings select {
   width: 100%;
   min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: inherit;
 }
 
 .study-state-adoption summary {
-  display: flex;
-  align-items: center;
+  display: list-item;
+  list-style-position: inside;
+  padding-block: 10px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -6199,16 +6263,26 @@ button.account-settings-back[hidden] {
   min-height: var(--tap);
 }
 .study-tools-panel {
-  width: min(100%, 640px);
+  width: min(100%, 430px);
   min-width: 0;
   max-height: 100%;
 }
 .study-tool-body {
   min-width: 0;
+  min-height: 0;
+  align-content: start;
   overflow-y: auto;
   overflow-wrap: anywhere;
   overscroll-behavior: contain;
 }
+.study-tool-body :is(label, button, select, input, summary),
+.study-tool-body .package-tool-status {
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
+}
+.study-tool-body :is(h3, h4) { font-size: var(--type-base); line-height: var(--leading-snug); }
+.study-tool-body details { font-size: var(--type-xs); line-height: var(--leading-normal); }
+
 .study-tool-body :is(input, select, textarea, button, audio) {
   max-width: 100%;
   min-width: 0;
@@ -6300,3 +6374,51 @@ button.account-settings-back[hidden] {
 }
 .study-tool-body button:focus-visible,
 .study-tool-body :is(input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Ações equivalentes mantêm as mesmas arestas em Estudo e Autoria. */
+.topbar.navigation-topbar,
+.topbar.home-topbar {
+  height: calc(var(--tap) + max(10px, var(--safe-top)) + 10px);
+  min-height: calc(var(--tap) + max(10px, var(--safe-top)) + 10px);
+  padding-top: max(10px, var(--safe-top));
+  padding-bottom: 10px;
+}
+.navigation-topbar .lesson-top-actions,
+.home-topbar .lesson-top-actions { gap: 4px; }
+
+/* Interface compacta; a prosa e as convenções dos recursos mantêm seus próprios estilos. */
+:is(.topbar, .account-settings-overlay, .account-device-data, .account-maintenance, .study-device-settings, .editor-head, .auth-panel, .study-citations-panel > header) :is(h1, h2, h3, h4),
+.topbar-title,
+.account-settings-title,
+.card-title,
+.section-heading,
+.entity-summary-card .card-title,
+.navigation-list-card .card-title,
+.courses-home-screen .card-title,
+.courses-home-screen .section-heading,
+.runtime-card-title,
+.runtime-card-title.course-inspection-title-edit-target {
+  font-size: var(--type-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: var(--leading-snug);
+}
+
+.account-settings-content :is(label, summary),
+.account-settings-content strong,
+.study-device-settings :is(label, summary),
+.study-tools-panel :is(label, summary),
+.home-course-selector-preview strong {
+  font-weight: 550;
+}
+
+.account-settings-content,
+.study-tools-panel :is(label, summary, small),
+.study-citations-panel :is(label, summary, small) {
+  color: var(--text-secondary);
+}
+
+.account-settings-content :is(button, input, select),
+.study-tools-panel :is(button, input, select) {
+  font-size: var(--type-sm);
+}

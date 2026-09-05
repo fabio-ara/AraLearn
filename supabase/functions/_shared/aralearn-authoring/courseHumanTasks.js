@@ -39,6 +39,8 @@ import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
+import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
+import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
@@ -53,10 +55,8 @@ const SOURCE_ROLE_HUMAN_NAMES = new Map(Object.entries(SOURCE_ROLES_BY_HUMAN_NAM
   .map(([humanName, internalName]) => [internalName, humanName]));
 
 const HUMAN_REFERENCE_SCHEMA = Object.freeze({
-  oneOf: Object.freeze([
-    Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 }),
-    Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
-  ])
+  type: Object.freeze(["integer", "string"]), minimum: 1, maximum: 1000000,
+  minLength: 1, maxLength: 300
 });
 const COURSE_SCHEMA = Object.freeze({
   type: "string",
@@ -84,8 +84,7 @@ function parameterValueSchema(definition, { nullable = false } = {}) {
 function parametersSchema({ nullable = false } = {}) {
   return { type: "object", additionalProperties: false, minProperties: 1,
     properties: Object.fromEntries(COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => [
-      definition.humanField, { ...parameterValueSchema(definition, { nullable }),
-        description: `${definition.label}. ${definition.unitLabel}.` }
+      definition.humanField, parameterValueSchema(definition, { nullable })
     ])) };
 }
 const PARAMETERS_SCHEMA = Object.freeze(parametersSchema({ nullable: true }));
@@ -429,7 +428,7 @@ function inputSchema(properties, required = []) {
     type: "object",
     additionalProperties: false,
     properties: Object.freeze(properties),
-    required: Object.freeze(required)
+    ...(required.length ? { required: Object.freeze(required) } : {})
   });
 }
 
@@ -478,7 +477,7 @@ function describeTopLevelArguments(schema) {
     .map(([name, definition]) => [name, {
       ...definition,
       description: definition.description || TOP_LEVEL_ARGUMENT_DESCRIPTIONS[name] ||
-        `Valor humano necessário para ${name}.`
+        `${name.replace(/([a-z])([A-Z])/gu, "$1 $2")}.`
     }]));
   return projected;
 }
@@ -508,6 +507,14 @@ function task(name, title, description, schema, {
 }
 
 export const COURSE_HUMAN_TASKS = Object.freeze([
+  task("copiar_curso", "Copiar um curso", "Prepara cópia privada autorizada; confirme e retome com o mesmo valor devolvido.",
+    inputSchema({ curso: COURSE_SCHEMA, titulo: COURSE_SCHEMA,
+      confirmacao: { type: "string", maxLength: 4096, description: "Valor opaco da preparação; não editar." } }, ["curso", "titulo"]), { readOnly: false }),
+  task("comparar_cursos", "Comparar cursos ou recortes", "Compara inventário, configuração e medidas; não certifica equivalência pedagógica.",
+    inputSchema({ esquerda: humanCourseSelectionSchema(), direita: humanCourseSelectionSchema(), continuacao: READ_CONTINUATION_SCHEMA },
+      ["esquerda", "direita"]), { readOnly: true }),
+  task("exportar_autoria", "Exportar artefato e leitura autoral", "Exporta conteúdo literal e análise; leia todos os trechos.",
+    inputSchema({ recorte: humanCourseSelectionSchema(), continuacao: READ_CONTINUATION_SCHEMA }, ["recorte"]), { readOnly: true }),
   task("consultar_perfis", "Consultar perfis de autoria", "Lista preferências desta conta.",
     inputSchema({}), { readOnly: true }),
   task("salvar_perfil", "Salvar um perfil de autoria", "Salva um perfil; não muda cursos existentes.",
@@ -902,9 +909,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.8.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.9.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:751a2c5ead0af623a6060ab32cd7f52c279e8b54f4ba80f423f19a33946cdbc4";
+  "sha256:818347253ab3f17a8350640629fa57d68759262ab2bd07ee755df43582bcc06d";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1029,6 +1036,10 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
+    if (normalizedKey === "authoring_export" || normalizedKey === "authoring_comparison") {
+      projected[key] = normalizedKey === "authoring_export" ? normalizeCourseAuthoringExport(entry) : normalizeCourseAuthoringComparison(entry);
+      continue;
+    }
     if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
         entry.every((role) => COURSE_SOURCE_ROLES.includes(role))) {
       projected[normalizedKey === "default_roles" ? "papeisSugeridos" : "papeis"] =
@@ -1148,6 +1159,9 @@ export async function executeHumanCourseTask({
 }
 
 const HUMAN_TASK_HANDLERS = Object.create(null);
+HUMAN_TASK_HANDLERS.copiar_curso = copyHumanCourse;
+HUMAN_TASK_HANDLERS.comparar_cursos = compareHumanCourses;
+HUMAN_TASK_HANDLERS.exportar_autoria = exportHumanCourse;
 
 async function readHumanProfiles(adapter, principal, deadlineAt) {
   const result = await adapter.listAuthoringProfiles({ principal, deadlineAt });
@@ -1939,6 +1953,10 @@ function focusedReviewPlan(plan, part, units) {
     cobertura: projected.cobertura.filter(item => item.previstaEm.some(location => titles.has(location.microssequencia))),
     parteEmFoco: projected.parteEmFoco
   };
+}
+function humanCourseSelectionSchema() {
+  return inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA,
+    microssequencia: HUMAN_REFERENCE_SCHEMA, unidade: HUMAN_REFERENCE_SCHEMA }, ["curso"]);
 }
 
 async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, limit = 24 }) {

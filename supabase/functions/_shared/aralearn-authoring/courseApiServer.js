@@ -4,6 +4,7 @@ import { routeCourseRequest } from "./courseProtocol.js";
 import { executeCourseRoute } from "./courseRouter.js";
 import { toolErrorData } from "./toolErrorEnvelope.js";
 import { CourseMediaError, inspectCourseAudioBytes, normalizeCourseAudioFileName } from "../aralearn/runtime/domain/courseMedia.js";
+import { COURSE_AUTHORING_EXPORT_CONTRACT, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 
 const BODY_LIMIT = 512 * 1024;
 const PDF_BODY_LIMIT = 20 * 1024 * 1024;
@@ -394,7 +395,16 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
         }
       }
       const payload = { ok: true, requestId: result.requestId, data: result.data ?? null };
-      if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > RESPONSE_LIMIT) {
+      const courseExport = route?.name === "getCourseAuthoringExport" &&
+        result.data?.contract === COURSE_AUTHORING_EXPORT_CONTRACT;
+      if (courseExport) {
+        try { serializeCourseAuthoringExport(result.data); }
+        catch { throw new AuthoringApiError(413, "course_export_too_large", "A exportação excede o limite de 32 MiB."); }
+      }
+      // Only the authenticated export route admits a whole artifact. Other
+      // readers retain their small-page limit; 256 bytes cover the fixed envelope.
+      const responseLimit = courseExport ? COURSE_AUTHORING_EXPORT_MAX_BYTES + 256 : RESPONSE_LIMIT;
+      if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > responseLimit) {
         throw new AuthoringApiError(413, "response_too_large", "Leia uma parcela menor do Curso.");
       }
       return jsonResponse(200, payload, cors);

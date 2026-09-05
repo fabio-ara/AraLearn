@@ -1,5 +1,48 @@
 # Alterações do schema
 
+## 20260905162000 — grupos de ajustes e catálogo 1.2.1
+
+A apresentação separa explicações, prática, leitura e estilo, conversa e
+produção. A migração verifica as doze definições anteriores e altera somente
+rótulos e grupos. Identidades, tipos, valores, escopos, padrões e definições
+operacionais permanecem iguais. A restrição do catálogo é atualizada e a
+imutabilidade volta a valer dentro da mesma transação.
+
+O leitor publica 1.2.1. O escritor reconhece também snapshots 1.2.0 com a mesma
+semântica, conservando sua versão literal; registros já aplicados não são
+reescritos. O manifesto exige 47 capacidades na revisão 20260905162000.
+
+## 20260905154944 — base de autoria, comparação e exportação
+
+Analytics v4 inclui a base curricular do curso, os inventários declarados e as
+escolhas solicitadas e aplicadas. A projeção distingue ausência de declaração,
+não aplicabilidade e valor zero. Leituras e exportações vinculam identidade,
+escopo e revisão; uma revisão concorrente interrompe o resultado.
+
+Comparações entre cursos próprios apresentam diferenças factuais e seus
+alvos. Igualdade de inventário não certifica equivalência semântica ou eficácia
+pedagógica. A exportação preserva o documento didático literal e a base de
+autoria, sem anexar observações pessoais, identificadores de ator ou URLs
+assinadas de arquivos.
+
+## 20260905145236 — cópias independentes e referências de arquivos
+
+O proprietário pode copiar seu curso. Outra pessoa precisa de permissão de
+cópia explícita, separada da leitura; concessões anteriores começam com essa
+permissão desabilitada. A cópia cria um curso independente com conteúdo,
+planejamento, parâmetros, fontes e referências úteis, sem copiar progresso,
+observações pessoais ou concessões de acesso da origem.
+
+A confirmação usa revisão e identidade do pedido para evitar uma segunda
+cópia após resposta perdida. PDFs e áudios mantêm referências físicas com
+controle de acesso lógico por curso. A remoção de um curso preserva arquivos
+ainda referenciados por outra cópia; a última referência participa da limpeza
+retomável. Não há exclusão geral por prefixo desses arquivos.
+
+O conjunto das três migrações foi ensaiado sobre backup restaurado e aplicado
+localmente, conservando os digests das 25 tabelas de dados úteis anteriores.
+As provas focais não representam implantação hospedada ou aceite da release.
+
 ## 20260905125617 — reorganização de partes e entrada contextual da inspeção
 
 A reorganização reutiliza o escritor de partes existente para dividir, reunir

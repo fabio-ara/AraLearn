@@ -46,7 +46,7 @@ public class MainActivity extends ComponentActivity {
     private static final String JAVASCRIPT_MIME_TYPE = "text/javascript";
     private static final String JSON_MIME_TYPE = "application/json";
     private static final String CSV_MIME_TYPE = "text/csv";
-    private static final int MAX_TEXT_EXPORT_BYTES = 8 * 1024 * 1024;
+    private static final int MAX_TEXT_EXPORT_BYTES = 32 * 1024 * 1024;
     private static final int MAX_TEXT_EXPORT_FILE_NAME_LENGTH = 160;
     private static final String TEXT_EXPORT_CACHE_PREFIX = "aralearn-text-export-";
     private static final String STATE_TEXT_EXPORT_PATH = "aralearn.textExport.path";

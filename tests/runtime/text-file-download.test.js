@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   downloadTextFile,
-  normalizeTextFileDownload
+  normalizeTextFileDownload,
+  TEXT_EXPORT_MAX_BYTES
 } from "../../src/ui/downloadTextFile.js";
+import { COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 
 test("exportação textual restringe formato, nome e tamanho", () => {
   assert.deepEqual(normalizeTextFileDownload({
@@ -41,8 +43,23 @@ test("exportação textual restringe formato, nome e tamanho", () => {
   assert.throws(() => normalizeTextFileDownload({
     name: "dados.json",
     type: "application/json",
-    content: "x".repeat(8 * 1024 * 1024 + 1)
-  }), /excede 8 MiB.*Restrinja o período, o conjunto ou o canal/u);
+    content: "x".repeat(TEXT_EXPORT_MAX_BYTES + 1)
+  }), /limite de 32 MiB/u);
+});
+
+test("exportação integral entre 8 e 32 MiB preserva UTF-8 até a ponte Android e recusa excesso sem truncar", () => {
+  assert.equal(COURSE_AUTHORING_EXPORT_MAX_BYTES, TEXT_EXPORT_MAX_BYTES);
+  const overhead = JSON.stringify({ text: "" }).length;
+  const text = "漢字á😀" + "x".repeat(TEXT_EXPORT_MAX_BYTES - overhead - 12);
+  const serialized = serializeCourseAuthoringExport({ text });
+  let received;
+  const result = downloadTextFile({ name: "curso-integral.json", type: "application/json", content: serialized }, {
+    androidHost: { saveTextFile(content) { received = content; return true; } }
+  });
+  assert.equal(result.byteSize, TEXT_EXPORT_MAX_BYTES);
+  assert.equal(JSON.parse(received).text, text);
+  assert.throws(() => serializeCourseAuthoringExport({ text: `${text}x` }), /limite de 32 MiB/u);
+  assert.throws(() => normalizeTextFileDownload({ name: "curso.json", type: "application/json", content: `${serialized}á` }), /limite de 32 MiB/u);
 });
 
 test("exportação textual usa o seletor Android quando a ponte está disponível", () => {

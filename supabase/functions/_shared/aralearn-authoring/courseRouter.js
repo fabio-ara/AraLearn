@@ -1,8 +1,11 @@
 import { CourseAuthoringPartsError, normalizeCourseAuthoringPartRequest } from "../aralearn/runtime/domain/courseAuthoringParts.js";
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
+import { CourseCopyError, normalizeCourseCopyRequest } from "../aralearn/runtime/domain/courseCopy.js";
 import { CourseMediaError, normalizeCourseMediaCommand } from "../aralearn/runtime/domain/courseMedia.js";
 import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
+import { normalizeCourseAuthoringComparisonRequest } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { CourseAuthoringBasisError } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
 import {
   AuthoringProfilesError, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
   normalizeCourseAuthoringProfileRequest
@@ -933,7 +936,7 @@ function validateProfileUpdate(body) {
 
 function validateAccessChange(body, request, operation) {
   if (operation === "grant_access") {
-    exactFields(body, new Set(["requestId", "userId", "handle", "confirmed"]));
+    exactFields(body, new Set(["requestId", "userId", "handle", "confirmed", "canCopy"]));
   } else {
     exactFields(body, new Set(["requestId", "confirmed"]));
   }
@@ -946,6 +949,8 @@ function validateAccessChange(body, request, operation) {
     confirmed: true
   };
   if (operation === "grant_access") {
+    if (typeof body.canCopy !== "boolean") fail("invalid_course_access", "Escolha explicitamente se esta pessoa pode criar cópias independentes.");
+    result.canCopy = body.canCopy;
     result.handle = personHandle(body.handle);
     result.targetUserId = courseUuid(body.userId, "userId");
   }
@@ -1006,7 +1011,7 @@ function validateMaintenanceAction(body) {
   const objectPath = text(body.objectPath, "objectPath", { maximum: 500 });
   if (!new Set([
     "avatar_owner_missing", "avatar_profile_unlinked",
-    "pdf_course_missing", "pdf_unlinked"
+    "pdf_course_missing", "pdf_unlinked", "audio_course_missing", "audio_unlinked"
   ]).has(classification)) {
     fail("invalid_maintenance_action", "A classe de resíduo não pode ser removida.");
   }
@@ -1320,6 +1325,15 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       data: await adapter.createCourse({ principal, ...value, deadlineAt })
     };
   }
+  if (route.name === "copyCourse") {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    if (body.sourceCourseId !== route.sourceCourseId) fail("invalid_course_copy", "A origem do pedido de cópia diverge da rota.");
+    let value;
+    try { value = normalizeCourseCopyRequest({ ...body, requestId: requestIdFrom(request, body) }); }
+    catch (error) { if (!(error instanceof CourseCopyError)) throw error; fail(error.code, error.message); }
+    return { requestId: value.requestId, data: await adapter.copyCourse({ principal, ...value, deadlineAt }) };
+  }
   if (route.name === "maintainCourse") {
     assertApplicationPrincipal(principal, { write: true });
     const value = validateCourseLifecycle(await readCourseJsonBody(request), request);
@@ -1412,6 +1426,18 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         deadlineAt
       })
     };
+  }
+  if (route.name === "compareCourseAuthoring") {
+    assertPrincipal(principal);
+    let selection;
+    try { selection = normalizeCourseAuthoringComparisonRequest(await readCourseJsonBody(request)); }
+    catch (error) { if (error instanceof CourseAuthoringBasisError || error instanceof CourseAuthoringAnalyticsError) throw new AuthoringApiError(422, error.code, error.message); throw error; }
+    return { requestId: null, data: await adapter.compareCourseAuthoring({ principal, ...selection, deadlineAt }) };
+  }
+  if (route.name === "getCourseAuthoringExport") {
+    assertPrincipal(principal);
+    const options = courseAuthoringAnalyticsQuery(request);
+    return { requestId: null, data: await adapter.getCourseAuthoringExport({ principal, courseId: route.courseId, expectedRevision: options.expectedCourseRevision, scope: options.query.scope, deadlineAt }) };
   }
   throw new AuthoringApiError(404, "not_found", "Caso de uso de Curso inexistente.");
 }

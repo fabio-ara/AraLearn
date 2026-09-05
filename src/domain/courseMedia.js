@@ -129,12 +129,25 @@ export function normalizeCourseMediaDownload(value, { projectUrl } = {}) {
     url = new URL(value.signedUrl);
   } catch { fail("URL de áudio inválida."); }
   const local = url.protocol === "http:" && ["localhost", "127.0.0.1", "10.0.2.2"].includes(url.hostname);
-  const extension = media.mediaType === "audio/wav" ? "wav" : "mp3";
+  const prefix = `/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/`;
+  if (!url.pathname.startsWith(prefix)) fail("URL de áudio não corresponde ao arquivo autorizado.");
+  normalizeCourseAudioStoragePath(url.pathname.slice(prefix.length), media);
   if (url.protocol !== "https:" && !local || url.username || url.password || url.hash ||
-      !url.searchParams.get("token") || url.pathname !== `/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/${id}/${media.contentHash}.${extension}` ||
+      !url.searchParams.get("token") ||
       projectUrl && url.origin !== new URL(projectUrl).origin ||
       typeof value.expiresAt !== "string" || !Number.isFinite(Date.parse(value.expiresAt))) fail("URL de áudio não corresponde ao arquivo autorizado.");
   return { ...value, courseId: id, courseRevision: revision(value.courseRevision), media, signedUrl: url.toString() };
+}
+
+// Transient Storage references may belong to an independently copied course.
+// Authority comes from the course/unit read; the physical prefix grants none.
+export function normalizeCourseAudioStoragePath(value, { contentHash, mediaType = null }) {
+  const pieces = typeof value === "string" ? value.split("/") : [];
+  const extensions = mediaType === null ? ["wav", "mp3"] :
+    mediaType === "audio/wav" ? ["wav"] : mediaType === "audio/mpeg" ? ["mp3"] : [];
+  if (pieces.length !== 2 || !UUID.test(pieces[0]) || !HASH.test(contentHash) ||
+      !extensions.some(extension => pieces[1] === `${contentHash}.${extension}`)) fail("Caminho de áudio não corresponde ao arquivo autorizado.");
+  return value;
 }
 
 function ascii(bytes, offset, length) {

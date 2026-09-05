@@ -91,14 +91,16 @@ test.describe("áudio persistido no Supabase local", () => {
       const audioRoute = `/#/authoring/courses/${courseId}?section=audio`;
       await page.goto(audioRoute);
       const panel = page.locator(".course-audio-panel");
-      await expect(panel.getByRole("heading", { name: "Áudio", exact: true })).toBeVisible();
+      await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Áudio");
+      await panel.getByRole("button", { name: "Configuração", exact: true }).click();
       await expect(panel.getByLabel("Idioma padrão")).toBeEnabled();
       await panel.getByLabel("Idioma padrão").fill("zh-CN");
       await panel.getByLabel("Velocidade de reprodução").selectOption("1.25");
       await panel.getByRole("button", { name: "Salvar configuração de áudio" }).click();
       await expect(panel.getByText("Áudio atualizado.", { exact: true })).toBeVisible();
       expect((await catalog()).audioConfig).toMatchObject({ locale: "zh-CN", rate: 1.25, nativeVoiceURI: null, service: null, allowRemoteNativeVoice: false });
-      await panel.getByRole("button", { name: "Arquivos", exact: true }).click();
+      await panel.getByRole("button", { name: "Fechar ajustes de áudio", exact: true }).click();
+      await panel.getByRole("button", { name: "Enviar áudio", exact: true }).click();
       await panel.getByLabel("Arquivo de áudio", { exact: true }).setInputFiles({ name: "invalid.wav", mimeType: "audio/wav", buffer: Buffer.from("<html>synthetic invalid audio</html>") });
       await panel.getByRole("button", { name: "Guardar áudio" }).click();
       await expect(panel.getByRole("alert")).toBeVisible(); expect((await catalog()).items).toHaveLength(0);
@@ -108,8 +110,7 @@ test.describe("áudio persistido no Supabase local", () => {
       const waveItem = (await catalog()).items.find(item => item.contentHash === waveHash);
       expect(waveItem).toMatchObject({ byteSize: wave.length, mediaType: "audio/wav", fileName: "tom-sintetico.wav" });
       await page.reload();
-      await expect(panel.getByLabel("Idioma padrão")).toBeEnabled();
-      await panel.getByRole("button", { name: "Arquivos", exact: true }).click();
+      await expect(panel.getByRole("button", { name: "Configuração", exact: true })).toBeEnabled();
       await panel.locator(`[data-audio-action="preview"][data-media-hash="${waveHash}"]`).click();
       const preview = panel.getByLabel("Prévia do áudio");
       await expect(preview).toBeVisible();
@@ -127,7 +128,7 @@ test.describe("áudio persistido no Supabase local", () => {
         expectedRevision: await revision(), requestId: crypto.randomUUID(), upserts: rows, deletes: [],
         sourceAttributionApplications: [AUDIO_UNIT_ID, CALCULATOR_UNIT_ID].map(studyUnitId => ({ studyUnitId, sourceLinks: [] }))
       } });
-      await owner.client.grantCourseAccess({ courseId, userId: student.id, handle: student.handle, confirmed: true });
+      await owner.client.grantCourseAccess({ courseId, userId: student.id, handle: student.handle, confirmed: true, canCopy: false });
       let currentRevision = await revision();
       await assertDownloaded(owner.client, { courseId, expectedRevision: currentRevision, studyUnitId: null, contentHash: orphanHash }, orphan);
       await assertDownloaded(student.client, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash }, wave);

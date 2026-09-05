@@ -64,6 +64,19 @@ Exemplos:
   direção editorial;
 - `manter_fonte` recebe somente as mudanças ou retiradas realmente solicitadas.
 
+`copiar_curso` prepara uma cópia de curso próprio ou com permissão explícita de
+cópia. O servidor devolve uma confirmação opaca vinculada à conta e à intenção;
+a chamada confirmada reutiliza esse valor, inclusive após uma resposta perdida.
+A cópia pertence à pessoa solicitante, começa privada com arquivos restritos e
+mantém conteúdo, configuração, fontes, PDFs e áudios. Acessos, progresso e
+anotações pessoais continuam na origem. Leitura pública não concede cópia.
+
+`comparar_cursos` confronta dois recortes identificados por curso e, opcionalmente,
+lote, microssequência ou unidade. `exportar_autoria` entrega o artefato literal e
+sua leitura autoral. Ambas exigem acesso de autoria aos cursos selecionados;
+resultados grandes usam a mesma continuação opaca e os mesmos fragmentos de JSON
+das outras leituras. A comparação não certifica equivalência pedagógica.
+
 Para produzir conteúdo, `consultar_componentes` primeiro busca candidatos pela
 função instrucional e depois lê o contrato exato apenas do componente escolhido.
 O GPT não consulta o catálogo para variar a aparência.
@@ -230,6 +243,12 @@ Essas regras vêm de
 [OpenAI: produção em Actions](https://developers.openai.com/api/docs/actions/production).
 Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
 A importação real do artefato corrente continua sendo uma verificação distinta.
+
+O catálogo atual reúne 27 tarefas. A projeção indentada do OpenAPI ocupa 96.658
+unidades UTF-16 e cabe na margem interna de 98.000; essa medida difere do tamanho
+em bytes UTF-8. Os schemas compartilhados conservam os argumentos de cada tarefa.
+O guard de chamadas e os fragmentos de leitura mantêm limites próprios; ampliar
+essa margem interna não demonstra que o cliente aceitou uma importação.
 
 O servidor aplica uma proteção conservadora de 99.999 unidades UTF-16 ao JSON
 completo recebido ou serializado, pois a fonte não define a unidade Unicode de

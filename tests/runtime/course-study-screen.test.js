@@ -70,12 +70,13 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   ]) {
     const heading = `<h1 class="section-heading entity-level-heading">${label}</h1>`;
     const headingIndex = html.indexOf(heading);
-    const parentCardIndex = html.indexOf('<section class="clean-card entity-summary-card">');
+    const parentCardIndex = html.indexOf('<section class="clean-card entity-summary-card"');
     const parentCardEndIndex = html.indexOf("</section>", parentCardIndex);
     assert.ok(headingIndex >= 0, `Rótulo de ${label} ausente antes do card-pai.`);
     assert.ok(parentCardIndex > headingIndex, `Card-pai de ${label} precedeu seu rótulo.`);
     assert.ok(parentCardEndIndex > parentCardIndex, `Card-pai de ${label} não foi encerrado.`);
     const parentCard = html.slice(parentCardIndex, parentCardEndIndex + "</section>".length);
+    assert.match(parentCard, /tabindex="0" aria-label="Resumo"/u);
     assert.match(
       parentCard,
       /<h2 class="card-title" data-study-destination-heading tabindex="-1">[^<]+<\/h2>/u

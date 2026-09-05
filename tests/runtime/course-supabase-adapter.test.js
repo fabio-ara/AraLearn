@@ -1,4 +1,5 @@
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -23,7 +24,8 @@ const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
-    contract: "aralearn.course-authoring-analytics.v3",
+    contract: "aralearn.course-authoring-analytics.v4",
+    basis: courseAuthoringBasisFixture(),
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
@@ -362,7 +364,7 @@ test("configuração de serviço recusa schemes executáveis nos deep links", ()
   }));
 });
 
-test("Analytics usa o RPC snapshot v3 e acrescenta somente o deep link fora do banco", async () => {
+test("Analytics usa o RPC v4 com inventário e acrescenta distribuições e deep link", async () => {
   const calls = [];
   const query = {
     scope: { kind: "course", ref: null }
@@ -378,14 +380,14 @@ test("Analytics usa o RPC snapshot v3 e acrescenta somente o deep link fora do b
     query
   });
 
-  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v3$/u);
+  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v4$/u);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
     p_course_id: COURSE_ID,
     p_expected_course_revision: 7,
     p_query: query
   });
-  assert.equal(page.contract, "aralearn.course-authoring-analytics.v3");
+  assert.equal(page.contract, "aralearn.course-authoring-analytics.v4");
   assert.equal(page.design.studyUnitCount, 0);
   assert.equal(Object.hasOwn(page, "facts"), false);
   assert.equal(page.deepLink,
@@ -1014,10 +1016,9 @@ test("exclusão da conta usa o JWT pessoal no RPC e tolera repetição após res
   }
 });
 
-test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa autenticada", async () => {
+test("exclusão bloqueada conclui cursos por intents e remove somente o avatar próprio", async () => {
   const calls = [];
   let deletionCalls = 0;
-  const pdfName = `${"a".repeat(64)}.pdf`;
   const avatarName = `${AUDIT_RUN_ID}.webp`;
   const value = adapter(async (url, init) => {
     const body = init.body == null ? null : JSON.parse(init.body);
@@ -1047,9 +1048,9 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
             nextCursor: null
           });
     }
-    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
-      return json(body.prefix === `${COURSE_ID}/` ? [{ name: pdfName }] : []);
-    }
+    if (url.endsWith("/maintain_course_for_actor_v1")) return json({
+      contract: "aralearn.course-lifecycle.v1", courseId: body.p_course_id, operation: body.p_operation,
+      requestId: body.p_request_id, status: "completed", changed: true });
     if (url.endsWith("/storage/v1/object/list/person-avatars")) {
       return json([{ name: avatarName }]);
     }
@@ -1088,7 +1089,6 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
   const deletes = calls.filter(({ init, url }) =>
     init.method === "DELETE" && url.includes("/storage/v1/object/"));
   assert.deepEqual(deletes.map(({ body }) => body), [
-    { prefixes: [`${COURSE_ID}/${pdfName}`] },
     { prefixes: [`${USER_ID}/${avatarName}`] }
   ]);
 });
@@ -1128,7 +1128,6 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
   let deletionCalls = 0;
   let deletionRetried = false;
   let accountDeleted = false;
-  const pdfName = `${"b".repeat(64)}.pdf`;
   const value = adapter(async (url, init) => {
     const body = init.body == null ? null : JSON.parse(init.body);
     calls.push({ url, init, body });
@@ -1154,9 +1153,9 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
         nextCursor: null
       });
     }
-    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
-      return json([{ name: pdfName }]);
-    }
+    if (url.endsWith("/maintain_course_for_actor_v1")) return json({
+      contract: "aralearn.course-lifecycle.v1", courseId: body.p_course_id, operation: body.p_operation,
+      requestId: body.p_request_id, status: "completed", changed: true });
     if (url.endsWith("/storage/v1/object/list/person-avatars")) return json([]);
     if (url.endsWith("/storage/v1/object/course-source-pdfs")) return json({});
     assert.fail(`Requisição inesperada: ${url}`);
@@ -1173,7 +1172,7 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
   );
   const deletesAfterFailure = calls.filter(({ init, url }) =>
     init.method === "DELETE" && url.includes("/storage/v1/object/"));
-  assert.equal(deletesAfterFailure.length, 1);
+  assert.equal(deletesAfterFailure.length, 0);
 
   const result = await value.deleteMyAccount({
     accessToken: APPLICATION_TOKEN,
@@ -1185,7 +1184,7 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
   });
   assert.equal(deletionCalls, 3);
   assert.equal(calls.filter(({ init, url }) =>
-    init.method === "DELETE" && url.includes("/storage/v1/object/")).length, 1);
+    init.method === "DELETE" && url.includes("/storage/v1/object/")).length, 0);
 });
 
 test("exclusão não apaga Storage diante de violação relacional alheia", async () => {
@@ -3424,10 +3423,10 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
     if (url.endsWith("/update_person_profile_for_actor_v2")) {
       return json({ userId: USER_ID, handle: "pesquisadora" });
     }
-    if (url.endsWith("/list_course_access_for_actor_v2")) {
+    if (url.endsWith("/list_course_access_for_actor_v3")) {
       return json({ courseId: COURSE_ID, items: [] });
     }
-    if (url.endsWith("/manage_course_access_for_actor_v2")) {
+    if (url.endsWith("/manage_course_access_for_actor_v3")) {
       return json({ courseId: COURSE_ID, changed: true });
     }
     assert.fail(`RPC inesperado: ${url}`);
@@ -3441,7 +3440,7 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
     principal,
     courseId: COURSE_ID,
     operation: "grant_access",
-    handle: "pessoa", targetUserId: USER_ID,
+    handle: "pessoa", targetUserId: USER_ID, canCopy: true,
     confirmed: true,
     requestId: "request-access-0001"
   });
@@ -3457,12 +3456,14 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
   assert.deepEqual(calls.map(({ name }) => name), [
     "get_person_profile_for_actor_v2",
     "update_person_profile_for_actor_v2",
-    "list_course_access_for_actor_v2",
-    "manage_course_access_for_actor_v2",
-    "manage_course_access_for_actor_v2"
+    "list_course_access_for_actor_v3",
+    "manage_course_access_for_actor_v3",
+    "manage_course_access_for_actor_v3"
   ]);
   assert.equal(calls.every(({ payload }) => payload.p_actor_id === USER_ID), true);
   assert.equal(calls[3].payload.p_target_handle, "pessoa");
+  assert.equal(calls[3].payload.p_can_copy, true);
+  assert.equal(calls[4].payload.p_can_copy, null);
   assert.equal(calls[4].payload.p_target_user_id, USER_ID);
 });
 
@@ -3559,12 +3560,11 @@ test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado
     status: "completed",
     changed: true,
     requestId: "request-delete-course-0001",
-    fileCleanupPending: true
+    fileCleanupPending: false
   });
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
   assert.equal(calls[0].url.includes("/storage/v1/object"), false);
   assert.equal(calls.some(call => call.init.method === "DELETE"), false);
-  assert.equal(calls[1].body.limit, 1);
 });
 
 test("exclusão sem arquivos não inventa limpeza pendente", async () => {
@@ -3631,6 +3631,7 @@ test("Manutenção remove somente o objeto revalidado e relê o inventário", as
       });
     }
     if (url.endsWith("/storage/v1/object/person-avatars")) return json({});
+    if (url.endsWith("/complete_current_orphan_removal_for_actor_v1")) return json(true);
     if (url.endsWith("/get_current_maintenance_for_actor_v1")) return json(maintenanceState);
     assert.fail(`Requisição inesperada: ${url}`);
   });

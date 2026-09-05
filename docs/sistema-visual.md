@@ -217,6 +217,47 @@ conservar métricas adequadas a cada plataforma. A prosa principal parte de
 15,5 px e entrelinha de 1,5. Títulos distinguem somente os níveis necessários,
 sem competir com o conteúdo. Texto corrido não usa alinhamento justificado.
 
+A interface usa títulos de 16 px, com peso entre 550 e 600, controles textuais
+de 14 px e apoio de 13 px. Cinzas legíveis e pesos moderados organizam as tarefas;
+negrito não é o padrão de todo rótulo. Esses valores não uniformizam a prosa,
+as fórmulas ou os elementos internos dos componentes didáticos.
+
+A largura e a altura do quadro de cada papel são determinadas pela janela e
+pelo layout, não pelo comprimento do título ou da descrição. Texto integral
+permanece disponível por rolagem local e teclado. Abrir detalhes não desloca
+o card vizinho. Nas listas de navegação, as ações ocupam um rodapé interno
+estável, separado da descrição; parágrafos e tabelas dentro do leitor continuam
+com a altura necessária ao conteúdo.
+
+Voltar, sincronização e menu conservam as mesmas âncoras em Estudo e Autoria,
+inclusive com barras de rolagem de desktop e no modo de edição. Avisos novos
+não deslocam esses controles. Confirmações de sucesso são fecháveis e breves;
+erros ou respostas incertas mantêm um sinal no menu, onde a explicação e a ação
+de recuperação podem ser abertas sem encobrir permanentemente o rodapé.
+
+A edição aberta pelo Conteúdo conserva o cabeçalho e a rota da Autoria nos
+níveis curso, módulo, lição, microssequência e unidade. O motor de edição é
+compartilhado com o Estudo, mas essa entrada retorna à inspeção ao salvar ou
+cancelar, preservando a posição e o foco de origem. Voltar com um rascunho ou
+uma gravação incerta exige decidir se ele deve ser mantido ou descartado;
+descartar a recuperação não desfaz dados já salvos. Essa edição não altera o
+percurso de Estudo.
+
+Nos níveis estruturais, Cancelar e Salvar ficam lado a lado no rodapé da tela,
+fora da área de rolagem; pouco texto não os deixa junto aos primeiros cards.
+A lista Meus cursos usa o mesmo alinhamento de Voltar, nuvem e menu. Criar e
+atualizar ficam no menu; falhas de leitura e criação permanecem acessíveis pelo
+indicador, sem deslocar a busca ou encobrir os cards. A recuperação de uma
+criação incerta conserva o pedido original até sua confirmação ou descarte
+explícito.
+
+Fontes mantém o catálogo como área principal. A fonte selecionada abre uma
+folha de altura estável, com título curto e dados completos em detalhes
+revelados. Referência, arquivos, âncoras e observações conservam seus dados e
+ações; fechar retorna ao foco de origem. Pessoas revela acesso e cópia em
+ajustes, mantendo ações individuais por ícone e o consentimento explícito para
+permissões que geram cópias independentes.
+
 Espaços derivam de uma escala previsível; cantos e sombras indicam agrupamento
 ou sobreposição funcional. Metadados podem ser menores que a prosa, mas
 continuam legíveis com ampliação de texto. Controles principais preservam área

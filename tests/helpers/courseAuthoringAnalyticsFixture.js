@@ -1,0 +1,12 @@
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
+export const ANALYTICS_COURSE_ID = "20000000-0000-4000-8000-000000000002";
+export function courseAuthoringBasisFixture({ title = "Curso", studyUnits = [] } = {}) {
+  return { inventoryScope: { kind: "course", ref: null, label: title }, analysisUnits: [], evidenceRequirements: [], sources: [], studyUnits: studyUnits.map((unit, index) => ({ studyUnitRef: unit.studyUnitRef || `unit-${index + 1}`, position: index + 1, title: unit.title || `Unidade ${index + 1}`, requestedParameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => ({ parameterId: id, mode: "automatic", value: null, origin: "system_default", reason: "Escolha delegada ao contexto; ainda não aplicada.", sourceScope: null })), appliedParameters: null, declaration: null, components: [], wordCount: 0, sourceLinks: [], ...structuredClone(unit) })) };
+}
+export function courseAuthoringAnalyticsFixture({ courseId = ANALYTICS_COURSE_ID, revision = 7, title = "Curso", studyUnits = [] } = {}) {
+  const scope = { kind: "course", ref: null, label: title };
+  const basis = courseAuthoringBasisFixture({ title, studyUnits });
+  return { contract: "aralearn.course-authoring-analytics.v4", course: { id: courseId, revision, title }, scope: { selected: scope, options: [scope] }, basis,
+    design: { studyUnitCount: studyUnits.length, parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({ parameterId: definition.id, label: definition.label, valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type, definition: structuredClone(definition), effectiveValues: [] })), editorialDirections: [], analysisUnits: [], introductionsByStudyUnit: basis.studyUnits.map(({ studyUnitRef, position, title: unitTitle }) => ({ studyUnitRef, position, title: unitTitle, introducedCount: 0 })), explanationForms: [], components: [], practiceByRequirement: [], practiceVariationDimensions: [], sourcesByRole: [], wordCountsByStudyUnit: studyUnits.length ? [{ wordCount: 0, studyUnitCount: studyUnits.length }] : [], practiceSequence: basis.studyUnits.map(({ studyUnitRef, position, declaration }) => ({ studyUnitRef, position, mode: declaration?.mode ?? null })) },
+    authorship: { observations: { createdCount: 0, openCount: 0, resolvedCount: 0 }, explicitParameterOverrideCount: 0, manuallyRevisedStudyUnitCount: 0, studyUnitsByOrigin: [] }, missingData: studyUnits.length ? ["Há unidades sem configuração aplicada."] : [], deepLink: null };
+}

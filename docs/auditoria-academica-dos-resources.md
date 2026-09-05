@@ -367,7 +367,7 @@ pelo modelo (tokens).
 | maior resposta de um contrato exato (`flow`) | 13.376 bytes | 16 KiB |
 | soma das 38 respostas de contrato, consultadas separadamente | 220.775 bytes | 224 KiB |
 | Curso de catálogo completo em disco | 400.394 bytes | lido por recortes no produto |
-| descritores das tarefas humanas, incluindo perfis de autoria e biblioteca de áudio | 24 tarefas; 48.000 bytes | 48.000 bytes |
+| descritores das tarefas humanas, incluindo perfis de autoria e biblioteca de áudio | 27 tarefas; 47.991 bytes | 48.000 bytes |
 | código dos componentes na árvore `resources`, na origem e no espelho | 68 arquivos; 625.898 bytes | mesmos caminhos na origem e no espelho; 640 KiB |
 
 O orçamento de código cobre a árvore `resources`, não o conjunto completo da
@@ -377,12 +377,15 @@ ao catálogo anterior. Os limites agregados passam a 640 KiB e 224 KiB para
 acomodar esses consumidores implementados; os limites de cada resposta
 continuam iguais. O teste compara os caminhos
 relativos entre origem e espelho, sem exigir uma quantidade fixa de pacotes ou
-arquivos. Os descritores das tarefas humanas têm orçamento separado; seu
-crescimento incorpora perfis de autoria e duas tarefas para guardar/consultar
-áudio existente. Em #303, redundância verbal foi removida sem reduzir contratos
-focais; o limite de 48.000 bytes foi mantido. O OpenAPI com as 24 tarefas ocupa
-41.740 caracteres minificados e 94.343 formatados, abaixo dos limites de 42.000
-e 96.000, respectivamente. O esquema matemático
+arquivos. Os descritores das tarefas humanas têm orçamento separado, de 48.000 bytes;
+perfis, áudio, cópia, comparação e exportação possuem consumidores concretos.
+Descrições repetidas foram reduzidas sem retirar contratos ou confirmações.
+O OpenAPI corrente reúne 27 operações: 42.421 caracteres minificados e 96.658
+formatados, abaixo dos limites locais de 44.000 e 98.000. Esses limites controlam
+a definição das ferramentas; respostas Actions têm orçamento próprio, com
+fragmentos literais quando o conteúdo não cabe em um envelope. A medição é de
+caracteres UTF-16 e bytes UTF-8, não de tokens efetivamente cobrados pelo modelo.
+O esquema matemático
 compartilhado do parágrafo usa uma definição referenciada, evitando repetir a
 árvore de expressão em cada posição de fórmula.
 

@@ -18,6 +18,8 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 | `consultar_perfis` | listar perfis de preferências desta conta |
 | `prever_aplicacao_perfil` | examinar alcance e exceções antes de aplicar um perfil ao curso |
 | `retomar_curso` | localizar ou continuar um curso pelo título |
+| `comparar_cursos` | confrontar inventário, configuração e dimensões declaradas de dois recortes próprios |
+| `exportar_autoria` | obter o artefato literal e a leitura autoral de um recorte próprio |
 | `consultar_planejamento` | ler o mapa curricular completo e, quando pertinente, uma parte operacional |
 | `preparar_materializacao` | reunir o recorte aprovado, o repertório acumulado e a configuração antes de produzir conteúdo |
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
@@ -33,6 +35,7 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 | `excluir_perfil` | excluir um perfil sem alterar cópias já aplicadas |
 | `aplicar_perfil` | aplicar a prévia examinada, preservando exceções salvo seleção explícita |
 | `criar_curso` | criar um curso privado após confirmar título e objetivo |
+| `copiar_curso` | preparar e confirmar cópia independente de curso próprio ou explicitamente autorizado |
 | `salvar_mapa_curricular` | salvar ou aprovar o mapa completo, sem produzir unidades de estudo |
 | `salvar_parte` | agrupar microssequências já previstas num lote operacional e registrar sua progressão local |
 | `materializar_parte` | gravar as unidades de estudo de uma parte preparada |

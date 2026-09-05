@@ -38,7 +38,9 @@ const errorSchema = {
     nextDecision: { type: ["string", "null"], maxLength: 1000 }
   }
 };
-const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 96_000;
+// Local review margin for the formatted schema, counted as UTF-16 code units.
+// This is not a documented OpenAPI import limit or the per-call Actions guard.
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 98_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!resultSchema || actionTools.some(({ outputSchema }) => (
@@ -71,6 +73,9 @@ const sourceMetadataSchema = sourceTaskSchema.properties.metadados;
 const sourceLinksSchema = actionTools.find(({ name }) => name === "materializar_parte")
   .inputSchema.properties.unidades.items.properties.fontes;
 const sharedInputSchemas = {
+  HumanCourseSelection: actionTools.find(({ name }) => name === "comparar_cursos").inputSchema.properties.esquerda,
+  HumanReferences: actionTools.find(({ name }) => name === "consultar_observacoes").inputSchema.properties.unidades,
+  HumanReadContinuation: actionTools.find(({ name }) => name === "preparar_revisao").inputSchema.properties.continuacao,
   HumanCourseTitle: sourceTaskSchema.properties.curso,
   HumanSourceLinks: sourceLinksSchema,
   HumanSourceOccurrences: sourceLinksSchema.items.properties.ocorrencias,

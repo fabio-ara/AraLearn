@@ -8,7 +8,7 @@ const encoder = new TextEncoder();
 
 export const COURSE_DESIGN_CONTRACT = "aralearn.course-design.v3";
 export const COURSE_DESIGN_CHANGE_CONTRACT = "aralearn.course-design-change.v3";
-export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.2.0";
+export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.2.1";
 export const COURSE_COMPONENT_CATALOG_VERSION = RESOURCE_CATALOG.catalogVersion;
 export const COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT = RESOURCE_PACKAGE_CONTRACT_FINGERPRINT;
 export const COURSE_COMPONENT_CATALOG = Object.freeze({
@@ -71,8 +71,8 @@ const COMMAND_TYPES = Object.freeze([
 export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "new_analysis_unit_ceiling_per_expository_study_unit",
-    humanField: "maximo_ideias_novas_por_unidade", group: "content", groupLabel: "Conteúdo", unitLabel: "identidades introduzidas", optionLabels: Object.freeze({}),
-    label: "Novas unidades de análise por unidade expositiva",
+    humanField: "maximo_ideias_novas_por_unidade", group: "content", groupLabel: "Explicações", unitLabel: "identidades introduzidas", optionLabels: Object.freeze({}),
+    label: "Novas unidades de análise",
     construct: "Quantidade de unidades da análise instrucional introduzidas como novas em uma mesma unidade de estudo expositiva.",
     operationalization: "Conta identidades distintas declaradas como introduzidas em cada unidade expositiva ou mista; não usa caracteres, linhas, altura nem tempo como proxy.",
     limitations: "A contagem orienta granularidade de desenho e não mede carga cognitiva, dificuldade, aprendizagem ou qualidade da explicação.",
@@ -84,8 +84,8 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "required_explanation_forms",
-    humanField: "formas_de_explicacao", group: "content", groupLabel: "Conteúdo", unitLabel: "formas de explicação", optionLabels: Object.freeze({plain_definition:"Definição",concrete_example:"Exemplo concreto",mechanism:"Mecanismo",contrast:"Contraste",application_condition:"Condição de aplicação",limit_or_exception:"Limite ou exceção",worked_example:"Exemplo resolvido",representation_link:"Relação entre representações"}),
-    label: "Formas de explicação requeridas",
+    humanField: "formas_de_explicacao", group: "content", groupLabel: "Explicações", unitLabel: "formas de explicação", optionLabels: Object.freeze({plain_definition:"Definição",concrete_example:"Exemplo concreto",mechanism:"Mecanismo",contrast:"Contraste",application_condition:"Condição de aplicação",limit_or_exception:"Limite ou exceção",worked_example:"Exemplo resolvido",representation_link:"Relação entre representações"}),
+    label: "Formas de explicação",
     construct: "Formas semanticamente distintas usadas para desenvolver uma unidade da análise instrucional.",
     operationalization: "Verifica, por identidade introduzida, quais formas foram desenvolvidas e quais foram declaradas não aplicáveis com motivo factual.",
     limitations: "As formas não são uma escala de qualidade nem uma lista universal; adequação depende do objeto, público, tarefa e representação.",
@@ -108,7 +108,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "minimum_distinct_practice_opportunities_per_evidence_requirement",
     humanField: "oportunidades_distintas_por_requisito", group: "practice", groupLabel: "Prática", unitLabel: "oportunidades distintas", optionLabels: Object.freeze({}),
-    label: "Oportunidades distintas por requisito de evidência",
+    label: "Oportunidades por requisito",
     construct: "Quantidade mínima de oportunidades semanticamente distintas relacionadas a cada requisito de evidência.",
     operationalization: "Conta opportunityId distinto por requisito de evidência e conserva a operação-alvo invariável declarada em cada oportunidade.",
     limitations: "Quantidade de oportunidades não demonstra domínio, eficácia ou equivalência entre tarefas; a pertinência da evidência permanece uma hipótese de desenho.",
@@ -121,7 +121,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "required_practice_variation_dimensions",
     humanField: "dimensoes_de_variacao_da_pratica", group: "practice", groupLabel: "Prática", unitLabel: "dimensões de variação", optionLabels: Object.freeze({case_or_data:"Caso ou dados",context:"Contexto",task_feature:"Característica da tarefa",external_representation:"Representação",support_level:"Nível de apoio"}),
-    label: "Dimensões requeridas de variação da prática",
+    label: "Variação da prática",
     construct: "Dimensões semanticamente relevantes que variam entre oportunidades relacionadas ao mesmo requisito de evidência.",
     operationalization: "Verifica as dimensões declaradas nas oportunidades sem tratar mudança cosmética ou reordenação como variação semântica.",
     limitations: "Variação declarada não prova transferência nem aprendizagem e precisa preservar a operação-alvo pertinente ao requisito.",
@@ -139,7 +139,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "authoring_chat_response_word_target",
     humanField: "alvo_palavras_conversa", group: "conversation", groupLabel: "Conversa", unitLabel: "palavras por resposta", optionLabels: Object.freeze({}),
-    label: "Alvo de palavras por resposta de autoria",
+    label: "Extensão das respostas",
     construct: "Extensão editorial pretendida para uma resposta do assistente durante a autoria.",
     operationalization: "Informa ao assistente um alvo flexível de palavras para a decisão corrente; respostas podem ultrapassá-lo quando a inspeção ou a segurança exigir.",
     limitations: "O alvo não é limite rígido e não autoriza esconder decisões educacionais, reduzir cobertura nem expor detalhes internos.",
@@ -151,8 +151,8 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "study_unit_content_word_target",
-    humanField: "alvo_palavras_unidade", group: "content", groupLabel: "Conteúdo", unitLabel: "palavras por unidade", optionLabels: Object.freeze({}),
-    label: "Alvo de palavras por unidade de estudo",
+    humanField: "alvo_palavras_unidade", group: "editorial", groupLabel: "Leitura e estilo", unitLabel: "palavras por unidade", optionLabels: Object.freeze({}),
+    label: "Extensão das unidades",
     construct: "Extensão editorial pretendida para o conteúdo de uma unidade de estudo focal.",
     operationalization: "Orienta a distribuição do conteúdo em torno de um alvo flexível, depois de satisfeitas a função didática e as dependências necessárias.",
     limitations: "O alvo não é máximo, não mede qualidade ou carga cognitiva e não justifica compactação nem atomização.",
@@ -181,7 +181,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     optionLabels: Object.freeze({before_explanation:"Antes da explicação",after_explanation:"Depois da explicação",before_and_after:"Antes e depois"}), defaultValue: "after_explanation"
   }),
   Object.freeze({
-    id: "authoring_part_microsequence_target", humanField: "alvo_microssequencias_por_parte", group: "cadence", groupLabel: "Cadência", unitLabel: "microssequências por parte",
+    id: "authoring_part_microsequence_target", humanField: "alvo_microssequencias_por_parte", group: "cadence", groupLabel: "Produção", unitLabel: "microssequências por parte",
     label: "Granularidade da parte", construct: "Tamanho contextual da parte de produção, independente da quantidade de conteúdo curricular.",
     operationalization: "Orienta quantas microssequências existentes uma parte de produção pretende reunir, preservando cobertura, dependências e limites de transporte.",
     limitations: "Uma parte é uma organização de trabalho; não é unidade curricular nem autoriza truncar material ou dividir identidades para caber.",
@@ -189,7 +189,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     valueSchema: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }), optionLabels: Object.freeze({}), defaultValue: 1
   }),
   Object.freeze({
-    id: "authoring_batch_part_target", humanField: "alvo_partes_por_lote", group: "cadence", groupLabel: "Cadência", unitLabel: "partes por lote",
+    id: "authoring_batch_part_target", humanField: "alvo_partes_por_lote", group: "cadence", groupLabel: "Produção", unitLabel: "partes por lote",
     label: "Granularidade do lote", construct: "Quantidade contextual de partes a preparar no mesmo lote autorizado.",
     operationalization: "Orienta a cadência do trabalho mantendo cada parte e sua confirmação; não altera automaticamente frequência de pausa.",
     limitations: "Número de lotes não mede conteúdo nem aprendizagem e não amplia o mandato de aplicar propostas.",
@@ -197,7 +197,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     valueSchema: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }), optionLabels: Object.freeze({}), defaultValue: 1
   }),
   Object.freeze({
-    id: "authoring_pause_frequency", humanField: "frequencia_de_pausa", group: "cadence", groupLabel: "Cadência", unitLabel: "momento de pausa",
+    id: "authoring_pause_frequency", humanField: "frequencia_de_pausa", group: "cadence", groupLabel: "Produção", unitLabel: "momento de pausa",
     label: "Frequência de pausa", construct: "Preferência por pontos de discussão e revisão durante a produção.",
     operationalization: "Define pontos de pausa por microssequência, parte, lote ou solicitação; permanece independente da granularidade da parte e do lote.",
     limitations: "A preferência não remove confirmações de aplicação, autorização do autor nem limites operacionais.",

@@ -70,7 +70,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&apos;");
 }
 
-function normalizePerson(value, label, { searchResult = false } = {}) {
+function normalizePerson(value, label, { searchResult = false, accessGrant = false } = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${label} inválida.`);
   }
@@ -78,25 +78,28 @@ function normalizePerson(value, label, { searchResult = false } = {}) {
   const handle = String(value.handle || "").trim() || null;
   const avatarObjectKey = String(value.avatarObjectKey || "").trim() || null;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(userId) ||
-      (handle && !/^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/u.test(handle))) {
+      (handle && !/^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/u.test(handle)) ||
+      accessGrant && typeof value.canCopy !== "boolean") {
     throw new TypeError(`${label} inválida.`);
   }
   return Object.freeze({
     userId,
     handle,
-      avatarObjectKey,
-      ...(searchResult ? { avatarUrl: value.avatarUrl || null } : {}),
+    avatarObjectKey,
+    ...(searchResult ? { avatarUrl: value.avatarUrl || null } : {}),
+    ...(accessGrant ? { canCopy: value.canCopy } : {}),
     grantedAt: String(value.grantedAt || "").trim() || null
   });
 }
 
 function normalizeCoursePeople(value, courseId) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
+      value.contract !== "aralearn.course-people.v3" ||
       value.courseId !== courseId || !Array.isArray(value.people)) {
     throw new TypeError("A lista de pessoas do curso é inválida.");
   }
   const owner = normalizePerson(value.owner, "Pessoa proprietária");
-  const people = value.people.map((person) => normalizePerson(person, "Pessoa com acesso"));
+  const people = value.people.map((person) => normalizePerson(person, "Pessoa com acesso", { accessGrant: true }));
   if (people.some((person) => person.userId === owner.userId) ||
       new Set(people.map((person) => person.userId)).size !== people.length) {
     throw new TypeError("A lista de pessoas do curso é inconsistente.");
@@ -168,6 +171,7 @@ function renderCourseCard(course) {
 
 function renderCourseList(state) {
   const page = state.list;
+  const notice = listFeedbackFailure(state);
   const cardinality = page ? courseListCardinality(page) : "zero";
   let content;
   if (state.loading && !page) {
@@ -224,31 +228,33 @@ function renderCourseList(state) {
       synchronizing: state.syncing === true,
       stale: state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
-    '<button type="button" class="course-authoring-header-action"' +
-    ' data-course-authoring-action="open-create" aria-label="Criar curso" title="Criar curso">' +
-    renderUiIcon("add", "course-authoring-button-icon") + "</button></div></header>" +
+    '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
+    ` aria-label="Tarefas dos cursos${notice ? ': há um aviso' : ''}" title="Tarefas">` +
+    renderUiIcon("more", "course-authoring-button-icon") +
+    `<span class="course-authoring-feedback-indicator" data-list-feedback-indicator aria-hidden="true"${notice ? '' : ' hidden'}>!</span></summary>` +
+    '<nav aria-label="Tarefas dos cursos">' +
+    '<button type="button" data-course-authoring-action="open-create">' +
+    renderUiIcon("add", "course-authoring-button-icon") + `<span>${state.createOpen ? 'Continuar criação' : 'Criar curso'}</span></button>` +
+    '<button type="button" data-course-authoring-action="refresh-course">' +
+    renderUiIcon("rotate", "course-authoring-button-icon") + '<span>Atualizar cursos</span></button>' +
+    `<section class="course-authoring-feedback-explanation" data-list-feedback-explanation aria-label="Aviso"${notice ? '' : ' hidden'}>` +
+    `<p role="alert" data-list-feedback-message>${escapeHtml(notice)}</p>` +
+    '</section></nav></details></div></header>' +
     '<form class="course-authoring-search" role="search" data-course-authoring-search>' +
     '<label class="course-authoring-visually-hidden" for="course-authoring-query">Buscar cursos</label>' +
     `<input id="course-authoring-query" type="search" maxlength="120" autocomplete="off"` +
     ` value="${escapeHtml(state.query)}" placeholder="Buscar curso" data-course-authoring-query>` +
     '<button type="submit" aria-label="Buscar cursos">' +
     renderUiIcon("search", "course-authoring-button-icon") + "</button></form>" +
-    '<div class="course-authoring-feedback-layer"><p class="course-authoring-notice" data-course-authoring-request-feedback' +
-    ' role="status" aria-live="polite" hidden></p>' +
-    (page?.offlineKnown
-      ? '<p class="course-authoring-notice" role="status">Exibindo o que já está neste dispositivo.</p>'
-      : "") +
-    (state.failure && page
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure.message)}</p>`
-      : "") +
-    (state.writeMessage
-      ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.writeMessage)}</p>`
-      : "") +
-    (state.writeFailure
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
-      : "") + "</div>" +
+    '<div class="course-authoring-feedback-layer" data-list-feedback-layer>' + renderTransientCourseFeedback(state) + '</div>' +
     createForm +
-    `<main class="course-authoring-list-content">${content}</main></div>`;
+    `<main class="course-authoring-list-content">${content}</main>` +
+    `<div data-course-authoring-confirm-host>${renderActionConfirmation(state.actionConfirmation)}</div></div>`;
+}
+
+function listFeedbackFailure(state) {
+  return state.writeFailure || state.listRequestFailure || (state.list ? state.failure?.message : "") ||
+    (state.list?.offlineKnown ? "Exibindo os cursos disponíveis neste dispositivo." : "");
 }
 
 function canAccessPlanning(course) {
@@ -285,7 +291,7 @@ function renderCourseHeader(course, state) {
       '<div class="course-authoring-course-heading"><p class="course-authoring-eyebrow">Autoria</p>' +
       `<h1>${escapeHtml(title)}</h1></div></header>`;
   }
-  const backSection = state.contextualReturn?.route === state.routeKey
+  const backSection = state.contextualReturn && state.contextualReturn.route === state.routeKey
     ? parseCourseAuthoringRoute(state.contextualReturn.returnTo)?.section
     : state.routeTarget?.kind === "authoring_analytics" ? "content"
       : state.routeTarget ? state.section : state.section !== "content" ? "content" : null;
@@ -297,14 +303,12 @@ function renderCourseHeader(course, state) {
     "</button>";
   return '<header class="course-authoring-course-header">' + back +
     '<div class="course-authoring-course-heading">' +
-    `<h1 title="${escapeHtml(course?.title || "Curso")}">${escapeHtml(
-      course?.title || "Curso"
-    )}</h1>` +
-    `<p class="course-authoring-context-title">${escapeHtml(title)}</p>` +
+    `<h1 aria-describedby="course-current-identity">${escapeHtml(title)}</h1>` +
     '</div>' +
     '<div class="course-authoring-header-actions">' +
-    '<nav class="course-authoring-primary-navigation" aria-label="Áreas principais">' +
-    renderTaskLinks(course, state.section, { primary: true }) + "</nav>" +
+    (["content", "planning"].includes(state.section)
+      ? '<nav class="course-authoring-primary-navigation" aria-label="Áreas principais">' +
+        renderTaskLinks(course, state.section, { primary: true }) + "</nav>" : "") +
     '<div class="course-authoring-runtime-status" data-authoring-runtime-status>' +
     renderRuntimeStatusControl({
       offline: state.syncOffline === true,
@@ -312,17 +316,24 @@ function renderCourseHeader(course, state) {
       stale: state.syncStale === true
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
-    ' aria-label="Abrir tarefas do curso" title="Tarefas">' +
+    ` aria-label="Abrir tarefas do curso${courseFeedbackFailure(state) ? ': há um aviso' : ''}" title="Tarefas">` +
     renderUiIcon("more", "course-authoring-button-icon") +
+    (courseFeedbackFailure(state) ? '<span class="course-authoring-feedback-indicator" aria-hidden="true">!</span>' : '') +
     '</summary><nav aria-label="Tarefas do curso">' +
+    `<div class="course-authoring-course-identity" tabindex="0"><span>Curso</span><p id="course-current-identity">${escapeHtml(course.title)}</p></div>` +
+    renderCourseFeedbackExplanation(state) +
     '<button type="button" data-course-authoring-action="refresh-course">' +
     `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar curso</span></button>` +
+    (course.canCopy === true && state.canCopyCourse
+      ? '<button type="button" data-course-authoring-action="copy-course">' +
+        `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar curso</span></button>`
+      : "") +
     (state.section === "content" && canAccessPlanning(course) && state.canOpenStudyContent
       ? '<button type="button" data-course-authoring-action="edit-content-entity"' +
         ' data-target-kind="course">' +
         `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar curso</span></button>`
       : "") +
-    renderTaskLinks(course, state.section, { primary: false }) +
+    renderTaskLinks(course, state.section, { primary: null }) +
     "</nav></details></div></header>";
 }
 
@@ -361,20 +372,36 @@ function renderPersonAvatar(person, avatarUrls) {
       )}</span>`;
 }
 
-function renderPersonRow(person, { owner = false, avatarUrls = null } = {}) {
+function renderPersonRow(person, { owner = false, avatarUrls = null, busy = false,
+  pendingCommand = null, unavailable = false } = {}) {
   const name = person.handle ? `@${person.handle}` : "Identificador ainda não escolhido";
+  const recovering = pendingCommand?.draft?.operation === "set_copy_permission" &&
+    pendingCommand.draft.userId === person.userId;
+  const recoveringRevoke = pendingCommand?.draft?.operation === "revoke_access" &&
+    pendingCommand.draft.userId === person.userId;
+  const copyLabel = recovering ? `Confirmar permissão de cópia de ${name}`
+    : `${person.canCopy ? "Revogar permissão de cópia de" : "Permitir cópia para"} ${name}`;
+  const blocked = busy || unavailable && !recovering || pendingCommand && !recovering;
   return '<article class="course-authoring-person">' +
     renderPersonAvatar(person, avatarUrls) +
-    `<div><strong>${escapeHtml(name)}</strong><span>${owner ? "Proprietário" : "Acesso ao Estudo"}</span></div>` +
-    (owner ? "" : '<button type="button" data-course-authoring-action="revoke-access"' +
+    `<div><strong>${escapeHtml(name)}</strong><span>${owner ? "Proprietário" :
+      person.canCopy ? "Estudo e cópia independente" : "Acesso ao Estudo"}</span></div>` +
+    (owner ? "" : '<div class="course-authoring-person-actions">' +
+      '<button type="button" data-course-authoring-action="set-copy-permission"' +
+      ` data-user-id="${escapeHtml(person.userId)}" aria-pressed="${person.canCopy === true}"` +
+      ` aria-label="${escapeHtml(copyLabel)}" title="${escapeHtml(copyLabel)}"` +
+      `${blocked || !person.handle ? " disabled" : ""}>` +
+      renderUiIcon("copy", "course-authoring-button-icon") + '</button>' +
+      '<button type="button" data-course-authoring-action="revoke-access"' +
       ` data-user-id="${escapeHtml(person.userId)}" data-display-name="${escapeHtml(name)}"` +
-      ` aria-label="Revogar acesso de ${escapeHtml(name)}" title="Revogar acesso">` +
-      renderUiIcon("trash", "course-authoring-button-icon") + "</button>") +
+      ` aria-label="Revogar acesso de ${escapeHtml(name)}" title="Revogar acesso"${busy || (pendingCommand || unavailable) && !recoveringRevoke ? " disabled" : ""}>` +
+      renderUiIcon("trash", "course-authoring-button-icon") + "</button></div>") +
     "</article>";
 }
 
 function renderPeopleSection(state) {
   const people = state.people;
+  const pendingCopy = state.pendingPeopleCommand?.draft?.operation === "set_copy_permission";
   const content = state.peopleLoading && !people
     ? '<p class="course-authoring-loading" role="status">Carregando pessoas…</p>'
     : !people
@@ -388,7 +415,9 @@ function renderPeopleSection(state) {
       : renderPersonRow(people.owner, { owner: true, avatarUrls: state.avatarUrls }) +
         (people.people.length
           ? `<div class="course-authoring-people-list">${people.people.map((person) =>
-              renderPersonRow(person, { avatarUrls: state.avatarUrls })).join("")}</div>`
+              renderPersonRow(person, { avatarUrls: state.avatarUrls,
+                busy: state.peopleBusy || state.peopleLoading, pendingCommand: state.pendingPeopleCommand,
+                unavailable: Boolean(state.peopleFailure) })).join("")}</div>`
           : `<p class="course-authoring-people-empty">${state.course.visibility === "public" ? "Qualquer pessoa pode estudar. Não há concessões individuais." : "Somente você tem acesso."}</p>`);
   const grant = state.grantOpen
     ? '<form class="course-authoring-grant" data-course-authoring-grant>' +
@@ -417,9 +446,12 @@ function renderPeopleSection(state) {
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso</h2>' +
     '<header class="course-authoring-section-toolbar" aria-label="Ações de acesso">' +
     '<button type="button" class="course-authoring-people-add"' +
-    ' data-course-authoring-action="open-grant" aria-label="Conceder acesso" title="Conceder acesso">' +
+    ` data-course-authoring-action="open-grant" aria-label="Conceder acesso" title="Conceder acesso"${state.peopleBusy || pendingCopy || state.pendingPeopleCommand?.draft?.operation === "revoke_access" ? " disabled" : ""}>` +
     renderUiIcon("add", "course-authoring-button-icon") + "</button></header>" +
-    policy + grant + `<div class="course-authoring-people-content">${content}</div>` +
+    '<details class="course-authoring-people-settings" data-people-settings' + (state.peopleSettingsOpen ? ' open' : '') +
+    '><summary>Acesso e cópia</summary>' + policy +
+    '<p class="course-authoring-copy-help">Acesso ao Estudo não permite copiar ou editar o original. Autorize a cópia separadamente para cada pessoa. As cópias e seus arquivos permanecem após revogar a permissão.</p></details>' +
+    grant + `<div class="course-authoring-people-content">${content}</div>` +
     "</section>";
 }
 
@@ -678,7 +710,10 @@ function renderCourseSection(state) {
     return renderPlanningSection(state);
   }
   if (state.section === "parameters") {
-    return renderCourseDesignPanel(state);
+    return '<dialog class="course-design-direct-dialog course-design-context-dialog" aria-labelledby="course-design-direct-title">' +
+      '<header><h2 id="course-design-direct-title">Parâmetros</h2><button type="button" data-course-authoring-action="close-design-direct" aria-label="Fechar parâmetros" title="Fechar parâmetros">' +
+      renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></header>' +
+      '<div class="course-design-context-body">' + renderCourseDesignPanel(state) + '</div></dialog>';
   }
   if (state.section === "sources" && state.course) {
     if (!canAccessPlanning(state.course)) {
@@ -718,6 +753,31 @@ function renderCourseSection(state) {
   });
 }
 
+function courseFeedbackFailure(state) {
+  return state.writeFailure || (state.section === "people" ? state.peopleFailure : "") || "";
+}
+
+function renderCourseFeedbackExplanation(state) {
+  const failure = courseFeedbackFailure(state);
+  if (!failure) return "";
+  const pendingCopy = state.section === "people" && state.pendingPeopleCommand?.draft?.operation === "set_copy_permission";
+  return '<section class="course-authoring-feedback-explanation" aria-label="Aviso">' +
+    `<p role="alert">${escapeHtml(failure)}</p>` +
+    (pendingCopy ? '<p>Use o botão de cópia da pessoa para confirmar o mesmo pedido.</p>' +
+      '<button type="button" data-course-authoring-action="cancel-copy-permission" aria-label="Encerrar recuperação da permissão de cópia">' +
+      renderUiIcon("remove-state", "course-authoring-button-icon") + '<span>Encerrar recuperação e reler</span></button>' :
+      state.section === "people" ? '<button type="button" data-course-authoring-action="retry-people">' +
+      renderUiIcon("rotate", "course-authoring-button-icon") + '<span>Atualizar acessos</span></button>' : '') + '</section>';
+}
+
+function renderTransientCourseFeedback(state) {
+  const message = state.writeMessage || (state.section === "people" ? state.peopleMessage : "");
+  return message ? '<div class="course-authoring-notice course-authoring-transient-feedback">' +
+    `<p role="status">${escapeHtml(message)}</p>` +
+    '<button type="button" data-course-authoring-action="dismiss-feedback" aria-label="Fechar aviso" title="Fechar aviso">' +
+    renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></div>' : '';
+}
+
 function renderCourseDetail(state) {
   const visibleCourse = state.course || state.knownCourse;
   return '<div class="course-authoring-frame">' +
@@ -726,18 +786,7 @@ function renderCourseDetail(state) {
     '<div class="course-authoring-main-pane">' +
     '<div class="course-authoring-feedback-layer"><p class="course-authoring-notice" data-course-authoring-request-feedback' +
     ' role="status" aria-live="polite" hidden></p>' +
-    (state.writeMessage
-      ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.writeMessage)}</p>`
-      : "") +
-    (state.writeFailure
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.writeFailure)}</p>`
-      : "") +
-    (state.section === "people" && state.peopleMessage
-      ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.peopleMessage)}</p>`
-      : "") +
-    (state.section === "people" && state.peopleFailure && state.people
-      ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.peopleFailure)}</p>`
-      : "") + "</div>" +
+    renderTransientCourseFeedback(state) + "</div>" +
     `<main class="course-authoring-course-content">${renderCourseSection(state)}</main></div></div>` +
     `<div data-course-authoring-confirm-host>${renderActionConfirmation(state.actionConfirmation)}</div></div>`;
 }
@@ -870,8 +919,8 @@ export function createCourseAuthoringSurface({
   documentValue = globalThis.document || null,
   navigatorValue = globalThis.navigator || null,
   urlValue = globalThis.URL || null,
-  providerAssistanceSession = null,
   onOpenStudyContent = null,
+  onCopyCourse = null,
   onClose = () => {}
 } = {}) {
   if (!root || typeof root.addEventListener !== "function") {
@@ -880,12 +929,6 @@ export function createCourseAuthoringSurface({
   assertController(controller);
   if (!Number.isSafeInteger(courseLimit) || courseLimit < 1 || courseLimit > 50) {
     throw new TypeError("Limite de paginação inválido.");
-  }
-  if (providerAssistanceSession !== null &&
-      (typeof providerAssistanceSession?.read !== "function" ||
-       typeof providerAssistanceSession?.update !== "function" ||
-       typeof providerAssistanceSession?.snapshot !== "function")) {
-    throw new TypeError("Sessão de assistência contextual inválida.");
   }
   if (onOpenStudyContent !== null && typeof onOpenStudyContent !== "function") {
     throw new TypeError("Abertura do editor contextual inválida.");
@@ -900,6 +943,8 @@ export function createCourseAuthoringSurface({
   let reviewPanel = null;
   let analyticsPanel = null;
   let sourcesPanel = null;
+  let sourceReturnFocus = null;
+  let feedbackTimer = null;
   let audioPanel = null;
   let targetSourcesPanel = null;
   let partsPanel = null;
@@ -919,6 +964,7 @@ export function createCourseAuthoringSurface({
     inspectionReturnFocus: null,
     inspectionReturnPosition: null,
     canOpenStudyContent: typeof onOpenStudyContent === "function",
+    canCopyCourse: typeof onCopyCourse === "function",
     loading: false,
     list: null,
     course: null,
@@ -940,6 +986,7 @@ export function createCourseAuthoringSurface({
     pendingPeopleCommand: null,
     createOpen: false,
     createDraft: null,
+    listRequestFailure: "",
     authoringPlan: null,
     curriculumViewByCourse: new Map(),
     planningLoading: false,
@@ -949,6 +996,8 @@ export function createCourseAuthoringSurface({
     designFailure: "",
     designMessage: "",
     designBusy: false,
+    designCategory: "content",
+    designParameterId: null,
     designFormDrafts: new Map(),
     designFormFocus: null,
     pendingCreateCommand: null,
@@ -1051,7 +1100,7 @@ export function createCourseAuthoringSurface({
     return true;
   }
 
-  function renderContextSheet() {
+  function renderContextSheet({ focus = "" } = {}) {
     if (!state.opened || !state.course || !state.sourceTarget && !state.parameterTarget && !state.partsTarget) return false;
     if (!contextSheet) {
       contextSheet = documentValue.createElement('div');
@@ -1103,6 +1152,9 @@ export function createCourseAuthoringSurface({
       }
       if (saved) restoreRenderState(contextSheet, saved);
       else contextSheet.querySelector('[data-course-authoring-action="close-context"]').focus({ preventScroll: true });
+      const focusTarget = state.pendingDesignCommands.size && !state.designBusy
+        ? '[data-course-authoring-action="retry-design-mutation"]' : focus;
+      if (focusTarget) contextSheet.querySelector(focusTarget)?.focus({ preventScroll: true });
       contextSheet.querySelector('.course-design-context-body').scrollTop = bodyScroll;
     }
     return true;
@@ -1179,6 +1231,10 @@ export function createCourseAuthoringSurface({
 
   function handleRootKeyDown(event) {
     if (!state.opened) return;
+    if (!state.actionConfirmation && event.target?.closest?.(".course-design-direct-dialog") && event.key === "Tab") {
+      trapAuthoringConfirmationTab({ event, root, confirmationSelector: ".course-design-direct-dialog", documentValue });
+      return;
+    }
     const accessInput = event.target?.matches?.("#course-authoring-access-handle");
     const accessOption = event.target?.closest?.("[data-course-authoring-action='select-access-person']");
     if ((accessInput || accessOption) && ["ArrowDown", "ArrowUp", "Escape"].includes(event.key)) {
@@ -1339,7 +1395,15 @@ export function createCourseAuthoringSurface({
       courseRevision: state.course.revision,
       coursePublicFileAccess: state.course.publicFileAccess,
       onCourseRevisionChange: acceptSourcesCourseRevision,
-      onNavigate: (hash) => navigate(hash)
+      onNavigate: (hash, options = {}) => {
+        const destination = parseCourseAuthoringRoute(hash);
+        sourceReturnFocus = destination?.courseId === state.course?.courseId && destination.section === "sources" &&
+          !destination.target && typeof options.sourceReturnFocusId === "string"
+          ? { courseId: destination.courseId, sourceId: options.sourceReturnFocusId } : null;
+        const result = navigate(hash);
+        if (result === "deferred") sourceReturnFocus = null;
+        return result;
+      }
     };
     if (state.section === "audio" && canAccessPlanning(state.course)) {
       const host = root.querySelector?.("[data-course-audio-host]");
@@ -1355,11 +1419,15 @@ export function createCourseAuthoringSurface({
           const sourceTarget = state.routeTarget?.kind === "course_source"
             ? state.routeTarget
             : null;
+          const returnFocusSourceId = !sourceTarget && sourceReturnFocus?.courseId === state.course.courseId
+            ? sourceReturnFocus.sourceId : null;
+          sourceReturnFocus = null;
           sourcesPanel = createCourseSourcesPanel({
             root: host,
             mode: "catalog",
             initialSourceId: sourceTarget?.id ?? null,
             initialAnchorId: sourceTarget?.anchorId ?? null,
+            returnFocusSourceId,
             ...shared
           });
           void sourcesPanel.open();
@@ -1446,8 +1514,7 @@ export function createCourseAuthoringSurface({
           : null,
         windowValue,
         documentValue,
-        navigatorValue,
-        providerAssistanceSession
+        navigatorValue
       });
       const mountedSequence = inspectionSequence;
       void mountedSequence.open().then((opened) => {
@@ -1545,9 +1612,36 @@ export function createCourseAuthoringSurface({
     }
   }
 
+  function dismissFeedback({ restoreFocus = false } = {}) {
+    state.writeMessage = "";
+    state.peopleMessage = "";
+    if (feedbackTimer !== null) globalThis.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+    root.querySelectorAll?.(".course-authoring-transient-feedback").forEach(notice => notice.remove?.());
+    if (restoreFocus) root.querySelector?.(".course-authoring-task-menu > summary")?.focus?.({ preventScroll: true });
+  }
+
+  function scheduleFeedbackDismissal() {
+    if (feedbackTimer !== null) globalThis.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+    if (state.writeBusy || state.peopleBusy || !state.writeMessage && !state.peopleMessage) return;
+    const message = state.writeMessage;
+    const peopleMessage = state.peopleMessage;
+    feedbackTimer = globalThis.setTimeout(() => {
+      feedbackTimer = null;
+      if (!state.opened || state.writeMessage !== message || state.peopleMessage !== peopleMessage) return;
+      const notice = root.querySelector?.(".course-authoring-transient-feedback");
+      if (notice?.contains?.(documentValue?.activeElement)) return;
+      dismissFeedback();
+    }, 3500);
+    feedbackTimer?.unref?.();
+  }
+
   function render({ focus = "" } = {}) {
     if (!state.opened) return;
-    if (renderContextSheet()) return;
+    if (renderContextSheet({ focus })) return;
+    const peopleSettings = root.querySelector?.("[data-people-settings]");
+    if (peopleSettings && typeof peopleSettings.open === "boolean") state.peopleSettingsOpen = peopleSettings.open;
     const rootScroll = {
       top: Number(root.scrollTop) || 0,
       left: Number(root.scrollLeft) || 0
@@ -1558,7 +1652,15 @@ export function createCourseAuthoringSurface({
     destroyAnalyticsPanel();
     destroySourcesPanels();
     root.innerHTML = renderCourseAuthoringSurface(state);
+    scheduleFeedbackDismissal();
     root.setAttribute?.("aria-busy", String(state.loading));
+    const directDesignDialog = root.querySelector?.(".course-design-direct-dialog");
+    if (directDesignDialog?.showModal) {
+      directDesignDialog.addEventListener("cancel", event => { event.preventDefault(); if (!closeActionConfirmation()) closeDirectDesign(); });
+      const confirmationHost = root.querySelector?.("[data-course-authoring-confirm-host]");
+      if (confirmationHost) directDesignDialog.append(confirmationHost);
+      directDesignDialog.showModal();
+    }
     restoreDesignFormDrafts({ restoreFocus: !focus });
     if (state.designBusy || state.profileBusy || state.pendingProfileMutation || state.pendingDesignCommands.size) {
       root.querySelectorAll?.(".course-design form input, .course-design form select, .course-design form textarea, .course-design form button")
@@ -1580,6 +1682,7 @@ export function createCourseAuthoringSurface({
         target?.focus?.({ preventScroll: true });
       });
     }
+    if (state.pendingDesignCommands.size && !state.designBusy) focus = '[data-course-authoring-action="retry-design-mutation"]';
     if (focus && typeof root.querySelector === "function") {
       globalThis.queueMicrotask?.(() => root.querySelector(focus)?.focus?.({ preventScroll: true }));
     }
@@ -1725,9 +1828,11 @@ export function createCourseAuthoringSurface({
     startedMessage,
     successMessage,
     refreshAfterSuccess = true,
+    returnFocus = "",
     afterSuccess = () => {}
   }) {
     if (!state.course || state.peopleBusy) return false;
+    if (state.pendingPeopleCommand && !pendingWriteMatches(state.pendingPeopleCommand, draft)) return false;
     if (!pendingWriteMatches(state.pendingPeopleCommand, draft)) {
       state.pendingPeopleCommand = null;
     }
@@ -1766,7 +1871,7 @@ export function createCourseAuthoringSurface({
       return false;
     } finally {
       state.peopleBusy = false;
-      render();
+      render({ focus: state.section === "people" && state.course?.courseId === courseId ? returnFocus : "" });
     }
   }
 
@@ -2161,6 +2266,8 @@ export function createCourseAuthoringSurface({
     ++courseEpoch;
     ++designEpoch;
     state.opened = false;
+    if (feedbackTimer !== null) globalThis.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
     clearPeopleSearch();
     state.visibilityDraft = null;
     state.routeKey = "";
@@ -2339,11 +2446,12 @@ export function createCourseAuthoringSurface({
       const changed = JSON.stringify(previousPage) !== JSON.stringify(page);
       state.list = page;
       state.failure = null;
+      state.listRequestFailure = "";
       state.syncOffline = page.offline === true;
       state.syncStale = page.stale === true;
       page.items.forEach((course) => knownCourses.set(course.courseId, course));
       if (changed) render();
-      else updateAuthoringRuntimeStatus();
+      else { updateAuthoringRuntimeStatus(); setRequestFeedback(""); }
       return true;
     } catch (error) {
       if (!state.opened || state.view !== "list") return false;
@@ -2353,8 +2461,10 @@ export function createCourseAuthoringSurface({
         ["offline", "network_error", "network_unavailable", "request_timeout",
           "service_unavailable", "failed_to_fetch"].includes(code) ||
         /failed to fetch|fetch failed|network|offline|connection|socket/u.test(message);
+      state.listRequestFailure = writeFailureMessage(error);
       const statusUpdated = setAuthoringSyncState({ offline, stale: true });
       if (!statusUpdated) render();
+      setRequestFeedback(state.listRequestFailure, { error: true });
       return false;
     }
   }
@@ -2689,6 +2799,17 @@ export function createCourseAuthoringSurface({
 
 
 
+  function closeDirectDesign() {
+    if (hasPendingAuthoringDraft()) {
+      state.designFailure = "Salve ou descarte os ajustes antes de fechar.";
+      render();
+      return;
+    }
+    const returnRoute = state.contextualReturn?.route === state.routeKey ? state.contextualReturn.returnTo :
+      buildCourseAuthoringRoute(state.course.courseId, { section: "content" });
+    void navigate(returnRoute);
+  }
+
   function formValue(form, name) {
     const field = form?.elements?.[name] ?? form?.elements?.namedItem?.(name);
     return String(field?.value ?? "").trim();
@@ -3008,6 +3129,22 @@ export function createCourseAuthoringSurface({
 
   function setRequestFeedback(message = "", { error = false } = {}) {
     const value = String(message || "").trim();
+    if (state.view === "list") {
+      if (error) state.listRequestFailure = value;
+      else state.writeMessage = value;
+      const notice = listFeedbackFailure(state);
+      const explanation = root.querySelector?.("[data-list-feedback-explanation]");
+      if (explanation) explanation.hidden = !notice;
+      const text = root.querySelector?.("[data-list-feedback-message]");
+      if (text) text.textContent = notice;
+      const indicator = root.querySelector?.("[data-list-feedback-indicator]");
+      if (indicator) indicator.hidden = !notice;
+      root.querySelector?.(".course-authoring-task-menu > summary")?.setAttribute?.("aria-label", `Tarefas dos cursos${notice ? ': há um aviso' : ''}`);
+      const layer = root.querySelector?.("[data-list-feedback-layer]");
+      if (layer) layer.innerHTML = renderTransientCourseFeedback(state);
+      scheduleFeedbackDismissal();
+      return;
+    }
     root.querySelectorAll?.("[data-course-authoring-request-feedback]").forEach((notice) => {
       notice.hidden = !value;
       notice.textContent = value;
@@ -3066,6 +3203,12 @@ export function createCourseAuthoringSurface({
   }
 
   function preserveDesignFormDraft(event) {
+    const createForm = event.target?.closest?.("[data-course-authoring-create]");
+    if (createForm) {
+      state.createDraft = { title: String(createForm.elements?.title?.value || ""),
+        objective: String(createForm.elements?.objective?.value || "") };
+      return;
+    }
     if (event.target?.closest?.("[data-course-profile-apply]")) {
       state.profileRemovedExceptions = checkedFormValues(event.target.closest("form"), "removeException");
       return;
@@ -3158,8 +3301,11 @@ export function createCourseAuthoringSurface({
       const title = String(event.target.elements?.title?.value || "").trim();
       const objective = String(event.target.elements?.objective?.value || "").trim();
       const draft = { title, objective };
-      if (!pendingWriteMatches(state.pendingCreateCommand, draft)) {
-        state.pendingCreateCommand = null;
+      if (state.pendingCreateCommand && !pendingWriteMatches(state.pendingCreateCommand, draft)) {
+        state.writeFailure = "A criação anterior ainda não foi confirmada. Restaure o título e o objetivo enviados para confirmar o mesmo pedido, ou cancele sua recuperação antes de criar outro curso.";
+        state.createDraft = draft;
+        render({ focus: "#course-authoring-create-title" });
+        return;
       }
       state.createDraft = draft;
       if (!title || title.length > 300 || !objective || objective.length > 2_000) {
@@ -3340,7 +3486,8 @@ export function createCourseAuthoringSurface({
     }
     if (event.target.matches?.("[data-course-authoring-grant]")) {
       event.preventDefault();
-      if (!state.course || state.peopleBusy) return;
+      if (!state.course || state.peopleBusy ||
+          state.pendingPeopleCommand && state.pendingPeopleCommand.draft.operation !== "grant_access") return;
       const selected = state.grantSelectedPerson;
       const enteredHandle = String(event.target.elements?.handle?.value || "").trim().replace(/^@/u, "").toLowerCase();
       if (!selected || enteredHandle !== selected.handle) {
@@ -3350,7 +3497,8 @@ export function createCourseAuthoringSurface({
       }
       const { userId, handle } = selected;
       const courseId = state.course.courseId;
-      const draft = { operation: "grant_access", courseId, userId, handle };
+      const canCopy = state.people?.people.find((person) => person.userId === userId)?.canCopy === true;
+      const draft = { operation: "grant_access", courseId, userId, handle, canCopy };
       state.grantDraftHandle = handle;
       if (!pendingWriteMatches(state.pendingPeopleCommand, draft)) {
         state.pendingPeopleCommand = null;
@@ -3363,7 +3511,7 @@ export function createCourseAuthoringSurface({
         execute() {
           void runPeopleCommand({
             draft,
-            request: { courseId, userId, handle, confirmed: true },
+            request: { courseId, userId, handle, canCopy, confirmed: true },
             method: "grantCourseAccess",
             startedMessage: "Concedendo acesso…",
             successMessage: `Acesso concedido a @${handle}.`,
@@ -3416,6 +3564,22 @@ export function createCourseAuthoringSurface({
     const node = event.target.closest?.("[data-course-authoring-action]");
     if (!node || (typeof root.contains === "function" && !root.contains(node))) return;
     const action = node.dataset.courseAuthoringAction;
+    if (action === "close-design-direct") { closeDirectDesign(); return; }
+    if (action === "select-design-category" || action === "edit-design-parameter" || action === "design-group-back") {
+      if (!state.courseDesign || state.designBusy || state.profileBusy) return;
+      if (action === "select-design-category") {
+        state.designCategory = node.dataset.designCategory;
+        state.designParameterId = null;
+      } else if (action === "edit-design-parameter") state.designParameterId = node.dataset.parameterId;
+      else state.designParameterId = null;
+      render({ focus: action === "edit-design-parameter" ? "[data-course-design-parameter] select" : "[data-course-design-context-dialog], .course-design-direct-dialog" });
+      return;
+    }
+    if (action === "dismiss-feedback") {
+      event.preventDefault();
+      dismissFeedback({ restoreFocus: true });
+      return;
+    }
     if (action === "retry-profile-mutation" && state.pendingProfileMutation && !state.profileBusy && !state.designBusy) {
       const { deleted, ...draft } = structuredClone(state.pendingProfileMutation.draft);
       void mutateProfile(draft, { deleted }); return;
@@ -3479,7 +3643,7 @@ export function createCourseAuthoringSurface({
       const href = node.getAttribute?.("href");
       void navigate(href || buildCourseAuthoringRoute(state.course.courseId, {
         section: node.dataset.section
-      }));
+      }), node.dataset.section === "parameters" || node.dataset.section === "sources" ? { returnTo: state.routeKey } : {});
     } else if (action === "cancel-action-confirmation") {
       closeActionConfirmation();
     } else if (action === "confirm-action-confirmation") {
@@ -3579,20 +3743,27 @@ export function createCourseAuthoringSurface({
         }, "A política local foi removida; a política herdada voltou a valer.",
         `${designDraftScopeKey()}:policy`)
       });
+    } else if (action === "copy-course" && state.course?.canCopy === true && onCopyCourse) {
+      void onCopyCourse(state.course.courseId);
     } else if (action === "open-create") {
+      if (state.writeBusy) return;
       state.createOpen = true;
-      state.createDraft = null;
-      state.pendingCreateCommand = null;
-      state.writeFailure = "";
       state.writeMessage = "";
       render({ focus: "#course-authoring-create-title" });
     } else if (action === "cancel-create") {
-      state.createOpen = false;
-      state.createDraft = null;
-      state.pendingCreateCommand = null;
-      state.writeFailure = "";
-      state.writeMessage = "";
-      render();
+      if (state.writeBusy) return;
+      const cancelCreate = () => {
+        state.createOpen = false;
+        state.createDraft = null;
+        state.pendingCreateCommand = null;
+        state.writeFailure = "";
+        state.writeMessage = "";
+        render({ focus: ".course-authoring-task-menu > summary" });
+      };
+      if (state.pendingCreateCommand) {
+        openActionConfirmation({ message: "O curso pode ter sido criado. Encerrar a recuperação não exclui esse curso. Depois, atualize a lista para conferir.",
+          confirmLabel: "Encerrar recuperação", execute: cancelCreate });
+      } else cancelCreate();
     } else if (action === "inspect-part" && state.course) {
       const partId = String(node.dataset.partId || "");
       if (!state.authoringPlan?.plan.parts.some((part) => part.id === partId)) return;
@@ -3607,6 +3778,7 @@ export function createCourseAuthoringSurface({
         : [];
       openInspectionContentEditor({ entityPath });
     } else if (action === "open-grant") {
+      if (state.peopleBusy || state.pendingPeopleCommand && state.pendingPeopleCommand.draft.operation !== "grant_access") return;
       clearPeopleSearch();
       if (state.pendingPeopleCommand?.draft?.operation !== "grant_access") {
         state.pendingPeopleCommand = null;
@@ -3619,6 +3791,7 @@ export function createCourseAuthoringSurface({
       state.peopleFailure = "";
       render({ focus: "#course-authoring-access-handle" });
     } else if (action === "cancel-grant") {
+      if (state.peopleBusy || state.pendingPeopleCommand?.draft?.operation === "set_copy_permission") return;
       clearPeopleSearch();
       state.grantOpen = false;
       state.grantDraftHandle = "";
@@ -3634,11 +3807,52 @@ export function createCourseAuthoringSurface({
       input.value = `@${selected.handle}`;
       input.focus();
       paintPeopleSearch();
-    } else if (action === "revoke-access" && state.course && !state.peopleBusy) {
+    } else if (action === "set-copy-permission" && state.course &&
+        canAccessPlanning(state.course) && !state.peopleBusy && !state.peopleLoading) {
+      const person = state.people?.people.find((candidate) => candidate.userId === node.dataset.userId);
+      if (!person?.handle) return;
+      const pending = state.pendingPeopleCommand;
+      if (pending && (pending.draft.operation !== "set_copy_permission" ||
+          pending.draft.userId !== person.userId) || state.peopleFailure && !pending) return;
+      const courseId = state.course.courseId;
+      const draft = pending?.draft || { operation: "set_copy_permission", courseId,
+        userId: person.userId, handle: person.handle, canCopy: !person.canCopy };
+      const { userId, handle, canCopy } = draft;
+      openActionConfirmation({
+        message: canCopy
+          ? `Permitir que @${handle} copie o curso e os arquivos incluídos para um curso privado independente? A pessoa poderá editar a própria cópia, sem editar este original. Cópias já criadas permanecem com ela mesmo se você revogar esta permissão ou o acesso depois.`
+          : `Revogar a permissão de cópia de @${handle}? A pessoa continuará com acesso ao Estudo, sem editar este original. Cópias independentes já criadas e seus arquivos permanecem com ela.`,
+        confirmLabel: canCopy ? "Permitir cópia" : "Revogar permissão de cópia",
+        tone: canCopy ? "primary" : "danger",
+        icon: "copy",
+        execute: () => runPeopleCommand({ draft,
+          request: { courseId, userId, handle, canCopy, confirmed: true },
+          method: "grantCourseAccess", startedMessage: "Salvando permissão de cópia…",
+          successMessage: canCopy ? `Cópia permitida para @${handle}.` :
+            `Permissão de cópia revogada; o acesso ao Estudo de @${handle} foi preservado.`,
+          returnFocus: `[data-course-authoring-action="set-copy-permission"][data-user-id="${userId}"]`
+        })
+      });
+    } else if (action === "cancel-copy-permission" && state.course && !state.peopleBusy &&
+        state.pendingPeopleCommand?.draft?.operation === "set_copy_permission") {
+      const { userId } = state.pendingPeopleCommand.draft;
+      const courseId = state.course.courseId;
+      openActionConfirmation({
+        message: "Encerrar a recuperação deste pedido e reler os acessos? A alteração pode já ter sido aplicada. Encerrar não desfaz a permissão nem apaga cópias existentes.",
+        confirmLabel: "Encerrar e reler", tone: "secondary", icon: "remove-state",
+        execute: async () => {
+          state.pendingPeopleCommand = null;
+          await loadPeople(courseId);
+          render({ focus: `[data-course-authoring-action="set-copy-permission"][data-user-id="${userId}"]` });
+        }
+      });
+    } else if (action === "revoke-access" && state.course && !state.peopleBusy &&
+        state.pendingPeopleCommand?.draft?.operation !== "set_copy_permission") {
       const userId = String(node.dataset.userId || "");
       const displayName = String(node.dataset.displayName || "esta pessoa");
       const courseId = state.course.courseId;
       const draft = { operation: "revoke_access", courseId, userId };
+      if (state.pendingPeopleCommand && !pendingWriteMatches(state.pendingPeopleCommand, draft)) return;
       if (!pendingWriteMatches(state.pendingPeopleCommand, draft)) {
         state.pendingPeopleCommand = null;
       }

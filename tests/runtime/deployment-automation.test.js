@@ -477,7 +477,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260905125617");
+  assert.equal(manifest.schemaRevision, "20260905162000");
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), false);
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v3"), true);
   assert.equal(manifest.requiredFeatures.includes("course-curricular-map-v1"), true);
@@ -494,7 +494,10 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("course-study-unit-inspection-v2"), true);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-configuration-v2"), false);
   assert.equal(manifest.requiredFeatures.includes("course-authoring-configuration-v3"), true);
-  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v3"), true);
+  assert.equal(manifest.requiredFeatures.includes("course-authoring-analytics-v3"), false);
+  for (const feature of ["course-authoring-analytics-v4", "course-independent-copy-v1", "course-authoring-comparison-v1", "course-authoring-export-v1"]) {
+    assert.equal(manifest.requiredFeatures.includes(feature), true);
+  }
   assert.equal(manifest.requiredFeatures.includes("authoring-preference-profiles-v1"), true);
   assert.equal(
     manifest.requiredFeatures.includes("course-anchored-annotations-atomic-create-v1"),
@@ -552,8 +555,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260905125617_reorganize_authoring_parts.sql",
-    revision: "20260905125617"
+    fileName: "20260905162000_parameter_settings_groups.sql",
+    revision: "20260905162000"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
@@ -942,7 +945,7 @@ test("Android expõe callback móvel e salvamento textual local restrito", () =>
   assert.match(activity, /public void finishApp\(\)/u);
   assert.match(activity, /public boolean saveTextFile\(String content, String fileName, String mimeTypeValue\)/u);
   assert.match(activity, /Intent\.ACTION_CREATE_DOCUMENT/u);
-  assert.match(activity, /MAX_TEXT_EXPORT_BYTES\s*=\s*8 \* 1024 \* 1024/u);
+  assert.match(activity, /MAX_TEXT_EXPORT_BYTES\s*=\s*32 \* 1024 \* 1024/u);
   assert.match(activity, /MAX_TEXT_EXPORT_FILE_NAME_LENGTH\s*=\s*160/u);
   assert.match(activity, /Pattern\.compile\("\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*"\)/u);
   assert.match(activity, /value\.contains\("\.\."\)/u);
@@ -955,7 +958,7 @@ test("Android expõe callback móvel e salvamento textual local restrito", () =>
   assert.match(activity, /restorePendingTextExport\(savedInstanceState\)/u);
   assert.match(activity, /new FileInputStream\(pending\.source\)/u);
   assert.match(activity, /finally \{\s*deletePendingTextExport\(pending\)/u);
-  assert.match(strings, /text_export_too_large[^>]*>[^<]*8 MiB/u);
+  assert.match(strings, /text_export_too_large[^>]*>[^<]*32 MiB/u);
   assert.doesNotMatch(manifest, /android\.intent\.action\.SEND/u);
   assert.doesNotMatch(manifest, /READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE/u);
   assert.doesNotMatch(activity, /saveExportFile|receiveSharedJson|runtimeReady/u);

@@ -151,7 +151,7 @@ function renderCoursePreview({
     '%" role="progressbar" aria-label="Progresso de ' + escapeHtml(title) +
     '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
     String(percentage) + '"></div>' +
-    '<div class="home-course-preview-copy">' +
+    '<div class="home-course-preview-copy" tabindex="0" role="region" aria-label="Descrição do curso">' +
     '<div class="home-course-title-row"><p class="home-course-ownership" aria-label="' +
     escapeHtml(ownershipLabel) + '">' +
     renderUiIcon(owned ? "key" : publicCourse ? "study" : "account-add", "home-course-origin-icon") +
@@ -173,6 +173,10 @@ function renderCoursePreview({
     renderUiIcon("more", "home-tab-icon") + '</button>' +
     '<div class="home-course-lifecycle-menu" id="home-course-actions-menu" popover="auto" role="menu"' +
     ' aria-label="Ações deste curso">' +
+    (course.canCopy === true && !offline
+      ? '<button type="button" role="menuitem" data-action="copy-course" data-course-id="' +
+        escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu" popovertargetaction="hide">' +
+        renderUiIcon("copy", "home-tab-icon") + '<span>Copiar curso</span></button>' : "") +
     (completed > 0
       ? '<button type="button" role="menuitem" data-action="reset-course-progress" data-course-id="' +
         escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu"' +

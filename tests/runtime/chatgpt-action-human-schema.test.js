@@ -43,6 +43,9 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 });
 
 const samples = {
+  copiar_curso: { curso: "Redes para iniciantes", titulo: "Minha cópia" },
+  comparar_cursos: { esquerda: { curso: "Redes para iniciantes" }, direita: { curso: "Minha cópia" } },
+  exportar_autoria: { recorte: { curso: "Redes para iniciantes" } },
   guardar_audio: { curso: "Fonética", [HUMAN_ACTION_FILE_FIELD]: ["file-reference"] },
   consultar_audios: { curso: "Fonética", pagina: 1 },
   consultar_perfis: {},
@@ -210,7 +213,7 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.8.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.9.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -338,7 +341,7 @@ test("Actions documenta context como memória de continuação e não como fala"
   );
 });
 
-test("os 24 inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
+test("os 27 inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   for (const task of actionTools) {
     const validate = ajv.compile(task.inputSchema);
@@ -565,8 +568,8 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   }
   // Orçamentos internos do artefato; a documentação não fixa esse teto para o
   // editor. O limite oficial <100.000 refere-se a cada payload de chamada.
-  assert.ok(openApiText.length < 42_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 96_000);
+  assert.ok(openApiText.length < 44_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 98_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 
