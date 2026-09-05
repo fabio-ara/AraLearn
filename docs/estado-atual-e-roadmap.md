@@ -4,8 +4,9 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Identidade e acesso revisados em **2026-09-05**, com provas locais de API, banco
-e políticas. Implantação e clientes hospedados exigem verificação própria.
+Catálogos e capacidades conferidos em **2026-09-05** no runtime, com provas
+locais de API, banco e políticas. Implementação disponível não significa entrega
+hospedada verificada; os clientes externos e a publicação exigem provas próprias.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -15,9 +16,9 @@ e políticas. Implantação e clientes hospedados exigem verificação própria.
 | Escolher identificador e compartilhar | sim | sim | titular do perfil; proprietário do curso | local | sim | sim | produto | identificador único; grant confirma a pessoa selecionada |
 | Disponibilizar curso público | sim | para publicar e primeiro acesso | proprietário publica; visitante estuda | local | sim | sim | produto | confirmação e política de arquivos explícitas; bucket privado |
 | Planejar, materializar e revisar curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
-| Usar Assistência por IA | sim | sim | pessoa autorizada no alvo | sim | sim | sim | produto | exige proposta aceita, contratos válidos e gravação explícita |
-| Criar por MCP | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | dezessete tarefas humanas; não inclui perfil ou manutenção |
-| Criar por GPT com Actions | sim | sim | proprietário com OAuth válido | sim | sim | sim | produto | canal OpenAPI distinto do MCP |
+| Usar Assistência por IA | sim | sim | proprietário | interface e contratos locais; serviços pendentes | condicionado ao provedor | sim | produto | prévia, aplicação ao rascunho e gravação são explícitas; não há comprovação corrente de todos os provedores |
+| Criar por MCP | sim | sim | proprietário ou pessoa com permissão específica de cópia | protocolo local | no recorte local | sim | produto | tarefas do catálogo compartilhado; inclui perfis de autoria, mas não perfil pessoal ou manutenção; cliente ChatGPT hospedado pendente |
+| Criar por GPT com Actions | sim | sim | proprietário ou pessoa com permissão específica de cópia | protocolo local | no recorte local | sim | produto | mesmas tarefas com OAuth próprio; importação e conversa no cliente hospedado pendentes |
 | Inspecionar unidades focadas no chat ou na autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | a resposta traz um endereço direto; a autoria abre a mesma unidade em foco |
 | Excluir curso próprio ou sair de curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
 | Executar Manutenção | sim | sim | identidade administrativa | sim | sim | sim | operação | inventário classificado e revalidação por objeto; sem consulta genérica |
@@ -74,13 +75,20 @@ microssequências existentes apenas como lotes operacionais. A produção
 confirmada aparece como unidades de estudo em Conteúdo, sem expor passos
 técnicos.
 
-Quatro parâmetros pedagógicos, dois alvos editoriais quantitativos, orientações
-e política de componentes podem ser definidos no curso ou em um escopo didático
-mais específico. No estado `default`, o GPT precisa calibrar automaticamente o
-desenho para cada microssequência ou unidade pelo conteúdo e pela função; uma
-condição fixada pelo pesquisador prevalece. Os alvos de palavras são flexíveis,
-não limites, e não autorizam compressão. A interface mostra de onde veio cada
-decisão e o valor efetivamente aplicado.
+O [catálogo canônico de parâmetros](../src/domain/courseDesignParameters.js)
+reúne doze decisões, na versão 1.2.1, em Explicações, Prática, Leitura e estilo,
+Conversa e Produção. Cada decisão admite os escopos definidos pelo catálogo;
+granularidade de parte, lote e frequência de pausa são independentes e têm
+escopo de curso. Orientações editoriais e política de componentes complementam
+essas decisões.
+
+Herdar conserva a intenção do escopo anterior. O modo automático pode ainda não
+ter um valor escolhido; a produção precisa calibrá-lo pelo público, conteúdo e
+função e registrar valor e motivo. Uma escolha fixa não é substituída pelo GPT,
+e uma condição de pesquisa conflitante bloqueia a aplicação. Perfis guardam
+preferências por cópia, com prévia das exceções antes de aplicar. Os alvos de
+palavras são flexíveis, não limites, e não autorizam compressão. A interface
+mostra de onde veio cada decisão e o valor efetivamente aplicado.
 
 Fontes e Âncoras possuem estado corrente; o bucket de PDFs é privado. O autor
 define disponibilidade de arquivos com exceções por fonte e por PDF. Uma
@@ -95,10 +103,11 @@ sem inferir eficácia ou causalidade.
 ## Assistência por IA
 
 Assistência por IA é uma sessão contextual, não uma chamada isolada para trocar
-texto. A pessoa conversa, e cada resposta mantém uma proposta concreta que pode
-ser discutida em novos turnos. Somente o aceite explícito autoriza gerar,
-validar e aplicar operações tipadas ao rascunho. O modelo recebe contexto
-somente leitura suficiente para o alvo.
+texto. A pessoa conversa sobre uma proposta que pode ser discutida em novos
+turnos. **Preparar prévia** gera e valida a proposta sem alterar o rascunho;
+**Aplicar ao rascunho** exige outra ação explícita. Gravar no curso continua
+sendo uma etapa própria. O modelo recebe contexto somente leitura suficiente
+para o alvo.
 
 A sessão pode trabalhar com:
 
@@ -115,20 +124,23 @@ conteúdo corrente.
 A pessoa escolhe OpenAI, Gemini ou DeepSeek e informa uma chave mantida somente
 na memória da sessão. O AraLearn não grava a conversa como conteúdo nem expõe
 endpoint ou relay no uso normal. Aplicar uma prévia ainda exige uma
-gravação explícita e as cercas de versão do curso.
+gravação explícita e as cercas de versão do curso. As provas locais da interface
+e dos adaptadores não comprovam disponibilidade de cada serviço. A validação
+real dos provedores com credenciais válidas permanece pendente.
 
 ## Autoria conversacional
 
 O AraLearn oferece dois canais conversacionais distintos.
 
-O **Model Context Protocol (MCP)** conecta um cliente compatível às dezessete
-tarefas humanas de curso. Ele permite retomar, planejar, materializar, configurar,
-tratar Observações, revisar, operar fontes e consultar componentes didáticos.
+O **Model Context Protocol (MCP)** conecta um cliente compatível ao
+[catálogo compartilhado de tarefas humanas](autoria-mcp.md#tarefas-disponíveis).
+Ele permite retomar, planejar, materializar, configurar, reutilizar perfis de
+autoria, tratar Observações, revisar, operar fontes e áudios, consultar
+componentes, copiar cursos autorizados e comparar ou exportar recortes próprios.
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
-autorizadas. Ele projeta as mesmas dezessete tarefas, com OAuth confidencial
-próprio.
+autorizadas. Ele projeta o mesmo catálogo, com OAuth confidencial próprio.
 Actions não é um nome alternativo para
 MCP e não compartilha sua sessão ou seu protocolo.
 
@@ -140,9 +152,15 @@ quando sua função no curso é clara ou confirmada; depois de incorporado, pode
 recuperado pelo curso em outra sessão sem novo envio. Análise declarada como
 temporária não incorpora o documento.
 
-Perfil, acesso, ciclo de vida de curso e Manutenção permanecem ações do
-aplicativo autenticado. Elas não são expostas como ferramentas públicas só para
-aumentar o alcance de um chat.
+Leituras com continuação são parciais: o cliente percorre o mesmo recorte sem
+substituir trechos por resumos. Fragmentos conservam o JSON literal e só permitem
+declarar leitura completa quando a continuação termina. As provas de protocolo
+local não substituem a renovação do MCP e a importação de Actions em conversas
+novas no cliente hospedado.
+
+Perfil pessoal, concessão e revogação de acesso, exclusão de curso ou conta e
+Manutenção permanecem ações do aplicativo autenticado. Perfis de autoria e
+cópia autorizada são tarefas distintas, presentes no catálogo conversacional.
 
 ## Dados, acesso e ciclo de vida
 
@@ -176,7 +194,7 @@ telefones de 360, 390 e 430 pixels e em telas maiores, sem criar um painel
 paralelo de desktop.
 
 O servidor usa PostgreSQL para o curso vivo e suas relações, Storage privado
-para avatares e PDFs e IndexedDB no dispositivo para continuidade local. A
+para avatares, PDFs e áudios e IndexedDB no dispositivo para continuidade local. A
 [arquitetura](arquitetura.md), a [persistência](persistencia-relacional.md) e o
 capítulo sobre [Supabase](supabase.md) explicam esses mecanismos.
 

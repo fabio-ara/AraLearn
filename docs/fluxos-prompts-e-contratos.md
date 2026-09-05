@@ -39,6 +39,8 @@ A tabela organiza seus usos por fase; não mantém um segundo schema:
 | fontes | `consultar_fontes` | `manter_fonte`, `incorporar_pdf_como_fonte` |
 | representação | `consultar_componentes` | gravação ocorre junto da unidade |
 | biblioteca de áudio | `consultar_audios` | `guardar_audio` |
+| cópia independente | preparação pela própria tarefa | `copiar_curso`, com a confirmação opaca devolvida |
+| confronto e exportação | `comparar_cursos`, `exportar_autoria` | nenhuma |
 
 Perfil da pessoa, avatar, acesso direto, exclusão de conta e manutenção permanecem ações
 da aplicação autenticada.
@@ -60,6 +62,13 @@ Cada fase recebe o menor recorte que sustenta sua decisão:
 - a preparação de revisão inclui o percurso potencialmente afetado;
 - fontes trazem página do catálogo, fonte focal ou proveniência da unidade;
 - componentes trazem somente candidatos pertinentes à função instrucional.
+
+Comparação exige dois recortes próprios e confronta também o inventário completo
+dos cursos; não infere equivalência pedagógica. Exportação reúne artefato literal
+e leitura autoral. Cópia aceita origem própria ou permissão explícita do dono,
+cria um curso privado da pessoa solicitante e conserva arquivos autorizados.
+A preparação devolve uma confirmação opaca; a chamada confirmada e suas
+repetições usam o mesmo valor, sem criar outra intenção após resposta perdida.
 
 O contexto completo pode permanecer estruturado sem ser repetido como texto
 longo. Links levam ao mapa, lote, unidade, fonte ou área pertinente.

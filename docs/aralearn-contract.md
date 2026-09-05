@@ -210,8 +210,10 @@ contas, sem enviar estado pessoal à nuvem nem registrar observações.
 
 ## Catálogo humano de Autoria
 
-MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, versão
-2.3.4. O catálogo possui dezessete tarefas: oito leituras e nove escritas.
+MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, definido
+em [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
+A fonte canônica identifica a versão corrente e classifica cada tarefa como
+leitura ou escrita.
 
 Cada definição contém:
 

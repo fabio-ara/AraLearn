@@ -190,19 +190,20 @@ As origens mínimas da aplicação são o servidor local, GitHub Pages e
 `https://appassets.androidplatform.net`. Uma instalação alternativa acrescenta
 somente suas origens HTTPS exatas. Actions admite também apenas
 `https://chatgpt.com` e `https://chat.openai.com`. O script verifica o preflight
-da API e de cada origem oficial de Actions, o OAuth do MCP hospedado e o fluxo
-autenticado de PDF antes de encerrar.
+da API e de cada origem oficial de Actions, além do OAuth, da inicialização e
+da descoberta de ferramentas do MCP hospedado. A jornada autenticada de PDF
+pertence à prova de integração do corte; esse script não a executa.
 
 O callback de Actions precisa usar HTTPS, um desses dois hosts e o formato
 `/aip/g-.../oauth/callback`. O redirect efetivamente apresentado pelo cliente é
 registrado e precisa coincidir nas etapas seguintes do OAuth; o caminho não é
 reconstruído a partir de outro identificador do GPT.
 
-O manifesto corrente termina em
-`20260903193000_add_open_response_component.sql`. A revisão anterior estabelece o mapa
-curricular global anterior à produção, conserva partes como lotes operacionais
-e registra o repertório e a configuração efetivamente aplicados; a corrente
-acrescenta resposta aberta e migra as políticas existentes para o catálogo novo. A migration
+O manifesto em `supabase/runtime-manifest.json` identifica a revisão e o conjunto
+exatos de capacidades exigidos pelo cliente. Confronte essa fonte com as migrations
+aplicadas e com o manifesto remoto; não substitua a comparação por uma revisão
+antiga citada em instruções de instalação. A [história do schema](schema-change-log.md)
+explica os cuidados de cada mudança. A migration
 `20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
 autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
 quando o próprio documento mudar; uma correção interna do vínculo OAuth não
@@ -327,8 +328,11 @@ o APK já preparado na Release em rascunho. Ela completa somente os assets
 ausentes, verifica os existentes e não substitui tag ou asset divergente. Uma
 tag correta sem Release permite criar o rascunho faltante. O rascunho permanece
 visível apenas para quem tem acesso enquanto alguma parte ainda falha; não
-constitui conclusão da publicação. Reexecutar somente jobs que falharam também
-preserva as provas e artefatos já produzidos no mesmo workflow.
+constitui conclusão da publicação. Essa retomada é do workflow de promoção.
+As provas da validação integral precisam pertencer à mesma tentativa: repetir
+somente um job de validação não reúne automaticamente provas de tentativas
+diferentes. Uma nova candidata deve produzir o conjunto exigido e seus
+artefatos vinculados antes de ser promovida.
 
 A referência observada em 04/09/2026 é a [execução integral
 33846492540](https://github.com/fabio-ara/AraLearn/actions/runs/33846492540):

@@ -963,7 +963,7 @@
         "tests/runtime/course-action-server.test.js",
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
-      "justification": "Aplicativo, MCP e Actions usam os mesmos casos de uso humanos sobre o Curso vivo. MCP mantém seu transporte e principal OAuth; Actions projeta as mesmas dezessete tarefas em HTTP/OpenAPI, sem expor o mecanismo interno nem criar segundo motor de autoria."
+      "justification": "Aplicativo, MCP e Actions usam os mesmos casos de uso humanos sobre o Curso vivo. MCP mantém seu transporte e principal OAuth; Actions projeta as mesmas tarefas do catálogo compartilhado em HTTP/OpenAPI, sem expor o mecanismo interno nem criar segundo motor de autoria."
     },
     {
       "id": "course-independent-copy",

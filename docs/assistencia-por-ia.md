@@ -18,7 +18,7 @@ O AraLearn oferece três integrações relacionadas, mas distintas:
   lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
 - **Model Context Protocol (MCP)** conecta um cliente compatível às ferramentas
   canônicas de curso;
-- **Actions/OpenAPI** conecta um GPT personalizado às mesmas dezessete tarefas
+- **Actions/OpenAPI** conecta um GPT personalizado às mesmas tarefas
   humanas projetadas como caminhos HTTP.
 
 Os três caminhos chegam às mesmas regras de curso. Eles não compartilham
@@ -146,7 +146,7 @@ com a conta e o modelo de um serviço real.
 
 ## MCP e Actions
 
-MCP e Actions expõem as mesmas dezessete tarefas humanas. O catálogo separa
+MCP e Actions expõem as mesmas tarefas humanas do catálogo compartilhado. Ele separa
 leituras de escritas e distingue mapa curricular, produção em lotes,
 materialização, configuração, observações, revisão, fontes e componentes.
 

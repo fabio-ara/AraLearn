@@ -27,7 +27,7 @@ Um curso reúne:
 - repertório de unidades de análise (`AnalysisUnit` no código) e requisitos de evidência;
 - parâmetros tipados de conteúdo, prática, conversa e cadência, com direção
   editorial separada;
-- fontes, âncoras, PDFs e atribuições;
+- fontes, âncoras, PDFs, áudios e vínculos de proveniência;
 - observações e estado necessário à revisão;
 - estado pessoal de estudo por pessoa.
 
@@ -47,6 +47,12 @@ enviar suas próprias observações; visitantes estudam cursos públicos e conse
 progresso e marcas no dispositivo. O catálogo compacto também inclui cursos
 públicos, sem criar uma autoridade de conteúdo separada.
 
+Uma ação explícita pode copiar um curso próprio ou um curso cujo proprietário
+concedeu permissão de cópia. O resultado tem nova identidade e pertence à pessoa
+solicitante; começa privado, com arquivos restritos. Estrutura, inventário,
+conteúdo, configuração, fontes e arquivos são preservados, enquanto acessos e
+estado pessoal permanecem na origem. Leitura pública não concede essa permissão.
+
 Cópias próprias anteriores conservam identidade, conteúdo e propriedade. Sua
 origem útil migra para metadados privados do curso-alvo. Um rascunho antigo só é
 reconciliado com um alvo comprovado; a recuperação não reaplica a edição nem
@@ -63,7 +69,7 @@ permite localizar, ler e revisar o resultado no contexto.
 
 ## Um catálogo humano para MCP e Actions
 
-MCP e Actions são transportes distintos sobre dezessete tarefas humanas. O
+MCP e Actions são transportes distintos sobre o mesmo catálogo de tarefas humanas. O
 catálogo `courseHumanTasks.js` define nome, descrição, schema, efeito e hints. O
 MCP publica esse catálogo diretamente. O gerador OpenAPI o projeta para Actions
 sem manter uma segunda definição.
@@ -72,7 +78,9 @@ As leituras retomam curso, consultam planejamento, preparam materialização,
 consultam configuração e observações, preparam revisão e consultam fontes e
 componentes. As escritas criam curso, salvam o mapa curricular, definem e
 materializam partes, ajustam configuração, registram observações, aplicam
-correções, mantêm fontes e incorporam PDF.
+correções, mantêm fontes e incorporam PDF e áudio. Perfis guardam preferências
+reutilizáveis. Cópia, comparação e exportação usam os mesmos casos de uso da
+aplicação, com autorização específica para cada operação.
 
 Argumentos públicos usam título, posição e referência humana. A camada
 confiável em `courseHumanTaskExecutor.js` resolve identidades e versões, produz
@@ -130,8 +138,10 @@ unidades futuras. Partes só podem agrupar microssequências já pertencentes ao
 mapa aprovado. Elas descrevem lotes de planejamento focal, produção e revisão,
 mas não acrescentam nível curricular.
 
-Depois da progressão local aprovada, a preparação reúne somente o lote, sua
-configuração e o repertório necessário. A materialização grava as unidades de
+Com mapa aprovado e percurso autorizado, a preparação reúne somente o lote, sua
+configuração e o repertório necessário. O tamanho do lote não exige uma nova
+confirmação por si só; uma decisão material ainda aberta continua exigindo
+intervenção. A materialização grava as unidades de
 estudo e atualiza, por derivação do estado corrente, onde cada ideia foi
 introduzida, usada ou retomada.
 
@@ -145,11 +155,14 @@ integrações e projeção SQL. Parâmetros e direção editorial possuem atribu
 corrente por escopo. Limpar uma definição restaura herança e remove a atribuição
 local; não cria uma linha histórica de “limpeza”.
 
-Quando uma unidade de estudo é produzida ou revisada, ela guarda o recorte de desenho
+Quando uma unidade de estudo é materializada, ela guarda o recorte de desenho
 efetivamente aplicado: ideias e requisitos pertinentes, valores pedagógicos,
 alvos editoriais, direção editorial, componentes e oportunidades de prática.
 Esse registro focal permite inspeção e Analytics sem conservar contexto de
-execução da parte inteira.
+execução da parte inteira. Uma edição focal conserva esse snapshot histórico
+literal. A aplicação só continua corrente quando conteúdo e hierarquia que a
+sustentavam permanecem iguais, descontada a mudança de título; uma mudança
+substantiva retira essa alegação corrente sem fabricar uma nova data de análise.
 
 Ideias introduzidas são persistidas separadamente das ideias estabelecidas que
 a unidade apenas utiliza. Retomadas são derivadas das explicações de ideias já
@@ -179,18 +192,26 @@ convertem automaticamente em tabelas, flags ou pipelines.
 
 Cada curso possui revisão crescente; objetos editáveis também possuem uma
 versão corrente quando necessário. Uma escrita informa o estado que leu. Se o
-objeto mudou, a camada confiável relê e reconstrói a mesma intenção ou devolve
-uma decisão humana quando isso não for seguro.
+objeto mudou, o consumidor trata o conflito sem promover silenciosamente a
+revisão de um rascunho. Uma reconstrução automática só cabe quando conserva a
+intenção verificável; caso contrário, a edição permanece disponível para revisão.
 
 Um recibo temporário por pedido permite recuperar resposta perdida sem duplicar
 efeito. Recibos expirados são removidos pela retenção. Eles não formam um
-histórico universal de mudanças.
+histórico universal de mudanças. A cópia independente também grava no alvo sua
+origem e identidade de pedido. Essa prova permite recuperar a mesma cópia após
+expirar o recibo ou perder acesso à origem. Sem prova e fora da janela admitida,
+o pedido não cria outro curso; consulte [persistência](persistencia-relacional.md#cópia-independente).
 
-## Fontes, âncoras e PDFs
+## Fontes, âncoras e arquivos
 
 Fonte e âncora são estado corrente. A versão serve à concorrência e aos deep
 links; versões antigas não constituem uma biblioteca paralela. Uma atribuição
-liga a fonte e suas âncoras a um item do plano ou unidade de estudo corrente.
+liga fontes e âncoras a um item do plano ou unidade de estudo corrente. Cada
+vínculo possui identidade, papéis explícitos e ocorrências opcionais em folhas
+textuais do catálogo. Trecho ambíguo conserva o vínculo e fica pendente de
+revisão; o sistema não inventa outra posição. Citação manual preserva seu texto;
+a citação gerada usa metadados estruturados e o estilo escolhido no curso.
 
 O bucket privado `course-source-pdfs` contém os bytes. O banco conserva o
 descritor e o vínculo ativo ou removido. A ingestão calcula e verifica SHA-256,
@@ -201,6 +222,13 @@ A remoção produz um tombstone e uma intenção curta. Depois da transação, o
 adaptador reivindica a intenção, revalida que nenhum vínculo ativo usa o objeto,
 remove-o pela Storage API e confirma a conclusão. Reanexar o mesmo conteúdo
 reativa o vínculo após nova verificação.
+
+Áudio usa `course-media`, com WAV PCM ou MP3, descritor lógico e referência na
+unidade. PDFs e áudios compartilham a cota do curso. A cópia independente pode
+referenciar os mesmos bytes imutáveis: autorização depende do curso consultado,
+não do prefixo físico do objeto. Exclusão de curso, conta e órfão confere todas
+as referências e reservas antes de remover o arquivo. Detalhes ficam em
+[Supabase](supabase.md#storage-bytes-privados-e-vínculo-relacional).
 
 ## Observações e revisão
 
@@ -222,15 +250,21 @@ observações abertas, parâmetros definidos e a origem observável da criação
 última revisão das unidades.
 
 O snapshot não usa telemetria de atenção, conversa ou rastreamento da execução.
-O JSON baixado contém os mesmos números da tela e não representa uma cópia
-completa do curso.
+A exportação JSON combina a leitura autoral com o documento literal do curso.
+Ela não inclui progresso, contas, credenciais ou bytes dos arquivos. A comparação
+confronta inventários completos e recortes selecionados, conserva a distinção
+entre parâmetros solicitados e aplicados e informa ausências. Igualdade de
+contagens ou declarações não comprova equivalência pedagógica.
 
 ## Réplica local e funcionamento sem rede
 
 IndexedDB conserva composição validada, progresso, posição, marcas para rever,
 Observações próprias e escritas delimitadas que ainda precisam de confirmação.
-`BroadcastChannel` informa outras abas sobre mudanças; foco, visibilidade e
-retorno da conexão provocam releitura.
+`BroadcastChannel` informa outras abas sobre mudanças. No modo automático, foco,
+visibilidade e retorno da conexão podem provocar releitura. O modo manual suspende
+atualizações de fundo de conteúdo e filas pessoais; a nuvem executa a sincronização
+solicitada. Escrita explícita e verificação de acesso continuam sujeitas à rede.
+Rascunhos e conflitos não são descartados para aplicar uma atualização.
 
 O servidor continua sendo a autoridade de propriedade e acesso. Um curso
 revogado deixa de abrir depois da validação conectada, mesmo que uma cópia local
@@ -247,11 +281,12 @@ o conteúdo.
 O build sincroniza o runtime necessário às Edge Functions e impede que versões
 de navegador e servidor divirjam silenciosamente.
 
-O registro já delega contratos e apresentação aos pacotes, mas a separação não
-é completa: o envelope ainda verifica nominalmente a combinação de pergunta de
-escolha com parágrafo, e o editor conhece lacunas e ordenação. A evolução
-transfere essas regras específicas ao contrato do pacote, conservando sua
-validação e edição. Composição, posições e ciclo de vida continuam comuns.
+O registro delega validação das relações da unidade, preparação de conteúdo,
+interação de resposta e reconciliação de edição aos contratos dos pacotes.
+O editor trabalha com folhas textuais declaradas; não escolhe regras pelo nome
+do pacote. Composição, posições, slots e capacidades do host continuam comuns.
+Uma extensão compatível acrescenta registro e artefatos próprios; uma capacidade
+nova do host exige contrato e consumidor explícitos, não código livre no curso.
 
 ## Segurança por fronteira
 
@@ -274,7 +309,8 @@ fallback para schema anterior no cliente candidato.
 Dump do PostgreSQL preserva dados relacionais e metadados, mas não os bytes do
 Storage. Recuperação completa exige também backup dos objetos. O ensaio
 `test:backup-restore:local` restaura uma fixture integrada numa instância
-descartável, aplica a migration seguinte e confere o estado útil. O smoke
+descartável sem rede, confere o corte histórico e aplica a cadeia posterior
+até o manifesto corrente, verificando estado útil e leitores atuais. O smoke
 `test:storage:lifecycle:local` exerce os bytes pela Storage API.
 
 ## Mapa do código

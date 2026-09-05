@@ -13,15 +13,16 @@ tem responsabilidade e fronteira próprias:
 | [Storage](https://supabase.com/docs/guides/storage) | objetos binários privados, como avatar e PDF | bytes; vínculo e acesso continuam no banco |
 | [Edge Functions](https://supabase.com/docs/guides/functions) | fronteiras HTTP da aplicação, do MCP e de Actions | transporte e orquestração; regras finais continuam nos contratos de domínio e SQL |
 
-Realtime está desativado. Atualização entre abas usa `BroadcastChannel`, e a
-reconciliação remota ocorre por leituras explícitas, eventos de foco,
-visibilidade e retorno da conexão.
+Realtime está desativado. Atualização entre abas usa `BroadcastChannel`. No modo
+automático, foco, visibilidade e retorno da conexão permitem reconciliação; no
+manual, conteúdo e filas pessoais aguardam a sincronização explícita. As
+verificações de sessão, acesso e revogação permanecem ativas.
 
 ## PostgreSQL, esquemas e autorização
 
 O banco conserva o curso vivo, seu mapa curricular, partes operacionais,
 repertório de unidades de análise, requisitos de evidência, parâmetros, direção
-editorial, fontes, âncoras, vínculos de PDF, observações, acesso e estado pessoal. Cada unidade de estudo
+editorial, fontes, âncoras, vínculos de PDF, áudios, observações, acesso e estado pessoal. Cada unidade de estudo
 guarda o recorte de desenho que efetivamente recebeu. Analytics deriva números
 dessas autoridades correntes; não mantém uma história da execução.
 
@@ -101,7 +102,7 @@ somente na memória da sessão, não no Supabase nem no artefato público.
 
 ## Storage: bytes privados e vínculo relacional
 
-Os buckets `person-avatars` e `course-source-pdfs` são privados. O Storage
+Os buckets `person-avatars`, `course-source-pdfs` e `course-media` são privados. O Storage
 guarda bytes; o PostgreSQL conserva caminho, resumo criptográfico, tamanho,
 tipo e vínculo corrente com a fonte. Conhecer um caminho não concede leitura.
 [Políticas do Storage](https://supabase.com/docs/guides/storage/security/access-control)
@@ -123,21 +124,28 @@ A fonte e o vínculo são uma única mudança confirmada e, por isso, avançam a
 revisão do curso uma vez.
 
 Download é uma operação separada. Depois de verificar o vínculo ativo e a
-permissão de leitura do curso, a API emite URL assinada de curta duração. Cada PDF
-aceita até 20 MiB; PDFs e áudios compartilham a cota de 64 MiB de conteúdo único por curso.
+permissão de leitura do curso, a API emite URL assinada de curta duração. PDFs e
+áudios aceitam até 20 MiB por arquivo e compartilham a cota de 64 MiB de conteúdo
+único por curso. Áudio admite WAV PCM e MP3, é validado pelos bytes e precisa de
+referência lógica na unidade para download de Estudo. A biblioteca do autor não
+é exposta ao visitante. Configuração de voz não contém credenciais.
 
 Remover um PDF primeiro desativa o vínculo e cria uma intenção de exclusão. O
 serviço reivindica essa intenção, remove o objeto pela Storage API e confirma a
 conclusão. Se outro vínculo ativo usar os mesmos bytes, a remoção física não é
 autorizada. Reanexar o conteúdo reativa o vínculo e volta a verificar os bytes.
+Essa proteção considera também outras cópias e reservas de envio. Um caminho
+cujo curso de origem deixou de existir continua válido se outra cópia o utiliza;
+não é classificado como órfão apenas pelo prefixo. O áudio usa as mesmas
+fronteiras de revisão, intenção, objeto imutável e confirmação da limpeza.
 
 ## Edge Functions e autenticação no handler
 
 | Função | Entrada | Identidade aceita |
 | --- | --- | --- |
 | `aralearn-course-api` | aplicação web e Android | sessão AraLearn validada pelo handler |
-| `aralearn-authoring-mcp` | dezessete tarefas humanas pelo MCP | JWT OAuth minimizado do MCP |
-| `aralearn-authoring-action` | as mesmas dezessete tarefas projetadas em OpenAPI | access token opaco do OAuth de Actions |
+| `aralearn-authoring-mcp` | catálogo corrente de tarefas humanas pelo MCP | JWT OAuth minimizado do MCP |
+| `aralearn-authoring-action` | o mesmo catálogo projetado em OpenAPI | access token opaco do OAuth de Actions |
 
 As três funções usam `verify_jwt = false` na configuração. Isso não as torna
 anônimas. Cada handler precisa receber formatos que o verificador genérico da
@@ -182,8 +190,9 @@ npm run test:backup-restore:local
 ```
 
 A primeira percorre PDF ativo, removido, reativado e órfão, sempre pela Storage
-API. A segunda restaura um dump lógico numa instância descartável, aplica a
-migration corrente e compara o estado e a complexidade antes e depois.
+API. A segunda restaura uma fixture por dump lógico, verifica o corte histórico
+e continua por todas as migrations até o manifesto corrente. Compara estado
+útil e leitores atuais; a medição de redução técnica pertence ao corte histórico.
 
 ## Retenção e Manutenção
 
@@ -207,11 +216,15 @@ os bytes dos objetos. Uma recuperação completa precisa de dois conjuntos
 coerentes: dump do banco e cópia dos objetos privados. Essa separação é
 documentada pelo [Supabase](https://supabase.com/docs/guides/platform/backups).
 
-O ensaio local cria duas instâncias descartáveis. A primeira recebe uma fixture
+O ensaio local cria duas instâncias descartáveis sem rede. A primeira recebe uma fixture
 com curso, mapa, parte, desenho, unidade de estudo, fonte, âncora, PDF, observações e
 operações ainda abertas. Depois do dump, a segunda restaura o banco, aplica a
-migration de corte e confere o estado útil. Nenhuma delas modifica o projeto
-hospedado ou a stack usada como origem.
+migration de corte e toda a cadeia posterior até a revisão corrente. O relatório
+separa os checkpoints e confere a preservação do estado útil, os DTOs atuais e
+a ausência de migrations pendentes numa segunda seleção. Na preparação
+histórica, dados de Storage da stack atual não são importados: esse ensaio
+sintético não substitui um backup de desastre. Nenhuma instância modifica o
+projeto hospedado ou a stack usada como origem.
 
 Os objetos reais são exercitados separadamente pela Storage API. O relatório de
 restauração marca explicitamente que metadados restaurados não provam a presença
@@ -223,7 +236,9 @@ Antes de aplicar migrations, o procedimento vincula o destino, lista o
 histórico e executa `db push --dry-run`. O modo de aplicação exige confirmação
 literal, aplica sem seed nem reset, repete a lista e executa o analisador do
 banco. Se as funções forem publicadas, o script cadastra origens, implanta API,
-MCP e Actions e verifica CORS, OAuth hospedado e o fluxo de PDF.
+MCP e Actions e verifica CORS, OAuth e descoberta MCP hospedados. Downloads,
+escritas e clientes reais exigem a prova de integração do corte; o script de
+deploy não executa sozinho todas essas jornadas.
 
 Depois disso, `npm run deployment:verify-hosted` confronta o manifesto exigido
 pelos clientes com o backend. Uma falha exige diagnóstico do estado efetivo;

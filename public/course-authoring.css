@@ -1588,33 +1588,12 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   background: var(--action-primary-subtle);
 }
 
-.course-authoring-copy-help,
-.course-authoring-copy-recovery p {
+.course-authoring-copy-help {
   margin: 0 0 12px;
   color: var(--text-secondary);
   font-size: var(--type-xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
-}
-
-.course-authoring-copy-recovery {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--tap);
-  align-items: start;
-  gap: 8px;
-}
-
-.course-authoring-copy-recovery button {
-  width: var(--tap);
-  min-height: var(--tap);
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  color: var(--text-secondary);
-  background: var(--surface-raised);
-  cursor: pointer;
 }
 
 .course-authoring-person strong,
@@ -2374,35 +2353,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-profile-exception > span { min-width: 0; overflow-wrap: anywhere; }
 .course-profile-exception small { display: block; }
 
-.course-design-resolution {
-  min-width: 0;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 5px 12px;
-  margin: 9px 0 0;
-}
-
-.course-design-resolution > div {
-  min-width: 0;
-  display: flex;
-  gap: 4px;
-  font-size: 0.7rem;
-}
-
-.course-design-resolution dt {
-  color: var(--text-tertiary);
-}
-
-.course-design-resolution dd {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: var(--text-secondary);
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .course-design details {
   min-width: 0;
   margin-top: 9px;
@@ -2429,22 +2379,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-design details > summary.course-authoring-icon-action::-webkit-details-marker {
   display: none;
-}
-
-.course-design-parameter-explanation {
-  display: grid;
-  gap: 7px;
-  margin-bottom: 10px;
-  padding: 9px;
-  border-radius: var(--radius-control);
-  background: var(--surface-sunken);
-}
-
-.course-design-parameter-explanation p {
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-size: var(--type-xs);
-  line-height: var(--leading-normal);
 }
 
 .course-design-parameter-form,
@@ -4421,16 +4355,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-source-card > button:disabled {
   cursor: default;
   opacity: 0.72;
-}
-
-.course-source-card-icon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  color: var(--action-primary-hover);
-  background: var(--surface-sunken);
 }
 
 .course-source-card-copy {

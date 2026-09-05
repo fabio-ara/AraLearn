@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { pendingUpgradeMigrations } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = fs.readFileSync(path.join(
@@ -28,7 +29,7 @@ test("#274 restauração usa apenas contêineres e bancos descartáveis", () => 
   assert.doesNotMatch(script, /--linked|db reset|supabase stop/u);
 });
 
-test("#275 restauração aplica toda a cadeia final em ordem", () => {
+test("#307 restauração preserva o checkpoint histórico e continua até o manifesto corrente", () => {
   const cut = script.indexOf("20260902044404_cut_legacy_authoring_runtime.sql");
   const actionOrigin = script.indexOf(
     "20260902123759_drop_legacy_chat_openai_action_origin.sql"
@@ -62,7 +63,34 @@ test("#275 restauração aplica toda a cadeia final em ordem", () => {
   assert.match(script, /state\.migrationRevision, expectedManifestRevision/u);
   assert.match(script, /for \(const \[index, migration\] of resolved\.migrations\.entries\(\)\)/u);
   assert.match(script, /assertAfterState\(after\.state, migrationNames\.at\(-1\)/u);
-  assert.match(script, /aralearn\.backup-restore-upgrade-proof\.v2/u);
+  assert.match(script, /aralearn\.backup-restore-upgrade-proof\.v3/u);
+});
+
+test("#307 upgrade ordena todas as migrations pendentes e repetir a seleção não reaplica SQL", () => {
+  const first = "20260903025658_checkpoint.sql";
+  const middle = "20260905094108_preservation.sql";
+  const last = "20260905162000_current.sql";
+  const names = [last, first, middle];
+  assert.deepEqual(pendingUpgradeMigrations(names, first, "20260905162000"), [middle, last]);
+  assert.deepEqual(pendingUpgradeMigrations(names, first, "20260905162000", ["20260905162000"]), [middle]);
+  assert.deepEqual(pendingUpgradeMigrations(names, first, "20260905162000", [
+    "20260903025658", "20260905094108", "20260905162000"
+  ]), []);
+});
+
+test("#307 upgrade recusa manifesto divergente, origem ausente e histórias malformadas", () => {
+  const first = "20260903025658_checkpoint.sql";
+  const last = "20260905162000_current.sql";
+  for (const args of [
+    [[first, last], first, "20260903025658"],
+    [[first, last], first, "20260906162000"],
+    [[last], first, "20260905162000"],
+    [[first, last, last], first, "20260905162000"],
+    [[first, last, "20260905162000_duplicate.sql"], first, "20260905162000"],
+    [[first, "../../outside.sql"], first, "20260905162000"],
+    [[first, last], first, "20260905162000", ["20260906162000"]],
+    [[first, last], first, "20260905162000", [null]]
+  ]) assert.throws(() => pendingUpgradeMigrations(...args), TypeError);
 });
 
 test("#274 fixture cobre estado útil e resíduos encerrados para o corte", () => {

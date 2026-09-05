@@ -137,6 +137,23 @@ insert into private.course_authoring_part_materializations(
     '{"targets":[{"didacticMicrosequenceId":"micro-restore","instructionalAnalysisUnitIds":["74000000-0000-4000-8000-000000000012"],"evidenceRequirementIds":["74000000-0000-4000-8000-000000000013"],"parameters":[{"parameterId":"new_analysis_unit_ceiling_per_expository_study_unit","value":1,"origin":"research_condition"}],"guidanceRevisionIds":["74000000-0000-4000-8000-000000000015"],"componentPolicy":{"policy":{"catalogVersion":"1-3e5629f8","availability":"all","allowedRefs":[],"excludedRefs":[],"preferredRefs":[]},"origin":"author","sourceScope":{"kind":"didactic_microsequence","ref":"micro-restore"}}}],"guidanceRevisions":[{"revisionId":"74000000-0000-4000-8000-000000000015","guidance":"Use títulos diretos e preserve toda novidade necessária.","origin":"author","sourceScope":{"kind":"didactic_microsequence","ref":"micro-restore"}}]}'::jsonb,
     '{}'::jsonb,now()-interval '1 hour',now(),now());
 
+-- Complete synthetic contexts with the four definitions emitted by this
+-- historical reader. The explicitly chosen ceiling remains 2 then 1; the other
+-- fields are the recorded defaults of this epoch, not today's catalog.
+update private.course_authoring_part_materializations materialization
+set design_context=jsonb_set(materialization.design_context,'{targets,0,parameters}',(
+  select jsonb_agg(case
+    when definition.parameter_id='new_analysis_unit_ceiling_per_expository_study_unit'
+      then (materialization.design_context#>'{targets,0,parameters,0}') ||
+        jsonb_build_object('sourceScope',jsonb_build_object(
+          'kind','didactic_microsequence','ref','micro-restore'))
+    else jsonb_build_object('parameterId',definition.parameter_id,
+      'value',definition.default_value,'origin','system_default','sourceScope',null)
+    end order by definition.ordinal)
+  from private.course_design_parameter_definitions definition
+))
+where materialization.course_id='74000000-0000-4000-8000-000000000002';
+
 insert into private.course_authoring_part_materialization_steps(
   id,course_id,materialization_id,position,step_kind,
   target_didactic_microsequence_id,production_position,status,version,

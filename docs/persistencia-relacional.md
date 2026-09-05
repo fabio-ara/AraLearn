@@ -17,7 +17,7 @@ uma história universal só para reconstruir cada estado anterior.
 | propriedade, compartilhamento e perfil | PostgreSQL e Auth |
 | Curso, estrutura, plano e partes | PostgreSQL |
 | configuração e desenho aplicado | PostgreSQL |
-| Fontes, Âncoras e vínculos de PDF | PostgreSQL; bytes no Storage |
+| fontes, âncoras, vínculos e áudios | PostgreSQL; bytes no Storage |
 | Observações autorais compartilhadas | PostgreSQL |
 | composição validada para uso sem rede | IndexedDB, como réplica |
 | progresso, posição e marcas pessoais | PostgreSQL, com fila local delimitada |
@@ -45,7 +45,11 @@ como estado de produto.
 Uma unidade de estudo pode guardar o snapshot focal e a aplicação de desenho
 que recebeu. O snapshot contém apenas parâmetros e itens pertinentes à sua
 microssequência; a aplicação registra ideias introduzidas, ideias estabelecidas
-usadas, formas explicativas, componentes e prática efetivamente usados.
+usadas, formas explicativas, componentes e prática efetivamente usados. Uma
+correção focal preserva o snapshot histórico literalmente. A aplicação corrente
+é invalidada quando muda o conteúdo que a sustentava ou sua hierarquia; editar
+somente o título mantém o par. Analytics não atribui mapeamento instrucional
+corrente a uma unidade cuja aplicação foi invalidada.
 
 ## Escritas concorrentes
 
@@ -60,6 +64,28 @@ não constituem log de autoria.
 
 A camada confiável de MCP e Actions gera esses controles. A interface e o GPT
 trabalham com título, posição, escopo e consequência humana.
+
+## Cópia independente
+
+Copiar exige propriedade da origem ou a permissão explícita `canCopy` no acesso
+existente. O destino recebe nova identidade e proprietário, visibilidade privada
+e política de arquivos restrita. Uma transação com revisão esperada conserva
+mapa, entidades, agrupamentos, inventário, configuração aplicada e histórica,
+fontes e arquivos. Identidades globais são remapeadas por campo tipado, sem
+substituir títulos ou trechos de texto. Acessos, progresso, observações pessoais
+e credenciais não são transportados.
+
+O software cria uma única identidade de pedido com instante correspondente e a
+preserva na pendência. A origem gravada no alvo permite reconhecer a mesma cópia
+mesmo depois da expiração do recibo, da revogação ou da exclusão da origem. Na
+ausência de prova, pedidos fora da janela de 14 dias, com tolerância de relógio
+de cinco minutos, falham sem criar um novo alvo. Excluir deliberadamente o alvo
+não autoriza recriá-lo pelo mesmo recibo.
+
+PDFs e áudios imutáveis podem compartilhar um caminho físico entre cursos. Cada
+cópia mantém seu próprio descritor e autorização; a exclusão da origem não
+invalida os bytes da cópia. As intenções de limpeza só permitem remover o objeto
+depois de verificar todas as referências ativas e reservas de envio.
 
 ## Composição e paginação
 
@@ -88,9 +114,11 @@ ou localizador incrementa a versão; a leitura cotidiana não percorre revisões
 anteriores.
 
 Uma atribuição corrente liga um item do plano ou uma StudyUnit a fontes e
-Âncoras. A alteração do conteúdo do alvo invalida uma atribuição que já não
-corresponde a ele, e a próxima revisão precisa reaplicar a proveniência
-coerente.
+âncoras. Vínculos possuem identidade estável, papéis múltiplos explícitos e
+ocorrências opcionais em folhas textuais do catálogo. Uma alteração não apaga
+a atribuição: o resolvedor verifica o trecho literal e seu contexto. Quando
+não existe correspondência única, mantém o vínculo como pendência de revisão,
+sem escolher outro alvo arbitrariamente.
 
 O Estudo recebe apenas citações permitidas pela visibilidade da fonte. O texto
 integral de uma Observação ou o PDF privado não é incluído nessa projeção.
@@ -107,8 +135,9 @@ revalida a política antes de emitir URL assinada de curta duração.
 
 Uma ingestão usa uma intenção curta para reservar cota e selar os dados. O
 serviço envia e relê o objeto pela Storage API antes de ativar o vínculo. Objetos
-iguais podem compartilhar o mesmo caminho dentro da origem sem contar bytes em
-dobro.
+iguais podem compartilhar o mesmo caminho sem contar bytes em dobro na cota
+lógica de cada curso. Uma cópia pode preservar esse caminho fora do seu próprio
+prefixo; o descritor autorizado, e não o nome da pasta, determina a leitura.
 
 Remover o PDF desativa o vínculo. Uma intenção de exclusão atravessa a fronteira
 entre transação e Storage; o objeto só é apagado depois que nenhum vínculo ativo
@@ -139,8 +168,9 @@ Analytics nem coleta de interação para alimentar o painel.
 ## Estado pessoal
 
 Progresso, posição de retomada e marcas para rever pertencem à pessoa. Escritas
-locais formam operações pequenas e repetíveis. Ao reconectar, o repositório lê a
-versão remota, envia a fila válida e grava a nova versão confirmada.
+locais formam operações pequenas e repetíveis. No modo automático, o retorno
+da conexão permite ler a versão remota, enviar a fila válida e gravar a versão
+confirmada. No modo manual, essa troca aguarda a ação explícita de sincronizar.
 
 Observações próprias possuem fila separada porque sua autorização e seus
 conflitos diferem do progresso. Rascunhos de conteúdo autoral não entram nessa
@@ -150,8 +180,9 @@ fila.
 
 `BroadcastChannel` sinaliza mudanças locais. Uma aba não força a navegação da
 outra; ela apenas informa que uma autoridade pode ter mudado. Ao recuperar foco,
-visibilidade ou conexão, a tela relê o objeto pertinente e preserva posição e
-foco quando a identidade ainda existe.
+visibilidade ou conexão, o modo automático relê o objeto pertinente e preserva
+posição e foco quando a identidade ainda existe. No modo manual, o aviso marca
+a necessidade de sincronizar, sem substituir conteúdo ou enviar filas em fundo.
 
 Formulário ou confirmação em andamento adia a atualização. O rascunho permanece
 até ser salvo ou descartado.
@@ -163,9 +194,10 @@ recebe Autoria no original. Funções SQL e RLS voltam a conferir essa relação
 cada operação.
 
 Excluir uma conta exige remover seus objetos privados. O PostgreSQL não apaga
-bytes automaticamente; o serviço limpa prefixos autorizados pela Storage API e
-repete a exclusão relacional. Um PDF compartilhado por vínculo válido não é
-apagado por semelhança de prefixo.
+bytes automaticamente. O serviço prepara a retirada dos vínculos de cada curso,
+reivindica intenções de arquivo, confirma os objetos pela Storage API e só então
+conclui a exclusão relacional. Um PDF ou áudio utilizado por outra cópia não é
+apagado por semelhança de prefixo. Avatares continuam limitados à pasta da conta.
 
 ## Evolução, backup e restauração
 
@@ -176,15 +208,23 @@ Um dump lógico do PostgreSQL inclui estado relacional e metadados de Storage,
 mas não os bytes. Backup de desastre precisa copiar também os objetos privados.
 O ensaio `npm run test:backup-restore:local`:
 
-1. clona a stack local para uma instância descartável;
-2. insere uma fixture integrada de curso;
+1. prepara a estrutura histórica numa instância descartável sem rede, sem
+   carregar objetos ou buckets atuais na época anterior;
+2. insere uma fixture sintética integrada de curso;
 3. produz um dump lógico;
 4. restaura em outra instância descartável;
-5. aplica a migration seguinte;
-6. confere estrutura, plano, desenho, fontes, PDFs, Observações e operações
-   ainda abertas;
-7. mede a redução de tabelas, colunas, funções e políticas técnicas;
-8. remove contêineres e volumes temporários.
+5. aplica o corte histórico e mede a redução de estruturas técnicas daquele corte;
+6. aplica, em ordem, todas as migrations restantes até a revisão exata do
+   manifesto corrente;
+7. compara conteúdo, identidades, plano, configuração, fontes, vínculos,
+   metadados de PDFs, observações e operações abertas, e valida os leitores atuais;
+8. confirma que repetir a seleção pela história não reaplicaria migrations;
+9. remove contêineres e volumes temporários.
+
+O checkpoint histórico permanece identificável no relatório. Ele não é uma
+revisão atual fixa nem substitui o backup dos dados do ambiente que será
+atualizado. A repetição verifica a seleção das migrations pendentes; não afirma
+que executar novamente todo arquivo SQL já aplicado seja uma operação válida.
 
 O smoke `npm run test:storage:lifecycle:local` complementa essa prova com bytes
 reais pela Storage API.

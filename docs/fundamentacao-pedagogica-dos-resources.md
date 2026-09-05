@@ -451,34 +451,41 @@ divisão didática preservar o objeto.
 
 ## 10. Composição de componentes na mesma Unidade
 
-### Decisão R9: compor somente quando a coordenação é parte da tarefa
+### Decisão R9: compor conforme a função de cada representação na tarefa
 
 **Problema.** Fórmula, gráfico e explicação podem se complementar, mas a mera
 acumulação de componentes aumenta densidade e alternância de atenção.
 
 **Alternativas e requisitos.** Um conceito pode ser distribuído entre Unidades,
 apresentado em uma única representação ou coordenado em múltiplas formas. A
-composição precisa tornar explícita a relação entre elas.
+composição precisa tornar explícita a função de cada uma e as relações
+relevantes à tarefa.
 
-**Decisão.** Mais de um componente de conteúdo é permitido quando comparar,
-traduzir ou coordenar representações constitui o objetivo local. Em teoria, a
-regra predominante é progressão e segmentação; em prática, mais contexto pode
-permanecer na Unidade quando necessário para executar a operação.
+**Decisão.** Mais de um componente de conteúdo é permitido quando cada um
+cumpre uma função necessária à operação local: fornecer informação ou apoio
+complementar, restringir uma interpretação ambígua, comparar ou construir uma
+relação. Coordenar representações pode ser o objetivo, mas não precisa sê-lo
+em toda composição. A progressão e a segmentação preservam o desenvolvimento;
+o contexto permanece na Unidade quando necessário para executar a operação.
 
 **Fundamentação.** Múltiplas representações podem cumprir funções
 complementares, restritivas ou construtivas, mas sua coordenação é uma demanda
-própria ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Evidências sobre segmentação apresentam
+própria. Na função complementar, pode bastar compreender e selecionar cada
+representação; ensinar sua relação não é sempre necessário. DeFT distingue
+essa situação da construção de compreensão pela integração entre formas
+([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Evidências sobre segmentação apresentam
 moderadores e não autorizam uma cota universal de conteúdo por tela
 ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
-**Operacionalização.** O planejamento declara o papel de cada componente e a
-relação que o estudante deve estabelecer. Rótulos compartilhados, unidades e
-variáveis mantêm consistência. Se uma representação serve apenas de decoração,
-ela é retirada; se as duas exigem explicações independentes, são distribuídas
-em Unidades sucessivas.
+**Operacionalização.** O planejamento declara o papel de cada componente e,
+quando pertinente, a relação que o estudante deve estabelecer. Rótulos
+compartilhados, unidades e variáveis mantêm consistência. Se uma representação serve apenas de decoração,
+ela é retirada; se as duas exigem explicações independentes, a autoria examina
+sua distribuição em Unidades sucessivas sem perder o contexto necessário.
 
 **Consequências.** A composição deixa de ser sinônimo de riqueza visual e passa
-a corresponder a uma tarefa de integração identificável.
+a corresponder a funções didáticas identificáveis, inclusive integração quando
+ela é necessária.
 
 **Limites e evidência.** Mesmo uma composição teoricamente coerente pode
 sobrecarregar. O resultado precisa ser examinado por análise de erros,

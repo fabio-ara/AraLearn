@@ -113,7 +113,7 @@ existentes.
 
 ## MCP e Actions
 
-`COURSE_HUMAN_TASKS` é a lista canônica das dezessete tarefas humanas. O MCP
+`COURSE_HUMAN_TASKS` é a lista canônica das tarefas humanas. O MCP
 publica cada tarefa com metadados próprios; Actions cria um caminho HTTP para
 cada uma. Os schemas podem receber adaptações de transporte, como a referência
 de arquivo gerida pelo ChatGPT, mas os casos de uso e efeitos permanecem iguais.
