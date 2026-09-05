@@ -167,15 +167,18 @@ async function expectResponsiveAuthoringNavigation(page, width) {
     [...new Set(links.map((link) => link.dataset.section))].sort()
   );
   expect(sections).toEqual([
+    "audio",
+    "content",
     "parameters",
     "people",
+    "planning",
     "research",
     "review",
     "sources"
   ]);
   await expect(menu).toBeVisible();
   await expect(menu.locator(":scope > summary")).toHaveCount(1);
-  await expect(menu.locator(":scope > nav > a")).toHaveCount(5);
+  await expect(menu.locator(":scope > nav > a")).toHaveCount(8);
   await expect(menu.locator(":scope > summary")).toHaveAccessibleName("Abrir tarefas do curso");
   await menu.locator(":scope > summary").click();
   await expect(menu.getByRole("button", { name: "Atualizar curso" })).toBeVisible();
@@ -2853,7 +2856,14 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await trigger.click();
     await expect(menu).toHaveAttribute("open", "");
     await expect(menu.locator(":scope > nav")).toBeVisible();
-    await expect(menu.locator(":scope > nav > a")).toHaveCount(5);
+    await expect(menu.locator(":scope > nav > a")).toHaveCount(8);
+    const labels = await menu.locator(":scope > nav > :is(a, button)").evaluateAll(elements =>
+      elements.map(element => {
+        const label = element.querySelector("strong") || element.querySelector("span:last-child") || element;
+        return { size: getComputedStyle(label).fontSize, weight: getComputedStyle(label).fontWeight };
+      }));
+    expect(labels.length).toBeGreaterThan(8);
+    expect(labels.every(({ size, weight }) => size === "14px" && weight === "500")).toBe(true);
     expect(await menu.locator(":scope > nav").evaluate((content) => {
       const surface = content.closest(".course-authoring-surface");
       const contentRect = content.getBoundingClientRect();

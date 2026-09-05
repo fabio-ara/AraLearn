@@ -5240,6 +5240,14 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   line-height: var(--leading-normal);
 }
 .course-authoring-confirm-dialog button { font-size: var(--type-sm); font-weight: 550; }
+.course-authoring-surface .course-authoring-task-menu > nav > :is(a, button),
+.course-authoring-context-shell .course-authoring-task-menu > nav > :is(a, button) {
+  font-size: var(--type-sm);
+  font-weight: 500;
+}
+.course-authoring-task-menu > nav > :is(a, button) :is(span, strong) {
+  font-weight: inherit;
+}
 .course-authoring-feedback-layer { max-height: min(16dvh, 112px); }
 
 .course-authoring-task-menu > summary { position: relative; }
