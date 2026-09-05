@@ -49,17 +49,16 @@ function renderInstance(studyUnit, instance, slot, index, options, dockExerciseP
   const id = targetId(slot, instance);
   const inlineEditing = options.manualEditingTargetId === id;
   const editTargets = inlineEditing ? manualTargets(instance, slot) : [];
-  const manualEditing = Boolean(options.manualEditingTargetId);
   const html = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot, {
     ...options,
     studyUnit,
     instanceId: instance.id,
     blockKey,
     responseBlockKey: responseKey,
-    responseState: manualEditing ? null : responseState,
-    activeTextGapPrompt: manualEditing ? null : options.activeTextGapPrompt,
-    studyUnitResponse: slot === "content" && !manualEditing ? studyUnit.response : null,
-    dockExerciseParts: manualEditing ? null : dockExerciseParts,
+    responseState,
+    activeTextGapPrompt: options.activeTextGapPrompt,
+    studyUnitResponse: slot === "content" ? studyUnit.response : null,
+    dockExerciseParts,
     manualEditing: inlineEditing,
     manualEditTargets: editTargets
   });
@@ -79,12 +78,10 @@ export function renderPackageStudyUnitBlocks(studyUnit, options = {}) {
   const content = studyUnit.content.map((instance, index) =>
     renderInstance(studyUnit, instance, "content", index, options, dockExerciseParts)
   ).join("");
-  const manualEditing = Boolean(options.manualEditingTargetId);
-  const editingResponse = String(options.manualEditingTargetId || "").startsWith("response:");
-  const response = studyUnit.response && (!manualEditing || editingResponse)
+  const response = studyUnit.response
     ? renderInstance(studyUnit, studyUnit.response, "response", 0, options, dockExerciseParts)
     : "";
-  const authoringFeedback = options.resourceSelectionEnabled || options.revealPracticeAnswers
+  const authoringFeedback = studyUnit.feedback.length && (options.resourceSelectionEnabled || options.revealPracticeAnswers)
     ? '<section class="runtime-authoring-support-resources" aria-label="Explicações da unidade de estudo"><span class="runtime-authoring-support-title">Explicações</span>' +
       studyUnit.feedback.map((instance, index) => renderInstance(studyUnit, instance, "feedback", index, options, dockExerciseParts)).join("") +
       "</section>"

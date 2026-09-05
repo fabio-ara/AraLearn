@@ -217,3 +217,22 @@ O visitante usa `aralearn-course-v1-visitor`, separado dos bancos por conta.
 Progresso e Rever ficam locais e não chamam endpoints de estado pessoal. Leituras
 públicas usam projeções permitidas; nenhuma tabela privada ganha acesso anônimo.
 Entrar numa conta não associa silenciosamente os dados do visitante.
+
+## Sincronização e concorrência no dispositivo
+
+A preferência `aralearn.ui.study-synchronization` pertence ao dispositivo e é
+observada entre abas. No modo manual, listas, composição já aberta e filas de
+estudo usam o cache; `explicit: true` distingue a sincronização solicitada. Uma
+consulta de acesso separada continua fresca e retira cursos cuja revogação foi
+confirmada, sem substituir o conteúdo dos cursos autorizados.
+
+Transações IndexedDB leem a revisão local atual antes de aplicar cada alteração.
+Conclusões independentes na mesma lição e marcas de unidades diferentes são
+reunidas. A requisição remota pendente conserva identidade e payload até receber
+confirmação. Diferenças incompatíveis no mesmo dado permanecem como conflito
+local, com comparação e resolução explícita, preservando alterações disjuntas.
+
+A incorporação de estado visitante exige prévia e escolha dos cursos. O estado e
+o recibo da incorporação são gravados na mesma transação do banco da conta; o
+banco visitante permanece intacto. A união acrescenta conclusões e Rever,
+preserva a posição da conta e não grava conteúdo do curso nem observações.

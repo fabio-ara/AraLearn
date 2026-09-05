@@ -1032,4 +1032,139 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     } finally { await context.close(); }
   });
 
+
+  test("sincronização manual preserva duas abas e incorpora visitante somente por escolha", async ({ browser }, testInfo) => {
+    const ownerClient = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken },
+      fetchImpl: (url, init) => {
+        const requestHeaders = new Headers(init.headers);
+        requestHeaders.set("Origin", APPLICATION_ORIGIN);
+        return fetch(url, { ...init, headers: requestHeaders });
+      } });
+    const syncCourseId = (await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Curso para sincronização local", objective: "Conservar progresso de duas abas."
+    } }, ownerToken)).data.courseId;
+    const rows = courseRows(syncCourseId);
+    await courseApi(`/v1/courses/${syncCourseId}/composition`, { method: "POST", body: {
+      requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+      sourceAttributionApplications: rows.filter((row) => row.entityType === "study_unit")
+        .map(({ entityId }) => ({ studyUnitId: entityId, sourceLinks: [] }))
+    } }, ownerToken);
+    await ownerClient.setCourseVisibility({ courseId: syncCourseId, expectedRevision: 2,
+      visibility: "public", publicFileAccess: "restricted", confirmed: true });
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const personalWrites = [];
+    context.on("request", (value) => {
+      if (value.url().includes("mutate_course_personal_state_v2")) personalWrites.push(value.url());
+    });
+    const openUnit = async (target, number) => {
+      const unit = rows.find(({ entityType, entityId }) => entityType === "study_unit" && entityId === `study-unit-access-local-${number}`);
+      await target.goto(`/#/estudo/${syncCourseId}/module-access-local/lesson-access-local/${unit.parentId}/${unit.entityId}`);
+      await expect(target.locator(".runtime-card-title")).toHaveText(unit.content.title);
+    };
+    const review = (target) => target.getByRole("button", { name: "Marcar para rever", exact: true });
+    const readPersonal = async () => {
+      const result = await rpc("load_course_personal_state_v2", { p_course_id: syncCourseId }, ownerToken);
+      expect(result.response.status, failure("ler estado pessoal", result)).toBe(200);
+      return result.payload;
+    };
+    try {
+      await configureBrowser(page);
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "false");
+      await review(page).click();
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      expect(personalWrites).toHaveLength(0);
+      await browserSignIn(page, owner.email);
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "false");
+      await page.goto("/");
+      await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+      await page.getByLabel("Estudo neste dispositivo").selectOption("manual");
+      await expect(page.getByLabel("Estudo neste dispositivo")).toHaveValue("manual");
+      await page.getByText("Progresso sem conta", { exact: true }).click();
+      await page.getByRole("button", { name: "Examinar progresso sem conta", exact: true }).click();
+      await expect(page.locator("[data-study-adoption-form]")).toContainText(`@${ownerHandle}`);
+      await page.getByRole("button", { name: "Acrescentar os cursos selecionados à minha conta" }).click();
+      await expect(page.locator("[data-study-adoption-message]")).toHaveText("Selecione os cursos que deseja acrescentar.");
+      await page.locator(`[name='visitorCourse'][value='${syncCourseId}']`).check();
+      const beforeAdoption = personalWrites.length;
+      await page.getByRole("button", { name: "Acrescentar os cursos selecionados à minha conta" }).click();
+      await expect(page.locator("[data-study-adoption-message]")).toContainText("Progresso acrescentado");
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      await expectNoHorizontalOverflow(page, ".account-settings-sheet");
+      await attachScreenshot(page, testInfo, "adocao-explicita-manual-390.png");
+      await page.getByRole("button", { name: "Fechar", exact: true }).click();
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      const explicitObservations = page.waitForResponse((response) =>
+        response.url().includes("/rpc/get_my_course_anchored_annotations_v1") && response.status() === 200);
+      await page.getByRole("button", { name: "Observações", exact: true }).click();
+      await explicitObservations;
+      await page.getByRole("textbox", { name: "Observação", exact: true }).fill("Observação enviada explicitamente no modo manual.");
+      await page.getByRole("button", { name: "Enviar observação", exact: true }).click();
+      await expect(page.getByText("Sincronizada", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Fechar", exact: true }).click();
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      const other = await context.newPage();
+      await configureBrowser(other);
+      await openUnit(other, 2);
+      await expect(review(other)).toHaveAttribute("aria-pressed", "false");
+      await page.bringToFront();
+      await openUnit(page, 3);
+      await review(page).click();
+      await other.bringToFront();
+      await review(other).click();
+      await expect(review(other)).toHaveAttribute("aria-pressed", "true");
+      await openUnit(other, 3);
+      await expect(review(other)).toHaveAttribute("aria-pressed", "true");
+      await openUnit(page, 2);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      await openUnit(page, 1);
+      const changed = rows.find(({ entityType, entityId }) => entityType === "study_unit" && entityId === "study-unit-access-local-1");
+      changed.content.content[0].data.text = "Texto atualizado externamente durante o modo manual.";
+      await courseApi(`/v1/courses/${syncCourseId}/composition`, { method: "POST", body: {
+        requestId: crypto.randomUUID(), expectedRevision: 3, upserts: [changed], deletes: [],
+        sourceAttributionApplications: [{ studyUnitId: changed.entityId, sourceLinks: [] }]
+      } }, ownerToken);
+      await other.bringToFront();
+      await page.bringToFront();
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await expect(page.getByText(changed.content.content[0].data.text, { exact: true })).toHaveCount(0);
+      await context.setOffline(true);
+      await expect(page.locator(".study-runtime-status-control")).toHaveAttribute("aria-label", "Sem conexão");
+      await context.setOffline(false);
+      await page.waitForLoadState("networkidle");
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await page.locator(".study-runtime-status-control").click();
+      await expect(page.getByText(changed.content.content[0].data.text, { exact: true })).toBeVisible();
+      expect(personalWrites.length).toBeGreaterThan(beforeAdoption);
+      const persisted = await readPersonal();
+      expect(Object.keys(persisted.state.reviewMarks).sort()).toEqual([1, 2, 3].map((number) => `study-unit-access-local-${number}`));
+      await attachScreenshot(page, testInfo, "sincronizacao-explicita-390.png");
+      await page.goto("/");
+      await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+      await expect(page.getByLabel("Estudo neste dispositivo")).toHaveValue("manual");
+      await page.getByRole("button", { name: "Dados e conta", exact: true }).click();
+      page.once("dialog", (dialog) => dialog.accept());
+      await page.getByRole("button", { name: "Sair", exact: true }).click();
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      await openUnit(page, 2);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "false");
+    } finally {
+      await context.close();
+      ownerToken = await signIn(owner.email);
+      await courseApi(`/v1/courses/${syncCourseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
+  });
+
 });

@@ -153,7 +153,7 @@ function geminiBody({ system, prompt, schema }) {
       temperature: 0.1,
       maxOutputTokens: 8_000,
       responseMimeType: "application/json",
-      responseSchema: schema
+      responseJsonSchema: schema
     }
   };
 }

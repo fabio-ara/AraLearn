@@ -118,6 +118,26 @@ export class CourseLocalStore {
     await transactionPromise(transaction);
   }
 
+  async readCachePrefix(prefix) {
+    const normalizedPrefix = cacheKey(prefix);
+    const { transaction, store } = this.#store("readonly");
+    const rows = [];
+    const request = store.openCursor();
+    await new Promise((resolve, reject) => {
+      request.onerror = () => reject(request.error || new Error("Não foi possível ler o cache de Cursos."));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return resolve();
+        if (String(cursor.key).startsWith(normalizedPrefix)) {
+          rows.push({ key: String(cursor.key), value: structuredClone(cursor.value.value) });
+        }
+        cursor.continue();
+      };
+    });
+    await transactionPromise(transaction);
+    return rows;
+  }
+
   async updateCache(key, updater) {
     if (typeof updater !== "function") throw new TypeError("Atualizador de cache inválido.");
     const normalizedKey = cacheKey(key);

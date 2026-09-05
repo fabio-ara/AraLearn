@@ -121,6 +121,43 @@ function courseListPage(items = [courseListItem()], overrides = {}) {
   };
 }
 
+test("manual lê somente lista e composição verificadas do cache, sem promover revisão pela checagem de acesso", async () => {
+  const store = new MemoryStateStore();
+  const fixture = documentFixture();
+  const { rows } = flattenCourseDocument(fixture);
+  let remoteRevision = 3;
+  let networkReads = 0;
+  let remoteError = null;
+  const controller = new CourseController({ store, api: {
+    async listCourses() { networkReads += 1; return courseListPage([courseListItem({ revision: 3 })]); },
+    async getCourse() {
+      networkReads += 1;
+      if (remoteError) throw remoteError;
+      return { contract: "aralearn.course.v1", courseId: COURSE_ID, title: "Curso", goal: "Aprender.", revision: remoteRevision };
+    },
+    async getCourseEntities() { networkReads += 1; return { contract: "aralearn.course-entities.v1", courseId: COURSE_ID,
+      revision: 3, items: rows, hasMore: false, nextCursor: null }; }
+  } });
+  assert.equal(await controller.loadCachedCourseDocument(COURSE_ID), null);
+  assert.equal((await controller.listCachedCourses()).items.length, 0);
+  assert.equal(networkReads, 0);
+  await controller.listCourses();
+  await controller.loadCourseDocument(COURSE_ID);
+  const reads = networkReads;
+  assert.equal((await controller.listCachedCourses()).items[0].revision, 3);
+  assert.deepEqual((await controller.loadCachedCourseDocument(COURSE_ID)).document, fixture);
+  assert.equal(networkReads, reads);
+  remoteRevision = 4;
+  assert.equal((await controller.checkCourseAccess(COURSE_ID)).revision, 4);
+  assert.equal((await controller.loadCachedCourseDocument(COURSE_ID)).course.revision, 3);
+  remoteError = networkFailure();
+  await assert.rejects(controller.checkCourseAccess(COURSE_ID));
+  assert.equal((await controller.loadCachedCourseDocument(COURSE_ID)).course.revision, 3);
+  remoteError = Object.assign(new Error("Revogado"), { status: 403 });
+  await assert.rejects(controller.checkCourseAccess(COURSE_ID), { status: 403 });
+  assert.equal(await controller.loadCachedCourseDocument(COURSE_ID), null);
+});
+
 function editableStudyUnit(title = "Unidade revista") {
   return {
     id: "unit-a",

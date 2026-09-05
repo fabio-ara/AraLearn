@@ -265,7 +265,7 @@ const discussionSchema = Object.freeze({
   properties: {
     message: { type: "string", minLength: 1, maxLength: 1_600 },
     proposal: {
-      type: "object",
+      type: ["object", "null"],
       additionalProperties: false,
       required: ["summary", "changes", "scope", "componentNeeds"],
       properties: {
@@ -327,7 +327,7 @@ function normalizeDiscussion(value, scope) {
   }
   return Object.freeze({
     message: text(value.message),
-    proposal: normalizeProposal(value.proposal, scope)
+    proposal: value.proposal === null ? null : normalizeProposal(value.proposal, scope)
   });
 }
 
@@ -374,8 +374,9 @@ export async function requestCourseAssistanceDiscussion({
     signal,
     prompt: {
       system: "Você participa de uma conversa curta de edição curricular situada, adequada a modelos leves. " +
-        "Responda com brevidade e inclua sempre a melhor proposta concreta disponível neste turno, " +
-        "refinando a proposta atual quando houver uma. Descreva de uma a seis mudanças objetivas e liste " +
+        "Responda com brevidade e abertura ao debate. Quando o autor pedir explicação ou discussão sem mudança, " +
+        "responda à questão e devolva proposal:null. Quando houver uma mudança solicitada, proponha ou refine " +
+        "de uma a seis mudanças objetivas e liste " +
         "somente necessidades de representação por linguagem comum. Não invente fontes, não exponha JSON " +
         "ao usuário e nunca amplie o escopo de escrita.",
       prompt: JSON.stringify(envelope),

@@ -55,7 +55,7 @@ async function installHarness(page, { delayed = false, configured = true } = {})
         return { output: [{ content: [{ type: "output_text", text: JSON.stringify(value) }] }] };
       }
     });
-    const assistance = createCourseProviderAssistance({
+    const assistanceOptions = {
       documentValue: document,
       windowValue: window,
       session,
@@ -84,6 +84,12 @@ async function installHarness(page, { delayed = false, configured = true } = {})
             }
           };
         }
+        if (!generation && globalThis.__discussOnly) {
+          return response({ message: "Podemos discutir a explicação sem alterar o conteúdo.", proposal: null });
+        }
+        if (generation && globalThis.__rejectGeneration) {
+          return response({ message: "Inválida", candidate: { ...candidate, content: [] } });
+        }
         if (generation) return response({ message: "A explicação foi revisada.", candidate });
         return probe.discussionCalls === 1
           ? response({
@@ -108,7 +114,9 @@ async function installHarness(page, { delayed = false, configured = true } = {})
             }
           });
       }
-    });
+    };
+    const assistance = createCourseProviderAssistance(assistanceOptions);
+    globalThis.__courseAssistanceFetch = assistanceOptions.fetchImpl;
     const preview = document.querySelector("#preview");
     const paint = (unit) => {
       probe.current = structuredClone(unit);
@@ -121,7 +129,10 @@ async function installHarness(page, { delayed = false, configured = true } = {})
       scope: "study_unit",
       targetTitle: original.title,
       writeTargetId: "study_unit",
-      onApplyDraft(prepared) { probe.drafts += 1; paint(prepared.candidate); }
+      onApplyDraft(prepared) {
+        if (globalThis.__rejectApply) throw new Error("Falha de contrato simulada ao aplicar");
+        probe.drafts += 1; paint(prepared.candidate);
+      }
     }));
     globalThis.__courseAssistanceProbe = probe;
     globalThis.__courseAssistance = assistance;
@@ -129,7 +140,7 @@ async function installHarness(page, { delayed = false, configured = true } = {})
   }, { project: fixture, delayed, configured });
 }
 
-test("minichat refina a proposta e só gera e aplica ao rascunho após aceite", async ({ page }) => {
+test("minichat refina, prepara prévia comparável e aplica somente por escolha explícita", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 568 });
   await installHarness(page);
   await page.locator("#trigger").click();
@@ -179,7 +190,7 @@ test("minichat refina a proposta e só gera e aplica ao rascunho após aceite", 
   await dialog.getByRole("button", { name: "Enviar" }).click();
   await expect(dialog.getByRole("heading", { name: "Proposta" })).toBeVisible();
   await expect(dialog.getByText("Reescrever a explicação preservando", { exact: false })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Aceitar e aplicar" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Preparar prévia" })).toBeDisabled();
   await expect(page.locator("#preview")).toContainText("conjunção");
   await page.evaluate(() => globalThis.__resolveCourseAssistance?.());
   await expect(dialog.getByText("Preservar o exemplo atual.", { exact: true })).toBeVisible();
@@ -193,7 +204,26 @@ test("minichat refina a proposta e só gera e aplica ao rascunho após aceite", 
   await expect(dialog.getByText("Reescrever a explicação e preservar", { exact: false })).toBeVisible();
   await expect(page.locator("#preview")).toContainText("conjunção");
 
-  await dialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
+  await dialog.getByRole("button", { name: "Preparar prévia" }).click();
+  const preview = dialog.getByRole("region", { name: "Prévia da alteração" });
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText("consequências observáveis");
+  expect((await dialog.boundingBox()).height).toBe(initialHeight);
+  const screenshotPath = testInfo.outputPath("minichat-previa-390.png");
+  await page.screenshot({ path: screenshotPath });
+  await testInfo.attach("minichat-previa-390.png", { path: screenshotPath, contentType: "image/png" });
+  await expect(page.locator("#preview")).toContainText("conjunção");
+  expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.drafts)).toBe(0);
+  await preview.getByRole("button", { name: "Original", exact: true }).click();
+  await expect(preview).toContainText("conjunção");
+  await preview.getByRole("button", { name: "Prévia", exact: true }).click();
+  await expect(preview).toContainText("consequências observáveis");
+  await page.evaluate(() => { globalThis.__rejectApply = true; });
+  await preview.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Não foi possível aplicar");
+  await expect(page.locator("#preview")).toContainText("conjunção");
+  await page.evaluate(() => { globalThis.__rejectApply = false; });
+  await preview.getByRole("button", { name: "Aplicar ao rascunho" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.locator("#preview")).toContainText("consequências observáveis");
   expect(await page.evaluate(() => ({
@@ -202,6 +232,101 @@ test("minichat refina a proposta e só gera e aplica ao rascunho após aceite", 
     generations: globalThis.__courseAssistanceProbe.generationCalls,
     drafts: globalThis.__courseAssistanceProbe.drafts
   }))).toEqual({ calls: 4, discussions: 3, generations: 1, drafts: 1 });
+});
+
+test("debate não cria proposta e prévia descartada ou inválida preserva original", async ({ page }) => {
+  await installHarness(page);
+  await page.locator("#trigger").click();
+  const dialog = page.getByRole("dialog", { name: "Edição com IA" });
+  await page.evaluate(() => { globalThis.__discussOnly = true; });
+  await dialog.getByLabel("Mensagem").fill("Explique sem alterar.");
+  await dialog.getByRole("button", { name: "Enviar" }).click();
+  await expect(dialog.getByText("Podemos discutir a explicação sem alterar o conteúdo.")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Preparar prévia" })).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.generationCalls)).toBe(0);
+  await page.evaluate(() => { globalThis.__discussOnly = false; });
+  await dialog.getByLabel("Mensagem").fill("Agora proponha uma revisão.");
+  await dialog.getByRole("button", { name: "Enviar" }).click();
+  await dialog.getByRole("button", { name: "Preparar prévia" }).click();
+  await dialog.getByRole("button", { name: "Descartar prévia" }).click();
+  await expect(dialog.getByRole("region", { name: "Prévia da alteração" })).toHaveCount(0);
+  await expect(page.locator("#preview")).toContainText("conjunção");
+  await page.evaluate(() => { globalThis.__rejectGeneration = true; });
+  await dialog.getByRole("button", { name: "Preparar prévia" }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Aplicar ao rascunho" })).toHaveCount(0);
+  await expect(page.locator("#preview")).toContainText("conjunção");
+  expect(await page.evaluate(() => globalThis.__courseAssistanceProbe.drafts)).toBe(0);
+});
+
+test("rascunho de assistência conserva revisão original, bloqueia refresh e mantém conteúdo em conflito", async ({ page }) => {
+  await installHarness(page);
+  await page.evaluate(async (project) => {
+    const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
+    globalThis.fetch = globalThis.__courseAssistanceFetch;
+    globalThis.__ARALEARN_ENV__ = { assistAllowedOrigins: ["https://api.openai.com"] };
+    document.body.innerHTML = '<main id="study-proof"></main>';
+    const course = project.courses[0];
+    const moduleValue = course.modules[0];
+    const lesson = moduleValue.lessons[0];
+    const microsequence = lesson.microsequences[0];
+    const unit = microsequence.studyUnits[0];
+    const state = { revision: 1, version: 1, ownership: "owned", writes: [], refreshes: 0 };
+    const repository = {
+      loadProgress: () => ({ version: 1, lessons: {} }), loadStudyNavigation: () => null,
+      loadCourseSummaries: () => [{ courseId: course.id, title: course.title, revision: state.revision,
+        ownership: state.ownership, canEdit: state.ownership === "owned", canObserve: true }],
+      loadStudyUnitCompositionContext: () => ({ courseRevision: state.revision,
+        studyUnitVersion: state.version, didacticMicrosequenceId: microsequence.id }),
+      loadRuntimeStatus: () => ({}), loadReviewItems: () => [], hasMoreReviewItems: () => false,
+      loadAnnotationsForPath: () => [], isStudyUnitMarkedForReview: () => false,
+      loadProject: () => structuredClone(project), loadCourse: async () => structuredClone(project),
+      refreshPersonalState: async () => { state.refreshes += 1; return structuredClone(project); }
+    };
+    const app = createCourseStudyApplication({ root: document.querySelector("main"), repository,
+      initialProject: project, providerAssistanceSession: globalThis.__courseAssistanceSession,
+      onSaveManualEdit: async (value) => {
+        state.writes.push(value);
+        if (state.unknown) throw Object.assign(new Error("Falha de rede simulada"), { code: "NETWORK_ERROR" });
+        throw Object.assign(new Error("Conflito de revisão"), { status: 409 });
+      }
+    });
+    await app.openEntityPath([course.id, moduleValue.id, lesson.id, microsequence.id, unit.id]);
+    globalThis.__assistanceStudyProof = { app, state };
+  }, fixture);
+  await page.getByRole("button", { name: "Assistência por IA", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir edição com IA", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Edição com IA" });
+  await dialog.getByLabel("Mensagem").fill("Proponha uma revisão da explicação.");
+  await dialog.getByRole("button", { name: "Enviar" }).click();
+  await dialog.getByRole("button", { name: "Preparar prévia" }).click();
+  await expect(dialog.getByRole("button", { name: "Aplicar ao rascunho" })).toBeVisible();
+  await page.evaluate(() => {
+    globalThis.__assistanceStudyProof.state.revision = 2;
+    globalThis.__assistanceStudyProof.state.version = 2;
+  });
+  expect(await page.evaluate(() => globalThis.__assistanceStudyProof.app.refreshPersonalState())).toBe(false);
+  await dialog.getByRole("button", { name: "Aplicar ao rascunho" }).click();
+  expect(await page.evaluate(() => globalThis.__assistanceStudyProof.app.hasPendingManualEdit())).toBe(true);
+  expect(await page.evaluate(() => globalThis.__assistanceStudyProof.app.refreshPersonalState())).toBe(false);
+  await page.getByRole("button", { name: "Salvar proposta" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator("#study-proof")).toContainText("consequências observáveis");
+  expect(await page.evaluate(() => globalThis.__assistanceStudyProof.state.writes.map((value) => ({
+    revision: value.expectedCourseRevision, version: value.expectedVersion
+  })))).toEqual([{ revision: 1, version: 1 }]);
+  await page.evaluate(() => { globalThis.__assistanceStudyProof.state.unknown = true; });
+  await page.getByRole("button", { name: "Salvar proposta" }).click();
+  await expect(page.getByRole("button", { name: "Descartar rascunho", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Descartar rascunho", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("não desfaz uma gravação no curso");
+  await expect(page.locator("#study-proof")).toContainText("consequências observáveis");
+  await page.evaluate(() => { globalThis.__assistanceStudyProof.state.ownership = "shared"; });
+  await page.getByRole("button", { name: "Salvar proposta" }).click();
+  expect(await page.evaluate(() => globalThis.__assistanceStudyProof.state.writes.length)).toBe(2);
+  await page.getByRole("button", { name: "Confirmar descarte local sem confirmação da gravação" }).click();
+  await expect(page.locator("#study-proof")).toContainText("conjunção");
+  expect(await page.evaluate(() => globalThis.__assistanceStudyProof.state.refreshes)).toBe(0);
 });
 
 test("sessão fecha por Escape, restaura foco e não persiste credencial", async ({ page }) => {

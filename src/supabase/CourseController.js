@@ -1301,6 +1301,35 @@ export class CourseController {
     return this.#overlayPendingCourseList(page);
   }
 
+  async listCachedCourses({ query = "", cursor = null } = {}) {
+    const cached = cachedPayload(await this.store.getCache(listCacheKey(query, cursor, this.cachePrefix)));
+    if (!cached?.data) return { contract: "aralearn.course-list.v2", items: [], hasMore: false, nextCursor: null };
+    return this.#overlayPendingCourseList(normalizeCourseListPage(cached.data));
+  }
+
+  async checkCourseAccess(courseId) {
+    try {
+      // A fresh authorized header proves access; do not promote its revision or
+      // invalidate the content the person chose to keep open in manual mode.
+      const result = await this.api.getCourse(courseId, { ownerOnly: this.ownerOnly });
+      if (result?.contract !== "aralearn.course.v1" || result.courseId !== courseId ||
+          !Number.isSafeInteger(result.revision) || result.revision < 1) {
+        throw new TypeError("A confirmação de acesso ao curso é inválida.");
+      }
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
+  async loadCachedCourseDocument(courseId) {
+    if (!UUID_PATTERN.test(String(courseId || ""))) throw new TypeError("A identidade do Curso é inválida.");
+    const cached = await this.#readLastVerifiedComposition(courseId);
+    if (!cached) return null;
+    return { ...cached, stale: false, readOnly: false, cacheOnly: true };
+  }
+
   async getCourse(courseId) {
     const key = courseCacheKey(courseId, this.cachePrefix);
     const previous = cachedPayload(await this.store.getCache(key))?.data;

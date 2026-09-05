@@ -2,7 +2,11 @@ import {
   createEmptyProgressDocument,
   validateProgressDocument
 } from "../storage/progressStore.js";
-import { CoursePersonalStateRepository } from "../persistence/CoursePersonalStateRepository.js";
+import {
+  CoursePersonalStateRepository,
+  COURSE_PERSONAL_STATE_CACHE_CONTRACT,
+  validateCoursePersonalState
+} from "../persistence/CoursePersonalStateRepository.js";
 import { CourseAnnotationRepository } from "../persistence/CourseAnnotationRepository.js";
 import { normalizeCourseSourcePdfDownload, normalizeCourseStudyCitationsRead } from "../domain/courseSources.js";
 import { findCourse } from "./CourseStudyNavigation.js";
@@ -202,6 +206,7 @@ export class CourseStudyRepository {
     api,
     cache,
     visitor = false,
+    synchronizationMode = "automatic",
     clock = () => new Date(),
     windowValue = globalThis.window
   } = {}) {
@@ -234,6 +239,14 @@ export class CourseStudyRepository {
     this.listRuntimeStatus = { offline: false, stale: false, readOnly: false };
     this.studyNavigation = emptyStudyNavigation();
     this.offlineCourseRevisionById = new Map();
+    this.setSynchronizationMode(synchronizationMode);
+  }
+
+  setSynchronizationMode(mode) {
+    if (!new Set(["automatic", "manual"]).has(mode)) throw new TypeError("Modo de sincronização inválido.");
+    this.synchronizationMode = mode;
+    for (const personal of this.personalByCourseId.values()) personal.setSynchronizationMode(mode);
+    for (const annotations of this.annotationsByCourseId.values()) annotations.setSynchronizationMode(mode);
   }
 
   async initialize() {
@@ -256,6 +269,12 @@ export class CourseStudyRepository {
       }
     }
     await this.refreshCourses();
+    const selected = this.studyNavigation.selectedCourseId;
+    if (this.synchronizationMode === "manual" && selected &&
+        this.courseList.some((item) => item.courseId === selected)) {
+      const cached = await this.bridge.loadCachedCourse?.(selected);
+      if (cached) await this.loadCourse(selected, { initialResult: cached });
+    }
     return this.loadProject();
   }
 
@@ -339,14 +358,16 @@ export class CourseStudyRepository {
     });
   }
 
-  async #listAllCourses() {
+  async #listAllCourses({ cacheOnly = false } = {}) {
     const items = [];
     const cursors = new Set();
     let cursor = null;
     let offline = false;
     let stale = false;
     for (let pageIndex = 0; pageIndex < MAX_LIST_PAGES; pageIndex += 1) {
-      const page = await this.bridge.listAccessibleCourses({ limit: 50, cursor });
+      const page = cacheOnly
+        ? await this.bridge.listCachedCourses({ limit: 50, cursor })
+        : await this.bridge.listAccessibleCourses({ limit: 50, cursor });
       if (!Array.isArray(page?.items)) throw new TypeError("A lista de cursos é inválida.");
       items.push(...page.items);
       offline ||= page.offline === true;
@@ -428,7 +449,16 @@ export class CourseStudyRepository {
     }
   }
 
-  async refreshCourses() {
+  async refreshCourses({ explicit = false } = {}) {
+    if (this.synchronizationMode === "manual" && !explicit) {
+      if (!this.courseList.length) this.courseList = (await this.#listAllCourses({ cacheOnly: true })).items;
+      const cached = await this.cache.getCache(REVIEW_PAGE_CACHE_KEY);
+      this.reviewItems = Array.isArray(cached?.items) ? clone(cached.items) : [];
+      this.reviewHasMore = cached?.hasMore === true;
+      this.reviewCursor = this.reviewHasMore ? clone(cached.nextCursor) : null;
+      this.#rebuildProject();
+      return this.loadProject();
+    }
     const listed = await this.#listAllCourses();
     this.listRuntimeStatus = {
       offline: listed.offline === true,
@@ -578,15 +608,15 @@ export class CourseStudyRepository {
     return this.loadCourse(courseId, { initialResult });
   }
 
-  async loadCourse(courseIdentity, { initialResult = null } = {}) {
+  async loadCourse(courseIdentity, { initialResult = null, explicit = false } = {}) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
     if (!descriptor) throw new Error("O curso solicitado não está acessível.");
     let loaded = this.loadedCourseById.get(courseId);
-    if (!loaded || loaded.revision !== descriptor.revision || (
+    if (!loaded || (explicit || this.synchronizationMode !== "manual") && (loaded.revision !== descriptor.revision || (
       this.listRuntimeStatus.offline !== true &&
       (loaded.offline === true || loaded.stale === true || loaded.readOnly === true)
-    )) {
+    ))) {
       let result;
       try {
         result = initialResult ?? await this.bridge.loadCourse(courseId, {
@@ -626,6 +656,7 @@ export class CourseStudyRepository {
         api: this.api,
         cache: this.cache,
         localOnly: this.visitor,
+        synchronizationMode: this.synchronizationMode,
         course: loaded.course,
         clock: this.clock
       });
@@ -638,6 +669,12 @@ export class CourseStudyRepository {
       this.personalByCourseId.set(courseId, personal);
     } else {
       personal.setCourse(loaded.course);
+      try {
+        await personal.refresh({ cacheOnly: true });
+      } catch (error) {
+        if (courseAccessRevoked(error)) await this.#purgeRevokedCourses([courseId]);
+        throw error;
+      }
     }
     let annotations = this.annotationsByCourseId.get(courseId);
     if (!this.visitor && !annotations && typeof this.api.getMyCourseAnchoredAnnotations === "function" &&
@@ -649,7 +686,8 @@ export class CourseStudyRepository {
         cache: this.cache,
         clock: this.clock,
         windowValue: this.windowValue,
-        navigatorValue: this.navigatorValue
+        navigatorValue: this.navigatorValue,
+        synchronizationMode: this.synchronizationMode
       });
       try {
         await annotations.initialize();
@@ -912,8 +950,26 @@ export class CourseStudyRepository {
     const loaded = this.loadedCourseById.get(courseId);
     const personal = this.personalByCourseId.get(courseId);
     let pending = false;
+    let personalStatus = null;
     try {
-      pending = personal?.snapshot?.().pending === true;
+      personalStatus = personal?.snapshot?.();
+      if (!courseId) {
+        const snapshots = [...this.personalByCourseId.values()].map((value) => value.snapshot());
+        personalStatus = {
+          pending: snapshots.some((value) => value.pending),
+          synchronizing: snapshots.some((value) => value.synchronizing),
+          syncError: snapshots.find((value) => value.syncError)?.syncError || null,
+          conflict: snapshots.find((value) => value.conflict)?.conflict || null
+        };
+      }
+      pending = personalStatus?.pending === true;
+      const annotations = courseId
+        ? [this.annotationsByCourseId.get(courseId)].filter(Boolean)
+        : [...this.annotationsByCourseId.values()];
+      pending ||= annotations.some((value) => value.snapshot().pendingCount > 0);
+      if (annotations.some((value) => value.snapshot().failedCount > 0)) {
+        personalStatus = { ...personalStatus, syncError: personalStatus?.syncError || "Uma observação precisa ser conferida antes de sincronizar." };
+      }
     } catch {
       // O estado pessoal pode terminar de carregar depois do conteúdo offline.
     }
@@ -922,6 +978,10 @@ export class CourseStudyRepository {
       stale: this.listRuntimeStatus.stale || loaded?.stale === true,
       readOnly: this.listRuntimeStatus.readOnly || loaded?.readOnly === true,
       pending,
+      synchronizationMode: this.synchronizationMode,
+      synchronizing: personalStatus?.synchronizing === true,
+      syncError: personalStatus?.syncError || null,
+      conflict: personalStatus?.conflict || null,
       ...(this.visitor ? { visitor: true, localOnly: true } : {})
     });
   }
@@ -942,8 +1002,9 @@ export class CourseStudyRepository {
   }
 
   loadProgress() {
-    return mergeProgress([...this.personalByCourseId.values()].map((personal) =>
-      personal.loadProgress()));
+    return mergeProgress([...this.personalByCourseId.entries()]
+      .filter(([courseId]) => this.loadedCourseById.has(courseId))
+      .map(([, personal]) => personal.loadProgress()));
   }
 
   clearCourseProgress(courseIdentity) {
@@ -1046,9 +1107,9 @@ export class CourseStudyRepository {
     }
   }
 
-  refreshAnnotationsForPath(reference) {
+  refreshAnnotationsForPath(reference, options = {}) {
     return this.#runAnnotationOperation(reference, (annotations) =>
-      annotations.refreshTarget(reference));
+      annotations.refreshTarget(reference, options));
   }
 
   createAnnotationForPath(reference, draft) {
@@ -1075,12 +1136,12 @@ export class CourseStudyRepository {
     return this.#annotations(reference).subscribe(listener);
   }
 
-  async refreshPersonalState() {
+  async refreshPersonalState(options = {}) {
     const revokedCourseIds = [];
     for (const [courseId, personal] of this.personalByCourseId) {
       try {
-        await personal.refresh();
-        const completedStudyUnitCount = Object.values(personal.loadProgress().lessons)
+        await personal.refresh(options);
+        const completedStudyUnitCount = Object.values(personal.loadCanonicalState().progress.lessons)
           .reduce((total, entry) => total + entry.completedStudyUnitIds.length, 0);
         const summary = this.courseList.find((item) => item.courseId === courseId);
         if (summary) summary.completedStudyUnitCount = completedStudyUnitCount;
@@ -1091,7 +1152,7 @@ export class CourseStudyRepository {
     }
     for (const [courseId, annotations] of this.annotationsByCourseId) {
       try {
-        await annotations.flush();
+        await annotations.flush(options);
       } catch (error) {
         if (!courseAccessRevoked(error)) throw error;
         revokedCourseIds.push(courseId);
@@ -1102,13 +1163,100 @@ export class CourseStudyRepository {
     return this.loadProject();
   }
 
-  async flush() {
+  async checkAccess() {
+    const revokedCourseIds = [];
+    for (const courseId of this.loadedCourseById.keys()) {
+      try {
+        await this.bridge.checkCourseAccess(courseId);
+      } catch (error) {
+        if (courseAccessRevoked(error)) revokedCourseIds.push(courseId);
+        else if (!networkFailure(error)) throw error;
+      }
+    }
+    await this.#purgeRevokedCourses(revokedCourseIds);
+    return { changed: revokedCourseIds.length > 0, revokedCourseIds, project: this.loadProject() };
+  }
+
+  resolvePersonalStateConflict(courseId, options = {}) {
+    return this.#personal({ courseId }).resolveConflict(options);
+  }
+
+  async #visitorSnapshot(visitorCache) {
+    if (this.visitor || !visitorCache || visitorCache === this.cache ||
+        visitorCache.name !== "aralearn-course-v1-visitor" ||
+        typeof visitorCache.readCachePrefix !== "function") {
+      throw new TypeError("A incorporação exige o compartimento visitante separado da conta.");
+    }
+    const rows = await visitorCache.readCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:`);
+    const courses = rows.map(({ value }) => {
+      if (value?.contract !== COURSE_PERSONAL_STATE_CACHE_CONTRACT ||
+          !COURSE_ID_PATTERN.test(value.courseId)) throw new TypeError("Estado visitante inválido.");
+      return { courseId: value.courseId, state: validateCoursePersonalState(value.state) };
+    }).filter(({ state }) => Object.keys(state.progress.lessons).length || Object.keys(state.reviewMarks).length)
+      .sort((left, right) => left.courseId.localeCompare(right.courseId));
+    const bytes = new TextEncoder().encode(JSON.stringify(courses));
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+    const snapshotId = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+    return { snapshotId, courses };
+  }
+
+  async previewVisitorState(visitorCache) {
+    const snapshot = await this.#visitorSnapshot(visitorCache);
+    const courses = [];
+    for (const { courseId, state } of snapshot.courses) {
+      let descriptor;
+      try {
+        descriptor = await this.bridge.checkCourseAccess(courseId);
+      } catch (error) {
+        if (courseAccessRevoked(error)) continue;
+        throw error;
+      }
+      courses.push({ courseId, title: descriptor.title || "Curso",
+        completedCount: Object.values(state.progress.lessons).reduce((total, entry) =>
+          total + entry.completedStudyUnitIds.length, 0),
+        reviewCount: Object.keys(state.reviewMarks).length });
+    }
+    return { snapshotId: snapshot.snapshotId, courses };
+  }
+
+  async adoptVisitorState(visitorCache, { courseIds, expectedSnapshotId } = {}) {
+    const snapshot = await this.#visitorSnapshot(visitorCache);
+    if (snapshot.snapshotId !== expectedSnapshotId) {
+      throw new Error("O estudo visitante mudou. Confira a seleção antes de incorporar.");
+    }
+    if (!Array.isArray(courseIds) || !courseIds.length || new Set(courseIds).size !== courseIds.length ||
+        courseIds.some((id) => !snapshot.courses.some((entry) => entry.courseId === id))) {
+      throw new TypeError("Selecione os cursos visitantes que deseja incorporar.");
+    }
+    for (const courseId of courseIds) {
+      const descriptor = await this.bridge.checkCourseAccess(courseId);
+      const receiptKey = `course.v1.visitor-adoption:${snapshot.snapshotId}:${courseId}`;
+      if (await this.cache.getCache(receiptKey)) continue;
+      const personal = this.personalByCourseId.get(courseId) || new CoursePersonalStateRepository({
+        courseId, api: this.api, cache: this.cache, synchronizationMode: this.synchronizationMode, clock: this.clock
+      });
+      await personal.initialize({ refresh: false });
+      // Fetch the account baseline before adding visitor work. A failed fetch
+      // must not bind an unknown account state to a visitor snapshot.
+      await personal.refresh({ explicit: true });
+      if (personal.snapshot().syncError) throw new Error("Conecte-se para conferir o estado da conta antes de incorporar.");
+      await personal.adoptVisitorState(snapshot.courses.find((entry) => entry.courseId === courseId).state, { receiptKey });
+      this.personalByCourseId.set(courseId, personal);
+      const summary = this.courseList.find((item) => item.courseId === courseId);
+      if (!summary) this.courseList.push(clone(descriptor));
+    }
+    await this.refreshPersonalState();
+    this.#rebuildProject();
+    return { snapshotId: snapshot.snapshotId, courseIds: clone(courseIds), project: this.loadProject() };
+  }
+
+  async flush(options = {}) {
     await this.#studyNavigationWrite;
     const snapshots = [];
     const revokedCourseIds = [];
     for (const [courseId, personal] of this.personalByCourseId) {
       try {
-        snapshots.push(await personal.flush());
+        snapshots.push(await personal.flush(options));
       } catch (error) {
         if (!courseAccessRevoked(error)) throw error;
         revokedCourseIds.push(courseId);
@@ -1116,7 +1264,7 @@ export class CourseStudyRepository {
     }
     for (const [courseId, annotations] of this.annotationsByCourseId) {
       try {
-        snapshots.push(await annotations.flush());
+        snapshots.push(await annotations.flush(options));
       } catch (error) {
         if (!courseAccessRevoked(error)) throw error;
         revokedCourseIds.push(courseId);

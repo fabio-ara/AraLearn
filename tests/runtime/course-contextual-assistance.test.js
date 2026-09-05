@@ -130,7 +130,7 @@ test("seleção inválida ou obsoleta nunca amplia autoridade de escrita", () =>
   }
 });
 
-test("cada turno devolve e refina uma proposta concreta no escopo recebido", async () => {
+test("pedido de mudança devolve e refina uma proposta concreta no escopo recebido", async () => {
   const requests = [];
   const fetchImpl = sequenceFetch([{
     message: "A Unidade apresenta a regra; proponho tornar essa função mais explícita.",
@@ -178,11 +178,12 @@ test("cada turno devolve e refina uma proposta concreta no escopo recebido", asy
     JSON.parse(requests[1].body.input).currentProposal,
     discussed.proposal
   );
-  assert.match(requests[0].body.instructions, /sempre a melhor proposta concreta/iu);
+  assert.match(requests[0].body.instructions, /abertura ao debate/iu);
 });
 
-test("resposta sem proposta concreta é rejeitada", async () => {
-  await assert.rejects(() => requestCourseAssistanceDiscussion({
+test("discussão sem mudança aceita resposta sem proposta e não gera conteúdo", async () => {
+  const requests = [];
+  const discussed = await requestCourseAssistanceDiscussion({
     project: fixture,
     selection,
     message: "Explique a Unidade.",
@@ -191,8 +192,13 @@ test("resposta sem proposta concreta é rejeitada", async () => {
     fetchImpl: sequenceFetch([{
       message: "Apenas uma explicação.",
       proposal: null
-    }])
-  }), (error) => error.code === "provider_scope_violation");
+    }], requests)
+  });
+  assert.equal(discussed.message, "Apenas uma explicação.");
+  assert.equal(discussed.proposal, null);
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0].body.text.format.schema.properties.proposal.type, ["object", "null"]);
+  await assert.rejects(prepareCourseAssistanceProposal({ confirmedProposal: discussed.proposal }), TypeError);
 });
 
 test("pipeline descobre contratos, repara saída semanticamente inválida e só aceita renderer real", async () => {

@@ -95,6 +95,7 @@ function markerForBlank(blank, index, options) {
   return createPackageGapMarker({
     blockKey: options.responseBlockKey || options.blockKey,
     index,
+    ...(options.manualEditTargets?.length ? { manualText: blank.answer } : {}),
     responseMode: blank.responseMode,
     layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
       .map((candidate) => practiceValueLabel(blank, candidate, options))
@@ -235,7 +236,6 @@ export const gapResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
-    if (options.manualEditing === true) return "";
     const prompt = choicePrompt(data, options);
     const feedback = options.revealPracticeAnswers === true
       ? '<div class="inline-feedback ok"><p class="tiny">Respostas esperadas exibidas.</p></div>'

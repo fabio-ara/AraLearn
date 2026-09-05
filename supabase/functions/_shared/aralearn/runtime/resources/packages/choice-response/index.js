@@ -55,8 +55,8 @@ export const choiceResponsePackage = Object.freeze({
     const manualEditing = options.manualEditing === true;
     const expected = new Set(data.answerIds);
     const revealAnswers = options.revealPracticeAnswers === true;
-    const selected = new Set((revealAnswers ? data.answerIds : manualEditing ? [] : options.responseState?.selected || []).map(String));
-    const feedback = manualEditing || revealAnswers ? null : options.responseState?.feedback || null;
+    const selected = new Set((revealAnswers ? data.answerIds : options.responseState?.selected || []).map(String));
+    const feedback = revealAnswers ? null : options.responseState?.feedback || null;
     const items = data.options.map((option, index) => ({ option, index }));
     const displayed = options.manualEditEnabled || revealAnswers
       ? items
@@ -79,17 +79,17 @@ export const choiceResponsePackage = Object.freeze({
       )
         ? `<div class="multiple-choice-option-feedback">${renderPackageProse(option.feedback)}</div>`
         : "";
-      const tag = manualEditing || revealAnswers ? "div" : "button";
-      const interaction = manualEditing || revealAnswers
+      const tag = revealAnswers ? "div" : "button";
+      const interaction = revealAnswers
         ? ""
-        : ` type="button" data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}" role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"`;
+        : ` type="button"${manualEditing ? "" : ` data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}"`} role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"`;
       return `<${tag} class="multiple-choice-option${classes ? ` ${classes}` : ""}"${interaction} data-choice-option-id="${escapePackageAttribute(option.id)}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label"><span>${value}</span>${optionFeedback}</span></${tag}>`;
     }).join("");
     const feedbackHtml = revealAnswers
       ? '<div class="inline-feedback ok"><p class="tiny">Resposta esperada exibida.</p></div>'
       : responseFeedback(blockKey, feedback);
     if (feedbackHtml && Array.isArray(options.dockExerciseParts)) options.dockExerciseParts.push(feedbackHtml);
-    const listRole = manualEditing || revealAnswers ? "group" : data.selectionMode === "single" ? "radiogroup" : "group";
+    const listRole = revealAnswers ? "group" : data.selectionMode === "single" ? "radiogroup" : "group";
     const instructionText = revealAnswers
       ? "Alternativas e resposta esperada."
       : instruction(data);

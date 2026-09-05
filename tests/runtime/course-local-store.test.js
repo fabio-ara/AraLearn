@@ -11,6 +11,21 @@ import { AuthSessionStore } from "../../src/persistence/AuthSessionStore.js";
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const OTHER_USER_ID = "10000000-0000-4000-8000-000000000002";
 
+test("leitura por prefixo devolve snapshot isolado somente do compartimento aberto", async () => {
+  const indexedDb = new IDBFactory();
+  const visitor = await CourseLocalStore.open(indexedDb, { visitor: true });
+  const account = await CourseLocalStore.open(indexedDb, { userId: USER_ID });
+  await visitor.putCache("study:a", { count: 1 });
+  await visitor.putCache("other:a", { count: 2 });
+  await account.putCache("study:b", { count: 3 });
+  const rows = await visitor.readCachePrefix("study:");
+  assert.deepEqual(rows, [{ key: "study:a", value: { count: 1 } }]);
+  rows[0].value.count = 999;
+  assert.deepEqual(await visitor.getCache("study:a"), { count: 1 });
+  visitor.close();
+  account.close();
+});
+
 test("visitante usa compartimento próprio e mantém o estado ao entrar e sair de uma conta", async () => {
   const indexedDb = new IDBFactory();
   const guest = await CourseLocalStore.open(indexedDb, { visitor: true });

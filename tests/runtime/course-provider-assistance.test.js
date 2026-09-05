@@ -69,7 +69,7 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
 
 test("runtime autenticado compartilha a sessão contextual entre Estudo e Autoria", () => {
   const source = readFileSync(new URL("../../public/main.js", import.meta.url), "utf8");
-  assert.match(source, /courseProviderSession\s*=\s*createCourseProviderSession\(\)/u);
+  assert.match(source, /courseProviderSession\s*=\s*visitor\s*\?\s*null\s*:\s*createCourseProviderSession\(\)/u);
   assert.match(source,
     /createCourseStudyApplication\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
   assert.match(source,
@@ -89,8 +89,8 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
   const schema = {
     type: "object",
     additionalProperties: false,
-    required: ["message"],
-    properties: { message: { type: "string" } }
+    required: ["message", "proposal"],
+    properties: { message: { type: "string" }, proposal: { type: ["object", "null"], properties: {} } }
   };
   const openai = normalizeStudyUnitProviderConfig({
     providerId: "openai", model: "gpt-5.6-luna", apiKey: "openai-secret"
@@ -115,6 +115,9 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
   });
   assert.equal(geminiRequest.init.headers["x-goog-api-key"], "gemini-secret");
   assert.equal(geminiRequest.init.redirect, "error");
+  const geminiBody = JSON.parse(geminiRequest.init.body);
+  assert.deepEqual(geminiBody.generationConfig.responseJsonSchema, schema);
+  assert.equal(Object.hasOwn(geminiBody.generationConfig, "responseSchema"), false);
   assert.doesNotMatch(geminiRequest.url, /key=|gemini-secret/u);
   assert.deepEqual(parseStudyUnitProviderOutput("gemini", providerOutput("gemini", {
     message: "Ok"

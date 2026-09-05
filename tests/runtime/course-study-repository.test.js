@@ -1,11 +1,106 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { IDBFactory } from "fake-indexeddb";
+import { CourseLocalStore } from "../../src/persistence/CourseLocalStore.js";
+import { CoursePersonalStateRepository, COURSE_PERSONAL_STATE_CACHE_CONTRACT } from "../../src/persistence/CoursePersonalStateRepository.js";
 
 import { CourseStudyRepository } from "../../src/study/CourseStudyRepository.js";
 import { CourseStudyBridge } from "../../src/study/CourseStudyBridge.js";
 
 const COURSE_A = "10000000-0000-4000-8000-000000000001";
 const COURSE_B = "20000000-0000-4000-8000-000000000002";
+
+test("manual usa lista e conteúdo em cache, mantém versão aberta e verifica revogação separadamente", async () => {
+  let reads = 0;
+  let revision = 1;
+  let revoked = false;
+  const descriptor = () => ({ courseId: COURSE_A, title: `Curso ${revision}`, revision, ownership: "public", canEdit: false });
+  const result = () => ({ course: descriptor(), revision, document: { courses: [{ ...course(COURSE_A, "a"), title: `Curso ${revision}` }] }, rows: [] });
+  const bridge = {
+    async listAccessibleCourses() { reads += 1; return { items: [descriptor()], hasMore: false }; },
+    async listCachedCourses() { return { items: [descriptor()], hasMore: false }; },
+    async loadCachedCourse() { return result(); },
+    async loadCourse() { reads += 1; return result(); },
+    async checkCourseAccess() { if (revoked) throw Object.assign(new Error("Revogado"), { status: 403 }); return descriptor(); },
+    async clearCourse() {}
+  };
+  const local = cache();
+  const forbidden = () => { throw new Error("Tráfego pessoal de fundo"); };
+  const repository = new CourseStudyRepository({ bridge, cache: local, api: { loadPersonalState: forbidden, mutatePersonalState: forbidden }, synchronizationMode: "manual", windowValue: null });
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A, { initialResult: result() });
+  revision = 2;
+  await repository.refreshCourses();
+  await repository.refreshPersonalState();
+  await repository.flush();
+  await repository.checkAccess();
+  assert.equal(reads, 0);
+  assert.equal(repository.loadProject().courses[0].title, "Curso 1");
+  const otherTab = new CoursePersonalStateRepository({ courseId: COURSE_A, course: course(COURSE_A, "a"),
+    api: { loadPersonalState: forbidden, mutatePersonalState: forbidden }, cache: local, synchronizationMode: "manual" });
+  await otherTab.initialize();
+  await otherTab.setStudyUnitReviewMark([COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"], true);
+  await repository.loadCourseById(COURSE_A);
+  assert.equal(repository.isStudyUnitMarkedForReview([COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"]), true);
+  assert.equal(reads, 0);
+  await repository.refreshCourses({ explicit: true });
+  await repository.loadCourse(COURSE_A, { explicit: true });
+  assert.equal(repository.loadProject().courses[0].title, "Curso 2");
+  revoked = true;
+  const checked = await repository.checkAccess();
+  assert.deepEqual(checked.revokedCourseIds, [COURSE_A]);
+  assert.equal(checked.changed, true);
+  assert.equal(checked.project.courses.length, 0);
+});
+
+test("incorporação explícita é aditiva, por conta e snapshot, sem alterar visitante ou posição da conta", async () => {
+  const indexedDb = new IDBFactory();
+  const visitorCache = await CourseLocalStore.open(indexedDb, { visitor: true });
+  const accountCache = await CourseLocalStore.open(indexedDb, { userId: COURSE_B });
+  const document = course(COURSE_A, "a");
+  document.modules[0].lessons[0].microsequences[0].studyUnits.push({ ...structuredClone(document.modules[0].lessons[0].microsequences[0].studyUnits[0]), id: "unit-b" });
+  const reference = (id) => [COURSE_A, "module-a", "lesson-a", "micro-a", id];
+  const guest = new CoursePersonalStateRepository({ courseId: COURSE_A, cache: visitorCache, course: document, localOnly: true });
+  await guest.initialize();
+  await guest.setStudyUnitCompleted(reference("unit-b"));
+  await guest.setStudyUnitReviewMark(reference("unit-b"), true);
+  const originalVisitor = await visitorCache.readCachePrefix(COURSE_PERSONAL_STATE_CACHE_CONTRACT);
+  let writes = 0;
+  const api = {
+    async loadPersonalState() { return { contract: "aralearn.course-personal-state.v2", courseId: COURSE_A, revision: 4,
+      updatedAt: "2026-09-05T12:00:00.000Z", state: { version: 2, progress: { version: 3, lessons: {
+        "lesson-a": { cursorStudyUnitId: "unit-a", completedStudyUnitIds: ["unit-a"] }
+      } }, reviewMarks: {} } }; },
+    async mutatePersonalState() { writes += 1; throw new Error("Manual não deve enviar ao incorporar"); }
+  };
+  const descriptor = { courseId: COURSE_A, title: "Curso acessível", revision: 1, ownership: "public", canEdit: false };
+  const bridge = { async listAccessibleCourses() { return { items: [descriptor], hasMore: false }; },
+    async listCachedCourses() { return { items: [descriptor], hasMore: false }; },
+    async checkCourseAccess() { return descriptor; }, async clearCourse() {},
+    async loadCourse() { return { revision: 1, course: descriptor, document: { courses: [document] }, rows: [] }; }
+  };
+  const account = new CourseStudyRepository({ bridge, api, cache: accountCache, synchronizationMode: "manual", windowValue: null });
+  await account.initialize();
+  const preview = await account.previewVisitorState(visitorCache);
+  assert.deepEqual(preview.courses, [{ courseId: COURSE_A, title: "Curso acessível", completedCount: 1, reviewCount: 1 }]);
+  assert.equal(await accountCache.getCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_A}`), null);
+  await account.adoptVisitorState(visitorCache, { courseIds: [COURSE_A], expectedSnapshotId: preview.snapshotId });
+  const key = `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_A}`;
+  const adopted = await accountCache.getCache(key);
+  assert.deepEqual(adopted.state.progress.lessons["lesson-a"], { cursorStudyUnitId: "unit-a", completedStudyUnitIds: ["unit-a", "unit-b"] });
+  assert.ok(adopted.state.reviewMarks["unit-b"]);
+  assert.ok(adopted.pending);
+  assert.equal(account.loadRuntimeStatus().pending, true);
+  await account.adoptVisitorState(visitorCache, { courseIds: [COURSE_A], expectedSnapshotId: preview.snapshotId });
+  assert.deepEqual(await accountCache.getCache(key), adopted);
+  assert.deepEqual(await visitorCache.readCachePrefix(COURSE_PERSONAL_STATE_CACHE_CONTRACT), originalVisitor);
+  assert.equal(writes, 0);
+  await guest.setStudyUnitReviewMark(reference("unit-a"), true);
+  await assert.rejects(account.adoptVisitorState(visitorCache, { courseIds: [COURSE_A], expectedSnapshotId: preview.snapshotId }), /visitante mudou/u);
+  await account.close();
+  accountCache.close();
+  visitorCache.close();
+});
 
 test("visitante estuda curso público, persiste Rever e não usa endpoints pessoais", async () => {
   const local = cache();
@@ -452,7 +547,8 @@ test("mantém a composição carregada até a revisão anunciada ser validada", 
     offline: false,
     stale: true,
     readOnly: true,
-    pending: false
+    pending: false,
+    synchronizationMode: "automatic", synchronizing: false, syncError: null, conflict: null
   });
 
   const preserved = await repository.loadCourse(COURSE_A);
@@ -467,7 +563,8 @@ test("mantém a composição carregada até a revisão anunciada ser validada", 
     offline: false,
     stale: false,
     readOnly: false,
-    pending: false
+    pending: false,
+    synchronizationMode: "automatic", synchronizing: false, syncError: null, conflict: null
   });
 });
 
@@ -606,7 +703,8 @@ test("carrega a fila Rever por páginas somente quando solicitado", async () => 
     offline: true,
     stale: true,
     readOnly: true,
-    pending: false
+    pending: false,
+    synchronizationMode: "automatic", synchronizing: false, syncError: null, conflict: null
   });
   assert.equal(cursors.length, 1);
   assert.equal(repository.loadReviewItems().length, 1);

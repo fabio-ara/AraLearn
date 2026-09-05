@@ -10,6 +10,7 @@ import {
 const STYLES = ["/styles-tokens.css", "/styles-shell-baseline.css", "/styles.css",
   "/course-authoring.css"];
 const VIEWPORTS = [360, 390, 430, 1280];
+const GEOMETRY_TOLERANCE = 1;
 const fixture = JSON.parse(fs.readFileSync(
   new URL("../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
@@ -151,8 +152,13 @@ function packageCatalogDocument() {
   };
 }
 
-async function openStudyUnit(page, ownership, { duplicateMicrosequence = false } = {}) {
+async function openStudyUnit(page, ownership, { duplicateMicrosequence = false, longTitles = false } = {}) {
   const project = structuredClone(fixture);
+  if (longTitles) {
+    project.courses[0].title = "Curso com título extenso sobre relações entre conceitos e resolução de práticas";
+    project.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].title =
+      "Uma explicação extensa da conjunção e das condições necessárias à conclusão";
+  }
   if (duplicateMicrosequence) {
     const lesson = project.courses[0].modules[0].lessons[0];
     const duplicate = structuredClone(lesson.microsequences[0]);
@@ -195,31 +201,23 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
     let canonicalProject = structuredClone(project);
     let canonicalRevision = 7;
     let canonicalStudyUnitVersion = 3;
-    let personalCopyCourseId = null;
     let pendingPersonalCopyEdit = null;
     let personalRequestIndex = 0;
+    let recoveryStatus = "unresolved";
+    let recoveryTargetId = null;
+    const recoveryReads = [];
     const sourceCourseId = "course-fixture-minimal";
-    const nextPersonalRequestId = () =>
-      `request-personal-${String.fromCharCode(80 + personalRequestIndex++)}`;
+    const nextPersonalRequestId = () => `recovery-request-${++personalRequestIndex}`;
     const repository = {
       loadProgress: () => structuredClone(progress),
-      loadCourseSummaries: () => canonicalProject.courses.map((course) => {
-        const personalCopy = course.id === personalCopyCourseId;
-        return {
-          courseId: course.id,
-          title: course.title,
-          revision: personalCopy ? 2 : canonicalRevision,
-          ownership: personalCopy ? "owned" : ownership,
-          canEdit: personalCopy || ownership === "owned",
-          canDerive: !personalCopy && ownership === "shared" && !personalCopyCourseId,
-          isPersonalCopy: personalCopy,
-          personalCopyCourseId: !personalCopy && personalCopyCourseId,
-          moduleCount: 1,
-          lessonCount: 1,
-          studyUnitCount: 2,
-          completedStudyUnitCount: personalCopy ? 0 : 1
-        };
-      }),
+      loadCourseSummaries: () => canonicalProject.courses.map((course) => ({
+        courseId: course.id, title: course.title, revision: canonicalRevision,
+        ownership: course.id === recoveryTargetId ? "owned" : ownership,
+        canEdit: course.id === recoveryTargetId || ownership === "owned",
+        canObserve: true, visibility: ownership === "public" ? "public" : "private",
+        publicFileAccess: "restricted", moduleCount: 1, lessonCount: 1,
+        studyUnitCount: 2, completedStudyUnitCount: 1
+      })),
       loadAnnotationsForPath: () => [],
       loadRuntimeStatus: () => ({}),
       loadReviewItems: () => [],
@@ -229,43 +227,16 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
         id === courseId),
       loadProject: () => structuredClone(canonicalProject),
       refreshCourses: async () => structuredClone(canonicalProject),
-      loadPendingPersonalCopyEdit: async (requestedSourceCourseId = null) =>
-        pendingPersonalCopyEdit && (
-          requestedSourceCourseId == null ||
-          requestedSourceCourseId === pendingPersonalCopyEdit.sourceCourseId
-        )
-          ? structuredClone(pendingPersonalCopyEdit)
-          : null,
-      clearPendingPersonalCopyEdit: async (
-        requestedSourceCourseId = null,
-        requestedRequestId = null
-      ) => {
-        if (!pendingPersonalCopyEdit ||
-            requestedSourceCourseId != null &&
-              requestedSourceCourseId !== pendingPersonalCopyEdit.sourceCourseId ||
-            requestedRequestId != null &&
-              requestedRequestId !== pendingPersonalCopyEdit.requestId) return false;
+      loadStudyDraftRecovery: async () => structuredClone(pendingPersonalCopyEdit),
+      clearStudyDraftRecovery: async (courseId, requestId) => {
+        if (pendingPersonalCopyEdit?.sourceCourseId !== courseId ||
+            pendingPersonalCopyEdit?.requestId !== requestId) return false;
         pendingPersonalCopyEdit = null;
         return true;
       },
-      retryPendingPersonalCopyEdit: async (requestedSourceCourseId = null) => {
-        const pending = pendingPersonalCopyEdit;
-        if (!pending || requestedSourceCourseId != null &&
-            requestedSourceCourseId !== pending.sourceCourseId) return null;
-        return saveManualEdit({
-          courseId: pending.sourceCourseId,
-          expectedCourseRevision: pending.expectedSourceCourseRevision,
-          didacticMicrosequenceId: pending.didacticMicrosequenceId,
-          studyUnitId: pending.studyUnit.id,
-          expectedVersion: pending.expectedStudyUnitVersion,
-          studyUnit: structuredClone(pending.studyUnit),
-          origin: pending.origin,
-          targetId: pending.targetId,
-          sourceSelection: structuredClone(pending.sourceSelection),
-          createsPersonalCopy: true,
-          replacesPendingRequestId: null,
-          retryRequestId: pending.requestId
-        });
+      recoverStudyDraft: async (courseId) => {
+        recoveryReads.push(courseId);
+        return { status: recoveryStatus, targetCourseId: recoveryTargetId };
       },
       loadStudyUnitCompositionContext: (reference) => ({
         courseId: reference.courseId,
@@ -281,6 +252,11 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
     globalThis.__manualStudyRepository = repository;
     globalThis.__manualStudySnapshot = () => structuredClone(canonicalProject);
     globalThis.__manualStudyPending = () => structuredClone(pendingPersonalCopyEdit);
+    globalThis.__manualStudyRecoveryReads = recoveryReads;
+    globalThis.__manualStudySetRecovery = ({ status, targetCourseId = null }) => {
+      recoveryStatus = status;
+      recoveryTargetId = targetCourseId;
+    };
     globalThis.__manualStudyInstallPendingRecovery = () => {
       pendingPersonalCopyEdit = {
         requestId: nextPersonalRequestId(),
@@ -320,58 +296,14 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
       ambiguousFailures: 0,
       staleFailures: 0,
       staleCanonical: null,
-      personalCopyConflict: false,
       reconciled: true
     };
 
-    function pendingFromRequest(request, requestId) {
-      return {
-        requestId,
-        sourceCourseId: request.courseId,
-        expectedSourceCourseRevision: request.expectedCourseRevision,
-        expectedStudyUnitVersion: request.expectedVersion,
-        didacticMicrosequenceId: request.didacticMicrosequenceId,
-        sourceSelection: structuredClone(request.sourceSelection),
-        targetId: request.targetId,
-        studyUnit: structuredClone(request.studyUnit),
-        origin: request.origin
-      };
-    }
-
-    function personalCopyTarget() {
-      const source = canonicalProject.courses.find(({ id }) => id === sourceCourseId);
-      const existing = canonicalProject.courses.find(({ id }) => id === personalCopyCourseId);
-      const target = structuredClone(existing || source);
-      personalCopyCourseId ||= "course-fixture-personal";
-      target.id = personalCopyCourseId;
-      canonicalProject = {
-        ...canonicalProject,
-        courses: [source, target]
-      };
-      return { source, target };
-    }
-
     async function saveManualEdit(request) {
-      const personalCopy = request.createsPersonalCopy === true;
-      let requestId = null;
-      if (personalCopy) {
-        if (request.retryRequestId) {
-          requestId = request.retryRequestId;
-        } else if (request.replacesPendingRequestId) {
-          if (pendingPersonalCopyEdit?.requestId !== request.replacesPendingRequestId) {
-            throw new Error("O pedido substituído não corresponde ao rascunho pendente.");
-          }
-          requestId = nextPersonalRequestId();
-        } else {
-          requestId = pendingPersonalCopyEdit?.requestId || nextPersonalRequestId();
-        }
-        pendingPersonalCopyEdit = pendingFromRequest(request, requestId);
+      if (ownership !== "owned" || request.courseId !== sourceCourseId) {
+        throw new Error("Somente o proprietário pode editar o curso.");
       }
-      const recorded = structuredClone(request);
-      delete recorded.retryRequestId;
-      if (requestId) recorded.requestId = requestId;
-      requests.push(recorded);
-
+      requests.push(structuredClone(request));
       if (globalThis.__manualStudySaveControl.staleFailures > 0) {
         globalThis.__manualStudySaveControl.staleFailures -= 1;
         const staleCanonical = globalThis.__manualStudySaveControl.staleCanonical;
@@ -392,37 +324,10 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
         error.ambiguous = true;
         throw error;
       }
-      if (personalCopy && globalThis.__manualStudySaveControl.personalCopyConflict) {
-        personalCopyTarget();
-        const error = new Error("A cópia pessoal já existe.");
-        error.code = "personal_copy_exists";
-        error.targetCourseId = personalCopyCourseId;
-        error.pending = structuredClone(pendingPersonalCopyEdit);
+      if (request.expectedCourseRevision !== canonicalRevision || request.expectedVersion !== canonicalStudyUnitVersion) {
+        const error = new Error("O curso mudou. Releia antes de salvar.");
+        error.code = "40001";
         throw error;
-      }
-      if (personalCopy) {
-        const { target } = personalCopyTarget();
-        const units = target.modules[0].lessons[0].microsequences[0].studyUnits;
-        const unitIndex = units.findIndex(({ id }) => id === request.studyUnitId);
-        units[unitIndex] = structuredClone(request.studyUnit);
-        pendingPersonalCopyEdit = null;
-        return {
-          courseId: personalCopyCourseId,
-          sourceCourseId,
-          courseRevision: 2,
-          studyUnitId: request.studyUnitId,
-          studyUnitVersion: 2,
-          studyUnit: structuredClone(request.studyUnit),
-          version: 2,
-          project: structuredClone(canonicalProject),
-          createdCopy: true,
-          reconciled: true,
-          changed: true,
-          idempotent: false,
-          channel: "application",
-          origin: request.origin,
-          updatedAt: "2026-08-20T12:00:00.000Z"
-        };
       }
       const course = canonicalProject.courses.find(({ id }) => id === request.courseId);
       const units = course?.modules[0].lessons[0].microsequences[0].studyUnits;
@@ -472,7 +377,9 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
     globalThis.__manualStudyReload = async ({ retry = true } = {}) => {
       const app = mountStudyApplication();
       await app.openCourse(sourceCourseId);
-      return app.resumePendingManualEdit({ retry });
+      await app.resumePendingManualEdit({ retry });
+      app.openCourses();
+      return true;
     };
     const app = mountStudyApplication();
     await app.openCourse(sourceCourseId);
@@ -481,21 +388,22 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false }
   await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
 }
 
-async function openInspectionUnit(page, ownership) {
+async function openInspectionUnit(page, ownership, { longTitles = false } = {}) {
   await page.goto("/");
   await page.setContent('<!doctype html><html lang="pt-BR"><head>' +
     STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
     '</head><body><main class="course-authoring-root"><div id="inspection-root"></div></main></body></html>');
-  await page.evaluate(async ({ ownership }) => {
+  await page.evaluate(async ({ ownership, longTitles }) => {
     const { createCourseInspectionSequence } = await import(
       "/src/ui/CourseInspectionSequence.js"
     );
+    const { renderCourseAuthoringSurface } = await import("/src/ui/CourseAuthoringSurface.js");
     const courseId = "10000000-0000-4000-8000-000000000001";
     const partId = "20000000-0000-4000-8000-000000000002";
     const studyUnit = {
       id: "inspection-unit-1",
       position: 1,
-      title: "Relações",
+      title: longTitles ? "Relações entre conceitos e condições necessárias para a conclusão desta prática" : "Relações",
       role: "theory",
       content: [{
         id: "inspection-paragraph-1",
@@ -610,23 +518,23 @@ async function openInspectionUnit(page, ownership) {
       }
     };
     globalThis.__inspectionManualRequests = requests;
+    const course = { courseId, revision: 7,
+      title: longTitles ? "Relações conceituais e condições para resolver problemas com clareza" : "Curso de relações",
+      ownership, canEdit: ownership === "owned" };
+    document.querySelector(".course-authoring-root").innerHTML = renderCourseAuthoringSurface({
+      view: "course", section: "content", course
+    });
     globalThis.__inspectionManualSequence = createCourseInspectionSequence({
-      root: document.querySelector("#inspection-root"),
+      root: document.querySelector("[data-course-inspection-host]"),
       controller,
-      course: {
-        courseId,
-        revision: 7,
-        title: "Curso de relações",
-        ownership,
-        canEdit: ownership === "owned"
-      },
+      course,
       onSaveManualEdit: (request) => controller.commitCourseComposition(request),
       windowValue: window,
       documentValue: document,
       navigatorValue: navigator
     });
     await globalThis.__inspectionManualSequence.open();
-  }, { ownership });
+  }, { ownership, longTitles });
 }
 
 async function installContextualAssistanceResponses(page, {
@@ -735,7 +643,7 @@ test("os 33 packages preservam edição textual no renderer entre 360 e 1280 px"
   }
 });
 
-test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o original", async ({ page }) => {
+test("autor edita no lugar e estudante alheio preserva original sem receber escritor", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openStudyUnit(page, "owned");
   await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
@@ -749,7 +657,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   await expect(field).toBeEditable();
   await field.fill("A conjunção é verdadeira quando P e Q são verdadeiras.");
   await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
   await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
   const evidence = await page.evaluate(() => ({
     requests: globalThis.__manualStudyRequests,
@@ -783,7 +691,8 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
     "Deixe a frase mais direta."
   );
   await page.setViewportSize({ width: 360, height: 800 });
-  await assistanceDialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
+  await assistanceDialog.getByRole("button", { name: "Preparar prévia" }).click();
+  await assistanceDialog.getByRole("button", { name: "Aplicar ao rascunho", exact: true }).click();
   await expect(page.getByRole("region", { name: "Rascunho da Assistência por IA" }))
     .toBeVisible();
   await expect(page.getByText(
@@ -792,7 +701,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   )).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Salvar proposta" }).click();
-  await expect(page.getByText("Proposta salva.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Proposta salva.", { exact: true })).toBeAttached();
   const providerRequest = await page.evaluate(() => globalThis.__manualStudyRequests.at(-1));
   expect(providerRequest.origin).toBe("provider_assistance");
   expect(providerRequest.expectedCourseRevision).toBe(8);
@@ -805,7 +714,7 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   ))).toBe(evidence.progressBefore);
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "Desfazer última edição" }).click();
-  await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeAttached();
   await expect(page.locator('[data-manual-edit-path="text"]')).toContainText(
     "A conjunção é verdadeira quando as duas são verdadeiras."
   );
@@ -813,113 +722,34 @@ test("autor edita no lugar e estudante continua na cópia pessoal sem alterar o 
   await page.getByRole("button", { name: "Cancelar edição" }).click();
   expect(await page.evaluate(() => globalThis.__manualStudyRequests.length)).toBe(2);
 
-  await openStudyUnit(page, "shared");
-  await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeVisible();
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator(
-    '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-  ).click();
-  await page.locator('[data-manual-edit-path="text"]').fill(
-    "Na cópia, a conjunção é verdadeira quando as duas são verdadeiras."
-  );
-  await expect(page.getByText(
-    "Ao salvar, o AraLearn criará uma cópia privada para você. O Curso compartilhado continuará intacto."
-  )).toBeVisible();
-  await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
-  await expect(page.getByText(
-    "Cópia criada. Você continua nesta unidade de estudo.",
-    { exact: true }
-  )).toBeVisible();
-  await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
-  await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
-  const personalCopy = await page.evaluate(() => ({
-    requests: globalThis.__manualStudyRequests,
-    project: globalThis.__manualStudySnapshot(),
-    progressAfter: JSON.stringify(globalThis.__manualStudyRepository.loadProgress()),
-    progressBefore: globalThis.__manualStudyProgressBefore
-  }));
-  expect(personalCopy.requests).toHaveLength(1);
-  expect(personalCopy.requests[0]).toMatchObject({
-    courseId: "course-fixture-minimal",
-    createsPersonalCopy: true,
-    origin: "manual"
-  });
-  expect(personalCopy.project.courses).toHaveLength(2);
-  expect(personalCopy.project.courses[0].modules[0].lessons[0]
-    .microsequences[0].studyUnits[1].content[0].data.text).not.toBe(
-    "Na cópia, a conjunção é verdadeira quando as duas são verdadeiras."
-  );
-  expect(personalCopy.project.courses[1].modules[0].lessons[0]
-    .microsequences[0].studyUnits[1].content[0].data.text).toBe(
-    "Na cópia, a conjunção é verdadeira quando as duas são verdadeiras."
-  );
-  expect(personalCopy.progressAfter).toBe(personalCopy.progressBefore);
-});
-
-test("cópia pessoal permanece legível nos quatro tamanhos e nos dois temas", async ({ page }) => {
-  for (const theme of ["light", "dark"]) {
-    for (const width of VIEWPORTS) {
-      await page.setViewportSize({
-        width,
-        height: width === 360 ? 800 : width === 390 ? 844 : 900
-      });
-      await openStudyUnit(page, "shared");
-      await page.evaluate((selectedTheme) => {
-        globalThis.AraLearnTheme.setPreference(selectedTheme);
-        document.documentElement.dataset.themePreference = selectedTheme;
-        document.documentElement.dataset.colorMode = selectedTheme;
-      }, theme);
-      await expect(page.locator("html")).toHaveAttribute("data-color-mode", theme);
-      await page.getByRole("button", { name: "Editar", exact: true }).click();
-      await page.locator(
-        '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-      ).click();
-      await page.locator('[data-manual-edit-path="text"]').fill(
-        "Na cópia, a conjunção é verdadeira quando as duas são verdadeiras."
-      );
-      const save = page.getByRole("button", { name: "Salvar na minha cópia" });
-      await expect(save).toBeVisible();
-      const before = await page.evaluate(() => {
-        const screen = document.querySelector(".screen-content")?.getBoundingClientRect();
-        const saveButton = document.querySelector(
-          '[data-action="study-manual-save"]'
-        )?.getBoundingClientRect();
-        return {
-          overflow: document.documentElement.scrollWidth -
-            document.documentElement.clientWidth,
-          screen: screen && { left: screen.left, right: screen.right, width: screen.width },
-          saveButton: saveButton && { width: saveButton.width, height: saveButton.height },
-          text: document.body.innerText
-        };
-      });
-      expect(before.overflow, `${width}px ${theme} sem overflow`).toBeLessThanOrEqual(1);
-      expect(before.screen.width, `${width}px ${theme} limitado a 430 px`).toBeLessThanOrEqual(431);
-      expect(before.screen.left, `${width}px ${theme} dentro do viewport`).toBeGreaterThanOrEqual(-1);
-      expect(before.screen.right, `${width}px ${theme} dentro do viewport`).toBeLessThanOrEqual(width + 1);
-      if (width > 430) {
-        expect(
-          Math.abs((before.screen.left + before.screen.right) / 2 - width / 2),
-          `${width}px ${theme} centralizado`
-        ).toBeLessThanOrEqual(1.5);
-      }
-      expect(Math.min(before.saveButton.width, before.saveButton.height)).toBeGreaterThanOrEqual(43);
-      expect(before.text).not.toMatch(
-        /\b[0-9a-f]{8}-[0-9a-f-]{27}\b|\bsha(?:-?256)?\b|\brevis[aã]o\s+\d+/iu
-      );
-      await save.click();
-      await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-      await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
-      expect(await page.evaluate(() => document.documentElement.scrollWidth -
-        document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
-    }
+  for (const ownership of ["shared", "public"]) {
+    await openStudyUnit(page, ownership);
+    await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
+    await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
+    expect(await page.evaluate(() => {
+      try {
+        globalThis.__manualStudyApp.previewManualEdit({
+          targetId: "content:card-fixture-minimal-complete-content", pathValues: { text: "Tentativa alheia" }
+        });
+        return "edição indevidamente aceita";
+      } catch (error) { return error.message; }
+    })).toBe("A edição contextual não está disponível nesta unidade de estudo.");
+    const state = await page.evaluate(() => ({
+      requests: globalThis.__manualStudyRequests, project: globalThis.__manualStudySnapshot(),
+      progress: JSON.stringify(globalThis.__manualStudyRepository.loadProgress()),
+      before: globalThis.__manualStudyProgressBefore
+    }));
+    expect(state.requests).toEqual([]);
+    expect(state.project.courses).toHaveLength(1);
+    expect(state.progress).toBe(state.before);
   }
 });
 
-test("rascunho por assistência e cancelamento não criam cópia pessoal", async ({ page }) => {
+
+test("rascunho por assistência do proprietário e descarte conservam original", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openStudyUnit(page, "shared");
+  await openStudyUnit(page, "owned");
   await installContextualAssistanceResponses(page, {
     discussionMessage: "Podemos simplificar a explicação.",
     candidateMessage: "A sugestão passou pelo renderer.",
@@ -929,7 +759,8 @@ test("rascunho por assistência e cancelamento não criam cópia pessoal", async
     page,
     "Torne a explicação mais direta."
   );
-  await dialog.getByRole("button", { name: "Aceitar e aplicar" }).click();
+  await dialog.getByRole("button", { name: "Preparar prévia" }).click();
+  await dialog.getByRole("button", { name: "Aplicar ao rascunho", exact: true }).click();
   await expect(page.getByText(
     "No rascunho, a conjunção é verdadeira quando",
     { exact: false }
@@ -1027,258 +858,82 @@ test("seleção situada combina múltiplas Unidades e Microssequências antes da
   ).first()).toBeFocused();
 });
 
-test("rascunho pessoal pendente reaparece e a reconexão retoma o mesmo pedido", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test("recuperação antiga consulta sem reaplicar e conserva pendência na reconexão", async ({ page }) => {
+  await openStudyUnit(page, "shared");
+  const pending = await page.evaluate(async () => {
+    const value = globalThis.__manualStudyInstallPendingRecovery();
+    await globalThis.__manualStudyApp.resumePendingManualEdit();
+    globalThis.__manualStudyApp.openCourses();
+    return value;
+  });
+  await page.getByText("Rascunho guardado", { exact: true }).click();
+  await expect(page.getByText("Não foi possível confirmar o destino", { exact: false })).toBeVisible();
+  await expect(page.locator(".study-draft-recovery-content")).toContainText(pending.studyUnit.content[0].data.text);
+  await page.evaluate(() => globalThis.__manualStudyReload());
+  expect(await page.evaluate(() => globalThis.__manualStudyPending())).toEqual(pending);
+  expect(await page.evaluate(() => globalThis.__manualStudyRequests)).toEqual([]);
+  expect(await page.evaluate(() => globalThis.__manualStudyRecoveryReads)).toHaveLength(2);
+  expect(await page.evaluate(() => globalThis.__manualStudySnapshot().courses)).toHaveLength(1);
+  await expect(page.getByRole("button", { name: "Salvar edição" })).toHaveCount(0);
+});
+
+test("resposta antiga confirmada oferece apenas alvo próprio existente e mantém rascunho", async ({ page }) => {
+  await openStudyUnit(page, "shared");
+  await page.evaluate(async () => {
+    const project = globalThis.__manualStudySnapshot();
+    const owned = structuredClone(project.courses[0]);
+    owned.id = "course-owned-before-upgrade";
+    project.courses.push(owned);
+    globalThis.__manualStudySetCanonical({ project, courseRevision: 9, studyUnitVersion: 5 });
+    globalThis.__manualStudyInstallPendingRecovery();
+    globalThis.__manualStudySetRecovery({ status: "confirmed", targetCourseId: owned.id });
+    await globalThis.__manualStudyApp.resumePendingManualEdit();
+    globalThis.__manualStudyApp.openCourses();
+  });
+  await page.getByText("Rascunho guardado", { exact: true }).click();
+  await expect(page.getByText("O rascunho guardado não será reaplicado.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir meu curso" })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__manualStudySnapshot().courses)).toHaveLength(2);
+  expect(await page.evaluate(() => globalThis.__manualStudyPending())).not.toBeNull();
+  expect(await page.evaluate(() => globalThis.__manualStudyRequests)).toEqual([]);
+});
+
+test("descarte antigo detecta mudança em outra aba sem apagar intenção substituta", async ({ page }) => {
   await openStudyUnit(page, "shared");
   await page.evaluate(async () => {
     globalThis.__manualStudyInstallPendingRecovery();
-    await globalThis.__manualStudyApp.resumePendingManualEdit({ retry: false });
+    await globalThis.__manualStudyApp.resumePendingManualEdit();
+    globalThis.__manualStudyApp.openCourses();
   });
-  await expect(page.getByText(
-    "A alteração está guardada neste dispositivo. Conecte-se e salve novamente para criar sua cópia."
-  )).toBeVisible();
-  await expect(page.locator('[data-manual-edit-path="text"]')).toContainText(
-    "Na retomada, a conjunção é verdadeira quando as duas são verdadeiras."
-  );
-  await expect(page.getByRole("button", { name: "Salvar na minha cópia" })).toBeFocused();
-
-  await page.evaluate(() => globalThis.__manualStudyApp.resumePendingManualEdit({ retry: true }));
-  await expect(page.getByText(
-    "Cópia criada. Você continua nesta unidade de estudo.",
-    { exact: true }
-  )).toBeVisible();
-  await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
-});
-
-test("duas abas convergem para uma cópia e preservam o rascunho conflitante", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openStudyUnit(page, "shared");
-  await page.evaluate(() => {
-    globalThis.__manualStudySaveControl.personalCopyConflict = true;
-  });
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator(
-    '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-  ).click();
-  const draft = "Na segunda aba, a conjunção é verdadeira quando as duas são verdadeiras.";
-  await page.locator('[data-manual-edit-path="text"]').fill(draft);
-  await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
-  await expect(page.getByText(
-    "Sua cópia já existia. Revise esta alteração na cópia e salve novamente."
-  )).toBeVisible();
-  await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-  await expect(page.locator('[data-manual-edit-path="text"]')).toContainText(draft);
-  await expect(page.getByRole("button", { name: "Salvar edição" })).toBeVisible();
-
-  await page.evaluate(() => {
-    globalThis.__manualStudySaveControl.personalCopyConflict = false;
-  });
-  await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => globalThis.__manualStudyRequests.length)).toBe(2);
-});
-
-test("rebase da cópia preserva o pedido anterior e torna o substituto durável", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openStudyUnit(page, "shared");
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator(
-    '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-  ).click();
-  const draft = "No rascunho refeito, a conjunção é verdadeira quando as duas são verdadeiras.";
-  const field = page.locator('[data-manual-edit-path="text"]');
-  await field.fill(draft);
-  await page.evaluate(() => {
-    const current = globalThis.__manualStudySnapshot();
-    current.courses[0].modules[0].lessons[0].microsequences[0]
-      .studyUnits[1].content[0].data.text =
-        "Na base atual, a conjunção continua verdadeira quando as duas são verdadeiras.";
-    globalThis.__manualStudySaveControl.staleCanonical = {
-      project: current,
-      courseRevision: 9,
-      studyUnitVersion: 5
-    };
-    globalThis.__manualStudySaveControl.staleFailures = 2;
-  });
-
-  await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "O curso mudou. Revise a alteração sobre a unidade de estudo atual e salve novamente."
-  );
-  await expect(field).toHaveText(draft);
-  const firstRebase = await page.evaluate(() => ({
-    pending: globalThis.__manualStudyPending(),
-    requests: structuredClone(globalThis.__manualStudyRequests)
-  }));
-  expect(firstRebase.pending.requestId).toBe("request-personal-P");
-  expect(firstRebase.requests).toHaveLength(1);
-  expect(firstRebase.requests[0]).toMatchObject({
-    requestId: "request-personal-P",
-    expectedCourseRevision: 7,
-    expectedVersion: 3,
-    replacesPendingRequestId: null
-  });
-
-  await page.evaluate(() => globalThis.__manualStudyReload({ retry: true }));
-  await expect(page.getByRole("alert")).toContainText(
-    "O curso mudou. Revise a alteração sobre a unidade de estudo atual e salve novamente."
-  );
-  await expect(field).toHaveText(draft);
-  const afterReload = await page.evaluate(() => ({
-    pending: globalThis.__manualStudyPending(),
-    requests: structuredClone(globalThis.__manualStudyRequests)
-  }));
-  expect(afterReload.pending.requestId).toBe("request-personal-P");
-  expect(afterReload.requests).toHaveLength(2);
-  expect(afterReload.requests.map(({ requestId }) => requestId)).toEqual([
-    "request-personal-P",
-    "request-personal-P"
-  ]);
-
-  await page.evaluate(() => {
-    globalThis.__manualStudySaveControl.ambiguousFailures = 2;
-  });
-  await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Não foi possível confirmar se a edição foi salva"
-  );
-  const replacement = await page.evaluate(() => ({
-    pending: globalThis.__manualStudyPending(),
-    request: structuredClone(globalThis.__manualStudyRequests.at(-1))
-  }));
-  expect(replacement.pending.requestId).toBe("request-personal-Q");
-  expect(replacement.request).toMatchObject({
-    requestId: "request-personal-Q",
-    expectedCourseRevision: 9,
-    expectedVersion: 5,
-    replacesPendingRequestId: "request-personal-P"
-  });
-
-  await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Não foi possível confirmar se a edição foi salva"
-  );
-  const retry = await page.evaluate(() => ({
-    pending: globalThis.__manualStudyPending(),
-    requests: structuredClone(globalThis.__manualStudyRequests.slice(-2))
-  }));
-  expect(retry.pending.requestId).toBe("request-personal-Q");
-  expect(retry.requests.map(({ requestId }) => requestId)).toEqual([
-    "request-personal-Q",
-    "request-personal-Q"
-  ]);
-
-  await page.getByRole("button", { name: "Cancelar edição" }).click();
-  await page.getByRole("button", {
-    name: "Descartar rascunho com resultado incerto"
-  }).click();
-  await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeFocused();
-  await expect(field).toHaveCount(0);
+  await page.getByText("Rascunho guardado", { exact: true }).click();
+  const replacement = await page.evaluate(() => globalThis.__manualStudyInstallPendingRecovery());
+  await page.getByRole("button", { name: "Descartar rascunho guardado" }).click();
+  await expect(page.getByText("O rascunho guardado mudou.", { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__manualStudyPending())).toEqual(replacement);
+  await page.evaluate(() => globalThis.__manualStudyReload());
+  await page.getByText("Rascunho guardado", { exact: true }).click();
+  await page.getByRole("button", { name: "Descartar rascunho guardado" }).click();
   expect(await page.evaluate(() => globalThis.__manualStudyPending())).toBeNull();
+  expect(await page.evaluate(() => globalThis.__manualStudyRequests)).toEqual([]);
 });
 
-test("conflito de cópia sobrevive à recarga e limpar o editor remove o pedido", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openStudyUnit(page, "shared");
-  await page.evaluate(() => {
-    globalThis.__manualStudySaveControl.personalCopyConflict = true;
-  });
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.locator(
-    '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
-  ).click();
-  const draft = "Na cópia reencontrada, a conjunção é verdadeira quando as duas são verdadeiras.";
-  const field = page.locator('[data-manual-edit-path="text"]');
-  await field.fill(draft);
-  await page.getByRole("button", { name: "Salvar na minha cópia" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Sua cópia já existia. Revise esta alteração na cópia e salve novamente."
-  );
-  const pendingRequestId = await page.evaluate(() =>
-    globalThis.__manualStudyPending()?.requestId
-  );
-  expect(pendingRequestId).toBe("request-personal-P");
-
-  await page.evaluate(() => globalThis.__manualStudyReload({ retry: true }));
-  await expect(page.getByRole("alert")).toContainText(
-    "Sua cópia já existia. Revise esta alteração na cópia e salve novamente."
-  );
-  await expect(page.getByText("Sua cópia", { exact: true })).toBeVisible();
-  await expect(field).toHaveText(draft);
-  expect(await page.evaluate(() => globalThis.__manualStudyPending()?.requestId)).toBe(
-    pendingRequestId
-  );
-
-  await page.evaluate(() => {
-    globalThis.__manualStudySaveControl.personalCopyConflict = false;
-  });
-  await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => globalThis.__manualStudyPending())).toBeNull();
-
-  const nextPendingRequestId = await page.evaluate(async () => {
-    const pending = globalThis.__manualStudyInstallPendingRecovery();
-    globalThis.__manualStudySaveControl.personalCopyConflict = true;
-    await globalThis.__manualStudyApp.resumePendingManualEdit({ retry: true });
-    return pending.requestId;
-  });
-  await expect(page.getByRole("alert")).toContainText(
-    "Sua cópia já existia. Revise esta alteração na cópia e salve novamente."
-  );
-  expect(await page.evaluate(() => globalThis.__manualStudyPending()?.requestId)).toBe(
-    nextPendingRequestId
-  );
-  await page.getByRole("button", { name: "Cancelar edição" }).click();
-  await expect(page.locator('[data-manual-edit-path="text"]')).toHaveCount(0);
-  expect(await page.evaluate(() => globalThis.__manualStudyPending())).toBeNull();
-});
-
-test("alvo removido leva o rascunho à Home para descarte visível", async ({ page }) => {
-  const scenarios = [{
-    kind: "study_unit",
-    message: "A unidade de estudo da alteração guardada mudou ou deixou de existir. " +
-      "Descarte o rascunho para continuar."
-  }, {
-    kind: "resource",
-    message: "O conteúdo da alteração guardada mudou ou deixou de existir. " +
-      "Descarte o rascunho para continuar."
-  }];
-
-  for (const scenario of scenarios) {
-    await page.setViewportSize({ width: 390, height: 844 });
+test("origem ou unidade removida não apaga rascunho antigo nem cria curso", async ({ page }) => {
+  for (const removeCourse of [false, true]) {
     await openStudyUnit(page, "shared");
-    await page.evaluate(async ({ kind }) => {
-      globalThis.__manualStudyInstallPendingRecovery();
-      const current = globalThis.__manualStudySnapshot();
-      const units = current.courses[0].modules[0].lessons[0]
-        .microsequences[0].studyUnits;
-      if (kind === "study_unit") {
-        current.courses[0].modules[0].lessons[0]
-          .microsequences[0].studyUnits = units.filter(({ id }) =>
-            id !== "card-fixture-minimal-complete");
-      } else {
-        const unit = units.find(({ id }) => id === "card-fixture-minimal-complete");
-        unit.content[0].id = "card-fixture-minimal-replacement-content";
-        unit.response.data.blanks[0].targetInstanceId =
-          "card-fixture-minimal-replacement-content";
-      }
-      globalThis.__manualStudySetCanonical({
-        project: current,
-        courseRevision: 9,
-        studyUnitVersion: 5
-      });
-      globalThis.__manualStudySaveControl.staleFailures = 1;
-      await globalThis.__manualStudyReload({ retry: true });
-    }, scenario);
-
-    await expect(page.getByRole("alert")).toContainText(scenario.message);
-    const discard = page.getByRole("button", { name: "Descartar alteração guardada" });
-    await expect(discard).toBeVisible();
-    await expect(discard).toBeFocused();
-    await discard.click();
-    await expect(page.getByText("Alteração guardada descartada.", { exact: true }))
-      .toBeVisible();
+    const pending = await page.evaluate(async (removeCourse) => {
+      const value = globalThis.__manualStudyInstallPendingRecovery();
+      const project = globalThis.__manualStudySnapshot();
+      if (removeCourse) project.courses = [];
+      else project.courses[0].modules[0].lessons[0].microsequences[0].studyUnits.pop();
+      globalThis.__manualStudySetCanonical({ project, courseRevision: 9, studyUnitVersion: 5 });
+      await globalThis.__manualStudyReload();
+      return value;
+    }, removeCourse);
+    await page.getByText("Rascunho guardado", { exact: true }).click();
+    await expect(page.locator(".study-draft-recovery-content")).toContainText(pending.studyUnit.content[0].data.text);
+    expect(await page.evaluate(() => globalThis.__manualStudyPending())).toEqual(pending);
+    expect(await page.evaluate(() => globalThis.__manualStudyRequests)).toEqual([]);
+    await page.getByRole("button", { name: "Descartar rascunho guardado" }).click();
     expect(await page.evaluate(() => globalThis.__manualStudyPending())).toBeNull();
   }
 });
@@ -1398,7 +1053,7 @@ test("histórico manual permanece isolado quando dois Cursos reutilizam a mesma 
     ).click();
     await page.locator('[data-manual-edit-path="text"]').fill(text);
     await page.getByRole("button", { name: "Salvar edição" }).click();
-    await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
   };
 
   await editCurrentParagraph("Texto salvo somente no Curso de Ana.");
@@ -1433,7 +1088,7 @@ test("snapshot canônico externo rebasa CAS local sem perder posição nem progr
     "A conjunção é verdadeira quando P e Q são verdadeiras."
   );
   await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
 
   await page.evaluate(async ({ project }) => {
     const external = structuredClone(project);
@@ -1455,7 +1110,8 @@ test("snapshot canônico externo rebasa CAS local sem perder posição nem progr
     '[data-resource-target-id="content:card-fixture-minimal-complete-content"]'
   ).click();
   const externalField = page.locator('[data-manual-edit-path="text"]');
-  await expect(externalField).toHaveText("Alteração externa confirmada pelo ChatGPT.");
+  await expect(externalField).toHaveAttribute("data-manual-edit-original", "Alteração externa confirmada pelo ChatGPT.");
+  await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
   await externalField.fill(
     "Alteração externa confirmada pelo ChatGPT em versão posterior."
   );
@@ -1488,7 +1144,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   const field = page.locator('[data-manual-edit-path="text"]');
   await field.fill("Texto de inspeção revisado.");
   await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toMatchObject([{
     courseId: "10000000-0000-4000-8000-000000000001",
     expectedCourseRevision: 7,
@@ -1503,7 +1159,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
 
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "Desfazer última edição" }).click();
-  await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeAttached();
   await expect(page.locator('[data-manual-edit-path="text"]')).toHaveText(
     "Texto de inspeção original."
   );
@@ -1565,7 +1221,7 @@ test("gravação incerta conserva o rascunho e só libera outro pedido após ret
   })).toBeVisible();
   await page.getByRole("button", { name: "Manter rascunho" }).click();
   await page.getByRole("button", { name: "Salvar edição" }).click();
-  await expect(page.getByText("Edição salva.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
   const attempts = await page.evaluate(() => globalThis.__manualStudyRequests);
   expect(attempts).toHaveLength(2);
   expect(attempts[1]).toEqual(attempts[0]);
@@ -1606,7 +1262,162 @@ test("confirmação gravada sem releitura encerra o pedido e sinaliza sincroniza
   await expect(page.getByText(
     "Edição salva. A atualização completa ocorrerá na próxima sincronização.",
     { exact: true }
-  )).toBeVisible();
+  )).toBeAttached();
   expect(await page.evaluate(() => globalThis.__manualStudyRequests.length)).toBe(1);
   await expect(page.locator('[data-manual-edit-path="text"]')).toHaveCount(0);
+});
+
+async function elementGeometry(page, selectors) {
+  await page.evaluate(() => document.fonts.ready);
+  return page.evaluate((selectors) => Object.fromEntries(selectors.map((selector) => {
+    const element = document.querySelector(selector);
+    if (!element) throw new Error(`Elemento geométrico ausente: ${selector}`);
+    const { x, y, width, height } = element.getBoundingClientRect();
+    return [selector, { x, y, width, height }];
+  })), selectors);
+}
+
+function expectSameGeometry(before, after, context) {
+  for (const [selector, values] of Object.entries(before)) {
+    for (const property of ["x", "y", "width", "height"]) {
+      expect(Math.abs(values[property] - after[selector][property]),
+        `${context}: ${selector} ${property}`).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
+    }
+  }
+}
+
+test("edição conserva cabeçalho e prática até 1px; prosa cresce sem mover controles", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const controls = ['header [data-action="go-back"]', 'header [data-action="go-home"]',
+    'header [aria-label="Visualizar"]', 'header [aria-label="Editar"]',
+    'header [aria-label="Assistência por IA"]', 'header [data-action="open-settings"]'];
+  const content = [".runtime-card-title", ".runtime-paragraph-block > p", ".study-stage"];
+  for (const theme of ["light", "dark"]) {
+    for (const width of VIEWPORTS) {
+      await page.setViewportSize({ width, height: 900 });
+      await openStudyUnit(page, "owned", { longTitles: true });
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.colorMode = theme;
+        document.documentElement.dataset.themePreference = theme;
+        document.documentElement.style.fontSize = "16px";
+      }, theme);
+      const before = await elementGeometry(page, [...controls, ...content]);
+      await page.getByRole("button", { name: "Editar", exact: true }).click();
+      expectSameGeometry(before, await elementGeometry(page, [...controls, ...content]), `${width}/${theme}/título`);
+      await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
+      await page.locator('[data-resource-target-id="content:card-fixture-minimal-complete-content"]').click();
+      const field = page.locator('[data-manual-edit-path="text"]');
+      await expect(field).toBeFocused();
+      expectSameGeometry(before, await elementGeometry(page, [...controls, ...content]), `${width}/${theme}/componente`);
+      await expect(page.locator('[data-action="text-gap-open-choice"]')).toBeVisible();
+      await field.press("End");
+      await field.pressSequentially(" A mesma regra pode ser conferida em cada combinação.");
+      const canonicalDraft = await page.evaluate(async () => {
+        const { readManualStudyUnitEditPathValues } = await import("/src/ui/manualStudyUnitEdit.js");
+        return readManualStudyUnitEditPathValues(document.querySelector('.is-inline-editing')).text;
+      });
+      expect(canonicalDraft).toContain("as duas são verdadeiras");
+      expect(canonicalDraft).not.toMatch(/[\uE000-\uE102]/u);
+      await field.fill("A conjunção é verdadeira quando as duas são verdadeiras. " +
+        "Esta explicação adicional conserva a largura e desenvolve o raciocínio sem reduzir a fonte. ".repeat(8));
+      const grown = await elementGeometry(page, [...controls, ...content]);
+      expectSameGeometry(Object.fromEntries(controls.map((key) => [key, before[key]])), grown, `${width}/${theme}/crescimento`);
+      expect(grown[content[1]].height).toBeGreaterThan(before[content[1]].height);
+      expect(Math.abs(grown[content[1]].x - before[content[1]].x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(grown[content[1]].width - before[content[1]].width)).toBeLessThanOrEqual(1);
+      await page.getByRole("button", { name: "Cancelar edição" }).click();
+      await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeFocused();
+      expectSameGeometry(before, await elementGeometry(page, [...controls, ...content]), `${width}/${theme}/cancelar`);
+      expect(await page.evaluate(() => globalThis.__manualStudyRequests)).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      if (width === 390) await testInfo.attach(`estudo-${theme}-390`, {
+        body: await page.screenshot({ path: `.tmp/manual-299-geometry/estudo-${theme}-390.png` }), contentType: "image/png"
+      });
+    }
+  }
+});
+
+test("inspeção preserva título e cabeçalho ao editar nos temas e quatro larguras", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  for (const theme of ["light", "dark"]) {
+    for (const width of VIEWPORTS) {
+      await page.setViewportSize({ width, height: 900 });
+      await openInspectionUnit(page, "owned", { longTitles: true });
+      await page.evaluate((theme) => { document.documentElement.dataset.colorMode = theme; }, theme);
+      const selectors = ['.course-inspection-item-heading', '.course-inspection-item-heading h3',
+        '.course-inspection-mode-actions [aria-label="Visualizar"]',
+        '.course-inspection-mode-actions [aria-label="Editar"]',
+        '.course-inspection-mode-actions [aria-label="Assistência por IA"]',
+        '.runtime-paragraph-block > p'];
+      const before = await elementGeometry(page, selectors);
+      await page.getByRole("button", { name: "Editar", exact: true }).click();
+      expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/${theme}/inspeção`);
+      await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
+      await expect(page.locator('[data-manual-edit-path="text"]')).toBeEditable();
+      expectSameGeometry(Object.fromEntries(selectors.filter((key) => !key.endsWith("h3")).map((key) => [key, before[key]])),
+        await elementGeometry(page, selectors.filter((key) => !key.endsWith("h3"))), `${width}/${theme}/texto da inspeção`);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      if (width === 390) await testInfo.attach(`inspecao-${theme}-390`, {
+        body: await page.screenshot({ path: `.tmp/manual-299-geometry/inspecao-${theme}-390.png` }), contentType: "image/png"
+      });
+    }
+  }
+});
+
+test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", async ({ page }) => {
+  test.setTimeout(120_000);
+  const selectors = ['header [data-action="go-back"]', 'header [data-action="go-home"]',
+    'header [aria-label="Visualizar"]', 'header [aria-label="Editar"]',
+    'header [data-action="open-settings"]'];
+  const evidence = [];
+  for (const theme of ["light", "dark"]) {
+    for (const width of VIEWPORTS) {
+      await page.setViewportSize({ width, height: 900 });
+      await openStudyUnit(page, "owned", { longTitles: true });
+      await page.evaluate((theme) => { document.documentElement.dataset.colorMode = theme; }, theme);
+      const reference = await elementGeometry(page, selectors);
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
+      const microsequence = await elementGeometry(page, selectors);
+      expectSameGeometry(reference, microsequence, `${width}/${theme}/microssequência`);
+      evidence.push({ width, theme, level: "microssequência", controls: microsequence });
+      await page.evaluate(() => globalThis.__manualStudyApp.openCourse("course-fixture-minimal"));
+      for (const [level, next] of [["curso", "Abrir módulo"], ["módulo", "Abrir lição"],
+        ["lição", "Abrir microssequência didática"]]) {
+        const actual = await elementGeometry(page, selectors);
+        expectSameGeometry(reference, actual, `${width}/${theme}/${level}`);
+        evidence.push({ width, theme, level, controls: actual });
+        await page.getByRole("button", { name: next, exact: true }).first().click({ timeout: 5000 });
+      }
+    }
+  }
+  fs.mkdirSync(".tmp/manual-299-geometry", { recursive: true });
+  fs.writeFileSync(".tmp/manual-299-geometry/header-levels.json", JSON.stringify({ tolerancePx: GEOMETRY_TOLERANCE, evidence }, null, 2));
+});
+
+test("rascunho manual mantém sua revisão de origem quando outra aba grava", async ({ page }) => {
+  await openStudyUnit(page, "owned");
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.locator('[data-resource-target-id="content:card-fixture-minimal-complete-content"]').click();
+  const draft = "No meu rascunho, a conjunção é verdadeira quando as duas são verdadeiras.";
+  const field = page.locator('[data-manual-edit-path="text"]');
+  await field.fill(draft);
+  const replaced = await page.evaluate(async () => {
+    const project = globalThis.__manualStudySnapshot();
+    project.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].title = "Título da outra aba";
+    globalThis.__manualStudySetCanonical({ project, courseRevision: 9, studyUnitVersion: 5 });
+    return globalThis.__manualStudyApp.replaceProject(project);
+  });
+  expect(replaced).toBe(false);
+  await expect(field).toHaveText(draft);
+  await page.getByRole("button", { name: "Salvar edição" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(field).toHaveText(draft);
+  const state = await page.evaluate(() => ({ requests: globalThis.__manualStudyRequests,
+    project: globalThis.__manualStudySnapshot() }));
+  expect(state.requests).toHaveLength(1);
+  expect(state.requests[0]).toMatchObject({ expectedCourseRevision: 7, expectedVersion: 3 });
+  expect(state.project.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].title).toBe("Título da outra aba");
+  expect(state.project.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].content[0].data.text).not.toBe(draft);
+  await page.getByRole("button", { name: "Cancelar edição" }).click();
+  expect(await page.evaluate(() => globalThis.__manualStudyRequests)).toHaveLength(1);
 });

@@ -726,7 +726,7 @@ input:-webkit-autofill:focus {
 }
 
 .navigation-topbar {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: calc(2 * var(--tap) + 4px) minmax(0, 1fr) calc(2 * var(--tap) + 4px);
   gap: 10px;
   min-height: calc(var(--tap) + 8px + max(var(--safe-top), 8px));
   padding-top: max(var(--safe-top), 8px);
@@ -734,7 +734,7 @@ input:-webkit-autofill:focus {
      ganha um segundo recuo, para que voltar e as ações laterais compartilhem
      a mesma aresta dos cartões abaixo. */
   padding-inline: 0;
-  margin-inline-end: 10px;
+  margin-inline-end: 0;
 }
 
 .navigation-topbar .lesson-top-actions {
@@ -804,7 +804,8 @@ button.account-settings-back[hidden] {
 }
 
 .study-mode-actions {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: repeat(3, var(--tap));
   align-items: center;
   gap: 2px;
   padding: 2px;
@@ -2111,8 +2112,7 @@ button.account-settings-back[hidden] {
   margin-bottom: 0;
 }
 
-.open-response-input,
-.open-response-preview {
+.open-response-input {
   width: 100%;
   min-height: 8rem;
   box-sizing: border-box;
@@ -4326,17 +4326,18 @@ button.account-settings-back[hidden] {
 
 .study-manual-edit-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px;
 }
 
 .study-manual-edit-dock {
   min-width: 0;
+  min-height: calc(var(--tap) + 4px + var(--safe-bottom-tappable));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 7px 0 var(--safe-bottom-tappable);
+  padding: 0 0 var(--safe-bottom-tappable);
 }
 
 .study-manual-edit-dock p,
@@ -4357,10 +4358,35 @@ button.account-settings-back[hidden] {
   gap: 5px;
 }
 
+.open-response-field {
+  display: grid;
+  min-width: 0;
+}
+
+.open-response-field > * {
+  grid-area: 1 / 1;
+}
+
+.open-response-field > .open-response-placeholder {
+  align-self: start;
+  padding: 13px 15px;
+  font: inherit;
+  line-height: var(--leading-normal);
+  pointer-events: none;
+}
+
+.open-response-placeholder [data-manual-edit-path] {
+  pointer-events: auto;
+}
+
 .study-draft-recovery {
   min-width: 0;
   padding: 12px;
   overflow-wrap: anywhere;
+}
+
+.study-manual-edit-dock > p {
+  grid-column: 1 / -1;
 }
 
 .study-draft-recovery summary {
@@ -5351,7 +5377,7 @@ button.account-settings-back[hidden] {
 .runtime-resource-edit-target.is-inline-editing {
   width: 100%;
   min-width: 0;
-  overflow: clip;
+  overflow: visible;
 }
 
 .runtime-resource-edit-target.is-inline-editing.is-selected {
@@ -5361,21 +5387,10 @@ button.account-settings-back[hidden] {
 .runtime-resource-edit-target.is-inline-editing .runtime-resource-selection-content {
   position: relative;
   width: 100%;
-  height: 100%;
   min-width: 0;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   pointer-events: auto;
-}
-
-.runtime-resource-edit-target.is-inline-editing > .runtime-resource-selection-content > .runtime-block[data-manual-edit-path] {
-  height: 100%;
-  min-height: 0;
-  max-height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 .runtime-resource-edit-target [data-manual-edit-path] {
@@ -5961,6 +5976,57 @@ button.account-settings-back[hidden] {
   padding: 10px 12px;
   border: 1px solid var(--border-color, #d9dde3);
   border-radius: 10px;
+}
+
+.runtime-card-title.course-inspection-title-edit-target {
+  font-size: var(--type-base);
+  font-weight: 700;
+  color: var(--study-card-title);
+}
+
+.study-device-settings,
+.study-state-adoption form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.study-device-settings :is(h2, p),
+.study-state-adoption :is(p, small) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.study-device-settings select,
+.study-state-adoption :is(summary, button, label) {
+  min-height: var(--tap);
+}
+
+.study-device-settings select {
+  width: 100%;
+  min-width: 0;
+}
+
+.study-state-adoption summary {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.study-state-adoption label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.study-state-adoption label > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.study-state-adoption small {
+  color: var(--text-secondary);
 }
 .course-source-file-access summary {
   cursor: pointer;

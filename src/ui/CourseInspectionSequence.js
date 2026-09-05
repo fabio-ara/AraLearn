@@ -927,7 +927,7 @@ function renderStudyUnit(
     resourceSelectionDisabled: state.manualSaving,
     resourceSelectionTargetIds: resourceTargetIds,
     selectedResourceTargetIds,
-    revealPracticeAnswers: !editing,
+    revealPracticeAnswers: true,
     manualEditingTargetId: editing && selectedResourceTargetIds.length
       ? state.manualTargetId
       : ""
@@ -954,7 +954,7 @@ function renderStudyUnit(
     renderManualModeActions(item, state, editing, observationCount) +
     "</div>" +
     renderAuthorshipState(item, observationCount) +
-    (item.studyUnit.response && !editing
+    (item.studyUnit.response
       ? '<p class="course-inspection-response-notice">Prática exibida com as respostas esperadas.</p>'
       : "") +
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +

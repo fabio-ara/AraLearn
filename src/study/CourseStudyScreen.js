@@ -220,8 +220,9 @@ function renderAssistanceDraftDock(assistance = {}, scope) {
     `${escapeHtml(assistance.draft.summary || "Mudança preparada")}</strong></div>` +
     (assistance.error ? `<p role="alert">${escapeHtml(assistance.error)}</p>` : "") +
     '<div class="study-assistance-draft-actions">' +
-    '<button class="icon-ghost" type="button" data-action="discard-assistance-draft" ' +
-    `aria-label="Descartar rascunho" title="Descartar rascunho"${assistance.saving ? " disabled" : ""}>` +
+    '<button class="icon-ghost" type="button" data-action="' +
+    (assistance.draft.discardArmed ? "discard-assistance-draft-unknown" : "discard-assistance-draft") + '" ' +
+    `aria-label="${assistance.draft.discardArmed ? "Confirmar descarte local sem confirmação da gravação" : "Descartar rascunho"}" title="Descartar rascunho"${assistance.saving ? " disabled" : ""}>` +
     `${renderUiIcon("remove-state", "home-tab-icon")}</button>` +
     '<button class="icon-ghost" type="button" data-action="undo-assistance-draft" ' +
     `aria-label="Desfazer proposta" title="Desfazer proposta"${assistance.saving ? " disabled" : ""}>` +
@@ -625,9 +626,8 @@ function renderStudyManualDock(manualEditor) {
       `${renderUiIcon("remove-state", "home-tab-icon")}<span>Descartar</span></button></div></section>`;
   }
   return '<section class="study-manual-edit-dock" aria-label="Edição manual">' +
-    `<p>${manualEditor.error
-      ? `<span role="alert">${escapeHtml(manualEditor.error)}</span>`
-      : "Edite diretamente no conteúdo."}</p>` +
+    (manualEditor.error ? `<p role="alert">${escapeHtml(manualEditor.error)}</p>` : "") +
+    renderStudyManualHistory(manualEditor) +
     '<div><button class="icon-ghost" type="button" data-action="study-manual-cancel"' +
     ` aria-label="Cancelar edição" title="Cancelar"${manualEditor.saving ? " disabled aria-disabled=\"true\"" : ""}>` +
     `${renderUiIcon("remove-state", "home-tab-icon")}</button>` +
@@ -726,7 +726,6 @@ function renderStudyUnit({
     String(units.length ? ((studyUnitIndex + 1) / units.length) * 100 : 0) + '%"></span></div></section>' +
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
-    renderStudyManualHistory(manualEditor) +
     '<div class="runtime-card-rendered-content"><div class="card-sheet-content">' +
     renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml + renderStudyCitations({
       open: citationsOpen,
@@ -744,7 +743,7 @@ function renderStudyUnit({
     '<span class="study-reader-count-value">' + String(studyUnitIndex + 1) + "/" +
     String(units.length) + "</span></span></div>" +
     (manualEditor.status
-      ? `<p class="study-manual-status" role="status" aria-live="polite">${escapeHtml(manualEditor.status)}</p>`
+      ? `<p class="study-manual-status visually-hidden" role="status" aria-live="polite">${escapeHtml(manualEditor.status)}</p>`
       : "") +
     (advanceError
       ? `<p class="study-advance-error" role="alert">${escapeHtml(advanceError)}</p>`
@@ -894,7 +893,7 @@ export function renderStudyDraftRecovery({ recovery, error = "" } = {}) {
     content = [JSON.stringify(pending.studyUnit ?? pending, null, 2)];
   }
   const confirmed = recovery.status === "confirmed" && recovery.targetCourseId;
-  return '<details class="study-draft-recovery clean-card"><summary>Rascunho guardado</summary>' +
+  return '<details class="study-draft-recovery clean-card"' + (error ? ' open' : '') + '><summary>Rascunho guardado</summary>' +
     '<p>' + (confirmed
       ? "A alteração anterior foi confirmada em um curso seu. O rascunho guardado não será reaplicado."
       : recovery.status === "unchanged"

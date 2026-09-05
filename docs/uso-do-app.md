@@ -233,11 +233,12 @@ na microssequência ou na lição:
 1. escolha OpenAI, Gemini ou DeepSeek;
 2. informe o modelo quando necessário e a chave efêmera da sessão;
 3. escreva o que deseja compreender ou alterar;
-4. examine a proposta que acompanha cada resposta e continue a conversa se
-   quiser corrigir, discordar ou acrescentar algo;
-5. use **Aceitar e aplicar** quando a proposta representar sua intenção;
-6. confira o resultado no rascunho;
-7. salve somente se o resultado estiver adequado.
+4. discuta, peça explicações ou acrescente condições; uma conversa sem mudança
+   não precisa produzir uma proposta;
+5. quando a proposta representar sua intenção, use **Preparar prévia**;
+6. alterne **Original** e **Prévia** e confira o resultado antes de usar
+   **Aplicar ao rascunho**; **Descartar prévia** conserva o conteúdo anterior;
+7. salve somente se o rascunho estiver adequado, ou descarte-o para restaurar o original.
 
 O pedido leva sua mensagem, o conteúdo selecionado, o restante do objeto
 corrente como contexto, um resumo do curso e as mensagens recentes. PDFs,
@@ -250,10 +251,15 @@ chat.
 
 A sessão pode trabalhar com a composição da Unidade, com a estrutura da
 microssequência e com a organização de microssequências dentro da lição. Depois
-do aceite, o AraLearn gera e valida a candidata no renderer real antes de
-aplicá-la ao rascunho. Proposta inválida ou não renderizável deixa o conteúdo
+de pedir a prévia, o AraLearn gera e valida a candidata no renderer real e
+aguarda a aplicação explícita ao rascunho. Proposta inválida ou não renderizável deixa o conteúdo
 corrente intacto. Endpoint, relay e instruções de arquitetura não aparecem no
 uso normal.
+
+A conversa e o rascunho suspendem atualizações de fundo do conteúdo aberto.
+Se outra sessão tiver alterado o curso, salvar pode resultar em conflito;
+a proposta fica disponível para conferência ou descarte, sem substituir a revisão
+original pela mais nova silenciosamente.
 
 ## Trabalhar com o ChatGPT a partir da Autoria
 
@@ -411,8 +417,12 @@ mesmo curso vivo.
 
 Conteúdo já carregado pode ser estudado sem rede. Progresso e marcas **Rever**
 usam a fila do estado pessoal; Observações usam outra fila e outra cópia local.
-Quando a conexão retorna, cada repositório compara sua versão remota e envia as
-operações pendentes.
+No modo automático, o retorno da conexão permite comparar a revisão remota e
+enviar operações pendentes. Em **Conta e aparência → Sincronização**, o modo
+**Manual** suspende esse intercâmbio de fundo e a atualização do conteúdo aberto.
+A nuvem sincroniza por solicitação; salvar uma alteração autoral ou enviar uma
+observação permanece uma ação explícita. A preferência pertence ao dispositivo,
+sem alterar parâmetros pedagógicos ou direitos de acesso.
 
 Na tela inicial, esse estado só aparece quando altera a capacidade de abrir o
 curso. Sem conexão, **Disponível offline** confirma que a composição validada
@@ -421,11 +431,11 @@ conhecido de uma composição ainda ausente. A seleção e o último ponto visit
 permanecem no dispositivo; uma segunda aba não desloca a tela já aberta na
 primeira.
 
-Quando a rede está disponível, mas a atualização remota ainda não terminou, a
-Home informa **Exibindo a versão salva · o AraLearn está atualizando os dados.**
-O texto **Sem conexão** aparece somente quando o navegador realmente está sem
-rede; uma cópia local momentaneamente desatualizada não é apresentada como perda
-de conexão.
+A nuvem sinaliza pendência, andamento, sucesso ou falha sem uma notificação
+permanente sobre o conteúdo. No modo manual, ela indica a pausa das atualizações.
+Um rascunho aberto impede a troca do conteúdo até salvar ou descartar; uma
+explicação focal acompanha conflitos que exigem escolha. Uma composição
+desatualizada não é apresentada como perda de conexão.
 
 Na Autoria, o IndexedDB conserva a lista de cursos próprios, o cabeçalho, o
 planejamento, a hierarquia e páginas recentes de Conteúdo e a posição de retomada.

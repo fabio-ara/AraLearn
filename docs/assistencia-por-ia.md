@@ -31,13 +31,13 @@ Assistência por IA é uma sessão contextual, não uma chamada isolada para
 substituir texto. O alvo é fixado ao abrir o modo, e a conversa progride assim:
 
 1. a pessoa descreve o problema ou objetivo;
-2. o modelo responde e sempre mantém uma proposta concreta de mudanças;
+2. o modelo responde à discussão; uma explicação pode vir sem proposta de mudança;
 3. a pessoa discute, corrige, discorda ou acrescenta condições;
-4. cada novo turno substitui a proposta corrente por outra que incorpora a
-   conversa;
-5. **Aceitar e aplicar** autoriza a geração tipada dessa proposta;
-6. o AraLearn valida e renderiza o resultado antes de colocá-lo no rascunho;
-7. uma ação separada salva o rascunho com a revisão esperada.
+4. quando houver uma mudança solicitada, a proposta incorpora as condições da conversa;
+5. **Preparar prévia** gera e valida o resultado, sem alterar o rascunho;
+6. **Original** e **Prévia** permitem conferir o conteúdo com o renderer de Estudo;
+7. **Aplicar ao rascunho** aceita o resultado conferido; **Descartar prévia** o remove;
+8. **Salvar proposta** grava o rascunho com a revisão original; **Descartar rascunho** restaura o original.
 
 Fechar a sessão apaga mensagens, configuração e qualquer proposta ainda não
 aplicada. Um resultado já aceito permanece no rascunho; a conversa não entra no
@@ -64,7 +64,7 @@ existentes continuam cursos independentes sob a autoridade de seu proprietário.
 ## Contexto enviado
 
 O envelope inclui a instrução da pessoa, as mensagens da sessão, a proposta
-corrente, o caminho didático, a revisão corrente e a composição necessária para
+corrente, o caminho didático e a composição necessária para
 compreender o alvo.
 Para a unidade, inclui os componentes e campos editáveis. Para a
 microssequência, inclui sua ordem e suas unidades. Para a lição, inclui as
@@ -88,8 +88,8 @@ Quando a proposta usa componentes didáticos, o AraLearn reutiliza
 `consultarComponentesDidaticos`. A sequência é obrigatória:
 
 ```text
-conversar e propor → aceitar → descobrir → obter contratos exatos → gerar
-→ validar → reparar de forma limitada → aplicar ao rascunho
+conversar e propor → preparar prévia → descobrir → obter contratos exatos → gerar
+→ validar → reparar de forma limitada → conferir → aplicar ao rascunho → salvar
 ```
 
 A descoberta começa por famílias e intenção. O modelo recebe somente os
@@ -104,20 +104,26 @@ prévia renderizável nunca constitui aceite.
 
 ## Aplicação ao rascunho e concorrência
 
-Antes de alterar o rascunho, o AraLearn exige o aceite explícito da proposta,
-gera a candidata e a verifica com o mesmo renderer da unidade estudável. Falha
+Antes de alterar o rascunho, o AraLearn prepara a candidata, verifica-a com o
+mesmo renderer da unidade estudável e aguarda **Aplicar ao rascunho**. Falha
 de geração, validação ou renderização preserva o conteúdo corrente. Uma
 candidata aceita e válida substitui somente o rascunho do alvo; a gravação é
 uma operação separada.
 
 Cada escrita informa a revisão esperada do curso e as versões focais
 necessárias. Se outra sessão alterar o alvo entre leitura e gravação, o servidor
-recusa a proposta. A interface relê o estado e não reaplica silenciosamente uma
-candidata antiga.
+recusa a proposta. A candidata continua no rascunho para conferência ou descarte;
+a revisão mais nova não substitui a revisão original do pedido. Atualizações de
+fundo ficam suspensas durante a conversa e enquanto houver rascunho, evitando
+substituir o trabalho local por conteúdo externo.
 
 Um `requestId` estável permite recuperar o recibo de uma escrita quando a
 resposta da rede se perde. Repetir a mesma identidade com conteúdo diferente é
 conflito. Essa repetição segura não amplia o escopo confirmado.
+
+Se a resposta da gravação se perder, salvar novamente confere o mesmo pedido.
+Descartar nessa situação exige confirmação focal: remove o rascunho local,
+mas não desfaz uma gravação que já possa ter sido concluída no curso.
 
 ## Provider remoto e credencial efêmera
 
@@ -132,9 +138,11 @@ alteração já aceita permanece no rascunho. Uma resposta tardia não pode reab
 a sessão nem aplicar conteúdo. A interface normal não pede endpoint nem expõe
 relay ou instruções de arquitetura.
 
-Chaves duradouras não devem ser usadas num cliente público. A pessoa precisa
-revisar o recorte e os termos do provider a cada sessão; testes automatizados e
-ensaios de desenvolvimento usam stubs determinísticos, nunca uma chamada paga.
+A pessoa precisa revisar o recorte e os termos do provider. A permanência da
+chave somente em memória não altera sua validade no serviço. Testes automatizados
+usam respostas simuladas, sem custo; uma prova real exige credencial autorizada
+e limite de consumo definido. Testes simulados não demonstram interoperabilidade
+com a conta e o modelo de um serviço real.
 
 ## MCP e Actions
 

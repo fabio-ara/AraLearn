@@ -177,6 +177,12 @@ inspecionar → observar → preparar contexto → propor
 Aplicar uma proposta não demonstra que ela resolveu o problema; confira o
 conteúdo corrente.
 
+No minichat **Assistência por IA**, disponível ao proprietário em Estudo, você
+pode discutir sem alterar conteúdo. Quando houver proposta, use **Preparar
+prévia**, compare **Original** e **Prévia** e escolha **Aplicar ao rascunho**.
+Salvar continua uma decisão separada. Descartar a prévia ou o rascunho preserva
+o original; uma falha de geração ou um conflito não autoriza sobrescrevê-lo.
+
 ## Usar Analytics em pesquisa
 
 Analytics descreve o desenho efetivamente aplicado e intervenções observáveis.

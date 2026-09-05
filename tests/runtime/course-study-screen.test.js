@@ -109,7 +109,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
   });
   assert.match(
     synchronizingHtml,
-    /Versão salva em uso enquanto o AraLearn atualiza este curso\./u
+    /data-runtime-state="stale"/u
   );
   assert.doesNotMatch(synchronizingHtml, /Sem conexão/u);
 
@@ -661,7 +661,7 @@ test("a edição em Estudo preserva o fluxo direto do proprietário sem criar c�
     ...common,
     manualEditor
   });
-  assert.match(ownedHtml, /Edite diretamente no conteúdo\./u);
+  assert.match(ownedHtml, /aria-label="Histórico da edição"/u);
   assert.match(ownedHtml, /data-action="study-manual-view"[^>]*aria-label="Visualizar"/u);
   assert.match(ownedHtml, /data-action="study-manual-edit"[^>]*aria-label="Editar"/u);
   assert.match(ownedHtml, /data-action="study-provider-assistance"[^>]*aria-label="Assistência por IA"/u);

@@ -128,6 +128,43 @@
   font-size: var(--type-sm);
 }
 
+.course-assistance-preview {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.course-assistance-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.course-assistance-preview-actions > button[aria-pressed="true"]:not(.open-mini) {
+  border-color: var(--text-primary);
+}
+
+.course-assistance-preview-actions > button:not(.open-mini) {
+  padding: 8px 12px;
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.course-assistance-preview fieldset {
+  margin: 0;
+  padding: 12px;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.course-assistance-preview fieldset :is(article, section) {
+  min-width: 0;
+}
+
 .course-assistance-plan ul {
   display: grid;
   gap: 5px;
@@ -3632,9 +3669,10 @@
 
 .course-inspection-title-edit-target {
   max-width: 100%;
-  margin: 3px 0 0;
-  padding: 2px 4px;
-  border: 1px dashed var(--action-primary);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 1px dashed var(--action-primary);
   border-radius: var(--radius-control);
   color: var(--text-primary);
   background: transparent;
@@ -3647,8 +3685,19 @@
   cursor: text;
 }
 
+.course-inspection-item-heading .course-inspection-title-edit-target {
+  display: block;
+  width: 100%;
+  margin: 3px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--type-md);
+  font-weight: 700;
+  line-height: var(--leading-snug);
+  letter-spacing: inherit;
+}
+
 .course-inspection-manual-title {
-  padding: 2px 4px;
+  padding: 0;
   border-radius: var(--radius-control);
   outline: 2px solid var(--action-primary);
   outline-offset: 1px;

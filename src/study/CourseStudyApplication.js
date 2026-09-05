@@ -197,6 +197,7 @@ export function createCourseStudyApplication({
     manualEditing: false,
     manualTargetId: "",
     manualDraft: { pathValues: {} },
+    manualComposition: null,
     manualOrigin: "manual",
     manualSaving: false,
     manualError: "",
@@ -233,6 +234,7 @@ export function createCourseStudyApplication({
   let manualInlineController = null;
   let providerAssistance = null;
   let destroyed = false;
+  let synchronizationState = {};
 
   function setHomeNotice(message, reviewUndo = null) {
     state.homeNotice = message;
@@ -584,6 +586,7 @@ export function createCourseStudyApplication({
     state.manualTargetId = "";
     state.manualDraft = { pathValues: {} };
     state.manualOrigin = "manual";
+    state.manualComposition = null;
     state.manualSaving = false;
     state.manualError = "";
     state.manualStatus = status;
@@ -1207,11 +1210,13 @@ export function createCourseStudyApplication({
     if (!manualEditCapability() || state.manualSaving || !studyUnit) return false;
     if (targetId !== "study_unit" &&
         !listManualStudyUnitTargetIds(studyUnit).includes(targetId)) return false;
+    const composition = manualCompositionContext();
     state.assistanceSelection = null;
     state.assistanceActiveScope = "";
     state.manualEditing = true;
     state.manualTargetId = targetId;
     state.manualDraft = { pathValues: clone(pathValues) };
+    state.manualComposition = clone(composition);
     state.manualOrigin = origin;
     state.manualError = "";
     state.manualStatus = status;
@@ -1687,6 +1692,7 @@ export function createCourseStudyApplication({
     const baselineProject = clone(state.project);
     const baselineSelection = clone(state.selection);
     try {
+      const baselineComposition = manualCompositionContext();
       state.assistanceActiveScope = scope;
       const opened = ensureProviderAssistance().open({
         trigger: studyProviderTriggerFocus(scope),
@@ -1703,6 +1709,9 @@ export function createCourseStudyApplication({
           render({ preserveFocus: false, captureDraft: false });
         },
         onApplyDraft: (prepared) => {
+          if (!assistanceCapability(scope)) {
+            throw Object.assign(new Error("Somente o proprietário pode aplicar esta proposta."), { code: "course_not_owned" });
+          }
           state.project = clone(prepared.proposedProject);
           state.selection = retainAssistanceSelection(state.project, baselineSelection);
           state.assistanceDraft = {
@@ -1711,6 +1720,7 @@ export function createCourseStudyApplication({
             baselineProject: clone(baselineProject),
             proposedProject: clone(prepared.proposedProject),
             selection: clone(baselineSelection),
+            composition: clone(baselineComposition),
             candidate: clone(prepared.candidate)
           };
           state.assistanceError = "";
@@ -1826,8 +1836,8 @@ export function createCourseStudyApplication({
     };
   }
 
-  async function commitManualStudyUnit(studyUnit, origin = "manual") {
-    const composition = manualCompositionContext();
+  async function commitManualStudyUnit(studyUnit, origin = "manual", baselineComposition = null) {
+    const composition = baselineComposition || manualCompositionContext();
     const permission = coursePermission(composition.courseId);
     if (visitor || permission?.ownership !== "owned" || permission.canEdit !== true) {
       throw new Error(visitor ? "Entre na sua conta para editar seus cursos." : "Somente o proprietário pode editar este curso.");
@@ -1915,7 +1925,7 @@ export function createCourseStudyApplication({
     state.manualError = "";
     render({ preserveFocus: false, captureDraft: false });
     try {
-      const committed = await commitManualStudyUnit(edited, state.manualOrigin);
+      const committed = await commitManualStudyUnit(edited, state.manualOrigin, state.manualComposition);
       const saved = committed.studyUnit;
       const historyPreview = state.manualHistoryPreview;
       const previewValue = historyPreview
@@ -1964,9 +1974,15 @@ export function createCourseStudyApplication({
     }
   }
 
-  function discardAssistanceDraft({ status = "Proposta descartada." } = {}) {
+  function discardAssistanceDraft({ status = "Proposta descartada.", confirmUnknown = false } = {}) {
     const draft = state.assistanceDraft;
     if (!draft || state.assistanceSaving) return false;
+    if (draft.writeUnknown && !confirmUnknown) {
+      draft.discardArmed = true;
+      state.assistanceError = "A gravação pode ter sido concluída. Tente salvar novamente para conferir, ou confirme o descarte local; isso não desfaz uma gravação no curso.";
+      render({ preserveFocus: false, captureDraft: false });
+      return false;
+    }
     state.project = clone(draft.baselineProject);
     state.selection = clone(draft.selection);
     state.assistanceDraft = null;
@@ -1984,19 +2000,23 @@ export function createCourseStudyApplication({
     state.assistanceError = "";
     render({ preserveFocus: false, captureDraft: false });
     try {
+      if (!assistanceCapability(draft.scope)) {
+        throw Object.assign(new Error("Somente o proprietário pode salvar esta proposta."), { code: "course_not_owned" });
+      }
       if (draft.scope === "study_unit") {
         state.manualTargetId = "study_unit";
         state.manualOrigin = "provider_assistance";
         await commitManualStudyUnit(
           context().studyUnit,
-          "provider_assistance"
+          "provider_assistance",
+          draft.composition
         );
         resetManualEditorState();
       } else {
         if (typeof onSaveAssistedStructure !== "function") {
           throw new Error("A gravação estrutural não está disponível.");
         }
-        const composition = manualCompositionContext();
+        const composition = draft.composition;
         const change = buildCourseAssistanceCompositionChange({
           originalProject: draft.baselineProject,
           proposedProject: draft.proposedProject,
@@ -2039,6 +2059,10 @@ export function createCourseStudyApplication({
       return true;
     } catch (error) {
       state.assistanceSaving = false;
+      if (isAmbiguousManualStudyUnitWriteFailure(error)) {
+        draft.writeUnknown = true;
+        draft.discardArmed = false;
+      }
       state.assistanceError = publicErrorMessage(error, "Não foi possível salvar a proposta.");
       render({ preserveFocus: false, captureDraft: false });
       return false;
@@ -2318,13 +2342,13 @@ export function createCourseStudyApplication({
       render();
       return;
     }
-    await refreshOpenObservations(reference, epoch);
+    await refreshOpenObservations(reference, epoch, { explicit: true });
     if (state.observationSheetOpen && epoch === observationsEpoch) {
       focusStudyTarget({ selector: "[data-observation-action='close']", attributes: {} });
     }
   }
 
-  async function refreshOpenObservations(reference, epoch) {
+  async function refreshOpenObservations(reference, epoch, options = {}) {
     if (state.observationLoading) {
       state.observationStale = true;
       return false;
@@ -2333,7 +2357,7 @@ export function createCourseStudyApplication({
     state.observationLoading = true;
     render();
     try {
-      const items = await repository.refreshAnnotationsForPath(reference);
+      const items = await repository.refreshAnnotationsForPath(reference, options);
       if (epoch !== observationsEpoch || !state.observationSheetOpen) return false;
       state.observationItems = items;
       state.observationStale = observationSignalVersion !== signalAtStart;
@@ -2721,6 +2745,10 @@ export function createCourseStudyApplication({
       "click",
       () => discardAssistanceDraft()
     );
+    root.querySelector("[data-action='discard-assistance-draft-unknown']")?.addEventListener(
+      "click",
+      () => discardAssistanceDraft({ confirmUnknown: true, status: "Rascunho local descartado; a gravação pendente não foi desfeita." })
+    );
     root.querySelector("[data-action='undo-assistance-draft']")?.addEventListener(
       "click",
       () => discardAssistanceDraft({ status: "Proposta desfeita." })
@@ -3086,9 +3114,15 @@ export function createCourseStudyApplication({
       : [];
     const repositoryRuntimeStatus =
       repository.loadRuntimeStatus?.(state.selection.courseId) || {};
+    const currentSyncStatus = {
+      ...repositoryRuntimeStatus,
+      ...synchronizationState,
+      syncError: synchronizationState.syncError || repositoryRuntimeStatus.syncError || "",
+      synchronizing: synchronizationState.synchronizing === true || repositoryRuntimeStatus.synchronizing === true
+    };
     const runtimeStatus = state.connectionOffline
-      ? { ...repositoryRuntimeStatus, offline: true, stale: true }
-      : repositoryRuntimeStatus;
+      ? { ...currentSyncStatus, offline: true, stale: true }
+      : currentSyncStatus;
     const currentPermission = byCourseId[state.selection.courseId] || {};
     const manualEnabled = Boolean(
       !visitor && onSaveManualEdit && currentPermission.ownership === "owned" && currentPermission.canEdit === true
@@ -3262,7 +3296,7 @@ export function createCourseStudyApplication({
         : null;
       syncAccountControl();
     },
-    async replaceProject(nextProject) {
+    async replaceProject(nextProject, { explicit = false } = {}) {
       if (!nextProject || !Array.isArray(nextProject.courses)) {
         throw new TypeError("Documento de cursos inválido.");
       }
@@ -3276,12 +3310,12 @@ export function createCourseStudyApplication({
       if (previousSelection.courseId &&
           findCourse(refreshedProject, previousSelection.courseId) &&
           typeof repository.refreshCourseOfflineAvailability === "function") {
-        await repository.refreshCourseOfflineAvailability(previousSelection.courseId);
+        await repository.refreshCourseOfflineAvailability(previousSelection.courseId, { explicit });
       }
       if (previousView !== "courses" && previousSelection.courseId &&
           findCourse(refreshedProject, previousSelection.courseId) &&
           typeof repository.loadCourse === "function") {
-        await repository.loadCourse(previousSelection.courseId);
+        await repository.loadCourse(previousSelection.courseId, { explicit });
         refreshedProject = clone(repository.loadProject());
       }
       state.project = refreshedProject;
@@ -3318,7 +3352,8 @@ export function createCourseStudyApplication({
     hasPendingManualEdit() {
       return Boolean(
         state.manualEditing || state.manualSaving || manualDraftChanged() ||
-        state.structuralEditing || state.structuralSaving || providerAssistance?.opened
+        state.structuralEditing || state.structuralSaving || state.assistanceDraft ||
+        state.assistanceSaving || providerAssistance?.opened
       );
     },
     previewManualEdit({
@@ -3329,16 +3364,24 @@ export function createCourseStudyApplication({
       return previewManualDraft({ targetId, pathValues, origin });
     },
     handleBack: goBack,
-    async refreshPersonalState() {
+    setSynchronizationState(value = {}) {
+      synchronizationState = { ...synchronizationState, ...value };
+      render({ preserveFocus: true, captureDraft: true });
+    },
+    refreshRuntimeStatus() {
+      render({ preserveFocus: true, captureDraft: true });
+    },
+    async refreshPersonalState(options) {
       if (state.manualEditing || state.manualSaving || state.structuralEditing ||
-          state.structuralSaving || manualDraftChanged()) return false;
+          state.structuralSaving || state.assistanceDraft || state.assistanceSaving ||
+          providerAssistance?.opened || manualDraftChanged()) return false;
       const previousSelection = clone(state.selection);
       const previousView = state.view;
       const previousStudyUnit = clone(context().studyUnit);
       const preservedFocus = currentStudyFocusTarget();
       root.setAttribute("aria-busy", "true");
       try {
-        const refreshed = await repository.refreshPersonalState();
+        const refreshed = await repository.refreshPersonalState(options);
         const nextProject = refreshed && Array.isArray(refreshed.courses)
           ? refreshed
           : repository.loadProject?.();

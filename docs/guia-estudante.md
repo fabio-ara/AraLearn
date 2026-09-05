@@ -145,6 +145,28 @@ que eles mesmos criaram. Uma resposta ou o estado **Resolvida** descreve a
 triagem da observação; uma correção do conteúdo exige o ciclo próprio de
 auditoria e verificação.
 
+## Escolher quando sincronizar
+
+Em **Conta e aparência**, escolha **Automática** ou **Manual** em
+**Sincronização**. A preferência vale para o aplicativo neste dispositivo,
+inclusive nas outras abas. No modo manual, progresso e Rever continuam sendo
+gravados localmente. O retorno da conexão não envia esses dados nem substitui o
+conteúdo aberto; use a nuvem para enviar a fila e consultar atualizações.
+Salvar uma alteração autoral ou enviar uma observação é uma ação explícita e
+continua disponível. A verificação de acesso permanece ativa.
+
+A nuvem distingue pendência, sincronização em andamento, falha e modo manual.
+Se você tiver um rascunho aberto, a atualização do curso aguarda você salvá-lo ou
+descartá-lo. Uma diferença incompatível no mesmo progresso abre uma explicação
+com as alternativas; alterações independentes são conservadas.
+
+Em **Progresso sem conta**, examine os cursos e escolha quais acrescentar à
+conta identificada na tela. Nada é selecionado ou transferido ao entrar. A
+operação reúne conclusões e marcas Rever sem apagar o estado já existente na
+conta nem substituir sua posição de leitura. Os dados de visitante continuam
+separados e disponíveis depois de sair. No modo manual, o estado incorporado
+aguarda a próxima sincronização explícita.
+
 ## Interromper com segurança
 
 Depois que uma ação aparece na interface, é possível voltar pelos níveis ou

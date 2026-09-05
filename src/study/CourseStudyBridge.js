@@ -44,6 +44,23 @@ export class CourseStudyBridge {
     return this.controller.hasVerifiedCourseDocument(courseId, options);
   }
 
+  listCachedCourses(options = {}) {
+    return this.controller.listCachedCourses(options);
+  }
+
+  checkCourseAccess(courseId) {
+    return this.controller.checkCourseAccess(courseId);
+  }
+
+  async loadCachedCourse(courseId) {
+    const result = await this.controller.loadCachedCourseDocument(courseId);
+    return result ? {
+      ...result,
+      courseId: result.course.courseId,
+      revision: result.course.revision
+    } : null;
+  }
+
   getCourseSourceAttachmentDownload(values) {
     if (typeof this.controller.getCourseSourceAttachmentDownload !== "function") {
       throw new TypeError("O download de fontes não está disponível.");

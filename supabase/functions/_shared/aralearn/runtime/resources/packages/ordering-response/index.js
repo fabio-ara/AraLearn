@@ -147,6 +147,7 @@ function markerForSlot(data, slotIndex, order, options) {
     blockKey: options.responseBlockKey || options.blockKey,
     itemId: item.id,
     slotIndex,
+    ...(options.manualEditTargets?.length ? { manualText: data.targets[slotIndex].answer } : {}),
     totalSlots: data.targets.length,
     value: practiceValueLabel(item, item.answer, options),
     layoutText,
@@ -383,7 +384,6 @@ export const orderingResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
-    if (options.manualEditing === true) return "";
     const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
     if (Array.isArray(options.dockExerciseParts)) {
       if (feedback) options.dockExerciseParts.push(feedback);

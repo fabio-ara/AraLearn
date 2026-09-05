@@ -240,6 +240,90 @@ function mapDiff(name, previous, next) {
   });
 }
 
+function stateDiff(previous, next) {
+  return normalizeOperations([
+    ...mapDiff("progress.lessons", previous.progress.lessons, next.progress.lessons),
+    ...mapDiff("reviewMarks", previous.reviewMarks, next.reviewMarks)
+  ]);
+}
+
+function stateCounts(state) {
+  return {
+    completedCount: Object.values(state.progress.lessons).reduce((total, entry) =>
+      total + entry.completedStudyUnitIds.length, 0),
+    reviewCount: Object.keys(state.reviewMarks).length
+  };
+}
+
+// Rebase semantic changes, not entire lesson snapshots. Independent completions
+// in the same lesson must survive a revision conflict.
+function rebaseState(base, local, remote, resolution = null) {
+  const next = clone(remote);
+  const paths = [];
+  for (const operation of stateDiff(base, local)) {
+    const name = operation.collection;
+    const path = operation.path;
+    const before = collection(base, name)[path];
+    const wanted = collection(local, name)[path];
+    const current = collection(remote, name)[path];
+    const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+    if (same(current, before) || same(current, wanted)) {
+      if (wanted == null) delete collection(next, name)[path];
+      else collection(next, name)[path] = clone(wanted);
+      continue;
+    }
+    if (name === "progress.lessons") {
+      const originalIds = new Set(before?.completedStudyUnitIds || []);
+      const localIds = new Set(wanted?.completedStudyUnitIds || []);
+      const ids = new Set(current?.completedStudyUnitIds || []);
+      for (const id of originalIds) if (!localIds.has(id)) ids.delete(id);
+      for (const id of localIds) if (!originalIds.has(id)) ids.add(id);
+      if (!ids.size) delete next.progress.lessons[path];
+      else next.progress.lessons[path] = {
+        cursorStudyUnitId: ids.has(current?.cursorStudyUnitId)
+          ? current.cursorStudyUnitId : ids.has(wanted?.cursorStudyUnitId)
+            ? wanted.cursorStudyUnitId : [...ids].at(-1),
+        completedStudyUnitIds: [...ids]
+      };
+      continue;
+    }
+    // Two marks agree on membership; preserve the newest timestamp. Removing
+    // a mark that another device renewed needs an explicit decision.
+    if (wanted != null && current != null) {
+      next.reviewMarks[path] = wanted > current ? wanted : current;
+      continue;
+    }
+    paths.push({ collection: name, path });
+    if (resolution === "local") {
+      if (wanted == null) delete collection(next, name)[path];
+      else collection(next, name)[path] = clone(wanted);
+    }
+  }
+  return { state: validateCoursePersonalState(next), paths };
+}
+
+export function mergeVisitorPersonalState(account, visitor) {
+  const next = validateCoursePersonalState(account);
+  const source = validateCoursePersonalState(visitor);
+  const existing = new Set(Object.values(next.progress.lessons)
+    .flatMap((entry) => entry.completedStudyUnitIds));
+  for (const [lessonId, entry] of Object.entries(source.progress.lessons)) {
+    const additions = entry.completedStudyUnitIds.filter((id) => !existing.has(id));
+    if (!additions.length) continue;
+    const current = next.progress.lessons[lessonId];
+    next.progress.lessons[lessonId] = {
+      cursorStudyUnitId: current?.cursorStudyUnitId ||
+        (additions.includes(entry.cursorStudyUnitId) ? entry.cursorStudyUnitId : additions.at(-1)),
+      completedStudyUnitIds: [...(current?.completedStudyUnitIds || []), ...additions]
+    };
+    for (const id of additions) existing.add(id);
+  }
+  for (const [id, markedAt] of Object.entries(source.reviewMarks)) {
+    next.reviewMarks[id] ||= markedAt;
+  }
+  return validateCoursePersonalState(next);
+}
+
 function referenceSegments(reference, label) {
   const source = Array.isArray(reference)
     ? reference
@@ -413,12 +497,16 @@ export class CoursePersonalStateRepository {
   #initialized = false;
   #course = null;
   #indexedLessons = [];
+  #synchronizing = false;
+  #syncError = null;
+  #epoch = null;
 
   constructor({
     courseId,
     api,
     cache,
     localOnly = false,
+    synchronizationMode = "automatic",
     course = null,
     clock = () => new Date(),
     uuidFactory = createUuid
@@ -429,7 +517,8 @@ export class CoursePersonalStateRepository {
       throw new TypeError("CourseApiClient obrigatório para o estado pessoal.");
     }
     if (!cache || typeof cache.getCache !== "function" ||
-        typeof cache.putCache !== "function" || typeof cache.deleteCachePrefix !== "function") {
+        typeof cache.putCache !== "function" || typeof cache.updateCaches !== "function" ||
+        typeof cache.deleteCachePrefix !== "function") {
       throw new TypeError("Cache canônico obrigatório para o estado pessoal.");
     }
     if (typeof clock !== "function" || typeof uuidFactory !== "function") {
@@ -437,6 +526,7 @@ export class CoursePersonalStateRepository {
     }
     this.api = api;
     this.localOnly = localOnly === true;
+    this.setSynchronizationMode(synchronizationMode);
     this.cache = cache;
     this.clock = clock;
     this.uuidFactory = uuidFactory;
@@ -447,6 +537,11 @@ export class CoursePersonalStateRepository {
     this.#indexedLessons = courseIndex(course, this.courseId);
     this.#course = course;
     return this;
+  }
+
+  setSynchronizationMode(mode) {
+    if (!new Set(["automatic", "manual"]).has(mode)) throw new TypeError("Modo de sincronização inválido.");
+    this.synchronizationMode = mode;
   }
 
   #assertInitialized() {
@@ -464,6 +559,7 @@ export class CoursePersonalStateRepository {
       requestId: requiredUuid(value.pending.requestId, "Pendência.requestId"),
       baseRevision: nonNegativeInteger(value.pending.baseRevision, "Pendência.baseRevision"),
       operations: normalizeOperations(value.pending.operations),
+      ...(value.pending.baseState ? { baseState: validateCoursePersonalState(value.pending.baseState) } : {}),
       createdAt: instant(value.pending.createdAt, "Pendência.createdAt")
     };
     return {
@@ -474,6 +570,14 @@ export class CoursePersonalStateRepository {
       pending,
       queuedOperations: normalizeOperations(value.queuedOperations || []),
       needsRemoteRebase: value.needsRemoteRebase === true,
+      conflict: value.conflict ? {
+        id: requiredUuid(value.conflict.id, "Conflito.id"),
+        remoteRevision: nonNegativeInteger(value.conflict.remoteRevision, "Conflito.revisão"),
+        remoteState: validateCoursePersonalState(value.conflict.remoteState),
+        baseState: validateCoursePersonalState(value.conflict.baseState),
+        paths: normalizeOperations(value.conflict.paths.map((entry) => ({ ...entry, kind: "delete" })))
+          .map(({ collection: name, path }) => ({ collection: name, path }))
+      } : null,
       updatedAt: instant(value.updatedAt, "Atualização em cache")
     };
   }
@@ -483,6 +587,7 @@ export class CoursePersonalStateRepository {
       if (refresh) await this.refresh();
       return this.snapshot();
     }
+    this.#epoch = await this.cache.getCache(`course.v1.personal-epoch:${this.courseId}`);
     const cached = await this.cache.getCache(cacheKey(this.courseId));
     if (cached) {
       try {
@@ -499,6 +604,7 @@ export class CoursePersonalStateRepository {
       pending: null,
       queuedOperations: [],
       needsRemoteRebase: false,
+      conflict: null,
       updatedAt: nowIso(this.clock)
     };
     this.#initialized = true;
@@ -514,7 +620,16 @@ export class CoursePersonalStateRepository {
       state: this.#record.state,
       pending: Boolean(
         this.#record.pending || this.#record.queuedOperations.length || this.#record.needsRemoteRebase
-      )
+      ),
+      synchronizing: this.#synchronizing,
+      syncError: this.#syncError,
+      conflict: this.#record.conflict ? {
+        id: this.#record.conflict.id,
+        courseId: this.courseId,
+        paths: this.#record.conflict.paths,
+        local: stateCounts(this.#record.state),
+        remote: stateCounts(this.#record.conflict.remoteState)
+      } : null
     });
   }
 
@@ -682,54 +797,136 @@ export class CoursePersonalStateRepository {
     }).sort((left, right) => right.reviewMarkedAt.localeCompare(left.reviewMarkedAt));
   }
 
-  refresh() {
+  refresh({ explicit = false, cacheOnly = false } = {}) {
     this.#assertInitialized();
-    if (this.localOnly) return Promise.resolve(this.snapshot());
+    if (cacheOnly || this.localOnly || this.synchronizationMode === "manual" && !explicit) return this.#readLocal();
     return this.#enqueue(async () => {
+      await this.#readLocal();
       let remote;
       try {
         remote = remoteEnvelope(await this.api.loadPersonalState(this.courseId), this.courseId);
       } catch (error) {
         if (authorityFailure(error)) await this.#clearAuthority();
         if (authorityFailure(error)) throw error;
-        if (retryable(error)) return this.snapshot();
+        if (retryable(error)) { this.#syncError = "Não foi possível sincronizar. Tente novamente."; return this.snapshot(); }
         throw error;
       }
-      if (this.#record.needsRemoteRebase) {
-        this.#record.revision = remote.revision;
-        this.#record.state = applyOperations(remote.state, this.#record.queuedOperations);
-        if (this.#record.queuedOperations.length) {
-          this.#record.pending = {
-            requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração migrada"),
-            baseRevision: remote.revision,
-            operations: this.#record.queuedOperations,
-            createdAt: nowIso(this.clock)
-          };
+      await this.#update((record) => {
+        if (record.pending || record.queuedOperations.length || record.conflict || record.needsRemoteRebase) return record;
+        if (remote.revision >= record.revision) {
+          record.revision = remote.revision;
+          record.state = remote.state;
         }
-        this.#record.queuedOperations = [];
-        this.#record.needsRemoteRebase = false;
-        await this.#persist();
-      }
-      if (this.#record.pending) {
-        await this.#flushUnlocked();
-        return this.snapshot();
-      }
-      this.#record.revision = remote.revision;
-      this.#record.state = remote.state;
-      await this.#persist();
+        return record;
+      });
+      await this.#flushUnlocked({ explicit });
       return this.snapshot();
     });
   }
 
-  flush() {
+  flush({ explicit = false } = {}) {
     this.#assertInitialized();
-    return this.#localQueue.then(() => this.#enqueue(() => this.#flushUnlocked()));
+    if (this.localOnly || this.synchronizationMode === "manual" && !explicit) {
+      return this.#localQueue.then(() => this.#readLocal());
+    }
+    return this.#localQueue.then(() => this.#enqueue(() => this.#flushUnlocked({ explicit })));
+  }
+
+  async #readLocal() {
+    return this.#enqueueCache(async () => {
+      this.#assertInitialized();
+      if (await this.cache.getCache(`course.v1.personal-epoch:${this.courseId}`) !== this.#epoch) {
+        this.#record = null;
+        this.#initialized = false;
+        throw Object.assign(failure("O estado local deste curso foi removido em outra aba.", "course_access_revoked"), { status: 403 });
+      }
+      const value = await this.cache.getCache(cacheKey(this.courseId));
+      if (value) this.#record = this.#normalizeCache(value);
+      return this.snapshot();
+    });
+  }
+
+  #newPending(record, baseState, operations) {
+    return operations.length ? {
+      requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração"),
+      baseRevision: record.revision,
+      baseState: clone(baseState),
+      operations: normalizeOperations(operations),
+      createdAt: nowIso(this.clock)
+    } : null;
+  }
+
+  #update(updater, { receiptKey = null } = {}) {
+    return this.#enqueueCache(async () => {
+      this.#assertInitialized();
+      const key = cacheKey(this.courseId);
+      const epochKey = `course.v1.personal-epoch:${this.courseId}`;
+      const keys = receiptKey ? [key, epochKey, receiptKey] : [key, epochKey];
+      const updated = await this.cache.updateCaches(keys, (values) => {
+        if (values[epochKey] !== this.#epoch) {
+          throw Object.assign(failure("O estado local deste curso foi removido em outra aba.", "course_access_revoked"), { status: 403 });
+        }
+        const current = values[key] ? this.#normalizeCache(values[key]) : clone(this.#record);
+        if (!receiptKey || !values[receiptKey]) {
+          values[key] = updater(current);
+          values[key].updatedAt = nowIso(this.clock);
+          if (receiptKey) values[receiptKey] = { adoptedAt: nowIso(this.clock), courseId: this.courseId };
+        } else values[key] = current;
+        return values;
+      });
+      this.#record = this.#normalizeCache(updated[key]);
+      return this.snapshot();
+    });
+  }
+
+  adoptVisitorState(state, { receiptKey } = {}) {
+    if (this.localOnly || !receiptKey) throw failure("A incorporação exige uma conta e um recibo local.");
+    const source = validateCoursePersonalState(state);
+    return this.#update((record) => {
+      const before = clone(record.state);
+      record.state = mergeVisitorPersonalState(before, source);
+      const operations = stateDiff(before, record.state);
+      if (record.pending || record.needsRemoteRebase || record.conflict) {
+        record.queuedOperations = mergeOperations(record.queuedOperations, operations);
+      } else record.pending = this.#newPending(record, before, operations);
+      return record;
+    }, { receiptKey });
+  }
+
+  async resolveConflict({ resolution, expectedConflictId } = {}) {
+    if (!new Set(["local", "remote"]).has(resolution)) throw failure("Escolha de conflito inválida.");
+    await this.#update((record) => {
+      const current = record.conflict;
+      if (!current || current.id !== expectedConflictId) {
+        throw failure("O conflito mudou. Confira o estado atual antes de decidir.", "course_personal_state_conflict_changed");
+      }
+      let merged;
+      if (record.pending && !record.pending.baseState) {
+        const uncertain = new Set(record.pending.operations.map(operationKey));
+        const operations = mergeOperations(record.pending.operations, record.queuedOperations)
+          .filter((operation) => resolution === "local" || !uncertain.has(operationKey(operation)))
+          .map((operation) => {
+            const value = collection(record.state, operation.collection)[operation.path];
+            return value == null
+              ? { kind: "delete", collection: operation.collection, path: operation.path }
+              : { kind: "set", collection: operation.collection, path: operation.path, value };
+          });
+        merged = { state: applyOperations(current.remoteState, operations) };
+      } else merged = rebaseState(current.baseState, record.state, current.remoteState, resolution);
+      record.revision = current.remoteRevision;
+      record.state = merged.state;
+      record.pending = this.#newPending(record, current.remoteState, stateDiff(current.remoteState, merged.state));
+      record.queuedOperations = [];
+      record.conflict = null;
+      return record;
+    });
+    return this.flush({ explicit: true });
   }
 
   async clearLocal() {
     await this.#enqueueCache(async () => {
+      await this.#invalidatePersonalCache();
       await Promise.all([
-        this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
         this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
         this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`)
       ]);
@@ -757,18 +954,10 @@ export class CoursePersonalStateRepository {
     return next;
   }
 
-  #persist() {
-    return this.#enqueueCache(async () => {
-      this.#assertInitialized();
-      this.#record.updatedAt = nowIso(this.clock);
-      await this.cache.putCache(cacheKey(this.courseId), clone(this.#record));
-    });
-  }
-
   async #clearAuthority() {
     await this.#enqueueCache(async () => {
+      await this.#invalidatePersonalCache();
       await Promise.all([
-        this.cache.deleteCachePrefix(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${this.courseId}`),
         this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-cache.v1:${this.courseId}`),
         this.cache.deleteCachePrefix(`aralearn.course-anchored-annotation-outbox.v1:${this.courseId}`),
         this.cache.deleteCachePrefix(`course.v1.header:${this.courseId}`),
@@ -780,163 +969,119 @@ export class CoursePersonalStateRepository {
     });
   }
 
+  #invalidatePersonalCache() {
+    const key = cacheKey(this.courseId);
+    const epochKey = `course.v1.personal-epoch:${this.courseId}`;
+    return this.cache.updateCaches([key, epochKey], () => ({
+      [key]: null, [epochKey]: createUuid()
+    }));
+  }
+
   #mutate(operations, { synchronize = true } = {}) {
     this.#assertInitialized();
     const operationFactory = typeof operations === "function" ? operations : () => operations;
-    const persistence = this.#enqueueLocal(() => this.#enqueueCache(async () => {
-      this.#assertInitialized();
-      let requestId = "";
-      const buildOperations = (record) => normalizeOperations(
-        operationFactory(clone(record.state))
-      );
-      const applyMutation = (record, normalized) => {
-        record.state = applyOperations(record.state, normalized);
-        if (this.localOnly) {
-          record.pending = null;
-          record.queuedOperations = [];
-          record.needsRemoteRebase = false;
-          return;
-        }
-        if (record.pending || record.needsRemoteRebase) {
-          record.queuedOperations = mergeOperations(record.queuedOperations, normalized);
-          return;
-        }
-        requestId ||= requiredUuid(this.uuidFactory(), "Identidade da alteração");
-        record.pending = {
-          requestId,
-          baseRevision: record.revision,
-          operations: normalized,
-          createdAt: nowIso(this.clock)
-        };
-      };
-
-      const durable = clone(this.#record);
-      const durableOperations = buildOperations(durable);
-      if (!durableOperations.length) return this.snapshot();
-      applyMutation(durable, durableOperations);
-      durable.updatedAt = nowIso(this.clock);
-      await this.cache.putCache(cacheKey(this.courseId), durable);
-
-      const currentOperations = buildOperations(this.#record);
-      if (currentOperations.length) applyMutation(this.#record, currentOperations);
-      this.#record.updatedAt = nowIso(this.clock);
-      await this.cache.putCache(cacheKey(this.courseId), clone(this.#record));
-      return this.snapshot();
+    const persistence = this.#enqueueLocal(() => this.#update((record) => {
+      const before = clone(record.state);
+      const normalized = normalizeOperations(operationFactory(clone(before)));
+      if (!normalized.length) return record;
+      record.state = applyOperations(before, normalized);
+      if (this.localOnly) {
+        record.pending = null;
+        record.queuedOperations = [];
+        record.needsRemoteRebase = false;
+      } else if (record.pending || record.needsRemoteRebase || record.conflict) {
+        record.queuedOperations = mergeOperations(record.queuedOperations, normalized);
+        if (record.conflict) record.conflict.id = requiredUuid(this.uuidFactory(), "Identidade do conflito atualizado");
+      } else record.pending = this.#newPending(record, before, normalized);
+      return record;
     }));
-    if (this.localOnly || !synchronize) return persistence;
+    if (this.localOnly || !synchronize || this.synchronizationMode === "manual") return persistence;
     return persistence.then(() => this.#enqueue(() => this.#flushUnlocked()));
   }
 
-  async #flushUnlocked() {
-    if (this.localOnly) return this.snapshot();
-    if (this.#record?.needsRemoteRebase) {
-      let remote;
-      try {
-        remote = remoteEnvelope(await this.api.loadPersonalState(this.courseId), this.courseId);
-      } catch (error) {
-        if (authorityFailure(error)) {
-          await this.#clearAuthority();
-          throw error;
+  async #flushUnlocked({ explicit = false } = {}) {
+    await this.#readLocal();
+    if (this.localOnly || this.#record.conflict || this.synchronizationMode === "manual" && !explicit) return this.snapshot();
+    this.#synchronizing = true;
+    this.#syncError = null;
+    try {
+      if (this.#record.needsRemoteRebase) {
+        const remote = remoteEnvelope(await this.api.loadPersonalState(this.courseId), this.courseId);
+        await this.#update((record) => {
+          if (!record.needsRemoteRebase) return record;
+          record.revision = remote.revision;
+          record.state = applyOperations(remote.state, record.queuedOperations);
+          record.pending = this.#newPending(record, remote.state, record.queuedOperations);
+          record.queuedOperations = [];
+          record.needsRemoteRebase = false;
+          return record;
+        });
+      }
+      let consecutiveConflicts = 0;
+      while (this.#record?.pending && !this.#record.conflict) {
+        if (this.synchronizationMode === "manual" && !explicit) break;
+        const pending = clone(this.#record.pending);
+        try {
+          const result = mutationResult(await this.api.mutatePersonalState({
+            courseId: this.courseId,
+            expectedRevision: pending.baseRevision,
+            operations: pending.operations,
+            requestId: pending.requestId
+          }), this.courseId, pending.baseRevision);
+          consecutiveConflicts = 0;
+          await this.#update((record) => {
+            // Another tab may already have acknowledged this exact request.
+            if (record.pending?.requestId !== pending.requestId) return record;
+            const acknowledged = pending.baseState
+              ? applyOperations(pending.baseState, pending.operations)
+              : applyOperations(emptyState(), pending.operations);
+            record.revision = result.revision;
+            record.pending = this.#newPending(record, acknowledged, record.queuedOperations);
+            record.queuedOperations = [];
+            return record;
+          });
+        } catch (error) {
+          if (!conflict(error)) throw error;
+          if (consecutiveConflicts++ >= 2) {
+            throw failure("O estado continuou mudando em outro dispositivo. Tente novamente.",
+              "course_personal_state_conflict");
+          }
+          const remote = remoteEnvelope(await this.api.loadPersonalState(this.courseId), this.courseId);
+          await this.#update((record) => {
+            if (record.pending?.requestId !== pending.requestId) return record;
+            // Old cache records did not retain a baseline: preserve them for a
+            // decision instead of pretending their whole-map operations are safe.
+            const base = pending.baseState || emptyState();
+            const merged = rebaseState(base, record.state, remote.state);
+            const unknownPaths = !pending.baseState ? pending.operations.map(({ collection: name, path }) => ({ collection: name, path })) : [];
+            if (merged.paths.length || unknownPaths.length) {
+              record.conflict = {
+                id: requiredUuid(this.uuidFactory(), "Identidade do conflito"),
+                baseState: base,
+                remoteState: remote.state,
+                remoteRevision: remote.revision,
+                paths: merged.paths.length ? merged.paths : unknownPaths
+              };
+              return record;
+            }
+            record.revision = remote.revision;
+            record.state = merged.state;
+            record.pending = this.#newPending(record, remote.state, stateDiff(remote.state, merged.state));
+            record.queuedOperations = [];
+            return record;
+          });
         }
-        if (retryable(error)) {
-          await this.#persist();
-          return this.snapshot();
-        }
+      }
+    } catch (error) {
+      if (authorityFailure(error)) {
+        await this.#clearAuthority();
         throw error;
       }
-      this.#record.revision = remote.revision;
-      this.#record.state = applyOperations(remote.state, this.#record.queuedOperations);
-      if (this.#record.queuedOperations.length) {
-        this.#record.pending = {
-          requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração migrada"),
-          baseRevision: remote.revision,
-          operations: this.#record.queuedOperations,
-          createdAt: nowIso(this.clock)
-        };
-      }
-      this.#record.queuedOperations = [];
-      this.#record.needsRemoteRebase = false;
-      await this.#persist();
-    }
-    let consecutiveConflicts = 0;
-    while (this.#record?.pending) {
-      const pending = this.#record.pending;
-      try {
-        const result = mutationResult(await this.api.mutatePersonalState({
-          courseId: this.courseId,
-          expectedRevision: pending.baseRevision,
-          operations: pending.operations,
-          requestId: pending.requestId
-        }), this.courseId, pending.baseRevision);
-        consecutiveConflicts = 0;
-        this.#record.revision = result.revision;
-        this.#record.pending = null;
-        if (this.#record.queuedOperations.length) {
-          const operations = this.#record.queuedOperations;
-          this.#record.queuedOperations = [];
-          this.#record.pending = {
-            requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração"),
-            baseRevision: result.revision,
-            operations,
-            createdAt: nowIso(this.clock)
-          };
-        }
-        await this.#persist();
-      } catch (error) {
-        if (authorityFailure(error)) {
-          await this.#clearAuthority();
-          throw error;
-        }
-        if (conflict(error)) {
-          if (consecutiveConflicts >= 2) {
-            const current = failure(
-              "O estado pessoal continuou mudando em outro dispositivo; tente novamente.",
-              "course_personal_state_conflict"
-            );
-            current.cause = error;
-            throw current;
-          }
-          let remote;
-          try {
-            remote = remoteEnvelope(
-              await this.api.loadPersonalState(this.courseId),
-              this.courseId
-            );
-          } catch (refreshError) {
-            if (authorityFailure(refreshError)) {
-              await this.#clearAuthority();
-              throw refreshError;
-            }
-            if (retryable(refreshError)) {
-              await this.#persist();
-              return this.snapshot();
-            }
-            throw refreshError;
-          }
-          consecutiveConflicts += 1;
-          this.#record.revision = remote.revision;
-          this.#record.state = applyOperations(remote.state, [
-            ...pending.operations,
-            ...this.#record.queuedOperations
-          ]);
-          this.#record.pending = {
-            ...pending,
-            requestId: requiredUuid(this.uuidFactory(), "Identidade da alteração rebaseada"),
-            baseRevision: remote.revision,
-            createdAt: nowIso(this.clock)
-          };
-          await this.#persist();
-          continue;
-        }
-        if (retryable(error)) {
-          await this.#persist();
-          return this.snapshot();
-        }
-        throw error;
-      }
+      this.#syncError = "Não foi possível sincronizar. Tente novamente.";
+      if (!retryable(error)) throw error;
+    } finally {
+      this.#synchronizing = false;
     }
     return this.snapshot();
   }
 }
-
-export { emptyState as createEmptyCoursePersonalState };

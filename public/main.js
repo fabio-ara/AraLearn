@@ -12,6 +12,8 @@ import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
 import { renderPersonHandleOnboarding } from "../src/ui/PersonHandleOnboarding.js";
 import { renderVisitorSettings } from "../src/ui/VisitorSettings.js";
+import { mountStudyDeviceSettings } from "../src/ui/StudyDeviceSettings.js";
+import { createStudySynchronizationPreference } from "../src/ui/studySynchronizationPreference.js";
 import { buildCourseStudyRoute, parseCourseStudyRoute } from "../src/ui/courseStudyRoute.js";
 import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.js";
 import { dispatchApplicationBack } from "../src/ui/applicationBackNavigation.js";
@@ -294,6 +296,10 @@ function updateStartupLoading(root, percent) {
 
 function renderSettings(root, authClient, controller, {
   onProfileChange = () => {},
+  synchronizationPreference = null,
+  previewVisitorState = null,
+  adoptVisitorState = null,
+  onVisitorStateAdopted = () => {},
   onQuiescedFailure = ({ error } = {}) => renderQuiescedOperationRecovery(root, { error }),
   onDeletedAccountCleanupFailure = (error) => renderDeletedAccountCleanupFailure(root, error),
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false),
@@ -326,6 +332,7 @@ function renderSettings(root, authClient, controller, {
               <button class="icon-ghost is-primary" type="submit" data-profile-save title="Salvar perfil" aria-label="Salvar perfil">${renderUiIcon("save", "account-settings-action-icon")}</button>
             </div>
           </form>
+          <div data-study-device-settings></div>
           <button class="account-settings-subview-entry" type="button" data-settings-open-view="account">
             <span>${renderUiIcon("account", "account-settings-action-icon")}<strong>Dados e conta</strong></span>
             ${renderUiIcon("arrow-right", "account-settings-action-icon")}
@@ -956,9 +963,22 @@ function renderSettings(root, authClient, controller, {
       });
     }
   });
+  const deviceSettings = synchronizationPreference ? mountStudyDeviceSettings(
+    root.querySelector("[data-study-device-settings]"), {
+      preference: synchronizationPreference,
+      async getIdentity() {
+        await loadProfile();
+        return profile;
+      },
+      previewVisitorState,
+      adoptVisitorState,
+      onAdopted: onVisitorStateAdopted
+    }
+  ) : null;
   syncTheme();
   return Object.freeze({
     loadProfile,
+    destroy() { deviceSettings?.destroy(); },
     open() {
       const documentValue = root.ownerDocument || globalThis.document;
       const activeElement = documentValue.activeElement;
@@ -997,6 +1017,7 @@ function clearAuthoringRoute() {
 }
 
 async function renderApplication(root, config, authClient, { visitor = false } = {}) {
+  const synchronizationPreference = createStudySynchronizationPreference();
   const courseApi = new CourseApiClient({
     projectUrl: config.projectUrl,
     publishableKey: config.publishableKey,
@@ -1016,7 +1037,8 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     bridge: studyBridge,
     api: courseApi,
     cache: courseLocalStore,
-    visitor
+    visitor,
+    synchronizationMode: synchronizationPreference.get()
   });
   updateStartupLoading(root, 68);
   try {
@@ -1053,7 +1075,16 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     url.searchParams.set("acesso", "entrar");
     globalThis.location.assign(url.href);
   };
+  const withVisitorCache = async (operation) => {
+    const cache = await CourseLocalStore.open(globalThis.indexedDB, { visitor: true });
+    try { return await operation(cache); }
+    finally { cache.close(); }
+  };
   const settings = visitor ? renderVisitorSettings(settingsRoot, { onSignIn: requestAuthentication }) : renderSettings(settingsRoot, authClient, authoringController, {
+    synchronizationPreference,
+    previewVisitorState: () => withVisitorCache((cache) => repository.previewVisitorState(cache)),
+    adoptVisitorState: (options) => withVisitorCache((cache) => repository.adoptVisitorState(cache, options)),
+    onVisitorStateAdopted: () => editorApp?.refreshPersonalState?.(),
     onProfileChange(profile) {
       editorApp?.setAccountProfile?.(profile);
     },
@@ -1065,15 +1096,44 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     }
   });
 
-  const refreshStudy = async () => {
-    await repository.flush();
-    if (await editorApp?.resumePendingManualEdit?.()) {
-      return repository.loadProject();
+  let studyRefresh = null;
+  const refreshStudy = ({ explicit = false } = {}) => {
+    if (studyRefresh) return studyRefresh;
+    if (!explicit && synchronizationPreference.get() === "manual") {
+      return Promise.resolve(repository.loadProject());
     }
-    const nextProject = await repository.refreshCourses();
-    await editorApp?.replaceProject(nextProject);
-    await editorApp?.refreshPersonalState?.();
-    return nextProject;
+    const task = (async () => {
+      editorApp?.setSynchronizationState?.({ synchronizing: true, syncError: "" });
+      try {
+        await repository.flush({ explicit });
+        if (!explicit && synchronizationPreference.get() === "manual") return repository.loadProject();
+        if (editorApp?.hasPendingManualEdit?.()) {
+          editorApp?.setSynchronizationState?.({ deferred: true });
+          return repository.loadProject();
+        }
+        if (await editorApp?.resumePendingManualEdit?.()) return repository.loadProject();
+        const nextProject = await repository.refreshCourses({ explicit });
+        if (!explicit && synchronizationPreference.get() === "manual") return repository.loadProject();
+        await editorApp?.replaceProject(nextProject, { explicit });
+        await editorApp?.refreshPersonalState?.({ explicit });
+        editorApp?.setSynchronizationState?.({ deferred: false });
+        return nextProject;
+      } catch (error) {
+        editorApp?.setSynchronizationState?.({
+          syncError: publicErrorMessage(error, "Não foi possível sincronizar. Seus dados locais foram preservados.")
+        });
+        throw error;
+      } finally {
+        studyRefresh = null;
+        editorApp?.setSynchronizationState?.({ synchronizing: false });
+        const selectedCourse = editorApp?.getNavigationPosition?.()?.entityPath?.[0];
+        if (repository.loadRuntimeStatus(selectedCourse).conflict) {
+          editorRoot.querySelector(".study-runtime-status-popover")?.showPopover?.();
+        }
+      }
+    })();
+    studyRefresh = task;
+    return task;
   };
   const bestEffortFlush = () => Promise.resolve(
     repository?.flush?.()
@@ -1136,7 +1196,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
         throw error;
       }
     }
-    await repository.refreshCourses();
+    await repository.refreshCourses({ explicit: true });
     await repository.loadCourse(value.courseId);
     const result = pending?.result;
     pendingStudyStructure = null;
@@ -1270,11 +1330,29 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     authoringRoot.hidden = false;
     void authoringSurface.open();
   };
+  const checkStudyAccess = async () => {
+    const result = await repository.checkAccess();
+    if (result?.revokedCourseIds?.length) {
+      await editorApp?.replaceProject(result.project || repository.loadProject());
+    }
+  };
+  const refreshOnForeground = async () => {
+    await checkStudyAccess();
+    if (synchronizationPreference.get() === "manual") return;
+    return refreshVisibleApplication();
+  };
   const refreshVisibleApplication = () => authoringSurface?.opened && !authoringRoot.hidden
     ? authoringSurface.refresh()
     : refreshStudy();
   let visibleRefreshTimer = null;
+  const unsubscribeSynchronizationPreference = synchronizationPreference.subscribe((mode) => {
+    repository.setSynchronizationMode(mode);
+    editorApp?.refreshRuntimeStatus?.();
+  });
   const cleanupApplication = () => {
+    unsubscribeSynchronizationPreference();
+    synchronizationPreference.destroy();
+    settings.destroy?.();
     if (visibleRefreshTimer !== null) globalThis.clearTimeout(visibleRefreshTimer);
     visibleRefreshTimer = null;
     authoringSurface?.destroy?.();
@@ -1288,12 +1366,28 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     if (visibleRefreshTimer !== null) globalThis.clearTimeout(visibleRefreshTimer);
     visibleRefreshTimer = globalThis.setTimeout(() => {
       visibleRefreshTimer = null;
-      void refreshVisibleApplication().catch((error) => {
+      void refreshOnForeground().catch((error) => {
         console.warn("A área atual será atualizada na próxima conexão.", error);
       });
     }, 180);
   };
   editorRoot.addEventListener("aralearn:open-settings", () => settings.open());
+  editorRoot.addEventListener("click", (event) => {
+    const resolution = event.target?.closest?.("[data-action='resolve-study-sync-conflict']");
+    if (resolution) {
+      resolution.disabled = true;
+      void repository.resolvePersonalStateConflict(resolution.dataset.courseId, {
+        resolution: resolution.dataset.resolution,
+        expectedConflictId: resolution.dataset.conflictId
+      }).then(() => refreshStudy({ explicit: true })).catch((error) => {
+        editorApp?.setSynchronizationState?.({ syncError: publicErrorMessage(error,
+          "Não foi possível conciliar o progresso. Os dados locais foram preservados.") });
+      }).finally(() => { resolution.disabled = false; });
+      return;
+    }
+    if (!event.target?.closest?.("[data-action='synchronize-study']")) return;
+    void refreshStudy({ explicit: true }).catch(() => undefined);
+  });
   editorRoot.addEventListener("aralearn:open-authoring", openAuthoring);
   editorRoot.addEventListener("aralearn:request-auth", (event) => void requestAuthentication(event.detail || {}));
 
@@ -1321,7 +1415,8 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     signal: lifecycleAbortController.signal
   });
   globalThis.addEventListener("online", () => {
-    void refreshVisibleApplication().catch((error) => {
+    editorApp?.setOfflineStatus?.(false);
+    void refreshOnForeground().catch((error) => {
       console.warn("A atualização da área atual foi adiada.", error);
     });
   }, { signal: lifecycleAbortController.signal });

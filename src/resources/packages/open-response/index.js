@@ -94,20 +94,14 @@ export const openResponsePackage = Object.freeze({
     const manualEditing = options.manualEditing === true;
     const reveal = options.revealPracticeAnswers === true;
     const prompt = `<div class="runtime-open-response-prompt" id="${escapePackageAttribute(promptId)}">${renderPackageProse(data.prompt)}</div>`;
-    if (manualEditing || reveal) {
-      const placeholder = manualEditing && data.placeholder
-        ? `<p class="open-response-placeholder">${renderPackageInline(data.placeholder)}</p>`
-        : "";
-      const note = reveal
-        ? '<p class="tiny open-response-note">Resposta aberta, sem correção automática.</p>'
-        : '<div class="open-response-preview" aria-hidden="true"></div>';
-      return `<section class="runtime-block package-open-response">${prompt}${placeholder}${note}</section>`;
+    if (reveal) {
+      return `<section class="runtime-block package-open-response">${prompt}<p class="tiny open-response-note">Resposta aberta, sem correção automática.</p></section>`;
     }
     const value = String(options.responseState?.text ?? "");
-    const placeholder = data.placeholder
+    const placeholder = data.placeholder && !manualEditing
       ? ` placeholder="${escapePackageAttribute(data.placeholder)}"`
       : "";
-    const input = `<label class="visually-hidden" for="${escapePackageAttribute(responseId)}">Sua resposta</label><textarea class="open-response-input" id="${escapePackageAttribute(responseId)}" data-action="open-response-input" data-open-response-block-key="${escapePackageAttribute(blockKey)}" aria-labelledby="${escapePackageAttribute(promptId)}"${placeholder}>${escapePackageAttribute(value)}</textarea>`;
+    const input = `<label class="visually-hidden" for="${escapePackageAttribute(responseId)}">Sua resposta</label><div class="open-response-field"><textarea class="open-response-input" id="${escapePackageAttribute(responseId)}" data-action="open-response-input" data-open-response-block-key="${escapePackageAttribute(blockKey)}" aria-labelledby="${escapePackageAttribute(promptId)}"${manualEditing ? " readonly" : ""}${placeholder}>${escapePackageAttribute(value)}</textarea>${manualEditing && data.placeholder && !value ? `<div class="open-response-placeholder">${renderPackageInline(data.placeholder)}</div>` : ""}</div>`;
     const feedback = feedbackHtml(options.responseState?.feedback);
     if (feedback && Array.isArray(options.dockExerciseParts)) {
       options.dockExerciseParts.push(feedback);

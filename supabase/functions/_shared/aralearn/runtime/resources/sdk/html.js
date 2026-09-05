@@ -81,6 +81,10 @@ function renderPackageOrderingMarker(marker) {
 
 function renderPackageGapMarker(marker) {
   if (!marker) return "";
+  if (typeof marker.manualText === "string") {
+    const { manualText, ...practiceMarker } = marker;
+    return `<span data-manual-practice-text="${escapePackageAttribute(manualText)}" contenteditable="false">${renderPackageGapMarker(practiceMarker)}</span>`;
+  }
   if (marker.responseMode === "ordering") return renderPackageOrderingMarker(marker);
   const blockKey = escapePackageAttribute(marker.blockKey);
   const blankIndex = escapePackageAttribute(marker.index);

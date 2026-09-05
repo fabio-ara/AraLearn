@@ -40,6 +40,10 @@
         {
           "path": "src/ui/renderHomeScreen.js",
           "token": "data-action=\"open-review-item\""
+        },
+        {
+          "path": "src/ui/StudyDeviceSettings.js",
+          "token": "mountStudyDeviceSettings"
         }
       ],
       "visibleEffects": [
@@ -68,6 +72,10 @@
         {
           "path": "src/supabase/CourseController.js",
           "token": "recoverStudyDraft"
+        },
+        {
+          "path": "src/ui/studySynchronizationPreference.js",
+          "token": "createStudySynchronizationPreference"
         }
       ],
       "routes": [
@@ -90,7 +98,8 @@
         "tests/runtime/course-access-public.test.js",
         "tests/e2e/manual-study-unit-edit.spec.js",
         "tests/e2e/course-study-cutover.spec.js",
-        "tests/e2e/course-access-local.spec.js"
+        "tests/e2e/course-access-local.spec.js",
+        "tests/runtime/study-synchronization-preference.test.js"
       ],
       "justification": "O mesmo percurso recebe projeções públicas ou autorizadas. Progresso e Rever do visitante ficam em IndexedDB separado, sem endpoints pessoais. Somente o proprietário edita. Origem comprovada das cópias anteriores migra para o curso próprio; recuperação somente de leitura preserva rascunhos e não repete o escritor retirado. Remover a réplica local, excluir curso próprio e deixar curso compartilhado continuam ações distintas."
     },

@@ -21,7 +21,7 @@ Quatro tipos de afirmação precisam permanecer distintos:
 | --- | --- |
 | requisito jurídico condicionado | quando LGPD ou RGPD se aplicam, finalidade, necessidade/minimização, transparência, segurança e direitos do titular precisam ser atendidos; o código não escolhe sozinho o responsável nem a base jurídica |
 | boa prática de engenharia | separar identidade, reduzir projeções, limitar acesso, sanear erros, definir retenção e testar negativas diminui riscos concretos, mas não produz um selo jurídico |
-| decisão de produto | manter Pessoas somente na aplicação, fazer o nome opcional e distinguir saída de limpeza local são escolhas do AraLearn que podem ser revistas com evidência de uso |
+| decisão de produto | manter Pessoas somente na aplicação, exigir identificador escolhido e manter foto opcional e distinguir saída de limpeza local são escolhas do AraLearn que podem ser revistas com evidência de uso |
 | questão jurídica ou ética aberta | controlador, operadores, bases, transferências, protocolo de pesquisa, população, menores, retenções institucionais e pareceres dependem da implantação e de decisão humana competente |
 
 Consentimento não é tratado como base universal. Conta necessária ao serviço,
@@ -140,7 +140,12 @@ de estudo permitidos; não recebem plano privado, notas de verificação,
 observações, identidades de edição ou metadados de recuperação.
 
 Sem conta, progresso e Rever ficam num banco local separado. Entrar numa conta
-não transfere esses dados silenciosamente e não concede propriedade. Uma conta
+não transfere esses dados silenciosamente e não concede propriedade. A pessoa
+pode examinar e selecionar cursos em **Progresso sem conta**, identificando a
+conta destinatária antes de confirmar. A incorporação acrescenta conclusões e
+Rever, mantém o estado anterior da conta e conserva o banco de visitante. Um
+recibo local evita aplicar novamente a mesma seleção; não é registro de percurso
+humano–IA. Uma conta
 com acesso pode observar; somente o proprietário edita. As mesmas fronteiras
 valem para chamadas diretas, MCP e Actions.
 
@@ -410,7 +415,7 @@ Limpar os dados do aplicativo pode apagar mudanças ainda não sincronizadas. Sa
 encerra a sessão, mas não equivale a excluir todos os dados do dispositivo ou
 do servidor.
 
-O logout comum tenta sincronizar as filas e preserva, por decisão de produto,
+O logout comum respeita o modo de sincronização e preserva, por decisão de produto,
 cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela
 conta. Uma alteração ainda aberta somente na memória do editor será perdida; a
 interface informa isso e pede confirmação antes de sair. **Remover dados deste
