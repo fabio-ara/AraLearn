@@ -308,7 +308,7 @@ export function renderRuntimeStatusControl(status = {}, {
     ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
     ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '"' +
     (synchronizing ? ' aria-busy="true"' : "") + '>' +
-    renderUiIcon(localOnly || offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
+    renderUiIcon(localOnly || offline ? "offline" : failed || conflict ? "cloud-alert" : "cloud", "home-tab-icon") + '</button>' +
     '<div class="study-runtime-status-popover" id="' + escapeHtml(popoverId) + '" popover="auto"' +
     ' role="region" aria-label="Estado da sincronização">' +
     '<div class="study-runtime-status-heading"><span>' + label + '</span>' +

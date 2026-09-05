@@ -81,15 +81,31 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     }
     await longCard.focus(); await expect(longCard).toBeFocused();
     await page.keyboard.press("Tab"); await expect(title).toBeFocused();
+    const assertTextFocus = async locator => {
+      const focus = await locator.evaluate(node => {
+        const style = getComputedStyle(node);
+        const reference = document.createElement("span");
+        reference.style.color = "var(--focus-ring)";
+        node.append(reference);
+        const expectedColor = getComputedStyle(reference).color;
+        reference.remove();
+        return { visible: node.matches(":focus-visible"), width: style.outlineWidth,
+          offset: style.outlineOffset, color: style.outlineColor, expectedColor };
+      });
+      expect(focus).toMatchObject({ visible: true, width: "2px", offset: "-2px", color: focus.expectedColor });
+    };
+    await assertTextFocus(title);
     await page.keyboard.press("End");
     await expect.poll(() => title.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
     await expect(title).toContainText("FIM DO TÍTULO");
     await page.keyboard.press("Tab"); await expect(goal).toBeFocused();
+    await assertTextFocus(goal);
     await page.keyboard.press("End");
     await expect.poll(() => goal.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
     await expect(goal).toContainText("FIM DO OBJETIVO");
     if (await meta.evaluate(node => node.scrollHeight > node.clientHeight)) {
       await page.keyboard.press("Tab"); await expect(meta).toBeFocused();
+      await assertTextFocus(meta);
       await page.keyboard.press("End");
       await expect.poll(() => meta.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
     } else {
@@ -102,6 +118,8 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     await goal.evaluate(node => { node.scrollTop = 0; });
     await title.evaluate(node => { node.scrollTop = 0; });
     await meta.evaluate(node => { node.scrollTop = 0; });
+    await goal.focus();
+    await assertTextFocus(goal);
     await cards.first().scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`course-list-slots-${width}-${theme}.png`) });
     await longCard.focus(); await page.keyboard.press("Enter");

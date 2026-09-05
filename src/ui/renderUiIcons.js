@@ -463,10 +463,14 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "cloud") {
+  if (iconName === "cloud" || iconName === "cloud-alert") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
       '<path d="M4.1 12.2h7.6a2.5 2.5 0 0 0 .4-5 4.1 4.1 0 0 0-7.8-1.1 3.1 3.1 0 0 0-.2 6.1z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      (iconName === "cloud-alert"
+        ? '<path d="M8 6.2v2.1" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>' +
+          '<circle cx="8" cy="10.1" r=".7" fill="currentColor"></circle>'
+        : "") +
       "</svg>"
     );
   }

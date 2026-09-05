@@ -17,9 +17,9 @@ async function mount(page, theme = "light", error = message) {
       const action = event.target.closest("[data-action]")?.dataset.action;
       if (action) window.statusActions.push(action);
     });
-    window.renderStatusProbe = () => {
+    window.renderStatusProbe = (runtimeStatus = { pending: true, syncError: error }) => {
       root.innerHTML = renderHomeScreen({ project, progress: { version: 1, lessons: {} },
-        runtimeStatus: { pending: true, syncError: error } });
+        runtimeStatus });
     };
     window.renderStatusProbe();
     await document.fonts.ready;
@@ -35,6 +35,43 @@ async function navigationGeometry(page) {
     });
   });
 }
+
+test("falha se distingue por forma no mesmo slot de 44 px em ambos os temas", async ({ page }, testInfo) => {
+  const measurements = [];
+  for (const theme of ["light", "dark"]) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mount(page, theme);
+    await page.evaluate(() => window.renderStatusProbe({}));
+    const control = page.locator(".study-runtime-status-control");
+    await expect(control).toHaveAccessibleName("Sincronizado");
+    const syncedShape = await control.locator("svg").innerHTML();
+    const before = await navigationGeometry(page);
+    expect({ width: before[0].width, height: before[0].height }).toEqual({ width: 44, height: 44 });
+    await page.evaluate(() => window.renderStatusProbe());
+    await expect(control).toHaveAccessibleName("Falha na sincronização");
+    await expect(control.locator("svg")).toHaveCount(1);
+    expect(await control.locator("svg").innerHTML()).not.toBe(syncedShape);
+    expect(await navigationGeometry(page)).toEqual(before);
+    const measured = await control.evaluate(node => ({ color: getComputedStyle(node).color,
+      background: getComputedStyle(document.body).backgroundColor,
+      mode: document.documentElement.dataset.colorMode }));
+    expect(measured.mode).toBe(theme);
+    measurements.push({ theme, ...measured, navigation: before });
+    await page.screenshot({ path: testInfo.outputPath(`sync-failure-shape-390-${theme}.png`) });
+    await control.click();
+    await expect(page.getByRole("region", { name: "Estado da sincronização" })).toBeVisible();
+    expect(await page.evaluate(() => window.statusActions)).toEqual([]);
+    expect(await navigationGeometry(page)).toEqual(before);
+    await page.keyboard.press("Escape");
+    await expect(control).toBeFocused();
+    await control.click();
+    await page.getByRole("button", { name: "Tentar novamente" }).click();
+    expect(await page.evaluate(() => window.statusActions)).toEqual(["synchronize-study"]);
+    expect(await navigationGeometry(page)).toEqual(before);
+  }
+  expect(measurements[0].color).not.toBe(measurements[1].color);
+  await writeFile(testInfo.outputPath("sync-failure-shape-geometry.json"), JSON.stringify(measurements, null, 2));
+});
 
 test("falha fica no indicador; explicação revelada fecha sem bloquear a troca de área ou repetir envio", async ({ page }, testInfo) => {
   const measurements = [];
