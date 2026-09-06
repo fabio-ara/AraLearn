@@ -17,6 +17,7 @@ test("prova Android recusa identidade, bytes, licença e estado UI divergentes (
 
 test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissões de assinatura no emulador", () => {
   const source = fs.readFileSync(new URL("../../.github/workflows/pages.yml", import.meta.url), "utf8");
+  const gate = fs.readFileSync(new URL("../../scripts/androidNativeGate.py", import.meta.url), "utf8");
   const native = source.slice(source.indexOf("  android-native:"), source.indexOf("  pages:"));
   const pages = source.slice(source.indexOf("  pages:"), source.indexOf("  release:"));
   const release = source.slice(source.indexOf("  release:"));
@@ -34,6 +35,9 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.ok(native.indexOf("libpulse0") < native.indexOf("androidNativeGate.py run"));
   assert.match(native, /androidNativeGate\.py run/u);
   assert.match(native, /proof_sha256: \$\{\{ steps\.native\.outputs\.proof_sha256 \}\}/u);
+  assert.match(gate, /device\.launch\(\)\s+if case == "clean":\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
+  assert.match(gate, /device\.call\("install", "-r", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)/u);
+  assert.match(gate, /"networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True/u);
   for (const [section, publication] of [[pages, "actions/configure-pages"], [release, "finalize-release"]]) {
     assert.match(section, /needs: \[candidate, android, android-native(?:, pages)?\]/u);
     assert.match(section, /artifact-ids: \$\{\{ needs\.android-native\.outputs\.proof_artifact_id \}\}/u);
