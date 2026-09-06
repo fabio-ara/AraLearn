@@ -29,6 +29,9 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.match(native, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}[\s\S]+merge-multiple: true[\s\S]+path: \.candidate\/android-release/u);
   assert.match(native, /--candidate-folder \.candidate\/android-release/u);
   assert.match(native, /test -c \/dev\/kvm/u);
+  assert.match(native, /apt-get install --yes --no-install-recommends libpulse0/u);
+  assert.match(native, /ldconfig -p \| grep -F 'libpulse\.so\.0'/u);
+  assert.ok(native.indexOf("libpulse0") < native.indexOf("androidNativeGate.py run"));
   assert.match(native, /androidNativeGate\.py run/u);
   assert.match(native, /proof_sha256: \$\{\{ steps\.native\.outputs\.proof_sha256 \}\}/u);
   for (const [section, publication] of [[pages, "actions/configure-pages"], [release, "finalize-release"]]) {

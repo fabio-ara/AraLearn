@@ -131,6 +131,13 @@ jobs:
           path: .candidate/android-release
       - name: Reconfirmar promoção atual
         run: node ./scripts/releaseCandidate.mjs current
+      - name: Preparar biblioteca nativa exigida pelo emulador
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libpulse0
+          ldconfig -p | grep -F 'libpulse.so.0'
       - name: Acessar somente KVM já disponível
         shell: bash
         run: |
