@@ -47,7 +47,7 @@ def command(args, *, timeout=90, env=None, input_bytes=None, allow_failure=False
     remaining = min(timeout, DEADLINE - time.monotonic())
     require(remaining > 0, "Prazo do gate nativo esgotado.")
     executable = Path(str(args[0])).name
-    technical = executable in {"sdkmanager", "avdmanager", "emulator"}
+    technical = executable in {"sdkmanager", "avdmanager", "emulator", "gh"}
     try:
         result = subprocess.run([str(x) for x in args], input=input_bytes, stdin=subprocess.DEVNULL if input_bytes is None else None,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=remaining, env=env, check=False)
@@ -122,9 +122,20 @@ def asset(release, name, repo):
     return data
 
 
+def candidate_release(releases, version, target_sha):
+    require(isinstance(releases, list) and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
+            and re.fullmatch(r"[a-f0-9]{40}", target_sha), "Consulta de release inválida.")
+    matches = [release for release in releases if release.get("tag_name") == "v" + version]
+    require(len(matches) == 1, "Release candidata ausente ou duplicada.")
+    release = matches[0]
+    require(release.get("draft") is True and release.get("prerelease") is False
+            and release.get("target_commitish") == target_sha, "Release candidata incompatível.")
+    return release
+
+
 def fetch_receipt(manifest, identity):
-    release = github(f"repos/{identity['repository']}/releases/tags/v{manifest['version']}")
-    require(release.get("tag_name") == "v" + manifest["version"] and release.get("prerelease") is False, "Release incompatível.")
+    releases = github(f"repos/{identity['repository']}/releases?per_page=100")
+    release = candidate_release(releases, manifest["version"], identity["sha"])
     receipt = json.loads(asset(release, f"AraLearn-{manifest['version']}.json", identity["repository"]))
     expected = validate_receipt(receipt, manifest)
     checksum = asset(release, expected["apk"] + ".sha256", identity["repository"]).decode("utf-8")
