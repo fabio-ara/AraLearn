@@ -12,6 +12,7 @@ import {
   GITHUB_API_ACCEPT,
   releasePlan,
   validateCandidateIdentity,
+  validateIntegratedPullRequest,
   validateManifest,
   validateRun,
   validateVersionProgress,
@@ -277,6 +278,37 @@ test("identidade admite SHA de merge distinto quando árvore e entradas são as 
   assert.notEqual(manifest.source.testedSha, manifest.source.headSha);
   assert.notEqual(manifest.source.testedSha, manifest.promotion.targetSha);
   assert.doesNotThrow(() => validateCandidateIdentity(manifest, runInfo(), targetIdentity(manifest)));
+});
+
+test("vínculo do PR usa o registro persistente mesmo quando o run perde a associação efêmera", async (context) => {
+  const manifest = candidate();
+  const info = runInfo();
+  info.pull_requests = [];
+  assert.doesNotThrow(() => validateRun(info, requiredJobs(), REPOSITORY, 2));
+  const pullRequest = {
+    number: manifest.source.pullRequest,
+    merged: true,
+    merge_commit_sha: TARGET_SHA,
+    head: { sha: manifest.source.headSha, repo: { full_name: REPOSITORY } },
+    base: { ref: "main", repo: { full_name: REPOSITORY } }
+  };
+  assert.doesNotThrow(() => validateIntegratedPullRequest(manifest, pullRequest, TARGET_SHA, REPOSITORY));
+  const variants = [
+    ["número", (pr) => { pr.number += 1; }],
+    ["não integrado", (pr) => { pr.merged = false; }],
+    ["SHA de merge", (pr) => { pr.merge_commit_sha = "f".repeat(40); }],
+    ["SHA da cabeça", (pr) => { pr.head.sha = "f".repeat(40); }],
+    ["repositório da cabeça", (pr) => { pr.head.repo.full_name = "fork/AraLearn"; }],
+    ["base", (pr) => { pr.base.ref = "release"; }],
+    ["repositório da base", (pr) => { pr.base.repo.full_name = "other/AraLearn"; }]
+  ];
+  for (const [name, mutate] of variants) {
+    await context.test(name, () => {
+      const changed = structuredClone(pullRequest);
+      mutate(changed);
+      assert.throws(() => validateIntegratedPullRequest(manifest, changed, TARGET_SHA, REPOSITORY), /não corresponde/u);
+    });
+  }
 });
 
 test("identidade recusa outro run, tentativa, SHA, árvore, configuração, lockfile ou backend", async (context) => {
