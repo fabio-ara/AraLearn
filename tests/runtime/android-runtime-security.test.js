@@ -73,6 +73,11 @@ test("seletores sobrevivem à rotação e a exportação usa somente cache priva
   assert.match(activity, /File\.createTempFile\(TEXT_EXPORT_CACHE_PREFIX, "\.tmp", getCacheDir\(\)\)/u);
   assert.match(activity, /outState\.putString\(STATE_TEXT_EXPORT_PATH/u);
   assert.match(activity, /restorePendingTextExport\(savedInstanceState\)/u);
+  assert.match(
+    activity,
+    /savedInstanceState == null \|\|\s*webView\.restoreState\(savedInstanceState\) == null[\s\S]*?webView\.loadUrl\(APP_URL\)/u,
+    "A WebView precisa carregar o runtime local quando a restauração de estado falha."
+  );
   assert.match(activity, /getCacheDir\(\)\.getCanonicalPath\(\) \+ File\.separator/u);
   assert.match(activity, /new FileInputStream\(pending\.source\)/u);
   assert.match(activity, /deletePendingTextExport\(pending\)/u);

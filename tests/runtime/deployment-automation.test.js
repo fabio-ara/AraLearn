@@ -969,6 +969,11 @@ test("Android expõe callback móvel e salvamento textual local restrito", () =>
   assert.match(activity, /File\.createTempFile\(TEXT_EXPORT_CACHE_PREFIX, "\.tmp", getCacheDir\(\)\)/u);
   assert.match(activity, /outState\.putString\(STATE_TEXT_EXPORT_PATH/u);
   assert.match(activity, /restorePendingTextExport\(savedInstanceState\)/u);
+  assert.match(
+    activity,
+    /savedInstanceState == null \|\|\s*webView\.restoreState\(savedInstanceState\) == null[\s\S]*?webView\.loadUrl\(APP_URL\)/u,
+    "O APK publicado não pode ficar em branco quando o Android não restaura a WebView."
+  );
   assert.match(activity, /new FileInputStream\(pending\.source\)/u);
   assert.match(activity, /finally \{\s*deletePendingTextExport\(pending\)/u);
   assert.match(strings, /text_export_too_large[^>]*>[^<]*32 MiB/u);
