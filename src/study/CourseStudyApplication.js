@@ -12,6 +12,8 @@ import {
 } from "../ui/renderStudyUnitObservationSheet.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
+import { downloadTextFile } from "../ui/downloadTextFile.js";
+import { serializeStudyDraftSnapshot } from "../persistence/studyDraftRecovery.js";
 import { publicErrorMessage } from "../ui/publicErrorMessage.js";
 import { parseCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "../ui/courseAuthoringConfirmation.js";
@@ -98,6 +100,7 @@ export function createCourseStudyApplication({
   loadAssistanceConfiguration = null,
   providerAssistanceSession = null,
   visitor = false,
+  downloadRecovery = downloadTextFile,
   downloadCitationPdf = (url) => {
     const anchor = (root?.ownerDocument || globalThis.document)?.createElement?.("a");
     if (!anchor) throw new TypeError("O navegador não oferece download de arquivos.");
@@ -118,6 +121,7 @@ export function createCourseStudyApplication({
     throw new TypeError("Documento de cursos inválido.");
   }
   if (typeof downloadCitationPdf !== "function") throw new TypeError("Download de fonte inválido.");
+  if (typeof downloadRecovery !== "function") throw new TypeError("Exportação de rascunho inválida.");
   if (onAuthoringContextReturn !== null && typeof onAuthoringContextReturn !== "function") throw new TypeError("Retorno contextual de Autoria inválido.");
   if (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function") {
     throw new TypeError("Gravação contextual de unidade de estudo inválida.");
@@ -1286,7 +1290,7 @@ export function createCourseStudyApplication({
     state.studyDraftRecovery = { pending, status: "unresolved", targetCourseId: null };
     if (globalThis.navigator?.onLine !== false) {
       try {
-        const result = await repository.recoverStudyDraft?.(pending.sourceCourseId);
+        const result = await repository.recoverStudyDraft?.(pending.sourceCourseId, pending.recoveryId);
         if (result) state.studyDraftRecovery = { ...result, pending };
         if (result?.project) state.project = clone(result.project);
       } catch {
@@ -1301,7 +1305,7 @@ export function createCourseStudyApplication({
     const pending = state.studyDraftRecovery?.pending;
     if (!pending) return false;
     try {
-      const cleared = await repository.clearStudyDraftRecovery?.(pending.sourceCourseId, pending.requestId);
+      const cleared = await repository.clearStudyDraftRecovery?.(pending.sourceCourseId, pending.requestId, pending.recoveryId);
       if (!cleared) {
         state.studyDraftRecoveryError = "O rascunho guardado mudou. Reabra esta área antes de descartá-lo.";
         render();
@@ -1309,11 +1313,33 @@ export function createCourseStudyApplication({
       }
       state.studyDraftRecovery = null;
       state.studyDraftRecoveryError = "";
-      setHomeNotice("Rascunho guardado descartado.");
-      render();
-      return true;
+      setHomeNotice("");
     } catch {
       state.studyDraftRecoveryError = "Não foi possível descartar o rascunho. Ele continua guardado.";
+      render();
+      return false;
+    }
+    try {
+      if (await resumeStudyDraftRecovery()) return true;
+      setHomeNotice("Rascunho guardado descartado.");
+    } catch {
+      setHomeNotice("Rascunho descartado. Não foi possível ler os demais; reabra esta área para recuperá-los.");
+    }
+    render();
+    return true;
+  }
+
+  async function exportStudyDraftRecovery() {
+    const pending = state.studyDraftRecovery?.pending;
+    if (!pending) return false;
+    try {
+      const content = serializeStudyDraftSnapshot(pending.originalSnapshot);
+      await downloadRecovery({ name: "aralearn-rascunho-guardado.json", type: "application/json;charset=utf-8", content });
+      return true;
+    } catch (error) {
+      state.studyDraftRecoveryError = error?.code === "DRAFT_EXPORT_FORMAT_UNSUPPORTED"
+        ? error.message
+        : "Não foi possível exportar o rascunho. Ele continua guardado; tente novamente.";
       render();
       return false;
     }
@@ -2860,6 +2886,9 @@ export function createCourseStudyApplication({
     root.querySelector("[data-action='discard-study-draft-recovery']")?.addEventListener(
       "click",
       () => void discardStudyDraftRecovery()
+    );
+    root.querySelector("[data-action='export-study-draft-recovery']")?.addEventListener(
+      "click", () => void exportStudyDraftRecovery()
     );
     root.querySelector(".study-review-queue")?.addEventListener("toggle", (event) => {
       state.reviewQueueOpen = event.currentTarget.open === true;

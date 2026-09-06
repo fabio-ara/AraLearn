@@ -28,6 +28,11 @@ unidade de estudo domina o leitor e que índice, pesquisa, endereços diretos,
 anterior e próxima permitem chegar também a unidades antigas sem renderizar o
 curso inteiro.
 
+Abra a visão múltipla sem selecionar nenhum alvo. Selecione unidades
+separadamente para uma observação em lote e limpe a seleção sem recolher a
+leitura. Focalize e edite uma unidade de página posterior por seus próprios
+comandos. Verifique preservação de rascunho e retomada de envio parcial.
+
 Em **Planejamento**, comece com um curso descartável ainda sem conteúdo e
 confirme, nesta ordem:
 
@@ -46,6 +51,13 @@ detalhes de desenho. Quando existirem, confira os rótulos humanos **Ideias
 introduzidas aqui**, **Ideias já estabelecidas usadas aqui** e **Ideias
 retomadas**. A interface normal não deve exibir nomes de campos, termos internos,
 identificadores ou contagens apresentadas como julgamento pedagógico.
+
+No mapa, teste a seta isoladamente, abra objetivos longos e siga vínculos da
+cobertura, retornando ao mesmo ramo, posição e foco. Em Parâmetros, alterne
+curso, módulo, lição, microssequência e unidade, incluindo valores automáticos,
+fixos e herdados e um rascunho ainda não salvo. Nas folhas de Observações,
+confira leitura sem edição, texto alterado, fechamento e retomada; avisos não
+podem encobrir campo, envio ou foco.
 
 Registre uma observação numa unidade e outra em várias unidades, peça revisão,
 aplique uma proposta aprovada e reinspecione o conjunto afetado. Abra

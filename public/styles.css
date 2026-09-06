@@ -1018,9 +1018,6 @@ button.account-settings-back[hidden] {
   border: 1px solid var(--border-subtle);
   background: var(--surface-raised);
   box-shadow: var(--shadow-card);
-  padding: 10px;
-  display: grid;
-  gap: 10px;
 }
 
 [data-structure-target] {
@@ -1599,7 +1596,6 @@ button.account-settings-back[hidden] {
 .runtime-resource-edit-target {
   position: relative;
   min-width: 0;
-  border-radius: inherit;
 }
 
 .runtime-resource-edit-target.is-selected {
@@ -3229,7 +3225,6 @@ button.account-settings-back[hidden] {
   justify-content: center;
   color: var(--resource-text);
   font-size: var(--type-diagram);
-  line-height: var(--leading-snug);
   text-align: center;
 }
 
@@ -4191,8 +4186,6 @@ button.account-settings-back[hidden] {
 }
 
 .runtime-flow-block {
-  display: grid;
-  gap: 10px;
   min-width: 0;
 }
 

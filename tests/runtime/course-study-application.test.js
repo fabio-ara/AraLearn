@@ -456,14 +456,15 @@ test("visitante baixa PDF permitido pela citação sem sair da unidade, e falha 
 test("rascunho anterior sem destino comprovado fica visível até descarte explícito", async () => {
   const document = project();
   const repository = applicationRepository(document, async () => {});
-  const draft = { sourceCourseId: COURSE_ID, requestId: "original-request", targetId: "study_unit",
+  const draft = { recoveryId: "draft-1", sourceCourseId: COURSE_ID, requestId: "original-request", targetId: "study_unit",
     studyUnit: structuredClone(document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0]) };
   draft.studyUnit.title = "Rascunho preservado <com texto>";
   let clears = 0;
-  repository.loadStudyDraftRecovery = async () => structuredClone(draft);
+  repository.loadStudyDraftRecovery = async () => clears ? null : structuredClone(draft);
   repository.recoverStudyDraft = async () => ({ status: "unresolved", targetCourseId: null });
-  repository.clearStudyDraftRecovery = async (source, request) => {
-    assert.equal(source, COURSE_ID); assert.equal(request, draft.requestId); clears += 1; return true;
+  repository.clearStudyDraftRecovery = async (source, request, recoveryId) => {
+    assert.equal(source, COURSE_ID); assert.equal(request, draft.requestId);
+    assert.equal(recoveryId, draft.recoveryId); clears += 1; return true;
   };
   const root = new FakeStudyRoot();
   const app = createCourseStudyApplication({ root, repository, initialProject: document });
@@ -475,6 +476,71 @@ test("rascunho anterior sem destino comprovado fica visível até descarte expl�
   await nextTurn();
   assert.equal(clears, 1);
   assert.doesNotMatch(root.innerHTML, /class="study-draft-recovery /u);
+  app.destroy();
+});
+
+test("recuperação exporta snapshot integral e cada descarte revela a próxima intenção do mesmo curso", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const originals = [
+    { sourceCourseId: COURSE_ID, requestId: "same-request", extra: { useful: "Metadados íntegros" } },
+    { unknown: ["Outro rascunho", { data: "Preservar tudo" }] }
+  ];
+  const entries = originals.map((originalSnapshot, index) => ({ recoveryId: `draft-${index + 1}`,
+    sourceCourseId: index === 0 ? COURSE_ID : null, requestId: index === 0 ? "same-request" : null,
+    studyUnit: null, command: null, originalSnapshot }));
+  const recoveryCalls = [];
+  const downloads = [];
+  repository.loadStudyDraftRecovery = async () => structuredClone(entries[0] ?? null);
+  repository.recoverStudyDraft = async (sourceCourseId, recoveryId) => {
+    recoveryCalls.push({ sourceCourseId, recoveryId }); return { status: "unresolved" };
+  };
+  repository.clearStudyDraftRecovery = async (source, request, recoveryId) => {
+    assert.equal(source, entries[0].sourceCourseId);
+    assert.equal(request, entries[0].requestId);
+    assert.equal(recoveryId, entries[0].recoveryId);
+    entries.shift(); return true;
+  };
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    downloadRecovery: (file) => downloads.push(file) });
+  await app.resumePendingManualEdit();
+  root.click("export-study-draft-recovery");
+  await nextTurn();
+  assert.deepEqual(JSON.parse(downloads[0].content), originals[0]);
+  assert.equal(entries.length, 2);
+  root.click("discard-study-draft-recovery");
+  await nextTurn();
+  assert.match(root.innerHTML, /Outro rascunho/u);
+  root.click("export-study-draft-recovery");
+  await nextTurn();
+  assert.deepEqual(JSON.parse(downloads[1].content), originals[1]);
+  assert.deepEqual(recoveryCalls, [{ sourceCourseId: COURSE_ID, recoveryId: "draft-1" },
+    { sourceCourseId: null, recoveryId: "draft-2" }]);
+  root.click("discard-study-draft-recovery");
+  await nextTurn();
+  assert.doesNotMatch(root.innerHTML, /class="study-draft-recovery /u);
+  assert.equal(entries.length, 0);
+  app.destroy();
+});
+
+test("falha de exportação não descarta a entrada e conserva saída local acionável", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const originalSnapshot = { unknown: "Trabalho preservado" };
+  repository.loadStudyDraftRecovery = async () => ({ recoveryId: "draft-1", sourceCourseId: null,
+    requestId: null, studyUnit: null, originalSnapshot });
+  let clears = 0;
+  repository.clearStudyDraftRecovery = async () => { clears += 1; return true; };
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    downloadRecovery: () => { throw new Error("file picker unavailable"); } });
+  await app.resumePendingManualEdit();
+  root.click("export-study-draft-recovery");
+  await nextTurn();
+  assert.match(root.innerHTML, /continua guardado; tente novamente/u);
+  assert.match(root.innerHTML, /Trabalho preservado/u);
+  assert.equal(clears, 0);
   app.destroy();
 });
 

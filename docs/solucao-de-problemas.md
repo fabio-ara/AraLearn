@@ -5,9 +5,9 @@
 Antes de limpar dados ou reinstalar:
 
 1. anote a tela, o curso e a ação que falhou;
-2. verifique se a conexão voltou;
+2. confira o estado de sincronização e a disponibilidade da conexão;
 3. observe mensagens de fila, revisão ou retomada;
-4. tente novamente uma vez;
+4. use a nuvem ou **Tentar novamente** para solicitar outra leitura;
 5. só use limpeza local depois de avaliar alterações pendentes feitas sem conexão.
 
 Uma captura de tela ajuda a explicar o estado visual. Console e rede ajudam a
@@ -66,8 +66,24 @@ da cópia local.
 ## O aplicativo mostra o último estado conhecido
 
 Isso indica uso da réplica local. Ela permite retomar conteúdo já aberto, mas
-não prova que a lista, o acesso ou a composição estão atualizados. Reconecte e
-aguarde a atualização antes de tomar uma decisão de Autoria.
+não prova que a lista, o acesso ou a composição estão atualizados. Use a nuvem
+para solicitar atualização. No modo manual, essa ação não ativa a sincronização
+automática. Preserve a cópia e os rascunhos enquanto confere o resultado.
+
+O serviço pode estar temporariamente indisponível mesmo quando outros sites
+abrem normalmente. **Lendo conteúdo**, cópia local com atualização pendente,
+falha do serviço e ausência de conexão descrevem situações diferentes. Durante
+a leitura, aguarde seu resultado antes de concluir que o curso está vazio.
+Se o prazo terminar, uma nova tentativa explícita continua possível sem
+desligar e religar a rede nem apagar os dados locais.
+
+## A atualização foi adiada por uma edição
+
+Retome o rascunho indicado no aviso e conclua, salve ou descarte a alteração
+conscientemente. Em uma observação enviada apenas para parte dos alvos,
+continue a mesma operação para conferir os restantes. Abrir uma folha apenas
+para consultar não deveria criar esse bloqueio; se isso ocorrer, registre o
+contexto e a mensagem sem limpar os dados do dispositivo.
 
 ## Progresso ou marca aguardam envio
 

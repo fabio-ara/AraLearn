@@ -1375,7 +1375,6 @@ export function createCourseInspectionSequence({
     manualStudyUnitId: null,
     manualTargetId: "",
     manualDraft: { pathValues: {} },
-    manualOrigin: "manual",
     manualSaving: false,
     manualError: "",
     manualStatus: "",
@@ -2779,7 +2778,6 @@ export function createCourseInspectionSequence({
     state.manualStudyUnitId = null;
     state.manualTargetId = "";
     state.manualDraft = { pathValues: {} };
-    state.manualOrigin = "manual";
     state.manualSaving = false;
     state.manualError = "";
     state.manualStatus = status;
@@ -2799,7 +2797,7 @@ export function createCourseInspectionSequence({
   function beginManualEdit(
     studyUnitId,
     targetId = "study_unit",
-    { pathValues = {}, origin = "manual", restoreFocus = true, status = "" } = {}
+    { pathValues = {}, status = "" } = {}
   ) {
     if (!state.canEditManually) return false;
     if (!canFocusUnit(studyUnitId, { editing: true })) return false;
@@ -2814,48 +2812,13 @@ export function createCourseInspectionSequence({
     state.manualStudyUnitId = studyUnitId;
     state.manualTargetId = targetId;
     state.manualDraft = { pathValues: structuredClone(pathValues) };
-    state.manualOrigin = origin;
     state.manualError = "";
     state.manualStatus = status;
     state.manualStatusError = false;
-    state.manualRestoreFocus = restoreFocus ? "field" : "";
+    state.manualRestoreFocus = "field";
     render({ captureDraft: false });
     return true;
   }
-
-  function previewManualDraft({
-    studyUnitId,
-    targetId,
-    pathValues,
-    origin = "provider_assistance",
-    restoreFocus = true
-  } = {}) {
-    if (!new Set(["manual", "provider_assistance"]).has(origin) ||
-        !isPlainObject(pathValues)) {
-      throw new TypeError("O rascunho contextual de edição é inválido.");
-    }
-    const item = manualItem(canonicalId(studyUnitId, "A unidade do rascunho"));
-    const normalizedTargetId = String(targetId || "").trim();
-    if (!item || !normalizedTargetId) {
-      throw new TypeError("O alvo do rascunho contextual não existe.");
-    }
-    applyManualStudyUnitEdit(item.studyUnit, normalizedTargetId, { pathValues });
-    return beginManualEdit(item.studyUnit.id, normalizedTargetId, {
-      pathValues,
-      origin,
-      restoreFocus
-    });
-  }
-
-
-
-
-
-
-
-
-
-
 
   function manualDraftChanged() {
     const item = manualItem();
@@ -2908,7 +2871,7 @@ export function createCourseInspectionSequence({
     return replacement;
   }
 
-  async function commitManualStudyUnit(current, studyUnit, origin = "manual") {
+  async function commitManualStudyUnit(current, studyUnit) {
     const result = await onSaveManualEdit({
       courseId: state.courseId,
       expectedCourseRevision: state.pinnedRevision,
@@ -2916,12 +2879,12 @@ export function createCourseInspectionSequence({
       studyUnitId: current.studyUnit.id,
       expectedVersion: current.version,
       studyUnit: structuredClone(studyUnit),
-      origin
+      origin: "manual"
     });
     if (result != null && (!isPlainObject(result) ||
         result.courseId && result.courseId !== state.courseId ||
         result.studyUnitId && result.studyUnitId !== current.studyUnit.id ||
-        result.origin && result.origin !== origin ||
+        result.origin && result.origin !== "manual" ||
         result.reconciled != null && typeof result.reconciled !== "boolean")) {
       throw new TypeError("A confirmação não corresponde à edição enviada.");
     }
@@ -2974,8 +2937,7 @@ export function createCourseInspectionSequence({
     }
     const attemptSignature = JSON.stringify({
       targetId: state.manualTargetId,
-      studyUnit: edited,
-      origin: state.manualOrigin
+      studyUnit: edited
     });
     if (state.manualUnknownSignature && state.manualUnknownSignature !== attemptSignature) {
       state.manualDiscardArmed = true;
@@ -2988,7 +2950,7 @@ export function createCourseInspectionSequence({
     state.manualError = "";
     render({ captureDraft: false });
     try {
-      const committed = await commitManualStudyUnit(current, edited, state.manualOrigin);
+      const committed = await commitManualStudyUnit(current, edited);
       const saved = committed.item;
       const historyPreview = state.manualHistoryPreview;
       const previewValue = historyPreview
@@ -3054,7 +3016,6 @@ export function createCourseInspectionSequence({
     state.manualHistoryPreview = { direction, entry };
     const opened = beginManualEdit(studyUnitId, targetId, {
       pathValues,
-      origin: "manual",
       status: direction === "undo"
         ? "Desfazer preparado. Confira e salve."
         : "Refazer preparado. Confira e salve."
@@ -3616,14 +3577,6 @@ export function createCourseInspectionSequence({
     },
     refreshContext(nextRevision, { returnPosition = null, returnFocusKey = "" } = {}) {
       return this.refresh(nextRevision, { contextual: true, returnPosition, returnFocusKey });
-    },
-    previewManualEdit({
-      studyUnitId,
-      targetId,
-      pathValues,
-      origin = "provider_assistance"
-    } = {}) {
-      return previewManualDraft({ studyUnitId, targetId, pathValues, origin });
     },
     async refresh(nextRevision = state.pinnedRevision, {
       contextual = false, returnPosition = null, returnFocusKey = ""

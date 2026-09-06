@@ -84,9 +84,11 @@ completos, e suas posições contíguas precisam ser respeitadas.
 
 Na inspeção do aplicativo, uma unidade permanece como foco normal. Fontes,
 parâmetros e observações são consultas em folhas que preservam esse foco e o
-rascunho em edição. A seleção múltipla revela uma sequência vertical temporária,
-com unidade de referência para o retorno; ela não constitui uma parte de produção.
-Observações em lote mantêm seus alvos individuais. A entrada pela atualização
+rascunho em edição. A visão múltipla revela uma sequência vertical temporária;
+a seleção para observações em lote é uma ação separada. Qualquer unidade pode
+ser focalizada por seu próprio comando de visualização ou edição, preservando
+rascunhos e envios pendentes. Observações em lote mantêm seus alvos individuais.
+A entrada pela atualização
 mais recente escolhe uma âncora no escopo; a continuação permanece curricular,
 sem criar uma lista temporal ou inferir a data de criação.
 

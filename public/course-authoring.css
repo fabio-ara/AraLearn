@@ -1948,7 +1948,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   max-width: 640px;
   margin-inline: auto;
   display: grid;
-  gap: 12px;
 }
 
 .course-analytics :is(h3, p, dl) {
@@ -2373,7 +2372,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-design-parameter {
   min-width: 0;
   align-self: start;
-  padding: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 0;
   border-width: 0 0 1px;
@@ -2383,9 +2381,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-design-parameter > header {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(74px, auto);
   align-items: start;
-  gap: 10px;
 }
 
 .course-design-parameter > header > div {
@@ -2403,11 +2399,9 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 }
 
 .course-design-parameter > header > strong {
-  max-width: 210px;
   overflow-wrap: anywhere;
   color: var(--action-primary-hover);
   font-size: var(--type-xs);
-  text-align: right;
 }
 
 .course-design-fixed-values,
@@ -2674,7 +2668,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-design-component-option {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: 8px;
@@ -2705,7 +2698,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-design-component-choices {
   display: grid;
-  grid-template-columns: repeat(3, 62px);
   gap: 3px;
 }
 
@@ -3200,7 +3192,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   background: var(--surface-raised);
@@ -4523,12 +4514,9 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 }
 
 .course-source-status {
-  width: max-content;
   max-width: 100%;
-  padding: 2px 6px;
   border-radius: 999px;
   color: var(--text-secondary);
-  background: var(--surface-sunken);
   font-size: 0.68rem;
   font-weight: 800;
 }

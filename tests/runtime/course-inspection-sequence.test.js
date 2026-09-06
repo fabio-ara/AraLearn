@@ -108,6 +108,19 @@ function clickInspection(root, selector, dataset) {
   });
 }
 
+async function editInspectionTitle(root, studyUnitId, title) {
+  assert.equal(await clickInspection(root, "[data-inspection-unit-mode]", {
+    studyUnitId, inspectionUnitMode: "edit"
+  }), true);
+  assert.match(root.innerHTML, /data-inspection-manual-title/u);
+  root.listeners.get("input")({
+    target: {
+      textContent: title,
+      matches(selector) { return selector === "[data-inspection-manual-title]"; }
+    }
+  });
+}
+
 function studyUnit(index) {
   return {
     id: `unit-${String(index).padStart(2, "0")}`,
@@ -1743,16 +1756,12 @@ test("contexto preserva rascunho e só atualiza CAS depois de reler texto e hier
     windowValue: new FakeWindow(), documentValue: { activeElement: null }
   });
   await sequence.open();
-  sequence.previewManualEdit({
-    studyUnitId: "unit-01", targetId: "study_unit", pathValues: { title: "Título local ainda em edição" },
-    origin: "manual"
-  });
+  await editInspectionTitle(root, "unit-01", "Título local ainda em edição");
   await clickInspection(root, "[data-inspection-open-parameters]", { studyUnitId: "unit-01" });
   await clickInspection(root, "[data-inspection-edit-sources]", { studyUnitId: "unit-01" });
   assert.equal(contexts.length, 2);
   assert.equal(writes.length, 0);
   assert.equal(sequence.hasPendingDraft(), true);
-  assert.match(root.innerHTML, /Título local ainda em edição/u);
   version = 2;
   assert.equal(await sequence.refreshContext(REVISION + 1, {
     returnPosition: contexts[1].returnPosition, returnFocusKey: contexts[1].returnFocusKey
@@ -1775,6 +1784,7 @@ test("contexto preserva rascunho e só atualiza CAS depois de reler texto e hier
   assert.equal(writes[0].expectedVersion, 2, "recusa de refresh não substitui a versão comprovada");
   assert.equal(writes[0].expectedCourseRevision, REVISION + 1);
   assert.equal(writes[0].studyUnit.title, "Título local ainda em edição");
+  assert.equal(writes[0].origin, "manual");
   sequence.destroy();
 });
 
@@ -1792,10 +1802,7 @@ test("contexto não muda a revisão de uma gravação ambígua nem repete o escr
     windowValue: new FakeWindow(), documentValue: { activeElement: null }
   });
   await sequence.open();
-  sequence.previewManualEdit({
-    studyUnitId: "unit-01", targetId: "study_unit", pathValues: { title: "Trabalho ainda sem recibo" },
-    origin: "manual"
-  });
+  await editInspectionTitle(root, "unit-01", "Trabalho ainda sem recibo");
   assert.equal(await clickInspection(root, "[data-inspection-manual-action]", {
     inspectionManualAction: "save"
   }), false);
@@ -1853,9 +1860,7 @@ test("entrada recente pede âncora global de atualização e mantém ordem curri
   assert.doesNotMatch(root.innerHTML, /Produzido em|Data de produção/u);
   assert.equal(await clickInspection(root, "[data-inspection-action]", { inspectionAction: "next" }), true);
   assert.equal(sequence.snapshot().studyUnitId, "unit-51");
-  sequence.previewManualEdit({
-    studyUnitId: "unit-51", targetId: "study_unit", pathValues: { title: "Rascunho preservado" }, origin: "manual"
-  });
+  await editInspectionTitle(root, "unit-51", "Rascunho preservado");
   assert.equal(await clickInspection(root, "[data-inspection-action]", {
     inspectionAction: "latest-updated"
   }), false);
@@ -2369,12 +2374,7 @@ test("atualização externa só interrompe quando conflita com edição local re
     documentValue: { activeElement: null }
   });
   assert.equal(await sequence.open(), true);
-  assert.equal(sequence.previewManualEdit({
-    studyUnitId: "unit-01",
-    targetId: "study_unit",
-    pathValues: { title: "Título local" },
-    origin: "manual"
-  }), true);
+  await editInspectionTitle(root, "unit-01", "Título local");
 
   assert.equal(await sequence.refresh(REVISION + 1), false);
   assert.equal(sequence.snapshot().courseRevision, REVISION);

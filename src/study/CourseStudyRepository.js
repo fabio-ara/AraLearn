@@ -1003,13 +1003,13 @@ export class CourseStudyRepository {
     return this.bridge.loadStudyDraftRecovery(sourceCourseId);
   }
 
-  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
-    return this.bridge.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId) ?? Promise.resolve(false);
+  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null, expectedRecoveryId = null) {
+    return this.bridge.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId, expectedRecoveryId) ?? Promise.resolve(false);
   }
 
-  async recoverStudyDraft(sourceCourseId = null) {
+  async recoverStudyDraft(sourceCourseId = null, expectedRecoveryId = null) {
     if (this.visitor || typeof this.bridge.recoverStudyDraft !== "function") return null;
-    const result = await this.bridge.recoverStudyDraft(sourceCourseId);
+    const result = await this.bridge.recoverStudyDraft(sourceCourseId, expectedRecoveryId);
     if (result?.targetCourseId && result.status === "confirmed") {
       await this.loadCourseById(result.targetCourseId);
       const descriptor = this.courseList.find((item) => item.courseId === result.targetCourseId);
