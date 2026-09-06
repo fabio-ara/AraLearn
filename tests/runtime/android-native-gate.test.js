@@ -35,7 +35,9 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.ok(native.indexOf("libpulse0") < native.indexOf("androidNativeGate.py run"));
   assert.match(native, /androidNativeGate\.py run/u);
   assert.match(native, /proof_sha256: \$\{\{ steps\.native\.outputs\.proof_sha256 \}\}/u);
-  assert.match(gate, /device\.launch\(\)\s+if case == "clean":\s+device\.wait_label\("Conta e aparência"\)\s+device\.capture\("clean-initial"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
+  assert.equal([...gate.matchAll(/subprocess\.Popen\(/gu)].length, 1);
+  assert.match(gate, /device\.call\("install", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.capture\("clean-initial"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
+  assert.match(gate, /device\.call\("uninstall", PACKAGE[\s\S]+require\(not device\.call\("shell", "pm", "list", "packages", PACKAGE\)[\s\S]+device\.call\("install", str\(baseline\)/u);
   assert.match(gate, /device\.call\("install", "-r", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)/u);
   assert.match(gate, /require\(not screen_is_dark\([\s\S]+"Estado inicial claro do emulador não foi comprovado\."\)/u);
   assert.match(gate, /theme_selected\(relaunched_xml, relaunched_png\)[\s\S]+theme_selected\(reinstalled_xml, reinstalled_png\)/u);
