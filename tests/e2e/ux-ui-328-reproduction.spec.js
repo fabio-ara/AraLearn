@@ -33,23 +33,17 @@ async function expandMap(page) {
   await disclosure(page, "lesson:lesson-1-1").locator(":scope > summary").click();
 }
 
-function knownDefect(id, message) {
-  // Mark only after fixture setup and actual measurement succeeded. A setup error
-  // is an unexpected failure; a correction is an unexpected pass until reviewed.
-  if (process.env.ARALEARN_328_STRICT !== "1") test.fail(true, `#328 ${id}: ${message}`);
-}
-
 test("#328 fixture válida: dois lotes, mapa completo, paginação e parâmetros automáticos/fixos/herdados", async ({ page }) => {
   await open(page);
   const data = await page.evaluate(() => ({ events: globalThis.uxUi328.events, count: globalThis.uxUi328.units.length,
     partCounts: globalThis.uxUi328.plan.parts.map(part => part.progress.studyUnitCount) }));
   expect(data).toMatchObject({ count: 36, partCounts: [18, 18], events: [{ revision: 4 }, { revision: 5 }] });
   expect(data.events[0].timestamp).not.toBe(data.events[1].timestamp);
-  await card(page).locator('[data-inspection-selection-action="toggle-current"]').click();
+  await card(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
   await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
   await page.getByRole("button", { name: "Carregar unidades posteriores", exact: true }).click();
   await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(24);
-  await page.getByRole("button", { name: "Cancelar seleção", exact: true }).click();
+  await card(page).getByRole("button", { name: "Mostrar somente esta unidade", exact: true }).click();
   await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
   await card(page).locator("[data-inspection-open-parameters]").click();
   await expect(page.getByRole("dialog", { name: "Parâmetros", exact: true })).toBeVisible();
@@ -174,10 +168,9 @@ test("#328 R13: aviso de cancelar edição não cobre envio de observação", as
 
 for (const ordinal of [1, 2]) {
   test(`#328 R15/R16: segundo comando focaliza unidade ${ordinal} e recolhe múltipla`, async ({ page }) => {
-    await open(page); await card(page).locator('[data-inspection-selection-action="toggle-current"]').click();
+    await open(page); await card(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
     await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
-    await card(page, ordinal).locator('[data-inspection-selection-action="toggle-current"]').click();
-    knownDefect("R15/R16", "toggle altera alvos de lote e mantém selectionMode=true");
+    await card(page, ordinal).getByRole("button", { name: "Mostrar somente esta unidade", exact: true }).click();
     await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
     await expect(card(page, ordinal)).toBeVisible();
   });
@@ -186,13 +179,10 @@ for (const ordinal of [1, 2]) {
 test("#328 R17/R18: edição manual na múltipla focaliza alvo sem chamada de IA", async ({ page }) => {
   await open(page); const requests = [];
   page.on("request", request => { if (["fetch", "xhr"].includes(request.resourceType())) requests.push(request.url()); });
-  await card(page).locator('[data-inspection-selection-action="toggle-current"]').click();
+  await card(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
   await card(page, 2).getByRole("button", { name: "Editar", exact: true }).click();
-  await expect(page.locator("[data-course-feedback-indicator]")).toBeVisible();
-  await page.locator(".course-authoring-task-menu > summary").click();
-  await expect(page.getByRole("alert")).toHaveText("Volte à unidade de referência antes de iniciar a edição.");
   expect(requests).toEqual([]);
-  knownDefect("R17", "bloqueio local selectionMode propaga aviso global; nenhum request fetch/xhr");
+  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
   await expect(card(page, 2).getByRole("textbox", { name: "Título da unidade de estudo", exact: true })).toBeVisible();
 });
 
@@ -207,6 +197,104 @@ test("#328 S11: Observações aberta sem rascunho permite atualização", async 
   await expect(page.getByRole("dialog", { name: /Observações/u })).toBeVisible();
   await info.attach("empty-observation-refresh", { body: JSON.stringify({ result, before, after }), contentType: "application/json" });
   expect(result).not.toBe("deferred");
+});
+
+test("#333 bloqueio contextual retoma observação sem perder texto ou trocar alvo", async ({ page }) => {
+  await open(page);
+  await card(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
+  await card(page).locator("[data-inspection-observations]").click();
+  await page.locator('[data-field="study-unit-observation"]').fill("Rascunho preservado no alvo A.");
+  await page.locator('[data-observation-action="close"]').click();
+  await card(page, 2).getByRole("button", { name: "Editar", exact: true }).click();
+  const notice = card(page, 2).getByRole("alert");
+  await expect(notice).toContainText("Sua observação foi preservada");
+  await expect(page.locator("[data-inspection-manual-title]")).toHaveCount(0);
+  await expect(notice.getByRole("button", { name: "Retomar observação", exact: true })).toBeFocused();
+  await notice.getByRole("button", { name: "Retomar observação", exact: true }).click();
+  await expect(page.locator('[data-field="study-unit-observation"]')).toHaveValue("Rascunho preservado no alvo A.");
+  await expect(page.locator('[data-field="study-unit-observation"]')).toBeFocused();
+  await page.locator('[data-observation-composer] button[type="submit"]').click();
+  const sent = await page.evaluate(() => globalThis.uxUi328.annotations.filter(item => item.rawText === "Rascunho preservado no alvo A."));
+  expect(sent).toHaveLength(1); expect(sent[0].target.id).toBe("ux328-unit-01");
+});
+
+test("#333 seleção independente e foco por teclado na última unidade paginada", async ({ page }) => {
+  await open(page);
+  await card(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
+  const selection = ordinal => card(page, ordinal).locator('[data-inspection-selection-action="toggle-unit"]');
+  await selection(1).click(); await selection(2).click();
+  await expect(selection(1)).toHaveAttribute("aria-checked", "true");
+  await selection(1).click();
+  await expect(selection(1)).toHaveAttribute("aria-checked", "false");
+  await expect(selection(2)).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+  await page.getByRole("button", { name: "Limpar seleção", exact: true }).click();
+  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+  for (const count of [24, 36]) {
+    await page.getByRole("button", { name: "Carregar unidades posteriores", exact: true }).click();
+    await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(count);
+  }
+  const last = card(page, 36).getByRole("button", { name: "Mostrar somente esta unidade", exact: true });
+  await expect(last).toHaveAttribute("aria-pressed", "true");
+  await last.focus(); await page.keyboard.press("Enter");
+  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
+  await expect(card(page, 36)).toBeVisible();
+  await expect(card(page, 36).getByRole("button", { name: "Mostrar várias unidades", exact: true })).toBeFocused();
+  await expect(card(page, 36).locator(".card-answer-dock")).toBeVisible();
+});
+
+for (const width of [360, 430]) {
+  test(`#333 cabeçalho natural e edição sem deslocamento em ${width}px`, async ({ page }) => {
+    await open(page); await page.setViewportSize({ width, height: 844 });
+    const unit = card(page);
+    const measure = () => unit.evaluate(node => Object.fromEntries([
+      ".course-inspection-item-heading", ".course-inspection-item-heading h3",
+      ".course-inspection-item-actions", ".runtime-paragraph-block > p"
+    ].map(selector => {
+      const element = node.querySelector(selector), rect = element.getBoundingClientRect();
+      return [selector, { x: rect.x, y: rect.y - node.getBoundingClientRect().y, width: rect.width, height: rect.height }];
+    })));
+    const before = await measure();
+    await unit.getByRole("button", { name: "Editar", exact: true }).click();
+    const editing = await measure();
+    for (const selector of Object.keys(before)) for (const property of ["x", "y", "width", "height"]) {
+      expect(Math.abs(editing[selector][property] - before[selector][property]), `${selector}/${property}`).toBeLessThanOrEqual(1);
+    }
+    const title = unit.getByRole("textbox", { name: "Título da unidade de estudo", exact: true });
+    await title.fill("Título ampliado para verificar crescimento natural e legibilidade sem rolagem artificial. ".repeat(8));
+    const header = unit.locator(".course-inspection-item-heading > div");
+    expect(await header.evaluate(node => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
+    const grown = await measure();
+    expect(grown[".course-inspection-item-heading"].height).toBeGreaterThan(before[".course-inspection-item-heading"].height);
+    await expect(unit.locator(".runtime-paragraph-block > p")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    await unit.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+    const after = await measure();
+    for (const selector of Object.keys(before)) for (const property of ["x", "y", "width", "height"]) {
+      expect(Math.abs(after[selector][property] - before[selector][property]), `${selector}/${property}`).toBeLessThanOrEqual(1);
+    }
+  });
+}
+
+test("#333 prática preserva geometria ao editar e cresce com texto em ampliação 2x", async ({ page }) => {
+  await open(page, "content", "?theme=dark&zoom=2", 36);
+  const unit = card(page, 36), dock = unit.locator(".card-answer-dock");
+  const geometry = () => dock.evaluate(node => {
+    const rect = node.getBoundingClientRect(), item = node.closest("[data-inspection-study-unit]").getBoundingClientRect();
+    return { x: rect.x, y: rect.y - item.y, width: rect.width, height: rect.height };
+  });
+  const before = await geometry(), practice = await dock.textContent();
+  await unit.getByRole("button", { name: "Editar", exact: true }).click();
+  const editing = await geometry();
+  for (const property of ["x", "y", "width", "height"]) expect(Math.abs(editing[property] - before[property])).toBeLessThanOrEqual(1);
+  await unit.getByRole("textbox", { name: "Título da unidade de estudo", exact: true }).fill("Título extenso com condições e limites explicitados. ".repeat(12));
+  const grown = await geometry();
+  expect(grown.y).toBeGreaterThan(before.y);
+  expect(grown.height).toBe(before.height);
+  expect(await dock.textContent()).toBe(practice);
+  expect(await dock.evaluate(node => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
+  expect(await unit.evaluate(node => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
 
 test("#329 nuvem da Autoria executa nova leitura e preserva unidade focal", async ({ page }) => {

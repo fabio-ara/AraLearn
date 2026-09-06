@@ -1497,7 +1497,8 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1"/u);
   assert.match(root.innerHTML, /aria-label="Visualizar"/u);
   assert.doesNotMatch(root.innerHTML.match(/<nav class="course-inspection-mode-actions"[\s\S]*?<\/nav>/u)?.[0], /<span>Visualizar<\/span>/u);
-  assert.match(root.innerHTML, /data-inspection-selection-action="toggle-current"[^>]*aria-pressed="false"/u);
+  assert.match(root.innerHTML, /data-inspection-view-action="toggle-multiple"[^>]*aria-pressed="false"/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-selection-action="toggle-unit"/u);
   assert.equal(annotationCalls.length, 0);
 
   await root.listeners.get("click")({
@@ -1577,9 +1578,12 @@ test("seleção temporária registra Observação em lote por chamadas individua
       }
     }
   });
-  assert.equal(await clickSelection("toggle-current", "unit-01"), true);
+  assert.equal(await clickInspection(root, "[data-inspection-view-action]", {
+    inspectionViewAction: "toggle-multiple", studyUnitId: "unit-01"
+  }), true);
+  assert.equal(await clickSelection("toggle-unit", "unit-01"), true);
   assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 2);
-  assert.equal(await clickSelection("toggle-current", "unit-02"), true);
+  assert.equal(await clickSelection("toggle-unit", "unit-02"), true);
   assert.match(root.innerHTML, /2 unidades selecionadas/u);
   assert.doesNotMatch(
     root.innerHTML,
@@ -1611,8 +1615,8 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.deepEqual(requests.map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
   assert.match(root.innerHTML, /1 de 2 Observações foram registradas/iu);
   const failedRequestId = requests[1].requestId;
-  assert.equal(await clickSelection("cancel"), false, "encerrar não descarta um envio parcial");
-  assert.equal(await clickSelection("toggle-current", "unit-02"), false);
+  assert.equal(await clickSelection("clear"), false, "limpar não descarta um envio parcial");
+  assert.equal(await clickSelection("toggle-unit", "unit-02"), false);
   assert.match(root.innerHTML, /2 unidades selecionadas/u);
 
   root.listeners.get("submit")({
@@ -1652,11 +1656,10 @@ test("seleção temporária registra Observação em lote por chamadas individua
   sequence.destroy();
 });
 
-test("seleção vertical pagina nos dois sentidos e retorna à referência fora da janela sem perder os alvos", async () => {
+test("visão múltipla pagina nos dois sentidos e focaliza unidade carregada depois sem retornar à primeira", async () => {
   const root = new FakeRoot();
   const saved = [];
   const focusKeys = [];
-  let failReturn = false;
   root.querySelector = (selector) => {
     if (selector === ".course-inspection-sticky-context") {
       return { getBoundingClientRect: () => ({ bottom: 40 }) };
@@ -1671,10 +1674,6 @@ test("seleção vertical pagina nos dois sentidos e retorna à referência fora 
   };
   const controller = controllerFixture({
     async loadAuthoringStudyUnits(_courseId, options) {
-      if (failReturn && options.anchorStudyUnitId === "unit-25") {
-        failReturn = false;
-        throw new Error("Falha sintética ao recuperar a referência.");
-      }
       return pageFor(options, 84);
     },
     async saveAuthoringInspectionPosition(_courseId, value) { saved.push(value); }
@@ -1688,32 +1687,30 @@ test("seleção vertical pagina nos dois sentidos e retorna à referência fora 
   await sequence.open();
   const select = (action, studyUnitId) => clickInspection(root,
     "[data-inspection-selection-action]", { inspectionSelectionAction: action, studyUnitId });
-  assert.equal(await select("toggle-current", "unit-25"), true);
+  const view = (studyUnitId) => clickInspection(root,
+    "[data-inspection-view-action]", { inspectionViewAction: "toggle-multiple", studyUnitId });
+  assert.equal(await view("unit-25"), true);
+  assert.equal(await select("toggle-unit", "unit-25"), true);
   assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 12);
-  assert.match(root.innerHTML, /Unidade de referência/u);
+  assert.doesNotMatch(root.innerHTML, /Unidade de referência/u);
   assert.equal(await select("backward"), true);
   assert.match(root.innerHTML, /data-inspection-study-unit="unit-13"/u);
   assert.match(root.innerHTML, /data-inspection-study-unit="unit-36"/u);
   assert.equal(await select("forward"), true);
   assert.equal(await select("forward"), true);
-  assert.equal(await select("toggle-current", "unit-60"), true);
+  assert.equal(await select("toggle-unit", "unit-60"), true);
   assert.equal(await select("forward"), true);
   assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 36);
   assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-25"/u);
-  assert.match(root.innerHTML, /Referência: Unidade 25/u);
   assert.match(root.innerHTML, /2 unidades selecionadas/u);
-  await sequence.savePosition();
-  assert.equal(saved.at(-1).studyUnitId, "unit-25");
-  failReturn = true;
-  assert.equal(await select("cancel"), false);
-  assert.match(root.innerHTML, /2 unidades selecionadas/u, "falha mantém conjunto e referência");
-  assert.equal(await select("cancel"), true);
+  assert.equal(await view("unit-60"), true);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal((root.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
-  assert.match(root.innerHTML, /data-inspection-study-unit="unit-25"/u);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-60"/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-selection-bar/u);
-  assert.equal(saved.at(-1).offsetFromStickyTop, 72);
-  assert.ok(focusKeys.includes('[data-inspection-control-key="selection:unit-25"]'));
+  assert.equal(saved.at(-1).studyUnitId, "unit-60");
+  assert.equal(saved.at(-1).offsetFromStickyTop, 0);
+  assert.ok(focusKeys.includes('[data-inspection-control-key="view:unit-60"]'));
   sequence.destroy();
 });
 

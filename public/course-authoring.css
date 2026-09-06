@@ -3118,9 +3118,28 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   overflow-wrap: anywhere;
 }
 
-.course-inspection-selection small,
-.course-inspection-selection-reference {
+.course-inspection-selection small {
   color: var(--text-secondary);
+}
+
+.course-inspection-mode-block {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  text-align: start;
+}
+
+.course-inspection-mode-block p { margin: 0; }
+
+.course-inspection-mode-block button {
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  font: inherit;
+  cursor: pointer;
 }
 
 .course-inspection-selection-pagination {
@@ -3177,8 +3196,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-inspection-item > article {
   min-width: 0;
-  height: min(640px, calc(100dvh - 180px));
-  min-height: 300px;
+  min-height: min(640px, max(300px, calc(100dvh - 180px)));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3420,13 +3438,13 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 }
 
 .course-inspection-runtime {
-  min-height: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
+  flex: 1 0 auto;
+  overflow: visible;
 }
 
 .course-inspection-runtime > .card-sheet-content {
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow-y: visible;
   scrollbar-gutter: auto;
 }
 
@@ -3451,15 +3469,12 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 }
 
 .course-inspection-item-heading {
-  flex: 0 0 76px;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
 .course-inspection-item-heading > div {
   min-height: 0;
-  max-height: 76px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .course-inspection-item > article > :not(.course-inspection-runtime) {
@@ -3907,8 +3922,8 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   align-items: center;
   border-block: 1px solid var(--border-subtle);
   padding-block: 5px;
-  height: calc(var(--tap) + 12px);
-  flex: 0 0 calc(var(--tap) + 12px);
+  min-height: calc(var(--tap) + 12px);
+  flex: 0 0 auto;
 }
 
 .course-inspection-item-actions:has(.study-tool-actions) {
@@ -3920,6 +3935,10 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-inspection-item-actions .study-tool-actions {
   flex: 0 0 var(--tap);
   width: var(--tap);
+}
+
+.course-inspection-item-actions .study-tool-actions[aria-hidden="true"] {
+  display: none;
 }
 
 .course-inspection-item-actions:has(.study-tool-actions) .course-inspection-mode-actions {
@@ -3934,7 +3953,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   min-width: 0;
   display: flex;
   flex: 1 1 auto;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
 }
@@ -3956,7 +3975,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   text-decoration: none;
 }
 
-.course-inspection-item-actions .course-inspection-mode-actions button[aria-pressed="true"] {
+.course-inspection-item-actions .course-inspection-mode-actions button:is([aria-pressed="true"], [aria-checked="true"]) {
   background: var(--surface-sunken);
 }
 
@@ -3981,10 +4000,11 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-inspection-item-heading .course-inspection-title-edit-target {
   display: block;
   width: 100%;
-  margin: 3px 0 0;
+  margin: 0;
+  color: var(--text-secondary);
   font-family: var(--font-display);
-  font-size: var(--type-md);
-  font-weight: 700;
+  font-size: var(--type-base);
+  font-weight: 600;
   line-height: var(--leading-snug);
   letter-spacing: inherit;
 }
