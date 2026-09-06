@@ -934,6 +934,17 @@ test("Android só prepara assinatura pelo coordenador e retoma APK existente", (
   assert.match(source, /always\(\)[\s\S]+Remove-Item -LiteralPath \$keystorePath/u);
 });
 
+test("lint Android preserva a configuração pública usada ao gerar a candidata", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  const lintStep = source.slice(
+    source.indexOf("- name: Analisar aplicativo Android"),
+    source.indexOf("- name: Validar exemplo público")
+  );
+  assert.match(lintStep, /ARALEARN_SUPABASE_URL:\s*\$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/u);
+  assert.match(lintStep, /ARALEARN_SUPABASE_PUBLISHABLE_KEY:\s*\$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/u);
+  assert.match(lintStep, /gradlew\.bat :app:lintDebug/u);
+});
+
 test("Android expõe callback móvel e salvamento textual local restrito", () => {
   const activity = fs.readFileSync(scripts.androidActivity, "utf8");
   const manifest = fs.readFileSync(scripts.androidManifest, "utf8");

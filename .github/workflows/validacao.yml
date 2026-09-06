@@ -131,6 +131,9 @@ jobs:
       - name: Analisar aplicativo Android
         if: steps.paths.outputs.docs_only != 'true'
         working-directory: android
+        env:
+          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: .\gradlew.bat :app:lintDebug --no-daemon
 
       - name: Validar exemplo público
