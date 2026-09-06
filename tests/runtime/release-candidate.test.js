@@ -8,9 +8,11 @@ import test from "node:test";
 import {
   buildReleaseNotes,
   configurationDigest,
+  draftReleasePayload,
   extractArtifactArchive,
   GITHUB_API_ACCEPT,
   releasePlan,
+  releaseAssetUploadUrl,
   selectReleaseByTag,
   validateCandidateIdentity,
   validateIntegratedPullRequest,
@@ -401,6 +403,24 @@ test("seleção encontra draft que o endpoint por tag omite e recusa duplicidade
   assert.equal(selectReleaseByTag([{ tag_name: "v0.0.1" }, draft], `v${VERSION}`), draft);
   assert.equal(selectReleaseByTag([], `v${VERSION}`), null);
   assert.throws(() => selectReleaseByTag([draft, { ...draft }], `v${VERSION}`), /duplicada/u);
+});
+
+test("criação e upload de release usam o alvo exato sem depender de releitura imediata", () => {
+  assert.deepEqual(draftReleasePayload({ targetSha: TARGET_SHA, version: VERSION, notes: "Notas verificadas." }), {
+    tag_name: `v${VERSION}`,
+    target_commitish: TARGET_SHA,
+    name: `AraLearn v${VERSION}`,
+    body: "Notas verificadas.",
+    draft: true,
+    prerelease: false
+  });
+  assert.equal(
+    releaseAssetUploadUrl(REPOSITORY, 123, `AraLearn-${VERSION}.apk.sha256`),
+    `https://uploads.github.com/repos/${REPOSITORY}/releases/123/assets?name=AraLearn-${VERSION}.apk.sha256`
+  );
+  assert.throws(() => draftReleasePayload({ targetSha: HEAD_SHA, version: VERSION, notes: "" }), /Notas/u);
+  assert.throws(() => releaseAssetUploadUrl(REPOSITORY, 0, "application.apk"), /Release/u);
+  assert.throws(() => releaseAssetUploadUrl(REPOSITORY, 123, "../application.apk"), /Destino/u);
 });
 
 test("avanço de versão aceita retry exato e exige avanço numérico do versionCode", () => {

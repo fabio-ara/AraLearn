@@ -327,6 +327,34 @@ export function selectReleaseByTag(releases, tag) {
   return matches[0] || null;
 }
 
+export function draftReleasePayload({ targetSha, version, notes }) {
+  demand(SHA.test(targetSha) && /^\d+\.\d+\.\d+$/u.test(version), "Identidade do rascunho inválida.");
+  demand(typeof notes === "string" && notes.trim(), "Notas do rascunho ausentes.");
+  return { tag_name: `v${version}`, target_commitish: targetSha, name: `AraLearn v${version}`,
+    body: notes, draft: true, prerelease: false };
+}
+
+export function releaseAssetUploadUrl(repository, releaseId, name) {
+  demand(/^[\w.-]+\/[\w.-]+$/u.test(repository) && /^[\w.-]+$/u.test(name), "Destino do asset inválido.");
+  const id = positive(releaseId, "Release");
+  return `https://uploads.github.com/repos/${repository}/releases/${id}/assets?name=${encodeURIComponent(name)}`;
+}
+
+async function uploadReleaseAsset(release, name, bytes) {
+  const token = process.env.GH_TOKEN;
+  demand(token && Buffer.isBuffer(bytes) && bytes.length > 0, "Upload de release inválido.");
+  const response = await fetch(releaseAssetUploadUrl(process.env.GITHUB_REPOSITORY, release?.id, name), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, Accept: GITHUB_API_ACCEPT,
+      "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/octet-stream" },
+    body: bytes
+  });
+  demand(response.status === 201, `GitHub recusou o asset (${response.status}).`);
+  const asset = await response.json();
+  demand(asset.name === name && asset.state === "uploaded" && asset.size === bytes.length, "Recibo do asset diverge.");
+  return asset;
+}
+
 async function releaseState(manifest) {
   const tag = `v${manifest.version}`;
   const ref = await api(`git/ref/tags/${tag}`, { missing: true });
@@ -414,15 +442,17 @@ async function stageRelease(apk) {
   let state = await releaseState(manifest);
   if (state.create) {
     const notes = buildReleaseNotes(await fs.readFile(path.join(ROOT, "CHANGELOG.md"), "utf8"), manifest.version);
-    await fs.writeFile(".candidate/release-notes.md", notes);
-    run("gh", ["release", "create", state.tag, "--repo", process.env.GITHUB_REPOSITORY, "--target", manifest.promotion.targetSha, "--draft", "--title", `AraLearn v${manifest.version}`, "--notes-file", ".candidate/release-notes.md"]);
-    state = await releaseState(manifest);
+    const release = await api("releases", { method: "POST", body: draftReleasePayload({
+      targetSha: manifest.promotion.targetSha, version: manifest.version, notes
+    }) });
+    state = { tag: state.tag, release, ...releasePlan({ tagSha: null, release,
+      targetSha: manifest.promotion.targetSha, version: manifest.version }) };
   }
   for (const file of [name, checksumName, receiptName]) {
     const bytes = await fs.readFile(file);
     if (!await releaseAsset(state.release, file, bytes)) {
       demand(state.release.draft, "Release pública sem asset obrigatório; recuperação exige inspeção explícita.");
-      run("gh", ["release", "upload", state.tag, file, "--repo", process.env.GITHUB_REPOSITORY]);
+      state.release.assets.push(await uploadReleaseAsset(state.release, file, bytes));
     }
   }
 }
