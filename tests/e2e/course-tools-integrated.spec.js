@@ -115,10 +115,12 @@ test("biblioteca conserva configuração e confirma upload perdido sem repetir g
     globalThis.__audioPanel = panel; globalThis.__audioPanelProbe = probe;
     void panel.open();
   });
-  await expect(page.getByLabel("Idioma padrão")).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Arquivos", exact: true })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Salvar configuração de áudio", exact: true })).toBeDisabled();
+  for (const name of ["Configuração", "Enviar áudio", "Gerar voz"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeDisabled();
+  }
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.evaluate(() => globalThis.__audioPanelProbe.release());
+  await page.getByRole("button", { name: "Configuração", exact: true }).click();
   await expect(page.getByLabel("Idioma padrão")).toBeEnabled();
   const controls = await page.locator(".course-audio-panel button").evaluateAll(nodes => nodes.map(node => {
     const rect = node.getBoundingClientRect(); return { width: rect.width, height: rect.height };
@@ -130,6 +132,7 @@ test("biblioteca conserva configuração e confirma upload perdido sem repetir g
   await page.getByRole("button", { name: "Salvar configuração de áudio", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Áudio atualizado.");
   await expect(page.getByLabel("Idioma padrão")).toHaveValue("zh-CN");
+  await page.getByRole("button", { name: "Fechar ajustes de áudio", exact: true }).click();
   await page.getByRole("button", { name: "Gerar voz", exact: true }).click();
   await page.getByRole("textbox", { name: "Nome do arquivo", exact: true }).fill("Saudação");
   await page.getByRole("textbox", { name: "Texto a falar", exact: true }).fill("Bom dia.");
@@ -139,9 +142,9 @@ test("biblioteca conserva configuração e confirma upload perdido sem repetir g
   await expect(page.getByText(/gerado, ainda não guardado/u)).toBeVisible();
   await expect(page.getByRole("button", { name: "Ouvir arquivo selecionado", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Guardar áudio", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Confirmar operação pendente", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("button", { name: "Confirmar operação pendente", exact: true })).toBeVisible();
   await page.evaluate(async () => { await globalThis.__audioPanel.refresh(globalThis.__audioPanelProbe.revision); });
-  await page.getByRole("button", { name: "Confirmar operação pendente", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirmar operação pendente", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Áudio atualizado.");
   const result = await page.evaluate(() => globalThis.__audioPanelProbe);
   expect(result.generations).toBe(1);

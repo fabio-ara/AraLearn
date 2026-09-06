@@ -1700,6 +1700,9 @@ export function createCourseInspectionSequence({
       content.scrollTop = snapshot.contentScroll.top;
       content.scrollLeft = snapshot.contentScroll.left;
     }
+    if (Number.isFinite(snapshot?.containerScrollTop) && scrollTarget && "scrollTop" in scrollTarget) {
+      scrollTarget.scrollTop = snapshot.containerScrollTop;
+    }
     const expectedOffset = Number(snapshot?.offsetFromStickyTop || 0);
     const delta = element.getBoundingClientRect().top - stickyTop() - expectedOffset;
     if ((initial || Math.abs(delta) > 0.5) && typeof scrollTarget?.scrollBy === "function") {
@@ -2486,7 +2489,8 @@ export function createCourseInspectionSequence({
     const targetAnchor = {
       ...interactionAnchor,
       studyUnitId: target.studyUnit.id,
-      offsetFromStickyTop: 0
+      offsetFromStickyTop: state.selectionMode ? 0 : interactionAnchor.offsetFromStickyTop,
+      containerScrollTop: state.selectionMode ? undefined : scrollTarget?.scrollTop
     };
     if (!selectStudyUnit(target.studyUnit.id, { anchor: targetAnchor })) return false;
     restoreAnchor(targetAnchor, { initial: true });
@@ -3107,7 +3111,8 @@ export function createCourseInspectionSequence({
         anchor.controlKey = `selection:${studyUnitId}`;
         if (!state.selectionMode) {
           state.selectionReturn = {
-            anchor: { ...anchor, studyUnitId },
+            anchor: { ...anchor, studyUnitId,
+              containerScrollTop: scrollTarget?.scrollTop },
             title: state.items.find(({ studyUnit }) => studyUnit.id === studyUnitId).studyUnit.title
           };
         }

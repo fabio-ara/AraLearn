@@ -1850,6 +1850,7 @@ export function createCourseAuthoringSurface({
     };
     const pending = state.pendingPeopleCommand;
     const courseId = state.course.courseId;
+    dismissFeedback();
     state.peopleBusy = true;
     state.peopleFailure = "";
     state.peopleMessage = startedMessage;

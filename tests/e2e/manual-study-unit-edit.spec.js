@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 
 import { renderPackageStudyUnitBlocks } from "../../src/render/renderPackageStudyUnit.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
@@ -15,6 +16,7 @@ const fixture = JSON.parse(fs.readFileSync(
   new URL("../fixtures/package/project-minimal.json", import.meta.url),
   "utf8"
 ));
+fixture.courses[0].id = "10000000-0000-4000-8000-000000000001";
 
 async function openSecondStudyUnitByClicks(page) {
   await page.getByRole("button", { name: "Abrir módulo" }).click();
@@ -186,12 +188,12 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false, 
   await page.setContent('<!doctype html><html lang="pt-BR"><head>' +
     STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
     '</head><body><div id="study-root"></div></body></html>');
-  await page.evaluate(async ({ project, ownership }) => {
+  await page.evaluate(async ({ project, ownership, configuration }) => {
     const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
     const progress = {
       version: 1,
       lessons: {
-        "course-fixture-minimal::module-fixture-minimal::lesson-fixture-minimal": {
+        "10000000-0000-4000-8000-000000000001::module-fixture-minimal::lesson-fixture-minimal": {
           cursorStudyUnitId: "card-fixture-minimal-regra",
           completedStudyUnitIds: ["card-fixture-minimal-regra"]
         }
@@ -206,7 +208,7 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false, 
     let recoveryStatus = "unresolved";
     let recoveryTargetId = null;
     const recoveryReads = [];
-    const sourceCourseId = "course-fixture-minimal";
+    const sourceCourseId = "10000000-0000-4000-8000-000000000001";
     const nextPersonalRequestId = () => `recovery-request-${++personalRequestIndex}`;
     const repository = {
       loadProgress: () => structuredClone(progress),
@@ -226,6 +228,17 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false, 
       loadCourse: async (courseId) => canonicalProject.courses.find(({ id }) =>
         id === courseId),
       loadProject: () => structuredClone(canonicalProject),
+      loadCourseDesign: async (courseId, { scope }) => {
+        const result = structuredClone(configuration);
+        const path = [...result.scopeContext.ancestors, result.scopeContext.current];
+        const index = path.findIndex(({ kind, ref }) => kind === scope.kind && ref === scope.ref);
+        if (courseId !== result.courseId || index < 0) throw new Error("Escopo da fixture ausente.");
+        result.courseRevision = canonicalRevision;
+        result.scopeContext.current = path[index];
+        result.scopeContext.ancestors = path.slice(0, index);
+        if (!["study_unit", "didactic_microsequence"].includes(scope.kind)) result.targetPlanItems = null;
+        return result;
+      },
       refreshCourses: async () => structuredClone(canonicalProject),
       loadStudyDraftRecovery: async () => structuredClone(pendingPersonalCopyEdit),
       clearStudyDraftRecovery: async (courseId, requestId) => {
@@ -383,7 +396,13 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false, 
     };
     const app = mountStudyApplication();
     await app.openCourse(sourceCourseId);
-  }, { project, ownership });
+  }, { project, ownership, configuration: courseDesignFixture({
+    courseId: project.courses[0].id,
+    moduleId: project.courses[0].modules[0].id,
+    lessonId: project.courses[0].modules[0].lessons[0].id,
+    microsequenceId: project.courses[0].modules[0].lessons[0].microsequences[0].id,
+    studyUnitId: project.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].id
+  }, { revision: 7 }) });
   await openSecondStudyUnitByClicks(page);
   await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
 }
@@ -423,7 +442,7 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
         return {
           contract: "aralearn.course-study-unit-inspection-page.v2",
           courseId,
-          courseRevision: 7,
+          courseRevision,
           scope: options.scope,
           totalCount: 1,
           scopeOptions: {
@@ -437,7 +456,7 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
           },
           items: [{
             studyUnit: structuredClone(studyUnit),
-            version: 1,
+            version: studyUnitVersion,
             updatedAt: "2026-08-20T12:00:00.000Z",
             ordinal: 1,
             curriculumPath: {
@@ -501,6 +520,7 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
         requests.push(structuredClone(request));
         courseRevision += 1;
         studyUnitVersion += 1;
+        Object.assign(studyUnit, structuredClone(request.studyUnit));
         return {
           courseId,
           courseRevision,
@@ -598,9 +618,12 @@ async function prepareContextualAssistance(page, request) {
   return dialog;
 }
 
-test("os 33 packages preservam edição textual no renderer entre 360 e 1280 px", async ({ page }) => {
+test("todos os pacotes preservam edição textual no renderer entre 360 e 1280 px", async ({ page }) => {
   const catalog = packageCatalogDocument();
-  expect(catalog.cases).toHaveLength(33);
+  expect(catalog.cases).toHaveLength(38);
+  expect(catalog.cases.map(({ packageId }) => packageId)).toEqual(
+    RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
+  );
   await page.goto("/");
   await page.setContent(catalog.html);
   await page.evaluate(async () => {
@@ -667,7 +690,7 @@ test("autor edita no lugar e estudante alheio preserva original sem receber escr
   expect(evidence.requests).toHaveLength(1);
   expect(evidence.requests[0]).toMatchObject({
     origin: "manual",
-    courseId: "course-fixture-minimal",
+    courseId: "10000000-0000-4000-8000-000000000001",
     expectedCourseRevision: 7,
     didacticMicrosequenceId: "micro-fixture-minimal",
     studyUnitId: "card-fixture-minimal-complete",
@@ -1134,11 +1157,11 @@ test("snapshot canônico externo rebasa CAS local sem perder posição nem progr
   expect(evidence.progress).toBe(evidence.progressBefore);
 });
 
-test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz apenas como rascunho", async ({ page }) => {
+test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como rascunho", async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 860 });
   await openInspectionUnit(page, "owned");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Assistência por IA" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
   const field = page.locator('[data-manual-edit-path="text"]');
@@ -1158,6 +1181,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   }]);
 
   await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.locator(".course-inspection-item-details > summary").click();
   await page.getByRole("button", { name: "Desfazer última edição" }).click();
   await expect(page.getByText("Desfazer preparado. Confira e salve.", { exact: true })).toBeAttached();
   await expect(page.locator('[data-manual-edit-path="text"]')).toHaveText(
@@ -1167,11 +1191,7 @@ test("Inspeção usa o mesmo editor, mantém assistência owner-only e desfaz ap
   await page.getByRole("button", { name: "Cancelar edição" }).click();
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests.length)).toBe(1);
 
-  await page.getByRole("button", { name: "Assistência por IA" }).click();
-  const assistanceDialog = page.locator("[data-course-assistance]").getByRole("dialog");
-  await expect(assistanceDialog).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(assistanceDialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
   await expect(page.locator(".course-inspection-runtime").getByText(
     "Texto de inspeção revisado.",
     { exact: true }
@@ -1347,7 +1367,6 @@ test("inspeção preserva título e cabeçalho ao editar nos temas e quatro larg
       const selectors = ['.course-inspection-item-heading', '.course-inspection-item-heading h3',
         '.course-inspection-mode-actions [aria-label="Visualizar"]',
         '.course-inspection-mode-actions [aria-label="Editar"]',
-        '.course-inspection-mode-actions [aria-label="Assistência por IA"]',
         '.runtime-paragraph-block > p'];
       const before = await elementGeometry(page, selectors);
       await page.getByRole("button", { name: "Editar", exact: true }).click();
@@ -1380,7 +1399,7 @@ test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", as
       const microsequence = await elementGeometry(page, selectors);
       expectSameGeometry(reference, microsequence, `${width}/${theme}/microssequência`);
       evidence.push({ width, theme, level: "microssequência", controls: microsequence });
-      await page.evaluate(() => globalThis.__manualStudyApp.openCourse("course-fixture-minimal"));
+      await page.evaluate(() => globalThis.__manualStudyApp.openCourse("10000000-0000-4000-8000-000000000001"));
       for (const [level, next] of [["curso", "Abrir módulo"], ["módulo", "Abrir lição"],
         ["lição", "Abrir microssequência didática"]]) {
         const actual = await elementGeometry(page, selectors);

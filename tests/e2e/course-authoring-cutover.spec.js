@@ -3394,7 +3394,12 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
               const rect = control.getBoundingClientRect();
               return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
             });
-          return { x: bounds.x, width: bounds.width, offset: bounds.top - sticky.bottom, actions };
+          return { x: bounds.x, y: bounds.y, height: bounds.height, width: bounds.width, stickyBottom: sticky.bottom,
+            offset: bounds.top - sticky.bottom, actions,
+            children: [...element.querySelector("article").children].map(child => ({
+              className: child.className, y: child.getBoundingClientRect().y, height: child.getBoundingClientRect().height,
+              scrollTop: child.scrollTop, scrollHeight: child.scrollHeight
+            })) };
         });
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
@@ -3436,8 +3441,14 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
               const rect = control.getBoundingClientRect();
               return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
             });
-          return { x: bounds.x, width: bounds.width, offset: bounds.top - sticky.bottom, actions };
+          return { x: bounds.x, y: bounds.y, height: bounds.height, width: bounds.width, stickyBottom: sticky.bottom,
+            offset: bounds.top - sticky.bottom, actions,
+            children: [...element.querySelector("article").children].map(child => ({
+              className: child.className, y: child.getBoundingClientRect().y, height: child.getBoundingClientRect().height,
+              scrollTop: child.scrollTop, scrollHeight: child.scrollHeight
+            })) };
         });
+        await info.attach("selection-return-geometry", { body: JSON.stringify({ baseline, restored }, null, 2), contentType: "application/json" });
         for (const key of ["x", "width", "offset"]) {
           expect(Math.abs(restored[key] - baseline[key]), `retorno ${key}`).toBeLessThanOrEqual(1);
         }
@@ -4130,11 +4141,11 @@ test("Inspeção retorna ao card exato, fecha menus e respeita reduced motion", 
     '[data-inspection-study-unit="study-unit-25"] [data-inspection-control-key="design:study-unit-25"]'
   );
   await designAction.click();
-  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
-    `#/authoring/courses/${COURSE_IDS[0]}` +
-      "?section=parameters&studyUnitId=study-unit-25"
-  );
-  await page.goBack();
+  const parameters = page.locator("[data-course-design-context-dialog]");
+  await expect(parameters).toBeVisible();
+  await expect(parameters).toContainText("Unidade curricular 25");
+  await page.keyboard.press("Escape");
+  await expect(parameters).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-25`
   );

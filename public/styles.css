@@ -807,6 +807,7 @@ button.account-settings-back[hidden] {
 
 .study-mode-actions {
   display: inline-grid;
+  grid-template-columns: repeat(3, var(--tap));
   grid-auto-flow: column;
   grid-auto-columns: var(--tap);
   align-items: center;

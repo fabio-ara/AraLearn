@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync, writeFileSync } from "node:fs";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
 
 const catalogCourse = JSON.parse(readFileSync(new URL(
   "../../supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json",
@@ -15,6 +16,7 @@ const studyUnits = course.modules.flatMap((moduleValue) =>
         id: studyUnit.id,
         title: studyUnit.title,
         role: studyUnit.role,
+        tools: RESOURCE_PACKAGE_REGISTRY.listStudyTools(studyUnit),
         packages: [
           ...studyUnit.content.map((instance) => instance.package),
           ...(studyUnit.response ? [studyUnit.response.package] : [])
@@ -27,6 +29,7 @@ const studyUnits = course.modules.flatMap((moduleValue) =>
 const theoryUnits = studyUnits.filter(({ role }) => role === "theory");
 const practiceUnits = studyUnits.filter(({ role }) => role === "practice");
 const packageIds = [...new Set(studyUnits.flatMap(({ packages }) => packages))].sort();
+const inlinePackages = (unit) => unit.packages.filter((id) => !unit.tools.some(({ instance }) => instance.package === id));
 const screenshotTheory = theoryUnits.find(({ packages }) =>
   packages.includes("aralearn.resource.software_container"));
 const screenshotPractice = practiceUnits.find(({ packages }) =>
@@ -65,6 +68,7 @@ async function installStudyRuntime(page) {
     const { createCourseStudyApplication } = await import(
       "/src/study/CourseStudyApplication.js"
     );
+    const { createDefaultCourseAudioConfig } = await import("/src/domain/courseMedia.js");
     const progress = { version: 1, lessons: {} };
     const completed = new Set();
     const probe = {
@@ -110,7 +114,8 @@ async function installStudyRuntime(page) {
         stale: probe.offline,
         readOnly: false
       }),
-      flush: async () => undefined
+      flush: async () => undefined,
+      loadStudyAudioConfiguration: async () => createDefaultCourseAudioConfig()
     };
     globalThis.__catalogStudyProbe = probe;
     globalThis.__catalogStudyApp = createCourseStudyApplication({
@@ -133,9 +138,27 @@ async function openStudyUnit(page, unit) {
       node.getAttribute("data-flow-layout-status"));
     return states.every((state) => state === "ready");
   });
-  await expect(page.locator(".package-instance")).toHaveCount(unit.packages.length);
+  await expect(page.locator(".package-instance")).toHaveCount(inlinePackages(unit).length);
   expect(await page.locator(".package-instance").evaluateAll((nodes) =>
-    nodes.map((node) => node.getAttribute("data-package")))).toEqual(unit.packages);
+    nodes.map((node) => node.getAttribute("data-package")))).toEqual(inlinePackages(unit));
+  for (const { instance, label } of unit.tools) {
+    let trigger = page.locator(`[data-study-tool-id="${instance.id}"]`);
+    if (!await trigger.count()) {
+      trigger = page.getByRole("button", { name: "Mais ferramentas", exact: true });
+      await trigger.click();
+      await page.locator(`[data-open-study-tool="${instance.id}"]`).click();
+    } else await trigger.click();
+    const dialog = page.getByRole("dialog", { name: label, exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator(".runtime-block")).toHaveCount(1);
+    await expect(dialog.getByRole("heading", {
+      name: instance.data.title || instance.data.tracks[0].label, exact: true
+    })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    await dialog.getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  }
 }
 
 async function solveGapWithKeyboard(page, response) {
@@ -238,11 +261,13 @@ async function auditVisibleStudyUnit(page) {
   });
 }
 
-test("Curso de catálogo exercita os 33 packages no Estudo e permanece disponível sem conexão", async ({
+test("Curso de catálogo exercita todos os pacotes no Estudo e permanece disponível sem conexão", async ({
   context,
   page
 }) => {
   test.setTimeout(120_000);
+  expect(packageIds).toHaveLength(38);
+  expect(packageIds).toEqual(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id).sort());
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.setViewportSize({ width: 390, height: 844 });
@@ -333,7 +358,7 @@ for (const { width, height, theme } of visualCases) {
       await openStudyUnit(page, unit);
       const audit = await auditVisibleStudyUnit(page);
       expect(audit.colorMode).toBe(theme);
-      expect(audit.packageCount).toBe(unit.packages.length);
+      expect(audit.packageCount).toBe(inlinePackages(unit).length);
       expect(audit.documentOverflowX).toBeLessThanOrEqual(1);
       expect(audit.bodyOverflowX).toBeLessThanOrEqual(1);
       expect(audit.screen.left).toBeGreaterThanOrEqual(-1);
