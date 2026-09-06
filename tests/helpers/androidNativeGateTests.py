@@ -28,7 +28,7 @@ def hierarchy(*nodes):
     return '<hierarchy rotation="0">' + "".join(nodes) + "</hierarchy>"
 
 
-THEME = hierarchy(node("Tema escuro", "true"), node("Tema claro"))
+THEME = hierarchy(node("Tema escuro, selecionado"), node("Tema claro"), node("Tema do sistema"))
 
 
 class NativeGateTests(unittest.TestCase):
@@ -171,7 +171,8 @@ class NativeGateTests(unittest.TestCase):
         self.proof["evidence"][0]["name"] = old
 
     def test_xml_must_show_preference_after_reinstall(self):
-        (self.evidence / "candidate-reinstalled.xml").write_text(hierarchy(node("Tema escuro"), node("Tema claro", "true")), encoding="utf-8")
+        (self.evidence / "candidate-reinstalled.xml").write_text(
+            hierarchy(node("Tema escuro"), node("Tema claro, selecionado"), node("Tema do sistema")), encoding="utf-8")
         self.refresh_evidence()
         with self.assertRaisesRegex(RuntimeError, "Tema escuro"):
             self.validate()

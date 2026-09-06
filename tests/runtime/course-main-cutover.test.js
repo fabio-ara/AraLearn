@@ -115,6 +115,11 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
   assert.match(mainSource, /class="account-settings-overlay"/u);
   assert.match(
     mainSource,
+    /button\.setAttribute\("aria-label", selected \? `\$\{button\.title\}, selecionado` : button\.title\)/u,
+    "A escolha de tema precisa expor o estado selecionado ao WebView nativo."
+  );
+  assert.match(
+    mainSource,
     /id="aralearn-authoring-root" class="course-authoring-root" hidden/u,
     "O host estável da Autoria deve controlar a rolagem da superfície."
   );
