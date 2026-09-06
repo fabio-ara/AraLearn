@@ -4514,6 +4514,10 @@ button.account-settings-back[hidden] {
   font-weight: 600;
 }
 
+.study-draft-recovery .open-mini:hover {
+  background: var(--action-primary-hover);
+}
+
 .study-draft-recovery-content pre {
   max-height: 240px;
   overflow-y: auto;
