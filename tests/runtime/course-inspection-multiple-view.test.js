@@ -24,8 +24,80 @@ function mount(fixture, overrides = {}) {
   return { root, sequence, click,
     view: (ordinal) => click("[data-inspection-view-action]", { inspectionViewAction: "toggle-multiple", studyUnitId: unit(ordinal) }),
     select: (ordinal) => click("[data-inspection-selection-action]", { inspectionSelectionAction: "toggle-unit", studyUnitId: unit(ordinal) }),
+    preview: (ordinal) => click("[data-inspection-unit-mode]", { inspectionUnitMode: "view", studyUnitId: unit(ordinal) }),
     edit: (ordinal) => click("[data-inspection-unit-mode]", { inspectionUnitMode: "edit", studyUnitId: unit(ordinal) }) };
 }
+
+test("prévia mantém rascunho pendente, bloqueia outro alvo e permite retomar e salvar explicitamente", async () => {
+  const writes = [];
+  const app = mount(createUxUi328Fixture(), { onSaveManualEdit: async (value) => { writes.push(value); } });
+  try {
+    await app.sequence.open(); await app.edit(1);
+    await app.root.listeners.get("input")({ target: { textContent: "Título em prévia",
+      matches: (selector) => selector === "[data-inspection-manual-title]" } });
+    assert.equal(await app.preview(1), true);
+    assert.match(app.root.innerHTML, /<h3[^>]*>Título em prévia<\/h3>/);
+    assert.doesNotMatch(app.root.innerHTML, /data-inspection-manual-title/);
+    assert.equal(app.sequence.hasPendingDraft(), true);
+    await app.view(1);
+    assert.equal(await app.preview(2), false);
+    assert.match(app.root.innerHTML, /Retomar edição/);
+    await app.click("[data-inspection-pending-action]", { inspectionPendingAction: "resume" });
+    assert.equal(cards(app.root), 1);
+    assert.equal(app.sequence.snapshot().studyUnitId, unit(1));
+    assert.match(app.root.innerHTML, /data-inspection-manual-title[^>]*>Título em prévia<\/h3>/);
+    assert.equal(writes.length, 0);
+    await app.preview(1);
+    assert.equal(await app.click("[data-inspection-manual-action]", { inspectionManualAction: "save" }), true);
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0].studyUnit.title, "Título em prévia");
+    assert.equal(app.sequence.hasPendingDraft(), false);
+    assert.match(app.root.innerHTML, /<h3[^>]*>Título em prévia<\/h3>/);
+  } finally { app.sequence.destroy(); }
+});
+
+test("prévia inválida preserva texto incompleto na edição até cancelar explicitamente", async () => {
+  const app = mount(createUxUi328Fixture());
+  try {
+    await app.sequence.open(); await app.edit(1);
+    await app.root.listeners.get("input")({ target: { textContent: "",
+      matches: (selector) => selector === "[data-inspection-manual-title]" } });
+    assert.equal(await app.preview(1), false);
+    assert.match(app.root.innerHTML, /data-inspection-manual-title[^>]*><\/h3>/);
+    assert.match(app.root.innerHTML, /incompleta ou inválida/);
+    assert.equal(app.sequence.hasPendingDraft(), true);
+    await app.click("[data-inspection-manual-action]", { inspectionManualAction: "cancel" });
+    assert.equal(app.sequence.hasPendingDraft(), false);
+    assert.doesNotMatch(app.root.innerHTML, /data-inspection-manual-title/);
+  } finally { app.sequence.destroy(); }
+});
+
+test("gravação incerta na prévia volta à edição e conserva o mesmo pedido até confirmação", async () => {
+  const writes = [];
+  const app = mount(createUxUi328Fixture(), { onSaveManualEdit: async (value) => {
+    writes.push(value);
+    if (writes.length === 1) throw Object.assign(new Error("Resposta indisponível"), { status: 503 });
+  } });
+  try {
+    await app.sequence.open(); await app.edit(1);
+    await app.root.listeners.get("input")({ target: { textContent: "Título com gravação incerta",
+      matches: (selector) => selector === "[data-inspection-manual-title]" } });
+    await app.preview(1);
+    assert.equal(await app.click("[data-inspection-manual-action]", { inspectionManualAction: "save" }), false);
+    assert.match(app.root.innerHTML, /data-inspection-manual-title[^>]*>Título com gravação incerta<\/h3>/);
+    assert.equal(await app.preview(1), false);
+    assert.match(app.root.innerHTML, /Confirme a mesma gravação/);
+    assert.equal(app.sequence.hasPendingDraft(), true);
+    await app.click("[data-inspection-manual-action]", { inspectionManualAction: "cancel" });
+    assert.match(app.root.innerHTML, /Descartar rascunho com resultado incerto/);
+    assert.equal(app.sequence.hasPendingDraft(), true);
+    await app.click("[data-inspection-manual-action]", { inspectionManualAction: "keep-unknown" });
+    assert.equal(await app.click("[data-inspection-manual-action]", { inspectionManualAction: "save" }), true);
+    assert.equal(writes.length, 2);
+    assert.deepEqual(writes[1], writes[0]);
+    assert.equal(app.sequence.hasPendingDraft(), false);
+  } finally { app.sequence.destroy(); }
+});
 
 test("mostrar várias não seleciona; marcar, desmarcar e limpar não recolhem visão", async () => {
   const fixture = createUxUi328Fixture();

@@ -563,6 +563,11 @@ export function createCourseStudyApplication({
       } catch {
         node.focus();
       }
+      if (typeof target.selectionStart === "number" &&
+          typeof target.selectionEnd === "number" &&
+          typeof node.setSelectionRange === "function") {
+        node.setSelectionRange(target.selectionStart, target.selectionEnd);
+      }
       revealStudyObservationControl(node);
     };
     focus();
@@ -2496,7 +2501,9 @@ export function createCourseStudyApplication({
     state.observationError = "";
     state.observationStale = false;
     state.observationSheetOpen = true;
-    queueStudyFocus("[data-observation-action='close']");
+    queueStudyFocus(state.observationItems.length
+      ? "[data-observation-action='close']"
+      : "[data-field='study-unit-observation']");
     unsubscribeAnnotations?.();
     unsubscribeAnnotations = typeof repository.subscribeToAnnotations === "function"
       ? repository.subscribeToAnnotations(reference, ({ stale }) => {
@@ -2526,9 +2533,6 @@ export function createCourseStudyApplication({
       return;
     }
     await refreshOpenObservations(reference, epoch, { explicit: true });
-    if (state.observationSheetOpen && epoch === observationsEpoch) {
-      focusStudyTarget({ selector: "[data-observation-action='close']", attributes: {} });
-    }
   }
 
   async function refreshOpenObservations(reference, epoch, options = {}) {
@@ -3079,6 +3083,12 @@ export function createCourseStudyApplication({
           includeFocus: preserveFocus && !pendingStudyFocus
         })
       : null;
+    const observationFocus = preserveFocus && !pendingStudyFocus && state.observationSheetOpen
+      ? currentStudyFocusTarget() : null;
+    if (observationFocus && preservedState?.focused) {
+      observationFocus.selectionStart = preservedState.focused.selectionStart;
+      observationFocus.selectionEnd = preservedState.focused.selectionEnd;
+    }
     const current = context();
     const summaries = repository.loadCourseSummaries?.() || [];
     const byCourseId = Object.fromEntries(state.project.courses.map((course) => {
@@ -3274,10 +3284,10 @@ export function createCourseStudyApplication({
     if (preservedState) {
       restoreRenderState(root, preservedState, {
         restorePageScroll: true,
-        restoreFocus: preserveFocus && !pendingStudyFocus
+        restoreFocus: preserveFocus && !pendingStudyFocus && !observationFocus
       });
     }
-    focusStudyTarget(pendingStudyFocus);
+    focusStudyTarget(pendingStudyFocus || observationFocus);
     revealStudyObservationControl(root.ownerDocument?.activeElement);
     void loadStudyCitations();
   }

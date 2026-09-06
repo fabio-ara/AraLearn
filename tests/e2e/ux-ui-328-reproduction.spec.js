@@ -143,7 +143,7 @@ test("#328 R11: trocar alcance e fechar conserva unidade, origem e foco", async 
 test("#328 R13: aviso de cancelar edição não cobre envio de observação", async ({ page }, info) => {
   await open(page); await page.clock.install();
   await card(page).getByRole("button", { name: "Editar", exact: true }).click();
-  await card(page).getByRole("button", { name: "Visualizar", exact: true }).click();
+  await card(page).getByRole("button", { name: "Cancelar edição", exact: true }).click();
   await card(page).locator("[data-inspection-observations]").click();
   await expect(page.locator("[data-observation-composer]")).toBeVisible();
   await expect(page.getByText("Não foi possível carregar as observações.", { exact: true })).toHaveCount(0);
@@ -273,6 +273,45 @@ for (const width of [360, 430]) {
     for (const selector of Object.keys(before)) for (const property of ["x", "y", "width", "height"]) {
       expect(Math.abs(after[selector][property] - before[selector][property]), `${selector}/${property}`).toBeLessThanOrEqual(1);
     }
+  });
+}
+
+for (const target of ["título", "conteúdo"]) {
+  test(`#335 Visualizar preserva rascunho de ${target} e Editar retoma antes de cancelar`, async ({ page }) => {
+    await open(page);
+    await card(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
+    const unit = card(page, 2);
+    await unit.getByRole("button", { name: "Editar", exact: true }).click();
+    await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
+    const originalUnit = await page.evaluate(() => structuredClone(globalThis.uxUi328.units[1]));
+    const paragraph = unit.locator(".runtime-paragraph-block > p");
+    if (target === "conteúdo") await unit.getByRole("button", { name: "Selecionar recurso para edição", exact: true }).click();
+    const field = target === "título"
+      ? unit.getByRole("textbox", { name: "Título da unidade de estudo", exact: true })
+      : unit.locator('[data-manual-edit-path="text"]');
+    const original = await field.innerText();
+    const draft = `${target === "título" ? "Unidade 2" : "Parágrafo"}: consulta do endereço de destino — rascunho sintético`;
+    await field.evaluate(node => node.addEventListener("input", () => {
+      globalThis.uxUi328.inputCount = (globalThis.uxUi328.inputCount || 0) + 1;
+    }));
+    await field.fill(draft);
+    await expect(field).toHaveText(draft);
+    expect(await page.evaluate(() => globalThis.uxUi328.inputCount)).toBe(1);
+    await unit.getByRole("button", { name: "Visualizar", exact: true }).click();
+    await expect(unit.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
+    await expect(target === "título" ? unit.locator("h3") : paragraph).toHaveText(draft);
+    await expect(unit.getByRole("button", { name: "Visualizar", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(unit.getByRole("button", { name: "Visualizar", exact: true })).toBeFocused();
+    expect(await page.evaluate(() => globalThis.uxUi328.units[1])).toEqual(originalUnit);
+    await unit.getByRole("button", { name: "Editar", exact: true }).click();
+    await expect(field).toHaveText(draft);
+    await expect(field).toBeFocused();
+    await unit.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+    await expect(target === "título" ? unit.locator("h3") : paragraph).toHaveText(original);
+    await unit.getByRole("button", { name: "Editar", exact: true }).click();
+    if (target === "conteúdo") await unit.getByRole("button", { name: "Selecionar recurso para edição", exact: true }).click();
+    await expect(field).toHaveText(original);
+    expect(await page.evaluate(() => globalThis.uxUi328.units[1])).toEqual(originalUnit);
   });
 }
 
