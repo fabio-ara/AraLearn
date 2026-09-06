@@ -101,7 +101,6 @@ for (const width of [360, 390, 430]) {
       return [...range.getClientRects()].map(rect => ({ x: rect.x, y: rect.y, width: rect.width, height: rect.height }));
     });
     await info.attach("label-lines", { body: JSON.stringify(lines), contentType: "application/json" });
-    knownDefect("R06", "rótulo de uma palavra ocupa duas linhas");
     expect(new Set(lines.map(line => line.y)).size).toBe(1);
   });
 }
@@ -117,7 +116,6 @@ test("#328 R09: alvo e explicação de alcance ocupam blocos distintos", async (
       titleBottom: lastTitle.bottom, noteTop: firstNote.top, concatenated: node.textContent.includes("explicitadosOrienta") };
   });
   await info.attach("scope-context", { body: JSON.stringify(result), contentType: "application/json" });
-  knownDefect("R09", "strong e explicação inline, sem agrupamento de bloco");
   expect(result.noteTop).toBeGreaterThanOrEqual(result.titleBottom);
 });
 
@@ -126,8 +124,8 @@ test("#328 R10: ancestrais do caminho identificam o papel curricular", async ({ 
   await page.locator(".course-design-scope > summary").click();
   const first = page.getByRole("navigation", { name: "Caminho do escopo" }).locator("a").first();
   await expect(first).toBeVisible();
-  knownDefect("R10", "link ancestral contém só título, sem identificação do nível");
-  await expect(first).toHaveAccessibleName(/^Curso:/u);
+  await expect(first.locator("small")).toHaveText("Curso");
+  await expect(first).toHaveAccessibleName(/^Curso\s/u);
 });
 
 test("#328 R11: trocar alcance e fechar conserva unidade, origem e foco", async ({ page }) => {
@@ -284,3 +282,85 @@ for (const [width, height, theme, zoom, ordinal = 3] of [[360, 640, "light", 1],
     await expect(origin).toBeFocused();
   });
 }
+
+test("#331 alcance percorre curso e descendentes sem mudar tarefa nem dados", async ({ page }) => {
+  await open(page);
+  const origin = card(page).locator("[data-inspection-open-parameters]");
+  const route = page.url();
+  const original = await page.evaluate(() => JSON.stringify(globalThis.uxUi328.units));
+  await origin.click();
+  await page.locator(".course-design-scope > summary").click();
+  await page.getByRole("navigation", { name: "Caminho do escopo" }).locator("a").first().click();
+  for (const kind of ["module", "lesson", "didactic_microsequence", "study_unit"]) {
+    const scope = page.locator(".course-design-scope");
+    if (!(await scope.getAttribute("open"))) await scope.locator(":scope > summary").click();
+    const form = page.locator("[data-course-design-scope]");
+    await expect(form.locator('[name="scopeKind"]')).toHaveValue(kind);
+    await form.locator("select").selectOption({ index: 1 });
+    await form.getByRole("button", { name: "Abrir escopo", exact: true }).click();
+    expect(page.url()).toBe(route);
+  }
+  await expect(page.locator(".course-design-scope > summary")).toContainText(/unidade de estudo/iu);
+  await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
+  await expect(origin).toBeFocused();
+  expect(await page.evaluate(() => JSON.stringify(globalThis.uxUi328.units))).toBe(original);
+});
+
+test("#331 parâmetros por link direto conservam escopo e fecham no conteúdo", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.goto(`${fixturePath}?theme=dark${courseRoute}?section=parameters&studyUnitId=ux328-unit-01`);
+  await expect(page.locator("html")).toHaveAttribute("data-fixture-ready", "true");
+  await expect(page.locator(".course-design-scope > summary")).toContainText(/unidade de estudo/iu);
+  await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
+  await expect(card(page)).toBeVisible();
+  expect(page.url()).toContain("section=content");
+});
+
+test("#331 alcance preserva rascunho modificado até descarte explícito", async ({ page }) => {
+  await open(page);
+  await card(page).locator("[data-inspection-open-parameters]").click();
+  await page.locator('[data-course-authoring-action="edit-design-parameter"]').first().click();
+  const form = page.locator("[data-course-design-parameter]");
+  await form.locator('[name="reason"]').fill("Justificativa sintética ainda não salva.");
+  await page.locator(".course-design-scope > summary").click();
+  await page.getByRole("navigation", { name: "Caminho do escopo" }).locator("a").first().click();
+  await expect(page.locator(".course-design-scope > summary")).toContainText("Curso");
+  for (const kind of ["module", "lesson", "didactic_microsequence", "study_unit"]) {
+    const scope = page.locator(".course-design-scope");
+    if (!(await scope.getAttribute("open"))) await scope.locator(":scope > summary").click();
+    const selector = page.locator("[data-course-design-scope]");
+    await expect(selector.locator('[name="scopeKind"]')).toHaveValue(kind);
+    await selector.locator("select").selectOption({ index: 1 });
+    await selector.getByRole("button", { name: "Abrir escopo", exact: true }).click();
+  }
+  await expect(form.locator('[name="reason"]')).toHaveValue("Justificativa sintética ainda não salva.");
+  await expect(page.locator(".course-design-scope > summary")).toContainText(/unidade de estudo/iu);
+  await form.getByRole("button", { name: "Descartar alterações", exact: true }).click();
+  const scope = page.locator(".course-design-scope");
+  if (!(await scope.getAttribute("open"))) await scope.locator(":scope > summary").click();
+  await page.getByRole("navigation", { name: "Caminho do escopo" }).locator("a").first().click();
+  await expect(page.locator(".course-design-scope > summary")).toContainText("Curso");
+  await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
+  await expect(card(page).locator("[data-inspection-open-parameters]")).toBeFocused();
+});
+
+test("#331 detalhes e Parâmetros mantêm reflow e hierarquia com ampliação", async ({ page }) => {
+  await open(page, "content", "?theme=dark&zoom=2");
+  await card(page).locator(".course-inspection-item-details > summary").click();
+  const label = card(page).locator("dt", { hasText: "Microssequência" });
+  expect(await label.evaluate(node => {
+    const range = document.createRange(); range.selectNodeContents(node);
+    return new Set([...range.getClientRects()].map(rect => rect.y)).size;
+  })).toBe(1);
+  await page.keyboard.press("Escape");
+  await card(page).locator("[data-inspection-open-parameters]").click();
+  const geometry = await page.locator(".course-design-context-body").evaluate(node => ({
+    overflow: node.scrollWidth - node.clientWidth,
+    groupWeight: getComputedStyle(node.querySelector(".course-design-category-menu > summary")).fontWeight,
+    itemWeight: getComputedStyle(node.querySelector(".course-design-parameter h3")).fontWeight,
+    emptyFeedback: node.querySelector(".course-design-feedback").getBoundingClientRect().height
+  }));
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  expect(Number(geometry.groupWeight)).toBeGreaterThan(Number(geometry.itemWeight));
+  expect(geometry.emptyFeedback).toBe(0);
+});
