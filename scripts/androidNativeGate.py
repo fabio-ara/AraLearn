@@ -256,6 +256,13 @@ class Device:
     def launch(self):
         self.call("shell", "am", "start", "-W", "-n", PACKAGE + "/.MainActivity")
 
+    def isolate_network(self):
+        self.call("shell", "cmd", "connectivity", "airplane-mode", "enable")
+        self.call("shell", "svc", "wifi", "disable")
+        self.call("shell", "svc", "data", "disable")
+        require(self.call("shell", "settings", "get", "global", "airplane_mode_on") == "1",
+                "Emulador não confirmou isolamento de rede.")
+
     def stop(self):
         self.call("shell", "am", "force-stop", PACKAGE)
 
@@ -283,7 +290,9 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir):
     expected["manifestSha256"] = digest(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())
     require(proof.get("schema") == "aralearn.android-native-proof.v1" and proof.get("promotion") == expected, "Prova de outro APK/run/tentativa/SHA.")
     platform = proof.get("environment", {})
-    require(platform.get("runner") == "ubuntu24" and platform.get("kvm") is True and platform.get("offline") is True
+    require(platform.get("runner") == "ubuntu24" and platform.get("kvm") is True
+            and platform.get("networkPolicy") == "public-bootstrap-then-offline"
+            and platform.get("offlineAfterHydration") is True
             and platform.get("systemImage") == SYSTEM_IMAGE and platform.get("imageVersion")
             and isinstance(platform.get("emulatorVersion"), str) and platform["emulatorVersion"]
             and isinstance(platform.get("systemImageMetadataSha256"), str)
@@ -357,7 +366,8 @@ def run_gate(manifest, identity, folder, candidate_folder):
     proof = {"schema": "aralearn.android-native-proof.v1", "promotion": {**identity, "apkSha256": digest(candidate_bytes),
              "manifestSha256": digest(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())},
              "environment": {"runner": os.environ["ImageOS"], "imageVersion": os.environ.get("ImageVersion"), "kvm": True,
-             "offline": True, "systemImage": SYSTEM_IMAGE, "emulatorVersion": output([emulator, "-version"]).splitlines()[0],
+             "networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True,
+             "systemImage": SYSTEM_IMAGE, "emulatorVersion": output([emulator, "-version"]).splitlines()[0],
              "systemImageMetadataSha256": digest((sdk / "system-images/android-36/google_apis/x86_64/package.xml").read_bytes()),
              "licensesBefore": before, "licensesAfter": licenses(sdk)}}
     evidence = folder / "evidence"
@@ -394,15 +404,13 @@ def run_gate(manifest, identity, folder, candidate_folder):
                     else:
                         raise RuntimeError("Emulador não iniciou em 300s; consultar diagnóstico técnico.")
                     device.call("shell", "input", "keyevent", "82")
-                    device.call("shell", "cmd", "connectivity", "airplane-mode", "enable")
-                    device.call("shell", "svc", "wifi", "disable")
-                    device.call("shell", "svc", "data", "disable")
-                    require(device.call("shell", "settings", "get", "global", "airplane_mode_on") == "1", "Emulador não confirmou isolamento de rede.")
                     require(not device.call("shell", "pm", "list", "packages", PACKAGE), "AVD contém instalação anterior inesperada.")
                     device.call("install", str(candidate if case == "clean" else baseline), timeout=120)
                     initial = device.installed()
                     device.launch()
                     if case == "clean":
+                        device.wait_label("Conta e aparência")
+                        device.isolate_network()
                         device.dark()
                         device.capture("clean-selected")
                         device.stop()
@@ -418,6 +426,7 @@ def run_gate(manifest, identity, folder, candidate_folder):
                         after = device.installed()
                         device.launch()
                         device.wait_label("Conta e aparência")
+                        device.isolate_network()
                         device.capture("upgraded")
                         device.dark()
                         device.capture("candidate-selected")

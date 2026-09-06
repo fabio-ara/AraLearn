@@ -50,7 +50,8 @@ class NativeGateTests(unittest.TestCase):
         self.proof = {"schema": "aralearn.android-native-proof.v1", "promotion": {
             **gate.promotion_identity(self.manifest, self.env), "apkSha256": "a" * 64,
             "manifestSha256": gate.digest(json.dumps(self.manifest, sort_keys=True, separators=(",", ":")).encode())},
-            "environment": {"runner": "ubuntu24", "imageVersion": "synthetic-test", "kvm": True, "offline": True,
+            "environment": {"runner": "ubuntu24", "imageVersion": "synthetic-test", "kvm": True,
+                "networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True,
                 "emulatorVersion": "synthetic-test", "systemImageMetadataSha256": "2" * 64,
                 "systemImage": gate.SYSTEM_IMAGE, "licensesBefore": {"android-sdk-license": "3" * 64},
                 "licensesAfter": {"android-sdk-license": "3" * 64}},
@@ -196,8 +197,9 @@ class NativeGateTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             gate.ensure_licenses_unchanged(before, gate.licenses(self.folder))
 
-    def test_requires_kvm_and_offline_not_emulation_fallback(self):
-        for key, value in [("kvm", False), ("offline", False), ("runner", "windows"), ("systemImage", "other")]:
+    def test_requires_kvm_and_offline_after_public_hydration(self):
+        for key, value in [("kvm", False), ("offlineAfterHydration", False), ("networkPolicy", "always-online"),
+                           ("runner", "windows"), ("systemImage", "other")]:
             old = self.proof["environment"][key]
             self.proof["environment"][key] = value
             with self.assertRaises(RuntimeError):
