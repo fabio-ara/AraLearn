@@ -11,6 +11,8 @@ import {
   draftReleasePayload,
   extractArtifactArchive,
   GITHUB_API_ACCEPT,
+  GITHUB_RELEASE_ASSET_ACCEPT,
+  githubApiAccept,
   releasePlan,
   releaseAssetUploadUrl,
   selectReleaseByTag,
@@ -37,8 +39,10 @@ const ENV = {
 };
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 
-test("downloads de artefatos usam o media type aceito pela API do GitHub", () => {
-  assert.equal(GITHUB_API_ACCEPT, "application/vnd.github+json");
+test("downloads usam o media type específico de cada API do GitHub", () => {
+  assert.equal(githubApiAccept("actions/artifacts/123/zip", { binary: true }), GITHUB_API_ACCEPT);
+  assert.equal(githubApiAccept("releases/assets/456", { binary: true }), GITHUB_RELEASE_ASSET_ACCEPT);
+  assert.equal(githubApiAccept("releases/assets/456"), GITHUB_API_ACCEPT);
 });
 
 test("notas da release usam apenas a versão exata e conservam texto e links", () => {
