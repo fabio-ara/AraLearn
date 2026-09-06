@@ -124,10 +124,11 @@ public class MainActivity extends ComponentActivity {
         String authUrl = resolveAuthCallbackUrl(getIntent());
         if (authUrl != null) {
             webView.loadUrl(authUrl);
-        } else if (savedInstanceState == null) {
+        } else if (
+            savedInstanceState == null ||
+            webView.restoreState(savedInstanceState) == null
+        ) {
             webView.loadUrl(APP_URL);
-        } else {
-            webView.restoreState(savedInstanceState);
         }
 
     }
