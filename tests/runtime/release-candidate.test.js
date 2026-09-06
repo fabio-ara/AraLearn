@@ -9,6 +9,7 @@ import {
   buildReleaseNotes,
   configurationDigest,
   extractArtifactArchive,
+  GITHUB_API_ACCEPT,
   releasePlan,
   validateCandidateIdentity,
   validateManifest,
@@ -31,6 +32,10 @@ const ENV = {
   ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic-test-value"
 };
 const digest = (value) => createHash("sha256").update(value).digest("hex");
+
+test("downloads de artefatos usam o media type aceito pela API do GitHub", () => {
+  assert.equal(GITHUB_API_ACCEPT, "application/vnd.github+json");
+});
 
 test("notas da release usam apenas a versão exata e conservam texto e links", () => {
   const notes = buildReleaseNotes([

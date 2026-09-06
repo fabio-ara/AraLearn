@@ -16,6 +16,7 @@ const CANDIDATE = ".candidate/candidate.json";
 const PAGES_NAME = "aralearn-pages-candidate";
 const METADATA_NAME = "aralearn-candidate-manifest";
 const CERTIFICATE = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296";
+export const GITHUB_API_ACCEPT = "application/vnd.github+json";
 export const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
 function run(command, args, options = {}) {
@@ -160,7 +161,7 @@ async function api(route, { method = "GET", body, missing = false, binary = fals
   demand(token, "Token de acesso GitHub ausente.");
   const response = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/${route}`, {
     method, redirect: binary ? "manual" : "follow",
-    headers: { Authorization: `Bearer ${token}`, Accept: binary ? "application/octet-stream" : "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
+    headers: { Authorization: `Bearer ${token}`, Accept: GITHUB_API_ACCEPT, "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {})
   });
   if (missing && response.status === 404) return null;
