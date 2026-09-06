@@ -199,10 +199,13 @@ def ui_target(xml, label, *, clickable=True):
 
 
 def theme_selected(xml):
-    node, _ = ui_target(xml, "Tema escuro")
-    require(node.get("checked") == "true" or node.get("selected") == "true", "Tema escuro não está marcado na UI nativa.")
-    light, _ = ui_target(xml, "Tema claro")
-    require(light.get("checked") != "true" and light.get("selected") != "true", "Preferência de tema ambígua.")
+    ui_target(xml, "Tema escuro, selecionado")
+    ui_target(xml, "Tema claro")
+    ui_target(xml, "Tema do sistema")
+    labels = {node.get("text") or node.get("content-desc") for node in ui_nodes(xml)
+              if node.get("package") == PACKAGE and node.get("enabled") == "true"}
+    require("Tema claro, selecionado" not in labels and "Tema do sistema, selecionado" not in labels,
+            "Preferência de tema ambígua.")
 
 
 class Device:
@@ -268,13 +271,23 @@ class Device:
 
     def settings(self):
         self.tap("Conta e aparência")
-        return self.wait_label("Tema escuro")
+        return self.wait_label("Aparência", clickable=False)
+
+    def wait_dark_selected(self, timeout=15):
+        until = time.monotonic() + timeout
+        while time.monotonic() < until:
+            try:
+                xml = self.hierarchy()
+                theme_selected(xml)
+                return xml
+            except (RuntimeError, ET.ParseError, subprocess.TimeoutExpired):
+                time.sleep(1)
+        raise RuntimeError("Tema escuro não está marcado na UI nativa.")
 
     def dark(self):
         self.settings()
         self.tap("Tema escuro")
-        xml = self.wait_label("Tema escuro")
-        theme_selected(xml)
+        self.wait_dark_selected()
 
 
 def check_installed(value, version, code):

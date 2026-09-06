@@ -581,6 +581,7 @@ function renderSettings(root, authClient, controller, {
       const selected = button.dataset.themeChoice === preference;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
+      button.setAttribute("aria-label", selected ? `${button.title}, selecionado` : button.title);
     });
   };
   const showSettingsView = (view, { restoreFocus = false } = {}) => {
