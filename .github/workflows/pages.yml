@@ -127,6 +127,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          merge-multiple: true
           path: .candidate/android-release
       - name: Reconfirmar promoção atual
         run: node ./scripts/releaseCandidate.mjs current
@@ -194,6 +195,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          merge-multiple: true
           path: .candidate/android-release
       - name: Conferir instalação antes de Pages
         run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
@@ -247,6 +249,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          merge-multiple: true
           path: .candidate/android-release
       - name: Reconfirmar prova nativa antes da Release
         run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"

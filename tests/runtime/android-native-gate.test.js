@@ -26,7 +26,7 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.match(native, /contents: read/u);
   assert.match(native, /actions: read/u);
   assert.doesNotMatch(native, /secrets\.|contents: write|continue-on-error|buildAndroid|gradlew|--licenses|yes \|/u);
-  assert.match(native, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}/u);
+  assert.match(native, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}[\s\S]+merge-multiple: true[\s\S]+path: \.candidate\/android-release/u);
   assert.match(native, /--candidate-folder \.candidate\/android-release/u);
   assert.match(native, /test -c \/dev\/kvm/u);
   assert.match(native, /androidNativeGate\.py run/u);
@@ -34,7 +34,7 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   for (const [section, publication] of [[pages, "actions/configure-pages"], [release, "finalize-release"]]) {
     assert.match(section, /needs: \[candidate, android, android-native(?:, pages)?\]/u);
     assert.match(section, /artifact-ids: \$\{\{ needs\.android-native\.outputs\.proof_artifact_id \}\}/u);
-    assert.match(section, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}/u);
+    assert.match(section, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}[\s\S]+merge-multiple: true[\s\S]+path: \.candidate\/android-release/u);
     assert.match(section, /--candidate-folder \.candidate\/android-release/u);
     assert.match(section, /--proof-sha256 "\$\{\{ needs\.android-native\.outputs\.proof_sha256 \}\}"/u);
     assert.ok(section.indexOf("androidNativeGate.py verify") < section.indexOf(publication));
