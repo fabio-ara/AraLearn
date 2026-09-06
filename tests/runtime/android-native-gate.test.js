@@ -12,7 +12,7 @@ test("prova Android recusa identidade, bytes, licença e estado UI divergentes (
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
   });
   assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
-  assert.match(result.stderr, /Ran 23 tests/u);
+  assert.match(result.stderr, /Ran 25 tests/u);
 });
 
 test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissões de assinatura no emulador", () => {
@@ -35,8 +35,10 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.ok(native.indexOf("libpulse0") < native.indexOf("androidNativeGate.py run"));
   assert.match(native, /androidNativeGate\.py run/u);
   assert.match(native, /proof_sha256: \$\{\{ steps\.native\.outputs\.proof_sha256 \}\}/u);
-  assert.match(gate, /device\.launch\(\)\s+if case == "clean":\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
+  assert.match(gate, /device\.launch\(\)\s+if case == "clean":\s+device\.wait_label\("Conta e aparência"\)\s+device\.capture\("clean-initial"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
   assert.match(gate, /device\.call\("install", "-r", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)/u);
+  assert.match(gate, /require\(not screen_is_dark\([\s\S]+"Estado inicial claro do emulador não foi comprovado\."\)/u);
+  assert.match(gate, /theme_selected\(relaunched_xml, relaunched_png\)[\s\S]+theme_selected\(reinstalled_xml, reinstalled_png\)/u);
   assert.match(gate, /"networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True/u);
   for (const [section, publication] of [[pages, "actions/configure-pages"], [release, "finalize-release"]]) {
     assert.match(section, /needs: \[candidate, android, android-native(?:, pages)?\]/u);
