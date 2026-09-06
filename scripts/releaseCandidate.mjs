@@ -234,6 +234,14 @@ export function validateCandidateIdentity(manifest, runInfo, { repository, targe
   demand(manifest.source.tree === targetTree && manifest.lockfileSha256 === lockfileSha256 && manifest.backendManifestSha256 === backendManifestSha256 && manifest.configurationSha256 === configurationSha256, "Árvore, dependências, backend ou configuração divergem da candidata.");
 }
 
+export function validateIntegratedPullRequest(manifest, pullRequest, target, repository) {
+  const number = positive(manifest.source.pullRequest, "PR");
+  demand(pullRequest.number === number && pullRequest.merged && pullRequest.merge_commit_sha === target &&
+    pullRequest.head.sha === manifest.source.headSha && pullRequest.head.repo.full_name === repository &&
+    pullRequest.base.ref === "main" && pullRequest.base.repo.full_name === repository,
+  "A candidata não corresponde ao PR integrado nesta revisão.");
+}
+
 export function validateVersionProgress(current, previous) {
   for (const identity of [current, previous]) demand(/^\d+\.\d+\.\d+$/u.test(identity?.version) &&
     Number.isSafeInteger(identity.versionCode) && identity.versionCode > 0, "Versão ou versionCode inválido.");
@@ -278,10 +286,8 @@ async function prepare(runId, attempt) {
   demand(testedCommit.tree.sha === manifest.source.tree, "Árvore do SHA testado não comprovada pelo GitHub.");
   if (info.event === "pull_request") {
     const number = positive(manifest.source.pullRequest, "PR");
-    demand(info.pull_requests?.some((pr) => pr.number === number), "Run não está vinculado ao PR informado.");
     const pr = await api(`pulls/${number}`);
-    demand(pr.merged && pr.merge_commit_sha === target && pr.head.sha === manifest.source.headSha &&
-      pr.head.repo.full_name === process.env.GITHUB_REPOSITORY && pr.base.ref === "main", "A candidata não corresponde ao PR integrado nesta revisão.");
+    validateIntegratedPullRequest(manifest, pr, target, process.env.GITHUB_REPOSITORY);
   } else demand(info.head_branch === "main" && info.head_sha === target, "Dispatch de candidata não corresponde à main corrente.");
   await verifyVersionProgress(manifest);
   const pages = findArtifact(PAGES_NAME);
