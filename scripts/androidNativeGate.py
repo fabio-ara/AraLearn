@@ -484,89 +484,94 @@ def run_gate(manifest, identity, folder, candidate_folder):
         require(proof["baseline"]["versionCode"] == BASE_CODE and proof["baseline"]["version"] == BASE_VERSION and proof["baseline"]["package"] == PACKAGE,
                 "Versão/pacote público de base incorretos.")
         device = Device(adb, evidence)
-        for case in ["clean", "upgrade"]:
-            avd_home = working / case
-            avd_home.mkdir()
-            env = {**os.environ, "ANDROID_AVD_HOME": str(avd_home)}
-            command([sdk / "cmdline-tools/latest/bin/avdmanager", "create", "avd", "-n", "aralearn-" + case, "-k", SYSTEM_IMAGE,
-                     "-d", "pixel_7"], env=env, input_bytes=b"no\n")
-            with (working / (case + "-emulator.log")).open("wb") as log:
-                process = subprocess.Popen([str(emulator), "-avd", "aralearn-" + case, "-port", "5554", "-no-window", "-no-snapshot",
-                    "-no-audio", "-no-boot-anim", "-gpu", "swiftshader", "-memory", "2048", "-cores", "2", "-camera-back", "none", "-camera-front", "none"],
-                    env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+        avd_home = working / "avd"
+        avd_home.mkdir()
+        env = {**os.environ, "ANDROID_AVD_HOME": str(avd_home)}
+        command([sdk / "cmdline-tools/latest/bin/avdmanager", "create", "avd", "-n", "aralearn-gate", "-k", SYSTEM_IMAGE,
+                 "-d", "pixel_7"], env=env, input_bytes=b"no\n")
+        with (working / "emulator.log").open("wb") as log:
+            process = subprocess.Popen([str(emulator), "-avd", "aralearn-gate", "-port", "5554", "-no-window", "-no-snapshot",
+                "-no-audio", "-no-boot-anim", "-gpu", "swiftshader", "-memory", "2048", "-cores", "2", "-camera-back", "none", "-camera-front", "none"],
+                env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+            try:
+                boot_until = time.monotonic() + 300
+                while time.monotonic() < boot_until:
+                    require(process.poll() is None, "Emulador encerrou antes da inicialização.")
+                    result = command([adb, "-s", "emulator-5554", "shell", "getprop", "sys.boot_completed"], timeout=15, allow_failure=True)
+                    if result.returncode == 0 and result.stdout.strip() == b"1":
+                        break
+                    time.sleep(2)
+                else:
+                    raise RuntimeError("Emulador não iniciou em 300s; consultar diagnóstico técnico.")
+                device.call("shell", "input", "keyevent", "82")
+                require(not device.call("shell", "pm", "list", "packages", PACKAGE), "AVD contém instalação anterior inesperada.")
+
+                device.call("install", str(candidate), timeout=120)
+                clean = device.installed()
+                device.launch()
+                device.wait_label("Conta e aparência")
+                device.capture("clean-initial")
+                device.isolate_network()
+                device.dark()
+                device.capture("clean-selected")
+                device.stop()
+                device.launch()
+                device.settings()
+                relaunched_xml, relaunched_png = device.capture("clean-relaunched")
+                theme_selected(relaunched_xml, relaunched_png)
+                proof["cleanInstall"] = {"initiallyAbsent": True, "installed": clean, "launched": True, "themeAfterRelaunch": "dark"}
+
+                device.stop()
+                device.call("uninstall", PACKAGE, timeout=120)
+                require(not device.call("shell", "pm", "list", "packages", PACKAGE), "Remoção entre os cenários não foi comprovada.")
+                device.call("install", str(baseline), timeout=120)
+                before_upgrade = device.installed()
+                device.launch()
+                device.wait_label("Entrar")
+                device.capture("base-login")
+                device.stop()
+                device.call("install", "-r", str(candidate), timeout=120)
+                after = device.installed()
+                device.launch()
+                device.wait_label("Conta e aparência")
+                device.isolate_network()
+                device.capture("upgraded")
+                device.dark()
+                device.capture("candidate-selected")
+                device.stop()
+                device.call("install", "-r", str(candidate), timeout=120)
+                reinstalled = device.installed()
+                device.launch()
+                device.settings()
+                reinstalled_xml, reinstalled_png = device.capture("candidate-reinstalled")
+                theme_selected(reinstalled_xml, reinstalled_png)
+                proof["upgrade"] = {"initiallyAbsent": True, "before": before_upgrade, "after": after, "afterReinstall": reinstalled,
+                    "launched": True, "candidateThemeAfterReinstall": "dark", "oldAppPreference": "not_tested_login_required"}
+            except (RuntimeError, OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired):
+                log.flush()
+                diagnostic("emulator.log", (working / "emulator.log").read_bytes())
                 try:
-                    boot_until = time.monotonic() + 300
-                    while time.monotonic() < boot_until:
-                        require(process.poll() is None, "Emulador encerrou antes da inicialização.")
-                        result = command([adb, "-s", "emulator-5554", "shell", "getprop", "sys.boot_completed"], timeout=15, allow_failure=True)
-                        if result.returncode == 0 and result.stdout.strip() == b"1":
-                            break
-                        time.sleep(2)
-                    else:
-                        raise RuntimeError("Emulador não iniciou em 300s; consultar diagnóstico técnico.")
-                    device.call("shell", "input", "keyevent", "82")
-                    require(not device.call("shell", "pm", "list", "packages", PACKAGE), "AVD contém instalação anterior inesperada.")
-                    device.call("install", str(candidate if case == "clean" else baseline), timeout=120)
-                    initial = device.installed()
-                    device.launch()
-                    if case == "clean":
-                        device.wait_label("Conta e aparência")
-                        device.capture("clean-initial")
-                        device.isolate_network()
-                        device.dark()
-                        device.capture("clean-selected")
-                        device.stop()
-                        device.launch()
-                        device.settings()
-                        relaunched_xml, relaunched_png = device.capture("clean-relaunched")
-                        theme_selected(relaunched_xml, relaunched_png)
-                        proof["cleanInstall"] = {"initiallyAbsent": True, "installed": initial, "launched": True, "themeAfterRelaunch": "dark"}
-                    else:
-                        device.wait_label("Entrar")
-                        device.capture("base-login")
-                        device.stop()
-                        device.call("install", "-r", str(candidate), timeout=120)
-                        after = device.installed()
-                        device.launch()
-                        device.wait_label("Conta e aparência")
-                        device.isolate_network()
-                        device.capture("upgraded")
-                        device.dark()
-                        device.capture("candidate-selected")
-                        device.stop()
-                        device.call("install", "-r", str(candidate), timeout=120)
-                        reinstalled = device.installed()
-                        device.launch()
-                        device.settings()
-                        reinstalled_xml, reinstalled_png = device.capture("candidate-reinstalled")
-                        theme_selected(reinstalled_xml, reinstalled_png)
-                        proof["upgrade"] = {"initiallyAbsent": True, "before": initial, "after": after, "afterReinstall": reinstalled,
-                            "launched": True, "candidateThemeAfterReinstall": "dark", "oldAppPreference": "not_tested_login_required"}
+                    device.capture("failure")
                 except (RuntimeError, OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired):
-                    log.flush()
-                    diagnostic(case + "-emulator.log", (working / (case + "-emulator.log")).read_bytes())
-                    try:
-                        device.capture("failure")
-                    except (RuntimeError, OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired):
-                        pass
-                    raise
+                    pass
+                raise
+            finally:
+                try:
+                    # Cleanup must remain possible after the acceptance deadline expires.
+                    subprocess.run([str(adb), "-s", "emulator-5554", "emu", "kill"], stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10, check=False)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
                 finally:
                     try:
-                        # Cleanup must remain possible after the acceptance deadline expires.
-                        subprocess.run([str(adb), "-s", "emulator-5554", "emu", "kill"], stdin=subprocess.DEVNULL,
-                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10, check=False)
-                    except (OSError, subprocess.TimeoutExpired):
-                        pass
-                    finally:
+                        process.wait(timeout=20)
+                    except subprocess.TimeoutExpired:
+                        process.terminate()
                         try:
-                            process.wait(timeout=20)
+                            process.wait(timeout=10)
                         except subprocess.TimeoutExpired:
-                            process.terminate()
-                            try:
-                                process.wait(timeout=10)
-                            except subprocess.TimeoutExpired:
-                                process.kill()
-                                process.wait(timeout=10)
+                            process.kill()
+                            process.wait(timeout=10)
     proof["environment"]["licensesAfter"] = licenses(sdk)
     proof["evidence"] = [{"name": file.name, "bytes": file.stat().st_size, "sha256": digest(file.read_bytes())} for file in sorted(evidence.iterdir())]
     validate_proof(proof, manifest, receipt, os.environ, evidence)
