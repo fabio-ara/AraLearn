@@ -37,7 +37,8 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.match(native, /proof_sha256: \$\{\{ steps\.native\.outputs\.proof_sha256 \}\}/u);
   assert.equal([...gate.matchAll(/subprocess\.Popen\(/gu)].length, 1);
   assert.match(gate, /device\.call\("install", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.capture\("clean-initial"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
-  assert.match(gate, /device\.call\("uninstall", PACKAGE[\s\S]+require\(not device\.call\("shell", "pm", "list", "packages", PACKAGE\)[\s\S]+device\.call\("install", str\(baseline\)/u);
+  assert.match(gate, /device\.call\("uninstall", PACKAGE[\s\S]+require\(not device\.call\("shell", "pm", "list", "packages", PACKAGE\)[\s\S]+device\.restore_network\(\)[\s\S]+device\.call\("install", str\(baseline\)/u);
+  assert.match(gate, /def restore_network\(self\):[\s\S]+airplane-mode", "disable"[\s\S]+"wifi", "enable"[\s\S]+"data", "enable"[\s\S]+airplane_mode_on[\s\S]+== "0"/u);
   assert.match(gate, /device\.call\("install", "-r", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)/u);
   assert.match(gate, /require\(not screen_is_dark\([\s\S]+"Estado inicial claro do emulador não foi comprovado\."\)/u);
   assert.match(gate, /theme_selected\(relaunched_xml, relaunched_png\)[\s\S]+theme_selected\(reinstalled_xml, reinstalled_png\)/u);

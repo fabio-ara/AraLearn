@@ -352,6 +352,13 @@ class Device:
         require(self.call("shell", "settings", "get", "global", "airplane_mode_on") == "1",
                 "Emulador não confirmou isolamento de rede.")
 
+    def restore_network(self):
+        self.call("shell", "cmd", "connectivity", "airplane-mode", "disable")
+        self.call("shell", "svc", "wifi", "enable")
+        self.call("shell", "svc", "data", "enable")
+        require(self.call("shell", "settings", "get", "global", "airplane_mode_on") == "0",
+                "Emulador não confirmou restauração de rede.")
+
     def stop(self):
         self.call("shell", "am", "force-stop", PACKAGE)
 
@@ -524,6 +531,7 @@ def run_gate(manifest, identity, folder, candidate_folder):
                 device.stop()
                 device.call("uninstall", PACKAGE, timeout=120)
                 require(not device.call("shell", "pm", "list", "packages", PACKAGE), "Remoção entre os cenários não foi comprovada.")
+                device.restore_network()
                 device.call("install", str(baseline), timeout=120)
                 before_upgrade = device.installed()
                 device.launch()
