@@ -29,6 +29,7 @@ import {
   formatObservationTextBudget,
   isObservationTextOverLimit,
   renderStudyUnitObservationSheet,
+  revealStudyObservationControl,
   validateStudyUnitObservationText
 } from "./renderStudyUnitObservationSheet.js";
 
@@ -1497,12 +1498,15 @@ export function createCourseInspectionSequence({
     }
   }
 
-  function handleFocusIn() {
+  function handleFocusIn(event) {
     markInteraction();
+    revealStudyObservationControl(event?.target);
   }
 
   function focus(selector) {
-    root.querySelector?.(selector)?.focus?.({ preventScroll: true });
+    const control = root.querySelector?.(selector);
+    control?.focus?.({ preventScroll: true });
+    revealStudyObservationControl(control);
   }
 
   function cancelConfirmation({ restoreFocus = true } = {}) {
@@ -1818,6 +1822,7 @@ export function createCourseInspectionSequence({
       if (state.destroyed || epoch !== renderEpoch) return;
       if (restorePosition) restoreAnchor(snapshot, { initial });
       else restoreControlState(snapshot);
+      revealStudyObservationControl(documentValue?.activeElement);
       if (!restorePosition && scrollTarget && "scrollTop" in scrollTarget) {
         scrollTarget.scrollTop = 0;
       }

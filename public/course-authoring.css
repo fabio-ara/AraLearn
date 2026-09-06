@@ -703,7 +703,7 @@
   left: max(10px, calc((100vw - 430px) / 2 + 10px));
   display: grid;
   gap: 6px;
-  max-height: min(35dvh, 240px);
+  max-height: min(16dvh, 112px);
   overflow-y: auto;
   pointer-events: none;
 }
@@ -715,6 +715,12 @@
   background: var(--surface-raised);
   box-shadow: var(--shadow-floating);
   pointer-events: none;
+}
+
+/* Modal operations report their result inside the active sheet. Background
+   notices must not cover or intercept its fields, controls or focus ring. */
+.course-authoring-surface:has([role="dialog"], [role="alertdialog"], .course-inspection-manual-dock) .course-authoring-feedback-layer {
+  display: none;
 }
 
 .course-authoring-notice.is-error {
@@ -5217,7 +5223,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-authoring-task-menu > nav > :is(a, button) :is(span, strong) {
   font-weight: inherit;
 }
-.course-authoring-feedback-layer { max-height: min(16dvh, 112px); }
 
 .course-authoring-task-menu > summary { position: relative; }
 .course-authoring-feedback-indicator {

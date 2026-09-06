@@ -7,6 +7,7 @@ import {
   formatObservationTextBudget,
   isObservationTextOverLimit,
   renderStudyUnitObservationSheet,
+  revealStudyObservationControl,
   validateStudyUnitObservationText
 } from "../ui/renderStudyUnitObservationSheet.js";
 import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
@@ -558,6 +559,7 @@ export function createCourseStudyApplication({
       } catch {
         node.focus();
       }
+      revealStudyObservationControl(node);
     };
     focus();
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(focus);
@@ -2992,6 +2994,9 @@ export function createCourseStudyApplication({
         }
       }));
     const observationOverlay = root.querySelector(".study-observation-overlay");
+    observationOverlay?.addEventListener("focusin", (event) => {
+      revealStudyObservationControl(event.target);
+    });
     observationOverlay?.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -3244,6 +3249,7 @@ export function createCourseStudyApplication({
       });
     }
     focusStudyTarget(pendingStudyFocus);
+    revealStudyObservationControl(root.ownerDocument?.activeElement);
     void loadStudyCitations();
   }
 

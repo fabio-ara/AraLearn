@@ -1629,7 +1629,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
   assert.match(root.innerHTML, /Você pode registrar outra/iu);
   assert.match(
     root.innerHTML,
-    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>Revisar observações abertas no curso/u
+    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>[\s\S]*?<span>Revisar observações abertas no curso<\/span>/u
   );
   assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
 

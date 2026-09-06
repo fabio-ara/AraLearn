@@ -159,8 +159,12 @@ test("#328 R13: aviso de cancelar edição não cobre envio de observação", as
   if (process.env.ARALEARN_328_CAPTURE_DIR) {
     await page.screenshot({ path: `${process.env.ARALEARN_328_CAPTURE_DIR}/observacao-existente-colisao-e2e-390-light.png` });
   }
-  knownDefect("R13", "aviso fixo intersecta controle de envio na folha de Observações");
   expect(measured.overlap).toBe(0);
+  expect(measured.hitIsSubmit).toBe(true);
+  await expect(notice).toBeHidden();
+  await page.locator('[data-field="study-unit-observation"]').fill("Envio sintético com aviso de fundo.");
+  await page.locator('[data-observation-composer] button[type="submit"]').click();
+  await expect(page.getByText("Envio sintético com aviso de fundo.", { exact: true })).toBeVisible();
 });
 
 for (const ordinal of [1, 2]) {
@@ -243,3 +247,40 @@ test("#328 mapa abre a microssequência correta e retorna com expansão e foco",
   await expect(disclosure(page, "lesson:lesson-1-1")).toHaveAttribute("open", "");
   await expect(link).toBeFocused();
 });
+
+for (const [width, height, theme, zoom, ordinal = 3] of [[360, 640, "light", 1], [390, 440, "dark", 1],
+  [430, 932, "dark", 1], [1366, 768, "light", 1], [390, 844, "light", 2], [390, 440, "dark", 1, 2]]) {
+  test(`#330 Observações: foco e envio alcançáveis ${width}x${height} ${theme} ${zoom}x unidade${ordinal}`, async ({ page }, info) => {
+    await open(page, "content", `?theme=${theme}&zoom=${zoom}`, ordinal);
+    await page.setViewportSize({ width, height });
+    const origin = card(page, ordinal).locator("[data-inspection-observations]");
+    await origin.click();
+    const dialog = page.getByRole("dialog", { name: "Observações da unidade", exact: true });
+    const field = dialog.getByRole("textbox", { name: "Observação", exact: true });
+    await expect(field).toBeFocused();
+    const focus = await field.evaluate(node => {
+      const css = getComputedStyle(node);
+      return { outline: css.outlineWidth, border: css.borderColor, shadow: css.boxShadow };
+    });
+    expect(parseFloat(focus.outline)).toBeGreaterThan(0);
+    expect(focus.border).toBe("rgba(0, 0, 0, 0)");
+    expect(focus.shadow).toBe("none");
+    expect(await field.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+    })).toBe(true);
+    await page.keyboard.press("Tab");
+    expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true);
+    const submit = dialog.getByRole("button", { name: "Enviar observação", exact: true });
+    await submit.scrollIntoViewIfNeeded();
+    const hit = await submit.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      return { width: box.width, height: box.height, visible: node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)) };
+    });
+    expect(hit.visible).toBe(true);
+    await info.attach("focus-and-hit", { body: JSON.stringify({ focus, hit }), contentType: "application/json" });
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(origin).toBeFocused();
+  });
+}
