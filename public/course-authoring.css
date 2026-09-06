@@ -1050,6 +1050,11 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   line-height: var(--leading-normal);
 }
 
+.course-authoring-planning-details.is-objective .course-authoring-planning-card p {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
 .course-authoring-planning-card p.is-empty {
   color: var(--text-secondary);
   font-style: italic;
@@ -1127,6 +1132,33 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   min-width: 0;
 }
 
+.course-curriculum-map-node {
+  position: relative;
+  min-width: 0;
+}
+
+.course-curriculum-map-node > details > summary {
+  padding-inline-end: 60px;
+}
+
+.course-curriculum-map-node > .course-curriculum-map-open {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+}
+
+.course-curriculum-map-node-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.course-curriculum-map-node-heading > h5 {
+  min-width: 0;
+  font-weight: 600;
+}
+
 .course-curriculum-map-details > summary {
   min-height: 44px;
   box-sizing: border-box;
@@ -1183,12 +1215,12 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   text-underline-offset: 3px;
 }
 
-.course-curriculum-map-links a,
-.course-curriculum-map-microsequence h5 a {
+.course-curriculum-map-links a {
   display: inline-block;
   box-sizing: border-box;
   min-height: 44px;
   padding-block: 10px;
+  font-size: var(--type-sm);
 }
 
 .course-curriculum-map-open {
@@ -1217,6 +1249,25 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-curriculum-map-coverage {
   margin-top: 12px;
+}
+
+.course-curriculum-map .course-curriculum-map-targets {
+  padding-inline-start: 8px;
+}
+
+.course-curriculum-map-targets > li {
+  margin-block: 8px;
+  border-inline-start: 1px solid var(--border-subtle);
+  padding-inline-start: 8px;
+}
+
+.course-curriculum-map-targets .course-curriculum-map-links,
+.course-curriculum-map-coverage-item > .course-curriculum-map-body > .course-curriculum-map-links {
+  padding-inline-start: 12px;
+}
+
+.course-curriculum-map-targets .course-curriculum-map-path {
+  font-size: var(--type-sm);
 }
 
 .course-authoring-part-navigation {

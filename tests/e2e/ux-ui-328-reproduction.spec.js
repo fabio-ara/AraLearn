@@ -62,10 +62,13 @@ test("#328 R03: seta de módulo deve compartilhar o grupo do título", async ({ 
   await expandMap(page);
   const module = disclosure(page, "module:module-1");
   const title = await module.locator(":scope > summary").boundingBox();
-  const arrow = await module.locator(":scope > .course-curriculum-map-body > .course-curriculum-map-open").boundingBox();
+  const arrowControl = page.locator('[data-curriculum-expansion="module:module-1"] + .course-curriculum-map-open');
+  const arrow = await arrowControl.boundingBox();
   await info.attach("geometry", { body: JSON.stringify({ title, arrow }), contentType: "application/json" });
-  knownDefect("R03", "seta renderizada no corpo abaixo da linha do título");
   expect(arrow.y).toBeLessThan(title.y + title.height);
+  expect(arrow.x).toBeGreaterThan(title.x + title.width / 2);
+  await expect(module.locator(":scope > summary a")).toHaveCount(0);
+  await expect(arrowControl).toHaveAccessibleName(/Inspecionar módulo:/u);
 });
 
 test("#328 R04: destinos da cobertura precisam de recuo abaixo do caminho", async ({ page }, info) => {
@@ -74,9 +77,8 @@ test("#328 R04: destinos da cobertura precisam de recuo abaixo do caminho", asyn
   const item = page.locator(".course-curriculum-map-coverage-item").first();
   await item.locator(":scope > summary").click();
   const parent = await item.locator(".course-curriculum-map-path").boundingBox();
-  const child = await item.locator(".course-curriculum-map-targets .course-curriculum-map-links").boundingBox();
+  const child = await item.locator(".course-curriculum-map-targets .course-curriculum-map-links > li > a").first().boundingBox();
   await info.attach("geometry", { body: JSON.stringify({ parent, child }), contentType: "application/json" });
-  knownDefect("R04", "lista de destinos tem o mesmo x do caminho");
   expect(child.x).toBeGreaterThan(parent.x);
 });
 
@@ -87,8 +89,13 @@ test("#328 R05: rótulo nominal da cobertura omite ponto editorial sem modificar
   expect(data).toContain("Redes de computadores.");
   expect(data).toContain("IEEE 802.3.");
   expect(data).toContain("H.323.");
-  knownDefect("R05", "statement literal também é usado no rótulo nominal");
   await expect(page.locator(".course-curriculum-map-coverage-item > summary .course-curriculum-map-node-title").first()).toHaveText("Redes de computadores");
+  const labels = await page.locator(".course-curriculum-map-coverage-item > summary .course-curriculum-map-node-title").allTextContents();
+  expect(labels).toContain("IEEE 802.3");
+  expect(labels).toContain("H.323");
+  expect(labels).toContain("Alternativas...");
+  expect(labels).toContain("Explicar quando o quadro é encaminhado.");
+  expect(await page.evaluate(() => globalThis.uxUi328.map.curriculumScopeItems.map(item => item.statement))).toEqual(data);
 });
 
 for (const width of [360, 390, 430]) {
@@ -364,3 +371,28 @@ test("#331 detalhes e Parâmetros mantêm reflow e hierarquia com ampliação", 
   expect(Number(geometry.groupWeight)).toBeGreaterThan(Number(geometry.itemWeight));
   expect(geometry.emptyFeedback).toBe(0);
 });
+
+for (const [width, theme, zoom] of [[360, "dark", 2], [1366, "light", 1]]) {
+  test(`#332 objetivo integral e cobertura legível ${width}px ${theme} ${zoom}x`, async ({ page }) => {
+    await open(page, "planning", `?theme=${theme}&zoom=${zoom}`);
+    await page.setViewportSize({ width, height: 844 });
+    const objective = page.locator(".is-objective .course-authoring-planning-copy > p");
+    await expect(objective).toHaveText(await page.evaluate(() => globalThis.uxUi328.course.goal));
+    const metrics = await objective.evaluate(node => {
+      const body = getComputedStyle(node), title = getComputedStyle(node.previousElementSibling);
+      return { bodySize: parseFloat(body.fontSize), titleSize: parseFloat(title.fontSize),
+        bodyWeight: Number(body.fontWeight), titleWeight: Number(title.fontWeight),
+        overflow: node.scrollWidth - node.clientWidth, clamp: body.webkitLineClamp };
+    });
+    expect(metrics.bodySize).toBeGreaterThanOrEqual(12);
+    expect(metrics.bodySize).toBeLessThan(metrics.titleSize);
+    expect(metrics.bodyWeight).toBeLessThan(metrics.titleWeight);
+    expect(metrics.overflow).toBeLessThanOrEqual(1);
+    expect(metrics.clamp).toBe("none");
+    await disclosure(page, "coverage").locator(":scope > summary").click();
+    await page.locator(".course-curriculum-map-coverage-item").first().locator(":scope > summary").click();
+    const map = page.locator(".course-curriculum-map");
+    expect(await map.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+    await expect(page.locator(".course-curriculum-map-coverage-item[open]")).toHaveCount(1);
+  });
+}
