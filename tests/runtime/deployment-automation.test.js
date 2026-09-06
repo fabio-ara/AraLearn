@@ -926,6 +926,8 @@ test("Android só prepara assinatura pelo coordenador e retoma APK existente", (
   assert.match(source, /persist-credentials: false/u);
   assert.match(source, /releaseCandidate\.mjs reuse-apk/u);
   assert.match(source, /releaseCandidate\.mjs stage-release/u);
+  assert.match(source, /artifact_id: \$\{\{ steps\.bundle\.outputs\.artifact-id \}\}/u);
+  assert.match(source, /AraLearn-\$\{\{ inputs\.version \}\}\.apk\.sha256/u);
   assert.match(source, /verifyDeploymentArtifacts\.ps1/u);
   assert.match(source, /RequireExplicitConfiguration/u);
   assert.doesNotMatch(source, /npm test|npm run lint|finalize-release|gh release create/u);

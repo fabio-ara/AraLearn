@@ -235,8 +235,9 @@ class NativeGateTests(unittest.TestCase):
 
         with patch.object(gate.sys, "platform", "linux"), patch.dict(os.environ, {"ImageOS": "ubuntu24", "ANDROID_HOME": str(sdk)}), \
                 patch.object(gate.Path, "exists", return_value=True), patch.object(gate.os, "access", return_value=True), patch.object(gate, "command", denied):
-            with self.assertRaisesRegex(RuntimeError, "stdin fechado"):
-                gate.run_gate(self.manifest, gate.promotion_identity(self.manifest, self.env), self.folder)
+            with patch.object(gate, "candidate_bundle", return_value=(self.receipt, b"candidate")), \
+                    self.assertRaisesRegex(RuntimeError, "stdin fechado"):
+                gate.run_gate(self.manifest, gate.promotion_identity(self.manifest, self.env), self.folder, self.folder / "candidate")
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0][1:], ["--install", "emulator", gate.SYSTEM_IMAGE, "--channel=0"])
         self.assertNotIn("input_bytes", calls[0][1])
@@ -268,21 +269,24 @@ class NativeGateTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 gate.asset(release, "app.apk", "fixture/app")
 
-    def test_candidate_release_reads_exact_draft_from_authenticated_listing(self):
-        target = "1" * 40
-        draft = {"tag_name": "v0.0.65", "draft": True, "prerelease": False,
-                 "target_commitish": target, "assets": []}
-        self.assertIs(gate.candidate_release([{"tag_name": "v0.0.64"}, draft], "0.0.65", target), draft)
-        variants = [
-            [],
-            [draft, copy.deepcopy(draft)],
-            [{**draft, "draft": False}],
-            [{**draft, "prerelease": True}],
-            [{**draft, "target_commitish": "2" * 40}],
-        ]
-        for releases in variants:
-            with self.subTest(releases=releases), self.assertRaises(RuntimeError):
-                gate.candidate_release(releases, "0.0.65", target)
+    def test_candidate_bundle_requires_exact_regular_files_and_matching_bytes(self):
+        directory = self.folder / "candidate"
+        directory.mkdir()
+        apk = b"synthetic signed apk"
+        receipt = copy.deepcopy(self.receipt)
+        receipt["release"]["sha256"] = gate.digest(apk)
+        apk_name = receipt["release"]["apk"]
+        (directory / apk_name).write_bytes(apk)
+        (directory / (apk_name + ".sha256")).write_text(f"{gate.digest(apk)}  {apk_name}\n", encoding="utf-8")
+        (directory / "AraLearn-0.0.65.json").write_text(json.dumps(receipt), encoding="utf-8")
+        self.assertEqual(gate.candidate_bundle(directory, self.manifest), (receipt, apk))
+        (directory / "unexpected.txt").write_text("no", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "inesperado"):
+            gate.candidate_bundle(directory, self.manifest)
+        (directory / "unexpected.txt").unlink()
+        (directory / apk_name).write_bytes(b"changed")
+        with self.assertRaisesRegex(RuntimeError, "recibo"):
+            gate.candidate_bundle(directory, self.manifest)
 
 
 if __name__ == "__main__":

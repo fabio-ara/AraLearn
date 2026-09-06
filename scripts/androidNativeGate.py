@@ -122,25 +122,28 @@ def asset(release, name, repo):
     return data
 
 
-def candidate_release(releases, version, target_sha):
-    require(isinstance(releases, list) and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
-            and re.fullmatch(r"[a-f0-9]{40}", target_sha), "Consulta de release inválida.")
-    matches = [release for release in releases if release.get("tag_name") == "v" + version]
-    require(len(matches) == 1, "Release candidata ausente ou duplicada.")
-    release = matches[0]
-    require(release.get("draft") is True and release.get("prerelease") is False
-            and release.get("target_commitish") == target_sha, "Release candidata incompatível.")
-    return release
-
-
-def fetch_receipt(manifest, identity):
-    releases = github(f"repos/{identity['repository']}/releases?per_page=100")
-    release = candidate_release(releases, manifest["version"], identity["sha"])
-    receipt = json.loads(asset(release, f"AraLearn-{manifest['version']}.json", identity["repository"]))
+def candidate_bundle(folder, manifest):
+    directory = Path(folder)
+    apk_name = f"AraLearn-{manifest['version']}.apk"
+    names = {apk_name, apk_name + ".sha256", f"AraLearn-{manifest['version']}.json"}
+    require(directory.is_dir() and not directory.is_symlink(), "Pacote assinado transportado ausente.")
+    files = list(directory.iterdir())
+    require(len(files) == len(names) and {file.name for file in files} == names
+            and all(file.is_file() and not file.is_symlink() for file in files),
+            "Pacote assinado transportado incompleto ou com arquivo inesperado.")
+    receipt_file = directory / f"AraLearn-{manifest['version']}.json"
+    checksum_file = directory / (apk_name + ".sha256")
+    apk_file = directory / apk_name
+    require(0 < receipt_file.stat().st_size <= 2 * 1024 * 1024
+            and 0 < checksum_file.stat().st_size <= 512
+            and 0 < apk_file.stat().st_size <= 128 * 1024 * 1024, "Tamanho do pacote assinado inválido.")
+    receipt = read_json(receipt_file)
     expected = validate_receipt(receipt, manifest)
-    checksum = asset(release, expected["apk"] + ".sha256", identity["repository"]).decode("utf-8")
-    require(checksum == f"{expected['sha256']}  {expected['apk']}\n", "Checksum do draft divergente.")
-    return release, receipt
+    require(checksum_file.read_text(encoding="utf-8") == f"{expected['sha256']}  {expected['apk']}\n",
+            "Checksum transportado divergente.")
+    apk = apk_file.read_bytes()
+    require(digest(apk) == expected["sha256"], "APK transportado difere do recibo assinado.")
+    return receipt, apk
 
 
 def licenses(sdk):
@@ -325,13 +328,14 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir):
     return proof
 
 
-def run_gate(manifest, identity, folder):
+def run_gate(manifest, identity, folder, candidate_folder):
     global DIAGNOSTIC_DIR
     DIAGNOSTIC_DIR = folder / "diagnostics"
     require(sys.platform == "linux" and os.environ.get("ImageOS") == "ubuntu24", "Gate exige runner Ubuntu24.04 padrão.")
     require(Path("/dev/kvm").exists() and os.access("/dev/kvm", os.R_OK | os.W_OK), "INEVITABLE: KVM indisponível; sem emulação alternativa.")
     sdk = Path(os.environ.get("ANDROID_HOME", ""))
     require(sdk.is_absolute() and sdk.is_dir(), "SDK do runner ausente.")
+    receipt, candidate_bytes = candidate_bundle(candidate_folder, manifest)
     before = licenses(sdk)
     manager = sdk / "cmdline-tools/latest/bin/sdkmanager"
     try:
@@ -346,9 +350,6 @@ def run_gate(manifest, identity, folder):
     command([emulator, "-accel-check"])
     tools = sdk / "build-tools/36.0.0"
     require((tools / "apksigner").is_file() and (tools / "aapt").is_file(), "Build-tools36.0.0 do runner ausentes.")
-    release, receipt = fetch_receipt(manifest, identity)
-    candidate_bytes = asset(release, receipt["release"]["apk"], identity["repository"])
-    require(digest(candidate_bytes) == receipt["release"]["sha256"], "APK difere do draft assinado.")
     baseline_release = github(f"repos/{identity['repository']}/releases/tags/v{BASE_VERSION}")
     require(baseline_release.get("draft") is False and baseline_release.get("prerelease") is False, "Base não é release pública.")
     baseline_bytes = asset(baseline_release, f"AraLearn-{BASE_VERSION}.apk", identity["repository"])
@@ -468,23 +469,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("operation", choices=["run", "verify"])
     parser.add_argument("--manifest", default=".candidate/candidate.json")
+    parser.add_argument("--candidate-folder", required=True)
     parser.add_argument("--folder", required=True)
     parser.add_argument("--proof-sha256")
     args = parser.parse_args()
     DEADLINE = time.monotonic() + 23 * 60
     manifest = read_json(args.manifest)
     identity = promotion_identity(manifest, os.environ)
+    candidate_folder = Path(os.path.abspath(args.candidate_folder))
     folder = Path(args.folder).resolve()
     if args.operation == "run":
         folder.mkdir(parents=True, exist_ok=True)
         require(not any(folder.iterdir()), "Pasta da prova deve estar vazia; nada anterior será reutilizado.")
-        run_gate(manifest, identity, folder)
+        run_gate(manifest, identity, folder, candidate_folder)
     else:
         require(args.proof_sha256 and HASH.fullmatch(args.proof_sha256)
                 and digest((folder / "proof.json").read_bytes()) == args.proof_sha256, "Prova não corresponde ao digest do job produtor.")
-        release, receipt = fetch_receipt(manifest, identity)
-        require(digest(asset(release, receipt["release"]["apk"], identity["repository"])) == receipt["release"]["sha256"],
-                "APK mudou após a prova nativa; promoção recusada.")
+        receipt, _ = candidate_bundle(candidate_folder, manifest)
         validate_proof(read_json(folder / "proof.json"), manifest, receipt, os.environ, folder / "evidence")
         print("Prova Android vinculada ao APK/run/tentativa/SHA atuais; bytes da evidência conferidos.")
 
