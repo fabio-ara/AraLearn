@@ -12,7 +12,7 @@ test("prova Android recusa identidade, bytes, licença e estado UI divergentes (
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
   });
   assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
-  assert.match(result.stderr, /Ran 22 tests/u);
+  assert.match(result.stderr, /Ran 23 tests/u);
 });
 
 test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissões de assinatura no emulador", () => {

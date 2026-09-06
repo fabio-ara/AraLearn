@@ -268,6 +268,22 @@ class NativeGateTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 gate.asset(release, "app.apk", "fixture/app")
 
+    def test_candidate_release_reads_exact_draft_from_authenticated_listing(self):
+        target = "1" * 40
+        draft = {"tag_name": "v0.0.65", "draft": True, "prerelease": False,
+                 "target_commitish": target, "assets": []}
+        self.assertIs(gate.candidate_release([{"tag_name": "v0.0.64"}, draft], "0.0.65", target), draft)
+        variants = [
+            [],
+            [draft, copy.deepcopy(draft)],
+            [{**draft, "draft": False}],
+            [{**draft, "prerelease": True}],
+            [{**draft, "target_commitish": "2" * 40}],
+        ]
+        for releases in variants:
+            with self.subTest(releases=releases), self.assertRaises(RuntimeError):
+                gate.candidate_release(releases, "0.0.65", target)
+
 
 if __name__ == "__main__":
     unittest.main()
