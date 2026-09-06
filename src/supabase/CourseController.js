@@ -651,7 +651,8 @@ export class CourseController {
     api,
     store,
     ownerOnly = false,
-    now = () => new Date().toISOString()
+    now = () => new Date().toISOString(),
+    navigatorValue = globalThis.navigator
   } = {}) {
     if (!api || typeof api.listCourses !== "function" || typeof api.getCourse !== "function") {
       throw new TypeError("API de Cursos obrigatória.");
@@ -666,8 +667,10 @@ export class CourseController {
     this.ownerOnly = ownerOnly === true;
     this.cachePrefix = this.ownerOnly ? "course-authoring.v1" : CACHE_PREFIX;
     this.now = now;
+    this.navigator = navigatorValue;
     this.accessibleCourseRefresh = null;
     this.compositionSourceSnapshots = new Map();
+    this.readEpochs = new Map();
   }
 
   async #readPendingComposition(courseId) {
@@ -836,7 +839,7 @@ export class CourseController {
           ...promoted,
           rows,
           document,
-          offline: true,
+          offline: this.navigator?.onLine === false,
           stale: true,
           readOnly: true,
           pendingConfirmed: true,
@@ -876,7 +879,7 @@ export class CourseController {
       course,
       rows,
       document,
-      offline: true,
+      offline: this.navigator?.onLine === false,
       stale: true,
       readOnly: true,
       pendingConfirmed: true,
@@ -1227,7 +1230,7 @@ export class CourseController {
   }
 
   async #observeAccessibleCoursePage(page, { query, cursor }) {
-    if (this.ownerOnly || String(query || "").trim() || page?.offline === true) {
+    if (this.ownerOnly || String(query || "").trim() || page?.stale === true) {
       this.accessibleCourseRefresh = null;
       return;
     }
@@ -1267,8 +1270,15 @@ export class CourseController {
     invalidationPrefixes = [],
     normalize = (value) => value
   } = {}) {
+    const epoch = Symbol(key);
+    this.readEpochs.set(key, epoch);
     try {
       const remote = normalize(await readRemote());
+      if (this.readEpochs.get(key) !== epoch) {
+        const error = new Error("Leitura substituída por uma solicitação mais recente.");
+        error.name = "AbortError";
+        throw error;
+      }
       await this.store.putCache(key, {
         savedAt: this.now(),
         data: remote
@@ -1287,11 +1297,14 @@ export class CourseController {
       const cachedData = normalize(cached.data);
       return {
         ...structuredClone(cachedData),
-        offline: true,
+        offline: this.navigator?.onLine === false,
         stale: true,
+        readFailure: { status: Number(error?.status) || null, code: String(error?.code || "read_failed") },
         cachedAt: cached.savedAt || null,
         readOnly: true
       };
+    } finally {
+      if (this.readEpochs.get(key) === epoch) this.readEpochs.delete(key);
     }
   }
 
@@ -1375,7 +1388,7 @@ export class CourseController {
     );
     const previousRevision = Number(previous?.revision);
     const currentRevision = Number(result?.revision);
-    if (result.offline !== true && Number.isSafeInteger(previousRevision) &&
+    if (result.stale !== true && Number.isSafeInteger(previousRevision) &&
         Number.isSafeInteger(currentRevision) && previousRevision !== currentRevision) {
       await Promise.all([
         this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
@@ -1720,7 +1733,7 @@ export class CourseController {
             document,
             offline,
             stale,
-            ...(offline ? { readOnly: true } : {})
+            ...(offline || stale ? { readOnly: true } : {})
           };
         }
         if (!page.nextCursor) {
@@ -2134,7 +2147,7 @@ export class CourseController {
     await this.#rememberAuthoringInspectionPage(courseId, requestKey, page);
     return {
       ...structuredClone(page),
-      offline: true,
+      offline: this.navigator?.onLine === false,
       stale: true
     };
   }
@@ -2187,7 +2200,7 @@ export class CourseController {
         requestKey,
         pendingPage
       );
-      return { ...structuredClone(pendingPage), offline: true, stale: true };
+      return { ...structuredClone(pendingPage), offline: this.navigator?.onLine === false, stale: true };
     }
   }
 

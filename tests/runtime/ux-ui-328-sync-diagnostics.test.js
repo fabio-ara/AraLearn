@@ -8,13 +8,7 @@ import { renderRuntimeStatusControl } from "../../src/ui/renderHomeScreen.js";
 import { createCourseInspectionSequence } from "../../src/ui/CourseInspectionSequence.js";
 import { createUxUi328Fixture } from "../fixtures/uxUi328Fixture.js";
 
-// #328 records the failing acceptance cases before any product correction.
-// Setup must pass before a known acceptance failure is marked TODO. The strict
-// reproduction executes those same assertions without TODO and exits nonzero.
-// Neither mode is evidence that the synchronization product gate is green.
-function markKnownDefect(t, reason) {
-  if (process.env.ARALEARN_328_STRICT !== "1") t.todo(`#328 — defeito reproduzido: ${reason}`);
-}
+// Regression cases first reproduced in #328 and corrected by #329.
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PATH = `/v1/courses/${COURSE_ID}/instructional-plan`;
 
@@ -94,13 +88,12 @@ test("S03: HTTP 503 com navegador online não deve afirmar ausência de conexão
   const navigatorValue = { onLine: true };
   t.diagnostic(JSON.stringify({ trace, navigatorOnline: navigatorValue.onLine,
     receivedRevision: cached.revision, cachedAt: cached.cachedAt, offline: cached.offline,
-    stale: cached.stale, causeStatusRetained: Object.hasOwn(cached, "status") }));
+    stale: cached.stale, causeStatusRetained: cached.readFailure?.status === 503 }));
   const markup = renderRuntimeStatusControl({ offline: cached.offline, stale: cached.stale });
   assert.deepEqual(trace.map(({ method, status }) => ({ method, status })), [
     { method: "POST", status: 200 }, { method: "POST", status: 503 }
   ]);
   assert.match(markup, /data-runtime-state=/u);
-  markKnownDefect(t, "a cópia cacheada após HTTP 503 recebe offline:true e a nuvem anuncia Sem conexão");
   assert.doesNotMatch(markup, /Sem conexão/u);
 });
 
@@ -134,6 +127,7 @@ test("S04: leitura RPC recuperável respeita Retry-After e termina com sucesso",
       ? response({ message: "Aguarde." }, 429, { "Retry-After": "2" })
       : response(header(8));
   });
+  api.setReadRecoveryEnabled(true);
   const operation = observed(api.getCourse(COURSE_ID));
   await nextTurn();
   t.mock.timers.tick(1_999);
@@ -145,7 +139,6 @@ test("S04: leitura RPC recuperável respeita Retry-After e termina com sucesso",
     status: operation.state.value?.status, retryAfter: operation.state.value?.retryAfter ?? null }));
   assert.equal(calls[0], 0);
   if (operation.state.status === "rejected") assert.equal(operation.state.value.status, 429);
-  markKnownDefect(t, "HTTP 429 encerra a leitura RPC na primeira chamada; Retry-After não chega ao chamador");
   assert.equal(operation.state.status, "fulfilled");
   assert.equal(operation.state.value.revision, 8);
   assert.deepEqual(calls, [0, 2_000]);
@@ -187,7 +180,6 @@ test("S05: prazo da leitura abrange também o corpo da resposta", async (t) => {
     assert.ok(requestSignal instanceof AbortSignal);
     t.diagnostic(JSON.stringify({ requestedTimeoutMs: 20, elapsedVirtualMs: 1_000,
       phase: "response.text", outcome: operation.state.status, aborted: requestSignal.aborted }));
-    markKnownDefect(t, "timer de 20 ms é retirado depois de fetch; response.text continua pendente após 1000 ms");
     assert.equal(operation.state.status, "rejected");
   } finally {
     body.resolve(JSON.stringify({ data: { synthetic: true } }));
@@ -213,7 +205,6 @@ test("S06: prazo da leitura abrange espera pela sessão", async (t) => {
     assert.equal(tokenReads, 1);
     t.diagnostic(JSON.stringify({ requestedTimeoutMs: 20, elapsedVirtualMs: 1_000,
       phase: "getAccessToken", outcome: operation.state.status, httpCalls: calls }));
-    markKnownDefect(t, "getAccessToken antecede o timer; timeoutMs 20 não encerra sessão pendente após 1000 ms");
     assert.equal(operation.state.status, "rejected");
   } finally {
     token.resolve("synthetic-access-token");
@@ -252,13 +243,12 @@ test("S13: resposta antiga não rebaixa o cabeçalho cacheado por chamada poster
   const latest = await controller.getCourse(COURSE_ID);
   assert.equal(latest.revision, 8);
   old.resolve(header(7));
-  await oldRead;
+  await assert.rejects(oldRead, { name: "AbortError" });
   const cached = await store.getCache(`course-authoring.v1.header:${COURSE_ID}`);
   assert.equal(calls, 2);
   assert.equal(cached.data.courseId, COURSE_ID);
   assert.equal(cached.data.contract, "aralearn.course.v1");
   t.diagnostic(JSON.stringify({ responseOrder: [8, 7], cachedRevision: cached.data.revision }));
-  markKnownDefect(t, "getCourse concorrente grava revisão 7 depois da revisão 8 no mesmo cache");
   assert.equal(cached.data.revision, 8);
 });
 
@@ -296,8 +286,7 @@ test("S02/S05: leitura inicial não anuncia vazio antes da resposta", async (t) 
   try {
     assert.match(root.innerHTML, /Carregando unidades/u);
     assert.equal(root.attributes.get("aria-busy"), "true");
-    t.diagnostic("Inspeção com onLine=true e resposta pendente: loading e ausência aparecem simultaneamente.");
-    markKnownDefect(t, "contexto mostra Nenhuma unidade de estudo enquanto corpo mostra Carregando unidades");
+    t.diagnostic("Inspeção com onLine=true e resposta pendente: loading presente sem afirmar ausência antes de concluir leitura.");
     assert.doesNotMatch(root.innerHTML, /Nenhuma unidade de estudo/u);
   } finally {
     sequence.destroy();
@@ -374,7 +363,6 @@ test("S07: 409 de revisão na leitura inicial é reconciliado em tentativas fini
     assert.equal(root.attributes.get("aria-busy"), "false");
     t.diagnostic(JSON.stringify({ calls, success, expectedRevision: 4, receivedRevision: 5,
       currentRevision: sequence.snapshot().courseRevision, errorShown: /mudou durante a leitura/u.test(root.innerHTML) }));
-    markKnownDefect(t, "inspeção encerra na primeira resposta course_revision_changed e não relê a revisão corrente");
     assert.equal(success, true);
   } finally {
     sequence.destroy();

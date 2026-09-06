@@ -1,11 +1,12 @@
 export class SupabaseHttpError extends Error {
-  constructor(message, { status = 0, code = "", details = null, response = null } = {}) {
+  constructor(message, { status = 0, code = "", details = null, response = null, retryAfter = null } = {}) {
     super(message);
     this.name = "SupabaseHttpError";
     this.status = status;
     this.code = code;
     this.details = details;
     this.response = response;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -89,59 +90,55 @@ export class SupabaseHttpClient {
       requestHeaders.set("Content-Type", "application/json");
     }
     if (prefer) requestHeaders.set("Prefer", prefer);
+    signal?.throwIfAborted();
 
     const controller = typeof AbortController === "function" ? new AbortController() : null;
-    let timedOut = false;
     let timeoutId = null;
     let detachExternalSignal = null;
-    if (controller) {
-      if (signal?.aborted) {
-        controller.abort(signal.reason);
-      } else if (signal) {
-        const abortFromCaller = () => controller.abort(signal.reason);
+    const interrupted = new Promise((_resolve, reject) => {
+      const abortFromCaller = () => {
+        controller?.abort(signal.reason);
+        reject(signal.reason ?? new DOMException("Operação cancelada.", "AbortError"));
+      };
+      if (signal?.aborted) abortFromCaller();
+      else if (signal) {
         signal.addEventListener("abort", abortFromCaller, { once: true });
         detachExternalSignal = () => signal.removeEventListener("abort", abortFromCaller);
       }
       timeoutId = globalThis.setTimeout(() => {
-        timedOut = true;
-        controller.abort();
+        reject(new SupabaseHttpError("A comunicação com o Supabase excedeu o tempo limite.", {
+          code: "request_timeout"
+        }));
+        controller?.abort();
       }, timeoutMs);
-    }
+    });
 
-    let response;
     try {
-      response = await this.fetchImpl.call(globalThis, joinUrl(this.projectUrl, path), {
+      const response = await Promise.race([interrupted, this.fetchImpl.call(globalThis, joinUrl(this.projectUrl, path), {
         method,
         headers: requestHeaders,
         cache: "no-store",
         ...(body !== undefined ? { body: rawBody ? body : JSON.stringify(body) } : {}),
         ...((controller?.signal || signal) ? { signal: controller?.signal || signal } : {})
-      });
-    } catch (error) {
-      if (timedOut) {
-        throw new SupabaseHttpError("A comunicação com o Supabase excedeu o tempo limite.", {
-          status: 0,
-          code: "request_timeout"
+      })]);
+      const responseBody = await Promise.race([interrupted,
+        response.ok && responseType === "blob" ? response.blob() : readResponseBody(response)
+      ]);
+      if (!response.ok) {
+        const failure = errorDetails(responseBody, response.status);
+        throw new SupabaseHttpError(failure.message, {
+          status: response.status,
+          code: failure.code,
+          details: failure.details,
+          response: responseBody,
+          retryAfter: response.headers?.get?.("Retry-After") ?? null
         });
       }
-      throw error;
+      return responseBody;
     } finally {
       if (timeoutId !== null) globalThis.clearTimeout(timeoutId);
       detachExternalSignal?.();
     }
-    const responseBody = response.ok && responseType === "blob"
-      ? await response.blob()
-      : await readResponseBody(response);
-    if (!response.ok) {
-      const failure = errorDetails(responseBody, response.status);
-      throw new SupabaseHttpError(failure.message, {
-        status: response.status,
-        code: failure.code,
-        details: failure.details,
-        response: responseBody
-      });
-    }
-    return responseBody;
   }
 
   rpc(functionName, parameters = {}, options = {}) {

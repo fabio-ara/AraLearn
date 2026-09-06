@@ -1047,6 +1047,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     authClient,
     visitor
   });
+  courseApi.setReadRecoveryEnabled(synchronizationPreference.get() !== "manual");
   const studyController = new CourseController({ api: courseApi, store: courseLocalStore });
   const authoringController = new CourseController({
     api: courseApi,
@@ -1395,6 +1396,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     : refreshStudy();
   let visibleRefreshTimer = null;
   const unsubscribeSynchronizationPreference = synchronizationPreference.subscribe((mode) => {
+    courseApi.setReadRecoveryEnabled(mode !== "manual");
     repository.setSynchronizationMode(mode);
     editorApp?.refreshRuntimeStatus?.();
   });

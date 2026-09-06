@@ -324,7 +324,7 @@ export function normalizeCourseInspectionPage(value, {
   const topLevelFields = [
     "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions", "items",
     "hasPrevious", "hasMore", "previousCursor", "nextCursor", "pageBytes",
-    "offline", "stale", "offlineKnown"
+    "offline", "stale", "offlineKnown", "readFailure"
   ];
   exactRecord(value, topLevelFields, "A página de conteúdo é inválida.");
   if (value.contract !== PAGE_CONTRACT || !Array.isArray(value.items) ||
@@ -361,7 +361,8 @@ export function normalizeCourseInspectionPage(value, {
     previousCursor: normalizeCursor(value.previousCursor, value.hasPrevious),
     nextCursor: normalizeCursor(value.nextCursor, value.hasMore),
     pageBytes: natural(value.pageBytes, "O tamanho da página", { maximum: MAX_PAGE_BYTES }),
-    offlineKnown: value.offline === true || value.stale === true || value.offlineKnown === true
+    offlineKnown: value.offline === true || value.offlineKnown === true,
+    stale: value.stale === true
   });
 }
 
@@ -385,8 +386,15 @@ function statusMessage(error) {
   if (code === "course_revision_changed") return "O curso mudou durante a leitura.";
   if (["pt404", "p0002"].includes(code) || code.includes("not_found") ||
       Number(error?.status) === 404) return "Ponto não encontrado.";
+  if (Number(error?.status) === 401) return "Sua sessão precisa ser renovada. Entre novamente e tente carregar o conteúdo.";
+  if (Number(error?.status) === 403) return "Você não tem acesso a este conteúdo.";
+  if (code === "auth_timeout") return "Não foi possível conferir sua sessão a tempo. Entre novamente e tente carregar o conteúdo.";
+  if (error?.name === "AbortError") return "Leitura cancelada. Tente novamente.";
+  if (/timeout/iu.test(`${code} ${error?.name || ""}`)) return "O serviço demorou para responder. Tente novamente.";
+  if (Number(error?.status) === 429) return "O serviço recebeu muitas solicitações. Aguarde e tente novamente.";
+  if (Number(error?.status) >= 500) return "O serviço está temporariamente indisponível. Tente novamente.";
   if (/offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)) {
-    return "Sem conexão para carregar este trecho.";
+    return "Não foi possível alcançar o serviço. Verifique a conexão e tente novamente.";
   }
   return "Não foi possível carregar este trecho de conteúdo.";
 }
@@ -454,6 +462,10 @@ function renderContextEditControl(state, kind, id) {
 
 function renderContext(state, item) {
   if (!item) {
+    if (state.initialLoading || state.initialFailure || state.targetMissing) {
+      return '<span class="course-inspection-context-copy" data-inspection-context-summary>' +
+        (state.initialLoading ? "Lendo conteúdo" : "Conteúdo indisponível") + '</span>';
+    }
     if (state.emptyScopeContext) {
       const context = state.emptyScopeContext;
       const kindLabel = SEARCH_KIND_LABELS[context.kind] || "Conteúdo";
@@ -1024,8 +1036,9 @@ function renderInspectionObservationSheet(state) {
       : `observations:${state.observationStudyUnitId}`
   });
   const confirmation = renderInspectionConfirmation(state);
-  if (!confirmation) return sheet;
-  const inactiveSheet = sheet.replace(
+  const managedSheet = sheet.replace('role="dialog"', 'role="dialog" data-course-authoring-draft-managed');
+  if (!confirmation) return managedSheet;
+  const inactiveSheet = managedSheet.replace(
     '<section class="editor-overlay study-observation-overlay"',
     '<section class="editor-overlay study-observation-overlay" inert aria-hidden="true"'
   );
@@ -1084,18 +1097,22 @@ function renderInspectionSearch(state) {
 
 function renderInspectionSyncState(state) {
   const offline = state.offlineKnown;
-  const updating = !offline && state.stale;
-  const label = offline
+  const updating = state.initialLoading || Boolean(state.loadingDirection);
+  const label = updating
+    ? "Lendo conteúdo"
+    : offline
     ? "Sem sincronização com a nuvem"
-    : updating
-      ? "Atualizando conteúdo"
+    : state.stale
+      ? "Cópia local; atualização pendente"
+    : state.initialFailure
+      ? "Falha ao carregar conteúdo"
     : "Sincronização com a nuvem disponível";
   return `<span class="course-inspection-sync-state${offline
     ? " is-offline"
     : updating ? " is-updating" : ""}"` +
     ` role="status" aria-label="${label}" title="${label}">` +
     `${renderUiIcon(
-      offline ? "offline" : updating ? "rotate" : "cloud",
+      updating ? "rotate" : offline ? "offline" : "cloud",
       "course-authoring-button-icon"
     )}</span>`;
 }
@@ -1265,6 +1282,8 @@ export function createCourseInspectionSequence({
   onEditContent = null,
   onSaveManualEdit = null,
   onFeedback = () => {},
+  onCourseRead = () => {},
+  onReadState = () => {},
   windowValue = globalThis.window || null,
   documentValue = root?.ownerDocument || globalThis.document || null,
   navigatorValue = globalThis.navigator || null
@@ -1276,7 +1295,8 @@ export function createCourseInspectionSequence({
       !UUID_PATTERN.test(String(course?.courseId || "")) ||
       !Number.isSafeInteger(course?.revision) || course.revision < 1 ||
       typeof onNavigate !== "function" || typeof onStudyUnitChange !== "function" ||
-      typeof onEditSources !== "function" || typeof onFeedback !== "function" ||
+      typeof onEditSources !== "function" || typeof onFeedback !== "function" || typeof onCourseRead !== "function" ||
+      typeof onReadState !== "function" ||
       (onOpenParameters !== null && typeof onOpenParameters !== "function") ||
       (onEditContent !== null && typeof onEditContent !== "function") ||
       (onSaveManualEdit !== null && typeof onSaveManualEdit !== "function")) {
@@ -1787,6 +1807,13 @@ export function createCourseInspectionSequence({
       focus('[data-observation-action="close"]');
     }
     root.setAttribute?.("aria-busy", String(state.initialLoading || Boolean(state.loadingDirection)));
+    onReadState({
+      syncing: state.initialLoading || Boolean(state.loadingDirection),
+      offline: state.offlineKnown,
+      stale: state.stale || Boolean(state.initialFailure || state.previousFailure || state.nextFailure),
+      syncError: state.initialLoading || state.loadingDirection ? "" :
+        state.initialFailure || state.previousFailure || state.nextFailure
+    });
     void hydrate(epoch).then(() => {
       if (state.destroyed || epoch !== renderEpoch) return;
       if (restorePosition) restoreAnchor(snapshot, { initial });
@@ -1832,6 +1859,7 @@ export function createCourseInspectionSequence({
     state.totalCount = page.totalCount;
     state.scopeOptions = page.scopeOptions;
     state.offlineKnown = page.offlineKnown;
+    state.stale = page.stale;
     if (direction === "backward") {
       state.hasPrevious = page.hasPrevious;
       state.previousCursor = page.previousCursor;
@@ -1868,10 +1896,31 @@ export function createCourseInspectionSequence({
       await controller.loadAuthoringStudyUnits(state.courseId, options),
       {
         expectedCourseId: state.courseId,
-        expectedRevision: state.pinnedRevision,
-        expectedScope: state.scope
+        expectedRevision: options.expectedRevision,
+        expectedScope: options.scope
       }
     );
+  }
+
+  async function readCoherentPage(options, epoch) {
+    try {
+      return await readPage(options);
+    } catch (error) {
+      if (error?.code !== "course_revision_changed" || state.destroyed || epoch !== requestEpoch ||
+          typeof controller.getCourse !== "function") throw error;
+      // A cursor belongs to one revision. Reconcile from the current anchor only.
+      const detail = await controller.getCourse(state.courseId);
+      if (state.destroyed || epoch !== requestEpoch) throw error;
+      if (detail?.stale === true || detail?.offline === true) throw error;
+      if (detail?.courseId !== state.courseId || !Number.isSafeInteger(detail.revision) || detail.revision < 1) {
+        throw new TypeError("A revisão corrente do curso é inválida.", { cause: error });
+      }
+      const page = await readPage({ ...options, cursor: null, expectedRevision: detail.revision });
+      if (state.destroyed || epoch !== requestEpoch) throw error;
+      state.pinnedRevision = detail.revision;
+      onCourseRead(detail);
+      return page;
+    }
   }
 
   function loadCourseSearchIndex() {
@@ -2223,7 +2272,7 @@ export function createCourseInspectionSequence({
     state.targetMissing = false;
     render({ anchor: { studyUnitId: anchorStudyUnitId, offsetFromStickyTop: offset }, initial: true });
     try {
-      const page = await readPage(pageOptions({ anchorStudyUnitId, entry }));
+      const page = await readCoherentPage(pageOptions({ anchorStudyUnitId, entry }), epoch);
       if (state.destroyed || epoch !== requestEpoch) return false;
       if (anchorStudyUnitId && page.items.length === 0 && page.totalCount > 0) {
         if (state.explicitAnchor) {
@@ -2257,6 +2306,11 @@ export function createCourseInspectionSequence({
     } catch (error) {
       if (state.destroyed || epoch !== requestEpoch) return false;
       const message = statusMessage(error);
+      if ([401, 403].includes(Number(error?.status))) {
+        state.items = [];
+        state.totalCount = 0;
+        state.offlineKnown = false;
+      }
       if (message === "Ponto não encontrado." && state.explicitTarget) {
         state.targetMissing = true;
       } else if (message === "Ponto não encontrado." && allowRebase) {
@@ -2305,6 +2359,9 @@ export function createCourseInspectionSequence({
       return true;
     } catch (error) {
       if (state.destroyed || epoch !== requestEpoch) return false;
+      if (error?.code === "course_revision_changed" && !hasPendingDraft()) {
+        return loadInitial({ anchorStudyUnitId: anchor.studyUnitId, offset: anchor.offsetFromStickyTop });
+      }
       if (direction === "forward") state.nextFailure = statusMessage(error);
       else state.previousFailure = statusMessage(error);
       return false;
@@ -3448,7 +3505,7 @@ export function createCourseInspectionSequence({
     return Boolean(
       state.pendingObservationMutation || state.pendingBatchObservation || state.confirmation ||
       state.observationSaving || draftChanged || state.manualSaving ||
-      state.manualStudyUnitId || manualDraftChanged()
+      manualDraftChanged()
     );
   }
 
@@ -3538,7 +3595,7 @@ export function createCourseInspectionSequence({
       state.loadingDirection = "refresh";
       state.pinnedRevision = revision;
       try {
-        let page = await readPage(pageOptions({ anchorStudyUnitId: anchor.studyUnitId }));
+        let page = await readCoherentPage(pageOptions({ anchorStudyUnitId: anchor.studyUnitId }), epoch);
         if (state.destroyed || epoch !== requestEpoch) return false;
         if (localEditItem) {
           const refreshed = page.items.find(({ studyUnit }) =>
@@ -3580,7 +3637,7 @@ export function createCourseInspectionSequence({
           state.selectedStudyUnitId = state.activeStudyUnitId;
           state.observationDraftStudyUnitId = state.activeStudyUnitId;
         }
-        state.stale = false;
+        state.stale = page.stale;
         state.targetMissing = false;
         state.initialFailure = "";
         state.previousFailure = "";
@@ -3646,6 +3703,11 @@ export function createCourseInspectionSequence({
         state.initialFailure = statusMessage(refreshError);
         state.stale = true;
         state.loadingDirection = "";
+        if ([401, 403].includes(Number(refreshError?.status))) {
+          state.items = [];
+          state.totalCount = 0;
+          state.offlineKnown = false;
+        }
         render({ anchor });
         return false;
       }
@@ -3665,6 +3727,10 @@ export function createCourseInspectionSequence({
       if (state.destroyed) return;
       void savePositionNow();
       state.destroyed = true;
+      state.initialLoading = false;
+      state.loadingDirection = "";
+      root.setAttribute?.("aria-busy", "false");
+      onReadState({ syncing: false });
       studyTools.destroy();
       ++requestEpoch;
       manualInlineController?.destroy?.();

@@ -2261,7 +2261,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
   });
   assert.equal(await failure.open(), false);
   assert.match(failureRoot.innerHTML, /Conteúdo indisponível/u);
-  assert.match(failureRoot.innerHTML, /Sem conexão para carregar este trecho/u);
+  assert.match(failureRoot.innerHTML, /Não foi possível alcançar o serviço/u);
   failure.destroy();
 
   const partialRoot = new FakeRoot();
@@ -2282,7 +2282,7 @@ test("Inspeção distingue vazio, cache offline, falha inicial e falha parcial",
   assert.equal(await partial.open(), true);
   assert.equal(await partial.loadMore("forward"), false);
   assert.equal((partialRoot.innerHTML.match(/data-inspection-study-unit=/gu) || []).length, 1);
-  assert.match(partialRoot.innerHTML, /Sem conexão para carregar este trecho/u);
+  assert.match(partialRoot.innerHTML, /Não foi possível alcançar o serviço/u);
   assert.match(partialRoot.innerHTML, /aria-label="Próxima unidade"/u);
   partial.destroy();
 });

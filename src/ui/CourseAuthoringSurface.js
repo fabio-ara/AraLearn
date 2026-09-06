@@ -224,7 +224,8 @@ function renderCourseList(state) {
     ' data-authoring-runtime-status>' + renderRuntimeStatusControl({
       offline: state.syncOffline === true,
       synchronizing: state.syncing === true,
-      stale: state.syncStale === true
+      stale: state.syncStale === true,
+      syncError: state.syncReadError || ""
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
     ` aria-label="Tarefas dos cursos${notice ? ': há um aviso' : ''}" title="Tarefas">` +
@@ -314,7 +315,8 @@ function renderCourseHeader(course, state) {
     renderRuntimeStatusControl({
       offline: state.syncOffline === true,
       synchronizing: state.syncing === true,
-      stale: state.syncStale === true
+      stale: state.syncStale === true,
+      syncError: state.syncReadError || ""
     }, { popoverId: "authoring-runtime-status-popover" }) + "</div>" +
     '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action"' +
     ` aria-label="Abrir tarefas do curso${courseFeedbackFailure(state) ? ': há um aviso' : ''}" title="Tarefas">` +
@@ -1174,7 +1176,8 @@ export function createCourseAuthoringSurface({
     return renderRuntimeStatusControl({
       offline: state.syncOffline === true,
       synchronizing: state.syncing === true,
-      stale: state.syncStale === true
+      stale: state.syncStale === true,
+      syncError: state.syncReadError || ""
     }, { popoverId: "authoring-runtime-status-popover" });
   }
 
@@ -1186,6 +1189,8 @@ export function createCourseAuthoringSurface({
   }
 
   function setAuthoringSyncState(next = {}) {
+    if (Object.hasOwn(next, "syncError")) state.syncReadError = String(next.syncError || "");
+    else if (next.syncing === true || next.stale === false) state.syncReadError = "";
     if (Object.hasOwn(next, "syncing")) state.syncing = next.syncing === true;
     if (Object.hasOwn(next, "offline")) state.syncOffline = next.offline === true;
     if (Object.hasOwn(next, "stale")) state.syncStale = next.stale === true;
@@ -1492,6 +1497,14 @@ export function createCourseAuthoringSurface({
         initialFocusKey,
         onNavigate: (hash, options) => navigate(hash, options),
         onFeedback: setRequestFeedback,
+        onReadState: setAuthoringSyncState,
+        onCourseRead(value) {
+          const detail = normalizeCourseDetail(value, { expectedCourseId: state.course.courseId });
+          rememberCourse(projectRefreshedCourse(detail));
+          setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
+          const header = root.querySelector?.(".course-authoring-course-header");
+          if (header) header.outerHTML = renderCourseHeader(state.course, state);
+        },
         onStudyUnitChange(studyUnitId) {
           const explicitTarget = Boolean(state.routeTarget);
           const hash = buildCourseAuthoringRoute(state.course.courseId, {
@@ -2432,9 +2445,10 @@ export function createCourseAuthoringSurface({
     if (hasPendingWriteEnvelope() || hasTransientAuthoringDraft() ||
         mountedPanelHasPendingDraft()) return true;
     if (root.querySelector?.(
-      '[role="alertdialog"], [role="dialog"]:not([data-course-authoring-readonly-dialog])'
+      '[role="alertdialog"], [role="dialog"]:not([data-course-authoring-readonly-dialog]):not([data-course-authoring-draft-managed])'
     )) return true;
     return [...(root.querySelectorAll?.("form") || [])].some((form) =>
+      !form.closest?.('[data-course-authoring-draft-managed]') &&
       [...(form.elements || [])].some(controlHasDraft));
   }
 
@@ -2467,14 +2481,9 @@ export function createCourseAuthoringSurface({
       return true;
     } catch (error) {
       if (!state.opened || state.view !== "list") return false;
-      const code = String(error?.code || "").toLowerCase();
-      const message = String(error?.message || "").toLowerCase();
-      const offline = navigatorValue?.onLine === false ||
-        ["offline", "network_error", "network_unavailable", "request_timeout",
-          "service_unavailable", "failed_to_fetch"].includes(code) ||
-        /failed to fetch|fetch failed|network|offline|connection|socket/u.test(message);
+      const offline = navigatorValue?.onLine === false || error?.offline === true;
       state.listRequestFailure = writeFailureMessage(error);
-      const statusUpdated = setAuthoringSyncState({ offline, stale: true });
+      const statusUpdated = setAuthoringSyncState({ syncing: false, offline, stale: true });
       if (!statusUpdated) render();
       setRequestFeedback(state.listRequestFailure, { error: true });
       return false;
@@ -2587,6 +2596,7 @@ export function createCourseAuthoringSurface({
       const stale = reads.some((read) => read?.stale === true);
       state.syncOffline = offline;
       state.syncStale = stale;
+      state.syncing = false;
       if (changed) render();
       else updateAuthoringRuntimeStatus();
       return true;
@@ -2597,7 +2607,7 @@ export function createCourseAuthoringSurface({
       }
       const failure = classifyCourseAuthoringError(error, { knownCourse: previousCourse });
       const offline = failure.kind === "offline-known" || navigatorValue?.onLine === false;
-      const statusUpdated = setAuthoringSyncState({ offline, stale: true });
+      const statusUpdated = setAuthoringSyncState({ syncing: false, offline, stale: true });
       if (failure.kind === "access-revoked") {
         state.failure = failure;
         state.course = null;
@@ -2759,11 +2769,17 @@ export function createCourseAuthoringSurface({
         if (sequence === inspectionSequence) {
           if (refreshed) setRequestFeedback("");
           const header = root.querySelector?.(".course-authoring-course-header");
-          if (header) header.outerHTML = renderCourseHeader(course, state);
+          if (header) header.outerHTML = renderCourseHeader(state.course, state);
         }
         return refreshed;
       } catch (error) {
         if (state.opened && sequence === inspectionSequence) {
+          if ([401, 403].includes(Number(error?.status))) {
+            state.failure = classifyCourseAuthoringError(error, { knownCourse: state.course });
+            state.course = null;
+            render();
+            return false;
+          }
           setRequestFeedback(classifyCourseAuthoringError(error, {
             knownCourse: state.course
           }).message, { error: true });
@@ -3576,6 +3592,12 @@ export function createCourseAuthoringSurface({
 
   root.addEventListener("click", (event) => {
     if (!state.opened) return;
+    if (event.target.closest?.('[data-action="synchronize-study"]')?.dataset?.action === "synchronize-study") {
+      return refresh().catch((error) => {
+        setRequestFeedback(writeFailureMessage(error), { error: true });
+        return false;
+      });
+    }
     if (event.target.matches?.("[data-course-authoring-confirm-backdrop]")) {
       closeActionConfirmation();
       return;

@@ -1530,6 +1530,7 @@ test("revogação poda a posição inacessível e limpar progresso preserva o Cu
 test("refresh online apaga cache e navegação de Curso que deixou de ser acessível", async () => {
   const cleared = [];
   let accessibleCourseIds = [COURSE_A, COURSE_B];
+  let stale = false;
   const store = cache();
   const repository = new CourseStudyRepository({
     bridge: {
@@ -1544,6 +1545,7 @@ test("refresh online apaga cache e navegação de Curso que deixou de ser acess�
             completedStudyUnitCount: 0
           })),
           hasMore: false,
+          stale,
           nextCursor: null
         };
       },
@@ -1573,6 +1575,11 @@ test("refresh online apaga cache e navegação de Curso que deixou de ser acess�
   assert.equal(await repository.refreshCourseOfflineAvailability(COURSE_B), true);
 
   accessibleCourseIds = [COURSE_A];
+  stale = true;
+  await repository.refreshCourses();
+  assert.deepEqual(cleared, [], "Lista local incompleta não demonstra revogação.");
+  assert.ok(repository.loadStudyNavigation().positions[COURSE_B]);
+  stale = false;
   await repository.refreshCourses();
 
   assert.deepEqual(cleared, [COURSE_B]);

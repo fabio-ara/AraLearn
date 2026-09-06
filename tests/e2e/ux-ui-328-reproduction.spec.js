@@ -194,10 +194,19 @@ test("#328 S11: Observações aberta sem rascunho permite atualização", async 
   const before = await page.evaluate(() => globalThis.uxUi328.requests.length);
   const result = await page.evaluate(() => globalThis.uxUi328.surface.refresh());
   const after = await page.evaluate(() => globalThis.uxUi328.requests.length);
-  await expect(page.locator(".course-authoring-transient-feedback")).toContainText("Atualização adiada para preservar sua edição");
+  await expect(page.locator(".course-authoring-transient-feedback").filter({ hasText: "Atualização adiada para preservar sua edição" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: /Observações/u })).toBeVisible();
   await info.attach("empty-observation-refresh", { body: JSON.stringify({ result, before, after }), contentType: "application/json" });
-  knownDefect("S11", "sheet com composer vazio é tratado como edição pendente");
   expect(result).not.toBe("deferred");
+});
+
+test("#329 nuvem da Autoria executa nova leitura e preserva unidade focal", async ({ page }) => {
+  await open(page, "content", "", 13);
+  const before = await page.evaluate(() => globalThis.uxUi328.requests.length);
+  await page.locator('[data-authoring-runtime-status] [data-action="synchronize-study"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.uxUi328.requests.length)).toBeGreaterThan(before);
+  await expect(card(page, 13)).toBeVisible();
+  await expect(page.locator('[data-authoring-runtime-status] [aria-busy="true"]')).toHaveCount(0);
 });
 
 test("#328 Observações válidas: existentes, longa, lista vazia e envio separado", async ({ page }) => {
