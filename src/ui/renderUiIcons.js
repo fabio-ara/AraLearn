@@ -1,6 +1,19 @@
 export function renderUiIcon(iconName, className = "ui-icon") {
   const classes = `${className}`.trim();
 
+  const toolPaths = {
+    audio: '<path d="M2 6h3l4-3v10l-4-3H2zM11 5a5 5 0 0 1 0 6M13 3a8 8 0 0 1 0 10"/>',
+    calculator: '<rect x="3" y="1.5" width="10" height="13" rx="1.5"/><path d="M5 4h6M5 7h1M10 7h1M5 10h1M10 10h1M5 12h1M10 12h1"/>',
+    'book-open': '<path d="M8 4C6 2 3 2 1 3v10c2-1 5-1 7 1 2-2 5-2 7-1V3c-2-1-5-1-7 1v10"/>',
+    'book-text': '<path d="M4 2h9v12H4a2 2 0 0 1 0-4h9M2 12V4a2 2 0 0 1 2-2M6 5h4M6 7h4"/>',
+    languages: '<path d="M1 3h8M5 1v2M3 3c0 4 3 6 6 7M8 3c0 4-3 7-6 8M8 14l3-8 3 8M9 11h4"/>'
+  };
+  if (Object.hasOwn(toolPaths, iconName)) {
+    return `<svg class="${classes}" viewBox="0 0 16 16" aria-hidden="true" focusable="false"` +
+      ' fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">' +
+      toolPaths[iconName] + '</svg>';
+  }
+
   if (iconName === "account") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
@@ -450,10 +463,14 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "cloud") {
+  if (iconName === "cloud" || iconName === "cloud-alert") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
       '<path d="M4.1 12.2h7.6a2.5 2.5 0 0 0 .4-5 4.1 4.1 0 0 0-7.8-1.1 3.1 3.1 0 0 0-.2 6.1z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      (iconName === "cloud-alert"
+        ? '<path d="M8 6.2v2.1" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>' +
+          '<circle cx="8" cy="10.1" r=".7" fill="currentColor"></circle>'
+        : "") +
       "</svg>"
     );
   }

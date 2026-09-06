@@ -8,7 +8,7 @@ import {
   stripPackageManualTextMarkers
 } from "../../src/resources/kernel/manualTextMarkers.js";
 import { dotAttributes } from "../../src/resources/sdk/graphviz.js";
-import { renderPackageInline } from "../../src/resources/sdk/html.js";
+import { createPackageGapMarker, renderPackageInline } from "../../src/resources/sdk/html.js";
 
 test("markers associam paths distintos mesmo quando os literais são iguais", () => {
   const source = {
@@ -61,9 +61,16 @@ test("marker manual é consumido antes de serializar DOT", () => {
   assert.doesNotMatch(dot, /\uE100|\uE101|\uE102|package-manual|label%/u);
 });
 
-test("campo já preparado como lacuna não recebe marker manual", () => {
-  const gap = "\uE000payload\uE001";
-  const rendered = instrumentPackageManualTextTargets({ value: gap }, [{ path: "value" }]);
-  assert.equal(rendered.value, gap);
-  assert.deepEqual(listPackageManualTextPaths(rendered.value), []);
+test("campo preparado como prática conserva a identidade manual e o texto canônico protegido", () => {
+  const gap = createPackageGapMarker({ blockKey: "gap-1", index: 0, responseMode: "choice",
+    value: "", manualText: "a resposta <canônica>" });
+  const source = `Antes ${gap} depois.`;
+  const rendered = instrumentPackageManualTextTargets({ value: source }, [{ path: "value" }]);
+  assert.deepEqual(listPackageManualTextPaths(rendered.value), ["value"]);
+  assert.equal(stripPackageManualTextMarkers(rendered.value), source);
+  const html = renderPackageInline(rendered.value);
+  assert.match(html, /data-package-manual-field-path="value"/u);
+  assert.match(html, /data-manual-practice-text="a resposta &lt;canônica&gt;" contenteditable="false"/u);
+  assert.match(html, /data-action="text-gap-open-choice"/u);
+  assert.doesNotMatch(html, /[\uE000\uE001\uE100-\uE102]/u);
 });

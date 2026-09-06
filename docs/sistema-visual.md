@@ -9,6 +9,12 @@ A mesma linguagem atende Estudo e Autoria. As duas superfícies preservam a
 identidade do curso, mas apresentam controles diferentes porque estudar,
 planejar, inspecionar e corrigir são atividades distintas.
 
+Este capítulo define o contrato de experiência do programa [#295](https://github.com/fabio-ara/AraLearn/issues/295).
+Os critérios de aceitação estão no [roteiro de jornadas](roteiro-aceitacao-humana-autoria.md);
+a [matriz técnica](matriz-conformidade-tecnica.md) distingue implementação existente
+e capacidades ainda em execução. A definição de um comportamento aqui não é prova
+de que a versão publicada já o oferece.
+
 ## Fundamentos
 
 O AraLearn usa componentes próprios e uma fundação de variáveis semânticas de
@@ -93,9 +99,9 @@ telas maiores. Não existe barra lateral de desktop, segunda coluna, dashboard
 expandido nem canvas de 760 px. A Autoria possui um único rolador vertical;
 tabelas e comparações largas usam rolagem horizontal local.
 
-Uma ação frequente, reconhecível e situada prefere ícone conhecido, nome
-acessível e dica. Texto visível permanece quando evita ambiguidade real; a ação
-principal de cada contexto conserva um rótulo breve. Edição, reordenação e exclusão ficam
+As ações das superfícies principais usam somente ícones, com nome
+acessível, estado e dica também alcançável por toque. Menus e ajustes revelados
+usam texto necessário à decisão. Edição, reordenação e exclusão ficam
 em controles progressivos, sem desaparecer do produto. Planejamento não cria um
 card textual de próxima ação: objetivo e parte focal permanecem visíveis,
 enquanto ações ficam junto do objeto e priorizam ícones.
@@ -116,14 +122,10 @@ em primeiro plano e associa uma proposta concreta a cada resposta. Configuraçã
 do serviço e detalhes aparecem progressivamente. Aceitar gera, valida e aplica
 somente ao rascunho; salvar continua sendo uma decisão separada da pessoa.
 
-A edição de um curso compartilhado apresenta antes da gravação a
-frase “Ao salvar, o AraLearn criará
-uma cópia privada para você. O curso compartilhado continuará intacto.” A ação
-correspondente é **Salvar na minha cópia**. Depois da confirmação, a pessoa
-permanece na mesma Unidade e a
-interface informa **Cópia criada. Você continua nesta Unidade.** A Home distingue
-o original compartilhado e a cópia pessoal por iconografia e estado acessível
-ao lado do título, sem anexar sufixos nem expor identificadores ou revisões.
+Somente o proprietário edita, inclusive em Estudo. O estudante com acesso pode
+estudar e observar; uma tentativa de edição informa a necessidade de propriedade
+sem criar curso. Copiar é uma tarefa explícita do autor e produz outro curso
+independente, sem transportar acesso de terceiros nem estado pessoal.
 
 A sobreposição permite escolher OpenAI, Gemini ou DeepSeek e informar uma chave
 mantida somente na memória da sessão. Mensagem, conversa multiturmo, plano,
@@ -131,8 +133,11 @@ confirmação e estado de validação seguem uma progressão única. Endpoint,
 relay e explicações de arquitetura não aparecem no uso normal. A edição manual
 continua disponível, inclusive para código ou terminal extensos.
 
-O retorno de outra guia ou janela provoca a releitura do cabeçalho canônico e da
-área visível. Uma ação de atualização permanece disponível no cabeçalho para o
+No modo automático, o retorno de outra guia ou janela provoca a releitura do
+cabeçalho canônico e da área visível. No modo manual, conteúdo já aberto e estado
+de estudo só são sincronizados pelo acionamento da nuvem. Verificações de acesso
+e gravações autorais explicitamente solicitadas continuam ativas. Uma ação de
+atualização permanece disponível no cabeçalho para o
 caso em que o navegador não comunique a mudança de foco. Durante a releitura, o
 conteúdo confirmado permanece montado e não muda de posição; o indicador de
 sincronização informa o andamento até a substituição pontual dos dados. Esse
@@ -141,7 +146,8 @@ reencontre o alvo.
 
 Uma confirmação ou um formulário ativo bloqueia essa releitura até que a pessoa
 conclua ou cancele o rascunho. Os campos preenchidos permanecem no documento, e
-uma mensagem explica por que a atualização foi adiada. Preservar o trabalho em
+a nuvem indica a atualização pendente. Somente conflito material exige explicação
+focal; adiamento normal não cria mensagem persistente. Preservar o trabalho em
 curso tem precedência sobre substituir a área por uma revisão recém-lida.
 
 Recomposições internas seguem a mesma regra. Parâmetros, **Fontes**, Observações,
@@ -156,8 +162,8 @@ retomada. A barra cotidiana usa **Voltar + Home**: Voltar restaura a origem real
 rolagem e foco; Home oferece saída global previsível. Acesso direto ao pai só
 aparece como ação contextual quando uma jornada concreta o justificar. Um curso
 compartilhado concede Estudo e não entra na Autoria da pessoa
-favorecida. A cópia pessoal criada por uma gravação passa a ser curso próprio e,
-por isso, aparece na Autoria dessa pessoa. Semelhança visual entre cartões de
+favorecida. Uma cópia explicitamente criada pelo proprietário aparece na sua
+Autoria como curso independente. Semelhança visual entre cartões de
 navegação não comunica permissão.
 
 Sua entrada usa um único combobox de curso e uma única prévia rica selecionada.
@@ -188,7 +194,7 @@ cobrir a navegação global.
 
 ## Revisão, Fontes e Analytics
 
-Revisão parte das Observações abertas e da StudyUnit focal. Seleção em lote
+Revisão parte das observações abertas e da unidade de estudo focal. Seleção em lote
 aparece somente quando a ação exige vários alvos. Detalhes e decisões ficam
 próximos do conteúdo; não existe uma tela de execuções ou console de auditoria.
 
@@ -211,6 +217,47 @@ conservar métricas adequadas a cada plataforma. A prosa principal parte de
 15,5 px e entrelinha de 1,5. Títulos distinguem somente os níveis necessários,
 sem competir com o conteúdo. Texto corrido não usa alinhamento justificado.
 
+A interface usa títulos de 16 px, com peso entre 550 e 600, controles textuais
+de 14 px e apoio de 13 px. Cinzas legíveis e pesos moderados organizam as tarefas;
+negrito não é o padrão de todo rótulo. Esses valores não uniformizam a prosa,
+as fórmulas ou os elementos internos dos componentes didáticos.
+
+A largura e a altura do quadro de cada papel são determinadas pela janela e
+pelo layout, não pelo comprimento do título ou da descrição. Texto integral
+permanece disponível por rolagem local e teclado. Abrir detalhes não desloca
+o card vizinho. Nas listas de navegação, as ações ocupam um rodapé interno
+estável, separado da descrição; parágrafos e tabelas dentro do leitor continuam
+com a altura necessária ao conteúdo.
+
+Voltar, sincronização e menu conservam as mesmas âncoras em Estudo e Autoria,
+inclusive com barras de rolagem de desktop e no modo de edição. Avisos novos
+não deslocam esses controles. Confirmações de sucesso são fecháveis e breves;
+erros ou respostas incertas mantêm um sinal no menu, onde a explicação e a ação
+de recuperação podem ser abertas sem encobrir permanentemente o rodapé.
+
+A edição aberta pelo Conteúdo conserva o cabeçalho e a rota da Autoria nos
+níveis curso, módulo, lição, microssequência e unidade. O motor de edição é
+compartilhado com o Estudo, mas essa entrada retorna à inspeção ao salvar ou
+cancelar, preservando a posição e o foco de origem. Voltar com um rascunho ou
+uma gravação incerta exige decidir se ele deve ser mantido ou descartado;
+descartar a recuperação não desfaz dados já salvos. Essa edição não altera o
+percurso de Estudo.
+
+Nos níveis estruturais, Cancelar e Salvar ficam lado a lado no rodapé da tela,
+fora da área de rolagem; pouco texto não os deixa junto aos primeiros cards.
+A lista Meus cursos usa o mesmo alinhamento de Voltar, nuvem e menu. Criar e
+atualizar ficam no menu; falhas de leitura e criação permanecem acessíveis pelo
+indicador, sem deslocar a busca ou encobrir os cards. A recuperação de uma
+criação incerta conserva o pedido original até sua confirmação ou descarte
+explícito.
+
+Fontes mantém o catálogo como área principal. A fonte selecionada abre uma
+folha de altura estável, com título curto e dados completos em detalhes
+revelados. Referência, arquivos, âncoras e observações conservam seus dados e
+ações; fechar retorna ao foco de origem. Pessoas revela acesso e cópia em
+ajustes, mantendo ações individuais por ícone e o consentimento explícito para
+permissões que geram cópias independentes.
+
 Espaços derivam de uma escala previsível; cantos e sombras indicam agrupamento
 ou sobreposição funcional. Metadados podem ser menores que a prosa, mas
 continuam legíveis com ampliação de texto. Controles principais preservam área
@@ -229,7 +276,8 @@ o rótulo e a geometria calculada.
 `currentColor`. Um ícone sem texto visível recebe nome acessível. O estado é
 comunicado por rótulo, forma e cor; a troca de glifo isolada não basta.
 
-A gramática é icon-first, não icon-only. Títulos não recebem sufixos como
+A gramática das superfícies principais é icon-only. Menus e ajustes revelados
+admitem rótulos. Títulos não recebem sufixos como
 `· Seu Curso` para expressar propriedade; iconografia e estado acessível fazem
 essa distinção, com cor apenas como reforço.
 
@@ -341,11 +389,10 @@ verificação de **Rever** inclui foco, abertura e fechamento por `Enter` e muda
 de orientação do indicador. Uma rodada no Chrome real integra a verificação
 pós-publicação.
 
-O aceite da cópia pessoal percorre 360, 390, 430 e 1.280 px, nos temas claro e
-escuro. O shell permanece limitado a 430 px e centralizado em tela larga.
-Seletor e ação principal conservam 44 px, sem overflow ou identificadores
-técnicos. Depois da gravação, **Cópia pessoal** e **Curso compartilhado** aparecem
-como opções distintas.
+O aceite da cópia explícita pelo autor percorre 360, 390, 430 e 1.280 px, nos
+temas claro e escuro. O shell permanece limitado a 430 px e centralizado em tela
+larga. A edição do estudante é recusada sem criar cópia. Seletor e ações
+conservam suas dimensões, sem overflow ou identificadores técnicos.
 
 A matriz visual focal da Autoria percorre as quatro larguras e os dois temas,
 incluindo comparação antes e depois e rodada de Auditoria em 1.280 px. Ela rejeita

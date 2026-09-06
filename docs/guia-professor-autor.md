@@ -15,6 +15,25 @@ A pessoa autora não é presumida como estudante. “O público é iniciante” 
 o curso; “você está começando do zero” atribuiria sem base uma condição à pessoa
 que o está criando.
 
+## Compartilhar estudo e arquivos
+
+Em **Pessoas e acesso**, escolha privado ou público. A mudança exige confirmação;
+ao publicar, confira também se os arquivos ficam restritos às pessoas autorizadas
+ou disponíveis a visitantes. Em **Fontes**, cada fonte e cada PDF podem herdar a
+regra anterior ou definir uma exceção. O arquivo prevalece sobre a fonte, que
+prevalece sobre o curso. Um arquivo já baixado não pode ser recolhido.
+
+Para um acesso individual, use **Conceder acesso**, digite ao menos dois caracteres
+do `@identificador`, escolha o resultado e confirme. A busca mostra somente
+identificador e foto opcional, sem e-mail. O identificador escolhido deve
+continuar o mesmo no momento da confirmação; se mudou, refaça a busca.
+
+A pessoa favorecida pode estudar e enviar observações, sem editar o curso.
+Visitantes de um curso público leem, praticam e marcam Rever localmente; precisam
+entrar numa conta para observar. Retirar uma concessão não impede a leitura se
+o curso continua público. Tornar privado bloqueia novos acessos de visitantes e
+contas não favorecidas, preservando proprietário e acessos individuais.
+
 ## Aprovar o mapa curricular
 
 O primeiro resultado substantivo é o mapa de todo o curso:
@@ -92,22 +111,24 @@ conclusão de exemplo e integração conforme o objetivo.
 
 ## Ajustar o desenho
 
-O AraLearn mantém quatro dimensões pedagógicas configuráveis:
+A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
+conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
+produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
-- teto de ideias novas por unidade expositiva;
-- formas de explicação;
-- oportunidades mínimas de prática por requisito;
-- dimensões de variação da prática.
+Automático é uma intenção sem valor numérico implícito. Antes de materializar,
+o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+função, público e planejamento. Fixações da autoria e condições de pesquisa
+prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
+A aplicação conserva os valores e motivos daquela decisão. Alterar a
+configuração corrente não reescreve essa evidência histórica.
 
-Também mantém dois alvos editoriais quantitativos flexíveis: palavras por
-resposta de autoria e palavras por unidade de estudo. Eles orientam a extensão,
-mas não são limites e não autorizam resumir, omitir ou fragmentar conteúdo para
-atingir uma contagem.
-
-No estado `default`, o GPT precisa calibrar automaticamente os valores para cada
-microssequência ou unidade conforme conteúdo, função e público; não aplica um
-preset fixo. Em pesquisa, a pessoa pode fixar valores deliberadamente, e esses
-valores prevalecem.
+Você pode salvar um perfil de preferências e copiá-lo para um curso após
+examinar a prévia. As exceções existentes são preservadas, salvo seleção
+explícita, e condições de pesquisa continuam protegidas. Editar ou excluir o
+perfil depois não muda cursos já configurados. Distribuição e posição da
+prática orientam o desenho; as observações calculadas mostram o que foi
+declarado e onde aparece, sem atribuir uma nota pedagógica.
 
 Direção editorial é separada. Ela pode orientar extensão, estilo, títulos e
 organização, mas não retirar conteúdo necessário.
@@ -157,6 +178,12 @@ inspecionar → observar → preparar contexto → propor
 
 Aplicar uma proposta não demonstra que ela resolveu o problema; confira o
 conteúdo corrente.
+
+No minichat **Assistência por IA**, disponível ao proprietário em Estudo, você
+pode discutir sem alterar conteúdo. Quando houver proposta, use **Preparar
+prévia**, compare **Original** e **Prévia** e escolha **Aplicar ao rascunho**.
+Salvar continua uma decisão separada. Descartar a prévia ou o rascunho preserva
+o original; uma falha de geração ou um conflito não autoriza sobrescrevê-lo.
 
 ## Usar Analytics em pesquisa
 

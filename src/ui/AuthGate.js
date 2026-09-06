@@ -58,7 +58,7 @@ function formMarkup(mode) {
   `;
 }
 
-export function renderAuthGate({ root, authClient = null, configured = true, onAuthenticated = () => {} } = {}) {
+export function renderAuthGate({ root, authClient = null, configured = true, onAuthenticated = () => {}, onCancel = null } = {}) {
   if (!root) throw new TypeError("Elemento raiz da autenticação ausente.");
   let mode = authClient?.recoveryMode ? "recovery-password" : "login";
   let status = configured
@@ -73,7 +73,7 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
       <main class="auth-shell">
         <section class="auth-card" aria-label="Acesso ao AraLearn">
           <div class="auth-panel">
-            <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
+            <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span>${onCancel && !authClient?.recoveryMode ? iconButton({ action: "data-auth-cancel", icon: "arrow-left", label: "Voltar ao estudo" }) : ""}</header>
             <form class="auth-form" data-auth-form>${formMarkup(mode)}</form>
             <p class="auth-status" data-auth-status data-kind="${statusKind}" role="status" aria-live="polite"></p>
           </div>
@@ -82,6 +82,7 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
     `;
     const statusNode = root.querySelector("[data-auth-status]");
     if (statusNode) statusNode.textContent = status;
+    root.querySelector("[data-auth-cancel]")?.addEventListener("click", () => onCancel?.());
     root.querySelectorAll("[data-auth-mode]").forEach((button) => {
       button.addEventListener("click", () => {
         mode = button.dataset.authMode;

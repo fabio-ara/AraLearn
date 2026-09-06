@@ -51,7 +51,8 @@ test("#264 entrega ao produtor a fixture semântica sintética sem criar classif
 
   const materialization = courseAuthoringGuidanceForCall("preparar_materializacao")
     .instructions.join(" ");
-  assert.match(materialization, /prática e consolidação perto.*bloco de novidades e pré-requisitos/iu);
-  assert.match(materialization, /não deixe toda a prática.*longa sequência teórica/iu);
+  assert.match(materialization, /prática e consolidação considerando pré-requisitos, função e preferências de distribuição e posição/iu);
+  assert.match(materialization, /alternância ou blocos não certifica aprendizagem nem autoriza mover prática para antes de seus pré-requisitos/iu);
+  assert.match(materialization, /Ensine cada dependência antes do uso/iu);
   assert.match(materialization, /não invente requisito de evidência/iu);
 });

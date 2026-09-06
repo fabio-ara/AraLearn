@@ -270,6 +270,34 @@ async function repository(api = fakeApi()) {
   return { value, cache, api };
 }
 
+test("manual mantém outbox em fundo e permite Salvar observação e sincronização explícitos", async () => {
+  const api = fakeApi();
+  let reads = 0;
+  const read = api.getMyCourseAnchoredAnnotations.bind(api);
+  api.getMyCourseAnchoredAnnotations = (...args) => { reads += 1; return read(...args); };
+  const cache = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
+  const value = new CourseAnnotationRepository({ courseId: COURSE_ID, courseRevision: 7, api, cache,
+    synchronizationMode: "manual", uuidFactory: ids(), windowValue: {} });
+  await value.initialize();
+  await value.refreshTarget({ studyUnitId: UNIT_ID });
+  assert.equal(reads, 0);
+  api.state.online = false;
+  await value.createForTarget({ studyUnitId: UNIT_ID }, { rawText: "Observação explícita.", category: null });
+  const sent = api.state.calls.length;
+  assert.equal(sent, 1);
+  api.state.online = true;
+  await value.flush();
+  assert.equal(api.state.calls.length, sent);
+  assert.equal(value.snapshot().pendingCount, 1);
+  await value.flush({ explicit: true });
+  assert.equal(value.snapshot().pendingCount, 0);
+  assert.equal(api.state.items.size, 1);
+  await value.refreshTarget({ studyUnitId: UNIT_ID }, { explicit: true });
+  assert.ok(reads > 0);
+  value.close();
+  cache.close();
+});
+
 test("mantém N observações offline e sincroniza cada request uma vez", async () => {
   const api = fakeApi();
   api.state.online = false;

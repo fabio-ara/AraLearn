@@ -464,6 +464,7 @@ export class CourseAnnotationRepository {
     courseRevision,
     api,
     cache,
+    synchronizationMode = "automatic",
     clock = () => new Date(),
     uuidFactory = createUuid,
     windowValue = globalThis.window || globalThis,
@@ -481,6 +482,7 @@ export class CourseAnnotationRepository {
       throw new TypeError("Cache de observações obrigatório.");
     }
     this.api = api;
+    this.setSynchronizationMode(synchronizationMode);
     this.cache = cache;
     this.clock = clock;
     this.uuidFactory = uuidFactory;
@@ -488,6 +490,11 @@ export class CourseAnnotationRepository {
     this.BroadcastChannelValue = windowValue?.BroadcastChannel;
     this.scope = String(cache.name || "course-cache");
     this.ephemeralTargetPages = new Map();
+  }
+
+  setSynchronizationMode(mode) {
+    if (!new Set(["automatic", "manual"]).has(mode)) throw new TypeError("Modo de sincronização inválido.");
+    this.synchronizationMode = mode;
   }
 
   setCourseRevision(value) {
@@ -719,10 +726,13 @@ export class CourseAnnotationRepository {
     throw new Error("A leitura do alvo excedeu o limite seguro de observações.");
   }
 
-  async refreshTarget(reference, { fallbackToCache = true } = {}) {
+  async refreshTarget(reference, { fallbackToCache = true, explicit = false } = {}) {
     this.#assertInitialized();
     const id = targetId(reference);
     await this.#readLocal();
+    if (this.synchronizationMode === "manual" && !explicit) {
+      return this.loadForTarget({ studyUnitId: id });
+    }
     try {
       const pages = await this.#readPages(targetQuery(id));
       await this.#updateCache((cache) => {
@@ -814,7 +824,7 @@ export class CourseAnnotationRepository {
       });
     }
     await this.#broadcast([entry.annotationId]);
-    await this.flush();
+    await this.flush({ explicit: true });
     return entry;
   }
 
@@ -881,7 +891,7 @@ export class CourseAnnotationRepository {
     try {
       await this.refreshTarget(
         { studyUnitId: targetStudyUnitId },
-        { fallbackToCache: false }
+        { fallbackToCache: false, explicit: true }
       );
     } catch (error) {
       if (!networkFailure(error)) throw error;
@@ -920,19 +930,23 @@ export class CourseAnnotationRepository {
     return next;
   }
 
-  flush() {
+  flush({ explicit = false } = {}) {
     this.#assertInitialized();
-    return this.#withFlushLock(() => this.#flushUnlocked());
+    if (this.synchronizationMode === "manual" && !explicit) {
+      return this.#readLocal().then(() => this.snapshot());
+    }
+    return this.#withFlushLock(() => this.#flushUnlocked({ explicit }));
   }
 
-  async #flushUnlocked() {
+  async #flushUnlocked({ explicit = false } = {}) {
     const refreshTargets = new Set();
     while (true) {
       await this.#readLocal();
+      if (this.synchronizationMode === "manual" && !explicit) return this.snapshot();
       const entry = this.outbox.commands.find(({ status }) => status === "pending");
       if (!entry) {
         for (const target of refreshTargets) {
-          await this.refreshTarget({ studyUnitId: target });
+          await this.refreshTarget({ studyUnitId: target }, { explicit });
         }
         return this.snapshot();
       }
@@ -983,7 +997,7 @@ export class CourseAnnotationRepository {
           return outbox;
         });
         try {
-          await this.refreshTarget({ studyUnitId: entry.targetStudyUnitId });
+          await this.refreshTarget({ studyUnitId: entry.targetStudyUnitId }, { explicit });
         } catch (refreshError) {
           if (authorityFailure(refreshError)) throw refreshError;
         }

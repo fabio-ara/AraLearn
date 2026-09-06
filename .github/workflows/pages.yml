@@ -1,109 +1,239 @@
-name: Publicar site
+name: Publicar produto
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "*.md"
-      - "docs/**/*.md"
-      - "docs/**/*.bib"
-      - "docs/evidence/registro-buscas-bibliograficas.csv"
-      - "ux-atlas/**/*.md"
   workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: Run integral aprovado da candidata integrada
+        required: true
+        type: string
+      candidate_run_attempt:
+        description: Tentativa exata do run integral
+        required: true
+        type: string
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages-${{ ((github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && 'publish') || github.run_id }}
-  cancel-in-progress: true
+  group: aralearn-product-promotion
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Gerar artefato
-    if: >-
-      ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-          github.event_name == 'push' }}
+  candidate:
+    name: Conferir candidata integrada
+    if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.candidate.outputs.version }}
+      site_current: ${{ steps.site.outputs.site_current }}
+      promotion_artifact_id: ${{ steps.promotion.outputs.artifact-id }}
     env:
-      ARALEARN_PAGES_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
     steps:
-      - name: Baixar repositório
+      - name: Baixar revisão de promoção
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.ARALEARN_PAGES_SHA }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-
       - name: Preparar Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
-
-      - name: Instalar dependências
-        run: npm ci
-
-      - name: Validar configuração pública do Supabase
+      - name: Verificar run, árvore, configuração e digests
+        id: candidate
+        env:
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          CANDIDATE_RUN_ATTEMPT: ${{ inputs.candidate_run_attempt }}
         shell: pwsh
-        run: |
-          if (-not $env:ARALEARN_SUPABASE_URL -or -not $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY) {
-            throw "Defina ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY em Settings > Secrets and variables > Actions > Variables."
-          }
-
-      - name: Confirmar migrations compatíveis no projeto hospedado
-        run: npm run deployment:verify-hosted
-
-      - name: Gerar o artefato aprovado
-        run: npm run pages:build
-
-      - name: Conferir configuração e segurança do artefato
-        shell: pwsh
-        run: >-
-          pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
-          -Target Pages -RequireRuntimeConfig
-
-      - name: Validar exemplo público
-        run: npm run validate:example
-
-      - name: Configurar Pages
-        uses: actions/configure-pages@v5
+        run: node ./scripts/releaseCandidate.mjs prepare $env:CANDIDATE_RUN_ID $env:CANDIDATE_RUN_ATTEMPT
+      - name: Conferir backend hospedado exigido pela candidata
+        run: node ./scripts/releaseCandidate.mjs verify-backend
+      - name: Conferir configuração e segurança do site aprovado
+        run: pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1 -Target Pages -RequireRuntimeConfig
+      - name: Reconhecer site já publicado
+        id: site
+        run: node ./scripts/releaseCandidate.mjs site-current
+      - name: Guardar artefatos exatos da promoção
+        id: promotion
+        uses: actions/upload-artifact@v4
         with:
-          enablement: true
+          name: aralearn-promotion-${{ github.run_attempt }}
+          path: |
+            .candidate/candidate.json
+            .pages
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Enviar artefato
+  android:
+    name: Preparar Android
+    needs: candidate
+    permissions:
+      contents: write
+    uses: ./.github/workflows/android-release.yml
+    with:
+      version: ${{ needs.candidate.outputs.version }}
+      promotion_artifact_id: ${{ needs.candidate.outputs.promotion_artifact_id }}
+    secrets:
+      ARALEARN_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_BASE64 }}
+      ARALEARN_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEYSTORE_PASSWORD }}
+      ARALEARN_ANDROID_KEY_ALIAS: ${{ secrets.ARALEARN_ANDROID_KEY_ALIAS }}
+      ARALEARN_ANDROID_KEY_PASSWORD: ${{ secrets.ARALEARN_ANDROID_KEY_PASSWORD }}
+
+  android-native:
+    name: Instalar e atualizar APK assinado
+    needs: [candidate, android]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      proof_artifact_id: ${{ steps.proof.outputs.artifact-id }}
+      proof_sha256: ${{ steps.native.outputs.proof_sha256 }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Baixar revisão integrada
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Preparar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Preparar Java do SDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Baixar manifesto aprovado
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.candidate.outputs.promotion_artifact_id }}
+          merge-multiple: true
+          path: .
+      - name: Reconfirmar promoção atual
+        run: node ./scripts/releaseCandidate.mjs current
+      - name: Acessar somente KVM já disponível
+        shell: bash
+        run: |
+          test -c /dev/kvm || { echo 'INEVITABLE: runner sem KVM; gate recusado.' >&2; exit 1; }
+          sudo setfacl -m "u:$(id -u):rw" /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - name: Provar instalação e upgrade sem conta
+        id: native
+        run: python3 ./scripts/androidNativeGate.py run --folder "${{ runner.temp }}/aralearn-native-proof"
+      - name: Guardar prova nativa e capturas sintéticas
+        id: proof
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-android-native-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/aralearn-native-proof/
+          if-no-files-found: warn
+          retention-days: 7
+
+  pages:
+    name: Publicar Pages aprovado
+    needs: [candidate, android, android-native]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: https://fabio-ara.github.io/AraLearn/
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Baixar revisão integrada
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Preparar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Baixar bytes aprovados
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.candidate.outputs.promotion_artifact_id }}
+          merge-multiple: true
+          path: .
+      - name: Reconfirmar revisão e artefato antes de publicar
+        run: |
+          node ./scripts/releaseCandidate.mjs current
+          node ./scripts/releaseCandidate.mjs verify-pages
+      - name: Baixar prova do APK exato
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.android-native.outputs.proof_artifact_id }}
+          merge-multiple: true
+          path: .candidate/android-native
+      - name: Conferir instalação antes de Pages
+        run: python3 ./scripts/androidNativeGate.py verify --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
+      - name: Configurar Pages
+        if: needs.candidate.outputs.site_current != 'true'
+        uses: actions/configure-pages@v5
+      - name: Enviar artefato Pages
+        if: needs.candidate.outputs.site_current != 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .pages
-
-  deploy:
-    name: Publicar no GitHub Pages
-    needs: build
-    runs-on: ubuntu-latest
-    env:
-      ARALEARN_PAGES_SHA: ${{ github.sha }}
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Publicar
-        id: deployment
+      - name: Publicar no GitHub Pages
+        if: needs.candidate.outputs.site_current != 'true'
         uses: actions/deploy-pages@v4
+      - name: Conferir bytes efetivamente publicados
+        run: node ./scripts/verifyPublishedSite.mjs --url https://fabio-ara.github.io/AraLearn/ --candidate-manifest .candidate/candidate.json
 
-      - name: Baixar o verificador publicado
+  release:
+    name: Concluir publicação do produto
+    needs: [candidate, android, android-native, pages]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Baixar revisão integrada
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.ARALEARN_PAGES_SHA }}
+          ref: ${{ github.sha }}
           persist-credentials: false
-
       - name: Preparar Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
-
-      - name: Conferir o endereço publicado
-        run: node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"
+      - name: Baixar manifesto aprovado
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.candidate.outputs.promotion_artifact_id }}
+          merge-multiple: true
+          path: .
+      - name: Baixar prova do APK exato
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.android-native.outputs.proof_artifact_id }}
+          merge-multiple: true
+          path: .candidate/android-native
+      - name: Reconfirmar prova nativa antes da Release
+        run: python3 ./scripts/androidNativeGate.py verify --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
+      - name: Verificar partes e tornar a Release pública
+        run: node ./scripts/releaseCandidate.mjs finalize-release

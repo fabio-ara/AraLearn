@@ -41,15 +41,17 @@ no mesmo navegador permanecem.
 
 ## Um Curso não aparece
 
-Em **Estudo**, devem aparecer cursos próprios e com acesso direto. Em
+Em **Estudo**, aparecem cursos próprios, com acesso direto e públicos. Em
 **Autoria**, aparecem somente cursos próprios.
 
 1. confirme que está na conta e no modo corretos;
 2. atualize a lista quando a conexão retornar;
 3. para curso compartilhado, peça ao proprietário que confira **Pessoas**;
-4. confirme que o acesso foi concedido ao e-mail exato da conta.
+4. confirme que o proprietário selecionou o seu identificador atual e concedeu o acesso à sua conta.
 
-Não existe entrada por Workspace, Trilha, Coleção ou catálogo público.
+Cursos tornados públicos pelo proprietário também aparecem em Estudo e podem
+ser abertos por visitantes. Confira a busca e a disponibilidade pública do
+curso; o catálogo não concede acesso aos cursos privados.
 
 ## Um Curso aparece, mas não abre
 
@@ -145,23 +147,21 @@ Outro cliente alterou o curso depois da leitura. Reabra ou releia o curso,
 compare a intenção com o estado novo e aplique apenas o que ainda faz sentido.
 Não aumente a revisão à mão e não repita a escrita às cegas.
 
-## Salvei um Curso compartilhado e a cópia não apareceu
+## Há um rascunho antigo de cópia guardado
 
-Uma cópia pessoal só nasce quando **Salvar na minha
-cópia** confirma uma mudança material.
-Abrir o editor, gerar
-uma prévia, cancelar, receber uma falha ou salvar conteúdo idêntico deixa o
-curso compartilhado intacto e não cria outro curso.
+O estudante não edita o curso compartilhado ou público, e o aplicativo não
+cria cópias automaticamente. Cópias próprias já existentes continuam sendo
+cursos independentes, editáveis por seu proprietário.
 
-Se a conexão caiu ou a resposta ficou ambígua, não refaça o texto em outro
-curso. Reabra a mesma Unidade ou reconecte: o aplicativo conserva o envelope
-delimitado e repete o mesmo pedido. Se outra aba já criou a cópia com uma
-intenção diferente, a interface conserva o rascunho e informa o conflito. Ela
-não deve mostrar o identificador interno do curso de destino.
+Uma intenção guardada pela versão anterior pode ter recebido confirmação no
+servidor mesmo quando a resposta se perdeu. A recuperação consulta a prova
+de origem do alvo ainda próprio e a edição inicial, sem reaplicar o texto nem
+criar outro curso. Ela pode reconhecer esse alvo mesmo se a origem foi
+removida. Uma revisão posterior no alvo não autoriza sobrescrevê-lo.
 
-Depois da confirmação, a pessoa continua na mesma Unidade da **Cópia pessoal**. O
-progresso e as Observações do original não são transportados. Fontes, PDFs,
-acessos e planejamento também começam separados.
+Se não houver prova suficiente, o rascunho permanece guardado. Confira o
+conteúdo antes de descartá-lo explicitamente; repetir a consulta não recria
+o comando retirado nem transforma o curso de outra pessoa em curso próprio.
 
 ## O formulário reapareceu depois de salvar
 
@@ -174,10 +174,10 @@ Use **Cancelar** ou **Descartar** somente quando quiser abandonar essa intençã
 O rascunho é transitório da interface e não integra a fila do IndexedDB; evite
 recarregar ou fechar a página antes de concluir a repetição ou o descarte.
 
-A primeira gravação de uma cópia pessoal é a exceção delimitada: seu envelope
-fica no IndexedDB para sobreviver a reinício e reconexão. Descartar essa intenção
-remove o envelope. Conversa, configuração e credencial do provedor nunca fazem
-parte dele.
+Rascunhos antigos da criação automática de cópia podem permanecer no IndexedDB
+para recuperação por consulta, como descrito acima. Esse caso não repete o
+escritor retirado. Descartar a intenção remove seu envelope; conversa,
+configuração e credencial do provedor não fazem parte dele.
 
 ## A Assistência por IA não responde
 
@@ -216,7 +216,7 @@ expirar, anexe novamente o mesmo arquivo numa mensagem nova.
 Para abrir um anexo, releia a fonte e solicite um novo endereço assinado. O
 endereço expira em 60 segundos, não pode ser revogado individualmente durante
 essa janela e não deve ser guardado como identidade do arquivo. Confira
-também a cota de 64 MiB de conteúdo único por curso e o limite de oito anexos
+também a cota conjunta de 64 MiB de PDFs e áudios por curso e o limite de oito anexos
 por fonte.
 
 Envio, remoção e reativação de bytes passam pelo serviço e pela API do Storage;
@@ -235,7 +235,7 @@ existe mais, o aplicativo limpa o estado local em vez de conservar o painel.
 
 1. confirme OAuth e conta;
 2. confirme que o curso é próprio, pois a Autoria é exclusiva do proprietário;
-3. confira se o catálogo oferece as dezessete tarefas humanas correntes;
+3. confira se o cliente oferece as tarefas humanas do catálogo corrente;
 4. use `retomar_curso` ou a leitura focal da tarefa antes de escrever;
 5. diante de conflito ou referência ambígua, releia o recorte;
 6. confira se conversa e interface apontam para o mesmo ambiente.
@@ -335,12 +335,21 @@ percentual de autoria humana.
 
 ## Não consigo conceder acesso
 
-Somente o proprietário pode gerir **Pessoas**. O destinatário precisa ter uma
-conta localizada pelo e-mail exato, e a confirmação explícita é obrigatória.
-O serviço não pesquisa diretório nem concede papel de edição. A resposta é
-genérica e não confirma se a conta existe ou se a relação mudou. Depois de dez
-tentativas em dez minutos, aguarde a janela seguinte; repetir endereços para
-descobrir cadastros não é um uso apoiado.
+Somente o proprietário pode gerir **Pessoas**. O destinatário precisa escolher
+um identificador no perfil. Digite pelo menos dois caracteres e selecione a
+pessoa entre os resultados, conferindo identificador e avatar. A busca retorna
+até dez pessoas no contexto desse curso; não há diretório genérico.
+
+A confirmação vincula a conta selecionada ao identificador conferido. Se ele
+mudou ou foi reutilizado por outra conta, pesquise novamente antes de
+confirmar. O acesso permite estudar e enviar observações próprias, sem editar
+o curso. Depois de dez tentativas de concessão ou sessenta buscas em dez
+minutos, aguarde a janela seguinte.
+
+Se o identificador desejado estiver ocupado ao salvar o perfil, escolha outro.
+O identificador aceita de 3 a 30 caracteres ASCII: letras minúsculas, números,
+ponto, underscore e hífen, começando e terminando com letra ou número. O `@`
+inicial é opcional na entrada e não faz parte do valor guardado.
 
 ## A foto de perfil não é aceita
 

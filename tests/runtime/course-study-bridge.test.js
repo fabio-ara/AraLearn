@@ -5,6 +5,23 @@ import { CourseStudyBridge } from "../../src/study/CourseStudyBridge.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 
+test("ponte separa cache local e verificação fresca de acesso da carga de conteúdo", async () => {
+  const calls = [];
+  const course = { courseId: COURSE_ID, revision: 4 };
+  const bridge = new CourseStudyBridge({ controller: {
+    async listCourses() { throw new Error("Rede proibida"); },
+    async loadCourseDocument() { throw new Error("Rede proibida"); },
+    async clearCourse() {},
+    async listCachedCourses(options) { calls.push(["cache-list", options]); return { items: [course] }; },
+    async loadCachedCourseDocument(id) { calls.push(["cache-course", id]); return { course, document: { courses: [] } }; },
+    async checkCourseAccess(id) { calls.push(["access", id]); return course; }
+  } });
+  assert.deepEqual((await bridge.listCachedCourses({ cursor: null })).items, [course]);
+  assert.equal((await bridge.loadCachedCourse(COURSE_ID)).revision, 4);
+  assert.deepEqual(await bridge.checkCourseAccess(COURSE_ID), course);
+  assert.deepEqual(calls, [["cache-list", { cursor: null }], ["cache-course", COURSE_ID], ["access", COURSE_ID]]);
+});
+
 test("a ponte do Estudo delega lista, composição e limpeza a uma única cadeia", async () => {
   const calls = [];
   const document = {

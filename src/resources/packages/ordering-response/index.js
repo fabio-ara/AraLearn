@@ -1,3 +1,5 @@
+import { reconcilePackageTextAnswers } from "../../sdk/reconcileTextAnswers.js";
+import { orderingResponseInteraction } from "./interaction.js";
 import { academicProfile } from "../../sdk/academic.js";
 import {
   createPackageGapMarker,
@@ -147,6 +149,7 @@ function markerForSlot(data, slotIndex, order, options) {
     blockKey: options.responseBlockKey || options.blockKey,
     itemId: item.id,
     slotIndex,
+    ...(options.manualEditTargets?.length ? { manualText: data.targets[slotIndex].answer } : {}),
     totalSlots: data.targets.length,
     value: practiceValueLabel(item, item.answer, options),
     layoutText,
@@ -172,7 +175,25 @@ function comparePosition(left, right) {
   return 0;
 }
 
+function materializesOrdering(registry, instance, response, index) {
+  try {
+    const blockKey = "aralearn-ordering-materialization";
+    const html = registry.renderPreparedContent(instance, response, {
+      blockKey, responseBlockKey: blockKey, responseState: { order: response.data.targets.map(({ id }) => id) }
+    });
+    return html.split(`data-ordering-slot-index="${index}"`).length - 1 === 1;
+  } catch { return false; }
+}
+
 export const orderingResponsePackage = Object.freeze({
+  responseInteraction: orderingResponseInteraction,
+  reconcileContentEdit(data, change) {
+    const next = structuredClone(data);
+    reconcilePackageTextAnswers(next.targets || [], change, ({ entry, newAnswer }) => {
+      entry.answer = newAnswer;
+    });
+    return next;
+  },
   manifest: Object.freeze({
     id: "aralearn.response.ordering",
     version: "3.0.0",
@@ -348,7 +369,7 @@ export const orderingResponsePackage = Object.freeze({
     if (!errors.length) {
       studyUnit.response.data.targets.forEach((target, index) => {
         const instance = contents.get(target.targetInstanceId);
-        if (!registry.materializesOrdering(instance, studyUnit.response, index)) {
+        if (!materializesOrdering(registry, instance, studyUnit.response, index)) {
           errors.push(`Alvo de ordenação ${target.id} não materializa exatamente um controle visível no renderer do package.`);
         }
       });
@@ -383,7 +404,6 @@ export const orderingResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
-    if (options.manualEditing === true) return "";
     const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
     if (Array.isArray(options.dockExerciseParts)) {
       if (feedback) options.dockExerciseParts.push(feedback);

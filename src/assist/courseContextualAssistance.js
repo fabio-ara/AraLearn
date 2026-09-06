@@ -13,6 +13,8 @@ import {
   validateStudyUnitEnvelope
 } from "../resources/kernel/studyUnitEnvelope.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
+import { projectCourseDesignContext } from "../domain/courseDesignContext.js";
+import { validatePackageSchema } from "../resources/kernel/schemaValidation.js";
 
 const SCOPES = new Set(["study_unit", "didactic_microsequence", "lesson"]);
 const MAX_TURNS = 8;
@@ -172,12 +174,20 @@ function targetSelectionIds(target, scope, requested = []) {
 export function buildCourseAssistanceContext({
   project,
   selection,
+  configuration,
   scope = "study_unit",
   writeTargetId = "",
   writeTargetIds = []
 } = {}) {
   if (!SCOPES.has(scope)) throw new TypeError("Escopo de assistência inválido.");
   const path = findPath(project, selection);
+  const resolvedConfiguration = projectCourseDesignContext(configuration);
+  if (resolvedConfiguration.courseId !== path.course.id ||
+      resolvedConfiguration.scope.kind !== scope ||
+      resolvedConfiguration.scope.ref !== targetForScope(path, scope)?.id) {
+    throw new StudyUnitProviderError("assistance_configuration_mismatch",
+      "A configuração recebida pertence a outro alvo. Reabra a assistência neste conteúdo.");
+  }
   const target = targetForScope(path, scope);
   if (!target) {
     throw new StudyUnitProviderError(
@@ -198,6 +208,7 @@ export function buildCourseAssistanceContext({
       )
     },
     readOnlyContext: {
+      configuration: resolvedConfiguration,
       target: projectAssistanceTarget(target, scope),
       ...(path.studyUnit ? { completeStudyUnit: clone(path.studyUnit) } : {}),
       microsequence: path.microsequence ? {
@@ -265,7 +276,7 @@ const discussionSchema = Object.freeze({
   properties: {
     message: { type: "string", minLength: 1, maxLength: 1_600 },
     proposal: {
-      type: "object",
+      type: ["object", "null"],
       additionalProperties: false,
       required: ["summary", "changes", "scope", "componentNeeds"],
       properties: {
@@ -327,7 +338,7 @@ function normalizeDiscussion(value, scope) {
   }
   return Object.freeze({
     message: text(value.message),
-    proposal: normalizeProposal(value.proposal, scope)
+    proposal: value.proposal === null ? null : normalizeProposal(value.proposal, scope)
   });
 }
 
@@ -340,6 +351,7 @@ async function providerCall({ providerConfig, runtimeConfig, fetchImpl, signal, 
 export async function requestCourseAssistanceDiscussion({
   project,
   selection,
+  configuration,
   scope = "study_unit",
   writeTargetId = "",
   writeTargetIds = [],
@@ -359,7 +371,7 @@ export async function requestCourseAssistanceDiscussion({
     );
   }
   const { context } = buildCourseAssistanceContext({
-    project, selection, scope, writeTargetId, writeTargetIds
+    project, selection, configuration, scope, writeTargetId, writeTargetIds
   });
   const envelope = {
     ...context,
@@ -374,8 +386,10 @@ export async function requestCourseAssistanceDiscussion({
     signal,
     prompt: {
       system: "Você participa de uma conversa curta de edição curricular situada, adequada a modelos leves. " +
-        "Responda com brevidade e inclua sempre a melhor proposta concreta disponível neste turno, " +
-        "refinando a proposta atual quando houver uma. Descreva de uma a seis mudanças objetivas e liste " +
+        "A configuração focal já está resolvida pelo software: respeite valores fixados, distinga escolhas automáticas ainda pendentes e nunca recalcule heranças. " +
+        "Responda com brevidade e abertura ao debate. Quando o autor pedir explicação ou discussão sem mudança, " +
+        "responda à questão e devolva proposal:null. Quando houver uma mudança solicitada, proponha ou refine " +
+        "de uma a seis mudanças objetivas e liste " +
         "somente necessidades de representação por linguagem comum. Não invente fontes, não exponha JSON " +
         "ao usuário e nunca amplie o escopo de escrita.",
       prompt: JSON.stringify(envelope),
@@ -494,6 +508,15 @@ function strictComponentSchema(schema) {
 }
 
 function normalizeComponentData(value, schema) {
+  for (const keyword of ["oneOf", "anyOf"]) {
+    if (!Array.isArray(schema?.[keyword])) continue;
+    const candidates = schema[keyword].map(branch => normalizeComponentData(value, branch))
+      .filter(candidate => validatePackageSchema(candidate, schema).valid);
+    // Remove only the optional-null placeholders of an unambiguous canonical
+    // shape. Unknown keys, required nulls and conflicting forms still fail.
+    const distinct = new Map(candidates.map(candidate => [JSON.stringify(candidate), candidate]));
+    return distinct.size === 1 ? distinct.values().next().value : clone(value);
+  }
   if (schema?.type === "object" && plainObject(value) && plainObject(schema.properties)) {
     const result = clone(value);
     const required = new Set(list(schema.required));
@@ -797,6 +820,7 @@ function normalizedGenerated(raw) {
 export async function prepareCourseAssistanceProposal({
   project,
   selection,
+  configuration,
   confirmedProposal,
   conversation = [],
   writeTargetIds = [],
@@ -813,8 +837,12 @@ export async function prepareCourseAssistanceProposal({
     throw new TypeError("Confirme uma proposta válida antes de preparar a mudança.");
   }
   const { context, path } = buildCourseAssistanceContext({
-    project, selection, scope, writeTargetIds
+    project, selection, configuration, scope, writeTargetIds
   });
+  if (context.readOnlyContext.configuration.parameters.some(({ conflicts }) => conflicts.length)) {
+    throw new StudyUnitProviderError("assistance_configuration_conflict",
+      "Resolva as condições de configuração conflitantes antes de preparar uma alteração.");
+  }
   const target = targetForScope(path, scope);
   const contracts = discoverContracts(target, confirmedProposal);
   if (!contracts.length) {
@@ -841,6 +869,8 @@ export async function prepareCourseAssistanceProposal({
         signal,
         prompt: {
           system: "Prepare uma composição curricular tipada somente no escopo confirmado. " +
+            "Use a configuração focal resolvida fornecida: valores fixados não podem ser substituídos; automático delega o julgamento ao contexto. " +
+            "Alvos editoriais são flexíveis: redistribua o desenvolvimento sem truncar conhecimento ou alterar o repertório para satisfazer contagens. " +
             "Use exclusivamente os contratos exatos fornecidos. Preserve identidades existentes quando o objeto continuar existindo, " +
             "use posições consecutivas a partir de 1 e não invente fontes. Devolva somente o objeto no formato solicitado.",
           prompt: JSON.stringify({

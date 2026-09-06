@@ -1,4 +1,8 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
+import { buildCourseAuthoringComparison, assembleCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 import test from "node:test";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
@@ -28,21 +32,17 @@ const COURSE_B = "20000000-0000-4000-8000-000000000002";
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
-    contract: "aralearn.course-authoring-analytics.v2",
+    contract: "aralearn.course-authoring-analytics.v4",
+    basis: courseAuthoringBasisFixture(),
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
       studyUnitCount: 0,
-      parameters: [[
-        "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
-      ], ["required_explanation_forms", "Formas", "string_list"], [
-        "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-      ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
-        "authoring_chat_response_word_target", "Extensão da conversa", "integer"
-      ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
-        .map(([parameterId, label, valueKind]) => ({
-          parameterId, label, valueKind, effectiveValues: []
-        })),
+      parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      definition: structuredClone(definition), effectiveValues: []
+    })),
       editorialDirections: [],
       analysisUnits: [],
       introductionsByStudyUnit: [],
@@ -51,7 +51,8 @@ function analyticsSnapshot() {
       practiceByRequirement: [],
       practiceVariationDimensions: [],
       sourcesByRole: [],
-      wordCountsByStudyUnit: []
+      wordCountsByStudyUnit: [],
+      practiceSequence: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -99,6 +100,7 @@ function courseListItem(overrides = {}) {
     revision: 1,
     ownership,
     canEdit: ownership === "owned",
+    canObserve: true, visibility: "private", publicFileAccess: "restricted",
     moduleCount: 0,
     lessonCount: 0,
     topicCount: 0,
@@ -112,13 +114,50 @@ function courseListItem(overrides = {}) {
 
 function courseListPage(items = [courseListItem()], overrides = {}) {
   return {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items,
     hasMore: false,
     nextCursor: null,
     ...overrides
   };
 }
+
+test("manual lê somente lista e composição verificadas do cache, sem promover revisão pela checagem de acesso", async () => {
+  const store = new MemoryStateStore();
+  const fixture = documentFixture();
+  const { rows } = flattenCourseDocument(fixture);
+  let remoteRevision = 3;
+  let networkReads = 0;
+  let remoteError = null;
+  const controller = new CourseController({ store, api: {
+    async listCourses() { networkReads += 1; return courseListPage([courseListItem({ revision: 3 })]); },
+    async getCourse() {
+      networkReads += 1;
+      if (remoteError) throw remoteError;
+      return { contract: "aralearn.course.v1", courseId: COURSE_ID, title: "Curso", goal: "Aprender.", revision: remoteRevision };
+    },
+    async getCourseEntities() { networkReads += 1; return { contract: "aralearn.course-entities.v1", courseId: COURSE_ID,
+      revision: 3, items: rows, hasMore: false, nextCursor: null }; }
+  } });
+  assert.equal(await controller.loadCachedCourseDocument(COURSE_ID), null);
+  assert.equal((await controller.listCachedCourses()).items.length, 0);
+  assert.equal(networkReads, 0);
+  await controller.listCourses();
+  await controller.loadCourseDocument(COURSE_ID);
+  const reads = networkReads;
+  assert.equal((await controller.listCachedCourses()).items[0].revision, 3);
+  assert.deepEqual((await controller.loadCachedCourseDocument(COURSE_ID)).document, fixture);
+  assert.equal(networkReads, reads);
+  remoteRevision = 4;
+  assert.equal((await controller.checkCourseAccess(COURSE_ID)).revision, 4);
+  assert.equal((await controller.loadCachedCourseDocument(COURSE_ID)).course.revision, 3);
+  remoteError = networkFailure();
+  await assert.rejects(controller.checkCourseAccess(COURSE_ID));
+  assert.equal((await controller.loadCachedCourseDocument(COURSE_ID)).course.revision, 3);
+  remoteError = Object.assign(new Error("Revogado"), { status: 403 });
+  await assert.rejects(controller.checkCourseAccess(COURSE_ID), { status: 403 });
+  assert.equal(await controller.loadCachedCourseDocument(COURSE_ID), null);
+});
 
 function editableStudyUnit(title = "Unidade revista") {
   return {
@@ -355,6 +394,7 @@ test("mutação owner liga o replay à revisão original sem rejeitar avanço co
 
   const consideredSourceLinks = [{
     sourceId: "source-a",
+    linkId: "source-a", roles: [], occurrences: [],
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-a" }]
   }];
@@ -1009,7 +1049,7 @@ test("desenho exige leitura corrente, mantém DTO exato e mutação limpa o Curs
   let online = true;
   let revoked = false;
   const design = {
-    contract: "aralearn.course-design.v1",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision: 4,
     scopeContext: { current: { kind: "lesson", ref: "lesson-a", label: "Lição A" } }
@@ -1108,7 +1148,8 @@ test("Controller compartilha citações redigidas e reserva catálogo completo a
   const calls = [];
   const currentSourceId = "source-current";
   const sources = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "catalog",
@@ -1136,11 +1177,16 @@ test("Controller compartilha citações redigidas e reserva catálogo completo a
     change: { type: "retire_source", subjectId: currentSourceId, revision: 2 }
   };
   const citations = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
+      sourceRevision: 1, attachments: [],
+      linkId: "link-fixture", kind: "document", authors: [], publicationDate: null, identifier: null, language: null,
+      citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      relation: "informed_by", roles: [], occurrences: [],
       sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
@@ -1324,18 +1370,15 @@ test("Controller owner encaminha upload e download do PDF exato e invalida o Cur
     change: { type: "ingest_pdf", subjectId: sourceId, revision: 2 }
   };
   const access = {
-    contract: "aralearn.course-source-pdf-download.v1",
+    contract: "aralearn.course-source-pdf-download.v2",
     courseId: COURSE_ID,
     courseRevision: 5,
     sourceId,
     sourceRevision: 2,
-    storageOriginCourseId: COURSE_ID,
     attachment: {
       contentHash,
       byteSize: file.size,
       mediaType: "application/pdf",
-      storagePath: `${COURSE_ID}/${contentHash}.pdf`,
-      createdAt: "2026-08-20T12:00:00.000Z"
     },
     signedUrl: "https://project.invalid/storage/file.pdf?token=download-token",
     expiresAt: "2026-08-20T12:01:00.000Z"
@@ -1387,13 +1430,14 @@ test("Controller owner encaminha upload e download do PDF exato e invalida o Cur
     store: new MemoryStateStore(),
     api: {
       async listCourses() { return courseListPage([]); },
-      async getCourse() { throw new Error("não usado"); }
+      async getCourse() { throw new Error("não usado"); },
+      async getCourseSourceAttachmentDownload() { return access; }
     }
   });
-  await assert.rejects(
-    () => shared.getCourseSourceAttachmentDownload({}),
-    /não oferece a leitura de anexos/u
-  );
+  assert.deepEqual(await shared.getCourseSourceAttachmentDownload({
+    courseId: COURSE_ID, expectedCourseRevision: 5, sourceId, sourceRevision: 2, contentHash
+  }), access);
+
 });
 
 test("Controller classifica remove_pdf como mudança da Fonte", async () => {
@@ -1476,6 +1520,47 @@ test("Analytics é owner-only, remoto e ligado à revisão solicitada", async ()
   }), /não oferece (?:Analytics|Pesquisa)/u);
 });
 
+
+test("Controller comparação/export são owner-only e validam seleção sem cache ou fallback", async () => {
+  const left = analyticsSnapshot(); const right = analyticsSnapshot(); right.course.id = COURSE_B;
+  const comparison = buildCourseAuthoringComparison({ left, right });
+  const artifact = assembleCourseAuthoringExport({ analytics: left, document: { contract: "aralearn.course.v1", courses: [{ id: COURSE_ID, title: "Curso", goal: "Objetivo", modules: [] }] } });
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  const request = { left: selection, right: { ...selection, courseId: COURSE_B } };
+  const calls = []; let offline = false;
+  const api = { async listCourses() { return courseListPage([]); }, async getCourse() { throw new Error("não usado"); }, async loadCourseAuthoringComparison(value) { calls.push(value); if (offline) throw networkFailure(); return comparison; }, async exportCourseAuthoring(value) { calls.push(value); if (offline) throw networkFailure(); return artifact; } };
+  const store = new MemoryStateStore(); const owner = new CourseController({ api, store, ownerOnly: true }); const reader = new CourseController({ api, store, ownerOnly: false });
+  assert.deepEqual(await owner.loadCourseAuthoringComparison(request), comparison); assert.deepEqual(await owner.exportCourseAuthoring(selection), artifact);
+  assert.deepEqual(calls, [request, selection]); assert.equal(store.values.size, 0);
+  await assert.rejects(reader.loadCourseAuthoringComparison(request), /exige acesso de autoria/u); await assert.rejects(reader.exportCourseAuthoring(selection), /exige acesso de autoria/u); assert.equal(calls.length, 2);
+  offline = true; await assert.rejects(owner.loadCourseAuthoringComparison(request), (error) => error.code === "network_error"); await assert.rejects(owner.exportCourseAuthoring(selection), (error) => error.code === "network_error");
+});
+
+test("Controller comparação recusa curso/revisão/escopo trocado e mantém cache em conflito", async () => {
+  const left = analyticsSnapshot(); const right = analyticsSnapshot(); right.course.id = COURSE_B;
+  const result = buildCourseAuthoringComparison({ left, right });
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } }; const request = { left: selection, right: { ...selection, courseId: COURSE_B } };
+  const store = new MemoryStateStore(); await store.putCache(`course-authoring.v1.header:${COURSE_ID}`, { sensitive: true });
+  const api = { async listCourses() { return courseListPage([]); }, async getCourse() {}, async loadCourseAuthoringComparison() { return result; } };
+  const owner = new CourseController({ api, store, ownerOnly: true });
+  result.right.course.revision = 8; await assert.rejects(owner.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+  result.right.course.revision = 7; result.right.course.id = COURSE_ID; await assert.rejects(owner.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+  result.right.course.id = COURSE_B; result.right.scope = { kind: "study_unit", ref: "unit-a", label: "Unidade" }; await assert.rejects(owner.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+  assert.equal(store.values.size, 1);
+});
+
+test("Controller comparação revogada purga ambos cursos e listas; exportação purga somente seu curso", async () => {
+  const store = new MemoryStateStore(); const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  const denied = () => { throw Object.assign(new Error("Curso inacessível"), { status: 404, code: "PT404" }); };
+  const owner = new CourseController({ store, ownerOnly: true, api: { async listCourses() { return courseListPage([]); }, async getCourse() {}, loadCourseAuthoringComparison: denied, exportCourseAuthoring: denied } });
+  const keys = [`course-authoring.v1.header:${COURSE_ID}`, `course-authoring.v1.header:${COURSE_B}`, "course-authoring.v1.list::start"];
+  for (const key of keys) await store.putCache(key, { sensitive: true });
+  await assert.rejects(owner.loadCourseAuthoringComparison({ left: selection, right: { ...selection, courseId: COURSE_B } }), (error) => error.status === 404);
+  assert.equal(store.values.size, 0);
+  for (const key of keys) await store.putCache(key, { sensitive: true });
+  await assert.rejects(owner.exportCourseAuthoring(selection), (error) => error.status === 404);
+  assert.deepEqual([...store.values.keys()], [`course-authoring.v1.header:${COURSE_B}`]);
+});
 
 test("Controller preserva caches no conflito de citações e purga somente a revogação real", async () => {
   const store = new MemoryStateStore();
@@ -1642,6 +1727,7 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
   const store = new MemoryStateStore();
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -1652,7 +1738,8 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
     async loadCourseSources(courseId, options) {
       calls.push(["sources", courseId, structuredClone(options)]);
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1786,7 +1873,8 @@ test("edição contextual de Unidade sem atribuição preserva proveniência vaz
     async getCourse() { throw new Error("não usado"); },
     async loadCourseSources(courseId) {
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1864,6 +1952,7 @@ test("edição estrutural assistida preserva proveniência por Unidade e é rest
   const calls = [];
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -1873,7 +1962,8 @@ test("edição estrutural assistida preserva proveniência por Unidade e é rest
     async loadCourseSources(courseId, options) {
       calls.push(["sources", options.targetId]);
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1943,7 +2033,8 @@ test("falha transitória da releitura não transforma receipt confirmado em escr
     async getCourse() { throw new Error("não usado"); },
     async loadCourseSources(courseId) {
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -1995,6 +2086,7 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
   const store = new MemoryStateStore();
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -2012,7 +2104,8 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
         });
       }
       return {
-        contract: "aralearn.course-sources.v2",
+        contract: "aralearn.course-sources.v3",
+        bibliographyStyle: "abnt-2025",
         courseId,
         courseRevision: 4,
         mode: "target",
@@ -2095,14 +2188,16 @@ test("retry idempotente reutiliza a proveniência anterior sem preflight na revi
   assert.equal(result.reconciled, true);
 });
 
-test("operações de perfil, acesso, avatar e conta são delegadas sem outra camada", async () => {
+test("perfil escolhido atualiza cache e operações de acesso, avatar e conta chegam à API", async () => {
   const store = new MemoryStateStore();
   const calls = [];
+  const profile = { contract: "aralearn.person-profile.v2", userId: COURSE_B,
+    handle: null, avatarObjectKey: null, updatedAt: "2026-09-05T12:00:00Z" };
   const api = {
     async listCourses() { return courseListPage([]); },
     async getCourse() { return { courseId: COURSE_ID }; },
-    async getPersonProfile() { calls.push(["profile-read"]); return { displayName: null }; },
-    async updatePersonProfile(value) { calls.push(["profile-update", value]); return value; },
+    async getPersonProfile() { calls.push(["profile-read"]); return profile; },
+    async updatePersonProfile(value) { calls.push(["profile-update", value]); return { ...profile, ...value }; },
     async listCourseAccess(value) { calls.push(["access-list", value]); return { items: [] }; },
     async grantCourseAccess(value) { calls.push(["access-grant", value]); return value; },
     async revokeCourseAccess(value) { calls.push(["access-revoke", value]); return value; },
@@ -2116,7 +2211,8 @@ test("operações de perfil, acesso, avatar e conta são delegadas sem outra cam
   const key = "20000000-0000-4000-8000-000000000002/30000000-0000-4000-8000-000000000003.png";
 
   await controller.getPersonProfile();
-  await controller.updatePersonProfile({ displayName: "Pesquisadora" });
+  await controller.updatePersonProfile({ handle: "pesquisadora" });
+  assert.equal((await store.getCache("aralearn.person-profile.v2")).data.handle, "pesquisadora");
   await controller.listCourseAccess(COURSE_ID);
   await controller.grantCourseAccess({ courseId: COURSE_ID });
   await controller.revokeCourseAccess({ courseId: COURSE_ID });

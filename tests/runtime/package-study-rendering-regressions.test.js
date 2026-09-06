@@ -161,7 +161,7 @@ test("edição manual preserva o resource e publica somente o mapa textual invis
   assert.doesNotMatch(html, /Textos editáveis|Representação — somente leitura/u);
 });
 
-test("edição manual mostra conteúdo canônico e suprime a prática de lacuna", () => {
+test("edição manual preserva lacuna visível e texto canônico para serialização", () => {
   const card = {
     ...studyUnitWith({
       id: "body",
@@ -191,13 +191,14 @@ test("edição manual mostra conteúdo canônico e suprime a prática de lacuna"
     selectedResourceTargetIds: ["content:body"],
     manualEditingTargetId: "content:body"
   });
-  assert.match(rendered.bodyHtml, /Use DNS aqui\./u);
+  assert.match(rendered.bodyHtml, /Use <span data-manual-practice-text="DNS"/u);
   assert.match(rendered.bodyHtml, /data-package-manual-field-path="text"/u);
-  assert.doesNotMatch(rendered.bodyHtml, /runtime-text-gap|text-gap-open-choice|data-package="aralearn\.response/u);
+  assert.match(rendered.bodyHtml, /text-gap-open-choice/u);
+  assert.match(rendered.bodyHtml, /data-package="aralearn\.response\.gap"/u);
   assert.equal(rendered.dockHtml, "");
 });
 
-test("edição manual de célula suprime ordering e conserva a tabela", () => {
+test("edição manual de célula conserva tabela e controles de ordenação", () => {
   const card = {
     ...studyUnitWith({
       id: "steps",
@@ -225,11 +226,13 @@ test("edição manual de célula suprime ordering e conserva a tabela", () => {
   });
   assert.match(rendered.bodyHtml, /<table class="runtime-table">/u);
   assert.match(rendered.bodyHtml, /data-package-manual-field-path="rows%5B0%5D%5B0%5D"/u);
-  assert.doesNotMatch(rendered.bodyHtml, /runtime-ordering|ordering-move|data-package="aralearn\.response/u);
+  assert.match(rendered.bodyHtml, /runtime-ordering-slot/u);
+  assert.match(rendered.bodyHtml, /ordering-move/u);
+  assert.match(rendered.bodyHtml, /data-manual-practice-text="Preparar"/u);
   assert.equal(rendered.dockHtml, "");
 });
 
-test("edição manual de choice preserva a aparência sem resposta revelada ou controles de estudo", () => {
+test("edição manual de choice conserva seleção e feedback sem ativar escolha", () => {
   const responseId = "answer";
   const blockKeyPrefix = "lesson::card";
   const blockKey = `${blockKeyPrefix}::response:${responseId}`;
@@ -266,15 +269,16 @@ test("edição manual de choice preserva a aparência sem resposta revelada ou c
       [blockKey]: { selected: ["tcp"], feedback: "wrong" }
     }
   });
-  assert.match(rendered.bodyHtml, /<div class="multiple-choice-option"/u);
+  assert.match(rendered.bodyHtml, /<button class="multiple-choice-option/u);
   assert.match(rendered.bodyHtml, /data-package-manual-field-path="question"/u);
   assert.match(rendered.bodyHtml, /data-package-manual-field-path="options%5B0%5D\.text"/u);
-  assert.doesNotMatch(rendered.bodyHtml, /<button class="multiple-choice-option|data-action="choice-/u);
-  assert.doesNotMatch(rendered.bodyHtml, /\bactive\b|multiple-choice-dot|selected-(?:correct|incorrect)|inline-feedback/u);
-  assert.equal(rendered.dockHtml, "");
+  assert.doesNotMatch(rendered.bodyHtml, /data-action="choice-toggle"/u);
+  assert.match(rendered.bodyHtml, /\bactive\b/u);
+  assert.match(rendered.bodyHtml, /multiple-choice-dot/u);
+  assert.match(rendered.dockHtml, /inline-feedback/u);
 });
 
-test("edição manual ignora prompt de lacuna aberto e não inventa editor na response", () => {
+test("edição manual conserva lacuna e não inventa folhas na response", () => {
   const responseId = "gap";
   const blockKeyPrefix = "lesson::card";
   const blockKey = `${blockKeyPrefix}::response:${responseId}`;
@@ -312,10 +316,14 @@ test("edição manual ignora prompt de lacuna aberto e não inventa editor na re
       [blockKey]: { values: [""], feedback: "wrong" }
     }
   });
-  assert.doesNotMatch(rendered.bodyHtml, /text-gap-(?:set-choice|open-choice)|runtime-flow-prompt/u);
+  assert.match(rendered.bodyHtml, /text-gap-open-choice/u);
   assert.doesNotMatch(rendered.bodyHtml, /data-manual-edit-path|data-package-manual-field-path/u);
   assert.doesNotMatch(rendered.bodyHtml, /package-manual-(?:editor|field)|textarea/u);
-  assert.equal(rendered.dockHtml, "");
+  assert.equal(rendered.dockHtml, renderPackageStudyUnitBlocksWithDock(card, {
+    blockKeyPrefix,
+    activeTextGapPrompt: { blockKey, blankIndex: 0 },
+    responseStateByBlockKey: { [blockKey]: { values: [""], feedback: "wrong" } }
+  }).dockHtml);
 });
 
 test("seleção manual omite response sem folha textual visível", () => {
@@ -372,7 +380,8 @@ test("seleção manual omite response sem folha textual visível", () => {
   });
   assert.doesNotMatch(explicitManual.bodyHtml, /ordering-(?:view-answer|try-again)|inline-feedback/u);
   assert.doesNotMatch(explicitManual.bodyHtml, /data-manual-edit-path|data-package-manual-field-path/u);
-  assert.equal(explicitManual.dockHtml, "");
+  assert.match(explicitManual.dockHtml, /ordering-view-answer/u);
+  assert.match(explicitManual.dockHtml, /ordering-try-again/u);
 });
 
 test("opções de cada lacuna usam ordem estável e independente do gabarito e do estado", () => {

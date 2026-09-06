@@ -133,6 +133,15 @@ export function assertPackageDefinition(definition) {
   }
   assertNonEmptyList(manifest.taskOperations, `${manifest.id}.manifest.taskOperations`);
   assertAcademicManifest(manifest);
+  if (manifest.tool !== undefined) {
+    if (!manifest.tool || typeof manifest.tool !== "object" || Array.isArray(manifest.tool) ||
+        Object.keys(manifest.tool).some((key) => !["label", "icon"].includes(key)) ||
+        !text(manifest.tool.label) || !/^[a-z][a-z0-9-]*$/u.test(text(manifest.tool.icon)) ||
+        manifest.slots.length !== 1 || manifest.slots[0] !== "content" ||
+        typeof definition.toolInteraction?.bind !== "function") {
+      throw new TypeError(`${manifest.id} precisa de ferramenta com rótulo, ícone e interação no conteúdo.`);
+    }
+  }
   if (!definition.schema || typeof definition.schema !== "object") {
     throw new TypeError(`${manifest.id} precisa de schema.`);
   }
@@ -157,6 +166,13 @@ export function assertPackageDefinition(definition) {
   if (manifest.slots.includes("response") && typeof definition.evaluate !== "function") {
     throw new TypeError(`${manifest.id} ocupa response e precisa implementar evaluate().`);
   }
+  if (manifest.slots.includes("response")) {
+    for (const method of ["createState", "submit", "bind"]) {
+      if (typeof definition.responseInteraction?.[method] !== "function") {
+        throw new TypeError(`${manifest.id} precisa implementar responseInteraction.${method}().`);
+      }
+    }
+  }
   return true;
 }
 
@@ -173,6 +189,7 @@ function publicManifest(definition) {
     responseCompatibility: manifest.responseCompatibility || [],
     limitations: manifest.limitations || [],
     accessibility: manifest.accessibility || "",
+    ...(manifest.tool ? { tool: manifest.tool } : {}),
     academic: {
       ...academic,
       taxonomy: inferAcademicTaxonomy({
@@ -279,6 +296,20 @@ export function createPackageRegistry(packageDefinitions = []) {
       });
     },
     get,
+    listStudyTools(studyUnit) {
+      return (studyUnit?.content || []).filter((instance) =>
+        Boolean(get(instance.package, instance.version)?.manifest.tool)).map((instance) => ({
+        instance: clone(instance),
+        ...clone(get(instance.package, instance.version).manifest.tool)
+      }));
+    },
+    bindToolInteraction(instance, root, host = {}) {
+      const definition = requirePackage(instance.package, instance.version);
+      const validation = validateInstance(instance, "content");
+      if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+      if (!definition.manifest.tool) throw new TypeError("O recurso não é uma ferramenta.");
+      return definition.toolInteraction.bind(root, clone(instance.data), host);
+    },
     normalizeInstance(instance, slot) {
       const definition = requirePackage(instance?.package, instance?.version);
       const normalized = {
@@ -297,50 +328,20 @@ export function createPackageRegistry(packageDefinitions = []) {
       const definition = get(studyUnit.response.package, studyUnit.response.version);
       if (typeof definition?.validateStudyUnit !== "function") return [];
       const errors = definition.validateStudyUnit(clone(studyUnit), {
-         practiceTargets(instance) {
-           const contentDefinition = requirePackage(instance.package, instance.version);
-           return clone(resolvedPracticeTargets(contentDefinition, instance.data));
-         },
-         practiceValueLabel(instance, targetPath, value) {
-           return labelPracticeValue(instance, targetPath, value);
-         },
-         materializesGap(instance, response, blankIndex) {
+        practiceTargets(instance) {
           const contentDefinition = requirePackage(instance.package, instance.version);
-          if (typeof definition.prepareContentInstance !== "function") return false;
-          try {
-            const blockKey = "aralearn-practice-materialization";
-            const prepared = definition.prepareContentInstance(clone(instance), clone(response.data), {
-              responseBlockKey: blockKey,
-              blockKey,
-              responseState: { values: [] },
-              practiceTargets: clone(resolvedPracticeTargets(contentDefinition, instance.data))
-            });
-            const html = contentDefinition.render(prepared, {});
-            return html.includes(`data-complete-block-key="${blockKey}"`) &&
-              html.includes(`data-complete-blank-index="${blankIndex}"`);
-          } catch {
-            return false;
-          }
+          return clone(resolvedPracticeTargets(contentDefinition, instance.data));
         },
-        materializesOrdering(instance, response, targetIndex) {
+        practiceValueLabel(instance, targetPath, value) {
+          return labelPracticeValue(instance, targetPath, value);
+        },
+        renderPreparedContent(instance, response, options) {
           const contentDefinition = requirePackage(instance.package, instance.version);
-          if (typeof definition.prepareContentInstance !== "function") return false;
-          try {
-            const blockKey = "aralearn-ordering-materialization";
-            const prepared = definition.prepareContentInstance(clone(instance), clone(response.data), {
-              responseBlockKey: blockKey,
-              blockKey,
-              responseState: {
-                order: response.data.targets.map(({ id }) => id)
-              },
-              practiceTargets: clone(resolvedPracticeTargets(contentDefinition, instance.data))
-            });
-            const html = contentDefinition.render(prepared, {});
-            const token = `data-ordering-slot-index="${targetIndex}"`;
-            return html.split(token).length - 1 === 1;
-          } catch {
-            return false;
-          }
+          if (typeof definition.prepareContentInstance !== "function") return "";
+          const prepared = definition.prepareContentInstance(clone(instance), clone(response.data), {
+            ...options, practiceTargets: clone(resolvedPracticeTargets(contentDefinition, instance.data))
+          });
+          return contentDefinition.render(prepared, {});
         }
       });
       return Array.isArray(errors) ? errors.filter(Boolean).map(String) : [];
@@ -427,6 +428,27 @@ export function createPackageRegistry(packageDefinitions = []) {
       const validation = validateInstance(instance, slot);
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
       return labelPracticeValue(instance, targetPath, value);
+    },
+    reconcileResponseTextEdit(studyUnit, change) {
+      if (!studyUnit?.response) return;
+      const definition = requirePackage(studyUnit.response.package, studyUnit.response.version);
+      if (typeof definition.reconcileContentEdit === "function") {
+        studyUnit.response.data = definition.reconcileContentEdit(clone(studyUnit.response.data), clone(change));
+      }
+    },
+    createResponseState(instance) {
+      const definition = requirePackage(instance.package, instance.version);
+      return clone(definition.responseInteraction.createState(clone(instance.data)));
+    },
+    submitResponseState(instance, state, host) {
+      const definition = requirePackage(instance.package, instance.version);
+      return definition.responseInteraction.submit(clone(instance.data), state, {
+        ...host, evaluate: (answer) => clone(definition.evaluate(clone(instance.data), clone(answer)))
+      }) === true;
+    },
+    bindResponseInteraction(instance, root, host) {
+      const definition = requirePackage(instance.package, instance.version);
+      definition.responseInteraction.bind(root, clone(instance.data), host);
     },
     evaluateResponse(instance, answer) {
       const validation = validateInstance(instance, "response");

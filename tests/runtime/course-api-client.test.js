@@ -1,4 +1,9 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
+import { normalizeCourseAuthoringAnalyticsPage } from "../../src/domain/courseAuthoringAnalytics.js";
+import { buildCourseAuthoringComparison, assembleCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 import test from "node:test";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
@@ -37,18 +42,14 @@ function parsedBody(init) {
 }
 
 function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }) {
-  const parameters = [[
-    "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
-  ], ["required_explanation_forms", "Formas", "string_list"], [
-    "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-  ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
-    "authoring_chat_response_word_target", "Extensão da conversa", "integer"
-  ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
-    .map(([parameterId, label, valueKind]) => ({
-      parameterId, label, valueKind, effectiveValues: []
+  const parameters = COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      definition: structuredClone(definition), effectiveValues: []
     }));
   return {
-    contract: "aralearn.course-authoring-analytics.v2",
+    contract: "aralearn.course-authoring-analytics.v4",
+    basis: courseAuthoringBasisFixture(),
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
@@ -62,7 +63,8 @@ function analyticsSnapshot(scope = { kind: "course", ref: null, label: "Curso" }
       practiceByRequirement: [],
       practiceVariationDimensions: [],
       sourcesByRole: [],
-      wordCountsByStudyUnit: []
+      wordCountsByStudyUnit: [],
+      practiceSequence: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -98,7 +100,7 @@ function clientWithFetch(fetchImpl, { accessToken = "token", userId = USER_ID } 
 test("lista Cursos com cursor completo e sem expor recipiente indireto", async () => {
   let request = null;
   const fixture = {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items: [{ courseId: COURSE_ID, title: "Curso", revision: 2 }],
     hasMore: false,
     nextCursor: null
@@ -165,6 +167,7 @@ test("edição contextual usa somente a Edge, preserva proveniência e normaliza
   const updatedAt = "2026-08-20T22:45:00.000Z";
   const sourceLinks = [{
     sourceId: "source-current",
+    linkId: "source-current", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -495,7 +498,7 @@ test("não repete alteração sem identidade diante de resposta ambígua", async
   });
 
   await assert.rejects(
-    client.requestCourseApi("/v1/profile", {
+    client.requestCourseApi("/v2/profile", {
       method: "PATCH",
       body: { displayName: "Pessoa" }
     }),
@@ -611,7 +614,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   const calls = [];
   const currentSourceId = "source-current";
   const read = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "target",
@@ -630,18 +634,23 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     change: { type: "set_target_sources", subjectId: "unit-a", targetVersion: 1 }
   };
   const citations = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     studyUnitId: "unit-a",
     citations: [{
+      sourceRevision: 1, attachments: [],
+      linkId: "link-fixture", kind: "document", authors: [], publicationDate: null, identifier: null, language: null,
+      citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+      relation: "informed_by", roles: [], occurrences: [],
       sourceId: currentSourceId,
       title: "Fonte A",
       citationText: "Fonte A, 2026.",
       url: "https://example.test/fonte-a",
       editionOrVersion: null,
       anchors: [{
-        anchorId: "anchor-a",
+        anchorId: "anchor-a", contentHash: null, humanLocator: null,
         selector: { kind: "page_range", startPage: 3, endPage: 4 }
       }]
     }]
@@ -673,6 +682,7 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     expectedTargetVersion: 1,
     sourceLinks: [{
       sourceId: currentSourceId,
+      linkId: currentSourceId, roles: [], occurrences: [],
       relation: "quoted_from",
       anchors: [{ anchorId: "anchor-a" }]
     }]
@@ -721,7 +731,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   const contextualSourceId = "source-current-context";
   let contextualRequest = null;
   const contextualRead = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "source",
@@ -765,7 +776,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
 
   const astralTargetId = "🔎".repeat(240);
   const astralTargetRead = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     mode: "target",
@@ -793,7 +805,8 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
   );
 
   const astralCitationRead = {
-    contract: "aralearn.course-study-citations.v1",
+    contract: "aralearn.course-study-citations.v2",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 4,
     studyUnitId: astralTargetId,
@@ -844,9 +857,9 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
         expectedSourceRevision: 0,
         source: {
           kind: "web_page",
-          sourceRole: "technical_conceptual",
+          defaultRoles: ["technical_conceptual"], citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
           title: "Fonte A",
-          authorship: "Autoria",
+          authors: [{ literal: "Autoria" }],
           publicationDate: "2026",
           identifier: null,
           language: "pt-BR",
@@ -888,6 +901,25 @@ test("Fontes e citações usam contratos estritos, redigidos e vinculados ao ped
     }),
     /não corresponde ao pedido/u
   );
+});
+
+test("estilo bibliográfico confirma o curso no mesmo writer e rejeita receipt de outra fonte", async () => {
+  const requestId = "request-bibliography-style-1";
+  let subjectId = COURSE_ID;
+  const { client } = clientWithFetch(async (url, init) => {
+    assert.ok(new URL(url).pathname.endsWith("/sources/changes"));
+    assert.deepEqual(parsedBody(init).command, { type: "set_bibliography_style", style: "apa7" });
+    return jsonResponse({ ok: true, data: {
+      contract: "aralearn.course-source-change.v1", courseId: COURSE_ID,
+      courseRevision: 5, requestId, idempotent: false, changed: true,
+      change: { type: "set_bibliography_style", subjectId, revision: 5 }
+    } });
+  });
+  const request = { courseId: COURSE_ID, expectedRevision: 4, requestId,
+    sourceCommand: { type: "set_bibliography_style", style: "apa7" } };
+  assert.equal((await client.mutateCourseSources(request)).change.subjectId, COURSE_ID);
+  subjectId = "source-unrelated";
+  await assert.rejects(client.mutateCourseSources(request), /confirmação de Fontes/u);
 });
 
 test("remoção de PDF usa a Fonte relida sem transportar caminho de Storage", async () => {
@@ -1010,18 +1042,15 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
   const downloadClient = clientWithFetch(async (url, init) => {
     downloadRequest = { url, body: parsedBody(init) };
     return jsonResponse({ ok: true, data: {
-      contract: "aralearn.course-source-pdf-download.v1",
+      contract: "aralearn.course-source-pdf-download.v2",
       courseId: COURSE_ID,
       courseRevision: 5,
       sourceId,
       sourceRevision: 1,
-      storageOriginCourseId: COURSE_ID,
       attachment: {
         contentHash,
         byteSize: pdf.size,
         mediaType: "application/pdf",
-        storagePath,
-        createdAt: "2026-08-20T12:00:00.000Z"
       },
       signedUrl: "https://project.invalid/storage/v1/object/sign/path?token=download-token",
       expiresAt: "2026-08-20T12:01:00.000Z"
@@ -1034,7 +1063,7 @@ test("PDF de Fonte cru percorre somente a ingestão Edge e repete a mesma requis
     sourceRevision: 1,
     contentHash
   });
-  assert.equal(download.contract, "aralearn.course-source-pdf-download.v1");
+  assert.equal(download.contract, "aralearn.course-source-pdf-download.v2");
   assert.match(downloadRequest.url, /\/source-pdf\/download\?/u);
   assert.equal(downloadRequest.body, null);
   assert.deepEqual(Object.fromEntries(new URL(downloadRequest.url).searchParams), {
@@ -1148,11 +1177,12 @@ test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   });
 
   await client.getPersonProfile();
-  await client.updatePersonProfile({ displayName: "Pesquisadora", avatarObjectKey: null });
+  await client.updatePersonProfile({ handle: "pesquisadora", avatarObjectKey: null });
   await client.listCourseAccess(COURSE_ID);
   await client.grantCourseAccess({
     courseId: COURSE_ID,
-    email: "Pessoa@Example.com",
+    handle: "@Pessoa", userId: USER_ID,
+    canCopy: false,
     confirmed: true,
     requestId: AVATAR_ID
   });
@@ -1164,20 +1194,21 @@ test("perfil e acesso usam rotas diretas e verbos explícitos", async () => {
   });
 
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
-    "/functions/v1/aralearn-course-api/v1/profile",
-    "/functions/v1/aralearn-course-api/v1/profile",
+    "/functions/v1/aralearn-course-api/v2/profile",
+    "/functions/v1/aralearn-course-api/v2/profile",
     `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access`,
     `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access`,
     `/functions/v1/aralearn-course-api/v1/courses/${COURSE_ID}/access/${USER_ID}`
   ]);
   assert.deepEqual(calls.map(({ method }) => method), ["GET", "PATCH", "GET", "POST", "DELETE"]);
-  assert.equal(calls[3].body.email, "pessoa@example.com");
+  assert.equal(calls[3].body.handle, "pessoa");
+  assert.equal(calls[3].body.canCopy, false);
   assert.equal(calls[3].body.confirmed, true);
   assert.equal(calls[4].body.confirmed, true);
   assert.throws(
     () => client.grantCourseAccess({
       courseId: COURSE_ID,
-      email: "pessoa@example.com",
+      handle: "pessoa",
       confirmed: false
     }),
     /inválida/u
@@ -1547,10 +1578,14 @@ test("cliente owner lê Analytics pela rota quantitativa", async () => {
     return jsonResponse({ ok: true, data: page });
   });
 
-  assert.deepEqual(await client.loadCourseAuthoringAnalytics(COURSE_ID, {
+  const result = await client.loadCourseAuthoringAnalytics(COURSE_ID, {
     expectedCourseRevision: 7,
     query
-  }), page);
+  });
+  const { practiceDistribution } = result.design;
+  assert.deepEqual(result, normalizeCourseAuthoringAnalyticsPage(page));
+  assert.equal(practiceDistribution.studyUnitCount, 0);
+  assert.deepEqual(practiceDistribution.practicePositions, []);
   assert.match(calls[0].url, new RegExp(
     `/v1/courses/${COURSE_ID}/research\\?`, "u"
   ));
@@ -1560,6 +1595,40 @@ test("cliente owner lê Analytics pela rota quantitativa", async () => {
     scopeKind: "didactic_microsequence",
     scopeRef: "micro-dns"
   });
+});
+
+test("cliente comparação liga JSON normalizado a dois cursos, revisões e escopos sem identidade de ator", async () => {
+  const calls = []; const left = analyticsSnapshot(); const right = analyticsSnapshot(); right.course.id = USER_ID;
+  const request = { left: { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } }, right: { courseId: USER_ID, expectedRevision: 7, scope: { kind: "course", ref: null } } };
+  const response = buildCourseAuthoringComparison({ left, right });
+  const { client } = clientWithFetch(async (url, init) => { calls.push({ url, method: init.method, body: parsedBody(init), headers: init.headers }); return jsonResponse({ ok: true, data: response }); });
+  assert.deepEqual(await client.loadCourseAuthoringComparison(request), response);
+  assert.match(calls[0].url, /\/v1\/authoring-comparison$/u); assert.equal(calls[0].method, "POST"); assert.deepEqual(calls[0].body, request);
+  assert.equal(new Headers(calls[0].headers).has("Idempotency-Key"), false);
+  await assert.rejects(client.loadCourseAuthoringComparison({ ...request, actorId: USER_ID }));
+  assert.equal(calls.length, 1);
+  response.right.scope = { kind: "study_unit", ref: "unit-a", label: "Unidade" };
+  await assert.rejects(client.loadCourseAuthoringComparison(request), /outro curso, edição ou escopo/u);
+});
+
+test("cliente exportação envia seleção CAS na query e recusa artefato de outra revisão", async () => {
+  const calls = []; const analytics = analyticsSnapshot();
+  const data = assembleCourseAuthoringExport({ analytics, document: { contract: "aralearn.course.v1", courses: [{ id: COURSE_ID, title: "Curso", goal: "Objetivo integral", modules: [] }] } });
+  const { client } = clientWithFetch(async (url, init) => { calls.push({ url, method: init.method, body: parsedBody(init) }); return jsonResponse({ ok: true, data }); });
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  assert.deepEqual(await client.exportCourseAuthoring(selection), data);
+  assert.match(calls[0].url, new RegExp(`/v1/courses/${COURSE_ID}/authoring-export\\?`, "u"));
+  assert.equal(calls[0].method, "GET"); assert.equal(calls[0].body, null);
+  assert.deepEqual(Object.fromEntries(new URL(calls[0].url).searchParams), { expectedRevision: "7", scopeKind: "course" });
+  data.course.revision = 8;
+  await assert.rejects(client.exportCourseAuthoring(selection), /outro curso, edição ou escopo/u);
+});
+
+test("cliente comparação e exportação preservam negação de acesso, sem baixar resultado", async () => {
+  const { client } = clientWithFetch(async () => jsonResponse({ ok: false, error: { code: "course_not_found", message: "Curso indisponível." } }, 404));
+  const selection = { courseId: COURSE_ID, expectedRevision: 7, scope: { kind: "course", ref: null } };
+  await assert.rejects(client.exportCourseAuthoring(selection), (error) => error.status === 404);
+  await assert.rejects(client.loadCourseAuthoringComparison({ left: selection, right: { ...selection, courseId: USER_ID } }), (error) => error.status === 404);
 });
 
 test("retry após resposta perdida aceita receipt idempotente na revisão corrente", async () => {

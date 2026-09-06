@@ -248,10 +248,19 @@ const orderingResponse = normalizeInstance({
   }
 });
 
+const openResponse = normalizeInstance({
+  id: "response-open",
+  packageId: "aralearn.response.open",
+  version: "1.0.0",
+  slot: "response",
+  data: RESOURCE_PACKAGE_REGISTRY.getAuthoringContract("aralearn.response.open", "1.0.0").contract.example
+});
+
 const responseModules = [
   moduleForStudyUnits({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e retorno após a confirmação.", studyUnits: [studyUnit({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
   moduleForStudyUnits({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", studyUnits: [studyUnit({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), studyUnit({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
-  moduleForStudyUnits({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", studyUnits: [studyUnit({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] })
+  moduleForStudyUnits({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", studyUnits: [studyUnit({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] }),
+  moduleForStudyUnits({ id: "response-open-test", title: "Resposta aberta", goal: "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.", studyUnits: [studyUnit({ id: "open-card", position: 1, title: "Explique a decisão do switch", response: openResponse })] })
 ];
 
 const modules = [...contentModules, ...responseModules];
@@ -272,5 +281,11 @@ if (!validation.ok) throw new Error(`Curso de teste inválido:\n${JSON.stringify
 const studyUnitCount = modules.reduce((total, moduleValue) => (
   total + moduleValue.lessons[0].microsequences[0].studyUnits.length
 ), 0);
-fs.writeFileSync(outputPath, `${JSON.stringify(validation.value, null, 2)}\n`, "utf8");
-console.log(`Curso de teste gerado em ${outputPath}: ${modules.length} packages, ${studyUnitCount} Unidades de estudo.`);
+export function buildResourceTestCourse() {
+  return structuredClone(validation.value);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  fs.writeFileSync(outputPath, `${JSON.stringify(buildResourceTestCourse(), null, 2)}\n`, "utf8");
+  console.log(`Curso de teste gerado em ${outputPath}: ${modules.length} packages, ${studyUnitCount} Unidades de estudo.`);
+}

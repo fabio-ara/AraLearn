@@ -144,6 +144,7 @@ export function serializeManualEditableNode(node) {
   if (node?.nodeType !== 1) return "";
   const tagName = String(node.tagName || "").toUpperCase();
   if (node.dataset?.manualEditDecoration === "true") return "";
+  if (node.dataset?.manualPracticeText !== undefined) return node.dataset.manualPracticeText;
   if (tagName === "BR") return "\n";
   const value = [...(node.childNodes || [])].map(serializeManualEditableNode).join("");
   if (tagName === "STRONG") return `**${value}**`;

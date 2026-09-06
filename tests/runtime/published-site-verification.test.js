@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -47,6 +48,10 @@ const ASSETS = [
   "./src/resources/kernel/studyUnitEnvelope.js"
 ];
 
+function responseBytes(body) {
+  return Buffer.isBuffer(body) ? body : Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
+}
+
 function makeResponse(status, body, type, { location = "" } = {}) {
   const headers = new Headers();
   if (type) headers.set("content-type", type);
@@ -56,7 +61,10 @@ function makeResponse(status, body, type, { location = "" } = {}) {
     status,
     headers,
     async text() {
-      return typeof body === "string" ? body : JSON.stringify(body);
+      return responseBytes(body).toString("utf8");
+    },
+    async arrayBuffer() {
+      return Uint8Array.from(responseBytes(body)).buffer;
     }
   };
 }
@@ -65,6 +73,7 @@ function createPublishedSiteFetch({
   index = INDEX,
   runtimeConfig = RUNTIME_CONFIG,
   assets = ASSETS,
+  additionalFiles = {},
   overrides = {}
 } = {}) {
   const calls = [];
@@ -90,7 +99,7 @@ function createPublishedSiteFetch({
       body: ACTIONS_OPENAPI,
       type: "application/yaml"
     }],
-    ["/AraLearn/assets/brand/aralearn-mark.png", { body: "PNG", type: "image/png" }],
+    ["/AraLearn/assets/brand/aralearn-mark.png", { body: Buffer.from([137, 80, 78, 71, 255, 254]), type: "image/png" }],
     ["/AraLearn/src/render/renderPackageStudyUnit.js", {
       body: 'import "../resources/kernel/studyUnitEnvelope.js";',
       type: "text/javascript"
@@ -100,6 +109,24 @@ function createPublishedSiteFetch({
       type: "text/javascript"
     }]
   ]);
+  for (const [name, entry] of Object.entries(additionalFiles)) bodies.set(name, entry);
+  const candidateManifest = {
+    schemaVersion: 1,
+    version: VERSION,
+    artifacts: {
+      pages: {
+        files: [...bodies].filter(([name]) => name !== "/AraLearn/")
+          .map(([name, entry]) => {
+            const bytes = responseBytes(entry.body);
+            return {
+              path: name.slice("/AraLearn/".length),
+              sha256: createHash("sha256").update(bytes).digest("hex"),
+              size: bytes.length
+            };
+          }).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0)
+      }
+    }
+  };
 
   const fetchImpl = async (input, options = {}) => {
     const url = new URL(input);
@@ -110,7 +137,7 @@ function createPublishedSiteFetch({
     if (!entry) return makeResponse(404, "ausente", "text/plain");
     return makeResponse(200, entry.body, entry.type);
   };
-  return { fetchImpl, calls };
+  return { fetchImpl, calls, candidateManifest };
 }
 
 test("verifica integralmente um site publicado usando somente GET", async () => {
@@ -133,6 +160,127 @@ test("verifica integralmente um site publicado usando somente GET", async () => 
   assert.ok(calls.some(({ url }) => url.includes("auth_state=aralearn-publication-check")));
   assert.ok(calls.some(({ url }) => url.includes(`aralearn-publication-check=${VERSION}-`)));
   assert.doesNotMatch(JSON.stringify(result), /sb_publishable_/u);
+});
+
+test("confere todos os bytes da candidata, incluindo binário e mapa omitido do manifesto runtime", async () => {
+  const { fetchImpl, calls, candidateManifest } = createPublishedSiteFetch({
+    additionalFiles: { "/AraLearn/main.js.map": { body: "{}", type: "application/json" } }
+  });
+  const result = await verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest });
+  assert.equal(result.candidateManifestChecked, true);
+  assert.equal(result.candidateFilesChecked, candidateManifest.artifacts.pages.files.length);
+  assert.ok(calls.some(({ url }) => new URL(url).pathname === "/AraLearn/main.js.map"));
+  assert.equal(result.callbackChecked, true);
+});
+
+test("recusa manifesto de candidata inválido antes de consultar o host", async (context) => {
+  const invalidManifests = [
+    ["null", () => null],
+    ["schema desconhecido", (manifest) => { manifest.schemaVersion = 2; }],
+    ["versão inválida", (manifest) => { manifest.version = "01.0.0"; }],
+    ["versão diferente", (manifest) => { manifest.version = "9.9.9"; }],
+    ["arquivos ausentes", (manifest) => { delete manifest.artifacts.pages.files; }],
+    ["lista vazia", (manifest) => { manifest.artifacts.pages.files = []; }],
+    ["lista excessiva", (manifest) => { manifest.artifacts.pages.files = Array(5001).fill({}); }],
+    ["manifesto runtime não aprovado", (manifest) => {
+      manifest.artifacts.pages.files = manifest.artifacts.pages.files.filter((file) => file.path !== "asset-manifest.json");
+    }],
+    ["arquivo obrigatório ausente", (manifest) => {
+      manifest.artifacts.pages.files = manifest.artifacts.pages.files.filter((file) => file.path !== "index.html");
+    }],
+    ["SHA inválido", (manifest) => { manifest.artifacts.pages.files[0].sha256 = "abc"; }],
+    ["SHA não textual", (manifest) => {
+      manifest.artifacts.pages.files[0].sha256 = [manifest.artifacts.pages.files[0].sha256];
+    }],
+    ["tamanho negativo", (manifest) => { manifest.artifacts.pages.files[0].size = -1; }],
+    ["tamanho fracionário", (manifest) => { manifest.artifacts.pages.files[0].size = 1.5; }],
+    ["tamanho fora da precisão", (manifest) => { manifest.artifacts.pages.files[0].size = Number.MAX_SAFE_INTEGER + 1; }],
+    ["ordem divergente", (manifest) => { manifest.artifacts.pages.files.reverse(); }],
+    ["arquivo duplicado", (manifest) => { manifest.artifacts.pages.files.splice(1, 0, manifest.artifacts.pages.files[0]); }],
+    ...["../fora.js", "/fora.js", "a/../fora.js", "a/./b.js", "a//b.js", "a/", "a\\b.js", "a?b.js", "a#b.js", "%2e%2e/fora.js", "https://example.test/a", "a\0b.js"]
+      .map((unsafePath) => [`caminho ${JSON.stringify(unsafePath)}`, (manifest) => {
+        manifest.artifacts.pages.files[0].path = unsafePath;
+      }])
+  ];
+  for (const [name, invalidate] of invalidManifests) {
+    await context.test(name, async () => {
+      const site = createPublishedSiteFetch();
+      const modified = invalidate(site.candidateManifest);
+      await assert.rejects(() => verifyPublishedSite({
+        siteUrl: BASE_URL,
+        fetchImpl: site.fetchImpl,
+        candidateManifest: modified === null ? null : site.candidateManifest
+      }), /manifesto da candidata/u);
+      assert.equal(site.calls.length, 0);
+    });
+  }
+});
+
+test("recusa bytes publicados divergentes mesmo quando a versão permanece igual", async (context) => {
+  const cases = [
+    ["binário de mesmo tamanho", "/AraLearn/assets/brand/aralearn-mark.png", Buffer.from([137, 80, 78, 71, 254, 255]), "image/png", /SHA-256/u],
+    ["binário truncado", "/AraLearn/assets/brand/aralearn-mark.png", Buffer.from([137, 80]), "image/png", /tamanho/u],
+    ["texto de mesmo tamanho", "/AraLearn/main.js", "globalThis.aralearnStarted = null;", "application/javascript", /SHA-256/u],
+    ["shell raiz divergente", "/AraLearn/", INDEX.replace("pt-BR", "en-US"), "text/html", /SHA-256/u],
+    ["shell index divergente", "/AraLearn/index.html", INDEX.replace("pt-BR", "en-US"), "text/html", /SHA-256/u],
+    ["configuração divergente", "/AraLearn/runtime-config.js", RUNTIME_CONFIG.replace("public-test-value", "public-next-value"), "text/javascript", /SHA-256/u],
+    ["manifesto reserializado", "/AraLearn/asset-manifest.json", JSON.stringify({ version: VERSION, revision: REVISION, assets: ASSETS }, null, 2), "application/json", /tamanho/u],
+    ["callback de outra candidata", "/AraLearn/?auth_state=aralearn-publication-check&code=aralearn-publication-check", INDEX.replace("pt-BR", "en-US"), "text/html", /SHA-256/u]
+  ];
+  for (const [name, pathname, body, type, expectedError] of cases) {
+    await context.test(name, async () => {
+      const { fetchImpl, candidateManifest } = createPublishedSiteFetch({
+        overrides: { [pathname]: { body, type } }
+      });
+      await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), expectedError);
+    });
+  }
+});
+
+test("candidata exige lista runtime coerente com todos os arquivos aprovados", async (context) => {
+  await context.test("runtime anuncia arquivo não aprovado", async () => {
+    const { fetchImpl, calls, candidateManifest } = createPublishedSiteFetch({ assets: [...ASSETS, "./nao-aprovado.js"] });
+    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), /fora da candidata aprovada/u);
+    assert.ok(calls.every(({ url }) => !url.includes("nao-aprovado.js")));
+  });
+  await context.test("runtime omite arquivo aprovado", async () => {
+    const { fetchImpl, candidateManifest } = createPublishedSiteFetch({
+      additionalFiles: { "/AraLearn/extra.js": { body: "export {};", type: "text/javascript" } }
+    });
+    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), /omite arquivo da candidata aprovada/u);
+  });
+  await context.test("runtime duplica arquivo aprovado", async () => {
+    const { fetchImpl, candidateManifest } = createPublishedSiteFetch({ assets: [...ASSETS, "./main.js"] });
+    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), /recursos duplicados/u);
+  });
+  await context.test("mapa aprovado ausente no host", async () => {
+    const { fetchImpl, candidateManifest } = createPublishedSiteFetch({
+      additionalFiles: { "/AraLearn/main.js.map": { body: "{}", type: "application/json" } },
+      overrides: { "/AraLearn/main.js.map": { status: 404, body: "ausente", type: "text/plain" } }
+    });
+    await assert.rejects(() => verifyPublishedSite({
+      siteUrl: BASE_URL, fetchImpl, candidateManifest, waitImpl: async () => {}
+    }), /main\.js\.map.*HTTP 404/u);
+  });
+});
+
+test("a identidade da candidata preserva as verificações de MIME, CSP e credenciais", async (context) => {
+  await context.test("MIME errado apesar dos bytes corretos", async () => {
+    const { fetchImpl, candidateManifest } = createPublishedSiteFetch({
+      overrides: { "/AraLearn/main.js": { body: "globalThis.aralearnStarted = true;", type: "text/plain" } }
+    });
+    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), /usa MIME/u);
+  });
+  await context.test("CSP ampla nos bytes aprovados", async () => {
+    const { fetchImpl, candidateManifest } = createPublishedSiteFetch({ index: INDEX.replace(PROJECT_URL, "https:") });
+    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), /ampla/u);
+  });
+  await context.test("credencial nos bytes aprovados", async () => {
+    const { fetchImpl, candidateManifest } = createPublishedSiteFetch({
+      runtimeConfig: RUNTIME_CONFIG.replace("sb_publishable_public-test-value", "sb_secret_invalid-public-artifact")
+    });
+    await assert.rejects(() => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl, candidateManifest }), /chave administrativa/u);
+  });
 });
 
 test("lê a configuração pública sem executar JavaScript e valida a CSP exata", () => {
@@ -502,4 +650,11 @@ test("linha de comando aceita URL explícita ou variável de ambiente", () => {
     json: false
   });
   assert.throws(() => parseCommandLine(["--desconhecido"], {}), /argumento desconhecido/);
+  assert.deepEqual(parseCommandLine(["--url", BASE_URL, "--candidate-manifest", "candidate.json", "--json"], {}), {
+    siteUrl: BASE_URL,
+    candidateManifestPath: "candidate.json",
+    json: true
+  });
+  assert.throws(() => parseCommandLine(["--url", BASE_URL, "--candidate-manifest"], {}), /caminho do manifesto/u);
+  assert.throws(() => parseCommandLine(["--url", BASE_URL, "--candidate-manifest", "--json"], {}), /caminho do manifesto/u);
 });

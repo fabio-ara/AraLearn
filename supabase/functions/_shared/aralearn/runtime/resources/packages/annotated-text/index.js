@@ -16,6 +16,34 @@ function targetExcerpt(data, targetIds) {
   )).join("");
 }
 
+function annotationIndexes(node) {
+  return String(node.dataset.annotationIndexes || "").split(",")
+    .filter((value) => /^\d+$/u.test(value)).map(Number);
+}
+
+function hydrateAnnotatedText(instanceRoot) {
+  instanceRoot.querySelectorAll("[data-action='annotation-toggle']").forEach((node) => {
+    if (node.dataset.annotationBound === "true") return;
+    node.dataset.annotationBound = "true";
+    node.addEventListener("click", () => {
+      const packageRoot = node.closest(".runtime-annotated-text-block");
+      if (!packageRoot) return;
+      const indexes = new Set(annotationIndexes(node));
+      const shouldActivate = !node.classList.contains("is-active");
+      packageRoot.querySelectorAll("[data-action='annotation-toggle']").forEach((target) => {
+        const active = shouldActivate && annotationIndexes(target).some((index) => indexes.has(index));
+        target.classList.toggle("is-active", active);
+        target.setAttribute("aria-pressed", String(active));
+      });
+      if (shouldActivate && node.classList.contains("runtime-annotated-text-segment")) {
+        const note = [...packageRoot.querySelectorAll(".runtime-annotated-text-note")]
+          .find((target) => annotationIndexes(target).some((index) => indexes.has(index)));
+        note?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+      }
+    });
+  });
+}
+
 export const annotatedTextPackage = Object.freeze({
   manifest: Object.freeze({
     id: "aralearn.resource.annotated_text", version: "1.0.0", label: "Texto anotado",
@@ -72,6 +100,7 @@ export const annotatedTextPackage = Object.freeze({
     const annotations = `<ol class="runtime-annotated-text-notes">${data.annotations.map((annotation, index) => `<li data-annotation-index="${index}"><button type="button" class="runtime-annotated-text-note" data-action="annotation-toggle" data-annotation-indexes="${index}" aria-pressed="false"><span class="runtime-annotation-number" aria-hidden="true">${index + 1}</span><span class="runtime-annotation-copy">${annotation.category ? `<span class="runtime-annotation-category">${renderPackageInline(annotation.category)}</span>` : ""}<strong>${renderPackageInline(annotation.label)}</strong><q>${renderPackageInline(targetExcerpt(data, annotation.targetIds))}</q>${renderPackageProse(annotation.note)}</span></button></li>`).join("")}</ol>`;
     return `<div class="runtime-block runtime-annotated-text-block">${data.prompt ? renderPackageProse(data.prompt) : ""}${segments}${annotations}</div>`;
   },
+  hydrate: hydrateAnnotatedText,
   accessibleText(data) { return [...data.segments.map(({ text }) => text), ...data.annotations.map((item) => `${item.label}: ${item.note}`)].join(" "); },
   editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...data.segments.map((_, index) => ({ path: `segments[${index}].text`, label: `Editar trecho ${index + 1}` })), ...data.annotations.flatMap((annotation, index) => [...(annotation.category ? [{ path: `annotations[${index}].category`, label: `Editar categoria ${index + 1}` }] : []), { path: `annotations[${index}].label`, label: `Editar rótulo ${index + 1}` }, { path: `annotations[${index}].note`, label: `Editar anotação ${index + 1}` }])]; },
   practiceTargets(data) { const annotatedIds = new Set(data.annotations.flatMap(({ targetIds }) => targetIds)); return [...data.segments.flatMap((segment, index) => annotatedIds.has(segment.id) ? [{ path: `segments[${index}].text`, label: `Lacuna no trecho anotado ${index + 1}`, modes: ["gap", "typing"] }] : []), ...data.annotations.map((_, index) => ({ path: `annotations[${index}].note`, label: `Lacuna na anotação ${index + 1}`, modes: ["gap", "typing"] }))]; }

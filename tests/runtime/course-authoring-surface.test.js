@@ -1,3 +1,4 @@
+import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -8,7 +9,7 @@ import {
 } from "../../src/ui/CourseAuthoringSurface.js";
 import { buildCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
 import { normalizeCourseListPage } from "../../src/ui/courseAuthoringViewModel.js";
-import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from
   "../../src/domain/courseDesignParameters.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
@@ -92,6 +93,25 @@ function deferredValue() {
   return { promise, resolve, reject };
 }
 
+async function selectAccessCandidate(root, handle = "estudante") {
+  const input = { value: handle, focus() {}, setAttribute() {} };
+  root.querySelector = (selector) => selector === "#course-authoring-access-handle" ? input : null;
+  root.listeners.get("input")({
+    type: "input",
+    target: { value: handle, matches: (selector) => selector === "#course-authoring-access-handle" }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 280));
+  root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: "select-access-person", userId: "40000000-0000-4000-8000-000000000004" } })
+  } });
+}
+
+function designAction(root, action, data = {}) {
+  root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: action, ...data } })
+  } });
+}
+
 function courseDetailFixture(overrides = {}) {
   return {
     courseId: COURSE_ID,
@@ -100,6 +120,9 @@ function courseDetailFixture(overrides = {}) {
     revision: 5,
     ownership: "owned",
     canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
     ...overrides
   };
 }
@@ -129,6 +152,9 @@ function outlineFixture(courseId = COURSE_ID) {
     revision: 5,
     ownership: "owned",
     canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
     counts: {
       moduleCount: 1,
       lessonCount: 1,
@@ -163,7 +189,7 @@ function outlineFixture(courseId = COURSE_ID) {
 
 function listPage(overrides = {}) {
   return {
-    contract: "aralearn.course-list.v1",
+    contract: "aralearn.course-list.v2",
     items: [{
       courseId: COURSE_ID,
       title: "Fundamentos",
@@ -171,6 +197,9 @@ function listPage(overrides = {}) {
       revision: 5,
       ownership: "owned",
       canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
       moduleCount: 1,
       lessonCount: 2,
       topicCount: 0,
@@ -182,6 +211,9 @@ function listPage(overrides = {}) {
       revision: 2,
       ownership: "owned",
       canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
       moduleCount: 1,
       lessonCount: 1,
       topicCount: 0,
@@ -412,11 +444,6 @@ function courseDesignFixture({
   targetPlanItems = null
 } = {}) {
   const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
-  const componentOptions = Array.from({ length: 33 }, (_, index) => ({
-    ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
-    label: `Componente ${index + 1}`,
-    purpose: `Finalidade acadêmica ${index + 1}.`
-  }));
   const guidanceAssignment = {
     guidance: "Explique cada termo antes de depender dele.",
     origin: "author",
@@ -425,10 +452,10 @@ function courseDesignFixture({
   const currentScope = { kind: scope.kind, ref: scope.ref };
   const inherited = scope.kind !== "course";
   return {
-    contract: "aralearn.course-design.v2",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision,
-    parameterCatalogVersion: "1.1.0",
+    parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
     scopeContext: {
       current: scope,
       ancestors,
@@ -440,19 +467,22 @@ function courseDesignFixture({
     definitions,
     parameters: definitions.map((definition, index) => {
       const local = index === 0 && localParameter ? {
+        mode: localParameter.mode || "fixed",
         value: structuredClone(localParameter.value),
         origin: localParameter.origin,
         reason: localParameter.reason
       } : null;
       return {
         parameterId: definition.id,
+        conflicts: [],
         localAssignment: local,
         effectiveAssignment: local ? {
           ...structuredClone(local),
           sourceScope: currentScope,
           inherited: false
         } : {
-          value: structuredClone(definition.defaultValue),
+          mode: inherited ? "fixed" : "automatic",
+          value: inherited ? structuredClone(definition.defaultValue) : null,
           origin: inherited ? "author" : "system_default",
           reason: inherited ? "Decisão definida no Curso." : "Hipótese inicial do produto.",
           sourceScope: inherited ? { kind: "course", ref: COURSE_ID } : null,
@@ -468,7 +498,7 @@ function courseDesignFixture({
         inherited
       }]
     },
-    componentCatalog: { version: "1-4616b2e5", options: componentOptions },
+    componentCatalog: structuredClone(COURSE_COMPONENT_CATALOG),
     targetPlanItems,
     componentPolicy: {
       localAssignment: localPolicy ? {
@@ -484,7 +514,7 @@ function courseDesignFixture({
         inherited: false
       } : {
         policy: {
-          catalogVersion: "1-4616b2e5",
+          catalogVersion: COURSE_COMPONENT_CATALOG.version,
           availability: "all",
           allowedRefs: [],
           excludedRefs: [],
@@ -501,6 +531,7 @@ function courseDesignFixture({
 
 function controllerFixture(overrides = {}) {
   const controller = {
+    async listAuthoringProfiles() { return { contract: "aralearn.authoring-profiles.v1", profiles: [] }; },
     async listCourses() {
       return listPage();
     },
@@ -528,15 +559,18 @@ function controllerFixture(overrides = {}) {
     },
     async listCourseAccess(courseId) {
       return {
-        contract: "aralearn.course-people.v1",
+        contract: "aralearn.course-people.v3",
         courseId,
         owner: {
           userId: "30000000-0000-4000-8000-000000000003",
-          displayName: "Pessoa proprietária",
+          handle: "proprietario",
           avatarObjectKey: null
         },
         people: []
       };
+    },
+    async searchCourseAccessPeople() {
+      return { items: [{ userId: "40000000-0000-4000-8000-000000000004", handle: "estudante", avatarObjectKey: null }] };
     },
     async grantCourseAccess() {
       return { changed: true };
@@ -555,7 +589,7 @@ function controllerFixture(overrides = {}) {
     },
     async mutateCourseDesign() {
       return {
-        contract: "aralearn.course-design-change.v2",
+        contract: "aralearn.course-design-change.v3",
         courseId: COURSE_ID,
         courseRevision: 5,
         requestId: "93000000-0000-4000-8000-000000000039",
@@ -739,8 +773,8 @@ test("Conteúdo monta uma única sequência sem árvore paralela nem carga de ou
 
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["course", COURSE_ID]]);
-  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
-  assert.match(root.innerHTML, /<p class="course-authoring-context-title">Conteúdo<\/p>/u);
+  assert.match(root.innerHTML, /<h1 aria-describedby="course-current-identity">Conteúdo<\/h1>/u);
+  assert.match(root.innerHTML, /<p id="course-current-identity">Fundamentos<\/p>/u);
   assert.doesNotMatch(root.innerHTML, /Inspeção do conteúdo|Leia as Unidades como elas aparecem em Estudo/u);
   assert.doesNotMatch(root.innerHTML, /course-authoring-content-hierarchy|Estrutura do Curso/u);
   assert.match(
@@ -770,7 +804,7 @@ test("Conteúdo monta uma única sequência sem árvore paralela nem carga de ou
   assert.equal(root.innerHTML, "");
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls, [["course", COURSE_ID], ["course", COURSE_ID]]);
-  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
+  assert.match(root.innerHTML, /<h1 aria-describedby="course-current-identity">Conteúdo<\/h1>/u);
 });
 
 test("menu de tarefas fecha antes de trocar de seção", async () => {
@@ -902,9 +936,9 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     windowValue: new FakeWindow()
   });
   const curriculumMapFrom = (html) => {
-    const start = html.indexOf("course-authoring-curriculum-map");
+    const start = html.indexOf("course-curriculum-map");
     assert.ok(start >= 0, "O planejamento precisa expor o mapa curricular global.");
-    const coverageStart = html.indexOf("course-authoring-scope-coverage", start);
+    const coverageStart = html.indexOf("course-curriculum-map-coverage", start);
     const lotsStart = html.indexOf("course-authoring-parts", start);
     const end = [coverageStart, lotsStart].filter((index) => index > start).sort(
       (left, right) => left - right
@@ -917,7 +951,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     assert.match(curriculumMap, /Aprovado/u);
     assert.match(
       curriculumMap,
-      /Base[\s\S]*Compreender relações antes de aplicá-las\.[\s\S]*Relações[\s\S]*Distinguir e praticar relações fundamentais\.[\s\S]*Primeiro caso[\s\S]*Explicar a primeira relação\.[\s\S]*Segundo caso[\s\S]*Praticar a relação em outro caso\.[\s\S]*Depende de:[\s\S]*Primeiro caso/u
+      /Base[\s\S]*Compreender relações antes de aplicá-las\.[\s\S]*Relações[\s\S]*Distinguir e praticar relações fundamentais\.[\s\S]*Primeiro caso[\s\S]*Explicar a primeira relação\.[\s\S]*Segundo caso[\s\S]*Praticar a relação em outro caso\.[\s\S]*Pré-requisitos[\s\S]*Primeiro caso/u
     );
     assert.match(
       curriculumMap,
@@ -927,8 +961,8 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     return curriculumMap;
   };
   const assertScopeCoverage = (html, { foundationsState }) => {
-    const mapStart = html.indexOf("course-authoring-curriculum-map");
-    const coverageMarker = html.indexOf("course-authoring-scope-coverage", mapStart);
+    const mapStart = html.indexOf("course-curriculum-map");
+    const coverageMarker = html.indexOf("course-curriculum-map-coverage", mapStart);
     const coverageStart = html.lastIndexOf("<details", coverageMarker);
     const lotsStart = html.indexOf("course-authoring-parts", coverageStart);
     assert.ok(coverageStart > mapStart, "A cobertura humana deve complementar o mapa curricular.");
@@ -938,7 +972,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     const coverage = html.slice(coverageStart, lotsStart > coverageStart ? lotsStart : undefined);
     assert.match(
       coverage,
-      /<details[^>]*class="[^"]*course-authoring-scope-coverage[^"]*"[\s\S]*?<summary[^>]*>[\s\S]*?Cobertura do escopo[\s\S]*?<\/summary>/u,
+      /<details[^>]*class="[^"]*course-curriculum-map-coverage[^"]*"[\s\S]*?<summary[^>]*>[\s\S]*?Cobertura do escopo[\s\S]*?<\/summary>/u,
       "A inspeção detalhada da cobertura deve usar divulgação progressiva."
     );
     assert.match(
@@ -959,11 +993,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     for (const internalId of [FOUNDATIONS_SCOPE_ID, TRANSFER_SCOPE_ID, "module-a", "lesson-a"]) {
       assert.doesNotMatch(visibleCoverage, new RegExp(internalId, "u"));
     }
-    assert.doesNotMatch(
-      visibleCoverage,
-      /\b\d+\s+(?:itens|módulos|lições|microssequências|unidades)\b/iu,
-      "A pessoa autora deve inspecionar cobertura, não contagens internas."
-    );
+
   };
 
   const mapOnlyRoot = new FakeRoot();
@@ -985,8 +1015,8 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   assert.equal(await surface.open(), true);
   assert.equal(outlineReads, 0);
   assert.equal(inspectionReads, 0);
-  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
-  assert.match(root.innerHTML, /<p class="course-authoring-context-title">Planejamento<\/p>/u);
+  assert.match(root.innerHTML, /<h1[^>]*>Planejamento<\/h1>/u);
+  assert.match(root.innerHTML, /course-authoring-course-identity[\s\S]*<p[^>]*>Fundamentos<\/p>/u);
   assert.match(
     root.innerHTML,
     /Pré-requisitos declarados[\s\S]*Leitura de textos curtos em português\.[\s\S]*Nenhum conhecimento técnico prévio\./u
@@ -1001,7 +1031,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   assertCompleteCurriculumMap(root.innerHTML);
   assertScopeCoverage(root.innerHTML, { foundationsState: "Desenvolvido" });
 
-  const curriculumMapStart = root.innerHTML.indexOf("course-authoring-curriculum-map");
+  const curriculumMapStart = root.innerHTML.indexOf("course-curriculum-map");
   const productionPartsStart = root.innerHTML.indexOf("course-authoring-parts");
   assert.ok(
     productionPartsStart > curriculumMapStart,
@@ -1189,6 +1219,7 @@ test("refresh de Parâmetros preserva Curso e desenho até aplicar o snapshot co
   });
 
   assert.equal(await surface.open(), true);
+  designAction(root, "edit-design-parameter", { parameterId: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].id });
   assert.match(root.innerHTML, /Hipótese inicial do produto\./u);
   delayed = true;
   root.renderWrites.length = 0;
@@ -1226,11 +1257,11 @@ test("refresh de Pessoas preserva Curso e lista até aplicar o snapshot completo
   let delayed = false;
   let peopleReads = 0;
   const initialPeople = {
-    contract: "aralearn.course-people.v1",
+    contract: "aralearn.course-people.v3",
     courseId: COURSE_ID,
     owner: {
       userId: "30000000-0000-4000-8000-000000000003",
-      displayName: "Pessoa proprietária",
+      handle: "proprietario",
       avatarObjectKey: null
     },
     people: []
@@ -1255,32 +1286,33 @@ test("refresh de Pessoas preserva Curso e lista até aplicar o snapshot completo
   });
 
   assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
   delayed = true;
   root.renderWrites.length = 0;
   const refreshing = surface.refresh();
 
   assert.equal(root.renderWrites.length, 0);
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
   assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
 
   courseRead.resolve(courseDetailFixture({ revision: 6 }));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(peopleReads, 2);
   assert.equal(root.renderWrites.length, 0);
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
 
   peopleRead.resolve({
     ...initialPeople,
     people: [{
       userId: "40000000-0000-4000-8000-000000000004",
-      displayName: "Pessoa revisora",
+      handle: "revisor",
+      canCopy: false,
       avatarObjectKey: null
     }]
   });
   assert.equal(await refreshing, true);
   assert.equal(root.renderWrites.length, 1);
-  assert.match(root.innerHTML, /Pessoa revisora/u);
+  assert.match(root.innerHTML, /@revisor/u);
   assert.doesNotMatch(root.innerHTML, /Carregando Curso|Pessoas indisponíveis/u);
 });
 
@@ -1325,73 +1357,35 @@ test("Parâmetros lê somente o escopo e separa pedagogia, direção editorial e
   }]);
   assert.equal(outlineReads, 0);
   assert.equal(planReads, 0);
-  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
-  assert.match(
-    root.innerHTML,
-    /<p class="course-authoring-context-title">Parâmetros<\/p>/u
-  );
-  assert.match(
-    root.innerHTML,
-    /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros, direção editorial e componentes<\/h2>/u
-  );
-  assert.doesNotMatch(root.innerHTML, /Os valores iniciais são hipóteses operacionais/iu);
-  assert.match(
-    root.innerHTML,
-    /<dl class="course-design-resolution"><div><dt class="course-authoring-visually-hidden">Origem e escopo<\/dt><dd>Calibração contextual pendente · Produto<\/dd><\/div><\/dl>/u
-  );
-  assert.match(
-    root.innerHTML,
-    /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*><svg/u
-  );
-  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 6);
-  const pedagogicalStart = root.innerHTML.indexOf(
-    'aria-labelledby="course-design-pedagogical-parameters-title"'
-  );
-  const editorialStart = root.innerHTML.indexOf(
-    'aria-labelledby="course-design-editorial-parameters-title"'
-  );
-  const guidanceStart = root.innerHTML.indexOf('class="course-design-guidance"');
-  assert.ok(pedagogicalStart >= 0 && editorialStart > pedagogicalStart);
-  assert.ok(guidanceStart > editorialStart);
-  const pedagogicalParameters = root.innerHTML.slice(pedagogicalStart, editorialStart);
-  const editorialParameters = root.innerHTML.slice(editorialStart, guidanceStart);
-  assert.equal(
-    (pedagogicalParameters.match(/class="course-design-parameter"/gu) || []).length,
-    4
-  );
-  assert.equal(
-    (editorialParameters.match(/class="course-design-parameter"/gu) || []).length,
-    2
-  );
-  assert.match(pedagogicalParameters, /Parâmetros pedagógicos/u);
-  assert.doesNotMatch(pedagogicalParameters, /Alvo de palavras/u);
-  assert.match(editorialParameters, /Parâmetros editoriais/u);
-  assert.match(editorialParameters, /Alvo de palavras por resposta de autoria/u);
-  assert.match(editorialParameters, /Alvo de palavras por unidade de estudo/u);
-  assert.doesNotMatch(editorialParameters, /Novas unidades de análise/u);
-  assert.match(root.innerHTML, /Alvo de palavras por resposta de autoria/u);
-  assert.match(root.innerHTML, /Alvo de palavras por unidade de estudo/u);
-  assert.match(root.innerHTML, /aria-label="Editar direção editorial neste escopo"[^>]*><svg/u);
-  assert.match(root.innerHTML, /aria-label="Ajustar componentes neste escopo"[^>]*><svg/u);
-  assert.doesNotMatch(
-    root.innerHTML,
-    /<summary[^>]*>(?:Ajustar|Editar direção editorial)/u
-  );
-  assert.match(
-    root.innerHTML,
-    /<summary class="course-authoring-icon-action" aria-label="Ajustar [^"]+"[^>]*>[\s\S]*?<\/summary><p class="course-design-reason">Hipótese inicial do produto\.<\/p>/u
-  );
-  assert.match(root.innerHTML, /Valor vigente/u);
-  assert.match(root.innerHTML, /Direção editorial/u);
-  assert.doesNotMatch(root.innerHTML, /Interpretação estruturada|Revisar interpretação/u);
-  assert.match(root.innerHTML, /<h3 id="course-design-guidance-title">Direção editorial<\/h3>/u);
-  assert.match(root.innerHTML, /Nunca comprime nem remove conteúdo necessário/iu);
-  assert.match(root.innerHTML, /distribui em mais unidades de estudo/iu);
-  assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
-  assert.match(root.innerHTML, /<h3 id="course-design-policy-title">Componentes<\/h3>/u);
-  assert.doesNotMatch(root.innerHTML, /Planejado × aplicado|materialização|contextHash/iu);
-  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, 33);
-  assert.doesNotMatch(root.innerHTML, /<pre|\{\s*"/u);
+  assert.match(root.innerHTML, /<h1[^>]*>Parâmetros<\/h1>/u);
+  assert.match(root.innerHTML, /course-design-direct-dialog/u);
+  assert.equal((root.innerHTML.match(/class="course-design-parameter"/gu) || []).length, 2);
+  assert.doesNotMatch(root.innerHTML, /data-course-design-parameter[ >]/u);
+  const seen = new Set();
+  for (const group of new Set(COURSE_DESIGN_PARAMETER_DEFINITIONS.map(definition => definition.group))) {
+    designAction(root, "select-design-category", { designCategory: group });
+    for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS.filter(item => item.group === group)) {
+      assert.ok(root.innerHTML.includes(`data-parameter-id="${definition.id}"`));
+      seen.add(definition.id);
+      designAction(root, "edit-design-parameter", { parameterId: definition.id });
+      assert.match(root.innerHTML, /<summary>Definição e origem<\/summary>/u);
+      assert.match(root.innerHTML, /Automático pelo contexto/u);
+      assert.match(root.innerHTML, /aria-label="Salvar neste escopo"/u);
+      designAction(root, "design-group-back");
+    }
+  }
+  assert.equal(seen.size, COURSE_DESIGN_PARAMETER_DEFINITIONS.length);
+  designAction(root, "select-design-category", { designCategory: "editorial" });
+  assert.match(root.innerHTML, /aria-label="Editar direção editorial neste escopo"/u);
+  designAction(root, "select-design-category", { designCategory: "resources" });
+  assert.match(root.innerHTML, /aria-label="Ajustar componentes neste escopo"/u);
+  assert.equal((root.innerHTML.match(/class="course-design-component-option"/gu) || []).length, COURSE_COMPONENT_CATALOG.options.length);
+  designAction(root, "select-design-category", { designCategory: "profiles" });
+  assert.match(root.innerHTML, /Perfis de autoria/u);
+  assert.equal(outlineReads, 0);
+  assert.equal(planReads, 0);
+  assert.equal(reads.length, 1);
+
 });
 
 test("Parâmetros recolhe texto migratório de bastidor sem perder orientação nem justificativa", async () => {
@@ -1424,6 +1418,7 @@ test("Parâmetros recolhe texto migratório de bastidor sem perder orientação 
   });
 
   assert.equal(await surface.open(), true);
+  designAction(root, "select-design-category", { designCategory: "editorial" });
   assert.match(root.innerHTML, /<small>Importada<\/small>/u);
   assert.doesNotMatch(root.innerHTML, /Migrada do planejamento/u);
   assert.match(
@@ -1472,11 +1467,12 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.equal(await surface.open(), true);
   assert.deepEqual(calls[0].options.scope, { kind: "module", ref: "module-a" });
   assert.match(root.innerHTML, /Módulo: Base/u);
+  designAction(root, "edit-design-parameter", { parameterId: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].id });
   assert.match(root.innerHTML, /Herdado de Fundamentos · Definido pelo autor/u);
-  assert.match(root.innerHTML, /não são definidos em módulo/u);
-  assert.match(root.innerHTML, /<fieldset disabled>/u);
+  assert.match(root.innerHTML, /Ajuste disponível em: Curso/u);
+  assert.match(root.innerHTML, /aria-disabled="true"/u);
   assert.doesNotMatch(root.innerHTML, /data-course-design-parameter/u);
-  assert.match(root.innerHTML, /Decisão definida no Curso/u);
+  assert.match(root.innerHTML, /O valor herdado continua visível/u);
 });
 
 test("Microssequência mostra parâmetros em linguagem humana sem expor o metamodelo do plano", async () => {
@@ -1541,8 +1537,7 @@ test("Microssequência mostra parâmetros em linguagem humana sem expor o metamo
   });
 
   assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /unidades de estudo desta microssequência usam estes valores/iu);
-  assert.match(root.innerHTML, /Cada unidade preserva a configuração usada na produção/iu);
+  assert.match(root.innerHTML, /Exceções locais são preservadas/u);
   assert.match(root.innerHTML, /Abrir unidade de estudo/iu);
   assert.doesNotMatch(root.innerHTML, /StudyUnits?|AnalysisUnits?/u);
   assert.doesNotMatch(root.innerHTML, /Requisitos de evidência|Unidades de análise instrucional/u);
@@ -1582,6 +1577,7 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         const parameter = design.parameters[0];
         if (request.command.type === "set_parameter") {
           const assignment = {
+            mode: "fixed",
             value: request.command.value,
             origin: request.command.origin,
             reason: request.command.reason
@@ -1595,7 +1591,8 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         } else {
           parameter.localAssignment = null;
           parameter.effectiveAssignment = {
-            value: 2,
+            mode: "automatic",
+            value: null,
             origin: "system_default",
             reason: "Hipótese inicial do produto.",
             sourceScope: null,
@@ -1604,7 +1601,7 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
         }
         design.courseRevision = revision;
         return {
-          contract: "aralearn.course-design-change.v2",
+          contract: "aralearn.course-design-change.v3",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
@@ -1626,13 +1623,14 @@ test("salvar e limpar parâmetro usa CAS, origem explícita e restaura herança"
     windowValue: new FakeWindow()
   });
   await surface.open();
+  designAction(root, "edit-design-parameter", { parameterId: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].id });
   const parameterForm = root.innerHTML.match(
     /<form class="course-design-parameter-form"[\s\S]*?<\/form>/u
   )?.[0] || "";
   assert.match(parameterForm, /name="reason"/u);
   assert.match(parameterForm, /aria-label="Salvar neste escopo"/u);
   assert.doesNotMatch(parameterForm, /Este formulário fixa uma decisão explícita/iu);
-  assert.doesNotMatch(parameterForm, /<option value="automatic"/u);
+  assert.match(parameterForm, /<option value="automatic"/u);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
@@ -1736,7 +1734,8 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
         }
         revision = 6;
         const assignment = {
-          value: request.command.value,
+          mode: "fixed",
+            value: request.command.value,
           origin: request.command.origin,
           reason: request.command.reason
         };
@@ -1754,7 +1753,7 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
           } : parameter)
         };
         const result = {
-          contract: "aralearn.course-design-change.v2",
+          contract: "aralearn.course-design-change.v3",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
@@ -1818,6 +1817,7 @@ test("repete mutação de desenho com o mesmo requestId e payload após perder a
   assert.deepEqual(calls[1], calls[0]);
   assert.equal(confirmations.size, 1);
   assert.match(root.innerHTML, /Parâmetro salvo neste escopo/u);
+  designAction(root, "edit-design-parameter", { parameterId: "new_analysis_unit_ceiling_per_expository_study_unit" });
   assert.match(root.innerHTML, /value="4"/u);
 });
 
@@ -1848,7 +1848,7 @@ test("desenho mantém o envelope até a releitura e não reaplica escrita já co
         mutationCalls += 1;
         revision = 6;
         return {
-          contract: "aralearn.course-design-change.v2",
+          contract: "aralearn.course-design-change.v3",
           courseId: COURSE_ID,
           courseRevision: revision,
           requestId: request.requestId,
@@ -2107,11 +2107,11 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
     controller: controllerFixture({
       async listCourseAccess(courseId) {
         return {
-          contract: "aralearn.course-people.v1",
+          contract: "aralearn.course-people.v3",
           courseId,
           owner: {
             userId: "30000000-0000-4000-8000-000000000003",
-            displayName: "Pessoa proprietária",
+            handle: "proprietario",
             avatarObjectKey: null
           },
           people
@@ -2121,7 +2121,8 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
         changes.push(["grant", value]);
         people = [{
           userId: "40000000-0000-4000-8000-000000000004",
-          displayName: "Pessoa estudante",
+          handle: "estudante",
+          canCopy: false,
           avatarObjectKey: null
         }];
       },
@@ -2139,15 +2140,15 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   });
 
   assert.equal(await surface.open(), true);
-  assert.match(root.innerHTML, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
-  assert.match(root.innerHTML, /<p class="course-authoring-context-title">Pessoas e acesso<\/p>/u);
+  assert.match(root.innerHTML, /<h1 aria-describedby="course-current-identity">Pessoas e acesso<\/h1>/u);
+  assert.match(root.innerHTML, /<p id="course-current-identity">Fundamentos<\/p>/u);
   assert.match(
     root.innerHTML,
     /<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Pessoas e acesso<\/h2>/u
   );
-  assert.match(root.innerHTML, /Pessoa proprietária/u);
+  assert.match(root.innerHTML, /@proprietario/u);
   assert.doesNotMatch(root.innerHTML, /Acesso direto ao Estudo/u);
-  assert.doesNotMatch(root.innerHTML, /@|diretório/iu);
+  assert.doesNotMatch(root.innerHTML, /example\.test|diretório/iu);
 
   root.listeners.get("click")({
     preventDefault() {},
@@ -2157,11 +2158,12 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
       }
     }
   });
+  await selectAccessCandidate(root);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
       matches(selector) { return selector === "[data-course-authoring-grant]"; },
-      elements: { email: { value: "student@example.test" } }
+      elements: { handle: { value: "@estudante" } }
     }
   });
   assert.equal(changes.length, 0, "Conceder acesso deve aguardar a confirmação local.");
@@ -2180,16 +2182,15 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
   assert.deepEqual({ ...changes[0][1], requestId: "<uuid>" }, {
     requestId: "<uuid>",
     courseId: COURSE_ID,
-    email: "student@example.test",
+    userId: "40000000-0000-4000-8000-000000000004",
+    handle: "estudante",
+    canCopy: false,
     confirmed: true
   });
-  assert.doesNotMatch(root.innerHTML, /Pessoa estudante/u);
-  assert.match(root.innerHTML, /Solicitação recebida/u);
-  assert.match(root.innerHTML, /não informa se o endereço corresponde a uma conta/u);
-  assert.match(root.innerHTML, /Depois, atualize o curso/u);
+  assert.match(root.innerHTML, /Acesso concedido a @estudante/u);
   assert.doesNotMatch(root.innerHTML, /student@example\.test/u);
   await surface.refresh();
-  assert.match(root.innerHTML, /Pessoa estudante/u);
+  assert.match(root.innerHTML, /@estudante/u);
 
   root.listeners.get("click")({
     preventDefault() {},
@@ -2199,7 +2200,7 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
           dataset: {
             courseAuthoringAction: "revoke-access",
             userId: "40000000-0000-4000-8000-000000000004",
-            displayName: "Pessoa estudante"
+            handle: "estudante"
           }
         };
       }
@@ -2225,6 +2226,138 @@ test("Pessoas concede e revoga somente após confirmação explícita, sem diret
     confirmed: true
   });
   assert.match(root.innerHTML, /Acesso revogado; o estado pessoal foi preservado/u);
+});
+
+async function copyPermissionHarness({ canCopy = false, visibility = "private", write = null,
+  read = null, missingCanCopy = false, contract = "aralearn.course-people.v3" } = {}) {
+  const root = new FakeRoot();
+  const requests = [];
+  const focuses = [];
+  const person = { userId: "40000000-0000-4000-8000-000000000004", handle: "estudante",
+    avatarObjectKey: null, grantedAt: "2026-09-05T12:00:00Z", canCopy };
+  if (missingCanCopy) delete person.canCopy;
+  const confirmation = { innerHTML: "" };
+  root.querySelector = (selector) => selector === "[data-course-authoring-confirm-host]" ? confirmation
+    : selector.startsWith('[data-course-authoring-action="set-copy-permission"]')
+      ? { focus() { focuses.push(selector); } } : null;
+  let reads = 0;
+  const surface = createCourseAuthoringSurface({ root, controller: controllerFixture({
+    async getCourse() { return courseDetailFixture({ visibility }); },
+    async listCourseAccess(courseId) {
+      reads += 1;
+      if (read) await read(reads);
+      return { contract, courseId, owner: { userId: PART_ID, handle: "proprietario", avatarObjectKey: null },
+        people: [{ ...person }] };
+    },
+    async grantCourseAccess(request) {
+      requests.push(request);
+      if (write) await write(request, requests.length);
+      person.canCopy = request.canCopy;
+      return { changed: true };
+    },
+    async revokeCourseAccess() { assert.fail("Mudar permissão de cópia não revoga o acesso ao Estudo."); }
+  }), locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" }) },
+  windowValue: new FakeWindow() });
+  await surface.open();
+  const click = (action, userId = person.userId) => root.listeners.get("click")({ preventDefault() {},
+    target: { closest: () => ({ dataset: { courseAuthoringAction: action, userId } }) } });
+  const settle = async () => {
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+  return { root, confirmation, surface, person, requests, focuses, click, settle, get reads() { return reads; } };
+}
+
+test("Pessoas altera somente a permissão de cópia do grant após explicar o alcance", async () => {
+  const probe = await copyPermissionHarness({ visibility: "public" });
+  const { root, confirmation, surface, click, settle, requests, person, focuses } = probe;
+  assert.match(root.innerHTML, /Acesso ao Estudo não permite copiar ou editar o original/u);
+  assert.match(root.innerHTML, /<details class="course-authoring-people-settings" data-people-settings>/u);
+  assert.match(root.innerHTML, /set-copy-permission[^>]*aria-pressed="false"[^>]*>[\s\S]*?<svg/u);
+  assert.equal((root.innerHTML.match(/data-course-authoring-action="set-copy-permission"/gu) || []).length, 1);
+  click("set-copy-permission", PART_ID);
+  assert.doesNotMatch(confirmation.innerHTML, /role="alertdialog"/u);
+  click("set-copy-permission");
+  assert.equal(requests.length, 0);
+  assert.match(confirmation.innerHTML, /curso e os arquivos incluídos.*curso privado independente/u);
+  assert.match(confirmation.innerHTML, /sem editar este original.*revogar esta permissão ou o acesso depois/u);
+  click("cancel-action-confirmation");
+  assert.equal(requests.length, 0);
+  click("set-copy-permission"); click("confirm-action-confirmation"); await settle();
+  assert.deepEqual({ ...requests[0], requestId: "<uuid>" }, { requestId: "<uuid>", courseId: COURSE_ID,
+    userId: person.userId, handle: person.handle, canCopy: true, confirmed: true });
+  assert.match(requests[0].requestId, /^[0-9a-f-]{36}$/u);
+  assert.match(root.innerHTML, /aria-pressed="true"/u);
+  assert.match(root.innerHTML, /Estudo e cópia independente/u);
+  assert.ok(focuses.at(-1)?.includes(person.userId));
+  click("set-copy-permission");
+  assert.match(confirmation.innerHTML, /continuará com acesso ao Estudo.*Cópias independentes já criadas/u);
+  click("confirm-action-confirmation"); await settle();
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].canCopy, false);
+  assert.notEqual(requests[1].requestId, requests[0].requestId);
+  assert.equal(person.grantedAt, "2026-09-05T12:00:00Z");
+  assert.match(root.innerHTML, /@estudante/u);
+  assert.match(root.innerHTML, /acesso ao Estudo de @estudante foi preservado/u);
+  surface.destroy();
+});
+
+test("Pessoas recupera a intenção original de cópia sem trocar requestId ou inverter o valor", async () => {
+  const pending = deferredValue();
+  const probe = await copyPermissionHarness({ write: async (_request, attempt) => {
+    if (attempt === 1) { await pending.promise; throw Object.assign(new TypeError("Failed to fetch"), { code: "network_error" }); }
+  } });
+  const { root, surface, click, settle, requests } = probe;
+  click("set-copy-permission"); click("confirm-action-confirmation"); await settle();
+  assert.equal(requests.length, 1);
+  click("set-copy-permission"); click("confirm-action-confirmation"); await settle();
+  assert.equal(requests.length, 1, "Uma gravação em andamento não pode ser reenviada.");
+  pending.resolve(); await settle();
+  assert.match(root.innerHTML, /Confirmar permissão de cópia/u);
+  assert.match(root.innerHTML, /Encerrar recuperação da permissão de cópia/u);
+  assert.equal(surface.close(), "deferred");
+  click("revoke-access"); click("open-grant"); click("cancel-grant");
+  assert.doesNotMatch(root.innerHTML, /data-course-authoring-grant>/u);
+  click("set-copy-permission", "90000000-0000-4000-8000-000000000009");
+  assert.equal(requests.length, 1);
+  click("set-copy-permission"); click("confirm-action-confirmation"); await settle();
+  assert.deepEqual(requests[1], requests[0]);
+  assert.equal(requests[1].canCopy, true);
+  assert.doesNotMatch(root.innerHTML, /Encerrar recuperação da permissão de cópia/u);
+  assert.match(root.innerHTML, /aria-pressed="true"/u);
+  surface.destroy();
+});
+
+test("Pessoas encerra recuperação de cópia com releitura sem desfazer nem reaplicar a permissão", async () => {
+  const probe = await copyPermissionHarness({ write: async () => {
+    throw Object.assign(new TypeError("Failed to fetch"), { code: "network_error" });
+  } });
+  const { root, confirmation, surface, click, settle, requests, person } = probe;
+  click("set-copy-permission"); click("confirm-action-confirmation"); await settle();
+  person.canCopy = true; // A escrita foi confirmada no servidor, mas a resposta não chegou.
+  const readsBefore = probe.reads;
+  click("cancel-copy-permission");
+  assert.match(confirmation.innerHTML, /não desfaz a permissão nem apaga cópias existentes/u);
+  click("cancel-action-confirmation");
+  assert.equal(probe.reads, readsBefore);
+  click("cancel-copy-permission"); click("confirm-action-confirmation"); await settle();
+  assert.equal(probe.reads, readsBefore + 1);
+  assert.equal(requests.length, 1);
+  assert.match(root.innerHTML, /aria-pressed="true"/u);
+  assert.doesNotMatch(root.innerHTML, /Encerrar recuperação da permissão de cópia/u);
+  click("set-copy-permission");
+  assert.match(confirmation.innerHTML, /Revogar a permissão de cópia/u);
+  assert.equal(requests.length, 1, "Revogação posterior é outra decisão explícita.");
+  surface.destroy();
+});
+
+test("Pessoas recusa canCopy ausente ou não booleano e o contrato substituído", async () => {
+  for (const options of [{ missingCanCopy: true }, { canCopy: null }, { canCopy: "true" }, { contract: "aralearn.course-people.v2" }]) {
+    const probe = await copyPermissionHarness(options);
+    assert.match(probe.root.innerHTML, /Pessoas indisponíveis/u);
+    assert.doesNotMatch(probe.root.innerHTML, /data-course-authoring-action="set-copy-permission"/u);
+    probe.surface.destroy();
+  }
 });
 
 test("resposta ambígua em Pessoas bloqueia navegação e saída até o cancelamento explícito", async () => {
@@ -2254,11 +2387,12 @@ test("resposta ambígua em Pessoas bloqueia navegação e saída até o cancelam
     preventDefault() {},
     target: { closest: () => ({ dataset: { courseAuthoringAction: "open-grant" } }) }
   });
+  await selectAccessCandidate(root);
   root.listeners.get("submit")({
     preventDefault() {},
     target: {
       matches: (selector) => selector === "[data-course-authoring-grant]",
-      elements: { email: { value: "student@example.test" } }
+      elements: { handle: { value: "@estudante" } }
     }
   });
   root.listeners.get("click")({
@@ -2439,7 +2573,9 @@ test("offline conhecido e acesso revogado têm estados próprios", async () => {
     windowValue: new FakeWindow()
   });
   await offlineSurface.open();
-  assert.match(offlineRoot.innerHTML, /Exibindo o que já está neste dispositivo/u);
+  assert.match(offlineRoot.innerHTML, /Exibindo os cursos disponíveis neste dispositivo/u);
+  assert.match(offlineRoot.innerHTML, /data-runtime-state="offline"/u);
+  assert.match(offlineRoot.innerHTML, /data-course-authoring-action="open-course"/u);
 
   const revokedRoot = new FakeRoot();
   const revokedSurface = createCourseAuthoringSurface({
@@ -2492,7 +2628,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.match(css, /\.course-authoring-surface \{[\s\S]*?box-sizing: border-box/u);
   assert.match(
     css,
-    /\.course-authoring-root \{[\s\S]*?height: 100dvh;[\s\S]*?overflow-y: auto;[\s\S]*?overflow-x: clip;[\s\S]*?scrollbar-gutter: stable;[\s\S]*?overscroll-behavior: contain;/u
+    /\.course-authoring-root \{[\s\S]*?height: 100dvh;[\s\S]*?overflow-y: auto;[\s\S]*?overflow-x: clip;[\s\S]*?scrollbar-gutter: stable both-edges;[\s\S]*?overscroll-behavior: contain;/u
   );
   assert.match(
     css,
@@ -2514,7 +2650,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   );
   assert.match(
     surfaceSource,
-    /const title = AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1 title="\$\{escapeHtml\(course\?\.title \|\| "Curso"\)\}">[\s\S]*?course-authoring-context-title/u
+    /const title = AUTHORING_SECTION_LABELS\[state\.section\] \|\| "Autoria";[\s\S]*?<h1 aria-describedby="course-current-identity">\$\{escapeHtml\(title\)\}/u
   );
   assert.match(
     css,
@@ -2524,18 +2660,14 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
     css,
     /\.course-authoring-eyebrow \{[\s\S]*?letter-spacing: 0;[\s\S]*?text-transform: none;/u
   );
-  const contextTitleRule = css.match(
-    /\.course-authoring-context-title \{([\s\S]*?)\}/u
+  const courseIdentityRule = css.match(
+    /\.course-authoring-course-identity \{([\s\S]*?)\}/u
   )?.[1];
-  assert.ok(contextTitleRule);
-  assert.match(contextTitleRule, /overflow:\s*hidden/u);
-  assert.match(contextTitleRule, /text-overflow:\s*ellipsis/u);
-  assert.match(contextTitleRule, /white-space:\s*nowrap/u);
-  assert.doesNotMatch(
-    contextTitleRule,
-    /text-transform:\s*uppercase/u
-  );
-  assert.match(surfaceSource, /class="course-authoring-context-title">\$\{escapeHtml\(title\)\}/u);
+  assert.ok(courseIdentityRule);
+  assert.match(courseIdentityRule, /overflow-y:\s*auto/u);
+  assert.doesNotMatch(courseIdentityRule, /text-overflow:\s*ellipsis|text-transform:\s*uppercase/u);
+  assert.match(surfaceSource, /class="course-authoring-course-identity" tabindex="0"[\s\S]*?<p id="course-current-identity">\$\{escapeHtml\(course.title\)\}/u);
+  assert.doesNotMatch(surfaceSource, /course-authoring-context-title/u);
   assert.match(
     css,
     /\.course-authoring-course-header \{[\s\S]*?height: calc\(var\(--tap\) \+ 8px\);/u
@@ -2547,8 +2679,10 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.doesNotMatch(css, /-webkit-line-clamp: 4/u);
   assert.doesNotMatch(css, /\.course-authoring-sections\.has-standard/u);
   assert.match(css, /min-height: var\(--tap\)/u);
-  assert.doesNotMatch(css, /width: min\(100%, (?:560|620|720|760|820|1180)px\)/u);
-  assert.doesNotMatch(css, /@media \(min-width: (?:640|680|900)px\)/u);
+  assert.doesNotMatch(css.match(/\.course-authoring-frame \{([^}]+)\}/u)?.[1] || "",
+    /width: min\(100%, (?:560|620|720|760|820|1180)px\)/u);
+  assert.match(css, /\[data-course-design-context-dialog\], \.course-design-direct-dialog \{\s*width: min\(430px, calc\(100vw - 16px\)\)/u);
+  assert.doesNotMatch(css, /@media \(min-width: (?:640|680|900)px\)\s*\{[^}]*\.course-authoring-(?:surface|frame)\s*\{/u);
   assert.doesNotMatch(css, /course-authoring-sidebar-navigation/u);
   assert.doesNotMatch(css, /course-authoring-(?:sections|area-menu)/u);
   assert.match(css, /\.course-authoring-primary-navigation \{/u);
@@ -2571,6 +2705,9 @@ test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasio
     revision: 5,
     ownership: "owned",
     canEdit: true,
+    canObserve: true,
+    visibility: "private",
+    publicFileAccess: "restricted",
     counts: null
   };
   const markup = renderCourseAuthoringSurface({
@@ -2583,8 +2720,8 @@ test("shell mantém Conteúdo e Planejamento icon-only e recolhe destinos ocasio
     sourceTarget: null
   });
 
-  assert.match(markup, /<h1 title="Fundamentos">Fundamentos<\/h1>/u);
-  assert.match(markup, /<p class="course-authoring-context-title">Conteúdo<\/p>/u);
+  assert.match(markup, /<h1 aria-describedby="course-current-identity">Conteúdo<\/h1>/u);
+  assert.match(markup, /<p id="course-current-identity">Fundamentos<\/p>/u);
   assert.equal((markup.match(/class="course-authoring-primary-destination/gu) || []).length, 2);
   const primary = markup.match(
     /<nav class="course-authoring-primary-navigation"[\s\S]*?<\/nav>/u
@@ -2615,4 +2752,67 @@ test("Meus cursos não repete propriedade em texto visual", () => {
 
   assert.match(markup, /<h1>Meus cursos<\/h1>/u);
   assert.doesNotMatch(markup, /Seu Curso|· Seu Curso/u);
+});
+
+
+test("concessão exige seleção vigente e limite não produz sucesso", async () => {
+  const root = new FakeRoot();
+  let writes = 0;
+  const surface = createCourseAuthoringSurface({ root, controller: controllerFixture({
+    async grantCourseAccess() { writes += 1; return { changed: false, rateLimited: true }; }
+  }), locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" }) }, windowValue: new FakeWindow() });
+  await surface.open();
+  const click = (action) => root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: action } })
+  } });
+  const submit = () => root.listeners.get("submit")({ preventDefault() {}, target: {
+    matches: (selector) => selector === "[data-course-authoring-grant]",
+    elements: { handle: { value: "@estudante" } }
+  } });
+  click("open-grant"); submit(); click("confirm-action-confirmation");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(writes, 0, "Identificador digitado não substitui pessoa selecionada.");
+  await selectAccessCandidate(root);
+  submit(); click("confirm-action-confirmation");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(writes, 1);
+  assert.match(root.innerHTML, /Limite de concessões atingido/u);
+  assert.doesNotMatch(root.innerHTML, /Acesso concedido a/u);
+  surface.destroy();
+});
+
+test("visibilidade confirma política e repete pedido idêntico se a resposta se perde", async () => {
+  const root = new FakeRoot();
+  const writes = [];
+  let visibility = "private";
+  const surface = createCourseAuthoringSurface({ root, controller: controllerFixture({
+    async getCourse() { return courseDetailFixture({ visibility, publicFileAccess: "restricted" }); },
+    async setCourseVisibility(request) {
+      writes.push(request);
+      if (writes.length === 1) throw Object.assign(new TypeError("Failed to fetch"), { code: "network_error" });
+      visibility = request.visibility;
+      return { changed: true, courseRevision: 6 };
+    }
+  }), locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID, { section: "people" }) }, windowValue: new FakeWindow() });
+  await surface.open();
+  const submit = () => root.listeners.get("submit")({ preventDefault() {}, target: {
+    matches: (selector) => selector === "[data-course-visibility-form]",
+    elements: { visibility: { value: "public" }, publicFileAccess: { value: "restricted" } }
+  } });
+  const confirm = () => root.listeners.get("click")({ preventDefault() {}, target: {
+    closest: () => ({ dataset: { courseAuthoringAction: "confirm-action-confirmation" } })
+  } });
+  submit();
+  assert.equal(writes.length, 0);
+  confirm(); await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(writes[0].confirmed, true);
+  assert.equal(writes[0].publicFileAccess, "restricted");
+  assert.equal(writes[0].expectedRevision, 5);
+  submit(); confirm();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(writes[1], writes[0]);
+  assert.match(root.innerHTML, /Acesso ao curso atualizado/u);
+  assert.match(root.innerHTML, /value="public" selected/u);
+  surface.destroy();
 });

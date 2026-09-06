@@ -1,3 +1,4 @@
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
@@ -42,6 +43,16 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 });
 
 const samples = {
+  copiar_curso: { curso: "Redes para iniciantes", titulo: "Minha cópia" },
+  comparar_cursos: { esquerda: { curso: "Redes para iniciantes" }, direita: { curso: "Minha cópia" } },
+  exportar_autoria: { recorte: { curso: "Redes para iniciantes" } },
+  guardar_audio: { curso: "Fonética", [HUMAN_ACTION_FILE_FIELD]: ["file-reference"] },
+  consultar_audios: { curso: "Fonética", pagina: 1 },
+  consultar_perfis: {},
+  salvar_perfil: { nome: "Exposição e prática", automaticos: ["distribuicao_da_pratica"] },
+  excluir_perfil: { perfil: "Exposição e prática" },
+  prever_aplicacao_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática" },
+  aplicar_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática", previa: "a".repeat(64) },
   retomar_curso: { titulo: "Redes para iniciantes" },
   consultar_planejamento: { curso: "Redes para iniciantes", parte: 2 },
   preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets" },
@@ -109,15 +120,14 @@ const samples = {
       posicao: 1,
       conteudo: SAMPLE_THEORY_CONTENT,
       configuracao: {
-        parametrosPedagogicos: {
-          tetoNovasUnidadesDeAnalise: 1,
-          formasDeExplicacao: ["plain_definition"],
-          minimoDePraticasPorRequisito: 1,
-          dimensoesDeVariacaoDaPratica: ["case_or_data"]
-        },
-        parametrosEditoriais: {
-          alvoDePalavrasPorResposta: 90,
-          alvoDePalavrasPorUnidade: 180
+    motivo: "Escolha contextual sintética deste teste.",
+        parametros: {
+          maximo_ideias_novas_por_unidade: 1,
+          formas_de_explicacao: ["plain_definition"],
+          oportunidades_distintas_por_requisito: 1,
+          dimensoes_de_variacao_da_pratica: ["case_or_data"],
+          alvo_palavras_conversa: 90,
+          alvo_palavras_unidade: 180
         },
         direcaoEditorial: "Explique o mecanismo antes de nomear exceções."
       },
@@ -138,7 +148,7 @@ const samples = {
     curso: "Redes para iniciantes",
     microssequencia: "Sockets",
     condicao: "fixada_pelo_autor",
-    parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
+    parametros: { maximo_ideias_novas_por_unidade: 1 }
   },
   registrar_observacao: {
     curso: "Redes para iniciantes",
@@ -158,21 +168,35 @@ const samples = {
     curso: "Redes para iniciantes",
     metadados: {
       tipo: "document",
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       titulo: "Manual do proxy"
     }
   },
   incorporar_pdf_como_fonte: {
     curso: "Redes para iniciantes",
     titulo: "Manual do proxy",
-    papel: "tecnica_conceitual",
+    papeisSugeridos: ["tecnica_conceitual"],
     intencao: "Manter o PDF como referência técnica do Curso.",
     [HUMAN_ACTION_FILE_FIELD]: ["file-reference"]
   }
 };
 
+function resolveReferences(value) {
+  if (Array.isArray(value)) return value.map(resolveReferences);
+  if (!value || typeof value !== "object") return value;
+  if (value.$ref) {
+    assert.ok(value.$ref.startsWith("#/components/"), value.$ref);
+    const target = value.$ref.slice(2).split("/").reduce((object, key) => object[key], openApi);
+    assert.ok(target, value.$ref);
+    const rest = { ...value };
+    delete rest.$ref;
+    return { ...resolveReferences(target), ...resolveReferences(rest) };
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, resolveReferences(entry)]));
+}
+
 function operation(name) {
-  return openApi.paths[`/${name}`]?.post;
+  return resolveReferences(openApi.paths[`/${name}`]?.post);
 }
 
 function visit(value, callback, path = "$") {
@@ -182,14 +206,14 @@ function visit(value, callback, path = "$") {
   else Object.entries(value).forEach(([key, entry]) => visit(entry, callback, `${path}.${key}`));
 }
 
-test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
+test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
   assert.deepEqual(Object.keys(openApi.paths), COURSE_HUMAN_TASKS.map(({ name }) => `/${name}`));
   assert.equal(openApi.info["x-aralearn-task-catalog"], COURSE_HUMAN_TASK_CATALOG_METADATA.id);
   assert.equal(
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.3.5");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.9.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -199,12 +223,12 @@ test("#272 OpenAPI publica exatamente as dezessete tarefas humanas", () => {
 
 test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real", () => {
   for (const task of COURSE_HUMAN_TASKS) {
-    assert.match(task.description, /^Use\b/u, task.name);
-    assert.match(task.description, /\bNão\b/iu, task.name);
+    assert.equal(typeof task.description, "string", task.name);
+    assert.ok(task.description.trim().length > 0 && task.description.length <= 300, task.name);
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
-      task.name === "manter_fonte",
+      ["manter_fonte", "excluir_perfil"].includes(task.name),
       task.name
     );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
@@ -219,10 +243,11 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   for (const task of actionTools) {
     const schema = task.inputSchema;
     for (const [name, property] of Object.entries(schema.properties || {})) {
-      if (task.name === "incorporar_pdf_como_fonte" && name === HUMAN_ACTION_FILE_FIELD) continue;
+      if (name === HUMAN_ACTION_FILE_FIELD) continue;
       assert.doesNotMatch(name, forbidden, `${task.name}.${name}`);
       assert.equal(typeof property.description, "string", `${task.name}.${name} sem descrição`);
-      assert.ok(property.description.trim().length >= 12, `${task.name}.${name} descrição curta`);
+      assert.ok(property.description.trim().length > 0, `${task.name}.${name} descrição vazia`);
+      assert.ok(property.description.length <= 700, `${task.name}.${name} descrição extensa`);
     }
     visit(schema, (entry, path) => {
       for (const name of Object.keys(entry.properties || {})) {
@@ -244,27 +269,22 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
-  assert.match(openApi.info.description, /mapa completo de módulos, lições e microssequências/iu);
-  assert.match(openApi.info.description, /Só o mapa mostrado é aprovado/iu);
+  assert.match(openApi.info.description, /mapa completo/iu);
+  assert.match(openApi.info.description, /aprovação só do mapa mostrado e aprovado pela pessoa/iu);
   assert.match(openApi.info.description, /Parte é lote operacional, não currículo/iu);
+  assert.match(openApi.info.description, /lotes no mandato de continuidade/iu);
+  assert.match(openApi.info.description, /Granularidade não exige nova confirmação/iu);
+  assert.match(openApi.info.description, /Respeite confirmações do cliente/iu);
   assert.match(
     openApi.info.description,
-    /aprovar mapa.*pedir lote juntos.*registre o mapa/iu
-  );
-  assert.match(
-    openApi.info.description,
-    /Não narre tentativas nem causas \(conexão, escrita, confirmação, validação, ferramenta ou mecanismo\)/iu
-  );
-  assert.match(
-    openApi.info.description,
-    /Retome em silêncio.*se não puder, diga só o impacto e o próximo passo/iu
+    /falhas mecânicas recuperáveis em silêncio.*se bloqueado, informe impacto e próximo passo/iu
   );
   assert.match(openApi.info.description, /pessoa autora.*público/iu);
   assert.match(openApi.info.description, /curso, parte, fonte e unidade em minúsculas/iu);
   assert.match(openApi.info.description, /conteúdo, não contagens/iu);
   assert.match(
     openApi.info.description,
-    /devolva o endereço exato em Markdown/iu
+    /link exato em Markdown/iu
   );
   assert.doesNotMatch(
     openApi.info.description,
@@ -272,13 +292,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(
     operation("salvar_mapa_curricular").description,
-    /propor\/aprovar o mapa antes do lote/iu
+    /propõe ou aprova o mapa antes do lote/iu
   );
-  assert.match(
-    operation("salvar_parte").description,
-    /após confirmar a progressão/iu
-  );
-  assert.match(operation("salvar_parte").description, /não para propô-la/iu);
   assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
   assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
   assert.ok(COURSE_AUTHORING_SERVER_INSTRUCTIONS.length <= 1000);
@@ -297,11 +312,11 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /estado default[\s\S]*calibr[\s\S]*(?:em silêncio|silenciosamente)/iu
+    /em automático, escolha valor e motivo conforme contexto/iu
   );
   assert.match(
     openApi.info.description,
-    /parâmetros[\s\S]*contagens[\s\S]*formas[\s\S]*alvos[\s\S]*(?:pedido|solicita)/iu
+    /Preserve fixações da autoria e pesquisa/iu
   );
   assert.match(
     openApi.info.description,
@@ -309,7 +324,7 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   );
   assert.match(
     operation("materializar_parte").description,
-    /calibração contextual[\s\S]*(?:cada|por) unidade[\s\S]*sem etapa separada/iu
+    /calibração contextual por unidade na materialização/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
@@ -326,7 +341,7 @@ test("Actions documenta context como memória de continuação e não como fala"
   );
 });
 
-test("#272 os dezessete inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
+test("os 27 inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   for (const task of actionTools) {
     const validate = ajv.compile(task.inputSchema);
@@ -367,15 +382,10 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
   ].map((schema) => schema.properties.unidades.items.properties.configuracao);
   for (const schema of schemas) {
     assert.equal(schema.additionalProperties, false);
-    assert.deepEqual(Object.keys(schema.properties.parametrosPedagogicos.properties).sort(), [
-      "dimensoesDeVariacaoDaPratica", "formasDeExplicacao",
-      "minimoDePraticasPorRequisito", "tetoNovasUnidadesDeAnalise"
-    ]);
-    assert.deepEqual(Object.keys(schema.properties.parametrosEditoriais.properties).sort(), [
-      "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
-    ]);
+    assert.deepEqual(Object.keys(schema.properties.parametros.properties).sort(),
+      COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField).sort());
     assert.deepEqual(
-      schema.properties.parametrosPedagogicos.properties.formasDeExplicacao.items.enum,
+      schema.properties.parametros.properties.formas_de_explicacao.items.enum,
       [
         "plain_definition", "concrete_example", "mechanism", "contrast",
         "application_condition", "limit_or_exception", "worked_example",
@@ -383,8 +393,8 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
       ]
     );
     assert.deepEqual(
-      schema.properties.parametrosPedagogicos.properties
-        .dimensoesDeVariacaoDaPratica.items.enum,
+      schema.properties.parametros.properties
+        .dimensoes_de_variacao_da_pratica.items.enum,
       ["case_or_data", "context", "task_feature", "external_representation", "support_level"]
     );
     assert.deepEqual(schema.properties.direcaoEditorial, {
@@ -399,34 +409,21 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
     actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
     operation("materializar_parte").requestBody.content["application/json"].schema
   ];
-  const expectedPedagogical = [
-    "dimensoesDeVariacaoDaPratica",
-    "formasDeExplicacao",
-    "minimoDePraticasPorRequisito",
-    "tetoNovasUnidadesDeAnalise"
-  ];
-  const expectedEditorial = [
-    "alvoDePalavrasPorResposta",
-    "alvoDePalavrasPorUnidade"
-  ];
+  const expectedFields = COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField).sort();
 
   for (const schema of schemas) {
     const unit = schema.properties.unidades.items;
     const configuration = unit.properties.configuracao;
-    const pedagogical = configuration.properties.parametrosPedagogicos;
-    const editorial = configuration.properties.parametrosEditoriais;
+    const parameters = configuration.properties.parametros;
 
     assert.ok(unit.required.includes("configuracao"));
     assert.deepEqual(
       [...(configuration.required ?? [])].sort(),
-      ["parametrosEditoriais", "parametrosPedagogicos"]
+      ["motivo", "parametros"]
     );
-    assert.deepEqual([...(pedagogical.required ?? [])].sort(), expectedPedagogical);
-    assert.deepEqual([...(editorial.required ?? [])].sort(), expectedEditorial);
-    for (const property of [
-      ...Object.values(pedagogical.properties),
-      ...Object.values(editorial.properties)
-    ]) {
+    assert.deepEqual(Object.keys(parameters.properties).sort(), expectedFields);
+    assert.equal(parameters.minProperties, 1);
+    for (const property of Object.values(parameters.properties)) {
       assert.equal(
         Array.isArray(property.type) && property.type.includes("null"),
         false,
@@ -443,12 +440,12 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
     const validate = new Ajv2020({ allErrors: true, strict: false })
       .compile(validationSchema);
     assert.equal(validate(samples.materializar_parte), true, JSON.stringify(validate.errors));
-    for (const group of ["parametrosPedagogicos", "parametrosEditoriais"]) {
+    for (const group of ["parametros"]) {
       const fields = Object.keys(configuration.properties[group].properties);
       for (const field of fields) {
         const missing = structuredClone(samples.materializar_parte);
-        delete missing.unidades[0].configuracao[group][field];
-        assert.equal(validate(missing), false, `${group}.${field} ausente`);
+        delete missing.unidades[0].configuracao.motivo;
+        assert.equal(validate(missing), false, "Toda escolha contextual requer motivo.");
 
         const nullValue = structuredClone(samples.materializar_parte);
         nullValue.unidades[0].configuracao[group][field] = null;
@@ -514,10 +511,10 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
   assert.match(materializationTask.description, /marque formas/iu);
   assert.match(
     materializationTask.description,
-    /não duplique (?:a )?identificação local.*componentes/iu
+    /identidades locais únicas/iu
   );
   const componentsTask = actionTools.find(({ name }) => name === "consultar_componentes");
-  assert.match(componentsTask.description, /inspecionar.*antes do uso/iu);
+  assert.match(componentsTask.description, /inspeciona(?:r)?.*antes do uso/iu);
 });
 
 test("Actions não confunde bibliografia fornecida com conferência da fonte", () => {
@@ -525,16 +522,16 @@ test("Actions não confunde bibliografia fornecida com conferência da fonte", (
   assert.equal(validate({
     curso: "Redes para iniciantes",
     metadados: {
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       titulo: "Computer Networking: A Top-Down Approach",
-      autoria: "James Kurose e Keith Ross",
+      autores: [{ sobrenome: "Kurose", nomes: "James" }, { sobrenome: "Ross", nomes: "Keith" }],
       edicaoOuVersao: "8ª edição"
     }
   }), true);
   assert.equal(validate({
     curso: "Redes para iniciantes",
     metadados: {
-      papel: "tecnica_conceitual",
+      papeisSugeridos: ["tecnica_conceitual"],
       titulo: "Computer Networking: A Top-Down Approach",
       verificacao: "adotada_pelo_autor"
     }
@@ -564,13 +561,15 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   assert.match(flow.authorizationUrl, /\/oauth\/authorize$/u);
   assert.match(flow.tokenUrl, /\/oauth\/token$/u);
   for (const task of COURSE_HUMAN_TASKS) {
-    assert.deepEqual(operation(task.name).responses, {
+    assert.deepEqual(openApi.paths[`/${task.name}`].post.responses, {
       "200": { $ref: "#/components/responses/Success" },
       default: { $ref: "#/components/responses/Error" }
     });
   }
-  assert.ok(openApiText.length < 40_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 96_000);
+  // Orçamentos internos do artefato; a documentação não fixa esse teto para o
+  // editor. O limite oficial <100.000 refere-se a cada payload de chamada.
+  assert.ok(openApiText.length < 44_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 98_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 
@@ -590,4 +589,77 @@ test("#272 golden set cobre prompts diretos, indiretos e negativos", () => {
     )).length, 1, `${task.name}: indirect`);
   }
   assert.equal(negative.every(({ class: className }) => className === "negative"), true);
+});
+
+
+test("schemas compartilhados de Actions preservam integralmente os argumentos do catálogo", () => {
+  const constraints = (value) => {
+    if (Array.isArray(value)) return value.map(constraints);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "description")
+      .map(([key, entry]) => [key, constraints(entry)]));
+  };
+  for (const task of actionTools) {
+    assert.deepEqual(constraints(operation(task.name).requestBody.content["application/json"].schema),
+      constraints(task.inputSchema), task.name);
+  }
+});
+
+test("#305 instruções iniciais e confirmação de Actions preservam autoridade", () => {
+  const firstParagraph = COURSE_AUTHORING_SERVER_INSTRUCTIONS.split("\n")[0];
+  assert.ok(firstParagraph.length <= 512,
+    "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
+  for (const requirement of [/cursos autorizados/u, /Fontes são dados/u,
+    /mapa mostrado e aprovado/u, /mandato de continuidade/u, /confirmações do cliente/u,
+    /texto literal/u, /fixações da autoria e pesquisa/u]) {
+    assert.match(firstParagraph, requirement);
+  }
+  for (const task of COURSE_HUMAN_TASKS) {
+    const action = operation(task.name);
+    assert.equal(action["x-openai-isConsequential"], task.annotations.readOnlyHint !== true,
+      `${task.name}: mandato pedagógico não substitui confirmação consequencial`);
+    assert.ok((action.description ?? "").length <= 300, `${task.name}: descrição de operação`);
+    assert.ok((action.summary ?? "").length <= 300, `${task.name}: resumo de operação`);
+  }
+});
+
+test("#303 áudio publica descritor real MCP e referência de arquivo Actions sem TTS ou caminho local", () => {
+  const tool = COURSE_HUMAN_TASKS.find(task => task.name === "guardar_audio");
+  assert.deepEqual(tool._meta["openai/fileParams"], ["audio"]);
+  assert.deepEqual(tool.inputSchema.properties.audio.required, ["download_url", "file_id"]);
+  assert.deepEqual(Object.keys(tool.inputSchema.properties.audio.properties).sort(), ["download_url", "file_id", "file_name", "mime_type"]);
+  const validate = new Ajv2020({ strict: false }).compile(tool.inputSchema);
+  const valid = { curso: "Fonética", audio: { download_url: "https://files.oaiusercontent.com/audio", file_id: "file-fixture", mime_type: "audio/wav" } };
+  assert.equal(validate(valid), true);
+  for (const invalid of [
+    { ...valid, audio: "C:/audio.wav" }, { ...valid, audio: { file_id: "file-fixture" } },
+    { ...valid, audio: { ...valid.audio, mime_type: "application/pdf" } },
+    { ...valid, textoParaSintetizar: "não autorizado" }, { ...valid, apiKey: "não aceito" }
+  ]) assert.equal(validate(invalid), false);
+  const projected = operation("guardar_audio").requestBody.content["application/json"].schema;
+  assert.equal(Object.hasOwn(projected.properties, "audio"), false);
+  assert.deepEqual(projected.properties.openaiFileIdRefs.items, { type: "string" });
+  assert.equal(projected.properties.openaiFileIdRefs.maxItems, 1);
+  assert.match(projected.properties.openaiFileIdRefs.description, /WAV PCM.*MP3/u);
+});
+
+test('#302 Actions e MCP validam fontes estruturadas, papéis do vínculo e trecho sem status inventado',()=>{
+  const sample={curso:'Redes para iniciantes',estilo:'abnt-2025',fonte:1,
+    metadados:{titulo:null,tipo:'internal_document',modoCitacao:'gerada',autores:[{literal:'Instituição'}],
+      papeisSugeridos:['leitura_complementar'],bibliografia:{doi:'10.1000/exemplo',dataDeAcesso:'2026-09-05'}},
+    ancoras:[{seletor:{tipo:'paginas',paginaInicial:1,paginaFinal:2},hashDoPdf:'a'.repeat(64)}],
+    vinculos:[{unidade:1,vinculo:2,relacao:'quoted_from',papeis:['tecnica_conceitual'],ancoras:[1],
+      ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'Trecho literal'}]}]};
+  const schemas=[COURSE_HUMAN_TASKS.find(task=>task.name==='manter_fonte').inputSchema,
+    operation('manter_fonte').requestBody.content['application/json'].schema];
+  for(const schema of schemas){
+    const validate=new Ajv2020({strict:false}).compile(schema);
+    assert.equal(validate(sample),true,JSON.stringify(validate.errors));
+    const noRoles=structuredClone(sample);delete noRoles.vinculos[0].papeis;
+    assert.equal(validate(noRoles),false);
+    const inferredStatus=structuredClone(sample);inferredStatus.vinculos[0].ocorrencias[0].status='resolved';
+    assert.equal(validate(inferredStatus),false);
+    const legacy=structuredClone(sample);legacy.metadados.autoria='Nome não decomposto';
+    assert.equal(validate(legacy),false);
+  }
 });

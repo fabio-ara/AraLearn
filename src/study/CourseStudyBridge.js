@@ -12,6 +12,18 @@ export class CourseStudyBridge {
     return this.controller.listCourses(options);
   }
 
+  loadCourseDesign(courseId, options = {}) {
+    return this.controller.loadCourseDesign(courseId, options);
+  }
+
+  loadCourseMedia(courseId, options = {}) {
+    return this.controller.loadCourseMedia(courseId, options);
+  }
+
+  getCourseMediaDownload(values) {
+    return this.controller.getCourseMediaDownload(values);
+  }
+
   async loadCourse(courseId, options = {}) {
     const result = await this.controller.loadCourseDocument(courseId, options);
     return {
@@ -44,34 +56,39 @@ export class CourseStudyBridge {
     return this.controller.hasVerifiedCourseDocument(courseId, options);
   }
 
-  commitPersonalCourseCopyEdit(value) {
-    if (typeof this.controller.commitPersonalCourseCopyEdit !== "function") {
-      throw new TypeError("A edição em cópia pessoal não está disponível.");
-    }
-    return this.controller.commitPersonalCourseCopyEdit(value);
+  listCachedCourses(options = {}) {
+    return this.controller.listCachedCourses(options);
   }
 
-  loadPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (typeof this.controller.loadPendingPersonalCopyEdit !== "function") {
-      return Promise.resolve(null);
-    }
-    return this.controller.loadPendingPersonalCopyEdit(sourceCourseId);
+  checkCourseAccess(courseId) {
+    return this.controller.checkCourseAccess(courseId);
   }
 
-  retryPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (typeof this.controller.retryPendingPersonalCopyEdit !== "function") {
-      throw new TypeError("A retomada da cópia pessoal não está disponível.");
-    }
-    return this.controller.retryPendingPersonalCopyEdit(sourceCourseId);
+  async loadCachedCourse(courseId) {
+    const result = await this.controller.loadCachedCourseDocument(courseId);
+    return result ? {
+      ...result,
+      courseId: result.course.courseId,
+      revision: result.course.revision
+    } : null;
   }
 
-  clearPendingPersonalCopyEdit(sourceCourseId = null, expectedRequestId = null) {
-    if (typeof this.controller.clearPendingPersonalCopyEdit !== "function") {
-      return Promise.resolve(false);
+  getCourseSourceAttachmentDownload(values) {
+    if (typeof this.controller.getCourseSourceAttachmentDownload !== "function") {
+      throw new TypeError("O download de fontes não está disponível.");
     }
-    return this.controller.clearPendingPersonalCopyEdit(
-      sourceCourseId,
-      expectedRequestId
-    );
+    return this.controller.getCourseSourceAttachmentDownload(values);
+  }
+
+  loadStudyDraftRecovery(sourceCourseId = null) {
+    return this.controller.loadStudyDraftRecovery?.(sourceCourseId) ?? Promise.resolve(null);
+  }
+
+  recoverStudyDraft(sourceCourseId = null) {
+    return this.controller.recoverStudyDraft?.(sourceCourseId) ?? Promise.resolve(null);
+  }
+
+  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
+    return this.controller.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId) ?? Promise.resolve(false);
   }
 }

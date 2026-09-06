@@ -1,10 +1,9 @@
 # Guia do estudante
 
 Este guia apresenta o percurso de Estudo. Um curso pode pertencer à própria
-pessoa ou ter sido compartilhado diretamente pelo proprietário. Leitura,
-prática e continuidade usam o mesmo percurso; a gravação contextual difere
-porque altera o curso próprio e cria uma cópia pessoal quando a origem é
-compartilhada.
+pessoa, ser público ou ter sido compartilhado diretamente pelo proprietário.
+Leitura, prática e continuidade usam o mesmo percurso. Somente o proprietário
+pode editar o conteúdo, inclusive dentro de Estudo.
 
 ## Compreender a tela inicial
 
@@ -21,17 +20,27 @@ offline enquanto ele não altera a ação. Sem conexão, a prévia informa
 **Disponível offline** quando já existe uma composição validada; caso contrário,
 informa **Conecte-se para abrir este curso** e bloqueia a abertura.
 
-A seção **Rever**, quando presente, reúne as Unidades marcadas pela própria
-pessoa. O acesso à **Autoria** leva à atividade autoral. Um curso compartilhado
-fica em Estudo e continua sob responsabilidade do proprietário. A pessoa pode
-usar **Editar** nesse percurso sem alterar o original: a
-primeira gravação com mudança material
-cria um curso pessoal privado, que passa a aparecer como **Cópia pessoal** e também
-pertence à sua Autoria.
+A seção **Rever**, quando presente, reúne as unidades marcadas pela própria
+pessoa. Sem conta, cursos públicos podem ser encontrados nesse seletor ou por
+um link de estudo. Leitura, prática, feedback e marcas Rever funcionam; o estado
+fica somente neste dispositivo. Entrar numa conta preserva esses dados separados
+até uma incorporação explícita.
+
+Para receber acesso a um curso privado, entre ou crie uma conta e escolha seu
+`@identificador` público. O identificador tem de 3 a 30 letras sem acentos,
+números, pontos, traços ou sublinhados, começa e termina com letra ou número e
+não distingue maiúsculas de minúsculas. Uma colisão pede outra escolha sem perder
+a sessão. O avatar é opcional; não é necessário informar outro nome. A escolha
+pode ser alterada em **Conta e aparência**, mantendo a propriedade e os acessos.
+
+Um estudante autenticado pode enviar observações no curso ao qual tem acesso.
+Visitantes precisam entrar numa conta para isso. A concessão de estudo não
+permite editar nem cria cópia automática. Cursos próprios já existentes
+continuam pertencendo à mesma pessoa.
 
 ## Preparar o dispositivo para estudar sem conexão
 
-1. Entre na conta correta.
+1. Entre na conta correta ou continue como visitante num curso público.
 2. No seletor **Curso**, escolha o curso que pretende usar sem rede.
 3. Use **Abrir** e escolha o módulo.
 4. Aguarde a composição aparecer; a conclusão dessa abertura guarda a revisão
@@ -60,7 +69,7 @@ apresenta essa ação no próprio contexto, sem ocupar permanentemente a barra.
 
 Ao avançar, a Unidade é marcada como concluída. O ponto alcançado permite
 retomar a lição depois. Sem conexão, a mudança fica no dispositivo e é enviada
-quando a rede retorna.
+quando a rede retorna. Sem conta, permanece somente no dispositivo.
 
 ## Responder a uma prática
 
@@ -102,6 +111,8 @@ revisões, identidade de quem editou nem controles de manutenção da fonte.
 Um endereço externo pode mudar ou desaparecer; um PDF anexado ao curso é o
 material preservado pelo AraLearn. A citação e o estado de disponibilidade
 descrevem a referência, mas não prometem acesso futuro ao material remoto.
+Anexos disponíveis respeitam a autorização do curso e as exceções de cada fonte
+e arquivo. Tornar um curso público não libera seus PDFs automaticamente.
 
 ## Marcar para rever
 
@@ -118,7 +129,7 @@ A marca pertence à pessoa e não altera o conteúdo do curso.
 
 ## Registrar uma observação
 
-1. Use **Observação** dentro da Unidade.
+1. Entre numa conta com acesso ao curso e use **Observação** dentro da unidade.
 2. Escolha **Dúvida**, **Possível erro**, **Trecho confuso**, **Sugestão** ou
    **Sem categoria**.
 3. Escreva a observação e salve.
@@ -134,6 +145,28 @@ que eles mesmos criaram. Uma resposta ou o estado **Resolvida** descreve a
 triagem da observação; uma correção do conteúdo exige o ciclo próprio de
 auditoria e verificação.
 
+## Escolher quando sincronizar
+
+Em **Conta e aparência**, escolha **Automática** ou **Manual** em
+**Sincronização**. A preferência vale para o aplicativo neste dispositivo,
+inclusive nas outras abas. No modo manual, progresso e Rever continuam sendo
+gravados localmente. O retorno da conexão não envia esses dados nem substitui o
+conteúdo aberto; use a nuvem para enviar a fila e consultar atualizações.
+Salvar uma alteração autoral ou enviar uma observação é uma ação explícita e
+continua disponível. A verificação de acesso permanece ativa.
+
+A nuvem distingue pendência, sincronização em andamento, falha e modo manual.
+Se você tiver um rascunho aberto, a atualização do curso aguarda você salvá-lo ou
+descartá-lo. Uma diferença incompatível no mesmo progresso abre uma explicação
+com as alternativas; alterações independentes são conservadas.
+
+Em **Progresso sem conta**, examine os cursos e escolha quais acrescentar à
+conta identificada na tela. Nada é selecionado ou transferido ao entrar. A
+operação reúne conclusões e marcas Rever sem apagar o estado já existente na
+conta nem substituir sua posição de leitura. Os dados de visitante continuam
+separados e disponíveis depois de sair. No modo manual, o estado incorporado
+aguarda a próxima sincronização explícita.
+
 ## Interromper com segurança
 
 Depois que uma ação aparece na interface, é possível voltar pelos níveis ou
@@ -147,8 +180,8 @@ que a pessoa está, enquanto o estado persistido é reconciliado sem deslocar a
 outra sessão durante o uso. Se o acesso ao curso selecionado for revogado, o
 servidor recusa novas leituras e alterações; na próxima validação conectada, o
 aplicativo remove o conteúdo local do curso compartilhado, informa a mudança e
-seleciona outro curso acessível, quando houver. Uma cópia pessoal já confirmada
-permanece como curso privado da pessoa.
+seleciona outro curso acessível, quando houver. Um curso próprio já existente permanece sob a mesma propriedade. Se o curso
+ainda for público, retirar uma concessão individual não impede a leitura pública.
 
 ## Zerar o progresso de um Curso
 
@@ -162,7 +195,7 @@ informa se o alcance começa em um módulo, lição, microssequência ou Unidade
 
 ## Editar ou usar Assistência por IA
 
-Quando a pessoa tem autorização, o modo **Editar** aparece no nível atual.
+Somente para o proprietário, o modo **Editar** aparece no nível atual.
 Curso e módulo permitem ajustar os metadados e a composição disponíveis; lição
 e microssequência também permitem organizar seus elementos filhos. Na Unidade,
 a edição trabalha sobre título, composição e conteúdo renderizável. Toda

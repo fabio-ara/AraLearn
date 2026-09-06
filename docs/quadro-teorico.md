@@ -115,8 +115,9 @@ Consequentemente:
 
 - novidade presumida é categoria por unidade, com contagem derivada, e não
   medida de carga;
-- coordenação é hipergrafo ou conjunto de relações, ainda que sua cardinalidade
-  possa ser calculada;
+- coordenação descreve os conhecimentos e relações que a tarefa exige mobilizar
+  conjuntamente; sua cardinalidade não impõe uma representação técnica nem
+  mede, por si, demanda na memória;
 - explicação, evidência, variação, apoio e fidelidade permanecem conjuntos,
   vetores ou relações quando essa forma preserva informação;
 - todo número exige unidade, denominador, escopo, algoritmo e versão;
@@ -124,7 +125,14 @@ Consequentemente:
   posterior à materialização.
 
 O contrato correspondente é descrito em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md). O AraLearn persiste os
+parametrizado](desenho-instrucional-parametrizado.md), com protocolo de recorte,
+pressupostos, ocorrências, desenvolvimento e denominadores. O
+[corpus sintético](corpus-unidades-de-analise.md) compara recortes em contextos,
+domínios e idiomas distintos; não constitui validação com participantes nem
+estimativa de confiabilidade. A precisão de uma contagem depende do inventário
+declarado e não certifica a interpretação semântica que o originou.
+
+O AraLearn persiste os
 itens de análise, os requisitos de evidência, os parâmetros, as orientações e a
 política de componentes. Essa implementação ainda não demonstra que autores
 compreendam o modelo nem que ele melhore resultados educacionais.

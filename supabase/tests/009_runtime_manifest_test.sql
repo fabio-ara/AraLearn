@@ -5,15 +5,16 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260903193000','o manifesto identifica o catálogo com resposta aberta');
+  '20260905163000','o manifesto identifica as capacidades correntes em ordem canônica');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),41,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),47,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-anchored-annotations-atomic-create-v1",
   "course-analysis-repertoire-v1",
-  "course-authoring-configuration-v2",
+  "course-authoring-configuration-v3",
+  "authoring-preference-profiles-v1",
   "course-authoring-part-save-v1",
   "course-authoring-part-materialization-atomic-v2",
   "course-curricular-map-v1",
@@ -21,33 +22,39 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-source-roles-v1",
   "course-source-current-state-v1",
   "course-study-unit-inspection-v2",
-  "single-authoring-runtime-v1"
+  "single-authoring-runtime-v1",
+  "person-profile-v2",
+  "public-course-study-v1",
+  "course-file-access-policy-v1",
+  "owned-course-copy-recovery-v1",
+  "course-independent-copy-v1",
+  "course-authoring-analytics-v4",
+  "course-authoring-comparison-v1",
+  "course-authoring-export-v1"
 ]'::jsonb,'o manifesto anuncia o runtime corrente');
 select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
   'authenticated-course-source-pdf-upload-v1',
   'course-audit-cycle-v1','course-authoring-corrections-v1',
   'course-authoring-part-materialization-v1',
   'course-authoring-part-materialization-history-v1',
-  'course-design-parameters-v1','course-variant-comparisons-v1'
+  'course-design-parameters-v1','course-variant-comparisons-v1',
+  'person-profile-v1','personal-course-copy-edit-v1'
 ]),'o manifesto não anuncia mecanismos substituídos');
 
 select ok(
   pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
-  ) like '%v_design_preservable_study_unit_ids%'
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
+  ) not like '%v_design_preservable_study_unit_ids%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
-  ) like '%to_jsonb(entity.updated_at)%'
+    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text,jsonb)'::regprocedure
+  ) not like '%to_jsonb(entity.updated_at)%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
-  ) like '%course_component_refs_from_content_v1(entity.content)%'
+    'private.commit_course_composition_core_v1(uuid,uuid,bigint,jsonb,jsonb,text,jsonb)'::regprocedure
+  ) like '%design_application = case when row(%'
   and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
-  ) ~ 'p_application_origin\s*=\s*''provider_assistance'''
-  and pg_get_functiondef(
-    'public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,text)'::regprocedure
-  ) like '%course_component_policy_allows_v1%',
-  'a composição preserva aplicação corrente somente para correção GPT focal compatível'
+    'private.commit_course_composition_core_v1(uuid,uuid,bigint,jsonb,jsonb,text,jsonb)'::regprocedure
+  ) like '%private.course_entities.content-''title''%',
+  'a composição mantém a validade no core sem reescrever a data histórica por canal'
 );
 
 select ok(
@@ -141,7 +148,8 @@ select is(array(
     'private.course_component_policy_changes',
     'private.course_anchored_annotation_events',
     'private.course_anchored_annotation_receipts','private.course_inspection_focuses',
-    'private.course_source_revisions','private.course_source_anchor_revisions'
+    'private.course_source_revisions','private.course_source_anchor_revisions',
+    'private.course_personal_copies'
   ]) name where to_regclass(name) is not null
 ),array[]::text[],'todas as tabelas substituídas foram removidas');
 
@@ -151,10 +159,10 @@ select is(array(
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
     'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
-    'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
-    'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
+    'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
+    'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
-    'public.get_owned_course_authoring_analytics_for_actor_v2(uuid,uuid,bigint,jsonb)',
+    'public.get_owned_course_authoring_analytics_for_actor_v4(uuid,uuid,bigint,jsonb)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
     'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
   ]) signature where to_regprocedure(signature) is null
@@ -189,8 +197,8 @@ select is(array(
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
     'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
-    'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
-    'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
+    'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
+    'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
     'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
@@ -203,8 +211,8 @@ select is(array(
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
     'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
-    'public.get_owned_course_design_for_actor_v2(uuid,uuid,text,text,integer,text)',
-    'public.apply_course_design_command_for_actor_v2(uuid,uuid,bigint,jsonb,text,text,text)',
+    'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
+    'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
     'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
@@ -275,7 +283,7 @@ select ok(not exists(select 1 from pg_proc procedure_value
     )),'helpers de acesso direto ao PDF foram removidos');
 
 select is((select public.get_aralearn_runtime_manifest()->'features'),
-  (select jsonb_agg(to_jsonb(value) order by value)
+  (select jsonb_agg(to_jsonb(value) order by value collate "C")
     from jsonb_array_elements_text(
       public.get_aralearn_runtime_manifest()->'features'
     ) feature(value)),
@@ -291,7 +299,7 @@ select is((select count(*) from pg_trigger trigger_value
     )),0::bigint,'estado corrente de Fonte não possui trigger append-only');
 
 select is((select count(*) from private.course_design_parameter_definitions),
-  6::bigint,'permanecem exatamente seis parâmetros pedagógicos e editoriais');
+  12::bigint,'catálogo de parâmetros de conteúdo, prática, conversa e cadência');
 
 select * from finish();
 rollback;

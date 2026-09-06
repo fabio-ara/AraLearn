@@ -1,3 +1,5 @@
+import { reconcilePackageTextAnswers } from "../../sdk/reconcileTextAnswers.js";
+import { gapResponseInteraction } from "./interaction.js";
 import {
   createPackageGapMarker,
   escapePackageAttribute,
@@ -95,6 +97,7 @@ function markerForBlank(blank, index, options) {
   return createPackageGapMarker({
     blockKey: options.responseBlockKey || options.blockKey,
     index,
+    ...(options.manualEditTargets?.length ? { manualText: blank.answer } : {}),
     responseMode: blank.responseMode,
     layoutText: [blank.answer, ...(blank.acceptedAnswers || [])]
       .map((candidate) => practiceValueLabel(blank, candidate, options))
@@ -119,7 +122,30 @@ function choicePrompt(data, options) {
   return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}">${renderPackageInline(practiceValueLabel(blank, value, options))}</button>`).join("")}</div></section>`;
 }
 
+function materializesGap(registry, instance, response, index) {
+  try {
+    const blockKey = "aralearn-practice-materialization";
+    const html = registry.renderPreparedContent(instance, response, {
+      blockKey, responseBlockKey: blockKey, responseState: { values: [] }
+    });
+    return html.includes(`data-complete-block-key="${blockKey}"`) &&
+      html.includes(`data-complete-blank-index="${index}"`);
+  } catch { return false; }
+}
+
 export const gapResponsePackage = Object.freeze({
+  responseInteraction: gapResponseInteraction,
+  reconcileContentEdit(data, change) {
+    const next = structuredClone(data);
+    reconcilePackageTextAnswers(next.blanks || [], change, ({ entry, oldAnswer, newAnswer }) => {
+      entry.answer = newAnswer;
+      if (oldAnswer !== newAnswer) delete entry.acceptedAnswers;
+      if (entry.responseMode === "choice" && Array.isArray(entry.distractors)) {
+        entry.distractors = entry.distractors.map((value) => value === newAnswer ? oldAnswer : value);
+      }
+    });
+    return next;
+  },
   manifest: Object.freeze({
     id: "aralearn.response.gap", version: "1.0.0", label: "Lacuna",
     purpose: "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo.", slots: Object.freeze(["response"]),
@@ -179,7 +205,7 @@ export const gapResponsePackage = Object.freeze({
         errors.push(`Lacuna ${blank.id} não encontra sua resposta no campo de conteúdo indicado.`);
         return;
       }
-      if (!registry?.materializesGap?.(instance, studyUnit.response, (studyUnit.response?.data?.blanks || []).indexOf(blank))) {
+      if (!materializesGap(registry, instance, studyUnit.response, (studyUnit.response?.data?.blanks || []).indexOf(blank))) {
         errors.push(`Lacuna ${blank.id} não materializa um controle visível no renderer do package.`);
       }
     });
@@ -235,7 +261,6 @@ export const gapResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
-    if (options.manualEditing === true) return "";
     const prompt = choicePrompt(data, options);
     const feedback = options.revealPracticeAnswers === true
       ? '<div class="inline-feedback ok"><p class="tiny">Respostas esperadas exibidas.</p></div>'

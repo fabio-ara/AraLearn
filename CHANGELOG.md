@@ -4,6 +4,49 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.65] - 2026-09-05
+
+### Adicionado
+
+- estudo de cursos públicos sem conta, identificador pessoal e compartilhamento
+  com confirmação da pessoa e autorização própria para arquivos;
+- cópias privadas independentes, com conteúdo, planejamento, parâmetros e arquivos,
+  mediante permissão do proprietário; acessos e estado pessoal ficam na origem;
+- parâmetros por escopo com herança, escolhas automáticas ou fixas e perfis de
+  autoria reutilizáveis, preservando condições de pesquisa;
+- fontes com dados bibliográficos, referências manuais ou formatadas, citações
+  numéricas e vínculos com trechos e localizações no documento;
+- ferramentas contextuais de áudio, calculadora, gramática, dicionário e leitura;
+  áudio por voz do dispositivo ou arquivo WAV/MP3, com consentimento para serviço remoto;
+- comparação de cursos e exportação de conteúdo e análise em JSON;
+- sincronização manual ou automática e incorporação explícita do progresso sem conta.
+
+### Alterado
+
+- Autoria organizada por tarefa, com inspeção, mapa curricular, lotes, revisão e
+  edição contextual, mantendo os níveis de Estudo;
+- identidade visual compacta, títulos moderados, explicações auxiliares discretas,
+  quadros estáveis e controles equivalentes alinhados entre telas;
+- MCP e Actions compartilham leituras paginadas e fragmentos literais, preservando
+  contexto e conteúdo sem impor resumos ao material didático;
+- componentes didáticos delegam validação, edição e interação aos próprios contratos;
+- publicação coordenada de site e APK assinado a partir da candidata integral validada.
+
+### Corrigido
+
+- rascunhos, pedidos interrompidos e cópias preservam identidade ao recuperar uma
+  resposta perdida, evitando duplicação e substituição silenciosa;
+- remoção de arquivos considera todos os vínculos e cópias antes de apagar os bytes;
+- migrações preservam dados úteis e desenho aplicado ao retirar caminhos substituídos.
+
+### Atualização
+
+- no Android, instale o APK sobre a versão existente para conservar os dados locais;
+- para continuar a autoria pelo ChatGPT, reconecte o MCP ou atualize as Actions e
+  abra uma conversa nova;
+- métricas descrevem o conteúdo e as decisões de autoria; não medem aprendizagem
+  nem comprovam equivalência semântica entre cursos.
+
 ## [0.0.64] - 2026-09-04
 
 ### Corrigido

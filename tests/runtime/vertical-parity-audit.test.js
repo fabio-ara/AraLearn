@@ -62,7 +62,7 @@ test("o audit rejeita o canal abolido de ferramentas exclusivas do aplicativo", 
   ));
 });
 
-test("o inventário exato cobre os nove casos correntes", async () => {
+test("o inventário exato cobre os onze casos correntes, incluindo áudio e cópia independente", async () => {
   const current = await registry();
   const inventory = JSON.parse(await readFile(databaseInventoryPath, "utf8"));
   const assignments = new Map(inventory.objects.map(({ object, caseId }) => [object, caseId]));
@@ -70,27 +70,31 @@ test("o inventário exato cobre os nove casos correntes", async () => {
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 521);
+  assert.equal(inventory.objects.length, 617);
   assert.deepEqual(counts, {
-    "study-course-experience": 40,
-    "course-authoring-experience": 199,
-    "course-source-provenance": 125,
+    "study-course-experience": 30,
+    "course-authoring-experience": 225,
+    "course-source-provenance": 132,
     "course-anchored-annotations": 56,
     "course-authoring-research": 2,
-    "current-data-lifecycle": 19,
-    "person-profile-and-course-access": 31,
+    "current-data-lifecycle": 20,
+    "person-profile-and-course-access": 43,
     "didactic-component-runtime": 1,
-    "course-shared-transports": 48
+    "course-shared-transports": 48,
+    "course-audio-media": 51,
+    "course-independent-copy": 9
   });
   const currentCaseIds = current.cases
     .filter(({ status }) => status === "current")
     .map(({ id }) => id);
-  assert.equal(currentCaseIds.length, 9);
+  assert.equal(currentCaseIds.length, 11);
   assert.deepEqual(
     new Set(inventory.objects.map(({ caseId }) => caseId)),
     new Set(currentCaseIds)
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
+  assert.equal(assignments.get("table:private.course_media"), "course-audio-media");
+  assert.equal(assignments.get("function:public.copy_course_for_actor_v1(p_actor_id uuid, p_source_course_id uuid, p_expected_source_revision bigint, p_title text, p_confirmed boolean, p_request_id text, p_requested_at timestamp with time zone)"), "course-independent-copy");
   assert.equal(
     assignments.get("table:private.course_sources"),
     "course-source-provenance"

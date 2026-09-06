@@ -18,12 +18,20 @@ const migrationUrl = new URL(
   import.meta.url
 );
 const COURSE = "10000000-0000-4000-8000-000000000001";
+const precursorSource = await fs.readFile(new URL(
+  "../../supabase/migrations/20260817180000_course_design_parameters.sql",
+  import.meta.url
+), "utf8");
+const precursorCatalog = precursorSource.match(
+  /create function private\.course_component_catalog_v1\(\)[\s\S]+?\$function\$;/u
+)?.[0];
+assert.ok(precursorCatalog, "definição histórica do catálogo anterior");
 
 test("catálogo de aplicação e catálogo de componentes têm uma revisão corrente", () => {
   assert.equal(COURSE_COMPONENT_CATALOG_VERSION, RESOURCE_CATALOG.catalogVersion);
   assert.equal(EDGE_COMPONENT_CATALOG_VERSION, COURSE_COMPONENT_CATALOG_VERSION);
-  assert.equal(RESOURCE_CATALOG.catalogVersion, "1-4616b2e5");
-  assert.equal(RESOURCE_CATALOG.explore().packageCount, 33);
+  assert.match(RESOURCE_CATALOG.catalogVersion, /^1-[a-f0-9]{8}$/u);
+  assert.equal(RESOURCE_CATALOG.explore().packageCount, RESOURCE_PACKAGE_REGISTRY.listCatalog().length);
   assert.equal(
     RESOURCE_CATALOG.getProfile("aralearn.response.open", "1.0.0").label,
     "Resposta aberta"
@@ -32,17 +40,8 @@ test("catálogo de aplicação e catálogo de componentes têm uma revisão corr
 
 test("upgrade preserva políticas e unidades existentes ao acrescentar resposta aberta", async () => {
   const database = new PGlite();
-  const previousOptions = RESOURCE_PACKAGE_REGISTRY.listCatalog()
-    .filter(({ id }) => id !== "aralearn.response.open")
-    .map(({ id, version, label, purpose }) => ({
-      ref: `${id}@${version}`,
-      label,
-      purpose
-    }));
-  const previousCatalog = JSON.stringify({
-    version: "1-3e5629f8",
-    options: previousOptions
-  });
+  // Este ensaio parte dos 32 componentes daquela revisão, sem reconstruir
+  // o passado com os pacotes ou metadados do catálogo corrente.
   await database.exec(`
     create role anon;
     create role authenticated;
@@ -66,10 +65,7 @@ test("upgrade preserva políticas e unidades existentes ao acrescentar resposta 
         'Há mudanças de StudyUnit sem origem explicitamente observável.'
       ))
     $$;
-    create function private.course_component_catalog_v1()
-    returns jsonb language sql immutable as $$
-      select $catalog$${previousCatalog}$catalog$::jsonb
-    $$;
+    ${precursorCatalog}
     create function private.valid_course_component_policy_v1(p_policy jsonb)
     returns boolean language sql stable as $$
       select p_policy->>'catalogVersion' =
@@ -139,6 +135,11 @@ test("upgrade preserva políticas e unidades existentes ao acrescentar resposta 
     );
   `);
 
+  const previousCatalog = (await database.query(
+    "select private.course_component_catalog_v1() value"
+  )).rows[0].value;
+  assert.equal(previousCatalog.version, "1-3e5629f8");
+  assert.equal(previousCatalog.options.length, 32);
   await database.exec(await fs.readFile(migrationUrl, "utf8"));
 
   const catalog = (await database.query(
@@ -146,13 +147,12 @@ test("upgrade preserva políticas e unidades existentes ao acrescentar resposta 
   )).rows[0].value;
   assert.equal(catalog.version, "1-4616b2e5");
   assert.equal(catalog.options.length, 33);
-  assert.deepEqual(catalog.options, RESOURCE_PACKAGE_REGISTRY.listCatalog().map(
-    ({ id, version, label, purpose }) => ({
-      ref: `${id}@${version}`,
-      label,
-      purpose
-    })
-  ));
+  assert.deepEqual(catalog.options.slice(0, -1), previousCatalog.options);
+  assert.deepEqual(catalog.options.at(-1), {
+    ref: "aralearn.response.open@1.0.0",
+    label: "Resposta aberta",
+    purpose: "Pedir que o estudante explique, justifique ou preveja com palavras próprias, sem oferecer alternativas."
+  });
 
   const assignment = (await database.query(`
     select policy,origin,reason from private.course_component_policy_assignments
@@ -205,8 +205,7 @@ test("upgrade preserva políticas e unidades existentes ao acrescentar resposta 
     "aralearn.response.open@1.0.0"
   ]);
 
-  const currentRefs = RESOURCE_PACKAGE_REGISTRY.listCatalog()
-    .map(({ id, version }) => `${id}@${version}`);
+  const currentRefs = catalog.options.map(({ ref }) => ref);
   const policies = {
     defaultAll: {
       catalogVersion: "1-4616b2e5",

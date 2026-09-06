@@ -1,3 +1,5 @@
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
@@ -94,7 +96,15 @@ function snapshot({
   ceiling = 2,
   deepLink = null
 } = {}) {
-  const parameters = structuredClone(PARAMETER_ROWS);
+  const parameters = COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => {
+    const prior = PARAMETER_ROWS.find(({ parameterId }) => parameterId === definition.id);
+    return { ...(prior ? structuredClone(prior) : { parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      effectiveValues: [{ value: definition.defaultValue, origin: "automatic", sourceScopeKind: "course", studyUnitCount: studyUnits.length }] }),
+      definition: structuredClone(definition),
+      effectiveValues: (prior?.effectiveValues || [{ value: definition.defaultValue, origin: "automatic", sourceScopeKind: "course", studyUnitCount: studyUnits.length }])
+        .map((value) => ({ ...structuredClone(value), reason: "Escolha sintética para esta comparação." })) };
+  });
   parameters[0].effectiveValues[0].value = ceiling;
   parameters[0].effectiveValues[0].studyUnitCount = studyUnits.length;
   for (const parameter of parameters.slice(1)) {
@@ -102,6 +112,7 @@ function snapshot({
   }
   return {
     contract: COURSE_AUTHORING_ANALYTICS_CONTRACT,
+    basis: courseAuthoringBasisFixture({ title: "Curso de Redes", studyUnits: studyUnits.map(({ studyUnitRef, position, title }) => ({ studyUnitRef, position, title })) }),
     course: { id: COURSE_ID, revision: 9, title: "Curso de Redes" },
     scope: {
       selected: scope,
@@ -148,6 +159,7 @@ function snapshot({
         revisitCount: 0
       }],
       introductionsByStudyUnit: studyUnits,
+      practiceSequence: studyUnits.map(({ studyUnitRef }, index) => ({ studyUnitRef, position: index + 1, mode: "expository" })),
       explanationForms: [{
         form: "plain_definition",
         studyUnitCount: Math.min(2, studyUnits.length),
@@ -294,12 +306,12 @@ test("#273 teto 1 e 2 preservam o inventário e mudam somente a distribuição",
       introducedCount: 1
     }, {
       studyUnitRef: "unit-mechanism",
-      position: 1,
+      position: 2,
       title: "Mecanismo",
       introducedCount: 1
     }, {
       studyUnitRef: "unit-condition",
-      position: 1,
+      position: 3,
       title: "Condição",
       introducedCount: 1
     }]
@@ -322,11 +334,13 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
     value: 1,
     origin: "author",
     sourceScopeKind: "study_unit",
+    reason: "Motivo sintético.",
     studyUnitCount: 1
   }, {
     value: 2,
     origin: "automatic",
     sourceScopeKind: "didactic_microsequence",
+    reason: "Motivo sintético.",
     studyUnitCount: 1
   }];
   const normalized = normalizeCourseAuthoringAnalyticsPage(value);
@@ -377,11 +391,13 @@ test("valores iguais em escopos de origem distintos permanecem comparáveis", ()
     value: 2,
     origin: "automatic",
     sourceScopeKind: "course",
+    reason: "Motivo sintético.",
     studyUnitCount: 1
   }, {
     value: 2,
     origin: "automatic",
     sourceScopeKind: "didactic_microsequence",
+    reason: "Motivo sintético.",
     studyUnitCount: 1
   }];
   value.design.editorialDirections = [{
@@ -427,7 +443,7 @@ test("#273 rejeita maquinaria, score e parâmetro inventado em qualquer projeç�
   const serialized = JSON.stringify(normalizeCourseAuthoringAnalyticsPage(snapshot()));
   assert.doesNotMatch(
     serialized,
-    /run|step|retry|duration|hash|payload|score|transcript|prompt|clickstream/iu
+    /"(?:run|step|retry|duration|hash|payload|score|transcript|prompt|clickstream)"\s*:/iu
   );
 });
 

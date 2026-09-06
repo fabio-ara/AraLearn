@@ -67,13 +67,13 @@ test("sessão contextual mantém configuração em memória e zera a credencial 
   assert.throws(() => session.read(), /sessão de assistência foi encerrada/u);
 });
 
-test("runtime autenticado compartilha a sessão contextual entre Estudo e Autoria", () => {
+test("runtime autenticado oferece assistência no Estudo e conserva retorno da inspeção", () => {
   const source = readFileSync(new URL("../../public/main.js", import.meta.url), "utf8");
-  assert.match(source, /courseProviderSession\s*=\s*createCourseProviderSession\(\)/u);
+  assert.match(source, /courseProviderSession\s*=\s*visitor\s*\?\s*null\s*:\s*createCourseProviderSession\(\)/u);
   assert.match(source,
     /createCourseStudyApplication\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
-  assert.match(source,
-    /createCourseAuthoringSurface\(\{[\s\S]*?providerAssistanceSession:\s*courseProviderSession/u);
+  const inspection = readFileSync(new URL("../../src/ui/CourseInspectionSequence.js", import.meta.url), "utf8");
+  assert.doesNotMatch(inspection, /createCourseProviderAssistance|provider-assistance|providerAssistanceSession/u);
   assert.match(source, /onOpenStudyContent\(\{\s*entityPath,\s*returnRoute,\s*returnFocusKey/u);
   assert.match(source,
     /authoringSurface\?\.rememberInspectionReturnFocus\?\.\(\{[\s\S]*?route:\s*returnRoute,[\s\S]*?key:\s*returnFocusKey/u);
@@ -89,8 +89,8 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
   const schema = {
     type: "object",
     additionalProperties: false,
-    required: ["message"],
-    properties: { message: { type: "string" } }
+    required: ["message", "proposal"],
+    properties: { message: { type: "string" }, proposal: { type: ["object", "null"], properties: {} } }
   };
   const openai = normalizeStudyUnitProviderConfig({
     providerId: "openai", model: "gpt-5.6-luna", apiKey: "openai-secret"
@@ -115,6 +115,9 @@ test("OpenAI usa schema estrito e Gemini mantém a credencial fora da URL", () =
   });
   assert.equal(geminiRequest.init.headers["x-goog-api-key"], "gemini-secret");
   assert.equal(geminiRequest.init.redirect, "error");
+  const geminiBody = JSON.parse(geminiRequest.init.body);
+  assert.deepEqual(geminiBody.generationConfig.responseJsonSchema, schema);
+  assert.equal(Object.hasOwn(geminiBody.generationConfig, "responseSchema"), false);
   assert.doesNotMatch(geminiRequest.url, /key=|gemini-secret/u);
   assert.deepEqual(parseStudyUnitProviderOutput("gemini", providerOutput("gemini", {
     message: "Ok"

@@ -1941,9 +1941,9 @@
         "Coleções"
       ],
       "productTerm": "Catálogo público de cursos",
-      "technicalSymbol": "public_course_catalog",
+      "technicalSymbol": "list_courses_v1",
       "definition": "Índice de cursos tornados públicos por decisão explícita; organização de catálogo não concede nem substitui acesso privado direto.",
-      "decision": "remover",
+      "decision": "substituir",
       "layers": [
         "interface",
         "domain",
@@ -1985,9 +1985,9 @@
         "publicação"
       ],
       "productTerm": "Disponibilização pública",
-      "technicalSymbol": "public_course_release",
-      "definition": "Capacidade retirada que tornaria uma versão do curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação.",
-      "decision": "remover",
+      "technicalSymbol": "courses.visibility",
+      "definition": "Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. A política de arquivos é confirmada separadamente; tornar o curso público não concede edição nem cria uma versão imutável.",
+      "decision": "restringir",
       "layers": [
         "interface",
         "domain",
@@ -2008,15 +2008,33 @@
       "interfaceTerm": "Disponibilização pública",
       "domainTerm": "Disponibilização pública",
       "englishEquivalent": "public course availability",
-      "araLearnExample": "O AraLearn corrente não oferece disponibilização pública; o acesso depende de propriedade ou compartilhamento direto com uma pessoa autenticada.",
+      "araLearnExample": "O proprietário confirma o acesso público e a política de arquivos; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.",
       "ambiguityRisk": "Sem esta delimitação, “Disponibilização pública” pode ser confundido com materialização, salvamento, curso pronto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Publicação”: além de sugerir um estágio editorial, nomeava uma capacidade retirada e não deve descrever salvamento ou compartilhamento privado."
+        "“Publicação”: pode sugerir um estágio editorial ou uma versão imutável; neste produto, designa somente a decisão explícita de acesso público, sem substituir salvamento ou compartilhamento privado."
       ],
-      "forbiddenSymbols": [
-        "public_course_release"
-      ],
+      "status": "vigente"
+    },
+    {
+      "id": "retired-course-release-record",
+      "family": "organization-access",
+      "currentTerms": ["registro de versão publicada"],
+      "productTerm": "Registro de versão publicada retirado",
+      "technicalSymbol": "public_course_release",
+      "definition": "Registro separado de uma versão publicada de curso, retirado do runtime. O acesso público corrente é uma política do próprio curso mutável e não depende desse registro.",
+      "decision": "remover",
+      "layers": ["database", "code"],
+      "sources": [{"status": "decisao-produto", "ref": "docs/estado-atual-e-roadmap.md"}],
+      "notSynonyms": ["disponibilização pública", "cópia independente", "revisão para concorrência"],
+      "interfaceTerm": "Registro de versão publicada retirado",
+      "domainTerm": "Registro de versão publicada retirado",
+      "englishEquivalent": "retired course release record",
+      "araLearnExample": "Tornar um curso público altera sua política de acesso sem criar public_course_release ou congelar uma versão.",
+      "ambiguityRisk": "Confundir o registro retirado com a disponibilidade pública corrente reintroduziria uma segunda identidade de curso e uma etapa editorial que não controla a autorização atual.",
+      "alternativesAssessment": "compared",
+      "alternativesConsidered": ["“Disponibilização pública”: permanece como política de acesso ao curso atual; não é o nome de uma versão ou registro separado."],
+      "forbiddenSymbols": ["public_course_release"],
       "status": "concluido"
     },
     {

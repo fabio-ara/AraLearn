@@ -1,10 +1,13 @@
 import {
+  buildCourseAssistanceContext,
   prepareCourseAssistanceProposal,
   requestCourseAssistanceDiscussion,
   COURSE_ASSISTANCE_LIMITS
 } from "../assist/courseContextualAssistance.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { renderPackageStudyUnitBlocks } from "../render/renderPackageStudyUnit.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 
 const PROVIDERS = Object.freeze({
   openai: Object.freeze({
@@ -83,17 +86,47 @@ function conversationHtml(conversation) {
       `<p>${escapeHtml(turn.message)}</p></li>`).join("") + "</ol>";
 }
 
-function proposalHtml(proposal, pending) {
+function proposalHtml(proposal, pending, prepared) {
   if (!proposal) return "";
   return '<section class="course-assistance-plan" aria-labelledby="course-assistance-plan-title">' +
     '<h3 id="course-assistance-plan-title">Proposta</h3>' +
     `<p>${escapeHtml(proposal.summary)}</p>` +
     '<ul aria-label="Mudanças propostas">' + proposal.changes
       .map((change) => `<li>${escapeHtml(change)}</li>`).join("") + '</ul>' +
-    '<button class="open-mini" type="button" data-course-assistance-accept' +
+    (prepared ? "" : '<button class="open-mini" type="button" data-course-assistance-accept' +
     `${pending ? ' disabled aria-disabled="true"' : ""}>` +
-    `${renderUiIcon("save", "course-authoring-button-icon")}<span>Aceitar e aplicar</span></button>` +
+    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Preparar prévia</span></button>`) +
     '</section>';
+}
+
+function previewTargetHtml(target, scope) {
+  const heading = `<h4>${escapeHtml(target.title)}</h4>` +
+    (target.goal ? `<p>${escapeHtml(target.goal)}</p>` : "");
+  if (scope === "study_unit") {
+    return `<article>${heading}` + renderPackageStudyUnitBlocks(target, {
+      revealPracticeAnswers: true, blockKeyPrefix: `assistance-preview:${target.id}`
+    }) + "</article>";
+  }
+  const children = scope === "lesson" ? target.microsequences : target.studyUnits;
+  const nextScope = scope === "lesson" ? "didactic_microsequence" : "study_unit";
+  return `<section>${heading}` + children.map((child) =>
+    previewTargetHtml(child, nextScope)).join("") + "</section>";
+}
+
+function previewHtml(prepared, active, mode, pending) {
+  if (!prepared) return "";
+  const original = buildCourseAssistanceContext(active).context.readOnlyContext.target;
+  const target = mode === "original" ? original : prepared.candidate;
+  return '<section class="course-assistance-preview" aria-label="Prévia da alteração">' +
+    '<h3>Prévia da alteração</h3><div class="course-assistance-preview-actions" role="group" aria-label="Comparar conteúdo">' +
+    [ ["original", "Original"], ["proposed", "Prévia"] ].map(([value, label]) =>
+      `<button type="button" data-course-assistance-preview="${value}" aria-pressed="${mode === value}">${label}</button>`
+    ).join("") + '</div><fieldset disabled aria-label="Conteúdo para conferência">' +
+    previewTargetHtml(target, active.scope) + '</fieldset>' +
+    '<div class="course-assistance-preview-actions">' +
+    '<button type="button" data-course-assistance-discard-preview' + (pending ? " disabled" : "") + '>Descartar prévia</button>' +
+    '<button class="open-mini" type="button" data-course-assistance-apply disabled' +
+    '>Aplicar ao rascunho</button></div></section>';
 }
 
 function focusable(sheet) {
@@ -168,6 +201,9 @@ export function createCourseProviderAssistance({
   let requestEpoch = 0;
   let conversation = [];
   let proposal = null;
+  let prepared = null;
+  let previewMode = "proposed";
+  let previewReady = false;
   let messageDraft = "";
   let status = "";
   let error = "";
@@ -228,7 +264,8 @@ export function createCourseProviderAssistance({
       '<p id="course-assistance-context" class="visually-hidden">' +
       `${escapeHtml(SCOPE_LABELS[active.scope])}: ${escapeHtml(active.targetTitle)}</p>` +
       '<div class="course-assistance-body" data-course-assistance-body>' +
-      conversationHtml(conversation) + proposalHtml(proposal, pending) +
+      conversationHtml(conversation) + proposalHtml(proposal, pending, prepared) +
+      previewHtml(prepared, active, previewMode, pending) +
       `<section class="course-assistance-connection" data-open="${connectionOpen ? "true" : "false"}">` +
       '<button class="icon-ghost" type="button" data-course-assistance-connection-toggle' +
       ' aria-controls="course-assistance-connection-fields"' +
@@ -256,6 +293,25 @@ export function createCourseProviderAssistance({
       `${renderUiIcon(pending ? "rotate" : "arrow-right", "course-authoring-button-icon")}` +
       '</button></form></section>';
     bind();
+    previewReady = false;
+    const previewRoot = overlay.querySelector(".course-assistance-preview");
+    if (previewRoot) {
+      const renderedCandidate = prepared;
+      void RESOURCE_PACKAGE_REGISTRY.hydrate(previewRoot).then(() => {
+        if (!overlay || overlay.querySelector(".course-assistance-preview") !== previewRoot ||
+            prepared !== renderedCandidate) return;
+        previewReady = true;
+        const apply = previewRoot.querySelector("[data-course-assistance-apply]");
+        if (apply) apply.disabled = pending;
+      }).catch(() => {
+        if (!overlay || overlay.querySelector(".course-assistance-preview") !== previewRoot) return;
+        previewReady = false;
+        const failure = documentValue.createElement("p");
+        failure.setAttribute("role", "alert");
+        failure.textContent = "Uma representação não pôde ser apresentada. Descarte esta prévia e refine a proposta.";
+        previewRoot.appendChild(failure);
+      });
+    }
     const nextBody = overlay.querySelector("[data-course-assistance-body]");
     if (nextBody) {
       nextBody.scrollTop = scrollBodyToEnd ? nextBody.scrollHeight : previousScrollTop;
@@ -283,6 +339,7 @@ export function createCourseProviderAssistance({
     active = null;
     conversation = [];
     proposal = null;
+    prepared = null;
     messageDraft = "";
     status = "";
     error = "";
@@ -338,6 +395,7 @@ export function createCourseProviderAssistance({
       const response = await requestCourseAssistanceDiscussion({
         project: active.project,
         selection: active.selection,
+        configuration: active.configuration,
         scope: active.scope,
         writeTargetId: active.writeTargetId,
         writeTargetIds: active.writeTargetIds,
@@ -353,7 +411,10 @@ export function createCourseProviderAssistance({
       conversation = [...conversation, { role: "assistant", message: response.message }]
         .slice(-COURSE_ASSISTANCE_LIMITS.maximumConversationTurns * 2);
       proposal = response.proposal;
-      status = "Revise a proposta. Você pode refiná-la na conversa ou aceitar e aplicar ao rascunho.";
+      prepared = null;
+      status = proposal
+        ? "Revise a proposta. Você pode refiná-la na conversa ou preparar uma prévia."
+        : "";
       return true;
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
@@ -377,15 +438,16 @@ export function createCourseProviderAssistance({
     syncForm();
     const acceptedProposal = proposal;
     pending = true;
-    status = "Gerando e validando a proposta aceita…";
+    status = "Preparando e validando a prévia…";
     error = "";
     const epoch = ++requestEpoch;
     requestController = new AbortController();
     render({ focusSelector: "[data-course-assistance-status]", scrollBodyToEnd: true });
     try {
-      const prepared = await prepareCourseAssistanceProposal({
+      const candidate = await prepareCourseAssistanceProposal({
         project: active.project,
         selection: active.selection,
+        configuration: active.configuration,
         confirmedProposal: acceptedProposal,
         conversation,
         writeTargetIds: active.writeTargetIds,
@@ -395,14 +457,15 @@ export function createCourseProviderAssistance({
         signal: requestController.signal
       });
       if (!active || epoch !== requestEpoch) return false;
-      await Promise.resolve(active.onApplyDraft(prepared));
-      if (!active || epoch !== requestEpoch) return false;
-      return close();
+      prepared = candidate;
+      previewMode = "proposed";
+      status = "Confira o original e a prévia antes de aplicar ao rascunho.";
+      return true;
     } catch (caught) {
       if (!active || epoch !== requestEpoch) return false;
       error = publicErrorMessage(
         caught,
-        "A proposta aceita não pôde ser aplicada ao rascunho."
+        "Não foi possível preparar a prévia."
       );
       status = "O conteúdo original foi preservado.";
       return false;
@@ -410,7 +473,31 @@ export function createCourseProviderAssistance({
       if (active && epoch === requestEpoch) {
         pending = false;
         requestController = null;
-        render({ focusSelector: "[data-course-assistance-message]", scrollBodyToEnd: true });
+        render({ focusSelector: prepared ? "[data-course-assistance-apply]" : "[data-course-assistance-message]",
+          revealSelector: prepared ? ".course-assistance-preview" : "" });
+      }
+    }
+  }
+
+  async function applyPreview() {
+    if (!active || !prepared || !previewReady || pending) return false;
+    pending = true;
+    const epoch = ++requestEpoch;
+    const candidate = prepared;
+    render();
+    try {
+      await Promise.resolve(active.onApplyDraft(candidate));
+      if (!active || epoch !== requestEpoch) return false;
+      return close();
+    } catch (caught) {
+      if (!active || epoch !== requestEpoch) return false;
+      error = publicErrorMessage(caught, "Não foi possível aplicar a prévia ao rascunho.");
+      status = "A prévia foi preservada para conferência.";
+      return false;
+    } finally {
+      if (active && epoch === requestEpoch) {
+        pending = false;
+        render({ focusSelector: "[data-course-assistance-apply]" });
       }
     }
   }
@@ -456,6 +543,21 @@ export function createCourseProviderAssistance({
     });
     overlay.querySelector("[data-course-assistance-accept]")
       ?.addEventListener("click", () => void acceptProposal());
+    overlay.querySelector("[data-course-assistance-apply]")
+      ?.addEventListener("click", () => void applyPreview());
+    overlay.querySelectorAll("[data-course-assistance-preview]").forEach((button) =>
+      button.addEventListener("click", () => {
+        syncForm();
+        previewMode = button.dataset.courseAssistancePreview;
+        render({ focusSelector: `[data-course-assistance-preview='${previewMode}']` });
+      }));
+    overlay.querySelector("[data-course-assistance-discard-preview]")?.addEventListener("click", () => {
+      if (pending) return;
+      syncForm();
+      prepared = null;
+      status = "Prévia descartada. O conteúdo original foi preservado.";
+      render({ focusSelector: "[data-course-assistance-message]" });
+    });
     overlay.querySelector("[data-course-assistance-provider]")
       ?.addEventListener("change", changeProvider);
     overlay.querySelector("[data-course-assistance-connection-toggle]")
@@ -491,6 +593,7 @@ export function createCourseProviderAssistance({
       trigger = null,
       project,
       selection,
+      configuration,
       scope,
       targetTitle,
       writeTargetId = "",
@@ -503,6 +606,7 @@ export function createCourseProviderAssistance({
           typeof onApplyDraft !== "function") return false;
       active = {
         trigger, project: structuredClone(project), selection: structuredClone(selection),
+        configuration: structuredClone(configuration),
         scope, targetTitle: text(targetTitle) || SCOPE_LABELS[scope], writeTargetId,
         writeTargetIds: (() => {
           const normalized = [...new Set((Array.isArray(writeTargetIds) ? writeTargetIds : [])
@@ -518,6 +622,7 @@ export function createCourseProviderAssistance({
       documentValue.addEventListener?.("keydown", keydown);
       conversation = [];
       proposal = null;
+      prepared = null;
       messageDraft = "";
       status = "";
       error = "";
@@ -549,7 +654,8 @@ export function createCourseProviderAssistance({
         opened: Boolean(active),
         pending,
         conversationTurnCount: conversation.length,
-        hasProposal: Boolean(proposal)
+        hasProposal: Boolean(proposal),
+        hasPreview: Boolean(prepared)
       });
     },
     destroy() {

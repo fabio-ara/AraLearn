@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createCourseApiHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseApiServer.js";
-import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { CourseSupabaseAdapter } from
   "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { COURSE_AUTHORING_EXPORT_CONTRACT, COURSE_AUTHORING_EXPORT_MAX_BYTES } from
+  "../../src/domain/courseAuthoringComparison.js";
 
 const ORIGIN = "https://app.example";
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
@@ -19,6 +20,29 @@ function jwt(payload) {
     "assinatura-de-teste"
   ].join(".");
 }
+
+test("somente a rota autenticada de exportação aceita artefato maior que 2 MiB até 32 MiB UTF-8", async () => {
+  const payload = { contract: COURSE_AUTHORING_EXPORT_CONTRACT, text: "" };
+  const overhead = Buffer.byteLength(JSON.stringify(payload));
+  payload.text = "漢字á😀" + "x".repeat(COURSE_AUTHORING_EXPORT_MAX_BYTES - overhead - 12);
+  const handler = createCourseApiHandler({ allowedOrigins: new Set([ORIGIN]), adapter: {
+    async resolveApplicationPrincipal() { return { actorId: COURSE_ID, scopes: ["authoring:write"] }; },
+    async getCourseAuthoringExport() { return payload; },
+    async getCourse() { return payload; }
+  } });
+  const exportPath = `/v1/courses/${COURSE_ID}/authoring-export?expectedRevision=1&scopeKind=course`;
+  const response = await handler(request(exportPath, { method: "GET" }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).data.text, payload.text);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const ordinary = await handler(request(`/v1/courses/${COURSE_ID}?view=summary`, { method: "GET" }));
+  assert.equal(ordinary.status, 413);
+  assert.equal((await ordinary.json()).error.code, "response_too_large");
+  payload.text += "á";
+  const exceeded = await handler(request(exportPath, { method: "GET" }));
+  assert.equal(exceeded.status, 413);
+  assert.equal((await exceeded.json()).error.code, "course_export_too_large");
+});
 
 function request(path, {
   method = "POST",
@@ -92,6 +116,28 @@ test("expõe somente a inspeção focal v2", async () => {
   assert.equal((await handler(request(`/v1/courses/${COURSE_ID}/study-units${query}`, {
     method: "GET"
   }))).status, 404);
+  assert.equal(calls, 1);
+});
+
+test("rota de reorganização compartilha CAS e recibo sem permitir campos ou escopo indevidos", async () => {
+  let calls = 0, allowed = true;
+  const body = { requestId: "parts-api-304", expectedCourseRevision: 3, expectedPlanVersion: 2,
+    part: { partId: null, title: "Lote", intent: "Produzir.", progression: ["Aplicar."], position: 0,
+      microsequences: [{ microsequenceId: "m", position: 0 }] } };
+  const handler = createCourseApiHandler({ allowedOrigins: new Set([ORIGIN]), adapter: {
+    async resolveApplicationPrincipal() { return { actorId: COURSE_ID, scopes: allowed ? ["authoring:write"] : ["authoring:read"] }; },
+    async saveCourseAuthoringPart(value) {
+      calls++; assert.equal(value.courseId, COURSE_ID); assert.equal(value.expectedPlanVersion, 2);
+      assert.equal(value.part.partId, null); assert.equal(value.requestId, body.requestId);
+      return { contract: "aralearn.course-authoring-part-change.v1", courseId: COURSE_ID, courseRevision: 4,
+        planVersion: 3, authoringPartId: PART_ID, changed: true, idempotent: false };
+    }
+  } });
+  const path = `/v1/courses/${COURSE_ID}/authoring-parts`;
+  assert.equal((await handler(request(path, { body }))).status, 200);
+  assert.equal((await handler(request(path, { body: { ...body, courseId: PART_ID } }))).status, 422);
+  allowed = false;
+  assert.equal((await handler(request(path, { body }))).status, 403);
   assert.equal(calls, 1);
 });
 
@@ -414,7 +460,7 @@ test("ingestão exige seis campos exatos e um único Blob PDF", async () => {
 });
 
 
-test("expõe criação da cópia pessoal somente como ação autenticada do aplicativo", async () => {
+test("expõe consulta de recuperação somente ao aplicativo autenticado", async () => {
   const studyUnit = {
     id: "unit-a",
     position: 1,
@@ -441,10 +487,10 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
           scopes: ["authoring:write"]
         };
       },
-      async commitPersonalCourseCopyEdit(value) {
+      async recoverOwnedCourseCopy(value) {
         call = value;
         return {
-          contract: "aralearn.personal-course-copy-edit.v1",
+          contract: "aralearn.owned-course-copy-recovery.v1",
           targetCourseId: PART_ID,
           changed: true
         };
@@ -460,7 +506,7 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
     studyUnit,
     applicationOrigin: "manual"
   };
-  const personalCopyPath = `/v1/courses/${COURSE_ID}/personal-copy/composition`;
+  const personalCopyPath = `/v1/courses/${COURSE_ID}/copy-recovery`;
   const response = await handler(request(personalCopyPath, { body }));
   const payload = await response.json();
 
@@ -472,33 +518,8 @@ test("expõe criação da cópia pessoal somente como ação autenticada do apli
   assert.equal(call.studyUnit.id, "unit-a");
   assert.equal(Object.hasOwn(call, "actorId"), false);
 
-  const conflictHandler = createCourseApiHandler({
-    allowedOrigins: new Set([ORIGIN]),
-    adapter: {
-      async resolveApplicationPrincipal() {
-        return {
-          actorId: COURSE_ID,
-          authenticationKind: "application",
-          scopes: ["authoring:write"]
-        };
-      },
-      async commitPersonalCourseCopyEdit() {
-        throw new AuthoringApiError(
-          409,
-          "personal_copy_exists",
-          "Você já possui uma cópia pessoal deste Curso.",
-          { targetCourseId: PART_ID }
-        );
-      }
-    }
-  });
-  const conflictResponse = await conflictHandler(
-    request(personalCopyPath, { body })
-  );
-  const conflictPayload = await conflictResponse.json();
-  assert.equal(conflictResponse.status, 409);
-  assert.equal(conflictPayload.error.code, "personal_copy_exists");
-  assert.equal(conflictPayload.error.details.targetCourseId, PART_ID);
+  const removed = await handler(request(`/v1/courses/${COURSE_ID}/personal-copy/composition`, { body }));
+  assert.equal(removed.status, 404);
 });
 
 test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async () => {
@@ -511,11 +532,11 @@ test("aplicativo usa a mesma leitura e mudança de parâmetros do MCP", async ()
       },
       async getCourseDesign(value) {
         calls.push(["read", value]);
-        return { contract: "aralearn.course-design.v1", courseId: COURSE_ID };
+        return { contract: "aralearn.course-design.v3", courseId: COURSE_ID };
       },
       async applyCourseDesignCommand(value) {
         calls.push(["write", value]);
-        return { contract: "aralearn.course-design-change.v1", changed: true };
+        return { contract: "aralearn.course-design-change.v3", changed: true };
       }
     }
   });
@@ -556,7 +577,8 @@ test("aplicativo usa o mesmo contrato de Fontes do MCP", async () => {
       async getCourseSources(value) {
         calls.push(["read", value]);
         return {
-          contract: "aralearn.course-sources.v2",
+          contract: "aralearn.course-sources.v3",
+          bibliographyStyle: "abnt-2025",
           courseId: COURSE_ID,
           courseRevision: 5,
           mode: "target",

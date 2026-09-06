@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   classifyChangedPaths,
+  classifyGitDiff,
   isDocumentationPath
 } from "../../scripts/classifyCiPaths.mjs";
 
@@ -17,7 +18,7 @@ test("classificador aceita somente conteúdo documental reconhecido", () => {
   assert.equal(classifyChangedPaths(["docs/principios-editoriais.md"]), true);
   assert.equal(classifyChangedPaths([
     "README.md",
-    "AGENTS.override.md",
+    "LICENSE.md",
     "docs/arquitetura.md",
     "docs/avaliação-metodológica.md",
     "docs/referencias.bib",
@@ -36,11 +37,58 @@ test("classificador envia qualquer alteração executável ao pipeline integral"
   assert.equal(classifyChangedPaths(["unknown/content.txt"]), false);
 });
 
+test("contratos, instruções e artefatos documentais não dispensam validação de runtime", () => {
+  for (const repositoryPath of [
+    "docs/aralearn-contract.md",
+    "docs/autoria-actions.md",
+    "docs/autoria-mcp.md",
+    "docs/downloads/aralearn-chatgpt-action-openapi.yaml",
+    "docs/downloads/instrucoes.md",
+    "docs/instructions/runtime.md",
+    "docs/AGENTS.md",
+    "docs/SKILL.md",
+    "AGENTS.override.md",
+    "UNKNOWN.md"
+  ]) {
+    assert.equal(isDocumentationPath(repositoryPath), false, repositoryPath);
+    assert.equal(classifyChangedPaths(["docs/README.md", repositoryPath]), false, repositoryPath);
+  }
+});
+
+test("segurança, migrations, componentes compartilhados, dependências e CI ampliam o gate", () => {
+  for (const repositoryPath of [
+    "supabase/functions/_shared/aralearn-authoring/security.js",
+    "supabase/migrations/20260905000000_access.sql",
+    "src/resources/kernel/packageRegistry.js",
+    "src/resources/sdk/practice.js",
+    "package.json",
+    "package-lock.json",
+    "deno.lock",
+    "android/gradle/wrapper/gradle-wrapper.properties",
+    ".github/workflows/validacao.yml",
+    "scripts/classifyCiPaths.mjs",
+    "scripts/runTests.mjs"
+  ]) {
+    assert.equal(classifyChangedPaths([repositoryPath]), false, repositoryPath);
+  }
+});
+
 test("classificador rejeita entrada ausente ou ambígua", () => {
   assert.equal(classifyChangedPaths([]), false);
   assert.equal(isDocumentationPath("docs\\principios-editoriais.md"), false);
   assert.equal(isDocumentationPath("docs/../src/runtime.md"), false);
   assert.equal(isDocumentationPath("/docs/principios-editoriais.md"), false);
+  assert.equal(isDocumentationPath(" docs/principios-editoriais.md"), false);
+});
+
+test("diff considera exclusões e não permite que renomeação ou mudança de tipo esconda runtime", () => {
+  assert.equal(classifyGitDiff("M\0docs/arquitetura.md\0D\0docs/uso-do-app.md\0"), true);
+  assert.equal(classifyGitDiff("D\0src/runtime.js\0A\0docs/runtime.md\0"), false);
+  assert.equal(classifyGitDiff("M\0docs/README.md\0T\0README.md\0"), false);
+  assert.equal(classifyGitDiff("R100\0src/runtime.js\0docs/runtime.md\0"), false);
+  assert.equal(classifyGitDiff("U\0README.md\0"), false);
+  assert.equal(classifyGitDiff("M\0docs/README.md"), false);
+  assert.equal(classifyGitDiff(""), false);
 });
 
 test("interface de linha de comando produz docs_only booleano", () => {

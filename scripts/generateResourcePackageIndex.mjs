@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -88,9 +89,16 @@ function generatedSource(modules) {
     `import { ${exportName} } from "./${directory}/index.js";`
   ));
   const names = modules.map(({ exportName }) => `  ${exportName}`);
+  const contracts = modules.map(({ definition }) => ({
+    manifest: definition.manifest, schema: definition.schema, authoringContract: definition.authoringContract
+  })).sort((left, right) => `${left.manifest.id}@${left.manifest.version}`.localeCompare(
+    `${right.manifest.id}@${right.manifest.version}`, "en"));
+  const fingerprint = `sha256:${createHash("sha256").update(JSON.stringify(contracts)).digest("hex")}`;
   return `${[
     "// Gerado por scripts/generateResourcePackageIndex.mjs. Não edite manualmente.",
     ...imports,
+    "",
+    `export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "${fingerprint}";`,
     "",
     "export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([",
     `${names.join(",\n")}`,

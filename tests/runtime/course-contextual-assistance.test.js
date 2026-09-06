@@ -1,12 +1,13 @@
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  buildCourseAssistanceContext,
+  buildCourseAssistanceContext as rawBuildContext,
   COURSE_ASSISTANCE_LIMITS,
-  prepareCourseAssistanceProposal,
-  requestCourseAssistanceDiscussion
+  prepareCourseAssistanceProposal as rawPrepare,
+  requestCourseAssistanceDiscussion as rawDiscussion
 } from "../../src/assist/courseContextualAssistance.js";
 import { buildCourseAssistanceCompositionChange } from
   "../../src/domain/courseAssistanceComposition.js";
@@ -17,12 +18,22 @@ const fixture = JSON.parse(readFileSync(new URL(
 ), "utf8"));
 
 const selection = Object.freeze({
-  courseId: "course-fixture-minimal",
+  courseId: "10000000-0000-4000-8000-000000000001",
   moduleId: "module-fixture-minimal",
   lessonId: "lesson-fixture-minimal",
   microsequenceId: "micro-fixture-minimal",
   studyUnitId: "card-fixture-minimal-regra"
 });
+
+fixture.courses[0].id = selection.courseId;
+function withConfiguration(value) {
+  return { configuration: courseDesignFixture(value.selection, {
+    scope: value.scope || value.confirmedProposal?.scope || "study_unit"
+  }), ...value };
+}
+const buildCourseAssistanceContext = (value) => rawBuildContext(withConfiguration(value));
+const prepareCourseAssistanceProposal = async (value) => rawPrepare(value.selection ? withConfiguration(value) : value);
+const requestCourseAssistanceDiscussion = (value) => rawDiscussion(withConfiguration(value));
 
 const runtimeConfig = Object.freeze({
   developmentRuntime: true,
@@ -72,6 +83,40 @@ function validChangedStudyUnit() {
   unit.content[0].data.text = "Uma regra relaciona condições e consequências observáveis.";
   return unit;
 }
+
+test("contexto envia configuração focal resolvida sem substituir automático por defaults", async () => {
+  const configuration = courseDesignFixture(selection);
+  configuration.parameters[0].effectiveAssignment = {
+    mode: "fixed", value: 3, origin: "research_condition", reason: "Condição comparativa fixada.",
+    sourceScope: { kind: "course", ref: selection.courseId }, inherited: true
+  };
+  const requests = [];
+  await rawDiscussion({ project: fixture, selection, configuration, message: "Discuta esta condição.",
+    providerConfig, runtimeConfig, fetchImpl: sequenceFetch([{ message: "Condição preservada.", proposal: null }], requests) });
+  const sent = JSON.parse(requests[0].body.input).readOnlyContext.configuration;
+  assert.equal(sent.parameters[0].value, 3);
+  assert.equal(sent.parameters[0].origin, "research_condition");
+  assert.equal(sent.parameters[1].value, null);
+  assert.equal(sent.parameters[1].mode, "automatic");
+  assert.equal(sent.courseRevision, 1);
+  assert.equal(sent.parameters[0].reason, "Condição comparativa fixada.");
+  assert.throws(() => rawBuildContext({ project: fixture, selection }), /leitura|desenho/iu);
+  const wrongScope = courseDesignFixture(selection, { scope: "lesson" });
+  assert.throws(() => rawBuildContext({ project: fixture, selection, configuration: wrongScope }),
+    (error) => error.code === "assistance_configuration_mismatch");
+});
+
+test("conflito fixo permite discussão e impede preparar conteúdo antes de qualquer geração", async () => {
+  const configuration = courseDesignFixture(selection);
+  configuration.parameters[0].conflicts = [{ fixedScope: { kind: "course", ref: selection.courseId },
+    fixedValue: 2, exceptionScope: { kind: "study_unit", ref: selection.studyUnitId }, exceptionValue: 3 }];
+  const requests = [];
+  await assert.rejects(() => rawPrepare({ project: fixture, selection, configuration,
+    confirmedProposal: { scope: "study_unit", summary: "Explicar", changes: ["Explicar o conteúdo"], componentNeeds: [] },
+    providerConfig, runtimeConfig, fetchImpl: sequenceFetch([], requests) }),
+    (error) => error.code === "assistance_configuration_conflict");
+  assert.equal(requests.length, 0);
+});
 
 test("contexto separa escrita de leitura e inclui Unidade inteira sem Fontes ou PDFs", () => {
   const { context } = buildCourseAssistanceContext({
@@ -130,7 +175,7 @@ test("seleção inválida ou obsoleta nunca amplia autoridade de escrita", () =>
   }
 });
 
-test("cada turno devolve e refina uma proposta concreta no escopo recebido", async () => {
+test("pedido de mudança devolve e refina uma proposta concreta no escopo recebido", async () => {
   const requests = [];
   const fetchImpl = sequenceFetch([{
     message: "A Unidade apresenta a regra; proponho tornar essa função mais explícita.",
@@ -178,11 +223,12 @@ test("cada turno devolve e refina uma proposta concreta no escopo recebido", asy
     JSON.parse(requests[1].body.input).currentProposal,
     discussed.proposal
   );
-  assert.match(requests[0].body.instructions, /sempre a melhor proposta concreta/iu);
+  assert.match(requests[0].body.instructions, /abertura ao debate/iu);
 });
 
-test("resposta sem proposta concreta é rejeitada", async () => {
-  await assert.rejects(() => requestCourseAssistanceDiscussion({
+test("discussão sem mudança aceita resposta sem proposta e não gera conteúdo", async () => {
+  const requests = [];
+  const discussed = await requestCourseAssistanceDiscussion({
     project: fixture,
     selection,
     message: "Explique a Unidade.",
@@ -191,8 +237,13 @@ test("resposta sem proposta concreta é rejeitada", async () => {
     fetchImpl: sequenceFetch([{
       message: "Apenas uma explicação.",
       proposal: null
-    }])
-  }), (error) => error.code === "provider_scope_violation");
+    }], requests)
+  });
+  assert.equal(discussed.message, "Apenas uma explicação.");
+  assert.equal(discussed.proposal, null);
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0].body.text.format.schema.properties.proposal.type, ["object", "null"]);
+  await assert.rejects(prepareCourseAssistanceProposal({ confirmedProposal: discussed.proposal }), TypeError);
 });
 
 test("pipeline descobre contratos, repara saída semanticamente inválida e só aceita renderer real", async () => {
@@ -228,7 +279,8 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
     .microsequences[0].studyUnits[0].content[0].data.text, valid.content[0].data.text);
   assert.equal(requests.length, 2);
   assert.match(requests[1].body.input, /repair/u);
-  assert.match(requests[1].body.input, /curto demais/iu);
+  assert.match(requests[1].body.input, /exatamente uma forma/iu);
+  assert.equal(JSON.parse(requests[1].body.input).repair.rejectedCandidate.content[0].data.text, "");
   const generationPrompt = JSON.parse(requests[0].body.input);
   assert.ok(generationPrompt.exactComponentContracts.every((item) =>
     !Object.hasOwn(item, "schema")
@@ -237,6 +289,20 @@ test("pipeline descobre contratos, repara saída semanticamente inválida e só 
     ["Reescrever a explicação em linguagem direta."]);
   assert.deepEqual(currentStudyUnit(), fixture.courses[0].modules[0]
     .lessons[0].microsequences[0].studyUnits[0]);
+});
+
+test("normalização de opcionais não aceita prosa nula, ramo rich incompleto nem campo desconhecido", async () => {
+  for (const data of [{ text: null }, { text: "Texto.", format: "rich", blocks: [] }, { text: "Texto.", unknown: null }]) {
+    const candidate = validChangedStudyUnit();
+    candidate.content[0].data = data;
+    const before = structuredClone(fixture);
+    await assert.rejects(prepareCourseAssistanceProposal({ project: fixture, selection,
+      confirmedProposal: { summary: "Revisar explicação.", changes: ["Reescrever somente a explicação."],
+        scope: "study_unit", componentNeeds: [{ query: "explicação em prosa", slot: "content" }] },
+      providerConfig, runtimeConfig, fetchImpl: sequenceFetch([{ message: "Composição inválida.", candidate }])
+    }), error => error.code === "assistance_candidate_invalid" && error.validationErrors.length > 0);
+    assert.deepEqual(fixture, before);
+  }
 });
 
 test("três composições inválidas preservam o projeto e nunca produzem prévia quebrada", async () => {

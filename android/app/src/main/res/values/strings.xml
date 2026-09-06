@@ -6,6 +6,6 @@
     <string name="text_export_error">Não foi possível salvar a exportação.</string>
     <string name="text_export_invalid">A exportação recebida é inválida.</string>
     <string name="text_export_success">Exportação salva como %1$s.</string>
-    <string name="text_export_too_large">A exportação excede 8 MiB. Restrinja o recorte e tente novamente.</string>
+    <string name="text_export_too_large">A exportação excede o limite de 32 MiB.</string>
     <string name="text_export_unavailable">Não foi possível abrir o seletor para salvar a exportação.</string>
 </resources>

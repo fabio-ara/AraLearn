@@ -13,6 +13,9 @@ import {
   COURSE_SOURCE_KINDS,
   COURSE_SOURCE_RELATIONS,
   COURSE_SOURCE_ROLES,
+  COURSE_BIBLIOGRAPHY_STYLES,
+  createEmptyCourseSourceBibliographicMetadata,
+  normalizeCourseSourceAttachment,
   normalizeCourseSourceCommand,
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
@@ -27,8 +30,17 @@ import {
   RESOURCE_VOCABULARIES
 } from "../aralearn/runtime/resources/catalog/vocabularies.js";
 import { resolveOpenAiTemporaryPdf } from "./openAiTemporaryPdf.js";
-import { materializeHumanCoursePart } from "./courseHumanMaterialization.js";
+import { resolveOpenAiTemporaryAudio } from "./openAiTemporaryAudio.js";
+import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeCourseMediaRead } from
+  "../aralearn/runtime/domain/courseMedia.js";
+import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
+  resolveHumanSourceOccurrences } from "./courseHumanMaterialization.js";
 import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
+import { sha256Hex } from "./security.js";
+import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
+import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
+import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
+import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
@@ -38,25 +50,19 @@ const MAX_CONTEXT_PAGES = 100;
 const MCP_OAUTH_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["offline_access"]) })
 ]);
-const SOURCE_ROLES_BY_HUMAN_NAME = Object.freeze({
-  escopo_curricular: "curricular_scope",
-  evidencia_de_avaliacao: "assessment_evidence",
-  tecnica_conceitual: "technical_conceptual"
-});
+const SOURCE_ROLES_BY_HUMAN_NAME = HUMAN_SOURCE_ROLES;
 const SOURCE_ROLE_HUMAN_NAMES = new Map(Object.entries(SOURCE_ROLES_BY_HUMAN_NAME)
   .map(([humanName, internalName]) => [internalName, humanName]));
 
 const HUMAN_REFERENCE_SCHEMA = Object.freeze({
-  oneOf: Object.freeze([
-    Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 }),
-    Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
-  ])
+  type: Object.freeze(["integer", "string"]), minimum: 1, maximum: 1000000,
+  minLength: 1, maxLength: 300
 });
 const COURSE_SCHEMA = Object.freeze({
   type: "string",
   minLength: 1,
   maxLength: 300,
-  description: "Nome do curso."
+  description: "Nome"
 });
 const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   type: "array",
@@ -66,33 +72,26 @@ const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   items: HUMAN_REFERENCE_SCHEMA
 });
 
-const PEDAGOGICAL_PARAMETERS_SCHEMA = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: Object.freeze({
-    tetoNovasUnidadesDeAnalise: Object.freeze({
-      type: ["integer", "null"], minimum: 1, maximum: 64
-    }),
-    formasDeExplicacao: Object.freeze({
-      type: ["array", "null"],
-      minItems: 1,
-      maxItems: EXPLANATION_FORMS.length,
-      uniqueItems: true,
-      items: Object.freeze({ type: "string", enum: EXPLANATION_FORMS })
-    }),
-    minimoDePraticasPorRequisito: Object.freeze({
-      type: ["integer", "null"], minimum: 1, maximum: 64
-    }),
-    dimensoesDeVariacaoDaPratica: Object.freeze({
-      type: ["array", "null"],
-      minItems: 1,
-      maxItems: PRACTICE_VARIATION_DIMENSIONS.length,
-      uniqueItems: true,
-      items: Object.freeze({ type: "string", enum: PRACTICE_VARIATION_DIMENSIONS })
-    })
-  })
-});
+function parameterValueSchema(definition, { nullable = false } = {}) {
+  const value = definition.valueSchema;
+  const schema = value.type === "set" ? {
+    type: "array", minItems: value.minimumItems, maxItems: value.maximumItems,
+    uniqueItems: true, items: { type: "string", enum: [...value.allowedValues] }
+  } : value.type === "enum" ? { type: "string", enum: [...value.allowedValues] }
+    : { type: value.type, minimum: value.minimum, maximum: value.maximum };
+  return nullable ? { anyOf: [schema, { type: "null" }] } : schema;
+}
+function parametersSchema({ nullable = false } = {}) {
+  return { type: "object", additionalProperties: false, minProperties: 1,
+    properties: Object.fromEntries(COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => [
+      definition.humanField, parameterValueSchema(definition, { nullable })
+    ])) };
+}
+const PARAMETERS_SCHEMA = Object.freeze(parametersSchema({ nullable: true }));
+const PARAMETER_FIELDS = Object.freeze(COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField));
+const PARAMETER_FIELD_TO_ID = Object.freeze(Object.fromEntries(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField, id }) => [humanField, id])
+));
 
 const CURRICULAR_MAP_MICROSEQUENCE_SCHEMA = Object.freeze({
   type: "object",
@@ -112,77 +111,13 @@ const CURRICULAR_MAP_MICROSEQUENCE_SCHEMA = Object.freeze({
   })
 });
 
-const EDITORIAL_PARAMETERS_SCHEMA = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: Object.freeze({
-    alvoDePalavrasPorResposta: Object.freeze({
-      type: ["integer", "null"], minimum: 20, maximum: 500
-    }),
-    alvoDePalavrasPorUnidade: Object.freeze({
-      type: ["integer", "null"], minimum: 40, maximum: 1000
-    })
-  })
-});
-
-const MATERIALIZATION_PEDAGOGICAL_PARAMETERS_SCHEMA = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  required: Object.freeze([
-    "tetoNovasUnidadesDeAnalise", "formasDeExplicacao",
-    "minimoDePraticasPorRequisito", "dimensoesDeVariacaoDaPratica"
-  ]),
-  properties: Object.freeze({
-    tetoNovasUnidadesDeAnalise: Object.freeze({
-      type: "integer", minimum: 1, maximum: 64
-    }),
-    formasDeExplicacao: Object.freeze({
-      type: "array",
-      minItems: 1,
-      maxItems: EXPLANATION_FORMS.length,
-      uniqueItems: true,
-      items: Object.freeze({ type: "string", enum: EXPLANATION_FORMS })
-    }),
-    minimoDePraticasPorRequisito: Object.freeze({
-      type: "integer", minimum: 1, maximum: 64
-    }),
-    dimensoesDeVariacaoDaPratica: Object.freeze({
-      type: "array",
-      minItems: 1,
-      maxItems: PRACTICE_VARIATION_DIMENSIONS.length,
-      uniqueItems: true,
-      items: Object.freeze({ type: "string", enum: PRACTICE_VARIATION_DIMENSIONS })
-    })
-  })
-});
-
-const MATERIALIZATION_EDITORIAL_PARAMETERS_SCHEMA = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  required: Object.freeze([
-    "alvoDePalavrasPorResposta", "alvoDePalavrasPorUnidade"
-  ]),
-  properties: Object.freeze({
-    alvoDePalavrasPorResposta: Object.freeze({
-      type: "integer", minimum: 20, maximum: 500
-    }),
-    alvoDePalavrasPorUnidade: Object.freeze({
-      type: "integer", minimum: 40, maximum: 1000
-    })
-  })
-});
-
 const MATERIALIZATION_CONFIGURATION_SCHEMA = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  required: Object.freeze(["parametrosPedagogicos", "parametrosEditoriais"]),
+  type: "object", additionalProperties: false,
+  required: Object.freeze(["parametros", "motivo"]),
   properties: Object.freeze({
-    parametrosPedagogicos: MATERIALIZATION_PEDAGOGICAL_PARAMETERS_SCHEMA,
-    parametrosEditoriais: MATERIALIZATION_EDITORIAL_PARAMETERS_SCHEMA,
-    direcaoEditorial: Object.freeze({
-      type: "string", minLength: 1, maxLength: 4000
-    })
+    parametros: parametersSchema(),
+    motivo: { type: "string", minLength: 1, maxLength: 1000 },
+    direcaoEditorial: { type: "string", minLength: 1, maxLength: 4000 }
   })
 });
 
@@ -234,18 +169,71 @@ const SOURCE_SELECTOR_SCHEMA = Object.freeze({
   })
 });
 
+const SOURCE_ROLES_SCHEMA = Object.freeze({
+  type: "array", maxItems: COURSE_SOURCE_ROLES.length, uniqueItems: true,
+  items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
+});
+const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
+  description: 'Continuação opaca da leitura.' });
+const SOURCE_NAMES_SCHEMA = Object.freeze({
+  type: "array", maxItems: 32,
+  items: Object.freeze({ oneOf: Object.freeze([
+    Object.freeze({ type: "object", additionalProperties: false, required: Object.freeze(["literal"]),
+      properties: Object.freeze({ literal: Object.freeze({ type: "string", minLength: 1, maxLength: 500 }) }) }),
+    Object.freeze({ type: "object", additionalProperties: false, required: Object.freeze(["sobrenome"]),
+      properties: Object.freeze({ sobrenome: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
+        nomes: Object.freeze({ type: ["string", "null"], maxLength: 240 }) }) })
+  ]) })
+});
+const HUMAN_BIBLIOGRAPHIC_FIELDS = Object.freeze({
+  tituloDoVeiculo: "containerTitle", editora: "publisher", localDaEditora: "publisherPlace",
+  volume: "volume", fasciculo: "issue", paginas: "pages", localizacaoEletronica: "articleNumber",
+  doi: "doi", isbn: "isbn", issn: "issn", dataDeAcesso: "accessedDate", genero: "genre", numero: "number"
+});
+const SOURCE_BIBLIOGRAPHIC_SCHEMA = Object.freeze({
+  type: "object", additionalProperties: false,
+  properties: Object.freeze({
+    editores: SOURCE_NAMES_SCHEMA,
+    ...Object.fromEntries(Object.entries(HUMAN_BIBLIOGRAPHIC_FIELDS).map(([name, field]) => [name, Object.freeze({
+      type: ["string", "null"], maxLength: ["containerTitle", "publisher"].includes(field) ? 500 : field === "accessedDate" ? 10 : 240
+    })]))
+  })
+});
+const SOURCE_OCCURRENCES_SCHEMA = Object.freeze({
+  type: "array", maxItems: 16,
+  items: Object.freeze({ type: "object", additionalProperties: false,
+    required: Object.freeze(["lugar", "recurso", "folha", "trecho"]), properties: Object.freeze({
+      lugar: Object.freeze({ type: "string", enum: Object.freeze(["conteudo", "resposta", "feedback"]) }),
+      recurso: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
+      folha: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
+      trecho: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
+      prefixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
+      sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 })
+    }) })
+});
+const SOURCE_LINK_PROPERTIES = Object.freeze({
+  relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
+  papeis: Object.freeze({ ...SOURCE_ROLES_SCHEMA, minItems: 1 }),
+  ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA }),
+  ocorrencias: SOURCE_OCCURRENCES_SCHEMA
+});
+const SOURCE_LINKS_SCHEMA = Object.freeze({
+  type: "array", maxItems: 32,
+  items: Object.freeze({ type: "object", additionalProperties: false,
+    required: Object.freeze(["fonte", "relacao", "papeis"]),
+    properties: Object.freeze({ fonte: HUMAN_REFERENCE_SCHEMA, ...SOURCE_LINK_PROPERTIES }) })
+});
 const SOURCE_METADATA_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze(["titulo", "papel"]),
+  minProperties: 1,
   properties: Object.freeze({
     tipo: Object.freeze({ type: "string", enum: COURSE_SOURCE_KINDS }),
-    papel: Object.freeze({
-      type: "string",
-      enum: Object.freeze(Object.keys(SOURCE_ROLES_BY_HUMAN_NAME))
-    }),
-    titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-    autoria: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
+    papeisSugeridos: Object.freeze({ ...SOURCE_ROLES_SCHEMA, description: "Sugestões; os papéis de cada vínculo são explícitos." }),
+    titulo: Object.freeze({ type: ["string", "null"], minLength: 1, maxLength: 300 }),
+    autores: SOURCE_NAMES_SCHEMA,
+    bibliografia: SOURCE_BIBLIOGRAPHIC_SCHEMA,
+    modoCitacao: Object.freeze({ type: "string", enum: Object.freeze(["manual", "gerada"]) }),
     dataDePublicacao: Object.freeze({ type: ["string", "null"], maxLength: 10 }),
     identificador: Object.freeze({ type: ["string", "null"], maxLength: 240 }),
     idioma: Object.freeze({ type: ["string", "null"], maxLength: 48 }),
@@ -421,21 +409,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         })
       })
     }),
-    fontes: Object.freeze({
-      type: "array", maxItems: 32,
-      items: Object.freeze({
-        type: "object", additionalProperties: false,
-        required: Object.freeze(["fonte", "relacao"]),
-        properties: Object.freeze({
-          fonte: HUMAN_REFERENCE_SCHEMA,
-          relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
-          ancoras: Object.freeze({
-            type: "array", maxItems: 8, uniqueItems: true,
-            items: HUMAN_REFERENCE_SCHEMA
-          })
-        })
-      })
-    })
+    fontes: SOURCE_LINKS_SCHEMA
   })
 });
 
@@ -454,7 +428,7 @@ function inputSchema(properties, required = []) {
     type: "object",
     additionalProperties: false,
     properties: Object.freeze(properties),
-    required: Object.freeze(required)
+    ...(required.length ? { required: Object.freeze(required) } : {})
   });
 }
 
@@ -479,15 +453,17 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   componente: "Componente a inspecionar.",
   somenteAbertas: "Filtrar só abertas.",
   intencao: "Intenção confirmada.",
-  parametrosPedagogicos: "Parâmetros pedagógicos.",
-  parametrosEditoriais: "Alvos editoriais.",
+  parametros: "Valores pelo catálogo de ajustes.",
+  automaticos: "Escolhas delegadas sem valor fixo.",
   direcaoEditorial: "Direção editorial.",
   condicao: "Origem da definição.",
   texto: "Texto da observação.",
   categoria: "Categoria da observação.",
   correcoes: "Conteúdos corrigidos.",
   metadados: "Dados da fonte.",
-  papel: "Papel da fonte.",
+  papel: "Papel didático.",
+  papeisSugeridos: "Sugestões para futuros vínculos; não atribuem um uso.",
+  estilo: "Estilo das referências do curso.",
   ancoras: "Trechos da fonte.",
   vinculos: "Vínculos com unidades.",
   retirar: "Retirada solicitada.",
@@ -501,7 +477,7 @@ function describeTopLevelArguments(schema) {
     .map(([name, definition]) => [name, {
       ...definition,
       description: definition.description || TOP_LEVEL_ARGUMENT_DESCRIPTIONS[name] ||
-        `Valor humano necessário para ${name}.`
+        `${name.replace(/([a-z])([A-Z])/gu, "$1 $2")}.`
     }]));
   return projected;
 }
@@ -517,7 +493,7 @@ function annotations(readOnly, destructive = false) {
 function task(name, title, description, schema, {
   readOnly,
   destructive = false,
-  file = false
+  file = null
 } = {}) {
   return Object.freeze({
     name,
@@ -526,38 +502,67 @@ function task(name, title, description, schema, {
     inputSchema: Object.freeze(describeTopLevelArguments(schema)),
     outputSchema: HUMAN_TASK_OUTPUT_SCHEMA,
     annotations: annotations(readOnly, destructive),
-    ...(file ? { _meta: Object.freeze({ "openai/fileParams": Object.freeze(["pdf"]) }) } : {})
+    ...(file ? { _meta: Object.freeze({ "openai/fileParams": Object.freeze([file]) }) } : {})
   });
 }
 
 export const COURSE_HUMAN_TASKS = Object.freeze([
+  task("copiar_curso", "Copiar um curso", "Prepara cópia privada autorizada; confirme e retome com o mesmo valor devolvido.",
+    inputSchema({ curso: COURSE_SCHEMA, titulo: COURSE_SCHEMA,
+      confirmacao: { type: "string", maxLength: 4096, description: "Valor opaco da preparação; não editar." } }, ["curso", "titulo"]), { readOnly: false }),
+  task("comparar_cursos", "Comparar cursos ou recortes", "Compara inventário, configuração e medidas; não certifica equivalência pedagógica.",
+    inputSchema({ esquerda: humanCourseSelectionSchema(), direita: humanCourseSelectionSchema(), continuacao: READ_CONTINUATION_SCHEMA },
+      ["esquerda", "direita"]), { readOnly: true }),
+  task("exportar_autoria", "Exportar artefato e leitura autoral", "Exporta conteúdo literal e análise; leia todos os trechos.",
+    inputSchema({ recorte: humanCourseSelectionSchema(), continuacao: READ_CONTINUATION_SCHEMA }, ["recorte"]), { readOnly: true }),
+  task("consultar_perfis", "Consultar perfis de autoria", "Lista preferências desta conta.",
+    inputSchema({}), { readOnly: true }),
+  task("salvar_perfil", "Salvar um perfil de autoria", "Salva um perfil; não muda cursos existentes.",
+    inputSchema({ nome: { type: "string", minLength: 1, maxLength: 120 },
+      perfil: { type: "string", minLength: 1, maxLength: 120 }, parametros: parametersSchema(),
+      automaticos: { type: "array", maxItems: PARAMETER_FIELDS.length, uniqueItems: true,
+        items: { type: "string", enum: PARAMETER_FIELDS } }
+    }, ["nome"]), { readOnly: false }),
+  task("excluir_perfil", "Excluir um perfil de autoria", "Exclui perfil; preserva preferências já copiadas aos cursos.",
+    inputSchema({ perfil: { type: "string", minLength: 1, maxLength: 120 } }, ["perfil"]),
+    { readOnly: false, destructive: true }),
+  task("prever_aplicacao_perfil", "Examinar a aplicação de um perfil", "Mostra alcance e exceções antes da cópia.",
+    inputSchema({ curso: COURSE_SCHEMA, perfil: { type: "string", minLength: 1, maxLength: 120 } },
+      ["curso", "perfil"]), { readOnly: true }),
+  task("aplicar_perfil", "Aplicar um perfil ao curso", "Aplica a prévia; mantém exceções salvo escolha explícita e preserva conteúdo.",
+    inputSchema({ curso: COURSE_SCHEMA, perfil: { type: "string", minLength: 1, maxLength: 120 },
+      previa: { type: "string", pattern: "^[a-f0-9]{64}$", description: "Confirmação devolvida pela prévia examinada." },
+      excecoesRemover: { type: "array", maxItems: 128, uniqueItems: true,
+        items: { type: "integer", minimum: 1, maximum: 128 } }
+    }, ["curso", "perfil", "previa"]), { readOnly: false }),
   task(
     "retomar_curso",
     "Retomar um curso",
-    "Use para retomar curso. Não altera.",
+    "Lista cursos ou retoma o título informado.",
     inputSchema({
-      titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
+      titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300, description: 'Nome do curso.' }),
+      continuacao: READ_CONTINUATION_SCHEMA
     }),
     { readOnly: true }
   ),
   task(
     "consultar_planejamento",
     "Consultar o planejamento",
-    "Use para ler mapa/lote. Não altera.",
+    "Lê mapa e lote.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Use para ler o lote antes da produção. Não grava.",
+    "Lê o lote antes da produção.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Use para ler configuração. Não altera.",
+    "Lê configuração.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -568,7 +573,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_observacoes",
     "Consultar observações",
-    "Use para ler observações. Não registra.",
+    "Lê observações.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -581,31 +586,33 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Use para preparar revisão. Não corrige.",
+    "Lê conteúdo literal e contexto da revisão.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
-      unidades: HUMAN_REFERENCE_LIST_SCHEMA
+      unidades: HUMAN_REFERENCE_LIST_SCHEMA,
+      continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "consultar_fontes",
     "Consultar fontes e âncoras",
-    "Use para ler fontes/âncoras. Não altera.",
+    "Lê fontes e âncoras em páginas.",
     inputSchema({
       curso: COURSE_SCHEMA,
       fonte: HUMAN_REFERENCE_SCHEMA,
       busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      unidade: HUMAN_REFERENCE_SCHEMA
+      unidade: HUMAN_REFERENCE_SCHEMA,
+      continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "consultar_componentes",
     "Consultar componentes didáticos",
-    "Use para inspecionar componente antes do uso. Não grava.",
+    "Inspeciona o componente antes do uso.",
     Object.freeze({
       ...inputSchema({
         busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
@@ -638,7 +645,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "criar_curso",
     "Criar um curso",
-    "Use para criar curso confirmado. Não copia.",
+    "Cria curso autorizado. Não copia.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
       objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
@@ -648,7 +655,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Use para propor/aprovar o mapa antes do lote; não produz.",
+    "Propõe ou aprova o mapa antes do lote; não produz.",
     inputSchema({
       curso: COURSE_SCHEMA,
       aprovado: Object.freeze({ type: "boolean" }),
@@ -671,14 +678,15 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "Use após confirmar a progressão; não para propô-la.",
+    "No mandato recebido, divida, reúna ou reordene lotes. Preserve intenções e progressão; não muda o currículo.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
+      posicao: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
-      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+      intencao: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
       microssequencias: Object.freeze({
-        type: "array", minItems: 1, maxItems: 32,
+        type: "array", minItems: 1, maxItems: 64,
         uniqueItems: true,
         items: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
       }),
@@ -692,7 +700,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use o recorte preparado. Faça a calibração contextual de cada unidade na mesma materialização, sem etapa separada; marque formas, cobertura, novidade, uso e retomada. Não duplique a identificação local entre componentes. Não narre a chamada; no chat, só resultado, link e próxima etapa.",
+    "Use o recorte preparado com calibração contextual por unidade na materialização. Marque formas, cobertura, novidade, uso e retomada; identidades locais únicas. Não narre a chamada: resultado, link e próxima etapa.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -716,13 +724,14 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "string",
         enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"])
       }),
-      parametrosPedagogicos: PEDAGOGICAL_PARAMETERS_SCHEMA,
-      parametrosEditoriais: EDITORIAL_PARAMETERS_SCHEMA,
+      parametros: PARAMETERS_SCHEMA,
+      automaticos: { type: "array", minItems: 1, maxItems: PARAMETER_FIELDS.length, uniqueItems: true,
+        items: { type: "string", enum: PARAMETER_FIELDS } },
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
       }, ["curso", "condicao"]),
       anyOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["parametrosPedagogicos"]) }),
-        Object.freeze({ required: Object.freeze(["parametrosEditoriais"]) }),
+        Object.freeze({ required: Object.freeze(["parametros"]) }),
+        Object.freeze({ required: Object.freeze(["automaticos"]) }),
         Object.freeze({ required: Object.freeze(["direcaoEditorial"]) })
       ])
     }),
@@ -731,7 +740,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "registrar_observacao",
     "Registrar observação",
-    "Use para anotar unidades. Não corrige.",
+    "Anota unidades; não corrige.",
     inputSchema({
       curso: COURSE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
@@ -748,7 +757,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Use para aplicar correções aprovadas. Não configura.",
+    "Aplica correções autorizadas; não configura.",
     inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -759,21 +768,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
             conteudo: STUDY_UNIT_CONTENT_SCHEMA,
-            fontes: Object.freeze({
-              type: "array", maxItems: 32,
-              items: Object.freeze({
-                type: "object", additionalProperties: false,
-                required: Object.freeze(["fonte", "relacao"]),
-                properties: Object.freeze({
-                  fonte: HUMAN_REFERENCE_SCHEMA,
-                  relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
-                  ancoras: Object.freeze({
-                    type: "array", maxItems: 8, uniqueItems: true,
-                    items: HUMAN_REFERENCE_SCHEMA
-                  })
-                })
-              })
-            })
+            fontes: SOURCE_LINKS_SCHEMA
           })
         })
       })
@@ -788,6 +783,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       ...inputSchema({
         curso: COURSE_SCHEMA,
         fonte: HUMAN_REFERENCE_SCHEMA,
+        estilo: Object.freeze({ type: "string", enum: COURSE_BIBLIOGRAPHY_STYLES }),
         metadados: SOURCE_METADATA_SCHEMA,
         ancoras: Object.freeze({
         type: "array", minItems: 1, maxItems: 8,
@@ -797,6 +793,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           properties: Object.freeze({
             ancora: HUMAN_REFERENCE_SCHEMA,
             seletor: SOURCE_SELECTOR_SCHEMA,
+            hashDoPdf: Object.freeze({ type: ["string", "null"], pattern: "^[a-f0-9]{64}$" }),
             localizadorHumano: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
             trechoDeVerificacao: Object.freeze({ type: ["string", "null"], maxLength: 2000 })
           })
@@ -806,14 +803,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "array", minItems: 1, maxItems: 64,
         items: Object.freeze({
           type: "object", additionalProperties: false,
-          required: Object.freeze(["unidade", "relacao"]),
+          required: Object.freeze(["unidade", "relacao", "papeis"]),
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
-            relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
-            ancoras: Object.freeze({
-              type: "array", minItems: 1, maxItems: 8, uniqueItems: true,
-              items: HUMAN_REFERENCE_SCHEMA
-            })
+            vinculo: Object.freeze({ type: "integer", minimum: 1, maximum: 32 }),
+            ...SOURCE_LINK_PROPERTIES
           })
         })
         }),
@@ -827,7 +821,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         Object.freeze({ required: Object.freeze(["metadados"]) }),
         Object.freeze({ required: Object.freeze(["ancoras"]) }),
         Object.freeze({ required: Object.freeze(["vinculos"]) }),
-        Object.freeze({ required: Object.freeze(["retirar"]) })
+        Object.freeze({ required: Object.freeze(["retirar"]) }),
+        Object.freeze({ required: Object.freeze(["estilo"]) })
       ]),
       allOf: Object.freeze([Object.freeze({
         if: Object.freeze({ required: Object.freeze(["retirar"]) }),
@@ -836,7 +831,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           not: Object.freeze({ anyOf: Object.freeze([
             Object.freeze({ required: Object.freeze(["metadados"]) }),
             Object.freeze({ required: Object.freeze(["ancoras"]) }),
-            Object.freeze({ required: Object.freeze(["vinculos"]) })
+            Object.freeze({ required: Object.freeze(["vinculos"]) }),
+            Object.freeze({ required: Object.freeze(["estilo"]) })
           ]) })
         })
       })
@@ -856,15 +852,12 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           description: "Referência: fonte existente."
         }),
         titulo: Object.freeze({
-          type: "string",
+          type: ["string", "null"],
           minLength: 1,
           maxLength: 300,
           description: "Nova fonte a criar."
         }),
-        papel: Object.freeze({
-          type: "string",
-          enum: Object.freeze(Object.keys(SOURCE_ROLES_BY_HUMAN_NAME))
-        }),
+        papeisSugeridos: SOURCE_ROLES_SCHEMA,
         intencao: Object.freeze({
           type: "string",
           minLength: 1,
@@ -886,17 +879,39 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       }, ["curso", "intencao", "pdf"]),
       oneOf: Object.freeze([
         Object.freeze({ required: Object.freeze(["fonte"]) }),
-        Object.freeze({ required: Object.freeze(["titulo", "papel"]) })
+        Object.freeze({ required: Object.freeze(["titulo", "papeisSugeridos"]) })
       ])
     }),
-    { readOnly: false, file: true }
+    { readOnly: false, file: "pdf" }
+  ),
+  task(
+    "guardar_audio", "Guardar áudio no curso",
+    "Use para guardar WAV PCM/MP3 e reutilizar no curso. Não sintetiza nem transcreve.",
+    inputSchema({ curso: COURSE_SCHEMA,
+      audio: { type: "object", additionalProperties: false,
+        description: "Áudio WAV PCM ou MP3, até 20 MiB.", required: ["download_url", "file_id"],
+        properties: {
+          download_url: { type: "string", minLength: 1, maxLength: 8192 },
+          file_id: { type: "string", minLength: 1, maxLength: 240 },
+          file_name: { type: "string", minLength: 1, maxLength: 180 },
+          mime_type: { type: "string", enum: ["audio/wav", "audio/mpeg"] }
+        }
+      }
+    }, ["curso", "audio"]), { readOnly: false, file: "audio" }
+  ),
+  task(
+    "consultar_audios", "Consultar áudios do curso",
+    "Use para consultar áudios guardados. Não lê nem transcreve.",
+    inputSchema({ curso: COURSE_SCHEMA,
+      pagina: { type: "integer", minimum: 1, maximum: 100, description: "Página da biblioteca, a partir de 1." }
+    }, ["curso"]), { readOnly: true }
   )
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.3.5";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.9.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:4a135fb0fc3c14803e68664b783865213288d2d727746b696f1ccc992b61b6c8";
+  "sha256:818347253ab3f17a8350640629fa57d68759262ab2bd07ee755df43582bcc06d";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1021,11 +1036,39 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
-    if (normalizedKey === "source_role") {
-      projected.papel = entry === null ? null : SOURCE_ROLE_HUMAN_NAMES.get(entry) ?? null;
+    if (normalizedKey === "authoring_export" || normalizedKey === "authoring_comparison") {
+      projected[key] = normalizedKey === "authoring_export" ? normalizeCourseAuthoringExport(entry) : normalizeCourseAuthoringComparison(entry);
+      continue;
+    }
+    if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
+        entry.every((role) => COURSE_SOURCE_ROLES.includes(role))) {
+      projected[normalizedKey === "default_roles" ? "papeisSugeridos" : "papeis"] =
+        Array.isArray(entry) ? entry.map((role) => SOURCE_ROLE_HUMAN_NAMES.get(role)) : [];
+      continue;
+    }
+    if (normalizedKey === "study_units" && Array.isArray(entry)) {
+      projected[key] = entry.map(({ studyUnit, ...metadata }) => ({
+        ...withoutTechnicalState(metadata), studyUnit: structuredClone(studyUnit)
+      }));
       continue;
     }
     if (normalizedKey === "component_authoring_contract") {
+      projected[key] = structuredClone(entry);
+      continue;
+    }
+    if (normalizedKey === "stored_audio") {
+      projected[key] = normalizeCourseMediaCatalogItem(entry);
+      continue;
+    }
+    if (normalizedKey === "source_attachment_target") {
+      exactFields(entry, new Set(["kind", "sourceId", "sourceRevision", "contentHash"]));
+      if (entry.kind !== "source_attachment" || typeof entry.sourceId !== "string" ||
+          !entry.sourceId.trim() || entry.sourceId !== entry.sourceId.trim() || entry.sourceId.length > 240 ||
+          [...entry.sourceId].some(character => { const code = character.codePointAt(0); return code <= 31 || code >= 127 && code <= 159; }) ||
+          !Number.isSafeInteger(entry.sourceRevision) || entry.sourceRevision < 1 ||
+          !/^[a-f0-9]{64}$/u.test(entry.contentHash)) {
+        throw new AuthoringApiError(503, "invalid_course_source_attachment", "A referência do PDF não pôde ser confirmada.");
+      }
       projected[key] = structuredClone(entry);
       continue;
     }
@@ -1116,6 +1159,129 @@ export async function executeHumanCourseTask({
 }
 
 const HUMAN_TASK_HANDLERS = Object.create(null);
+HUMAN_TASK_HANDLERS.copiar_curso = copyHumanCourse;
+HUMAN_TASK_HANDLERS.comparar_cursos = compareHumanCourses;
+HUMAN_TASK_HANDLERS.exportar_autoria = exportHumanCourse;
+
+async function readHumanProfiles(adapter, principal, deadlineAt) {
+  const result = await adapter.listAuthoringProfiles({ principal, deadlineAt });
+  if (!Array.isArray(result?.profiles)) fail("course_service_unavailable", "Os perfis não puderam ser lidos.", null, 503);
+  return result.profiles;
+}
+
+function namedProfile(profiles, name) {
+  const normalized = text(name, "perfil", 120).normalize("NFC").toLocaleLowerCase("pt-BR");
+  const matches = profiles.filter((profile) => profile.name.normalize("NFC").toLocaleLowerCase("pt-BR") === normalized);
+  if (matches.length !== 1) fail(matches.length ? "ambiguous_human_reference" : "human_reference_not_found",
+    matches.length ? "Mais de um perfil possui esse nome." : "O perfil não foi encontrado.", null, matches.length ? 409 : 404);
+  return matches[0];
+}
+
+function profileContext(profile) {
+  return { nome: profile.name, preferencias: profile.preferences.map((preference) => {
+    const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === preference.parameterId);
+    return { campo: definition.humanField, nome: definition.label, grupo: definition.groupLabel,
+      unidade: definition.unitLabel, modo: preference.mode, valor: preference.value };
+  }) };
+}
+
+HUMAN_TASK_HANDLERS.consultar_perfis = async ({ adapter, principal, deadlineAt }) => {
+  const profiles = await readHumanProfiles(adapter, principal, deadlineAt);
+  return result("Li os perfis de autoria desta conta.", { context: { perfis: profiles.map(profileContext) } });
+};
+
+HUMAN_TASK_HANDLERS.salvar_perfil = async ({ adapter, principal, args, deadlineAt }) => {
+  const saved = await executeTrustedCourseWrite({
+    maxCasRetries: 0,
+    load: async () => args.perfil === undefined ? null :
+      namedProfile(await readHumanProfiles(adapter, principal, deadlineAt), args.perfil),
+    build: async (current, { newId }) => {
+      let preferences = current?.preferences ?? [];
+      if (args.parametros !== undefined || args.automaticos !== undefined) {
+        const parameters = args.parametros === undefined ? {} : plainObject(args.parametros, "parametros");
+        exactFields(parameters, new Set(PARAMETER_FIELDS));
+        const automatic = args.automaticos ?? [];
+        if (!Array.isArray(automatic) || automatic.some((field) => !PARAMETER_FIELDS.includes(field))) {
+          fail("invalid_human_task_argument", "A delegação do perfil é inválida.");
+        }
+        preferences = normalizeAuthoringProfilePreferences([
+          ...Object.entries(parameters).map(([field, value]) => ({
+            parameterId: PARAMETER_FIELD_TO_ID[field], mode: "fixed", value
+          })),
+          ...automatic.map((field) => ({ parameterId: PARAMETER_FIELD_TO_ID[field], mode: "automatic", value: null }))
+        ]);
+      }
+      return { principal, profileId: current?.profileId ?? await newId("authoring-profile"),
+        expectedRevision: current?.revision ?? 0, name: text(args.nome, "nome", 120),
+        preferences, deadlineAt };
+    },
+    commit: (request) => adapter.saveAuthoringProfile(request)
+  });
+  return result("Perfil salvo. Cursos existentes conservaram suas preferências.", {
+    context: { perfil: profileContext(saved.profile) }
+  });
+};
+
+HUMAN_TASK_HANDLERS.excluir_perfil = async ({ adapter, principal, args, deadlineAt }) => {
+  await executeTrustedCourseWrite({ maxCasRetries: 0,
+    load: async () => namedProfile(await readHumanProfiles(adapter, principal, deadlineAt), args.perfil),
+    build: (profile) => ({ principal, profileId: profile.profileId, expectedRevision: profile.revision, deadlineAt }),
+    commit: (request) => adapter.deleteAuthoringProfile(request)
+  });
+  return result("Perfil excluído. Cursos existentes conservaram suas preferências.");
+};
+
+async function readProfilePreview({ adapter, principal, args, deadlineAt }) {
+  const resolved = await resolveHumanCourseContext({ adapter, principal, course: humanCourseTitle(args), deadlineAt });
+  const profile = namedProfile(await readHumanProfiles(adapter, principal, deadlineAt), args.perfil);
+  return adapter.previewCourseAuthoringProfile({ principal, courseId: resolved.course.id,
+    expectedCourseRevision: resolved.course.revision, profileId: profile.profileId,
+    profileRevision: profile.revision, deadlineAt });
+}
+
+const profilePreviewConfirmation = (preview) => sha256Hex(JSON.stringify(preview));
+
+HUMAN_TASK_HANDLERS.prever_aplicacao_perfil = async (values) => {
+  const preview = await readProfilePreview(values);
+  return result("Examine as preferências e as exceções antes de aplicar ao curso.", { context: {
+    previa: await profilePreviewConfirmation(preview), perfil: profileContext(preview.profile),
+    excecoes: preview.exceptions.map((exception, index) => ({ numero: index + 1,
+      parametro: COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === exception.parameterId).label,
+      escopo: humanDesignScope(exception.scope.kind), alvo: exception.scopeLabel,
+      modo: exception.assignment.mode, valor: exception.assignment.value,
+      condicaoDePesquisa: exception.assignment.origin === "research_condition" })),
+    conflitos: preview.conflicts,
+    alcance: "Preferências correntes do curso; o conteúdo existente não será reescrito."
+  } });
+};
+
+HUMAN_TASK_HANDLERS.aplicar_perfil = async (values) => {
+  const { adapter, principal, args, deadlineAt } = values;
+  const receipt = await executeTrustedCourseWrite({ maxCasRetries: 0,
+    load: () => readProfilePreview(values),
+    build: async (preview) => {
+      if (await profilePreviewConfirmation(preview) !== args.previa) {
+        fail("authoring_profile_preview_changed", "O curso ou perfil mudou. Examine a nova prévia antes de aplicar.", null, 409);
+      }
+      const indexes = args.excecoesRemover ?? [];
+      if (!Array.isArray(indexes) || new Set(indexes).size !== indexes.length ||
+          indexes.some((index) => !Number.isSafeInteger(index) || index < 1 || index > preview.exceptions.length)) {
+        fail("invalid_human_task_argument", "A seleção de exceções não pertence à prévia.");
+      }
+      const exceptions = indexes.map((index) => preview.exceptions[index - 1]);
+      if (exceptions.some((entry) => entry.assignment.origin === "research_condition")) {
+        fail("course_design_research_condition_protected", "Uma condição de pesquisa não pode ser removida pela aplicação de perfil.", null, 409);
+      }
+      return { principal, courseId: preview.courseId, expectedCourseRevision: preview.courseRevision,
+        profileId: preview.profile.profileId, profileRevision: preview.profile.revision,
+        exceptionPolicy: { mode: indexes.length ? "remove_selected" : "preserve",
+          exceptions: exceptions.map(({ parameterId, scope }) => ({ parameterId, scope })) }, deadlineAt };
+    },
+    commit: (request) => adapter.applyCourseAuthoringProfile(request)
+  });
+  return result(receipt.changed ? "Preferências copiadas para o curso. O conteúdo foi preservado." :
+    "O curso já usa essas preferências; nenhuma alteração foi necessária.");
+};
 
 function humanCourseTitle(args) {
   return text(args.curso, "curso", 300);
@@ -1606,12 +1772,12 @@ async function buildCurricularMapWrite({ state, input, newId }) {
 function normalizePartMicrosequenceTitles(value) {
   return textList(value, "microssequencias", {
     minimum: 1,
-    maximum: 32,
+    maximum: 64,
     itemMaximum: 300
   });
 }
 
-async function buildProductionPart({ state, titles, progression, title, intent, newId }) {
+async function buildProductionPart({ state, titles, progression, title, intent, position, newId }) {
   const map = curricularMapFromPlan(state.plan);
   if (!map || map.approval !== "approved") {
     fail(
@@ -1664,7 +1830,7 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
     expectedPlanVersion: planVersion(state.plan),
     part: {
       partId,
-      position: state.part?.position ?? parts.length,
+      position: position ?? state.part?.position ?? parts.length,
       title,
       intent,
       progression,
@@ -1767,6 +1933,30 @@ function projectedPlanContext(plan, part) {
     partesDeProducao: Array.isArray(source.parts) ? source.parts.map(projectPart) : [],
     parteEmFoco: part ? projectPart(part) : null
   };
+}
+
+function focusedReviewPlan(plan, part, units) {
+  const projected = projectedPlanContext(plan, part);
+  const titles = new Set(units.map(item => item.curriculumPath?.didacticMicrosequence?.title).filter(Boolean));
+  const modules = projected.mapaCurricular.modulos ?? [];
+  const micros = modules.flatMap(module => module.licoes.flatMap(lesson => lesson.microssequencias));
+  const relevant = new Set(titles);
+  micros.filter(micro => titles.has(micro.titulo)).forEach(micro =>
+    micro.dependencias.forEach(title => relevant.add(title)));
+  return {
+    titulo: projected.titulo, objetivo: projected.objetivo,
+    mapaCurricular: { ...projected.mapaCurricular, modulos: modules.map(module => ({ ...module,
+      licoes: module.licoes.map(lesson => ({ ...lesson,
+        microssequencias: lesson.microssequencias.filter(micro => relevant.has(micro.titulo))
+      })).filter(lesson => lesson.microssequencias.length)
+    })).filter(module => module.licoes.length) },
+    cobertura: projected.cobertura.filter(item => item.previstaEm.some(location => titles.has(location.microssequencia))),
+    parteEmFoco: projected.parteEmFoco
+  };
+}
+function humanCourseSelectionSchema() {
+  return inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA,
+    microssequencia: HUMAN_REFERENCE_SCHEMA, unidade: HUMAN_REFERENCE_SCHEMA }, ["curso"]);
 }
 
 async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, limit = 24 }) {
@@ -1920,7 +2110,7 @@ function humanDesignOrigin(value) {
     automatic: "calibração contextual",
     author: "definida pela pessoa autora",
     research_condition: "condição de pesquisa",
-    system_default: "padrão do produto"
+    system_default: "escolha contextual pendente"
   }[value] ?? "origem não informada";
 }
 
@@ -1950,12 +2140,16 @@ function projectConfiguration(read) {
   const parameters = Array.isArray(read?.parameters)
     ? read.parameters.map((parameter) => ({
         nome: humanParameterLabel(parameter.parameterId, definitionById),
+        campo: definitionById.get(parameter.parameterId)?.humanField,
+        unidade: definitionById.get(parameter.parameterId)?.unitLabel,
+        modo: parameter.effectiveAssignment?.mode,
         valorLocal: parameter.localAssignment?.value ?? null,
         valorEfetivo: parameter.effectiveAssignment?.value ?? null,
         herdado: parameter.effectiveAssignment?.inherited ?? false,
         origem: humanDesignOrigin(parameter.effectiveAssignment?.origin),
         motivo: parameter.effectiveAssignment?.reason ?? null,
-        escopoDeOrigem: humanDesignScope(parameter.effectiveAssignment?.sourceScope?.kind)
+        escopoDeOrigem: humanDesignScope(parameter.effectiveAssignment?.sourceScope?.kind),
+        conflitos: structuredClone(parameter.conflicts ?? [])
       }))
     : [];
   return {
@@ -1963,7 +2157,7 @@ function projectConfiguration(read) {
     parametros: parameters,
     precisaDeCalibracaoContextual: Array.isArray(read?.parameters) &&
       read.parameters.some((parameter) =>
-        parameter?.effectiveAssignment?.origin === "system_default"),
+        parameter?.effectiveAssignment?.value === null),
     direcaoEditorial: {
       local: read?.guidance?.localAssignment?.guidance ?? null,
       efetiva: Array.isArray(read?.guidance?.effectiveAssignments)
@@ -2195,28 +2389,41 @@ function projectMaterializationPart(planRead, part, designReads, unitDesignReads
 
 HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineAt }) => {
   if (args.titulo === undefined) {
-    exactFields(args, new Set(["titulo"]));
+    exactFields(args, new Set(["titulo", "continuacao"]));
+    const continuation = await openHumanReadContinuation({ args,
+      course: { id: principal.actorId, revision: 0 }, task: 'retomar_curso' });
+    let cursor = null;
+    try {
+      cursor = continuation.p === null ? null : JSON.parse(continuation.p);
+      if (cursor !== null && (typeof cursor.beforeId !== 'string' || typeof cursor.beforeUpdatedAt !== 'string' ||
+          Object.keys(cursor).sort().join(',') !== 'beforeId,beforeUpdatedAt')) throw Error();
+    } catch { fail('invalid_read_continuation', 'A continuação da lista de cursos é inválida.'); }
     const page = await adapter.listCourses({
       principal,
       query: "",
       limit: 12,
-      beforeUpdatedAt: null,
-      beforeId: null,
+      beforeUpdatedAt: cursor?.beforeUpdatedAt ?? null,
+      beforeId: cursor?.beforeId ?? null,
       deadlineAt
     });
+    if (!Array.isArray(page?.items) || page.hasMore && (!page.nextCursor ||
+        typeof page.nextCursor.beforeId !== 'string' || typeof page.nextCursor.beforeUpdatedAt !== 'string' ||
+        JSON.stringify(page.nextCursor) === continuation.p)) {
+      fail('course_service_unavailable', 'A lista de cursos perdeu o ponto de continuação.', null, 503);
+    }
     return result(
       page?.items?.length === 1
         ? "Encontrei um curso para retomar."
-        : `Encontrei ${page?.items?.length ?? 0} cursos para retomar.`,
+        : `Este trecho contém ${page?.items?.length ?? 0} cursos para retomar.`,
       {
-        nextDecision: page?.items?.length === 1
-          ? "Quer continuar do ponto atual?"
-          : "Qual curso você quer retomar?",
-        context: { courses: page?.items ?? [] }
+        nextDecision: page?.items?.length > 1 ? "Qual curso você quer retomar?" : null,
+        context: await paginateHumanReadContext(withoutTechnicalState({ courses: page.items }),
+          { state: continuation, nextPage: page.hasMore ? JSON.stringify(page.nextCursor) : null })
       }
     );
   }
   const titulo = text(args.titulo, "titulo", 300);
+  if (args.continuacao !== undefined) fail('invalid_read_continuation', 'A continuação pertence à lista de cursos; abra o curso pelo título.');
   const resolved = await resolveHumanCourseContext({
     adapter, principal, course: titulo, deadlineAt
   });
@@ -2226,13 +2433,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
   return result(`Retomei o curso “${resolved.course.title}”.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: map?.approval !== "approved"
-      ? map
-        ? "Quer revisar ou aprovar o mapa curricular?"
-        : "Quer propor o mapa curricular global?"
-      : part
-        ? `Quer revisar a parte ${Number(part.position) + 1} ou preparar a próxima?`
-        : "A etapa seguinte é a progressão focal da primeira parte de produção.",
+    nextDecision: map && map.approval !== "approved" ? "Quer revisar ou aprovar o mapa curricular?" : null,
     context: projectedPlanContext(plan, part)
   });
 };
@@ -2248,15 +2449,8 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   return result(`Li o mapa curricular global; ele está ${mapStatus}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: map?.approval !== "approved"
-      ? map
-        ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?"
-        : "Quer propor o mapa curricular completo?"
-      : args.parte === undefined
-        ? part
-          ? "Quer revisar esta parte ou preparar a próxima?"
-          : "A etapa seguinte é a progressão focal da primeira parte de produção."
-        : "Quer alterar a progressão desta parte?",
+    nextDecision: map && map.approval !== "approved"
+      ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?" : null,
     context: projectedPlanContext(plan, part)
   });
 };
@@ -2372,25 +2566,36 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
 }) => {
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   const unitPage = units.length
-    ? { items: resolved.studyUnits }
-    : await listUnitsForContext({ adapter, principal, resolved, deadlineAt });
-  const observations = await readObservations({
+    ? { items: resolved.studyUnits, hasMore: false, nextCursor: null }
+    : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
+      expectedRevision: resolved.course.revision,
+      scopeKind: resolved.microsequence ? 'didactic_microsequence' : resolved.part ? 'authoring_part' : 'course',
+      scopeId: resolved.microsequence?.id ?? resolved.part?.id ?? null,
+      cursorStudyUnitId: continuation.p, direction: 'forward', limit: 12, maxBytes: 65536,
+      inspectionVersion: 2, deadlineAt });
+  if (!Array.isArray(unitPage?.items) || unitPage.hasMore &&
+      (typeof unitPage.nextCursor?.studyUnitId !== 'string' ||
+       !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
+    fail('course_service_unavailable', 'A página da revisão perdeu o ponto de continuação.', null, 503);
+  }
+  const observations = unitPage.items.length ? await readObservations({
     adapter,
     principal,
-    resolved,
+    resolved: { ...resolved, studyUnits: unitPage.items },
     args: { ...args, somenteAbertas: true },
     deadlineAt,
     scopeUnits: unitPage.items
-  });
-  return result("Preparei o contexto pedagógico da revisão sem aplicar mudanças.", {
+  }) : { items: [] };
+  const context = await paginateHumanReadContext(withoutTechnicalState({
+    observations, studyUnits: unitPage.items,
+    plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items) : null
+  }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
+  return result("Preparei este recorte da revisão sem aplicar mudanças.", {
     deepLink: courseDeepLink(adapter, resolved.course, "review"),
-    nextDecision: "Quais correções coerentes você quer aplicar?",
-    context: {
-      observations,
-      studyUnits: unitPage?.items ?? [],
-      plan: resolved.plan ? projectedPlanContext(resolved.plan, resolved.part) : null
-    }
+    nextDecision: null,
+    context
   });
 };
 
@@ -2401,6 +2606,7 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     ? []
     : [humanReference(args.unidade, "unidade")];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'consultar_fontes' });
   const unit = resolved.studyUnits[0]?.studyUnit ?? null;
   const mode = resolved.source ? "source" : unit ? "target" : "catalog";
   const sources = await adapter.getCourseSources({
@@ -2411,10 +2617,11 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     sourceId: resolved.source?.sourceId ?? null,
     targetKind: unit ? "study_unit" : null,
     targetId: unit?.id ?? null,
-    cursor: null,
+    cursor: continuation.p,
     limit: mode === "catalog" ? 24 : 1,
     deadlineAt
   });
+  if (!Array.isArray(sources?.items)) fail('course_service_unavailable', 'A página de fontes é inválida.', null, 503);
   const context = args.busca === undefined || !Array.isArray(sources?.items)
     ? sources
     : {
@@ -2423,11 +2630,24 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
           .toLocaleLowerCase("pt-BR")
           .includes(text(args.busca, "busca", 300).toLocaleLowerCase("pt-BR")))
       };
-  return result("Li as fontes e âncoras do recorte solicitado.", {
+  if (sources?.nextCursor != null && (typeof sources.nextCursor !== 'string' ||
+      !sources.nextCursor || sources.nextCursor === continuation.p)) {
+    fail('course_service_unavailable', 'A página de fontes perdeu o ponto de continuação.', null, 503);
+  }
+  const readContext = await paginateHumanReadContext(withoutTechnicalState({ sources: context,
+    ...(mode === 'source' ? { arquivosParaConteudo: (context.items ?? []).flatMap(source =>
+      (source.attachments ?? []).map((value, index) => {
+        const attachment = normalizeCourseSourceAttachment(value, { persisted: true });
+        return { rotulo: `PDF ${index + 1}`, sourceAttachmentTarget: { kind: 'source_attachment',
+          sourceId: source.sourceId, sourceRevision: source.revision, contentHash: attachment.contentHash } };
+      })) } : {})
+  }), { state: continuation, nextPage: sources?.nextCursor ?? null });
+  return result(args.busca !== undefined && context.items?.length === 0
+    ? 'Nenhuma fonte corresponde à busca neste trecho.' : "Li as fontes e âncoras deste trecho.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content",
       unit ? [["studyUnitId", unit.id]] : []),
-    nextDecision: "Quer adotar, contestar ou vincular alguma fonte?",
-    context: { sources: context }
+    nextDecision: null,
+    context: readContext
   });
 };
 
@@ -2531,6 +2751,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
             rotulo: definition.manifest.label,
             finalidade: definition.manifest.purpose,
             slots: definition.manifest.slots,
+            ...(definition.manifest.tool ? { ferramenta: structuredClone(definition.manifest.tool) } : {}),
             compatibilidadeDeResposta: definition.manifest.responseCompatibility,
             limitacoes: definition.manifest.limitations,
             contrato: definition.contract,
@@ -2629,7 +2850,10 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   const course = humanCourseTitle(args);
   const partReference = optionalReference(args.parte, "parte");
   const title = text(args.titulo, "titulo", 300);
-  const intent = text(args.intencao, "intencao", 2000);
+  const intent = text(args.intencao, "intencao", 4000);
+  if (args.posicao != null && (!Number.isSafeInteger(args.posicao) || args.posicao < 1 || args.posicao > 64)) {
+    fail("invalid_authoring_part_position", "A posição do lote deve estar entre 1 e 64.");
+  }
   const titles = normalizePartMicrosequenceTitles(args.microssequencias);
   const progression = textList(args.progressao, "progressao", {
     minimum: 1,
@@ -2668,7 +2892,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     },
     build: async (state, { newId }) => {
       const built = await buildProductionPart({
-        state, titles, progression, title, intent, newId
+        state, titles, progression, title, intent, position: args.posicao == null ? null : args.posicao - 1, newId
       });
       savedPartId = built.part.partId;
       return built;
@@ -2708,20 +2932,6 @@ HUMAN_TASK_HANDLERS.aplicar_correcoes = async ({
   course: humanCourseTitle(args),
   corrections: safeClone(args.correcoes, "correcoes", 480 * 1024),
   deadlineAt
-});
-
-const PARAMETER_FIELD_TO_ID = Object.freeze({
-  tetoNovasUnidadesDeAnalise:
-    "new_analysis_unit_ceiling_per_expository_study_unit",
-  formasDeExplicacao: "required_explanation_forms",
-  minimoDePraticasPorRequisito:
-    "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  dimensoesDeVariacaoDaPratica: "required_practice_variation_dimensions"
-});
-
-const EDITORIAL_PARAMETER_FIELD_TO_ID = Object.freeze({
-  alvoDePalavrasPorResposta: "authoring_chat_response_word_target",
-  alvoDePalavrasPorUnidade: "study_unit_content_word_target"
 });
 
 function designScope(resolved) {
@@ -2781,17 +2991,17 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
       409
     );
   }
-  const parameters = args.parametrosPedagogicos === undefined
-    ? null
-    : plainObject(args.parametrosPedagogicos, "parametrosPedagogicos");
-  const editorialParameters = args.parametrosEditoriais === undefined
-    ? null
-    : plainObject(args.parametrosEditoriais, "parametrosEditoriais");
-  if (!parameters && !editorialParameters && args.direcaoEditorial === undefined) {
-    fail(
-      "missing_human_task_argument",
-      "Informe parâmetros pedagógicos, parâmetros editoriais e/ou direção editorial."
-    );
+  const parameters = args.parametros === undefined ? null : plainObject(args.parametros, "parametros");
+  const automaticFields = args.automaticos === undefined ? [] : args.automaticos;
+  if (!Array.isArray(automaticFields) || automaticFields.some((field) => !PARAMETER_FIELDS.includes(field)) ||
+      new Set(automaticFields).size !== automaticFields.length) {
+    fail("invalid_human_task_argument", "A seleção de parâmetros automáticos é inválida.");
+  }
+  if (!parameters && !automaticFields.length && args.direcaoEditorial === undefined) {
+    fail("missing_human_task_argument", "Informe parâmetros, delegação automática e/ou direção editorial.");
+  }
+  if (origin === "automatic" && parameters && Object.values(parameters).some((value) => value !== null)) {
+    fail("invalid_human_task_argument", "Para delegar sem valor, use automaticos. Escolhas automáticas são registradas durante a materialização.");
   }
   const guidance = args.direcaoEditorial === undefined
     ? undefined
@@ -2835,31 +3045,13 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
             }, { knownComponentRefs }));
     }
   }
-  if (editorialParameters) {
-    exactFields(editorialParameters, new Set(Object.keys(EDITORIAL_PARAMETER_FIELD_TO_ID)));
-    if (!Object.keys(editorialParameters).length) {
-      fail("missing_human_task_argument", "Informe ao menos um parâmetro editorial.");
+  for (const field of automaticFields) {
+    if (parameters && Object.hasOwn(parameters, field)) {
+      fail("invalid_human_task_argument", "Um parâmetro não pode ser fixado e delegado no mesmo pedido.");
     }
-    for (const [field, value] of Object.entries(editorialParameters)) {
-      const parameterId = EDITORIAL_PARAMETER_FIELD_TO_ID[field];
-      if (!COURSE_DESIGN_PARAMETER_DEFINITIONS.some(({ id }) => id === parameterId)) {
-        fail("invalid_human_task_argument", `${field} não pertence ao catálogo editorial.`);
-      }
-      commands.push(normalizeCourseDesignCommand(value === null
-        ? { type: "clear_parameter", scope: designScope(preflightState), parameterId }
-        : {
-            type: "set_parameter",
-            scope: designScope(preflightState),
-            parameterId,
-            value: safeClone(value, field, 16 * 1024),
-            origin,
-            reason: origin === "automatic"
-              ? "Alvo editorial calibrado automaticamente para o contexto corrente."
-              : origin === "research_condition"
-                ? "Condição editorial de pesquisa fixada explicitamente."
-                : "Condição editorial fixada explicitamente pela pessoa autora."
-          }, { knownComponentRefs }));
-    }
+    commands.push(normalizeCourseDesignCommand({ type: "delegate_parameter",
+      scope: designScope(preflightState), parameterId: PARAMETER_FIELD_TO_ID[field],
+      reason: "A pessoa autora delegou a escolha ao contexto de produção." }));
   }
   if (guidance !== undefined) {
     commands.push(normalizeCourseDesignCommand(guidance === null
@@ -2891,7 +3083,8 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     });
     const fixedOrigins = new Set(["author", "research_condition"]);
     const protectedParameterOrigins = new Map((currentDesign?.parameters ?? [])
-      .filter((parameter) => fixedOrigins.has(parameter?.effectiveAssignment?.origin))
+      .filter((parameter) => parameter?.effectiveAssignment?.mode === "fixed" &&
+        fixedOrigins.has(parameter?.effectiveAssignment?.origin))
       .map((parameter) => [
         parameter.parameterId,
         parameter.effectiveAssignment.origin
@@ -3026,6 +3219,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
 
 function sourceDocument(publicValue, previous = null) {
   const value = plainObject(publicValue, "metadados");
+  exactFields(value, new Set(Object.keys(SOURCE_METADATA_SCHEMA.properties)));
   const availability = Object.freeze({
     aberta: "open_access",
     restrita: "restricted",
@@ -3041,17 +3235,42 @@ function sourceDocument(publicValue, previous = null) {
     citacao: "citation",
     citacao_e_link: "citation_and_link"
   });
-  const sourceRole = SOURCE_ROLES_BY_HUMAN_NAME[value.papel] ?? previous?.sourceRole;
-  if (!COURSE_SOURCE_ROLES.includes(sourceRole)) {
-    fail("invalid_human_task_argument", "metadados.papel é inválido.", {
-      field: "metadados.papel"
+  const names = (items) => {
+    if (!Array.isArray(items)) fail("invalid_human_task_argument", "Informe os nomes em uma lista.");
+    return items.map((item) => {
+      plainObject(item, "nome");
+      exactFields(item, new Set(["literal", "sobrenome", "nomes"]));
+      if (Object.hasOwn(item, "literal")) {
+        if (Object.hasOwn(item, "sobrenome") || Object.hasOwn(item, "nomes")) {
+          fail("invalid_human_task_argument", "Use nome literal ou componentes fornecidos, sem combiná-los.");
+        }
+        return { literal: item.literal };
+      }
+      return { family: item.sobrenome, given: item.nomes ?? null };
     });
+  };
+  const bibliographic = { ...createEmptyCourseSourceBibliographicMetadata(), ...previous?.bibliographic };
+  if (value.bibliografia !== undefined) {
+    const fields = plainObject(value.bibliografia, "bibliografia");
+    exactFields(fields, new Set(Object.keys(SOURCE_BIBLIOGRAPHIC_SCHEMA.properties)));
+    for (const [human, canonical] of Object.entries(HUMAN_BIBLIOGRAPHIC_FIELDS)) {
+      if (Object.hasOwn(fields, human)) bibliographic[canonical] = fields[human];
+    }
+    if (Object.hasOwn(fields, "editores")) bibliographic.editors = names(fields.editores);
   }
+  const mapped = (mapping, field, fallback) => {
+    if (value[field] === undefined) return fallback;
+    if (!Object.hasOwn(mapping, value[field])) fail("invalid_human_task_argument", `metadados.${field} é inválido.`);
+    return mapping[value[field]];
+  };
   return {
     kind: value.tipo ?? previous?.kind ?? "document",
-    sourceRole,
-    title: text(value.titulo, "metadados.titulo", 300),
-    authorship: value.autoria === undefined ? previous?.authorship ?? null : value.autoria,
+    defaultRoles: value.papeisSugeridos === undefined ? previous?.defaultRoles ?? []
+      : resolveHumanSourceRoles(value.papeisSugeridos, { allowEmpty: true }),
+    title: value.titulo === undefined ? previous?.title ?? null : value.titulo,
+    authors: value.autores === undefined ? previous?.authors ?? [] : names(value.autores),
+    bibliographic,
+    citationMode: mapped({ manual: "manual", gerada: "generated" }, "modoCitacao", previous?.citationMode ?? "manual"),
     publicationDate: value.dataDePublicacao === undefined
       ? previous?.publicationDate ?? null
       : value.dataDePublicacao,
@@ -3062,12 +3281,10 @@ function sourceDocument(publicValue, previous = null) {
     editionOrVersion: value.edicaoOuVersao === undefined
       ? previous?.editionOrVersion ?? null
       : value.edicaoOuVersao,
-    origin: "author_provided",
-    availability: availability[value.disponibilidade] ?? previous?.availability ?? "unknown",
-    verificationStatus: verification[value.verificacao] ??
-      previous?.verificationStatus ?? "unverified",
-    studyVisibility: visibility[value.visibilidadeNoEstudo] ??
-      previous?.studyVisibility ?? "hidden"
+    origin: previous?.origin ?? "author_provided",
+    availability: mapped(availability, "disponibilidade", previous?.availability ?? "unknown"),
+    verificationStatus: mapped(verification, "verificacao", previous?.verificationStatus ?? "unverified"),
+    studyVisibility: mapped(visibility, "visibilidadeNoEstudo", previous?.studyVisibility ?? "hidden")
   };
 }
 
@@ -3182,7 +3399,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     if (sourceReference === undefined) {
       fail("missing_human_task_argument", "Informe fonte para realizar a retirada.", { field: "fonte" });
     }
-    if (args.metadados !== undefined || args.ancoras !== undefined || args.vinculos !== undefined) {
+    if (args.metadados !== undefined || args.ancoras !== undefined || args.vinculos !== undefined || args.estilo !== undefined) {
       fail(
         "invalid_human_task_arguments",
         "A retirada não pode ser combinada com outras mudanças da fonte.",
@@ -3250,8 +3467,12 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
       context: { source: { title, status: withdrawal === "fonte" ? "retired" : initial.source.status } }
     });
   }
-  if (args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined) {
-    fail("missing_human_task_argument", "Informe metadados, ancoras, vinculos ou retirar.");
+  if (args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined && args.estilo === undefined) {
+    fail("missing_human_task_argument", "Informe metadados, ancoras, vinculos, estilo ou retirar.");
+  }
+  if (args.estilo !== undefined) {
+    await executeSourceWrite({ adapter, principal, course, deadlineAt,
+      build: () => ({ type: "set_bibliography_style", style: args.estilo }) });
   }
   if (args.metadados !== undefined) {
     const metadata = safeClone(args.metadados, "metadados", 32 * 1024);
@@ -3275,11 +3496,15 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     sourceReference = undefined;
   }
   const anchors = args.ancoras === undefined ? [] : safeClone(args.ancoras, "ancoras", 64 * 1024);
+  if (!Array.isArray(anchors) || anchors.length > 8 || args.ancoras !== undefined && anchors.length === 0) {
+    fail("invalid_human_task_argument", "Informe de uma a oito âncoras.");
+  }
   for (let index = 0; index < anchors.length; index += 1) {
     if (sourceReference === undefined && internalSourceId === null) {
       fail("missing_human_task_argument", "Informe fonte para manter âncoras.");
     }
     const anchor = plainObject(anchors[index], `ancoras[${index}]`);
+    exactFields(anchor, new Set(["ancora", "seletor", "localizadorHumano", "trechoDeVerificacao", "hashDoPdf"]));
     await executeSourceWrite({
       adapter,
       principal,
@@ -3293,6 +3518,9 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           : matchAnchor(state.sourceDetail?.anchors ?? [], humanReference(
               anchor.ancora, `ancoras[${index}].ancora`
             ));
+        if (anchor.ancora !== undefined && !existing) {
+          throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
+        }
         return {
           type: "save_anchor",
           anchorId: existing?.anchorId ?? await newId(`anchor:${index}`),
@@ -3300,6 +3528,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           sourceRevision: Number(state.sourceDetail?.revision ?? state.source.revision),
           expectedAnchorRevision: Number(existing?.revision ?? 0),
           selector: sourceSelector(anchor.seletor),
+          contentHash: anchor.hashDoPdf === undefined ? existing?.contentHash ?? null : anchor.hashDoPdf,
           humanLocator: anchor.localizadorHumano ?? null,
           verificationExcerpt: anchor.trechoDeVerificacao ?? null
         };
@@ -3307,11 +3536,15 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     });
   }
   const bindings = args.vinculos === undefined ? [] : safeClone(args.vinculos, "vinculos", 128 * 1024);
+  if (!Array.isArray(bindings) || bindings.length > 64 || args.vinculos !== undefined && bindings.length === 0) {
+    fail("invalid_human_task_argument", "Informe de um a 64 vínculos por chamada.");
+  }
   for (let index = 0; index < bindings.length; index += 1) {
     if (sourceReference === undefined && internalSourceId === null) {
       fail("missing_human_task_argument", "Informe fonte para vincular proveniência.");
     }
     const binding = plainObject(bindings[index], `vinculos[${index}]`);
+    exactFields(binding, new Set(["unidade", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
     const unitReference = humanReference(binding.unidade, `vinculos[${index}].unidade`);
     await executeTrustedCourseWrite({
       load: async () => {
@@ -3328,8 +3561,11 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           adapter, principal, resolved, deadlineAt
         ) };
       },
-      build: async (state) => {
+      build: async (state, { newId }) => {
         const unit = state.studyUnits[0];
+        if (binding.ancoras !== undefined && (!Array.isArray(binding.ancoras) || binding.ancoras.length > 8)) {
+          fail("invalid_human_task_argument", "Informe até oito âncoras do vínculo.");
+        }
         const selectedAnchors = (binding.ancoras ?? []).map((reference) => {
           const matched = matchAnchor(state.sourceDetail?.anchors ?? [], reference);
           if (!matched) {
@@ -3352,10 +3588,25 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
         const currentAttribution = Array.isArray(targetRead?.items) &&
           targetRead.items.length === 1 ? targetRead.items[0] : null;
         const currentLinks = currentAttribution?.sourceLinks ?? [];
+        let existing = null;
+        if (binding.vinculo !== undefined) {
+          if (!Number.isSafeInteger(binding.vinculo) || binding.vinculo < 1) {
+            fail("invalid_human_reference", "Informe a posição do vínculo a partir de 1.");
+          }
+          existing = currentLinks[binding.vinculo - 1];
+          if (!existing || existing.sourceId !== state.source.sourceId) {
+            throw new AuthoringApiError(404, "human_reference_not_found", "O vínculo desta fonte não foi localizado.");
+          }
+        }
         const requestedLink = {
+          linkId: existing?.linkId ?? await newId(`source-link:${index}`),
           sourceId: state.source.sourceId,
           relation: text(binding.relacao, "vinculos.relacao", 80),
-          anchors: selectedAnchors
+          roles: resolveHumanSourceRoles(binding.papeis),
+          anchors: binding.ancoras === undefined ? existing?.anchors ?? [] : selectedAnchors,
+          occurrences: binding.ocorrencias === undefined ? existing?.occurrences ?? [] :
+            await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: unit.studyUnit,
+              newId, identityPrefix: `source-link:${index}` })
         };
         return {
           courseId: state.course.id,
@@ -3365,12 +3616,9 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
             targetKind: "study_unit",
             targetId: unit.studyUnit.id,
             expectedTargetVersion: Number(unit.version ?? unit.studyUnit.version ?? 1),
-            sourceLinks: [
-              ...(Array.isArray(currentLinks)
-                ? currentLinks.filter((link) => link.sourceId !== state.source.sourceId)
-                : []),
-              requestedLink
-            ]
+            sourceLinks: existing
+              ? currentLinks.map((link) => link.linkId === existing.linkId ? requestedLink : link)
+              : [...currentLinks, requestedLink]
           })
         };
       },
@@ -3387,10 +3635,11 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     internalSourceId,
     deadlineAt
   });
-  return result("Atualizei a fonte, suas âncoras e vínculos solicitados.", {
+  const styleOnly = args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined;
+  return result(styleOnly ? "Atualizei o estilo das referências do curso." : "Atualizei a fonte, suas âncoras e vínculos solicitados.", {
     deepLink: courseDeepLink(adapter, resolved.course, "sources"),
     nextDecision: "Quer revisar esta fonte no contexto de uma unidade?",
-    context: { source: resolved.source ?? { title: sourceReference } }
+    context: styleOnly ? { bibliographyStyle: args.estilo } : { source: resolved.source ?? { title: sourceReference } }
   });
 };
 
@@ -3400,7 +3649,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
   const hasSourceReference = args.fonte !== undefined;
   const hasNewSourceTitle = args.titulo !== undefined;
   if (hasSourceReference === hasNewSourceTitle ||
-      hasSourceReference && args.papel !== undefined) {
+      hasSourceReference && args.papeisSugeridos !== undefined) {
     fail(
       "invalid_human_task_arguments",
       "Informe exatamente um destino para o PDF: fonte existente ou título da nova fonte.",
@@ -3410,7 +3659,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
   const course = humanCourseTitle(args);
   const sourceReference = optionalReference(args.fonte, "fonte");
   const newSourceTitle = sourceReference === undefined
-    ? text(args.titulo, "titulo", 300)
+    ? args.titulo === null ? null : text(args.titulo, "titulo", 300)
     : undefined;
   text(args.intencao, "intencao", 1000);
   const pdf = plainObject(args.pdf, "pdf");
@@ -3442,7 +3691,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
             expectedSourceRevision: 0,
             source: sourceDocument({
               titulo: newSourceTitle,
-              papel: args.papel,
+              papeisSugeridos: args.papeisSugeridos,
               tipo: "document",
               disponibilidade: "desconhecida",
               verificacao: "nao_verificada",
@@ -3515,5 +3764,80 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
       stored: receipt?.stored !== false,
       recipient: projectionRecipient === "connected_mcp_client" ? "connected_client" : "action"
     }
+  });
+};
+
+HUMAN_TASK_HANDLERS.guardar_audio = async ({ adapter, principal, args, deadlineAt }) => {
+  const course = humanCourseTitle(args);
+  const descriptor = plainObject(args.audio, "audio");
+  exactFields(descriptor, new Set(["file_id", "file_name", "mime_type", "download_url"]));
+  let received = null;
+  let resolvedCourse;
+  const receipt = await executeTrustedCourseWrite({
+    load: async () => {
+      const state = await resolveHumanCourseContext({ adapter, principal, course, deadlineAt });
+      resolvedCourse = state.course;
+      return state;
+    },
+    build: async (state) => ({ courseId: state.course.id, expectedCourseRevision: state.course.revision }),
+    commit: async (value) => {
+      if (typeof adapter?.ingestCourseAudio !== "function") {
+        throw new AuthoringApiError(503, "course_media_unavailable", "Não foi possível guardar o áudio agora.");
+      }
+      // Retry da escrita mantém os mesmos bytes mesmo que o acesso temporário expire.
+      received ??= await resolveOpenAiTemporaryAudio({ descriptor, fetchImpl: adapter.fetchImpl, deadlineAt });
+      const raw = await adapter.ingestCourseAudio({ ...value, ...received, principal, deadlineAt });
+      let saved;
+      try { saved = normalizeCourseMediaChange(raw); } catch {
+        throw new AuthoringApiError(409, "course_media_write_uncertain", "Não foi possível confirmar o áudio guardado. Consulte a biblioteca antes de repetir.");
+      }
+      if (saved.operation !== "ingest_audio" || saved.courseId !== value.courseId ||
+          saved.courseRevision !== value.expectedCourseRevision + Number(saved.changed) ||
+          saved.requestId !== value.requestId || saved.media.byteSize !== received.bytes.length ||
+          saved.media.mediaType !== received.mediaType ||
+          saved.media.contentHash !== await sha256Hex(received.bytes)) {
+        throw new AuthoringApiError(409, "course_media_write_uncertain", "Não foi possível confirmar o áudio guardado. Consulte a biblioteca antes de repetir.");
+      }
+      return saved;
+    }
+  });
+  return result("Guardei o áudio na biblioteca do curso.", {
+    deepLink: courseDeepLink(adapter, resolvedCourse, "content"),
+    nextDecision: "Use o arquivo no pacote de áudio com uma alternativa textual apropriada.",
+    context: { storedAudio: { ...receipt.media, fileName: receipt.fileName } }
+  });
+};
+
+HUMAN_TASK_HANDLERS.consultar_audios = async ({ adapter, principal, args, deadlineAt }) => {
+  const pageNumber = args.pagina ?? 1;
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > 100) {
+    fail("invalid_human_task_argument", "A página precisa estar entre 1 e 100.");
+  }
+  const { course } = await resolveHumanCourseContext({ adapter, principal, course: humanCourseTitle(args), deadlineAt });
+  if (typeof adapter?.getCourseMedia !== "function") {
+    throw new AuthoringApiError(503, "course_media_unavailable", "Não foi possível consultar a biblioteca de áudio.");
+  }
+  let cursor = null;
+  let page;
+  const seen = new Set();
+  for (let index = 1; index <= pageNumber; index++) {
+    const raw = await adapter.getCourseMedia({ principal, courseId: course.id,
+      expectedRevision: course.revision, mode: "catalog", cursor, limit: 20, deadlineAt });
+    try { page = normalizeCourseMediaRead(raw); } catch {
+      throw new AuthoringApiError(503, "course_media_unavailable", "Não foi possível ler a biblioteca de áudio.");
+    }
+    if (page.courseId !== course.id || page.courseRevision !== course.revision || page.mode !== "catalog" ||
+        page.nextCursor !== null && seen.has(page.nextCursor)) {
+      throw new AuthoringApiError(409, "stale_course_state", "A biblioteca mudou. Consulte a página novamente.");
+    }
+    if (index < pageNumber && page.nextCursor === null) fail("human_reference_not_found", "Esta página não existe na biblioteca.", null, 404);
+    cursor = page.nextCursor;
+    seen.add(cursor);
+  }
+  return result(page.items.length ? "Consultei os arquivos de áudio do curso." : "Este curso ainda não tem arquivos de áudio.", {
+    deepLink: courseDeepLink(adapter, course, "content"),
+    nextDecision: page.nextCursor ? `Consulte a página ${pageNumber + 1} ou use um destes áudios.` : "Use um arquivo no pacote de áudio ou guarde uma nova gravação.",
+    context: { pagina: pageNumber, temMais: page.nextCursor !== null,
+      audios: page.items.map(item => ({ storedAudio: item })) }
   });
 };

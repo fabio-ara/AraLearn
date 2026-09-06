@@ -14,10 +14,11 @@ import {
   graphvizGroupById,
   hasGraphvizGap,
   graphvizLayoutAttributes,
-  plainGraphvizLabel,
   renderGraphvizSvg,
-  unionGraphvizTextBounds
+  unionGraphvizTextBounds,
+  wrapGraphvizLabel
 } from "../../sdk/graphviz.js";
+import { hydrateDiagramViewport, renderDiagramViewportShell } from "../../sdk/diagramViewport.js";
 
 const FLOW_KIND_LABELS = Object.freeze({
   sequence: "Sequência", start: "Início", end: "Fim", input: "Entrada",
@@ -28,13 +29,6 @@ const FLOW_KIND_LABELS = Object.freeze({
 });
 
 const GAP_MARKER = /\uE000[^\uE001]+\uE001/gu;
-
-function flowChildren(node) {
-  if (!node || typeof node !== "object") return [];
-  const groups = [node.items, node.thenBranch, node.elseBranch, node.body, node.defaultBranch];
-  if (Array.isArray(node.cases)) groups.push(...node.cases.map((item) => item.thenBranch || item.body));
-  return groups.flatMap((value) => Array.isArray(value) ? value : []);
-}
 
 function nodeSummary(node) {
   if (node.kind === "for") {
@@ -106,6 +100,40 @@ function createFlowGraphCompiler() {
     return { entry: decision, exits: [{ node: merge }] };
   }
 
+  function compileConditionalChain(node, depth) {
+    const merge = addMerge(depth);
+    let entry = null;
+    let previous = null;
+    (node.cases || []).forEach((item) => {
+      const decision = addNode("decision", item.condition, depth, item.id);
+      if (!entry) entry = decision;
+      if (previous) addEdge(previous.id, decision, { label: previous.no, kind: "branch" });
+      const labels = branchLabels(item);
+      const branch = compileSequence(item.thenBranch, depth + 1);
+      addEdge(decision, branch.entry || merge, { label: labels.yes, kind: "branch" });
+      if (branch.entry) connectExits(branch.exits, merge);
+      previous = { id: decision, no: labels.no };
+    });
+    const otherwise = compileSequence(node.elseBranch, depth + 1);
+    if (previous) addEdge(previous.id, otherwise.entry || merge, { label: previous.no, kind: "branch" });
+    if (otherwise.entry) connectExits(otherwise.exits, merge);
+    return { entry: entry || otherwise.entry || merge, exits: [{ node: merge }] };
+  }
+
+  function compileFor(node, depth) {
+    const initialization = node.init || [node.iterator, node.iterable].filter(Boolean).join(" em ");
+    const initial = initialization ? addNode("process", initialization, depth, node.id) : null;
+    const decision = addNode("decision", node.condition || "Há próximo item?", depth, node.id);
+    const body = compileSequence(node.body, depth + 1);
+    const update = node.update ? addNode("process", node.update, depth + 1, node.id) : null;
+    const labels = branchLabels(node);
+    if (initial) addEdge(initial, decision);
+    addEdge(decision, body.entry || update || decision, { label: labels.yes, kind: body.entry || update ? "branch" : "loop" });
+    if (body.entry) connectExits(body.exits.map((exit) => ({ ...exit, kind: update ? exit.kind : "loop" })), update || decision);
+    if (update) addEdge(update, decision, { kind: "loop" });
+    return { entry: initial || decision, exits: [{ node: decision, label: labels.no, kind: "branch", layoutAfter: [update || body.exits[0]?.node].filter(Boolean) }] };
+  }
+
   function compileLoop(node, depth, bodyFirst = false) {
     const labels = branchLabels(node);
     const decision = addNode("decision", nodeSummary(node) || FLOW_KIND_LABELS[node.kind], depth, node.id);
@@ -143,13 +171,11 @@ function createFlowGraphCompiler() {
         { label: labels.no, items: node.kind === "if_then_else" ? node.elseBranch : [] }
       ], depth);
     }
-    if (node.kind === "while" || node.kind === "for") return compileLoop(node, depth);
+    if (node.kind === "while") return compileLoop(node, depth);
+    if (node.kind === "for") return compileFor(node, depth);
     if (node.kind === "do_while") return compileLoop(node, depth, true);
     if (node.kind === "if_chain") {
-      return compileChoice(node, [
-        ...(node.cases || []).map((item) => ({ label: item.condition, items: item.thenBranch })),
-        { label: "Caso contrário", items: node.elseBranch }
-      ], depth);
+      return compileConditionalChain(node, depth);
     }
     if (node.kind === "switch_case") {
       return compileChoice(node, [
@@ -173,18 +199,57 @@ export function compileFlowGraph(structure) {
   return createFlowGraphCompiler().compile(structure);
 }
 
-function flattenFlow(node, output = []) {
-  if (!node) return output;
-  output.push(`${FLOW_KIND_LABELS[node.kind] || node.kind}: ${nodeSummary(node) || FLOW_KIND_LABELS[node.kind] || node.kind}`);
-  flowChildren(node).forEach((child) => flattenFlow(child, output));
-  return output;
+function flowOutline(node) {
+  const labels = branchLabels(node);
+  const list = (items) => (items || []).map(flowOutline);
+  const branch = (label, items, empty = "Continuar após a decisão.") => ({
+    summary: label, children: items?.length ? list(items) : [{ summary: empty, children: [] }]
+  });
+  const kindLabel = FLOW_KIND_LABELS[node.kind] || node.kind;
+  const value = nodeSummary(node);
+  let summary = value && value !== kindLabel ? `${kindLabel}: ${value}` : kindLabel;
+  let children = [];
+  if (node.kind === "sequence") children = list(node.items);
+  if (node.kind === "if_then" || node.kind === "if_then_else") children = [
+    branch(labels.yes, node.thenBranch), branch(labels.no, node.elseBranch)
+  ];
+  if (node.kind === "switch_case") children = [
+    ...(node.cases || []).map((item) => branch(`Caso ${item.match}`, item.body)),
+    branch(labels.default, node.defaultBranch)
+  ];
+  if (node.kind === "if_chain") {
+    summary = "Decisão encadeada: avaliar na ordem e seguir somente a primeira condição verdadeira.";
+    children = (node.cases || []).map((item, index, cases) => ({
+      summary: `Condição: ${item.condition}`, children: [
+        branch(branchLabels(item).yes, item.thenBranch),
+        { summary: `${branchLabels(item).no}: ${index < cases.length - 1 ? "avaliar a próxima condição." : "seguir o caso contrário."}`, children: [] }
+      ]
+    }));
+    children.push(branch("Caso contrário", node.elseBranch));
+  }
+  if (["while", "for", "do_while"].includes(node.kind)) {
+    summary = node.kind === "do_while" ? "Repetição: testar a condição depois do corpo." : "Repetição: testar a condição antes do corpo.";
+    const body = branch("Corpo da repetição", node.body, "Corpo vazio.");
+    const decision = { summary: `Condição: ${node.condition || "Há próximo item?"}`, children: [
+      { summary: `${labels.yes}: ${node.kind === "do_while" ? "repetir o corpo." : "executar o corpo e avaliar novamente a condição."}`, children: [] },
+      { summary: `${labels.no}: continuar após a repetição.`, children: [] }
+    ] };
+    children = node.kind === "do_while" ? [body, decision] : [decision, body];
+    if (node.kind === "for") {
+      const initialization = node.init || [node.iterator, node.iterable].filter(Boolean).join(" em ");
+      if (initialization) children.unshift({ summary: `Inicialização: ${initialization}`, children: [] });
+      if (node.update) children.push({ summary: `Após cada execução do corpo, atualizar: ${node.update}; então reavaliar a condição.`, children: [] });
+    }
+  }
+  return { summary, children };
+}
+
+function flattenOutline(node) {
+  return [node.summary, ...node.children.flatMap(flattenOutline)];
 }
 
 function renderAccessibleOutline(node) {
-  const children = flowChildren(node);
-  const summary = `${FLOW_KIND_LABELS[node.kind] || node.kind}: ${nodeSummary(node) || FLOW_KIND_LABELS[node.kind] || node.kind}`
-    .replace(GAP_MARKER, "lacuna");
-  return `<li>${renderPackageInlineReference(summary)}${children.length ? `<ol>${children.map(renderAccessibleOutline).join("")}</ol>` : ""}</li>`;
+  return `<li>${renderPackageInlineReference(node.summary.replace(GAP_MARKER, "lacuna"))}${node.children.length ? `<ol>${node.children.map(renderAccessibleOutline).join("")}</ol>` : ""}</li>`;
 }
 
 function flowEditableTargets(value, path = "structure", output = []) {
@@ -219,9 +284,8 @@ function graphvizNodeAttributes(node) {
   const common = {
     id: node.id,
     class: `package-flow-node is-${shape}`,
-    label: node.kind === "merge" ? "" : plainGraphvizLabel(node.label),
-    shape: ({ terminal: "oval", "input-output": "parallelogram", decision: "diamond", merge: "point" })[shape] || "box",
-    ...(node.sourceId ? { tooltip: node.sourceId } : {})
+    label: node.kind === "merge" ? "" : wrapGraphvizLabel(node.label, 30),
+    shape: ({ terminal: "oval", "input-output": "parallelogram", decision: "diamond", merge: "point" })[shape] || "box"
   };
   if (shape === "merge") return { ...common, width: "0.08", height: "0.08", fixedsize: "true" };
   if (shape === "decision") return { ...common, width: "2.15", height: "0.85", margin: "0.24,0.12" };
@@ -241,7 +305,7 @@ function graphvizEdgeAttributes(edge, nodeById) {
   return {
     id: edge.id,
     class: `package-flow-edge is-${edge.kind}`,
-    ...(edge.label ? { label: plainGraphvizLabel(edge.label) } : {}),
+    ...(edge.label ? { label: wrapGraphvizLabel(edge.label, 24) } : {}),
     ...(targetIsMerge ? { arrowhead: "none" } : {}),
     ...(edge.kind === "loop" ? { constraint: "false", style: "dashed", minlen: "2" } : {})
   };
@@ -272,7 +336,7 @@ export function compileFlowGraphviz(structure) {
 
 function labelTemplate(kind, id, value) {
   if (!value) return "";
-  return `<template data-flow-${kind}-template="${escapePackageAttribute(id)}"><span class="package-flow-label-content">${renderPackageInline(value)}</span></template>`;
+  return `<template data-flow-${kind}-template="${escapePackageAttribute(id)}"><span class="package-flow-label-content"><span class="package-flow-label-text">${renderPackageInline(value)}</span></span></template>`;
 }
 
 function renderFlowGraph(structure) {
@@ -285,7 +349,8 @@ function renderFlowGraph(structure) {
     `<span data-flow-edge-id="${escapePackageAttribute(edge.id)}" data-flow-source="${escapePackageAttribute(edge.source)}" data-flow-target="${escapePackageAttribute(edge.target)}" data-flow-edge-kind="${escapePackageAttribute(edge.kind)}" data-flow-edge-visible="${edge.visible ? "true" : "false"}" hidden></span>`
   ).join("");
   const encodedGraph = encodeURIComponent(JSON.stringify(stripPackageManualTextMarkersDeep(graph)));
-  return `<div class="package-flowchart" data-resource-scroll-frame="diagram" role="group" aria-label="Fluxograma" tabindex="0"><div class="package-flow-canvas" data-flow-layout-status="pending" aria-busy="true" data-flow-graph="${escapePackageAttribute(encodedGraph)}" data-flow-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}${edgeSpecs}<p class="package-flow-layout-error" hidden>Não foi possível diagramar o fluxograma.</p></div>`;
+  const canvas = `<div class="package-flow-canvas" data-resource-scroll-frame="diagram" role="region" aria-label="Fluxograma" tabindex="0" data-flow-layout-status="pending" aria-busy="true" data-flow-graph="${escapePackageAttribute(encodedGraph)}" data-flow-graphviz-source="${escapePackageAttribute(source)}"></div>`;
+  return `<div class="package-flowchart">${renderDiagramViewportShell({ canvasHtml: canvas })}${templates}${edgeSpecs}<p class="package-flow-layout-error" hidden>Não foi possível diagramar o fluxograma. A descrição dos caminhos permanece disponível.</p></div>`;
 }
 
 function nodeLabelBounds(group) {
@@ -309,10 +374,8 @@ function replaceGraphvizLabels(chart, svg, graph) {
   graph.nodes.filter((node) => node.kind !== "merge").forEach((node) => {
     const group = graphvizGroupById(svg, node.id);
     const template = chart.querySelector(`template[data-flow-node-template="${CSS.escape(node.id)}"]`);
-    if (hasGraphvizGap(node.label) || template?.content.querySelector("[data-package-manual-field-path]")) {
-      group?.querySelectorAll("text").forEach((text) => { text.style.visibility = "hidden"; });
-      appendGraphvizForeignLabel(group, template, nodeLabelBounds(group), "package-flow-node-label");
-    }
+    group?.querySelectorAll("text").forEach((text) => { text.style.visibility = "hidden"; text.setAttribute("aria-hidden", "true"); });
+    appendGraphvizForeignLabel(group, template, nodeLabelBounds(group), "package-flow-node-label");
     if (group) {
       group.dataset.flowNodeId = node.id;
       group.dataset.flowKind = node.kind;
@@ -325,12 +388,11 @@ function replaceGraphvizLabels(chart, svg, graph) {
     texts.forEach((text) => text.classList.add("package-flow-edge-label"));
     const template = chart.querySelector(`template[data-flow-edge-template="${CSS.escape(edge.id)}"]`);
     const hasGap = hasGraphvizGap(edge.label);
-    if (!hasGap && !template?.content.querySelector("[data-package-manual-field-path]")) return;
     const box = unionGraphvizTextBounds(texts);
-    texts.forEach((text) => { text.style.visibility = "hidden"; });
+    texts.forEach((text) => { text.style.visibility = "hidden"; text.setAttribute("aria-hidden", "true"); });
     if (box) {
-      const width = hasGap ? Math.max(48, box.width + 16) : box.width;
-      const height = hasGap ? Math.max(24, box.height + 8) : box.height;
+      const width = hasGap ? Math.max(48, box.width + 16) : box.width + 8;
+      const height = Math.max(24, box.height + 8);
       appendGraphvizForeignLabel(group, template, {
         x: box.x + (box.width - width) / 2,
         y: box.y + (box.height - height) / 2,
@@ -341,23 +403,33 @@ function replaceGraphvizLabels(chart, svg, graph) {
   });
 }
 
-async function layoutFlowchart(chart) {
+async function layoutFlowchart(chart, stateKey) {
   const canvas = chart.querySelector(".package-flow-canvas");
-  if (!canvas || canvas.dataset.flowLayoutStatus === "ready") return;
+  if (!canvas || ["loading", "ready", "error"].includes(canvas.dataset.flowLayoutStatus)) return;
+  canvas.dataset.flowLayoutStatus = "loading";
   try {
-    const source = canvas.dataset.flowGraphvizSource;
+    let source = canvas.dataset.flowGraphvizSource;
     if (!source) throw new Error("Fluxograma sem fonte Graphviz.");
+    const metric = document.createElement("span");
+    metric.className = "package-flow-label-content";
+    metric.style.cssText = "position:absolute;visibility:hidden;width:auto;height:auto";
+    canvas.append(metric);
+    const fontSize = Number.parseFloat(getComputedStyle(metric).fontSize) || 16;
+    metric.remove();
+    source = source.replace('fontsize="16"', `fontsize="${fontSize}"`)
+      .replace('fontsize="14"', `fontsize="${fontSize * 0.91}"`);
     const graph = JSON.parse(decodeURIComponent(canvas.dataset.flowGraph || ""));
     const svg = await renderGraphvizSvg(canvas, { source, engine: "dot", className: "package-flow-svg" });
     replaceGraphvizLabels(chart, svg, graph);
+    await hydrateDiagramViewport({ figure: chart, canvas, svg, stateKey, initialScale: 1 });
     canvas.dataset.flowLayoutStatus = "ready";
     canvas.setAttribute("aria-busy", "false");
     const start = svg.querySelector('[data-flow-kind="start"]') || svg.querySelector(".package-flow-node");
-    if (start && chart.scrollWidth > chart.clientWidth) {
-      const chartRect = chart.getBoundingClientRect();
+    if (start && canvas.scrollWidth > canvas.clientWidth && canvas.scrollLeft === 0) {
+      const chartRect = canvas.getBoundingClientRect();
       const startRect = start.getBoundingClientRect();
-      chart.scrollLeft = Math.max(0,
-        chart.scrollLeft + startRect.left - chartRect.left + (startRect.width - chart.clientWidth) / 2
+      canvas.scrollLeft = Math.max(0,
+        canvas.scrollLeft + startRect.left - chartRect.left + (startRect.width - canvas.clientWidth) / 2
       );
     }
   } catch (error) {
@@ -365,19 +437,24 @@ async function layoutFlowchart(chart) {
     canvas.setAttribute("aria-busy", "false");
     const message = chart.querySelector(".package-flow-layout-error");
     if (message) message.hidden = false;
+    chart.closest(".runtime-flow-block")?.querySelector(".package-flow-outline")?.classList.remove("visually-hidden");
+    chart.querySelectorAll("[data-diagram-action]").forEach((control) => { control.disabled = true; });
     throw error;
   }
 }
 
 export const flowPackage = Object.freeze({
   manifest: Object.freeze({ id: "aralearn.resource.flow", version: "1.0.0", label: "Fluxograma", purpose: "Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas.", slots: Object.freeze(["content", "feedback"]), taskOperations: Object.freeze(["trace-control-flow", "decide", "recognize-loop", "predict-path"]), academic: academicProfile({ domains: ["algoritmos", "processos", "engenharia de software"], knowledgeObjects: ["fluxograma", "decisão", "ramificação", "repetição"], conventions: ["terminais arredondados", "processos retangulares", "entrada e saída em paralelogramo", "decisões em losango", "ramos nomeados na própria aresta", "fluxo orientado", "junções explícitas"], appropriateWhen: ["o caminho depende de decisão ou repetição"], avoidWhen: ["há apenas ordem linear ou estados persistentes"], technologies: ["Graphviz dot", "Viz.js WebAssembly", "SVG", "HTML semântico"], practiceModes: ["exposition", "gap", "typing", "selection"] }), responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]), limitations: Object.freeze(["Sem decisão ou repetição, prefira prosa enumerada ou uma prática de ordenação textual.", "A geometria é derivada e nunca autoral."]), accessibility: "O fluxograma visual possui uma descrição linear equivalente para tecnologia assistiva." }),
-  authoringContract: Object.freeze({ intent: "Declare a lógica do fluxograma; o renderer escolhe símbolos, conectores, ramos, junções e retornos.", required: Object.freeze(["structure"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["A raiz é sequence.", "Use start e end para terminais, process para transformação, input/output para dados e estruturas condicionais para losangos.", "Toda decisão declara rótulos semanticamente inequívocos para seus ramos.", "Não declare coordenadas, símbolos, arestas ou pontos de junção.", "Use a menor estrutura que preserve a lógica."]), example: Object.freeze({ prompt: "Acompanhe os dois caminhos possíveis.", structure: { id: "root", kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, { id: "read", kind: "input", text: "Ler credenciais" }, { id: "decision", kind: "if_then_else", condition: "Credenciais válidas?", branchLabels: { yes: "Sim", no: "Não" }, thenBranch: [{ id: "open", kind: "process", text: "Abrir sessão" }], elseBranch: [{ id: "error", kind: "output", text: "Exibir erro" }] }, { id: "end", kind: "end", text: "Fim" }] } }) }),
+  authoringContract: Object.freeze({ intent: "Declare a lógica do fluxograma; o renderer escolhe símbolos, conectores, ramos, junções e retornos.", required: Object.freeze(["structure"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["A raiz é sequence.", "Use start e end para terminais, process para transformação, input/output para dados e estruturas condicionais para losangos.", "Toda decisão declara rótulos semanticamente inequívocos para seus ramos.", "if_chain avalia as condições na ordem e segue somente o primeiro caso verdadeiro; switch_case seleciona pelo valor da expressão.", "Em for, init acontece antes do primeiro teste e update depois de cada execução do corpo; do_while testa depois do corpo.", "Não declare coordenadas, símbolos, arestas ou pontos de junção.", "Use a menor estrutura que preserve a lógica."]), example: Object.freeze({ prompt: "Acompanhe os dois caminhos possíveis.", structure: { id: "root", kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, { id: "read", kind: "input", text: "Ler credenciais" }, { id: "decision", kind: "if_then_else", condition: "Credenciais válidas?", branchLabels: { yes: "Sim", no: "Não" }, thenBranch: [{ id: "open", kind: "process", text: "Abrir sessão" }], elseBranch: [{ id: "error", kind: "output", text: "Exibir erro" }] }, { id: "end", kind: "end", text: "Fim" }] } }) }),
   schema: Object.freeze({ type: "object", additionalProperties: false, required: ["structure"], properties: { prompt: { type: "string" }, structure: FLOWCHART_STRUCTURE_INPUT_SCHEMA } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), structure: normalizeFlowchartStructure(data?.structure) }; },
   validate(data) { const result = validateFlowchartStructureContract(data.structure); return result.valid ? [] : result.findings.map((error) => String(error)); },
-  render(data, options = {}) { return `<div class="runtime-block runtime-flow-block">${data.prompt ? renderPackageProse(data.prompt) : ""}${renderFlowGraph(data.structure, options)}<ol class="visually-hidden">${renderAccessibleOutline(data.structure)}</ol></div>`; },
-  async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-flowchart")].map(layoutFlowchart)); },
-  accessibleText(data) { return [data.prompt, ...flattenFlow(data.structure)].filter(Boolean).join(". "); },
+  render(data, options = {}) { return `<div class="runtime-block runtime-flow-block">${data.prompt ? renderPackageProse(data.prompt) : ""}${renderFlowGraph(data.structure, options)}<ol class="package-flow-outline visually-hidden">${renderAccessibleOutline(flowOutline(data.structure))}</ol></div>`; },
+  async hydrate(instanceRoot) {
+    const baseKey = instanceRoot.dataset.packageRenderKey || `${instanceRoot.dataset.package || "flow"}:${instanceRoot.dataset.packageInstanceId || "instance"}`;
+    await Promise.all([...instanceRoot.querySelectorAll(".package-flowchart")].map((chart, index) => layoutFlowchart(chart, `${baseKey}:flow:${index}`)));
+  },
+  accessibleText(data) { return [data.prompt, ...flattenOutline(flowOutline(data.structure))].filter(Boolean).join(". ").replace(GAP_MARKER, "lacuna"); },
   editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...flowEditableTargets(data.structure)]; },
   practiceTargets(data) { return flowEditableTargets(data.structure).map((target) => ({ ...target, label: target.label.replace("Editar", "Lacuna em"), modes: ["gap", "typing"] })); }
 });

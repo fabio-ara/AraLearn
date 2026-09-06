@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "espree";
+import { renderCourseDesignParameterCatalogSql } from "./syncCourseDesignParameterCatalog.mjs";
+import { checkResourcePackageCatalog } from "./syncResourcePackageCatalog.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -15,7 +17,10 @@ const REQUIRED_FEATURES = Object.freeze([
   "isolated-mcp-oauth-principal-v1",
   "package-library-v1",
   "package-contract-discovery-v1",
-  "person-profile-v1",
+  "person-profile-v2",
+  "public-course-study-v1",
+  "course-file-access-policy-v1",
+  "owned-course-copy-recovery-v1",
   "study-only-course-access-v1",
   "private-person-avatar-v1",
   "self-account-deletion-v1",
@@ -25,7 +30,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-part-save-v1",
   "course-authoring-part-materialization-atomic-v2",
   "course-study-unit-inspection-v2",
-  "course-authoring-configuration-v2",
+  "course-authoring-configuration-v3",
+  "authoring-preference-profiles-v1",
   "course-sources-v1",
   "course-source-roles-v1",
   "course-source-provenance-v1",
@@ -38,9 +44,11 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-anchored-annotations-atomic-create-v1",
   "course-annotation-subject-classification-v1",
   "course-personal-state-v2",
-  "course-authoring-analytics-v2",
+  "course-authoring-analytics-v4",
+  "course-independent-copy-v1",
+  "course-authoring-comparison-v1",
+  "course-authoring-export-v1",
   "contextual-study-unit-edit-v1",
-  "personal-course-copy-edit-v1",
   "current-data-lifecycle-v1",
   "course-source-current-state-v1",
   "single-authoring-runtime-v1",
@@ -72,6 +80,8 @@ const CANONICAL_RUNTIME_FILES = Object.freeze([
   "src/ui/CourseAnalyticsPanel.js",
   "src/ui/downloadTextFile.js",
   "src/ui/CourseDesignPanel.js",
+  "src/ui/CourseAuthoringProfiles.js",
+  "src/ui/courseDesignControls.js",
   "src/ui/CourseInspectionSequence.js",
   "src/ui/CourseObservationsPanel.js",
   "src/ui/CourseSourcesPanel.js",
@@ -294,7 +304,7 @@ function legacyPersonalObservationsStayInHandoffConverter(source) {
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260903193000" ||
+  if (manifest.schemaRevision !== "20260905163000" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -303,6 +313,17 @@ async function validateManifest() {
     fail("O manifesto estático não descreve exatamente o runtime final de Curso.");
   }
   await validateRuntimeManifestRevision(manifest);
+  checkResourcePackageCatalog(repositoryRoot);
+  const migrations = (await fs.readdir(path.join(repositoryRoot, "supabase/migrations")))
+    .filter(name => name.endsWith(".sql")).sort().reverse();
+  let catalogMigration = "";
+  for (const name of migrations) {
+    const source = await read(`supabase/migrations/${name}`);
+    if (source.includes("-- COURSE_DESIGN_CATALOG_BEGIN")) { catalogMigration = source; break; }
+  }
+  if (!catalogMigration.replaceAll("\r\n", "\n").includes(renderCourseDesignParameterCatalogSql())) {
+    fail("A projeção SQL de parâmetros diverge do catálogo canônico.");
+  }
 
   const cut = await read(
     "supabase/migrations/20260902044404_cut_legacy_authoring_runtime.sql"
@@ -553,15 +574,17 @@ async function validateEdgeAndMcp() {
   )).href);
   const names = toolsModule.COURSE_HUMAN_TASKS.map(({ name }) => name);
   const expected = [
+    "copiar_curso", "comparar_cursos", "exportar_autoria",
+    "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
     "retomar_curso", "consultar_planejamento", "preparar_materializacao",
     "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
     "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_mapa_curricular",
     "salvar_parte",
     "materializar_parte", "ajustar_configuracao", "registrar_observacao",
-    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte"
+    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às dezessete tarefas humanas esperadas.");
+    fail("O catálogo MCP não corresponde às vinte e sete tarefas humanas esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");
@@ -575,7 +598,8 @@ async function validateDeploymentPath() {
     "functions deploy aralearn-course-api",
     "ARALEARN_COURSE_API_ALLOWED_ORIGINS",
     "ARALEARN_PUBLIC_APP_URL",
-    "As funções da versão publicada foram preservadas"
+    "As três funções foram atualizadas",
+    "este script não executa rollback automático"
   ]) {
     if (!deployment.includes(required)) {
       fail(`O fluxo de implantação não contém ${required}.`);
@@ -594,7 +618,7 @@ async function validateDeploymentPath() {
       deployment.indexOf("Invoke-WebRequest") >
         deployment.indexOf("runHostedMcpOAuthSmoke.mjs") ||
       deployment.indexOf("runHostedMcpOAuthSmoke.mjs") >
-        deployment.indexOf("As funções da versão publicada foram preservadas") ||
+        deployment.indexOf("As três funções foram atualizadas") ||
       /functions\s+delete|Remove-AraLearnSupabaseFunctionIfPresent/u.test(deployment)) {
     fail("A implantação não preserva a ordem segura entre configuração, smoke e manutenção do runtime publicado.");
   }

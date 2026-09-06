@@ -1,5 +1,14 @@
+import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
+import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
+  boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
+import {
+  normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
+  normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
+  normalizeCourseAuthoringProfileChange
+} from "../domain/authoringProfiles.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
@@ -11,6 +20,8 @@ import {
   normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../domain/courseAuthoringAnalytics.js";
+import { normalizeCourseAuthoringSelection, normalizeCourseAuthoringComparisonRequest,
+  normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import {
   normalizeCourseSourcePdfDownload,
   normalizeCourseSourceChange,
@@ -20,7 +31,8 @@ import {
 } from "../domain/courseSources.js";
 import {
   normalizeFocalStudyUnitCompositionIntent,
-  normalizePersonalCourseCopyEditIntent
+  normalizeCourseMetadata,
+  normalizeOwnedCourseCopyRecoveryCommand
 } from "../domain/courseComposition.js";
 import {
   COURSE_ANNOTATION_CACHE_CONTRACT,
@@ -36,11 +48,27 @@ const VERIFIED_COMPOSITION_CACHE_CONTRACT =
   "aralearn.course-verified-composition.v1";
 const PENDING_COMPOSITION_CACHE_CONTRACT =
   "aralearn.course-confirmed-composition-pending.v1";
-const PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT =
-  "aralearn.personal-course-copy-edit-pending.v1";
+const LEGACY_DRAFT_CACHE_KEY = "aralearn.personal-course-copy-edit-pending.v1";
+const STUDY_DRAFT_RECOVERY_CACHE_KEY = "course.v1.study-draft-recovery";
 const ACCESSIBLE_COURSE_IDS_CACHE_KEY = `${CACHE_PREFIX}.accessible-course-ids`;
 const ACCESSIBLE_COURSE_IDS_CONTRACT = "aralearn.accessible-course-ids.v1";
 const REVIEW_PAGE_CACHE_KEY = `${CACHE_PREFIX}.review-page`;
+const PERSON_PROFILE_CACHE_KEY = "aralearn.person-profile.v2";
+
+function normalizeCachedPersonProfile(value, expectedUserId = null) {
+  if (value?.contract !== PERSON_PROFILE_CACHE_KEY ||
+      !UUID_PATTERN.test(value.userId || "") ||
+      (expectedUserId && value.userId !== expectedUserId) ||
+      (value.handle !== null && (typeof value.handle !== "string" ||
+        !/^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/u.test(value.handle))) ||
+      (value.avatarObjectKey !== null && (typeof value.avatarObjectKey !== "string" ||
+        !value.avatarObjectKey.startsWith(`${value.userId}/`))) ||
+      typeof value.updatedAt !== "string" || !Number.isFinite(Date.parse(value.updatedAt))) {
+    throw new TypeError("Perfil público inválido.");
+  }
+  return { contract: PERSON_PROFILE_CACHE_KEY, userId: value.userId,
+    handle: value.handle, avatarObjectKey: value.avatarObjectKey, updatedAt: value.updatedAt };
+}
 const AUTHORING_INSPECTION_PAGE_CONTRACT =
   "aralearn.course-study-unit-inspection-page.v2";
 const AUTHORING_INSPECTION_POSITION_CONTRACT =
@@ -66,10 +94,6 @@ function verifiedCompositionCacheKey(courseId, prefix = CACHE_PREFIX) {
 
 function pendingCompositionCacheKey(courseId) {
   return `${PENDING_COMPOSITION_CACHE_CONTRACT}:${courseId}`;
-}
-
-function pendingPersonalCopyEditCacheKey() {
-  return PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT;
 }
 
 function instructionalPlanCacheKey(courseId, prefix = CACHE_PREFIX) {
@@ -217,7 +241,8 @@ function courseAnchoredAnnotationReadOptions(courseId, value = {}) {
   });
 }
 
-function courseSourceCommandSubjectId(command) {
+function courseSourceCommandSubjectId(command, courseId) {
+  if (command.type === "set_bibliography_style") return courseId;
   return command.type === "save_source" || command.type === "retire_source" ||
     command.type === "remove_pdf"
     ? command.sourceId
@@ -304,33 +329,16 @@ function projectListItem(value) {
   const title = String(value?.title || "").trim();
   const revision = Number(value?.revision);
   const ownership = String(value?.ownership || "").trim();
-  const canDerive = value?.canDerive == null
-    ? ownership === "shared"
-    : value.canDerive;
-  const isPersonalCopy = value?.isPersonalCopy == null
-    ? false
-    : value.isPersonalCopy;
-  const personalCopyCourseId = value?.personalCopyCourseId == null
-    ? null
-    : String(value.personalCopyCourseId).trim().toLowerCase();
-  const sourceCourseId = value?.sourceCourseId == null
-    ? null
-    : String(value.sourceCourseId).trim().toLowerCase();
-  const sourceCourseRevision = value?.sourceCourseRevision == null
-    ? null
-    : Number(value.sourceCourseRevision);
+  const visibility = value.visibility;
+  const canObserve = value.canObserve;
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       !UUID_PATTERN.test(courseId) || !title ||
       !Number.isSafeInteger(revision) || revision < 1 ||
-      !new Set(["owned", "shared"]).has(ownership) ||
+      !new Set(["owned", "shared", "public"]).has(ownership) ||
       typeof value.canEdit !== "boolean" || value.canEdit !== (ownership === "owned") ||
-      typeof canDerive !== "boolean" || typeof isPersonalCopy !== "boolean" ||
-      personalCopyCourseId !== null && !UUID_PATTERN.test(personalCopyCourseId) ||
-      sourceCourseId !== null && !UUID_PATTERN.test(sourceCourseId) ||
-      (sourceCourseId === null) !== (sourceCourseRevision === null) ||
-      sourceCourseRevision !== null &&
-        (!Number.isSafeInteger(sourceCourseRevision) || sourceCourseRevision < 1) ||
-      isPersonalCopy && ownership !== "owned") {
+      typeof canObserve !== "boolean" || !new Set(["private", "public"]).has(visibility) ||
+      !new Set(["restricted", "available"]).has(value.publicFileAccess) ||
+      ownership === "public" && visibility !== "public") {
     throw invalidCourseList();
   }
   return {
@@ -340,10 +348,11 @@ function projectListItem(value) {
     revision,
     ownership,
     canEdit: value.canEdit,
-    canDerive,
-    isPersonalCopy,
-    personalCopyCourseId,
-    ...(sourceCourseId === null ? {} : { sourceCourseId, sourceCourseRevision }),
+    canCopy: value.canCopy === true,
+    canObserve,
+    visibility,
+    publicFileAccess: value.publicFileAccess,
+    ...(ownership === "owned" && value.copyOrigin ? { copyOrigin: structuredClone(value.copyOrigin) } : {}),
     moduleCount: value?.moduleCount ?? null,
     lessonCount: value?.lessonCount ?? null,
     topicCount: value?.topicCount ?? null,
@@ -360,7 +369,7 @@ function normalizeCourseListPage(value) {
     typeof cursor.beforeUpdatedAt === "string" && !Number.isNaN(Date.parse(cursor.beforeUpdatedAt)) &&
     UUID_PATTERN.test(String(cursor.beforeId || "").trim().toLowerCase());
   if (!value || typeof value !== "object" || Array.isArray(value) ||
-      value.contract !== "aralearn.course-list.v1" ||
+      value.contract !== "aralearn.course-list.v2" ||
       !Array.isArray(value.items) || typeof value.hasMore !== "boolean" ||
       (value.hasMore ? !cursorIsValid : cursor != null)) {
     throw invalidCourseList();
@@ -551,48 +560,6 @@ function normalizePendingCompositionSnapshot(value) {
   };
 }
 
-function normalizePendingPersonalCopyEditSnapshot(value) {
-  const allowed = new Set([
-    "contract", "requestId", "sourceCourseId", "expectedSourceCourseRevision",
-    "expectedStudyUnitVersion", "didacticMicrosequenceId", "studyUnit", "origin",
-    "targetId", "sourceSelection", "savedAt"
-  ]);
-  if (!value || typeof value !== "object" || Array.isArray(value) ||
-      value.contract !== PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT ||
-      Object.keys(value).length !== allowed.size ||
-      Object.keys(value).some((field) => !allowed.has(field))) {
-    throw new TypeError("Edição pessoal pendente inválida.");
-  }
-  const intent = normalizePersonalCourseCopyEditIntent({
-    requestId: value.requestId,
-    sourceCourseId: value.sourceCourseId,
-    expectedSourceCourseRevision: value.expectedSourceCourseRevision,
-    expectedStudyUnitVersion: value.expectedStudyUnitVersion,
-    didacticMicrosequenceId: value.didacticMicrosequenceId,
-    studyUnit: value.studyUnit,
-    origin: value.origin,
-    targetId: value.targetId,
-    sourceSelection: value.sourceSelection
-  });
-  const savedAt = String(value.savedAt || "");
-  if (!savedAt || Number.isNaN(Date.parse(savedAt))) {
-    throw new TypeError("Edição pessoal pendente inválida.");
-  }
-  return {
-    contract: PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT,
-    ...intent,
-    savedAt
-  };
-}
-
-function personalCopyEditIntentSignature(intent) {
-  const semanticIntent = structuredClone(intent);
-  delete semanticIntent.requestId;
-  delete semanticIntent.savedAt;
-  delete semanticIntent.contract;
-  return JSON.stringify(semanticIntent);
-}
-
 function normalizeInspectionPosition(courseId, value) {
   if (value == null) return null;
   const normalizedCourseId = String(courseId || "").trim().toLowerCase();
@@ -620,6 +587,7 @@ function normalizeInspectionPosition(courseId, value) {
 function inspectionRequestOptions({
   expectedRevision,
   scope = { kind: "course", id: null },
+  entry = null,
   anchorStudyUnitId = null,
   cursor = null,
   direction = "forward",
@@ -636,7 +604,9 @@ function inspectionRequestOptions({
     : { studyUnitId: String(cursor?.studyUnitId || "").trim() };
   const normalizedLimit = Number(limit);
   const normalizedMaxBytes = Number(maxBytes);
-  if (!Number.isSafeInteger(revision) || revision < 1 ||
+  if (entry != null && (entry !== "latest_updated" || normalizedAnchor != null ||
+      normalizedCursor != null || normalizedDirection !== "forward") ||
+      !Number.isSafeInteger(revision) || revision < 1 ||
       !new Set(["forward", "backward"]).has(normalizedDirection) ||
       (normalizedAnchor != null && (!normalizedAnchor || normalizedAnchor.length > 240)) ||
       (normalizedCursor != null && (
@@ -653,6 +623,7 @@ function inspectionRequestOptions({
   return {
     expectedRevision: revision,
     scope: normalizedScope,
+    ...(entry == null ? {} : { entry }),
     anchorStudyUnitId: normalizedAnchor,
     cursor: normalizedCursor,
     direction: normalizedDirection,
@@ -721,153 +692,56 @@ export class CourseController {
     );
   }
 
-  async #readPendingPersonalCopyEdit() {
-    const key = pendingPersonalCopyEditCacheKey();
-    const cached = cachedPayload(await this.store.getCache(key));
-    if (cached == null) return null;
-    try {
-      return normalizePendingPersonalCopyEditSnapshot(cached);
-    } catch {
-      await this.#clearCacheValueIfUnchanged(key, cached);
-      return null;
-    }
-  }
-
-  async loadPendingPersonalCopyEdit(sourceCourseId = null) {
-    const requested = sourceCourseId == null
-      ? null
-      : String(sourceCourseId || "").trim().toLowerCase();
-    if (requested !== null && !UUID_PATTERN.test(requested)) {
-      throw new TypeError("Curso de origem pendente inválido.");
-    }
-    const pending = await this.#readPendingPersonalCopyEdit();
-    return pending && (requested === null || pending.sourceCourseId === requested)
-      ? structuredClone(pending)
-      : null;
-  }
-
-  async clearPendingPersonalCopyEdit(sourceCourseId = null, expectedRequestId = null) {
-    const pending = await this.loadPendingPersonalCopyEdit(sourceCourseId);
-    if (!pending) return false;
-    const requestedRequestId = expectedRequestId == null
-      ? null
-      : String(expectedRequestId || "").trim();
-    if (requestedRequestId !== null && pending.requestId !== requestedRequestId) {
-      return false;
-    }
-    const key = pendingPersonalCopyEditCacheKey();
-    const expectedSignature = personalCopyEditIntentSignature(pending);
-    let removed = false;
-    const removeExpected = (cached) => {
-      let current;
-      try {
-        current = cached == null
-          ? null
-          : normalizePendingPersonalCopyEditSnapshot(cachedPayload(cached));
-      } catch {
-        return cached;
+  async loadStudyDraftRecovery(sourceCourseId = null) {
+    const requested = sourceCourseId == null ? null : String(sourceCourseId).trim().toLowerCase();
+    if (requested !== null && !UUID_PATTERN.test(requested)) throw new TypeError("Curso inválido.");
+    let pending;
+    if (typeof this.store.moveCacheValue === "function") {
+      const result = await this.store.moveCacheValue(LEGACY_DRAFT_CACHE_KEY, STUDY_DRAFT_RECOVERY_CACHE_KEY);
+      pending = cachedPayload(result.value);
+      // A second existing snapshot is never overwritten or deleted by migration.
+      if (result.conflict && requested && pending?.sourceCourseId !== requested) {
+        pending = cachedPayload(await this.store.getCache(LEGACY_DRAFT_CACHE_KEY));
       }
-      if (!current ||
-          current.requestId !== pending.requestId ||
-          personalCopyEditIntentSignature(current) !== expectedSignature) {
-        return cached;
-      }
-      removed = true;
-      return null;
-    };
-    if (typeof this.store.updateCache === "function") {
-      await this.store.updateCache(key, removeExpected);
     } else {
-      const current = await this.store.getCache(key);
-      const next = removeExpected(current);
-      if (removed) await this.store.putCache(key, next);
+      pending = cachedPayload(await this.store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY)) ||
+        cachedPayload(await this.store.getCache(LEGACY_DRAFT_CACHE_KEY));
+    }
+    return pending && (requested === null || pending.sourceCourseId === requested)
+      ? structuredClone(pending) : null;
+  }
+
+  async recoverStudyDraft(sourceCourseId = null) {
+    const pending = await this.loadStudyDraftRecovery(sourceCourseId);
+    if (!pending) return null;
+    let command;
+    try {
+      command = normalizeOwnedCourseCopyRecoveryCommand(Object.fromEntries([
+        "requestId", "sourceCourseId", "expectedSourceCourseRevision", "expectedStudyUnitVersion",
+        "didacticMicrosequenceId", "studyUnit", "origin"
+      ].map((key) => [key, pending[key]])));
+    } catch {
+      return { status: "unresolved", targetCourseId: null, pending };
+    }
+    const result = await this.api.recoverOwnedCourseCopy(command);
+    // Read-only evidence never reapplies a write or discards the user's draft.
+    return { ...result, pending };
+  }
+
+  async clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
+    const pending = await this.loadStudyDraftRecovery(sourceCourseId);
+    if (!pending || expectedRequestId !== null && pending.requestId !== expectedRequestId) return false;
+    let removed = false;
+    const signature = JSON.stringify(pending);
+    for (const key of [STUDY_DRAFT_RECOVERY_CACHE_KEY, LEGACY_DRAFT_CACHE_KEY]) {
+      const remove = (cached) => {
+        if (JSON.stringify(cachedPayload(cached)) !== signature) return cached;
+        removed = true;
+        return null;
+      };
+      if (typeof this.store.updateCache === "function") await this.store.updateCache(key, remove);
     }
     return removed;
-  }
-
-  async #replacePendingPersonalCopyEdit(expectedRequestId, intent) {
-    const requestedRequestId = String(expectedRequestId || "").trim();
-    if (!requestedRequestId) {
-      throw new TypeError("Pedido pendente substituído inválido.");
-    }
-    const candidate = normalizePendingPersonalCopyEditSnapshot({
-      contract: PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT,
-      ...intent,
-      savedAt: this.now()
-    });
-    const key = pendingPersonalCopyEditCacheKey();
-    let conflict = null;
-    const replaceExpected = (cached) => {
-      let current = null;
-      if (cached != null) {
-        try {
-          current = normalizePendingPersonalCopyEditSnapshot(cachedPayload(cached));
-        } catch {
-          current = null;
-        }
-      }
-      if (!current) return candidate;
-      if (current.requestId === requestedRequestId) return candidate;
-      conflict = current;
-      return current;
-    };
-    const saved = typeof this.store.updateCache === "function"
-      ? await this.store.updateCache(key, replaceExpected)
-      : replaceExpected(await this.store.getCache(key));
-    if (typeof this.store.updateCache !== "function" && !conflict) {
-      await this.store.putCache(key, saved);
-    }
-    if (conflict) {
-      const error = new Error(
-        "Outra alteração pessoal foi guardada neste dispositivo. Retome-a antes de continuar."
-      );
-      error.name = "PersonalCourseCopyPendingError";
-      error.code = "personal_copy_edit_pending";
-      error.pending = structuredClone(conflict);
-      throw error;
-    }
-    return normalizePendingPersonalCopyEditSnapshot(saved);
-  }
-
-  async #rememberPendingPersonalCopyEdit(intent) {
-    const candidate = normalizePendingPersonalCopyEditSnapshot({
-      contract: PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT,
-      ...intent,
-      savedAt: this.now()
-    });
-    const key = pendingPersonalCopyEditCacheKey();
-    const signature = personalCopyEditIntentSignature(candidate);
-    let conflicting = null;
-    const choose = (cached) => {
-      let existing = null;
-      if (cached != null) {
-        try {
-          existing = normalizePendingPersonalCopyEditSnapshot(cached);
-        } catch {
-          existing = null;
-        }
-      }
-      if (!existing) return candidate;
-      if (personalCopyEditIntentSignature(existing) === signature) return existing;
-      conflicting = existing;
-      return existing;
-    };
-    const saved = typeof this.store.updateCache === "function"
-      ? await this.store.updateCache(key, choose)
-      : choose(await this.store.getCache(key));
-    if (typeof this.store.updateCache !== "function" && !conflicting) {
-      await this.store.putCache(key, saved);
-    }
-    if (conflicting) {
-      const error = new Error(
-        "Já existe uma edição pessoal pendente. Retome-a antes de iniciar outra."
-      );
-      error.name = "PersonalCourseCopyPendingError";
-      error.code = "personal_copy_edit_pending";
-      error.pending = structuredClone(conflicting);
-      throw error;
-    }
-    return normalizePendingPersonalCopyEditSnapshot(saved);
   }
 
   async #readPendingBaseComposition(pending) {
@@ -1090,139 +964,6 @@ export class CourseController {
     return composed;
   }
 
-  async #updateStudyListForPersonalCopy(pending, receipt, course) {
-    const sourceId = pending.sourceCourseId;
-    const targetId = receipt.courseId;
-    const update = (cached, key) => {
-      const payload = cachedPayload(cached);
-      if (!payload?.data?.items || !Array.isArray(payload.data.items)) return cached;
-      const source = payload.data.items.find((item) => item?.courseId === sourceId);
-      const existingTarget = payload.data.items.find((item) => item?.courseId === targetId);
-      let items = payload.data.items.map((item) => {
-        if (item?.courseId === sourceId) {
-          return { ...item, canDerive: false, personalCopyCourseId: targetId };
-        }
-        if (item?.courseId !== targetId ||
-            Number(item.revision) > receipt.courseRevision) return item;
-        return {
-          ...item,
-          title: String(course.title || item.title || "Curso").trim() || "Curso",
-          goal: course.goal ?? item.goal ?? null,
-          revision: receipt.courseRevision,
-          updatedAt: receipt.updatedAt
-        };
-      });
-      if (!existingTarget && key === listCacheKey("", null, CACHE_PREFIX)) {
-        const reference = source || course;
-        items = [{
-          courseId: targetId,
-          title: String(course.title || reference?.title || "Curso").trim() || "Curso",
-          goal: course.goal ?? reference?.goal ?? null,
-          revision: receipt.courseRevision,
-          ownership: "owned",
-          canEdit: true,
-          canDerive: false,
-          isPersonalCopy: true,
-          personalCopyCourseId: null,
-          sourceCourseId: sourceId,
-          sourceCourseRevision: pending.expectedSourceCourseRevision,
-          moduleCount: reference?.moduleCount ?? null,
-          lessonCount: reference?.lessonCount ?? null,
-          topicCount: reference?.topicCount ?? null,
-          microsequenceCount: reference?.microsequenceCount ?? null,
-          studyUnitCount: reference?.studyUnitCount ?? null,
-          completedStudyUnitCount: 0,
-          updatedAt: receipt.updatedAt
-        }, ...items];
-      }
-      return {
-        ...cached,
-        data: { ...payload.data, items }
-      };
-    };
-    if (typeof this.store.updateCachePrefix === "function") {
-      await this.store.updateCachePrefix(`${CACHE_PREFIX}.list:`, update);
-    } else {
-      const key = listCacheKey("", null, CACHE_PREFIX);
-      const cached = await this.store.getCache(key);
-      if (cached != null) await this.store.putCache(key, update(cached, key));
-    }
-    if (typeof this.store.updateCache === "function") {
-      await this.store.updateCache(ACCESSIBLE_COURSE_IDS_CACHE_KEY, (cached) => {
-        const current = cachedAccessibleCourseIds(cached) || new Set([sourceId]);
-        current.add(targetId);
-        return {
-          contract: ACCESSIBLE_COURSE_IDS_CONTRACT,
-          courseIds: [...current].sort()
-        };
-      });
-    }
-  }
-
-  async #promotePersonalCopyComposition(pending, receipt, base) {
-    if (!base) return null;
-    const rows = structuredClone(base.rows).map((row) => ({
-      ...row,
-      ...(Object.hasOwn(row, "courseId") ? { courseId: receipt.courseId } : {}),
-      version: 1
-    }));
-    const rowIndex = rows.findIndex((row) =>
-      row?.entityType === "study_unit" && row.entityId === pending.studyUnit.id
-    );
-    const previous = rows[rowIndex];
-    if (rowIndex < 0 || previous?.parentId !== pending.didacticMicrosequenceId) {
-      throw new TypeError("A Unidade editada não pertence à composição de origem.");
-    }
-    const content = structuredClone(pending.studyUnit);
-    delete content.id;
-    delete content.position;
-    rows[rowIndex] = {
-      ...previous,
-      position: pending.studyUnit.position,
-      content,
-      version: receipt.studyUnitVersion
-    };
-    const course = {
-      ...structuredClone(base.course),
-      courseId: receipt.courseId,
-      revision: receipt.courseRevision,
-      ownership: "owned",
-      canEdit: true,
-      canDerive: false,
-      isPersonalCopy: true,
-      personalCopyCourseId: null,
-      sourceCourseId: pending.sourceCourseId,
-      sourceCourseRevision: pending.expectedSourceCourseRevision,
-      updatedAt: receipt.updatedAt
-    };
-    const document = composeCourseDocument({
-      id: receipt.courseId,
-      title: String(course.title || "").trim(),
-      goal: String(course.goal || "").trim()
-    }, rows);
-    const prefix = CACHE_PREFIX;
-    const pageSize = base.entityPageSize;
-    const promoted = await this.#cacheVerifiedCourseComposition(
-      receipt.courseId,
-      course,
-      rows,
-      pageSize,
-      prefix
-    );
-    if (!promoted) return null;
-    await this.#updateStudyListForPersonalCopy(pending, receipt, course);
-    return {
-      course,
-      rows,
-      document,
-      offline: false,
-      stale: true,
-      readOnly: true,
-      pendingConfirmed: true,
-      entityPageSize: pageSize
-    };
-  }
-
   async #capturePendingInspectionRecovery(intent, result) {
     const cached = cachedPayload(await this.store.getCache(
       authoringInspectionCacheKey(intent.courseId, this.cachePrefix)
@@ -1344,7 +1085,7 @@ export class CourseController {
 
   #pendingInspectionPage(pending, options) {
     const item = pending?.inspectionItem;
-    if (!item || options.expectedRevision !== pending.courseRevision || options.cursor != null ||
+    if (!item || options.entry != null || options.expectedRevision !== pending.courseRevision || options.cursor != null ||
         options.anchorStudyUnitId != null &&
           options.anchorStudyUnitId !== pending.studyUnit.id) return null;
     const path = item.curriculumPath;
@@ -1454,6 +1195,7 @@ export class CourseController {
       this.store.deleteCachePrefix(verifiedCompositionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
+      this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
       this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
@@ -1521,6 +1263,7 @@ export class CourseController {
 
   async #readThrough(key, readRemote, {
     accessSensitive = false,
+    allowOffline = true,
     invalidationPrefixes = [],
     normalize = (value) => value
   } = {}) {
@@ -1538,7 +1281,7 @@ export class CourseController {
           this.store.deleteCachePrefix(prefix)
         ));
       }
-      if (!retryableReadFailure(error)) throw error;
+      if (!allowOffline || !retryableReadFailure(error)) throw error;
       const cached = cachedPayload(await this.store.getCache(key));
       if (!cached?.data) throw error;
       const cachedData = normalize(cached.data);
@@ -1574,6 +1317,35 @@ export class CourseController {
     );
     await this.#observeAccessibleCoursePage(page, { query, cursor });
     return this.#overlayPendingCourseList(page);
+  }
+
+  async listCachedCourses({ query = "", cursor = null } = {}) {
+    const cached = cachedPayload(await this.store.getCache(listCacheKey(query, cursor, this.cachePrefix)));
+    if (!cached?.data) return { contract: "aralearn.course-list.v2", items: [], hasMore: false, nextCursor: null };
+    return this.#overlayPendingCourseList(normalizeCourseListPage(cached.data));
+  }
+
+  async checkCourseAccess(courseId) {
+    try {
+      // A fresh authorized header proves access; do not promote its revision or
+      // invalidate the content the person chose to keep open in manual mode.
+      const result = await this.api.getCourse(courseId, { ownerOnly: this.ownerOnly });
+      if (result?.contract !== "aralearn.course.v1" || result.courseId !== courseId ||
+          !Number.isSafeInteger(result.revision) || result.revision < 1) {
+        throw new TypeError("A confirmação de acesso ao curso é inválida.");
+      }
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
+  async loadCachedCourseDocument(courseId) {
+    if (!UUID_PATTERN.test(String(courseId || ""))) throw new TypeError("A identidade do Curso é inválida.");
+    const cached = await this.#readLastVerifiedComposition(courseId);
+    if (!cached) return null;
+    return { ...cached, stale: false, readOnly: false, cacheOnly: true };
   }
 
   async getCourse(courseId) {
@@ -1858,94 +1630,6 @@ export class CourseController {
     return promoted;
   }
 
-  async #cacheVerifiedCourseComposition(courseId, course, rows, entityPageSize, prefix) {
-    const revision = Number(course?.revision);
-    if (!Number.isSafeInteger(revision) || revision < 1 ||
-        !Array.isArray(rows) || !Number.isSafeInteger(entityPageSize) ||
-        entityPageSize < 1 || entityPageSize > 1_000) {
-      throw new TypeError("Composição verificada inválida para o cache.");
-    }
-    await this.store.deleteCachePrefix(`${prefix}.entities:${courseId}:${revision}:`);
-    let cursor = null;
-    for (let index = 0; index < Math.max(rows.length, 1); index += entityPageSize) {
-      const items = rows.slice(index, index + entityPageSize);
-      const hasMore = index + entityPageSize < rows.length;
-      const last = items.at(-1);
-      const nextCursor = hasMore
-        ? { entityType: last.entityType, entityId: last.entityId }
-        : null;
-      await this.store.putCache(
-        entityCacheKey(courseId, revision, entityPageSize, cursor, prefix),
-        {
-          savedAt: this.now(),
-          data: {
-            contract: "aralearn.course-entities.v1",
-            courseId,
-            revision,
-            items: structuredClone(items),
-            hasMore,
-            nextCursor
-          }
-        }
-      );
-      cursor = nextCursor;
-    }
-    const verifiedKey = verifiedCompositionCacheKey(courseId, prefix);
-    const headerKey = courseCacheKey(courseId, prefix);
-    const verifiedCandidate = {
-      contract: VERIFIED_COMPOSITION_CACHE_CONTRACT,
-      courseId,
-      revision,
-      entityPageSize,
-      course: structuredClone(course),
-      savedAt: this.now()
-    };
-    const headerCandidate = {
-      savedAt: this.now(),
-      data: structuredClone(course)
-    };
-    let previousRevision = null;
-    let promoted = false;
-    const choose = (current) => {
-      const previous = cachedPayload(current[verifiedKey]);
-      previousRevision = Number(previous?.revision);
-      if (Number.isSafeInteger(previousRevision) && previousRevision > revision) {
-        return current;
-      }
-      promoted = true;
-      return {
-        ...current,
-        [verifiedKey]: verifiedCandidate,
-        [headerKey]: headerCandidate
-      };
-    };
-    if (typeof this.store.updateCaches === "function") {
-      await this.store.updateCaches([verifiedKey, headerKey], choose);
-    } else {
-      const current = {
-        [verifiedKey]: await this.store.getCache(verifiedKey),
-        [headerKey]: await this.store.getCache(headerKey)
-      };
-      const next = choose(current);
-      if (promoted) {
-        await Promise.all([
-          this.store.putCache(verifiedKey, next[verifiedKey]),
-          this.store.putCache(headerKey, next[headerKey])
-        ]);
-      }
-    }
-    if (!promoted) {
-      await this.store.deleteCachePrefix(`${prefix}.entities:${courseId}:${revision}:`);
-      return false;
-    }
-    if (Number.isSafeInteger(previousRevision) && previousRevision !== revision) {
-      await this.store.deleteCachePrefix(
-        `${prefix}.entities:${courseId}:${previousRevision}:`
-      );
-    }
-    return true;
-  }
-
   async loadCourseDocument(courseId, {
     entityPageSize = 500,
     verifiedRevision = null
@@ -2071,6 +1755,25 @@ export class CourseController {
     return this.#purgeCoursePrivacyCache(courseId, { clearLists: clearLists !== false });
   }
 
+  async saveCourseAuthoringPart(value) {
+    if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite reorganizar os lotes.");
+    const request = normalizeCourseAuthoringPartRequest(value);
+    try {
+      const result = normalizeCourseAuthoringPartChange(await this.api.saveCourseAuthoringPart(request), request);
+      await Promise.all([
+        this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+        this.store.deleteCachePrefix(courseCacheKey(request.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(instructionalPlanCacheKey(request.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(authoringInspectionCacheKey(request.courseId, this.cachePrefix)),
+        this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${request.courseId}:`)
+      ]);
+      return result;
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(request.courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
   loadAuthoringPlan(courseId) {
     const key = instructionalPlanCacheKey(courseId, this.cachePrefix);
     return this.#readThrough(
@@ -2110,6 +1813,78 @@ export class CourseController {
       }
       throw error;
     }
+  }
+
+  async listAuthoringProfiles() {
+    return normalizeAuthoringProfileList(await this.api.listAuthoringProfiles());
+  }
+
+  async mutateAuthoringProfile(value) {
+    const command = normalizeAuthoringProfileSave(value);
+    return normalizeAuthoringProfileChange(await this.api.mutateAuthoringProfile(command), { ...command, deleted: false });
+  }
+
+  async deleteAuthoringProfile(value) {
+    const command = normalizeAuthoringProfileDelete(value);
+    return normalizeAuthoringProfileChange(await this.api.deleteAuthoringProfile(command), { ...command, deleted: true });
+  }
+
+  async previewCourseAuthoringProfile(value) {
+    const command = normalizeCourseAuthoringProfileRequest(value);
+    return normalizeCourseAuthoringProfilePreview(await this.api.previewCourseAuthoringProfile(command), command);
+  }
+
+  async applyCourseAuthoringProfile(value) {
+    const command = normalizeCourseAuthoringProfileRequest(value, { apply: true });
+    const result = normalizeCourseAuthoringProfileChange(await this.api.applyCourseAuthoringProfile(command), command);
+    await this.#clearCourseDesignCache(command.courseId);
+    return result;
+  }
+
+  async loadCourseMedia(courseId, options = {}) {
+    const request = courseMediaReadRequest(courseId, options);
+    if (request.mode === "catalog" && !this.ownerOnly) throw new TypeError("Somente a Autoria oferece a biblioteca de áudio.");
+    try {
+      return boundCourseMediaRead(await this.api.loadCourseMedia(courseId, options), request);
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
+  async getCourseMediaDownload(value) {
+    const request = courseMediaDownloadRequest(value);
+    return boundCourseMediaDownload(await this.api.getCourseMediaDownload(request), request,
+      { projectUrl: this.api.http?.projectUrl });
+  }
+
+  async #invalidateCourseMedia(courseId) {
+    await Promise.all([
+      this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
+      this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(verifiedCompositionCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
+      this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
+      this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
+    ]);
+  }
+
+  async mutateCourseMedia(value) {
+    if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite alterar o áudio.");
+    const request = courseMediaWriteRequest(value);
+    const result = boundCourseMediaChange(await this.api.mutateCourseMedia(request), request);
+    await this.#invalidateCourseMedia(request.courseId);
+    return result;
+  }
+
+  async uploadCourseAudio(value) {
+    if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite guardar o áudio.");
+    const request = courseMediaWriteRequest(value, { upload: true });
+    const result = boundCourseMediaChange(await this.api.uploadCourseAudio(request), request);
+    await this.#invalidateCourseMedia(request.courseId);
+    return result;
   }
 
   async loadCourseSources(courseId, options = {}) {
@@ -2158,8 +1933,8 @@ export class CourseController {
   }
 
   async getCourseSourceAttachmentDownload(value = {}) {
-    if (!this.ownerOnly || typeof this.api.getCourseSourceAttachmentDownload !== "function") {
-      throw new TypeError("A API de Autoria não oferece a leitura de anexos de Fonte.");
+    if (typeof this.api.getCourseSourceAttachmentDownload !== "function") {
+      throw new TypeError("A API de Cursos não oferece a leitura de anexos de Fonte.");
     }
     if (!value || typeof value !== "object" || Array.isArray(value) ||
         Object.keys(value).some((field) => !new Set([
@@ -2256,6 +2031,36 @@ export class CourseController {
       if (accessWasRevoked(error)) {
         await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
       }
+      throw error;
+    }
+  }
+
+  async loadCourseAuthoringComparison(value) {
+    if (!this.ownerOnly || typeof this.api.loadCourseAuthoringComparison !== "function") {
+      throw new TypeError("A comparação exige acesso de autoria.");
+    }
+    const request = normalizeCourseAuthoringComparisonRequest(value);
+    try {
+      return normalizeCourseAuthoringComparison(await this.api.loadCourseAuthoringComparison(request), { expectedRequest: request });
+    } catch (error) {
+      if (accessWasRevoked(error)) {
+        for (const courseId of new Set([request.left.courseId, request.right.courseId])) {
+          await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+        }
+      }
+      throw error;
+    }
+  }
+
+  async exportCourseAuthoring(value) {
+    if (!this.ownerOnly || typeof this.api.exportCourseAuthoring !== "function") {
+      throw new TypeError("A exportação exige acesso de autoria.");
+    }
+    const selection = normalizeCourseAuthoringSelection(value);
+    try {
+      return normalizeCourseAuthoringExport(await this.api.exportCourseAuthoring(selection), { expectedSelection: selection });
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(selection.courseId, { clearLists: true });
       throw error;
     }
   }
@@ -2570,19 +2375,20 @@ export class CourseController {
     }
     if (!value || typeof value !== "object" || Array.isArray(value) ||
         Object.keys(value).some((field) => !new Set([
-          "requestId", "courseId", "expectedCourseRevision", "upserts", "deletes"
+          "requestId", "courseId", "expectedCourseRevision", "upserts", "deletes", "courseMetadata"
         ]).has(field))) {
       throw new TypeError("Alteração estrutural assistida inválida.");
     }
     const requestId = String(value.requestId || "");
     const courseId = String(value.courseId || "").trim().toLowerCase();
     const expectedCourseRevision = Number(value.expectedCourseRevision);
+    const courseMetadata = Object.hasOwn(value, "courseMetadata") ? normalizeCourseMetadata(value.courseMetadata) : null;
     const upserts = Array.isArray(value.upserts) ? structuredClone(value.upserts) : null;
     const deletes = Array.isArray(value.deletes) ? structuredClone(value.deletes) : null;
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId) ||
         !UUID_PATTERN.test(courseId) ||
         !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1 ||
-        !upserts || !deletes || !upserts.length && !deletes.length ||
+        !upserts || !deletes || !upserts.length && !deletes.length && courseMetadata === null ||
         upserts.length > 200 || deletes.length > 200) {
       throw new TypeError("Alteração estrutural assistida inválida.");
     }
@@ -2592,31 +2398,46 @@ export class CourseController {
       throw new TypeError("A alteração estrutural repete uma Unidade de estudo.");
     }
     try {
-      const sourceAttributionApplications = [];
-      for (const studyUnitId of studyUnitIds) {
-        const sources = await this.loadCourseSources(courseId, {
-          expectedRevision: expectedCourseRevision,
-          mode: "target",
-          targetKind: "study_unit",
-          targetId: studyUnitId,
-          limit: 1
-        });
-        const attribution = sources.items[0] || null;
-        if (sources.items.length > 1) {
-          throw new TypeError("A proveniência corrente da Unidade é ambígua.");
-        }
-        sourceAttributionApplications.push({
-          studyUnitId,
-          sourceLinks: structuredClone(attribution?.sourceLinks ?? [])
-        });
+      const signature = JSON.stringify({ kind: "structural", courseId, expectedCourseRevision,
+        upserts, deletes, courseMetadata });
+      let snapshot = this.compositionSourceSnapshots.get(requestId);
+      if (snapshot && snapshot.signature !== signature) {
+        throw new TypeError("A identidade da edição já está vinculada a outro conteúdo.");
       }
+      if (!snapshot) {
+        const sourceAttributionApplications = [];
+        for (const studyUnitId of studyUnitIds) {
+          const sources = await this.loadCourseSources(courseId, {
+            expectedRevision: expectedCourseRevision,
+            mode: "target",
+            targetKind: "study_unit",
+            targetId: studyUnitId,
+            limit: 1
+          });
+          const attribution = sources.items[0] || null;
+          if (sources.items.length > 1) {
+            throw new TypeError("A proveniência corrente da Unidade é ambígua.");
+          }
+          sourceAttributionApplications.push({
+            studyUnitId,
+            sourceLinks: structuredClone(attribution?.sourceLinks ?? [])
+          });
+        }
+        snapshot = { courseId, signature, sourceAttributionApplications };
+        if (this.compositionSourceSnapshots.size >= 16) {
+          this.compositionSourceSnapshots.delete(this.compositionSourceSnapshots.keys().next().value);
+        }
+        this.compositionSourceSnapshots.set(requestId, snapshot);
+      }
+      const sourceAttributionApplications = structuredClone(snapshot.sourceAttributionApplications);
       const result = await this.api.commitCourseStructuralComposition({
         requestId,
         courseId,
         expectedRevision: expectedCourseRevision,
         upserts,
         deletes,
-        sourceAttributionApplications
+        sourceAttributionApplications,
+        ...(courseMetadata === null ? {} : { courseMetadata })
       });
       if (!result || typeof result !== "object" || Array.isArray(result) ||
           result.courseId !== courseId || result.requestId !== requestId ||
@@ -2644,266 +2465,6 @@ export class CourseController {
     }
   }
 
-  async #rereadPersonalCopyComposition(pending, receipt, entityPageSize) {
-    if (typeof this.api.getCourseEntities !== "function") return null;
-    const course = await this.api.getCourse(receipt.courseId, { ownerOnly: false });
-    const revision = Number(course?.revision);
-    if (String(course?.courseId || "").trim().toLowerCase() !== receipt.courseId ||
-        !Number.isSafeInteger(revision) || revision < receipt.courseRevision) return null;
-    const rows = [];
-    const cursors = new Set();
-    let cursor = null;
-    for (let pageIndex = 0; pageIndex < MAX_ENTITY_PAGES; pageIndex += 1) {
-      const page = await this.api.getCourseEntities(receipt.courseId, {
-        revision,
-        cursor,
-        limit: entityPageSize,
-        ownerOnly: false
-      });
-      if (!validCourseEntityPage(page, receipt.courseId, revision)) return null;
-      rows.push(...page.items);
-      if (page.hasMore !== true) break;
-      if (!page.nextCursor) return null;
-      const cursorKey = JSON.stringify(page.nextCursor);
-      if (cursors.has(cursorKey)) return null;
-      cursors.add(cursorKey);
-      cursor = page.nextCursor;
-      if (pageIndex === MAX_ENTITY_PAGES - 1) return null;
-    }
-    const focal = rows.find((row) => row?.entityType === "study_unit" &&
-      row.entityId === pending.studyUnit.id);
-    const focalVersion = Number(focal?.version);
-    const focalContent = focal && Number.isSafeInteger(focalVersion) && focalVersion >= 1
-      ? {
-          id: focal.entityId,
-          position: focal.position,
-          ...structuredClone(focal.content)
-        }
-      : null;
-    if (revision === receipt.courseRevision && (
-      !focalContent || focal.parentId !== pending.didacticMicrosequenceId ||
-      focalVersion !== receipt.studyUnitVersion ||
-      JSON.stringify(focalContent) !== JSON.stringify(pending.studyUnit)
-    )) return null;
-    if (revision > receipt.courseRevision && focal && !focalContent) return null;
-    const document = composeCourseDocument({
-      id: receipt.courseId,
-      title: String(course.title || "").trim(),
-      goal: String(course.goal || "").trim()
-    }, rows);
-    return {
-      course,
-      rows,
-      document,
-      studyUnit: focalContent,
-      studyUnitVersion: focalContent ? focalVersion : null,
-      courseRevision: revision,
-      offline: false,
-      stale: false,
-      readOnly: false
-    };
-  }
-
-  async #cacheRereadPersonalCopyComposition(pending, receipt, composition, pageSize) {
-    const prefix = CACHE_PREFIX;
-    const revision = composition.courseRevision;
-    const course = { ...structuredClone(composition.course), revision };
-    const promoted = await this.#cacheVerifiedCourseComposition(
-      receipt.courseId,
-      course,
-      composition.rows,
-      pageSize,
-      prefix
-    );
-    if (!promoted) return false;
-    await this.#updateStudyListForPersonalCopy(pending, {
-      ...receipt,
-      courseRevision: revision,
-      updatedAt: course.updatedAt || receipt.updatedAt
-    }, course);
-    return true;
-  }
-
-  async #readVerifiedPersonalCopyHead(pending, receipt) {
-    const current = await this.#readLastVerifiedComposition(receipt.courseId);
-    const revision = Number(current?.course?.revision);
-    if (!current || !Number.isSafeInteger(revision) ||
-        revision < receipt.courseRevision) return null;
-    const focal = current.rows.find((row) => row?.entityType === "study_unit" &&
-      row.entityId === pending.studyUnit.id);
-    const focalVersion = Number(focal?.version);
-    const focalContent = focal && Number.isSafeInteger(focalVersion) && focalVersion >= 1
-      ? {
-          id: focal.entityId,
-          position: focal.position,
-          ...structuredClone(focal.content)
-        }
-      : null;
-    if (revision === receipt.courseRevision && (
-      !focalContent || focal.parentId !== pending.didacticMicrosequenceId ||
-      focalVersion !== receipt.studyUnitVersion ||
-      JSON.stringify(focalContent) !== JSON.stringify(pending.studyUnit)
-    )) return null;
-    return {
-      ...current,
-      courseRevision: revision,
-      studyUnit: focalContent,
-      studyUnitVersion: focalContent ? focalVersion : null
-    };
-  }
-
-  async #executePersonalCourseCopyEdit(pending) {
-    const baseIntent = {
-      requestId: pending.requestId,
-      courseId: pending.sourceCourseId,
-      expectedCourseRevision: pending.expectedSourceCourseRevision,
-      expectedStudyUnitVersion: pending.expectedStudyUnitVersion,
-      didacticMicrosequenceId: pending.didacticMicrosequenceId,
-      studyUnit: pending.studyUnit,
-      origin: pending.origin
-    };
-    try {
-      const receipt = await this.api.commitPersonalCourseCopyEdit({
-        requestId: pending.requestId,
-        sourceCourseId: pending.sourceCourseId,
-        expectedSourceCourseRevision: pending.expectedSourceCourseRevision,
-        expectedStudyUnitVersion: pending.expectedStudyUnitVersion,
-        didacticMicrosequenceId: pending.didacticMicrosequenceId,
-        studyUnit: structuredClone(pending.studyUnit),
-        origin: pending.origin
-      });
-      if (receipt.changed !== true) {
-        await this.clearPendingPersonalCopyEdit(
-          pending.sourceCourseId,
-          pending.requestId
-        );
-        return {
-          ...receipt,
-          studyUnit: structuredClone(pending.studyUnit),
-          version: receipt.studyUnitVersion,
-          targetId: pending.targetId,
-          sourceSelection: structuredClone(pending.sourceSelection),
-          reconciled: true
-        };
-      }
-      const base = await this.#readPendingBaseComposition(baseIntent);
-      const entityPageSize = base?.entityPageSize || 500;
-      let reread = null;
-      try {
-        reread = await this.#rereadPersonalCopyComposition(
-          pending,
-          receipt,
-          entityPageSize
-        );
-      } catch {
-        reread = null;
-      }
-      if (!reread) {
-        reread = await this.#readVerifiedPersonalCopyHead(pending, receipt);
-      }
-      if (receipt.idempotent && !reread) {
-        const error = new Error(
-          "A cópia foi confirmada, mas sua versão atual ainda não pôde ser relida."
-        );
-        error.name = "PersonalCourseCopyReconciliationError";
-        error.code = "personal_copy_reconciliation_pending";
-        error.ambiguous = true;
-        throw error;
-      }
-      let composition = reread || await this.#promotePersonalCopyComposition(
-        pending,
-        receipt,
-        base
-      );
-      if (reread) {
-        const cached = await this.#cacheRereadPersonalCopyComposition(
-          pending,
-          receipt,
-          reread,
-          entityPageSize
-        );
-        if (!cached) {
-          reread = await this.#readVerifiedPersonalCopyHead(pending, receipt);
-          composition = reread;
-        }
-      }
-      if (!composition) {
-        const error = new Error(
-          "A cópia foi confirmada, mas uma versão mais recente precisa ser reconciliada."
-        );
-        error.name = "PersonalCourseCopyReconciliationError";
-        error.code = "personal_copy_reconciliation_pending";
-        error.ambiguous = true;
-        throw error;
-      }
-      await this.clearPendingPersonalCopyEdit(
-        pending.sourceCourseId,
-        pending.requestId
-      );
-      const resolvedCourseRevision = reread?.courseRevision ?? receipt.courseRevision;
-      const rereadRemovedStudyUnit = reread && reread.studyUnit === null;
-      const resolvedStudyUnitVersion = rereadRemovedStudyUnit
-        ? null
-        : reread?.studyUnitVersion ?? receipt.studyUnitVersion;
-      const resolvedStudyUnit = rereadRemovedStudyUnit
-        ? null
-        : reread?.studyUnit ?? pending.studyUnit;
-      return {
-        ...receipt,
-        courseRevision: resolvedCourseRevision,
-        studyUnitVersion: resolvedStudyUnitVersion,
-        updatedAt: reread?.course?.updatedAt || receipt.updatedAt,
-        studyUnit: resolvedStudyUnit == null ? null : structuredClone(resolvedStudyUnit),
-        version: resolvedStudyUnitVersion,
-        targetId: pending.targetId,
-        sourceSelection: structuredClone(pending.sourceSelection),
-        reconciled: reread !== null,
-        offline: composition.offline === true,
-        stale: composition.stale === true,
-        readOnly: composition.readOnly === true,
-        course: structuredClone(composition.course),
-        rows: structuredClone(composition.rows),
-        document: structuredClone(composition.document)
-      };
-    } catch (error) {
-      if (String(error?.code || "").toLowerCase() === "personal_copy_exists") {
-        error.pending = structuredClone(pending);
-      }
-      if (accessWasRevoked(error)) {
-        await this.#purgeCoursePrivacyCache(pending.sourceCourseId, { clearLists: true });
-      }
-      throw error;
-    }
-  }
-
-  async commitPersonalCourseCopyEdit(value = {}) {
-    if (this.ownerOnly || typeof this.api.commitPersonalCourseCopyEdit !== "function") {
-      throw new TypeError("A API de Estudo não oferece edição em cópia pessoal.");
-    }
-    const candidate = structuredClone(value);
-    const replacesPendingRequestId = candidate?.replacesPendingRequestId ?? null;
-    if (candidate && typeof candidate === "object") {
-      delete candidate.replacesPendingRequestId;
-    }
-    const intent = normalizePersonalCourseCopyEditIntent(candidate);
-    const pending = replacesPendingRequestId == null
-      ? await this.#rememberPendingPersonalCopyEdit(intent)
-      : await this.#replacePendingPersonalCopyEdit(
-          replacesPendingRequestId,
-          intent
-        );
-    return this.#executePersonalCourseCopyEdit(pending);
-  }
-
-  async retryPendingPersonalCopyEdit(sourceCourseId = null) {
-    if (this.ownerOnly || typeof this.api.commitPersonalCourseCopyEdit !== "function") {
-      throw new TypeError("A API de Estudo não oferece edição em cópia pessoal.");
-    }
-    const pending = await this.loadPendingPersonalCopyEdit(sourceCourseId);
-    if (!pending) return null;
-    return this.#executePersonalCourseCopyEdit(pending);
-  }
-
   async mutateCourseDesign(value = {}) {
     if (typeof this.api.mutateCourseDesign !== "function") {
       throw new TypeError("A API de Cursos não oferece a alteração dos parâmetros.");
@@ -2921,7 +2482,12 @@ export class CourseController {
       expectedRevision: expectedCourseRevision,
       designCommand: command
     });
-    await Promise.all([
+    await this.#clearCourseDesignCache(courseId);
+    return result;
+  }
+
+  #clearCourseDesignCache(courseId) {
+    return Promise.all([
       this.store.deleteCachePrefix(`${this.cachePrefix}.list:`),
       this.store.deleteCachePrefix(courseCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
@@ -2930,7 +2496,6 @@ export class CourseController {
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix))
     ]);
-    return result;
   }
 
   async mutateCourseSources(value = {}) {
@@ -2962,7 +2527,7 @@ export class CourseController {
         result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
         result.change != null && (
           result.change.type !== command.type ||
-          result.change.subjectId !== courseSourceCommandSubjectId(command)
+          result.change.subjectId !== courseSourceCommandSubjectId(command, courseId)
         )) {
       throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
     }
@@ -3094,16 +2659,85 @@ export class CourseController {
     return this.api.createCourse(values);
   }
 
-  getPersonProfile() {
-    return this.api.getPersonProfile();
+  async loadPendingCourseCopy(sourceCourseId) {
+    if (!UUID_PATTERN.test(String(sourceCourseId || ""))) throw new TypeError("Curso inválido.");
+    const pending = cachedPayload(await this.store.getCache(`course-copy.pending.v1:${sourceCourseId}`));
+    return pending === null ? null : normalizeCourseCopyRequest(pending);
   }
 
-  updatePersonProfile(patch) {
-    return this.api.updatePersonProfile(patch);
+  async loadCourseCopySource(sourceCourseId) {
+    if (!UUID_PATTERN.test(String(sourceCourseId || ""))) throw new TypeError("Curso inválido.");
+    // Permission and revision must come from a current authenticated read, never an offline cache.
+    return this.api.getCourse(sourceCourseId, { ownerOnly: false });
+  }
+
+  async copyCourse(value) {
+    const request = normalizeCourseCopyRequest(value);
+    const key = `course-copy.pending.v1:${request.sourceCourseId}`;
+    const pending = await this.loadPendingCourseCopy(request.sourceCourseId);
+    if (pending && JSON.stringify(pending) !== JSON.stringify(request)) {
+      throw new TypeError("Confirme o resultado da cópia pendente antes de criar outra.");
+    }
+    // CourseLocalStore is partitioned by account. Persist before dispatch so a lost
+    // response or reload cannot turn a retry into a second independent course.
+    await this.store.putCache(key, request);
+    let receipt;
+    try {
+      receipt = await this.api.copyCourse(request);
+    } catch (error) {
+      if ([400, 401, 403, 404, 409, 410, 422].includes(Number(error?.status))) {
+        await this.store.putCache(key, null);
+      }
+      throw error;
+    }
+    receipt = normalizeCourseCopyResult(receipt, request);
+    const course = await this.api.getCourse(receipt.targetCourseId, { ownerOnly: true });
+    if (course?.courseId !== receipt.targetCourseId || course.ownership !== "owned" ||
+        course.canEdit !== true || !Number.isSafeInteger(course.revision) || course.revision < 1 ||
+        course.offline === true || course.stale === true || typeof course.title !== "string") {
+      throw new TypeError("Não foi possível confirmar o estado atual da cópia. Repita o mesmo pedido.");
+    }
+    await this.store.deleteCachePrefix(`${CACHE_PREFIX}.list:`);
+    await this.store.deleteCachePrefix("course-authoring.v1.list:");
+    await this.store.putCache(key, null);
+    return { ...receipt, course };
+  }
+
+  getPersonProfile({ allowOffline = true } = {}) {
+    return this.#readThrough(PERSON_PROFILE_CACHE_KEY, () => this.api.getPersonProfile(), {
+      accessSensitive: true,
+      allowOffline,
+      normalize: (value) => normalizeCachedPersonProfile(value,
+        this.api.authClient?.getSession?.()?.user?.id || null)
+    });
+  }
+
+  async updatePersonProfile(patch) {
+    const response = await this.api.updatePersonProfile(patch);
+    const profile = normalizeCachedPersonProfile(response,
+      this.api.authClient?.getSession?.()?.user?.id || null);
+    await this.store.putCache(PERSON_PROFILE_CACHE_KEY, { savedAt: this.now(), data: profile });
+    return response;
   }
 
   listCourseAccess(courseId) {
     return this.api.listCourseAccess(courseId);
+  }
+
+  searchCourseAccessPeople(courseId, options) {
+    return this.api.searchCourseAccessPeople(courseId, options);
+  }
+
+  async setCourseVisibility(values) {
+    const result = await this.api.setCourseVisibility(values);
+    await this.#purgeCoursePrivacyCache(values.courseId, { clearLists: true });
+    return result;
+  }
+
+  async setCourseSourceFileAccess(values) {
+    const result = await this.api.setCourseSourceFileAccess(values);
+    await this.#purgeCoursePrivacyCache(values.courseId, { clearLists: true });
+    return result;
   }
 
   grantCourseAccess(values) {
@@ -3159,8 +2793,7 @@ export {
   ACCESSIBLE_COURSE_IDS_CONTRACT,
   CACHE_PREFIX as COURSE_CACHE_PREFIX,
   PENDING_COMPOSITION_CACHE_CONTRACT,
-  PENDING_PERSONAL_COPY_EDIT_CACHE_CONTRACT,
+  STUDY_DRAFT_RECOVERY_CACHE_KEY,
   pendingCompositionCacheKey as coursePendingCompositionCacheKey,
-  pendingPersonalCopyEditCacheKey as coursePendingPersonalCopyEditCacheKey,
   instructionalPlanCacheKey as courseInstructionalPlanCacheKey
 };

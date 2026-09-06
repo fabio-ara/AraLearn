@@ -12,11 +12,9 @@ import {
   readAuthoringOAuthAuthorization,
   sha256Hex
 } from "./security.js";
-import { isTrustedOpenAiFileHost } from "./openAiTemporaryPdf.js";
+import { isTrustedOpenAiFileHost } from "./openAiTemporaryFile.js";
+import { readActionPayload, serializeActionPayload } from "./courseActionPayload.js";
 
-const BODY_LIMIT = 512 * 1024;
-const RESPONSE_LIMIT = 512 * 1024;
-const FILE_TASK = "incorporar_pdf_como_fonte";
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -27,7 +25,7 @@ const JSON_HEADERS = Object.freeze({
 export const ARALEARN_ACTION_CONTRACT_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
 
 function jsonResponse(status, payload, headers = {}) {
-  return new Response(JSON.stringify(payload), {
+  return new Response(serializeActionPayload(payload), {
     status,
     headers: { ...JSON_HEADERS, ...headers }
   });
@@ -53,43 +51,9 @@ function routeFromPath(pathname) {
   return slugIndex >= 0 ? segments.slice(slugIndex + 1) : segments;
 }
 
-async function readBody(request) {
-  if (!String(request.headers.get("content-type") || "").toLowerCase()
-    .startsWith("application/json")) {
-    throw new AuthoringApiError(415, "unsupported_media_type", "A Action exige application/json.");
-  }
-  const reader = request.body?.getReader();
-  if (!reader) return {};
-  const chunks = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > BODY_LIMIT) {
-      await reader.cancel();
-      throw new AuthoringApiError(413, "action_payload_too_large", "Divida a tarefa em partes menores.");
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  try {
-    const body = total ? JSON.parse(new TextDecoder().decode(bytes)) : {};
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
-    return body;
-  } catch {
-    throw new AuthoringApiError(400, "invalid_json", "O corpo da Action deve formar um objeto JSON.");
-  }
-}
-
-function actionFileReference(value) {
+function actionFileReference(value, fieldSchema) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new AuthoringApiError(422, "invalid_openai_file", "O PDF anexado não chegou em formato utilizável.");
+    throw new AuthoringApiError(422, "invalid_openai_file", "O arquivo anexado não chegou em formato utilizável.");
   }
   const fileId = String(value.id || value.file_id || "").trim();
   const fileName = String(value.name || value.file_name || "").trim();
@@ -101,12 +65,14 @@ function actionFileReference(value) {
   } catch {
     downloadUrl = null;
   }
-  if (!fileId || mediaType && mediaType !== "application/pdf" ||
+  const mimeSchema = fieldSchema.properties.mime_type;
+  const mediaTypes = mimeSchema.enum ?? [mimeSchema.const];
+  if (!fileId || mediaType && !mediaTypes.includes(mediaType) ||
       downloadUrl?.protocol !== "https:" ||
       !isTrustedOpenAiFileHost(downloadUrl.hostname) ||
       downloadUrl.username || downloadUrl.password || downloadUrl.hash ||
       downloadUrl.port && downloadUrl.port !== "443") {
-    throw new AuthoringApiError(422, "invalid_openai_file", "A referência precisa apontar para um PDF.");
+    throw new AuthoringApiError(422, "invalid_openai_file", "A referência precisa apontar para o tipo de arquivo aceito pela tarefa.");
   }
   return {
     download_url: downloadUrl.href,
@@ -117,21 +83,25 @@ function actionFileReference(value) {
 }
 
 function normalizeActionArguments(taskName, rawArguments) {
-  if (taskName !== FILE_TASK) return rawArguments;
-  if (Object.hasOwn(rawArguments, "pdf")) {
+  const definition = courseHumanTaskDefinition(taskName);
+  const fields = definition?._meta?.["openai/fileParams"];
+  if (!fields) return rawArguments;
+  if (fields.length !== 1) throw new TypeError("Transporte de arquivo inválido.");
+  const [field] = fields;
+  if (Object.hasOwn(rawArguments, field)) {
     throw new AuthoringApiError(
       422,
       "invalid_openai_file",
-      "O campo do PDF é preenchido pelo transporte do ChatGPT."
+      "O campo do arquivo é preenchido pelo transporte do ChatGPT."
     );
   }
   const references = rawArguments.openaiFileIdRefs;
   if (!Array.isArray(references) || references.length !== 1) {
-    throw new AuthoringApiError(422, "openai_file_count_invalid", "Escolha um único PDF anexado.");
+    throw new AuthoringApiError(422, "openai_file_count_invalid", "Escolha um único arquivo anexado.");
   }
   const normalized = {
     ...rawArguments,
-    pdf: actionFileReference(references[0])
+    [field]: actionFileReference(references[0], definition.inputSchema.properties[field])
   };
   delete normalized.openaiFileIdRefs;
   return normalized;
@@ -151,7 +121,7 @@ function normalizedResult(value) {
 }
 
 function retryableError(error) {
-  if (error.code === "course_source_pdf_write_uncertain") return false;
+  if (["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
   if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
   return new Set([
     "course_service_unavailable", "request_timeout", "network_error"
@@ -169,10 +139,16 @@ function nextDecisionForError(error, retryable) {
     return "Escolha um curso, uma parte, uma microssequência ou uma unidade de estudo mais específica.";
   }
   if (error.code === "action_payload_too_large") {
-    return "Divida a tarefa em um conjunto menor de unidades de estudo ou correções.";
+    return "Divida a tarefa em um conjunto menor de unidades de estudo ou correções, sem resumir nem descartar o texto.";
+  }
+  if (error.code === "action_response_too_large") {
+    return "Consulte uma parte, microssequência ou unidade específica, ou a próxima página do recorte, preservando o texto literal.";
   }
   if (error.code === "course_source_pdf_write_uncertain") {
     return "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.";
+  }
+  if (error.code === "course_media_write_uncertain") {
+    return "Consulte os áudios do curso antes de decidir se ainda precisa guardar o arquivo.";
   }
   if (error.code === "human_materialization_contextual_calibration_required") {
     return "Inclua a calibração contextual nas unidades e refaça a produção da parte.";
@@ -181,8 +157,8 @@ function nextDecisionForError(error, retryable) {
   return null;
 }
 
-function publicError(error, { completedWrite = false } = {}) {
-  if (completedWrite && error.code === "action_response_too_large") {
+function publicError(error, { writeTaskStarted = false } = {}) {
+  if (writeTaskStarted && ["action_response_too_large", "human_task_result_too_large"].includes(error.code)) {
     return {
       error: {
         code: error.code,
@@ -221,7 +197,7 @@ export function createAuthoringActionHandler({
 
   return async function handleAction(request) {
     let cors = { Vary: "Origin" };
-    let completedWrite = false;
+    let writeTaskStarted = false;
     try {
       if (request.method === "OPTIONS") {
         return new Response(null, {
@@ -246,6 +222,7 @@ export function createAuthoringActionHandler({
       if (!task) throw new AuthoringApiError(404, "unknown_human_task", "Tarefa de autoria inexistente.");
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = Date.now() + 40_000;
+      const rawArguments = normalizeActionArguments(taskName, await readActionPayload(request));
       const principal = await adapter.resolveActionPrincipal(
         await sha256Hex(authentication.credential),
         { deadlineAt }
@@ -253,7 +230,7 @@ export function createAuthoringActionHandler({
       if (!courseHumanTaskIsAllowed(taskName, principal)) {
         throw new AuthoringApiError(403, "insufficient_scope", "A conta conectada não permite esta tarefa.");
       }
-      const rawArguments = normalizeActionArguments(taskName, await readBody(request));
+      writeTaskStarted = task.annotations?.readOnlyHint !== true;
       const result = normalizedResult(await executeHumanCourseTask({
         adapter,
         principal,
@@ -262,10 +239,6 @@ export function createAuthoringActionHandler({
         deadlineAt,
         projectionRecipient: "connected_actions_gpt"
       }));
-      completedWrite = task.annotations?.readOnlyHint !== true;
-      if (new TextEncoder().encode(JSON.stringify(result)).byteLength >= RESPONSE_LIMIT) {
-        throw new AuthoringApiError(413, "action_response_too_large", "A resposta excedeu o limite.");
-      }
       return jsonResponse(200, result, cors);
     } catch (error) {
       const normalized = asAuthoringApiError(error);
@@ -275,7 +248,7 @@ export function createAuthoringActionHandler({
       if (normalized.status === 405) headers.Allow = "POST, OPTIONS";
       return jsonResponse(
         normalized.status,
-        publicError(normalized, { completedWrite }),
+        publicError(normalized, { writeTaskStarted }),
         headers
       );
     }

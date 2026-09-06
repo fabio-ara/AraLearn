@@ -1,3 +1,4 @@
+import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -14,7 +15,7 @@ import {
   normalizeCourseListPage,
   projectCoursePlanning
 } from "../../src/ui/courseAuthoringViewModel.js";
-import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from
   "../../src/domain/courseDesignParameters.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
@@ -94,16 +95,11 @@ function courseDesignFixture({
   nextChildCursor = null
 } = {}) {
   const definitions = structuredClone(COURSE_DESIGN_PARAMETER_DEFINITIONS);
-  const componentOptions = Array.from({ length: 33 }, (_, index) => ({
-    ref: `aralearn.resource.component_${String(index + 1).padStart(2, "0")}@1.0.0`,
-    label: `Componente ${index + 1}`,
-    purpose: `Finalidade acadêmica ${index + 1}.`
-  }));
   return {
-    contract: "aralearn.course-design.v2",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision: 3,
-    parameterCatalogVersion: "1.1.0",
+    parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
     scopeContext: {
       current: { kind: "course", ref: COURSE_ID, label: "Fundamentos" },
       ancestors: [],
@@ -116,8 +112,10 @@ function courseDesignFixture({
     parameters: definitions.map((definition) => ({
       parameterId: definition.id,
       localAssignment: null,
+      conflicts: [],
       effectiveAssignment: {
-        value: structuredClone(definition.defaultValue),
+        mode: "automatic",
+        value: null,
         origin: "system_default",
         reason: "Hipótese operacional inicial do produto.",
         sourceScope: null,
@@ -138,12 +136,12 @@ function courseDesignFixture({
         inherited: false
       }]
     },
-    componentCatalog: { version: "1-4616b2e5", options: componentOptions },
+    componentCatalog: structuredClone(COURSE_COMPONENT_CATALOG),
     componentPolicy: {
       localAssignment: null,
       effectiveAssignment: {
         policy: {
-          catalogVersion: "1-4616b2e5",
+          catalogVersion: COURSE_COMPONENT_CATALOG.version,
           availability: "all",
           allowedRefs: [],
           excludedRefs: [],
@@ -516,12 +514,12 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
     expectedCourseRevision: 3,
     expectedScope: { kind: "course", ref: COURSE_ID }
   });
-  assert.equal(design.definitions.length, 6);
-  assert.deepEqual(design.definitions.slice(-2).map(({ id }) => id), [
+  assert.equal(design.definitions.length, COURSE_DESIGN_PARAMETER_DEFINITIONS.length);
+  assert.deepEqual(design.definitions.slice(4, 6).map(({ id }) => id), [
     "authoring_chat_response_word_target",
     "study_unit_content_word_target"
   ]);
-  assert.equal(design.componentCatalog.options.length, 33);
+  assert.deepEqual(design.componentCatalog.options, COURSE_COMPONENT_CATALOG.options);
   assert.equal(design.parameters[0].effectiveAssignment.origin, "system_default");
   assert.equal(design.guidance.localAssignment.origin, "migration");
   assert.equal(design.guidance.effectiveAssignments.length, 1);
@@ -558,7 +556,7 @@ test("desenho por escopo preserva hipótese, proveniência e direção editorial
   assert.deepEqual(normalizedMicro.targetPlanItems.instructionalAnalysisUnitIds, [ITEM_ID]);
 });
 
-test("leitura autoral aceita condição fixa com os 33 componentes correntes", () => {
+test("leitura autoral aceita condição fixa com todos os componentes do catálogo corrente", () => {
   const fixture = courseDesignFixture();
   const refs = fixture.componentCatalog.options.map(({ ref }) => ref);
   fixture.componentPolicy.effectiveAssignment = {
@@ -576,7 +574,7 @@ test("leitura autoral aceita condição fixa com os 33 componentes correntes", (
   };
 
   const design = normalizeCourseDesign(fixture);
-  assert.equal(design.componentPolicy.effectiveAssignment.policy.allowedRefs.length, 33);
+  assert.deepEqual(design.componentPolicy.effectiveAssignment.policy.allowedRefs, refs);
   assert.equal(design.componentPolicy.effectiveAssignment.origin, "research_condition");
 });
 
@@ -596,6 +594,7 @@ test("StudyUnit é escopo corrente de configuração com herança e override pr�
     nextChildCursor: null
   };
   unit.parameters[0].localAssignment = {
+    mode: "fixed",
     value: 1,
     origin: "author",
     reason: "Condição desta Unit."
@@ -654,7 +653,7 @@ test("desenho rejeita contrato singular legado, campo extra e política preferid
 test("confirmação de desenho preserva requestId opaco e expõe somente fato canônico", () => {
   const requestId = "client.retry:001";
   const changed = normalizeCourseDesignChange({
-    contract: "aralearn.course-design-change.v2",
+    contract: "aralearn.course-design-change.v3",
     courseId: COURSE_ID,
     courseRevision: 4,
     requestId,
@@ -671,7 +670,7 @@ test("confirmação de desenho preserva requestId opaco e expõe somente fato ca
 
   assert.throws(
     () => normalizeCourseDesignChange({
-      contract: "aralearn.course-design-change.v2",
+      contract: "aralearn.course-design-change.v3",
       courseId: COURSE_ID,
       courseRevision: 5,
       requestId,
@@ -687,7 +686,7 @@ test("confirmação de desenho preserva requestId opaco e expõe somente fato ca
   );
 
   assert.equal(normalizeCourseDesignChange({
-    contract: "aralearn.course-design-change.v2",
+    contract: "aralearn.course-design-change.v3",
     courseId: COURSE_ID,
     courseRevision: 4,
     requestId,
@@ -698,7 +697,7 @@ test("confirmação de desenho preserva requestId opaco e expõe somente fato ca
 
   assert.throws(
     () => normalizeCourseDesignChange({
-      contract: "aralearn.course-design-change.v2",
+      contract: "aralearn.course-design-change.v3",
       courseId: COURSE_ID,
       courseRevision: 4,
       requestId,

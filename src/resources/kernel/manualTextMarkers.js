@@ -1,7 +1,6 @@
 const MANUAL_TEXT_START = "\uE100";
 const MANUAL_TEXT_SEPARATOR = "\uE101";
 const MANUAL_TEXT_END = "\uE102";
-const GAP_TEXT_START = "\uE000";
 const MANUAL_MARKER_NONCE = globalThis.crypto?.randomUUID?.() ||
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 const MANUAL_MARKER_SIGNATURE = `AraLearnManualText/1:${MANUAL_MARKER_NONCE}:`;
@@ -55,7 +54,7 @@ function rememberIssuedMarker(marker) {
 export function createPackageManualTextMarker(path, value) {
   const normalizedPath = String(path || "").trim();
   const source = String(value ?? "");
-  if (!MANUAL_PATH_PATTERN.test(normalizedPath) || source.includes(GAP_TEXT_START)) return source;
+  if (!MANUAL_PATH_PATTERN.test(normalizedPath)) return source;
   // Private-use sentinels belong exclusively to the transient render copy. Treat
   // author-provided collisions as inert text and fail closed instead of projecting
   // them as editable metadata.

@@ -31,11 +31,11 @@ function wrapInstance(instance, slot, html, options = {}, renderKey = "", editTa
   const encodedTargets = inlineEditing && editTargets.length
     ? encodeURIComponent(JSON.stringify(editTargets))
     : "";
-  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}${encodedTargets ? ` data-package-manual-targets="${escapePackageAttribute(encodedTargets)}"` : ""}>${html}</section>`;
+  const packageHtml = `<section class="package-instance" data-package="${escapePackageAttribute(instance.package)}" data-package-version="${escapePackageAttribute(instance.version)}" data-package-instance-id="${escapePackageAttribute(instance.id)}" data-package-slot="${escapePackageAttribute(slot)}"${renderKey ? ` data-package-render-key="${escapePackageAttribute(renderKey)}"` : ""}${encodedTargets ? ` data-package-manual-targets="${escapePackageAttribute(encodedTargets)}"` : ""}>${html}</section>`;
   if (!options.resourceSelectionEnabled || !id) return packageHtml;
   if (Array.isArray(options.resourceSelectionTargetIds) &&
       !options.resourceSelectionTargetIds.includes(id)) return packageHtml;
-  const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo");
+  const label = options.resourceSelectionLabels?.[id] || (selected ? "Retirar recurso da seleção" : "Selecionar recurso para edição");
   return `<section class="runtime-resource-edit-target${selected ? " is-selected" : ""}${inlineEditing ? " is-inline-editing" : ""}" data-resource-edit-target="${escapePackageAttribute(id)}" data-package-id="${escapePackageAttribute(instance.package)}"${inlineEditing ? ` data-manual-target-id="${escapePackageAttribute(id)}"` : ""}>${inlineEditing ? `<div class="runtime-resource-selection-content">${packageHtml}</div>` : `<button class="runtime-resource-selection-surface" type="button" data-action="toggle-study-unit-assistance-resource" data-resource-target-id="${escapePackageAttribute(id)}" aria-pressed="${selected ? "true" : "false"}" data-study-unit-authoring-focus="resource:${escapePackageAttribute(id)}" aria-label="${escapePackageAttribute(label)}" title="${escapePackageAttribute(label)}"${options.resourceSelectionDisabled ? " disabled aria-disabled=\"true\"" : ""}></button><div class="runtime-resource-selection-content">${packageHtml}</div>`}</section>`;
 }
 
@@ -49,19 +49,19 @@ function renderInstance(studyUnit, instance, slot, index, options, dockExerciseP
   const id = targetId(slot, instance);
   const inlineEditing = options.manualEditingTargetId === id;
   const editTargets = inlineEditing ? manualTargets(instance, slot) : [];
-  const manualEditing = Boolean(options.manualEditingTargetId);
+  const referenceTargets = (options.sourceTextTargets || []).filter(target => target.slot === slot && target.resourceId === instance.id);
   const html = RESOURCE_PACKAGE_REGISTRY.renderInstance(instance, slot, {
     ...options,
     studyUnit,
     instanceId: instance.id,
     blockKey,
     responseBlockKey: responseKey,
-    responseState: manualEditing ? null : responseState,
-    activeTextGapPrompt: manualEditing ? null : options.activeTextGapPrompt,
-    studyUnitResponse: slot === "content" && !manualEditing ? studyUnit.response : null,
-    dockExerciseParts: manualEditing ? null : dockExerciseParts,
+    responseState,
+    activeTextGapPrompt: options.activeTextGapPrompt,
+    studyUnitResponse: slot === "content" ? studyUnit.response : null,
+    dockExerciseParts,
     manualEditing: inlineEditing,
-    manualEditTargets: editTargets
+    manualEditTargets: inlineEditing ? editTargets : referenceTargets
   });
   return wrapInstance(instance, slot, html, options, blockKey, editTargets);
 }
@@ -76,15 +76,14 @@ export function renderPackageStudyUnitBlocks(studyUnit, options = {}) {
   const dockExerciseParts = Array.isArray(options.dockExerciseParts)
     ? options.dockExerciseParts
     : null;
-  const content = studyUnit.content.map((instance, index) =>
+  const content = studyUnit.content.filter((instance) => !options.toolsInActionBar ||
+    !RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool).map((instance, index) =>
     renderInstance(studyUnit, instance, "content", index, options, dockExerciseParts)
   ).join("");
-  const manualEditing = Boolean(options.manualEditingTargetId);
-  const editingResponse = String(options.manualEditingTargetId || "").startsWith("response:");
-  const response = studyUnit.response && (!manualEditing || editingResponse)
+  const response = studyUnit.response
     ? renderInstance(studyUnit, studyUnit.response, "response", 0, options, dockExerciseParts)
     : "";
-  const authoringFeedback = options.resourceSelectionEnabled || options.revealPracticeAnswers
+  const authoringFeedback = studyUnit.feedback.length && (options.resourceSelectionEnabled || options.revealPracticeAnswers)
     ? '<section class="runtime-authoring-support-resources" aria-label="Explicações da unidade de estudo"><span class="runtime-authoring-support-title">Explicações</span>' +
       studyUnit.feedback.map((instance, index) => renderInstance(studyUnit, instance, "feedback", index, options, dockExerciseParts)).join("") +
       "</section>"

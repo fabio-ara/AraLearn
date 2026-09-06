@@ -29,6 +29,9 @@ export function publicErrorMessage(error, fallback, { conflict = "", network = "
   const message = String(error?.message || (typeof error === "string" ? error : "")).trim();
   const code = errorCode(error);
   const status = errorStatus(error);
+  if (code === "person_handle_unavailable" || code === "ph409") {
+    return "Este identificador já está em uso. Escolha outro.";
+  }
   if (status === 409 || ["40001", "conflict", "course_revision_changed",
     "course_version_changed", "revision_conflict"].includes(code)) {
     return String(conflict || DEFAULT_CONFLICT_MESSAGE).trim();

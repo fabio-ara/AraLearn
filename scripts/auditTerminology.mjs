@@ -69,6 +69,7 @@ const ignoredDirectories = new Set([
   ".git",
   ".gradle",
   ".pages",
+  ".temp",
   ".tmp",
   "build",
   "dist",

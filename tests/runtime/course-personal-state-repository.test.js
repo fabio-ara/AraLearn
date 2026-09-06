@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { IDBFactory } from "fake-indexeddb";
+import { CourseLocalStore } from "../../src/persistence/CourseLocalStore.js";
 
 import {
   CoursePersonalStateRepository,
@@ -9,6 +11,207 @@ import {
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const REQUEST_ID = "20000000-0000-4000-8000-000000000002";
+
+test("duas conexões IndexedDB preservam conclusões e Rever na mesma Lição", async () => {
+  const indexedDb = new IDBFactory();
+  const caches = await Promise.all([1, 2].map(() => CourseLocalStore.open(indexedDb, { visitor: true })));
+  const repositories = caches.map((cache) => new CoursePersonalStateRepository({
+    courseId: COURSE_ID, course: course(), cache, localOnly: true
+  }));
+  await Promise.all(repositories.map((value) => value.initialize()));
+  await Promise.all(repositories.map((value, index) => value.setStudyUnitCompleted(reference(index ? "unit-b" : "unit-a"))));
+  await repositories[0].setStudyUnitReviewMark(reference(), true);
+  await repositories[1].refresh();
+  assert.deepEqual(new Set(repositories[1].loadCanonicalState().progress.lessons["lesson-a"].completedStudyUnitIds), new Set(["unit-a", "unit-b"]));
+  assert.equal(repositories[1].isStudyUnitMarkedForReview(reference()), true);
+  for (const cache of caches) cache.close();
+});
+
+test("manual não lê nem envia em fundo; envio explícito drena o mesmo pedido", async () => {
+  const api = remote();
+  let reads = 0;
+  const read = api.loadPersonalState;
+  api.loadPersonalState = (...args) => { reads += 1; return read(...args); };
+  const value = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache: memoryCache(), api, synchronizationMode: "manual" });
+  await value.initialize();
+  await value.setStudyUnitCompleted(reference());
+  await value.refresh();
+  await value.flush();
+  assert.equal(reads, 0);
+  assert.equal(api.calls.length, 0);
+  assert.equal(value.snapshot().pending, true);
+  await value.flush({ explicit: true });
+  assert.equal(api.calls.length, 1);
+  assert.equal(value.snapshot().pending, false);
+});
+
+test("remoção em outra aba invalida a fila local antiga antes de qualquer nova gravação", async () => {
+  const indexedDb = new IDBFactory();
+  const firstCache = await CourseLocalStore.open(indexedDb, { visitor: true });
+  const secondCache = await CourseLocalStore.open(indexedDb, { visitor: true });
+  const first = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache: firstCache, localOnly: true });
+  const second = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache: secondCache, localOnly: true });
+  await first.initialize();
+  await second.initialize();
+  await first.setStudyUnitCompleted(reference());
+  await first.clearLocal();
+  await assert.rejects(second.setStudyUnitCompleted(reference("unit-b")), { status: 403 });
+  assert.equal(await firstCache.getCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`), null);
+  firstCache.close();
+  secondCache.close();
+});
+
+test("troca para manual deixa a operação seguinte na fila após confirmar envio já iniciado", async () => {
+  const api = remote();
+  const original = api.mutatePersonalState;
+  const started = deferred();
+  const release = deferred();
+  api.mutatePersonalState = async (input) => { started.resolve(); await release.promise; return original(input); };
+  const value = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache: memoryCache(), api });
+  await value.initialize();
+  const sending = value.setStudyUnitCompleted(reference());
+  await started.promise;
+  value.setSynchronizationMode("manual");
+  await value.setStudyUnitCompleted(reference("unit-b"));
+  release.resolve();
+  await sending;
+  assert.equal(api.calls.length, 1);
+  assert.equal(value.snapshot().pending, true);
+  await value.flush({ explicit: true });
+  assert.equal(api.calls.length, 2);
+  assert.equal(value.snapshot().pending, false);
+});
+
+test("confirmação remota não apaga edição aceita por outra instância", async () => {
+  const cache = memoryCache();
+  const api = remote();
+  const started = deferred();
+  const release = deferred();
+  const mutate = api.mutatePersonalState;
+  let first = true;
+  api.mutatePersonalState = async (input) => {
+    if (first) { first = false; started.resolve(); await release.promise; }
+    return mutate(input);
+  };
+  const values = [1, 2].map(() => new CoursePersonalStateRepository({
+    courseId: COURSE_ID, course: course(), cache, api, synchronizationMode: "manual"
+  }));
+  await Promise.all(values.map((value) => value.initialize()));
+  await values[0].setStudyUnitCompleted(reference());
+  const sending = values[0].flush({ explicit: true });
+  await started.promise;
+  await values[1].setStudyUnitCompleted(reference("unit-b"));
+  release.resolve();
+  await sending;
+  assert.equal(api.calls.length, 2);
+  assert.deepEqual(api.calls[1].operations[0].value.completedStudyUnitIds, ["unit-a", "unit-b"]);
+  await values[1].refresh();
+  assert.equal(values[1].snapshot().pending, false);
+});
+
+test("rebase combina conclusões independentes dentro da mesma Lição", async () => {
+  const api = remote();
+  const original = api.mutatePersonalState;
+  let externallyChanged = false;
+  api.mutatePersonalState = async (input) => {
+    if (!externallyChanged) {
+      externallyChanged = true;
+      await original({ courseId: COURSE_ID, expectedRevision: 0, operations: [{
+        kind: "set", collection: "progress.lessons", path: "lesson-a",
+        value: { cursorStudyUnitId: "unit-b", completedStudyUnitIds: ["unit-b"] }
+      }] });
+      throw Object.assign(new Error("Conflito"), { status: 409 });
+    }
+    return original(input);
+  };
+  const value = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache: memoryCache(), api });
+  await value.initialize();
+  await value.setStudyUnitCompleted(reference());
+  assert.deepEqual(new Set(value.loadCanonicalState().progress.lessons["lesson-a"].completedStudyUnitIds), new Set(["unit-a", "unit-b"]));
+  assert.equal(value.snapshot().conflict, null);
+  assert.equal(value.snapshot().pending, false);
+});
+
+test("remoção e renovação da mesma marca exige decisão e preserva mudança disjunta", async () => {
+  const api = remote();
+  await api.mutatePersonalState({ courseId: COURSE_ID, expectedRevision: 0, operations: [{
+    kind: "set", collection: "reviewMarks", path: "unit-a", value: "2026-08-17T12:00:00.000Z"
+  }] });
+  const value = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache: memoryCache(), api, synchronizationMode: "manual" });
+  await value.initialize();
+  await value.refresh({ explicit: true });
+  await value.setStudyUnitReviewMark(reference(), false);
+  await value.setStudyUnitCompleted(reference("unit-b"));
+  await api.mutatePersonalState({ courseId: COURSE_ID, expectedRevision: 1, operations: [{
+    kind: "set", collection: "reviewMarks", path: "unit-a", value: "2026-08-18T12:00:00.000Z"
+  }] });
+  const original = api.mutatePersonalState;
+  api.mutatePersonalState = (input) => input.expectedRevision === 1
+    ? Promise.reject(Object.assign(new Error("Conflito"), { status: 409 })) : original(input);
+  await value.flush({ explicit: true });
+  const pending = value.snapshot().conflict;
+  assert.equal(pending.local.reviewCount, 0);
+  assert.equal(pending.remote.reviewCount, 1);
+  const attempts = api.calls.length;
+  await value.flush({ explicit: true });
+  assert.equal(api.calls.length, attempts);
+  await assert.rejects(value.resolveConflict({ resolution: "remote", expectedConflictId: REQUEST_ID }), /conflito mudou/u);
+  await value.resolveConflict({ resolution: "remote", expectedConflictId: pending.id });
+  assert.equal(value.isStudyUnitMarkedForReview(reference()), true);
+  assert.equal(value.isStudyUnitCompleted(reference("unit-b")), true);
+  assert.equal(value.snapshot().pending, false);
+});
+
+test("pendência anterior sem baseline conserva corpo e pede decisão sem perder operação posterior disjunta", async () => {
+  const api = remote();
+  await api.mutatePersonalState({ courseId: COURSE_ID, expectedRevision: 0, operations: [{
+    kind: "set", collection: "reviewMarks", path: "remote-unit", value: "2026-08-17T12:00:00.000Z"
+  }] });
+  const cache = memoryCache();
+  await cache.putCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`, {
+    contract: COURSE_PERSONAL_STATE_CACHE_CONTRACT, courseId: COURSE_ID, revision: 0,
+    state: { version: 2, progress: { version: 3, lessons: {} }, reviewMarks: { "unit-a": "2026-08-17T12:00:00.000Z" } },
+    pending: { requestId: REQUEST_ID, baseRevision: 0, operations: [{ kind: "set", collection: "reviewMarks", path: "unit-a", value: "2026-08-17T12:00:00.000Z" }], createdAt: "2026-08-17T12:00:00.000Z" },
+    queuedOperations: [], updatedAt: "2026-08-17T12:00:00.000Z"
+  });
+  const original = api.mutatePersonalState;
+  api.mutatePersonalState = (input) => input.expectedRevision === 0
+    ? Promise.reject(Object.assign(new Error("Conflito"), { status: 409 })) : original(input);
+  const value = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache, api, synchronizationMode: "manual" });
+  await value.initialize();
+  await value.setStudyUnitReviewMark(reference("unit-b"), true);
+  await value.flush({ explicit: true });
+  assert.equal((await cache.getCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`)).pending.requestId, REQUEST_ID);
+  const conflict = value.snapshot().conflict;
+  assert.ok(conflict);
+  await value.resolveConflict({ resolution: "remote", expectedConflictId: conflict.id });
+  assert.equal(value.isStudyUnitMarkedForReview(reference()), false);
+  assert.equal(value.isStudyUnitMarkedForReview(reference("unit-b")), true);
+  assert.ok(value.loadCanonicalState().reviewMarks["remote-unit"]);
+});
+
+test("estado localOnly mantém progresso e Rever após reabertura sem chamar a API", async () => {
+  const cache = memoryCache();
+  const api = {
+    loadPersonalState() { throw new Error("Leitura remota proibida para visitante"); },
+    mutatePersonalState() { throw new Error("Escrita remota proibida para visitante"); }
+  };
+  const personal = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache, api, localOnly: true });
+  await personal.initialize();
+  await personal.setStudyUnitCompleted(reference(), true);
+  await personal.setStudyUnitReviewMark(reference(), true);
+  assert.equal(personal.snapshot().pending, false);
+  await personal.refresh();
+  await personal.flush();
+  const reopened = new CoursePersonalStateRepository({ courseId: COURSE_ID, course: course(), cache, localOnly: true });
+  await reopened.initialize();
+  assert.equal(reopened.isStudyUnitCompleted(reference()), true);
+  assert.equal(reopened.isStudyUnitMarkedForReview(reference()), true);
+  assert.equal(reopened.snapshot().pending, false);
+  await reopened.clearProgress();
+  assert.equal(reopened.isStudyUnitCompleted(reference()), false);
+  assert.equal(reopened.isStudyUnitMarkedForReview(reference()), true);
+});
 
 function deferred() {
   let resolve;
@@ -288,14 +491,14 @@ test("duas persistências locais simultâneas preservam ambas as Unidades", asyn
 
 test("falha da gravação local preserva uma nova tentativa real", async () => {
   const cache = memoryCache();
-  const putCache = cache.putCache.bind(cache);
+  const updateCaches = cache.updateCaches.bind(cache);
   let rejectNextWrite = false;
-  cache.putCache = async (...args) => {
+  cache.updateCaches = async (...args) => {
     if (rejectNextWrite) {
       rejectNextWrite = false;
       throw new Error("cache indisponível");
     }
-    return putCache(...args);
+    return updateCaches(...args);
   };
   const repository = new CoursePersonalStateRepository({
     courseId: COURSE_ID,
@@ -333,13 +536,13 @@ test("revogação elimina gravação local já aceita sem ressuscitar o cache", 
   let blockNextPut = false;
   const cache = {
     ...baseCache,
-    async putCache(key, value) {
+    async updateCaches(keys, updater) {
       if (blockNextPut) {
         blockNextPut = false;
         blockedPutStarted.resolve();
         await releaseBlockedPut.promise;
       }
-      return baseCache.putCache(key, value);
+      return baseCache.updateCaches(keys, updater);
     }
   };
   const releaseRemote = deferred();
@@ -580,7 +783,8 @@ test("PT404 apaga estado pessoal, Curso e listas locais", async () => {
   const repository = new CoursePersonalStateRepository({ courseId: COURSE_ID, api, cache });
 
   await assert.rejects(() => repository.initialize(), /inacessível/u);
-  assert.equal(cache.values.size, 0);
+  assert.deepEqual([...cache.values.keys()], [`course.v1.personal-epoch:${COURSE_ID}`]);
+  assert.equal(typeof await cache.getCache(`course.v1.personal-epoch:${COURSE_ID}`), "string");
 });
 
 test("não mascara erro de programação como indisponibilidade de rede", async () => {

@@ -13,10 +13,6 @@ function list(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function comparablePrompt(value) {
-  return String(value ?? "").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
-}
-
 export function validateStudyUnitEnvelope(studyUnit, registry, path = "$.studyUnit") {
   const errors = [];
   if (!studyUnit || typeof studyUnit !== "object" || Array.isArray(studyUnit)) {
@@ -50,16 +46,6 @@ export function validateStudyUnitEnvelope(studyUnit, registry, path = "$.studyUn
   }
   if (studyUnit.role === "practice" && (!studyUnit.response || typeof studyUnit.response !== "object")) {
     errors.push(`${path}.response é obrigatório em Unidade de estudo de prática.`);
-  }
-  if (studyUnit.response?.package === "aralearn.response.choice") {
-    const question = comparablePrompt(studyUnit.response.data?.question);
-    const repeatsQuestion = list(studyUnit.content).some((instance) => (
-      instance?.package === "aralearn.resource.paragraph" &&
-      comparablePrompt(instance.data?.text) === question
-    ));
-    if (question && repeatsQuestion) {
-      errors.push(`${path}.content não pode repetir a mesma pergunta de response.choice.`);
-    }
   }
   const ids = new Set();
   const validateSlot = (instance, slot, instancePath) => {

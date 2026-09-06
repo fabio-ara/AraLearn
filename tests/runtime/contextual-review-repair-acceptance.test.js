@@ -133,8 +133,8 @@ test("#271 Fontes, componentes e parâmetro seguinte permanecem casos focais", (
       curso: "Redes para iniciantes",
       microssequencia: fixture.parameterChange.scope.ref,
       condicao: "fixada_pelo_autor",
-      parametrosPedagogicos: {
-        minimoDePraticasPorRequisito: fixture.parameterChange.effectiveValue
+      parametros: {
+        oportunidades_distintas_por_requisito: fixture.parameterChange.effectiveValue
       }
     }
   };

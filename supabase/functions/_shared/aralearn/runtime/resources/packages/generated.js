@@ -30,8 +30,15 @@ import { truthTablePackage } from "./truth-table/index.js";
 import { entityRelationshipPackage } from "./entity-relationship/index.js";
 import { stateTransitionTablePackage } from "./state-transition-table/index.js";
 import { callStackPackage } from "./call-stack/index.js";
+import { audioPackage } from "./audio/index.js";
+import { calculatorPackage } from "./calculator/index.js";
+import { dictionaryPackage } from "./dictionary/index.js";
+import { grammarPackage } from "./grammar/index.js";
+import { readingPackage } from "./reading/index.js";
 import { terminalSessionPackage } from "./terminal-session/index.js";
 import { openResponsePackage } from "./open-response/index.js";
+
+export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "sha256:be520856aeb1c583daef1c0a39e5252633af92eede420eb03be47c1e79d060cc";
 
 export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   paragraphPackage,
@@ -65,6 +72,11 @@ export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   entityRelationshipPackage,
   stateTransitionTablePackage,
   callStackPackage,
+  audioPackage,
+  calculatorPackage,
+  dictionaryPackage,
+  grammarPackage,
+  readingPackage,
   terminalSessionPackage,
   openResponsePackage
 ]);
@@ -101,6 +113,11 @@ export {
   entityRelationshipPackage,
   stateTransitionTablePackage,
   callStackPackage,
+  audioPackage,
+  calculatorPackage,
+  dictionaryPackage,
+  grammarPackage,
+  readingPackage,
   terminalSessionPackage,
   openResponsePackage
 };

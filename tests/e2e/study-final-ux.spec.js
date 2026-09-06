@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 
 const fixture = JSON.parse(fs.readFileSync(
   new URL("../fixtures/package/project-minimal.json", import.meta.url),
@@ -19,7 +20,7 @@ async function mountStudy(page, { savedView = "course", projectValue = fixture }
     'content="width=device-width,initial-scale=1">' +
     styles.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
     '</head><body><div id="study-root"></div></body></html>');
-  await page.evaluate(async ({ project, savedView }) => {
+  await page.evaluate(async ({ project, savedView, configuration }) => {
     const { createCourseStudyApplication } = await import(
       "/src/study/CourseStudyApplication.js"
     );
@@ -83,6 +84,17 @@ async function mountStudy(page, { savedView = "course", projectValue = fixture }
       },
       loadCourse: async () => structuredClone(canonicalProject),
       loadProject: () => structuredClone(canonicalProject),
+      loadCourseDesign: async (courseId, { scope }) => {
+        const result = structuredClone(configuration);
+        const path = [...result.scopeContext.ancestors, result.scopeContext.current];
+        const index = path.findIndex(({ kind, ref }) => kind === scope.kind && ref === scope.ref);
+        if (courseId !== result.courseId || index < 0) throw new Error("Escopo da fixture ausente.");
+        result.courseRevision = revision;
+        result.scopeContext.current = path[index];
+        result.scopeContext.ancestors = path.slice(0, index);
+        if (!["study_unit", "didactic_microsequence"].includes(scope.kind)) result.targetPlanItems = null;
+        return result;
+      },
       refreshCourseOfflineAvailability: async () => true,
       loadStudyUnitCompositionContext: () => ({
         courseRevision: revision,
@@ -114,7 +126,13 @@ async function mountStudy(page, { savedView = "course", projectValue = fixture }
       onSaveManualEdit: saveUnit,
       onSaveAssistedStructure: saveStructure
     });
-  }, { project: projectValue, savedView });
+  }, { project: projectValue, savedView, configuration: courseDesignFixture({
+    courseId: projectValue.courses[0].id,
+    moduleId: projectValue.courses[0].modules[0].id,
+    lessonId: projectValue.courses[0].modules[0].lessons[0].id,
+    microsequenceId: projectValue.courses[0].modules[0].lessons[0].microsequences[0].id,
+    studyUnitId: projectValue.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].id
+  }, { revision: 7 }) });
 }
 
 async function capture(page, name) {
@@ -333,10 +351,9 @@ test("títulos de Curso não recebem sufixo textual de propriedade", async ({ pa
       editorSupport: {
         coursePermissionsById: {
           [courses[0].id]: { ownership: "owned", canEdit: true },
-          [courses[1].id]: { ownership: "shared", canEdit: false, canDerive: true },
+          [courses[1].id]: { ownership: "shared", canEdit: false, canCopy: true },
           [courses[2].id]: {
-            ownership: "owned", canEdit: true, isPersonalCopy: true,
-            sourceCourseId: courses[1].id
+            ownership: "owned", canEdit: true, canCopy: true
           }
         }
       }
@@ -358,7 +375,7 @@ test("títulos de Curso não recebem sufixo textual de propriedade", async ({ pa
     .toEqual([
       "Curso homônimo, Curso próprio, opção 1",
       "Curso homônimo, Curso compartilhado, opção 2",
-      "Curso homônimo, Cópia pessoal, opção 3"
+      "Curso homônimo, Curso próprio, opção 3"
     ]);
 });
 
@@ -655,7 +672,7 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       const dock = document.querySelector(".study-next-wrap").getBoundingClientRect();
       const next = document.querySelector(".study-continue-btn").getBoundingClientRect();
       const nextStyle = getComputedStyle(document.querySelector(".study-continue-btn"));
-      const buttons = [...document.querySelectorAll(".study-next-wrap > button")]
+      const buttons = [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button")]
         .map((button) => button.getBoundingClientRect());
       return {
         display: nextStyle.display,

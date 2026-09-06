@@ -98,7 +98,7 @@ function isDiagramControl(target) {
   ));
 }
 
-export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) {
+export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, initialScale = null }) {
   const home = figure.querySelector("[data-diagram-viewport-home]");
   const viewport = figure.querySelector("[data-diagram-viewport]");
   const dialog = figure.querySelector("[data-diagram-modal]");
@@ -332,6 +332,24 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   });
   dialog.addEventListener("close", () => void restoreInlineViewport());
   canvas.addEventListener("scroll", persistCurrentView, { passive: true });
+  canvas.setAttribute("aria-keyshortcuts", "ArrowUp ArrowDown ArrowLeft ArrowRight Home End + -");
+  canvas.addEventListener("keydown", (event) => {
+    if (isDiagramControl(event.target) || event.altKey || event.metaKey || event.ctrlKey) return;
+    const movements = { ArrowLeft: [-64, 0], ArrowRight: [64, 0], ArrowUp: [0, -64], ArrowDown: [0, 64] };
+    if (movements[event.key]) {
+      event.preventDefault();
+      const [left, top] = movements[event.key];
+      canvas.scrollLeft += left;
+      canvas.scrollTop += top;
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      canvas.scrollLeft = event.key === "Home" ? 0 : canvas.scrollWidth;
+      canvas.scrollTop = event.key === "Home" ? 0 : canvas.scrollHeight;
+    } else if (["+", "=", "-"].includes(event.key)) {
+      event.preventDefault();
+      zoomBy(event.key === "-" ? 1 / DIAGRAM_SCALE_STEP : DIAGRAM_SCALE_STEP);
+    }
+  });
   canvas.addEventListener("wheel", (event) => {
     if (!event.ctrlKey) return;
     event.preventDefault();
@@ -340,6 +358,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
   canvas.addEventListener("pointerdown", (event) => {
     if (isDiagramControl(event.target) || (event.pointerType === "mouse" && event.button !== 0)) return;
     event.preventDefault();
+    canvas.focus({ preventScroll: true });
     canvas.setPointerCapture?.(event.pointerId);
     activePointers.set(event.pointerId, {
       pointerId: event.pointerId,
@@ -427,12 +446,16 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey }) 
       },
       persist: false
     });
+  } else if (initialScale !== null) {
+    scaleMode = "custom";
+    setScale(initialScale, { restoreScroll: { left: 0, top: 0 }, persist: false });
   } else {
     applyFit({ persist: false });
   }
   controlsReady = true;
   updateControls();
   if (remembered?.expanded === true) await openExpandedViewport();
+  await nextFrame();
 
   return Object.freeze({
     get expanded() { return expanded; },

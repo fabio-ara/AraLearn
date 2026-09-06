@@ -5,11 +5,20 @@ import { fileURLToPath } from "node:url";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const DOCUMENTATION_SEARCH_LOG = "docs/evidence/registro-buscas-bibliograficas.csv";
+const ROOT_DOCUMENTS = new Set(["README.md", "LICENSE.md", "CHANGELOG.md", "CONTRIBUTING.md"]);
+// Esses capítulos definem o uso dos contratos pelos clientes reais. Uma edição
+// neles precisa ser confrontada com o runtime, mesmo quando só muda Markdown.
+const CONTRACT_DOCUMENTS = new Set([
+  "docs/aralearn-contract.md",
+  "docs/autoria-actions.md",
+  "docs/autoria-mcp.md"
+]);
 
 function normalizeRepositoryPath(value) {
-  const candidate = String(value || "").trim();
+  const candidate = String(value || "");
   if (
     !candidate ||
+    candidate !== candidate.trim() ||
     candidate.includes("\\") ||
     candidate.startsWith("/") ||
     candidate.includes("\0")
@@ -26,9 +35,13 @@ function normalizeRepositoryPath(value) {
 export function isDocumentationPath(value) {
   const repositoryPath = normalizeRepositoryPath(value);
   if (!repositoryPath) return false;
-  if (!repositoryPath.includes("/") && repositoryPath.endsWith(".md")) return true;
+  if (/^(?:.*\/)?(?:AGENTS(?:\.override)?|SKILL)\.md$/u.test(repositoryPath)) return false;
+  if (CONTRACT_DOCUMENTS.has(repositoryPath)) return false;
+  if (ROOT_DOCUMENTS.has(repositoryPath)) return true;
   if (repositoryPath === DOCUMENTATION_SEARCH_LOG) return true;
-  if (/^docs\/.+\.(?:md|bib)$/u.test(repositoryPath)) return true;
+  // Downloads, instruções e pastas novas não recebem dispensa por extensão.
+  // O OpenAPI publicado é um artefato de runtime, não documentação inofensiva.
+  if (/^docs\/[^/]+\.(?:md|bib)$/u.test(repositoryPath)) return true;
   return /^ux-atlas\/.+\.md$/u.test(repositoryPath);
 }
 
@@ -38,6 +51,20 @@ export function classifyChangedPaths(paths) {
   const changedPaths = candidates.map(normalizeRepositoryPath);
   return changedPaths.every((repositoryPath) =>
     repositoryPath && isDocumentationPath(repositoryPath));
+}
+
+export function classifyGitDiff(output) {
+  if (typeof output !== "string" || !output.endsWith("\0")) return false;
+  const entries = output.slice(0, -1).split("\0");
+  if (entries.length % 2 !== 0) return false;
+  const paths = [];
+  for (let index = 0; index < entries.length; index += 2) {
+    // --no-renames apresenta origem removida e destino novo separadamente.
+    // Mudança de tipo, conflito ou estado desconhecido exige o gate integral.
+    if (!["A", "M", "D"].includes(entries[index])) return false;
+    paths.push(entries[index + 1]);
+  }
+  return classifyChangedPaths(paths);
 }
 
 function writeResult(docsOnly, outputPath = "") {
@@ -67,14 +94,13 @@ function classifyGitHubPullRequest() {
     }
     const comparison = spawnSync(
       "git",
-      ["diff", "-z", "--name-only", "--diff-filter=ACMRD", `${baseSha}...${headSha}`, "--"],
+      ["diff", "-z", "--name-status", "--no-renames", `${baseSha}...${headSha}`, "--"],
       { encoding: "utf8" }
     );
     if (comparison.status !== 0 || comparison.error) {
       throw comparison.error || new Error(comparison.stderr || "Falha ao comparar a pull request.");
     }
-    const changedPaths = comparison.stdout.split("\0").filter(Boolean);
-    docsOnly = classifyChangedPaths(changedPaths);
+    docsOnly = classifyGitDiff(comparison.stdout);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`Classificação inconclusiva; usando pipeline integral: ${message}\n`);

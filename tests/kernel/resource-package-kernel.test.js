@@ -254,10 +254,10 @@ test("kernel rejeita alvo declarado que o renderer mantém invisível", () => {
       example: { text: "Texto visível.", hidden: "resposta" }
     },
     schema: {
-      ...paragraphPackage.schema,
+      type: "object", additionalProperties: false,
       required: ["text", "hidden"],
       properties: {
-        ...paragraphPackage.schema.properties,
+        text: { type: "string", minLength: 1, maxLength: 12000 },
         hidden: { type: "string", minLength: 1 }
       }
     },
@@ -773,8 +773,11 @@ test("contrato completo é obtido somente para o package escolhido", () => {
     "1.0.0"
   );
   assert.equal(contract.package, "aralearn.resource.paragraph");
-  assert.deepEqual(contract.contract.required, ["text"]);
-  assert.equal(contract.schema.properties.text.type, "string");
+  assert.deepEqual(contract.contract.required, []);
+  assert.equal(Array.isArray(contract.schema.oneOf), true);
+  assert.equal(validatePackageSchema({ text: "Texto existente." }, contract.schema).valid, true);
+  assert.equal(validatePackageSchema({ text: "Texto existente.", format: "rich", blocks: [] }, contract.schema).valid, false);
+  assert.equal(contract.schema.oneOf[0].properties.text.type, "string");
   assert.deepEqual(contract.practiceTargets, [{
     path: "text",
     label: "Trecho na explicação",

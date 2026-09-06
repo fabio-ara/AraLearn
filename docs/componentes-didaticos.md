@@ -74,6 +74,11 @@ enquanto a estrutura permanece protegida.
 
 ## 3. Catálogo como vocabulário controlado
 
+O registro instalado reúne 38 pacotes: 34 de conteúdo e quatro de resposta.
+O inventário e a decisão de manter ou restringir cada gramática estão na
+[auditoria dos componentes](auditoria-academica-dos-resources.md#6-decisão-corrente-e-uso-observado).
+Diretórios auxiliares, como `system-diagrams`, não são pacotes adicionais.
+
 O catálogo descreve os pacotes com facetas controladas:
 
 - domínios e objetos de conhecimento;
@@ -312,6 +317,23 @@ representação faz parte do conteúdo. Uma instrução breve é adequada quando
 disciplina ensina aquela forma; vocabulário de implementação e instruções
 óbvias de rolagem ficam fora do conteúdo didático.
 
+Legendas e instruções são decididas pelo papel que cumprem naquele exemplo:
+
+| Papel | Decisão | Exemplos |
+| --- | --- | --- |
+| necessário para interpretar | preservar junto ao elemento correspondente | unidade de eixo, cardinalidade, condição de um ramo, abreviação de glosa, direção dos endereços |
+| contexto ou orientação opcional | incluir quando acrescentar informação à tarefa | recorte de uma tabela, pressuposto da medição, orientação para comparar dois casos |
+| repetição sem função adicional | retirar a cópia e conservar a ocorrência que ancora o significado | repetir abaixo da reação a mesma condição já apresentada sobre a seta |
+| informação de implementação | manter fora do material de estudo | identidade interna do pacote, nome de um campo de JSON ou estado do motor de desenho |
+
+Essa decisão não é uma lista de palavras proibidas. `stdout`, `stderr` e código
+de saída, por exemplo, são objetos pertinentes de uma sessão de terminal.
+Rótulos acessíveis também podem repetir uma informação visual para oferecer
+outra forma de acesso; essa repetição não cria um segundo alvo interativo.
+A [matriz de legendas](auditoria-academica-dos-resources.md#legendas-instruções-e-prova-por-pacote)
+registra as escolhas por pacote, sem retirar eixos, unidades ou relações para
+reduzir o tamanho do cartão.
+
 Teoria e prática admitem densidades diferentes. Uma Unidade de teoria apresenta
 uma transformação conceitual delimitada, sem condensar vários pressupostos. Uma
 Unidade de prática pode conter um contexto mais rico porque o estudante precisa
@@ -319,7 +341,8 @@ operar sobre ela; ainda assim, rótulos e relações devem permanecer legíveis.
 
 ## 11. Telas móveis, orientação e ampliação
 
-Os dez pacotes que usam a camada compartilhada `system-diagrams` apresentam um
+Os dez pacotes que usam a camada compartilhada `system-diagrams` e o pacote
+`flow` compartilham o mecanismo de navegação `diagramViewport`. Apresentam um
 único diagrama dentro de um quadro estável. A orientação continua favorecendo a
 leitura vertical, mas o estudante pode ampliar e mover o próprio desenho no
 corpo da Unidade. Em telas táteis, uma pinça com dois dedos altera a escala em
@@ -351,7 +374,9 @@ uma única coluna.
 A camada compartilhada abrange `bpmn_process`, `database_schema`,
 `entity_relationship`, `network_topology`, `relation_map`, `software_container`,
 `software_system_context`, `state_machine`, `system_internal_block` e `tree`.
-`flow` e `graph` usam mecanismos próprios de navegação. A validação visual
+`flow` abre na escala natural, com rolagem local para conservar a leitura dos
+rótulos; oferece o mesmo mecanismo de ampliação e expansão. `graph` mantém seu
+mecanismo próprio de navegação. A validação visual
 inclui larguras móveis, temas e exemplos capazes de expor cruzamentos,
 transbordamento, legendas, múltiplas lacunas e textos extensos.
 
@@ -365,6 +390,13 @@ sistema visual.
 Um equivalente textual oferece acesso ao conteúdo e base para tecnologia
 assistiva, mas ainda precisa de ordem de leitura e nomes de relações adequados.
 Pacotes complexos também devem apresentar retorno contextualizado.
+
+A interação específica permanece no próprio pacote. Em `annotated_text`,
+selecionar um trecho destaca as notas associadas e traz a primeira nota para
+a área visível; selecionar uma nota destaca os trechos correspondentes. Os
+botões funcionam por toque e teclado e expõem seu estado pressionado. A
+hidratação pode ser chamada novamente sem duplicar listeners nem alterar
+outra instância da unidade.
 
 ## 13. Validação e escolha
 
@@ -394,12 +426,77 @@ efeito pedagógico com estudantes exigem avaliação acadêmica e empírica.
 5. declare edição e alvos de prática sem expor estrutura;
 6. teste exposição, lacunas independentes, digitação e respostas compatíveis;
 7. teste claro/escuro, 360/390/430 px e computador, textos extensos e dados complexos;
-8. regenere o catálogo e os dados de Autoria;
+8. regenere o índice, o espelho da Edge, a projeção SQL e os dados de Autoria;
 9. verifique a coerência de nomes, contratos e comportamentos com o modelo corrente;
 10. atualize documentação e evidência de conformidade.
 
 Adicionar um pacote preserva o núcleo. Alterar a estrutura externa, as posições ou a
 semântica comum modifica o núcleo e exige revisão mais ampla.
+
+Uma pasta em `src/resources/packages` exporta uma definição com manifesto,
+esquema, contrato de autoria, exemplo, normalização, validação, apresentação,
+texto acessível e alvos textuais pertinentes. `generateResourcePackageIndex.mjs`
+descobre a pasta; a sequência anterior permanece estável porque dela derivaram
+identificadores de exemplos publicados. O catálogo, a consulta de contratos e
+os canais de Autoria usam esse registro. O envelope conserva `package`,
+`version` e `data`, sem acrescentar uma lista de tipos em cada canal.
+
+Respostas declaram `responseInteraction` com `createState`, `submit` e `bind`,
+além de `evaluate`. O pacote controla seus campos, validação de preenchimento e
+interação; o aplicativo fornece acesso ao estado da instância, foco, apresentação
+e submissão. A ligação de eventos suporta nova hidratação sem duplicar listeners.
+Quando uma resposta depende de um trecho do conteúdo, o próprio pacote declara
+`prepareContentInstance`, a validação da relação e, quando necessário,
+`reconcileContentEdit`. Uma ambiguidade na edição textual impede a gravação.
+Assim, acrescentar uma resposta compatível não exige um desvio por identidade
+no controlador de Estudo.
+
+`version` identifica a compatibilidade do formato e do significado dos dados.
+Uma ampliação explícita que conserva as entradas anteriores e sua normalização
+pode manter a versão: `paragraph@1.0.0` admite texto simples e o formato rico
+distinto, e `flow@1.0.0` mantém os dados ao corrigir sua apresentação. Uma mudança
+que invalida ou reinterpreta dados exige nova versão e conversão única dos dados
+úteis. Não se mantêm parsers antigos ou aliases para ocultar a mudança.
+
+O fingerprint SHA-256 do catálogo identifica exatamente manifestos, esquemas e
+contratos de autoria instalados. A revisão de descoberta e esse fingerprint
+acompanham a projeção SQL; o cliente e a Edge recusam divergência ou omissão. O
+SHA do código publicado identifica a implementação completa, incluindo os
+renderizadores. Para preparar uma atualização, execute o gerador do índice,
+`syncEdgeResourceRuntime.mjs` e `syncResourcePackageCatalog.mjs --print`; inclua
+o bloco resultante em uma **nova migration**, com as verificações de transição
+necessárias. O modo padrão do último script apenas confere a migration corrente
+e integra a validação do runtime. Uma migration aplicada não é regravada.
+
+A atualização compatível conserva literalmente os snapshots de configuração
+já aplicada. Preferências atuais podem receber a revisão corrente quando o
+conjunto de referências permanece igual. A materialização seguinte registra a
+configuração corrente. A edição conserva o snapshot histórico literalmente.
+Somente uma mudança de título, com conteúdo e hierarquia idênticos, conserva
+também a aplicação semântica atual. Alterar prosa, resposta ou estrutura
+invalida essa aplicação: referências de componentes iguais não demonstram que
+o conteúdo continua realizando a mesma análise instrucional.
+
+A prova de extensão em `tests/kernel/resource-package-extension.test.js`
+acrescenta um pacote apenas a uma cópia temporária: verifica descoberta,
+contrato, normalização, ida e volta relacional, apresentação e interação, além
+de conferir que o núcleo não mudou. Esse pacote de teste não integra o produto.
+Áudio, calculadora, gramática, dicionário e leitura são pacotes de conteúdo do
+mesmo registro, com identidade `aralearn.resource.*`. Uma ferramenta declara
+`manifest.tool` com rótulo e ícone e implementa
+`toolInteraction.bind(root, data, host)`, que devolve sua função de limpeza.
+Essas instâncias continuam em `content[]`; Estudo as apresenta na barra da
+Unidade, com dois atalhos e um menu para as demais. O aplicativo conserva a
+Unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
+sua interação. Nenhum enum adicional por canal determina as ferramentas.
+
+Os textos instrucionais usam os mesmos contratos de edição e acessibilidade.
+Esses cinco pacotes não oferecem campos de prática. Gramática, dicionário e
+leitura comportam várias consultas, com URL validada ou referência lógica a um
+PDF de fonte. O papel de consulta não cria atribuição bibliográfica. Áudio
+comporta várias faixas nativas ou arquivos incorporados ao curso e alternativas
+textuais com momento de exibição explícito. Consulte [Áudio](audio.md) e
+[Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
 
 <!-- referências locais: início -->
 

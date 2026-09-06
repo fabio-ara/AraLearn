@@ -13,13 +13,28 @@ const edgeRuntimeRoot = path.join(
 );
 
 const fixedFiles = [
+  ["public/vendor/bibliography/CPAL-1.0.txt", "bibliography/licenses/CPAL-1.0.txt"],
+  ["public/vendor/bibliography/CC-BY-SA-3.0.txt", "bibliography/licenses/CC-BY-SA-3.0.txt"],
+  ["public/vendor/bibliography/NOTICE.txt", "bibliography/licenses/NOTICE.txt"],
   ["src/core/exerciseOptions.js", "core/exerciseOptions.js"],
   ["src/domain/aralearnProject.js", "domain/aralearnProject.js"],
   ["src/domain/courseAnchoredAnnotations.js", "domain/courseAnchoredAnnotations.js"],
   ["src/domain/courseAuthoringAnalytics.js", "domain/courseAuthoringAnalytics.js"],
+  ["src/domain/courseAuthoringBasis.js", "domain/courseAuthoringBasis.js"],
+  ["src/domain/courseAuthoringComparison.js", "domain/courseAuthoringComparison.js"],
+  ["src/domain/courseAuthoringParts.js", "domain/courseAuthoringParts.js"],
   ["src/domain/courseDesignParameters.js", "domain/courseDesignParameters.js"],
+  ["src/domain/authoringProfiles.js", "domain/authoringProfiles.js"],
+  ["src/domain/courseDesignContext.js", "domain/courseDesignContext.js"],
+  ["src/domain/coursePracticeDistribution.js", "domain/coursePracticeDistribution.js"],
   ["src/domain/courseEntities.js", "domain/courseEntities.js"],
+  ["src/domain/courseComposition.js", "domain/courseComposition.js"],
+  ["src/domain/courseCopy.js", "domain/courseCopy.js"],
+  ["src/domain/identifiers.js", "domain/identifiers.js"],
   ["src/domain/courseSources.js", "domain/courseSources.js"],
+  ["src/domain/courseSourceReference.js", "domain/courseSourceReference.js"],
+  ["src/domain/courseSourceOccurrences.js", "domain/courseSourceOccurrences.js"],
+  ["src/domain/courseMedia.js", "domain/courseMedia.js"],
   ["src/domain/formulaExpression.js", "domain/formulaExpression.js"],
   ["src/flowchart/flowchartStructure.js", "flowchart/flowchartStructure.js"],
   ["src/persistence/contractToRelationalRows.js", "persistence/contractToRelationalRows.js"],
@@ -43,6 +58,7 @@ async function listJavaScriptFiles(relativeRoot) {
 
 const files = [
   ...fixedFiles,
+  ...(await listJavaScriptFiles("src/bibliography")),
   ...(await listJavaScriptFiles("src/resources/catalog")),
   ...(await listJavaScriptFiles("src/resources/kernel")),
   ...(await listJavaScriptFiles("src/resources/sdk")),
@@ -68,7 +84,7 @@ for (const [sourceRelativePath, targetRelativePath] of files) {
   }
 }
 
-for (const managedDirectory of ["resources"]) {
+for (const managedDirectory of ["resources", "bibliography"]) {
   const managedRoot = path.resolve(edgeRuntimeRoot, managedDirectory);
   const mirroredEntries = await readdir(managedRoot, {
     recursive: true,

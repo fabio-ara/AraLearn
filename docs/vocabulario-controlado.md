@@ -585,19 +585,29 @@ Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhame
 
 Índice de cursos tornados públicos por decisão explícita; organização de catálogo não concede nem substitui acesso privado direto. O Catálogo público de cursos lista somente cursos disponibilizados explicitamente ao público, sem controlar propriedade ou acesso privado.
 
-**Domínio e implementação.** Catálogo público de cursos; equivalente internacional: public course catalog; símbolo: `public_course_catalog`.
+**Domínio e implementação.** Catálogo público de cursos; equivalente internacional: public course catalog; símbolo: `list_courses_v1`.
 
-**Uso.** `retirado`; formas técnicas ou históricas: `Coleção`, `Coleções`. Distinguir de `biblioteca pessoal`, `permissão`, `propriedade`.
+**Uso.** `substituído`; formas técnicas ou históricas: `Coleção`, `Coleções`. Distinguir de `biblioteca pessoal`, `permissão`, `propriedade`.
 
 **Base.** [decisão de produto](estado-atual-e-roadmap.md).
 
 #### Disponibilização pública
 
-Capacidade retirada que tornaria uma versão do curso acessível sem concessão privada direta. Salvar, compartilhar com uma pessoa e estudar uma cópia pessoal não realizam essa operação. O AraLearn corrente não oferece disponibilização pública; o acesso depende de propriedade ou compartilhamento direto com uma pessoa autenticada.
+Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. A política de arquivos é confirmada separadamente; tornar o curso público não concede edição nem cria uma versão imutável. O proprietário confirma o acesso público e a política de arquivos; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.
 
-**Domínio e implementação.** Disponibilização pública; equivalente internacional: public course availability; símbolo: `public_course_release`.
+**Domínio e implementação.** Disponibilização pública; equivalente internacional: public course availability; símbolo: `courses.visibility`.
 
-**Uso.** `retirado`; formas técnicas ou históricas: `publicação`. Distinguir de `materialização`, `salvamento`, `curso pronto`.
+**Uso.** `restringir`; formas técnicas ou históricas: `publicação`. Distinguir de `materialização`, `salvamento`, `curso pronto`.
+
+**Base.** [decisão de produto](estado-atual-e-roadmap.md).
+
+#### Registro de versão publicada retirado
+
+Registro separado de uma versão publicada de curso, retirado do runtime. O acesso público corrente é uma política do próprio curso mutável e não depende desse registro. Tornar um curso público altera sua política de acesso sem criar public_course_release ou congelar uma versão.
+
+**Domínio e implementação.** Registro de versão publicada retirado; equivalente internacional: retired course release record; símbolo: `public_course_release`.
+
+**Uso.** `retirado`; formas técnicas ou históricas: `registro de versão publicada`. Distinguir de `disponibilização pública`, `cópia independente`, `revisão para concorrência`.
 
 **Base.** [decisão de produto](estado-atual-e-roadmap.md).
 

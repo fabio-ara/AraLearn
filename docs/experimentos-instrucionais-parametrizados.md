@@ -8,12 +8,13 @@ educacional.
 
 ## O que pode ser comparado
 
-Quatro parâmetros pedagógicos permitem produzir diferenças concretas em:
+O catálogo permite produzir diferenças concretas em:
 
 - distribuição de novas unidades de análise;
 - formas de explicação;
 - quantidade de prática por requisito de evidência;
-- dimensões de variação da prática.
+- dimensões de variação da prática;
+- distribuição e posição das práticas em relação às explicações.
 
 Dois alvos editoriais quantitativos flexíveis permitem comparar:
 
@@ -33,6 +34,12 @@ microssequência ou unidade, conforme conteúdo, função e público. Esse estad
 é uma condição fixa. Para tornar uma comparação auditável, o pesquisador define
 explicitamente os valores que devem prevalecer e registra o que permanecerá
 constante.
+
+Granularidade de partes e lotes, frequência de pausa e preferência da conversa
+são configurações independentes do trabalho de autoria. Perfis podem copiar
+preferências entre cursos, mas não ativam condições de pesquisa. Uma fixação
+experimental exige escolha explícita de origem e justificativa; conflitos em
+escopos descendentes devem ser resolvidos antes de aplicar ou produzir.
 
 ## Procedimento mínimo
 

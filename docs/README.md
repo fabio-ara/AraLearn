@@ -29,12 +29,20 @@ científica nem representa endosso institucional.
 A página [Capacidades e limites atuais](estado-atual-e-roadmap.md) reúne as
 funções disponíveis e os limites que afetam seu uso.
 
+[Áudio](audio.md) distingue vozes do navegador, arquivos e geração por serviço.
+[Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md) apresenta
+a calculadora, dicionários, gramática e leituras escolhidas para a unidade.
+
+[Fontes, citações e referências](fontes-e-citacoes.md) explica os dados
+bibliográficos, os estilos e os vínculos entre obras e conteúdo didático.
+
 ## Estudar o modelo pedagógico
 
 1. [Modelo didático](modelo-didatico.md): Microssequência didática,
    microteoria, prática e progressão;
 2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
-   propriedades pedagógicas, escopo e limites;
+   propriedades pedagógicas, escopo e limites, com
+   [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md);
 3. [Revisão de literatura](revisao-de-literatura.md): bases, controvérsias e
    lacunas;
 4. [Quadro teórico](quadro-teorico.md): construtos e relações propostas;
@@ -169,6 +177,7 @@ Para examinar uma adoção concreta, continue por:
 | --- | --- |
 | ambientes, configuração e publicação | [Implantação](implantacao.md) |
 | banco, Storage, autenticação e funções | [Supabase](supabase.md) |
+| mudanças de schema, preflight e recuperação | [Alterações do schema](schema-change-log.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 
 Para contribuir com código ou documentação, consulte também o

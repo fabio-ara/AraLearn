@@ -1,9 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { normalizeCourseSourcesRead, normalizeCourseStudyCitationsRead } from "../src/domain/courseSources.js";
+import { normalizeCourseDesignRead, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from "../src/domain/courseDesignParameters.js";
+import { compareRuntimeManifest } from "./verifyHostedBackend.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const migrationDirectory = path.join(repositoryRoot, "supabase", "migrations");
@@ -25,6 +28,25 @@ const defaultFixture = path.join(
 );
 const DEFAULT_SOURCE_CONTAINER = "supabase_db_aralearn";
 const COURSE_ID = "74000000-0000-4000-8000-000000000002";
+const ACTOR_ID = "74000000-0000-4000-8000-000000000001";
+
+// The fixed checkpoint proves the historical cut. The tail is always derived
+// from the repository and must reach the exact current manifest, without gaps.
+export function pendingUpgradeMigrations(names, boundary, expectedRevision, applied = []) {
+  if (!Array.isArray(names) || names.some((name) => !migrationFilePattern.test(name)) ||
+      new Set(names.map((name) => name.split("_", 1)[0])).size !== names.length || !names.includes(boundary) ||
+      !/^\d{14}$/u.test(expectedRevision) || !Array.isArray(applied) ||
+      applied.some((revision) => !/^(?:001|\d{14})$/u.test(revision))) {
+    throw new TypeError("A cadeia de migrations ou sua história é inválida.");
+  }
+  const ordered = [...names].sort();
+  if (ordered.at(-1).slice(0, 14) !== expectedRevision ||
+      boundary.slice(0, 14) > expectedRevision || applied.some((revision) => revision > expectedRevision)) {
+    throw new TypeError("A última migration e o manifesto corrente precisam coincidir.");
+  }
+  const revisions = new Set(applied);
+  return ordered.filter((name) => name > boundary && !revisions.has(name.slice(0, 14)));
+}
 
 function command(command, args, { allowFailure = false, timeout = 120_000 } = {}) {
   const result = spawnSync(command, args, {
@@ -118,7 +140,7 @@ async function waitForPostgres(container) {
 
 async function startDisposableContainer(container, image) {
   command("docker", [
-    "run", "--detach", "--name", container, "--entrypoint", "sh", image,
+    "run", "--detach", "--network", "none", "--name", container, "--entrypoint", "sh", image,
     "-c", "docker-entrypoint.sh postgres -D /etc/postgresql"
   ]);
   await waitForPostgres(container);
@@ -209,7 +231,10 @@ async function cloneDatabase(source, target) {
   await resetPostgresDatabase(target);
   await pipeProcesses(
     "docker",
-    ["exec", source, "pg_dump", "-U", "postgres", "-d", "postgres", "-Fc", "--no-owner"],
+    // This clone prepares a historical synthetic fixture, not a disaster backup
+    // of the source. Current buckets/objects must not contaminate that epoch.
+    ["exec", source, "pg_dump", "-U", "postgres", "-d", "postgres", "-Fc", "--no-owner",
+      "--exclude-table-data=storage.*"],
     "docker",
     ["exec", "-i", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
       "--no-owner", "--exit-on-error"]
@@ -687,6 +712,74 @@ function assertAfterState(state, expectedManifestRevision) {
   assert.equal(state.storageObjects, 0);
 }
 
+// These are the useful fields shared by the historical checkpoint and today's
+// model. Generated catalogs and newly explicit metadata have separate checks.
+const preservedStateSql = `select jsonb_build_object(
+  'course',(select to_jsonb(v) from (select id,owner_id,title,goal,revision
+    from public.courses where id='${COURSE_ID}') v),
+  'entities',(select jsonb_agg(to_jsonb(v) order by entity_type,entity_id) from (
+    select entity_type,entity_id,parent_type,parent_id,position,content,version,
+      created_origin,last_revision_origin from private.course_entities where course_id='${COURSE_ID}') v),
+  'plan',(select to_jsonb(v) from (select id,audience,instructional_scope,
+    preferred_authoring_part_min,preferred_authoring_part_max,part_count_origin,version
+    from private.course_instructional_plans where course_id='${COURSE_ID}') v),
+  'planItems',(select jsonb_agg(to_jsonb(v) order by id) from (select id,instructional_plan_id,
+    item_kind,position,statement,version from private.course_instructional_plan_items
+    where course_id='${COURSE_ID}') v),
+  'parameters',(select jsonb_agg(to_jsonb(v) order by scope_kind,scope_ref,parameter_id) from (
+    select scope_kind,scope_ref,parameter_id,value,origin,reason
+    from private.course_design_parameter_assignments where course_id='${COURSE_ID}') v),
+  'guidance',(select jsonb_agg(to_jsonb(v) order by scope_kind,scope_ref) from (
+    select scope_kind,scope_ref,guidance,origin,reason
+    from private.course_authoring_guidance_assignments where course_id='${COURSE_ID}') v),
+  'parts',(select jsonb_agg(to_jsonb(v) order by id) from (select id,instructional_plan_id,
+    position,title,intent,version from private.course_authoring_parts where course_id='${COURSE_ID}') v),
+  'memberships',(select jsonb_agg(to_jsonb(v) order by authoring_part_id,didactic_microsequence_id)
+    from private.course_authoring_part_didactic_microsequences v where course_id='${COURSE_ID}'),
+  'sources',(select jsonb_agg(to_jsonb(v) order by source_id) from (select source_id,revision,status,
+    kind,title,publication_date,identifier,language,citation_text,url,edition_or_version,
+    origin,availability,verification_status,study_visibility from private.course_sources
+    where course_id='${COURSE_ID}') v),
+  'anchors',(select jsonb_agg(to_jsonb(v) order by anchor_id) from (select anchor_id,revision,
+    source_id,source_revision,status,selector,verification_excerpt,human_locator
+    from private.course_source_anchors where course_id='${COURSE_ID}') v),
+  'attachments',(select jsonb_agg(to_jsonb(v) order by source_id,content_hash) from (select source_id,
+    source_revision,content_hash,byte_size,media_type,storage_path,status,version
+    from private.course_source_attachments where course_id='${COURSE_ID}') v),
+  'observations',(select jsonb_agg(to_jsonb(v) order by id) from (select id,actor_id,target_kind,
+    target_id,raw_text,state,owner_response,version from private.course_anchored_annotations
+    where course_id='${COURSE_ID}') v),
+  'appliedDecisions',(select jsonb_agg(jsonb_build_object('id',entity_id,
+    'appliedAt',design_snapshot->'appliedAt','parameters',(
+      select jsonb_agg(value-'reason' order by value->>'parameterId')
+      from jsonb_array_elements(design_snapshot->'parameters')))
+    order by entity_id) from private.course_entities
+    where course_id='${COURSE_ID}' and design_snapshot is not null)
+)`;
+
+function assertCurrentState(historical, current, expectedRevision) {
+  assert.equal(current.manifestRevision, expectedRevision);
+  assert.equal(current.migrationRevision, expectedRevision);
+  for (const key of ["course", "structure", "planItems", "parts", "partMicrosequences",
+    "configuration", "source", "importedLegacySource", "importedLegacyLink", "legacySourceEnums",
+    "anchor", "attribution", "attachments", "uploadIntents", "deleteIntents", "observations",
+    "receipts", "legacy", "storageObjects"]) {
+    assert.deepEqual(current[key], historical[key], `O upgrade alterou ${key}.`);
+  }
+  assert.equal(current.studyUnitDesign.snapshotContract, "aralearn.study-unit-design-snapshot.v2");
+  for (const key of ["ceiling", "createdOrigin", "lastRevisionOrigin"]) {
+    assert.deepEqual(current.studyUnitDesign[key], historical.studyUnitDesign[key], key);
+  }
+  const links = current.resolvedObservationSourceLinks.map(({ sourceId, relation, anchors }) =>
+    ({ sourceId, relation, anchors }));
+  assert.deepEqual(links, historical.resolvedObservationSourceLinks);
+}
+
+function readAppliedRevisions(container) {
+  return queryJson(container, "select coalesce(jsonb_agg(version order by version),'[]'::jsonb) " +
+    "from supabase_migrations.schema_migrations");
+}
+
 export async function verifyBackupRestoreUpgrade({
   migrations = defaultMigrations,
   fixture = defaultFixture,
@@ -697,6 +790,12 @@ export async function verifyBackupRestoreUpgrade({
     "--fixture", fixture,
     "--source-container", sourceContainer
   ]);
+  const expectedManifest = JSON.parse(readFileSync(path.join(
+    repositoryRoot, "supabase", "runtime-manifest.json"
+  ), "utf8"));
+  const availableMigrations = readdirSync(migrationDirectory).filter((name) => migrationFilePattern.test(name));
+  const historicalBoundary = path.basename(resolved.migrations.at(-1));
+  pendingUpgradeMigrations(availableMigrations, historicalBoundary, expectedManifest.schemaRevision);
   if (!containerRunning(resolved.sourceContainer)) {
     throw new Error("A stack Supabase local de origem não está em execução.");
   }
@@ -749,11 +848,65 @@ export async function verifyBackupRestoreUpgrade({
       "O corte não reduziu as funções técnicas de Fontes."
     );
 
+    const preserved = queryJson(restored, preservedStateSql);
+    const sourceNames = queryJson(restored, `select jsonb_agg(jsonb_build_object(
+      'sourceId',source_id,'authorship',authorship) order by source_id)
+      from private.course_sources where course_id='${COURSE_ID}'`);
+    const tail = pendingUpgradeMigrations(availableMigrations, historicalBoundary,
+      expectedManifest.schemaRevision, readAppliedRevisions(restored));
+    for (const [index, name] of tail.entries()) {
+      const migration = path.join(migrationDirectory, name);
+      copyAndApply(restored, migration, `/tmp/current-${index + 1}-${token}.sql`);
+      recordAppliedMigration(restored, migration);
+    }
+    const currentState = queryJson(restored, afterStateSql);
+    assertCurrentState(after.state, currentState, expectedManifest.schemaRevision);
+    assert.deepEqual(queryJson(restored, preservedStateSql), preserved,
+      "O upgrade corrente alterou conteúdo, identidade ou decisão aplicada da fixture.");
+    const currentRead = queryJson(restored, `with claims as materialized (
+      select set_config('request.jwt.claim.role','service_role',true),
+        set_config('request.jwt.claims','{"role":"service_role","sub":"${ACTOR_ID}"}',true)
+    ) select jsonb_build_object('manifest',public.get_aralearn_runtime_manifest(),
+      'sources',public.get_owned_course_sources_for_actor_v1('${ACTOR_ID}','${COURSE_ID}',4,'catalog'),
+      'design',public.get_owned_course_design_for_actor_v3('${ACTOR_ID}','${COURSE_ID}',
+        'didactic_microsequence','micro-restore',24,null),
+      'citations',private.course_study_citations_payload_v1('${COURSE_ID}','unit-restore',4)) from claims`);
+    compareRuntimeManifest(expectedManifest, currentRead.manifest);
+    const sources = normalizeCourseSourcesRead(currentRead.sources);
+    const citations = normalizeCourseStudyCitationsRead(currentRead.citations);
+    const design = normalizeCourseDesignRead(currentRead.design);
+    assert.equal(design.parameterCatalogVersion, COURSE_DESIGN_PARAMETER_CATALOG_VERSION);
+    assert.equal(sources.items.length, sourceNames.length);
+    for (const old of sourceNames) {
+      const source = sources.items.find((item) => item.sourceId === old.sourceId);
+      assert.ok(source, "Fonte histórica ausente do leitor corrente.");
+      assert.equal(source.citationMode, "manual");
+      assert.deepEqual(source.authors, old.authorship === null ? [] : [{ literal: old.authorship }]);
+      // The historical checkpoint predates source_role; its subsequent nullable
+      // column must become an empty suggestion, never an invented attribution.
+      assert.deepEqual(source.defaultRoles, []);
+    }
+    assert.equal(citations.citations.length, after.state.studyCitations.length);
+    const repeated = pendingUpgradeMigrations(availableMigrations, historicalBoundary,
+      expectedManifest.schemaRevision, readAppliedRevisions(restored));
+    assert.deepEqual(repeated, [], "Repetir a seleção reaplicaria uma migration já registrada.");
+
     return Object.freeze({
-      contract: "aralearn.backup-restore-upgrade-proof.v2",
+      contract: "aralearn.backup-restore-upgrade-proof.v3",
       migrations: Object.freeze(migrationNames),
       before,
       after,
+      current: Object.freeze({
+        schemaRevision: expectedManifest.schemaRevision,
+        migrations: tail,
+        preservedGroups: Object.keys(preserved),
+        preservedSha256: createHash("sha256").update(JSON.stringify(preserved)).digest("hex"),
+        sourceContract: sources.contract,
+        citationContract: citations.contract,
+        designContract: design.contract,
+        parameterCatalogVersion: design.parameterCatalogVersion,
+        repeatPendingMigrations: repeated.length
+      }),
       storage: Object.freeze({
         databaseBackupContainsMetadataOnly: before.state.storageObjects === 0,
         objectRecoveryRequiresStorageBackup: true

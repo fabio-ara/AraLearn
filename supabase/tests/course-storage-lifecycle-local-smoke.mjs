@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { createEmptyCourseSourceBibliographicMetadata, normalizeCourseSourceDocument } from "../../src/domain/courseSources.js";
+import { CourseSupabaseAdapter } from "../functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 import {
   localSupabaseConfiguration,
@@ -79,22 +81,24 @@ async function deleteStorageObjects(config, paths) {
 }
 
 function sourceDocument() {
-  return {
+  return normalizeCourseSourceDocument({
     kind: "document",
-    sourceRole: "technical_conceptual",
+    defaultRoles: ["technical_conceptual"],
     title: "PDF descartável da prova de armazenamento",
-    authorship: "AraLearn",
+    authors: [{ literal: "AraLearn" }],
     publicationDate: "2026-09-02",
     identifier: null,
     language: "pt-BR",
+    citationMode: "manual",
     citationText: "AraLearn. PDF descartável da prova de armazenamento, 2026.",
+    bibliographic: createEmptyCourseSourceBibliographicMetadata(),
     url: null,
     editionOrVersion: null,
     origin: "author_provided",
     availability: "private",
     verificationStatus: "author_verified",
     studyVisibility: "hidden"
-  };
+  });
 }
 
 async function createAdministrator(config, marker) {
@@ -321,6 +325,7 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
       p_cursor: null,
       p_limit: 24
     });
+    assert.equal(sourcesAfterReplay.contract, "aralearn.course-sources.v3");
     assert.equal(sourcesAfterReplay.items.filter((item) => item.sourceId === sourceId).length, 1);
     const activeDownload = await downloadPdf(config, {
       actorId: userId,
@@ -420,20 +425,19 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
         sourceId,
         sourceRevision,
         contentHash: attachment.contentHash
-      }).catch(() => null);
+      });
       if (removal) revision = removal.courseRevision;
     }
     if (userId && courseId) {
-      await rpc(config, "maintain_course_for_actor_v1", {
-        p_actor_id: userId,
-        p_course_id: courseId,
-        p_operation: "delete_owned_course",
-        p_confirmed: true,
-        p_request_id: randomUUID()
-      }).catch(() => undefined);
+      const adapter = new CourseSupabaseAdapter({ supabaseUrl: config.projectUrl,
+        serverApiKey: config.adminKey, publishableKey: config.publishableKey,
+        publicAppUrl: "http://127.0.0.1:4182" });
+      const completion = await adapter.maintainCourse({ principal: { actorId: userId },
+        courseId, operation: "delete_owned_course", confirmed: true, requestId: randomUUID() });
+      assert.equal(completion.fileCleanupPending, false, "Preserve a conta enquanto há arquivos pendentes.");
     }
-    await deleteStorageObjects(config, [...cleanupPaths]).catch(() => undefined);
-    await removeLocalUser(config, userId).catch(() => undefined);
+    await deleteStorageObjects(config, [...cleanupPaths]);
+    if (userId) await removeLocalUser(config, userId);
   }
 }
 

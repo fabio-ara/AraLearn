@@ -4,8 +4,11 @@ import {
   normalizeCourseSourceLinks,
   normalizeCourseSourcesRead
 } from "../domain/courseSources.js";
-import { COURSE_COMPONENT_CATALOG_VERSION } from
-  "../domain/courseDesignParameters.js";
+import {
+  CourseDesignParametersError,
+  normalizeCourseDesignRead as normalizeCourseDesignReadDomain,
+  normalizeCourseDesignChange as normalizeCourseDesignChangeDomain
+} from "../domain/courseDesignParameters.js";
 
 const OWNERSHIP_VALUES = new Set(["owned"]);
 const AUTHORING_PLAN_ORIGINS = new Set(["automatic", "author", "research_condition"]);
@@ -15,36 +18,6 @@ const PART_PROGRESS_STATES = new Set([
 const CURRICULUM_MAP_STATES = new Set(["absent", "draft", "approved"]);
 const CURRICULUM_SCOPE_STATES = new Set(["planned", "developed"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
-const COURSE_DESIGN_SCOPE_KINDS = Object.freeze([
-  "course", "module", "lesson", "didactic_microsequence", "study_unit"
-]);
-const COURSE_DESIGN_PARAMETER_IDS = Object.freeze([
-  "new_analysis_unit_ceiling_per_expository_study_unit",
-  "required_explanation_forms",
-  "minimum_distinct_practice_opportunities_per_evidence_requirement",
-  "required_practice_variation_dimensions",
-  "authoring_chat_response_word_target",
-  "study_unit_content_word_target"
-]);
-const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.1.0";
-const COURSE_DESIGN_CHANGE_TYPES = new Set([
-  "set_parameter", "clear_parameter", "set_guidance", "clear_guidance",
-  "set_component_policy", "clear_component_policy"
-]);
-const COURSE_DESIGN_WRITABLE_ORIGINS = new Set([
-  "automatic", "author", "research_condition"
-]);
-const COURSE_DESIGN_ASSIGNMENT_ORIGINS = new Set([
-  "migration", ...COURSE_DESIGN_WRITABLE_ORIGINS
-]);
-const COURSE_DESIGN_EFFECTIVE_ORIGINS = new Set([
-  "system_default", ...COURSE_DESIGN_ASSIGNMENT_ORIGINS
-]);
-const COURSE_GUIDANCE_ORIGINS = new Set([
-  "migration", ...COURSE_DESIGN_WRITABLE_ORIGINS
-]);
-const COMPONENT_REF_PATTERN = /^aralearn\.(?:resource|response)\.[a-z0-9_]+@(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
-const COURSE_DESIGN_REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 export class CourseAuthoringProjectionError extends Error {
   constructor(code, message) {
     super(message);
@@ -110,7 +83,7 @@ function pageState(value) {
 function ownership(value) {
   const normalized = text(value);
   if (!normalized) return null;
-  if (normalized === "shared") {
+  if (normalized === "shared" || normalized === "public") {
     fail("course_not_owned", "Somente cursos próprios pertencem à autoria.");
   }
   if (!OWNERSHIP_VALUES.has(normalized)) {
@@ -126,6 +99,16 @@ function editCapability(value, normalizedOwnership) {
     fail("invalid_course_projection", "A propriedade e a edição do curso são inconsistentes.");
   }
   return expected;
+}
+
+function courseAccessPolicy(value) {
+  const visibility = value.visibility ?? null;
+  const publicFileAccess = value.publicFileAccess ?? null;
+  if ((visibility !== null && !["private", "public"].includes(visibility)) ||
+      (publicFileAccess !== null && !["restricted", "available"].includes(publicFileAccess))) {
+    fail("invalid_course_projection", "A política de acesso do curso é inválida.");
+  }
+  return { visibility, publicFileAccess };
 }
 
 function courseCounts(value) {
@@ -163,6 +146,8 @@ function normalizeListItem(value) {
     revision: itemRevision,
     ownership: normalizedOwnership,
     canEdit: editCapability(value.canEdit, normalizedOwnership),
+    canCopy: value.canCopy === true,
+    ...courseAccessPolicy(value),
     counts: courseCounts(isPlainObject(value.counts) ? value.counts : value),
     updatedAt: text(value.updatedAt) || null,
     offlineKnown: value.offlineKnown === true || value.offline === true || value.stale === true
@@ -232,6 +217,8 @@ export function normalizeCourseDetail(value, { expectedCourseId = "" } = {}) {
     revision: revision(value.revision),
     ownership: normalizedOwnership,
     canEdit: editCapability(value.canEdit, normalizedOwnership),
+    canCopy: value.canCopy === true,
+    ...courseAccessPolicy(value),
     counts: courseCounts(value.counts),
     updatedAt: text(value.updatedAt) || null,
     offline: value.offline === true,
@@ -851,502 +838,17 @@ function designFail(message) {
   fail("invalid_course_design", message);
 }
 
-function designRecord(value, fields, label) {
-  if (!isPlainObject(value) || Object.keys(value).length !== fields.length ||
-      Object.keys(value).some((field) => !fields.includes(field))) {
-    designFail(`${label} é inválido.`);
-  }
-  return value;
-}
-
-function designText(value, label, { maximum = 16_384 } = {}) {
-  const normalized = text(value);
-  if (!normalized || normalized.length > maximum) designFail(`${label} é inválido.`);
-  return normalized;
-}
-
-function designInteger(value, label, { minimum = 0, maximum = 100_000 } = {}) {
-  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
-    designFail(`${label} é inválido.`);
-  }
-  return value;
-}
-
-function designUuid(value, label) {
-  const normalized = text(value);
-  if (!isCanonicalCourseId(normalized)) designFail(`${label} é inválido.`);
-  return normalized;
-}
-
-function designRequestId(value, label) {
-  if (typeof value !== "string" || value !== value.trim() ||
-      !COURSE_DESIGN_REQUEST_ID_PATTERN.test(value)) {
-    designFail(`${label} é inválida.`);
-  }
-  return value;
-}
-
-function designEntityRef(value, label, { maximum = 240 } = {}) {
-  if (typeof value !== "string" || value !== value.trim()) designFail(`${label} é inválido.`);
-  const normalized = designText(value, label, { maximum });
-  if ([...normalized].some((character) => {
-    const code = character.codePointAt(0);
-    return code <= 0x1f || code >= 0x7f && code <= 0x9f;
-  })) designFail(`${label} é inválido.`);
-  return normalized;
-}
-
-function normalizeDesignScope(value, label, { includeLabel = false, parameter = false } = {}) {
-  const fields = includeLabel ? ["kind", "ref", "label"] : ["kind", "ref"];
-  designRecord(value, fields, label);
-  const kind = text(value.kind);
-  if (!COURSE_DESIGN_SCOPE_KINDS.includes(kind) || parameter && kind === "module") {
-    designFail(`${label} é inválido.`);
-  }
-  return Object.freeze({
-    kind,
-    ref: designEntityRef(value.ref, `A referência de ${label.toLowerCase()}`),
-    ...(includeLabel
-      ? { label: designText(value.label, `O rótulo de ${label.toLowerCase()}`, { maximum: 300 }) }
-      : {})
-  });
-}
-
 function scopeIdentity(value) {
   return `${value.kind}:${value.ref}`;
 }
 
-function nextScopeKind(kind) {
-  const index = COURSE_DESIGN_SCOPE_KINDS.indexOf(kind);
-  return index >= 0 ? COURSE_DESIGN_SCOPE_KINDS[index + 1] || null : null;
-}
-
-function normalizeScopeContext(value, { courseId, expectedScope }) {
-  designRecord(value, [
-    "current", "ancestors", "children", "childCount", "hasMoreChildren", "nextChildCursor"
-  ], "O contexto de escopo");
-  if (!Array.isArray(value.ancestors) || value.ancestors.length > 4 ||
-      !Array.isArray(value.children) ||
-      value.children.length > 64) {
-    designFail("O contexto de escopo é inválido.");
+function normalizeDesignDomain(normalizer, value) {
+  try {
+    return normalizer(value);
+  } catch (error) {
+    if (error instanceof CourseDesignParametersError) designFail(error.message);
+    throw error;
   }
-  const current = normalizeDesignScope(value.current, "O escopo atual", { includeLabel: true });
-  const ancestors = value.ancestors.map((scope) =>
-    normalizeDesignScope(scope, "Um escopo ancestral", { includeLabel: true }));
-  const children = value.children.map((scope) => {
-    designRecord(scope, ["kind", "ref", "label", "position"], "Um subescopo");
-    const normalized = normalizeDesignScope({
-      kind: scope.kind,
-      ref: scope.ref,
-      label: scope.label
-    }, "Um subescopo", { includeLabel: true });
-    return Object.freeze({
-      ...normalized,
-      position: designInteger(scope.position, "A posição do subescopo", { maximum: 100_000 })
-    });
-  });
-  const path = [...ancestors, current];
-  if (current.kind === "course" && current.ref !== courseId ||
-      expectedScope && scopeIdentity(current) !== scopeIdentity(expectedScope) ||
-      path[0]?.kind !== "course" || path[0]?.ref !== courseId ||
-      path.some((scope, index) => COURSE_DESIGN_SCOPE_KINDS.indexOf(scope.kind) !== index) ||
-      new Set(path.map(scopeIdentity)).size !== path.length) {
-    designFail("O caminho do escopo é inconsistente.");
-  }
-  const expectedChildKind = nextScopeKind(current.kind);
-  if (children.some((scope) => scope.kind !== expectedChildKind) ||
-      new Set(children.map(scopeIdentity)).size !== children.length ||
-      children.some((scope, index) => index > 0 && (
-        scope.position < children[index - 1].position ||
-        scope.position === children[index - 1].position && scope.ref <= children[index - 1].ref
-      ))) {
-    designFail("Os subescopos são inconsistentes.");
-  }
-  const childCount = designInteger(value.childCount, "A quantidade de subescopos", {
-    maximum: 100_000
-  });
-  if (typeof value.hasMoreChildren !== "boolean") {
-    designFail("A paginação dos subescopos é inconsistente.");
-  }
-  const hasMoreChildren = value.hasMoreChildren;
-  const nextChildCursor = value.nextChildCursor == null
-    ? null
-    : designEntityRef(value.nextChildCursor, "O cursor de subescopos");
-  if (childCount < children.length || hasMoreChildren !== (nextChildCursor !== null) ||
-      hasMoreChildren && (children.length === 0 || nextChildCursor !== children.at(-1).ref) ||
-      expectedChildKind === null && (childCount !== 0 || children.length !== 0 || hasMoreChildren)) {
-    designFail("A paginação dos subescopos é inconsistente.");
-  }
-  return Object.freeze({
-    current,
-    ancestors: Object.freeze(ancestors),
-    children: Object.freeze(children),
-    childCount,
-    hasMoreChildren,
-    nextChildCursor
-  });
-}
-
-function normalizeStringList(value, label, {
-  allowed = null,
-  maximumItems = 64,
-  maximumLength = 500
-} = {}) {
-  if (!Array.isArray(value) || value.length > maximumItems) designFail(`${label} é inválida.`);
-  const normalized = value.map((item) => designText(item, label, { maximum: maximumLength }));
-  if (new Set(normalized).size !== normalized.length ||
-      allowed && normalized.some((item) => !allowed.has(item))) {
-    designFail(`${label} é inconsistente.`);
-  }
-  return Object.freeze(normalized);
-}
-
-function normalizeParameterSchema(value) {
-  if (!isPlainObject(value)) designFail("O domínio de um parâmetro é inválido.");
-  const type = text(value.type);
-  if (type === "integer") {
-    designRecord(value, ["type", "minimum", "maximum"], "O domínio de um parâmetro");
-    const minimum = designInteger(value.minimum, "O mínimo do parâmetro", { maximum: 10_000 });
-    const maximum = designInteger(value.maximum, "O máximo do parâmetro", { maximum: 10_000 });
-    if (minimum > maximum) designFail("O domínio de um parâmetro é inconsistente.");
-    return Object.freeze({ type, minimum, maximum });
-  }
-  if (type === "set") {
-    designRecord(value, [
-      "type", "allowedValues", "minimumItems", "maximumItems"
-    ], "O domínio de um parâmetro");
-    const allowedValues = normalizeStringList(value.allowedValues, "Um valor permitido", {
-      maximumItems: 32,
-      maximumLength: 100
-    });
-    const minimumItems = designInteger(value.minimumItems, "O mínimo de valores", {
-      maximum: allowedValues.length
-    });
-    const maximumItems = designInteger(value.maximumItems, "O máximo de valores", {
-      maximum: allowedValues.length
-    });
-    if (minimumItems > maximumItems || maximumItems > allowedValues.length) {
-      designFail("O domínio de um parâmetro é inconsistente.");
-    }
-    return Object.freeze({ type, allowedValues, minimumItems, maximumItems });
-  }
-  designFail("O domínio de um parâmetro é inválido.");
-}
-
-function normalizeParameterValue(value, schema, label) {
-  if (schema.type === "integer") {
-    return designInteger(value, label, { minimum: schema.minimum, maximum: schema.maximum });
-  }
-  const normalized = normalizeStringList(value, label, {
-    allowed: new Set(schema.allowedValues),
-    maximumItems: schema.maximumItems,
-    maximumLength: 100
-  });
-  if (normalized.length < schema.minimumItems) designFail(`${label} é inválido.`);
-  return normalized;
-}
-
-function normalizeParameterDefinition(value) {
-  designRecord(value, [
-    "id", "label", "construct", "operationalization", "limitations", "defaultStatus",
-    "evidenceRefs", "supportedScopes", "valueSchema", "defaultValue"
-  ], "A definição de um parâmetro");
-  const id = designText(value.id, "A identidade do parâmetro", { maximum: 120 });
-  if (!COURSE_DESIGN_PARAMETER_IDS.includes(id) || value.defaultStatus !== "product_hypothesis") {
-    designFail("A definição de um parâmetro é inconsistente.");
-  }
-  const valueSchema = normalizeParameterSchema(value.valueSchema);
-  const supportedScopes = normalizeStringList(value.supportedScopes, "Um escopo suportado", {
-    allowed: new Set(["course", "lesson", "didactic_microsequence", "study_unit"]),
-    maximumItems: 4,
-    maximumLength: 40
-  });
-  if (supportedScopes.join("|") !== "course|lesson|didactic_microsequence|study_unit") {
-    designFail("Os escopos suportados por um parâmetro são inconsistentes.");
-  }
-  return Object.freeze({
-    id,
-    label: designText(value.label, "O rótulo do parâmetro", { maximum: 300 }),
-    construct: designText(value.construct, "O construto do parâmetro", { maximum: 4_000 }),
-    operationalization: designText(
-      value.operationalization,
-      "A operacionalização do parâmetro",
-      { maximum: 8_000 }
-    ),
-    limitations: designText(value.limitations, "Os limites do parâmetro", { maximum: 8_000 }),
-    defaultStatus: "product_hypothesis",
-    evidenceRefs: normalizeStringList(value.evidenceRefs, "Uma referência de evidência", {
-      maximumItems: 32,
-      maximumLength: 500
-    }),
-    supportedScopes,
-    valueSchema,
-    defaultValue: normalizeParameterValue(value.defaultValue, valueSchema, "O valor inicial")
-  });
-}
-
-function normalizeParameterAssignment(value, definition, {
-  effective = false,
-  currentScope,
-  availableScopes
-} = {}) {
-  if (value == null && !effective) return null;
-  const fields = effective
-    ? ["value", "origin", "reason", "sourceScope", "inherited"]
-    : ["value", "origin", "reason"];
-  designRecord(value, fields, "A atribuição de um parâmetro");
-  const origin = text(value.origin);
-  if (effective ? !COURSE_DESIGN_EFFECTIVE_ORIGINS.has(origin) :
-    !COURSE_DESIGN_ASSIGNMENT_ORIGINS.has(origin)) {
-    designFail("A origem de um parâmetro é inválida.");
-  }
-  const sourceScope = effective && value.sourceScope != null
-    ? normalizeDesignScope(value.sourceScope, "O escopo de origem do parâmetro", { parameter: true })
-    : null;
-  if (effective && (typeof value.inherited !== "boolean" ||
-      origin === "system_default" && (sourceScope !== null || value.inherited) ||
-      origin !== "system_default" && sourceScope === null ||
-      sourceScope && !availableScopes.has(scopeIdentity(sourceScope)) ||
-      sourceScope && value.inherited === (scopeIdentity(sourceScope) === scopeIdentity(currentScope)))) {
-    designFail("A resolução de um parâmetro é inconsistente.");
-  }
-  const normalizedValue = normalizeParameterValue(
-    value.value,
-    definition.valueSchema,
-    "O valor do parâmetro"
-  );
-  if (effective && origin === "system_default" &&
-      JSON.stringify(normalizedValue) !== JSON.stringify(definition.defaultValue)) {
-    designFail("O valor padrão de um parâmetro é inconsistente.");
-  }
-  return Object.freeze({
-    value: normalizedValue,
-    origin,
-    reason: designText(value.reason, "A justificativa do parâmetro", { maximum: 1_000 }),
-    ...(effective ? { sourceScope, inherited: value.inherited } : {})
-  });
-}
-
-function normalizeGuidanceAssignment(value, {
-  effective = false,
-  availableScopes,
-  currentScope
-} = {}) {
-  if (value == null && !effective) return null;
-  const fields = effective
-    ? ["guidance", "origin", "reason", "sourceScope", "inherited"]
-    : ["guidance", "origin", "reason"];
-  designRecord(value, fields, "A direção editorial");
-  const assignmentOrigin = text(value.origin);
-  if (!COURSE_GUIDANCE_ORIGINS.has(assignmentOrigin)) {
-    designFail("A origem da direção editorial é inválida.");
-  }
-  const sourceScope = effective
-    ? normalizeDesignScope(value.sourceScope, "O escopo de origem da direção editorial")
-    : null;
-  if (effective && (typeof value.inherited !== "boolean" ||
-      !availableScopes.has(scopeIdentity(sourceScope)) ||
-      value.inherited === (scopeIdentity(sourceScope) === scopeIdentity(currentScope)))) {
-    designFail("A resolução da direção editorial é inconsistente.");
-  }
-  const maximum = assignmentOrigin === "migration" ? 16_384 : 8_192;
-  const maximumBytes = assignmentOrigin === "migration" ? 65_536 : 8_192;
-  const guidance = designText(value.guidance, "A direção editorial", { maximum });
-  if (new TextEncoder().encode(JSON.stringify(guidance)).byteLength > maximumBytes) {
-    designFail("A direção editorial excede o limite seguro.");
-  }
-  return Object.freeze({
-    guidance,
-    origin: assignmentOrigin,
-    reason: designText(value.reason, "A justificativa da direção editorial", {
-      maximum: 1_000
-    }),
-    ...(effective ? { sourceScope, inherited: value.inherited } : {})
-  });
-}
-
-function normalizeGuidance(value, context) {
-  designRecord(value, [
-    "localAssignment", "effectiveAssignments"
-  ], "A direção editorial");
-  if (!Array.isArray(value.effectiveAssignments) || value.effectiveAssignments.length > 4) {
-    designFail("As direções editoriais efetivas são inválidas.");
-  }
-  const localAssignment = normalizeGuidanceAssignment(value.localAssignment, context);
-  const effectiveAssignments = value.effectiveAssignments.map((assignment) =>
-    normalizeGuidanceAssignment(assignment, { ...context, effective: true }));
-  const expectedOrder = new Map(context.scopePath.map((scope, index) => [
-    scopeIdentity(scope),
-    index
-  ]));
-  if (new Set(effectiveAssignments.map((assignment) =>
-      scopeIdentity(assignment.sourceScope))).size !== effectiveAssignments.length ||
-      effectiveAssignments.some((assignment, index) => index > 0 &&
-        expectedOrder.get(scopeIdentity(effectiveAssignments[index - 1].sourceScope)) >=
-          expectedOrder.get(scopeIdentity(assignment.sourceScope))) ||
-      localAssignment && !effectiveAssignments.some((assignment) =>
-        assignment.guidance === localAssignment.guidance &&
-        assignment.origin === localAssignment.origin &&
-        assignment.reason === localAssignment.reason &&
-        scopeIdentity(assignment.sourceScope) === scopeIdentity(context.currentScope)) ||
-      !localAssignment && effectiveAssignments.some((assignment) =>
-        scopeIdentity(assignment.sourceScope) === scopeIdentity(context.currentScope))) {
-    designFail("As direções editoriais efetivas são inconsistentes.");
-  }
-  return Object.freeze({
-    localAssignment,
-    effectiveAssignments: Object.freeze(effectiveAssignments)
-  });
-}
-
-function normalizeComponentCatalog(value) {
-  designRecord(value, ["version", "options"], "O catálogo de componentes");
-  if (!Array.isArray(value.options) || value.options.length !== 33) {
-    designFail("O catálogo de componentes é inválido.");
-  }
-  const version = designText(value.version, "A versão do catálogo", { maximum: 80 });
-  if (version !== COURSE_COMPONENT_CATALOG_VERSION) {
-    designFail("A lista de componentes está desatualizada.");
-  }
-  const options = value.options.map((option) => {
-    designRecord(option, ["ref", "label", "purpose"], "Um componente didático");
-    const ref = designText(option.ref, "A referência do componente", { maximum: 200 });
-    if (!COMPONENT_REF_PATTERN.test(ref)) designFail("A referência do componente é inválida.");
-    return Object.freeze({
-      ref,
-      label: designText(option.label, "O rótulo do componente", { maximum: 200 }),
-      purpose: designText(option.purpose, "A finalidade do componente", { maximum: 1_000 })
-    });
-  });
-  if (new Set(options.map((option) => option.ref)).size !== options.length) {
-    designFail("O catálogo de componentes repete uma referência.");
-  }
-  return Object.freeze({ version, options: Object.freeze(options) });
-}
-
-function normalizeComponentPolicyValue(value, catalog) {
-  designRecord(value, [
-    "catalogVersion", "availability", "allowedRefs", "excludedRefs", "preferredRefs"
-  ], "A política de componentes");
-  const availability = text(value.availability);
-  if (!new Set(["all", "allow_only"]).has(availability) ||
-      value.catalogVersion !== catalog.version) {
-    designFail("A política de componentes é incompatível com o catálogo.");
-  }
-  const known = new Set(catalog.options.map((option) => option.ref));
-  const allowedRefs = normalizeStringList(value.allowedRefs, "Uma permissão de componente", {
-    allowed: known,
-    maximumItems: 64,
-    maximumLength: 160
-  });
-  const excludedRefs = normalizeStringList(value.excludedRefs, "Uma exclusão de componente", {
-    allowed: known,
-    maximumItems: 64,
-    maximumLength: 160
-  });
-  const preferredRefs = normalizeStringList(value.preferredRefs, "Uma preferência de componente", {
-    allowed: known,
-    maximumItems: 64,
-    maximumLength: 160
-  });
-  const allowed = availability === "all" ? known : new Set(allowedRefs);
-  const excluded = new Set(excludedRefs);
-  if (availability === "all" && allowedRefs.length !== 0 ||
-      availability === "allow_only" && allowedRefs.length === 0 ||
-      allowedRefs.some((ref) => excluded.has(ref)) ||
-      preferredRefs.some((ref) => !allowed.has(ref) || excluded.has(ref))) {
-    designFail("A política de componentes é inconsistente.");
-  }
-  return Object.freeze({
-    catalogVersion: catalog.version,
-    availability,
-    allowedRefs,
-    excludedRefs,
-    preferredRefs
-  });
-}
-
-function normalizeComponentPolicyAssignment(value, catalog, {
-  effective = false,
-  availableScopes,
-  currentScope
-} = {}) {
-  const fields = effective
-    ? ["policy", "origin", "reason", "sourceScope", "inherited"]
-    : ["policy", "origin", "reason"];
-  designRecord(value, fields, "A atribuição da política de componentes");
-  const assignmentOrigin = text(value.origin);
-  if (effective ? !COURSE_DESIGN_EFFECTIVE_ORIGINS.has(assignmentOrigin) :
-    !COURSE_DESIGN_ASSIGNMENT_ORIGINS.has(assignmentOrigin)) {
-    designFail("A origem da política de componentes é inválida.");
-  }
-  const sourceScope = effective && value.sourceScope != null
-    ? normalizeDesignScope(value.sourceScope, "O escopo de origem da política")
-    : null;
-  if (effective && (typeof value.inherited !== "boolean" ||
-      assignmentOrigin === "system_default" && (sourceScope !== null || value.inherited) ||
-      assignmentOrigin !== "system_default" && sourceScope === null ||
-      sourceScope && !availableScopes.has(scopeIdentity(sourceScope)) ||
-      sourceScope && value.inherited === (
-        scopeIdentity(sourceScope) === scopeIdentity(currentScope)
-      ))) {
-    designFail("A resolução da política de componentes é inconsistente.");
-  }
-  return Object.freeze({
-    policy: normalizeComponentPolicyValue(value.policy, catalog),
-    origin: assignmentOrigin,
-    reason: designText(value.reason, "A justificativa da política", { maximum: 1_000 }),
-    ...(effective ? { sourceScope, inherited: value.inherited } : {})
-  });
-}
-
-function normalizeComponentPolicy(value, catalog, context) {
-  designRecord(
-    value,
-    ["localAssignment", "effectiveAssignment"],
-    "A política de componentes"
-  );
-  return Object.freeze({
-    localAssignment: value.localAssignment == null
-      ? null
-      : normalizeComponentPolicyAssignment(value.localAssignment, catalog, context),
-    effectiveAssignment: normalizeComponentPolicyAssignment(value.effectiveAssignment, catalog, {
-      ...context,
-      effective: true
-    })
-  });
-}
-
-function normalizeTargetPlanItems(value, currentScope) {
-  if (!["didactic_microsequence", "study_unit"].includes(currentScope.kind)) {
-    if (value !== null) {
-      designFail("Somente uma microssequência ou unidade de estudo pode expor itens-alvo locais.");
-    }
-    return null;
-  }
-  designRecord(value, [
-    "instructionalAnalysisUnitIds", "evidenceRequirementIds"
-  ], "Os itens-alvo do escopo didático");
-  const normalizeIds = (items, label) => {
-    if (!Array.isArray(items) || items.length > 256) {
-      designFail(`${label} excedem o limite do escopo.`);
-    }
-    const normalized = items.map((id) => designUuid(id, label));
-    if (new Set(normalized).size !== normalized.length) {
-      designFail(`${label} repetem identidades.`);
-    }
-    return Object.freeze(normalized);
-  };
-  return Object.freeze({
-    instructionalAnalysisUnitIds: normalizeIds(
-      value.instructionalAnalysisUnitIds,
-      "As unidades de análise atribuídas"
-    ),
-    evidenceRequirementIds: normalizeIds(
-      value.evidenceRequirementIds,
-      "Os requisitos de evidência atribuídos"
-    )
-  });
 }
 
 export function normalizeCourseDesign(value, {
@@ -1354,152 +856,27 @@ export function normalizeCourseDesign(value, {
   expectedCourseRevision = null,
   expectedScope = null
 } = {}) {
-  const topFields = [
-    "contract", "courseId", "courseRevision", "parameterCatalogVersion", "scopeContext",
-    "definitions", "parameters", "guidance", "componentCatalog", "componentPolicy",
-    "targetPlanItems"
-  ];
-  designRecord(value, topFields, "O desenho do curso");
-  if (new TextEncoder().encode(JSON.stringify(value)).byteLength > 256 * 1_024) {
-    designFail("O desenho do curso excede o limite seguro.");
-  }
-  const courseId = text(value.courseId).toLowerCase();
-  const courseRevision = designInteger(value.courseRevision, "O estado corrente do curso", {
-    minimum: 1,
-    maximum: Number.MAX_SAFE_INTEGER
-  });
-  if (expectedCourseRevision !== null && courseRevision !== expectedCourseRevision) {
+  const design = normalizeDesignDomain(normalizeCourseDesignReadDomain, value);
+  if (expectedCourseRevision !== null && design.courseRevision !== expectedCourseRevision) {
     fail("course_revision_changed", "O curso mudou durante a leitura do desenho pedagógico.");
   }
-  if (value.contract !== "aralearn.course-design.v2" || !isCanonicalCourseId(courseId) ||
-      expectedCourseId && courseId !== expectedCourseId ||
-      !Array.isArray(value.definitions) || value.definitions.length !== COURSE_DESIGN_PARAMETER_IDS.length ||
-      !Array.isArray(value.parameters) || value.parameters.length !== COURSE_DESIGN_PARAMETER_IDS.length) {
-    designFail("O desenho do curso é inválido.");
+  if (expectedCourseId && design.courseId !== expectedCourseId || expectedScope &&
+      scopeIdentity(design.scopeContext.current) !== scopeIdentity(expectedScope)) {
+    designFail("O desenho não corresponde ao curso e escopo solicitados.");
   }
-  const parameterCatalogVersion = designText(
-    value.parameterCatalogVersion,
-    "A versão do catálogo de parâmetros",
-    { maximum: 80 }
-  );
-  if (parameterCatalogVersion !== COURSE_DESIGN_PARAMETER_CATALOG_VERSION) {
-    designFail("A lista de parâmetros está desatualizada.");
-  }
-  const scopeContext = normalizeScopeContext(value.scopeContext, {
-    courseId,
-    expectedScope: expectedScope && normalizeDesignScope(expectedScope, "O escopo solicitado")
-  });
-  const availableScopes = new Set([
-    ...scopeContext.ancestors,
-    scopeContext.current
-  ].map(scopeIdentity));
-  const definitions = value.definitions.map(normalizeParameterDefinition);
-  if (definitions.map((item) => item.id).join("|") !== COURSE_DESIGN_PARAMETER_IDS.join("|")) {
-    designFail("O catálogo de parâmetros está incompleto ou fora de ordem.");
-  }
-  const definitionById = new Map(definitions.map((definition) => [definition.id, definition]));
-  const parameters = value.parameters.map((parameter) => {
-    designRecord(parameter, [
-      "parameterId", "localAssignment", "effectiveAssignment"
-    ], "A resolução de um parâmetro");
-    const parameterId = designText(parameter.parameterId, "A identidade do parâmetro", {
-      maximum: 120
-    });
-    const definition = definitionById.get(parameterId);
-    if (!definition) designFail("A resolução referencia um parâmetro desconhecido.");
-    const localAssignment = normalizeParameterAssignment(parameter.localAssignment, definition, {
-      currentScope: scopeContext.current,
-      availableScopes
-    });
-    if (scopeContext.current.kind === "module" && localAssignment !== null) {
-      designFail("Um módulo não pode conter atribuição local de parâmetro.");
-    }
-    return Object.freeze({
-      parameterId,
-      localAssignment,
-      effectiveAssignment: normalizeParameterAssignment(parameter.effectiveAssignment, definition, {
-        effective: true,
-        currentScope: scopeContext.current,
-        availableScopes
-      })
-    });
-  });
-  if (parameters.map((item) => item.parameterId).join("|") !== COURSE_DESIGN_PARAMETER_IDS.join("|")) {
-    designFail("As resoluções dos parâmetros estão incompletas ou fora de ordem.");
-  }
-  const componentCatalog = normalizeComponentCatalog(value.componentCatalog);
-  const context = {
-    currentScope: scopeContext.current,
-    availableScopes,
-    scopePath: Object.freeze([...scopeContext.ancestors, scopeContext.current])
-  };
-  return Object.freeze({
-    contract: value.contract,
-    courseId,
-    courseRevision,
-    parameterCatalogVersion,
-    scopeContext,
-    definitions: Object.freeze(definitions),
-    parameters: Object.freeze(parameters),
-    guidance: normalizeGuidance(value.guidance, context),
-    componentCatalog,
-    componentPolicy: normalizeComponentPolicy(value.componentPolicy, componentCatalog, context),
-    targetPlanItems: normalizeTargetPlanItems(value.targetPlanItems, scopeContext.current)
-  });
+  return Object.freeze(design);
 }
 
 export function normalizeCourseDesignChange(value, {
   expectedCourseId = "",
   expectedRequestId = ""
 } = {}) {
-  const fields = [
-    "contract", "courseId", "courseRevision", "requestId", "idempotent", "changed", "change"
-  ];
-  designRecord(value, fields, "A confirmação da mudança de desenho");
-  const courseId = designUuid(value.courseId, "O curso da mudança");
-  const requestId = designRequestId(value.requestId, "A identidade da requisição");
-  if (value.contract !== "aralearn.course-design-change.v2" ||
-      expectedCourseId && courseId !== expectedCourseId ||
-      expectedRequestId && requestId !== expectedRequestId ||
-      typeof value.idempotent !== "boolean" || typeof value.changed !== "boolean" ||
-      value.changed !== (value.change !== null)) {
-    designFail("A confirmação da mudança de desenho é inválida.");
+  const change = normalizeDesignDomain(normalizeCourseDesignChangeDomain, value);
+  if (expectedCourseId && change.courseId !== expectedCourseId ||
+      expectedRequestId && change.requestId !== expectedRequestId) {
+    designFail("A confirmação não corresponde à mudança de desenho solicitada.");
   }
-  let change = null;
-  if (value.change !== null) {
-    designRecord(value.change, ["type", "scope", "parameterId"], "A mudança de desenho");
-    const type = text(value.change.type);
-    if (!COURSE_DESIGN_CHANGE_TYPES.has(type)) {
-      designFail("O tipo da mudança de desenho é inválido.");
-    }
-    const scope = normalizeDesignScope(value.change.scope, "O escopo da mudança", {
-      parameter: new Set(["set_parameter", "clear_parameter"]).has(type)
-    });
-    const parameterChange = new Set(["set_parameter", "clear_parameter"]).has(type);
-    if (parameterChange !== (value.change.parameterId !== null) ||
-        parameterChange && !COURSE_DESIGN_PARAMETER_IDS.includes(value.change.parameterId)) {
-      designFail("O parâmetro da mudança de desenho é inconsistente.");
-    }
-    change = Object.freeze({
-      type,
-      scope,
-      parameterId: value.change.parameterId == null
-        ? null
-        : designText(value.change.parameterId, "O parâmetro alterado", { maximum: 160 })
-    });
-  }
-  return Object.freeze({
-    contract: value.contract,
-    courseId,
-    courseRevision: designInteger(value.courseRevision, "O estado corrente do curso", {
-      minimum: 1,
-      maximum: Number.MAX_SAFE_INTEGER
-    }),
-    requestId,
-    idempotent: value.idempotent,
-    changed: value.changed,
-    change
-  });
+  return Object.freeze(change);
 }
 
 export function mergeCourseDesignScopePages(currentValue, incomingValue) {

@@ -70,7 +70,6 @@ async function loadCorrectionState({
     studyUnits: corrections.map(({ unidade }) => unidade),
     deadlineAt
   });
-  const sourceCache = new Map();
   const prepared = await Promise.all(corrections.map(async (correction, index) => {
     const unit = resolved.studyUnits[index];
     const sourceLinks = correction.fontes === undefined
@@ -81,14 +80,7 @@ async function loadCorrectionState({
           unit,
           deadlineAt
         })
-      : await resolveHumanSourceLinks({
-          adapter,
-          principal,
-          courseContext: resolved,
-          requested: correction.fontes,
-          deadlineAt,
-          sourceCache
-        });
+      : null;
     const candidate = {
       ...correction.conteudo,
       id: unit.studyUnit.id,
@@ -119,7 +111,7 @@ async function loadCorrectionState({
     const content = structuredClone(validation.normalized);
     delete content.id;
     delete content.position;
-    return { unit, content, sourceLinks };
+    return { unit, content, sourceLinks, requestedSources: correction.fontes };
   }));
   return { ...resolved, prepared };
 }
@@ -147,7 +139,16 @@ export async function applyHumanCourseCorrections({
       firstCorrectedStudyUnitId = state.prepared[0].unit.studyUnit.id;
       return state;
     },
-    build(state) {
+    async build(state, { newId }) {
+      const sourceCache = new Map();
+      const applications = await Promise.all(state.prepared.map(async (entry, index) => ({
+        studyUnitId: entry.unit.studyUnit.id,
+        sourceLinks: entry.sourceLinks ?? await resolveHumanSourceLinks({
+          adapter, principal, courseContext: state, requested: entry.requestedSources,
+          content: entry.content, newId, identityPrefix: `correction:${index}:source-link`,
+          deadlineAt, sourceCache
+        })
+      })));
       const contextualApplication = principal.authenticationKind === "application" &&
         state.prepared.length === 1;
       return {
@@ -169,10 +170,7 @@ export async function applyHumanCourseCorrections({
           content
         })),
         deletes: [],
-        sourceAttributionApplications: state.prepared.map(({ unit, sourceLinks }) => ({
-          studyUnitId: unit.studyUnit.id,
-          sourceLinks
-        })),
+        sourceAttributionApplications: applications,
         deadlineAt
       };
     },

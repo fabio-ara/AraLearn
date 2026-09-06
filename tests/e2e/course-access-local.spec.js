@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import { richParagraphInstance } from "../fixtures/package/rich-paragraph.js";
 
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
 const PROJECT_URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
@@ -25,11 +30,14 @@ let learnerToken = "";
 let outsiderToken = "";
 let courseId = "";
 let ownerAvatarObjectKey = "";
+let publicCourseId = "";
+let ownerHandle = "";
+let learnerHandle = "";
 
 function headers(token, { json = true } = {}) {
   return {
     apikey: token === ADMIN_KEY ? ADMIN_KEY : PUBLISHABLE_KEY,
-    Authorization: `Bearer ${token}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(json ? { "Content-Type": "application/json" } : {})
   };
 }
@@ -287,8 +295,8 @@ async function attachScreenshot(page, testInfo, name) {
   await testInfo.attach(name, { path: screenshotPath, contentType: "image/png" });
 }
 
-async function browserSignIn(page, email) {
-  await page.route(`${APPLICATION_ORIGIN}/`, async (route) => {
+async function configureBrowser(page) {
+  await page.route((url) => url.origin === APPLICATION_ORIGIN && url.pathname === "/", async (route) => {
     const response = await route.fetch();
     const source = await response.text();
     await route.fulfill({
@@ -305,14 +313,24 @@ async function browserSignIn(page, email) {
       developmentRuntime: true
     })});\n`
   }));
-  await page.goto("/");
+}
+
+async function browserSignIn(page, email) {
+  await configureBrowser(page);
+  await page.goto("/?acesso=entrar");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
+  await page.locator("[data-handle-onboarding], [data-action='open-settings']").first().waitFor();
+  if (await page.locator("[data-handle-onboarding]").count()) {
+    await expect(page.getByRole("heading", { name: "Escolha seu identificador" })).toBeVisible();
+    await page.getByLabel("Identificador", { exact: true }).fill(email === owner.email ? ownerHandle : learnerHandle);
+    await page.getByRole("button", { name: "Salvar identificador" }).click();
+  }
   await expect(page.getByRole("button", { name: "Conta e aparência" })).toBeVisible();
 }
 
-async function setProfile(page, displayName, { avatar = false } = {}) {
+async function setProfile(page, handle, { avatar = false } = {}) {
   const settingsTrigger = page.getByRole("button", { name: "Conta e aparência" });
   await settingsTrigger.click();
   const closeSettings = page.getByRole("button", { name: "Fechar" });
@@ -363,7 +381,7 @@ async function setProfile(page, displayName, { avatar = false } = {}) {
   await settingsTrigger.click();
   await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
   await expect(status).toHaveText("");
-  await page.getByLabel("Nome").fill(displayName);
+  await page.getByLabel("Identificador público").fill(handle);
   if (avatar) {
     await page.locator("[data-profile-avatar-file]").setInputFiles({
       name: "avatar-local.png",
@@ -448,6 +466,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     owner = await createUser(`owner-${suffix}@aralearn.local`);
     learner = await createUser(`learner-${suffix}@aralearn.local`);
     outsider = await createUser(`outsider-${suffix}@aralearn.local`);
+    ownerHandle = `owner-${owner.id.slice(0, 8)}`;
+    learnerHandle = `learner-${learner.id.slice(0, 8)}`;
     ownerToken = await signIn(owner.email);
     learnerToken = await signIn(learner.email);
     outsiderToken = await signIn(outsider.email);
@@ -483,10 +503,382 @@ test.describe("acesso direto de Curso no Supabase local", () => {
   test.afterAll(async ({ browserName }, testInfo) => {
     void browserName;
     testInfo.setTimeout(60_000);
+    if (publicCourseId) await courseApi(`/v1/courses/${publicCourseId}`, {
+      method: "DELETE", body: { operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() }
+    }, ownerToken);
     await removeOwnerAvatar();
     await removeUser(learner?.id);
     await removeUser(outsider?.id);
     await removeUser(owner?.id);
+  });
+
+  test("fontes contextuais persistem referência, estilo, PDF e usos independentes no curso real", async ({ browser }, testInfo) => {
+    const created = await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Fontes da jornada local", objective: "Conferir referências e vínculos no curso de ensaio."
+    } }, ownerToken);
+    const courseId = created.data.courseId;
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const { failures } = captureBrowserFailures(page);
+    const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken } });
+    const title = "Um estudo sintético sobre relações entre conceitos";
+    const manual = "Grupo de pesquisa.\nReferência conferida pelo autor <literal>.";
+    const sourcesRoute = `/#/authoring/courses/${courseId}?section=sources`;
+    const revision = async () => (await client.getCourse(courseId)).revision;
+    const readSources = async options => {
+      for (let attempt = 0; ; attempt += 1) {
+        try { return await client.loadCourseSources(courseId, { ...options, expectedRevision: await revision() }); }
+        catch (error) { if (error.status !== 409 || attempt >= 2) throw error; }
+      }
+    };
+    const catalog = () => readSources({ mode: "catalog" });
+    let sourceId;
+    const detail = async () => (await readSources({ mode: "source", sourceId })).items[0];
+    try {
+      const rows = courseRows(courseId);
+      await courseApi(`/v1/courses/${courseId}/composition`, { method: "POST", body: {
+        requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+        sourceAttributionApplications: rows.filter(row => row.entityType === "study_unit")
+          .map(row => ({ studyUnitId: row.entityId, sourceLinks: [] }))
+      } }, ownerToken);
+      await browserSignIn(page, owner.email);
+      await page.goto(sourcesRoute);
+      await page.getByRole("button", { name: "Nova fonte", exact: true }).click();
+      const form = page.locator('[data-source-form="source"]');
+      await form.getByLabel("Título, quando conhecido", { exact: true }).fill(title);
+      await form.getByLabel("Link", { exact: true }).fill("https://example.test/estudo-sintetico");
+      await form.getByText("Dados da referência", { exact: true }).click();
+      await form.getByRole("combobox", { name: "Tipo", exact: true }).selectOption("article");
+      await form.locator('[data-source-action="add-contributor"][data-contributor-list="authors"]').click();
+      await form.getByLabel("Nome como consta na fonte", { exact: true }).fill("Grupo de pesquisa sintético");
+      await form.getByLabel("Publicação", { exact: true }).fill("2025");
+      await form.getByLabel("Livro, periódico ou publicação", { exact: true }).fill("Revista sintética de ensino");
+      await form.getByLabel("Identificador do artigo", { exact: true }).fill("e12345");
+      await form.getByText("Uso e acesso", { exact: true }).click();
+      await form.getByLabel("Sustentação do conteúdo", { exact: true }).check();
+      await form.getByRole("button", { name: "Conferir referência", exact: true }).click();
+      await expect(form.locator("[data-source-reference-preview]")).toContainText("e12345");
+      for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.evaluate(mode => { document.documentElement.dataset.colorMode = mode; }, theme);
+        expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(theme);
+        await expectNoHorizontalOverflow(page);
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+      await attachScreenshot(page, testInfo, "source-form-390-dark.png");
+      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await expect(page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true })).toBeVisible();
+      sourceId = (await catalog()).items[0].sourceId;
+      await page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true }).click();
+      await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
+      await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("manual");
+      await form.getByLabel("Referência escrita pelo autor", { exact: true }).fill(manual);
+      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await expect(page.locator(".course-source-current .source-formatted-reference")).toHaveText(manual);
+      const beforeStyle = await detail();
+      await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+      await page.getByText("Estilo das referências", { exact: true }).click();
+      await page.getByRole("combobox", { name: "Estilo do curso", exact: true }).selectOption("apa7");
+      await page.getByRole("button", { name: "Salvar estilo", exact: true }).click();
+      await expect.poll(async () => (await catalog()).bibliographyStyle).toBe("apa7");
+      expect(await detail()).toEqual(beforeStyle);
+      await page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true }).click();
+      await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
+      await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("generated");
+      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText("(2025)");
+      expect((await detail()).citationText).toBe(manual);
+      await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url)));
+      await expect.poll(async () => (await detail()).attachments.length).toBe(1);
+      const attached = await detail();
+      await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
+      await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
+      await page.getByLabel("Página inicial", { exact: true }).fill("1");
+      await page.getByLabel("Página final", { exact: true }).fill("1");
+      await page.getByLabel("Arquivo a que este trecho se refere", { exact: true }).selectOption(attached.attachments[0].contentHash);
+      await page.getByLabel("Localizador para pessoas", { exact: true }).fill("Página usada no ensaio local");
+      await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
+      await expect.poll(async () => (await detail()).anchors.length).toBe(1);
+      const sourceWithAnchor = await detail();
+      expect(sourceWithAnchor.anchors[0].contentHash).toBe(attached.attachments[0].contentHash);
+      await page.goto(`/#/authoring/courses/${courseId}?section=content&studyUnitId=study-unit-access-local-1`);
+      await page.getByRole("button", { name: "Fontes e âncoras de Primeira Unidade compartilhada", exact: true }).click();
+      const dialog = page.locator("[data-source-target-dialog]");
+      await dialog.getByRole("button", { name: `Vincular fonte: ${title}`, exact: true }).click();
+      let links = dialog.locator(".course-source-target-link");
+      await links.first().getByRole("button", { name: "Vincular a um trecho", exact: true }).click();
+      const selection = links.first().getByRole("textbox", { name: "Selecione o trecho", exact: true });
+      await selection.focus(); await page.keyboard.press("ControlOrMeta+A");
+      const relation = links.first().getByRole("combobox", { name: "Relação com o item", exact: true });
+      await relation.focus(); await relation.selectOption("adapted_from");
+      await expect(relation).toBeFocused();
+      expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
+        .toBe("Conteúdo privado liberado somente para a pessoa escolhida.");
+      await links.first().getByRole("button", { name: "Usar trecho selecionado", exact: true }).click();
+      await expect(links.first()).toContainText("Trecho localizado");
+      await dialog.getByRole("button", { name: `Adicionar outro vínculo: ${title}`, exact: true }).click();
+      links = dialog.locator(".course-source-target-link");
+      await expect(links).toHaveCount(2);
+      await links.nth(1).getByRole("combobox", { name: "Relação com o item", exact: true }).selectOption("quoted_from");
+      await links.nth(1).getByLabel(/Página usada no ensaio local/u).check();
+      await expectNoHorizontalOverflow(page);
+      await attachScreenshot(page, testInfo, "source-links-390-dark.png");
+      await dialog.getByRole("button", { name: "Salvar fontes", exact: true }).click();
+      await expect(dialog).toBeHidden();
+      const attribution = await client.loadCourseSources(courseId, { mode: "target", targetKind: "study_unit",
+        targetId: "study-unit-access-local-1", expectedRevision: await revision() });
+      expect(attribution.items[0].sourceLinks).toHaveLength(2);
+      expect(new Set(attribution.items[0].sourceLinks.map(link => link.linkId)).size).toBe(2);
+      expect(attribution.items[0].sourceLinks[0].occurrences[0].quote).toBe("Conteúdo privado liberado somente para a pessoa escolhida.");
+      expect(attribution.items[0].sourceLinks[1].anchors[0].anchorId).toBe(sourceWithAnchor.anchors[0].anchorId);
+      await page.goto(`/#/estudo/${courseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`);
+      await page.getByRole("button", { name: "Referência 1", exact: true }).click();
+      await expect(page.getByRole("dialog", { name: "Referência", exact: true })).toContainText(title);
+      await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Referência 1", exact: true })).toBeFocused();
+      expect(failures).toEqual([]);
+    } catch (error) {
+      await testInfo.attach("fontes-failure-state", { body: (await page.locator("main").allInnerTexts()).join("\n\n"), contentType: "text/plain" }).catch(() => {});
+      await attachScreenshot(page, testInfo, "source-failure.png").catch(() => {});
+      throw error;
+    } finally {
+      await context.close();
+      await courseApi(`/v1/courses/${courseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
+  });
+
+  test("parágrafo rico persiste no curso real e conserva notação ao editar texto", async ({ browser }, testInfo) => {
+    const created = await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Notação da jornada local", objective: "Verificar escrita e matemática pelo contrato corrente."
+    } }, ownerToken);
+    const notationCourseId = created.data.courseId;
+    const unitId = "study-unit-access-local-1";
+    const rows = courseRows(notationCourseId);
+    rows.find((row) => row.entityId === unitId).content.content = [structuredClone(richParagraphInstance)];
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const failures = captureBrowserFailures(page);
+    const studyRoute = `/#/estudo/${notationCourseId}/module-access-local/lesson-access-local/microsequence-access-local/${unitId}`;
+    const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken } });
+    const loadRows = async () => {
+      const descriptor = await client.getCourse(notationCourseId);
+      return (await client.getCourseEntities(notationCourseId, { revision: descriptor.revision })).items;
+    };
+    const currentRich = async () => (await loadRows()).find((row) => row.entityId === unitId).content.content[0];
+    try {
+      const composed = await courseApi(`/v1/courses/${notationCourseId}/composition`, { method: "POST", body: {
+        requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+        sourceAttributionApplications: rows.filter((row) => row.entityType === "study_unit")
+          .map((row) => ({ studyUnitId: row.entityId, sourceLinks: [] }))
+      } }, ownerToken);
+      expect(composed.data.revision).toBe(2);
+      expect(await currentRich()).toEqual(richParagraphInstance);
+      await browserSignIn(page, owner.email);
+      await page.goto(studyRoute);
+      await expect(page.locator(".package-rich-paragraph ruby")).toHaveCount(2);
+      await expect(page.locator("math[display='inline']")).toBeVisible();
+      await expect(page.locator("math[display='block']")).toBeVisible();
+      await expect(page.locator(".package-rich-paragraph [lang='ar']")).toHaveAttribute("dir", "rtl");
+      const modes = page.locator("header .study-mode-actions");
+      const geometry = () => page.locator(".package-rich-paragraph").evaluate((root) => {
+        const rect = (node) => { const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height }; };
+        return [root, ...root.querySelectorAll("math, ruby, p")].map(rect);
+      });
+      for (const theme of ["claro", "escuro"]) {
+        await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+        await page.getByRole("button", { name: `Tema ${theme}`, exact: true }).click();
+        await page.getByRole("button", { name: "Fechar", exact: true }).click();
+        for (const width of [360, 390, 430, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        const before = await geometry();
+        await modes.getByRole("button", { name: "Editar", exact: true }).click();
+        await page.locator('[data-resource-target-id="content:rich-explanation"]').click();
+        await expect(page.locator('[data-manual-edit-path="blocks[0].inlines[0].text"]')).toBeVisible();
+        const after = await geometry();
+        expect(after.length).toBe(before.length);
+        for (let index = 0; index < before.length; index += 1) {
+          for (const key of ["x", "y", "width", "height"]) expect(Math.abs(before[index][key] - after[index][key])).toBeLessThanOrEqual(1);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await modes.getByRole("button", { name: "Visualizar", exact: true }).click();
+        }
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+      await modes.getByRole("button", { name: "Editar", exact: true }).click();
+      await page.locator('[data-resource-target-id="content:rich-explanation"]').click();
+      const revisedText = "A razão expressa a comparação de duas grandezas. Em ";
+      await page.locator('[data-manual-edit-path="blocks[0].inlines[0].text"]').fill(revisedText);
+      await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+      await expect.poll(async () => (await currentRich()).data.blocks[0].inlines[0].text).toBe(revisedText);
+      const expected = structuredClone(richParagraphInstance);
+      expected.data.blocks[0].inlines[0].text = revisedText;
+      expect(await currentRich()).toEqual(expected);
+      await page.reload();
+      await page.goto(studyRoute);
+      await expect(page.locator(".package-rich-paragraph")).toContainText(revisedText.trim());
+      await expect(page.locator("math[display='inline'] mfrac")).toHaveCount(1);
+      await attachScreenshot(page, testInfo, "notacao-real-editada-390.png");
+      expect(failures.failures).toEqual([]);
+    } finally {
+      await context.close();
+      await courseApi(`/v1/courses/${notationCourseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
+  });
+
+  test("parâmetros e perfis reais distinguem automático, herança e cópia sem reescrever conteúdo", async ({ browser }, testInfo) => {
+    const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken }, fetchImpl: (url, init) => {
+        const requestHeaders = new Headers(init.headers); requestHeaders.set("Origin", APPLICATION_ORIGIN);
+        return fetch(url, { ...init, headers: requestHeaders });
+      } });
+    const designCourseId = (await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Curso de parâmetros e perfis local", objective: "Testar cópia de preferências sem reescrita."
+    } }, ownerToken)).data.courseId;
+    const rows = courseRows(designCourseId);
+    await courseApi(`/v1/courses/${designCourseId}/composition`, { method: "POST", body: {
+      requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+      sourceAttributionApplications: rows.filter((row) => row.entityType === "study_unit")
+        .map(({ entityId }) => ({ studyUnitId: entityId, sourceLinks: [] }))
+    } }, ownerToken);
+    const initialContent = (await client.getCourseEntities(designCourseId, { revision: 2 })).items;
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const failures = captureBrowserFailures(page);
+    const novelty = "new_analysis_unit_ceiling_per_expository_study_unit";
+    const chat = "authoring_chat_interaction";
+    const unitId = "study-unit-access-local-1";
+    const readDesign = (kind = "course", ref = designCourseId) => client.loadCourseDesign(designCourseId, { scope: { kind, ref } });
+    const parameter = (design, id) => design.parameters.find((entry) => entry.parameterId === id);
+    try {
+      await browserSignIn(page, owner.email);
+      await page.goto(`/#/estudo/${designCourseId}/module-access-local/lesson-access-local/microsequence-access-local/${unitId}`);
+      await expect(page.locator(".runtime-card-title")).toBeVisible();
+      await page.getByRole("button", { name: "Conta e aparência" }).click();
+      await page.getByRole("button", { name: "Parâmetros · unidade de estudo" }).click();
+      await expect(page.locator(".course-design-scope strong")).toContainText("unidade de estudo");
+      const card = page.locator(`.course-design-parameter[data-parameter-id="${novelty}"]`);
+      await card.locator("summary").click();
+      await card.locator('[name="mode"]').selectOption("automatic");
+      await card.locator('[name="reason"]').fill("Ajustar novidade ao repertório acumulado desta unidade.");
+      await card.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await expect(page.locator(".course-authoring-notice")).toContainText(["Escolha automática registrada."]);
+      let design = await readDesign("study_unit", unitId);
+      expect(parameter(design, novelty).localAssignment).toMatchObject({ mode: "automatic", value: null });
+      await card.locator("summary").click();
+      await card.locator('[name="mode"]').selectOption("fixed");
+      await card.locator('[name="parameterValue"]').fill("5");
+      await card.locator('[name="reason"]').fill("Exceção local a preservar na cópia do perfil.");
+      await card.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await expect(card.locator("header strong")).toHaveText("5");
+      await page.goto(`/#/authoring/courses/${designCourseId}?section=parameters`);
+      await expect(page.locator(".course-design-parameter")).toHaveCount(12);
+      await page.locator(".course-authoring-profiles > summary").click();
+      await page.getByRole("button", { name: "Criar perfil", exact: true }).click();
+      const editor = page.locator("[data-course-profile-editor]");
+      await editor.locator('[name="name"]').fill("Explicação e debate");
+      await editor.locator(`[data-parameter-id="${novelty}"] > summary`).click();
+      await editor.locator(`[name="mode:${novelty}"]`).selectOption("automatic");
+      await editor.locator(`[data-parameter-id="${chat}"] > summary`).click();
+      await editor.locator(`[name="mode:${chat}"]`).selectOption("fixed");
+      await editor.locator(`[name="value:${chat}"]`).selectOption("debate");
+      await editor.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+      await expect(editor).toHaveCount(0);
+      const profile = (await client.listAuthoringProfiles()).profiles.find((item) => item.name === "Explicação e debate");
+      expect(profile.preferences).toEqual([{ parameterId: novelty, mode: "automatic", value: null },
+        { parameterId: chat, mode: "fixed", value: "debate" }]);
+      const previewButton = page.getByRole("button", { name: "Aplicar perfil Explicação e debate", exact: true });
+      await previewButton.click();
+      const preview = page.locator("[data-course-profile-apply]");
+      await expect(preview.locator('[name="removeException"]')).toHaveCount(1);
+      await expect(preview.locator('[name="removeException"]')).not.toBeChecked();
+      await attachScreenshot(page, testInfo, "perfis-previa-excecao-claro-390.png");
+      await expectNoHorizontalOverflow(page, ".course-design");
+      await preview.getByRole("button", { name: "Confirmar aplicação do perfil" }).click();
+      await expect(preview).toHaveCount(0);
+      design = await readDesign("study_unit", unitId);
+      expect(parameter(design, novelty).effectiveAssignment.value).toBe(5);
+      expect(parameter(design, chat).effectiveAssignment.value).toBe("debate");
+      await previewButton.click();
+      await preview.locator('[name="removeException"]').check();
+      const applicationRequests = [];
+      let dropApplicationResponse = true;
+      await page.route("**/authoring-profile/applications", async (route) => {
+        applicationRequests.push(route.request().postDataJSON());
+        if (dropApplicationResponse) {
+          const response = await route.fetch();
+          expect(response.ok()).toBe(true);
+          dropApplicationResponse = false;
+          await route.abort("failed");
+        } else await route.continue();
+      });
+      await preview.getByRole("button", { name: "Confirmar aplicação do perfil" }).click();
+      await expect(page.getByRole("button", { name: "Repetir gravação", exact: true })).toBeVisible();
+      await expect(preview.locator('[name="removeException"]')).toBeChecked();
+      await page.getByRole("button", { name: "Repetir gravação", exact: true }).click();
+      await expect(preview).toHaveCount(0);
+      expect(applicationRequests).toHaveLength(2);
+      expect(applicationRequests[1]).toEqual(applicationRequests[0]);
+      expect(applicationRequests[0].exceptionPolicy.mode).toBe("remove_selected");
+      await page.unroute("**/authoring-profile/applications");
+      design = await readDesign("study_unit", unitId);
+      expect(parameter(design, novelty).localAssignment).toBeNull();
+      expect(parameter(design, novelty).effectiveAssignment).toMatchObject({ mode: "automatic", value: null, inherited: true });
+      const revision = design.courseRevision;
+      await previewButton.click();
+      await preview.getByRole("button", { name: "Confirmar aplicação do perfil" }).click();
+      await expect(preview).toHaveCount(0);
+      expect((await readDesign()).courseRevision).toBe(revision);
+      await page.getByRole("button", { name: "Editar perfil Explicação e debate", exact: true }).click();
+      await editor.locator('[name="name"]').fill("Debate revisado");
+      const profileRequests = [];
+      let dropProfileResponse = true;
+      await page.route(`**/v1/authoring-profiles/${profile.profileId}`, async (route) => {
+        profileRequests.push(route.request().postDataJSON());
+        if (dropProfileResponse) {
+          const response = await route.fetch(); expect(response.ok()).toBe(true);
+          dropProfileResponse = false;
+          await route.abort("failed");
+        } else await route.continue();
+      });
+      await editor.getByRole("button", { name: "Salvar perfil", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Repetir gravação do perfil", exact: true })).toBeVisible();
+      await expect(editor.locator('[name="name"]')).toBeDisabled();
+      await page.getByRole("button", { name: "Repetir gravação do perfil", exact: true }).click();
+      await expect(editor).toHaveCount(0);
+      expect(profileRequests).toHaveLength(2);
+      expect(profileRequests[1]).toEqual(profileRequests[0]);
+      await page.unroute(`**/v1/authoring-profiles/${profile.profileId}`);
+      expect((await client.listAuthoringProfiles()).profiles[0].revision).toBe(2);
+      await page.getByRole("button", { name: "Excluir perfil Debate revisado", exact: true }).click();
+      await page.getByRole("button", { name: "Excluir perfil", exact: true }).click();
+      await expect(page.locator(".course-profile-list > li")).toHaveCount(0);
+      design = await readDesign();
+      expect(parameter(design, chat).effectiveAssignment.value).toBe("debate");
+      expect((await client.getCourseEntities(designCourseId, { revision: design.courseRevision })).items).toEqual(initialContent);
+      expect(failures.failures).toEqual([
+        `network: POST ${PROJECT_URL}/functions/v1/aralearn-course-api/v1/courses/${designCourseId}/authoring-profile/applications net::ERR_FAILED`,
+        "console: Failed to load resource: net::ERR_FAILED",
+        `network: PATCH ${PROJECT_URL}/functions/v1/aralearn-course-api/v1/authoring-profiles/${profile.profileId} net::ERR_FAILED`,
+        "console: Failed to load resource: net::ERR_FAILED"
+      ]);
+    } finally {
+      await context.close();
+      await courseApi(`/v1/courses/${designCourseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
   });
 
   test("Estudo real percorre a hierarquia, persiste o Curso e mantém a entrada uniforme", async ({
@@ -532,7 +924,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     try {
       await browserSignIn(page, owner.email);
       const homeEntry = page.locator("[data-action='open-course']");
-      await expect(homeEntry).toContainText("Abrir");
+      await expect(homeEntry).toHaveAccessibleName(`Abrir ${COURSE_TITLE}`);
       await homeEntry.click();
       await expect(page.locator("[data-study-destination-heading]")).toHaveText(COURSE_TITLE);
       await expect(modes().getByRole("button", { name: "Visualizar" })).toBeVisible();
@@ -638,8 +1030,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Abrir unidade" }).first().click();
 
       await page.reload();
-      const open = page.locator("[data-action='open-course']");
-      await expect(open).toContainText("Abrir");
+      await expect(page.locator("[data-action='open-course']")).toHaveAccessibleName(`Abrir ${COURSE_TITLE}`);
       await openHierarchy(
         "Abrir módulo",
         "Abrir lição",
@@ -690,13 +1081,20 @@ test.describe("acesso direto de Curso no Supabase local", () => {
 
       await expect(ownerPage.getByRole("heading", { name: COURSE_TITLE, exact: true }))
         .toBeVisible();
-      await expect(learnerPage.getByText(
-        "Nenhum Curso está disponível para estudo nesta conta.",
-        { exact: true }
-      )).toBeVisible();
-      await setProfile(ownerPage, "Pessoa proprietária local", { avatar: true });
-      await setProfile(learnerPage, "Pessoa estudante local");
-      ownerAvatarObjectKey = (await courseApi("/v1/profile", {}, ownerToken))
+      await expect(learnerPage.getByText(COURSE_TITLE, { exact: true })).toHaveCount(0);
+      await setProfile(ownerPage, ownerHandle, { avatar: true });
+      await setProfile(learnerPage, learnerHandle);
+      const occupied = await request("/functions/v1/aralearn-course-api/v2/profile", {
+        method: "PATCH", token: learnerToken, origin: APPLICATION_ORIGIN, body: { handle: ownerHandle }
+      });
+      expect(occupied.response.status).toBe(409);
+      expect(occupied.payload.error.code).toBe("person_handle_unavailable");
+      const learnerIdentity = (await courseApi("/v2/profile", {}, learnerToken)).data;
+      expect(learnerIdentity.userId).toBe(learner.id);
+      expect(learnerIdentity.handle).toBe(learnerHandle);
+      expect(learnerIdentity).not.toHaveProperty("displayName");
+
+      ownerAvatarObjectKey = (await courseApi("/v2/profile", {}, ownerToken))
         .data.avatarObjectKey;
       expect(ownerAvatarObjectKey).toMatch(new RegExp(`^${owner.id}/[0-9a-f-]{36}\\.png$`, "u"));
 
@@ -732,26 +1130,27 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(ownerPage.locator(
         ".course-authoring-surface[data-view='course'][data-section='content']"
       )).toHaveAttribute("aria-busy", "false");
-      await expect(ownerPage.getByRole("heading", { name: "Unidades de estudo", exact: true }))
+      await expect(ownerPage.getByRole("region", { name: "Unidades de estudo", exact: true }))
         .toBeVisible();
       await ownerPage.locator(".course-authoring-task-menu > summary").click();
       await ownerPage.getByRole("link", { name: "Pessoas e acesso", exact: true }).click();
-      await expect(ownerPage.getByRole("heading", { name: "Pessoas", exact: true }))
+      await expect(ownerPage.getByRole("heading", { name: "Pessoas e acesso", exact: true }))
         .toBeVisible();
       await expect(ownerPage.getByText("Somente você tem acesso.", { exact: true })).toBeVisible();
       await ownerPage.getByRole("button", { name: "Conceder acesso" }).click();
-      await ownerPage.getByLabel("E-mail exato").fill(learner.email);
+      await ownerPage.getByRole("combobox", { name: "Identificador da pessoa" }).fill(`@${learnerHandle}`);
+      await ownerPage.getByRole("option", { name: `@${learnerHandle}`, exact: true }).click();
       await ownerPage.locator("[data-course-authoring-grant]")
         .getByRole("button", { name: "Conceder acesso" }).click();
       const grantConfirmation = ownerPage.getByRole("alertdialog", {
         name: "Confirmar ação"
       });
       await expect(grantConfirmation).toContainText(
-        `Conceder a ${learner.email} acesso`
+        `Conceder a @${learnerHandle} acesso`
       );
       await grantConfirmation.getByRole("button", { name: "Conceder acesso" }).click();
       await expect(ownerPage.getByText(
-        "Solicitação recebida. Por segurança, o AraLearn não informa se o endereço corresponde a uma conta. Use Atualizar Curso depois para conferir o acesso.",
+        `Acesso concedido a @${learnerHandle}.`,
         { exact: true }
       )).toBeVisible();
       const ownerTaskMenu = ownerPage.locator(".course-authoring-task-menu");
@@ -760,14 +1159,14 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(ownerPage.locator(
         ".course-authoring-surface[data-view='course'][data-section='people']"
       )).toHaveAttribute("aria-busy", "false");
-      await expect(ownerPage.getByText("Pessoa estudante local", { exact: true })).toBeVisible();
+      await expect(ownerPage.getByText(`@${learnerHandle}`, { exact: true })).toBeVisible();
       await expectNoHorizontalOverflow(ownerPage, ".course-authoring-surface");
       await attachScreenshot(ownerPage, testInfo, "acesso-concedido-390.png");
 
       await learnerPage.reload();
       const learnerPreview = learnerPage.locator(".home-course-selector-preview");
-      await expect(learnerPage.getByRole("combobox", { name: "Selecionar curso" }))
-        .toHaveValue(courseId);
+      await learnerPage.getByRole("combobox", { name: "Selecionar curso" }).selectOption(courseId);
+      await expect(learnerPage.getByRole("combobox", { name: "Selecionar curso" })).toHaveValue(courseId);
       await expect(learnerPreview).toContainText(COURSE_TITLE);
       await expect(learnerPreview).toContainText("Curso compartilhado");
       await learnerPreview.getByRole("button", { name: `Abrir ${COURSE_TITLE}` }).click();
@@ -780,6 +1179,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         { exact: true }
       )).toBeVisible();
       await expectNoHorizontalOverflow(learnerPage, ".study-reader-screen");
+      await expect(learnerPage.locator("header .study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+      await expect(learnerPage.locator("header .study-mode-actions").getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
 
       const observationsLoaded = learnerPage.waitForResponse((response) =>
         response.url().includes("/rpc/get_my_course_anchored_annotations_v1") &&
@@ -795,7 +1196,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerPage.getByRole("textbox", { name: "Observação", exact: true }).fill(
         "Esta observação pertence ao estudante e deve sobreviver à revogação."
       );
-      await learnerPage.getByRole("button", { name: "Adicionar" }).click();
+      await learnerPage.getByRole("button", { name: "Enviar observação" }).click();
       await expect(learnerPage.getByText("Sincronizada", { exact: true })).toBeVisible();
       await learnerPage.getByRole("button", { name: "Fechar" }).click();
       await learnerPage.getByRole("button", { name: "Próxima unidade de estudo" }).click();
@@ -809,10 +1210,12 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       learnerFailures.setOffline(true);
       await learnerContext.setOffline(true);
       await expect(learnerPage.getByText(COURSE_TITLE, { exact: true })).toBeVisible();
+      await learnerPage.getByRole("button", { name: "Sem conexão", exact: true }).click();
       await expect(learnerPage.getByText(
-        "Sem conexão · alterações pessoais ficam salvas neste dispositivo.",
+        "Sem conexão. A cópia deste dispositivo continua disponível.",
         { exact: true }
       )).toBeVisible();
+      await learnerPage.getByRole("button", { name: "Sem conexão", exact: true }).click();
       await learnerContext.setOffline(false);
       learnerFailures.setOffline(false);
       await learnerPage.reload();
@@ -828,7 +1231,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expectNoHorizontalOverflow(ownerPage, ".course-authoring-surface");
       await attachScreenshot(ownerPage, testInfo, "pessoas-1280.png");
       await ownerPage.getByRole("button", {
-        name: "Revogar acesso de Pessoa estudante local"
+        name: `Revogar acesso de @${learnerHandle}`
       }).click();
       const revokeConfirmation = ownerPage.getByRole("alertdialog", {
         name: "Confirmar ação"
@@ -841,7 +1244,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         "Acesso revogado; o estado pessoal foi preservado.",
         { exact: true }
       )).toBeVisible();
-      await expect(ownerPage.getByText("Pessoa estudante local", { exact: true })).toHaveCount(0);
+      await expect(ownerPage.getByText(`@${learnerHandle}`, { exact: true })).toHaveCount(0);
 
       const learnerAfterRevoke = await rpc("get_course_v1", { p_course_id: courseId }, learnerToken);
       expect([400, 403, 404], failure("leitura após revogação", learnerAfterRevoke))
@@ -854,18 +1257,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       });
 
       await learnerPage.reload();
-      await expect(learnerPage.getByText(
-        "Nenhum Curso está disponível para estudo nesta conta.",
-        { exact: true }
-      )).toBeVisible();
+      await expect(learnerPage.getByText(COURSE_TITLE, { exact: true })).toHaveCount(0);
       await learnerPage.waitForLoadState("networkidle");
       learnerFailures.setOffline(true);
       await learnerContext.setOffline(true);
       await expect(learnerPage.getByText(COURSE_TITLE, { exact: true })).toHaveCount(0);
-      await expect(learnerPage.getByText(
-        "Nenhum Curso está disponível para estudo nesta conta.",
-        { exact: true }
-      )).toBeVisible();
       await learnerContext.setOffline(false);
       learnerFailures.setOffline(false);
 
@@ -884,4 +1280,266 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       ]);
     }
   });
+
+  test("visitante abre endereço público, pratica localmente e baixa somente o PDF autorizado", async ({ browser }, testInfo) => {
+    const ownerClient = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken },
+      fetchImpl: (url, init) => {
+        const requestHeaders = new Headers(init.headers);
+        requestHeaders.set("Origin", APPLICATION_ORIGIN);
+        return fetch(url, { ...init, headers: requestHeaders });
+      } });
+    const guestClient = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      visitor: true, authClient: { getAccessToken() { throw new Error("Visitante não usa sessão."); } },
+      fetchImpl: (url, init) => {
+        const requestHeaders = new Headers(init.headers);
+        requestHeaders.set("Origin", APPLICATION_ORIGIN);
+        return fetch(url, { ...init, headers: requestHeaders });
+      } });
+    publicCourseId = (await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Curso público local", objective: "Exercitar a leitura pública projetada."
+    } }, ownerToken)).data.courseId;
+    await courseApi(`/v1/courses/${publicCourseId}/composition`, { method: "POST", body: {
+      requestId: crypto.randomUUID(), expectedRevision: 1, upserts: courseRows(publicCourseId), deletes: [],
+      sourceAttributionApplications: courseRows(publicCourseId).filter((row) => row.entityType === "study_unit")
+        .map(({ entityId }) => ({ studyUnitId: entityId, sourceLinks: [] }))
+    } }, ownerToken);
+    const sourceId = "pdf-publico-local";
+    await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 2, sourceCommand: {
+      type: "save_source", sourceId, expectedSourceRevision: 0, source: {
+        kind: "document", defaultRoles: ["technical_conceptual"], title: "Documento público de teste",
+        authors: [], publicationDate: null, identifier: null, language: "pt-BR",
+        bibliographic: createEmptyCourseSourceBibliographicMetadata(), citationMode: "manual",
+        citationText: "Documento usado na prova local de acesso.", url: null, editionOrVersion: null,
+        origin: "author_provided", availability: "private", verificationStatus: "author_verified", studyVisibility: "citation"
+      }
+    } });
+    const pdfBytes = await readFile(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url));
+    const hash = Buffer.from(await crypto.subtle.digest("SHA-256", pdfBytes)).toString("hex");
+    await ownerClient.uploadCourseSourcePdf({ courseId: publicCourseId, expectedRevision: 3,
+      sourceId, sourceRevision: 1, file: new Blob([pdfBytes], { type: "application/pdf" }) });
+    await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 4, sourceCommand: {
+      type: "save_anchor", anchorId: "pagina-local", sourceId, sourceRevision: 1, expectedAnchorRevision: 0,
+      selector: { kind: "page_range", startPage: 1, endPage: 1 }, humanLocator: null, verificationExcerpt: null,
+      contentHash: hash
+    } });
+    await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 5, sourceCommand: {
+      type: "set_target_sources", targetKind: "study_unit", targetId: "study-unit-access-local-1",
+      expectedTargetVersion: 1, sourceLinks: [{ linkId: "vinculo-pdf-publico-local", sourceId,
+        relation: "informed_by", roles: ["technical_conceptual"], occurrences: [], anchors: [{ anchorId: "pagina-local" }] }]
+    } });
+    await ownerClient.setCourseVisibility({ courseId: publicCourseId, expectedRevision: 6,
+      visibility: "public", publicFileAccess: "restricted", confirmed: true });
+    const publicDescriptor = await guestClient.getCourse(publicCourseId);
+    expect(publicDescriptor.ownership).toBe("public");
+    expect(publicDescriptor.canEdit).toBe(false);
+    expect(publicDescriptor.canObserve).toBe(false);
+    expect(publicDescriptor).not.toHaveProperty("copyOrigin");
+    expect(publicDescriptor).not.toHaveProperty("isPersonalCopy");
+    const publicList = await guestClient.listCourses({ query: "Curso público local" });
+    expect(publicList.items.some((course) => course.courseId === publicCourseId)).toBe(true);
+    const restricted = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 });
+    expect(restricted.citations[0].attachments).toEqual([]);
+    await expect(guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
+      expectedRevision: 7, sourceId, sourceRevision: 1, contentHash: hash })).rejects.toMatchObject({ status: 403 });
+    const available = await ownerClient.setCourseSourceFileAccess({ courseId: publicCourseId, expectedRevision: 7,
+      sourceId, sourceRevision: 1, contentHash: hash, publicFileAccess: "available" });
+    expect(available.courseRevision).toBe(8);
+    const citations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 8 });
+    expect(citations.citations[0].attachments).toEqual([{ contentHash: hash, byteSize: pdfBytes.byteLength, mediaType: "application/pdf" }]);
+    const download = await guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
+      expectedRevision: 8, sourceId, sourceRevision: available.sourceRevision, contentHash: hash });
+    expect(download.contract).toBe("aralearn.course-source-pdf-download.v2");
+    expect(download).not.toHaveProperty("storageOriginCourseId");
+    expect(download.attachment).not.toHaveProperty("storagePath");
+    const file = await fetch(download.signedUrl);
+    expect(file.status).toBe(200);
+    expect(Buffer.from(await crypto.subtle.digest("SHA-256", await file.arrayBuffer())).toString("hex")).toBe(hash);
+    const directWrite = await request(`/functions/v1/aralearn-course-api/v1/courses/${publicCourseId}/composition`, {
+      method: "POST", token: null, origin: APPLICATION_ORIGIN, body: { requestId: crypto.randomUUID() }
+    });
+    expect(directWrite.response.status).toBe(401);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    const page = await context.newPage();
+    const failures = captureBrowserFailures(page);
+    const writes = [];
+    page.on("request", (value) => {
+      if (value.url().includes(PROJECT_URL) && /\/(?:mutate_|commit_|save_)/u.test(value.url())) writes.push(value.url());
+    });
+    try {
+      await configureBrowser(page);
+      const path = `#/estudo/${publicCourseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`;
+      await page.goto(`/${path}`);
+      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await expect(page.locator("header .study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Entre para enviar observações" })).toBeVisible();
+      await page.getByRole("button", { name: "Marcar para rever", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await page.reload();
+      await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await page.getByRole("button", { name: "Fontes", exact: true }).click();
+      await expect(page.getByText("Documento usado na prova local de acesso.", { exact: true })).toBeVisible();
+      const browserDownload = page.waitForEvent("download");
+      await page.getByRole("button", { name: "Abrir PDF em p. 1 de Documento público de teste", exact: true }).click();
+      const transfer = await browserDownload;
+      expect(await transfer.failure()).toBeNull();
+      const transferredBytes = await readFile(await transfer.path());
+      expect(Buffer.from(await crypto.subtle.digest("SHA-256", transferredBytes)).toString("hex")).toBe(hash);
+      await expectNoHorizontalOverflow(page, ".study-reader-screen");
+      await attachScreenshot(page, testInfo, "visitante-publico-390.png");
+      expect(writes).toEqual([]);
+      expect(failures.failures).toEqual([]);
+      const databases = await page.evaluate(() => indexedDB.databases());
+      expect(databases.map(({ name }) => name)).toContain("aralearn-course-v1-visitor");
+      await page.getByRole("button", { name: "Fechar fontes" }).click();
+      await page.getByRole("button", { name: "Entre para enviar observações" }).click();
+      await page.getByLabel("E-mail").fill(outsider.email);
+      await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
+      await page.getByRole("button", { name: "Entrar", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Escolha seu identificador" })).toBeVisible();
+      await page.getByLabel("Identificador", { exact: true }).fill(`outsider-${outsider.id.slice(0, 8)}`);
+      await page.getByRole("button", { name: "Salvar identificador" }).click();
+      await expect(page).toHaveURL(new RegExp(`#\\/estudo\\/${publicCourseId}\\/module-access-local\\/lesson-access-local\\/microsequence-access-local\\/study-unit-access-local-1$`, "u"));
+      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Observações", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "false");
+    } finally { await context.close(); }
+  });
+
+
+  test("sincronização manual preserva duas abas e incorpora visitante somente por escolha", async ({ browser }, testInfo) => {
+    const ownerClient = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+      authClient: { getAccessToken: async () => ownerToken },
+      fetchImpl: (url, init) => {
+        const requestHeaders = new Headers(init.headers);
+        requestHeaders.set("Origin", APPLICATION_ORIGIN);
+        return fetch(url, { ...init, headers: requestHeaders });
+      } });
+    const syncCourseId = (await courseApi("/v1/courses", { method: "POST", body: {
+      requestId: crypto.randomUUID(), title: "Curso para sincronização local", objective: "Conservar progresso de duas abas."
+    } }, ownerToken)).data.courseId;
+    const rows = courseRows(syncCourseId);
+    await courseApi(`/v1/courses/${syncCourseId}/composition`, { method: "POST", body: {
+      requestId: crypto.randomUUID(), expectedRevision: 1, upserts: rows, deletes: [],
+      sourceAttributionApplications: rows.filter((row) => row.entityType === "study_unit")
+        .map(({ entityId }) => ({ studyUnitId: entityId, sourceLinks: [] }))
+    } }, ownerToken);
+    await ownerClient.setCourseVisibility({ courseId: syncCourseId, expectedRevision: 2,
+      visibility: "public", publicFileAccess: "restricted", confirmed: true });
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
+      permissions: ["local-network-access"] });
+    context.setDefaultTimeout(15_000);
+    const page = await context.newPage();
+    const personalWrites = [];
+    context.on("request", (value) => {
+      if (value.url().includes("mutate_course_personal_state_v2")) personalWrites.push(value.url());
+    });
+    const openUnit = async (target, number) => {
+      const unit = rows.find(({ entityType, entityId }) => entityType === "study_unit" && entityId === `study-unit-access-local-${number}`);
+      await target.goto(`/#/estudo/${syncCourseId}/module-access-local/lesson-access-local/${unit.parentId}/${unit.entityId}`);
+      await expect(target.locator(".runtime-card-title")).toHaveText(unit.content.title);
+    };
+    const review = (target) => target.getByRole("button", { name: "Marcar para rever", exact: true });
+    const readPersonal = async () => {
+      const result = await rpc("load_course_personal_state_v2", { p_course_id: syncCourseId }, ownerToken);
+      expect(result.response.status, failure("ler estado pessoal", result)).toBe(200);
+      return result.payload;
+    };
+    try {
+      await configureBrowser(page);
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "false");
+      await review(page).click();
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      expect(personalWrites).toHaveLength(0);
+      await browserSignIn(page, owner.email);
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "false");
+      await page.goto("/");
+      await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+      await page.getByLabel("Estudo neste dispositivo").selectOption("manual");
+      await expect(page.getByLabel("Estudo neste dispositivo")).toHaveValue("manual");
+      await page.getByText("Progresso sem conta", { exact: true }).click();
+      await page.getByRole("button", { name: "Examinar progresso sem conta", exact: true }).click();
+      await expect(page.locator("[data-study-adoption-form]")).toContainText(`@${ownerHandle}`);
+      await page.getByRole("button", { name: "Acrescentar os cursos selecionados à minha conta" }).click();
+      await expect(page.locator("[data-study-adoption-message]")).toHaveText("Selecione os cursos que deseja acrescentar.");
+      await page.locator(`[name='visitorCourse'][value='${syncCourseId}']`).check();
+      const beforeAdoption = personalWrites.length;
+      await page.getByRole("button", { name: "Acrescentar os cursos selecionados à minha conta" }).click();
+      await expect(page.locator("[data-study-adoption-message]")).toContainText("Progresso acrescentado");
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      await expectNoHorizontalOverflow(page, ".account-settings-sheet");
+      await attachScreenshot(page, testInfo, "adocao-explicita-manual-390.png");
+      await page.getByRole("button", { name: "Fechar", exact: true }).click();
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      const explicitObservations = page.waitForResponse((response) =>
+        response.url().includes("/rpc/get_my_course_anchored_annotations_v1") && response.status() === 200);
+      await page.getByRole("button", { name: "Observações", exact: true }).click();
+      await explicitObservations;
+      await page.getByRole("textbox", { name: "Observação", exact: true }).fill("Observação enviada explicitamente no modo manual.");
+      await page.getByRole("button", { name: "Enviar observação", exact: true }).click();
+      await expect(page.getByText("Sincronizada", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Fechar", exact: true }).click();
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      const other = await context.newPage();
+      await configureBrowser(other);
+      await openUnit(other, 2);
+      await expect(review(other)).toHaveAttribute("aria-pressed", "false");
+      await page.bringToFront();
+      await openUnit(page, 3);
+      await review(page).click();
+      await other.bringToFront();
+      await review(other).click();
+      await expect(review(other)).toHaveAttribute("aria-pressed", "true");
+      await openUnit(other, 3);
+      await expect(review(other)).toHaveAttribute("aria-pressed", "true");
+      await openUnit(page, 2);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      await openUnit(page, 1);
+      const changed = rows.find(({ entityType, entityId }) => entityType === "study_unit" && entityId === "study-unit-access-local-1");
+      changed.content.content[0].data.text = "Texto atualizado externamente durante o modo manual.";
+      await courseApi(`/v1/courses/${syncCourseId}/composition`, { method: "POST", body: {
+        requestId: crypto.randomUUID(), expectedRevision: 3, upserts: [changed], deletes: [],
+        sourceAttributionApplications: [{ studyUnitId: changed.entityId, sourceLinks: [] }]
+      } }, ownerToken);
+      await other.bringToFront();
+      await page.bringToFront();
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await expect(page.getByText(changed.content.content[0].data.text, { exact: true })).toHaveCount(0);
+      await context.setOffline(true);
+      await expect(page.locator(".study-runtime-status-control")).toHaveAttribute("aria-label", "Sem conexão");
+      await context.setOffline(false);
+      await page.waitForLoadState("networkidle");
+      expect(personalWrites).toHaveLength(beforeAdoption);
+      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await page.locator(".study-runtime-status-control").click();
+      await expect(page.getByText(changed.content.content[0].data.text, { exact: true })).toBeVisible();
+      expect(personalWrites.length).toBeGreaterThan(beforeAdoption);
+      const persisted = await readPersonal();
+      expect(Object.keys(persisted.state.reviewMarks).sort()).toEqual([1, 2, 3].map((number) => `study-unit-access-local-${number}`));
+      await attachScreenshot(page, testInfo, "sincronizacao-explicita-390.png");
+      await page.goto("/");
+      await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+      await expect(page.getByLabel("Estudo neste dispositivo")).toHaveValue("manual");
+      await page.getByRole("button", { name: "Dados e conta", exact: true }).click();
+      page.once("dialog", (dialog) => dialog.accept());
+      await page.getByRole("button", { name: "Sair", exact: true }).click();
+      await openUnit(page, 1);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "true");
+      await openUnit(page, 2);
+      await expect(review(page)).toHaveAttribute("aria-pressed", "false");
+    } finally {
+      await context.close();
+      ownerToken = await signIn(owner.email);
+      await courseApi(`/v1/courses/${syncCourseId}`, { method: "DELETE", body: {
+        operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
+      } }, ownerToken);
+    }
+  });
+
 });

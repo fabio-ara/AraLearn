@@ -30,25 +30,64 @@ Módulo, lição, microssequência e unidade de estudo formam a hierarquia didá
 Parte é lote de autoria e não aparece como pai curricular. Salvar ou redimensionar
 uma parte não cria nem reorganiza currículo.
 
+A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
+inclusive sem alterações de entidades. Metadados, entidades e atribuições são
+validados na mesma transação, com uma revisão esperada e um recibo de repetição.
+As contagens da resposta continuam representando entidades. Esse campo não
+pertence à edição focal de uma unidade de estudo.
+
 A cobertura associa cada item obrigatório às microssequências previstas e às
 unidades materializadas que o desenvolveram. O estado aprovado só é aceito para
 um mapa completo quanto ao escopo declarado; nenhuma unidade de estudo é criada
 como efeito dessa aprovação.
 
+## Pessoas e acesso
+
+`aralearn.person-profile.v2` contém UUID, identificador público escolhido, avatar
+opcional e data de atualização. Não expõe e-mail nem segundo nome de exibição.
+Identificadores usam ASCII minúsculo, 3–30 caracteres e extremos alfanuméricos;
+o `@` inicial é aceito na entrada. Perfis ainda sem identificador exigem escolha.
+
+`aralearn.course-list.v2` distingue `owned`, `shared` e `public`, com permissões
+explícitas de editar e observar. Busca de pessoas exige curso próprio, prefixo
+de ao menos dois caracteres e no máximo dez resultados; o grant confirma UUID
+e identificador selecionados. Troca ou reutilização do identificador não
+redireciona permissões já concedidas.
+
+Cursos começam privados. Tornar público exige confirmação e política de acesso
+a arquivos. Visitantes recebem somente projeções de estudo e não podem editar
+nem registrar observações. Pessoas autenticadas com acesso podem enviar suas observações;
+somente o proprietário altera o curso.
+
 ## Desenho
 
-`aralearn.course-design.v2` consulta configuração corrente por escopo.
-`aralearn.course-design-change.v2` confirma uma definição ou restauração de
+`aralearn.course-design.v3` consulta configuração corrente por escopo.
+`aralearn.course-design-change.v3` confirma uma definição ou restauração de
 herança.
 
-O catálogo 1.1.0 identifica de forma estável quatro parâmetros pedagógicos e
-dois alvos editoriais quantitativos flexíveis: palavras por resposta de autoria
-e por unidade de estudo. Os alvos não são limites e não autorizam compressão.
-Direção editorial e política de componentes permanecem campos distintos.
+O catálogo 1.2.1 define identidades, tipos, valores permitidos, unidades, grupos,
+escopos e rótulos usados pela UI, pelas integrações e pela projeção SQL. Reúne
+conteúdo, prática, conversa e cadência. Direção editorial e política de componentes
+permanecem campos distintos. Alvos de palavras são flexíveis e não autorizam
+compressão. Partes, lotes e pausas não são acoplados entre si.
+
+Uma atribuição com `mode: automatic` pode ter `value: null`: trata-se de intenção
+local de delegar a escolha, distinta da ausência de atribuição, que restaura
+herança. Uma escolha automática aplicada exige valor tipado e motivo; fixações
+de autoria e pesquisa não são substituídas pela calibração automática.
+Conflitos com condições de pesquisa em escopos ancestrais bloqueiam a escrita
+incompatível e a produção até serem resolvidos.
+
+Perfis de autoria pertencem à conta. CRUD usa revisão corrente e recibo para
+repetição do mesmo pedido. A prévia e a aplicação verificam as revisões do curso
+e do perfil. Aplicar copia preferências de catálogo, conserva exceções por
+padrão e remove somente exceções selecionadas que não sejam de pesquisa.
+Reaplicar valores equivalentes não aumenta a revisão; conteúdo e snapshots
+existentes ficam preservados. A cópia não mantém referência viva ao perfil.
 
 Uma unidade de estudo produzida guarda:
 
-- `aralearn.study-unit-design-snapshot.v1`, com o recorte aplicado de plano e
+- `aralearn.study-unit-design-snapshot.v2`, com o recorte aplicado de plano e
   configuração;
 - `aralearn.study-unit-design-application.v1`, com ideias introduzidas, ideias
   estabelecidas utilizadas, formas, componentes e prática observada.
@@ -69,7 +108,7 @@ pela composição e pelos parâmetros existentes quando pertinentes.
 
 ## Fontes e PDFs
 
-`aralearn.course-sources.v2` pagina o catálogo corrente e devolve, de forma
+`aralearn.course-sources.v3` pagina o catálogo corrente e devolve, de forma
 singular, a fonte focal ou a atribuição corrente de um alvo.
 Fonte e âncora têm uma versão corrente usada para concorrência. Uma atribuição
 relaciona o alvo atual a fontes, papéis e âncoras.
@@ -85,12 +124,50 @@ A incorporação server-side usa:
 - `aralearn.course-source-pdf-download.v1` para autorizar o serviço a emitir
   uma URL assinada de leitura.
 
+O aplicativo recebe `aralearn.course-source-pdf-download.v2`, com referência
+lógica do arquivo e URL temporária, sem caminho interno de Storage. A política
+efetiva respeita a exceção do arquivo, depois a da fonte e depois a do curso;
+essa autorização não torna o bucket público.
+
 O caminho e o resumo SHA-256 não são argumentos de uma tarefa humana. O serviço
 os deriva dos bytes. Criar ou revisar a fonte e vincular o PDF ocorre numa única
 transação e avança a revisão do curso uma vez.
 
-`aralearn.course-study-citations.v1` entrega ao Estudo somente citação, endereço
-permitido e seletor de âncora necessários à unidade.
+`aralearn.course-study-citations.v2` entrega ao Estudo citação, endereço
+permitido, seletor e localização legível necessários à unidade, além de
+referências lógicas dos anexos disponíveis. Trechos privados de verificação e
+caminhos de Storage ficam fora dessa projeção.
+
+## Áudio e ferramentas de estudo
+
+Ferramentas são instâncias de pacotes de conteúdo em `content[]`, identificadas
+por `manifest.tool` e ativadas por `toolInteraction.bind`. O núcleo oferece
+abertura, foco, fechamento e serviços de acesso; cada pacote fornece a própria
+interação. Áudio, calculadora, gramática, dicionário e leitura compartilham os
+contratos de descoberta, normalização, materialização e edição dos demais
+pacotes. Uma consulta instrucional não cria automaticamente uma atribuição de
+fonte.
+
+`aralearn.course-media.v1` oferece configuração de áudio na revisão solicitada
+ou catálogo paginado exclusivo do proprietário. A configuração contém idioma,
+velocidade, preferência de voz nativa, permissão para voz remota e serviço
+opcional; não contém credenciais. Faixas nativas guardam texto, enquanto faixas
+de arquivo guardam somente SHA-256, tamanho e tipo validados pelo serviço.
+
+`aralearn.course-media-ingestion.v1` confirma o envio de WAV PCM ou MP3.
+`aralearn.course-media-change.v1` confirma configuração e remoção. As mutações
+usam revisão esperada, identidade da solicitação e recibo idempotente; o limite
+conjunto de PDFs e áudios é verificado com reservas sob concorrência. Remoção e
+exclusão de conta conservam intenção de limpeza recuperável no Storage privado.
+
+`aralearn.course-media-download.v1` liga o endereço temporário ao curso, à
+revisão, à Unidade e ao trio binário do arquivo. Estudantes só acessam arquivos
+referenciados na Unidade corrente; visitantes também dependem da política
+pública de arquivos do curso. O cliente confere tamanho, formato e hash antes
+de criar um Blob local, que é descartado ao fechar a ferramenta. Não há URL de
+Storage persistida no conteúdo nem cópia de bytes no IndexedDB. A configuração
+nativa pode ser reutilizada offline somente na mesma revisão do curso e é
+purgada quando o acesso é retirado.
 
 ## Observações e revisão
 
@@ -116,20 +193,27 @@ um contrato permanente de lote ou de auditoria.
 Não há páginas de fatos ou dicionário separado. O JSON baixado é o próprio
 snapshot normalizado.
 
-## Cópia pessoal e estado de Estudo
+## Recuperação de cópias próprias e estado de Estudo
 
-Uma pessoa com acesso ao Estudo não altera o curso original. A primeira edição
-contextual pode usar `aralearn.personal-course-copy-edit.v1` para criar sua
-cópia privada e aplicar a mudança na mesma transação.
+O comando de criação automática de cópia por estudante foi retirado.
+`aralearn.owned-course-copy-recovery.v1` consulta a prova migrada de uma intenção
+anterior e retorna `confirmed`, `unchanged` ou `unresolved`. A confirmação exige
+origem e edição compatíveis e propriedade atual do alvo; distingue versões
+iniciais das atuais, sem reaplicar conteúdo. Cópias existentes continuam próprias
+e rascunhos sem prova permanecem disponíveis para decisão explícita.
 
 Progresso, posição e marcas para rever usam contratos pessoais e versões
 separadas do curso. Observações próprias têm sincronização distinta porque seu
 texto, autorização e conflitos são diferentes.
+Visitantes reutilizam o armazenamento local em compartimento separado das
+contas, sem enviar estado pessoal à nuvem nem registrar observações.
 
 ## Catálogo humano de Autoria
 
-MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, versão
-2.3.4. O catálogo possui dezessete tarefas: oito leituras e nove escritas.
+MCP e Actions compartilham o catálogo `aralearn.human-authoring-tasks`, definido
+em [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
+A fonte canônica identifica a versão corrente e classifica cada tarefa como
+leitura ou escrita.
 
 Cada definição contém:
 

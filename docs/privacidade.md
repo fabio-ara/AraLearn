@@ -21,7 +21,7 @@ Quatro tipos de afirmação precisam permanecer distintos:
 | --- | --- |
 | requisito jurídico condicionado | quando LGPD ou RGPD se aplicam, finalidade, necessidade/minimização, transparência, segurança e direitos do titular precisam ser atendidos; o código não escolhe sozinho o responsável nem a base jurídica |
 | boa prática de engenharia | separar identidade, reduzir projeções, limitar acesso, sanear erros, definir retenção e testar negativas diminui riscos concretos, mas não produz um selo jurídico |
-| decisão de produto | manter Pessoas somente na aplicação, fazer o nome opcional e distinguir saída de limpeza local são escolhas do AraLearn que podem ser revistas com evidência de uso |
+| decisão de produto | manter Pessoas somente na aplicação, exigir identificador escolhido e manter foto opcional e distinguir saída de limpeza local são escolhas do AraLearn que podem ser revistas com evidência de uso |
 | questão jurídica ou ética aberta | controlador, operadores, bases, transferências, protocolo de pesquisa, população, menores, retenções institucionais e pareceres dependem da implantação e de decisão humana competente |
 
 Consentimento não é tratado como base universal. Conta necessária ao serviço,
@@ -32,20 +32,18 @@ pesquisa são tratamentos diferentes.
 
 **Dado pessoal** é uma informação que identifica uma pessoa ou pode ser
 relacionada a ela. No AraLearn, isso inclui e-mail da conta, identificador
-interno, nome de apresentação e foto de perfil.
+interno, identificador público escolhido e foto de perfil.
 
 **Proprietário do curso** é a pessoa autorizada a alterar o planejamento e o
 conteúdo, consultar áreas autorais e conceder acesso a Estudo.
 
-**Acesso ao Estudo** permite abrir e praticar um curso compartilhado. A pessoa
-que recebeu acesso continua fora da Autoria desse curso e não pode alterar o
-original. Uma mudança contextual confirmada pode criar
-outro curso privado, pertencente a essa pessoa.
+**Acesso ao Estudo** permite ler e praticar um curso público ou compartilhado.
+Somente uma conta autenticada com acesso pode enviar observações. O estudante
+não edita conteúdo e uma tentativa de edição não cria outro curso.
 
-**Cópia pessoal de curso** é esse novo curso, criado somente na primeira
-gravação material. Ele recebe a composição didática necessária para continuar na
-mesma Unidade, mas não recebe planejamento, fontes, PDFs, acessos, progresso ou
-Observações do original.
+**Curso próprio** pertence a um único proprietário. Cópias existentes cuja
+propriedade foi comprovada permanecem cursos independentes; sua origem útil é
+preservada como metadado privado de recuperação.
 
 **Estado pessoal de Estudo** reúne posição de retomada, Unidades concluídas e
 marcas **Rever**. Ele pertence à pessoa e ao curso e fica separado do conteúdo.
@@ -58,7 +56,7 @@ necessária à triagem.
 sem conexão. Uma alteração ainda não sincronizada pode existir somente nessa
 cópia, que não substitui uma cópia de segurança.
 
-A cópia pessoal é uma autoridade persistida no servidor; a réplica local é
+O curso próprio é uma autoridade persistida no servidor; a réplica local é
 apenas estado do dispositivo. Os termos não são intercambiáveis.
 
 ## Dados e finalidades
@@ -66,7 +64,7 @@ apenas estado do dispositivo. Os termos não são intercambiáveis.
 | Finalidade | Dados | Armazenamento |
 |---|---|---|
 | autenticar a conta | e-mail, credencial e sessão | Supabase Auth e sessão no dispositivo |
-| apresentar a pessoa | identificador, nome opcional e referência da foto | PostgreSQL |
+| apresentar a pessoa | identificador público escolhido e referência opcional da foto | PostgreSQL |
 | exibir a foto | JPEG, PNG ou WebP de até 512 KiB | área privada `person-avatars` |
 | manter um curso | proprietário, plano, configuração e composição corrente | PostgreSQL |
 | documentar proveniência | Fonte, metadados, endereço, Âncoras, trecho de verificação e atribuições | PostgreSQL privado |
@@ -86,7 +84,7 @@ continua aberto quando indicado.
 | Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
 | --- | --- | --- | --- | --- | --- |
 | conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem dataset de pesquisa |
-| perfil | nome opcional e avatar para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não em MCP nem Actions |
+| perfil | identificador público único e avatar opcional para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | pode aparecer apenas em superfícies autorizadas, não em MCP nem Actions |
 | Curso e autoria | conteúdo, plano, configuração corrente e recibos temporários | pode conter dado pessoal em texto livre; UUIDs ligados à conta continuam pessoais ou pseudonimizados | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos expiram pelo prazo técnico | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
 | acesso direto | Curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, contador, MCP ou Actions |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o Estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
@@ -103,80 +101,83 @@ biometria ou outra categoria especialmente protegida, a implantação precisa
 parar no gate jurídico e ético antes da coleta. O mesmo vale para pesquisa com
 crianças e adolescentes.
 
-## Conta, perfil e localização por e-mail
+## Conta, perfil e localização por identificador
 
-Uma conta recebe um perfil vazio ligado ao identificador de autenticação. O
-sistema não deriva nome de apresentação do endereço de e-mail. A pessoa escolhe
-se deseja informar nome e foto.
+Uma conta conserva seu UUID, propriedade e acessos. Antes da experiência
+autenticada, a pessoa escolhe um identificador público único; o sistema não o
+deriva do e-mail ou de nomes anteriores. Usa de 3 a 30 caracteres ASCII em
+minúsculas, começa e termina com letra ou número e admite ponto, traço e
+sublinhado no meio. Maiúsculas e um `@` inicial são normalizados. Uma colisão
+solicita outra escolha sem perder a sessão. Alterar o identificador preserva o
+UUID e suas relações. O avatar é opcional, sem segundo nome obrigatório.
 
-Para conceder acesso, o proprietário digita o e-mail exato de uma conta
-existente. O serviço usa o valor somente para localizar essa identidade. Não há
-busca parcial, diretório ou sugestão de contas. A relação gravada conserva
-identificadores internos; o e-mail não entra nos eventos nem na resposta da
-operação.
+Na migração, o identificador permanece vazio até essa escolha. Nomes anteriores
+são preservados em registro privado de migração, sem consulta pelo aplicativo
+nem uso como identidade pública. O cache do perfil escolhido pertence à própria
+conta; só permite leitura offline e é invalidado diante de erro de acesso.
 
-A resposta de concessão é sempre a mesma para conta
-existente, inexistente, própria, já favorecida ou tentativa limitada. Ela apenas
-informa que a solicitação foi aceita; o recibo não contém o resultado nem a
-relação criada. O proprietário autorizado ainda pode encontrar uma relação que
-realmente exista numa leitura posterior; a medida reduz o oráculo
-direto de enumeração, sem fingir sigilo absoluto da própria lista de acesso.
+O proprietário pesquisa um prefixo de pelo menos dois caracteres dentro da
+área de acesso de seu curso. A busca devolve no máximo dez identificadores e
+avatares autorizados, sem e-mail. Selecionar uma pessoa e confirmar concede
+estudo, sem escrita autoral. O servidor confere UUID e identificador juntos para
+recusar uma seleção que mudou. Busca e concessão têm cotas separadas: sessenta
+buscas e dez concessões por ator a cada dez minutos. Limitação produz aviso de
+espera, nunca confirmação falsa de acesso. Repetir o mesmo pedido recupera seu
+recibo antes de executar de novo.
 
-O banco admite dez tentativas por ator em cada janela de dez minutos. A
-repetição idêntica recupera primeiro o recibo anterior. A tabela de limitação
-guarda ator, começo e fim da janela e contadores agregados de tentativa,
-concessão, ausência, inalteração e limitação. Não guarda e-mail nem resumo
-criptográfico do e-mail e fica elegível à limpeza depois de 30 dias.
+O perfil e a lista de concessões usam projeções autorizadas. Pessoas com acesso
+não recebem os perfis de colegas. A busca concede somente a apresentação mínima
+necessária à seleção. Fotos permanecem no bucket privado; nessa busca recebem
+URL assinada de sessenta segundos. Uma URL já emitida pode funcionar até expirar.
+Não há tabela de perfis ou diretório completo acessível ao visitante.
 
-Uma pessoa pode ver o próprio perfil. Numa relação de curso compartilhado:
+## Propriedade, acesso público e recuperação
 
-- o proprietário vê o perfil das pessoas às quais concedeu acesso;
-- a pessoa com acesso vê o perfil do proprietário;
-- pessoas com acesso não recebem perfis umas das outras.
+Todo curso nasce privado. O proprietário controla conteúdo, parâmetros, fontes,
+observações recebidas e áreas autorais. Torná-lo público exige confirmação e uma
+política explícita para arquivos. Visitantes recebem somente estrutura e conteúdo
+de estudo permitidos; não recebem plano privado, notas de verificação,
+observações, identidades de edição ou metadados de recuperação.
 
-O banco aplica regras de segurança por linha, chamadas **Row Level Security
-(RLS)**. A área privada de fotos repete a mesma autorização. Cada envio usa uma
-chave nova dentro da pasta da própria conta e não cria endereço público.
+Sem conta, progresso e Rever ficam num banco local separado. Entrar numa conta
+não transfere esses dados silenciosamente e não concede propriedade. A pessoa
+pode examinar e selecionar cursos em **Progresso sem conta**, identificando a
+conta destinatária antes de confirmar. A incorporação acrescenta conclusões e
+Rever, mantém o estado anterior da conta e conserva o banco de visitante. Um
+recibo local evita aplicar novamente a mesma seleção; não é registro de percurso
+humano–IA. Uma conta
+com acesso pode observar; somente o proprietário edita. As mesmas fronteiras
+valem para chamadas diretas, MCP e Actions.
 
-## Propriedade e acesso ao Curso
+O escritor de cópia automática foi retirado. A migração verifica a propriedade
+antes de preservar a origem das cópias existentes; uma incompatibilidade impede
+o corte. Rascunhos locais anteriores são preservados. A recuperação apenas lê
+provas e recibos para identificar uma escrita já confirmada; nunca repete o
+comando antigo. Sem prova suficiente, o rascunho permanece para inspeção e
+somente um descarte explícito o remove.
 
-Todo curso nasce privado. O proprietário pode abri-lo na Autoria, alterar plano
-e composição, usar as tarefas autorais, consultar Analytics e gerir acessos.
-Uma pessoa com acesso recebe somente a projeção de Estudo, que
-exclui orientações privadas e estado autoral. Na operação de cópia pessoal, essa
-projeção permite enviar uma única Unidade editada ao servidor para criar um
-curso pessoal privado; ela não concede escrita sobre o original.
+Conceder, revogar e mudar a visibilidade exigem confirmação. Retirar uma concessão
+individual não impede leitura de um curso que continua público. Tornar privado
+bloqueia novo acesso conectado de visitantes e contas não favorecidas, mantendo
+proprietário e concessões individuais. A validação conectada remove a réplica de
+conteúdo cujo acesso se perdeu; o estado pessoal remoto pode ser retomado se o
+acesso voltar. Cursos próprios independentes permanecem com seus proprietários.
 
-A relação entre pessoa, origem e cópia pessoal permanece numa tabela privada do
-PostgreSQL, sem acesso direto pelo cliente. Ela é dado operacional relacionado à
-conta. A interface usa rótulos humanos e não mostra identificadores, revisões ou
-detalhes da relação. A cópia não recebe a lista de pessoas favorecidas, o estado
-pessoal, as Observações, as fontes ou os PDFs da origem.
-
-Conceder ou revogar acesso exige confirmação humana. A revogação encerra novas
-leituras e alterações no servidor, mas preserva o estado pessoal remoto. Na
-próxima validação conectada, o dispositivo dessa pessoa remove cabeçalho,
-composição, listas, fontes projetadas e Anotações locais daquele curso. Se o
-acesso for concedido novamente, o estado pessoal preservado pode voltar a ser
-usado. Se uma cópia pessoal já foi confirmada, ela continua pertencendo à pessoa
-que a criou e não é apagada pela revogação do acesso ao original.
-
-Dados já entregues a um dispositivo podem permanecer fisicamente nele enquanto
-estiver desconectado. A revogação técnica não recolhe retroativamente esses
-bytes.
+Conteúdo e arquivos já entregues podem permanecer no dispositivo desconectado.
+Revogação e mudança de visibilidade não recolhem retroativamente esses bytes.
 
 ## Fontes, Âncoras e PDFs
 
 Somente o proprietário acessa catálogo, fontes ocultas, referências
-pendentes de comprovação, trecho privado de verificação, PDFs e controles de
+pendentes de comprovação, trecho privado de verificação e controles de
 edição. Estudo solicita a proveniência de uma Unidade quando a pessoa abre
 **Fontes** e recebe apenas a projeção autorizada:
 
 - **Não mostrar no Estudo** omite a fonte;
 - **Mostrar citação** apresenta identificação e localização sem endereço;
 - **Mostrar citação e link** também pode apresentar o endereço;
-- trecho privado, identidade de quem alterou, PDF e controles autorais permanecem
-  ausentes.
+- trecho privado, identidade de quem alterou e controles autorais permanecem
+  ausentes; anexos aparecem somente quando a política de acesso permite.
 
 Os PDFs usam caminhos formados pela identidade do curso e pelo resumo
 criptográfico do conteúdo. Arquivos idênticos dentro do mesmo curso compartilham
@@ -184,7 +185,7 @@ os bytes, enquanto os vínculos apontam à fonte corrente. Antes de
 registrar o vínculo, a API lê o objeto privado com a credencial do servidor e
 confere o tamanho, o cabeçalho `%PDF-` e o SHA-256 dos bytes recebidos. Arquivos
 vinculados permanecem imutáveis. Cada arquivo aceita até 20 MiB, cada fonte
-até oito anexos e o curso até 64 MiB de conteúdo único.
+até oito anexos e o curso até 64 MiB de conteúdo único, somando PDFs e áudios.
 
 O preparo de envio cria uma intenção privada e curta para pessoa, curso,
 caminho, tamanho, tipo e fonte exatos. A Edge Function envia os bytes pela
@@ -197,6 +198,12 @@ bytes chegam. Se um objeto de mesmo tamanho e tipo não corresponder ao PDF
 preparado, a API recusa o vínculo. O objeto permanece sem uso e aparece no
 inventário administrativo de órfãos; esse inventário não autoriza apagamento
 automático.
+
+A política efetiva de arquivos prioriza a exceção do PDF, depois a da fonte e
+por fim a do curso. Fonte e arquivo podem herdar, restringir ou disponibilizar;
+o curso começa com arquivos restritos. O bucket continua privado. Cada novo
+download confere a autorização e o vínculo vigente antes de assinar, sem expor
+caminho do Storage na projeção de estudo.
 
 O download continua usando uma URL assinada válida por 60 segundos. Uma URL já
 emitida não pode ser revogada individualmente e pode continuar funcionando até
@@ -292,14 +299,14 @@ compartilhados para Estudo não aparecem nas listagens ou leituras autorais. As
 mesmas regras de propriedade, revisão e confirmação usadas pela interface são
 aplicadas pelo servidor.
 
-O catálogo MCP público possui dezessete tarefas humanas, compartilhadas com
+O catálogo MCP público define as tarefas humanas compartilhadas com
 Actions.
 Perfil,
 avatar, lista de Pessoas, concessão e revogação permanecem operações exclusivas
 da aplicação autenticada; e-mail e referência protegida não integram ferramenta
 ou erro público do MCP.
 
-Um GPT personalizado pode chamar as mesmas dezessete tarefas por Actions e
+Um GPT personalizado pode chamar as mesmas tarefas por Actions e
 OpenAPI. Esse canal recebe uma credencial de acesso opaca, que identifica a
 autorização sem expor seu conteúdo ao cliente, e uma credencial de renovação
 rotativa. O servidor guarda somente resumos criptográficos dessas credenciais e
@@ -396,18 +403,19 @@ objeto retornado pelo Auth não são duplicados nesse registro; uma sessão lega
 é reduzida na primeira leitura. Tokens continuam sendo segredos e não deixam de
 ser dados pessoais por essa minimização.
 
-Durante a primeira gravação de uma cópia pessoal, o IndexedDB pode conservar o
-curso e a seleção de origem, as versões esperadas, a Unidade final, a origem da
-edição e um identificador de pedido. Esse recorte existe para repetição
-idempotente após falha ou reinício e é removido na confirmação ou no descarte.
-Ele não inclui conversa, endpoint, modelo ou credencial do provedor.
+O IndexedDB pode conter um rascunho de edição anterior ao corte da cópia
+automática: curso e seleção de origem, versões esperadas, unidade final, origem
+da edição e identidade do pedido. A recuperação apenas confronta esse recorte
+com provas existentes; não repete o escritor retirado. O rascunho permanece até
+o descarte explícito, inclusive quando há prova de resultado confirmado. Não
+inclui conversa, endereço ou credencial do provedor.
 
 Conteúdo, fontes, Observações e configuração do curso permanecem no servidor.
 Limpar os dados do aplicativo pode apagar mudanças ainda não sincronizadas. Sair
 encerra a sessão, mas não equivale a excluir todos os dados do dispositivo ou
 do servidor.
 
-O logout comum tenta sincronizar as filas e preserva, por decisão de produto,
+O logout comum respeita o modo de sincronização e preserva, por decisão de produto,
 cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela
 conta. Uma alteração ainda aberta somente na memória do editor será perdida; a
 interface informa isso e pede confirmação antes de sair. **Remover dados deste
@@ -418,9 +426,9 @@ pendentes. Dados de outra conta no mesmo perfil do navegador não são removidos
 
 ## Operações controladas pela pessoa
 
-### Alterar nome ou foto
+### Alterar identificador ou foto
 
-Em **Conta e aparência**, edite o nome ou escolha uma imagem JPEG, PNG ou WebP
+Em **Conta e aparência**, edite o identificador ou escolha uma imagem JPEG, PNG ou WebP
 de até 512 KiB. Somente a própria pessoa envia ou remove objetos de sua pasta.
 Se o upload terminar e a atualização do perfil não devolver confirmação, o
 aplicativo relê o perfil antes de qualquer rollback. Uma referência já
@@ -432,12 +440,10 @@ classificando o objeto; ele não autoriza um expurgo automático.
 
 ### Conceder acesso ao Estudo
 
-Em um curso próprio, abra **Pessoas**, informe o e-mail exato de uma conta,
-confira o valor na confirmação e conclua. A resposta genérica não confirma se o
-endereço possui conta nem se a relação mudou. Quando a conta existe e a
-concessão é válida, o destinatário passa a ver o curso em Estudo, e a
-propriedade permanece inalterada. Depois de dez tentativas em dez minutos, novas
-solicitações daquela conta aguardam a próxima janela, com a mesma resposta.
+Em um curso próprio, abra **Pessoas e acesso**, pesquise o `@identificador`,
+selecione a pessoa e confirme. A concessão confirmada aparece na lista; uma
+limitação informa espera sem afirmar que concedeu acesso. A pessoa passa a ver
+o curso em Estudo e pode observar; a propriedade permanece inalterada.
 
 ### Revogar acesso ao Estudo
 
@@ -474,7 +480,7 @@ até seu prazo; o inventário permite confirmar a expiração.
 Depois, a conta de autenticação, o perfil, os cursos próprios, suas composições,
 acessos e estados dependentes são removidos. Contribuições em cursos alheios são
 retiradas e redigidas imediatamente e seguem a janela de limpeza lógica de 14
-dias. Uma cópia pessoal é curso próprio e segue essa mesma exclusão. A réplica
+dias. Um curso independente que veio de uma cópia é próprio e segue essa mesma exclusão. A réplica
 local é limpa depois da resposta de sucesso. Essa resposta remota é terminal:
 se outra aba bloquear a exclusão do IndexedDB, a conta continua excluída e a
 interface oferece somente repetir a limpeza local. Ela não repete a exclusão

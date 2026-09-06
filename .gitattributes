@@ -8,3 +8,6 @@ authoring/schemas/instructional-analysis.schema.json text eol=lf
 authoring/schemas/materialization-manifest.schema.json text eol=lf
 authoring/schemas/resource-set.schema.json text eol=lf
 *.pdf binary
+src/bibliography/** text eol=lf
+public/vendor/bibliography/** text eol=lf
+supabase/functions/_shared/aralearn/runtime/bibliography/** text eol=lf

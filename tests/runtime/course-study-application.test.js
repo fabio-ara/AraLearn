@@ -104,8 +104,11 @@ class FakeStudyRoot {
   }
 
   querySelectorAll(selector) {
-    if (selector === "[data-action='open-response-input']") {
+    if (["[data-action='open-response-input']", "[data-action='toggle-citations']", "[data-action='download-citation-attachment']"].includes(selector)) {
       const node = this.querySelector(selector);
+      if (node && selector === "[data-action='download-citation-attachment']") {
+        node.dataset = { citationIndex: "0", attachmentIndex: "0" };
+      }
       return node ? [node] : [];
     }
     return [];
@@ -121,6 +124,58 @@ class FakeStudyRoot {
     const node = this.querySelector(`[data-action='${action}']`);
     if (!node) throw new Error(`Ação ausente no teste: ${action}`);
     node.dispatch("click");
+  }
+}
+
+// The citation sheet is inserted beside the screen without replacing its DOM.
+// Keep that boundary in the harness so downloads exercise the real listeners.
+class CitationStudyRoot extends FakeStudyRoot {
+  citationHtml = "";
+  citationOverlay = null;
+  ownerDocument = { activeElement: null };
+  screen = Object.assign(new FakeActionNode(), { setAttribute() {}, removeAttribute() {} });
+
+  get innerHTML() { return super.innerHTML + this.citationHtml; }
+  set innerHTML(value) {
+    super.innerHTML = value;
+    this.citationHtml = "";
+    this.citationOverlay = null;
+  }
+
+  insertCitationSheet(markup) {
+    this.citationHtml = markup;
+    const nodes = new Map();
+    const body = { scrollTop: 0 };
+    const overlay = new FakeActionNode();
+    overlay.contains = () => false;
+    overlay.remove = () => { this.citationHtml = ""; this.citationOverlay = null; };
+    overlay.querySelector = selector => {
+      if (selector === ".study-citations-body") return body;
+      if (selector === "[aria-label='Fechar fontes']") selector = "[data-action='toggle-citations']";
+      const match = /^\[data-action='([^']+)'\]$/u.exec(selector);
+      if (!match || !this.citationHtml.includes(`data-action="${match[1]}"`)) return null;
+      if (!nodes.has(selector)) {
+        const node = new FakeActionNode();
+        if (match[1] === "download-citation-attachment") node.dataset = { citationIndex: "0", attachmentIndex: "0", citationPage: "" };
+        nodes.set(selector, node);
+      }
+      return nodes.get(selector);
+    };
+    overlay.querySelectorAll = selector => {
+      const node = overlay.querySelector(selector);
+      return node ? [node] : [];
+    };
+    this.citationOverlay = overlay;
+  }
+
+  querySelector(selector) {
+    if (selector === ".app-shell") return { insertAdjacentHTML: (position, html) => {
+      assert.equal(position, "beforeend"); this.insertCitationSheet(html);
+    } };
+    if (selector === ".app-shell > .screen") return this.screen;
+    if (selector === ".study-reader-screen") return super.innerHTML.includes("study-reader-screen") ? this.screen : null;
+    if (selector === ".study-citations-overlay") return this.citationOverlay;
+    return this.citationOverlay?.querySelector(selector) || super.querySelector(selector);
   }
 }
 
@@ -140,9 +195,6 @@ function applicationRepository(document, flush) {
         revision: 1,
         ownership: "shared",
         canEdit: false,
-        canDerive: false,
-        isPersonalCopy: false,
-        personalCopyCourseId: null,
         moduleCount: 1,
         lessonCount: 1,
         microsequenceCount: 1,
@@ -177,6 +229,254 @@ async function openFirstStudyUnit(app) {
     "unit-a"
   ]);
 }
+
+test("visitante mantém a leitura e pede conta ao abrir observações, sem abrir edição", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  repository.loadRuntimeStatus = () => ({ localOnly: true });
+  const root = new FakeStudyRoot();
+  const events = [];
+  root.dispatchEvent = (event) => { events.push({ type: event.type, detail: event.detail }); return true; };
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true,
+    onSaveManualEdit: () => { throw new Error("Visitante não pode gravar conteúdo"); } });
+  await openFirstStudyUnit(app);
+  const position = app.getNavigationPosition();
+  assert.deepEqual(position.entityPath, [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]);
+  position.entityPath[0] = "changed-outside";
+  assert.equal(app.getNavigationPosition().entityPath[0], COURSE_ID);
+  assert.equal(app.getCourseDesignContext(), null);
+  assert.match(root.innerHTML, /data-action="next-study-unit"/u);
+  assert.match(root.innerHTML, /data-action="toggle-review"/u);
+  assert.doesNotMatch(root.innerHTML, /data-action="study-manual-edit"/u);
+  assert.match(root.innerHTML, /Entre para enviar observações/u);
+  root.click("open-observation");
+  await nextTurn();
+  assert.deepEqual(events, [{ type: "aralearn:request-auth", detail: {
+    entityPath: [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]
+  } }]);
+  assert.doesNotMatch(root.innerHTML, /class="study-observation-overlay"/u);
+  assert.throws(() => app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), /não está disponível/u);
+  app.destroy();
+});
+
+test("estudante autenticado não ganha edição por capacidade antiga de derivar cópia", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "shared", canEdit: true, canDerive: true }];
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    onSaveManualEdit: () => { throw new Error("Estudante não pode gravar conteúdo"); } });
+  await openFirstStudyUnit(app);
+  assert.doesNotMatch(root.innerHTML, /data-action="study-manual-edit"/u);
+  assert.match(root.innerHTML, /data-action="open-observation"/u);
+  assert.equal(app.getCourseDesignContext(), null);
+  assert.throws(() => app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), /não está disponível/u);
+  app.destroy();
+});
+
+test("entrada de edição da Autoria abre o editor autorizado no alvo exato", async () => {
+  const path = [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"];
+  for (const length of [1, 4, 5]) for (const owned of [true, false]) {
+    const document = project();
+    const repository = applicationRepository(document, async () => {});
+    repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1,
+      ownership: owned ? "owned" : "shared", canEdit: owned }];
+    repository.loadStudyUnitCompositionContext = () => ({ studyUnitVersion: 1, courseRevision: 1, didacticMicrosequenceId: "micro-a" });
+    const root = new FakeStudyRoot();
+    const app = createCourseStudyApplication({ root, repository, initialProject: document,
+      onSaveManualEdit: async () => { throw new Error("Esta entrada não deve gravar."); },
+      onSaveAssistedStructure: async () => { throw new Error("Esta entrada não deve gravar."); } });
+    assert.equal(await app.openEntityPath(path.slice(0, length), { editing: true }), owned);
+    assert.equal(app.hasPendingManualEdit(), owned);
+    if (owned) assert.match(root.innerHTML, new RegExp(`data-action="${length === 5 ? "study-manual-edit" : "study-level-edit"}"[^>]*aria-pressed="true"`, "u"));
+    app.destroy();
+  }
+});
+
+test("editor contextual mantém Autoria nos cinco níveis e retorna sem gravar percurso de Estudo", async () => {
+  const path = [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"];
+  const returnRoute = `#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-a`;
+  for (const length of [1, 2, 3, 4, 5]) for (const exit of ["back", "save", "cancel"]) {
+    const document = project();
+    const repository = applicationRepository(document, async () => {});
+    repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "owned", canEdit: true }];
+    repository.loadStudyUnitCompositionContext = () => ({ studyUnitVersion: 1, courseRevision: 1, didacticMicrosequenceId: "micro-a" });
+    const navigationWrites = [], returns = [];
+    repository.saveStudyNavigation = async (...args) => { navigationWrites.push(args); };
+    const root = new FakeStudyRoot();
+    const app = createCourseStudyApplication({ root, repository, initialProject: document,
+      onAuthoringContextReturn: result => returns.push(result),
+      onSaveManualEdit: async () => { throw new Error("Edição intacta não escreve."); },
+      onSaveAssistedStructure: async () => { throw new Error("Edição intacta não escreve."); } });
+    await openFirstStudyUnit(app);
+    const previous = app.getNavigationPosition();
+    const writeCount = navigationWrites.length;
+    assert.equal(await app.openEntityPath(path.slice(0, length), { editing: true, authoringContext: { returnRoute } }), true);
+    assert.match(root.innerHTML, /course-authoring-context-shell/u);
+    assert.match(root.innerHTML, /<h1[^>]*>Conteúdo<\/h1>/u);
+    assert.match(root.innerHTML, /data-action="authoring-context-back"/u);
+    assert.doesNotMatch(root.innerHTML, /data-action="(?:go-home|study-level-view|study-manual-view|next-study-unit|reset-course-progress)"/u);
+    if (exit === "back") assert.equal(app.handleBack(), true);
+    else root.click(length === 5 ? `study-manual-${exit}` : `${exit}-study-structure`);
+    await nextTurn();
+    assert.equal(app.hasPendingManualEdit(), false);
+    assert.equal(returns.length, 1);
+    assert.deepEqual(returns[0], { courseId: COURSE_ID, returnRoute,
+      reason: exit === "save" ? "saved" : "cancelled", discardedUnknown: false });
+    assert.deepEqual(app.getNavigationPosition(), previous);
+    assert.equal(navigationWrites.length, writeCount);
+    app.destroy();
+  }
+});
+
+test("editor contextual recusa contexto estranho, compartilhado e alvo sem escritor mantendo navegação", async () => {
+  const document = project(), root = new FakeStudyRoot();
+  const repository = applicationRepository(document, async () => {});
+  let ownership = "shared";
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership, canEdit: true }];
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    onAuthoringContextReturn: () => { throw new Error("Entrada recusada não retorna um editor aberto."); } });
+  await openFirstStudyUnit(app);
+  const previous = app.getNavigationPosition();
+  const localContext = { returnRoute: `#/authoring/courses/${COURSE_ID}?section=content` };
+  assert.equal(await app.openEntityPath([COURSE_ID], { editing: true, authoringContext: localContext }), false);
+  ownership = "owned";
+  assert.equal(await app.openEntityPath([COURSE_ID], { editing: true,
+    authoringContext: { returnRoute: "#/authoring/courses/20000000-0000-4000-8000-000000000001?section=content" } }), false);
+  assert.equal(await app.openEntityPath([COURSE_ID], { authoringContext: localContext }), false);
+  assert.equal(await app.openEntityPath([COURSE_ID], { editing: true, authoringContext: localContext }), false);
+  assert.deepEqual(app.getNavigationPosition(), previous);
+  assert.doesNotMatch(root.innerHTML, /course-authoring-context-shell/u);
+  app.destroy();
+});
+
+test("contexto dos parâmetros acompanha tela e unidade atuais sem depender do hash", async (context) => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  let owned = true;
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1,
+    ownership: owned ? "owned" : "shared", canEdit: true }];
+  const locationDescriptor = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const oldHash = `#/estudo/${COURSE_ID}/module-a/lesson-a/micro-a/unit-a`;
+  Object.defineProperty(globalThis, "location", { configurable: true, value: { hash: oldHash } });
+  context.after(() => {
+    if (locationDescriptor) Object.defineProperty(globalThis, "location", locationDescriptor);
+    else delete globalThis.location;
+  });
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document });
+  context.after(() => app.destroy());
+  assert.equal(app.getCourseDesignContext(), null);
+  const path = [COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"];
+  for (const [length, kind, label] of [
+    [1, "course", "curso"], [2, "module", "módulo"], [3, "lesson", "lição"],
+    [4, "didactic_microsequence", "microssequência"], [5, "study_unit", "unidade de estudo"]
+  ]) {
+    assert.equal(await app.openEntityPath(path.slice(0, length)), true);
+    assert.deepEqual(app.getCourseDesignContext(), { courseId: COURSE_ID,
+      scope: { kind, ref: path[length - 1] }, label });
+  }
+  root.click("next-study-unit");
+  await nextTurn();
+  assert.equal(app.getCourseDesignContext().scope.ref, "unit-b");
+  assert.equal(globalThis.location.hash, oldHash);
+  const returned = app.getCourseDesignContext();
+  returned.scope.ref = "changed-outside";
+  assert.equal(app.getCourseDesignContext().scope.ref, "unit-b");
+  owned = false;
+  assert.equal(app.getCourseDesignContext(), null);
+});
+
+test("curso vazio oferece parâmetros ao proprietário sem posição completa de leitura", async () => {
+  const document = project();
+  document.courses[0].modules = [];
+  const repository = applicationRepository(document, async () => {});
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "owned", canEdit: true }];
+  const app = createCourseStudyApplication({ root: new FakeStudyRoot(), repository, initialProject: document });
+  await app.openCourse(COURSE_ID);
+  assert.equal(app.getNavigationPosition(), null);
+  assert.deepEqual(app.getCourseDesignContext(), { courseId: COURSE_ID,
+    scope: { kind: "course", ref: COURSE_ID }, label: "curso" });
+  app.destroy();
+});
+
+test("visitante baixa PDF permitido pela citação sem sair da unidade, e falha mantém as fontes", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const attachment = { contentHash: "a".repeat(64), byteSize: 1_024, mediaType: "application/pdf" };
+  const calls = [];
+  let failure = false;
+  let signedUrl = "https://project.example/authorized.pdf?token=sealed";
+  repository.loadStudyUnitCitations = async () => ({ contract: "aralearn.course-study-citations.v2",
+    courseRevision: 4, bibliographyStyle: "apa7", citations: [{
+    linkId: "link-a", sourceId: "source-a", sourceRevision: 2, title: "Fonte pública",
+    citationMode: "manual", citationText: "Referência.", relation: "supported_by", roles: ["technical_conceptual"], occurrences: [],
+    url: null, editionOrVersion: null, anchors: [], attachments: [attachment]
+  }] });
+  repository.getStudyCitationAttachmentDownload = async (reference, citation) => {
+    calls.push({ reference, citation });
+    if (failure) throw Object.assign(new Error("private storage details"), { code: "course_revision_changed", status: 409 });
+    return { signedUrl };
+  };
+  const downloads = [];
+  const root = new CitationStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true,
+    downloadCitationPdf: (...values) => downloads.push(values) });
+  await openFirstStudyUnit(app);
+  root.click("toggle-citations");
+  await nextTurn();
+  root.click("download-citation-attachment");
+  await nextTurn();
+  assert.deepEqual(calls[0], { reference: { courseId: COURSE_ID, moduleId: "module-a", lessonId: "lesson-a", microsequenceId: "micro-a", studyUnitId: "unit-a" },
+    citation: { courseRevision: 4, sourceId: "source-a", sourceRevision: 2, attachment } });
+  assert.equal(downloads.length, 1);
+  assert.equal(downloads[0][0], "https://project.example/authorized.pdf?token=sealed");
+  assert.match(root.innerHTML, /Conteúdo 1\./u);
+  assert.match(root.innerHTML, /Fonte pública/u);
+  for (const host of ["127.0.0.1", "localhost", "10.0.2.2"]) {
+    signedUrl = `http://${host}:54321/authorized.pdf?token=sealed`;
+    root.click("download-citation-attachment");
+    await nextTurn();
+    assert.equal(downloads.at(-1)[0], signedUrl);
+  }
+  signedUrl = "http://external.example/unauthorized.pdf";
+  root.click("download-citation-attachment");
+  await nextTurn();
+  assert.equal(downloads.length, 4);
+  failure = true;
+  root.click("download-citation-attachment");
+  await nextTurn();
+  assert.equal(downloads.length, 4);
+  assert.match(root.innerHTML, /O curso mudou/u);
+  assert.match(root.innerHTML, /data-action="download-citation-attachment"/u);
+  assert.doesNotMatch(root.innerHTML, /private storage details/u);
+  app.destroy();
+});
+
+test("rascunho anterior sem destino comprovado fica visível até descarte explícito", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const draft = { sourceCourseId: COURSE_ID, requestId: "original-request", targetId: "study_unit",
+    studyUnit: structuredClone(document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0]) };
+  draft.studyUnit.title = "Rascunho preservado <com texto>";
+  let clears = 0;
+  repository.loadStudyDraftRecovery = async () => structuredClone(draft);
+  repository.recoverStudyDraft = async () => ({ status: "unresolved", targetCourseId: null });
+  repository.clearStudyDraftRecovery = async (source, request) => {
+    assert.equal(source, COURSE_ID); assert.equal(request, draft.requestId); clears += 1; return true;
+  };
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document });
+  await app.resumePendingManualEdit();
+  assert.equal(clears, 0);
+  assert.match(root.innerHTML, /Rascunho preservado &lt;com texto&gt;/u);
+  assert.doesNotMatch(root.innerHTML, /data-action="study-manual-save"/u);
+  root.click("discard-study-draft-recovery");
+  await nextTurn();
+  assert.equal(clears, 1);
+  assert.doesNotMatch(root.innerHTML, /class="study-draft-recovery /u);
+  app.destroy();
+});
 
 test("flush em background atualiza pendente para sincronizado sem nova interação", async () => {
   const document = project();

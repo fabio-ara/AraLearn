@@ -73,8 +73,7 @@ function coursePresentation(course, progress, permissions = {}) {
     ? countLessons(course)
     : Number(permissions.lessonCount || 0);
   const percentage = total ? Math.round((completed / total) * 100) : 0;
-  const owned = permissions.ownership === "owned" || permissions.canEdit === true;
-  const personalCopy = owned && permissions.isPersonalCopy === true;
+  const owned = permissions.ownership === "owned";
   return {
     course,
     title: String(course.title || "Curso").trim() || "Curso",
@@ -85,12 +84,8 @@ function coursePresentation(course, progress, permissions = {}) {
     lessonCount,
     percentage,
     owned,
-    personalCopy,
-    ownershipLabel: personalCopy
-      ? "Cópia pessoal"
-      : owned
-        ? "Curso próprio"
-        : "Curso compartilhado",
+    publicCourse: permissions.ownership === "public",
+    ownershipLabel: owned ? "Curso próprio" : permissions.ownership === "public" ? "Curso público" : "Curso compartilhado",
     availableOffline: permissions.availableOffline === true
   };
 }
@@ -131,7 +126,7 @@ function renderCoursePreview({
     lessonCount,
     percentage,
     owned,
-    personalCopy,
+    publicCourse,
     ownershipLabel,
     availableOffline
   } = presentation;
@@ -145,7 +140,7 @@ function renderCoursePreview({
         action: "delete-owned-course",
         label: "Excluir este curso",
       }
-    : {
+    : publicCourse ? { action: "clear-local-course", label: "Remover deste dispositivo" } : {
         action: "leave-shared-course",
         label: "Sair deste curso",
       };
@@ -156,10 +151,10 @@ function renderCoursePreview({
     '%" role="progressbar" aria-label="Progresso de ' + escapeHtml(title) +
     '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
     String(percentage) + '"></div>' +
-    '<div class="home-course-preview-copy">' +
+    '<div class="home-course-preview-copy" tabindex="0" role="region" aria-label="Descrição do curso">' +
     '<div class="home-course-title-row"><p class="home-course-ownership" aria-label="' +
     escapeHtml(ownershipLabel) + '">' +
-    renderUiIcon(personalCopy ? "copy" : owned ? "key" : "account-add", "home-course-origin-icon") +
+    renderUiIcon(owned ? "key" : publicCourse ? "study" : "account-add", "home-course-origin-icon") +
     '<span class="visually-hidden">' + escapeHtml(ownershipLabel) + "</span></p>" +
     '<h2 class="card-title">' + escapeHtml(title) + "</h2></div>" +
     (goal ? '<p class="card-subtitle">' + escapeHtml(goal) + "</p>" : "") +
@@ -178,6 +173,10 @@ function renderCoursePreview({
     renderUiIcon("more", "home-tab-icon") + '</button>' +
     '<div class="home-course-lifecycle-menu" id="home-course-actions-menu" popover="auto" role="menu"' +
     ' aria-label="Ações deste curso">' +
+    (course.canCopy === true && !offline
+      ? '<button type="button" role="menuitem" data-action="copy-course" data-course-id="' +
+        escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu" popovertargetaction="hide">' +
+        renderUiIcon("copy", "home-tab-icon") + '<span>Copiar curso</span></button>' : "") +
     (completed > 0
       ? '<button type="button" role="menuitem" data-action="reset-course-progress" data-course-id="' +
         escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu"' +
@@ -256,33 +255,71 @@ export function renderRuntimeStatusControl(status = {}, {
   const offline = status.offline === true;
   const stale = status.stale === true;
   const pending = status.pending === true;
-  const state = offline ? "offline" : stale ? "stale" : pending ? "pending" : "synced";
-  const label = offline
-    ? "Sem conexão"
-    : stale
-      ? "Sincronizando curso"
-      : pending
-        ? "Sincronização pendente"
-        : "Sincronizado";
-  const message = offline
-    ? status.availableOffline === false
-      ? "Sem conexão. Conecte-se para abrir este curso."
-      : pending
-        ? "Sem conexão. Suas alterações aguardam sincronização."
-        : "Sem conexão. A cópia deste dispositivo continua disponível."
-    : stale
-      ? pending
-        ? "Versão salva em uso. Suas alterações aguardam sincronização."
-        : "Versão salva em uso enquanto o AraLearn atualiza este curso."
-      : pending
-        ? "Suas alterações aguardam sincronização."
-        : "Sincronizado com a nuvem.";
+  const localOnly = status.localOnly === true || status.visitor === true;
+  const manual = status.synchronizationMode === "manual";
+  const synchronizing = status.synchronizing === true;
+  const conflict = Boolean(status.conflict);
+  const failed = Boolean(status.syncError);
+  const deferred = status.deferred === true;
+  const state = localOnly ? "local" : offline ? "offline" : conflict ? "conflict" :
+    failed ? "failed" : synchronizing ? "syncing" : pending || deferred ? "pending" :
+      manual ? "manual" : stale ? "stale" : "synced";
+  const label = localOnly ? "Neste dispositivo" : offline ? "Sem conexão" :
+    conflict ? "Sincronização exige uma decisão" : failed ? "Falha na sincronização" :
+      synchronizing ? "Sincronizando" : pending || deferred ? "Sincronização pendente" :
+        manual ? "Sincronização manual" : stale ? "Atualização pendente" : "Sincronizado";
+  const message = localOnly
+    ? "Seu progresso e suas marcações ficam neste dispositivo enquanto você estuda como visitante."
+    : offline
+      ? status.availableOffline === false
+        ? "Sem conexão. Conecte-se para abrir este curso."
+        : pending
+          ? "Sem conexão. Suas alterações aguardam sincronização."
+          : "Sem conexão. A cópia deste dispositivo continua disponível."
+      : conflict
+        ? "Há alterações que precisam ser conciliadas. Seu estado local foi preservado."
+        : failed
+          ? String(status.syncError)
+          : synchronizing
+            ? "Enviando alterações e consultando atualizações."
+            : deferred
+              ? "A atualização do curso aguarda você salvar ou descartar o rascunho aberto."
+              : pending
+                ? "Suas alterações aguardam sincronização. Use a nuvem para sincronizar agora."
+                : manual
+                  ? "Atualizações automáticas estão pausadas. Use a nuvem para sincronizar agora."
+                  : stale
+                    ? "Há uma atualização do curso pendente. Use a nuvem para atualizar."
+                    : "Sincronizado com a nuvem.";
+  const conflictValue = status.conflict;
+  const conflictControls = conflictValue?.id && conflictValue?.courseId
+    ? '<p>O mesmo estado foi alterado de formas diferentes. Escolha qual alteração manter; as marcas independentes serão preservadas.</p>' +
+      '<dl><dt>Neste dispositivo</dt><dd>' + Number(conflictValue.local?.completedCount || 0) +
+      ' unidades concluídas · ' + Number(conflictValue.local?.reviewCount || 0) + ' marcas Rever</dd>' +
+      '<dt>Na nuvem</dt><dd>' + Number(conflictValue.remote?.completedCount || 0) +
+      ' unidades concluídas · ' + Number(conflictValue.remote?.reviewCount || 0) + ' marcas Rever</dd></dl>' +
+      [["local", "Manter minhas alterações"], ["remote", "Usar as alterações da nuvem"]].map(([resolution, text]) =>
+        '<button class="account-settings-subview-entry" type="button" data-action="resolve-study-sync-conflict" data-resolution="' + resolution +
+        '" data-course-id="' + escapeHtml(conflictValue.courseId) + '" data-conflict-id="' +
+        escapeHtml(conflictValue.id) + '">' + text + '</button>').join("")
+    : "";
   return '<button class="icon-ghost study-runtime-status-control" type="button"' +
+    (localOnly || failed || conflict ? "" : ' data-action="synchronize-study"') +
     ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
-    ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '">' +
-    renderUiIcon(offline ? "offline" : "cloud", "home-tab-icon") + '</button>' +
+    ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '"' +
+    (synchronizing ? ' aria-busy="true"' : "") + '>' +
+    renderUiIcon(localOnly || offline ? "offline" : failed || conflict ? "cloud-alert" : "cloud", "home-tab-icon") + '</button>' +
     '<div class="study-runtime-status-popover" id="' + escapeHtml(popoverId) + '" popover="auto"' +
-    ' role="status"><p>' + escapeHtml(message) + '</p></div>';
+    ' role="region" aria-label="Estado da sincronização">' +
+    '<div class="study-runtime-status-heading"><span>' + label + '</span>' +
+    '<button class="icon-ghost" type="button" popovertarget="' + escapeHtml(popoverId) + '"' +
+    ' popovertargetaction="hide" aria-label="Fechar estado da sincronização" title="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") + '</button></div>' +
+    '<p role="status">' + escapeHtml(message) + '</p>' + conflictControls +
+    (failed && !localOnly && !conflict
+      ? '<button class="study-runtime-status-retry" type="button" data-action="synchronize-study"' +
+        ' popovertarget="' + escapeHtml(popoverId) + '" popovertargetaction="hide">Tentar novamente</button>'
+      : "") + '</div>';
 }
 
 function renderTopbar(runtimeStatus) {
@@ -311,7 +348,7 @@ export function renderHomeScreen({
   homeError = "",
   homeNotice = "",
   reviewUndo = null,
-  homePendingPersonalCopyDiscard = false,
+  visitor = false,
   editorSupport = {}
 }) {
   const courses = Array.isArray(project?.courses) ? project.courses : [];
@@ -328,6 +365,7 @@ export function renderHomeScreen({
   const topbarRuntimeStatus = selected
     ? { ...runtimeStatus, availableOffline: selected.availableOffline }
     : runtimeStatus;
+  if (visitor) topbarRuntimeStatus.localOnly = true;
   const selectMarkup = selected
     ? '<section class="clean-card home-course-selector-card" aria-labelledby="home-course-selector-label">' +
       '<label id="home-course-selector-label" class="home-course-selector-label" for="home-course-select">' +
@@ -346,15 +384,15 @@ export function renderHomeScreen({
         loading,
         error: homeError
       }) + "</section>"
-    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">Seus cursos</h2>' +
-      '<p class="empty-state-copy">Nenhum curso está disponível para estudo nesta conta.</p></section>';
+    : '<section class="clean-card home-course-selector-empty"><h2 class="card-title">' + (visitor ? "Cursos públicos" : "Seus cursos") + '</h2>' +
+      '<p class="empty-state-copy">' + (visitor ? "Nenhum curso público está disponível para estudo." : "Nenhum curso está disponível para estudo nesta conta.") + '</p></section>';
   return (
     '<section class="screen">' + renderTopbar(topbarRuntimeStatus) +
     '<main class="screen-content courses-home-screen navigation-screen">' +
     '<nav class="home-product-switch" aria-label="Área principal">' +
     '<button class="is-active" type="button" aria-current="page" title="Estudo">' +
     renderUiIcon("study", "home-tab-icon") + '<span>Estudo</span></button>' +
-    '<button type="button" data-action="open-authoring" title="Abrir Autoria">' +
+    '<button type="button" data-action="' + (visitor ? "request-auth" : "open-authoring") + '" title="' + (visitor ? "Entrar para autoria" : "Abrir Autoria") + '">' +
     renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
     '<div class="study-home-feedback-layer">' +
     (homeNotice ? '<div class="study-home-feedback is-notice" role="status"><span>' +
@@ -363,10 +401,7 @@ export function renderHomeScreen({
         : "") + "</div>" : "") +
     (homeError ? '<p class="study-home-feedback is-error" role="alert">' +
       escapeHtml(homeError) + "</p>" : "") +
-    (homePendingPersonalCopyDiscard
-      ? '<button class="open-mini study-home-discard-pending" type="button"' +
-        ' data-action="discard-pending-personal-copy">Descartar alteração guardada</button>'
-      : "") + "</div>" +
+    "</div>" +
     selectMarkup +
     renderReviewQueue(reviewItems, reviewHasMore, selectedId, reviewQueueOpen) +
     "</main></section>"

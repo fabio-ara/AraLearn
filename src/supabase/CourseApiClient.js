@@ -1,4 +1,8 @@
+import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
+import { normalizeCourseAuthoringSelection, normalizeCourseAuthoringComparisonRequest,
+  normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
@@ -12,10 +16,16 @@ import {
 } from "../domain/courseAuthoringAnalytics.js";
 import { normalizeCourseDesignCommand } from "../domain/courseDesignParameters.js";
 import {
+  normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
+  normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
+  normalizeCourseAuthoringProfileChange
+} from "../domain/authoringProfiles.js";
+import {
   normalizeFocalStudyUnitCompositionCommand,
   normalizeFocalStudyUnitCompositionReceipt,
-  normalizePersonalCourseCopyEditCommand,
-  normalizePersonalCourseCopyEditReceipt
+  normalizeCourseMetadata,
+  normalizeOwnedCourseCopyRecoveryCommand,
+  normalizeOwnedCourseCopyRecoveryReceipt
 } from "../domain/courseComposition.js";
 import {
   COURSE_SOURCE_PDF_MAX_BYTES,
@@ -30,6 +40,9 @@ import {
   normalizeCourseStudyCitationsRead
 } from "../domain/courseSources.js";
 import { SupabaseHttpClient } from "./SupabaseHttpClient.js";
+import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
+  boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
+import { inspectCourseAudioBytes } from "../domain/courseMedia.js";
 
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -138,7 +151,8 @@ function requestIdentity(value) {
   return value;
 }
 
-function courseSourceCommandSubjectId(command) {
+function courseSourceCommandSubjectId(command, courseId) {
+  if (command.type === "set_bibliography_style") return courseId;
   return command.type === "save_source" || command.type === "retire_source" ||
     command.type === "remove_pdf"
     ? command.sourceId
@@ -609,20 +623,45 @@ function personalStateMutationResult(value, courseId, expectedRevision) {
   return structuredClone(result);
 }
 
+function personHandle(value, { prefix = false } = {}) {
+  const raw = typeof value === "string" ? value.trim().replace(/^@/u, "") : "";
+  const normalized = raw.toLowerCase();
+  if (!/^[A-Za-z0-9._-]+$/u.test(raw) || normalized.length < (prefix ? 2 : 3) || normalized.length > 30 ||
+      !(prefix ? /^[a-z0-9][a-z0-9._-]*$/u : /^[a-z0-9][a-z0-9._-]*[a-z0-9]$/u).test(normalized)) {
+    throw new TypeError("Identificador público inválido.");
+  }
+  return normalized;
+}
+
 export class CourseApiClient {
-  constructor({ projectUrl, publishableKey, authClient, fetchImpl = globalThis.fetch } = {}) {
+  constructor({ projectUrl, publishableKey, authClient, visitor = false, fetchImpl = globalThis.fetch } = {}) {
     if (!authClient || typeof authClient.getAccessToken !== "function") {
       throw new TypeError("Cliente de autenticação obrigatório.");
     }
     this.authClient = authClient;
+    this.visitor = visitor === true;
     this.fetchImpl = fetchImpl;
     this.http = new SupabaseHttpClient({ projectUrl, publishableKey, fetchImpl });
   }
 
+  #authenticatedAccessToken() {
+    if (this.visitor) throw Object.assign(new Error("Entre para realizar esta operação."), {
+      code: "AUTH_REQUIRED", status: 401
+    });
+    return this.authClient.getAccessToken();
+  }
+
   async rpc(name, parameters = {}, options = {}) {
+    const publicRead = this.visitor && new Set([
+      "list_courses_v1", "get_course_v1", "list_course_entities_v1",
+      "get_course_study_citations_v1"
+    ]).has(name);
+    if (this.visitor && !publicRead) throw Object.assign(
+      new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
+    );
     try {
-      const accessToken = await this.authClient.getAccessToken();
-      if (!accessToken) {
+      const accessToken = publicRead ? null : await this.#authenticatedAccessToken();
+      if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
         error.code = "AUTH_REQUIRED";
@@ -630,7 +669,7 @@ export class CourseApiClient {
       }
       return first(await this.http.rpc(name, parameters, { ...options, accessToken }));
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -842,9 +881,16 @@ export class CourseApiClient {
     if (typeof normalizedBody?.requestId === "string") {
       requestHeaders["Idempotency-Key"] = requestIdentity(normalizedBody.requestId);
     }
+    const publicRead = this.visitor && normalizedMethod === "GET" &&
+      (/^\/v1\/courses\/[0-9a-f-]{36}\/source-pdf\/download$/u.test(pathname) ||
+        /^\/v1\/courses\/[0-9a-f-]{36}\/media\/[a-f0-9]{64}\/download$/u.test(pathname) ||
+        /^\/v1\/courses\/[0-9a-f-]{36}\/media$/u.test(pathname) && query?.mode === "configuration");
+    if (this.visitor && !publicRead) throw Object.assign(
+      new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
+    );
     try {
-      const accessToken = await this.authClient.getAccessToken();
-      if (!accessToken) {
+      const accessToken = publicRead ? null : await this.#authenticatedAccessToken();
+      if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
         throw error;
@@ -872,13 +918,21 @@ export class CourseApiClient {
       }
       return response?.data ?? null;
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
       }
       throw error;
     }
+  }
+
+  saveCourseAuthoringPart(value) {
+    const request = normalizeCourseAuthoringPartRequest(value);
+    const { courseId, ...body } = request;
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-parts`, {
+      method: "POST", body
+    }).then(result => normalizeCourseAuthoringPartChange(result, request));
   }
 
   loadAuthoringPlan(courseId) {
@@ -902,6 +956,92 @@ export class CourseApiClient {
         cursor: cursor == null ? null : boundedIdentifier(cursor, "Cursor de subescopos")
       }
     });
+  }
+
+  listAuthoringProfiles() {
+    return this.requestCourseApi("/v1/authoring-profiles").then(normalizeAuthoringProfileList);
+  }
+
+  mutateAuthoringProfile(value = {}) {
+    const command = normalizeAuthoringProfileSave(value);
+    const create = command.expectedRevision === 0;
+    const { profileId, ...body } = command;
+    return this.requestCourseApi(create ? "/v1/authoring-profiles" : `/v1/authoring-profiles/${profileId}`, {
+      method: create ? "POST" : "PATCH", body: create ? command : body
+    }).then((result) => normalizeAuthoringProfileChange(result, { ...command, deleted: false }));
+  }
+
+  deleteAuthoringProfile(value = {}) {
+    const command = normalizeAuthoringProfileDelete(value);
+    const { profileId, ...body } = command;
+    return this.requestCourseApi(`/v1/authoring-profiles/${profileId}`, {
+      method: "DELETE", body
+    }).then((result) => normalizeAuthoringProfileChange(result, { ...command, deleted: true }));
+  }
+
+  previewCourseAuthoringProfile(value = {}) {
+    const command = normalizeCourseAuthoringProfileRequest(value);
+    const { courseId, ...body } = command;
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-profile/preview`, {
+      method: "POST", body
+    }).then((result) => normalizeCourseAuthoringProfilePreview(result, command));
+  }
+
+  applyCourseAuthoringProfile(value = {}) {
+    const command = normalizeCourseAuthoringProfileRequest(value, { apply: true });
+    const { courseId, ...body } = command;
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/authoring-profile/applications`, {
+      method: "POST", body
+    }).then((result) => normalizeCourseAuthoringProfileChange(result, command));
+  }
+
+  async loadCourseMedia(courseId, options = {}) {
+    const request = courseMediaReadRequest(courseId, options);
+    const query = { expectedRevision: request.expectedRevision, mode: request.mode, cursor: request.cursor, limit: request.limit };
+    return boundCourseMediaRead(await this.requestCourseApi(`${courseResourcePath(courseId)}/media`, { query }), request);
+  }
+
+  async getCourseMediaDownload(value) {
+    const request = courseMediaDownloadRequest(value);
+    return boundCourseMediaDownload(await this.requestCourseApi(
+      `${courseResourcePath(request.courseId)}/media/${request.contentHash}/download`, {
+        query: { expectedRevision: request.expectedRevision, studyUnitId: request.studyUnitId }
+      }), request, { projectUrl: this.http.projectUrl });
+  }
+
+  async mutateCourseMedia(value) {
+    const request = courseMediaWriteRequest(value);
+    return boundCourseMediaChange(await this.requestCourseApi(`${courseResourcePath(request.courseId)}/media/changes`, {
+      method: "POST", body: { requestId: request.requestId, expectedRevision: request.expectedCourseRevision, command: request.command }
+    }), request);
+  }
+
+  async uploadCourseAudio(value) {
+    if (this.visitor) throw Object.assign(new Error("Entre para guardar o áudio."), { status: 401, code: "AUTH_REQUIRED" });
+    const request = courseMediaWriteRequest(value, { upload: true });
+    const bytes = new Uint8Array(await request.file.arrayBuffer());
+    const inspected = inspectCourseAudioBytes(bytes, { declaredMediaType: request.file.type });
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+    const media = { contentHash: [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join(""),
+      byteSize: inspected.byteSize, mediaType: inspected.mediaType };
+    try {
+      const accessToken = await this.#authenticatedAccessToken();
+      if (!accessToken) throw Object.assign(new Error("Entre novamente para guardar o áudio."), { status: 401, code: "AUTH_REQUIRED" });
+      const body = new FormData();
+      body.set("requestId", request.requestId); body.set("courseId", request.courseId);
+      body.set("expectedRevision", String(request.expectedCourseRevision));
+      body.set("file", request.file, request.file.name);
+      const response = await this.http.request("/functions/v1/aralearn-course-api/app/ingerirAudio", {
+        method: "POST", body, rawBody: true, accessToken, timeoutMs: COURSE_SOURCE_PDF_TIMEOUT_MS
+      });
+      return boundCourseMediaChange(response?.data, request, media);
+    } catch (error) {
+      if (!this.visitor && authenticationFailure(error)) {
+        await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
+        this.authClient.emit?.("SESSION_INVALID"); error.authRequired = true;
+      }
+      throw error;
+    }
   }
 
   async loadCourseSources(courseId, options = {}) {
@@ -967,7 +1107,7 @@ export class CourseApiClient {
       sourceRevision: positiveInteger(sourceRevision, "Revisão da Fonte")
     };
     try {
-      const accessToken = await this.authClient.getAccessToken();
+      const accessToken = await this.#authenticatedAccessToken();
       if (!accessToken) {
         throw Object.assign(new Error("Entre novamente para continuar."), {
           status: 401,
@@ -1021,7 +1161,7 @@ export class CourseApiClient {
       }
       return result;
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -1094,6 +1234,20 @@ export class CourseApiClient {
     return result;
   }
 
+  async loadCourseAuthoringComparison(value) {
+    const request = normalizeCourseAuthoringComparisonRequest(value);
+    return normalizeCourseAuthoringComparison(await this.requestCourseApi("/v1/authoring-comparison", {
+      method: "POST", body: request
+    }), { expectedRequest: request });
+  }
+
+  async exportCourseAuthoring(value) {
+    const selection = normalizeCourseAuthoringSelection(value);
+    return normalizeCourseAuthoringExport(await this.requestCourseApi(`${courseResourcePath(selection.courseId)}/authoring-export`, {
+      query: { expectedRevision: selection.expectedRevision, scopeKind: selection.scope.kind, scopeRef: selection.scope.ref }
+    }), { expectedSelection: selection });
+  }
+
   loadAuthoringOutline(courseId) {
     return this.requestCourseApi(courseResourcePath(courseId), {
       query: { view: "outline" }
@@ -1103,6 +1257,7 @@ export class CourseApiClient {
   loadAuthoringStudyUnits(courseId, {
     expectedRevision,
     scope = { kind: "course", id: null },
+    entry = null,
     anchorStudyUnitId = null,
     cursor: cursorValue = null,
     direction = "forward",
@@ -1115,7 +1270,9 @@ export class CourseApiClient {
       ? null
       : boundedIdentifier(anchorStudyUnitId, "Unidade de âncora");
     const normalizedDirection = String(direction || "").trim();
-    if (!new Set(["forward", "backward"]).has(normalizedDirection) ||
+    if (entry != null && (entry !== "latest_updated" || normalizedAnchor != null ||
+        normalizedCursor != null || normalizedDirection !== "forward") ||
+        !new Set(["forward", "backward"]).has(normalizedDirection) ||
         (normalizedAnchor && normalizedCursor)) {
       throw new TypeError("Paginação da inspeção inválida.");
     }
@@ -1124,6 +1281,7 @@ export class CourseApiClient {
       `/v2/courses/${encodeURIComponent(normalizedCourseId)}/study-units`, {
       query: {
         expectedRevision: positiveInteger(expectedRevision, "Versão do Curso"),
+        ...(entry == null ? {} : { entry }),
         scopeKind: normalizedScope.kind,
         scopeId: normalizedScope.id,
         anchorStudyUnitId: normalizedAnchor,
@@ -1184,12 +1342,13 @@ export class CourseApiClient {
 
   async commitCourseStructuralComposition(value = {}) {
     const source = exactObject(value, new Set([
-      "requestId", "courseId", "expectedRevision", "upserts", "deletes",
+      "requestId", "courseId", "expectedRevision", "upserts", "deletes", "courseMetadata",
       "sourceAttributionApplications"
     ]), "Alteração estrutural assistida");
+    const courseMetadata = Object.hasOwn(source, "courseMetadata") ? normalizeCourseMetadata(source.courseMetadata) : null;
     const upserts = Array.isArray(source.upserts) ? structuredClone(source.upserts) : null;
     const deletes = Array.isArray(source.deletes) ? structuredClone(source.deletes) : null;
-    if (!upserts || !deletes || !upserts.length && !deletes.length ||
+    if (!upserts || !deletes || !upserts.length && !deletes.length && courseMetadata === null ||
         upserts.length > 200 || deletes.length > 200) {
       throw new TypeError("Alteração estrutural assistida inválida.");
     }
@@ -1201,6 +1360,7 @@ export class CourseApiClient {
       body: {
         requestId,
         expectedRevision: positiveInteger(source.expectedRevision, "Versão do Curso"),
+        ...(courseMetadata === null ? {} : { courseMetadata }),
         upserts: bounded.upserts,
         deletes: bounded.deletes,
         sourceAttributionApplications: normalizeSourceAttributionApplications(
@@ -1215,39 +1375,23 @@ export class CourseApiClient {
     };
   }
 
-  async commitPersonalCourseCopyEdit(value = {}) {
-    const command = normalizePersonalCourseCopyEditCommand(value);
-    let result;
-    try {
-      result = await this.requestCourseApi(
-        `${courseResourcePath(command.sourceCourseId)}/personal-copy/composition`,
-        {
-          method: "POST",
-          body: {
-            requestId: command.requestId,
-            sourceCourseId: command.sourceCourseId,
-            expectedSourceCourseRevision: command.expectedSourceCourseRevision,
-            expectedStudyUnitVersion: command.expectedStudyUnitVersion,
-            didacticMicrosequenceId: command.didacticMicrosequenceId,
-            studyUnit: command.studyUnit,
-            applicationOrigin: command.origin
-          }
-        }
-      );
-    } catch (error) {
-      if (String(error?.code || "").toLowerCase() === "personal_copy_exists") {
-        const candidate = String(
-          error?.details?.targetCourseId ??
-          error?.response?.details?.targetCourseId ??
-          error?.response?.error?.details?.targetCourseId ?? ""
-        ).trim().toLowerCase();
-        if (UUID_PATTERN.test(candidate)) error.targetCourseId = candidate;
-      }
-      throw error;
-    }
-    return normalizePersonalCourseCopyEditReceipt(result, command);
+  async recoverOwnedCourseCopy(value = {}) {
+    const command = normalizeOwnedCourseCopyRecoveryCommand(value);
+    const { origin, ...body } = command;
+    const result = await this.requestCourseApi(
+      `${courseResourcePath(command.sourceCourseId)}/copy-recovery`,
+      { method: "POST", body: { ...body, applicationOrigin: origin } }
+    );
+    return normalizeOwnedCourseCopyRecoveryReceipt(result, command);
   }
 
+  async copyCourse(value) {
+    const request = normalizeCourseCopyRequest(value);
+    const result = await this.requestCourseApi(`${courseResourcePath(request.sourceCourseId)}/copies`, {
+      method: "POST", body: request
+    });
+    return normalizeCourseCopyResult(result, request);
+  }
 
   mutateCourseDesign(value = {}) {
     const source = exactObject(
@@ -1301,7 +1445,7 @@ export class CourseApiClient {
         result.courseRevision !== expectedRevision + (result.changed ? 1 : 0) ||
         result.change != null && (
           result.change.type !== sourceCommand.type ||
-          result.change.subjectId !== courseSourceCommandSubjectId(sourceCommand)
+          result.change.subjectId !== courseSourceCommandSubjectId(sourceCommand, source.courseId)
         )) {
       throw new TypeError("A confirmação de Fontes não corresponde ao comando.");
     }
@@ -1328,19 +1472,20 @@ export class CourseApiClient {
   }
 
   getPersonProfile() {
-    return this.requestCourseApi("/v1/profile");
+    return this.requestCourseApi("/v2/profile");
   }
 
   updatePersonProfile(patch) {
     const normalized = plainObject(patch, "Alteração de perfil");
-    const allowed = new Set(["displayName", "avatarObjectKey"]);
+    const allowed = new Set(["handle", "avatarObjectKey"]);
     if (!Object.keys(normalized).length ||
         Object.keys(normalized).some((field) => !allowed.has(field))) {
       throw new TypeError("Alteração de perfil inválida.");
     }
-    return this.requestCourseApi("/v1/profile", {
+    return this.requestCourseApi("/v2/profile", {
       method: "PATCH",
-      body: normalized
+      body: { ...normalized, ...(Object.hasOwn(normalized, "handle")
+        ? { handle: personHandle(normalized.handle) } : {}) }
     });
   }
 
@@ -1348,24 +1493,73 @@ export class CourseApiClient {
     return this.requestCourseApi(`${courseResourcePath(courseId)}/access`);
   }
 
-  grantCourseAccess({
-    courseId,
-    email,
-    confirmed,
-    requestId = createUuid()
-  } = {}) {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    if (confirmed !== true || normalizedEmail.length > 254 ||
-        !/^[^\s@]+@[^\s@]+$/u.test(normalizedEmail)) {
-      throw new TypeError("Concessão de acesso inválida.");
+  async searchCourseAccessPeople(courseId, { query, limit = 10 } = {}) {
+    const course = uuid(courseId, "Curso");
+    const prefix = personHandle(query, { prefix: true });
+    const maximum = positiveInteger(limit, "Limite de pessoas", { maximum: 10 });
+    const result = await this.requestCourseApi(`${courseResourcePath(course)}/access/people`, {
+      query: { query: prefix, limit: maximum }
+    });
+    if (result?.contract !== "aralearn.course-people-search.v1" || result.courseId !== course ||
+        !Array.isArray(result.items) || result.items.length > maximum ||
+        typeof result.rateLimited !== "boolean" || result.rateLimited && result.items.length) {
+      throw new TypeError("Resultado da busca de pessoas inválido.");
     }
+    const items = result.items.map((person) => {
+      const userId = uuid(person.userId, "Pessoa");
+      const handle = personHandle(person.handle);
+      const key = person.avatarObjectKey;
+      if (handle !== person.handle || !handle.startsWith(prefix) ||
+          key !== null && (!AVATAR_OBJECT_KEY.test(key) || !key.startsWith(`${userId}/`))) {
+        throw new TypeError("Pessoa da busca inválida.");
+      }
+      let avatarUrl = null;
+      if (key !== null) {
+        const url = new URL(person.avatarUrl);
+        if (url.origin !== new URL(this.http.projectUrl).origin || url.username || url.password || url.hash ||
+            url.pathname !== `/storage/v1/object/sign/${AVATAR_BUCKET}/${key}` || !url.searchParams.has("token")) {
+          throw new TypeError("Avatar da busca inválido.");
+        }
+        avatarUrl = url.toString();
+      } else if (person.avatarUrl !== null) throw new TypeError("Avatar da busca inválido.");
+      return { userId, handle, avatarObjectKey: key, avatarUrl };
+    });
+    if (new Set(items.map(({ userId }) => userId)).size !== items.length) throw new TypeError("Busca repetiu uma pessoa.");
+    return { contract: result.contract, courseId: course, items, rateLimited: result.rateLimited };
+  }
+
+  grantCourseAccess({ courseId, userId, handle, canCopy, confirmed, requestId = createUuid() } = {}) {
+    if (confirmed !== true || typeof canCopy !== "boolean") throw new TypeError("Concessão de acesso inválida.");
     return this.requestCourseApi(`${courseResourcePath(courseId)}/access`, {
       method: "POST",
-      body: {
-        email: normalizedEmail,
-        confirmed: true,
-        requestId: uuid(requestId, "Identidade da alteração")
-      }
+      body: { userId: uuid(userId, "Pessoa"), handle: personHandle(handle), canCopy, confirmed: true,
+        requestId: uuid(requestId, "Identidade da alteração") }
+    });
+  }
+
+  setCourseVisibility({ courseId, expectedRevision, visibility, publicFileAccess,
+    confirmed, requestId = createUuid() } = {}) {
+    if (!new Set(["private", "public"]).has(visibility) ||
+        !new Set(["restricted", "available"]).has(publicFileAccess) ||
+        confirmed !== true) throw new TypeError("Visibilidade inválida.");
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/visibility`, {
+      method: "PATCH", body: { expectedRevision: positiveInteger(expectedRevision, "Revisão"),
+        visibility, publicFileAccess, confirmed: confirmed === true,
+        requestId: requestIdentity(requestId) }
+    });
+  }
+
+  setCourseSourceFileAccess({ courseId, expectedRevision, sourceId, sourceRevision,
+    contentHash = null, publicFileAccess, requestId = createUuid() } = {}) {
+    if (!new Set(["inherit", "restricted", "available"]).has(publicFileAccess) ||
+        contentHash !== null && !/^[a-f0-9]{64}$/u.test(contentHash)) {
+      throw new TypeError("Permissão do arquivo inválida.");
+    }
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/sources/file-access`, {
+      method: "PATCH", body: { expectedRevision: positiveInteger(expectedRevision, "Revisão"),
+        sourceId: boundedIdentifier(sourceId, "Fonte"),
+        sourceRevision: positiveInteger(sourceRevision, "Revisão da fonte"),
+        contentHash, publicFileAccess, requestId: requestIdentity(requestId) }
     });
   }
 
@@ -1458,7 +1652,7 @@ export class CourseApiClient {
     const normalizedPath = String(objectPath || "").trim();
     if (!new Set([
       "avatar_owner_missing", "avatar_profile_unlinked",
-      "pdf_course_missing", "pdf_unlinked"
+      "pdf_course_missing", "pdf_unlinked", "audio_course_missing", "audio_unlinked"
     ]).has(normalizedClassification) || !normalizedPath || normalizedPath.length > 500) {
       throw new TypeError("Resíduo de Manutenção inválido.");
     }
@@ -1482,7 +1676,7 @@ export class CourseApiClient {
       throw new TypeError("Use uma imagem JPEG, PNG ou WebP de até 512 KiB.");
     }
     const objectKey = `${userId}/${uuid(objectId, "Identidade do avatar")}.${extension}`;
-    const accessToken = await this.authClient.getAccessToken();
+    const accessToken = await this.#authenticatedAccessToken();
     if (!accessToken) {
       const error = new Error("Entre novamente para continuar.");
       error.status = 401;
@@ -1505,7 +1699,7 @@ export class CourseApiClient {
       );
       return { objectKey, contentType, size };
     } catch (error) {
-      if (authenticationFailure(error)) {
+      if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
         this.authClient.emit?.("SESSION_INVALID");
         error.authRequired = true;
@@ -1515,7 +1709,7 @@ export class CourseApiClient {
   }
 
   async loadAvatar(objectKey) {
-    const accessToken = await this.authClient.getAccessToken();
+    const accessToken = await this.#authenticatedAccessToken();
     if (!accessToken) throw Object.assign(new Error("Entre novamente para continuar."), {
       status: 401,
       code: "AUTH_REQUIRED"
@@ -1533,7 +1727,7 @@ export class CourseApiClient {
     if (!normalized.startsWith(`${userId}/`)) {
       throw new TypeError("Somente o próprio avatar pode ser removido.");
     }
-    const accessToken = await this.authClient.getAccessToken();
+    const accessToken = await this.#authenticatedAccessToken();
     if (!accessToken) throw Object.assign(new Error("Entre novamente para continuar."), {
       status: 401,
       code: "AUTH_REQUIRED"

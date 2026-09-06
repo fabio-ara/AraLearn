@@ -24,7 +24,7 @@ export function routeCourseRequest(method, pathname) {
   if (path === "/v1/maintenance/actions") {
     if (verb === "POST") return { name: "executeCurrentMaintenance" };
   }
-  if (path === "/v1/profile") {
+  if (path === "/v2/profile") {
     if (verb === "GET") return { name: "getPersonProfile" };
     if (verb === "PATCH") return { name: "updatePersonProfile" };
   }
@@ -32,6 +32,27 @@ export function routeCourseRequest(method, pathname) {
     if (verb === "GET") return { name: "listCourses" };
     if (verb === "POST") return { name: "createCourse" };
   }
+  if (path === "/v1/authoring-comparison" && verb === "POST") return { name: "compareCourseAuthoring" };
+  const authoringExport = path.match(/^\/v1\/courses\/([^/]+)\/authoring-export$/u);
+  if (authoringExport && verb === "GET") return { name: "getCourseAuthoringExport", courseId: courseUuid(authoringExport[1]) };
+  const courseCopy = path.match(/^\/v1\/courses\/([^/]+)\/copies$/u);
+  if (courseCopy && verb === "POST") return { name: "copyCourse", sourceCourseId: courseUuid(courseCopy[1], "sourceCourseId") };
+  if (path === "/v1/authoring-profiles") {
+    if (verb === "GET") return { name: "listAuthoringProfiles" };
+    if (verb === "POST") return { name: "createAuthoringProfile" };
+  }
+  const authoringProfile = path.match(/^\/v1\/authoring-profiles\/([^/]+)$/u);
+  if (authoringProfile && new Set(["PATCH", "DELETE"]).has(verb)) {
+    return { name: verb === "PATCH" ? "updateAuthoringProfile" : "deleteAuthoringProfile",
+      profileId: courseUuid(authoringProfile[1], "profileId") };
+  }
+  const courseProfile = path.match(/^\/v1\/courses\/([^/]+)\/authoring-profile\/(preview|applications)$/u);
+  if (courseProfile && verb === "POST") {
+    return { name: courseProfile[2] === "preview" ? "previewCourseAuthoringProfile" : "applyCourseAuthoringProfile",
+      courseId: courseUuid(courseProfile[1]) };
+  }
+  const authoringPart = path.match(/^\/v1\/courses\/([^/]+)\/authoring-parts$/u);
+  if (authoringPart && verb === "POST") return { name: "saveCourseAuthoringPart", courseId: courseUuid(authoringPart[1]) };
   const instructionalPlan = path.match(/^\/v1\/courses\/([^/]+)\/instructional-plan$/u);
   if (instructionalPlan && verb === "GET") {
     return {
@@ -58,6 +79,11 @@ export function routeCourseRequest(method, pathname) {
   const courseSourceChange = path.match(
     /^\/v1\/courses\/([^/]+)\/sources\/changes$/u
   );
+  const media = path.match(/^\/v1\/courses\/([^/]+)\/media(?:\/(changes)|\/([a-f0-9]{64})\/download)?$/u);
+  if (media && ((!media[2] && verb === "GET") || (media[2] && verb === "POST"))) {
+    return { name: media[2] ? "executeCourseMediaCommand" : media[3] ? "getCourseMediaDownload" : "getCourseMedia",
+      courseId: courseUuid(media[1]), ...(media[3] ? { contentHash: media[3] } : {}) };
+  }
   if (courseSourceChange && verb === "POST") {
     return {
       name: "executeCourseSourceCommand",
@@ -105,14 +131,21 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(research[1])
     };
   }
-  const personalCopyComposition = path.match(
-    /^\/v1\/courses\/([^/]+)\/personal-copy\/composition$/u
-  );
-  if (personalCopyComposition && verb === "POST") {
-    return {
-      name: "commitPersonalCourseCopyEdit",
-      sourceCourseId: courseUuid(personalCopyComposition[1], "sourceCourseId")
-    };
+  const recovery = path.match(/^\/v1\/courses\/([^/]+)\/copy-recovery$/u);
+  if (recovery && verb === "POST") {
+    return { name: "recoverOwnedCourseCopy", sourceCourseId: courseUuid(recovery[1]) };
+  }
+  const visibility = path.match(/^\/v1\/courses\/([^/]+)\/visibility$/u);
+  if (visibility && verb === "PATCH") {
+    return { name: "setCourseVisibility", courseId: courseUuid(visibility[1]) };
+  }
+  const fileAccess = path.match(/^\/v1\/courses\/([^/]+)\/sources\/file-access$/u);
+  if (fileAccess && verb === "PATCH") {
+    return { name: "setCourseSourceFileAccess", courseId: courseUuid(fileAccess[1]) };
+  }
+  const people = path.match(/^\/v1\/courses\/([^/]+)\/access\/people$/u);
+  if (people && verb === "GET") {
+    return { name: "searchCourseAccessPeople", courseId: courseUuid(people[1]) };
   }
   const composition = path.match(/^\/v1\/courses\/([^/]+)\/composition$/u);
   if (composition && verb === "POST") {

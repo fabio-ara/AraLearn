@@ -96,6 +96,33 @@ projeto Supabase. A [separação entre chaves publicáveis e secretas](supabase.
 
 ## Validar antes da publicação
 
+O desenvolvimento usa testes focais escolhidos pelo comportamento alterado. O
+runner existente aceita arquivos explícitos; ele rejeita caminhos desconhecidos
+e seleção vazia:
+
+```powershell
+npm.cmd run test:focal -- tests/runtime/ci-path-classification.test.js
+npm.cmd run test:authoring:contract
+```
+
+Uma mudança em contrato compartilhado exige seus consumidores. Segurança,
+migrations, sincronização e banco exigem também a integração pertinente; uma
+prova focal não autoriza publicação. Documentação reconhecida recebe auditorias
+documentais. Contratos de Autoria, documentos gerados para clientes, caminhos
+desconhecidos, dependências e CI ampliam o alcance.
+
+| Momento | Gatilho e prova | Artefato | Publicação |
+| --- | --- | --- | --- |
+| Desenvolvimento | comandos focais locais conforme o risco | saídas locais | nenhuma |
+| Documentação pura | PR e auditorias documentais | sem manifesto publicável | nenhuma |
+| Candidata estável | PR final ou dispatch integral de `validacao.yml`; Windows e Supabase | Pages testado, APK debug e manifesto do gate | nenhuma |
+| Promoção | dispatch de `pages.yml` na `main`, com run e tentativa exatos | Pages aprovado e APK assinado verificado | backend compatível, Pages e uma Release |
+
+O check obrigatório **Testar e validar** depende das provas **Testar web e
+Android** e **Testar Supabase local**. Falha, cancelamento ou omissão de prova
+aplicável impede seu sucesso. Somente a validação integral produz o manifesto
+publicável. O nome obrigatório e a proteção da branch permanecem preservados.
+
 Instale exatamente as dependências fixadas:
 
 ```powershell
@@ -110,8 +137,11 @@ pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Web -RequireRuntim
 pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Full -RequireRuntimeConfig
 ```
 
-`Core` exerce contratos e runtime sem publicar. `Web` acrescenta o artefato do
-site. `Full` acrescenta Android. Os verificadores de artefato examinam
+`Core` exerce contratos e runtime sem publicar. `Web` acrescenta a geração e o
+teste do mesmo artefato do site. `Full` acrescenta Android; a integração Supabase
+local permanece uma prova própria. Esses comandos são úteis quando a prova
+local integral é necessária; não precisam ser repetidos após o CI integral
+válido para a mesma candidata. Os verificadores de artefato examinam
 configuração pública, política de conteúdo, segredos, manifesto, recursos e
 ausência de catálogo de cursos embutido. Testes demonstram os cenários
 exercitados; mudanças visuais ainda exigem inspeção no produto real.
@@ -160,19 +190,20 @@ As origens mínimas da aplicação são o servidor local, GitHub Pages e
 `https://appassets.androidplatform.net`. Uma instalação alternativa acrescenta
 somente suas origens HTTPS exatas. Actions admite também apenas
 `https://chatgpt.com` e `https://chat.openai.com`. O script verifica o preflight
-da API e de cada origem oficial de Actions, o OAuth do MCP hospedado e o fluxo
-autenticado de PDF antes de encerrar.
+da API e de cada origem oficial de Actions, além do OAuth, da inicialização e
+da descoberta de ferramentas do MCP hospedado. A jornada autenticada de PDF
+pertence à prova de integração do corte; esse script não a executa.
 
 O callback de Actions precisa usar HTTPS, um desses dois hosts e o formato
 `/aip/g-.../oauth/callback`. O redirect efetivamente apresentado pelo cliente é
 registrado e precisa coincidir nas etapas seguintes do OAuth; o caminho não é
 reconstruído a partir de outro identificador do GPT.
 
-O manifesto corrente termina em
-`20260903193000_add_open_response_component.sql`. A revisão anterior estabelece o mapa
-curricular global anterior à produção, conserva partes como lotes operacionais
-e registra o repertório e a configuração efetivamente aplicados; a corrente
-acrescenta resposta aberta e migra as políticas existentes para o catálogo novo. A migration
+O manifesto em `supabase/runtime-manifest.json` identifica a revisão e o conjunto
+exatos de capacidades exigidos pelo cliente. Confronte essa fonte com as migrations
+aplicadas e com o manifesto remoto; não substitua a comparação por uma revisão
+antiga citada em instruções de instalação. A [história do schema](schema-change-log.md)
+explica os cuidados de cada mudança. A migration
 `20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
 autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
 quando o próprio documento mudar; uma correção interna do vínculo OAuth não
@@ -192,9 +223,38 @@ artefato contém HTML, CSS, módulos JavaScript, manifesto de recursos,
 configuração pública e o documento OpenAPI de Actions. Não contém cursos,
 chave secreta nem credencial de provedor.
 
-O workflow `pages.yml` publica o mesmo SHA já aprovado. Em outro host estático,
-envie o conteúdo de `.pages`, preserve caminhos e tipos MIME e sirva tudo por
-HTTPS. Depois:
+O workflow `pages.yml` coordena a promoção. Ele não publica por mero push. Após
+integrar a candidata e preparar o backend, informe a execução integral e sua
+tentativa, sem procurar o último artefato verde:
+
+```powershell
+gh workflow run pages.yml --ref main `
+  -f candidate_run_id=<run-integral> -f candidate_run_attempt=<tentativa>
+```
+
+`releaseCandidate.mjs` confere origem, conclusão dos jobs e das etapas
+obrigatórias, vínculo com o PR integrado, árvore Git, lockfile, configuração,
+manifesto backend e digests. Artefatos expirados, forks, revisões superadas e
+divergências são recusados. O download precisa corresponder ao SHA-256
+registrado pelo GitHub e cada arquivo precisa corresponder ao manifesto.
+
+O manifesto registra o SHA testado e o SHA integrado separadamente. Um merge
+com SHA diferente só reutiliza a prova quando a árvore e a configuração são
+iguais; a relação com o PR também é conferida. Se essa equivalência não puder
+ser comprovada, execute a validação integral na revisão integrada antes de
+tentar promovê-la. O publicador reutiliza os bytes Pages testados, sem rebuild.
+
+O verificador hospedado confirma versão, tamanho e SHA-256 de todos os arquivos
+do site, inclusive binários, além de MIME, CSP, configuração e callback:
+
+```powershell
+node scripts/verifyPublishedSite.mjs `
+  --url https://fabio-ara.github.io/AraLearn/ `
+  --candidate-manifest .candidate/candidate.json
+```
+
+Em outro host estático, envie o conteúdo de `.pages`, preserve caminhos e tipos
+MIME e sirva tudo por HTTPS. A verificação básica continua disponível:
 
 ```powershell
 npm.cmd run deployment:verify-site -- --url https://<endereco-da-aplicacao>/
@@ -219,8 +279,38 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
   -Target Android -RequireRuntimeConfig
 ```
 
-O workflow `android-release.yml` deve receber o mesmo SHA do backend e do site.
-Instale primeiro em dispositivo descartável ou autorizado e confira login,
+O workflow `android-release.yml` só pode ser chamado pelo coordenador. Ele
+recebe o manifesto aprovado, exige configuração e assinatura explícitas,
+confere os bytes do runtime dentro do APK e preserva o certificado histórico.
+A suíte e o lint já aprovados não são repetidos no publicador. O build assinado,
+sua identidade e sua configuração continuam sendo provas próprias.
+
+O APK, seu arquivo `.sha256` e o manifesto de procedência ficam primeiro em uma
+Release em rascunho. Antes de Pages, o job `android-native` instala esses bytes
+exatos em dois emuladores descartáveis no runner Ubuntu 24.04. Ele confere
+pacote, certificado, versão, SHA-256 e UID: instalação limpa da candidata e
+upgrade do APK público 0.0.64 (código 210). A versão candidata vem do manifesto
+aprovado e deve avançar em relação à base.
+
+O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada,
+verifica que as licenças não mudaram e exige KVM. Não aceita novas licenças nem
+substitui a aceleração indisponível. O aplicativo é aberto sem rede, conta ou
+curso, e as ações usam os limites observados pela hierarquia nativa. O tema
+escolhido na candidata precisa sobreviver à reabertura e à reinstalação `-r`.
+Essa prova não cobre dispositivo físico nem retenção de preferência da versão
+0.0.64, cuja interface exige login antes dos ajustes.
+
+O JSON de prova liga o APK ao manifesto, revisão, run e tentativa da promoção;
+os hashes das capturas e hierarquias também são conferidos. Pages e Release
+baixam essa prova por ID, verificam seu digest e reconferem o APK. Falha ou
+evidência de outra tentativa bloqueia a publicação. O artifact nativo é mantido
+por sete dias, incluindo diagnósticos técnicos de falha sem tokens. Ao retomar,
+execute os jobs da promoção juntos para produzir prova da tentativa corrente.
+
+O coordenador só torna a Release pública depois de conferir backend, gate
+nativo e Pages. As notas são geradas a partir das mudanças da versão. As
+jornadas conectadas continuam separadas: em dispositivo descartável ou
+autorizado, confira login,
 retomada, área segura, teclado, rolagem, PDFs, exportação e a Assistência por IA
 com stubs determinísticos dos providers. O guia [Aplicativo Android](../android/README.md) explica
 assinatura, retorno móvel, rede e recuperação do build.
@@ -236,14 +326,43 @@ Para GitHub Pages com Supabase hospedado, a sequência é:
 5. integrar a revisão aprovada e confirmar os checks do SHA exato;
 6. aplicar migrations e publicar as Edge Functions;
 7. verificar o backend hospedado;
-8. publicar site e, quando previsto, Android a partir do mesmo SHA;
-9. verificar o endereço publicado e percorrer as jornadas críticas.
+8. promover a candidata identificada: preparar o APK, aprovar instalação/upgrade nativos e publicar os bytes do site;
+9. conferir os artefatos e concluir a Release; percorrer as jornadas críticas.
 
-Essa ordem mantém os clientes antigos em uso até o novo backend estar provado.
-Ela não oferece atomicidade entre fornecedores: interrupções ainda exigem saber
+O corte precisa definir o comportamento dos clientes instalados enquanto o
+backend e o site são atualizados. Essa ordem não garante compatibilidade do
+cliente anterior nem atomicidade entre fornecedores: interrupções exigem saber
 qual parte foi confirmada antes de retomar.
 
+O backend é aplicado pelo procedimento autorizado de `deploySupabase.ps1`, sem
+introduzir credencial administrativa nos jobs de build. A promoção registra e
+reconfere schema, conjunto de recursos, contratos de MCP/Actions e fronteira
+OAuth do verificador hospedado. Essa prova não calcula o hash de todos os bytes
+das Edge Functions nem substitui a prova da API de cursos e dos clientes reais.
+Essas verificações e a preservação/recuperação de dados fazem parte do corte
+hospedado, antes de anunciar entrega integral.
+
 ## Falhas e recuperação
+
+Uma nova tentativa usa o mesmo run integral e tentativa enquanto seus artefatos
+estiverem disponíveis. A promoção reconhece o site já correspondente e reutiliza
+o APK já preparado na Release em rascunho. Ela completa somente os assets
+ausentes, verifica os existentes e não substitui tag ou asset divergente. Uma
+tag correta sem Release permite criar o rascunho faltante. O rascunho permanece
+visível apenas para quem tem acesso enquanto alguma parte ainda falha; não
+constitui conclusão da publicação. Essa retomada é do workflow de promoção.
+As provas da validação integral precisam pertencer à mesma tentativa: repetir
+somente um job de validação não reúne automaticamente provas de tentativas
+diferentes. Uma nova candidata deve produzir o conjunto exigido e seus
+artefatos vinculados antes de ser promovida.
+
+A referência observada em 04/09/2026 é a [execução integral
+33846492540](https://github.com/fabio-ara/AraLearn/actions/runs/33846492540):
+15 min 58 s no Windows e 13 min 15 s no Supabase. A [publicação Android
+33847701311](https://github.com/fabio-ara/AraLearn/actions/runs/33847701311)
+repetiu 2 min 15 s de testes e 12 s de lint. A separação remove essa repetição do
+publicador; ainda não há medição hospedada posterior que demonstre a economia
+total. Os tempos do novo CI serão registrados na candidata estável.
 
 Uma falha antes de `db push` não altera o esquema. Depois de uma resposta
 ambígua, liste migrations e confronte o manifesto antes de repetir. Migrations
@@ -255,6 +374,15 @@ operacional precisa conservar e verificar os dois conjuntos. Código, site e APK
 são recuperados pelo Git e por uma release anterior; dados são recuperados por
 backup do ambiente. Trocar a chave de assinatura Android impede atualização
 direta e, portanto, não é um mecanismo comum de reversão.
+
+Antes do upgrade de um backup restaurado, confira os proprietários do banco,
+esquemas e objetos, as permissões e associações de papéis, a codificação e o
+provedor, localidade e versão da ordenação textual (collation). Execute as
+migrations com o mesmo papel da implantação, sem permissões extras herdadas
+da stack usada no ensaio.
+
+Se uma constraint `CHECK` consulta um catálogo persistido, carregue esse catálogo
+antes das linhas dependentes, conservando todas as entradas do dump e a constraint.
 
 Se o site foi publicado antes do backend compatível, interrompa a promoção e
 republique o cliente anterior pelo Git. Se o backend novo já foi aplicado,

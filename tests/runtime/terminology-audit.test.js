@@ -175,6 +175,12 @@ test("o audit rejeita símbolo abolido fora de migration ou evidência históric
   context.after(() => rm(repositoryRoot, { recursive: true, force: true }));
   await mkdir(path.join(repositoryRoot, "src"), { recursive: true });
   await mkdir(path.join(repositoryRoot, "docs"), { recursive: true });
+  await mkdir(path.join(repositoryRoot, "supabase", ".temp", "start-secrets"), { recursive: true });
+  await writeFile(
+    path.join(repositoryRoot, "supabase", ".temp", "start-secrets", "main.ts"),
+    "export const LegacyTerm = true;\n",
+    "utf8"
+  );
   await writeFile(
     path.join(repositoryRoot, "src", "current.js"),
     "export const LegacyTerm = true;\n",
@@ -202,6 +208,7 @@ test("o audit rejeita símbolo abolido fora de migration ou evidência históric
   assert.equal(findings.some((finding) => finding.startsWith(
     "docs/vocabulario-controlado.md: contém símbolo abolido"
   )), false);
+  assert.equal(findings.some((finding) => finding.startsWith("supabase/.temp/")), false);
 });
 
 test("o padrão operation.* não bloqueia o namespace canônico task_operation", async (context) => {

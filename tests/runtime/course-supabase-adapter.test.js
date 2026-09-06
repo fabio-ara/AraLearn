@@ -1,12 +1,13 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
+import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
-import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from
   "../../src/domain/courseDesignParameters.js";
-import { RESOURCE_PACKAGE_REGISTRY } from
-  "../../src/resources/catalog/resourceCatalog.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const COURSE_ID = "20000000-0000-4000-8000-000000000002";
@@ -23,21 +24,17 @@ const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
-    contract: "aralearn.course-authoring-analytics.v2",
+    contract: "aralearn.course-authoring-analytics.v4",
+    basis: courseAuthoringBasisFixture(),
     course: { id: COURSE_ID, revision: 7, title: "Curso" },
     scope: { selected: scope, options: [scope] },
     design: {
       studyUnitCount: 0,
-      parameters: [[
-        "new_analysis_unit_ceiling_per_expository_study_unit", "Teto", "integer"
-      ], ["required_explanation_forms", "Formas", "string_list"], [
-        "minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas", "integer"
-      ], ["required_practice_variation_dimensions", "Variação", "string_list"], [
-        "authoring_chat_response_word_target", "Extensão da conversa", "integer"
-      ], ["study_unit_content_word_target", "Extensão da unidade", "integer"]]
-        .map(([parameterId, label, valueKind]) => ({
-          parameterId, label, valueKind, effectiveValues: []
-        })),
+      parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
+      parameterId: definition.id, label: definition.label,
+      valueKind: definition.valueSchema.type === "set" ? "string_list" : definition.valueSchema.type,
+      definition: structuredClone(definition), effectiveValues: []
+    })),
       editorialDirections: [],
       analysisUnits: [],
       introductionsByStudyUnit: [],
@@ -46,7 +43,8 @@ function analyticsSnapshot() {
       practiceByRequirement: [],
       practiceVariationDimensions: [],
       sourcesByRole: [],
-      wordCountsByStudyUnit: []
+      wordCountsByStudyUnit: [],
+      practiceSequence: []
     },
     authorship: {
       observations: { createdCount: 0, openCount: 0, resolvedCount: 0 },
@@ -126,9 +124,9 @@ function syntheticPdf(label = "fixture") {
 function pdfSourceDocument(overrides = {}) {
   return {
     kind: "document",
-    sourceRole: "technical_conceptual",
+    defaultRoles: ["technical_conceptual"], citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
     title: "Documento autorizado",
-    authorship: null,
+    authors: [],
     publicationDate: null,
     identifier: null,
     language: null,
@@ -366,7 +364,7 @@ test("configuração de serviço recusa schemes executáveis nos deep links", ()
   }));
 });
 
-test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do banco", async () => {
+test("Analytics usa o RPC v4 com inventário e acrescenta distribuições e deep link", async () => {
   const calls = [];
   const query = {
     scope: { kind: "course", ref: null }
@@ -382,14 +380,14 @@ test("Analytics usa o RPC snapshot v2 e acrescenta somente o deep link fora do b
     query
   });
 
-  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v2$/u);
+  assert.match(calls[0].url, /get_owned_course_authoring_analytics_for_actor_v4$/u);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
     p_course_id: COURSE_ID,
     p_expected_course_revision: 7,
     p_query: query
   });
-  assert.equal(page.contract, "aralearn.course-authoring-analytics.v2");
+  assert.equal(page.contract, "aralearn.course-authoring-analytics.v4");
   assert.equal(page.design.studyUnitCount, 0);
   assert.equal(Object.hasOwn(page, "facts"), false);
   assert.equal(page.deepLink,
@@ -462,6 +460,7 @@ test("Adapter consulta Fonte e envia a proveniência declarada da reformulação
   });
   const consideredSourceLinks = [{
     sourceId: "source-a",
+    linkId: "source-a", roles: [], occurrences: [],
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-a" }]
   }];
@@ -754,19 +753,12 @@ test("replay idempotente aceita revisão corrente sem relaxar identidade e alvo"
 });
 
 function componentCatalog() {
-  return {
-    version: "1-4616b2e5",
-    options: RESOURCE_PACKAGE_REGISTRY.listCatalog().map((manifest) => ({
-      ref: `${manifest.id}@${manifest.version}`,
-      label: manifest.label,
-      purpose: manifest.purpose
-    }))
-  };
+  return structuredClone(COURSE_COMPONENT_CATALOG);
 }
 
 function defaultComponentPolicy(excludedRefs = []) {
   return {
-    catalogVersion: "1-4616b2e5",
+    catalogVersion: COURSE_COMPONENT_CATALOG.version,
     availability: "all",
     allowedRefs: [],
     excludedRefs,
@@ -779,10 +771,10 @@ function defaultComponentPolicy(excludedRefs = []) {
 
 function courseDesignRead() {
   return {
-    contract: "aralearn.course-design.v2",
+    contract: "aralearn.course-design.v3",
     courseId: COURSE_ID,
     courseRevision: 5,
-    parameterCatalogVersion: "1.1.0",
+    parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
     scopeContext: {
       current: { kind: "course", ref: COURSE_ID, label: "Curso" },
       ancestors: [],
@@ -796,8 +788,10 @@ function courseDesignRead() {
     parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => ({
       parameterId: definition.id,
       localAssignment: null,
+      conflicts: [],
       effectiveAssignment: {
-        value: structuredClone(definition.defaultValue),
+        mode: "automatic",
+        value: null,
         origin: "system_default",
         reason: "Hipótese padrão de produto.",
         sourceScope: null,
@@ -1022,10 +1016,9 @@ test("exclusão da conta usa o JWT pessoal no RPC e tolera repetição após res
   }
 });
 
-test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa autenticada", async () => {
+test("exclusão bloqueada conclui cursos por intents e remove somente o avatar próprio", async () => {
   const calls = [];
   let deletionCalls = 0;
-  const pdfName = `${"a".repeat(64)}.pdf`;
   const avatarName = `${AUDIT_RUN_ID}.webp`;
   const value = adapter(async (url, init) => {
     const body = init.body == null ? null : JSON.parse(init.body);
@@ -1055,9 +1048,9 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
             nextCursor: null
           });
     }
-    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
-      return json(body.prefix === `${COURSE_ID}/` ? [{ name: pdfName }] : []);
-    }
+    if (url.endsWith("/maintain_course_for_actor_v1")) return json({
+      contract: "aralearn.course-lifecycle.v1", courseId: body.p_course_id, operation: body.p_operation,
+      requestId: body.p_request_id, status: "completed", changed: true });
     if (url.endsWith("/storage/v1/object/list/person-avatars")) {
       return json([{ name: avatarName }]);
     }
@@ -1096,7 +1089,6 @@ test("exclusão bloqueada limpa com service_role apenas os prefixos da pessoa au
   const deletes = calls.filter(({ init, url }) =>
     init.method === "DELETE" && url.includes("/storage/v1/object/"));
   assert.deepEqual(deletes.map(({ body }) => body), [
-    { prefixes: [`${COURSE_ID}/${pdfName}`] },
     { prefixes: [`${USER_ID}/${avatarName}`] }
   ]);
 });
@@ -1136,7 +1128,6 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
   let deletionCalls = 0;
   let deletionRetried = false;
   let accountDeleted = false;
-  const pdfName = `${"b".repeat(64)}.pdf`;
   const value = adapter(async (url, init) => {
     const body = init.body == null ? null : JSON.parse(init.body);
     calls.push({ url, init, body });
@@ -1162,9 +1153,9 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
         nextCursor: null
       });
     }
-    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) {
-      return json([{ name: pdfName }]);
-    }
+    if (url.endsWith("/maintain_course_for_actor_v1")) return json({
+      contract: "aralearn.course-lifecycle.v1", courseId: body.p_course_id, operation: body.p_operation,
+      requestId: body.p_request_id, status: "completed", changed: true });
     if (url.endsWith("/storage/v1/object/list/person-avatars")) return json([]);
     if (url.endsWith("/storage/v1/object/course-source-pdfs")) return json({});
     assert.fail(`Requisição inesperada: ${url}`);
@@ -1181,7 +1172,7 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
   );
   const deletesAfterFailure = calls.filter(({ init, url }) =>
     init.method === "DELETE" && url.includes("/storage/v1/object/"));
-  assert.equal(deletesAfterFailure.length, 1);
+  assert.equal(deletesAfterFailure.length, 0);
 
   const result = await value.deleteMyAccount({
     accessToken: APPLICATION_TOKEN,
@@ -1193,7 +1184,7 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
   });
   assert.equal(deletionCalls, 3);
   assert.equal(calls.filter(({ init, url }) =>
-    init.method === "DELETE" && url.includes("/storage/v1/object/")).length, 1);
+    init.method === "DELETE" && url.includes("/storage/v1/object/")).length, 0);
 });
 
 test("exclusão não apaga Storage diante de violação relacional alheia", async () => {
@@ -1698,12 +1689,12 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
   const value = adapter(async (url, init) => {
     const payload = JSON.parse(init.body);
     calls.push({ name: url.split("/").at(-1), payload });
-    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v2")) {
+    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v3")) {
       return json(courseDesignRead());
     }
-    if (url.endsWith("/rpc/apply_course_design_command_for_actor_v2")) {
+    if (url.endsWith("/rpc/apply_course_design_command_for_actor_v3")) {
       return json({
-        contract: "aralearn.course-design-change.v2",
+        contract: "aralearn.course-design-change.v3",
         courseId: COURSE_ID,
         courseRevision: 6,
         requestId: "request-design-0001",
@@ -1727,7 +1718,7 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     childLimit: 16,
     childCursor: null
   });
-  assert.equal(read.componentCatalog.options.length, 33);
+  assert.deepEqual(read.componentCatalog.options, COURSE_COMPONENT_CATALOG.options);
   assert.equal(Object.hasOwn(read, "deepLink"), false);
 
   const fixedRead = courseDesignRead();
@@ -1751,7 +1742,7 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     scopeKind: "course",
     scopeRef: COURSE_ID
   });
-  assert.equal(fixed.componentPolicy.effectiveAssignment.policy.allowedRefs.length, 33);
+  assert.deepEqual(fixed.componentPolicy.effectiveAssignment.policy.allowedRefs, fixedRefs);
   assert.equal(fixed.componentPolicy.effectiveAssignment.origin, "research_condition");
 
   const changed = await value.applyCourseDesignCommand({
@@ -1767,8 +1758,8 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
   assert.equal(changed.changed, true);
   assert.equal(Object.hasOwn(changed, "deepLink"), false);
   assert.deepEqual(calls.map(({ name }) => name), [
-    "get_owned_course_design_for_actor_v2",
-    "apply_course_design_command_for_actor_v2"
+    "get_owned_course_design_for_actor_v3",
+    "apply_course_design_command_for_actor_v3"
   ]);
   assert.deepEqual(calls[0].payload, {
     p_actor_id: USER_ID,
@@ -1793,6 +1784,15 @@ test("lê e altera parâmetros por RPC owner-only com catálogo validado", async
     }),
     (error) => error.code === "component_catalog_drift"
   );
+
+  for (const fingerprint of [undefined, "sha256:" + "0".repeat(64)]) {
+    const wrongFingerprint = courseDesignRead();
+    if (fingerprint === undefined) delete wrongFingerprint.componentCatalog.schemaFingerprint;
+    else wrongFingerprint.componentCatalog.schemaFingerprint = fingerprint;
+    await assert.rejects(adapter(async () => json(wrongFingerprint)).getCourseDesign({
+      principal: { actorId: USER_ID }, courseId: COURSE_ID, scopeKind: "course", scopeRef: COURSE_ID
+    }), (error) => error.code === "component_catalog_drift");
+  }
 
   const oversized = adapter(async () => json({
     code: "54000",
@@ -1864,7 +1864,8 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   const calls = [];
   const currentSourceId = "source-current";
   const readResult = {
-    contract: "aralearn.course-sources.v2",
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
     courseId: COURSE_ID,
     courseRevision: 5,
     mode: "catalog",
@@ -1875,9 +1876,9 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
       revision: 1,
       status: "active",
       kind: "web_page",
-      sourceRole: "technical_conceptual",
+      defaultRoles: ["technical_conceptual"], citationMode: "manual", bibliographic: createEmptyCourseSourceBibliographicMetadata(),
       title: "Fonte A",
-      authorship: "Autoria",
+      authors: [{ literal: "Autoria" }],
       publicationDate: "2026",
       identifier: null,
       language: "pt-BR",
@@ -1888,6 +1889,7 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
       availability: "open_access",
       verificationStatus: "author_verified",
       studyVisibility: "citation_and_link",
+      publicFileAccess: "inherit",
       anchorCount: 0,
       createdAt: "2026-08-17T10:00:00Z"
     }],
@@ -1998,6 +2000,7 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   });
   const currentLinks = [{
     sourceId: currentSourceId,
+    linkId: currentSourceId, roles: [], occurrences: [],
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-a" }]
   }];
@@ -2143,7 +2146,7 @@ test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bib
       });
     }
     if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
-      assert.equal(body.p_source_intent.source.authorship, null);
+      assert.deepEqual(body.p_source_intent.source.authors, []);
       assert.equal(body.p_source_intent.source.publicationDate, null);
       assert.equal(body.p_source_intent.source.identifier, null);
       assert.equal(body.p_source_intent.source.url, null);
@@ -2843,7 +2846,7 @@ test("Adapter assina somente download autorizado da Fonte exata", async () => {
       });
     }
     if (url.includes("/storage/v1/object/sign/course-source-pdfs/")) {
-      return json({ signedURL: "/object/sign/course-source-pdfs/file.pdf?token=sealed" });
+      return json({ signedURL: `/object/sign/course-source-pdfs/${COURSE_ID}/${contentHash}.pdf?token=sealed` });
     }
     assert.fail(`Requisição inesperada: ${url}`);
   });
@@ -2855,7 +2858,10 @@ test("Adapter assina somente download autorizado da Fonte exata", async () => {
     sourceRevision: 2,
     contentHash
   });
-  assert.equal(downloaded.contract, "aralearn.course-source-pdf-download.v1");
+  assert.equal(downloaded.contract, "aralearn.course-source-pdf-download.v2");
+  assert.deepEqual(downloaded.attachment, { contentHash, byteSize: 1024, mediaType: "application/pdf" });
+  assert.equal("storageOriginCourseId" in downloaded, false);
+  assert.equal("storagePath" in downloaded.attachment, false);
   assert.match(downloaded.signedUrl, /token=sealed/u);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
@@ -2867,10 +2873,82 @@ test("Adapter assina somente download autorizado da Fonte exata", async () => {
   });
 });
 
+function recoveryInput() {
+  return {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    sourceCourseId: COURSE_ID,
+    requestId: "recover-original-request-0001",
+    expectedSourceCourseRevision: 3,
+    expectedStudyUnitVersion: 2,
+    didacticMicrosequenceId: "micro-a",
+    studyUnit: { id: "study-a", position: 1, title: "Rascunho guardado", role: "theory",
+      content: [{ id: "paragraph-a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Conteúdo preservado." } }],
+      response: null, feedback: [], topics: [] },
+    applicationOrigin: "manual"
+  };
+}
+
+function recoveryReceipt(overrides = {}) {
+  return {
+    contract: "aralearn.owned-course-copy-recovery.v1", status: "confirmed",
+    sourceCourseId: COURSE_ID, targetCourseId: OTHER_COURSE_ID,
+    currentCourseRevision: 8, currentStudyUnitVersion: null,
+    studyUnitId: "study-a", initialCourseRevision: 2, initialStudyUnitVersion: 1,
+    applicationOrigin: "manual", confirmedAt: "2026-09-05T12:00:00.000Z",
+    ...overrides
+  };
+}
+
+test("recuperação consulta apenas a prova original sem repetir o writer nem reconstruir a composição", async () => {
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    assert.match(url, /\/rpc\/recover_owned_course_copy_for_actor_v1$/u);
+    return json(recoveryReceipt());
+  });
+  const input = recoveryInput();
+  const result = await value.recoverOwnedCourseCopy(input);
+  assert.deepEqual(result, recoveryReceipt());
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].body.p_request_id, input.requestId);
+  assert.equal(calls[0].body.p_actor_id, USER_ID);
+  assert.equal(calls[0].body.p_expected_source_revision, 3);
+  assert.equal(calls[0].body.p_expected_study_unit_version, 2);
+  assert.equal(calls[0].body.p_application_origin, "manual");
+  assert.equal(calls[0].body.p_upsert.entityId, input.studyUnit.id);
+  assert.deepEqual(calls[0].body.p_upsert.content.content, input.studyUnit.content);
+});
+
+test("recuperação rejeita recibos incompatíveis e não converte ambiguidade em curso confirmado", async (context) => {
+  const variants = [
+    ["curso origem divergente", { sourceCourseId: OTHER_COURSE_ID }],
+    ["unidade divergente", { studyUnitId: "other-unit" }],
+    ["destino igual à origem", { targetCourseId: COURSE_ID }],
+    ["revisão atual anterior à prova", { currentCourseRevision: 1 }],
+    ["origem da alteração divergente", { applicationOrigin: "provider_assistance" }],
+    ["data ausente", { confirmedAt: null }],
+    ["resultado inconclusivo com destino", { status: "unresolved" }],
+    ["campo inesperado", { createdCopy: true }]
+  ];
+  for (const [name, overrides] of variants) {
+    await context.test(name, async () => {
+      let calls = 0;
+      const value = adapter(async () => { calls += 1; return json(recoveryReceipt(overrides)); });
+      await assert.rejects(() => value.recoverOwnedCourseCopy(recoveryInput()));
+      assert.equal(calls, 1);
+    });
+  }
+  const unresolved = recoveryReceipt({ status: "unresolved", targetCourseId: null,
+    currentCourseRevision: null, currentStudyUnitVersion: null, initialCourseRevision: null,
+    initialStudyUnitVersion: null, confirmedAt: null });
+  const value = adapter(async () => json(unresolved));
+  assert.deepEqual(await value.recoverOwnedCourseCopy(recoveryInput()), unresolved);
+});
+
 test("leitura de Design da StudyUnit conserva o inventário da Microssequência", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {
-    assert.match(url, /\/rpc\/get_owned_course_design_for_actor_v2$/u);
+    assert.match(url, /\/rpc\/get_owned_course_design_for_actor_v3$/u);
     payload = JSON.parse(init.body);
     return json(studyUnitCourseDesignRead());
   });
@@ -3051,9 +3129,9 @@ test("normaliza targetPlanItems somente para leitura e rejeita segundo writer", 
   const value = adapter(async (url, init) => {
     const body = JSON.parse(init.body);
     calls.push(body);
-    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v2")) return json(readFixture);
+    if (url.endsWith("/rpc/get_owned_course_design_for_actor_v3")) return json(readFixture);
     return json({
-      contract: "aralearn.course-design-change.v2",
+      contract: "aralearn.course-design-change.v3",
       courseId: COURSE_ID,
       courseRevision: 6,
       requestId: "request-target-items-0001",
@@ -3226,6 +3304,7 @@ test("composição da aplicação deriva canal e aceita somente metadado fechado
   let rpc = null;
   const sourceLinks = [{
     sourceId: "fonte retirada",
+    linkId: "fonte retirada", roles: [], occurrences: [],
     relation: "needs_verification",
     anchors: []
   }];
@@ -3334,216 +3413,20 @@ test("composição ampla da aplicação preserva o contrato sem metadados focais
   assert.equal(result.revision, 3);
 });
 
-test("cópia pessoal envia um único upsert sem identidade nem proveniência do cliente", async () => {
-  let rpc = null;
-  const value = adapter(async (url, init) => {
-    rpc = { url, body: JSON.parse(init.body) };
-    return json({
-      contract: "aralearn.personal-course-copy-edit.v1",
-      operation: "commit_personal_course_copy_edit",
-      sourceCourseId: COURSE_ID,
-      sourceCourseRevision: 4,
-      targetCourseId: OTHER_COURSE_ID,
-      targetCourseRevision: 2,
-      studyUnitId: "unit-a",
-      studyUnitVersion: 2,
-      applicationOrigin: "manual",
-      channel: "application",
-      createdCopy: true,
-      changed: true,
-      idempotent: false,
-      updatedAt: "2026-08-21T12:00:00.000Z"
-    });
-  });
-  const studyUnit = {
-    id: "unit-a",
-    position: 1,
-    title: "Unidade revista",
-    role: "theory",
-    content: [{
-      id: "paragraph-a",
-      package: "aralearn.resource.paragraph",
-      version: "1.0.0",
-      data: { text: "Conteúdo revisto." }
-    }],
-    response: null,
-    feedback: [],
-    topics: []
-  };
-  const result = await value.commitPersonalCourseCopyEdit({
-    principal: { actorId: USER_ID, authenticationKind: "application" },
-    sourceCourseId: COURSE_ID,
-    requestId: "request-personal-copy-0001",
-    expectedSourceCourseRevision: 4,
-    expectedStudyUnitVersion: 2,
-    didacticMicrosequenceId: "micro-a",
-    studyUnit,
-    applicationOrigin: "manual"
-  });
-
-  assert.match(rpc.url, /commit_personal_course_copy_edit_for_actor_v1$/u);
-  assert.deepEqual(rpc.body, {
-    p_actor_id: USER_ID,
-    p_source_course_id: COURSE_ID,
-    p_expected_source_revision: 4,
-    p_expected_study_unit_version: 2,
-    p_upsert: {
-      entityType: "study_unit",
-      entityId: "unit-a",
-      parentType: "microsequence",
-      parentId: "micro-a",
-      position: 1,
-      content: {
-        title: "Unidade revista",
-        role: "theory",
-        content: studyUnit.content,
-        response: null,
-        feedback: [],
-        topics: []
-      }
-    },
-    p_application_origin: "manual",
-    p_request_id: "request-personal-copy-0001"
-  });
-  assert.deepEqual(result, {
-    contract: "aralearn.personal-course-copy-edit.v1",
-    operation: "commit_personal_course_copy_edit",
-    sourceCourseId: COURSE_ID,
-    sourceCourseRevision: 4,
-    targetCourseId: OTHER_COURSE_ID,
-    targetCourseRevision: 2,
-    studyUnitId: "unit-a",
-    studyUnitVersion: 2,
-    applicationOrigin: "manual",
-    channel: "application",
-    createdCopy: true,
-    changed: true,
-    idempotent: false,
-    updatedAt: "2026-08-21T12:00:00.000Z"
-  });
-  await assert.rejects(
-    () => value.commitPersonalCourseCopyEdit({
-      principal: { actorId: USER_ID, authenticationKind: "oauth" },
-      sourceCourseId: COURSE_ID,
-      requestId: "request-personal-copy-0002",
-      expectedSourceCourseRevision: 4,
-      expectedStudyUnitVersion: 2,
-      didacticMicrosequenceId: "micro-a",
-      studyUnit,
-      applicationOrigin: "manual"
-    }),
-    (error) => error.code === "invalid_personal_course_copy_edit"
-  );
-});
-
-test("cópia pessoal traduz conflito conhecido e rejeita detalhes ou respostas inválidos", async () => {
-  const studyUnit = {
-    id: "unit-a",
-    position: 1,
-    title: "Unidade revista",
-    role: "theory",
-    content: [{
-      id: "paragraph-a",
-      package: "aralearn.resource.paragraph",
-      version: "1.0.0",
-      data: { text: "Conteúdo revisto." }
-    }],
-    response: null,
-    feedback: [],
-    topics: []
-  };
-  const input = {
-    principal: { actorId: USER_ID, authenticationKind: "application" },
-    sourceCourseId: COURSE_ID,
-    requestId: "request-personal-copy-0001",
-    expectedSourceCourseRevision: 4,
-    expectedStudyUnitVersion: 2,
-    didacticMicrosequenceId: "micro-a",
-    studyUnit,
-    applicationOrigin: "manual"
-  };
-  const conflict = adapter(async () => json({
-    code: "P1490",
-    message: "personal copy already exists",
-    details: OTHER_COURSE_ID,
-    hint: null
-  }, 400));
-  await assert.rejects(
-    () => conflict.commitPersonalCourseCopyEdit(input),
-    (error) => error.status === 409 && error.code === "personal_copy_exists" &&
-      error.details?.targetCourseId === OTHER_COURSE_ID &&
-      !error.message.includes(OTHER_COURSE_ID)
-  );
-
-  const malformedConflict = adapter(async () => json({
-    code: "P1490",
-    message: "personal copy already exists",
-    details: "target=segredo",
-    hint: null
-  }, 400));
-  await assert.rejects(
-    () => malformedConflict.commitPersonalCourseCopyEdit(input),
-    (error) => error.status === 503 && error.code === "course_service_unavailable"
-  );
-
-  const noOp = adapter(async () => json({
-    contract: "aralearn.personal-course-copy-edit.v1",
-    operation: "commit_personal_course_copy_edit",
-    sourceCourseId: COURSE_ID,
-    sourceCourseRevision: 4,
-    targetCourseId: null,
-    targetCourseRevision: null,
-    studyUnitId: "unit-a",
-    studyUnitVersion: 2,
-    applicationOrigin: "manual",
-    channel: "application",
-    createdCopy: false,
-    changed: false,
-    idempotent: false,
-    updatedAt: "2026-08-21T12:00:00.000Z"
-  }));
-  assert.equal(
-    (await noOp.commitPersonalCourseCopyEdit(input)).targetCourseId,
-    null
-  );
-
-  const invalidResponse = adapter(async () => json({
-    contract: "aralearn.personal-course-copy-edit.v1",
-    operation: "commit_personal_course_copy_edit",
-    sourceCourseId: COURSE_ID,
-    sourceCourseRevision: 4,
-    targetCourseId: OTHER_COURSE_ID,
-    targetCourseRevision: 2,
-    studyUnitId: "unit-a",
-    studyUnitVersion: 2,
-    applicationOrigin: "manual",
-    channel: "application",
-    createdCopy: true,
-    changed: true,
-    idempotent: false,
-    updatedAt: "2026-08-21T12:00:00.000Z",
-    actorId: USER_ID
-  }));
-  await assert.rejects(
-    () => invalidResponse.commitPersonalCourseCopyEdit(input),
-    (error) => error.status === 503 && error.code === "course_service_unavailable"
-  );
-});
-
 test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", async () => {
   const calls = [];
   const value = adapter(async (url, init) => {
     calls.push({ name: url.split("/").at(-1), payload: JSON.parse(init.body) });
-    if (url.endsWith("/get_person_profile_for_actor_v1")) {
-      return json({ userId: USER_ID, displayName: null });
+    if (url.endsWith("/get_person_profile_for_actor_v2")) {
+      return json({ userId: USER_ID, handle: null });
     }
-    if (url.endsWith("/update_person_profile_for_actor_v1")) {
-      return json({ userId: USER_ID, displayName: "Pesquisadora" });
+    if (url.endsWith("/update_person_profile_for_actor_v2")) {
+      return json({ userId: USER_ID, handle: "pesquisadora" });
     }
-    if (url.endsWith("/list_course_access_for_actor_v1")) {
+    if (url.endsWith("/list_course_access_for_actor_v3")) {
       return json({ courseId: COURSE_ID, items: [] });
     }
-    if (url.endsWith("/manage_course_access_for_actor_v1")) {
+    if (url.endsWith("/manage_course_access_for_actor_v3")) {
       return json({ courseId: COURSE_ID, changed: true });
     }
     assert.fail(`RPC inesperado: ${url}`);
@@ -3551,13 +3434,13 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
   const principal = { actorId: USER_ID };
 
   await value.getPersonProfile({ principal });
-  await value.updatePersonProfile({ principal, patch: { displayName: "Pesquisadora" } });
+  await value.updatePersonProfile({ principal, patch: { handle: "pesquisadora" } });
   await value.listCourseAccess({ principal, courseId: COURSE_ID });
   await value.manageCourseAccess({
     principal,
     courseId: COURSE_ID,
     operation: "grant_access",
-    email: "pessoa@example.com",
+    handle: "pessoa", targetUserId: USER_ID, canCopy: true,
     confirmed: true,
     requestId: "request-access-0001"
   });
@@ -3571,15 +3454,79 @@ test("perfil e acesso usam somente os RPCs canônicos para o ator autenticado", 
   });
 
   assert.deepEqual(calls.map(({ name }) => name), [
-    "get_person_profile_for_actor_v1",
-    "update_person_profile_for_actor_v1",
-    "list_course_access_for_actor_v1",
-    "manage_course_access_for_actor_v1",
-    "manage_course_access_for_actor_v1"
+    "get_person_profile_for_actor_v2",
+    "update_person_profile_for_actor_v2",
+    "list_course_access_for_actor_v3",
+    "manage_course_access_for_actor_v3",
+    "manage_course_access_for_actor_v3"
   ]);
   assert.equal(calls.every(({ payload }) => payload.p_actor_id === USER_ID), true);
-  assert.equal(calls[3].payload.p_target_email, "pessoa@example.com");
+  assert.equal(calls[3].payload.p_target_handle, "pessoa");
+  assert.equal(calls[3].payload.p_can_copy, true);
+  assert.equal(calls[4].payload.p_can_copy, null);
   assert.equal(calls[4].payload.p_target_user_id, USER_ID);
+});
+
+test("identificador público ocupado retorna conflito sem expor o erro SQL", async () => {
+  const value = adapter(async (url) => {
+    assert.match(url, /\/update_person_profile_for_actor_v2$/u);
+    return json({ code: "PH409", message: "internal constraint person_handle_unique", details: "private row" }, 400);
+  });
+  await assert.rejects(() => value.updatePersonProfile({
+    principal: { actorId: USER_ID }, patch: { handle: "pesquisadora" }
+  }), (error) => {
+    assert.equal(error.status, 409);
+    assert.equal(error.code, "person_handle_unavailable");
+    assert.doesNotMatch(JSON.stringify(error) + error.message, /constraint|private row|PH409/u);
+    return true;
+  });
+});
+
+test("busca de pessoas assina por 60 segundos somente o avatar do resultado autorizado", async () => {
+  const avatarObjectKey = `${USER_ID}/${AUDIT_RUN_ID}.webp`;
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const body = JSON.parse(init.body);
+    calls.push({ url, body });
+    if (url.endsWith("/search_course_access_people_for_actor_v1")) {
+      return json({ contract: "aralearn.course-people-search.v1", courseId: COURSE_ID,
+        items: [{ userId: USER_ID, handle: "pesquisadora", avatarObjectKey }] });
+    }
+    assert.ok(url.endsWith(`/storage/v1/object/sign/person-avatars/${avatarObjectKey}`));
+    return json({ signedURL: `/object/sign/person-avatars/${avatarObjectKey}?token=sealed` });
+  });
+  const result = await value.searchCourseAccessPeople({
+    principal: { actorId: USER_ID }, courseId: COURSE_ID, query: "pes", limit: 5
+  });
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].body, { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_query: "pes", p_limit: 5 });
+  assert.deepEqual(calls[1].body, { expiresIn: 60 });
+  assert.equal(result.items[0].avatarUrl,
+    `https://project.example/storage/v1/object/sign/person-avatars/${avatarObjectKey}?token=sealed`);
+});
+
+test("busca recusa resultado divergente antes de assinar qualquer avatar", async (context) => {
+  const person = { userId: USER_ID, handle: "pesquisadora", avatarObjectKey: `${USER_ID}/${AUDIT_RUN_ID}.webp` };
+  const result = { contract: "aralearn.course-people-search.v1", courseId: COURSE_ID, items: [person] };
+  for (const [name, response] of [
+    ["curso", { ...result, courseId: OTHER_COURSE_ID }],
+    ["proprietário do avatar", { ...result, items: [{ ...person, avatarObjectKey: `${OTHER_COURSE_ID}/${AUDIT_RUN_ID}.webp` }] }],
+    ["pessoa fora do prefixo", { ...result, items: [{ ...person, handle: "outra" }] }],
+    ["campo privado adicional", { ...result, items: [{ ...person, email: "private@example.test" }] }]
+  ]) {
+    await context.test(name, async () => {
+      let calls = 0;
+      const value = adapter(async (url) => {
+        calls += 1;
+        assert.match(url, /\/search_course_access_people_for_actor_v1$/u);
+        return json(response);
+      });
+      await assert.rejects(() => value.searchCourseAccessPeople({
+        principal: { actorId: USER_ID }, courseId: COURSE_ID, query: "pes", limit: 5
+      }), (error) => error.status === 503 && error.code === "course_service_unavailable");
+      assert.equal(calls, 1);
+    });
+  }
 });
 
 test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado", async () => {
@@ -3597,6 +3544,7 @@ test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado
         requestId: "request-delete-course-0001"
       });
     }
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) return json([{ name: `${"a".repeat(64)}.pdf` }]);
     assert.fail(`Requisição inesperada: ${url}`);
   });
   assert.deepEqual(await value.maintainCourse({
@@ -3612,10 +3560,25 @@ test("ciclo de vida nunca apaga por prefixo PDF que pode permanecer referenciado
     status: "completed",
     changed: true,
     requestId: "request-delete-course-0001",
-    fileCleanupPending: true
+    fileCleanupPending: false
   });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url.includes("/storage/v1/object"), false);
+  assert.equal(calls.some(call => call.init.method === "DELETE"), false);
+});
+
+test("exclusão sem arquivos não inventa limpeza pendente", async () => {
+  const value = adapter(async url => {
+    if (url.endsWith("/rest/v1/rpc/maintain_course_for_actor_v1")) return json({
+      contract: "aralearn.course-lifecycle.v1", courseId: COURSE_ID, operation: "delete_owned_course",
+      status: "completed", changed: true, requestId: "delete-empty-course-303"
+    });
+    if (url.endsWith("/storage/v1/object/list/course-source-pdfs")) return json([]);
+    assert.fail(url);
+  });
+  const result = await value.maintainCourse({ principal: { actorId: USER_ID }, courseId: COURSE_ID,
+    operation: "delete_owned_course", confirmed: true, requestId: "delete-empty-course-303" });
+  assert.equal(result.fileCleanupPending, false);
 });
 
 test("repetição de exclusão já concluída não ganha autoridade sobre Storage órfão", async () => {
@@ -3668,6 +3631,7 @@ test("Manutenção remove somente o objeto revalidado e relê o inventário", as
       });
     }
     if (url.endsWith("/storage/v1/object/person-avatars")) return json({});
+    if (url.endsWith("/complete_current_orphan_removal_for_actor_v1")) return json(true);
     if (url.endsWith("/get_current_maintenance_for_actor_v1")) return json(maintenanceState);
     assert.fail(`Requisição inesperada: ${url}`);
   });

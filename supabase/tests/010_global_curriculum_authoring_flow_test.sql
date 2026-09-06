@@ -143,7 +143,7 @@ insert into private.course_authoring_guidance_assignments(
   'Condicao fixada para o estudo.'
 );
 
-select is((public.apply_course_design_command_for_actor_v2(
+select is((public.apply_course_design_command_for_actor_v3(
   '91000000-0000-4000-8000-000000000001',
   '91000000-0000-4000-8000-000000000101',2,
   '{
@@ -168,7 +168,7 @@ select is(
   'parametro explicito permanece autoridade no escopo'
 );
 
-select is((public.apply_course_design_command_for_actor_v2(
+select is((public.apply_course_design_command_for_actor_v3(
   '91000000-0000-4000-8000-000000000001',
   '91000000-0000-4000-8000-000000000101',2,
   '{
@@ -473,7 +473,7 @@ select throws_ok($test$
       "studyUnitId":"unit-forward","position":1,
       "didacticMicrosequenceId":"micro-forward",
       "content":{"title":"Destino conhecido"},
-      "designSnapshot":{"contract":"aralearn.study-unit-design-snapshot.v1"},
+      "designSnapshot":{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0"},
       "designApplication":{"mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":[],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000222"],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]},
       "sourceLinks":[]
     }]'::jsonb,
@@ -489,19 +489,19 @@ insert into private.course_entities(
 ) values
   ('91000000-0000-4000-8000-000000000201','study_unit','unit-learn',
     'microsequence','micro-learn',1,'{"title":"Aprendizagem pela origem"}'::jsonb,
-    '{"contract":"aralearn.study-unit-design-snapshot.v1","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
+    '{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
       ||jsonb_build_object('appliedAt',(clock_timestamp()+interval '1 second')::text),
     '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"usedInstructionalAnalysisUnitIds":[],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000221"],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]}'::jsonb,
     'gpt','gpt'),
   ('91000000-0000-4000-8000-000000000201','study_unit','unit-forward',
     'microsequence','micro-forward',1,'{"title":"Consulta ao destino"}'::jsonb,
-    '{"contract":"aralearn.study-unit-design-snapshot.v1","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
+    '{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
       ||jsonb_build_object('appliedAt',(clock_timestamp()+interval '1 second')::text),
     '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":[],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000222"],"explanationApplications":[{"instructionalAnalysisUnitId":"91000000-0000-4000-8000-000000000231","developedForms":["mechanism"],"notApplicable":[]}],"practiceApplications":[],"componentRefs":[]}'::jsonb,
     'gpt','gpt'),
   ('91000000-0000-4000-8000-000000000201','study_unit','unit-use',
     'microsequence','micro-forward',2,'{"title":"Uso da associacao"}'::jsonb,
-    '{"contract":"aralearn.study-unit-design-snapshot.v1","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
+    '{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
       ||jsonb_build_object('appliedAt',(clock_timestamp()+interval '1 second')::text),
     '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000222"],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]}'::jsonb,
     'gpt','gpt');
@@ -516,7 +516,7 @@ select throws_ok($test$
       "studyUnitId":"unit-forward","position":1,
       "didacticMicrosequenceId":"micro-forward",
       "content":{"title":"Consulta ao destino"},
-      "designSnapshot":{"contract":"aralearn.study-unit-design-snapshot.v1","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]},
+      "designSnapshot":{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]},
       "designApplication":{"mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"curriculumScopeItemIds":[],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]},
       "sourceLinks":[]
     }]'::jsonb,
@@ -536,7 +536,7 @@ select throws_ok($test$
       "studyUnitId":"unit-learn","position":1,
       "didacticMicrosequenceId":"micro-learn",
       "content":{"title":"Aprendizagem pela origem"},
-      "designSnapshot":{"contract":"aralearn.study-unit-design-snapshot.v1"},
+      "designSnapshot":{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0"},
       "designApplication":{"mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":[],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000221"],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]},
       "sourceLinks":[]
     }]'::jsonb,
@@ -572,7 +572,7 @@ select is(
   'Analytics distingue introducao, uso e retomada no recorte corrente'
 )
 from (
-  select public.get_owned_course_authoring_analytics_for_actor_v2(
+  select public.get_owned_course_authoring_analytics_for_actor_v4(
     '91000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000201',1,
     '{"scope":{"kind":"course","ref":null}}'::jsonb
@@ -655,18 +655,24 @@ as $function$
         then jsonb_build_object(
           'parameterId',parameter.value->>'parameterId',
           'value',240,'origin',p_local_origin,
+          'reason','Escolha contextual sintética deste teste.',
           'sourceScopeKind','study_unit'
         )
       else jsonb_build_object(
         'parameterId',parameter.value->>'parameterId',
-        'value',parameter.value#>'{effectiveAssignment,value}',
-        'origin',parameter.value#>>'{effectiveAssignment,origin}',
-        'sourceScopeKind',parameter.value#>>'{effectiveAssignment,sourceScope,kind}'
+        'value',case when parameter.value#>>'{effectiveAssignment,mode}'='fixed'
+          then parameter.value#>'{effectiveAssignment,value}' else definition.default_value end,
+        'origin',case when parameter.value#>>'{effectiveAssignment,mode}'='fixed'
+          then parameter.value#>>'{effectiveAssignment,origin}' else 'automatic' end,
+        'reason',case when parameter.value#>>'{effectiveAssignment,mode}'='fixed'
+          then parameter.value#>>'{effectiveAssignment,reason}' else 'Escolha contextual sintética deste teste.' end,
+        'sourceScopeKind',coalesce(parameter.value#>>'{effectiveAssignment,sourceScope,kind}','course')
       ) end order by parameter.ordinal) as value
     from design_path
     cross join lateral jsonb_array_elements(
       private.course_current_design_parameters_v1(p_course_id,design_path.value)
     ) with ordinality parameter(value,ordinal)
+    join private.course_design_parameter_definitions definition on definition.parameter_id=parameter.value->>'parameterId'
   ), snapshot_directions as materialized(
     select coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -706,7 +712,8 @@ as $function$
       'response',null,'feedback','[]'::jsonb,'topics','[]'::jsonb
     ),
     'designSnapshot',jsonb_build_object(
-      'contract','aralearn.study-unit-design-snapshot.v1',
+      'contract','aralearn.study-unit-design-snapshot.v2',
+      'parameterCatalogVersion','1.2.0',
       'didacticMicrosequenceId',p_microsequence_id,
       'instructionalAnalysisUnitIds','[]'::jsonb,
       'evidenceRequirementIds','[]'::jsonb,
@@ -815,7 +822,7 @@ select is(
   'leitura corrente reencontra apenas a calibracao local selada'
 )
 from (
-  select public.get_owned_course_design_for_actor_v2(
+  select public.get_owned_course_design_for_actor_v3(
     '91000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000301',
     'study_unit','unit-calibrated',32,null
@@ -831,11 +838,11 @@ cross join lateral (
 -- tipado precisa permitir que o guard de citacoes posterior seja avaliado
 -- sem acessar um record nao atribuido.
 insert into private.course_sources(
-  course_id,source_id,revision,status,kind,source_role,title,origin,
+  course_id,source_id,revision,status,kind,default_roles,title,origin,
   availability,verification_status,study_visibility
 ) values(
   '91000000-0000-4000-8000-000000000301','source-retire-anchor',1,
-  'active','document','technical_conceptual','Fonte tecnica descartavel',
+  'active','document','["technical_conceptual"]'::jsonb,'Fonte tecnica descartavel',
   'author_provided','private','author_verified','hidden'
 );
 insert into private.course_source_anchors(
@@ -922,7 +929,7 @@ insert into private.course_entities(
     }'::jsonb);
 
 select is(
-  (public.get_owned_course_authoring_analytics_for_actor_v2(
+  (public.get_owned_course_authoring_analytics_for_actor_v4(
     '91000000-0000-4000-8000-000000000001',
     '91000000-0000-4000-8000-000000000401',1,
     '{"scope":{"kind":"course","ref":null}}'::jsonb
@@ -933,7 +940,7 @@ select is(
 
 select is(
   jsonb_path_query_array(
-    public.get_owned_course_authoring_analytics_for_actor_v2(
+    public.get_owned_course_authoring_analytics_for_actor_v4(
       '91000000-0000-4000-8000-000000000001',
       '91000000-0000-4000-8000-000000000401',1,
       '{"scope":{"kind":"course","ref":null}}'::jsonb

@@ -4,8 +4,20 @@ const FOCUSABLE_CONTROL_SELECTOR = [
   "input:not(:disabled)",
   "select:not(:disabled)",
   "textarea:not(:disabled)",
+  "summary",
   '[tabindex]:not([tabindex="-1"])'
 ].join(",");
+
+function isVisibleControl(control) {
+  if (typeof control.getClientRects === 'function' && control.getClientRects().length === 0) return false;
+  // Chromium can retain layout boxes for controls hidden by a closed details.
+  // Only its summary belongs to the keyboard path until the section is opened.
+  for (let parent = control.parentElement; parent; parent = parent.parentElement) {
+    if (parent.matches?.('details:not([open])') &&
+        !parent.querySelector(':scope > summary')?.contains(control)) return false;
+  }
+  return true;
+}
 
 export function trapAuthoringConfirmationTab({
   event,
@@ -17,7 +29,7 @@ export function trapAuthoringConfirmationTab({
       typeof root?.querySelectorAll !== "function") return false;
   const controls = [...root.querySelectorAll(
     `${confirmationSelector} :is(${FOCUSABLE_CONTROL_SELECTOR})`
-  )];
+  )].filter(isVisibleControl);
   if (controls.length === 0) return false;
 
   const first = controls[0];

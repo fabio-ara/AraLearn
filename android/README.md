@@ -26,11 +26,15 @@ na origem interna `https://appassets.androidplatform.net`. Uma origem HTTPS est�
 sessão e o IndexedDB sobrevivam ao fechamento do aplicativo sem liberar acesso
 universal a arquivos do aparelho.
 
-O APK não leva cursos nem um catálogo operacional embutidos. A pessoa precisa
-autenticar-se e replicar um curso ao menos uma vez. Depois disso, o conteúdo já
-replicado e o estado de estudo continuam disponíveis sem conexão. Progresso,
-itens para rever e Observações usam filas próprias até a rede voltar. Alterações
-de Autoria exigem conexão e não entram numa fila offline genérica.
+O APK não leva cursos nem um catálogo operacional embutidos. Visitantes podem
+abrir cursos públicos; a conta habilita o estado pessoal e o acesso concedido.
+Depois de carregar um curso, o conteúdo já replicado e o estado de estudo da
+conta continuam disponíveis sem conexão. Progresso, itens para rever e
+Observações usam filas próprias. O envio respeita a preferência de
+sincronização automática ou manual; a reconexão não substitui a ação manual.
+Arquivos de áudio e PDF exigem autorização na abertura e não integram uma
+réplica durável de bytes. Alterações de Autoria exigem conexão e não entram
+numa fila offline genérica.
 
 ## Limites de segurança
 
@@ -47,7 +51,7 @@ O aplicativo solicita somente a permissão Android `INTERNET`. A camada nativa:
 A [configuração de segurança de rede do Android](https://developer.android.com/privacy-and-security/security-config)
 mantém tráfego aberto restrito ao build de depuração e aos destinos locais
 previstos. A ponte de exportação aceita somente texto CSV ou JSON, com nome de arquivo
-restrito e até 8 MiB. O destino é escolhido no seletor de documentos do Android,
+restrito e até 32 MiB em UTF-8, o mesmo limite do artefato de curso exportado pela API e pelo navegador. O destino é escolhido no seletor de documentos do Android,
 sem conceder ao aplicativo acesso geral ao armazenamento. Enquanto o seletor
 está aberto, o texto permanece em arquivo temporário privado e pode ser retomado
 se o sistema recriar o processo. O arquivo temporário é apagado ao cancelar ou
@@ -240,14 +244,15 @@ preparação do artefato.
 
 ## Roteiro de teste manual
 
-1. Instale o APK e confirme que a autenticação é a única entrada sem sessão.
+1. Instale o APK e confirme a entrada como visitante e a opção explícita de login.
 2. Entre em uma conta, feche o aplicativo e confirme a restauração da sessão.
 3. Selecione um Curso remoto e abra ao menos uma Unidade de estudo.
 4. Desligue a rede, responda à prática da Unidade e registre uma Observação.
 5. Feche e reabra o aplicativo ainda sem conexão; confirme Curso e estado local.
-6. Restaure a rede e confirme o envio das operações pendentes.
+6. Restaure a rede e confirme o envio automático ou a preservação das operações
+   até sincronizar manualmente, conforme a preferência da conta.
 7. Solicite recuperação de senha e confirme o retorno pelo link direto móvel.
-8. Em **Pesquisa**, salve uma exportação CSV e outra JSON pelo seletor do
+8. Na análise de Autoria, exporte o curso e sua análise em JSON pelo seletor do
    Android; em **Fontes**, salve uma exportação de proveniência JSON.
 
 O aplicativo não importa Cursos pelo menu **Compartilhar** do Android. Cursos
