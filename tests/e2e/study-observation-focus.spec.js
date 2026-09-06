@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const project = JSON.parse(readFileSync(new URL(
   "../fixtures/package/project-minimal.json", import.meta.url
 ), "utf8"));
 
-async function openObservationSheet(page, { existing = false } = {}) {
+async function openObservationSheet(page, { existing = false, controlledSave = false } = {}) {
   await page.route("**/main.js", route => route.fulfill({
     contentType: "text/javascript", body: ""
   }));
@@ -24,14 +24,14 @@ async function openObservationSheet(page, { existing = false } = {}) {
     contentType: "text/html", body: html
   }));
   await page.goto("/");
-  await page.evaluate(async ({ documentValue, existing }) => {
+  await page.evaluate(async ({ documentValue, existing, controlledSave }) => {
     const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
     const course = documentValue.courses[0];
     const items = existing ? [{
       annotationId: "focus-observation", state: "open", rawText: "Observação já registrada.",
       category: "question", capabilities: {}, timestamps: {}
     }] : [];
-    globalThis.observationFocusProbe = {};
+    globalThis.observationFocusProbe = { saves: [] };
     createCourseStudyApplication({
       root: document.querySelector("#study-root"), initialProject: documentValue,
       repository: {
@@ -49,11 +49,24 @@ async function openObservationSheet(page, { existing = false } = {}) {
             new Error("Não foi possível atualizar as observações."), { status: 503 }
           ));
         }),
+        createAnnotationForPath: (reference, draft) => {
+          const probe = globalThis.observationFocusProbe;
+          probe.saves.push(structuredClone({ reference, draft }));
+          if (!controlledSave) throw new Error("Envio não previsto neste cenário.");
+          return new Promise((resolve, reject) => {
+            probe.rejectSave = () => reject(Object.assign(new Error("Falha sintética de envio."), { status: 503 }));
+            probe.completeSave = () => {
+              items.push({ annotationId: "retry-observation", state: "open", rawText: draft.rawText,
+                category: draft.category, capabilities: {}, timestamps: {} });
+              resolve();
+            };
+          });
+        },
         subscribeToAnnotations: () => () => {},
         isStudyUnitMarkedForReview: () => false
       }
     });
-  }, { documentValue: project, existing });
+  }, { documentValue: project, existing, controlledSave });
   await page.getByRole("button", { name: "Abrir Fixture Minimal" }).click();
   for (const name of ["Abrir módulo", "Abrir lição", "Abrir microssequência didática"]) {
     await page.getByRole("button", { name }).click();
@@ -97,3 +110,71 @@ test("Observações existentes preservam consulta e foco escolhido enquanto a le
   await close.click();
   await expect(page.getByRole("button", { name: /^Observações/u })).toBeFocused();
 });
+
+for (const theme of ["light", "dark"]) {
+  test(`Envio após erro mantém contraste em hover e permite repetir no tema ${theme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width: 430, height: 932 });
+    await openObservationSheet(page, { controlledSave: true });
+    await page.evaluate(theme => { document.documentElement.dataset.colorMode = theme; }, theme);
+    await page.evaluate(() => globalThis.observationFocusProbe.finish());
+    await expect(page.getByText("Atualizando observações…", { exact: true })).toHaveCount(0);
+    const field = page.getByRole("textbox", { name: "Observação", exact: true });
+    const submit = page.getByRole("button", { name: "Enviar observação", exact: true });
+    const text = "Rascunho sintético preservado para repetir após erro.";
+    await field.fill(text);
+    await submit.click();
+    await expect(page.getByRole("button", { name: "Salvando observação", exact: true })).toBeDisabled();
+    await page.evaluate(() => globalThis.observationFocusProbe.rejectSave());
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(field).toHaveValue(text);
+    await expect(submit).toBeEnabled();
+    await field.click();
+    await page.keyboard.press("Tab");
+    await expect(submit).toBeFocused();
+    const measure = async () => {
+      await submit.evaluate(async element => {
+        getComputedStyle(element).backgroundColor;
+        await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {})));
+      });
+      return submit.evaluate(element => {
+        const style = getComputedStyle(element);
+        const iconColor = getComputedStyle(element.querySelector("svg")).color;
+        const luminance = value => {
+          const channels = value.match(/[\d.]+/gu).slice(0, 3).map(Number)
+            .map(value => value / 255).map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+          return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+        };
+        const foreground = luminance(iconColor), background = luminance(style.backgroundColor);
+        const rect = element.getBoundingClientRect();
+        return { foreground: iconColor, background: style.backgroundColor, enabled: !element.disabled,
+          opacity: Number(style.opacity), hover: element.matches(":hover"), focus: document.activeElement === element,
+          contrast: (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),
+          hit: element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)),
+          documentFits: document.documentElement.scrollWidth <= innerWidth + 1 };
+      });
+    };
+    await page.mouse.move(0, 0);
+    const rest = await measure();
+    await submit.hover();
+    const hover = await measure();
+    const screenshotPath = info.outputPath("enabled-submit-after-error.png");
+    const metricsPath = info.outputPath("enabled-submit-colors.json");
+    await page.screenshot({ path: screenshotPath });
+    writeFileSync(metricsPath, JSON.stringify({ theme, rest, hover }, null, 2) + "\n");
+    await info.attach("enabled-submit-colors", { path: metricsPath, contentType: "application/json" });
+    await info.attach("enabled-submit-after-error", { path: screenshotPath, contentType: "image/png" });
+    expect(hover).toMatchObject({ enabled: true, opacity: 1, hover: true, focus: true, hit: true, documentFits: true });
+    expect(rest).toMatchObject({ enabled: true, hover: false, focus: true });
+    expect.soft(rest.contrast).toBeGreaterThanOrEqual(4.5);
+    expect.soft(hover.contrast).toBeGreaterThanOrEqual(4.5);
+    await submit.click();
+    await expect(page.getByRole("button", { name: "Salvando observação", exact: true })).toBeDisabled();
+    await page.evaluate(() => globalThis.observationFocusProbe.completeSave());
+    await expect(page.getByText(text, { exact: true })).toBeVisible();
+    await expect(field).toHaveValue("");
+    await expect(submit).toBeEnabled();
+    const saves = await page.evaluate(() => globalThis.observationFocusProbe.saves);
+    expect(saves).toHaveLength(2);
+    expect(saves[1]).toEqual(saves[0]);
+  });
+}

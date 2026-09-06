@@ -5142,6 +5142,10 @@ button.account-settings-back[hidden] {
   padding: 0;
 }
 
+.study-observation-composer-actions .study-observation-submit:hover {
+  background: var(--action-primary-hover);
+}
+
 .study-observation-dock-count {
   position: absolute;
   top: 3px;
