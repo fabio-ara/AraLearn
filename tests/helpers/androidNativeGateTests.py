@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("android_native_gate", ROOT / "scripts/androidNativeGate.py")
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
-PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ5kAAAAASUVORK5CYII=")
+LIGHT_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAE0lEQVR4nGP88fMXAwMDEwMYAAAjLALvhf1a+QAAAABJRU5ErkJggg==")
+DARK_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGPk4uFjYGBgYgADAAHWACiyHU04AAAAAElFTkSuQmCC")
 
 
 def node(label, checked="false", **values):
@@ -63,10 +64,11 @@ class NativeGateTests(unittest.TestCase):
             "upgrade": {"initiallyAbsent": True, "before": {**installed, "version": gate.BASE_VERSION, "versionCode": gate.BASE_CODE},
                 "after": dict(installed), "afterReinstall": dict(installed), "launched": True,
                 "candidateThemeAfterReinstall": "dark", "oldAppPreference": "not_tested_login_required"}}
-        for name in ["clean-selected", "clean-relaunched", "base-login", "upgraded", "candidate-selected", "candidate-reinstalled"]:
-            xml = hierarchy(node("Entrar")) if name == "base-login" else hierarchy(node("Conta e aparência")) if name == "upgraded" else THEME
+        for name in ["clean-initial", "clean-selected", "clean-relaunched", "base-login", "upgraded", "candidate-selected", "candidate-reinstalled"]:
+            xml = hierarchy(node("Entrar")) if name == "base-login" else hierarchy(node("Conta e aparência")) if name in {"clean-initial", "upgraded"} else THEME
             (self.evidence / (name + ".xml")).write_text(xml, encoding="utf-8")
-            (self.evidence / (name + ".png")).write_bytes(PNG)
+            dark = name in {"clean-selected", "clean-relaunched", "candidate-selected", "candidate-reinstalled"}
+            (self.evidence / (name + ".png")).write_bytes(DARK_PNG if dark else LIGHT_PNG)
         self.refresh_evidence()
 
     def refresh_evidence(self):
@@ -174,8 +176,22 @@ class NativeGateTests(unittest.TestCase):
         (self.evidence / "candidate-reinstalled.xml").write_text(
             hierarchy(node("Tema escuro"), node("Tema claro, selecionado"), node("Tema do sistema")), encoding="utf-8")
         self.refresh_evidence()
+        with self.assertRaisesRegex(RuntimeError, "ambígua"):
+            self.validate()
+
+    def test_visual_theme_must_match_the_persisted_claim(self):
+        (self.evidence / "candidate-reinstalled.png").write_bytes(LIGHT_PNG)
+        self.refresh_evidence()
         with self.assertRaisesRegex(RuntimeError, "Tema escuro"):
             self.validate()
+
+    def test_png_decoder_distinguishes_light_dark_and_tampering(self):
+        self.assertTrue(gate.screen_is_dark(DARK_PNG))
+        self.assertFalse(gate.screen_is_dark(LIGHT_PNG))
+        changed = bytearray(DARK_PNG)
+        changed[-8] ^= 1
+        with self.assertRaisesRegex(RuntimeError, "Checksum|Estrutura"):
+            gate.screen_is_dark(bytes(changed))
 
     def test_login_and_candidate_launch_must_be_observed(self):
         (self.evidence / "base-login.xml").write_text(hierarchy(node("Conta e aparência")), encoding="utf-8")

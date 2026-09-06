@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import struct
 import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
+import zlib
 
 PACKAGE = "com.aralearn.app"
 BASE_VERSION = "0.0.64"
@@ -198,14 +200,97 @@ def ui_target(xml, label, *, clickable=True):
     return nodes[0], ((x1 + x2) // 2, (y1 + y2) // 2)
 
 
-def theme_selected(xml):
-    ui_target(xml, "Tema escuro, selecionado")
-    ui_target(xml, "Tema claro")
-    ui_target(xml, "Tema do sistema")
-    labels = {node.get("text") or node.get("content-desc") for node in ui_nodes(xml)
-              if node.get("package") == PACKAGE and node.get("enabled") == "true"}
-    require("Tema claro, selecionado" not in labels and "Tema do sistema, selecionado" not in labels,
-            "Preferência de tema ambígua.")
+def screen_is_dark(png):
+    signature = b"\x89PNG\r\n\x1a\n"
+    require(png.startswith(signature) and len(png) < 8 * 1024 * 1024, "Captura nativa inválida.")
+    position, header, compressed, ended = len(signature), None, [], False
+    while position < len(png):
+        require(position + 12 <= len(png), "PNG truncado.")
+        length = int.from_bytes(png[position:position + 4], "big")
+        kind = png[position + 4:position + 8]
+        start, finish = position + 8, position + 8 + length
+        require(finish + 4 <= len(png), "Chunk PNG truncado.")
+        data = png[start:finish]
+        checksum = int.from_bytes(png[finish:finish + 4], "big")
+        require(zlib.crc32(kind + data) & 0xffffffff == checksum, "Checksum PNG inválido.")
+        if kind == b"IHDR":
+            require(header is None and length == 13, "Cabeçalho PNG inválido.")
+            header = struct.unpack(">IIBBBBB", data)
+        elif kind == b"IDAT":
+            compressed.append(data)
+        elif kind == b"IEND":
+            require(length == 0, "Fim PNG inválido.")
+            ended = True
+            position = finish + 4
+            break
+        position = finish + 4
+    require(header is not None and compressed and ended and position == len(png), "Estrutura PNG incompleta.")
+    width, height, depth, color, compression, filtering, interlace = header
+    require(depth == 8 and color in {2, 6} and compression == filtering == interlace == 0
+            and 1 <= width <= 8192 and 1 <= height <= 8192 and width * height <= 8 * 1024 * 1024,
+            "Formato PNG nativo inesperado.")
+    channels, stride = (3 if color == 2 else 4), width * (3 if color == 2 else 4)
+    expected = (stride + 1) * height
+    decoder = zlib.decompressobj()
+    raw = decoder.decompress(b"".join(compressed), expected + 1)
+    require(decoder.eof and not decoder.unused_data and not decoder.unconsumed_tail and len(raw) == expected,
+            "Pixels PNG inválidos.")
+    previous = bytearray(stride)
+    samples, offset = [], 0
+    # Avoid system bars and the lower settings sheet; the content canvas is stable in both themes.
+    x1, x2 = width // 8, max(width // 8 + 1, width * 7 // 8)
+    y1, y2 = height // 8, max(height // 8 + 1, height // 2)
+    x_step, y_step = max(1, (x2 - x1) // 64), max(1, (y2 - y1) // 64)
+    for y in range(height):
+        filter_kind, encoded = raw[offset], raw[offset + 1:offset + stride]
+        offset += stride + 1
+        require(filter_kind <= 4, "Filtro PNG inválido.")
+        current = bytearray(stride)
+        for index, value in enumerate(encoded):
+            left = current[index - channels] if index >= channels else 0
+            above = previous[index]
+            upper_left = previous[index - channels] if index >= channels else 0
+            if filter_kind == 1:
+                value += left
+            elif filter_kind == 2:
+                value += above
+            elif filter_kind == 3:
+                value += (left + above) // 2
+            elif filter_kind == 4:
+                prediction = left + above - upper_left
+                distances = (abs(prediction - left), abs(prediction - above), abs(prediction - upper_left))
+                value += (left, above, upper_left)[distances.index(min(distances))]
+            current[index] = value & 0xff
+        if y1 <= y < y2 and (y - y1) % y_step == 0:
+            for x in range(x1, x2, x_step):
+                pixel = x * channels
+                samples.append((299 * current[pixel] + 587 * current[pixel + 1] + 114 * current[pixel + 2]) // 1000)
+        previous = current
+    require(samples, "Captura sem amostra visual.")
+    samples.sort()
+    return samples[len(samples) // 2] < 64 and samples[int((len(samples) - 1) * 0.9)] < 128
+
+
+def theme_control(xml, label):
+    candidates = []
+    for node in ui_nodes(xml):
+        value = node.get("text") or node.get("content-desc")
+        if node.get("package") == PACKAGE and node.get("enabled") == "true" and value in {label, label + ", selecionado"}:
+            candidates.append(value)
+    require(len(candidates) == 1, f"UI: controle de tema único não encontrado: {label}.")
+    return ui_target(xml, candidates[0])[0], candidates[0].endswith(", selecionado")
+
+
+def theme_selected(xml, png):
+    # Android WebView does not consistently project aria-pressed into UIAutomator after a cold load.
+    # Keep the controls observable and bind the assertion to the rendered pixels as well.
+    theme_control(xml, "Tema escuro")
+    light, light_announced = theme_control(xml, "Tema claro")
+    system, system_announced = theme_control(xml, "Tema do sistema")
+    light_selected = light_announced or light.get("checked") == "true" or light.get("selected") == "true"
+    system_selected = system_announced or system.get("checked") == "true" or system.get("selected") == "true"
+    require(not light_selected and not system_selected, "Preferência de tema ambígua.")
+    require(screen_is_dark(png), "Tema escuro não está aplicado na captura nativa.")
 
 
 class Device:
@@ -245,6 +330,7 @@ class Device:
         png = command([self.adb, "-s", "emulator-5554", "exec-out", "screencap", "-p"]).stdout
         require(png.startswith(b"\x89PNG\r\n\x1a\n") and len(png) < 8 * 1024 * 1024, "Captura nativa inválida.")
         (self.folder / (name + ".png")).write_bytes(png)
+        return xml, png
 
     def installed(self):
         found = self.call("shell", "pm", "list", "packages", "-U", "--user", "0", PACKAGE)
@@ -278,7 +364,8 @@ class Device:
         while time.monotonic() < until:
             try:
                 xml = self.hierarchy()
-                theme_selected(xml)
+                png = command([self.adb, "-s", "emulator-5554", "exec-out", "screencap", "-p"]).stdout
+                theme_selected(xml, png)
                 return xml
             except (RuntimeError, ET.ParseError, subprocess.TimeoutExpired):
                 time.sleep(1)
@@ -326,7 +413,7 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir):
     require(upgrade.get("candidateThemeAfterReinstall") == "dark" and upgrade.get("oldAppPreference") == "not_tested_login_required",
             "Retenção da candidata foi confundida com preferência antiga.")
     files = proof.get("evidence", [])
-    names = {name + suffix for name in ["clean-selected", "clean-relaunched", "base-login", "upgraded", "candidate-selected", "candidate-reinstalled"] for suffix in [".png", ".xml"]}
+    names = {name + suffix for name in ["clean-initial", "clean-selected", "clean-relaunched", "base-login", "upgraded", "candidate-selected", "candidate-reinstalled"] for suffix in [".png", ".xml"]}
     require(len(files) == len(names) and {item.get("name") for item in files} == names, "Evidência nativa incompleta/duplicada.")
     directory = Path(evidence_dir)
     require({file.name for file in directory.iterdir()} == names, "Arquivo inesperado na evidência nativa.")
@@ -339,14 +426,15 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir):
         if item["name"].endswith(".png"):
             require(data.startswith(b"\x89PNG\r\n\x1a\n"), "PNG da prova inválido.")
         else:
-            xml = data.decode("utf-8")
-            ui_nodes(xml)
-            if item["name"] in {"clean-selected.xml", "clean-relaunched.xml", "candidate-selected.xml", "candidate-reinstalled.xml"}:
-                theme_selected(xml)
-            elif item["name"] == "base-login.xml":
-                ui_target(xml, "Entrar")
-            elif item["name"] == "upgraded.xml":
-                ui_target(xml, "Conta e aparência")
+            ui_nodes(data.decode("utf-8"))
+    for stem in ["clean-selected", "clean-relaunched", "candidate-selected", "candidate-reinstalled"]:
+        theme_selected((directory / (stem + ".xml")).read_text(encoding="utf-8"),
+                       (directory / (stem + ".png")).read_bytes())
+    for stem, label in [("clean-initial", "Conta e aparência"), ("base-login", "Entrar"), ("upgraded", "Conta e aparência")]:
+        ui_target((directory / (stem + ".xml")).read_text(encoding="utf-8"), label)
+    require(not screen_is_dark((directory / "clean-initial.png").read_bytes())
+            and not screen_is_dark((directory / "upgraded.png").read_bytes()),
+            "Estado inicial claro do emulador não foi comprovado.")
     return proof
 
 
@@ -423,13 +511,15 @@ def run_gate(manifest, identity, folder, candidate_folder):
                     device.launch()
                     if case == "clean":
                         device.wait_label("Conta e aparência")
+                        device.capture("clean-initial")
                         device.isolate_network()
                         device.dark()
                         device.capture("clean-selected")
                         device.stop()
                         device.launch()
-                        theme_selected(device.settings())
-                        device.capture("clean-relaunched")
+                        device.settings()
+                        relaunched_xml, relaunched_png = device.capture("clean-relaunched")
+                        theme_selected(relaunched_xml, relaunched_png)
                         proof["cleanInstall"] = {"initiallyAbsent": True, "installed": initial, "launched": True, "themeAfterRelaunch": "dark"}
                     else:
                         device.wait_label("Entrar")
@@ -447,8 +537,9 @@ def run_gate(manifest, identity, folder, candidate_folder):
                         device.call("install", "-r", str(candidate), timeout=120)
                         reinstalled = device.installed()
                         device.launch()
-                        theme_selected(device.settings())
-                        device.capture("candidate-reinstalled")
+                        device.settings()
+                        reinstalled_xml, reinstalled_png = device.capture("candidate-reinstalled")
+                        theme_selected(reinstalled_xml, reinstalled_png)
                         proof["upgrade"] = {"initiallyAbsent": True, "before": initial, "after": after, "afterReinstall": reinstalled,
                             "launched": True, "candidateThemeAfterReinstall": "dark", "oldAppPreference": "not_tested_login_required"}
                 except (RuntimeError, OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired):
