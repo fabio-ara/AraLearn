@@ -313,8 +313,18 @@ export async function verifyAndroid(apk, manifest) {
 export function releasePlan({ tagSha, release, targetSha, version }) {
   demand(SHA.test(targetSha) && /^\d+\.\d+\.\d+$/u.test(version), "Identidade de release inválida.");
   demand(!tagSha || tagSha === targetSha, "Tag existente aponta para outra revisão.");
-  if (release) demand(tagSha && release.tag_name === `v${version}` && !release.prerelease, "Release existente é incompatível.");
+  if (release) {
+    demand(release.tag_name === `v${version}` && !release.prerelease, "Release existente é incompatível.");
+    demand(tagSha || (release.draft === true && release.target_commitish === targetSha), "Release existente é incompatível.");
+  }
   return { create: !release, finalize: !release || release.draft === true };
+}
+
+export function selectReleaseByTag(releases, tag) {
+  demand(Array.isArray(releases), "Lista de releases inválida.");
+  const matches = releases.filter((release) => release?.tag_name === tag);
+  demand(matches.length <= 1, "Release duplicada para a mesma tag.");
+  return matches[0] || null;
 }
 
 async function releaseState(manifest) {
@@ -322,7 +332,8 @@ async function releaseState(manifest) {
   const ref = await api(`git/ref/tags/${tag}`, { missing: true });
   let tagSha = ref?.object.sha || null;
   if (ref?.object.type === "tag") tagSha = (await api(`git/tags/${tagSha}`)).object.sha;
-  const release = await api(`releases/tags/${tag}`, { missing: true });
+  let release = await api(`releases/tags/${tag}`, { missing: true });
+  if (!release) release = selectReleaseByTag(await api("releases?per_page=100"), tag);
   const plan = releasePlan({ tagSha, release, targetSha: manifest.promotion.targetSha, version: manifest.version });
   return { tag, release, ...plan };
 }

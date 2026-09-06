@@ -11,6 +11,7 @@ import {
   extractArtifactArchive,
   GITHUB_API_ACCEPT,
   releasePlan,
+  selectReleaseByTag,
   validateCandidateIdentity,
   validateIntegratedPullRequest,
   validateManifest,
@@ -375,6 +376,10 @@ test("plano de release retoma tag sem Release e draft sem assets", () => {
     release: { tag_name: `v${VERSION}`, draft: true, prerelease: false, assets: [] }
   }), { create: false, finalize: true });
   assert.deepEqual(releasePlan({
+    ...input,
+    release: { tag_name: `v${VERSION}`, draft: true, prerelease: false, target_commitish: TARGET_SHA, assets: [] }
+  }), { create: false, finalize: true });
+  assert.deepEqual(releasePlan({
     ...input, tagSha: TARGET_SHA,
     release: { tag_name: `v${VERSION}`, draft: false, prerelease: false, assets: [{ name: "application.apk" }] }
   }), { create: false, finalize: false });
@@ -384,9 +389,18 @@ test("plano de release recusa tag divergente e estado incompatível", () => {
   const input = { targetSha: TARGET_SHA, version: VERSION };
   assert.throws(() => releasePlan({ ...input, tagSha: HEAD_SHA }), /outra revisão/u);
   assert.throws(() => releasePlan({ ...input, release: { tag_name: `v${VERSION}`, draft: true, prerelease: false } }), /incompatível/u);
+  assert.throws(() => releasePlan({ ...input, release: { tag_name: `v${VERSION}`, draft: true, prerelease: false, target_commitish: HEAD_SHA } }), /incompatível/u);
+  assert.throws(() => releasePlan({ ...input, release: { tag_name: `v${VERSION}`, draft: false, prerelease: false, target_commitish: TARGET_SHA } }), /incompatível/u);
   assert.throws(() => releasePlan({ ...input, tagSha: TARGET_SHA, release: { tag_name: "v9.9.9", prerelease: false } }), /incompatível/u);
   assert.throws(() => releasePlan({ ...input, tagSha: TARGET_SHA, release: { tag_name: `v${VERSION}`, prerelease: true } }), /incompatível/u);
   assert.throws(() => releasePlan({ ...input, targetSha: "invalid" }), /Identidade/u);
+});
+
+test("seleção encontra draft que o endpoint por tag omite e recusa duplicidade", () => {
+  const draft = { tag_name: `v${VERSION}`, draft: true, target_commitish: TARGET_SHA };
+  assert.equal(selectReleaseByTag([{ tag_name: "v0.0.1" }, draft], `v${VERSION}`), draft);
+  assert.equal(selectReleaseByTag([], `v${VERSION}`), null);
+  assert.throws(() => selectReleaseByTag([draft, { ...draft }], `v${VERSION}`), /duplicada/u);
 });
 
 test("avanço de versão aceita retry exato e exige avanço numérico do versionCode", () => {
