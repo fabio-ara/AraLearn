@@ -123,6 +123,11 @@ jobs:
           artifact-ids: ${{ needs.candidate.outputs.promotion_artifact_id }}
           merge-multiple: true
           path: .
+      - name: Baixar APK assinado e recibo exatos
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          path: .candidate/android-release
       - name: Reconfirmar promoção atual
         run: node ./scripts/releaseCandidate.mjs current
       - name: Acessar somente KVM já disponível
@@ -133,7 +138,7 @@ jobs:
           test -r /dev/kvm && test -w /dev/kvm
       - name: Provar instalação e upgrade sem conta
         id: native
-        run: python3 ./scripts/androidNativeGate.py run --folder "${{ runner.temp }}/aralearn-native-proof"
+        run: python3 ./scripts/androidNativeGate.py run --candidate-folder .candidate/android-release --folder "${{ runner.temp }}/aralearn-native-proof"
       - name: Guardar prova nativa e capturas sintéticas
         id: proof
         if: ${{ always() }}
@@ -185,8 +190,13 @@ jobs:
           artifact-ids: ${{ needs.android-native.outputs.proof_artifact_id }}
           merge-multiple: true
           path: .candidate/android-native
+      - name: Baixar APK assinado e recibo exatos
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          path: .candidate/android-release
       - name: Conferir instalação antes de Pages
-        run: python3 ./scripts/androidNativeGate.py verify --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
+        run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
       - name: Configurar Pages
         if: needs.candidate.outputs.site_current != 'true'
         uses: actions/configure-pages@v5
@@ -233,7 +243,12 @@ jobs:
           artifact-ids: ${{ needs.android-native.outputs.proof_artifact_id }}
           merge-multiple: true
           path: .candidate/android-native
+      - name: Baixar APK assinado e recibo exatos
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          path: .candidate/android-release
       - name: Reconfirmar prova nativa antes da Release
-        run: python3 ./scripts/androidNativeGate.py verify --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
+        run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
       - name: Verificar partes e tornar a Release pública
         run: node ./scripts/releaseCandidate.mjs finalize-release

@@ -9,6 +9,10 @@ on:
       promotion_artifact_id:
         required: true
         type: string
+    outputs:
+      artifact_id:
+        description: Artefato imutável com APK, checksum e recibo assinados
+        value: ${{ jobs.android.outputs.artifact_id }}
     secrets:
       ARALEARN_ANDROID_KEYSTORE_BASE64:
         required: true
@@ -29,6 +33,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    outputs:
+      artifact_id: ${{ steps.bundle.outputs.artifact-id }}
     env:
       GH_TOKEN: ${{ github.token }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
@@ -88,6 +94,17 @@ jobs:
       - name: Guardar APK, checksum e manifesto na Release em rascunho
         shell: pwsh
         run: node ./scripts/releaseCandidate.mjs stage-release "AraLearn-$env:RELEASE_VERSION.apk"
+      - name: Transportar bytes assinados para os gates seguintes
+        id: bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-android-signed-${{ github.run_attempt }}
+          path: |
+            AraLearn-${{ inputs.version }}.apk
+            AraLearn-${{ inputs.version }}.apk.sha256
+            AraLearn-${{ inputs.version }}.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Remover material temporário de assinatura
         if: ${{ always() }}
         shell: pwsh
