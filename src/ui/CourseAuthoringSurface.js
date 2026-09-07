@@ -1209,6 +1209,11 @@ export function createCourseAuthoringSurface({
   }
 
   function rememberCourse(course) {
+    if (state.authoringPlan && (state.authoringPlan.courseId !== course.courseId ||
+        state.authoringPlan.courseRevision !== course.revision)) {
+      state.authoringPlan = null;
+      state.planningFailure = "";
+    }
     state.course = course;
     state.knownCourse = course;
     knownCourses.set(course.courseId, course);
@@ -2054,9 +2059,7 @@ export function createCourseAuthoringSurface({
         counts: detail.counts || state.knownCourse?.counts || null,
         offlineKnown: detail.offlineKnown || state.knownCourse?.offlineKnown === true
       });
-      state.course = course;
-      state.knownCourse = course;
-      knownCourses.set(courseId, course);
+      rememberCourse(course);
       if (!state.opened || epoch !== courseEpoch || state.view !== "course") return false;
       if (state.section === "people") await loadPeople(courseId);
       if (state.section === "planning") {

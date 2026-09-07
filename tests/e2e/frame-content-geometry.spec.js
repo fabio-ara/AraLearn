@@ -65,7 +65,7 @@ async function mount(page, theme) {
   }, { project, theme });
 }
 
-test("Inspection conserva o frame e o card vizinho com título, prosa e detalhes longos", async ({ page }, testInfo) => {
+test("Inspeção conserva largura, texto integral e posição do card vizinho ao abrir detalhes", async ({ page }, testInfo) => {
   for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 844 });
     await mount(page, theme);
@@ -98,11 +98,12 @@ test("Inspection conserva o frame e o card vizinho com título, prosa e detalhes
       await window.frameInspection.open();
       await document.fonts.ready;
     });
-    await page.getByRole("button", { name: "Adicionar Título à seleção", exact: true }).click();
+    await page.getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
     const cards = page.locator(".course-inspection-item > article");
     await expect(cards).toHaveCount(2);
     const bounds = await cards.evaluateAll(nodes => nodes.map(node => ({ width: node.clientWidth, height: node.clientHeight })));
-    expect(bounds[0]).toEqual(bounds[1]);
+    expect(bounds[0].width).toBe(bounds[1].width);
+    expect(bounds[1].height).toBeGreaterThan(bounds[0].height);
     const first = page.locator('.course-inspection-item[data-inspection-ordinal="1"]');
     await first.locator(".course-inspection-item-details > summary").scrollIntoViewIfNeeded();
     const beforeScroll = await page.locator(".course-authoring-root").evaluate(node => node.scrollTop);
@@ -114,7 +115,15 @@ test("Inspection conserva o frame e o card vizinho com título, prosa e detalhes
     await first.locator(".course-inspection-item-details > summary").click();
     const content = cards.nth(1).locator(".card-sheet-content");
     await content.focus(); await page.keyboard.press("End");
-    await expect.poll(() => content.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+    await expect.poll(() => content.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.bottom > 0 && rect.bottom <= innerHeight;
+    })).toBe(true);
+    const contentExtent = await content.evaluate(node => ({
+      scroll: node.scrollTop, height: node.clientHeight, extent: node.scrollHeight
+    }));
+    expect(contentExtent.scroll).toBe(0);
+    expect(contentExtent.extent).toBeLessThanOrEqual(contentExtent.height + 1);
     await expect(content).toContainText("FIM DA PROSA");
     await page.screenshot({ path: testInfo.outputPath(`inspection-long-${width}-${theme}.png`) });
     await page.evaluate(() => window.frameInspection.destroy());

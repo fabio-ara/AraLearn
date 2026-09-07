@@ -110,6 +110,12 @@ remota. O teste distingue chamadas de autorização das leituras/escritas de
 estado suspensas, verifica a fila após reiniciar e confirma que acionar a nuvem
 não elimina rascunho nem ultrapassa a conta ou o curso autorizados.
 
+Abra Planejamento, produza uma alteração externa e entre explicitamente em
+Conteúdo. Se essa leitura aceitar uma revisão nova, voltar a Planejamento deve
+reler o plano correspondente, sem exibir o anterior como atual. Uma falha nessa
+leitura deve oferecer nova tentativa; se a revisão continuar igual, o plano
+confirmado pode ser reutilizado. Essa navegação não ativa sincronização de fundo.
+
 ## Pré-condições
 
 Reprove a revisão se:

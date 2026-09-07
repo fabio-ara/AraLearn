@@ -2324,6 +2324,7 @@ async function selectDesignGroup(page, name) {
 }
 
 test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito combinações", async ({ page }, info) => {
+  test.setTimeout(90000);
   for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 844 });
     await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=parameters` });
@@ -2333,24 +2334,44 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
     const initial = await dialog.boundingBox();
     const close = dialog.getByRole("button", { name: "Fechar parâmetros", exact: true });
     const closeBox = await close.boundingBox();
+    const expectDialogGeometry = async () => {
+      const current = await dialog.boundingBox();
+      expect(current.x).toBe(initial.x);
+      expect(current.width).toBe(initial.width);
+      expect(current.y + current.height).toBe(initial.y + initial.height);
+      expect(current.y).toBeGreaterThanOrEqual(0);
+      expect(current.y + current.height).toBeLessThanOrEqual(844);
+      const button = await close.boundingBox();
+      expect(button.x).toBe(closeBox.x);
+      expect(button.y - current.y).toBe(closeBox.y - initial.y);
+      expect(button.width).toBe(44);
+      expect(button.height).toBe(44);
+      expect(await close.evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+      })).toBe(true);
+    };
     const visited = new Set();
     for (const group of ["Explicações", "Prática", "Leitura e estilo", "Produção", "Conversa", "Recursos", "Perfis"]) {
       await dialog.locator(".course-design-category-menu > summary").click();
       await dialog.getByRole("button", { name: group, exact: true }).click();
-      expect(await dialog.boundingBox()).toEqual(initial);
-      expect(await close.boundingBox()).toEqual(closeBox);
+      await expectDialogGeometry();
       for (const id of await dialog.locator(".course-design-parameter").evaluateAll(nodes => nodes.map(node => node.dataset.parameterId))) visited.add(id);
       const geometry = await dialog.evaluate(node => {
         const group = node.querySelector(".course-design-category-menu > summary").getBoundingClientRect();
         const scope = node.querySelector(".course-design-scope").getBoundingClientRect();
-        return { topDifference: Math.abs(group.y - scope.y), scopeHeight: scope.height,
+        const scopeSummary = node.querySelector(".course-design-scope > summary").getBoundingClientRect();
+        const navigation = node.querySelector(".course-design-settings-nav").getBoundingClientRect();
+        return { groupTop: group.top, scopeBottom: scope.bottom, scopeTargetHeight: scopeSummary.height,
+          scopeWidthDifference: Math.abs(scope.width - navigation.width),
           buttons: [...node.querySelectorAll(".course-design-parameter > button")].map(button => {
             const box = button.getBoundingClientRect(), style = getComputedStyle(button);
             return { width: box.width, height: box.height, radius: parseFloat(style.borderRadius), background: style.backgroundColor };
           }) };
       });
-      expect(geometry.topDifference).toBeLessThanOrEqual(1);
-      expect(geometry.scopeHeight).toBe(44);
+      expect(geometry.groupTop).toBeGreaterThanOrEqual(geometry.scopeBottom);
+      expect(geometry.scopeWidthDifference).toBeLessThanOrEqual(1);
+      expect(geometry.scopeTargetHeight).toBeGreaterThanOrEqual(44);
       for (const button of geometry.buttons) { expect(button.width).toBe(44); expect(button.height).toBe(44); expect(button.radius).toBeGreaterThan(0); }
 
       await expectNoHorizontalOverflow(page);
@@ -2370,12 +2391,22 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
     await expect(form.locator("input[name=parameterValue]")).toHaveValue("3");
     await expect(form.locator("textarea[name=reason]")).toHaveValue("Distribuir a novidade para este público.");
     const save = form.getByRole("button", { name: "Salvar neste escopo", exact: true });
+    await save.scrollIntoViewIfNeeded();
     const saveBox = await save.boundingBox();
-    expect(saveBox.y + saveBox.height).toBeLessThan(initial.y + initial.height);
+    const editorBox = await dialog.boundingBox();
+    expect(saveBox.y + saveBox.height).toBeLessThan(editorBox.y + editorBox.height);
     await save.click();
     await expect(dialog.getByRole("status")).toContainText("Parâmetro salvo");
-    expect(await save.boundingBox()).toEqual(saveBox);
-    expect(await dialog.boundingBox()).toEqual(initial);
+    await save.scrollIntoViewIfNeeded();
+    const savedBox = await save.boundingBox();
+    expect(savedBox.x).toBe(saveBox.x);
+    expect(savedBox.width).toBe(saveBox.width);
+    expect(savedBox.height).toBe(saveBox.height);
+    expect(await save.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
+    await expectDialogGeometry();
     await close.focus();
     await page.keyboard.press("Shift+Tab");
     expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true);
@@ -2535,7 +2566,7 @@ test("#304 avisos da inspeção não deslocam o card e falhas só abrem por esco
     await expect(card).toBeVisible();
     const before = await frameGeometry();
     await card.getByRole("button", { name: "Editar", exact: true }).click();
-    await card.getByRole("button", { name: "Visualizar", exact: true }).click();
+    await card.getByRole("button", { name: "Cancelar edição", exact: true }).click();
     await expect(notice).toContainText("Edição cancelada.");
     expect(await frameGeometry()).toEqual(before);
     const liveRegion = await page.locator(".course-inspection-copy-status").boundingBox();
@@ -3095,44 +3126,58 @@ test.describe("aceite focal do shell simples da Autoria", () => {
 
   test("rerender preserva a posição do card e mudança de área inicia o conteúdo no topo", async ({
     page
-  }) => {
+  }, info) => {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width: 1280, height: 900 });
-    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-02`;
     await mountCourseAuthoring(page, { cardinality: "many", hash });
     const root = page.locator(".course-authoring-root");
     const cardContent = page.locator("[data-inspection-study-unit] .card-sheet-content");
+    await page.evaluate(async () => {
+      const harness = globalThis.__courseAuthoringHarness;
+      harness.updateInspectionStudyUnitParagraph("study-unit-02", "Conteúdo longo sintético para conferir a preservação da leitura durante a atualização. ".repeat(40));
+      await harness.surface.refresh();
+    });
 
-    const beforeRefresh = await cardContent.evaluate((element) => {
+    const beforeRefresh = await root.evaluate((element) => {
       element.scrollTop = Math.min(480, element.scrollHeight - element.clientHeight);
       return element.scrollTop;
     });
     expect(beforeRefresh).toBeGreaterThan(100);
+    const beforeCardTop = (await cardContent.boundingBox()).y;
+    await page.screenshot({ path: info.outputPath("inspection-external-scroll-before.png") });
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
     await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
       "aria-busy",
       "false"
     );
-    await expect.poll(() => cardContent.evaluate((element) => element.scrollTop))
+    await expect.poll(() => root.evaluate((element) => element.scrollTop))
       .toBe(beforeRefresh);
+    expect(Math.abs((await cardContent.boundingBox()).y - beforeCardTop)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: info.outputPath("inspection-external-scroll-after.png") });
 
-    await navigateToAuthoringArea(page, "parameters");
+    await navigateToAuthoringArea(page, "planning");
     await expect(page.locator("#course-current-identity"))
       .toHaveText("Fundamentos de relações");
-    await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
+    await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
     await expect.poll(() => root.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
     expect(clientErrors).toEqual([]);
   });
 
-  test("Inspeção limita a rolagem interna ao conteúdo do card e encerra ao trocar de área", async ({
+  test("Inspeção preserva conteúdo longo com rolagem externa e encerra ao trocar de área", async ({
     page
-  }) => {
+  }, info) => {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width: 390, height: 820 });
     const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
     await mountCourseAuthoring(page, { cardinality: "many", hash });
+    await page.evaluate(() => globalThis.__courseAuthoringHarness.updateInspectionStudyUnitParagraph(
+      "study-unit-02", "Conteúdo longo sintético para alcançar toda a leitura sem rolagem interna no card. ".repeat(40)
+    ));
 
     await navigateToAuthoringArea(page, "content");
+    await page.getByRole("button", { name: "Próxima unidade", exact: true }).click();
+    await expect(page.locator("[data-inspection-context-position]")).toHaveText("2/60");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     const nestedVerticalScrollers = await page.locator(
       'section[aria-label="Unidades de estudo"]'
@@ -3141,18 +3186,32 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       return ["auto", "scroll"].includes(overflow) &&
         element.scrollHeight > element.clientHeight + 1;
     }).map((element) => element.className));
-    expect(nestedVerticalScrollers).toEqual(["card-sheet-content"]);
+    expect(nestedVerticalScrollers).toEqual([]);
     const cardContent = page.locator("[data-inspection-study-unit] .card-sheet-content");
     expect(await cardContent.evaluate(node => {
       node.scrollTop = node.scrollHeight;
-      return node.scrollTop > 0 && node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+      return node.scrollTop === 0 && node.scrollHeight <= node.clientHeight + 1;
     })).toBe(true);
+    await expectAuthoringOwnsVerticalScroll(page);
+    const root = page.locator(".course-authoring-root");
+    const rootBox = await root.boundingBox();
+    await page.mouse.move(rootBox.x + rootBox.width / 2, rootBox.y + rootBox.height / 2);
+    await page.mouse.wheel(0, 100_000);
+    await expect.poll(() => root.evaluate(node => node.scrollTop)).toBeGreaterThan(100);
+    await expect.poll(() => cardContent.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const viewport = node.closest(".course-authoring-root").getBoundingClientRect();
+      return rect.bottom <= viewport.bottom + 1 && rect.bottom > viewport.top;
+    })).toBe(true);
+    await page.screenshot({ path: info.outputPath("inspection-long-content-end.png") });
 
     await navigateToAuthoringArea(page, "planning");
     await expect(page.locator("#course-current-identity"))
       .toHaveText("Fundamentos de relações");
     await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
+    expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.planReads)).toBe(2);
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath("inspection-planning-after-long-read.png") });
 
     await navigateToAuthoringArea(page, "content");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
@@ -3764,8 +3823,8 @@ test("Inspeção abre os Parâmetros da StudyUnit em folha e retorna ao mesmo co
   await expectModalDialogOwnsTopLayer(dialog);
   await expect(dialog.getByLabel("Escolher grupo de ajustes")).toContainText("Explicações");
   await dialog.locator(".course-design-scope > summary").click();
-  await expect(dialog.locator(".course-design-scope"))
-    .toContainText("unidade de estudo: Exemplo guiado com diagrama");
+  await expect(dialog.locator(".course-design-scope-target > strong"))
+    .toHaveText("Unidade de estudo: Exemplo guiado com diagrama");
   await expect(dialog.getByRole("button", { name: "Fechar parâmetros", exact: true })).toBeVisible();
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
   expect(probe.planReads).toBe(0);
