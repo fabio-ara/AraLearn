@@ -4,6 +4,33 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.66] - 2026-09-07
+
+### Corrigido
+
+- atualização de cursos preserva a unidade aberta, os rascunhos e a preferência
+  de sincronização manual; reconexão, serviço indisponível e conflito têm estados distintos;
+- conflitos de revisão deixam de provocar tentativas indefinidas no serviço;
+  a leitura de Estudo preserva a cobertura e as dependências aceitas pela Autoria;
+- Observações conservam foco e controles acessíveis, sem avisos cobrindo a interação;
+- detalhes e Parâmetros preservam a origem ao voltar; planejamento apresenta
+  estrutura e cobertura, com explicações disponíveis no contexto;
+- visualização múltipla e seleção para operações em lote têm comandos distintos;
+  a edição pode focalizar uma unidade conservando os demais rascunhos.
+
+### Alterado
+
+- caminhos de execução substituídos foram retirados; a atualização do armazenamento
+  local preserva intenções, cópias e recuperação de rascunhos;
+- a entrega Android verifica a conservação da aparência escolhida na versão anterior,
+  além da assinatura e da correspondência dos arquivos publicados.
+
+### Atualização
+
+- no Android, instale o APK sobre a versão existente para conservar os dados locais;
+- a sincronização manual continua dependendo de comando explícito para atualizar
+  conteúdo e enviar alterações pendentes.
+
 ## [0.0.65] - 2026-09-05
 
 ### Adicionado
