@@ -11,6 +11,7 @@ export const PROJECT_VERSION = 1;
 const PROJECT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
 const TOPIC_KINDS = new Set(["concept", "procedure", "representation", "term"]);
+const SCOPE_ITEM_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 const ROOT_FIELDS = new Set(["contract", "scope", "courses"]);
 const COURSE_FIELDS = new Set(["id", "title", "goal", "modules"]);
@@ -25,6 +26,7 @@ const MICROSEQUENCE_FIELDS = new Set([
   "role",
   "branchOf",
   "dependsOn",
+  "scopeItemIds",
   "covers",
   "checks",
   "errors",
@@ -131,6 +133,20 @@ function validateStringList(value, fieldName, path, errors, { required = true } 
   return normalized;
 }
 
+function validateScopeItemIds(value, path, errors) {
+  const ids = validateStringList(value, "scopeItemIds", path, errors);
+  if (!Array.isArray(value.scopeItemIds)) return ids;
+  if (value.scopeItemIds.length > 64) {
+    pushError(errors, `${path}.scopeItemIds`, "scopeItemIds admite no máximo 64 vínculos.");
+  }
+  value.scopeItemIds.forEach((id, index) => {
+    if (typeof id !== "string" || id.length !== 36 || !SCOPE_ITEM_ID_PATTERN.test(id)) {
+      pushError(errors, `${path}.scopeItemIds[${index}]`, "O vínculo de cobertura precisa ser um UUID canônico.");
+    }
+  });
+  return ids;
+}
+
 function validateSiblingIds(items, path, errors, entityLabel) {
   const seen = new Set();
   items.forEach((item, index) => {
@@ -176,16 +192,27 @@ function validateLessonStudyUnitIds(microsequences, path, errors) {
   });
 }
 
-function validateLessonDependencies(microsequences, path, errors) {
+function validateCourseDependencies(modules, path, errors) {
+  const microsequences = [];
+  modules.forEach((module, moduleIndex) => {
+    if (!Array.isArray(module?.lessons)) return;
+    module.lessons.forEach((lesson, lessonIndex) => {
+      if (!Array.isArray(lesson?.microsequences)) return;
+      lesson.microsequences.forEach((value, microsequenceIndex) => {
+        microsequences.push({ value,
+          path: `${path}[${moduleIndex}].lessons[${lessonIndex}].microsequences[${microsequenceIndex}]` });
+      });
+    });
+  });
   const indexById = new Map();
   const dependenciesById = new Map();
-  microsequences.forEach((microsequence, index) => {
+  microsequences.forEach(({ value: microsequence }, index) => {
     if (!isPlainObject(microsequence)) return;
     const id = text(microsequence.id);
     if (id && !indexById.has(id)) indexById.set(id, index);
   });
 
-  microsequences.forEach((microsequence, microsequenceIndex) => {
+  microsequences.forEach(({ value: microsequence, path: microsequencePath }, microsequenceIndex) => {
     if (!isPlainObject(microsequence) || !Array.isArray(microsequence.dependsOn)) return;
     const id = text(microsequence.id);
     if (!id) return;
@@ -193,7 +220,7 @@ function validateLessonDependencies(microsequences, path, errors) {
     microsequence.dependsOn.forEach((dependencyValue, dependencyIndex) => {
       const dependencyId = text(dependencyValue);
       if (!dependencyId) return;
-      const dependencyPath = `${path}[${microsequenceIndex}].dependsOn[${dependencyIndex}]`;
+      const dependencyPath = `${microsequencePath}.dependsOn[${dependencyIndex}]`;
       dependencies.push({ id: dependencyId, path: dependencyPath });
       if (dependencyId === id) {
         pushError(errors, dependencyPath, "Microssequência não pode depender de si mesma.");
@@ -203,7 +230,7 @@ function validateLessonDependencies(microsequences, path, errors) {
         pushError(
           errors,
           dependencyPath,
-          `Dependência inexistente na mesma lição: "${dependencyId}".`
+          `Dependência inexistente no Curso: "${dependencyId}".`
         );
         return;
       }
@@ -211,7 +238,7 @@ function validateLessonDependencies(microsequences, path, errors) {
         pushError(
           errors,
           dependencyPath,
-          `dependsOn deve apontar para uma microssequência anterior: "${dependencyId}".`
+          `dependsOn deve apontar para uma microssequência anterior no Curso: "${dependencyId}".`
         );
       }
     });
@@ -378,6 +405,8 @@ function validateMicrosequence(microsequence, path, errors) {
     role,
     ...(branchOf ? { branchOf } : {}),
     dependsOn: validateStringList(microsequence, "dependsOn", path, errors),
+    ...(hasOwn(microsequence, "scopeItemIds")
+      ? { scopeItemIds: validateScopeItemIds(microsequence, path, errors) } : {}),
     covers: validateStringList(microsequence, "covers", path, errors),
     checks: validateStringList(microsequence, "checks", path, errors),
     errors: validateStringList(microsequence, "errors", path, errors, { required: false }),
@@ -396,7 +425,6 @@ function validateLesson(lesson, path, errors) {
   validateSiblingIds(topicsInput, `${path}.topics`, errors, "topics da lição");
   validateSiblingIds(microsequencesInput, `${path}.microsequences`, errors, "microssequências da lição");
   validateLessonStudyUnitIds(microsequencesInput, `${path}.microsequences`, errors);
-  validateLessonDependencies(microsequencesInput, `${path}.microsequences`, errors);
   return {
     id: validateRequiredText(lesson, "id", path, errors, "lesson.id"),
     title: validateRequiredText(lesson, "title", path, errors, "lesson.title", {
@@ -444,6 +472,7 @@ function validateCourse(course, path, errors) {
   rejectUnknownFields(course, COURSE_FIELDS, path, errors);
   const modulesInput = validateRequiredArray(course, "modules", path, errors);
   validateSiblingIds(modulesInput, `${path}.modules`, errors, "módulos do curso");
+  validateCourseDependencies(modulesInput, `${path}.modules`, errors);
   return {
     id: validateRequiredText(course, "id", path, errors, "course.id"),
     title: validateRequiredText(course, "title", path, errors, "course.title", {

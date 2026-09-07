@@ -97,9 +97,14 @@ test("fronteira recusa campos internos, distribuições falsificadas e curso/rev
 });
 test("exportação recompõe artefato integral e cerca curso/revisão sem snapshots ou atores", () => {
   const analytics = courseAuthoringAnalyticsFixture();
-  const document = { contract: "aralearn.course.v1", courses: [{ id: ANALYTICS_COURSE_ID, title: "Curso", goal: "Objetivo literal: 日本語 & <texto>", modules: [] }] };
+  const guide = { goal: "Preservar o percurso.", include: [], exclude: [], notation: [], avoid: [] };
+  const document = { contract: "aralearn.course.v1", courses: [{ id: ANALYTICS_COURSE_ID, title: "Curso", goal: "Objetivo literal: 日本語 & <texto>",
+    modules: [{ id: "module-a", title: "Módulo", guide, lessons: [{ id: "lesson-a", title: "Lição", guide, topics: [],
+      microsequences: [{ id: "micro-a", title: "Microssequência", goal: "Preservar a cobertura.", role: "explain", dependsOn: [],
+        scopeItemIds: ["11111111-1111-4111-8111-111111111111"], covers: ["Objetivo literal"], checks: [], errors: [], studyUnits: [] }] }] }] }] };
   const result = assembleCourseAuthoringExport({ analytics, document });
   assert.deepEqual(normalizeCourseAuthoringExport(result, { expectedSelection: selection() }), result);
+  assert.deepEqual(result.artifact.document, document);
   assert.equal(result.artifact.document.courses[0].goal, document.courses[0].goal);
   assert.throws(() => normalizeCourseAuthoringExport({ ...result, course: { ...result.course, revision: 8 } }));
   assert.throws(() => normalizeCourseAuthoringExport({ ...result, actorId: ACTOR_ID }));
