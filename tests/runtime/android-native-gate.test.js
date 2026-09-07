@@ -6,13 +6,13 @@ import test from "node:test";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
-test("prova Android recusa identidade, bytes, licença e estado UI divergentes (sintético)", () => {
+test("prova Android recusa identidade, bytes, licença e perda de tema da base (sintético)", () => {
   const result = spawnSync(process.platform === "win32" ? "python" : "python3", ["tests/helpers/androidNativeGateTests.py"], {
     cwd: root, encoding: "utf8", timeout: 30_000, maxBuffer: 1024 * 1024,
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
   });
   assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
-  assert.match(result.stderr, /Ran 25 tests/u);
+  assert.match(result.stderr, /Ran 30 tests/u);
 });
 
 test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissões de assinatura no emulador", () => {
@@ -37,11 +37,12 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.match(native, /proof_sha256: \$\{\{ steps\.native\.outputs\.proof_sha256 \}\}/u);
   assert.equal([...gate.matchAll(/subprocess\.Popen\(/gu)].length, 1);
   assert.match(gate, /device\.call\("install", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.capture\("clean-initial"\)\s+device\.isolate_network\(\)\s+device\.dark\(\)/u);
-  assert.match(gate, /device\.call\("uninstall", PACKAGE[\s\S]+require\(not device\.call\("shell", "pm", "list", "packages", PACKAGE\)[\s\S]+device\.restore_network\(\)[\s\S]+device\.call\("install", str\(baseline\)/u);
+  assert.match(gate, /device\.call\("uninstall", PACKAGE[\s\S]+require\(not device\.call\("shell", "pm", "list", "packages", PACKAGE\)[\s\S]+device\.restore_network\(\)\s+proof\["upgrade"\] = upgrade_preserving_theme\(device, baseline, candidate\)/u);
   assert.match(gate, /def restore_network\(self\):[\s\S]+airplane-mode", "disable"[\s\S]+"wifi", "enable"[\s\S]+"data", "enable"[\s\S]+airplane_mode_on[\s\S]+== "0"/u);
   assert.match(gate, /device\.call\("install", "-r", str\(candidate\)[\s\S]+device\.launch\(\)\s+device\.wait_label\("Conta e aparência"\)\s+device\.isolate_network\(\)/u);
   assert.match(gate, /require\(not screen_is_dark\([\s\S]+"Estado inicial claro do emulador não foi comprovado\."\)/u);
-  assert.match(gate, /theme_selected\(relaunched_xml, relaunched_png\)[\s\S]+theme_selected\(reinstalled_xml, reinstalled_png\)/u);
+  assert.match(gate, /theme_selected\(relaunched_xml, relaunched_png\)/u);
+  assert.match(gate, /theme_selected\(base_xml, base_png\)[\s\S]+theme_selected\(upgraded_xml, upgraded_png\)[\s\S]+theme_selected\(reinstalled_xml, reinstalled_png\)/u);
   assert.match(gate, /"networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True/u);
   for (const [section, publication] of [[pages, "actions/configure-pages"], [release, "finalize-release"]]) {
     assert.match(section, /needs: \[candidate, android, android-native(?:, pages)?\]/u);

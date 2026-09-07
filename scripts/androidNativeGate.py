@@ -14,9 +14,9 @@ import xml.etree.ElementTree as ET
 import zlib
 
 PACKAGE = "com.aralearn.app"
-BASE_VERSION = "0.0.64"
-BASE_CODE = 210
-BASE_SHA = "1d517793a7b28cdbab2ca8bb8f850a9f4adc605a7737472c24b8b0ba400ef5ac"
+BASE_VERSION = "0.0.65"
+BASE_CODE = 211
+BASE_SHA = "90e157778492e2411ecb391e6455d0f9ba4f44af072903fa4e373c581d077e17"
 CERTIFICATE = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296"
 SYSTEM_IMAGE = "system-images;android-36;google_apis;x86_64"
 HASH = re.compile(r"[a-f0-9]{64}")
@@ -390,12 +390,50 @@ def check_installed(value, version, code):
             and value["uid"] >= 10000, "Identidade instalada inválida.")
 
 
+def upgrade_preserving_theme(device, baseline, candidate):
+    device.call("install", str(baseline), timeout=120)
+    before = device.installed()
+    device.launch()
+    device.wait_label("Conta e aparência")
+    device.capture("base-initial")
+    device.isolate_network()
+    device.dark()
+    selected_xml, selected_png = device.capture("base-selected")
+    theme_selected(selected_xml, selected_png)
+    device.stop()
+    device.launch()
+    device.settings()
+    base_xml, base_png = device.capture("base-relaunched")
+    theme_selected(base_xml, base_png)
+    device.stop()
+    device.restore_network()
+    device.call("install", "-r", str(candidate), timeout=120)
+    after = device.installed()
+    device.launch()
+    device.wait_label("Conta e aparência")
+    device.isolate_network()
+    # Opening settings observes the old preference; no candidate theme is set.
+    device.settings()
+    upgraded_xml, upgraded_png = device.capture("upgraded")
+    theme_selected(upgraded_xml, upgraded_png)
+    device.stop()
+    device.call("install", "-r", str(candidate), timeout=120)
+    reinstalled = device.installed()
+    device.launch()
+    device.settings()
+    reinstalled_xml, reinstalled_png = device.capture("candidate-reinstalled")
+    theme_selected(reinstalled_xml, reinstalled_png)
+    return {"initiallyAbsent": True, "before": before, "after": after, "afterReinstall": reinstalled,
+            "launched": True, "themePreference": {"source": "baseline-ui", "selected": "dark",
+                "afterBaseRelaunch": "dark", "afterUpgrade": "dark", "afterReinstall": "dark", "candidateThemeWrites": 0}}
+
+
 def validate_proof(proof, manifest, receipt, env, evidence_dir):
     expected = promotion_identity(manifest, env)
     release = validate_receipt(receipt, manifest)
     expected["apkSha256"] = release["sha256"]
     expected["manifestSha256"] = digest(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())
-    require(proof.get("schema") == "aralearn.android-native-proof.v1" and proof.get("promotion") == expected, "Prova de outro APK/run/tentativa/SHA.")
+    require(proof.get("schema") == "aralearn.android-native-proof.v2" and proof.get("promotion") == expected, "Prova de outro contrato/APK/run/tentativa/SHA.")
     platform = proof.get("environment", {})
     require(platform.get("runner") == "ubuntu24" and platform.get("kvm") is True
             and platform.get("networkPolicy") == "public-bootstrap-then-offline"
@@ -417,10 +455,12 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir):
     for field, version, installed_code in [("before", BASE_VERSION, BASE_CODE), ("after", manifest["version"], code), ("afterReinstall", manifest["version"], code)]:
         check_installed(upgrade.get(field, {}), version, installed_code)
     require(upgrade["before"]["uid"] == upgrade["after"]["uid"] == upgrade["afterReinstall"]["uid"], "UID mudou no upgrade/reinstalação.")
-    require(upgrade.get("candidateThemeAfterReinstall") == "dark" and upgrade.get("oldAppPreference") == "not_tested_login_required",
-            "Retenção da candidata foi confundida com preferência antiga.")
+    require(set(upgrade) == {"initiallyAbsent", "before", "after", "afterReinstall", "launched", "themePreference"}
+            and upgrade.get("themePreference") == {"source": "baseline-ui", "selected": "dark",
+            "afterBaseRelaunch": "dark", "afterUpgrade": "dark", "afterReinstall": "dark", "candidateThemeWrites": 0},
+            "Retenção da preferência antiga antes de nova escolha não foi comprovada.")
     files = proof.get("evidence", [])
-    names = {name + suffix for name in ["clean-initial", "clean-selected", "clean-relaunched", "base-login", "upgraded", "candidate-selected", "candidate-reinstalled"] for suffix in [".png", ".xml"]}
+    names = {name + suffix for name in ["clean-initial", "clean-selected", "clean-relaunched", "base-initial", "base-selected", "base-relaunched", "upgraded", "candidate-reinstalled"] for suffix in [".png", ".xml"]}
     require(len(files) == len(names) and {item.get("name") for item in files} == names, "Evidência nativa incompleta/duplicada.")
     directory = Path(evidence_dir)
     require({file.name for file in directory.iterdir()} == names, "Arquivo inesperado na evidência nativa.")
@@ -434,13 +474,13 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir):
             require(data.startswith(b"\x89PNG\r\n\x1a\n"), "PNG da prova inválido.")
         else:
             ui_nodes(data.decode("utf-8"))
-    for stem in ["clean-selected", "clean-relaunched", "candidate-selected", "candidate-reinstalled"]:
+    for stem in ["clean-selected", "clean-relaunched", "base-selected", "base-relaunched", "upgraded", "candidate-reinstalled"]:
         theme_selected((directory / (stem + ".xml")).read_text(encoding="utf-8"),
                        (directory / (stem + ".png")).read_bytes())
-    for stem, label in [("clean-initial", "Conta e aparência"), ("base-login", "Entrar"), ("upgraded", "Conta e aparência")]:
-        ui_target((directory / (stem + ".xml")).read_text(encoding="utf-8"), label)
+    for stem in ["clean-initial", "base-initial"]:
+        ui_target((directory / (stem + ".xml")).read_text(encoding="utf-8"), "Conta e aparência")
     require(not screen_is_dark((directory / "clean-initial.png").read_bytes())
-            and not screen_is_dark((directory / "upgraded.png").read_bytes()),
+            and not screen_is_dark((directory / "base-initial.png").read_bytes()),
             "Estado inicial claro do emulador não foi comprovado.")
     return proof
 
@@ -470,8 +510,8 @@ def run_gate(manifest, identity, folder, candidate_folder):
     baseline_release = github(f"repos/{identity['repository']}/releases/tags/v{BASE_VERSION}")
     require(baseline_release.get("draft") is False and baseline_release.get("prerelease") is False, "Base não é release pública.")
     baseline_bytes = asset(baseline_release, f"AraLearn-{BASE_VERSION}.apk", identity["repository"])
-    require(digest(baseline_bytes) == BASE_SHA, "APK público0.0.64 foi alterado.")
-    proof = {"schema": "aralearn.android-native-proof.v1", "promotion": {**identity, "apkSha256": digest(candidate_bytes),
+    require(digest(baseline_bytes) == BASE_SHA, f"APK público {BASE_VERSION} foi alterado.")
+    proof = {"schema": "aralearn.android-native-proof.v2", "promotion": {**identity, "apkSha256": digest(candidate_bytes),
              "manifestSha256": digest(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())},
              "environment": {"runner": os.environ["ImageOS"], "imageVersion": os.environ.get("ImageVersion"), "kvm": True,
              "networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True,
@@ -532,29 +572,7 @@ def run_gate(manifest, identity, folder, candidate_folder):
                 device.call("uninstall", PACKAGE, timeout=120)
                 require(not device.call("shell", "pm", "list", "packages", PACKAGE), "Remoção entre os cenários não foi comprovada.")
                 device.restore_network()
-                device.call("install", str(baseline), timeout=120)
-                before_upgrade = device.installed()
-                device.launch()
-                device.wait_label("Entrar")
-                device.capture("base-login")
-                device.stop()
-                device.call("install", "-r", str(candidate), timeout=120)
-                after = device.installed()
-                device.launch()
-                device.wait_label("Conta e aparência")
-                device.isolate_network()
-                device.capture("upgraded")
-                device.dark()
-                device.capture("candidate-selected")
-                device.stop()
-                device.call("install", "-r", str(candidate), timeout=120)
-                reinstalled = device.installed()
-                device.launch()
-                device.settings()
-                reinstalled_xml, reinstalled_png = device.capture("candidate-reinstalled")
-                theme_selected(reinstalled_xml, reinstalled_png)
-                proof["upgrade"] = {"initiallyAbsent": True, "before": before_upgrade, "after": after, "afterReinstall": reinstalled,
-                    "launched": True, "candidateThemeAfterReinstall": "dark", "oldAppPreference": "not_tested_login_required"}
+                proof["upgrade"] = upgrade_preserving_theme(device, baseline, candidate)
             except (RuntimeError, OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired):
                 log.flush()
                 diagnostic("emulator.log", (working / "emulator.log").read_bytes())
@@ -587,7 +605,7 @@ def run_gate(manifest, identity, folder, candidate_folder):
     require(os.environ.get("GITHUB_OUTPUT"), "Saída verificável do job ausente.")
     with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
         handle.write("proof_sha256=" + digest((folder / "proof.json").read_bytes()) + "\n")
-    print(f"Gate Android nativo aprovado: instalação limpa, upgrade {BASE_CODE}→{manifest['android']['versionCode']} e retenção de tema da candidata. Preferência da versão antiga não testada.")
+    print(f"Gate Android nativo aprovado: instalação limpa, upgrade {BASE_CODE}→{manifest['android']['versionCode']} e tema escolhido na base preservado sem nova escolha, inclusive na reinstalação.")
 
 
 def main():
