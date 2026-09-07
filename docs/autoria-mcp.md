@@ -49,6 +49,21 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 Os schemas vêm do mesmo catálogo projetado para Actions. Não há aliases para
 ferramentas antigas nem um comando genérico que exponha a estrutura do banco.
 
+No contrato 3.0.0, o mapa registra a proposta de Explicação por microssequência;
+`materializar_parte` recebe unidades e uma Explicação por microssequência na
+mesma gravação. `aplicar_correcoes` pode alterar unidades, Explicações ou ambas
+num conjunto coerente. `consultar_fontes` e os vínculos de `manter_fonte` aceitam
+a Explicação como alvo, com suas localizações próprias. `exportar_autoria`
+preserva o apoio literal e a proveniência correspondente. As formas de explicação
+registradas na aplicação pedagógica de uma unidade continuam sendo medidas dessa
+unidade: não são o objeto de apoio compartilhado.
+
+Produção e correção deixam o conteúdo pendente de revisão. Aprovar o mapa ou
+autorizar um lote não aprova o material futuro. A aprovação do conteúdo
+inspecionado é uma ação humana protegida na Autoria, fora das ferramentas de IA;
+as leituras apenas informam seu estado. Veja o
+[contrato de Explicação e revisão](explicacao-e-revisao-humana.md).
+
 No cliente compatível, PDF e áudio chegam como objetos oficiais de arquivo
 declarados por `_meta["openai/fileParams"]`. Nome, caminho local ou identificador
 de artefato não substituem `{download_url, file_id, mime_type?, file_name?}`.
@@ -204,7 +219,7 @@ devolve o recorte fielmente. Paginação recupera o que falta; não substitui a
 leitura por resumo nem oculta indisponibilidade. A concisão do chat não reduz a
 explicação, os exemplos ou a prática necessários no material didático.
 
-Na listagem de cursos e nas leituras de fontes e revisão, `temMais: true` e uma
+Na listagem de cursos e nas leituras de preparo, fontes e revisão, `temMais: true` e uma
 `continuacao` não nula sinalizam resposta parcial. O GPT continua o mesmo recorte usando o valor opaco devolvido, sem
 inventá-lo nem pedir decisão por página. Fragmentos `application/json` mantêm
 texto literal e posições UTF-16 contíguas; devem ser reunidos na ordem antes de
@@ -212,6 +227,11 @@ interpretar o documento completo. Enquanto houver trechos pendentes, não se
 declara leitura completa. Se a revisão do curso mudar, a leitura do recorte
 precisa recomeçar. A revisão inclui observações focais e plano imediato; seu
 limite de página não define o alcance pedagógico total da análise.
+
+O preparo inclui a proposta, a Explicação literal, suas fontes e o estado de
+revisão de cada microssequência do lote. Esse apoio compartilhado também pode
+exigir continuação. A leitura preserva o conteúdo inteiro; uma mudança no curso
+ou no conteúdo entre páginas recusa a continuação para evitar combinar versões.
 
 Ambiguidade entre títulos pede uma referência humana mais específica. Falhas
 transitórias permitem retomar; recusa de autorização não é repetida como se

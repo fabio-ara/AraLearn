@@ -576,7 +576,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "preparar_materializacao",
     "Preparar a materialização",
     "Lê o lote antes da produção.",
-    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
+    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
@@ -936,7 +936,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "3.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:44341c32c17ea64a7d34f984abb5df0531ffe04c5f7556ea7c24b3587659a7d4";
+  "sha256:750f0dbd8c84766ab24ae62a57653869eae3a27b4fadd9f8937d08f474a665f5";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2536,6 +2536,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_materializacao' });
   const part = resolved.part;
   const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
   const [design, existingPage] = await Promise.all([
@@ -2581,10 +2582,10 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: null,
     nextDecision: null,
-    context: {
+    context: await paginateHumanReadContext(withoutTechnicalState({
       parte: projectedPart,
       explicacoes: explanations
-    }
+    }), { state: continuation })
   });
 };
 

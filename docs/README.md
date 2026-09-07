@@ -129,6 +129,9 @@ O ciclo de revisão possui um capítulo próprio:
    Observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
    reinspeção.
 
+A [prova local dos canais](prova-local-canais-autoria.md) descreve o runner de
+dois lotes por Actions e MCP, suas medições e a distinção da prova no ChatGPT.
+
 Analytics caracteriza o desenho corrente e intervenções observáveis no mesmo
 curso:
 

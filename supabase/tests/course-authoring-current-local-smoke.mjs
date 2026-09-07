@@ -44,7 +44,7 @@ async function createAuthor(config, marker) {
   return { id: created.payload.id, accessToken: signedIn.payload.access_token };
 }
 
-function paragraph(id, text) {
+export function paragraph(id, text) {
   return {
     id,
     package: "aralearn.resource.paragraph",
@@ -74,7 +74,7 @@ function unitCalibration(editorialDirection) {
   };
 }
 
-function explanationUnit() {
+export function explanationUnit() {
   return {
     microssequencia: "O que é um socket",
     posicao: 1,
@@ -109,7 +109,7 @@ function explanationUnit() {
   };
 }
 
-function practiceUnit() {
+export function practiceUnit() {
   return {
     microssequencia: "Prática de identificação",
     posicao: 1,
@@ -159,7 +159,7 @@ function practiceUnit() {
   };
 }
 
-function curricularMap(course, approved) {
+export function curricularMap(course, approved) {
   return {
     curso: course,
     aprovado: approved,
