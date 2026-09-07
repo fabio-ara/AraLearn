@@ -538,7 +538,7 @@ function databaseError(status, body) {
   if (code === "PN409") {
     return new AuthoringApiError(409, "authoring_profile_name_unavailable", "Já existe um perfil com este nome nesta conta.");
   }
-  if (code === "40001") {
+  if (code === "40001" || code === "PT409") {
     return new AuthoringApiError(
       409,
       "stale_course_state",

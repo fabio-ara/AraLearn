@@ -1,7 +1,8 @@
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import { upgradeStudyDraftRecoveries } from "./studyDraftRecovery.js";
 
 const DATABASE_PREFIX = "aralearn-course-v1";
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const CACHE_STORE = "course_cache";
 
 function requestPromise(request) {
@@ -53,13 +54,19 @@ export class CourseLocalStore {
     const name = databaseName(userId, visitor);
     return new Promise((resolve, reject) => {
       const request = indexedDb.open(name, DATABASE_VERSION);
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const database = request.result;
         if (!database.objectStoreNames.contains(CACHE_STORE)) {
           database.createObjectStore(CACHE_STORE, { keyPath: "key" });
         }
+        if (event.oldVersion === 1) {
+          upgradeStudyDraftRecoveries(request.transaction.objectStore(CACHE_STORE));
+        }
       };
-      request.onerror = () => reject(request.error || new Error("Não foi possível abrir o cache de Cursos."));
+      request.onerror = () => reject(new Error(
+        "Não foi possível abrir ou atualizar os dados locais. Eles foram preservados; feche as outras abas e tente abrir o aplicativo novamente.",
+        { cause: request.error }
+      ));
       request.onblocked = () => reject(new Error("O cache de Cursos está aberto em outra versão do aplicativo."));
       request.onsuccess = () => resolve(new CourseLocalStore({
         indexedDb,
@@ -215,18 +222,6 @@ export class CourseLocalStore {
       };
     });
     await transactionPromise(transaction);
-  }
-
-  async moveCacheValue(sourceKey, targetKey) {
-    sourceKey = cacheKey(sourceKey);
-    targetKey = cacheKey(targetKey);
-    let conflict = false;
-    const result = await this.updateCaches([sourceKey, targetKey], (current) => {
-      conflict = current[sourceKey] != null && current[targetKey] != null;
-      if (current[sourceKey] == null || conflict) return current;
-      return { [sourceKey]: null, [targetKey]: current[sourceKey] };
-    });
-    return { value: result[targetKey], conflict };
   }
 
   async updateCachePrefix(prefix, updater) {

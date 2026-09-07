@@ -75,6 +75,88 @@ function documentFixture() {
   };
 }
 
+function globalCurriculumRows() {
+  const guide = { goal: "Desenvolver o objetivo.", include: [], exclude: [], notation: [], avoid: [] };
+  const scopeIds = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
+  const row = (entityType, entityId, parentType, parentId, position, content) => (
+    { entityType, entityId, parentType, parentId, position, content }
+  );
+  const micro = (id, lesson, dependsOn, scopeItemIds) => row("microsequence", id, "lesson", lesson, 0, {
+    title: id, goal: "Conectar os conceitos.", role: "explain", dependsOn,
+    scopeItemIds, covers: ["Objetivo de cobertura."], checks: [], errors: []
+  });
+  return [
+    row("module", "module-a", null, null, 0, { title: "Módulo A", guide }),
+    row("lesson", "lesson-a", "module", "module-a", 0, { title: "Lição A", guide }),
+    micro("micro-a", "lesson-a", [], [scopeIds[0]]),
+    row("lesson", "lesson-b", "module", "module-a", 1, { title: "Lição B", guide }),
+    micro("micro-b", "lesson-b", ["micro-a"], [scopeIds[1]]),
+    row("module", "module-b", null, null, 1, { title: "Módulo B", guide }),
+    row("lesson", "lesson-c", "module", "module-b", 0, { title: "Lição C", guide }),
+    micro("micro-c", "lesson-c", ["micro-b"], scopeIds)
+  ];
+}
+
+test("recompõe o mapa curricular corrente preservando cobertura e dependências entre lições e módulos", () => {
+  const rows = globalCurriculumRows();
+  const course = { id: "course-global", title: "Curso global", goal: "Conectar etapas anteriores." };
+  const document = composeCourseDocument(course, rows);
+  const micros = document.courses[0].modules.flatMap((module) =>
+    module.lessons.flatMap((lesson) => lesson.microsequences));
+  assert.deepEqual(micros.map(({ dependsOn }) => dependsOn), [[], ["micro-a"], ["micro-b"]]);
+  assert.deepEqual(micros.map(({ scopeItemIds }) => scopeItemIds), rows
+    .filter(({ entityType }) => entityType === "microsequence").map(({ content }) => content.scopeItemIds));
+  assert.deepEqual(flattenCourseDocument(document), { course, rows });
+});
+
+test("o grafo curricular global recusa dependência ausente, futura, cíclica e autorreferência", () => {
+  const course = { id: "course-global", title: "Curso global", goal: "Conectar etapas anteriores." };
+  const cases = [
+    { id: "micro-c", dependsOn: ["micro-missing"], expected: /Dependência inexistente no Curso/u },
+    { id: "micro-a", dependsOn: ["micro-c"], clearDependenciesFrom: "micro-c", expected: /microssequência anterior no Curso/u },
+    { id: "micro-a", dependsOn: ["micro-c"], expected: /não pode formar ciclo/u },
+    { id: "micro-c", dependsOn: ["micro-c"], expected: /não pode depender de si mesma/u }
+  ];
+  for (const { id, dependsOn, clearDependenciesFrom, expected } of cases) {
+    const rows = globalCurriculumRows();
+    rows.find(({ entityId }) => entityId === id).content.dependsOn = dependsOn;
+    if (clearDependenciesFrom) {
+      rows.find(({ entityId }) => entityId === clearDependenciesFrom).content.dependsOn = [];
+    }
+    assert.throws(() => composeCourseDocument(course, rows), (error) => (
+      error instanceof CourseEntityError && error.code === "invalid_course_document" &&
+      error.details.errors.some(({ message }) => expected.test(message))
+    ), String(expected));
+  }
+});
+
+test("vínculos de cobertura recusam formato inválido, duplicação e excesso sem aceitar campos desconhecidos", () => {
+  const course = { id: "course-global", title: "Curso global", goal: "Preservar vínculos válidos." };
+  const scopeId = "11111111-1111-4111-8111-111111111111";
+  const cases = [
+    { value: null, expected: /scopeItemIds deve ser array/u },
+    { value: ["scope-free-text"], expected: /UUID canônico/u },
+    { value: [` ${scopeId}`], expected: /UUID canônico/u },
+    { value: [`${scopeId}\n`], expected: /UUID canônico/u },
+    { value: [scopeId, scopeId], expected: /Item duplicado/u },
+    { value: Array.from({ length: 65 }, (_, index) =>
+      `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`), expected: /no máximo 64/u }
+  ];
+  for (const { value, expected } of cases) {
+    const rows = globalCurriculumRows();
+    rows.find(({ entityId }) => entityId === "micro-a").content.scopeItemIds = value;
+    assert.throws(() => composeCourseDocument(course, rows), (error) => (
+      error instanceof CourseEntityError && error.code === "invalid_course_document" &&
+      error.details.errors.some(({ message }) => expected.test(message))
+    ), String(expected));
+  }
+  const rows = globalCurriculumRows();
+  rows.find(({ entityId }) => entityId === "micro-a").content.unknownCoverage = [];
+  assert.throws(() => composeCourseDocument(course, rows), (error) =>
+    error.details.errors.some(({ path, message }) => path.endsWith(".unknownCoverage") &&
+      message.includes("Campo fora do schema")));
+});
+
 test("achata e recompõe um Curso sem envelopes de Workspace ou publicação", () => {
   const source = documentFixture();
   const flattened = flattenCourseDocument(source);

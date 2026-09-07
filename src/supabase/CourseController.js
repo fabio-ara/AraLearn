@@ -31,8 +31,7 @@ import {
 } from "../domain/courseSources.js";
 import {
   normalizeFocalStudyUnitCompositionIntent,
-  normalizeCourseMetadata,
-  normalizeOwnedCourseCopyRecoveryCommand
+  normalizeCourseMetadata
 } from "../domain/courseComposition.js";
 import {
   COURSE_ANNOTATION_CACHE_CONTRACT,
@@ -41,6 +40,7 @@ import {
 import {
   COURSE_PERSONAL_STATE_CACHE_CONTRACT
 } from "../persistence/CoursePersonalStateRepository.js";
+import { STUDY_DRAFT_RECOVERY_CACHE_KEY, readStudyDraftRecoveries } from "../persistence/studyDraftRecovery.js";
 
 const CACHE_PREFIX = "course.v1";
 const MAX_ENTITY_PAGES = 100;
@@ -48,8 +48,6 @@ const VERIFIED_COMPOSITION_CACHE_CONTRACT =
   "aralearn.course-verified-composition.v1";
 const PENDING_COMPOSITION_CACHE_CONTRACT =
   "aralearn.course-confirmed-composition-pending.v1";
-const LEGACY_DRAFT_CACHE_KEY = "aralearn.personal-course-copy-edit-pending.v1";
-const STUDY_DRAFT_RECOVERY_CACHE_KEY = "course.v1.study-draft-recovery";
 const ACCESSIBLE_COURSE_IDS_CACHE_KEY = `${CACHE_PREFIX}.accessible-course-ids`;
 const ACCESSIBLE_COURSE_IDS_CONTRACT = "aralearn.accessible-course-ids.v1";
 const REVIEW_PAGE_CACHE_KEY = `${CACHE_PREFIX}.review-page`;
@@ -651,7 +649,8 @@ export class CourseController {
     api,
     store,
     ownerOnly = false,
-    now = () => new Date().toISOString()
+    now = () => new Date().toISOString(),
+    navigatorValue = globalThis.navigator
   } = {}) {
     if (!api || typeof api.listCourses !== "function" || typeof api.getCourse !== "function") {
       throw new TypeError("API de Cursos obrigatória.");
@@ -666,8 +665,10 @@ export class CourseController {
     this.ownerOnly = ownerOnly === true;
     this.cachePrefix = this.ownerOnly ? "course-authoring.v1" : CACHE_PREFIX;
     this.now = now;
+    this.navigator = navigatorValue;
     this.accessibleCourseRefresh = null;
     this.compositionSourceSnapshots = new Map();
+    this.readEpochs = new Map();
   }
 
   async #readPendingComposition(courseId) {
@@ -695,52 +696,39 @@ export class CourseController {
   async loadStudyDraftRecovery(sourceCourseId = null) {
     const requested = sourceCourseId == null ? null : String(sourceCourseId).trim().toLowerCase();
     if (requested !== null && !UUID_PATTERN.test(requested)) throw new TypeError("Curso inválido.");
-    let pending;
-    if (typeof this.store.moveCacheValue === "function") {
-      const result = await this.store.moveCacheValue(LEGACY_DRAFT_CACHE_KEY, STUDY_DRAFT_RECOVERY_CACHE_KEY);
-      pending = cachedPayload(result.value);
-      // A second existing snapshot is never overwritten or deleted by migration.
-      if (result.conflict && requested && pending?.sourceCourseId !== requested) {
-        pending = cachedPayload(await this.store.getCache(LEGACY_DRAFT_CACHE_KEY));
-      }
-    } else {
-      pending = cachedPayload(await this.store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY)) ||
-        cachedPayload(await this.store.getCache(LEGACY_DRAFT_CACHE_KEY));
-    }
-    return pending && (requested === null || pending.sourceCourseId === requested)
-      ? structuredClone(pending) : null;
+    const entries = readStudyDraftRecoveries(await this.store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY));
+    return entries.find((entry) => requested === null || entry.sourceCourseId === requested) ?? null;
   }
 
-  async recoverStudyDraft(sourceCourseId = null) {
+  async recoverStudyDraft(sourceCourseId = null, expectedRecoveryId = null) {
     const pending = await this.loadStudyDraftRecovery(sourceCourseId);
-    if (!pending) return null;
-    let command;
-    try {
-      command = normalizeOwnedCourseCopyRecoveryCommand(Object.fromEntries([
-        "requestId", "sourceCourseId", "expectedSourceCourseRevision", "expectedStudyUnitVersion",
-        "didacticMicrosequenceId", "studyUnit", "origin"
-      ].map((key) => [key, pending[key]])));
-    } catch {
+    if (!pending || expectedRecoveryId !== null && pending.recoveryId !== expectedRecoveryId) return null;
+    if (!pending.command) {
       return { status: "unresolved", targetCourseId: null, pending };
     }
-    const result = await this.api.recoverOwnedCourseCopy(command);
+    const result = await this.api.recoverOwnedCourseCopy(pending.command);
     // Read-only evidence never reapplies a write or discards the user's draft.
     return { ...result, pending };
   }
 
-  async clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
+  async clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null, expectedRecoveryId = null) {
+    if (typeof expectedRecoveryId !== "string" || !expectedRecoveryId) return false;
     const pending = await this.loadStudyDraftRecovery(sourceCourseId);
-    if (!pending || expectedRequestId !== null && pending.requestId !== expectedRequestId) return false;
+    if (!pending || expectedRequestId !== null && pending.requestId !== expectedRequestId ||
+        pending.recoveryId !== expectedRecoveryId) return false;
     let removed = false;
-    const signature = JSON.stringify(pending);
-    for (const key of [STUDY_DRAFT_RECOVERY_CACHE_KEY, LEGACY_DRAFT_CACHE_KEY]) {
-      const remove = (cached) => {
-        if (JSON.stringify(cachedPayload(cached)) !== signature) return cached;
-        removed = true;
-        return null;
-      };
-      if (typeof this.store.updateCache === "function") await this.store.updateCache(key, remove);
-    }
+    if (typeof this.store.updateCache !== "function") return false;
+    await this.store.updateCache(STUDY_DRAFT_RECOVERY_CACHE_KEY, (cached) => {
+      const entries = readStudyDraftRecoveries(cached);
+      // Upgrade creates immutable entries. Only their explicit removal is a
+      // current write; identity also distinguishes equal request IDs/snapshots.
+      const index = entries.findIndex((entry) => entry.recoveryId === pending.recoveryId &&
+        entry.sourceCourseId === pending.sourceCourseId && entry.requestId === pending.requestId);
+      if (index < 0) return cached;
+      entries.splice(index, 1);
+      removed = true;
+      return entries.length ? { ...cached, entries } : null;
+    });
     return removed;
   }
 
@@ -836,7 +824,7 @@ export class CourseController {
           ...promoted,
           rows,
           document,
-          offline: true,
+          offline: this.navigator?.onLine === false,
           stale: true,
           readOnly: true,
           pendingConfirmed: true,
@@ -876,7 +864,7 @@ export class CourseController {
       course,
       rows,
       document,
-      offline: true,
+      offline: this.navigator?.onLine === false,
       stale: true,
       readOnly: true,
       pendingConfirmed: true,
@@ -1227,7 +1215,7 @@ export class CourseController {
   }
 
   async #observeAccessibleCoursePage(page, { query, cursor }) {
-    if (this.ownerOnly || String(query || "").trim() || page?.offline === true) {
+    if (this.ownerOnly || String(query || "").trim() || page?.stale === true) {
       this.accessibleCourseRefresh = null;
       return;
     }
@@ -1267,8 +1255,15 @@ export class CourseController {
     invalidationPrefixes = [],
     normalize = (value) => value
   } = {}) {
+    const epoch = Symbol(key);
+    this.readEpochs.set(key, epoch);
     try {
       const remote = normalize(await readRemote());
+      if (this.readEpochs.get(key) !== epoch) {
+        const error = new Error("Leitura substituída por uma solicitação mais recente.");
+        error.name = "AbortError";
+        throw error;
+      }
       await this.store.putCache(key, {
         savedAt: this.now(),
         data: remote
@@ -1287,11 +1282,14 @@ export class CourseController {
       const cachedData = normalize(cached.data);
       return {
         ...structuredClone(cachedData),
-        offline: true,
+        offline: this.navigator?.onLine === false,
         stale: true,
+        readFailure: { status: Number(error?.status) || null, code: String(error?.code || "read_failed") },
         cachedAt: cached.savedAt || null,
         readOnly: true
       };
+    } finally {
+      if (this.readEpochs.get(key) === epoch) this.readEpochs.delete(key);
     }
   }
 
@@ -1375,7 +1373,7 @@ export class CourseController {
     );
     const previousRevision = Number(previous?.revision);
     const currentRevision = Number(result?.revision);
-    if (result.offline !== true && Number.isSafeInteger(previousRevision) &&
+    if (result.stale !== true && Number.isSafeInteger(previousRevision) &&
         Number.isSafeInteger(currentRevision) && previousRevision !== currentRevision) {
       await Promise.all([
         this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
@@ -1720,7 +1718,7 @@ export class CourseController {
             document,
             offline,
             stale,
-            ...(offline ? { readOnly: true } : {})
+            ...(offline || stale ? { readOnly: true } : {})
           };
         }
         if (!page.nextCursor) {
@@ -2134,7 +2132,7 @@ export class CourseController {
     await this.#rememberAuthoringInspectionPage(courseId, requestKey, page);
     return {
       ...structuredClone(page),
-      offline: true,
+      offline: this.navigator?.onLine === false,
       stale: true
     };
   }
@@ -2187,7 +2185,7 @@ export class CourseController {
         requestKey,
         pendingPage
       );
-      return { ...structuredClone(pendingPage), offline: true, stale: true };
+      return { ...structuredClone(pendingPage), offline: this.navigator?.onLine === false, stale: true };
     }
   }
 

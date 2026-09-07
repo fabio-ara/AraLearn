@@ -78,7 +78,7 @@ select is(pg_temp.historical_analytics(2)#>>'{design,explanationForms,0,applicat
 select is(pg_temp.edit_historical_unit('historical-edit-01')->>'idempotent','true','resposta perdida recupera a edição existente');
 select is((select revision from public.courses where id='98000000-0000-4000-8000-000000000101'),2::bigint,
  'repetição não reaplica mutação');
-select throws_ok($$select pg_temp.edit_historical_unit('historical-edit-02')$$,'40001',null,
+select throws_ok($$select pg_temp.edit_historical_unit('historical-edit-02')$$,'PT409',null,
  'nova edição exige a revisão corrente mesmo com snapshot histórico');
 select is((select design_snapshot from private.course_entities where course_id='98000000-0000-4000-8000-000000000101' and entity_id='u'),
  (select snapshot from historical_snapshot),'retry e conflito preservam o snapshot anterior');
@@ -114,7 +114,7 @@ select is(pg_temp.edit_historical_prose('historical-prose-01')->>'idempotent','t
  'retry recupera a edição de prosa sem reaplicar');
 select is((select revision from public.courses where id='98000000-0000-4000-8000-000000000101'),3::bigint,
  'retry da prosa mantém a revisão');
-select throws_ok($$select pg_temp.edit_historical_prose('historical-prose-02')$$,'40001',null,
+select throws_ok($$select pg_temp.edit_historical_prose('historical-prose-02')$$,'PT409',null,
  'nova edição da prosa também exige CAS corrente');
 select is((select design_snapshot from private.course_entities where course_id='98000000-0000-4000-8000-000000000101' and entity_id='u'),
  (select snapshot from historical_snapshot),'retry e CAS da prosa conservam a decisão histórica');

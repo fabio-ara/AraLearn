@@ -13,6 +13,7 @@ import {
   validateStudyUnitEnvelope
 } from "../resources/kernel/studyUnitEnvelope.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
+import { canonicalAuthoringValue } from "../domain/courseAuthoringBasis.js";
 import { projectCourseDesignContext } from "../domain/courseDesignContext.js";
 import { validatePackageSchema } from "../resources/kernel/schemaValidation.js";
 
@@ -115,26 +116,34 @@ function projectAssistanceTarget(target, scope) {
   const projected = clone(target);
   if (scope === "didactic_microsequence") {
     delete projected.role;
+    delete projected.scopeItemIds;
   } else if (scope === "lesson") {
     projected.microsequences = list(projected.microsequences).map((microsequence) => {
       const item = clone(microsequence);
       delete item.role;
+      delete item.scopeItemIds;
       return item;
     });
   }
   return projected;
 }
 
-function restoreInternalMicrosequenceRoles(candidate, currentTarget, scope) {
+function restoreInternalMicrosequenceMetadata(candidate, currentTarget, scope) {
   const restored = clone(candidate);
   if (scope === "didactic_microsequence") {
     restored.role = text(currentTarget?.role) || INTERNAL_MICROSEQUENCE_ROLE;
+    if (restored.id === currentTarget?.id && Object.hasOwn(currentTarget, "scopeItemIds")) {
+      restored.scopeItemIds = clone(currentTarget.scopeItemIds);
+    }
   } else if (scope === "lesson") {
     const currentById = new Map(list(currentTarget?.microsequences)
       .map((microsequence) => [microsequence.id, microsequence]));
     restored.microsequences = list(restored.microsequences).map((microsequence) => ({
       ...microsequence,
-      role: text(currentById.get(microsequence.id)?.role) || INTERNAL_MICROSEQUENCE_ROLE
+      role: text(currentById.get(microsequence.id)?.role) || INTERNAL_MICROSEQUENCE_ROLE,
+      ...(Object.hasOwn(currentById.get(microsequence.id) || {}, "scopeItemIds")
+        ? { scopeItemIds: clone(currentById.get(microsequence.id).scopeItemIds) }
+        : {})
     }));
   }
   return restored;
@@ -681,7 +690,7 @@ function unitsInTarget(scope, candidate) {
 }
 
 function same(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return canonicalAuthoringValue(left) === canonicalAuthoringValue(right);
 }
 
 function selectionAuthorityErrors(currentTarget, candidate, scope, selectedIds) {
@@ -898,7 +907,7 @@ export async function prepareCourseAssistanceProposal({
         contracts
       ), scope);
       priorCandidate = providerCandidate;
-      generated.candidate = restoreInternalMicrosequenceRoles(
+      generated.candidate = restoreInternalMicrosequenceMetadata(
         providerCandidate,
         target,
         scope

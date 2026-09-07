@@ -257,13 +257,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
 }
 
 async function authoringAreaLink(page, section) {
-  const canonical = ({
-    structure: "content",
-    inspection: "content",
-    observations: "review"
-  })[section] || section;
   const menu = page.locator(".course-authoring-task-menu");
-  const link = menu.locator(`:scope > nav > a[data-section="${canonical}"]`);
+  const link = menu.locator(`:scope > nav > a[data-section="${section}"]`);
   if (!await menu.evaluate((element) => element.open)) {
     await menu.locator(":scope > summary").click();
   }
@@ -2443,7 +2438,7 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await page.keyboard.press("Escape");
   expect(await page.evaluate(() => globalThis.__inspectionToolProbe.urls.every(url => globalThis.__inspectionToolProbe.revoked.includes(url)))).toBe(true);
 
-  await card.locator('[data-inspection-selection-action="toggle-current"]').tap();
+  await card.locator('[data-inspection-view-action="toggle-multiple"]').tap();
   const second = page.locator('[data-inspection-study-unit="study-unit-13"]');
   const secondCalculator = second.getByRole("button", { name: "Ferramentas da unidade", exact: true });
   await secondCalculator.tap();
@@ -2451,7 +2446,8 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await expect(dialog.getByRole("heading", { name: "Cálculo da unidade 13" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(secondCalculator).toBeFocused();
-  await page.getByRole("button", { name: "Cancelar seleção", exact: true }).tap();
+  await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione ao menos duas unidades");
+  await card.locator('[data-inspection-view-action="toggle-multiple"]').tap();
 
   await card.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(1);
@@ -3136,7 +3132,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
     await mountCourseAuthoring(page, { cardinality: "many", hash });
 
-    await navigateToAuthoringArea(page, "inspection");
+    await navigateToAuthoringArea(page, "content");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     const nestedVerticalScrollers = await page.locator(
       'section[aria-label="Unidades de estudo"]'
@@ -3158,7 +3154,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toHaveCount(0);
 
-    await navigateToAuthoringArea(page, "inspection");
+    await navigateToAuthoringArea(page, "content");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.close());
     expect(await page.evaluate(() =>
@@ -3370,10 +3366,10 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   expect(clientErrors).toEqual([]);
 });
 
-test.describe("#304 seleção vertical e retorno contextual", () => {
+test.describe("visão múltipla, seleção independente e retorno contextual", () => {
   for (const width of [360, 390, 430, 1280]) {
     for (const colorScheme of ["light", "dark"]) {
-      test(`${width} px ${colorScheme}: janela anterior/posterior, referência e entrada recente`, async ({ page }, info) => {
+      test(`${width} px ${colorScheme}: janela anterior/posterior, foco explícito e entrada recente`, async ({ page }, info) => {
         const errors = captureClientErrors(page);
         await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
         await page.emulateMedia({ colorScheme });
@@ -3384,8 +3380,8 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
         await page.evaluate(() => document.fonts.ready);
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
         const reference = page.locator('[data-inspection-study-unit="study-unit-12"]');
-        const initialSelection = reference.locator('[data-inspection-selection-action="toggle-current"]');
-        await initialSelection.focus();
+        const initialView = reference.locator('[data-inspection-view-action="toggle-multiple"]');
+        await initialView.focus();
         const baseline = await reference.evaluate((element) => {
           const bounds = element.getBoundingClientRect();
           const sticky = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
@@ -3403,7 +3399,9 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
         });
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
-        await expect(reference.getByText("Unidade de referência", { exact: true })).toBeVisible();
+        await expect(initialView).toHaveAttribute("aria-pressed", "true");
+        await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione ao menos duas unidades");
+        await reference.locator('[data-inspection-selection-action="toggle-unit"]').tap();
         await page.getByRole("button", { name: "Carregar unidades anteriores", exact: true }).tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(23);
         const practice = page.locator('[data-inspection-study-unit="study-unit-01"] .package-instance[data-package="aralearn.response.choice"]');
@@ -3411,53 +3409,68 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
         await expect(practice.locator(".multiple-choice-option")).toHaveCount(2);
         await expect(practice.locator(".selected-correct .multiple-choice-label")).toHaveText("y");
         await expect(practice.locator("button, input, select, textarea")).toHaveCount(0);
-        await page.locator('[data-inspection-study-unit="study-unit-11"] [data-inspection-selection-action="toggle-current"]').tap();
+        await page.locator('[data-inspection-study-unit="study-unit-11"] [data-inspection-selection-action="toggle-unit"]').tap();
         const nextPage = page.getByRole("button", { name: "Carregar unidades posteriores", exact: true });
         await nextPage.tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(35);
         await nextPage.tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
-        await page.locator('[data-inspection-study-unit="study-unit-47"] [data-inspection-selection-action="toggle-current"]').tap();
+        await page.locator('[data-inspection-study-unit="study-unit-47"] [data-inspection-selection-action="toggle-unit"]').tap();
         await nextPage.tap();
         await expect(reference).toHaveCount(0);
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
         const selection = page.locator("[data-inspection-selection-bar]");
         await expect(selection).toContainText("3 unidades selecionadas");
-        await expect(selection).toContainText("Referência: Unidade curricular 12");
         await selection.scrollIntoViewIfNeeded();
         await expectNoHorizontalOverflow(page);
         await expectAuthoringOwnsVerticalScroll(page);
         expect(await page.evaluate(() => document.documentElement.dataset.colorMode)).toBe(colorScheme);
         await page.screenshot({ path: info.outputPath(`inspection-selection-${width}-${colorScheme}.png`) });
-        await page.getByRole("button", { name: "Cancelar seleção", exact: true }).focus();
+        await page.getByRole("button", { name: "Limpar seleção", exact: true }).focus();
+        await page.keyboard.press("Enter");
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
+        await expect(selection).toContainText("Selecione ao menos duas unidades");
+        const search = page.getByRole("combobox", { name: "Ir para" });
+        await search.fill("12");
+        await page.locator('[data-inspection-search-option="study_unit:study-unit-12"]').click();
+        await initialView.focus();
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
-        await expect(initialSelection).toBeFocused();
+        await expect(initialView).toBeFocused();
         const restored = await reference.evaluate((element) => {
           const bounds = element.getBoundingClientRect();
           const sticky = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
+          const scroller = element.closest(".course-authoring-root");
           const actions = [...element.querySelectorAll(".course-inspection-mode-actions > :is(button,a)")]
             .map((control) => {
               const rect = control.getBoundingClientRect();
               return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
             });
           return { x: bounds.x, y: bounds.y, height: bounds.height, width: bounds.width, stickyBottom: sticky.bottom,
-            offset: bounds.top - sticky.bottom, actions,
+            offset: bounds.top - sticky.bottom,
+            remainingScroll: scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop,
+            actions,
             children: [...element.querySelector("article").children].map(child => ({
               className: child.className, y: child.getBoundingClientRect().y, height: child.getBoundingClientRect().height,
               scrollTop: child.scrollTop, scrollHeight: child.scrollHeight
             })) };
         });
         await info.attach("selection-return-geometry", { body: JSON.stringify({ baseline, restored }, null, 2), contentType: "application/json" });
-        for (const key of ["x", "width", "offset"]) {
+        for (const key of ["x", "width", "height"]) {
           expect(Math.abs(restored[key] - baseline[key]), `retorno ${key}`).toBeLessThanOrEqual(1);
         }
+        expect(restored.offset, "foco não fica sob o contexto fixo").toBeGreaterThanOrEqual(-1);
+        expect(Math.min(Math.abs(restored.offset), Math.abs(restored.remainingScroll)),
+          "foco alinha ao contexto fixo ou alcança o limite real do rolador").toBeLessThanOrEqual(1);
         expect(restored.actions.length).toBe(baseline.actions.length);
         for (let index = 0; index < baseline.actions.length; index += 1) {
-          for (const key of ["x", "y", "width", "height"]) {
+          for (const key of ["x", "width", "height"]) {
             expect(Math.abs(restored.actions[index][key] - baseline.actions[index][key]),
               `controle ${index} ${key}`).toBeLessThanOrEqual(1);
           }
+          expect(Math.abs((restored.actions[index].y - restored.y) -
+            (baseline.actions[index].y - baseline.y)),
+          `controle ${index} mantém posição vertical na unidade`).toBeLessThanOrEqual(1);
           expect(restored.actions[index].height).toBeGreaterThanOrEqual(44);
         }
         await page.locator(".course-inspection-context-selector > summary").focus();
@@ -3707,11 +3720,12 @@ test("Observação em lote contém o foco, fecha com Escape e retorna à seleç�
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash });
 
-  await page.locator('[data-inspection-selection-action="toggle-current"]').click();
+  await page.locator('[data-inspection-view-action="toggle-multiple"]').click();
   await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
-  await page.locator('[data-inspection-study-unit="study-unit-02"] [data-inspection-selection-action="toggle-current"]').click();
+  await page.locator('[data-inspection-study-unit="study-unit-01"] [data-inspection-selection-action="toggle-unit"]').click();
+  await page.locator('[data-inspection-study-unit="study-unit-02"] [data-inspection-selection-action="toggle-unit"]').click();
   const batchTrigger = page.getByRole("button", {
-    name: "Registrar Observação nas Unidades selecionadas"
+    name: "Registrar observação nas unidades selecionadas"
   });
   await batchTrigger.click();
 

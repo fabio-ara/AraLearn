@@ -11,6 +11,7 @@ import {
 } from "../../src/assist/courseContextualAssistance.js";
 import { buildCourseAssistanceCompositionChange } from
   "../../src/domain/courseAssistanceComposition.js";
+import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 
 const fixture = JSON.parse(readFileSync(new URL(
   "../fixtures/package/project-minimal.json",
@@ -162,6 +163,135 @@ test("contexto de assistência não apresenta o papel macro interno como decisã
   assert.equal(lessonContext.readOnlyContext.target.microsequences.every((microsequence) =>
     microsequence.studyUnits.every((studyUnit) => ["theory", "practice"].includes(studyUnit.role))),
   true);
+});
+
+test("#335 assistência de microssequência preserva cobertura interna sem reparo ou escrita curricular", async () => {
+  const project = validateProjectDocument(structuredClone(fixture)).value;
+  const microsequence = project.courses[0].modules[0].lessons[0].microsequences[0];
+  microsequence.scopeItemIds = ["33500000-0000-4000-8000-000000000001"];
+  const before = structuredClone(project);
+  const candidate = structuredClone(microsequence);
+  candidate.branchOf = null;
+  delete candidate.role;
+  delete candidate.scopeItemIds;
+  candidate.studyUnits[0].content[0].data.text = "Explicação focal revista com a cobertura original.";
+  const requests = [];
+  const result = await prepareCourseAssistanceProposal({
+    project, selection,
+    confirmedProposal: {
+      summary: "Revisar a explicação das unidades escolhidas.",
+      changes: ["Revisar a explicação sem alterar o planejamento."],
+      scope: "didactic_microsequence",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    },
+    providerConfig, runtimeConfig,
+    fetchImpl: sequenceFetch([{ message: "Explicação revisada.", candidate }], requests)
+  });
+  assert.equal(requests.length, 1);
+  assert.deepEqual(result.candidate.scopeItemIds, microsequence.scopeItemIds);
+  const updated = result.proposedProject.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.deepEqual(updated.scopeItemIds, microsequence.scopeItemIds);
+  assert.equal(updated.studyUnits[0].content[0].data.text, candidate.studyUnits[0].content[0].data.text);
+  const change = buildCourseAssistanceCompositionChange({
+    originalProject: project, proposedProject: result.proposedProject,
+    selection, scope: "didactic_microsequence"
+  });
+  assert.deepEqual(change.upserts.map(({ entityType, entityId }) => [entityType, entityId]),
+    [["study_unit", selection.studyUnitId]]);
+  assert.deepEqual(change.deletes, []);
+  assert.equal(Object.hasOwn(JSON.parse(requests[0].body.input).readOnlyContext.target, "scopeItemIds"), false);
+  assert.equal(Object.hasOwn(requests[0].body.text.format.schema.properties.candidate.properties, "scopeItemIds"), false);
+  assert.deepEqual(project, before);
+});
+
+test("#335 assistência de lição conserva cobertura por identidade ao reordenar e não inventa vínculos", async () => {
+  const project = validateProjectDocument(structuredClone(fixture)).value;
+  const lesson = project.courses[0].modules[0].lessons[0];
+  const first = lesson.microsequences[0];
+  first.scopeItemIds = ["33500000-0000-4000-8000-000000000001"];
+  const copyMicrosequence = (source, suffix) => {
+    const copy = structuredClone(source);
+    copy.id += suffix;
+    copy.title += suffix;
+    copy.dependsOn = [];
+    copy.studyUnits.forEach((unit) => {
+      unit.id += suffix;
+    });
+    return copy;
+  };
+  const second = copyMicrosequence(first, "-segunda");
+  second.scopeItemIds = ["33500000-0000-4000-8000-000000000002"];
+  lesson.microsequences.push(second);
+  const before = structuredClone(project);
+  const added = copyMicrosequence(first, "-nova");
+  const candidate = { microsequences: [second, added, first].map((microsequence) => {
+    const copy = structuredClone(microsequence);
+    copy.branchOf = null;
+    delete copy.role;
+    delete copy.scopeItemIds;
+    return copy;
+  }) };
+  const requests = [];
+  const result = await prepareCourseAssistanceProposal({
+    project, selection,
+    confirmedProposal: {
+      summary: "Reorganizar as microssequências escolhidas.",
+      changes: ["Reorganizar a composição e acrescentar uma explicação."],
+      scope: "lesson",
+      componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+    },
+    providerConfig, runtimeConfig,
+    fetchImpl: sequenceFetch([{ message: "Composição revisada.", candidate }], requests)
+  });
+  assert.equal(requests.length, 1);
+  const updated = result.proposedProject.courses[0].modules[0].lessons[0].microsequences;
+  assert.deepEqual(updated.map(({ id }) => id), [second.id, added.id, first.id]);
+  assert.deepEqual(updated[0].scopeItemIds, second.scopeItemIds);
+  assert.deepEqual(updated[2].scopeItemIds, first.scopeItemIds);
+  assert.equal(Object.hasOwn(updated[1], "scopeItemIds"), false);
+  const change = buildCourseAssistanceCompositionChange({
+    originalProject: project, proposedProject: result.proposedProject, selection, scope: "lesson"
+  });
+  const rows = new Map(change.upserts.filter(({ entityType }) => entityType === "microsequence")
+    .map((row) => [row.entityId, row.content]));
+  assert.deepEqual(rows.get(first.id).scopeItemIds, first.scopeItemIds);
+  assert.deepEqual(rows.get(second.id).scopeItemIds, second.scopeItemIds);
+  assert.equal(Object.hasOwn(rows.get(added.id), "scopeItemIds"), false);
+  assert.equal(JSON.parse(requests[0].body.input).readOnlyContext.target.microsequences
+    .some((microsequence) => Object.hasOwn(microsequence, "scopeItemIds")), false);
+  assert.equal(Object.hasOwn(requests[0].body.text.format.schema.properties.candidate
+    .properties.microsequences.items.properties, "scopeItemIds"), false);
+  assert.deepEqual(project, before);
+});
+
+test("#335 assistência não aceita cobertura fornecida pelo modelo como vínculo curricular", async () => {
+  for (const scope of ["didactic_microsequence", "lesson"]) {
+    const project = validateProjectDocument(structuredClone(fixture)).value;
+    const microsequence = project.courses[0].modules[0].lessons[0].microsequences[0];
+    microsequence.scopeItemIds = ["33500000-0000-4000-8000-000000000001"];
+    const before = structuredClone(project);
+    const generated = structuredClone(microsequence);
+    generated.branchOf = null;
+    delete generated.role;
+    generated.scopeItemIds = ["33500000-0000-4000-8000-000000000099"];
+    generated.studyUnits[0].content[0].data.text = "Explicação revista sem reatribuir a cobertura.";
+    const requests = [];
+    const result = await prepareCourseAssistanceProposal({
+      project, selection,
+      confirmedProposal: {
+        summary: "Revisar a explicação escolhida.", changes: ["Revisar a explicação."], scope,
+        componentNeeds: [{ query: "explicação em prosa", slot: "content" }]
+      },
+      providerConfig, runtimeConfig,
+      fetchImpl: sequenceFetch([{ message: "Explicação revista.", candidate: scope === "lesson"
+        ? { microsequences: [generated] } : generated }], requests)
+    });
+    assert.equal(requests.length, 1);
+    assert.deepEqual(result.proposedProject.courses[0].modules[0].lessons[0].microsequences[0]
+      .scopeItemIds, microsequence.scopeItemIds);
+    assert.doesNotMatch(requests[0].body.input, /scopeItemIds|33500000-0000-4000-8000-000000000001/u);
+    assert.deepEqual(project, before);
+  }
 });
 
 test("seleção inválida ou obsoleta nunca amplia autoridade de escrita", () => {

@@ -1190,7 +1190,8 @@ test("falha de refresh preserva o Planejamento e sinaliza a indisponibilidade de
     ),
     false
   );
-  assertAccessibleSyncIndicator(root.innerHTML, /sem (?:sincronização|conexão)|offline/iu);
+  assertAccessibleSyncIndicator(root.innerHTML, /Atualização pendente|estado da sincronização/iu);
+  assert.doesNotMatch(root.innerHTML, /Sincronizando|Sem conexão/iu);
 });
 
 test("refresh de Parâmetros preserva Curso e desenho até aplicar o snapshot completo", async () => {

@@ -98,7 +98,7 @@ select is((select public.save_course_authoring_part_for_actor_v1('30400000-0000-
 select is((select revision from public.courses where id='30400000-0000-4000-8000-000000000101'),4::bigint,'retry não repete criação nem avança revisão');
 select throws_ok($$select public.save_course_authoring_part_for_actor_v1('30400000-0000-4000-8000-000000000001',
  '30400000-0000-4000-8000-000000000101',revision,plan_version,payload,'parts-stale-304',encode(extensions.digest(payload::text,'sha256'),'hex'))
- from part_requests where name='parts-split-304'$$,'40001',null,'CAS recusa revisão obsoleta sem mutação');
+ from part_requests where name='parts-split-304'$$,'PT409',null,'CAS recusa revisão obsoleta sem mutação');
 select throws_ok($$select public.save_course_authoring_part_for_actor_v1('30400000-0000-4000-8000-000000000001',
  '30400000-0000-4000-8000-000000000101',revision,plan_version,payload,name,repeat('a',64))
  from part_requests where name='parts-split-304'$$,'23514',null,'recibo não aceita payload divergente');
@@ -176,7 +176,7 @@ select throws_ok($$select pg_temp.inspection_latest304(p_entry=>'latest_created'
 select throws_ok($$select pg_temp.inspection_latest304(p_anchor=>'u')$$,'22023',null,'entrada recente e âncora explícita são exclusivas');
 select throws_ok($$select pg_temp.inspection_latest304(p_cursor=>'u')$$,'22023',null,'entrada recente e cursor são exclusivos');
 select throws_ok($$select pg_temp.inspection_latest304(p_direction=>'backward')$$,'22023',null,'entrada recente exige direção forward');
-select throws_ok($$select pg_temp.inspection_latest304(p_revision=>1)$$,'40001',null,'entrada recente não ignora CAS da leitura');
+select throws_ok($$select pg_temp.inspection_latest304(p_revision=>1)$$,'PT409',null,'entrada recente não ignora CAS da leitura');
 select ok(to_regprocedure('public.list_owned_course_study_units_for_actor_v2(uuid,uuid,bigint,text,text,text,text,text,integer,integer)') is null,
  'overload antigo foi substituído, sem duas rotas RPC ambíguas');
 set local role authenticated;

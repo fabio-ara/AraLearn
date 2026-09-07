@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import vm from "node:vm";
 import { pendingUpgradeMigrations } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -64,6 +65,50 @@ test("#307 restauração preserva o checkpoint histórico e continua até o mani
   assert.match(script, /for \(const \[index, migration\] of resolved\.migrations\.entries\(\)\)/u);
   assert.match(script, /assertAfterState\(after\.state, migrationNames\.at\(-1\)/u);
   assert.match(script, /aralearn\.backup-restore-upgrade-proof\.v3/u);
+});
+
+test("preparação histórica clona somente schema, mas a restauração do backup permanece integral", async () => {
+  const calls = [];
+  const context = vm.createContext({
+    resetPostgresDatabase: async (target) => calls.push(["reset", target]),
+    pipeProcesses: async (...args) => calls.push(structuredClone(args))
+  });
+  const clone = script.slice(script.indexOf("async function cloneDatabase("),
+    script.indexOf("function resetDisposableApplicationState("));
+  const restore = script.slice(script.indexOf("async function restoreBackupFile("),
+    script.indexOf("function copyAndApply("));
+  vm.runInContext(`${clone}\n${restore}`, context);
+  await context.cloneDatabase("local-current", "synthetic-history");
+  assert.deepEqual(calls[0], ["reset", "synthetic-history"]);
+  assert.ok(calls[1][1].includes("--schema-only"));
+  assert.ok(calls[1][3].includes("--exit-on-error"));
+  calls.length = 0;
+  await context.restoreBackupFile("synthetic-history", "/tmp/proof.dump", "restored-proof");
+  assert.deepEqual(calls[0], ["reset", "restored-proof"]);
+  assert.deepEqual(calls[1], ["docker", ["exec", "synthetic-history", "cat", "/tmp/proof.dump"],
+    "docker", ["exec", "-i", "restored-proof", "pg_restore", "-U", "supabase_admin", "-d", "postgres",
+      "--no-owner", "--exit-on-error"]]);
+  const proof = script.slice(script.indexOf("export async function verifyBackupRestoreUpgrade("));
+  assert.match(proof, /"pg_dump"[\s\S]*?"-Fc", "--no-owner", "-f", backupPath/u);
+  assert.doesNotMatch(proof, /--schema-only|--exclude-table-data|--disable-triggers/u);
+});
+
+test("história pré-corte é registrada pela cadeia reaplicada, incluindo migration 001", () => {
+  const calls = [];
+  const context = vm.createContext({ path, command: (...args) => calls.push(structuredClone(args)),
+    migrationDirectory: "/repo/supabase/migrations" });
+  const apply = script.slice(script.indexOf("function applyMigrationFiles("),
+    script.indexOf("async function restoreBackupFile("));
+  const record = script.slice(script.indexOf("function recordAppliedMigration("),
+    script.indexOf("function queryJson("));
+  vm.runInContext(`${apply}\n${record}`, context);
+  const names = ["001_initial.sql", "20260901000000_checkpoint.sql"];
+  context.applyMigrationFiles("synthetic-history", names, "/tmp/history");
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls[1][1].slice(-4), ["-f", "/tmp/history/001_initial.sql", "-f", "/tmp/history/20260901000000_checkpoint.sql"]);
+  assert.match(calls[2][1].at(-1), /values\('001',null,'initial'\)/u);
+  assert.match(calls[3][1].at(-1), /values\('20260901000000',null,'checkpoint'\)/u);
+  assert.throws(() => context.recordAppliedMigration("synthetic-history", "001bad_invalid.sql"), /Migration final inválida/u);
 });
 
 test("#307 upgrade ordena todas as migrations pendentes e repetir a seleção não reaplica SQL", () => {

@@ -148,6 +148,7 @@ test("duas instâncias compartilham caches autorais e nova revisão remota inval
   });
 
   let online = true;
+  const navigatorValue = { get onLine() { return online; } };
   let revision = 4;
   const api = {
     async listCourses() {
@@ -183,8 +184,8 @@ test("duas instâncias compartilham caches autorais e nova revisão remota inval
       return inspectionPage(revision);
     }
   };
-  const first = new CourseController({ api, store: firstStore, ownerOnly: true });
-  const second = new CourseController({ api, store: secondStore, ownerOnly: true });
+  const first = new CourseController({ api, store: firstStore, ownerOnly: true, navigatorValue });
+  const second = new CourseController({ api, store: secondStore, ownerOnly: true, navigatorValue });
 
   await first.listCourses();
   await first.getCourse(COURSE_ID);
@@ -238,6 +239,7 @@ test("save relê r+1 uma vez e reconcilia a Unidade canônica no IndexedDB", asy
     refreshedStore.close();
   });
   let online = true;
+  const navigatorValue = { get onLine() { return online; } };
   let commitAttempts = 0;
   let inspectionReads = 0;
   const unit = editedStudyUnit();
@@ -293,8 +295,8 @@ test("save relê r+1 uma vez e reconcilia a Unidade canônica no IndexedDB", asy
       };
     }
   };
-  const writer = new CourseController({ api, store: writerStore, ownerOnly: true });
-  const refreshed = new CourseController({ api, store: refreshedStore, ownerOnly: true });
+  const writer = new CourseController({ api, store: writerStore, ownerOnly: true, navigatorValue });
+  const refreshed = new CourseController({ api, store: refreshedStore, ownerOnly: true, navigatorValue });
 
   const result = await writer.commitCourseComposition({
     requestId: "request-indexeddb-edit-0001",
@@ -345,6 +347,7 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   canonical.title = "Unidade canônica relida";
   canonical.content[0].data.text = "Conteúdo canônico reconciliado.";
   let online = true;
+  const navigatorValue = { get onLine() { return online; } };
   let failInspectionReread = false;
   let remoteRevision = 4;
   let remoteVersion = 2;
@@ -419,8 +422,8 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
     }
   };
   const initialStore = await openStore();
-  const study = new CourseController({ api, store: initialStore });
-  const authoring = new CourseController({ api, store: initialStore, ownerOnly: true });
+  const study = new CourseController({ api, store: initialStore, navigatorValue });
+  const authoring = new CourseController({ api, store: initialStore, ownerOnly: true, navigatorValue });
   await study.listCourses();
   await study.loadCourseDocument(COURSE_ID);
   await authoring.listCourses();
@@ -441,11 +444,12 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
 
   online = false;
   const offlineStore = await openStore();
-  const offlineStudy = new CourseController({ api, store: offlineStore });
+  const offlineStudy = new CourseController({ api, store: offlineStore, navigatorValue });
   const offlineAuthoring = new CourseController({
     api,
     store: offlineStore,
-    ownerOnly: true
+    ownerOnly: true,
+    navigatorValue
   });
   const studyList = await offlineStudy.listCourses();
   assert.equal(studyList.items[0].revision, 5);
@@ -490,7 +494,7 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   ), null);
 
   online = false;
-  const afterReconciliation = new CourseController({ api, store: offlineStore });
+  const afterReconciliation = new CourseController({ api, store: offlineStore, navigatorValue });
   const canonicalOffline = await afterReconciliation.loadCourseDocument(COURSE_ID, {
     verifiedRevision: 5
   });

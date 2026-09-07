@@ -5,13 +5,14 @@ select plan(25);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260905163000','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20260907031059','o manifesto identifica as capacidades correntes em ordem canônica');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),47,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),48,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-anchored-annotations-atomic-create-v1",
+  "course-business-conflicts-http-409-v1",
   "course-analysis-repertoire-v1",
   "course-authoring-configuration-v3",
   "authoring-preference-profiles-v1",

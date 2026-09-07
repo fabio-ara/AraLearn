@@ -13,6 +13,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "paged-live-course-composition-v1",
   "direct-course-access-v1",
   "course-cas-idempotency-v1",
+  "course-business-conflicts-http-409-v1",
   "oauth-only-authoring-mcp",
   "isolated-mcp-oauth-principal-v1",
   "package-library-v1",
@@ -141,8 +142,6 @@ const FORBIDDEN_RUNTIME_SYMBOLS = Object.freeze([
   "materialize_course_authoring_part_for_actor_v1"
 ]);
 
-const COURSE_PERSONAL_STATE_REPOSITORY =
-  "src/persistence/CoursePersonalStateRepository.js";
 const LEGACY_PERSONAL_OBSERVATIONS_ACCESS =
   /\b(?:state|personalState)(?:\?\.|\.)observations\b/u;
 
@@ -291,20 +290,10 @@ export async function validateRuntimeManifestRevision(
   return latest;
 }
 
-function legacyPersonalObservationsStayInHandoffConverter(source) {
-  const start = source.indexOf("function legacyObservationIntents(");
-  const end = source.indexOf("\nfunction mergeAnnotationHandoff(", start);
-  const accesses = [...source.matchAll(
-    /\b(?:state|personalState)(?:\?\.|\.)observations\b/gu
-  )];
-  return start >= 0 && end > start && accesses.length === 2 &&
-    accesses.every((match) => match.index > start && match.index < end);
-}
-
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260905163000" ||
+  if (manifest.schemaRevision !== "20260907031059" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -513,10 +502,7 @@ async function validateRuntimeFiles() {
     if (/\b(?:studyUnit|study_unit|cloned)(?:\?\.|\.)sources\b/u.test(source)) {
       fail(`${relativePath} ainda lê StudyUnit.sources.`);
     }
-    if (LEGACY_PERSONAL_OBSERVATIONS_ACCESS.test(source) && (
-      relativePath !== COURSE_PERSONAL_STATE_REPOSITORY ||
-      !legacyPersonalObservationsStayInHandoffConverter(source)
-    )) {
+    if (LEGACY_PERSONAL_OBSERVATIONS_ACCESS.test(source)) {
       fail(`${relativePath} ainda lê state.observations do contrato pessoal removido.`);
     }
     for (const { pattern, label } of FORBIDDEN_COURSE_SOURCE_ALIASES) {

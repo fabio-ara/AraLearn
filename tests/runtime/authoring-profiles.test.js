@@ -58,7 +58,7 @@ function harness({ readonly = false, visitor = false, loseFirstSaveResponse = fa
       let result;
       if (name === "save_authoring_profile_for_actor_v1") {
         const current = stored?.revision || 0;
-        if (input.p_expected_revision !== current) return json({ code: "40001", message: "Detalhe interno que não deve sair." }, 400);
+        if (input.p_expected_revision !== current) return json({ code: "PT409", message: "Detalhe interno que não deve sair." }, 409);
         const changed = !stored || stored.name !== input.p_name || JSON.stringify(stored.preferences) !== JSON.stringify(input.p_preferences);
         stored = profile({ revision: current + (changed ? 1 : 0), name: input.p_name, preferences: input.p_preferences });
         result = { contract: "aralearn.authoring-profile-change.v1", profileId: PROFILE, revision: stored.revision,

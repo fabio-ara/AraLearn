@@ -103,13 +103,14 @@ test("latest_updated: Adapter usa p_entry opcional, conserva DTO e valida chamad
   assert.equal(Object.hasOwn(calls[1].body, "p_entry"), false);
 });
 
-test("latest_updated: Controller mantém cache próprio da consulta e não transforma início curricular em recente offline", async () => {
+test("latest_updated: Controller mantém cache próprio da consulta e distingue serviço inacessível de dispositivo offline", async () => {
   const cache = store();
+  const navigatorValue = { onLine: true };
   let online = true;
   let forbidden = false;
   let responseRevision = 7;
   const calls = [];
-  const controller = new CourseController({ store: cache, ownerOnly: true, api: {
+  const controller = new CourseController({ store: cache, ownerOnly: true, navigatorValue, api: {
     async listCourses() { throw new Error("Não usado neste read focal."); },
     async getCourse() { throw new Error("Não usado neste read focal."); },
     async loadAuthoringStudyUnits(courseId, options) {
@@ -126,8 +127,14 @@ test("latest_updated: Controller mantém cache próprio da consulta e não trans
   await controller.loadAuthoringStudyUnits(COURSE_ID, { expectedRevision: 7, entry: "latest_updated" });
   online = false;
   const cached = await controller.loadAuthoringStudyUnits(COURSE_ID, { expectedRevision: 7, entry: "latest_updated" });
-  assert.equal(cached.offline, true);
+  assert.equal(cached.offline, false);
+  assert.equal(cached.stale, true);
   assert.equal(cached.pageBytes, 64);
+  navigatorValue.onLine = false;
+  const deviceOffline = await controller.loadAuthoringStudyUnits(COURSE_ID, { expectedRevision: 7, entry: "latest_updated" });
+  assert.equal(deviceOffline.offline, true);
+  assert.equal(deviceOffline.stale, true);
+  assert.equal(deviceOffline.pageBytes, 64);
   assert.equal((await controller.loadAuthoringStudyUnits(COURSE_ID, { expectedRevision: 7 })).pageBytes, 32);
   const before = calls.length;
   for (const options of invalidEntries) {

@@ -30,8 +30,20 @@ function clientWith(response, calls = []) {
     } });
 }
 
-async function controller(t, recoverOwnedCourseCopy = async () => receipt) {
-  const store = await CourseLocalStore.open(new IDBFactory(), { userId: SOURCE });
+async function controller(t, recoverOwnedCourseCopy = async () => receipt, snapshots = [[LEGACY_KEY, pending]]) {
+  const indexedDb = new IDBFactory();
+  await new Promise((resolve, reject) => {
+    const request = indexedDb.open(`aralearn-course-v1-${SOURCE}`, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("course_cache", { keyPath: "key" });
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const transaction = request.result.transaction("course_cache", "readwrite");
+      for (const [key, value] of snapshots) transaction.objectStore("course_cache").put({ key, value });
+      transaction.oncomplete = () => { request.result.close(); resolve(); };
+      transaction.onabort = () => reject(transaction.error);
+    };
+  });
+  const store = await CourseLocalStore.open(indexedDb, { userId: SOURCE });
   t.after(() => store.close());
   const value = new CourseController({ store, api: {
     listCourses: async () => ({}), getCourse: async () => ({}), recoverOwnedCourseCopy
@@ -70,45 +82,49 @@ test("ausência de prova e no-op preservam estado inconclusivo sem alvo", async 
   }
 });
 
-test("Controller move snapshot integral uma vez e confirmação não remove rascunho", async (t) => {
+test("upgrade guarda snapshot integral e confirmação não remove a entrada corrente", async (t) => {
   let calls = 0;
   const { value, store } = await controller(t, async (input) => {
     calls += 1;
     assert.deepEqual(input, command);
     return receipt;
   });
-  await store.putCache(LEGACY_KEY, pending);
-  assert.deepEqual(await value.loadStudyDraftRecovery(), pending);
+  const recovery = await value.loadStudyDraftRecovery();
+  assert.deepEqual(recovery.originalSnapshot, pending);
+  assert.deepEqual(recovery.command, command);
   assert.equal(await store.getCache(LEGACY_KEY), null);
-  assert.deepEqual(await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY), pending);
+  assert.deepEqual((await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY)).entries, [recovery]);
   const result = await value.recoverStudyDraft();
   assert.equal(result.status, "confirmed");
-  assert.deepEqual(result.pending, pending);
+  assert.deepEqual(result.pending, recovery);
   assert.equal(calls, 1);
-  assert.deepEqual(await value.loadStudyDraftRecovery(), pending);
+  assert.deepEqual(await value.loadStudyDraftRecovery(), recovery);
   assert.equal(typeof value.commitPersonalCourseCopyEdit, "undefined");
   assert.equal(typeof value.retryPendingPersonalCopyEdit, "undefined");
 });
 
 test("snapshot inválido e falha de rede conservam todos os dados locais", async (t) => {
-  const { value, store } = await controller(t, async () => { throw new Error("offline"); });
   const invalid = { ...pending, studyUnit: { usefulUnknownShape: "Não eliminar" } };
-  await store.putCache(LEGACY_KEY, invalid);
-  assert.deepEqual((await value.recoverStudyDraft()).pending, invalid);
-  assert.deepEqual(await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY), invalid);
-  await store.putCache(STUDY_DRAFT_RECOVERY_CACHE_KEY, pending);
+  const { value, store } = await controller(t, async () => { throw new Error("offline"); },
+    [["course.v1.study-draft-recovery", invalid], [LEGACY_KEY, pending]]);
+  const first = (await value.recoverStudyDraft()).pending;
+  assert.deepEqual(first.originalSnapshot, invalid);
+  assert.equal((await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY)).entries.length, 2);
+  assert.equal(await value.clearStudyDraftRecovery(SOURCE, first.requestId, first.recoveryId), true);
   await assert.rejects(value.recoverStudyDraft(), /offline/u);
-  assert.deepEqual(await value.loadStudyDraftRecovery(), pending);
+  assert.deepEqual((await value.loadStudyDraftRecovery()).originalSnapshot, pending);
 });
 
 test("descarte exige snapshot atual e não elimina uma nova intenção concorrente", async (t) => {
   const { value, store } = await controller(t);
-  await store.putCache(LEGACY_KEY, pending);
-  assert.equal(await value.clearStudyDraftRecovery(SOURCE, "different-request"), false);
-  const newer = { ...pending, requestId: "request-recovery-0002" };
-  await store.putCache(STUDY_DRAFT_RECOVERY_CACHE_KEY, newer);
-  assert.equal(await value.clearStudyDraftRecovery(SOURCE, pending.requestId), false);
+  const first = await value.loadStudyDraftRecovery();
+  assert.equal(await value.clearStudyDraftRecovery(SOURCE, first.requestId), false);
+  assert.equal(await value.clearStudyDraftRecovery(SOURCE, "different-request", first.recoveryId), false);
+  const collection = await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY);
+  const newer = { ...collection.entries[0], requestId: "request-recovery-0002" };
+  await store.putCache(STUDY_DRAFT_RECOVERY_CACHE_KEY, { ...collection, entries: [newer] });
+  assert.equal(await value.clearStudyDraftRecovery(SOURCE, pending.requestId, first.recoveryId), false);
   assert.deepEqual(await value.loadStudyDraftRecovery(), newer);
-  assert.equal(await value.clearStudyDraftRecovery(SOURCE, newer.requestId), true);
+  assert.equal(await value.clearStudyDraftRecovery(SOURCE, newer.requestId, newer.recoveryId), true);
   assert.equal(await value.loadStudyDraftRecovery(), null);
 });

@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260905163000",
+  "schemaRevision": "20260907031059",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -7,6 +7,7 @@
     "paged-live-course-composition-v1",
     "direct-course-access-v1",
     "course-cas-idempotency-v1",
+    "course-business-conflicts-http-409-v1",
     "oauth-only-authoring-mcp",
     "isolated-mcp-oauth-principal-v1",
     "package-library-v1",

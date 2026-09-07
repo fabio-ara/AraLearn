@@ -131,12 +131,17 @@ pessoas ou medida de aprendizagem.
 2. Escolha **Dúvida**, **Possível erro**, **Trecho confuso**, **Sugestão** ou
    **Sem categoria**.
 3. Escreva até 2.000 caracteres Unicode, respeitado o limite de 16 KiB.
-4. Salve.
+4. Use **Enviar observação**.
 
 É possível criar várias observações na mesma Unidade. Abra um item para editar
 ou retirar e consulte sua categoria, seu estado, a sincronização e eventual
 resposta. A Anotação ancorada chega à caixa de entrada do proprietário; outros
 estudantes não a recebem.
+
+Abrir a folha para consultar não cria uma edição pendente. O texto digitado é
+preservado ao fechar e reabrir a observação no mesmo contexto. Se uma ação exigir
+concluir o rascunho, use o atalho de retomada indicado no aviso; o campo e os
+controles de envio permanecem alcançáveis.
 
 ## Zerar o progresso
 
@@ -159,6 +164,10 @@ somente o módulo e a lição que deseja examinar para revelar suas microssequê
 **Objetivo** mostra o texto completo de cada nível. Os pré-requisitos e a
 **Cobertura do escopo** oferecem links para os pontos correspondentes do curso;
 ao voltar, o mapa conserva os ramos abertos, a posição e o foco.
+
+A seta abre ou recolhe o ramo; o acesso ao conteúdo é uma ação separada. Na
+cobertura, leia a declaração e seus vínculos recuados sem alterar a pontuação
+do texto curricular.
 
 Confira o mapa completo antes de aprová-lo. Expandir um ramo é apenas uma ação
 de leitura e não exige aprová-lo separadamente. A aprovação global não inclui
@@ -215,6 +224,12 @@ Em Conteúdo, o atalho da unidade abre uma folha sobre a leitura, preservando o
 editor e seu rascunho. Em Estudo, o proprietário também encontra
 **Parâmetros · escopo atual** em **Conta e aparência**, depois de salvar ou
 descartar qualquer edição aberta. A entrada preserva os níveis do Estudo.
+
+O seletor de escopo permite consultar curso, módulo, lição, microssequência e
+unidade. **Automático**, valor fixo e valor herdado conservam seus significados;
+mudar o escopo de consulta não modifica o desenho. Ajustes ainda não salvos
+permanecem associados ao escopo em que foram feitos; volte a ele para salvar
+ou descartar a alteração.
 
 O catálogo organiza as escolhas por conteúdo, prática, conversa e cadência.
 Além de novidade, explicações, quantidade e variação de prática, permite escolher
@@ -315,7 +330,7 @@ o curso. Com conta, pode registrar uma observação para o autor. Essas ações 
 criam cópia automática. Cópias próprias existentes continuam cursos
 independentes e podem ser editadas por seus proprietários.
 
-Para trabalhar com a sessão contextual, use **Assistência por IA** na Unidade,
+Em Estudo, para trabalhar com a sessão contextual, use **Assistência por IA** na Unidade,
 na microssequência ou na lição:
 
 1. escolha OpenAI, Gemini ou DeepSeek;
@@ -382,13 +397,13 @@ Curso, módulo, lição, tópico, microssequência, unidade, parâmetro, fonte e
 podem ser alvos de leitura ou alteração conforme a operação disponível.
 Materialização continua restrita à parte operacional.
 
-Ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
+No modo automático, ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
 devolve o foco ao aplicativo. Se o navegador não sinalizar a troca de foco, use a ação
 **Atualizar** no cabeçalho do curso. A atualização preserva o contexto de
 navegação e, em Conteúdo, a Unidade e a posição conhecidas.
 
-Se houver uma confirmação ou um formulário em edição, a atualização automática
+Se houver uma confirmação ou um formulário alterado, a atualização automática
 ou manual é adiada. O AraLearn conserva os campos já preenchidos e orienta
 concluir ou cancelar o rascunho antes de tentar novamente. Assim, o retorno do
 ChatGPT não descarta uma contribuição ainda não enviada.
@@ -438,14 +453,17 @@ edição que estava aberto. Consultar contexto não salva nem aplica uma correç
 automaticamente. No curso, módulo, lição e microssequência, **Editar** abre os
 metadados e a composição autorizados para aquele nível e exige salvamento explícito.
 
-Para comparar várias unidades ou registrar a mesma observação nelas, use o ícone
-**Selecionar várias unidades**. A leitura passa a uma sequência vertical; a unidade de
-entrada fica identificada como **Referência**. Marque os alvos e, quando necessário,
-use **Carregar unidades anteriores** ou **Carregar unidades posteriores**.
+Para comparar várias unidades, use **Mostrar várias unidades**. A leitura passa
+a uma sequência vertical sem selecionar alvos para operação em lote. Marque os
+alvos separadamente e, quando necessário, use **Carregar unidades anteriores** ou
+**Carregar unidades posteriores**.
 **Registrar observação nas unidades selecionadas** conserva os alvos escolhidos;
 uma falha parcial permite repetir somente o que ainda não foi confirmado.
 
-**Cancelar seleção** volta à unidade de referência, ao foco e à posição de entrada.
+**Limpar seleção** conserva a visão múltipla. **Mostrar somente esta unidade**
+ou **Editar** focaliza a unidade escolhida e recolhe as demais, inclusive quando
+ela foi carregada numa página posterior. Se houver rascunho ou envio parcial
+incompatível com a mudança de alvo, o aviso oferece a retomada desse trabalho.
 A seleção é temporária e não cria um lote de produção. A inspeção mantém uma
 janela limitada de unidades e conserva a posição no dispositivo; ao mudar de
 revisão, procura a mesma identidade de unidade.
@@ -550,9 +568,14 @@ primeira.
 
 A nuvem sinaliza pendência, andamento, sucesso ou falha sem uma notificação
 permanente sobre o conteúdo. No modo manual, ela indica a pausa das atualizações.
-Um rascunho aberto impede a troca do conteúdo até salvar ou descartar; uma
+Um rascunho alterado impede a troca incompatível do conteúdo até salvar ou descartar; uma
 explicação focal acompanha conflitos que exigem escolha. Uma composição
 desatualizada não é apresentada como perda de conexão.
+
+O serviço pode falhar mesmo com o navegador conectado. A cópia local preservada
+continua identificada, e a nuvem permite solicitar outra leitura sem alternar
+a conexão ou mudar o modo manual. Durante o carregamento, a tela informa leitura;
+a ausência de unidades só é apresentada depois de uma resposta válida.
 
 Na Autoria, o IndexedDB conserva a lista de cursos próprios, o cabeçalho, o
 planejamento, a hierarquia e páginas recentes de Conteúdo e a posição de retomada.

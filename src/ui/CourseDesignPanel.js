@@ -16,7 +16,7 @@ const SCOPE_LABELS = Object.freeze({
   module: "Módulo",
   lesson: "Lição",
   didactic_microsequence: "Microssequência didática",
-  study_unit: "unidade de estudo"
+  study_unit: "Unidade de estudo"
 });
 
 function escapeHtml(value) {
@@ -63,13 +63,15 @@ function renderScopeContext(design) {
   const context = design.scopeContext;
   const breadcrumbs = [...context.ancestors, context.current].map((scope, index, path) => {
     const current = index === path.length - 1;
-    return current
-      ? `<span aria-current="page">${escapeHtml(scope.label)}</span>`
+    const label = `<small>${escapeHtml(SCOPE_LABELS[scope.kind])}</small><span>${escapeHtml(scope.label)}</span>`;
+    const entry = current
+      ? `<span aria-current="page">${label}</span>`
       : `<a href="${escapeHtml(scopeRoute(design.courseId, scope))}"` +
         ' data-course-authoring-action="change-design-scope"' +
         ` data-scope-kind="${scope.kind}" data-scope-ref="${escapeHtml(scope.ref)}">` +
-        `${escapeHtml(scope.label)}</a>`;
-  }).join('<span aria-hidden="true">›</span>');
+        `${label}</a>`;
+    return `<li style="--scope-depth:${index}">${entry}</li>`;
+  }).join("");
   const childKind = context.children[0]?.kind || null;
   const selector = context.children.length
     ? '<form class="course-design-scope-selector" data-course-design-scope>' +
@@ -91,14 +93,15 @@ function renderScopeContext(design) {
       ' data-course-authoring-action="load-more-design-scopes" aria-label="Carregar mais escopos"' +
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
-  return '<details class="course-design-scope"><summary title="Alcance dos ajustes">' +
+  return '<details class="course-design-scope"><summary title="Alterar alcance dos ajustes">' +
     renderUiIcon("intent", "course-authoring-button-icon") +
-    `<span>${escapeHtml(SCOPE_LABELS[context.current.kind])}</span></summary>` +
-    '<div><p id="course-design-scope-title">Aplicar em</p>' +
+    `<span><small>Alcance dos ajustes · ${escapeHtml(SCOPE_LABELS[context.current.kind])}</small>` +
+    `<strong>${escapeHtml(context.current.label)}</strong></span></summary>` +
+    '<div class="course-design-scope-target"><p id="course-design-scope-title">Aplicar em</p>' +
     `<strong>${escapeHtml(SCOPE_LABELS[context.current.kind])}: ` +
     `${escapeHtml(context.current.label)}</strong>` +
     '<span class="course-design-context-note">Orienta a próxima produção. Exceções locais são preservadas.</span></div>' +
-    `<nav aria-label="Caminho do escopo">${breadcrumbs}</nav>${selector}${more}</details>`;
+    `<nav aria-label="Caminho do escopo"><ol>${breadcrumbs}</ol></nav>${selector}${more}</details>`;
 }
 
 function renderParameterCard(design, definition, resolution, busy, { editing = false } = {}) {
@@ -112,6 +115,10 @@ function renderParameterCard(design, definition, resolution, busy, { editing = f
     ? `Herdado de ${source} · ${originLabel(effective.origin)}`
     : local ? `${originLabel(effective.origin)} · definido neste escopo`
       : `${originLabel(effective.origin)} · ${source}`;
+  const displayedOrigin = effective.mode === "automatic" && effective.value !== null
+    ? "Valor aplicado · decisão automática"
+    : effective.inherited ? `Herdado de ${source}`
+      : local ? "Definido neste escopo" : "";
   const editor = supported
     ? '<form class="course-design-parameter-form" data-course-design-parameter data-design-value-owner>' +
       `<input type="hidden" name="parameterId" value="${escapeHtml(definition.id)}">` +
@@ -150,7 +157,8 @@ function renderParameterCard(design, definition, resolution, busy, { editing = f
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
     '<header tabindex="0"><div>' +
     `<h3>${escapeHtml(definition.label)}</h3><p class="course-authoring-visually-hidden">Valor vigente</p></div>` +
-    `<strong>${escapeHtml(effective.value === null ? "Automático" : formatDesignValue(definition, effective.value))}</strong></header>` +
+    `<strong>${escapeHtml(effective.value === null ? "Automático" : formatDesignValue(definition, effective.value))}</strong>` +
+    (displayedOrigin ? `<small class="course-design-value-origin">${escapeHtml(displayedOrigin)}</small>` : "") + '</header>' +
     `<button type="button" data-course-authoring-action="edit-design-parameter" data-parameter-id="${escapeHtml(definition.id)}" class="course-authoring-icon-action" aria-label="Ajustar ${escapeHtml(
       definition.label
     )}" title="Ajustar ${escapeHtml(definition.label)}">` +
@@ -314,10 +322,11 @@ export function renderCourseDesignPanel(state) {
   return '<section class="course-authoring-section course-design"' +
     ' aria-labelledby="course-authoring-section-title">' +
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Parâmetros, direção editorial e componentes</h2>' +
-    '<div class="course-design-settings-nav">' +
+    '<div class="course-design-settings-nav">' + renderScopeContext(design) +
+    '<div class="course-design-group-heading">' +
     (edited ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="design-group-back" aria-label="Voltar aos ajustes" title="Voltar aos ajustes">' +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button><span>' + escapeHtml(selected.label) + '</span>' : categoryMenu) +
-    renderScopeContext(design) + '</div><div class="course-design-feedback" aria-live="polite">' +
+    '</div></div><div class="course-design-feedback" aria-live="polite">' +
     (state.designMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.designMessage)}</p>`
       : "") +
