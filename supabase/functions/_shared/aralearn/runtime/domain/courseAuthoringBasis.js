@@ -41,8 +41,10 @@ function declaration(value) {
       return { form: authoringText(exception.form), reason: authoringText(exception.reason, 1000) };
     }) };
   }), practiceApplications: rows(value.practiceApplications, (entry) => {
-    exactAuthoringObject(entry, ["evidenceRequirementId", "opportunityId", "variedDimensions"]);
-    return { evidenceRequirementId: authoringText(entry.evidenceRequirementId), opportunityId: authoringText(entry.opportunityId), variedDimensions: refs(entry.variedDimensions) };
+    exactAuthoringObject(entry, ["evidenceRequirementId", "opportunityId", "invariantTaskOperation", "variedDimensions"]);
+    if (typeof entry.invariantTaskOperation !== "string" || !entry.invariantTaskOperation.trim() ||
+        [...entry.invariantTaskOperation].length > 2000) fail("A operação-alvo da prática é inválida.");
+    return { evidenceRequirementId: authoringText(entry.evidenceRequirementId), opportunityId: authoringText(entry.opportunityId), invariantTaskOperation: entry.invariantTaskOperation, variedDimensions: refs(entry.variedDimensions) };
   }) };
 }
 function inventoryItem(value) { exactAuthoringObject(value, ["ref", "position", "statement", "description"]); return { ref: authoringText(value.ref), position: authoringInteger(value.position, 1), statement: authoringText(value.statement, 20000), description: value.description === "" ? "" : authoringText(value.description, 20000) }; }

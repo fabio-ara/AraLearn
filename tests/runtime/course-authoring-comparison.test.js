@@ -23,7 +23,7 @@ function pair() {
   left.basis.studyUnits[0].declaration.introducedInstructionalAnalysisUnitIds = ["analysis-a"];
   left.basis.studyUnits[0].declaration.usedInstructionalAnalysisUnitIds = ["analysis-a", "analysis-b"];
   left.basis.studyUnits[0].declaration.explanationApplications = [{ instructionalAnalysisUnitId: "analysis-a", developedForms: ["plain_definition", "mechanism"], notApplicable: [] }, { instructionalAnalysisUnitId: "analysis-b", developedForms: ["concrete_example"], notApplicable: [] }];
-  left.basis.studyUnits[1].declaration.practiceApplications = [{ evidenceRequirementId: "evidence-a", opportunityId: "occasion-a", variedDimensions: ["case_or_data"] }];
+  left.basis.studyUnits[1].declaration.practiceApplications = [{ evidenceRequirementId: "evidence-a", opportunityId: "occasion-a", invariantTaskOperation: "Aplicar a relação.", variedDimensions: ["case_or_data"] }];
   left.basis.studyUnits[0].wordCount = 150;
   left.basis.studyUnits[0].components = [{ componentRef: "aralearn.resource.paragraph@1.0.0", instanceRef: "p", slot: "content" }];
   const right = structuredClone(left); right.course.id = OTHER_ID;
@@ -74,6 +74,39 @@ test("curso sem declaração não converte novidade ausente em zero", () => {
   assert.equal(result.dimensions[0].left.value, null);
   assert.equal(result.dimensions[0].delta, null);
   assert.equal(result.dimensions.find(({ id }) => id === "extent").left.value, 0);
+});
+test("exportação preserva literalmente a operação-alvo das oportunidades retornadas pelo writer", () => {
+  const { left } = pair();
+  const operation = "Aplicar a relação em contextos distintos, preservando a operação-alvo. ".repeat(5);
+  left.basis.evidenceRequirements[0].statement = operation;
+  const practices = [
+    { evidenceRequirementId: "evidence-a", opportunityId: "case-a", invariantTaskOperation: operation, variedDimensions: ["case_or_data", "context"] },
+    { evidenceRequirementId: "evidence-a", opportunityId: "case-b", invariantTaskOperation: operation, variedDimensions: ["case_or_data", "context"] }
+  ];
+  left.basis.studyUnits[1].declaration.practiceApplications = practices;
+  const before = structuredClone(left);
+  const analytics = normalizeCourseAuthoringAnalyticsPage(left);
+  assert.deepEqual(analytics.basis.studyUnits[1].declaration.practiceApplications, practices);
+  const document = { contract: "aralearn.course.v1", courses: [{ id: ANALYTICS_COURSE_ID, title: "Curso", goal: "Objetivo", modules: [] }] };
+  const exported = normalizeCourseAuthoringExport(assembleCourseAuthoringExport({ analytics, document }), { expectedSelection: selection() });
+  assert.deepEqual(exported.analytics.basis.studyUnits[1].declaration.practiceApplications, practices);
+  assert.deepEqual(left, before);
+});
+test("operação-alvo da prática exige o campo atual, texto não vazio e limite de 2000 caracteres", () => {
+  const { left } = pair();
+  const current = left.basis.studyUnits[1].declaration.practiceApplications[0];
+  current.invariantTaskOperation = "🔎".repeat(2000);
+  assert.equal(normalizeCourseAuthoringAnalyticsPage(left).basis.studyUnits[1].declaration.practiceApplications[0].invariantTaskOperation, current.invariantTaskOperation);
+  for (const invalid of [undefined, null, 7, {}, "", " \t\n", "🔎".repeat(2001)]) {
+    const bad = structuredClone(left);
+    const practice = bad.basis.studyUnits[1].declaration.practiceApplications[0];
+    if (invalid === undefined) delete practice.invariantTaskOperation;
+    else practice.invariantTaskOperation = invalid;
+    assert.throws(() => normalizeCourseAuthoringAnalyticsPage(bad), { code: "invalid_course_authoring_basis" });
+  }
+  const extra = structuredClone(left);
+  extra.basis.studyUnits[1].declaration.practiceApplications[0].unexpected = true;
+  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(extra), { code: "invalid_course_authoring_basis" });
 });
 test("Fontes são comparadas por metadados e anexos lógicos, sem depender dos IDs", () => {
   const { left, right } = pair(); left.basis.sources = [source()]; right.basis.sources = [source("source-copy")];
