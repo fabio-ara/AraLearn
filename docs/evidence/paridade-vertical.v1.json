@@ -933,6 +933,7 @@
         ],
         "manifestFeatures": [
           "flat-runtime-manifest-v1",
+          "course-business-conflicts-http-409-v1",
           "oauth-only-authoring-mcp",
           "gpt-actions-openapi-v1"
         ],
@@ -961,6 +962,7 @@
         "tests/runtime/course-api-server.test.js",
         "tests/runtime/course-human-mcp.test.js",
         "tests/runtime/course-action-server.test.js",
+        "tests/runtime/business-conflict-manifest-upgrade-pglite.test.js",
         "tests/runtime/hosted-backend-verifier.test.js"
       ],
       "justification": "Aplicativo, MCP e Actions usam os mesmos casos de uso humanos sobre o Curso vivo. MCP mantém seu transporte e principal OAuth; Actions projeta as mesmas tarefas do catálogo compartilhado em HTTP/OpenAPI, sem expor o mecanismo interno nem criar segundo motor de autoria."

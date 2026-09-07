@@ -1,5 +1,18 @@
 # Alterações do schema
 
+## 20260907031059 — declaração do contrato de conflitos HTTP 409
+
+O manifesto passa a anunciar `course-business-conflicts-http-409-v1`, com 48
+capacidades em ordem canônica e `contractVersion: 1`. A declaração exige o
+manifesto 20260905163000 e a migration de conflitos 20260907013604 aplicada,
+incluindo o código PT409 no leitor corrente de Fontes. Somente o corpo do
+manifesto muda; identidade, proprietário, permissões e demais metadados da
+função são conferidos dentro da transação. Dados e escritores permanecem.
+
+A comparação hospedada e o ensaio de restauração exigem a revisão e as
+capacidades exatas; a cadeia pendente termina nesta declaração. A migration
+não reaplica a transformação dos conflitos nem substitui a prova de restauração.
+
 ## 20260905163000 — ordem canônica das capacidades
 
 O manifesto conserva suas 47 capacidades e as ordena com collation `C`, sem
