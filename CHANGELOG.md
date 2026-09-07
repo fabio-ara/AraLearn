@@ -12,6 +12,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   de sincronização manual; reconexão, serviço indisponível e conflito têm estados distintos;
 - conflitos de revisão deixam de provocar tentativas indefinidas no serviço;
   a leitura de Estudo preserva a cobertura e as dependências aceitas pela Autoria;
+- exportação de autoria preserva as declarações atuais das práticas, incluindo
+  a operação avaliada em cada oportunidade;
 - Observações conservam foco e controles acessíveis, sem avisos cobrindo a interação;
 - detalhes e Parâmetros preservam a origem ao voltar; planejamento apresenta
   estrutura e cobertura, com explicações disponíveis no contexto;

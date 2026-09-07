@@ -1283,6 +1283,7 @@ async function mountCourseAuthoring(page, {
               developedForms: ["plain_definition"], notApplicable: [] }],
             practiceApplications: index === 0 ? [1, 2, 3].map(position => ({
               evidenceRequirementId: "requirement-1", opportunityId: `opportunity-${position}`,
+              invariantTaskOperation: "Comparar explicações com um critério explícito.",
               variedDimensions: [position === 3 ? "external_representation" : "context"]
             })) : []
           },
