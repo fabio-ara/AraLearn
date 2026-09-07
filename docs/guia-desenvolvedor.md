@@ -137,6 +137,13 @@ O navegador e a camada confiável distinguem conflito de revisão, repetição d
 mesma intenção, ausência de mudança e erro de validação. Só uma falha transitória
 da mesma operação admite repetição automática; conflito material exige releitura.
 
+No PostgreSQL, conflitos deliberados de revisão ou estado usam `PT409`, que
+PostgREST devolve como HTTP 409. Reserve `40001` para falhas de serialização do
+motor: versões do transporte podem repetir esse SQLSTATE sem reler os argumentos
+da aplicação. A API traduz ambos para `stale_course_state`. Os handlers que já
+produzem um envelope `PGRST` preservam seu código JSON e capturam as duas classes;
+o código dentro do JSON não é o SQLSTATE lançado pela função.
+
 Uma composição nova permanece candidata no IndexedDB até a validação integral.
 Nunca apague a última revisão válida para aceitar uma candidata incompleta.
 Estado pessoal e Anotações possuem filas específicas. Planejamento, produção,

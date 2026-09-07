@@ -36,6 +36,21 @@ export function validateStudyUnitObservationText(value) {
   return "";
 }
 
+export function revealStudyObservationControl(control) {
+  const body = control?.closest?.(".study-observation-body");
+  if (!body || typeof control.getBoundingClientRect !== "function") return;
+  const viewport = body.getBoundingClientRect();
+  if (viewport.height <= 0) return;
+  const composer = control.closest?.("[data-observation-composer]");
+  const composerRect = composer?.getBoundingClientRect?.();
+  const target = composerRect && composerRect.height <= viewport.height - 8
+    ? composerRect : control.getBoundingClientRect();
+  const delta = target.top < viewport.top + 4 ? target.top - viewport.top - 4
+    : target.bottom > viewport.bottom - 4 ? target.bottom - viewport.bottom + 4 : 0;
+  // Only this scrollport moves; the unit and the page retain their reading anchor.
+  body.scrollTop += delta * (body.clientHeight / viewport.height);
+}
+
 const CATEGORY_LABELS = Object.freeze({
   none: "Sem categoria",
   question: "Dúvida",
@@ -105,13 +120,14 @@ export function renderStudyUnitObservationComposer({
     '<div class="study-observation-category-list" role="radiogroup" aria-label="Categoria da observação">' +
     categories + "</div></details>" +
     '<label class="field">' +
-    '<textarea data-field="study-unit-observation" class="study-observation-textarea" aria-label="Observação"' +
+    '<textarea data-field="study-unit-observation" class="study-observation-textarea" rows="4" aria-label="Observação"' +
     ' data-max-scalars="' + String(STUDY_UNIT_OBSERVATION_MAX_SCALARS) +
-    '" aria-describedby="study-observation-counter" placeholder="Observação"' +
+    '" aria-describedby="study-observation-counter' + (error ? ' study-observation-error' : '') +
+    '"' + (error ? ' aria-invalid="true"' : '') + ' placeholder="Observação"' +
     (saving ? " disabled" : "") + ">" + escapeHtml(draft.rawText || "") + "</textarea>" +
     '<span class="study-observation-counter visually-hidden" id="study-observation-counter" aria-live="polite">' +
     escapeHtml(formatObservationTextBudget(draft.rawText)) + "</span></label>" +
-    (error ? '<p class="field-error" role="alert">' + escapeHtml(error) + "</p>" : "") +
+    (error ? '<p class="field-error" id="study-observation-error" role="alert">' + escapeHtml(error) + "</p>" : "") +
     '<div class="study-observation-composer-actions">' +
     (editingId
       ? '<button type="button" data-observation-action="cancel-edit"' +
@@ -229,10 +245,10 @@ export function renderStudyUnitObservationSheet({
       ? `<p class="study-observation-stale" role="status">${escapeHtml(contextMessage)}</p>`
       : "") +
     (actionHref && actionLabel
-      ? `<p class="study-observation-limited"><a href="${escapeHtml(actionHref)}"` +
+      ? `<a class="study-observation-review-action" href="${escapeHtml(actionHref)}"` +
         ` data-inspection-route${actionControlKey
           ? ` data-inspection-control-key="${escapeHtml(actionControlKey)}"`
-          : ""}>${escapeHtml(actionLabel)}</a></p>`
+          : ""}>${renderUiIcon("preview", "home-tab-icon")}<span>${escapeHtml(actionLabel)}</span></a>`
       : "") +
     (!showComposer && error
       ? '<p class="field-error" role="alert">' + escapeHtml(error) + "</p>"
@@ -244,7 +260,7 @@ export function renderStudyUnitObservationSheet({
         '<a href="' + escapeHtml(canonicalHref) +
         '" data-inspection-route>Abrir todas na área Observações</a>.</p>'
       : "") +
-    (visibleItems.length || !showComposer
+    (visibleItems.length || (!showComposer && !loading && !error)
       ? '<div class="study-observation-list" aria-label="' + escapeHtml(listLabel) + '">' +
         (visibleItems.length
           ? visibleItems.map((item) => renderItem(item, {

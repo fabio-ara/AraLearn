@@ -469,15 +469,16 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     assert.match(source, new RegExp(removed, "u"));
   }
   assert.match(source, /LEGACY_PERSONAL_OBSERVATIONS_ACCESS/u);
-  assert.match(source, /legacyPersonalObservationsStayInHandoffConverter/u);
-  assert.match(source, /accesses\.length === 2/u);
+  assert.match(source, /if \(LEGACY_PERSONAL_OBSERVATIONS_ACCESS\.test\(source\)\) \{\s*fail\(/u);
+  assert.doesNotMatch(source, /legacyPersonalObservationsStayInHandoffConverter|accesses\.length === 2/u);
   assert.match(source, /src\/ui\/CourseObservationsPanel\.js/u);
   assert.match(source, /src\/ui\/renderStudyUnitObservationSheet\.js/u);
   const manifest = JSON.parse(fs.readFileSync(
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260905163000");
+  assert.equal(manifest.schemaRevision, "20260907031059");
+  assert.equal(manifest.requiredFeatures.includes("course-business-conflicts-http-409-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v2"), false);
   assert.equal(manifest.requiredFeatures.includes("course-instructional-plan-v3"), true);
   assert.equal(manifest.requiredFeatures.includes("course-curricular-map-v1"), true);
@@ -555,8 +556,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260905163000_canonical_runtime_manifest_features.sql",
-    revision: "20260905163000"
+    fileName: "20260907031059_declare_business_conflict_runtime_manifest.sql",
+    revision: "20260907031059"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

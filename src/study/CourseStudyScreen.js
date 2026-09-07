@@ -828,8 +828,13 @@ export function renderStudyDraftRecovery({ recovery, error = "" } = {}) {
   try {
     content = listManualStudyUnitEditablePaths(pending.studyUnit, pending.targetId)
       .map(({ value }) => String(value));
+    if (content.length === 0) throw new TypeError("Rascunho sem campos de texto conhecidos.");
   } catch {
-    content = [JSON.stringify(pending.studyUnit ?? pending, null, 2)];
+    try {
+      content = [JSON.stringify(pending.studyUnit ?? pending.originalSnapshot, null, 2)];
+    } catch {
+      content = ["O conteúdo está preservado, mas este formato não permite visualização em texto."];
+    }
   }
   const confirmed = recovery.status === "confirmed" && recovery.targetCourseId;
   return '<details class="study-draft-recovery clean-card"' + (error ? ' open' : '') + '><summary>Rascunho guardado</summary>' +
@@ -843,5 +848,6 @@ export function renderStudyDraftRecovery({ recovery, error = "" } = {}) {
       '<pre>' + escapeHtml(value) + '</pre>').join('') + '</div>' +
     (confirmed ? '<button class="open-mini" type="button" data-action="open-course" data-course-id="' +
       escapeHtml(recovery.targetCourseId) + '">Abrir meu curso</button>' : '') +
+    '<button class="open-mini" type="button" data-action="export-study-draft-recovery">Exportar rascunho integral</button>' +
     '<button class="open-mini" type="button" data-action="discard-study-draft-recovery">Descartar rascunho guardado</button></details>';
 }

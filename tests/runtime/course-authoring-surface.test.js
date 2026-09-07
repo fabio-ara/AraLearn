@@ -1081,6 +1081,110 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
 });
 
 
+for (const updatedRevision of [5, 6]) {
+  test(`retorno ao Planejamento usa somente o plano da revisão aceita ${updatedRevision}`, async () => {
+    const root = new TrackingRoot();
+    const reads = [];
+    let revision = 5;
+    const locationValue = {
+      pathname: "/", search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    };
+    const surface = createCourseAuthoringSurface({
+      root,
+      controller: controllerFixture({
+        async getCourse() {
+          reads.push(`course:${revision}`);
+          return courseDetailFixture({ revision });
+        },
+        async loadAuthoringPlan() {
+          reads.push(`plan:${revision}`);
+          const plan = authoringPlanFixture({ courseRevision: revision });
+          plan.plan.audience = `Público da revisão ${revision}.`;
+          return plan;
+        }
+      }),
+      locationValue,
+      windowValue: new FakeWindow()
+    });
+    try {
+      assert.equal(await surface.open(), true);
+      revision = updatedRevision;
+      locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "content" });
+      assert.equal(await surface.open(), true);
+      assert.deepEqual(reads, ["course:5", "plan:5", `course:${revision}`],
+        "Aceitar o detalhe não deve antecipar uma leitura do planejamento.");
+
+      root.renderWrites.length = 0;
+      locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "planning" });
+      assert.equal(await surface.open(), true);
+      assert.deepEqual(reads, ["course:5", "plan:5", `course:${revision}`,
+        ...(revision === 6 ? ["plan:6"] : [])]);
+      assert.match(root.innerHTML, new RegExp(`Público da revisão ${revision}\\.`, "u"));
+      if (revision === 6) {
+        assert.equal(root.renderWrites.some(html => /Público da revisão 5\./u.test(html)), false);
+      }
+    } finally {
+      surface.destroy();
+    }
+  });
+}
+
+for (const failure of ["unavailable", "stale-plan"]) {
+  test(`retorno ao Planejamento conserva recuperação sem reutilizar plano antigo: ${failure}`, async () => {
+    const root = new TrackingRoot();
+    const reads = [];
+    let revision = 5;
+    let failNextPlan = false;
+    const locationValue = {
+      pathname: "/", search: "",
+      hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" })
+    };
+    const surface = createCourseAuthoringSurface({
+      root,
+      controller: controllerFixture({
+        async getCourse() {
+          reads.push(`course:${revision}`);
+          return courseDetailFixture({ revision });
+        },
+        async loadAuthoringPlan() {
+          reads.push(`plan:${revision}`);
+          if (failNextPlan && failure === "unavailable") throw new Error("Serviço indisponível.");
+          const planRevision = failNextPlan ? 5 : revision;
+          const plan = authoringPlanFixture({ courseRevision: planRevision });
+          plan.plan.audience = `Público da revisão ${planRevision}.`;
+          return plan;
+        }
+      }),
+      locationValue,
+      windowValue: new FakeWindow()
+    });
+    try {
+      assert.equal(await surface.open(), true);
+      revision = 6;
+      locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "content" });
+      assert.equal(await surface.open(), true);
+      failNextPlan = true;
+      root.renderWrites.length = 0;
+      locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "planning" });
+      assert.equal(await surface.open(), false);
+      assert.match(root.innerHTML, /Planejamento indisponível/u);
+      assert.match(root.innerHTML, /data-course-authoring-action="retry-planning"/u);
+      assert.deepEqual(reads, ["course:5", "plan:5", "course:6", "plan:6"]);
+
+      failNextPlan = false;
+      designAction(root, "retry-planning");
+      await new Promise(resolve => setImmediate(resolve));
+      assert.deepEqual(reads, ["course:5", "plan:5", "course:6", "plan:6", "plan:6"]);
+      assert.match(root.innerHTML, /Público da revisão 6\./u);
+      assert.doesNotMatch(root.innerHTML, /Planejamento indisponível/u);
+      assert.equal(root.renderWrites.some(html => /Público da revisão 5\./u.test(html)), false);
+    } finally {
+      surface.destroy();
+    }
+  });
+}
+
 test("refresh do Planejamento aplica revisão nova uma vez sem telas intermediárias", async () => {
   const root = new TrackingRoot();
   const courseRead = deferredValue();
@@ -1190,7 +1294,8 @@ test("falha de refresh preserva o Planejamento e sinaliza a indisponibilidade de
     ),
     false
   );
-  assertAccessibleSyncIndicator(root.innerHTML, /sem (?:sincronização|conexão)|offline/iu);
+  assertAccessibleSyncIndicator(root.innerHTML, /Atualização pendente|estado da sincronização/iu);
+  assert.doesNotMatch(root.innerHTML, /Sincronizando|Sem conexão/iu);
 });
 
 test("refresh de Parâmetros preserva Curso e desenho até aplicar o snapshot completo", async () => {

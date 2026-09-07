@@ -467,7 +467,7 @@ export class CourseStudyRepository {
     this.listRuntimeStatus = {
       offline: listed.offline === true,
       stale: listed.stale === true,
-      readOnly: listed.offline === true
+      readOnly: listed.offline === true || listed.stale === true
     };
     const list = listed.items;
     const retained = new Set();
@@ -478,11 +478,11 @@ export class CourseStudyRepository {
         this.offlineCourseRevisionById.delete(descriptor.courseId);
       }
       const loaded = this.loadedCourseById.get(descriptor.courseId);
-      if (!listed.offline && loaded && loaded.revision !== descriptor.revision) {
+      if (!(listed.offline || listed.stale) && loaded && loaded.revision !== descriptor.revision) {
         loaded.offline = false;
         loaded.stale = true;
         loaded.readOnly = true;
-      } else if (!listed.offline && loaded) {
+      } else if (!(listed.offline || listed.stale) && loaded) {
         if (loaded.offline === true || loaded.stale === true || loaded.readOnly === true) {
           loaded.stale = true;
           loaded.readOnly = true;
@@ -493,7 +493,7 @@ export class CourseStudyRepository {
         }
       }
     }
-    if (!listed.offline) {
+    if (!(listed.offline || listed.stale)) {
       const knownCourseIds = new Set([
         ...this.courseList.map((item) => item.courseId),
         ...this.loadedCourseById.keys(),
@@ -513,7 +513,7 @@ export class CourseStudyRepository {
     }
     for (const [courseId, personal] of this.personalByCourseId) {
       if (retained.has(courseId)) continue;
-      if (listed.offline) continue;
+      if (listed.offline || listed.stale) continue;
       await personal.clearLocal();
       const annotations = this.annotationsByCourseId.get(courseId);
       if (annotations) {
@@ -526,13 +526,13 @@ export class CourseStudyRepository {
       this.loadedCourseById.delete(courseId);
     }
     for (const courseId of this.loadedCourseById.keys()) {
-      if (!retained.has(courseId) && !listed.offline) {
+      if (!retained.has(courseId) && !(listed.offline || listed.stale)) {
         this.loadedCourseById.delete(courseId);
         this.offlineCourseRevisionById.delete(courseId);
       }
     }
     this.courseList = clone(list);
-    if (!listed.offline) await this.#pruneStudyNavigation(retained);
+    if (!(listed.offline || listed.stale)) await this.#pruneStudyNavigation(retained);
     if (this.studyNavigation.selectedCourseId &&
         retained.has(this.studyNavigation.selectedCourseId)) {
       await this.refreshCourseOfflineAvailability(this.studyNavigation.selectedCourseId);
@@ -551,7 +551,7 @@ export class CourseStudyRepository {
       this.reviewCursor = this.reviewHasMore ? clone(cached?.nextCursor) : null;
     }
     this.reviewItems = this.reviewItems.filter((item) => retained.has(item?.courseId));
-    if (!listed.offline) {
+    if (!(listed.offline || listed.stale)) {
       await this.#cacheReviewPage();
     }
     this.#rebuildProject();
@@ -1003,13 +1003,13 @@ export class CourseStudyRepository {
     return this.bridge.loadStudyDraftRecovery(sourceCourseId);
   }
 
-  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
-    return this.bridge.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId) ?? Promise.resolve(false);
+  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null, expectedRecoveryId = null) {
+    return this.bridge.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId, expectedRecoveryId) ?? Promise.resolve(false);
   }
 
-  async recoverStudyDraft(sourceCourseId = null) {
+  async recoverStudyDraft(sourceCourseId = null, expectedRecoveryId = null) {
     if (this.visitor || typeof this.bridge.recoverStudyDraft !== "function") return null;
-    const result = await this.bridge.recoverStudyDraft(sourceCourseId);
+    const result = await this.bridge.recoverStudyDraft(sourceCourseId, expectedRecoveryId);
     if (result?.targetCourseId && result.status === "confirmed") {
       await this.loadCourseById(result.targetCourseId);
       const descriptor = this.courseList.find((item) => item.courseId === result.targetCourseId);
@@ -1249,6 +1249,11 @@ export class CourseStudyRepository {
     for (const courseId of this.loadedCourseById.keys()) {
       try {
         await this.bridge.checkCourseAccess(courseId);
+        // Authorized network access clears an old connectivity failure without
+        // promoting the cached revision or flushing pending work in manual mode.
+        this.listRuntimeStatus.offline = false;
+        const loaded = this.loadedCourseById.get(courseId);
+        if (loaded) loaded.offline = false;
       } catch (error) {
         if (courseAccessRevoked(error)) revokedCourseIds.push(courseId);
         else if (!networkFailure(error)) throw error;

@@ -67,6 +67,30 @@ Para cada parte:
 O chat deve permanecer curto. Detalhes ficam no mapa e no conteúdo, não em
 explicações sobre o mecanismo do AraLearn.
 
+## Inspecionar e ajustar no aplicativo
+
+Em **Planejamento**, use a seta para revelar um ramo e **Objetivo** para ler o
+texto completo. Os acessos ao conteúdo e os vínculos de cobertura levam ao
+ponto correspondente; voltar conserva o mapa que estava aberto.
+
+Em **Conteúdo**, **Mostrar várias unidades** amplia a leitura. Selecione os
+alvos separadamente quando quiser registrar uma observação em lote. O comando
+**Editar** de qualquer unidade a focaliza e preserva o trabalho pendente nas
+condições indicadas pelo aviso. Essa edição é manual; a Assistência por IA fica
+em Estudo.
+
+**Parâmetros** permite consultar os escopos do curso e distinguir intenção
+automática, valor fixo e herança. Trocar o escopo conserva os ajustes ainda não
+salvos em seu contexto. **Observações** pode ser aberta apenas para consultar;
+um texto alterado ou um envio parcial é que exige retomar o trabalho antes de
+uma operação incompatível.
+
+Depois de produzir outro lote pela conversa, use a nuvem para atualizar o
+curso. A leitura preserva a unidade focal quando ela ainda existe. No modo
+manual, a consulta explícita continua disponível e não muda a preferência do
+dispositivo para automática. Uma cópia local disponível não confirma que a
+última produção já foi recebida.
+
 ## Acompanhar ideias ao longo do percurso
 
 O repertório acumulado inclui conceitos, relações, condições, procedimentos e

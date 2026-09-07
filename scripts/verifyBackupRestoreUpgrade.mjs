@@ -231,10 +231,11 @@ async function cloneDatabase(source, target) {
   await resetPostgresDatabase(target);
   await pipeProcesses(
     "docker",
-    // This clone prepares a historical synthetic fixture, not a disaster backup
-    // of the source. Current buckets/objects must not contaminate that epoch.
+    // Only platform structure prepares this historical fixture. Current rows
+    // would be discarded below and may depend on catalog data during COPY.
+    // The later dump/restore of the actual proof still includes all its data.
     ["exec", source, "pg_dump", "-U", "postgres", "-d", "postgres", "-Fc", "--no-owner",
-      "--exclude-table-data=storage.*"],
+      "--schema-only"],
     "docker",
     ["exec", "-i", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
       "--no-owner", "--exit-on-error"]
@@ -291,6 +292,9 @@ function applyMigrationFiles(container, migrationNames, containerDirectory) {
     "-X", "-v", "ON_ERROR_STOP=1",
     ...migrationNames.flatMap((name) => ["-f", `${containerDirectory}/${name}`])
   ], { timeout: 15 * 60_000 });
+  // Schema-only preparation brings no source migration history. Record the
+  // historical chain actually applied, rather than inheriting current rows.
+  for (const name of migrationNames) recordAppliedMigration(container, name);
 }
 
 async function restoreBackupFile(source, backupPath, target) {
@@ -313,7 +317,7 @@ function copyAndApply(container, localPath, containerPath) {
 }
 
 function recordAppliedMigration(container, migration) {
-  const match = /^(\d{14})_([a-z0-9_]+)\.sql$/u.exec(path.basename(migration));
+  const match = /^(001|\d{14})_([a-z0-9_]+)\.sql$/u.exec(path.basename(migration));
   if (!match) throw new TypeError(`Migration final inválida: ${migration}`);
   command("docker", [
     "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",

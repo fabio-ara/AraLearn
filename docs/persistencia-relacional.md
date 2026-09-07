@@ -36,6 +36,17 @@ itens de escopo, repertório de unidades de análise, requisitos de evidência e
 partes. Cada parte referencia microssequências já existentes. Esses vínculos
 permitem preparar um lote sem convertê-lo em nível didático.
 
+A composição de Estudo e a exportação preservam `scopeItemIds` quando esses
+vínculos de cobertura estão presentes na microssequência: são até 64 UUIDs
+canônicos distintos, ligados aos itens do mapa. `covers` contém os textos de
+cobertura e não substitui esses IDs. `dependsOn` referencia microssequências
+anteriores na ordem global do mesmo curso, inclusive em outra lição ou módulo.
+A leitura rejeita dependências inexistentes, posteriores, cíclicas ou de uma
+microssequência para si mesma; não reescreve o plano ou remove vínculos.
+A assistência estrutural conserva os vínculos das microssequências existentes
+pela identidade corrente, sem delegar sua atribuição ao provedor. Uma nova
+microssequência não recebe vínculos de cobertura inventados pela aplicação.
+
 Parâmetros pedagógicos, alvos editoriais quantitativos, direção editorial e
 política de componentes possuem uma atribuição corrente por curso ou escopo
 permitido. Os alvos são flexíveis e não funcionam como limites de conteúdo.
@@ -265,6 +276,9 @@ observada entre abas. No modo manual, listas, composição já aberta e filas de
 estudo usam o cache; `explicit: true` distingue a sincronização solicitada. Uma
 consulta de acesso separada continua fresca e retira cursos cuja revogação foi
 confirmada, sem substituir o conteúdo dos cursos autorizados.
+Quando essa consulta confirma acesso pela rede, o indicador deixa de reutilizar
+a marca antiga de desconexão. A revisão em cache, sua restrição de edição e as
+pendências permanecem; o evento `online` sozinho não confirma acesso ao serviço.
 
 Transações IndexedDB leem a revisão local atual antes de aplicar cada alteração.
 Conclusões independentes na mesma lição e marcas de unidades diferentes são

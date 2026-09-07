@@ -262,7 +262,7 @@ test("microsequence.errors pertence ao contrato e é preservado", () => {
   );
 });
 
-test("dependsOn referencia somente pré-requisitos anteriores da mesma lição e não forma ciclo", () => {
+test("dependsOn referencia somente pré-requisitos anteriores no Curso e não forma ciclo", () => {
   function appendMicrosequence(project, id, dependsOn = []) {
     const copy = structuredClone(nested(project).microsequence);
     copy.id = id;
@@ -284,7 +284,7 @@ test("dependsOn referencia somente pré-requisitos anteriores da mesma lição e
       mutate(project) {
         nested(project).microsequence.dependsOn = ["micro-ausente"];
       },
-      expected: /Dependência inexistente na mesma lição/u
+      expected: /Dependência inexistente no Curso/u
     },
     {
       label: "autorreferência",

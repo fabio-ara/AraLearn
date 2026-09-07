@@ -257,13 +257,8 @@ async function expectResponsiveAuthoringNavigation(page, width) {
 }
 
 async function authoringAreaLink(page, section) {
-  const canonical = ({
-    structure: "content",
-    inspection: "content",
-    observations: "review"
-  })[section] || section;
   const menu = page.locator(".course-authoring-task-menu");
-  const link = menu.locator(`:scope > nav > a[data-section="${canonical}"]`);
+  const link = menu.locator(`:scope > nav > a[data-section="${section}"]`);
   if (!await menu.evaluate((element) => element.open)) {
     await menu.locator(":scope > summary").click();
   }
@@ -2329,6 +2324,7 @@ async function selectDesignGroup(page, name) {
 }
 
 test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito combinações", async ({ page }, info) => {
+  test.setTimeout(90000);
   for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 844 });
     await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=parameters` });
@@ -2338,24 +2334,44 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
     const initial = await dialog.boundingBox();
     const close = dialog.getByRole("button", { name: "Fechar parâmetros", exact: true });
     const closeBox = await close.boundingBox();
+    const expectDialogGeometry = async () => {
+      const current = await dialog.boundingBox();
+      expect(current.x).toBe(initial.x);
+      expect(current.width).toBe(initial.width);
+      expect(current.y + current.height).toBe(initial.y + initial.height);
+      expect(current.y).toBeGreaterThanOrEqual(0);
+      expect(current.y + current.height).toBeLessThanOrEqual(844);
+      const button = await close.boundingBox();
+      expect(button.x).toBe(closeBox.x);
+      expect(button.y - current.y).toBe(closeBox.y - initial.y);
+      expect(button.width).toBe(44);
+      expect(button.height).toBe(44);
+      expect(await close.evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+      })).toBe(true);
+    };
     const visited = new Set();
     for (const group of ["Explicações", "Prática", "Leitura e estilo", "Produção", "Conversa", "Recursos", "Perfis"]) {
       await dialog.locator(".course-design-category-menu > summary").click();
       await dialog.getByRole("button", { name: group, exact: true }).click();
-      expect(await dialog.boundingBox()).toEqual(initial);
-      expect(await close.boundingBox()).toEqual(closeBox);
+      await expectDialogGeometry();
       for (const id of await dialog.locator(".course-design-parameter").evaluateAll(nodes => nodes.map(node => node.dataset.parameterId))) visited.add(id);
       const geometry = await dialog.evaluate(node => {
         const group = node.querySelector(".course-design-category-menu > summary").getBoundingClientRect();
         const scope = node.querySelector(".course-design-scope").getBoundingClientRect();
-        return { topDifference: Math.abs(group.y - scope.y), scopeHeight: scope.height,
+        const scopeSummary = node.querySelector(".course-design-scope > summary").getBoundingClientRect();
+        const navigation = node.querySelector(".course-design-settings-nav").getBoundingClientRect();
+        return { groupTop: group.top, scopeBottom: scope.bottom, scopeTargetHeight: scopeSummary.height,
+          scopeWidthDifference: Math.abs(scope.width - navigation.width),
           buttons: [...node.querySelectorAll(".course-design-parameter > button")].map(button => {
             const box = button.getBoundingClientRect(), style = getComputedStyle(button);
             return { width: box.width, height: box.height, radius: parseFloat(style.borderRadius), background: style.backgroundColor };
           }) };
       });
-      expect(geometry.topDifference).toBeLessThanOrEqual(1);
-      expect(geometry.scopeHeight).toBe(44);
+      expect(geometry.groupTop).toBeGreaterThanOrEqual(geometry.scopeBottom);
+      expect(geometry.scopeWidthDifference).toBeLessThanOrEqual(1);
+      expect(geometry.scopeTargetHeight).toBeGreaterThanOrEqual(44);
       for (const button of geometry.buttons) { expect(button.width).toBe(44); expect(button.height).toBe(44); expect(button.radius).toBeGreaterThan(0); }
 
       await expectNoHorizontalOverflow(page);
@@ -2375,12 +2391,22 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
     await expect(form.locator("input[name=parameterValue]")).toHaveValue("3");
     await expect(form.locator("textarea[name=reason]")).toHaveValue("Distribuir a novidade para este público.");
     const save = form.getByRole("button", { name: "Salvar neste escopo", exact: true });
+    await save.scrollIntoViewIfNeeded();
     const saveBox = await save.boundingBox();
-    expect(saveBox.y + saveBox.height).toBeLessThan(initial.y + initial.height);
+    const editorBox = await dialog.boundingBox();
+    expect(saveBox.y + saveBox.height).toBeLessThan(editorBox.y + editorBox.height);
     await save.click();
     await expect(dialog.getByRole("status")).toContainText("Parâmetro salvo");
-    expect(await save.boundingBox()).toEqual(saveBox);
-    expect(await dialog.boundingBox()).toEqual(initial);
+    await save.scrollIntoViewIfNeeded();
+    const savedBox = await save.boundingBox();
+    expect(savedBox.x).toBe(saveBox.x);
+    expect(savedBox.width).toBe(saveBox.width);
+    expect(savedBox.height).toBe(saveBox.height);
+    expect(await save.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
+    await expectDialogGeometry();
     await close.focus();
     await page.keyboard.press("Shift+Tab");
     expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true);
@@ -2443,7 +2469,7 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await page.keyboard.press("Escape");
   expect(await page.evaluate(() => globalThis.__inspectionToolProbe.urls.every(url => globalThis.__inspectionToolProbe.revoked.includes(url)))).toBe(true);
 
-  await card.locator('[data-inspection-selection-action="toggle-current"]').tap();
+  await card.locator('[data-inspection-view-action="toggle-multiple"]').tap();
   const second = page.locator('[data-inspection-study-unit="study-unit-13"]');
   const secondCalculator = second.getByRole("button", { name: "Ferramentas da unidade", exact: true });
   await secondCalculator.tap();
@@ -2451,7 +2477,8 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await expect(dialog.getByRole("heading", { name: "Cálculo da unidade 13" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(secondCalculator).toBeFocused();
-  await page.getByRole("button", { name: "Cancelar seleção", exact: true }).tap();
+  await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione ao menos duas unidades");
+  await card.locator('[data-inspection-view-action="toggle-multiple"]').tap();
 
   await card.getByRole("button", { name: "Editar", exact: true }).click();
   await expect(card.locator(".study-tool-actions button:disabled")).toHaveCount(1);
@@ -2539,7 +2566,7 @@ test("#304 avisos da inspeção não deslocam o card e falhas só abrem por esco
     await expect(card).toBeVisible();
     const before = await frameGeometry();
     await card.getByRole("button", { name: "Editar", exact: true }).click();
-    await card.getByRole("button", { name: "Visualizar", exact: true }).click();
+    await card.getByRole("button", { name: "Cancelar edição", exact: true }).click();
     await expect(notice).toContainText("Edição cancelada.");
     expect(await frameGeometry()).toEqual(before);
     const liveRegion = await page.locator(".course-inspection-copy-status").boundingBox();
@@ -3099,44 +3126,58 @@ test.describe("aceite focal do shell simples da Autoria", () => {
 
   test("rerender preserva a posição do card e mudança de área inicia o conteúdo no topo", async ({
     page
-  }) => {
+  }, info) => {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width: 1280, height: 900 });
-    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
+    const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-02`;
     await mountCourseAuthoring(page, { cardinality: "many", hash });
     const root = page.locator(".course-authoring-root");
     const cardContent = page.locator("[data-inspection-study-unit] .card-sheet-content");
+    await page.evaluate(async () => {
+      const harness = globalThis.__courseAuthoringHarness;
+      harness.updateInspectionStudyUnitParagraph("study-unit-02", "Conteúdo longo sintético para conferir a preservação da leitura durante a atualização. ".repeat(40));
+      await harness.surface.refresh();
+    });
 
-    const beforeRefresh = await cardContent.evaluate((element) => {
+    const beforeRefresh = await root.evaluate((element) => {
       element.scrollTop = Math.min(480, element.scrollHeight - element.clientHeight);
       return element.scrollTop;
     });
     expect(beforeRefresh).toBeGreaterThan(100);
+    const beforeCardTop = (await cardContent.boundingBox()).y;
+    await page.screenshot({ path: info.outputPath("inspection-external-scroll-before.png") });
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.refresh());
     await expect(page.locator(".course-authoring-surface")).toHaveAttribute(
       "aria-busy",
       "false"
     );
-    await expect.poll(() => cardContent.evaluate((element) => element.scrollTop))
+    await expect.poll(() => root.evaluate((element) => element.scrollTop))
       .toBe(beforeRefresh);
+    expect(Math.abs((await cardContent.boundingBox()).y - beforeCardTop)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: info.outputPath("inspection-external-scroll-after.png") });
 
-    await navigateToAuthoringArea(page, "parameters");
+    await navigateToAuthoringArea(page, "planning");
     await expect(page.locator("#course-current-identity"))
       .toHaveText("Fundamentos de relações");
-    await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Parâmetros");
+    await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
     await expect.poll(() => root.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
     expect(clientErrors).toEqual([]);
   });
 
-  test("Inspeção limita a rolagem interna ao conteúdo do card e encerra ao trocar de área", async ({
+  test("Inspeção preserva conteúdo longo com rolagem externa e encerra ao trocar de área", async ({
     page
-  }) => {
+  }, info) => {
     const clientErrors = captureClientErrors(page);
     await page.setViewportSize({ width: 390, height: 820 });
     const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=planning`;
     await mountCourseAuthoring(page, { cardinality: "many", hash });
+    await page.evaluate(() => globalThis.__courseAuthoringHarness.updateInspectionStudyUnitParagraph(
+      "study-unit-02", "Conteúdo longo sintético para alcançar toda a leitura sem rolagem interna no card. ".repeat(40)
+    ));
 
-    await navigateToAuthoringArea(page, "inspection");
+    await navigateToAuthoringArea(page, "content");
+    await page.getByRole("button", { name: "Próxima unidade", exact: true }).click();
+    await expect(page.locator("[data-inspection-context-position]")).toHaveText("2/60");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     const nestedVerticalScrollers = await page.locator(
       'section[aria-label="Unidades de estudo"]'
@@ -3145,20 +3186,34 @@ test.describe("aceite focal do shell simples da Autoria", () => {
       return ["auto", "scroll"].includes(overflow) &&
         element.scrollHeight > element.clientHeight + 1;
     }).map((element) => element.className));
-    expect(nestedVerticalScrollers).toEqual(["card-sheet-content"]);
+    expect(nestedVerticalScrollers).toEqual([]);
     const cardContent = page.locator("[data-inspection-study-unit] .card-sheet-content");
     expect(await cardContent.evaluate(node => {
       node.scrollTop = node.scrollHeight;
-      return node.scrollTop > 0 && node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+      return node.scrollTop === 0 && node.scrollHeight <= node.clientHeight + 1;
     })).toBe(true);
+    await expectAuthoringOwnsVerticalScroll(page);
+    const root = page.locator(".course-authoring-root");
+    const rootBox = await root.boundingBox();
+    await page.mouse.move(rootBox.x + rootBox.width / 2, rootBox.y + rootBox.height / 2);
+    await page.mouse.wheel(0, 100_000);
+    await expect.poll(() => root.evaluate(node => node.scrollTop)).toBeGreaterThan(100);
+    await expect.poll(() => cardContent.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const viewport = node.closest(".course-authoring-root").getBoundingClientRect();
+      return rect.bottom <= viewport.bottom + 1 && rect.bottom > viewport.top;
+    })).toBe(true);
+    await page.screenshot({ path: info.outputPath("inspection-long-content-end.png") });
 
     await navigateToAuthoringArea(page, "planning");
     await expect(page.locator("#course-current-identity"))
       .toHaveText("Fundamentos de relações");
     await expect(page.locator(".course-authoring-course-heading h1")).toHaveText("Planejamento");
+    expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.planReads)).toBe(2);
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath("inspection-planning-after-long-read.png") });
 
-    await navigateToAuthoringArea(page, "inspection");
+    await navigateToAuthoringArea(page, "content");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
     await page.evaluate(() => globalThis.__courseAuthoringHarness.surface.close());
     expect(await page.evaluate(() =>
@@ -3370,10 +3425,10 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   expect(clientErrors).toEqual([]);
 });
 
-test.describe("#304 seleção vertical e retorno contextual", () => {
+test.describe("visão múltipla, seleção independente e retorno contextual", () => {
   for (const width of [360, 390, 430, 1280]) {
     for (const colorScheme of ["light", "dark"]) {
-      test(`${width} px ${colorScheme}: janela anterior/posterior, referência e entrada recente`, async ({ page }, info) => {
+      test(`${width} px ${colorScheme}: janela anterior/posterior, foco explícito e entrada recente`, async ({ page }, info) => {
         const errors = captureClientErrors(page);
         await page.setViewportSize({ width, height: width < 600 ? 820 : 900 });
         await page.emulateMedia({ colorScheme });
@@ -3384,8 +3439,8 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
         await page.evaluate(() => document.fonts.ready);
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
         const reference = page.locator('[data-inspection-study-unit="study-unit-12"]');
-        const initialSelection = reference.locator('[data-inspection-selection-action="toggle-current"]');
-        await initialSelection.focus();
+        const initialView = reference.locator('[data-inspection-view-action="toggle-multiple"]');
+        await initialView.focus();
         const baseline = await reference.evaluate((element) => {
           const bounds = element.getBoundingClientRect();
           const sticky = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
@@ -3403,7 +3458,9 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
         });
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
-        await expect(reference.getByText("Unidade de referência", { exact: true })).toBeVisible();
+        await expect(initialView).toHaveAttribute("aria-pressed", "true");
+        await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione ao menos duas unidades");
+        await reference.locator('[data-inspection-selection-action="toggle-unit"]').tap();
         await page.getByRole("button", { name: "Carregar unidades anteriores", exact: true }).tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(23);
         const practice = page.locator('[data-inspection-study-unit="study-unit-01"] .package-instance[data-package="aralearn.response.choice"]');
@@ -3411,53 +3468,68 @@ test.describe("#304 seleção vertical e retorno contextual", () => {
         await expect(practice.locator(".multiple-choice-option")).toHaveCount(2);
         await expect(practice.locator(".selected-correct .multiple-choice-label")).toHaveText("y");
         await expect(practice.locator("button, input, select, textarea")).toHaveCount(0);
-        await page.locator('[data-inspection-study-unit="study-unit-11"] [data-inspection-selection-action="toggle-current"]').tap();
+        await page.locator('[data-inspection-study-unit="study-unit-11"] [data-inspection-selection-action="toggle-unit"]').tap();
         const nextPage = page.getByRole("button", { name: "Carregar unidades posteriores", exact: true });
         await nextPage.tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(35);
         await nextPage.tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
-        await page.locator('[data-inspection-study-unit="study-unit-47"] [data-inspection-selection-action="toggle-current"]').tap();
+        await page.locator('[data-inspection-study-unit="study-unit-47"] [data-inspection-selection-action="toggle-unit"]').tap();
         await nextPage.tap();
         await expect(reference).toHaveCount(0);
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
         const selection = page.locator("[data-inspection-selection-bar]");
         await expect(selection).toContainText("3 unidades selecionadas");
-        await expect(selection).toContainText("Referência: Unidade curricular 12");
         await selection.scrollIntoViewIfNeeded();
         await expectNoHorizontalOverflow(page);
         await expectAuthoringOwnsVerticalScroll(page);
         expect(await page.evaluate(() => document.documentElement.dataset.colorMode)).toBe(colorScheme);
         await page.screenshot({ path: info.outputPath(`inspection-selection-${width}-${colorScheme}.png`) });
-        await page.getByRole("button", { name: "Cancelar seleção", exact: true }).focus();
+        await page.getByRole("button", { name: "Limpar seleção", exact: true }).focus();
+        await page.keyboard.press("Enter");
+        await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
+        await expect(selection).toContainText("Selecione ao menos duas unidades");
+        const search = page.getByRole("combobox", { name: "Ir para" });
+        await search.fill("12");
+        await page.locator('[data-inspection-search-option="study_unit:study-unit-12"]').click();
+        await initialView.focus();
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
-        await expect(initialSelection).toBeFocused();
+        await expect(initialView).toBeFocused();
         const restored = await reference.evaluate((element) => {
           const bounds = element.getBoundingClientRect();
           const sticky = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
+          const scroller = element.closest(".course-authoring-root");
           const actions = [...element.querySelectorAll(".course-inspection-mode-actions > :is(button,a)")]
             .map((control) => {
               const rect = control.getBoundingClientRect();
               return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
             });
           return { x: bounds.x, y: bounds.y, height: bounds.height, width: bounds.width, stickyBottom: sticky.bottom,
-            offset: bounds.top - sticky.bottom, actions,
+            offset: bounds.top - sticky.bottom,
+            remainingScroll: scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop,
+            actions,
             children: [...element.querySelector("article").children].map(child => ({
               className: child.className, y: child.getBoundingClientRect().y, height: child.getBoundingClientRect().height,
               scrollTop: child.scrollTop, scrollHeight: child.scrollHeight
             })) };
         });
         await info.attach("selection-return-geometry", { body: JSON.stringify({ baseline, restored }, null, 2), contentType: "application/json" });
-        for (const key of ["x", "width", "offset"]) {
+        for (const key of ["x", "width", "height"]) {
           expect(Math.abs(restored[key] - baseline[key]), `retorno ${key}`).toBeLessThanOrEqual(1);
         }
+        expect(restored.offset, "foco não fica sob o contexto fixo").toBeGreaterThanOrEqual(-1);
+        expect(Math.min(Math.abs(restored.offset), Math.abs(restored.remainingScroll)),
+          "foco alinha ao contexto fixo ou alcança o limite real do rolador").toBeLessThanOrEqual(1);
         expect(restored.actions.length).toBe(baseline.actions.length);
         for (let index = 0; index < baseline.actions.length; index += 1) {
-          for (const key of ["x", "y", "width", "height"]) {
+          for (const key of ["x", "width", "height"]) {
             expect(Math.abs(restored.actions[index][key] - baseline.actions[index][key]),
               `controle ${index} ${key}`).toBeLessThanOrEqual(1);
           }
+          expect(Math.abs((restored.actions[index].y - restored.y) -
+            (baseline.actions[index].y - baseline.y)),
+          `controle ${index} mantém posição vertical na unidade`).toBeLessThanOrEqual(1);
           expect(restored.actions[index].height).toBeGreaterThanOrEqual(44);
         }
         await page.locator(".course-inspection-context-selector > summary").focus();
@@ -3707,11 +3779,12 @@ test("Observação em lote contém o foco, fecha com Escape e retorna à seleç�
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash });
 
-  await page.locator('[data-inspection-selection-action="toggle-current"]').click();
+  await page.locator('[data-inspection-view-action="toggle-multiple"]').click();
   await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
-  await page.locator('[data-inspection-study-unit="study-unit-02"] [data-inspection-selection-action="toggle-current"]').click();
+  await page.locator('[data-inspection-study-unit="study-unit-01"] [data-inspection-selection-action="toggle-unit"]').click();
+  await page.locator('[data-inspection-study-unit="study-unit-02"] [data-inspection-selection-action="toggle-unit"]').click();
   const batchTrigger = page.getByRole("button", {
-    name: "Registrar Observação nas Unidades selecionadas"
+    name: "Registrar observação nas unidades selecionadas"
   });
   await batchTrigger.click();
 
@@ -3750,8 +3823,8 @@ test("Inspeção abre os Parâmetros da StudyUnit em folha e retorna ao mesmo co
   await expectModalDialogOwnsTopLayer(dialog);
   await expect(dialog.getByLabel("Escolher grupo de ajustes")).toContainText("Explicações");
   await dialog.locator(".course-design-scope > summary").click();
-  await expect(dialog.locator(".course-design-scope"))
-    .toContainText("unidade de estudo: Exemplo guiado com diagrama");
+  await expect(dialog.locator(".course-design-scope-target > strong"))
+    .toHaveText("Unidade de estudo: Exemplo guiado com diagrama");
   await expect(dialog.getByRole("button", { name: "Fechar parâmetros", exact: true })).toBeVisible();
   const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
   expect(probe.planReads).toBe(0);

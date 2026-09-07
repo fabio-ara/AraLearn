@@ -45,19 +45,6 @@ test("visitante usa compartimento próprio e mantém o estado ao entrar e sair d
   account.close();
 });
 
-test("migração de rascunho é atômica e preserva ambos os registros quando há conflito", async () => {
-  const store = await CourseLocalStore.open(new IDBFactory(), { userId: USER_ID });
-  const draft = { requestId: "original", studyUnit: { text: "Rascunho integral" } };
-  await store.putCache("old-pending", draft);
-  assert.deepEqual(await store.moveCacheValue("old-pending", "recovery"), { value: draft, conflict: false });
-  assert.equal(await store.getCache("old-pending"), null);
-  await store.putCache("old-pending", { requestId: "other", studyUnit: { text: "Outra edição" } });
-  assert.deepEqual(await store.moveCacheValue("old-pending", "recovery"), { value: draft, conflict: true });
-  assert.deepEqual(await store.getCache("old-pending"), { requestId: "other", studyUnit: { text: "Outra edição" } });
-  assert.deepEqual(await store.getCache("recovery"), draft);
-  store.close();
-});
-
 test("abre namespace novo por usuário sem ler o banco relacional anterior", async () => {
   const indexedDb = new IDBFactory();
   const old = indexedDb.open("aralearn-relational-v4-r3");

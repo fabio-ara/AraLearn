@@ -13,11 +13,27 @@ function escapeHtml(value) {
 
 function key(...parts) { return parts.map((part) => encodeURIComponent(part)).join(":"); }
 
-function details(id, label, content, expansion, className = "") {
-  return `<details class="course-curriculum-map-details ${className}"` +
+function details(id, label, content, expansion, className = "", navigation = "") {
+  const disclosure = `<details class="course-curriculum-map-details ${className}"` +
     ` data-curriculum-expansion="${escapeHtml(id)}"${expansion.has(id) ? " open" : ""}>` +
     `<summary data-curriculum-key="${escapeHtml(`expand:${id}`)}">${label}</summary>` +
     `<div class="course-curriculum-map-body">${content}</div></details>`;
+  return navigation ? `<div class="course-curriculum-map-node">${disclosure}${navigation}</div>` : disclosure;
+}
+
+export function formatCoverageLabel(statement) {
+  const text = String(statement ?? "");
+  // Only short, unambiguous label fragments lose an editorial stop. This is not
+  // a grammar parser: sentences, abbreviations and uncertain cases keep their text.
+  if (!text.endsWith(".") || text.endsWith("..") || text.length > 140 || /[\n!?;:]/u.test(text)) return text;
+  const label = text.slice(0, -1);
+  if (/\b(?:etc|ex|pág|págs|fig|figs|art|arts|cap|caps|vol|vols|sr|sra|dr|dra|prof|profa|aprox|obs)\.$/iu.test(text) ||
+      /(?:^|\s)\p{L}\.$/u.test(text) || /\.(?!\d)/u.test(label)) return text;
+  if (/^(?:a|o|as|os|um|uma|uns|umas|cada|este|esta|esse|essa|isso|isto|quando|como)\b/iu.test(label) ||
+      /^\p{L}+(?:ar|er|ir)\b/iu.test(label) ||
+      /\b(?:é|são|era|eram|foi|foram|será|serão|está|estão|estava|estavam|tem|têm|há|pode|podem|deve|devem|usa|usam|permite|permitem|inclui|incluem|contém|contêm|transmite|transmitem|representa|representam|significa|significam)\b/iu.test(label) ||
+      /\b(?!(?:sem|bem|nem)\b)\p{L}+(?:am|em|ou|aram|avam|iam)\b/iu.test(label)) return text;
+  return label;
 }
 
 function objective(kind, node, expansion) {
@@ -57,8 +73,10 @@ function renderMicrosequence(courseId, microsequence, nodes, expansion) {
           key("dependency", microsequence.id, id))}</li>`).join("") + '</ul>', expansion)
     : "";
   return '<li class="course-curriculum-map-microsequence">' +
-    `<h5>${link(courseId, "didacticMicrosequenceId", microsequence.id, microsequence.title,
-      key("microsequence", microsequence.id))}</h5>` +
+    '<header class="course-curriculum-map-node-heading">' +
+    `<h5>${escapeHtml(microsequence.title)}</h5>` +
+    link(courseId, "didacticMicrosequenceId", microsequence.id, `Abrir microssequência em Conteúdo: ${microsequence.title}`,
+      key("microsequence", microsequence.id), { iconOnly: true }) + '</header>' +
     objective("microsequence", microsequence, expansion) + dependencies + '</li>';
 }
 
@@ -67,11 +85,11 @@ function renderLesson(courseId, lesson, nodes, expansion, index) {
   const label = `<span class="course-curriculum-map-node-title">${index + 1}. ${escapeHtml(lesson.title)}</span>` +
     `<span class="course-curriculum-map-count">${count} ${count === 1 ? "microssequência" : "microssequências"}</span>`;
   return '<li>' + details(key("lesson", lesson.id), label,
-    link(courseId, "lessonId", lesson.id, `Inspecionar lição: ${lesson.title}`, key("lesson", lesson.id), { iconOnly: true }) +
     objective("lesson", lesson, expansion) +
     '<ol class="course-curriculum-map-microsequences">' + lesson.microsequences.map((microsequence) =>
       renderMicrosequence(courseId, microsequence, nodes, expansion)).join("") + '</ol>', expansion,
-    "course-curriculum-map-lesson") + '</li>';
+    "course-curriculum-map-lesson",
+    link(courseId, "lessonId", lesson.id, `Inspecionar lição: ${lesson.title}`, key("lesson", lesson.id), { iconOnly: true })) + '</li>';
 }
 
 function renderModule(courseId, module, nodes, expansion, index) {
@@ -79,11 +97,11 @@ function renderModule(courseId, module, nodes, expansion, index) {
   const label = `<span class="course-curriculum-map-node-title">${index + 1}. ${escapeHtml(module.title)}</span>` +
     `<span class="course-curriculum-map-count">${count} ${count === 1 ? "lição" : "lições"}</span>`;
   return '<li>' + details(key("module", module.id), label,
-    link(courseId, "moduleId", module.id, `Inspecionar módulo: ${module.title}`, key("module", module.id), { iconOnly: true }) +
     objective("module", module, expansion) +
     '<ol class="course-curriculum-map-lessons">' + module.lessons.map((lesson, index) =>
       renderLesson(courseId, lesson, nodes, expansion, index)).join("") + '</ol>', expansion,
-    "course-curriculum-map-module") + '</li>';
+    "course-curriculum-map-module",
+    link(courseId, "moduleId", module.id, `Inspecionar módulo: ${module.title}`, key("module", module.id), { iconOnly: true })) + '</li>';
 }
 
 function renderCoverageItem(courseId, item, nodes, expansion) {
@@ -102,7 +120,7 @@ function renderCoverageItem(courseId, item, nodes, expansion) {
         reference.title, key("development", item.id, reference.studyUnitId)) + '</li>').join("") + '</ul>'
     : "";
   return '<li>' + details(key("coverage", item.id),
-    `<span class="course-curriculum-map-node-title">${escapeHtml(item.statement)}</span>` +
+    `<span class="course-curriculum-map-node-title">${escapeHtml(formatCoverageLabel(item.statement))}</span>` +
     `<span class="course-curriculum-map-count">${escapeHtml(COVERAGE_STATUS[item.state])}</span>`,
     '<ul class="course-curriculum-map-targets">' + targets + '</ul>' + developed, expansion,
     "course-curriculum-map-coverage-item") + '</li>';

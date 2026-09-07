@@ -80,7 +80,7 @@ select ok((select (page#>>'{basis,studyUnits,0,wordCount}')::integer>0 from anal
 select is(jsonb_array_length(pg_temp.analytics306('{"kind":"study_unit","ref":"u"}')#>'{basis,studyUnits}'),1,'escopo de unidade limita observação');
 select is(jsonb_array_length(pg_temp.analytics306('{"kind":"study_unit","ref":"u"}')#>'{basis,analysisUnits}'),2,'inventário integral permanece explícito no escopo focal');
 select is(pg_temp.analytics306('{"kind":"study_unit","ref":"u"}')#>>'{basis,inventoryScope,kind}','course','alcance integral não se confunde com escopo observado');
-select throws_ok($$select public.get_owned_course_authoring_analytics_for_actor_v4('30610000-0000-4000-8000-000000000001','30610000-0000-4000-8000-000000000101',999,'{"scope":{"kind":"course","ref":null}}')$$,'40001',null,'CAS recusa revisão divergente');
+select throws_ok($$select public.get_owned_course_authoring_analytics_for_actor_v4('30610000-0000-4000-8000-000000000001','30610000-0000-4000-8000-000000000101',999,'{"scope":{"kind":"course","ref":null}}')$$,'PT409',null,'CAS recusa revisão divergente');
 select throws_ok($$select public.get_owned_course_authoring_analytics_for_actor_v4('30610000-0000-4000-8000-000000000009','30610000-0000-4000-8000-000000000101',1,'{"scope":{"kind":"course","ref":null}}')$$,'PT404',null,'outro ator não recebe inventário');
 select throws_ok($$select pg_temp.analytics306('{"kind":"study_unit","ref":"missing"}')$$,'PT404',null,'escopo ausente não retorna curso inteiro');
 select ok(not has_function_privilege('anon','public.get_owned_course_authoring_analytics_for_actor_v4(uuid,uuid,bigint,jsonb)','EXECUTE'),'anon sem execução direta');

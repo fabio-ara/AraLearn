@@ -84,11 +84,11 @@ export class CourseStudyBridge {
     return this.controller.loadStudyDraftRecovery?.(sourceCourseId) ?? Promise.resolve(null);
   }
 
-  recoverStudyDraft(sourceCourseId = null) {
-    return this.controller.recoverStudyDraft?.(sourceCourseId) ?? Promise.resolve(null);
+  recoverStudyDraft(sourceCourseId = null, expectedRecoveryId = null) {
+    return this.controller.recoverStudyDraft?.(sourceCourseId, expectedRecoveryId) ?? Promise.resolve(null);
   }
 
-  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null) {
-    return this.controller.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId) ?? Promise.resolve(false);
+  clearStudyDraftRecovery(sourceCourseId = null, expectedRequestId = null, expectedRecoveryId = null) {
+    return this.controller.clearStudyDraftRecovery?.(sourceCourseId, expectedRequestId, expectedRecoveryId) ?? Promise.resolve(false);
   }
 }

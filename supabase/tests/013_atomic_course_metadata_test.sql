@@ -30,7 +30,7 @@ select throws_ok($t$select public.commit_course_composition_for_actor_v1('960000
  '{"title":"Outro título","objective":"Objetivo novo"}')$t$,'23514','requestId reutilizado com composição incompatível.','hash inclui metadados');
 select throws_ok($t$select public.commit_course_composition_for_actor_v1('96000000-0000-4000-8000-000000000001',
  '96000000-0000-4000-8000-000000000101',1,null,'[]','[]','[]','application',null,'metadata-stale-01',
- '{"title":"Outro título","objective":"Objetivo novo"}')$t$,'40001','O Curso mudou; releia antes de salvar.','CAS rejeita versão antiga');
+ '{"title":"Outro título","objective":"Objetivo novo"}')$t$,'PT409','O Curso mudou; releia antes de salvar.','CAS rejeita versão antiga');
 select throws_ok($t$select public.commit_course_composition_for_actor_v1('96000000-0000-4000-8000-000000000002',
  '96000000-0000-4000-8000-000000000101',2,null,'[]','[]','[]','application',null,'metadata-other-01',
  '{"title":"Outro título","objective":"Objetivo novo"}')$t$,'42501','Edição do Curso não autorizada.','estudante público não edita metadados');

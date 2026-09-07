@@ -204,6 +204,10 @@ exatos de capacidades exigidos pelo cliente. Confronte essa fonte com as migrati
 aplicadas e com o manifesto remoto; não substitua a comparação por uma revisão
 antiga citada em instruções de instalação. A [história do schema](schema-change-log.md)
 explica os cuidados de cada mudança. A migration
+`20260907031059_declare_business_conflict_runtime_manifest.sql` declara a
+capacidade `course-business-conflicts-http-409-v1` somente após a correção de
+conflitos estar aplicada. A revisão do manifesto e a última migration precisam
+coincidir também no ensaio de restauração. A migration
 `20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
 autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
 quando o próprio documento mudar; uma correção interna do vínculo OAuth não
@@ -287,21 +291,25 @@ sua identidade e sua configuração continuam sendo provas próprias.
 
 O APK, seu arquivo `.sha256` e o manifesto de procedência ficam primeiro em uma
 Release em rascunho. Antes de Pages, o job `android-native` instala esses bytes
-exatos em dois emuladores descartáveis no runner Ubuntu 24.04. Ele confere
+exatos em dois cenários isolados de um emulador descartável no runner Ubuntu
+24.04. Ele confere
 pacote, certificado, versão, SHA-256 e UID: instalação limpa da candidata e
-upgrade do APK público 0.0.64 (código 210). A versão candidata vem do manifesto
+upgrade do APK público 0.0.65 (código 211). A versão candidata vem do manifesto
 aprovado e deve avançar em relação à base.
 
 O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada,
 verifica que as licenças não mudaram e exige KVM. Não aceita novas licenças nem
-substitui a aceleração indisponível. O aplicativo é aberto sem rede, conta ou
-curso, e as ações usam os limites observados pela hierarquia nativa. O tema
-escolhido na candidata precisa sobreviver à reabertura e à reinstalação `-r`.
-Essa prova não cobre dispositivo físico nem retenção de preferência da versão
-0.0.64, cuja interface exige login antes dos ajustes.
+substitui a aceleração indisponível. A aplicação consulta a configuração pública
+antes do isolamento de rede, sem conta ou curso, e as ações usam os limites
+observados pela hierarquia nativa. No cenário
+de upgrade, o tema escuro é escolhido na UI da versão base e conferido após
+force-stop e reabertura. A preferência precisa sobreviver ao upgrade e à
+reinstalação `-r` da candidata, antes de qualquer nova escolha de tema. O cenário
+de instalação limpa verifica a preferência escolhida na própria candidata.
+Essa prova não cobre dispositivo físico, retenção de curso ou sessão autenticada.
 
-O JSON de prova liga o APK ao manifesto, revisão, run e tentativa da promoção;
-os hashes das capturas e hierarquias também são conferidos. Pages e Release
+O JSON de prova v2 liga o APK ao manifesto, revisão, run e tentativa da promoção;
+capturas e hierarquias XML de cada etapa têm seus hashes conferidos. Pages e Release
 baixam essa prova por ID, verificam seu digest e reconferem o APK. Falha ou
 evidência de outra tentativa bloqueia a publicação. O artifact nativo é mantido
 por sete dias, incluindo diagnósticos técnicos de falha sem tokens. Ao retomar,

@@ -51,12 +51,12 @@ select is(public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-0000
  'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-first-01',false)->>'idempotent','true','grant reproduz receipt sem mutação');
 select throws_ok($t$select public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
  'grant_access','aluno.dois','93000000-0000-4000-8000-000000000003',true,'grant-stale-01',false)$t$,
- '40001','Pessoa selecionada mudou; refaça a busca.','handle de outro UUID não concede acesso');
+ 'PT409','Pessoa selecionada mudou; refaça a busca.','handle de outro UUID não concede acesso');
 select is(public.update_person_profile_for_actor_v2('93000000-0000-4000-8000-000000000002','{"handle":"aluno.novo"}')->>'handle','aluno.novo','troca handle preserva UUID');
 select is(public.update_person_profile_for_actor_v2('93000000-0000-4000-8000-000000000003','{"handle":"aluno.dois"}')->>'handle','aluno.dois','identificador livre pode ser reutilizado');
 select throws_ok($t$select public.manage_course_access_for_actor_v3('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',
  'grant_access','aluno.dois','93000000-0000-4000-8000-000000000002',true,'grant-reused-01',false)$t$,
- '40001','Pessoa selecionada mudou; refaça a busca.','seleção antiga não segue identificador reutilizado');
+ 'PT409','Pessoa selecionada mudou; refaça a busca.','seleção antiga não segue identificador reutilizado');
 select ok(exists(select 1 from public.course_access where course_id='93000000-0000-4000-8000-000000000101' and user_id='93000000-0000-4000-8000-000000000002'),'grant existente sobrevive à troca de handle');
 update private.course_access_grant_rate_limits set search_attempt_count=60 where actor_id='93000000-0000-4000-8000-000000000001';
 select is(public.search_course_access_people_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101','al',10)->>'rateLimited','true','limite de busca é explícito');

@@ -103,7 +103,7 @@ select ok(not private.valid_applied_course_design_parameters_v1(jsonb_set(payloa
 select throws_ok($$select pg_temp.materialize_contextual('context-invalid-fixed',jsonb_set(units,'{0,designSnapshot,parameters,5,value}','241')) from payload$$,'22023',null,'writer atômico recusa divergência fixa sem gravar a unidade');
 select is((select count(*) from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_type='study_unit'),0::bigint,'rejeição não deixa conteúdo parcial');
 select throws_ok($$select pg_temp.materialize_contextual('context-old-policy',jsonb_set(units,'{0,designSnapshot,componentPolicy,policy,catalogVersion}','"1-4616b2e5"')) from payload$$,
- '40001','A direção editorial ou política de componentes divergiu da configuração corrente.',
+ 'PT409','A direção editorial ou política de componentes divergiu da configuração corrente.',
  'materialização nova exige política corrente mesmo quando as referências continuam iguais');
 select ok(not exists(select 1 from private.course_change_receipts where actor_id='95000000-0000-4000-8000-000000000001' and request_id='context-old-policy'),
  'política antiga não deixa recibo de materialização');
@@ -117,7 +117,7 @@ select is((select count(*) from private.course_design_parameter_assignments wher
 select is((select value from private.course_design_parameter_assignments where course_id='95000000-0000-4000-8000-000000000301' and parameter_id='study_unit_content_word_target'),'240'::jsonb,'fixação humana permanece intacta');
 select is((select pg_temp.materialize_contextual('context-automatic-01',units)->>'idempotent' from payload),'true','resposta perdida retorna o recibo da mesma aplicação');
 select is((select revision from public.courses where id='95000000-0000-4000-8000-000000000301'),2::bigint,'repetição não reaplica conteúdo nem muda revisão');
-select throws_ok($$select pg_temp.materialize_contextual('context-stale-0001',units) from payload$$,'40001',null,'nova aplicação não adota revisão mais recente silenciosamente');
+select throws_ok($$select pg_temp.materialize_contextual('context-stale-0001',units) from payload$$,'PT409',null,'nova aplicação não adota revisão mais recente silenciosamente');
 select ok(not private.valid_applied_course_design_parameters_v1(payload.units#>'{0,designSnapshot,parameters}',jsonb_set(resolved.parameters,'{0,conflicts}','[{"fixedValue":1,"exceptionValue":2}]')),'conflito de pesquisa exige resolução antes da aplicação contextual') from payload,resolved;
 select is((select design_snapshot->>'parameterCatalogVersion' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
   '1.2.0','aplicação compatível conserva a versão histórica literal');

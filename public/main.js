@@ -224,15 +224,34 @@ function authSessionWasRejected(error, authClient) {
 }
 
 function renderStartupFailure(root, error) {
-  void error;
+  const localFailure = [error, error?.cause].some((cause) =>
+    cause instanceof DOMException && ["VersionError", "QuotaExceededError", "UnknownError",
+      "ConstraintError", "DataCloneError", "TransactionInactiveError"].includes(cause.name) ||
+    ["Error", "TypeError"].includes(cause?.name) &&
+    /^(?:IndexedDB indisponível\.|Operação IndexedDB interrompida\.|Transação IndexedDB (?:abortada|falhou)\.|Não foi possível abrir (?:a sessão local\.|ou atualizar os dados locais\.)|A sessão local (?:está aberta|foi substituída)|O cache de Cursos (?:está aberto|foi substituído))/u
+      .test(String(cause?.message || "")));
+  const status = Number(error?.status ?? error?.response?.status);
+  const code = String(error?.code || "").toLowerCase();
+  const remoteFailure = error?.name === "SupabaseHttpError" || status >= 400 && status <= 599 ||
+    ["request_timeout", "auth_timeout", "network_error", "fetch_failed"].includes(code) ||
+    error?.name === "TypeError" && /fetch|network|load failed/iu.test(String(error?.message || ""));
+  const message = localFailure
+    ? "Não foi possível abrir seus cursos neste dispositivo."
+    : !remoteFailure
+      ? "Não foi possível abrir o aplicativo agora. Tente novamente. Os dados locais foram preservados."
+      : globalThis.navigator?.onLine === false
+      ? "Este dispositivo está offline. Reconecte-se e tente abrir os cursos novamente. Os dados locais foram preservados."
+      : code === "request_timeout" || code === "auth_timeout"
+        ? "A consulta ao serviço de cursos demorou mais que o esperado. Tente novamente. Os dados locais foram preservados."
+        : "Não foi possível acessar o serviço de cursos agora. Tente novamente. Os dados locais foram preservados.";
   root.innerHTML = `
     <main class="startup-recovery-shell">
       <section class="startup-recovery-card" role="alert">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
-        <p class="startup-recovery-message">Não foi possível abrir seus cursos neste dispositivo.</p>
+        <p class="startup-recovery-message">${message}</p>
         <div class="startup-recovery-actions">
           <button class="icon-pill" type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
-          <button class="icon-pill" type="button" data-action="reset-local-state" title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
+          ${localFailure ? `<button class="icon-pill" type="button" data-action="reset-local-state" title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>` : ""}
         </div>
       </section>
     </main>
@@ -1047,6 +1066,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     authClient,
     visitor
   });
+  courseApi.setReadRecoveryEnabled(synchronizationPreference.get() !== "manual");
   const studyController = new CourseController({ api: courseApi, store: courseLocalStore });
   const authoringController = new CourseController({
     api: courseApi,
@@ -1383,6 +1403,8 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     const result = await repository.checkAccess();
     if (result?.revokedCourseIds?.length) {
       await editorApp?.replaceProject(result.project || repository.loadProject());
+    } else {
+      editorApp?.refreshRuntimeStatus?.();
     }
   };
   const refreshOnForeground = async () => {
@@ -1395,6 +1417,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     : refreshStudy();
   let visibleRefreshTimer = null;
   const unsubscribeSynchronizationPreference = synchronizationPreference.subscribe((mode) => {
+    courseApi.setReadRecoveryEnabled(mode !== "manual");
     repository.setSynchronizationMode(mode);
     editorApp?.refreshRuntimeStatus?.();
   });

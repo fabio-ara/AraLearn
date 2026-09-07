@@ -5,6 +5,25 @@ import { fileURLToPath } from "node:url";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const forbiddenFiles = [
+  "src/core/ids.js",
+  "src/core/patch.js",
+  "src/core/text.js",
+  "src/storage/canonicalRevision.js",
+  "src/sourceGuides/sourceGuideStructured.js",
+  "src/sync/deviceIdentity.js",
+  "src/persistence/ProjectDocumentAssembler.js",
+  "src/persistence/ProjectDocumentDiffer.js",
+  "src/persistence/RelationalTransaction.js",
+  "src/persistence/canonicalCourseHash.js",
+  "src/persistence/contractToRelationalRows.js",
+  "src/persistence/deterministicUuid.js",
+  "src/persistence/relationalRowsToContract.js",
+  "src/persistence/relationalSchema.js",
+  "src/persistence/validateRelationalCourse.js",
+  "tests/runtime/device-identity.test.js",
+  "supabase/functions/_shared/aralearn/runtime/domain/courseDesignContext.js",
+  "supabase/functions/_shared/aralearn/runtime/domain/courseSourceReference.js",
+  "supabase/functions/_shared/aralearn/runtime/resources/kernel/courseContract.js",
   "src/core/authoringGaps.js",
   "src/core/authoringResourceContract.js",
   "src/core/cardRuntime.js",
@@ -87,6 +106,8 @@ const forbiddenFiles = [
 ];
 
 const forbiddenDirectories = [
+  "supabase/functions/_shared/aralearn/runtime/persistence",
+  "supabase/functions/_shared/aralearn/runtime/bibliography",
   "authoring",
   "authoring/core",
   "authoring/examples",

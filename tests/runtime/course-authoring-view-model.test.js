@@ -801,8 +801,14 @@ test("falhas conhecidas não expõem mensagem técnica", () => {
   });
   assert.equal(classifyCourseAuthoringError({ code: "PT404" }).kind, "access-revoked");
   assert.equal(classifyCourseAuthoringError({ code: "40001" }).kind, "revision-changed");
+  for (const failure of [{ status: 503 }, { status: 429 }, { code: "request_timeout" },
+    { code: "auth_timeout" }, { code: "network_error" }]) {
+    const projected = classifyCourseAuthoringError(failure, { knownCourse: courseItem() });
+    assert.equal(projected.kind, "error");
+    assert.doesNotMatch(projected.message, /sem conexão/iu);
+  }
   assert.equal(
-    classifyCourseAuthoringError({ code: "network_error" }, { knownCourse: courseItem() }).kind,
+    classifyCourseAuthoringError({ code: "network_error", offline: true }, { knownCourse: courseItem() }).kind,
     "offline-known"
   );
   assert.deepEqual(classifyCourseAuthoringError(new Error("segredo técnico")), {

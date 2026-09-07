@@ -177,7 +177,7 @@ function editableStudyUnit(title = "Unidade revista") {
   };
 }
 
-test("cacheia a página conhecida e a devolve somente como leitura offline", async () => {
+test("cacheia a página conhecida e a devolve como cópia local após falha de rede", async () => {
   const store = new MemoryStateStore();
   let online = true;
   const api = {
@@ -199,10 +199,15 @@ test("cacheia a página conhecida e a devolve somente como leitura offline", asy
 
   online = false;
   const cached = await controller.listCourses();
-  assert.equal(cached.offline, true);
+  assert.equal(cached.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
   assert.equal(cached.stale, true);
   assert.equal(cached.readOnly, true);
   assert.equal(cached.cachedAt, "2026-08-17T12:00:00.000Z");
+  controller.navigator = { onLine: false };
+  const disconnected = await controller.listCourses();
+  assert.equal(disconnected.offline, true);
+  assert.equal(disconnected.stale, true);
+  assert.equal(disconnected.items[0].courseId, COURSE_ID);
 });
 
 test("não mascara erro de contrato sem status como modo offline", async () => {
@@ -225,7 +230,7 @@ test("não mascara erro de contrato sem status como modo offline", async () => {
 
   failure = new TypeError("Failed to fetch");
   const offline = await controller.listCourses();
-  assert.equal(offline.offline, true);
+  assert.equal(offline.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
 });
 
 test("rejeita página remota ou cacheada que não cumpra o contrato da lista", async () => {
@@ -583,7 +588,7 @@ test("reinício offline conserva caches e não deduz revogação de lista local 
   });
   const page = await afterRestart.listCourses();
 
-  assert.equal(page.offline, true);
+  assert.equal(page.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
   assert.equal(store.values.has(`course.v1.header:${COURSE_B}`), true);
   assert.equal(store.values.has(`course.v1.entities:${COURSE_B}:1:500:start`), true);
   assert.equal(store.values.has(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_B}`), true);
@@ -738,7 +743,7 @@ test("é o único componente que pagina, recompõe e sinaliza documento offline"
   online = false;
   const cached = await controller.loadCourseDocument(COURSE_ID, { entityPageSize: 1 });
   assert.deepEqual(cached.document, fixture);
-  assert.equal(cached.offline, true);
+  assert.equal(cached.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
   assert.equal(cached.stale, true);
   assert.equal(cached.readOnly, true);
 });
@@ -871,7 +876,7 @@ test("preserva a última composição válida após revisão inválida e reiníc
   });
   assert.deepEqual(offlineRestart.document, fixture);
   assert.equal(offlineRestart.course.revision, 3);
-  assert.equal(offlineRestart.offline, true);
+  assert.equal(offlineRestart.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
   assert.equal(offlineRestart.stale, true);
   assert.equal(offlineRestart.readOnly, true);
   store.close();
@@ -1660,7 +1665,7 @@ test("inspeção autoral usa cache paginado limitado e posição local por dispo
   const cached = await controller.loadAuthoringStudyUnits(COURSE_ID, {
     expectedRevision: 4
   });
-  assert.equal(cached.offline, true);
+  assert.equal(cached.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
   assert.equal(cached.stale, true);
 
   const position = {

@@ -1018,9 +1018,6 @@ button.account-settings-back[hidden] {
   border: 1px solid var(--border-subtle);
   background: var(--surface-raised);
   box-shadow: var(--shadow-card);
-  padding: 10px;
-  display: grid;
-  gap: 10px;
 }
 
 [data-structure-target] {
@@ -1599,7 +1596,6 @@ button.account-settings-back[hidden] {
 .runtime-resource-edit-target {
   position: relative;
   min-width: 0;
-  border-radius: inherit;
 }
 
 .runtime-resource-edit-target.is-selected {
@@ -3229,7 +3225,6 @@ button.account-settings-back[hidden] {
   justify-content: center;
   color: var(--resource-text);
   font-size: var(--type-diagram);
-  line-height: var(--leading-snug);
   text-align: center;
 }
 
@@ -4191,8 +4186,6 @@ button.account-settings-back[hidden] {
 }
 
 .runtime-flow-block {
-  display: grid;
-  gap: 10px;
   min-width: 0;
 }
 
@@ -4521,6 +4514,10 @@ button.account-settings-back[hidden] {
   font-weight: 600;
 }
 
+.study-draft-recovery .open-mini:hover {
+  background: var(--action-primary-hover);
+}
+
 .study-draft-recovery-content pre {
   max-height: 240px;
   overflow-y: auto;
@@ -4778,10 +4775,6 @@ button.account-settings-back[hidden] {
   font-family: inherit;
 }
 
-.study-observation-textarea {
-  min-height: 28dvh;
-}
-
 .study-observation-category-list {
   display: flex;
   gap: 6px;
@@ -4831,7 +4824,8 @@ button.account-settings-back[hidden] {
 
 /* Observações pessoais: lista plural, estado de sincronização e composição no mesmo sheet. */
 .study-observation-sheet {
-  max-height: min(86dvh, 760px);
+  height: auto;
+  max-height: min(86dvh, 760px, calc(100dvh - max(var(--safe-top), 6px) - var(--safe-bottom-tappable) - 12px));
   overflow: hidden;
 }
 
@@ -4854,16 +4848,50 @@ button.account-settings-back[hidden] {
 
 .study-observation-body {
   min-width: 0;
+  min-height: 0;
+  align-content: start;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 1px 2px max(4px, var(--safe-bottom));
+  padding: 3px 4px max(4px, var(--safe-bottom));
 }
 
 .study-observation-list,
 .study-observation-composer {
   min-width: 0;
   display: grid;
+  align-content: start;
   gap: 8px;
+}
+
+.study-observation-review-action {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  min-height: var(--tap);
+  max-width: 100%;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: var(--leading-normal);
+  text-decoration: none;
+  border-radius: var(--radius-control);
+}
+
+.study-observation-review-action > svg {
+  flex: 0 0 auto;
+}
+
+.study-observation-review-action > span {
+  overflow-wrap: anywhere;
+}
+
+.study-observation-review-action:hover > span {
+  text-decoration: underline;
+}
+
+.study-observation-review-action:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 0;
 }
 
 .study-observation-item {
@@ -4997,6 +5025,10 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-composer {
+  padding-top: 0;
+}
+
+.study-observation-list + .study-observation-composer {
   padding-top: 9px;
   border-top: 1px solid var(--border-subtle);
 }
@@ -5061,8 +5093,15 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-composer .study-observation-textarea {
-  min-height: 120px;
+  min-height: min(120px, 24dvh);
   max-height: 34dvh;
+}
+
+.study-observation-textarea:focus-visible {
+  border-color: transparent;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -1px;
+  box-shadow: none;
 }
 
 .study-observation-counter {
@@ -5101,6 +5140,10 @@ button.account-settings-back[hidden] {
   height: var(--tap);
   min-height: var(--tap);
   padding: 0;
+}
+
+.study-observation-composer-actions .study-observation-submit:hover {
+  background: var(--action-primary-hover);
 }
 
 .study-observation-dock-count {
@@ -5775,6 +5818,10 @@ button.account-settings-back[hidden] {
 .study-home-feedback-layer > * {
   pointer-events: auto;
   box-shadow: var(--shadow-floating);
+}
+
+body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
+  display: none;
 }
 
 .study-home-feedback.is-error {

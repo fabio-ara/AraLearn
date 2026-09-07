@@ -13,17 +13,23 @@ const PROFILE = { contract: "aralearn.person-profile.v2", userId: USER,
 test("perfil escolhido reabre offline só na própria conta e erro de acesso invalida a cópia local", async () => {
   const indexedDb = new IDBFactory();
   const store = await CourseLocalStore.open(indexedDb, { userId: USER });
+  const navigatorValue = { onLine: true };
   let failure = null;
   const api = { listCourses() {}, getCourse() {},
     authClient: { getSession: () => ({ user: { id: USER } }) },
     async getPersonProfile() { if (failure) throw failure; return PROFILE; },
     async updatePersonProfile(patch) { return { ...PROFILE, ...patch, previousAvatarObjectKey: null }; }
   };
-  const controller = new CourseController({ api, store });
+  const controller = new CourseController({ api, store, navigatorValue });
   assert.equal((await controller.getPersonProfile()).handle, PROFILE.handle);
   const updated = await controller.updatePersonProfile({ handle: "outro-escolhido" });
   assert.equal(updated.previousAvatarObjectKey, null);
   failure = Object.assign(new TypeError("Failed to fetch"), { status: 0 });
+  const unavailableService = await controller.getPersonProfile();
+  assert.equal(unavailableService.offline, false);
+  assert.equal(unavailableService.stale, true);
+  assert.equal(unavailableService.handle, "outro-escolhido");
+  navigatorValue.onLine = false;
   const offline = await controller.getPersonProfile();
   assert.equal(offline.offline, true);
   assert.equal(offline.handle, "outro-escolhido");
@@ -31,10 +37,12 @@ test("perfil escolhido reabre offline só na própria conta e erro de acesso inv
     "Confirmar vínculo de avatar exige leitura remota, sem usar perfil antigo como prova.");
 
   const otherStore = await CourseLocalStore.open(indexedDb, { userId: OTHER });
-  const other = new CourseController({ api, store: otherStore });
+  const other = new CourseController({ api, store: otherStore, navigatorValue });
   await assert.rejects(() => other.getPersonProfile(), /Failed to fetch/u);
+  navigatorValue.onLine = true;
   failure = Object.assign(new Error("Unauthorized"), { status: 401 });
   await assert.rejects(() => controller.getPersonProfile(), /Unauthorized/u);
+  navigatorValue.onLine = false;
   failure = Object.assign(new TypeError("Failed to fetch"), { status: 0 });
   await assert.rejects(() => controller.getPersonProfile(), /Failed to fetch/u);
   store.close(); otherStore.close();

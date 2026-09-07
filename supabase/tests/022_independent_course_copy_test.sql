@@ -192,7 +192,7 @@ select pg_temp.copy_request('future',pg_temp.copy_owner(),interval '6 minutes');
 select throws_ok($$select pg_temp.run_copy('future')$$,'22023',null,'relógio futuro além da tolerância é recusado');
 select pg_temp.copy_request('stale',pg_temp.copy_owner());
 update copy_requests set source_revision=source_revision-1 where name='stale';
-select throws_ok($$select pg_temp.run_copy('stale')$$,'40001',null,'cópia exige revisão coerente da origem');
+select throws_ok($$select pg_temp.run_copy('stale')$$,'PT409',null,'cópia exige revisão coerente da origem');
 
 update private.course_entities set content=jsonb_set(content,'{content,0,data,text}','"Texto independente."'),version=version+1 where course_id=pg_temp.copy_target() and entity_id='u';
 select is((select content#>>'{content,0,data,text}' from private.course_entities where course_id=pg_temp.copy_source() and entity_id='u'),'Uma ligação une dois pontos.','editar destino não altera conteúdo da origem');
@@ -209,7 +209,7 @@ select set_config('storage.allow_delete_query','false',true);
 select is(public.maintain_course_for_actor_v1(pg_temp.copy_recipient(),pg_temp.copy_target(),'delete_owned_course',true,'copy306-delete-target')->>'status','files_pending','última cópia exige limpeza física confirmada antes da exclusão');
 select lives_ok($$select public.claim_course_media_delete_for_actor_v1(pg_temp.copy_recipient(),pg_temp.copy_target(),repeat('a',64))$$,'claim de áudio usa caminho físico de origem já excluída');
 select lives_ok($$select public.claim_pending_course_pdf_delete_for_actor_v1(pg_temp.copy_recipient(),pg_temp.copy_target())$$,'claim PDF cobre arquivo herdado do curso excluído');
-select throws_ok($$select public.complete_course_media_delete_for_actor_v1(pg_temp.copy_recipient(),pg_temp.copy_target(),repeat('a',64))$$,'40001',null,'SQL não finge remoção de bytes existentes');
+select throws_ok($$select public.complete_course_media_delete_for_actor_v1(pg_temp.copy_recipient(),pg_temp.copy_target(),repeat('a',64))$$,'PT409',null,'SQL não finge remoção de bytes existentes');
 select set_config('storage.allow_delete_query','true',true);
 delete from storage.objects where name in(pg_temp.copy_source()::text||'/'||repeat('a',64)||'.wav',pg_temp.copy_source()::text||'/'||repeat('f',64)||'.pdf') and bucket_id in('course-media','course-source-pdfs');
 select set_config('storage.allow_delete_query','false',true);

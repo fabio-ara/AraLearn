@@ -54,6 +54,63 @@ test("manual usa lista e conteúdo em cache, mantém versão aberta e verifica r
   assert.equal(checked.project.courses.length, 0);
 });
 
+test("acesso confirmado após reconexão retira offline em Manual sem sincronizar conteúdo ou pendências", async (context) => {
+  for (const offlineSource of ["lista", "curso"]) {
+    await context.test(offlineSource, async () => {
+      const descriptor = { courseId: COURSE_A, title: "Curso aberto", revision: 1,
+        ownership: "public", canEdit: false };
+      let accessReads = 0;
+      let accessFailure = Object.assign(new Error("Serviço indisponível"), { status: 503 });
+      let contentReads = 0;
+      let personalRequests = 0;
+      const local = cache();
+      const forbidden = () => { personalRequests += 1; throw new Error("Manual não envia estado pessoal em segundo plano"); };
+      const bridge = {
+        async listCachedCourses() { return { items: [descriptor], hasMore: false }; },
+        async listAccessibleCourses() {
+          return { items: [descriptor], hasMore: false, offline: true, stale: true };
+        },
+        async loadCourse() { contentReads += 1; throw new Error("Acesso não substitui conteúdo em Manual"); },
+        async checkCourseAccess() {
+          accessReads += 1;
+          if (accessFailure) throw accessFailure;
+          return { ...descriptor, revision: 2 };
+        }
+      };
+      const repository = new CourseStudyRepository({ bridge, cache: local,
+        api: { loadPersonalState: forbidden, mutatePersonalState: forbidden },
+        synchronizationMode: "manual", windowValue: null });
+      await repository.initialize();
+      await repository.loadCourse(COURSE_A, { initialResult: {
+        course: descriptor, revision: 1,
+        document: { courses: [course(COURSE_A, "a")] }, rows: [],
+        offline: offlineSource === "curso", stale: offlineSource === "curso"
+      } });
+      if (offlineSource === "lista") await repository.refreshCourses({ explicit: true });
+      await repository.setStudyUnitReviewMark([COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"], true);
+      const beforeProject = repository.loadProject();
+      const beforePersonal = await local.getCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_A}`);
+      const beforeStatus = repository.loadRuntimeStatus(COURSE_A);
+      assert.equal(beforeStatus.offline, true);
+      assert.equal(beforeStatus.pending, true);
+
+      await repository.checkAccess();
+      assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), beforeStatus);
+      accessFailure = null;
+
+      const checked = await repository.checkAccess();
+
+      assert.deepEqual(checked.revokedCourseIds, []);
+      assert.equal(accessReads, 2);
+      assert.equal(contentReads, 0);
+      assert.equal(personalRequests, 0);
+      assert.deepEqual(repository.loadProject(), beforeProject);
+      assert.deepEqual(await local.getCache(`${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_A}`), beforePersonal);
+      assert.deepEqual(repository.loadRuntimeStatus(COURSE_A), { ...beforeStatus, offline: false });
+    });
+  }
+});
+
 test("incorporação explícita é aditiva, por conta e snapshot, sem alterar visitante ou posição da conta", async () => {
   const indexedDb = new IDBFactory();
   const visitorCache = await CourseLocalStore.open(indexedDb, { visitor: true });
@@ -1530,6 +1587,7 @@ test("revogação poda a posição inacessível e limpar progresso preserva o Cu
 test("refresh online apaga cache e navegação de Curso que deixou de ser acessível", async () => {
   const cleared = [];
   let accessibleCourseIds = [COURSE_A, COURSE_B];
+  let stale = false;
   const store = cache();
   const repository = new CourseStudyRepository({
     bridge: {
@@ -1544,6 +1602,7 @@ test("refresh online apaga cache e navegação de Curso que deixou de ser acess�
             completedStudyUnitCount: 0
           })),
           hasMore: false,
+          stale,
           nextCursor: null
         };
       },
@@ -1573,6 +1632,11 @@ test("refresh online apaga cache e navegação de Curso que deixou de ser acess�
   assert.equal(await repository.refreshCourseOfflineAvailability(COURSE_B), true);
 
   accessibleCourseIds = [COURSE_A];
+  stale = true;
+  await repository.refreshCourses();
+  assert.deepEqual(cleared, [], "Lista local incompleta não demonstra revogação.");
+  assert.ok(repository.loadStudyNavigation().positions[COURSE_B]);
+  stale = false;
   await repository.refreshCourses();
 
   assert.deepEqual(cleared, [COURSE_B]);

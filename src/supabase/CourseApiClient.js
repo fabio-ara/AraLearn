@@ -39,7 +39,7 @@ import {
   normalizeCourseSourcesRead,
   normalizeCourseStudyCitationsRead
 } from "../domain/courseSources.js";
-import { SupabaseHttpClient } from "./SupabaseHttpClient.js";
+import { SupabaseHttpClient, SupabaseHttpError } from "./SupabaseHttpClient.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
   boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
 import { inspectCourseAudioBytes } from "../domain/courseMedia.js";
@@ -59,6 +59,45 @@ const AVATAR_OBJECT_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a
 const COURSE_EDGE_RETRY_DELAY_MS = 750;
 const COURSE_EDGE_TRANSIENT_STATUSES = new Set([502, 503, 504]);
 const COURSE_SOURCE_PDF_TIMEOUT_MS = 145_000;
+const COURSE_READ_MAX_RETRY_WAIT_MS = 10_000;
+const COURSE_READ_RPCS = new Set([
+  "list_courses_v1", "list_owned_courses_v1", "get_course_v1", "get_owned_course_v1",
+  "list_course_entities_v1", "list_owned_course_entities_v1", "list_course_review_items_v1",
+  "get_course_study_citations_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
+]);
+
+function readRetryDelay(error) {
+  const status = Number(error?.status || 0);
+  if (status === 401 || status === 403 || error?.name === "AbortError" || error?.code === "auth_timeout" ||
+      !(status === 408 || status === 429 || status >= 500 && status <= 599 ||
+        error?.code === "request_timeout" || status === 0 && error instanceof TypeError &&
+        /fetch|network|load failed/iu.test(error.message))) return null;
+  const header = error?.retryAfter;
+  const seconds = typeof header === "string" && /^\d+$/u.test(header.trim());
+  const requested = seconds
+    ? Number(header) * 1_000
+    : typeof header === "string" ? Date.parse(header) - Date.now() : NaN;
+  if (seconds && !Number.isFinite(requested)) return null;
+  const delay = Number.isFinite(requested)
+    ? Math.max(COURSE_EDGE_RETRY_DELAY_MS, requested) : COURSE_EDGE_RETRY_DELAY_MS;
+  return delay <= COURSE_READ_MAX_RETRY_WAIT_MS ? delay : null;
+}
+
+function waitForReadRetry(delay, signal) {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      globalThis.clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      reject(signal.reason ?? new DOMException("Operação cancelada.", "AbortError"));
+    };
+    const timer = globalThis.setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, delay);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
 
 function first(value) {
   return Array.isArray(value) && value.length === 1 ? value[0] : value;
@@ -634,7 +673,8 @@ function personHandle(value, { prefix = false } = {}) {
 }
 
 export class CourseApiClient {
-  constructor({ projectUrl, publishableKey, authClient, visitor = false, fetchImpl = globalThis.fetch } = {}) {
+  constructor({ projectUrl, publishableKey, authClient, visitor = false, fetchImpl = globalThis.fetch,
+    retryReads = false } = {}) {
     if (!authClient || typeof authClient.getAccessToken !== "function") {
       throw new TypeError("Cliente de autenticação obrigatório.");
     }
@@ -642,13 +682,47 @@ export class CourseApiClient {
     this.visitor = visitor === true;
     this.fetchImpl = fetchImpl;
     this.http = new SupabaseHttpClient({ projectUrl, publishableKey, fetchImpl });
+    this.retryReads = retryReads === true;
   }
 
-  #authenticatedAccessToken() {
+  setReadRecoveryEnabled(enabled) {
+    this.retryReads = enabled === true;
+  }
+
+  async #recoverRead(execute, { signal } = {}) {
+    try {
+      return await execute();
+    } catch (error) {
+      const delay = readRetryDelay(error);
+      if (!this.retryReads || globalThis.navigator?.onLine === false || signal?.aborted || delay === null) throw error;
+      await waitForReadRetry(delay, signal);
+      // Switching to manual during the pause must not start another exchange.
+      if (!this.retryReads || globalThis.navigator?.onLine === false) throw error;
+      return execute();
+    }
+  }
+
+  async #authenticatedAccessToken({ timeoutMs = this.http.timeoutMs, signal } = {}) {
     if (this.visitor) throw Object.assign(new Error("Entre para realizar esta operação."), {
       code: "AUTH_REQUIRED", status: 401
     });
-    return this.authClient.getAccessToken();
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new TypeError("timeoutMs deve ser um número positivo.");
+    signal?.throwIfAborted();
+    let timer;
+    let abort;
+    const interrupted = new Promise((_resolve, reject) => {
+      timer = globalThis.setTimeout(() => reject(new SupabaseHttpError(
+        "Não foi possível verificar sua sessão no tempo limite. Tente novamente.", { code: "auth_timeout" }
+      )), Math.min(timeoutMs, this.http.timeoutMs));
+      abort = () => reject(signal.reason ?? new DOMException("Operação cancelada.", "AbortError"));
+      signal?.addEventListener("abort", abort, { once: true });
+    });
+    try {
+      return await Promise.race([interrupted, this.authClient.getAccessToken()]);
+    } finally {
+      globalThis.clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
   }
 
   async rpc(name, parameters = {}, options = {}) {
@@ -660,14 +734,15 @@ export class CourseApiClient {
       new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
     );
     try {
-      const accessToken = publicRead ? null : await this.#authenticatedAccessToken();
+      const accessToken = publicRead ? null : await this.#authenticatedAccessToken(options);
       if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
         error.code = "AUTH_REQUIRED";
         throw error;
       }
-      return first(await this.http.rpc(name, parameters, { ...options, accessToken }));
+      const execute = () => this.http.rpc(name, parameters, { ...options, accessToken });
+      return first(await (COURSE_READ_RPCS.has(name) ? this.#recoverRead(execute, options) : execute()));
     } catch (error) {
       if (!this.visitor && authenticationFailure(error)) {
         await Promise.resolve(this.authClient.clearSession?.()).catch(() => undefined);
@@ -867,7 +942,8 @@ export class CourseApiClient {
     query = null,
     body = null,
     headers = {},
-    timeoutMs = 60_000
+    timeoutMs = 60_000,
+    signal
   } = {}) {
     const normalizedMethod = String(method || "").toUpperCase();
     if (!new Set(["GET", "POST", "PATCH", "DELETE"]).has(normalizedMethod)) {
@@ -889,7 +965,7 @@ export class CourseApiClient {
       new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
     );
     try {
-      const accessToken = publicRead ? null : await this.#authenticatedAccessToken();
+      const accessToken = publicRead ? null : await this.#authenticatedAccessToken({ timeoutMs, signal });
       if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
@@ -902,14 +978,15 @@ export class CourseApiClient {
           ...(normalizedBody === null ? {} : { body: normalizedBody }),
           accessToken,
           headers: requestHeaders,
-          timeoutMs
+          timeoutMs,
+          signal
         }
       );
       let response;
       try {
-        response = await execute();
+        response = await (normalizedMethod === "GET" ? this.#recoverRead(execute, { signal }) : execute());
       } catch (error) {
-        if (!courseRequestCanBeReplayed(normalizedMethod, normalizedBody) ||
+        if (normalizedMethod === "GET" || !courseRequestCanBeReplayed(normalizedMethod, normalizedBody) ||
             !transientCourseEdgeFailure(error)) {
           throw error;
         }

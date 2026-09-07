@@ -1150,22 +1150,7 @@ export function classifyCourseAuthoringError(error, { knownCourse = null } = {})
   const code = text(error?.code).toLowerCase();
   const technicalMessage = text(error?.message).toLowerCase();
   const status = Number(error?.status || error?.response?.status || 0);
-  const offline = error?.offline === true || [
-    "offline",
-    "network_error",
-    "network_unavailable",
-    "request_timeout",
-    "service_unavailable",
-    "failed_to_fetch"
-  ].includes(code) ||
-    /(?:failed to fetch|fetch failed|network|offline|load failed|connection|socket)/u
-      .test(technicalMessage);
-  if (offline && knownCourse) {
-    return Object.freeze({
-      kind: "offline-known",
-      message: "Este curso é conhecido neste dispositivo, mas o conteúdo não está disponível agora."
-    });
-  }
+  const offline = error?.offline === true || globalThis.navigator?.onLine === false;
   if ([
     "access_revoked",
     "course_access_revoked",
@@ -1185,10 +1170,29 @@ export function classifyCourseAuthoringError(error, { knownCourse = null } = {})
       message: "O curso mudou durante a leitura. Recarregue para ver a versão atual."
     });
   }
+  if (status === 401 || code === "auth_required" || code === "auth_timeout") {
+    return Object.freeze({ kind: "error", message: code === "auth_timeout"
+      ? "Não foi possível verificar sua sessão no tempo limite. Tente novamente."
+      : "Sua sessão precisa ser renovada. Entre novamente." });
+  }
+  if (error?.name === "AbortError") return Object.freeze({ kind: "error", message: "Leitura cancelada. Tente novamente." });
+  if (offline && knownCourse) {
+    return Object.freeze({ kind: "offline-known",
+      message: "Este curso é conhecido neste dispositivo, mas o conteúdo não está disponível agora." });
+  }
+  const serviceMessage = status === 429
+    ? "O serviço recebeu muitas solicitações. Aguarde e tente novamente."
+    : status >= 500 || code === "service_unavailable"
+      ? "O serviço está temporariamente indisponível. Tente novamente."
+      : code === "request_timeout"
+        ? "A leitura excedeu o tempo limite. Tente novamente."
+        : /fetch|network|connection|socket|offline/u.test(`${code} ${technicalMessage}`)
+          ? "Não foi possível alcançar o serviço. Verifique a conexão e tente novamente."
+          : "Não foi possível carregar esta área agora.";
   return Object.freeze({
     kind: "error",
     message: offline
       ? "Não foi possível acessar os cursos sem conexão."
-      : "Não foi possível carregar esta área agora."
+      : serviceMessage
   });
 }

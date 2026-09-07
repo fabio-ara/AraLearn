@@ -320,7 +320,10 @@ test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", a
   ]);
   assert.equal(COURSE_HUMAN_TASKS.length, 27);
   assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 48_000);
-  assert.deepEqual(runtime.files, source.files);
+  // O validador do documento é local; nenhuma função Edge o consome.
+  const localValidator = path.join("kernel", "courseContract.js");
+  assert.ok(source.files.includes(localValidator));
+  assert.deepEqual(runtime.files, source.files.filter((file) => file !== localValidator));
   assert.ok(runtime.bytes <= 640 * 1024);
 });
 

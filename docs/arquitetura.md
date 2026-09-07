@@ -63,6 +63,13 @@ Conteúdo; Conteúdo e Planejamento permanecem no cabeçalho, enquanto Parâmetr
 **Fontes**, Revisão, Analytics e Pessoas aparecem no menu compacto. A composição é
 estreita, móvel primeiro e usa um único rolador vertical.
 
+Na inspeção, visão múltipla e seleção para observações em lote são estados
+distintos. O comando de uma unidade pode focalizá-la sem retornar a uma unidade
+de referência fixa. A edição dessa superfície é manual; o estado e a prévia de
+Assistência por IA pertencem à aplicação de Estudo. Consultas contextuais
+preservam foco, rascunho e escopo, e a simples abertura de uma folha não marca
+um formulário como alterado.
+
 A autoria por conversa complementa essas superfícies. O GPT pode planejar,
 produzir, consultar fontes, tratar observações e aplicar mudanças; a interface
 permite localizar, ler e revisar o resultado no contexto.
@@ -265,6 +272,18 @@ visibilidade e retorno da conexão podem provocar releitura. O modo manual suspe
 atualizações de fundo de conteúdo e filas pessoais; a nuvem executa a sincronização
 solicitada. Escrita explícita e verificação de acesso continuam sujeitas à rede.
 Rascunhos e conflitos não são descartados para aplicar uma atualização.
+
+As leituras de curso têm prazos para a obtenção de sessão e para a comunicação,
+incluindo o consumo do corpo da resposta. Falhas recuperáveis admitem repetição
+limitada e respeitam `Retry-After` dentro do orçamento de espera; uma solicitação
+explícita funciona sem depender de um novo evento `online`. Uma revisão que muda
+durante a leitura exige uma releitura coerente, e respostas obsoletas não
+substituem o alvo atual ou um cabeçalho mais recente. Recusa de autenticação ou
+acesso não autoriza expor cache privado.
+
+A interface distingue leitura em curso, resultado vazio confirmado, cópia
+local, falha do serviço e sinal de ausência de rede. Manter conteúdo local após
+erro não permite concluir, por si só, que o dispositivo perdeu a Internet.
 
 O servidor continua sendo a autoridade de propriedade e acesso. Um curso
 revogado deixa de abrir depois da validação conectada, mesmo que uma cópia local
