@@ -281,3 +281,11 @@ A migration `20260905071622_separate_public_file_policy_from_citation_display.sq
 O teste focal `supabase/tests/013_atomic_course_metadata_test.sql` passou 28 verificações locais sobre as duas últimas correções: gravação somente de metadados, combinação com entidades e atribuições, idempotência, conflito de revisão, propriedade, rollback integral, chamadas sem o novo argumento, projeção anônima sem trecho privado e PDF autorizado por exceção do arquivo. Todos os dados sintéticos são revertidos pela transação de teste.
 
 Estas correções são incrementais. Antes de aplicá-las, mantenha o backup e o ensaio de restauração exigidos acima, confira a lista exata de migrations pendentes e valide o manifesto final `20260905071622`. Não execute reset nem seed de upgrade sobre um ambiente que já recebeu estas migrations. As provas SQL locais e as jornadas com clientes reais complementam-se; nenhuma delas declara a implantação hospedada concluída.
+
+## 20260907013604 — conflitos de aplicação com resposta finita
+
+A migration `20260907013604_business_conflicts_use_http_409.sql` muda os conflitos deliberados de revisão e estado para `PT409`. A resposta HTTP 409 permite que o cliente releia o estado; usar `40001` nesses pontos podia manter a mesma consulta em repetição no transporte. As guardas de revisão, locks, permissões e recibos permanecem.
+
+A transformação transacional se limita a 43 assinaturas correntes, com contagens prévias verificadas: 69 pontos de conflito e sete capturas ampliadas. Ela preserva os metadados das funções e os oito códigos JSON dos envelopes `PGRST`, incluindo o tratamento de serialização nativa. Nenhuma tabela de dados é modificada. A API reconhece o novo SQLSTATE como `stale_course_state`; banco e Edge devem ser promovidos de forma coordenada.
+
+O teste `supabase/tests/024_business_conflicts_test.sql` verifica leitura com revisão divergente e atual, autorização, ausência de escrita nas leituras, os dois caminhos de captura, rollback e idempotência. Os testes dos comandos afetados conservam os casos de conflito. Essas provas locais não substituem backup/restauração e a validação HTTP no corte hospedado.

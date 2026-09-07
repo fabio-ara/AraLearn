@@ -2633,7 +2633,7 @@ test("replay pós-timeout recupera receipt e o mesmo caminho antes de confirmar 
   const value = adapter(async (url, init) => {
     calls.push(url);
     if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
-      return json({ code: "40001", message: "O Curso mudou." }, 409);
+      return json({ code: "PT409", message: "O Curso mudou." }, 409);
     }
     if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
       const body = JSON.parse(init.body);
@@ -2711,7 +2711,7 @@ test("receipt com objeto ausente ou corrompido vira escrita incerta não repetí
     let cancels = 0;
     const value = adapter(async (url) => {
       if (url.endsWith("/prepare_course_source_pdf_ingestion_for_actor_v1")) {
-        return json({ code: "40001", message: "O Curso mudou." }, 409);
+        return json({ code: "PT409", message: "O Curso mudou." }, 409);
       }
       if (url.endsWith("/ingest_course_source_pdf_for_actor_v1")) {
         return json({
@@ -3178,6 +3178,32 @@ test("normaliza targetPlanItems somente para leitura e rejeita segundo writer", 
     }),
     (error) => error.code === "course_service_unavailable"
   );
+});
+
+test("leitura de Fontes traduz PT409 sem repetir a revisão desatualizada", async () => {
+  let sourceCalls = 0;
+  const value = adapter(async (url, init) => {
+    sourceCalls += 1;
+    assert.match(url, /\/rpc\/get_owned_course_sources_for_actor_v1$/u);
+    assert.equal(JSON.parse(init.body).p_expected_revision, 5);
+    return json({ code: "PT409", message: "private.source-revision" }, 409);
+  }, { attempts: 3 });
+
+  await assert.rejects(
+    () => value.getCourseSources({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      expectedRevision: 5,
+      mode: "catalog"
+    }),
+    (error) => {
+      assert.equal(error.status, 409);
+      assert.equal(error.code, "stale_course_state");
+      assert.equal(error.message.includes("private.source-revision"), false);
+      return true;
+    }
+  );
+  assert.equal(sourceCalls, 1);
 });
 
 test("traduz concorrência do banco sem expor detalhes internos", async () => {

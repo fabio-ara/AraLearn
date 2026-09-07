@@ -39,7 +39,7 @@ select ok(not private.valid_course_audio_config_v1(jsonb_set(pg_temp.audio_confi
 select is(pg_temp.audio_write(jsonb_build_object('type','set_audio_config','config',pg_temp.audio_config()),'audio303-config01',1)->>'courseRevision','2','salvar configuração faz um CAS e avança uma revisão');
 select is(pg_temp.audio_write(jsonb_build_object('type','set_audio_config','config',pg_temp.audio_config()),'audio303-config01',1)->>'idempotent','true','resposta perdida recupera o recibo original antes do CAS');
 select is(pg_temp.audio_write(jsonb_build_object('type','set_audio_config','config',pg_temp.audio_config()),'audio303-config02')->>'changed','false','mesma configuração com outro pedido é no-op');
-select throws_ok($$select pg_temp.audio_write(jsonb_build_object('type','set_audio_config','config',pg_temp.audio_config()),'audio303-stale01',1)$$,'40001',null,'CAS antigo não aplica nova configuração');
+select throws_ok($$select pg_temp.audio_write(jsonb_build_object('type','set_audio_config','config',pg_temp.audio_config()),'audio303-stale01',1)$$,'PT409',null,'CAS antigo não aplica nova configuração');
 select throws_ok($$select pg_temp.audio_write(jsonb_build_object('type','set_audio_config','config',jsonb_set(pg_temp.audio_config(),'{rate}','1')),'audio303-config01',1)$$,'23514',null,'mesmo requestId não aceita outro conteúdo');
 select throws_ok($$select public.execute_course_media_for_actor_v1('30300000-0000-4000-8000-000000000002',pg_temp.audio_course(),pg_temp.audio_revision(),jsonb_build_object('type','set_audio_config','config',pg_temp.audio_config()),'audio303-student')$$,'42501',null,'estudante não altera configuração');
 select throws_ok($$select pg_temp.audio_write(pg_temp.audio_ingest('a'),'audio303-unprepared')$$,'23514',null,'finalizar sem preparação não cria mídia');
@@ -87,8 +87,8 @@ select throws_ok($$select pg_temp.audio_download('30300000-0000-4000-8000-000000
 
 select is(pg_temp.audio_write(jsonb_build_object('type','remove_media','contentHash',repeat('a',64)),'audio303-remove01')->>'changed','true','remoção retira mídia ativa e cria limpeza pendente');
 select throws_ok($$select pg_temp.audio_download(pg_temp.audio_owner(),'u','a')$$,'PT404',null,'vínculo antigo preservado não torna arquivo removido legível');
-select throws_ok($$select pg_temp.audio_prepare('a','audio303-reupload')$$,'40001',null,'reupload aguarda limpeza confirmada do mesmo hash');
-select throws_ok($$select public.complete_course_media_delete_for_actor_v1(pg_temp.audio_owner(),pg_temp.audio_course(),repeat('a',64))$$,'40001',null,'concluir limpeza com objeto presente falha');
+select throws_ok($$select pg_temp.audio_prepare('a','audio303-reupload')$$,'PT409',null,'reupload aguarda limpeza confirmada do mesmo hash');
+select throws_ok($$select public.complete_course_media_delete_for_actor_v1(pg_temp.audio_owner(),pg_temp.audio_course(),repeat('a',64))$$,'PT409',null,'concluir limpeza com objeto presente falha');
 -- Test metadata only; production cleanup uses Storage API. This transaction
 -- permits deletion solely for the synthetic object explicitly named below.
 select set_config('storage.allow_delete_query','true',true);
