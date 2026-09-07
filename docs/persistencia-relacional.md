@@ -276,6 +276,9 @@ observada entre abas. No modo manual, listas, composição já aberta e filas de
 estudo usam o cache; `explicit: true` distingue a sincronização solicitada. Uma
 consulta de acesso separada continua fresca e retira cursos cuja revogação foi
 confirmada, sem substituir o conteúdo dos cursos autorizados.
+Quando essa consulta confirma acesso pela rede, o indicador deixa de reutilizar
+a marca antiga de desconexão. A revisão em cache, sua restrição de edição e as
+pendências permanecem; o evento `online` sozinho não confirma acesso ao serviço.
 
 Transações IndexedDB leem a revisão local atual antes de aplicar cada alteração.
 Conclusões independentes na mesma lição e marcas de unidades diferentes são

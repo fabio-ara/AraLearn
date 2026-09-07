@@ -1403,6 +1403,8 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     const result = await repository.checkAccess();
     if (result?.revokedCourseIds?.length) {
       await editorApp?.replaceProject(result.project || repository.loadProject());
+    } else {
+      editorApp?.refreshRuntimeStatus?.();
     }
   };
   const refreshOnForeground = async () => {

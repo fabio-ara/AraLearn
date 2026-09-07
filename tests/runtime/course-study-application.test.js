@@ -544,6 +544,35 @@ test("falha de exportação não descarta a entrada e conserva saída local acio
   app.destroy();
 });
 
+test("reconexão confirmada mostra pendência em Manual sem trocar leitura ou enviar trabalho", async () => {
+  const document = project();
+  let flushes = 0;
+  const repository = applicationRepository(document, async () => { flushes += 1; });
+  const status = { synchronizationMode: "manual", offline: true, stale: true,
+    readOnly: true, pending: true };
+  repository.loadRuntimeStatus = () => ({ ...status });
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document });
+  await openFirstStudyUnit(app);
+  const position = app.getNavigationPosition();
+  const priorFlushes = flushes;
+  app.setOfflineStatus(true);
+  assert.match(root.innerHTML, /aria-label="Sem conexão"/u);
+
+  // The browser's online event alone does not prove the service can be reached.
+  app.setOfflineStatus(false);
+  assert.match(root.innerHTML, /aria-label="Sem conexão"/u);
+  status.offline = false;
+  app.refreshRuntimeStatus();
+
+  assert.match(root.innerHTML, /aria-label="Sincronização pendente"/u);
+  assert.doesNotMatch(root.innerHTML, /aria-label="Sem conexão"|aria-label="Sincronizado"/u);
+  assert.match(root.innerHTML, /Conteúdo 1/u);
+  assert.deepEqual(app.getNavigationPosition(), position);
+  assert.equal(flushes, priorFlushes);
+  app.destroy();
+});
+
 test("flush em background atualiza pendente para sincronizado sem nova interação", async () => {
   const document = project();
   let releaseFlush;

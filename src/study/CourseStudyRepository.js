@@ -1249,6 +1249,11 @@ export class CourseStudyRepository {
     for (const courseId of this.loadedCourseById.keys()) {
       try {
         await this.bridge.checkCourseAccess(courseId);
+        // Authorized network access clears an old connectivity failure without
+        // promoting the cached revision or flushing pending work in manual mode.
+        this.listRuntimeStatus.offline = false;
+        const loaded = this.loadedCourseById.get(courseId);
+        if (loaded) loaded.offline = false;
       } catch (error) {
         if (courseAccessRevoked(error)) revokedCourseIds.push(courseId);
         else if (!networkFailure(error)) throw error;
