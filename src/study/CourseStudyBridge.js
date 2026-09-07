@@ -34,6 +34,12 @@ export class CourseStudyBridge {
       document: result.document,
       offline: result.offline === true,
       stale: result.stale === true,
+      ...(result.pendingReviewMicrosequenceIds?.length ? {
+        pendingReviewMicrosequenceIds: [...result.pendingReviewMicrosequenceIds]
+      } : {}),
+      ...(result.retainedForReview === true ? {
+        retainedForReview: true, availableRevision: result.availableRevision
+      } : {}),
       ...(result.readOnly === true ? { readOnly: true } : {})
     };
   }

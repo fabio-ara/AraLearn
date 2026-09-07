@@ -81,3 +81,20 @@ test("Unicode, quebras e limites são preservados por caracteres, sem transliter
   assert.equal(resolveCourseSourceOccurrence(unit([paragraph("p", "木 e 林\n representa bosque.")]), quoted).status, "resolved");
   assert.equal(resolveCourseSourceOccurrence(unit([paragraph("p", "木 e 林 representa bosque.")]), quoted).status, "needs_review");
 });
+
+test("Explicação resolve referências no conteúdo compartilhado e rejeita slots de unidade", () => {
+  const explanation = { title: "Quadros e interfaces", content: unit().content };
+  const options = { targetKind: "microsequence_explanation" };
+  const original = structuredClone(explanation);
+  assert.equal(resolveCourseSourceOccurrence(explanation, occurrence(), options).status, "resolved");
+  assert.deepEqual(courseSourceOccurrenceTextTargets(explanation, [occurrence()], options),
+    listCourseSourceOccurrenceTargets(explanation, options));
+  const withUnitSlots = { ...explanation, feedback: [paragraph("p", "Um **quadro** transporta dados entre interfaces.")] };
+  assert.deepEqual(listCourseSourceOccurrenceTargets(withUnitSlots, options).map(({ slot }) => slot), ["content"]);
+  for (const slot of ["response", "feedback"]) {
+    assert.throws(() => normalizeCourseSourceOccurrence(occurrence({ slot }), options), { code: "invalid_course_source_occurrence" });
+    assert.throws(() => resolveCourseSourceOccurrences(withUnitSlots, [occurrence({ slot })], options), { code: "invalid_course_source_occurrence" });
+  }
+  assert.equal(resolveCourseSourceOccurrence({ ...explanation, content: [] }, occurrence(), options).status, "needs_review");
+  assert.deepEqual(explanation, original);
+});

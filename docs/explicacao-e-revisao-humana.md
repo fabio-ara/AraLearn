@@ -1,11 +1,17 @@
-# Explicação e revisão humana: contrato planejado
+# Explicação e revisão humana
 
 ## Estatuto e problema
 
-Este é o contrato de uma evolução planejada do AraLearn. A Explicação compartilhada
-e a aprovação humana do conjunto de conteúdo descritas aqui **ainda não estão
-implementadas**. O documento orienta implementação e aceitação; não certifica
-aprendizagem nem transforma um rascunho em conteúdo aprovado.
+Este documento reúne o contrato pedagógico e funcional e o estado de sua
+implementação. A candidata local já estende conteúdo, fontes, materialização,
+correção, exportação e cliente de revisão. O armazenamento e a autorização são
+verificados no PostgreSQL local. Um ensaio com o executor de autoria e HTTP
+PostgREST confirmou duas Explicações, materialização, rematerialização, fontes,
+exportação e correção focal. Ele usa dados sintéticos e não é prova dos clientes
+ChatGPT MCP/Actions. A interface de Explicação e a decisão humana
+na Autoria pertencem às próximas etapas; o serviço publicado conserva a
+versão anterior. Testes sintéticos não certificam aprendizagem nem transformam
+um rascunho real em conteúdo aprovado.
 
 Uma unidade pode ficar longa ao tentar explicar todos os pressupostos de uma
 tarefa. Encurtá-la sem preservar essas relações pode deixá-la incompreensível.
@@ -49,7 +55,11 @@ parte do curso” é informação de organização que não precisa ocupar o cor
 
 ### Parâmetros e declarações de aplicação
 
-Os seis parâmetros existentes e seus escopos continuam regulando o percurso.
+Os parâmetros existentes e seus escopos continuam regulando o percurso. O catálogo
+versionado contém doze definições: as seis de conteúdo, prática e extensão
+inicialmente descritas, mais distribuição e posição da prática, três preferências
+de cadência e interação na conversa. A contagem de seis no contrato inicial era
+incompleta; a Explicação não acrescenta parâmetros nem remove essas preferências.
 Não há novo alvo de palavras, teto de ideias ou nível de dificuldade para o
 overlay. O alvo editorial da unidade continua flexível e se refere à unidade,
 não à soma oculta de unidade e apoio.
@@ -122,6 +132,32 @@ corrente continua a autoridade; o metadado de aprovação não guarda um segundo
 curso nem o histórico integral de texto.
 
 ### Ciclo autoral
+
+Na representação corrente, a microssequência pode conter `explanationPlan`
+(propósito, pressupostos, relações e referências das fontes previstas) e
+`explanation` (título e componentes de conteúdo do catálogo). Ambos permanecem
+distintos das unidades. A materialização exige uma Explicação por microssequência
+da parte e grava apoio, unidades, aplicações e fontes na mesma transação.
+Uma correção focal pode alterar apenas o apoio ou incluí-lo junto às unidades;
+omitir as fontes na correção conserva os vínculos existentes.
+
+A situação protegida `contentReview` acompanha a leitura da entidade, fora de
+seu conteúdo editável. A composição de um documento de curso conserva o apoio,
+mas não transfere essa situação para uma importação. A exportação autoral inclui
+uma leitura de proveniência por Explicação em `artifact.explanationSources`,
+na mesma revisão do artefato; não duplica o apoio nas unidades nem concede
+aprovação. As fontes previstas no mapa orientam a produção e não equivalem às
+citações do conteúdo efetivamente produzido.
+
+O catálogo de tarefas passa a `3.0.0`: proposta do apoio no mapa e Explicações
+na materialização são entradas obrigatórias. Permanecem 27 tarefas. Na candidata
+local, o catálogo serializado ocupa 53.379 bytes UTF-8; o OpenAPI minificado,
+44.976 bytes UTF-8 e 44.687 unidades UTF-16; a projeção formatada do editor,
+96.369 unidades UTF-16. O gerador reutiliza referências de schema sem suprimir
+campos. Os orçamentos de regressão do catálogo e do texto minificado foram
+ajustados à extensão medida; o limite local de 98 mil caracteres do editor
+permanece. Esses valores não medem uma chamada de materialização nem demonstram
+descoberta ou execução do contrato por um cliente hospedado.
 
 | Ação | Resultado e limite |
 | --- | --- |

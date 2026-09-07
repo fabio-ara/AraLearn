@@ -81,5 +81,25 @@ select throws_ok($q$delete from private.course_instructional_plan_items where id
 select is(pg_temp.write_302('{"type":"set_target_sources","targetKind":"plan_item","targetId":"99000000-0000-4000-8000-000000000201","expectedTargetVersion":1,"sourceLinks":[]}','source-302-plan-unlink')->>'changed','true','retirada explícita usa comando disponível ao aplicativo e canais');
 select lives_ok($q$delete from private.course_instructional_plan_items where id='99000000-0000-4000-8000-000000000201'$q$,'item sem vínculos pode ser excluído');
 select is((select count(*) from private.course_source_attributions where course_id='99000000-0000-4000-8000-000000000101' and target_kind='plan_item'),0::bigint,'exclusão autorizada não deixa atribuição órfã');
+-- A retirada conserva referências literais no inventário comparável, sem reativá-las.
+do $fixture$
+begin
+  perform pg_temp.write_302(jsonb_build_object('type','save_source','sourceId','unused-source-302','expectedSourceRevision',0,'source',pg_temp.source_302()),'source-302-unused-source');
+  perform pg_temp.write_302('{"type":"save_anchor","anchorId":"unused-anchor-302","sourceId":"source-302","sourceRevision":2,"expectedAnchorRevision":0,"selector":{"kind":"page_range","startPage":3,"endPage":3},"contentHash":null,"humanLocator":"Sem uso","verificationExcerpt":null}','source-302-unused-anchor');
+  perform pg_temp.write_302('{"type":"retire_anchor","anchorId":"unused-anchor-302","expectedAnchorRevision":1}','source-302-unused-anchor-retire');
+  perform pg_temp.write_302('{"type":"retire_anchor","anchorId":"anchor-302","expectedAnchorRevision":1}','source-302-linked-anchor-retire');
+  perform pg_temp.write_302('{"type":"retire_source","sourceId":"unused-source-302","expectedSourceRevision":1}','source-302-unused-source-retire');
+  perform pg_temp.write_302('{"type":"retire_source","sourceId":"source-302","expectedSourceRevision":2}','source-302-linked-source-retire');
+end $fixture$;
+create temporary table retired_analytics302 as
+select public.get_owned_course_authoring_analytics_for_actor_v4('99000000-0000-4000-8000-000000000001','99000000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99000000-0000-4000-8000-000000000101'),'{"scope":{"kind":"course","ref":null}}')->'basis' value;
+select is((select jsonb_array_length(value->'sources') from retired_analytics302),1,'inventário mantém fonte retirada referenciada e omite retirada sem uso');
+select is((select value#>>'{sources,0,sourceRef}' from retired_analytics302),'source-302','referência retirada conserva identidade na base');
+select is((select jsonb_array_length(value#>'{sources,0,anchors}') from retired_analytics302),1,'inventário mantém âncora retirada referenciada e omite retirada sem uso');
+select is((select value#>>'{sources,0,anchors,0,anchorRef}' from retired_analytics302),'anchor-302','âncora retirada ainda resolve referência literal');
+select is((select value#>'{studyUnits,0,sourceLinks}' from retired_analytics302),pg_temp.links_302(),'Analytics não apaga o vínculo para fabricar uma base válida');
+select is((select status from private.course_sources where course_id='99000000-0000-4000-8000-000000000101' and source_id='source-302'),'retired','leitura comparável não reativa fonte');
+select is((select status from private.course_source_anchors where course_id='99000000-0000-4000-8000-000000000101' and anchor_id='anchor-302'),'retired','leitura comparável não reativa âncora nem atesta conferência');
 select * from finish();
 rollback;

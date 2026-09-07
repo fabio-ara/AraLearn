@@ -3359,12 +3359,14 @@ export class CourseSupabaseAdapter {
     planItemUpserts = [],
     targetPlanItems = [],
     units,
+    explanations,
     deadlineAt = null
   }) {
     if (!Array.isArray(planItemUpserts) || planItemUpserts.length > 256 ||
         !Array.isArray(targetPlanItems) || targetPlanItems.length < 1 ||
         targetPlanItems.length > 64 ||
-        !Array.isArray(units) || units.length < 1 || units.length > 64) {
+        !Array.isArray(units) || units.length < 1 || units.length > 64 ||
+        !Array.isArray(explanations) || explanations.length < 1 || explanations.length > 64) {
       throw new AuthoringApiError(
         422,
         "invalid_course_part_materialization",
@@ -3374,10 +3376,12 @@ export class CourseSupabaseAdapter {
     const normalizedPlanItemUpserts = structuredClone(planItemUpserts);
     const normalizedTargetPlanItems = structuredClone(targetPlanItems);
     const normalizedUnits = structuredClone(units);
+    const normalizedExplanations = structuredClone(explanations);
     if (new TextEncoder().encode(JSON.stringify({
       planItemUpserts: normalizedPlanItemUpserts,
       targetPlanItems: normalizedTargetPlanItems,
-      units: normalizedUnits
+      units: normalizedUnits,
+      explanations: normalizedExplanations
     })).byteLength > 1_500_000) {
       throw new AuthoringApiError(
         413,
@@ -3392,7 +3396,8 @@ export class CourseSupabaseAdapter {
       expectedAuthoringPartVersion,
       planItemUpserts: normalizedPlanItemUpserts,
       targetPlanItems: normalizedTargetPlanItems,
-      units: normalizedUnits
+      units: normalizedUnits,
+      explanations: normalizedExplanations
     })));
     const result = first(await this.rpc(
       "materialize_course_authoring_part_for_actor_v2",
@@ -3405,6 +3410,7 @@ export class CourseSupabaseAdapter {
         p_plan_item_upserts: normalizedPlanItemUpserts,
         p_target_plan_items: normalizedTargetPlanItems,
         p_units: normalizedUnits,
+        p_explanations: normalizedExplanations,
         p_request_id: requestId,
         p_request_hash: requestHash
       },
@@ -3619,11 +3625,17 @@ export class CourseSupabaseAdapter {
       if (!page.items.length || cursors.has(key) || typeof cursor.entityType !== "string" || typeof cursor.entityId !== "string") throw new AuthoringApiError(503, "course_service_unavailable", "A paginação da exportação não avançou.");
       cursors.add(key);
     }
+    const explanationSources = [];
+    for (const row of rows.filter(row => row.entityType === "microsequence" && row.content?.explanation)) {
+      explanationSources.push(await this.getCourseSources({ principal, courseId, expectedRevision,
+        mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: row.entityId,
+        cursor: null, limit: 1, deadlineAt }));
+    }
     const current = await this.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
     if (current?.courseId !== courseId || current.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou durante a exportação.");
     let result;
     try {
-      result = assembleCourseAuthoringExport({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows) });
+      result = assembleCourseAuthoringExport({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows), explanationSources });
     } catch {
       throw new AuthoringApiError(503, "course_service_unavailable", "O serviço devolveu um artefato de curso inválido.");
     }

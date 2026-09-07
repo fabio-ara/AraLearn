@@ -122,6 +122,8 @@ function mapArguments(artifactId, approved) {
         microssequencias: lesson.microsequences.map((microsequence) => ({
           titulo: microsequence.title,
           objetivo: microsequence.objective,
+          explicacao: { proposito: microsequence.objective,
+            pressupostos: [...microsequence.dependsOn], relacoes: [...microsequence.covers], fontesPrevistas: [] },
           dependencias: microsequence.dependsOn,
           cobertura: microsequence.covers
         }))
@@ -378,6 +380,10 @@ test("MCP e Actions expõem o mapa curricular inteiro e lotes por referência hu
     assert.match(mapSchema, /microssequencias/u);
     assert.match(mapSchema, /dependencias/u);
     assert.match(mapSchema, /cobertura/u);
+    assert.match(mapSchema, /fontesPrevistas/u);
+    const proposal = proposedMap.modulos[0].licoes[0].microssequencias[0].explicacao;
+    assert.equal(proposal.proposito, fixture.artifacts["mapa-global-v1"].modules[0].lessons[0].microsequences[0].objective);
+    assert.deepEqual(JSON.parse(JSON.stringify(proposedMap)).modulos[0].licoes[0].microssequencias[0].explicacao, proposal);
     assert.doesNotMatch(mapSchema, /partes/u);
 
     const partSchema = JSON.stringify(taskFrom(tools, "salvar_parte").inputSchema);

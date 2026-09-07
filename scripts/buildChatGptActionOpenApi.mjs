@@ -73,6 +73,14 @@ const sourceMetadataSchema = sourceTaskSchema.properties.metadados;
 const sourceLinksSchema = actionTools.find(({ name }) => name === "materializar_parte")
   .inputSchema.properties.unidades.items.properties.fontes;
 const sharedInputSchemas = {
+  HumanCurricularModules: actionTools.find(({ name }) => name === "salvar_mapa_curricular").inputSchema.properties.modulos,
+  HumanCurricularLessons: actionTools.find(({ name }) => name === "salvar_mapa_curricular")
+    .inputSchema.properties.modulos.items.properties.licoes,
+  HumanCurricularMicrosequences: actionTools.find(({ name }) => name === "salvar_mapa_curricular")
+    .inputSchema.properties.modulos.items.properties.licoes.items.properties.microssequencias,
+  HumanExplanations: actionTools.find(({ name }) => name === "materializar_parte").inputSchema.properties.explicacoes,
+  HumanPedagogicalApplication: actionTools.find(({ name }) => name === "materializar_parte")
+    .inputSchema.properties.unidades.items.properties.aplicacaoPedagogica,
   HumanCourseSelection: actionTools.find(({ name }) => name === "comparar_cursos").inputSchema.properties.esquerda,
   HumanReferences: actionTools.find(({ name }) => name === "consultar_observacoes").inputSchema.properties.unidades,
   HumanReadContinuation: actionTools.find(({ name }) => name === "preparar_revisao").inputSchema.properties.continuacao,

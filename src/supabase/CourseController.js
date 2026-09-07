@@ -296,6 +296,8 @@ function validCourseEntityPage(page, courseId, revision) {
     String(page.courseId || "").trim().toLowerCase() === courseId &&
     Number(page.revision) === revision &&
     Array.isArray(page.items) &&
+    (page.pendingReviewMicrosequenceIds == null || Array.isArray(page.pendingReviewMicrosequenceIds) &&
+      page.pendingReviewMicrosequenceIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 200)) &&
     typeof page.hasMore === "boolean" &&
     (page.hasMore ? page.nextCursor != null : page.nextCursor == null) &&
     page.items.every((row) => !Object.hasOwn(row || {}, "courseId") ||
@@ -1343,7 +1345,8 @@ export class CourseController {
     if (!UUID_PATTERN.test(String(courseId || ""))) throw new TypeError("A identidade do Curso é inválida.");
     const cached = await this.#readLastVerifiedComposition(courseId);
     if (!cached) return null;
-    return { ...cached, stale: false, readOnly: false, cacheOnly: true };
+    return { ...cached, stale: cached.retainedForReview === true,
+      readOnly: cached.retainedForReview === true, cacheOnly: true };
   }
 
   async getCourse(courseId) {
@@ -1464,6 +1467,7 @@ export class CourseController {
     if (String(cachedCourse?.courseId || "").trim().toLowerCase() !== courseId ||
         Number(cachedCourse?.revision) !== revision) return null;
     const rows = [];
+    const pendingReview = new Set();
     const cursors = new Set();
     let cursor = null;
     for (let pageIndex = 0; pageIndex < MAX_ENTITY_PAGES; pageIndex += 1) {
@@ -1472,6 +1476,7 @@ export class CourseController {
       ))?.data;
       if (!validCourseEntityPage(page, courseId, revision)) return null;
       rows.push(...page.items);
+      for (const id of page.pendingReviewMicrosequenceIds || []) pendingReview.add(id);
       if (page.hasMore !== true) {
         let document;
         try {
@@ -1492,7 +1497,8 @@ export class CourseController {
           document,
           offline: false,
           stale: false,
-          cacheVerified: true
+          cacheVerified: true,
+          ...(pendingReview.size ? { pendingReviewMicrosequenceIds: [...pendingReview] } : {})
         };
       }
       if (!page.nextCursor) return null;
@@ -1531,7 +1537,13 @@ export class CourseController {
       ...result,
       stale: true,
       readOnly: true,
-      cachedAt: cached.savedAt || null
+      cachedAt: cached.savedAt || null,
+      ...(cached.reviewRetention?.availableRevision > revision &&
+          Array.isArray(cached.reviewRetention.pendingReviewMicrosequenceIds) ? {
+        retainedForReview: true,
+        availableRevision: cached.reviewRetention.availableRevision,
+        pendingReviewMicrosequenceIds: [...cached.reviewRetention.pendingReviewMicrosequenceIds]
+      } : {})
     };
   }
 
@@ -1653,6 +1665,8 @@ export class CourseController {
           entityPageSize
         );
         if (cached) {
+          const retained = await this.#retainReviewedCopy(courseId, cached);
+          if (retained) return retained;
           await this.#promoteVerifiedComposition(courseId, cached.course, entityPageSize);
           if (pending && revision >= pending.courseRevision) {
             await this.#clearPendingComposition(courseId);
@@ -1673,6 +1687,7 @@ export class CourseController {
       throw new TypeError("A versão do Curso é inválida.");
     }
     const rows = [];
+    const pendingReview = new Set();
     const cursors = new Set();
     let cursor = null;
     let offline = course.offline === true;
@@ -1697,6 +1712,7 @@ export class CourseController {
           throw invalidCourseComposition("A página de entidades do Curso é inválida.");
         }
         rows.push(...page.items);
+        for (const id of page.pendingReviewMicrosequenceIds || []) pendingReview.add(id);
         offline ||= page.offline === true;
         stale ||= page.stale === true;
         if (page.hasMore !== true) {
@@ -1705,6 +1721,10 @@ export class CourseController {
             title: String(course?.title || "").trim(),
             goal: String(course?.goal || "").trim()
           }, rows);
+          const candidate = { course, rows, document, offline, stale,
+            ...(pendingReview.size ? { pendingReviewMicrosequenceIds: [...pendingReview] } : {}) };
+          const retained = await this.#retainReviewedCopy(courseId, candidate);
+          if (retained) return retained;
           await this.#promoteVerifiedComposition(courseId, course, entityPageSize);
           if (pending && offline !== true && stale !== true &&
               revision >= pending.courseRevision) {
@@ -1713,11 +1733,7 @@ export class CourseController {
           if (pendingFallback && (offline === true || stale === true ||
               revision < pending.courseRevision)) return pendingFallback;
           return {
-            course,
-            rows,
-            document,
-            offline,
-            stale,
+            ...candidate,
             ...(offline || stale ? { readOnly: true } : {})
           };
         }
@@ -1747,6 +1763,32 @@ export class CourseController {
       });
       return preserved;
     }
+  }
+
+  async #retainReviewedCopy(courseId, candidate) {
+    if (this.ownerOnly || !candidate.pendingReviewMicrosequenceIds?.length) return null;
+    const previous = await this.#readLastVerifiedComposition(courseId);
+    if (!previous || previous.course.revision >= candidate.course.revision) return null;
+    const pending = new Set(candidate.pendingReviewMicrosequenceIds);
+    const removesAvailableContent = previous.rows.some((row) =>
+      row.entityType === "study_unit" && pending.has(row.parentId) ||
+      row.entityType === "microsequence" && pending.has(row.entityId) && row.content?.explanation != null);
+    if (!removesAvailableContent) return null;
+    const reviewRetention = { availableRevision: candidate.course.revision,
+      pendingReviewMicrosequenceIds: [...pending] };
+    const key = verifiedCompositionCacheKey(courseId, this.cachePrefix);
+    const retain = (cached) => {
+      const value = cachedPayload(cached);
+      return Number(value?.revision) === previous.course.revision
+        ? { ...value, reviewRetention } : cached;
+    };
+    if (typeof this.store.updateCache === "function") await this.store.updateCache(key, retain);
+    else await this.store.putCache(key, retain(await this.store.getCache(key)));
+    // Preserve one complete course revision. Never splice old microsequences
+    // into the newly filtered server projection under its newer revision.
+    return { ...previous, offline: candidate.offline === true, stale: true, readOnly: true,
+      retainedForReview: true, availableRevision: candidate.course.revision,
+      pendingReviewMicrosequenceIds: [...pending] };
   }
 
   clearCourse(courseId, { clearLists = true } = {}) {

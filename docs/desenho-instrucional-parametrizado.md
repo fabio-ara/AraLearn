@@ -52,6 +52,14 @@ relevantes para ergonomia e segurança. A quantidade de partes organiza a
 produção, mas não é meta pedagógica. As preferências de parte, lote e pausa têm
 escopo de curso e não viram atribuições locais de uma unidade de estudo.
 
+Ao revisar uma unidade já produzida, a leitura recupera as três escolhas de
+cadência de sua aplicação quando não existe uma atribuição vigente. Isso permite
+reproduzir a mesma configuração sem transformar aquela escolha automática em
+preferência do curso. A consulta do curso ou da microssequência continua indicando
+ausência de escolha enquanto ela não for definida nesses escopos. Uma atribuição
+vigente, inclusive uma nova fixação humana, prevalece na resolução; a aplicação
+anterior continua inspecionável separadamente e não é reescrita por essa leitura.
+
 ## Catálogo corrente
 
 O catálogo 1.2.1 contém doze decisões organizadas em explicações, prática, leitura e estilo,

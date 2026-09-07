@@ -46,6 +46,7 @@ const ROW_FIELDS = new Set([
   "parentId",
   "position",
   "content",
+  "contentReview",
   "version",
   "createdAt",
   "updatedAt"
@@ -187,6 +188,24 @@ function normalizeRow(rawRow, index) {
     position,
     content: cloneJson(rawRow.content, "Conteúdo da entidade")
   };
+  if (Object.hasOwn(rawRow, "contentReview")) {
+    const review = rawRow.contentReview;
+    if (review !== null) {
+      const reviewed = review?.state === "current" || review?.state === "stale";
+      if (entityType !== "microsequence" || !isPlainObject(review) ||
+          Object.keys(review).some(field => !["state", "approvedAt"].includes(field)) ||
+          !["unregistered", "draft", "current", "stale"].includes(review.state) ||
+          reviewed && (typeof review.approvedAt !== "string" ||
+            !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(review.approvedAt) ||
+            !Number.isFinite(Date.parse(review.approvedAt))) ||
+          !reviewed && review.approvedAt != null) {
+        fail("invalid_course_content_review", "Os metadados de revisão da microssequência são inválidos.",
+          { index, entityType, entityId });
+      }
+    }
+    // Read metadata stays outside editable/importable course content.
+    row.contentReview = cloneJson(review, "Revisão do conteúdo");
+  }
   if (Object.hasOwn(rawRow, "courseId")) row.courseId = text(rawRow.courseId);
   if (Object.hasOwn(rawRow, "version")) {
     const version = Number(rawRow.version);

@@ -50,6 +50,41 @@ Revisão esperada e identificador de pedido resolvem falhas distintas. A revisã
 impede sobrescrita de trabalho concorrente; um recibo temporário permite repetir
 a mesma intenção depois de uma resposta perdida sem duplicar o efeito.
 
+### Revisão do conteúdo e cópia de Estudo
+
+O cliente da aplicação lê a impressão do conjunto de uma microssequência por
+`get_course_microsequence_review_v1` e envia a decisão explícita por
+`approve_course_microsequence_content_v1`. A aprovação exige sessão da pessoa
+proprietária na aplicação; o servidor não concede essa autoridade ao OAuth de
+MCP/Actions. A impressão corresponde ao conteúdo inspecionado. O cliente
+conserva a identidade da decisão para uma retomada e não repete automaticamente
+uma escrita incerta. Um recibo recuperado confirma a decisão original; a
+situação corrente precisa ser relida caso o conteúdo tenha mudado depois.
+Na leitura de entidades, `contentReview` fica fora de `content` e contém apenas
+situação e data públicas. A composição do documento exportável não incorpora
+esse metadado, de modo que reimportar conteúdo não reaplica a aprovação da origem.
+
+A projeção de Estudo informa quais microssequências aguardam revisão, sem
+distribuir seu novo texto ao estudante. Antes de promover uma composição no
+cache, o controlador verifica se ela retiraria conteúdo disponível na cópia
+anterior. Nesse caso conserva o curso inteiro e sua revisão, incluindo o
+progresso local. A diferença conhecida acompanha a cópia após reiniciar o
+aplicativo. Não mistura microssequências de revisões distintas nem interpreta
+essa retenção como falta de Internet. Uma projeção posterior elegível permite
+a substituição íntegra; o modo manual continua aguardando atualização explícita.
+O acesso a arquivos continua sujeito à autorização corrente.
+
+As citações do apoio usam `get_course_explanation_citations_v1`, com curso,
+microssequência e revisão da cópia efetivamente aberta. Compartilham o contrato
+bibliográfico das unidades e identificam o alvo como `microsequence_explanation`.
+Na exportação autoral, o texto aparece uma vez na microssequência e as
+atribuições de cada apoio são lidas na mesma revisão do curso. Ausência da
+leitura de proveniência, repetição ou alvo/revisão divergentes impedem exportar
+um artefato que pareça completo.
+Essas regras são verificadas por testes locais de cliente e persistência;
+a migração e as conversas hospedadas precisam de comprovação própria antes da
+publicação. Ver o [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md).
+
 ## Auth: conta da aplicação e OAuth do MCP
 
 Auth mantém cadastro por e-mail, confirmação, recuperação, sessão e rotação de

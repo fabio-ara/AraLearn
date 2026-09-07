@@ -11,6 +11,38 @@ import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/c
 const COURSE_A = "10000000-0000-4000-8000-000000000001";
 const COURSE_B = "20000000-0000-4000-8000-000000000002";
 
+test("Estudo informa cópia anterior e lê citações do apoio pela revisão íntegra conservada", async () => {
+  const document = course(COURSE_A, "a");
+  const calls = [];
+  const descriptor = { courseId: COURSE_A, title: "Curso", revision: 2, ownership: "public", canEdit: false };
+  const bridge = {
+    async listAccessibleCourses() { return { items: [descriptor], hasMore: false }; },
+    async loadCourse() { return { course: { ...descriptor, revision: 1 }, revision: 1,
+      document: { courses: [document] }, rows: [], retainedForReview: true, availableRevision: 2,
+      pendingReviewMicrosequenceIds: ["micro-a"], stale: true, readOnly: true }; }
+  };
+  const api = {
+    async getExplanationCitations(courseId, targetId, options) {
+      calls.push({ courseId, targetId, options });
+      return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+        courseId, courseRevision: 1, targetKind: "microsequence_explanation", targetId, citations: [] };
+    }
+  };
+  const repository = new CourseStudyRepository({ bridge, api, cache: cache(), visitor: true, windowValue: null });
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+  const before = repository.loadProject();
+  const status = repository.loadRuntimeStatus(COURSE_A);
+  assert.equal(status.retainedForReview, true);
+  assert.equal(status.courseRevision, 1);
+  assert.equal(status.availableRevision, 2);
+  assert.equal(status.offline, false);
+  await repository.loadExplanationCitations([COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"]);
+  assert.deepEqual(calls, [{ courseId: COURSE_A, targetId: "micro-a", options: { expectedRevision: 1 } }]);
+  assert.deepEqual(repository.loadProject(), before);
+  await repository.close();
+});
+
 test("manual usa lista e conteúdo em cache, mantém versão aberta e verifica revogação separadamente", async () => {
   let reads = 0;
   let revision = 1;

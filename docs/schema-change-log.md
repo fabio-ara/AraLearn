@@ -1,5 +1,43 @@
 # Alterações do schema
 
+## 20260907222912 — Explicação compartilhada e revisão humana
+
+A microssequência corrente conserva `explanationPlan` e uma `explanation` com
+título e recursos do catálogo comum. Materializar uma parte exige um apoio por
+microssequência produzida; unidades, aplicações e vínculos são confirmados na
+mesma transação e no recibo existente. Uma falha do apoio desfaz o lote. Salvar
+o mapa preserva a Explicação existente e altera somente sua proposta.
+
+`content_review` é metadado protegido, separado do conteúdo importável. O corte
+mantém o acervo anterior sem revisão registrada; novas microssequências e cópias
+começam como rascunho. A aprovação exige a sessão atual do aplicativo da pessoa
+proprietária, unidades e apoio produzidos e a impressão do conjunto inspecionado.
+OAuth, Actions/MCP, importação e correção não concedem aprovação. Replay recupera
+a decisão original; divergência da base retorna HTTP 409, sem rebase automático.
+
+A base inclui conteúdo ordenado, aplicações, dependências existentes, fontes e
+âncoras usadas e arquivos efetivamente vinculados. Alteração material torna a
+aprovação não atual; uma alteração independente não invalida outro recorte.
+Leituras de estudantes, citações, arquivos e cópias compartilhadas respeitam a
+elegibilidade no servidor. A pessoa proprietária continua inspecionando o rascunho.
+O marcador de revisão pendente permite ao cliente conservar a cópia local anterior.
+Não há snapshot aprovado paralelo no servidor nem decisão humana retroativa.
+
+A base literal de Analytics/exportação conserva metadados de fontes e âncoras
+retiradas quando uma atribuição corrente ainda as referencia. Isso evita uma
+referência pendente por omissão do inventário sem apagar o vínculo ou reativar a
+fonte. Retiradas sem uso ficam ausentes. Esse DTO de comparação não carrega status:
+a leitura de Fontes continua sendo a superfície que informa retirada/conferência;
+a presença na base não certifica disponibilidade nem verificação.
+
+O alvo de proveniência `microsequence_explanation` reutiliza fontes, ocorrências,
+bibliografia e acesso a PDF/áudio. A projeção de revisão não expõe identificadores
+privados da pessoa revisora. O manifesto declara 50 capacidades em ordem canônica.
+Provas transacionais locais cobrem upgrade, autoridade, replay, conflito focal,
+atomicidade, leitura elegível e cópia; publicação hospedada e clientes reais
+continuam sujeitos aos gates da candidata integrada. Essas provas não demonstram
+aprendizagem nem substituem a inspeção humana do conteúdo.
+
 ## 20260907031059 — declaração do contrato de conflitos HTTP 409
 
 O manifesto passa a anunciar `course-business-conflicts-http-409-v1`, com 48

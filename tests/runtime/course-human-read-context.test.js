@@ -36,6 +36,9 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     async getCourse({ courseId }) {
       return { courseId, revision: adapter.revision, title: courseId === COURSE.id ? TITLE : "Outro curso" };
     },
+    async getCourseInstructionalPlan() {
+      return { courseRevision: adapter.revision, plan: { title: TITLE, parts: [] } };
+    },
     async listCourseStudyUnits(input) {
       calls.units.push(input);
       const start = input.cursorStudyUnitId === null ? 0 : Number(input.cursorStudyUnitId.split("-").at(-1));
@@ -242,6 +245,25 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
   assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId), [null, "unit-12"]);
   assert.equal(adapter.calls.annotations.length, 24);
+});
+
+test("revisão inclui um apoio literal por microssequência, com proposta e situação separadas", async () => {
+  const units = [studyUnit(1), studyUnit(2)].map(unit => ({ ...unit,
+    curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
+  const adapter = fixture({ units });
+  const support = { title: "Relação completa", content: [{ id: "support", package: "aralearn.resource.paragraph",
+    version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
+    parts: [{ id: "part", position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
+      explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds: [] },
+      explanation: support, contentReview: { state: "draft" } }] }] } });
+  const read = await execute(adapter, "preparar_revisao", {});
+  assert.equal(read.context.explicacoes.length, 1);
+  assert.deepEqual(read.context.explicacoes[0].conteudo, support);
+  assert.equal(read.context.explicacoes[0].proposta.proposito, "Explicitar a relação");
+  assert.equal(read.context.explicacoes[0].revisao, "Rascunho");
+  assert.equal(read.context.studyUnits.length, 2);
+  assert.equal(adapter.calls.sources[0].targetKind, "microsequence_explanation");
 });
 
 test("curso, busca ou revisão trocados recusam continuação antes de ler outra página", async () => {

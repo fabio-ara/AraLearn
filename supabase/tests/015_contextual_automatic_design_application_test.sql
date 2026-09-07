@@ -1,4 +1,14 @@
 begin;
+
+-- Apoio sintético completo: a fixture não concede aprovação humana.
+create function pg_temp.explanation_fixture(p_targets jsonb) returns jsonb language sql as $fixture$
+ select jsonb_agg(jsonb_build_object('microsequenceId',t->>'didacticMicrosequenceId',
+ 'content',jsonb_build_object('title','Relação entre os elementos','content',jsonb_build_array(jsonb_build_object(
+ 'id','p','package','aralearn.resource.paragraph','version','1.0.0','data',jsonb_build_object('text',
+ 'Um elemento pode ser observado por suas propriedades e por sua relação com os demais. Compare duas situações: se apenas uma propriedade mudou, a relação pode permanecer; se a conexão foi retirada, a interação deixa de ocorrer. Identificar essa diferença permite explicar o caso e escolher uma ação coerente.')))),
+ 'sourceLinks','[]'::jsonb)) from jsonb_array_elements(p_targets) t
+$fixture$;
+
 select no_plan();
 select set_config('request.jwt.claim.role','service_role',true);
 set constraints all deferred;
@@ -90,11 +100,11 @@ select jsonb_build_array(jsonb_build_object(
   'designApplication',jsonb_build_object('mode','expository','introducedInstructionalAnalysisUnitIds','[]'::jsonb,'usedInstructionalAnalysisUnitIds','[]'::jsonb,
     'curriculumScopeItemIds',jsonb_build_array('95000000-0000-4000-8000-000000000321'),'explanationApplications','[]'::jsonb,'practiceApplications','[]'::jsonb,'componentRefs','[]'::jsonb),
   'sourceLinks','[]'::jsonb)) as units from parameters,policy;
-create function pg_temp.materialize_contextual(request_id text,p_units jsonb) returns jsonb language sql as $f$
+create function pg_temp.materialize_contextual(request_id text,p_units jsonb,p_explanations jsonb default null) returns jsonb language sql as $f$
   select public.materialize_course_authoring_part_for_actor_v2(
     '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',1,1,'[]'::jsonb,
     '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
-    p_units,request_id,encode(extensions.digest(p_units::text,'sha256'),'hex'))
+    p_units,request_id,encode(extensions.digest(p_units::text,'sha256'),'hex'), coalesce(p_explanations,pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb)))
 $f$;
 select ok(private.valid_applied_course_design_parameters_v1(payload.units#>'{0,designSnapshot,parameters}',resolved.parameters),'calibração tipada completa aceita cadência automática ainda sem valor corrente') from payload,resolved;
 select ok(not private.valid_applied_course_design_parameters_v1(jsonb_set(payload.units#>'{0,designSnapshot,parameters}','{5,value}','241'),resolved.parameters),'fixação humana não pode ser substituída pela escolha automática') from payload,resolved;
@@ -107,6 +117,9 @@ select throws_ok($$select pg_temp.materialize_contextual('context-old-policy',js
  'materialização nova exige política corrente mesmo quando as referências continuam iguais');
 select ok(not exists(select 1 from private.course_change_receipts where actor_id='95000000-0000-4000-8000-000000000001' and request_id='context-old-policy'),
  'política antiga não deixa recibo de materialização');
+select throws_ok($$select pg_temp.materialize_contextual('context-missing-explanation',units,'[]') from payload$$,'22023',null,'Apoio faltante desfaz as unidades do mesmo commit');
+select is((select count(*) from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_type='study_unit'),0::bigint,'Falha do apoio não deixa unidades parciais');
+select ok(not exists(select 1 from private.course_change_receipts where actor_id='95000000-0000-4000-8000-000000000001' and request_id='context-missing-explanation'),'Falha do apoio não deixa recibo de sucesso');
 select lives_ok($$select pg_temp.materialize_contextual('context-automatic-01',units) from payload$$,'writer materializa escolha automática contextual sem mutação prévia das preferências');
 select is((select design_application->>'contract' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
  'aralearn.study-unit-design-application.v1','aplicação persistida inclui o discriminador do contrato');
@@ -125,7 +138,7 @@ select lives_ok($$select public.materialize_course_authoring_part_for_actor_v2(
   '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',2,1,'[]'::jsonb,
   '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
   jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"'),'context-catalog-121',
-  encode(extensions.digest(jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"')::text,'sha256'),'hex')) from payload$$,
+  encode(extensions.digest(jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"')::text,'sha256'),'hex'), pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb)) from payload$$,
   'o mesmo writer aceita aplicação de catálogo1.2.1 com valores e controles preservados');
 select is((select design_snapshot->>'parameterCatalogVersion' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
   '1.2.1','nova decisão registra a versão efetivamente aplicada');
@@ -133,5 +146,19 @@ select is(public.get_owned_course_design_for_actor_v3('95000000-0000-4000-8000-0
   '1.2.1','leitor publica catálogo corrente');
 select throws_ok($$update private.course_design_parameter_definitions set definition=jsonb_set(definition,'{label}','"Mudança fora de migration"')$$,
   '55000',null,'a definição continua imutável fora da migration');
+create function pg_temp.cadence_read(p_scope text,p_ref text) returns jsonb language sql as $cadence$
+ select jsonb_agg(p->'effectiveAssignment' order by p->>'parameterId') from jsonb_array_elements(
+ public.get_owned_course_design_for_actor_v3('95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301',p_scope,p_ref,1,null)->'parameters') p
+ where p->>'parameterId' in('authoring_part_microsequence_target','authoring_batch_part_target','authoring_pause_frequency')
+$cadence$;
+select is((select jsonb_agg(a->'value') from jsonb_array_elements(pg_temp.cadence_read('study_unit','unit-contextual')) a),'[2,3,"each_part"]'::jsonb,'Releitura da unidade conserva as três escolhas automáticas aplicadas');
+select ok((select bool_and(a->>'origin'='automatic' and a#>>'{sourceScope,kind}'='course') from jsonb_array_elements(pg_temp.cadence_read('study_unit','unit-contextual')) a),'Origem e alcance das escolhas correspondem à aplicação');
+select ok((select bool_and(a->'value'='null'::jsonb) from jsonb_array_elements(pg_temp.cadence_read('course','95000000-0000-4000-8000-000000000301')) a),'Escolha aplicada não vira preferência corrente do curso');
+select ok((select bool_and(a->'value'='null'::jsonb) from jsonb_array_elements(pg_temp.cadence_read('didactic_microsequence','micro-calibration')) a),'Outra superfície não recebe escolha automática da unidade');
+insert into private.course_design_parameter_assignments(course_id,parameter_id,scope_kind,scope_ref,value,origin,reason,mode)
+values('95000000-0000-4000-8000-000000000301','authoring_batch_part_target','course','95000000-0000-4000-8000-000000000301','7','author','Decisão posterior sintética.','fixed');
+select is(pg_temp.cadence_read('study_unit','unit-contextual')#>>'{0,value}','7','Fixação humana vigente prevalece sobre a aplicação anterior');
+select is((select p->>'value' from private.course_entities u cross join lateral jsonb_array_elements(u.design_snapshot->'parameters') p
+ where u.course_id='95000000-0000-4000-8000-000000000301' and u.entity_id='unit-contextual' and p->>'parameterId'='authoring_batch_part_target'),'2','Leitura não reescreve a escolha aplicada anterior');
 select * from finish();
 rollback;

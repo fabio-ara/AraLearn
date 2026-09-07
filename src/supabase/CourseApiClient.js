@@ -63,8 +63,25 @@ const COURSE_READ_MAX_RETRY_WAIT_MS = 10_000;
 const COURSE_READ_RPCS = new Set([
   "list_courses_v1", "list_owned_courses_v1", "get_course_v1", "get_owned_course_v1",
   "list_course_entities_v1", "list_owned_course_entities_v1", "list_course_review_items_v1",
-  "get_course_study_citations_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
+  "get_course_study_citations_v1", "get_course_explanation_citations_v1",
+  "get_course_microsequence_review_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
 ]);
+
+function microsequenceReviewResult(value, courseId, microsequenceId, { approval = false } = {}) {
+  const result = exactObject(value, new Set([
+    "courseId", "microsequenceId", "basisHash", "contentReview", "courseRevision", "idempotent"
+  ]), "Revisão do conteúdo");
+  const review = exactObject(result.contentReview, new Set(["state", "approvedAt"]), "Revisão do conteúdo");
+  if (result.courseId !== courseId || result.microsequenceId !== microsequenceId ||
+      typeof result.basisHash !== "string" || !SHA256_PATTERN.test(result.basisHash) ||
+      !new Set(["unregistered", "draft", "current", "stale"]).has(review.state) ||
+      review.approvedAt != null && (!RFC3339.test(review.approvedAt) || !Number.isFinite(Date.parse(review.approvedAt))) ||
+      new Set(["current", "stale"]).has(review.state) && review.approvedAt == null ||
+      approval && (!Number.isSafeInteger(result.courseRevision) || result.courseRevision < 1 || typeof result.idempotent !== "boolean")) {
+    throw new TypeError("A revisão não corresponde à microssequência solicitada.");
+  }
+  return structuredClone(result);
+}
 
 function readRetryDelay(error) {
   const status = Number(error?.status || 0);
@@ -728,7 +745,7 @@ export class CourseApiClient {
   async rpc(name, parameters = {}, options = {}) {
     const publicRead = this.visitor && new Set([
       "list_courses_v1", "get_course_v1", "list_course_entities_v1",
-      "get_course_study_citations_v1"
+      "get_course_study_citations_v1", "get_course_explanation_citations_v1"
     ]).has(name);
     if (this.visitor && !publicRead) throw Object.assign(
       new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
@@ -831,6 +848,56 @@ export class CourseApiClient {
     if (result.courseId !== normalizedCourseId ||
         result.studyUnitId !== normalizedStudyUnitId) {
       throw new TypeError("As citações não correspondem ao Curso solicitado.");
+    }
+    return result;
+  }
+
+  async getExplanationCitations(courseId, microsequenceId, { expectedRevision } = {}) {
+    const course = uuid(courseId, "Curso");
+    const target = boundedCourseSourceIdentifier(microsequenceId, "Microssequência");
+    const revision = positiveInteger(expectedRevision, "Versão do Curso");
+    let raw;
+    try {
+      raw = await this.rpc("get_course_explanation_citations_v1", {
+        p_course_id: course, p_expected_revision: revision, p_microsequence_id: target
+      });
+    } catch (error) {
+      if (courseRevisionConflict(error)) throw courseRevisionChangedError(error);
+      throw error;
+    }
+    const result = normalizeCourseStudyCitationsRead(raw);
+    if (result.courseRevision !== revision) throw courseRevisionChangedError();
+    if (result.courseId !== course || result.targetKind !== "microsequence_explanation" || result.targetId !== target) {
+      throw new TypeError("As citações não correspondem à Explicação solicitada.");
+    }
+    return result;
+  }
+
+  async getMicrosequenceReview(courseId, microsequenceId) {
+    const course = uuid(courseId, "Curso");
+    const target = boundedIdentifier(microsequenceId, "Microssequência");
+    return microsequenceReviewResult(await this.rpc("get_course_microsequence_review_v1", {
+      p_course_id: course, p_microsequence_id: target
+    }), course, target);
+  }
+
+  async approveMicrosequenceContent(value = {}) {
+    const source = exactObject(value, new Set([
+      "courseId", "microsequenceId", "expectedBasisHash", "requestId"
+    ]), "Aprovação do conteúdo inspecionado");
+    const course = uuid(source.courseId, "Curso");
+    const target = boundedIdentifier(source.microsequenceId, "Microssequência");
+    const basis = source.expectedBasisHash;
+    if (typeof basis !== "string" || !SHA256_PATTERN.test(basis)) throw new TypeError("Base de revisão inválida.");
+    // The caller retains this identity until the original decision is resolved.
+    // This write is deliberately excluded from automatic read recovery.
+    const identity = requestIdentity(source.requestId);
+    const result = microsequenceReviewResult(await this.rpc("approve_course_microsequence_content_v1", {
+      p_course_id: course, p_microsequence_id: target,
+      p_expected_basis_hash: basis, p_request_id: identity
+    }), course, target, { approval: true });
+    if (result.basisHash !== basis || result.contentReview.state !== "current") {
+      throw new TypeError("A confirmação não corresponde ao conteúdo inspecionado.");
     }
     return result;
   }

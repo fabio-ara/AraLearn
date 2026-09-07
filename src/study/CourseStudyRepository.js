@@ -643,6 +643,9 @@ export class CourseStudyRepository {
         revision: resultRevision,
         course: clone(course),
         rows: Array.isArray(result.rows) ? clone(result.rows) : [],
+        pendingReviewMicrosequenceIds: clone(result.pendingReviewMicrosequenceIds || []),
+        retainedForReview: result.retainedForReview === true,
+        availableRevision: result.availableRevision ?? null,
         offline: result.offline === true,
         stale: result.stale === true || resultRevision !== descriptor.revision,
         readOnly: result.readOnly === true || result.offline === true ||
@@ -748,6 +751,32 @@ export class CourseStudyRepository {
 
   loadProject() {
     return clone(this.project);
+  }
+
+  async loadExplanationCitations(reference) {
+    const courseId = courseIdFromReference(reference);
+    const path = Array.isArray(reference) ? reference : reference?.entityPath;
+    const microsequenceId = path?.[3] ?? reference?.microsequenceId;
+    const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
+    if (!COURSE_ID_PATTERN.test(courseId) || typeof microsequenceId !== "string" ||
+        !microsequenceId || !Number.isSafeInteger(expectedRevision) ||
+        typeof this.api.getExplanationCitations !== "function") {
+      throw new TypeError("Referência de Explicação inválida para citações.");
+    }
+    try {
+      const citations = normalizeCourseStudyCitationsRead(await this.api.getExplanationCitations(
+        courseId, microsequenceId, { expectedRevision }
+      ));
+      if (citations.courseRevision !== expectedRevision ||
+          this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
+      if (citations.courseId !== courseId || citations.targetKind !== "microsequence_explanation" ||
+          citations.targetId !== microsequenceId) throw new TypeError("As citações não correspondem à Explicação solicitada.");
+      return citations;
+    } catch (error) {
+      const normalized = courseRevisionConflict(error) ? courseRevisionChangedError(error) : error;
+      if (courseAccessRevoked(normalized)) await this.#purgeRevokedCourses([courseId]);
+      throw normalized;
+    }
   }
 
   async loadStudyAudioConfiguration(reference) {
@@ -1056,6 +1085,12 @@ export class CourseStudyRepository {
       synchronizing: personalStatus?.synchronizing === true,
       syncError: personalStatus?.syncError || null,
       conflict: personalStatus?.conflict || null,
+      ...(loaded?.pendingReviewMicrosequenceIds?.length ? {
+        pendingReviewMicrosequenceIds: loaded.pendingReviewMicrosequenceIds
+      } : {}),
+      ...(loaded?.retainedForReview ? {
+        retainedForReview: true, courseRevision: loaded.revision, availableRevision: loaded.availableRevision
+      } : {}),
       ...(this.visitor ? { visitor: true, localOnly: true } : {})
     });
   }

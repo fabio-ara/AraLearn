@@ -12,6 +12,50 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const USER_ID = "20000000-0000-4000-8000-000000000002";
 const AVATAR_ID = "30000000-0000-4000-8000-000000000003";
 
+test("aprovação usa base inspecionada e identidade explícita sem repetir escrita incerta", async () => {
+  const basisHash = "a".repeat(64);
+  const command = { courseId: COURSE_ID, microsequenceId: "micro-a", expectedBasisHash: basisHash,
+    requestId: "review-fixture-0001" };
+  const read = { courseId: COURSE_ID, microsequenceId: "micro-a", basisHash, contentReview: { state: "draft" } };
+  const approved = { ...read, contentReview: { state: "current", approvedAt: "2026-09-07T12:00:00Z" },
+    courseRevision: 8, idempotent: true };
+  const calls = [];
+  let uncertain = false;
+  const { client } = clientWithFetch(async (url, init) => {
+    calls.push({ url, body: parsedBody(init) });
+    if (uncertain) throw new TypeError("Failed to fetch");
+    return jsonResponse(url.endsWith("get_course_microsequence_review_v1") ? read : approved);
+  });
+  assert.deepEqual(await client.getMicrosequenceReview(COURSE_ID, "micro-a"), read);
+  assert.deepEqual(await client.approveMicrosequenceContent(command), approved);
+  assert.deepEqual(calls[1].body, { p_course_id: COURSE_ID, p_microsequence_id: "micro-a",
+    p_expected_basis_hash: basisHash, p_request_id: command.requestId });
+  await assert.rejects(client.approveMicrosequenceContent({ ...command, requestId: undefined }), /Identidade/u);
+  await assert.rejects(client.approveMicrosequenceContent({ ...command, contentReview: { state: "current" } }), /inválid/u);
+  uncertain = true;
+  const before = calls.length;
+  await assert.rejects(client.approveMicrosequenceContent(command), /fetch/u);
+  assert.equal(calls.length, before + 1);
+  assert.equal(calls.at(-1).body.p_request_id, command.requestId);
+  const wrong = clientWithFetch(async () => jsonResponse({ ...approved, basisHash: "b".repeat(64) })).client;
+  await assert.rejects(wrong.approveMicrosequenceContent(command), /conteúdo inspecionado/u);
+});
+
+test("citações da Explicação vinculam curso, microssequência e revisão sem identidade de unidade", async () => {
+  const result = { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025", courseId: COURSE_ID, courseRevision: 7,
+    targetKind: "microsequence_explanation", targetId: "micro-a", citations: [] };
+  let sent;
+  const { client } = clientWithFetch(async (url, init) => {
+    sent = { url, body: parsedBody(init) };
+    return jsonResponse(result);
+  });
+  assert.deepEqual(await client.getExplanationCitations(COURSE_ID, "micro-a", { expectedRevision: 7 }), result);
+  assert.match(sent.url, /\/get_course_explanation_citations_v1$/u);
+  assert.deepEqual(sent.body, { p_course_id: COURSE_ID, p_expected_revision: 7, p_microsequence_id: "micro-a" });
+  await assert.rejects(client.getExplanationCitations(COURSE_ID, "micro-b", { expectedRevision: 7 }), /Explicação solicitada/u);
+  await assert.rejects(client.getExplanationCitations(COURSE_ID, "micro-a", { expectedRevision: 8 }), { code: "course_revision_changed" });
+});
+
 function editableStudyUnit(title = "Unidade revista") {
   return {
     id: "unit-a",

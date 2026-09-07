@@ -78,6 +78,21 @@ como sugestão, enquanto `papeis` em cada vínculo declara seu uso naquele alvo.
 A mesma fonte pode ter vários vínculos. Ao editar um vínculo pela posição
 apresentada, os demais são conservados.
 
+O vínculo pode pertencer a uma unidade ou à **Explicação compartilhada** de uma
+microssequência. `consultar_fontes` aceita `explicacao` com o título ou a posição
+da microssequência; em `manter_fonte`, cada item de `vinculos` escolhe `unidade`
+ou `explicacao`. O apoio precisa estar produzido para receber vínculos de
+conteúdo. Suas ocorrências apontam somente ao conteúdo do apoio, sem copiar
+referências em todas as unidades e sem usar resposta ou feedback. As Fontes
+previstas no planejamento continuam distintas das que sustentam texto produzido.
+
+Os canais releem a versão corrente do alvo antes de gravar. Alterar uma Fonte,
+Âncora ou arquivo efetivamente usado pode exigir nova revisão do conteúdo que
+depende dele; conferir uma fonte não aprova automaticamente esse conteúdo.
+Referências e arquivos do rascunho ficam disponíveis à inspeção da autoria;
+a leitura estudantil também observa a situação de revisão e os direitos de
+acesso. Ver [Explicação e revisão humana](explicacao-e-revisao-humana.md).
+
 Uma ocorrência indica o lugar, a posição do componente, a folha textual e o
 trecho literal do curso. Sua localização na fonte é registrada separadamente
 pela âncora. O estado de localização da ocorrência é calculado na leitura;

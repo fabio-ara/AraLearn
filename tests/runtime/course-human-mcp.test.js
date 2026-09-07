@@ -202,6 +202,8 @@ function curricularMapArguments(artifactId, approved) {
         microssequencias: lesson.microsequences.map((microsequence) => ({
           titulo: microsequence.title,
           objetivo: microsequence.objective,
+          explicacao: { proposito: microsequence.objective,
+            pressupostos: [...microsequence.dependsOn], relacoes: [...microsequence.covers], fontesPrevistas: [] },
           dependencias: microsequence.dependsOn,
           cobertura: microsequence.covers
         }))
@@ -262,6 +264,8 @@ function internalCurricularMap(artifactId, approval) {
               position: currentMicrosequencePosition,
               title: microsequence.title,
               objective: microsequence.objective,
+              explanationPlan: { purpose: microsequence.objective,
+                prerequisites: [...microsequence.dependsOn], relations: [...microsequence.covers], sourceIds: [] },
               dependencies: [...microsequence.dependsOn],
               scopeItemIds: microsequence.covers.map((item) => scopeIds.get(item))
             };
@@ -362,8 +366,9 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.9.0");
-  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 48_000);
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "3.0.0");
+  // Orçamento local do catálogo com proposta, apoio e vínculos; não é limite de chamada MCP.
+  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 54_000);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -473,6 +478,10 @@ test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo ma
   const serializedDraftWrite = JSON.stringify(mapWrites[0]);
   assert.match(serializedDraftWrite, /Pessoas iniciantes em redes/u);
   assert.match(serializedDraftWrite, /pre.?requisitos|prerequisites/iu);
+  const savedProposal = mapWrites[0].curricularMap.modules[0].lessons[0].microsequences[0].explanationPlan;
+  const requestedProposal = draftArguments.modulos[0].licoes[0].microssequencias[0].explicacao;
+  assert.deepEqual(savedProposal, { purpose: requestedProposal.proposito,
+    prerequisites: requestedProposal.pressupostos, relations: requestedProposal.relacoes, sourceIds: [] });
   for (const item of GLOBAL_AUTHORING_FIXTURE.scopeItems) {
     assert.match(serializedDraftWrite, new RegExp(item, "u"));
   }
@@ -490,6 +499,14 @@ test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo ma
     principal: PRINCIPAL,
     name: "salvar_mapa_curricular",
     rawArguments: uninspectedChange
+  }), (error) => error.code === "curricular_map_draft_mismatch");
+  assert.equal(mapWrites.length, 1);
+
+  const changedSupport = curricularMapArguments("mapa-global-v1", true);
+  changedSupport.modulos[0].licoes[0].microssequencias[0].explicacao.proposito =
+    "Uma proposta de apoio que ainda não foi apresentada à pessoa autora.";
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: value, principal: PRINCIPAL, name: "salvar_mapa_curricular", rawArguments: changedSupport
   }), (error) => error.code === "curricular_map_draft_mismatch");
   assert.equal(mapWrites.length, 1);
 
@@ -1129,6 +1146,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
   const materializationArguments = {
     curso: "Redes",
     parte: 1,
+    explicacoes: [{ microssequencia: 1,
+      conteudo: { title: "Processo e socket", content: structuredClone(content.content) }, fontes: [] }],
     unidades: [{
       microssequencia: 1,
       posicao: 1,

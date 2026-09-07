@@ -43,6 +43,9 @@ export function createEmptyCourseSourceBibliographicMetadata() {
 export const COURSE_SOURCE_STATUSES = Object.freeze([
   "active", "retired"
 ]);
+export const COURSE_SOURCE_TARGET_KINDS = Object.freeze([
+  "plan_item", "study_unit", "microsequence_explanation"
+]);
 export const COURSE_SOURCE_STUDY_VISIBILITIES = Object.freeze([
   "hidden", "citation", "citation_and_link"
 ]);
@@ -423,7 +426,7 @@ export function normalizeCourseSourceSelector(value) {
   return normalized;
 }
 
-export function normalizeCourseSourceLinks(value) {
+export function normalizeCourseSourceLinks(value, options) {
   const maximumLinks = 32;
   if (!Array.isArray(value) || value.length > maximumLinks) {
     fail("invalid_course_source_links", `Os vínculos de Fonte precisam formar uma lista de até ${maximumLinks} itens.`);
@@ -463,7 +466,7 @@ export function normalizeCourseSourceLinks(value) {
     const occurrenceIds = new Set();
     const normalizedOccurrences = occurrences.map((occurrence) => {
       let normalized;
-      try { normalized = normalizeCourseSourceOccurrence(occurrence); }
+      try { normalized = normalizeCourseSourceOccurrence(occurrence, options); }
       catch (error) {
         if (error?.code !== "invalid_course_source_occurrence") throw error;
         fail(error.code, error.message);
@@ -877,7 +880,7 @@ export function normalizeCourseSourceCommand(value) {
     };
   }
   exact(command, ["type", "targetKind", "targetId", "expectedTargetVersion", "sourceLinks"], "invalid_course_source_command", "O comando set_target_sources");
-  if (!["plan_item", "study_unit"].includes(command.targetKind)) {
+  if (!COURSE_SOURCE_TARGET_KINDS.includes(command.targetKind)) {
     fail("invalid_course_source_target", "O tipo do alvo de proveniência é inválido.");
   }
   return {
@@ -885,9 +888,9 @@ export function normalizeCourseSourceCommand(value) {
     targetKind: command.targetKind,
     targetId: command.targetKind === "plan_item"
       ? uuid(command.targetId, "invalid_course_source_target", "A identidade do item de plano")
-      : opaqueId(command.targetId, 240, "invalid_course_source_target", "A identidade da Unidade de estudo"),
+      : opaqueId(command.targetId, 240, "invalid_course_source_target", "A identidade do alvo de conteúdo"),
     expectedTargetVersion: integer(command.expectedTargetVersion, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_target", "A versão esperada do alvo"),
-    sourceLinks: normalizeCourseSourceLinks(command.sourceLinks)
+    sourceLinks: normalizeCourseSourceLinks(command.sourceLinks, { targetKind: command.targetKind })
   };
 }
 
@@ -897,12 +900,22 @@ export function normalizeSourceAttributionApplications(value) {
   }
   const ids = new Set();
   const applications = value.map((candidate) => {
+    if (candidate?.targetKind === "microsequence_explanation") {
+      exact(candidate, ["targetKind", "targetId", "sourceLinks"], "invalid_course_source_attribution_application", "A aplicação de proveniência da Explicação");
+      const targetId = opaqueId(candidate.targetId, 240, "invalid_course_source_target", "A identidade da microssequência");
+      const key = `microsequence_explanation:${targetId}`;
+      if (ids.has(key)) fail("duplicate_course_source_attribution_application", "A aplicação repete uma Explicação.");
+      ids.add(key);
+      return { targetKind: candidate.targetKind, targetId,
+        sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks, { targetKind: candidate.targetKind }) };
+    }
     exact(candidate, ["studyUnitId", "sourceLinks"], "invalid_course_source_attribution_application", "A aplicação de proveniência");
     const studyUnitId = opaqueId(candidate.studyUnitId, 240, "invalid_course_source_target", "A identidade da Unidade de estudo");
-    if (ids.has(studyUnitId)) {
+    const key = `study_unit:${studyUnitId}`;
+    if (ids.has(key)) {
       fail("duplicate_course_source_attribution_application", "A aplicação repete uma Unidade de estudo.");
     }
-    ids.add(studyUnitId);
+    ids.add(key);
     return {
       studyUnitId,
       sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks)
@@ -1002,16 +1015,16 @@ function validateAttribution(value) {
   exact(value, [
     "targetKind", "targetId", "targetVersion", "sourceLinks", "createdAt"
   ], "invalid_course_sources_read", "A atribuição de proveniência");
-  if (!["plan_item", "study_unit"].includes(value.targetKind)) {
+  if (!COURSE_SOURCE_TARGET_KINDS.includes(value.targetKind)) {
     fail("invalid_course_sources_read", "O tipo do alvo é inválido.");
   }
   if (value.targetKind === "plan_item") {
     uuid(value.targetId, "invalid_course_sources_read", "A identidade do item de plano");
   } else {
-    opaqueId(value.targetId, 240, "invalid_course_sources_read", "A identidade da Unidade de estudo");
+    opaqueId(value.targetId, 240, "invalid_course_sources_read", "A identidade do alvo de conteúdo");
   }
   integer(value.targetVersion, 1, Number.MAX_SAFE_INTEGER, "invalid_course_sources_read", "A versão do alvo");
-  normalizeCourseSourceLinks(value.sourceLinks);
+  normalizeCourseSourceLinks(value.sourceLinks, { targetKind: value.targetKind });
   timestamp(value.createdAt, "invalid_course_sources_read", "A criação da atribuição");
 }
 
@@ -1038,17 +1051,17 @@ export function normalizeCourseSourcesRead(value) {
     sourceId(read.query.sourceId);
     if ((read.query.targetKind === null) !== (read.query.targetId === null) ||
         read.query.targetKind !== null &&
-          !["plan_item", "study_unit"].includes(read.query.targetKind)) {
+          !COURSE_SOURCE_TARGET_KINDS.includes(read.query.targetKind)) {
       fail("invalid_course_sources_read", "O contexto da Fonte é inválido.");
     }
   } else if (read.query.sourceId !== null ||
-      !["plan_item", "study_unit"].includes(read.query.targetKind)) {
+      !COURSE_SOURCE_TARGET_KINDS.includes(read.query.targetKind)) {
     fail("invalid_course_sources_read", "A consulta do alvo é inválida.");
   }
   if (read.query.targetKind === "plan_item") {
     uuid(read.query.targetId, "invalid_course_sources_read", "A identidade do item de plano");
-  } else if (read.query.targetKind === "study_unit") {
-    opaqueId(read.query.targetId, 240, "invalid_course_sources_read", "A identidade da Unidade de estudo");
+  } else if (["study_unit", "microsequence_explanation"].includes(read.query.targetKind)) {
+    opaqueId(read.query.targetId, 240, "invalid_course_sources_read", "A identidade do alvo de conteúdo");
   }
   if (!Array.isArray(read.items) || read.items.length > 24 ||
       read.nextCursor !== null && (
@@ -1107,12 +1120,15 @@ export function normalizeCourseSourceChange(value) {
 
 export function normalizeCourseStudyCitationsRead(value) {
   const read = clone(value);
-  exact(read, ["contract", "courseId", "courseRevision", "bibliographyStyle", "studyUnitId", "citations"], "invalid_course_study_citations", "A leitura de citações");
+  const isExplanation = read?.targetKind === "microsequence_explanation";
+  exact(read, ["contract", "courseId", "courseRevision", "bibliographyStyle", "citations",
+    ...(isExplanation ? ["targetKind", "targetId"] : ["studyUnitId"])], "invalid_course_study_citations", "A leitura de citações");
   if (read.contract !== COURSE_STUDY_CITATIONS_CONTRACT) fail("invalid_course_study_citations", "O contrato de citações é inválido.");
   if (!COURSE_BIBLIOGRAPHY_STYLES.includes(read.bibliographyStyle)) fail("invalid_course_study_citations", "O estilo bibliográfico é inválido.");
   uuid(read.courseId, "invalid_course_study_citations", "A identidade do Curso");
   integer(read.courseRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_study_citations", "A revisão do Curso");
-  opaqueId(read.studyUnitId, 240, "invalid_course_study_citations", "A identidade da Unidade de estudo");
+  opaqueId(isExplanation ? read.targetId : read.studyUnitId, 240,
+    "invalid_course_study_citations", "A identidade do alvo de conteúdo");
   if (!Array.isArray(read.citations) || read.citations.length > 128) fail("invalid_course_study_citations", "A lista de citações é inválida.");
   if (new Set(read.citations.map((citation) => citation?.linkId)).size !== read.citations.length) {
     fail("invalid_course_study_citations", "A leitura repete a identidade de um vínculo.");
@@ -1125,7 +1141,7 @@ export function normalizeCourseStudyCitationsRead(value) {
       linkId: citation.linkId, sourceId: citation.sourceId, relation: citation.relation,
       roles: citation.roles, occurrences: citation.occurrences,
       anchors: citation.anchors?.map(({ anchorId }) => ({ anchorId }))
-    }]);
+    }], { targetKind: isExplanation ? "microsequence_explanation" : "study_unit" });
     if (!COURSE_SOURCE_KINDS.includes(citation.kind) || !["manual", "generated"].includes(citation.citationMode)) {
       fail("invalid_course_study_citations", "Os metadados da citação são inválidos.");
     }

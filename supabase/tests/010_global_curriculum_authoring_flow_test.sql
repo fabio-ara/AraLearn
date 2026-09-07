@@ -1,5 +1,15 @@
 begin;
 
+-- Apoio sintético completo: a fixture não concede aprovação humana.
+create function pg_temp.explanation_fixture(p_targets jsonb) returns jsonb language sql as $fixture$
+ select jsonb_agg(jsonb_build_object('microsequenceId',t->>'didacticMicrosequenceId',
+ 'content',jsonb_build_object('title','Relação entre os elementos','content',jsonb_build_array(jsonb_build_object(
+ 'id','p','package','aralearn.resource.paragraph','version','1.0.0','data',jsonb_build_object('text',
+ 'Um elemento pode ser observado por suas propriedades e por sua relação com os demais. Compare duas situações: se apenas uma propriedade mudou, a relação pode permanecer; se a conexão foi retirada, a interação deixa de ocorrer. Identificar essa diferença permite explicar o caso e escolher uma ação coerente.')))),
+ 'sourceLinks','[]'::jsonb)) from jsonb_array_elements(p_targets) t
+$fixture$;
+
+
 select plan(23);
 
 select set_config('request.jwt.claim.role','service_role',true);
@@ -93,7 +103,7 @@ select lives_ok($test$
           "title":"Comunicacao",
           "objective":"Explicar a comunicacao.",
           "microsequences":[{
-            "microsequenceId":"micro-keep",
+            "microsequenceId":"micro-keep","explanationPlan":{"purpose":"Desenvolver a comunicação.","prerequisites":[],"relations":[],"sourceIds":[]},
             "position":0,
             "title":"Situacao inicial",
             "objective":"Observar uma comunicacao.",
@@ -478,7 +488,7 @@ select throws_ok($test$
       "sourceLinks":[]
     }]'::jsonb,
     'test-dependency-order','4444444444444444444444444444444444444444444444444444444444444444'
-  )
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-forward","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb))
 $test$,'23514',
   'Uma dependencia curricular precisa estar produzida ou integrar o mesmo lote.',
   'dependencia curricular precisa estar materializada antes do dependente');
@@ -521,7 +531,7 @@ select throws_ok($test$
       "sourceLinks":[]
     }]'::jsonb,
     'test-complete-coverage','5555555555555555555555555555555555555555555555555555555555555555'
-  )
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-forward","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb))
 $test$,'23514',
   'Todo item de escopo atribuido precisa ser desenvolvido na Microssequencia.',
   'cada item atribuido precisa ter cobertura efetiva no conteudo do recorte');
@@ -541,7 +551,7 @@ select throws_ok($test$
       "sourceLinks":[]
     }]'::jsonb,
     'test-final-repertoire','6666666666666666666666666666666666666666666666666666666666666666'
-  )
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-learn","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb))
 $test$,'23514',
   'Uma ideia foi usada antes de ser ensinada ou introduzida novamente.',
   'estado final combinado preserva a introducao exigida por unidades posteriores');
@@ -754,7 +764,7 @@ select throws_ok($test$
       'unit-calibrated','91000000-0000-4000-8000-000000000321','automatic'
     ),
     'test-fixed-unit-calibration','7777777777777777777777777777777777777777777777777777777777777777'
-  )
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb))
 $test$,'23514',
   'Calibracao automatica da unidade conflita com decisao fixada.',
   'calibracao da unidade nao sobrepoe uma decisao explicita preexistente');
@@ -785,7 +795,7 @@ select lives_ok($test$
       'unit-calibrated','91000000-0000-4000-8000-000000000321','automatic'
     ),
     'test-seal-unit-calibration','8888888888888888888888888888888888888888888888888888888888888888'
-  )
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb))
 $test$,'materializacao sela calibracoes automaticas proprias da unidade nova');
 
 select is(
