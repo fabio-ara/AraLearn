@@ -361,6 +361,13 @@ julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria
 
 ## Governança de decisões
 
+O [contrato planejado de Explicação e revisão humana](explicacao-e-revisao-humana.md)
+separa conteúdo produzido, revisão humana e aprovação atual do material
+inspecionado. Sua conjectura distingue recursos, processos esperados, resultados
+a investigar e riscos. A leitura focal registrada não constitui revisão
+sistemática nem demonstra eficácia; os estados de conteúdo propostos ainda
+dependem de implementação e prova.
+
 ### Registro mínimo
 
 Toda decisão relevante deve responder, em documento versionado:

@@ -59,6 +59,10 @@ registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
+O [contrato planejado de Explicação e revisão humana](explicacao-e-revisao-humana.md)
+define apoio compartilhado, preservação do percurso, fontes e aprovação do
+conteúdo inspecionado. É uma decisão de evolução, ainda sem implementação.
+
 ## Aprender no trabalho e formar profissionalmente
 
 Aprendizagem no trabalho, gestão do conhecimento, treinamento e

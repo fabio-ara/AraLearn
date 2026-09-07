@@ -254,6 +254,17 @@ um teste local de protocolo não comprova essa etapa. O
 [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais)
 separa medidas mecânicas, estimativas e observação do cliente real.
 
+Há também uma fronteira entre o schema servido e a validação feita pelo
+conector. Se um campo obrigatório no catálogo vivo for rejeitado pelo cliente
+como propriedade adicional, preserve o pedido e o erro sanitizados e compare
+os contratos antes de alterar o conteúdo. Não remova uma referência pedagógica
+necessária apenas para passar nessa validação. Atualizar as ferramentas na
+página de detalhes do app recupera ferramentas, descrições e instruções do
+servidor, conforme a [documentação de gestão do app](https://developers.openai.com/api/docs/guides/developer-mode).
+A confirmação exige uma conversa nova e nova prova da chamada.
+Uma indicação genérica de restrição do workspace no erro não identifica, por
+si só, a configuração que causou a divergência.
+
 ## Verificação local
 
 ```powershell

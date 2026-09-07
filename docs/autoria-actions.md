@@ -244,6 +244,16 @@ Essas regras vêm de
 Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
 A importação real do artefato corrente continua sendo uma verificação distinta.
 
+No diagnóstico de 7 de setembro de 2026, os limites de payload e duração foram
+reconferidos na fonte oficial. Para investigar uma materialização sem retorno,
+separe quatro fatos: argumentos produzidos, despacho HTTP, validação e gravação.
+O relato do assistente não comprova sozinho que houve despacho. Registre o
+retorno acessível no cliente e confronte-o com a releitura do recorte e o recibo
+existente antes de repetir uma escrita incerta. Quando argumentos ou duração
+HTTP não estiverem expostos, registre essa lacuna; o tamanho do conteúdo
+exportado não é o tamanho do pedido enviado. Uma fixture que funciona delimita
+o caso observado, sem demonstrar que uma interrupção anterior foi corrigida.
+
 O catálogo atual reúne 27 tarefas. A projeção indentada do OpenAPI ocupa 96.658
 unidades UTF-16 e cabe na margem interna de 98.000; essa medida difere do tamanho
 em bytes UTF-8. Os schemas compartilhados conservam os argumentos de cada tarefa.

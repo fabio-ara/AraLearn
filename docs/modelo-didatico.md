@@ -248,6 +248,13 @@ fundamentação e os limites estão em
 
 ## Profundidade sem condensação
 
+A evolução planejada de [Explicação e revisão humana](explicacao-e-revisao-humana.md)
+acrescenta um apoio previamente autorado por microssequência. Nesse contrato,
+a suficiência é examinada nas unidades junto do apoio acessível, preservando
+relações, introduções, usos, retomadas e práticas no percurso. A Explicação
+compartilhada ainda não está implementada; não deve ser confundida com as formas
+de explicação já declaradas nas aplicações pedagógicas.
+
 ### Explicação progressiva
 
 **Problema.** Uma explicação pode ser curta e ainda assim exigir muitos
