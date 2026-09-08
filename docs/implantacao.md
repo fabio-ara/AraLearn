@@ -244,6 +244,13 @@ manifesto backend e digests. Artefatos expirados, forks, revisões superadas e
 divergências são recusados. O download precisa corresponder ao SHA-256
 registrado pelo GitHub e cada arquivo precisa corresponder ao manifesto.
 
+Os hashes de `package-lock.json` e `supabase/runtime-manifest.json` identificam
+os bytes dos blobs Git de `HEAD`. Antes de calcular cada hash, o publicador
+confere que o arquivo de trabalho corresponde ao blob, tolerando somente a
+conversão CRLF/LF do checkout. Alterações de conteúdo, espaços ou linhas extras
+são recusadas. Isso permite registrar no Windows e retomar no Linux; os hashes
+de artefatos, APK, recibos e manifestos gerados continuam sobre seus bytes exatos.
+
 O manifesto registra o SHA testado e o SHA integrado separadamente. Um merge
 com SHA diferente só reutiliza a prova quando a árvore e a configuração são
 iguais; a relação com o PR também é conferida. Se essa equivalência não puder

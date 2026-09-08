@@ -106,7 +106,7 @@ atribuições de cada apoio são lidas na mesma revisão do curso. Ausência da
 leitura de proveniência, repetição ou alvo/revisão divergentes impedem exportar
 um artefato que pareça completo.
 
-Na Autoria, o mesmo endpoint de Fontes aceita esse alvo para catálogo contextual,
+Na Autoria, o mesmo endpoint de fontes aceita esse alvo para catálogo contextual,
 obra, âncora e atribuição. As ocorrências da Explicação usam somente conteúdo,
 com seleção literal; resposta e feedback pertencem às unidades. A versão da
 microssequência vem de uma leitura remota na revisão inspecionada, inclusive
@@ -342,3 +342,8 @@ de efeito.
 O procedimento integral, incluindo site, Android e recuperação, está em
 [Implantação](implantacao.md). O modelo de dados e a réplica local estão em
 [Persistência relacional e sincronização](persistencia-relacional.md).
+
+
+### Sincronização da impressão gerada dos pacotes
+
+A migração `20260908023156_refresh_generated_package_fingerprint.sql` acompanha o autoíndice regenerado dos pacotes. O catálogo SQL conserva versão `1-70b27609` e opções; somente `schemaFingerprint` passa a concordar com o registro gerado. A pré-condição verifica a revisão anterior e sua impressão, e a pós-condição impede alteração incidental das opções, identidade ou concessões da função. Nenhuma política, unidade, explicação ou decisão aplicada é regravada. A revisão do manifesto identifica a projeção sincronizada; os testes históricos de catálogos continuam comparando o estado da migração que exercitam, enquanto o check do gerador verifica o catálogo vigente.

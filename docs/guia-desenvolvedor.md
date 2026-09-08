@@ -273,7 +273,7 @@ A revisão humana em Conteúdo é coordenada por `CourseMicrosequenceReview`.
 leituras de `getMicrosequenceReview`; exige a mesma impressão protegida e uma
 exportação/proveniência na revisão solicitada. Nunca associa um hash recém-lido
 a um corpo vindo da cópia de Estudo. O diálogo reaproveita o renderer de pacotes,
-o formatador bibliográfico, os detalhes de análise autoral e o painel de Fontes.
+o formatador bibliográfico, os detalhes de análise autoral e o painel de fontes.
 Respostas são exibidas para inspeção e ficam inertes. Hidratação com falha bloqueia
 uma nova aprovação. Atualizações do diálogo restauram controle focado e rolagem.
 

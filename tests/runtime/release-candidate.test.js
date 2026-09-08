@@ -16,6 +16,7 @@ import {
   releasePlan,
   releaseAssetUploadUrl,
   selectReleaseByTag,
+  sourceFileDigest,
   validateCandidateIdentity,
   validateIntegratedPullRequest,
   validateManifest,
@@ -41,6 +42,35 @@ const ENV = {
   ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic-test-value"
 };
 const digest = (value) => createHash("sha256").update(value).digest("hex");
+
+test("identidade dos dois fontes usa blob Git, tolera CRLF/LF e recusa conteúdo local alterado", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-source-identity-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const command = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  command("init", "--quiet");
+  command("config", "core.autocrlf", "false");
+  await fs.mkdir(path.join(root, "supabase"));
+  const blob = '{\n  "version": "0.0.67"\n}\n';
+  const files = ["package-lock.json", "supabase/runtime-manifest.json"];
+  for (const file of files) await fs.writeFile(path.join(root, file), blob);
+  command("add", "--", ...files);
+  command("-c", "user.name=Synthetic fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "Synthetic source identity");
+  for (const file of files) {
+    for (const newline of ["\n", "\r\n"]) {
+      await fs.writeFile(path.join(root, file), blob.replaceAll("\n", newline));
+      assert.equal(await sourceFileDigest(file, root), digest(blob));
+    }
+    for (const changed of [blob.replace("0.0.67", "0.0.68"), blob.replace('  "version"', ' "version"'), `${blob}\n`, blob.replace("\n", "\r")]) {
+      await fs.writeFile(path.join(root, file), changed);
+      await assert.rejects(sourceFileDigest(file, root), /diverge do blob Git além de CRLF\/LF/u);
+    }
+    await fs.writeFile(path.join(root, file), blob);
+  }
+  await assert.rejects(sourceFileDigest("../package-lock.json", root), /não autorizada/u);
+});
 
 test("retomada exige promoção concluída da mesma main e as etapas reais da fase", () => {
   const info = { repository: { full_name: REPOSITORY }, head_repository: { full_name: REPOSITORY },

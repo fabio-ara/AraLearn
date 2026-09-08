@@ -495,7 +495,7 @@ vigente; **Automático** delega a escolha contextual da próxima produção. A
 indicação de herança identifica o nível de origem e não cria uma definição
 local ao consultar.
 
-Na Unidade de estudo, o mesmo detalhe distingue **Aplicado nesta produção** da
+Na unidade de estudo, o mesmo detalhe distingue **Aplicado nesta produção** da
 configuração atual. Esse registro vem da leitura autoral já existente, com o
 valor, origem e motivo realmente preservados. Uma fixação nova pode divergir do
 valor aplicado; salvar não atualiza esse histórico. Valores iguais também não
@@ -503,9 +503,9 @@ atestam que o conteúdo realiza adequadamente a intenção. Ausência de registr
 consulta pendente e falha de leitura são estados diferentes; a configuração
 atual não preenche uma lacuna histórica nem inventa uma justificativa.
 
-Nos níveis acima da Unidade, o painel orienta inspecionar cada produção, sem
+Nos níveis acima da unidade, o painel orienta inspecionar cada produção, sem
 promover o registro de uma unidade a regra para o curso inteiro. Ajustes
-restritos ao Curso continuam legíveis na Unidade, mas não ganham editor em um
+restritos ao curso continuam legíveis na unidade, mas não ganham editor em um
 nível não permitido. Definições, opções e limites seguem no mesmo catálogo;
 comparar esses estados não acrescenta parâmetros ou provoca materialização.
 

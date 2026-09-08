@@ -1,5 +1,12 @@
 # Alterações do schema
 
+## 20260908023156 — impressão regenerada do catálogo de pacotes
+
+O gate de autoíndice identificou o fingerprint gerado desatualizado. Reexecutar o gerador manteve imports e ordem dos pacotes e atualizou somente `RESOURCE_PACKAGE_CONTRACT_FINGERPRINT`. A projeção SQL passa a anunciar essa impressão, consumida pela descoberta do contrato, mantendo a versão `1-70b27609`, as referências e as opções do catálogo.
+
+O bloco SQL foi produzido por `renderResourcePackageCatalogSql()`. A migração exige revisão e fingerprint anteriores exatos, compara versão/opções e metadados da função após a substituição e não regrava políticas, conteúdo, snapshots ou decisões de revisão. O manifesto avança para distinguir o backend com a projeção sincronizada. Testes focais exercitam preservação e rollback quando a origem diverge ou as opções sofreriam alteração incidental. A igualdade dessa impressão é um contrato de sincronização; não constitui evidência de eficácia pedagógica.
+
+
 ## 20260908020737 — conflito de revisão na leitura das citações
 
 A leitura das citações da Explicação passa a devolver `PT409` quando a revisão solicitada ficou antiga, conforme o contrato de conflitos HTTP 409. A mensagem, a assinatura e as guardas de acesso e revisão humana permanecem. Não há alteração de dados, concessões ou aprovações.
@@ -77,7 +84,7 @@ A base literal de Analytics/exportação conserva metadados de fontes e âncoras
 retiradas quando uma atribuição corrente ainda as referencia. Isso evita uma
 referência pendente por omissão do inventário sem apagar o vínculo ou reativar a
 fonte. Retiradas sem uso ficam ausentes. Esse DTO de comparação não carrega status:
-a leitura de Fontes continua sendo a superfície que informa retirada/conferência;
+a leitura de fontes continua sendo a superfície que informa retirada/conferência;
 a presença na base não certifica disponibilidade nem verificação.
 
 O alvo de proveniência `microsequence_explanation` reutiliza fontes, ocorrências,

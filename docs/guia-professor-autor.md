@@ -7,7 +7,7 @@ configuração e Analytics ao alcance do contexto.
 
 No **Planejamento**, abra a microssequência e sua **Explicação prevista** para
 examinar finalidade, pressupostos, relações e fontes. O apoio é compartilhado
-pelas unidades dessa microssequência. Uma Parte com **Conteúdo produzido** tem
+pelas unidades dessa microssequência. Uma parte com **Conteúdo produzido** tem
 material já disponível para inspeção; esse estado não atesta revisão humana.
 Mapa aprovado e autorização para produzir não aprovam textos ainda não vistos.
 

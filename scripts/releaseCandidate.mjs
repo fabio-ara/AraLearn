@@ -35,6 +35,15 @@ function run(command, args, options = {}) {
 }
 
 function git(...args) { return run("git", args).trim(); }
+export async function sourceFileDigest(file, repositoryRoot = ROOT) {
+  demand(["package-lock.json", "supabase/runtime-manifest.json"].includes(file), "Fonte de identidade não autorizada.");
+  const blob = run("git", ["show", `HEAD:${file}`], { cwd: repositoryRoot, encoding: null });
+  const working = await fs.readFile(path.join(repositoryRoot, file));
+  const withoutCarriageReturns = bytes => Buffer.from(bytes.filter((byte, index) => byte !== 13 || bytes[index + 1] !== 10));
+  demand(withoutCarriageReturns(blob).equals(withoutCarriageReturns(working)),
+    `A fonte ${file} diverge do blob Git além de CRLF/LF.`);
+  return sha256(blob);
+}
 function python(code, args = []) {
   return run(process.platform === "win32" ? "python" : "python3", ["-c", code, ...args]);
 }
@@ -145,8 +154,8 @@ async function record() {
     run: { id: positive(process.env.GITHUB_RUN_ID, "Run"), attempt: positive(process.env.GITHUB_RUN_ATTEMPT, "Tentativa"),
       workflow: ".github/workflows/validacao.yml", event: process.env.GITHUB_EVENT_NAME },
     configurationSha256: configurationDigest(),
-    lockfileSha256: sha256(await fs.readFile(path.join(ROOT, "package-lock.json"))),
-    backendManifestSha256: sha256(await fs.readFile(path.join(ROOT, "supabase/runtime-manifest.json"))),
+    lockfileSha256: await sourceFileDigest("package-lock.json"),
+    backendManifestSha256: await sourceFileDigest("supabase/runtime-manifest.json"),
     android: { versionCode: Number(android.match(/versionCode\s*=\s*(\d+)/u)?.[1]), certificateSha256: CERTIFICATE },
     toolchain: { web: { node: process.version, java: toolVersion("java", ["-version"]),
       runner: process.env.ImageOS, image: process.env.ImageVersion, architecture: process.arch } },
@@ -295,7 +304,7 @@ async function prepare(runId, attempt) {
   const manifest = await jsonFile(CANDIDATE);
   validateCandidateIdentity(manifest, info, { repository: process.env.GITHUB_REPOSITORY,
     targetTree: git("rev-parse", "HEAD^{tree}"), configurationSha256: configurationDigest(),
-    lockfileSha256: sha256(await fs.readFile("package-lock.json")), backendManifestSha256: sha256(await fs.readFile("supabase/runtime-manifest.json")) });
+    lockfileSha256: await sourceFileDigest("package-lock.json"), backendManifestSha256: await sourceFileDigest("supabase/runtime-manifest.json") });
   const testedCommit = await api(`git/commits/${manifest.source.testedSha}`);
   demand(testedCommit.tree.sha === manifest.source.tree, "Árvore do SHA testado não comprovada pelo GitHub.");
   if (info.event === "pull_request") {
@@ -435,8 +444,8 @@ async function resumePreparation(runId, attempt, expectedOrigin = null) {
     demand(manifest.promotion?.backend == null && manifest.promotion?.targetSha === process.env.GITHUB_SHA &&
       manifest.source.repository === process.env.GITHUB_REPOSITORY && manifest.promotion.tree === git("rev-parse", "HEAD^{tree}") &&
       manifest.source.tree === manifest.promotion.tree && manifest.configurationSha256 === configurationDigest() &&
-      manifest.lockfileSha256 === sha256(await fs.readFile(path.join(ROOT, "package-lock.json"))) &&
-      manifest.backendManifestSha256 === sha256(await fs.readFile(path.join(ROOT, "supabase/runtime-manifest.json"))),
+      manifest.lockfileSha256 === await sourceFileDigest("package-lock.json") &&
+      manifest.backendManifestSha256 === await sourceFileDigest("supabase/runtime-manifest.json"),
     "Preparação pertence a outra árvore/configuração ou antecipa prova de backend.");
     await verifyDirectory(path.join(temporary, "promotion/.pages"), manifest.artifacts.pages.files);
     await fs.mkdir(".candidate", { recursive: true });

@@ -290,8 +290,8 @@ resposta, como “Ver feedback da resposta”, conservando seu comportamento.
 “Explicação” nomeia o apoio compartilhado; abri-lo não revela o gabarito da
 prática atual nem aciona seu botão de continuar.
 
-A base usa alvos de 44 × 44 px. No Estudo há cinco controles fixos: Fontes,
-Observações, Rever, anterior e continuar. Com Explicação são seis. Reservando
+A base usa alvos de 44 × 44 px. No Estudo há cinco controles fixos: fontes,
+observações, rever, anterior e continuar. Com Explicação são seis. Reservando
 intervalos de 4 px, seis alvos ocupam 284 px; com uma ferramenta variável,
 sete alvos e seis intervalos ocupam 332 px. O cálculo não inclui margens
 externas nem substitui inspeção visual.
@@ -299,7 +299,7 @@ externas nem substitui inspeção visual.
 Na menor largura de 360 px, a fileira precisa reservar ao menos 332 px úteis
 para esses sete controles. Ferramentas variáveis múltiplas, inclusive áudio,
 devem usar o agrupamento compacto já existente, com uma entrada descoberta
-e rótulos no painel revelado. Não reduzir alvos, retirar Fontes/Observações/Rever
+e rótulos no painel revelado. Não reduzir alvos, retirar fontes/observações/rever
 ou esconder a Explicação em menu profundo. Se a área útil for menor por zoom ou
 viewport, admitir disposição recuperável em mais de uma linha, sem sobreposição
 ou rolagem horizontal obrigatória de ações essenciais. Em Autoria, considerar

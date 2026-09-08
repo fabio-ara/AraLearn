@@ -12,7 +12,8 @@ import {
 import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
-import { COURSE_HUMAN_TASKS } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { COURSE_HUMAN_TASKS, COURSE_HUMAN_TASK_CATALOG_METADATA, courseHumanTasksForPrincipal } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const PROJECT_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const UTF8 = new TextEncoder();
@@ -313,13 +314,23 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
   assert.ok(substitute.candidates[0].missing.length > 0);
 });
 
-test("saldo do MCP e do ambiente Edge permanece dentro dos limites correntes", async () => {
+test("catálogo MCP e recursos Edge respeitam orçamentos locais de regressão", async () => {
   const [source, runtime] = await Promise.all([
     javascriptRuntimeMetrics("src/resources"),
     javascriptRuntimeMetrics("supabase/functions/_shared/aralearn/runtime/resources")
   ]);
   assert.equal(COURSE_HUMAN_TASKS.length, 27);
-  assert.ok(byteLength(COURSE_HUMAN_TASKS) <= 48_000);
+  // Explicação/proposta, correções/fontes do apoio e continuação do preparo
+  // elevaram o registry de 47.991 para 53.476 bytes. Não são limites do fornecedor.
+  const registryBytes = byteLength(COURSE_HUMAN_TASKS);
+  assert.ok(registryBytes <= 54_000, `Registry: ${registryBytes} bytes UTF-8.`);
+  const tools = courseHumanTasksForPrincipal({ actorId: "synthetic-catalog-reader",
+    scopes: ["authoring:read", "authoring:write"] });
+  assert.deepEqual(tools.map(({ name }) => name), COURSE_HUMAN_TASKS.map(({ name }) => name));
+  const discoveryBytes = byteLength({ jsonrpc: "2.0", id: 1,
+    result: { tools, _meta: { humanTaskCatalog: COURSE_HUMAN_TASK_CATALOG_METADATA } } });
+  assert.ok(discoveryBytes <= 58_000, `tools/list: ${discoveryBytes} bytes UTF-8.`);
+  assert.ok(discoveryBytes > registryBytes, "Descoberta inclui OAuth e metadata, não só o registry.");
   // O validador do documento é local; nenhuma função Edge o consome.
   const localValidator = path.join("kernel", "courseContract.js");
   assert.ok(source.files.includes(localValidator));

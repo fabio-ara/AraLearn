@@ -387,7 +387,7 @@ o curso; a aprovação humana do conteúdo é uma ação distinta na Autoria.
 
 No Planejamento, **Explicação prevista** revela finalidade, pressupostos,
 relações a desenvolver e fontes. Ausência de plano ou fonte aparece como
-pendência. O estado **Conteúdo produzido** de uma Parte informa que há unidades
+pendência. O estado **Conteúdo produzido** de uma parte informa que há unidades
 materializadas; não declara revisão humana. Abra o conteúdo para examinar a
 Explicação compartilhada, as unidades e os vínculos antes de aprovar o conjunto.
 

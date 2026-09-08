@@ -83,10 +83,10 @@ microssequência. `consultar_fontes` aceita `explicacao` com o título ou a posi
 da microssequência; em `manter_fonte`, cada item de `vinculos` escolhe `unidade`
 ou `explicacao`. O apoio precisa estar produzido para receber vínculos de
 conteúdo. Suas ocorrências apontam somente ao conteúdo do apoio, sem copiar
-referências em todas as unidades e sem usar resposta ou feedback. As Fontes
+referências em todas as unidades e sem usar resposta ou feedback. As fontes
 previstas no planejamento continuam distintas das que sustentam texto produzido.
 
-Os canais releem a versão corrente do alvo antes de gravar. Alterar uma Fonte,
+Os canais releem a versão corrente do alvo antes de gravar. Alterar uma fonte,
 Âncora ou arquivo efetivamente usado pode exigir nova revisão do conteúdo que
 depende dele; conferir uma fonte não aprova automaticamente esse conteúdo.
 Referências e arquivos do rascunho ficam disponíveis à inspeção da autoria;

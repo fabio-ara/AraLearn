@@ -12,6 +12,8 @@ const correction = await fs.readFile(new URL(
 const audioMigration = await fs.readFile(new URL(
   "../../supabase/migrations/20260905114027_course_audio_media.sql", import.meta.url), "utf8");
 const historicalCatalog = JSON.parse(correction.match(/as \$catalog\$ select '((?:[^']|'')+)'::jsonb \$catalog\$/u)[1].replaceAll("''", "'"));
+// O catálogo congelado da migração de áudio precede a descoberta de hub/repetidor.
+const audioCatalog = JSON.parse(audioMigration.match(/as \$catalog\$ select '((?:[^']|'')+)'::jsonb \$catalog\$/u)[1].replaceAll("''", "'"));
 const quote = (value) => "'" + JSON.stringify(value).replaceAll("'", "''") + "'::jsonb";
 
 async function previousDatabase({ extraRef = false, revision = "20260905083846" } = {}) {
@@ -66,7 +68,8 @@ test("catálogo SQL gerado acompanha registro e migra só metadados compatíveis
   } finally { await database.close(); }
 });
 
-test("extensão áudio e ferramentas atualiza catálogo/política corrente e preserva decisão histórica literal", async () => {
+test("extensão áudio e ferramentas atualiza catálogo/política daquela revisão e preserva decisão histórica literal", async () => {
+  assert.equal(audioCatalog.version, "1-5f0fd13d");
   const database = await previousDatabase();
   try {
     await database.exec(migration);
@@ -78,9 +81,9 @@ test("extensão áudio e ferramentas atualiza catálogo/política corrente e pre
     const end = audioMigration.indexOf("-- Snapshots e aplicações históricos", start);
     assert.ok(start >= 0 && end > start);
     await database.exec(`begin;\n${audioMigration.slice(start, end)}\ncommit;`);
-    assert.deepEqual((await database.query("select private.course_component_catalog_v1() catalog")).rows[0].catalog, COURSE_COMPONENT_CATALOG);
+    assert.deepEqual((await database.query("select private.course_component_catalog_v1() catalog")).rows[0].catalog, audioCatalog);
     assert.deepEqual((await database.query("select * from private.course_component_policy_assignments order by id")).rows,
-      beforePolicy.map(row => ({ ...row, policy: { ...row.policy, catalogVersion: COURSE_COMPONENT_CATALOG.version } })));
+      beforePolicy.map(row => ({ ...row, policy: { ...row.policy, catalogVersion: audioCatalog.version } })));
     assert.deepEqual((await database.query("select * from private.course_entities")).rows, beforeEntities);
     assert.deepEqual((await database.query("select * from private.unrelated_recovery_fixture")).rows, beforeRecovery);
   } finally { await database.close(); }
@@ -106,6 +109,73 @@ test("upgrade compatível recusa referência removida ou runtime inesperado sem 
       await database.exec("rollback");
       assert.equal((await database.query("select private.course_component_catalog_v1()->>'version' version")).rows[0].version, "1-4616b2e5");
       assert.equal((await database.query("select public.get_aralearn_runtime_manifest()->>'schemaRevision' revision")).rows[0].revision, options.revision || "20260905083846");
+    } finally { await database.close(); }
+  }
+});
+
+// A correção incremental do autoíndice não regrava conteúdo, decisões ou políticas.
+const networkMigration = await fs.readFile(new URL(
+  "../../supabase/migrations/20260908000533_refresh_network_component_catalog.sql", import.meta.url), "utf8");
+const fingerprintMigration = await fs.readFile(new URL(
+  "../../supabase/migrations/20260908023156_refresh_generated_package_fingerprint.sql", import.meta.url), "utf8");
+const catalogFrom = (source) => JSON.parse(source.match(/as \$catalog\$ select '((?:[^']|'')+)'::jsonb \$catalog\$/u)[1].replaceAll("''", "'"));
+const networkCatalog = catalogFrom(networkMigration);
+const fingerprintCatalog = catalogFrom(fingerprintMigration);
+
+async function fingerprintDatabase({ revision = "20260908020737", catalog = networkCatalog } = {}) {
+  const database = new PGlite();
+  await database.exec(`
+    create schema private;
+    create role catalog_reader;
+    create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$
+      select ${quote({ schemaRevision: revision, contractVersion: 1, features: ["existing"] })} $$;
+    create function private.course_component_catalog_v1() returns jsonb
+      language sql immutable security definer set search_path=pg_catalog as $$ select ${quote(catalog)} $$;
+    revoke all on function private.course_component_catalog_v1() from public;
+    grant execute on function private.course_component_catalog_v1() to catalog_reader;
+    create table private.catalog_preservation_fixture(id integer primary key, value jsonb);
+    insert into private.catalog_preservation_fixture values(1,${quote({
+      policy: { catalogVersion: networkCatalog.version, availability: "all" },
+      content: { title: "Conteúdo sintético preservado" },
+      designSnapshot: { catalogVersion: "historical", reason: "Escolha aplicada anterior." },
+      contentReview: null, requestId: "synthetic-existing-receipt"
+    })});
+  `);
+  return database;
+}
+
+async function fingerprintSnapshot(database) {
+  return (await database.query(`select private.course_component_catalog_v1() catalog,
+    public.get_aralearn_runtime_manifest() manifest,
+    (select to_jsonb(p)-'prosrc' from pg_proc p where oid='private.course_component_catalog_v1()'::regprocedure) metadata,
+    (select jsonb_agg(to_jsonb(f) order by id) from private.catalog_preservation_fixture f) useful`)).rows[0];
+}
+
+test("impressão regenerada altera só fingerprint e manifesto, preservando opções, ACL e dados úteis", async () => {
+  const database = await fingerprintDatabase();
+  try {
+    const before = await fingerprintSnapshot(database);
+    await database.exec(fingerprintMigration);
+    const after = await fingerprintSnapshot(database);
+    assert.deepEqual(after.catalog, fingerprintCatalog);
+    assert.deepEqual({ ...after.catalog, schemaFingerprint: before.catalog.schemaFingerprint }, before.catalog);
+    assert.notEqual(after.catalog.schemaFingerprint, before.catalog.schemaFingerprint);
+    assert.deepEqual(after.metadata, before.metadata);
+    assert.deepEqual(after.useful, before.useful);
+    assert.deepEqual(after.manifest, { ...before.manifest, schemaRevision: "20260908023156" });
+  } finally { await database.close(); }
+});
+
+test("impressão regenerada recusa origem divergente e alteração incidental de opções sem aplicação parcial", async () => {
+  for (const options of [{ revision: "unexpected" },
+    { catalog: { ...networkCatalog, schemaFingerprint: "sha256:" + "0".repeat(64) } },
+    { catalog: { ...networkCatalog, options: networkCatalog.options.slice(1) } }]) {
+    const database = await fingerprintDatabase(options);
+    try {
+      const before = await fingerprintSnapshot(database);
+      await assert.rejects(database.exec(fingerprintMigration), /divergiu|preservar versão, opções/u);
+      await database.exec("rollback");
+      assert.deepEqual(await fingerprintSnapshot(database), before);
     } finally { await database.close(); }
   }
 });
