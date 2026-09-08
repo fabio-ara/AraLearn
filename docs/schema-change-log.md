@@ -1,5 +1,11 @@
 # Alterações do schema
 
+## 20260908105357 — leitura de origens autorizadas para cópia
+
+A preparação de cópia usa uma leitura de serviço específica para cursos próprios ou com permissão explícita de cópia. As chamadas anteriores alcançavam wrappers de leitura cujo acesso já havia sido revogado. A migração acrescenta `list_copyable_courses_for_actor_v1`, sem reativar esses wrappers nem conceder edição da origem compartilhada.
+
+O leitor reutiliza a política e a projeção atuais, valida o perfil do ator e filtra a autorização antes do limite e do cursor. A consulta por UUID devolve o mesmo envelope de lista; curso ausente ou sem permissão produz lista vazia, sem metadados privados. Ser público ou estar disponível apenas para estudo não concede cópia. Testes transacionais cobrem esses casos, a paginação, as concessões exclusivas ao serviço e a preservação dos registros. Não há transformação de cursos, arquivos, fontes ou decisões de revisão.
+
 ## 20260908023156 — impressão regenerada do catálogo de pacotes
 
 O gate de autoíndice identificou o fingerprint gerado desatualizado. Reexecutar o gerador manteve imports e ordem dos pacotes e atualizou somente `RESOURCE_PACKAGE_CONTRACT_FINGERPRINT`. A projeção SQL passa a anunciar essa impressão, consumida pela descoberta do contrato, mantendo a versão `1-70b27609`, as referências e as opções do catálogo.

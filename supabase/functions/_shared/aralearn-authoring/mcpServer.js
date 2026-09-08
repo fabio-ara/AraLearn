@@ -485,7 +485,8 @@ async function dispatchMcpRequest(envelope, context) {
     } catch (error) {
       const normalized = asAuthoringApiError(error);
       if (normalized.status === 429) throw normalized;
-      const challenge = new Set([401, 403]).has(normalized.status)
+      const challenge = normalized.status === 401 ||
+          (normalized.status === 403 && normalized.code === "insufficient_scope")
         ? context.oauthChallenge
         : null;
       return {

@@ -452,6 +452,20 @@ test("#272 payload e método inválidos falham antes da tarefa", async () => {
   assert.match(payload.nextDecision, /Divida a tarefa/iu);
 });
 
+test("Actions mantém recusa operacional da cópia em 403 sem pedir nova autenticação", async () => {
+  for (const [status, code] of [[403, "not_authorized"], [401, "authentication_required"]]) {
+    const handler = createHandler({ async listCourses() {
+      throw new AuthoringApiError(status, code, "Recusa sintética.");
+    } });
+    const response = await handler(request("copiar_curso", {
+      curso: "Redes para iniciantes", titulo: "Cópia sintética"
+    }));
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get("WWW-Authenticate"), status === 401 ? "Bearer" : null);
+    assert.equal((await response.json()).error.code, code);
+  }
+});
+
 test("#305 Actions recusa 100.000 caracteres antes da autenticação remota e de qualquer escrita", async () => {
   for (const length of [99_999, 100_000]) {
     let principals = 0, writes = 0;

@@ -73,14 +73,45 @@ test("cópia humana recusa troca de conta, título, origem e escopo antes do wri
 test("resolver de fontes copiáveis inclui concessão explícita e conserva o reader owner nas outras tarefas", async () => {
   const adapter = new CourseSupabaseAdapter({ supabaseUrl: "https://project.example", serverApiKey: "sb_secret_fixture", publishableKey: "sb_publishable_fixture", publicAppUrl: "https://app.example", fetchImpl: () => { throw Error("Unexpected network"); } });
   const rpcs = [];
-  adapter.rpc = async (name, input) => { rpcs.push([name, input]); return name.startsWith("list_") ? { items: [{ courseId: LEFT, title: "Esquerda", canCopy: true }, { courseId: RIGHT, title: "Direita", canCopy: false }], hasMore: false } : { courseId: LEFT, canCopy: true }; };
+  adapter.rpc = async (name, input) => { rpcs.push([name, input]); return name.startsWith("list_") ? { items: input.p_course_id
+    ? [{ courseId: LEFT, title: "Esquerda", canCopy: true }]
+    : [{ courseId: LEFT, title: "Esquerda", canCopy: true }, { courseId: RIGHT, title: "Direita", canCopy: false }], hasMore: false } : { courseId: LEFT, canCopy: true }; };
   assert.deepEqual((await adapter.listCourses({ principal, copySourcesOnly: true })).items.map(item => item.courseId), [LEFT]);
   await adapter.getCourse({ principal, courseId: LEFT, copySourcesOnly: true });
   await adapter.listCourses({ principal }); await adapter.getCourse({ principal, courseId: LEFT });
-  assert.deepEqual(rpcs.map(([name]) => name), ["list_courses_for_actor_v1", "get_course_for_actor_v1", "list_owned_courses_for_actor_v1", "get_owned_course_for_actor_v1"]);
+  assert.deepEqual(rpcs.map(([name]) => name), ["list_copyable_courses_for_actor_v1", "list_copyable_courses_for_actor_v1", "list_owned_courses_for_actor_v1", "get_owned_course_for_actor_v1"]);
+  assert.equal(rpcs[0][1].p_course_id, null);
+  assert.equal(rpcs[1][1].p_course_id, LEFT);
+  assert.equal(rpcs[1][1].p_limit, 1);
   adapter.rpc = async () => ({ items: null, canCopy: false });
   await assert.rejects(adapter.listCourses({ principal, copySourcesOnly: true }), error => error.status === 503);
+  await assert.rejects(adapter.getCourse({ principal, courseId: LEFT, copySourcesOnly: true }), error => error.status === 503);
+  adapter.rpc = async () => ({ items: [] });
   await assert.rejects(adapter.getCourse({ principal, courseId: LEFT, copySourcesOnly: true }), error => error.status === 404);
+  adapter.rpc = async () => ({ items: [{ courseId: RIGHT, canCopy: true }] });
+  await assert.rejects(adapter.getCourse({ principal, courseId: LEFT, copySourcesOnly: true }), error => error.status === 503);
+});
+
+test("preparação de cópia relê a origem autorizada pela RPC corrente sem tocar no writer", async () => {
+  const requests = [];
+  const course = { courseId: LEFT, title: "Esquerda", revision: 7, canCopy: true, ownership: "shared" };
+  const adapter = new CourseSupabaseAdapter({ supabaseUrl: "https://project.example",
+    serverApiKey: "sb_secret_fixture", publishableKey: "sb_publishable_fixture", publicAppUrl: "https://app.example",
+    fetchImpl: async (url, options) => {
+      assert.equal(new URL(url).pathname, "/rest/v1/rpc/list_copyable_courses_for_actor_v1");
+      const input = JSON.parse(options.body); requests.push(input);
+      assert.equal(input.p_actor_id, principal.actorId);
+      return Response.json({ contract: "aralearn.course-list.v2", items: [course], hasMore: false, nextCursor: null });
+    }
+  });
+  const prepared = await call(adapter, "copiar_curso", { curso: "Esquerda", titulo: "Minha cópia" });
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].p_query, "Esquerda");
+  assert.equal(requests[0].p_course_id, null);
+  assert.equal(requests[1].p_course_id, LEFT);
+  assert.equal(prepared.context.titulo, "Minha cópia");
+  assert.ok(prepared.context.confirmacao);
+  assert.match(prepared.deepLink, new RegExp(LEFT, "u"));
 });
 
 test("comparação humana preserva inventário literal e IDs sem abrir leitura de curso alheio", async () => {
