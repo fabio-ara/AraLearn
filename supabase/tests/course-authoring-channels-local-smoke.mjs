@@ -184,20 +184,22 @@ export async function runLocalAuthoringChannels(environment = process.env) {
   } catch (error) { primaryError = error; }
   const cleanupErrors = [];
   for (const courseId of courses) {
-    await adapter.rpc("maintain_course_for_actor_v1", { p_actor_id: userId, p_course_id: courseId,
-      p_operation: "delete_owned_course", p_confirmed: true, p_request_id: randomUUID() })
+    await adapter.maintainCourse({ principal: { actorId: userId }, courseId,
+      operation: "delete_owned_course", confirmed: true, requestId: randomUUID() })
+      .then(result => assert.equal(result.fileCleanupPending, false, "A limpeza do curso sintético deve terminar antes da conta."))
       .catch(error => cleanupErrors.push(error));
   }
   await cleanupLocalMcpSession(config, mcpLifecycle).catch(error => cleanupErrors.push(error));
-  if (userId) await removeLocalUser(config, userId).then(result => {
-    assert.ok([200, 204].includes(result.response.status), `Limpeza de usuário: HTTP ${result.response.status}`);
+  if (userId && cleanupErrors.length === 0) await removeLocalUser(config, userId).then(result => {
+    assert.ok([200, 204, 404].includes(result.response.status), `Limpeza de usuário: HTTP ${result.response.status}`);
   }).catch(error => cleanupErrors.push(error));
+  if (cleanupErrors.length) throw new AggregateError(primaryError ? [primaryError, ...cleanupErrors] : cleanupErrors,
+    "Falha na limpeza sintética dos canais; identidades pendentes foram preservadas.");
   if (primaryError) throw primaryError;
-  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, "Falha na limpeza sintética local.");
   return { contract: "aralearn.local-authoring-channels-proof.v1", recordedAt: new Date().toISOString(),
     evidence: "HTTP Edge + OAuth + PostgREST/Auth/Postgres locais reais; cliente Node sintético",
     notProven: ["cliente ChatGPT", "catálogo importado no GPT", "ambiente hospedado", "eficácia pedagógica"],
-    cleanup: { coursesRemoved: courses.length, syntheticUserRemoved: true, mcpClientRemoved: true }, results, measurements };
+    cleanup: { completed: true, coursesRemoved: courses.length, syntheticUserRemoved: true, mcpClientRemoved: true }, results, measurements };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

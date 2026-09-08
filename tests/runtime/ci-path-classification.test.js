@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   classifyChangedPaths,
   classifyGitDiff,
+  parseGitDiffPaths,
   isDocumentationPath
 } from "../../scripts/classifyCiPaths.mjs";
 
@@ -89,6 +90,9 @@ test("diff considera exclusões e não permite que renomeação ou mudança de t
   assert.equal(classifyGitDiff("U\0README.md\0"), false);
   assert.equal(classifyGitDiff("M\0docs/README.md"), false);
   assert.equal(classifyGitDiff(""), false);
+  assert.deepEqual(parseGitDiffPaths("D\0src/runtime.js\0A\0docs/runtime.md\0"), ["src/runtime.js", "docs/runtime.md"]);
+  assert.equal(parseGitDiffPaths("R100\0src/runtime.js\0docs/runtime.md\0"), null);
+  assert.equal(parseGitDiffPaths("M\0../README.md\0"), null);
 });
 
 test("interface de linha de comando produz docs_only booleano", () => {
@@ -125,7 +129,35 @@ test("falha na leitura do evento do GitHub produz fallback integral", () => {
     });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stderr, /Classificação inconclusiva; usando pipeline integral/u);
-    assert.equal(fs.readFileSync(outputPath, "utf8"), "docs_only=false\n");
+    assert.equal(fs.readFileSync(outputPath, "utf8"), [
+      "docs_only=false", "requires_supabase=true", "requires_web=true", "requires_android=true",
+      'categories=["unknown"]', ""
+    ].join("\n"));
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("CLI JSON expõe seleção completa e outputs de impacto sem alterar stdout histórico", () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-ci-impact-"));
+  try {
+    const outputPath = path.join(temporaryRoot, "github-output.txt");
+    const result = spawnSync(process.execPath, [classifierPath, "--stdin", "--json"], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      input: "public/styles.css\n",
+      env: { ...process.env, GITHUB_OUTPUT: outputPath }
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const impact = JSON.parse(result.stdout);
+    assert.equal(impact.schemaVersion, 1);
+    assert.deepEqual(impact.requires, { web: true, contracts: false, supabase: false, android: false });
+    assert.ok(impact.e2eFiles.includes("tests/e2e/frame-content-geometry.spec.js"));
+    assert.deepEqual(impact.realE2eFiles, []);
+    assert.equal(fs.readFileSync(outputPath, "utf8"), [
+      "docs_only=false", "requires_supabase=false", "requires_web=true", "requires_android=false",
+      'categories=["web"]', ""
+    ].join("\n"));
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }

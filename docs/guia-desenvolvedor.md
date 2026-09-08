@@ -210,9 +210,56 @@ segurança em nível de linha.
 
 ## Testes e integração
 
-Durante o desenvolvimento, escolha explicitamente os arquivos que exercitam a
-mudança. O runner comum aceita arquivos de `tests/kernel` e `tests/runtime`,
-recusa seleção vazia ou inválida e mantém o código de saída de uma falha:
+Use um PR em rascunho durante o desenvolvimento. Consulte o impacto e execute a
+preparação local antes de liberar a candidata para a integral:
+
+```powershell
+npm.cmd run validate:candidate -- --base origin/main --plan
+npm.cmd run validate:candidate -- --base origin/main
+```
+
+O classificador distingue documentação, web, contratos, backend, banco,
+Android e orquestração. Caminhos desconhecidos ampliam o conjunto. CSS puro
+seleciona provas de interface sem iniciar banco; comportamento web e contratos
+incluem integração real local. Android possui testes de contrato e build/lint
+locais quando aplicáveis, além do gate obrigatório na integral final. A seleção é conservadora, não uma
+análise completa de dependências: acrescente o teste focal do comportamento
+alterado quando ele ainda não estiver representado.
+
+A preparação executa verificadores, lint, runtime selecionado, E2E e integração
+aplicáveis, nessa ordem. A primeira falha interrompe o percurso. O resumo em
+`.validation/candidate.json` contém árvore, configuração, gates, resultado,
+falhas e referências de logs. O diretório é ignorado pelo Git. Leia primeiro
+esse resumo; abra somente o log necessário para diagnosticar uma falha.
+
+Recibos verdes são reutilizados apenas com os mesmos arquivos, seleção,
+dependências instaladas, Node, plataforma e configuração relevante. Mudanças
+durante uma prova a invalidam. `--force` repete provas mesmo com recibos válidos.
+A impressão de arquivos é conservadora. O E2E ordinário desconsidera texto
+documental sem relação com a interface, Android, migrations e workflows; mantém
+contratos, scripts, configuração e caminhos desconhecidos. Os demais recibos
+consideram o conjunto de arquivos do repositório. Integração com banco mutável é sempre
+executada quando aplicável; um hash de código não atesta o estado do banco.
+Os recibos locais certificam preparação, nunca substituem o manifesto integral.
+
+Depois de resolver falhas, revisar, fazer commit, enviar a branch e abrir o PR
+em rascunho, libere a candidata pelo mesmo caminho:
+
+```powershell
+npm.cmd run candidate:ready -- --base origin/main
+```
+
+Esse comando só marca o PR como pronto após os gates verdes, com árvore limpa,
+HEAD remoto idêntico e destino `main`. A seleção cobre o delta completo contra
+a base real do PR; `--base` não pode recortar somente o último commit.
+`ready_for_review` dispara a integral.
+Para corrigir uma candidata que falhou, retorne o PR a rascunho antes de enviar
+novas mudanças. Não inicie outra integral enquanto houver gate local pendente.
+O comando não faz commit, push, merge ou publicação.
+
+Durante um ajuste, também é possível escolher explicitamente os arquivos que
+exercitam a mudança. O runner comum aceita arquivos de `tests/kernel` e
+`tests/runtime`, recusa seleção vazia ou inválida e preserva o código de saída:
 
 ```powershell
 npm.cmd run test:focal -- tests/runtime/course-design-parameters.test.js
@@ -237,7 +284,32 @@ Para o navegador, use:
 
 ```powershell
 npm.cmd run test:e2e
+npm.cmd run test:e2e -- tests/e2e/study-explanation.spec.js --retries=0
 ```
+
+O runner encaminha a seleção ao Playwright e restaura a configuração temporária
+de staging. E2E obrigatório com zero testes, skip ou falha não aprova a
+preparação; `--forbid-only` impede que um `test.only` reduza a prova da candidata.
+Testes contra adaptadores sintéticos continuam separados das
+jornadas com Auth, HTTP, PostgreSQL e Storage reais locais.
+
+O gate de banco executa Deno, pgTAP, inventário de paridade, lint e concorrência
+antes das jornadas. Uma migration candidata precisa estar aplicada na stack;
+alterar silenciosamente uma migration já aplicada é recusado. Fresh, upgrade e
+restore continuam obrigatórios conforme o impacto da mudança e o corte.
+
+`npm run test:integration:local` reaproveita uma stack local já preparada e
+executa Autoria corrente, dois lotes por canal HTTP, as dez jornadas reais no
+Chromium e cópia PDF/WAV. O runner não inicia, reseta nem encerra o banco. Ele
+serve funções próprias, valida readiness e encerra somente o processo que
+iniciou; a CI pode compartilhar seu processo já supervisionado. Um runtime
+persistente local pode ser usado com `--functions-existing` apenas após
+conferir mount somente leitura, origem, readiness e ausência de alteração de
+funções/configuração/migrations contra a base. Isso conserva o processo existente
+quando seu código não foi alterado. Para o orquestrador, a opção correspondente é
+`ARALEARN_LOCAL_FUNCTIONS_EXISTING=1`. Falha de
+limpeza bloqueia a prova. Contas e arquivos são sintéticos; esses testes não
+aprovam cursos reais nem substituem ChatGPT, MCP ou Actions hospedados.
 
 O overlay de Explicação tem um percurso focal em
 `tests/e2e/study-explanation.spec.js`. Com a candidata web preparada para o
@@ -273,7 +345,7 @@ As guardas de rolagem examinam elementos efetivamente renderizados: o texto
 de debate em um `details` fechado não é um scroller de leitura; as fixtures
 de navegação devem usar rotas canônicas com a revisão do curso.
 
-Depois dos testes focais, execute o conjunto proporcional ao destino:
+Quando uma integral local for necessária, os comandos continuam disponíveis:
 
 ```powershell
 npm.cmd test
@@ -285,7 +357,22 @@ npm.cmd run validate:example
 
 Uma entrega web passa ainda por `validateDeployment.ps1 -Scope Web`; Android
 usa `-Scope Full`. Mudança de banco exige fresh, upgrade, restore e verificação
-hospedada antes da publicação.
+hospedada antes da publicação. A integral protegida da candidata final pode
+fornecer a prova autoritativa; não repita o mesmo conjunto local e remotamente
+sem uma alteração que invalide a evidência. `test:preflight` contém os
+verificadores e auditorias; `test:runtime` contém o conjunto Node. `npm test`
+continua executando ambos.
+
+Na execução autônoma, delegue por arquivos e fronteiras independentes, com uma
+única coordenação. O agente responsável entrega resultado, arquivos, prova e
+limites; sinaliza antes somente bloqueio ou achado material. Use subagentes
+nativos ou CLI para revisão de código. Reserve o navegador para provas em que
+a interface ou o cliente real faça parte do requisito. Mantenha um checkpoint
+corrente, sem reproduzir logs ou reabrir fases concluídas após uma retomada.
+Para aguardar CI, use `gh run watch <id> --exit-status` com saída em arquivo e
+consulte o resultado ao terminar. Em falha, leia `gh run view <id> --log-failed`
+por job, em vez de baixar toda a execução repetidamente. Isso reduz contexto
+do agente; caches e seleção de gates reduzem computação, uma economia distinta.
 
 ## Documentação
 

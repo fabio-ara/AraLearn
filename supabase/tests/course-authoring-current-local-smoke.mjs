@@ -23,7 +23,7 @@ function first(value) {
   return Array.isArray(value) && value.length === 1 ? value[0] : value;
 }
 
-async function createAuthor(config, marker) {
+async function createAuthor(config, marker, onCreated) {
   const password = `Authoring-${marker}-Aa1!`;
   const created = await localSupabaseRequest(config, "/auth/v1/admin/users", {
     method: "POST",
@@ -36,11 +36,12 @@ async function createAuthor(config, marker) {
       user_metadata: { test: "course-authoring-current-local-smoke" }
     }
   });
-  assert.equal(created.response.status, 200, JSON.stringify(created.payload));
+  assert.equal(created.response.status, 200, `Criação da fixture: HTTP ${created.response.status}`);
+  onCreated(created.payload.id);
   const signedIn = await signInLocalUser(config, {
     email: `authoring-${marker}@example.test`, password
   });
-  assert.equal(signedIn.response.status, 200, JSON.stringify(signedIn.payload));
+  assert.equal(signedIn.response.status, 200, `Login da fixture: HTTP ${signedIn.response.status}`);
   return { id: created.payload.id, accessToken: signedIn.payload.access_token };
 }
 
@@ -229,6 +230,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
   let actorId = null;
   let accessToken = null;
   let courseId = null;
+  let primaryError;
+  const cleanup = { completed: false, courseRemoved: false, userRemoved: false };
   const adapter = new CourseSupabaseAdapter({
     supabaseUrl: config.projectUrl,
     publicSupabaseUrl: config.projectUrl,
@@ -238,7 +241,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     attempts: 1
   });
   try {
-    const author = await createAuthor(config, marker);
+    const author = await createAuthor(config, marker, id => { actorId = id; });
     actorId = author.id;
     accessToken = author.accessToken;
     const principal = {
@@ -680,6 +683,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
 
     return Object.freeze({
       contract: "aralearn.course-authoring-current-proof.v1",
+      cleanup,
       partMicrosequenceCount: 2,
       studyUnitCount: 2,
       analysisIntroductionCount: 1,
@@ -693,17 +697,33 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       sourceTargetVersion: afterEditAttribution.items[0].targetVersion,
       retiredAnchorCitationCount: retiredCitations.citations.length
     });
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
+    const failures = [];
     if (actorId && courseId) {
-      await adapter.rpc("maintain_course_for_actor_v1", {
-        p_actor_id: actorId,
-        p_course_id: courseId,
-        p_operation: "delete_owned_course",
-        p_confirmed: true,
-        p_request_id: randomUUID()
-      }).catch(() => undefined);
+      try {
+        const removed = await adapter.maintainCourse({ principal: { actorId }, courseId,
+          operation: "delete_owned_course", confirmed: true, requestId: randomUUID() });
+        assert.equal(removed.fileCleanupPending, false, "A limpeza do curso sintético deve terminar antes da conta.");
+        cleanup.courseRemoved = true;
+      } catch (error) { failures.push(error); }
+    } else {
+      cleanup.courseRemoved = true;
     }
-    await removeLocalUser(config, actorId).catch(() => undefined);
+    if (actorId && cleanup.courseRemoved) {
+      try {
+        const removed = await removeLocalUser(config, actorId);
+        assert.ok([200, 204, 404].includes(removed.response.status), `Limpeza de conta: HTTP ${removed.response.status}`);
+        cleanup.userRemoved = true;
+      } catch (error) { failures.push(error); }
+    } else if (!actorId) {
+      cleanup.userRemoved = true;
+    }
+    cleanup.completed = cleanup.courseRemoved && cleanup.userRemoved && failures.length === 0;
+    if (failures.length) throw new AggregateError(primaryError ? [primaryError, ...failures] : failures,
+      "Falha na limpeza sintética de autoria; a identidade pendente foi preservada.");
   }
 }
 
