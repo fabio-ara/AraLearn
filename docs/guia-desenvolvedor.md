@@ -220,6 +220,28 @@ Para o navegador, use:
 npm.cmd run test:e2e
 ```
 
+O overlay de Explicação tem um percurso focal em
+`tests/e2e/study-explanation.spec.js`. Com a candidata web preparada para o
+runner, execute `npx playwright test tests/e2e/study-explanation.spec.js`.
+O teste usa UI e renderizadores reais com repositório sintético: teoria e
+prática compartilham um apoio longo, tabela, código, topologia de rede, ferramentas
+condicionais e referências com PDF simulado. O download é capturado pelo harness;
+não comprova autorização remota nem leitura de um arquivo hospedado.
+
+Para inspeção local, `tests/gallery/study-explanation.html` monta a mesma fixture
+no servidor de desenvolvimento. Os parâmetros `unit=practice`, `theme=dark` e
+`state=missing|draft|offline|error` selecionam casos sintéticos. Não há conta ou
+conteúdo real nessa página. Os testes fornecem somente os arquivos da fixture
+ao navegador quando executados contra `.pages`; não é necessário publicar a
+galeria no produto. Capturas e traces ficam na saída ignorada do Playwright.
+
+O percurso verifica larguras de 360, 390, 430 e 1280 pixels, altura reduzida,
+texto ampliado, resposta pendente, fontes na mesma folha e retorno de foco e
+rolagem. O diagrama expandido usa o diálogo nativo: uma interrupção precisa
+conservar modalidade, zoom e deslocamento, e Escape deve retornar primeiro ao
+apoio e depois à unidade. A inspeção visual complementa essas assertivas de
+comportamento; nenhuma delas equivale a um teste de aprendizagem com pessoas.
+
 Depois dos testes focais, execute o conjunto proporcional ao destino:
 
 ```powershell

@@ -339,6 +339,47 @@ uma transformação conceitual delimitada, sem condensar vários pressupostos. U
 Unidade de prática pode conter um contexto mais rico porque o estudante precisa
 operar sobre ela; ainda assim, rótulos e relações devem permanecer legíveis.
 
+## Topologia: hub Ethernet e repetidor
+
+O pacote `network_topology` admite `hub` e `repeater` como tipos próprios, além de
+`switch`. Aqui, **hub Ethernet** significa repetidor multiporta: retransmite nas
+demais portas os sinais recebidos, sem escolher uma porta de destino pelo endereço
+MAC. O **repetidor** regenera e retransmite sinais entre trechos do meio na camada
+física. O tipo não deve ser escolhido pelo nome informal dado ao equipamento: um
+switch chamado “Hub” continua descrito como switch. A terminologia é delimitada
+pela [carta do grupo IEEE 802.3 Hub MIB da IETF](https://www.ietf.org/proceedings/33/charters/hubmib-charter.html)
+e pela natureza física do repetidor descrita na
+[RFC 2108, seção 2.4.1.2](https://www.rfc-editor.org/rfc/rfc2108#section-2.4.1.2).
+
+O renderer usa retângulo para hub, elipse para repetidor e caixa tridimensional
+para switch. Essas são convenções locais de apresentação, não símbolos universais
+de normalização técnica; o rótulo do tipo acompanha cada equipamento. A descrição
+textual equivalente explicita a função dos dois novos tipos. Não se depende da
+cor ou apenas da forma para identificá-los.
+
+O exemplo completo do
+[pacote de topologia](../src/resources/packages/network-topology/index.js)
+representa duas estações ligadas a um hub, seguido de um repetidor e de um switch.
+Os trechos ligados por repetição são agrupados, os quatro enlaces Ethernet são
+bidirecionais e o switch conecta esse recorte à rede comutada. O exemplo permite
+comparar os papéis dos equipamentos; não estima alcance, desempenho ou colisões,
+nem simula tráfego. As condições físicas e as regras de instalação de uma rede
+real exigem dados adicionais e não são inferidas do desenho.
+
+Na hidratação, rótulos de enlaces e fronteiras que contêm apenas marcação de
+campo autoral conservam a fonte e a entrelinha medidas no SVG. A caixa HTML
+recebe a altura de todas as linhas e tolerância para arredondamento; isso evita
+cortar o fim de uma palavra ou a segunda linha ao substituir texto por marcação
+inspecionável. Na topologia, a medição já reserva Arial 16 para fronteiras e
+Arial 14 para enlaces. O texto não é abreviado e não se reduz a fonte para fazê-lo
+caber. Controles de resposta continuam no tratamento próprio das lacunas.
+
+Hub e repetidor reutilizam os mesmos alvos de edição e lacuna dos demais
+equipamentos. Uma prática pode operar sobre o rótulo autoral de cada nó, com o
+controle naquele nó; consultar ou ampliar o diagrama não cria uma resposta nem
+uma nova ferramenta. O contrato e o exemplo são comuns ao conteúdo da Unidade,
+à Explicação e ao feedback.
+
 ## 11. Telas móveis, orientação e ampliação
 
 Os dez pacotes que usam a camada compartilhada `system-diagrams` e o pacote

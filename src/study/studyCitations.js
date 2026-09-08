@@ -12,13 +12,13 @@ const ROLE_LABELS = {
 };
 const OCCURRENCE_FIELDS = ["occurrenceId", "slot", "resourceId", "path", "quote", "prefix", "suffix"];
 
-export function studyCitationMarkers(studyUnit, citations) {
+export function studyCitationMarkers(studyUnit, citations, sourceOptions = {}) {
   return (citations?.citations || []).flatMap((citation, index) => {
     const base = { linkId: citation.linkId, number: index + 1 };
     if (!citation.occurrences?.length) return [{ ...base, occurrenceId: "", target: null }];
     return citation.occurrences.map((value) => {
       const occurrence = resolveCourseSourceOccurrence(studyUnit,
-        Object.fromEntries(OCCURRENCE_FIELDS.map((field) => [field, value[field]])));
+        Object.fromEntries(OCCURRENCE_FIELDS.map((field) => [field, value[field]])), sourceOptions);
       return { ...base, occurrenceId: occurrence.occurrenceId,
         target: occurrence.status === "resolved" ? occurrence : null,
         needsReview: occurrence.status === "needs_review" };
@@ -35,9 +35,9 @@ export function renderStudySourceMarkers(markers) {
     `<sup>${marker.number}</sup></button>`).join("") + "</span>";
 }
 
-export function placeStudyCitationMarkers(root, studyUnit, citations) {
+export function placeStudyCitationMarkers(root, studyUnit, citations, sourceOptions = {}) {
   root.querySelectorAll(".source-marker-group[data-source-marker-placement]").forEach(node => node.remove());
-  for (const marker of studyCitationMarkers(studyUnit, citations).filter(value => value.target)) {
+  for (const marker of studyCitationMarkers(studyUnit, citations, sourceOptions).filter(value => value.target)) {
     const instance = [...root.querySelectorAll(".package-instance")].find(node =>
       node.dataset.packageInstanceId === marker.target.resourceId && node.dataset.packageSlot === marker.target.slot);
     if (!instance) continue;
@@ -71,7 +71,8 @@ function pdfButton(citation, citationIndex, attachmentIndex, pending, anchor = n
 }
 
 export function renderStudyCitations({ open, loading, value, error, courseId, canAuthorSources,
-  downloadPending, downloadError, selectedLinkId = "", selectedOccurrenceId = "", formattedReferences = {}, studyUnit = null }) {
+  downloadPending, downloadError, selectedLinkId = "", selectedOccurrenceId = "", formattedReferences = {}, studyUnit = null,
+  sourceOptions = {}, embedded = false, closeLabel = "Fechar fontes" }) {
   if (!open) return "";
   let content;
   if (loading) content = '<p class="study-citations-status" role="status">Carregando fontes…</p>';
@@ -80,7 +81,7 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
   else content = '<ol class="study-citation-list">' + value.citations.flatMap((citation, citationIndex) => {
     if (selectedLinkId && citation.linkId !== selectedLinkId) return [];
     const occurrence = citation.occurrences?.find(item => item.occurrenceId === selectedOccurrenceId);
-    const quoteTarget = occurrence && listCourseSourceOccurrenceTargets(studyUnit).find(target =>
+    const quoteTarget = occurrence && listCourseSourceOccurrenceTargets(studyUnit, sourceOptions).find(target =>
       target.slot === occurrence.slot && target.resourceId === occurrence.resourceId && target.path === occurrence.path);
     const reference = formattedReferences[citation.linkId];
     const references = citation.attachments || [];
@@ -108,11 +109,12 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
       (canAuthorSources ? `<a href="${escape(buildCourseAuthoringRoute(courseId, { section: "sources", sourceId: citation.sourceId }))}" data-study-source-return>Revisar fonte</a>` : "") +
       "</div></article></li>";
   }).join("") + "</ol>";
-  return '<section class="editor-overlay study-citations-overlay">' +
-    '<article class="editor-sheet study-citations-panel" role="dialog" aria-modal="true" aria-labelledby="study-citations-title">' +
-    '<header class="editor-head"><button class="icon-ghost" type="button" data-action="toggle-citations" aria-label="Fechar fontes" title="Fechar fontes">' +
+  return (embedded ? "" : '<section class="editor-overlay study-citations-overlay">' +
+    '<article class="editor-sheet study-citations-panel" role="dialog" aria-modal="true" aria-labelledby="study-citations-title">') +
+    `<header class="editor-head"><button class="icon-ghost" type="button" data-action="toggle-citations" aria-label="${escape(closeLabel)}" title="${escape(closeLabel)}">` +
     renderUiIcon("remove-state", "home-tab-icon") + `</button><h2 id="study-citations-title">${selectedLinkId ? "Referência" : "Fontes"}</h2></header>` +
     `<div class="editor-body study-citations-body">${content}` +
     (downloadPending ? '<p class="study-citations-status" role="status">Preparando PDF…</p>' : "") +
-    (downloadError ? `<p class="study-citations-status is-error" role="alert">${escape(downloadError)}</p>` : "") + "</div></article></section>";
+    (downloadError ? `<p class="study-citations-status is-error" role="alert">${escape(downloadError)}</p>` : "") + "</div>" +
+    (embedded ? "" : "</article></section>");
 }

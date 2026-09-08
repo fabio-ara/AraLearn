@@ -24,6 +24,35 @@ function client(fetchImpl, visitor = false) {
 }
 const response = data => new Response(JSON.stringify({ data }), { headers: { "Content-Type": "application/json" } });
 
+test("áudio do apoio atravessa cliente/controller na rota comum com alvo e revisão conferidos", async () => {
+  for (const visitor of [false, true]) {
+    let wrong = false;
+    const calls = [];
+    const api = client(async (url, init) => {
+      const parsed = new URL(url); calls.push({ url: parsed, init });
+      return response({ contract: "aralearn.course-media-download.v1", courseId: id, courseRevision: 1,
+        targetKind: "microsequence_explanation", targetId: wrong ? "another-microsequence" : "micro-a", media,
+        signedUrl: `https://example.test/storage/v1/object/sign/course-media/${id}/${media.contentHash}.wav?token=fixture`,
+        expiresAt: "2026-09-08T00:00:00.000Z" });
+    }, visitor);
+    const controller = new CourseController({ api, store: { getCache: async () => null, putCache: async () => {}, deleteCachePrefix: async () => {} } });
+    const target = { courseId: id, expectedRevision: 1, targetKind: "microsequence_explanation", targetId: "micro-a", contentHash: media.contentHash };
+    const result = await controller.getCourseMediaDownload(target);
+    assert.equal(result.targetId, "micro-a");
+    assert.equal(Object.hasOwn(result, "studyUnitId"), false);
+    assert.equal(calls[0].url.pathname, `/functions/v1/aralearn-course-api/v1/courses/${id}/media/${media.contentHash}/download`);
+    assert.deepEqual(Object.fromEntries(calls[0].url.searchParams), { expectedRevision: "1", targetKind: "microsequence_explanation", targetId: "micro-a" });
+    assert.equal(calls[0].init.headers.has("authorization"), !visitor);
+    wrong = true;
+    await assert.rejects(controller.getCourseMediaDownload(target), /não corresponde/u);
+    const before = calls.length;
+    for (const invalid of [{ ...target, studyUnitId: "unit-a" }, { ...target, targetId: null }, { ...target, targetKind: "course" }]) {
+      await assert.rejects(controller.getCourseMediaDownload(invalid));
+    }
+    assert.equal(calls.length, before, "alvo inválido não dispara transporte");
+  }
+});
+
 test("visitante lê só configuração e arquivo focal, sem catálogo privado ou escrita", async () => {
   const calls = [];
   const api = client(async (url, init) => { calls.push({ url, init }); return response(read()); }, true);

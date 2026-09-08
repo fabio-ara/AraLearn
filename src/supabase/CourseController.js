@@ -1186,6 +1186,7 @@ export class CourseController {
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
       this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
+      this.store.deleteCachePrefix(`course.v1.explanation-citations:${courseId}`),
       this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
@@ -1905,6 +1906,7 @@ export class CourseController {
       this.store.deleteCachePrefix(verifiedCompositionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
+      this.store.deleteCachePrefix(`course.v1.explanation-citations:${courseId}`),
       this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)

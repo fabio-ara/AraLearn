@@ -1,11 +1,16 @@
 begin;
 
-select plan(25);
+select plan(27);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260907222912','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20260908000533','o manifesto identifica as capacidades correntes em ordem canônica');
+select is(private.course_component_catalog_v1()->>'version','1-70b27609',
+  'a projeção SQL acompanha a descoberta corrente de componentes');
+select is(private.course_component_catalog_v1()->>'schemaFingerprint',
+  'sha256:be520856aeb1c583daef1c0a39e5252633af92eede420eb03be47c1e79d060cc',
+  'a descoberta de hub e repetidor conserva os schemas dos pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
 select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),50,

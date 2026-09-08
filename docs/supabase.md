@@ -52,6 +52,30 @@ a mesma intenção depois de uma resposta perdida sem duplicar o efeito.
 
 ### Revisão do conteúdo e cópia de Estudo
 
+O Estudo obtém a Explicação de `microsequence.explanation` na composição já
+aberta. `loadExplanationContext` devolve o caminho de origem, a revisão e o
+metadado protegido de revisão da linha; não consulta um gerador nem escreve
+progresso. Ausência de apoio, rascunho e conteúdo disponível são estados
+distintos. Uma aprovação antiga permanece identificada como `stale`, e um
+registro anterior sem aprovação permanece `unregistered`.
+
+Após uma leitura autorizada, o repositório salva o DTO redigido de citações do
+apoio em `course.v1.explanation-citations:<courseId>`, separado por revisão e
+microssequência. A leitura offline, a cópia anterior conservada e o modo Manual
+reutilizam esse DTO quando disponível. Falha transitória de serviço também
+permite usar a mesma revisão salva, com estado explícito de indisponibilidade;
+conflito de revisão ou revogação não recebe esse fallback. O cache é removido
+com o curso. Uma resposta tardia não substitui a revisão aberta.
+
+O documento offline já contém o texto e os componentes próprios da Explicação.
+As citações ficam disponíveis offline depois de sua primeira leitura online;
+se ainda não foram salvas, o Estudo informa essa condição em vez de declarar
+que não existem fontes. Esse cache não contém catálogo privado, trechos de
+verificação autoral, bytes de mídia ou URLs assinadas. Áudio e PDF externos
+continuam exigindo conexão e autorização corrente. O áudio do apoio usa o alvo
+`microsequence_explanation`, com a microssequência e a revisão abertas, e passa
+pela mesma validação de identidade, tamanho, formato e hash antes do player.
+
 O cliente da aplicação lê a impressão do conjunto de uma microssequência por
 `get_course_microsequence_review_v1` e envia a decisão explícita por
 `approve_course_microsequence_content_v1`. A aprovação exige sessão da pessoa
@@ -216,6 +240,17 @@ MCP, OAuth e revisão do esquema.
 [Deno](https://docs.deno.com/runtime/getting_started/installation/) é necessário
 para a autoria das Edge Functions. O teste local demonstra o estado recriado; não comprova que o
 projeto hospedado recebeu a mesma revisão.
+
+A migração `20260908000533_refresh_network_component_catalog.sql` sincroniza a
+descoberta de hub e repetidor com o catálogo SQL. A versão do catálogo passa a
+`1-70b27609`; as referências, opções e o fingerprint dos schemas permanecem
+iguais. As políticas atuais avançam somente `catalogVersion`, conservando
+disponibilidade, listas de componentes, origem, motivo e data. Conteúdo,
+snapshots de aplicação e decisões de revisão humana não são regravados.
+Preflight e postflight recusam divergência do catálogo precursor ou alteração
+dessas escolhas. O manifesto avança sua revisão sem acrescentar capacidades.
+O teste de atualização local verifica também a estabilidade das bases de
+revisão; essa prova não substitui a aplicação e os gates do ambiente hospedado.
 
 As provas focais de Storage e recuperação usam somente ambientes locais:
 

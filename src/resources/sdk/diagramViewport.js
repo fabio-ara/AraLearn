@@ -142,7 +142,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     canvas.dataset.diagramViewportMode = expanded ? "explore" : "inline";
     toggleExpanded.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggleExpanded.setAttribute("aria-label", expanded
-      ? "Voltar à Unidade de estudo"
+      ? figure.closest(".study-explanation-body") ? "Voltar à Explicação" : "Voltar à Unidade de estudo"
       : "Explorar diagrama em tela inteira");
   };
 
@@ -156,7 +156,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     });
   };
 
-  const promptSearchRoot = () => figure.closest(".runtime-card-sheet, .card-body, main, body")
+  const promptSearchRoot = () => figure.closest(".study-explanation-body, .runtime-card-sheet, .card-body, main, body")
     || figure.parentElement;
 
   const dockPracticePrompt = () => {

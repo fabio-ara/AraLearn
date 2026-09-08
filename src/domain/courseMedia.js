@@ -118,11 +118,14 @@ export function normalizeCourseMediaChange(value) {
   return { ...value, courseId: courseId(value.courseId), courseRevision: revision(value.courseRevision), media };
 }
 export function normalizeCourseMediaDownload(value, { projectUrl } = {}) {
-  exact(value, ["contract", "courseId", "courseRevision", "studyUnitId", "media", "signedUrl", "expiresAt"]);
+  const isExplanation = value?.targetKind === "microsequence_explanation";
+  exact(value, ["contract", "courseId", "courseRevision", "media", "signedUrl", "expiresAt",
+    ...(isExplanation ? ["targetKind", "targetId"] : ["studyUnitId"])]);
   if (value.contract !== "aralearn.course-media-download.v1") fail("Download de áudio inválido.");
   const media = normalizeCourseMediaReference(value.media);
   const id = courseId(value.courseId);
-  if (value.studyUnitId !== null) text(value.studyUnitId, 240);
+  if (isExplanation) text(value.targetId, 240);
+  else if (value.studyUnitId !== null) text(value.studyUnitId, 240);
   let url;
   try {
     if (typeof value.signedUrl !== "string") fail("URL de áudio inválida.");

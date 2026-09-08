@@ -8,9 +8,10 @@ correção, exportação e cliente de revisão. O armazenamento e a autorizaçã
 verificados no PostgreSQL local. Um ensaio com o executor de autoria e HTTP
 PostgREST confirmou duas Explicações, materialização, rematerialização, fontes,
 exportação e correção focal. Ele usa dados sintéticos e não é prova dos clientes
-ChatGPT MCP/Actions. A interface de Explicação e a decisão humana
-na Autoria pertencem às próximas etapas; o serviço publicado conserva a
-versão anterior. Testes sintéticos não certificam aprendizagem nem transformam
+ChatGPT MCP/Actions. A interface de Explicação já integra a candidata local:
+ícone no Estudo, leitura compartilhada, fontes no mesmo overlay e ferramentas
+do catálogo existente. A decisão humana na Autoria pertence à etapa seguinte;
+o serviço publicado conserva a versão anterior. Testes sintéticos não certificam aprendizagem nem transformam
 um rascunho real em conteúdo aprovado.
 
 Uma unidade pode ficar longa ao tentar explicar todos os pressupostos de uma

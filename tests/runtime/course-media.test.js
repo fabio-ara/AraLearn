@@ -68,6 +68,11 @@ test("leitura pública fecha projeção e download vincula curso, hash e origem 
     studyUnitId: "unit", media, signedUrl: `https://project.test/storage/v1/object/sign/course-media/${courseId}/${media.contentHash}.wav?token=synthetic`,
     expiresAt: "2026-09-05T12:00:00.000Z" };
   assert.deepEqual(normalizeCourseMediaDownload(download, { projectUrl: "https://project.test" }), download);
+  const { studyUnitId, ...baseDownload } = download;
+  const explanationDownload = { ...baseDownload, targetKind: "microsequence_explanation", targetId: "ms" };
+  assert.deepEqual(normalizeCourseMediaDownload(explanationDownload, { projectUrl: "https://project.test" }), explanationDownload);
+  for (const invalid of [{ ...explanationDownload, studyUnitId }, { ...explanationDownload, targetId: null },
+    { ...explanationDownload, targetKind: "study_unit" }]) assert.throws(() => normalizeCourseMediaDownload(invalid));
   assert.throws(() => normalizeCourseMediaDownload(download, { projectUrl: "https://other.test" }), /não corresponde/u);
   assert.throws(() => normalizeCourseMediaDownload({ ...download, signedUrl: download.signedUrl.replace(media.contentHash, "b".repeat(64)) }), /não corresponde/u);
 });

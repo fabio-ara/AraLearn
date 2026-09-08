@@ -2379,22 +2379,30 @@ export class CourseSupabaseAdapter {
     return this.#confirmedMedia(raw, identity);
   }
 
-  async getCourseMediaDownload({ principal, courseId, expectedRevision, studyUnitId = null, contentHash, deadlineAt = null }) {
-    const raw = first(await this.rpc("get_course_media_download_for_actor_v1", { p_actor_id: principal.actorId,
-      p_course_id: courseId, p_expected_revision: expectedRevision, p_study_unit_id: studyUnitId, p_content_hash: contentHash
+  async getCourseMediaDownload({ principal, courseId, expectedRevision, studyUnitId = null,
+    targetKind = null, targetId = null, contentHash, deadlineAt = null }) {
+    const isExplanation = targetKind === "microsequence_explanation";
+    if (isExplanation ? studyUnitId !== null || typeof targetId !== "string" || !targetId.trim() || targetId !== targetId.trim() ||
+        [...targetId].length > 240 || /\p{Cc}/u.test(targetId) : targetKind !== null || targetId !== null) {
+      throw new AuthoringApiError(422, "invalid_course_media", "Alvo de áudio inválido.");
+    }
+    const target = isExplanation ? { targetKind, targetId } : { studyUnitId };
+    const raw = first(await this.rpc(isExplanation ? "get_course_explanation_media_download_for_actor_v1" : "get_course_media_download_for_actor_v1", { p_actor_id: principal.actorId,
+      p_course_id: courseId, p_expected_revision: expectedRevision,
+      ...(isExplanation ? { p_microsequence_id: targetId } : { p_study_unit_id: studyUnitId }), p_content_hash: contentHash
     }, { deadlineAt, responseLimitBytes: 16384 }));
     const media = this.#mediaValue(() => normalizeCourseMediaReference(raw?.media));
     const path = this.#mediaValue(() => normalizeCourseAudioStoragePath(raw?.storagePath, media));
-    if (!exactRecord(raw, new Set(["contract", "courseId", "courseRevision", "studyUnitId", "media", "storagePath"])) ||
+    if (!exactRecord(raw, new Set(["contract", "courseId", "courseRevision", "media", "storagePath", ...Object.keys(target)])) ||
         raw.contract !== "aralearn.course-media-download-internal.v1" || raw.courseId !== courseId || raw.courseRevision !== expectedRevision ||
-        raw.studyUnitId !== studyUnitId || media.contentHash !== contentHash || raw.storagePath !== path) {
+        Object.entries(target).some(([key, value]) => raw[key] !== value) || media.contentHash !== contentHash || raw.storagePath !== path) {
       throw new AuthoringApiError(503, "course_media_unavailable", "O áudio não corresponde à leitura autorizada.");
     }
     const signed = await this.#request(`${this.supabaseUrl}/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/${path}`, {
       method: "POST", headers: supabaseServerHeaders(this.serverApiKey), body: JSON.stringify({ expiresIn: 60 })
     }, { retry: false, deadlineAt, responseLimitBytes: 16384 });
     return this.#mediaValue(() => normalizeCourseMediaDownload({ contract: "aralearn.course-media-download.v1", courseId,
-      courseRevision: expectedRevision, studyUnitId, media,
+      courseRevision: expectedRevision, ...target, media,
       signedUrl: signedStorageUrl(`${this.publicSupabaseUrl}/storage/v1`, signed?.signedURL, {
         expectedPath: `/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/${path}` }),
       expiresAt: new Date(Date.now() + 60_000).toISOString()

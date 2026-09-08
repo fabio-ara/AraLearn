@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { IDBFactory } from "fake-indexeddb";
 import { CourseLocalStore } from "../../src/persistence/CourseLocalStore.js";
 import { CoursePersonalStateRepository, COURSE_PERSONAL_STATE_CACHE_CONTRACT } from "../../src/persistence/CoursePersonalStateRepository.js";
@@ -7,9 +8,172 @@ import { CoursePersonalStateRepository, COURSE_PERSONAL_STATE_CACHE_CONTRACT } f
 import { CourseStudyRepository } from "../../src/study/CourseStudyRepository.js";
 import { CourseStudyBridge } from "../../src/study/CourseStudyBridge.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { wrapGeminiPcmAsWav } from "../../src/generation/providers/geminiSpeechProvider.js";
 
 const COURSE_A = "10000000-0000-4000-8000-000000000001";
 const COURSE_B = "20000000-0000-4000-8000-000000000002";
+
+async function explanationRepositoryFixture() {
+  const document = course(COURSE_A, "a");
+  const ms = document.modules[0].lessons[0].microsequences[0];
+  ms.explanation = { title: "Processo e transporte", content: [structuredClone(ms.studyUnits[0].content[0])] };
+  const local = cache(); const navigator = { onLine: true }; const calls = [];
+  let failure = null;
+  const descriptor = { courseId: COURSE_A, title: "Curso", revision: 1, ownership: "public", canEdit: false };
+  const bridge = {
+    async listAccessibleCourses() { return { items: [descriptor], hasMore: false }; },
+    async loadCourse() { return { course: descriptor, revision: 1, document: { courses: [document] },
+      rows: [{ entityType: "microsequence", entityId: "micro-a", contentReview: { state: "current", approvedAt: "2026-09-07T00:00:00Z" } }] }; },
+    async clearCourse() {}
+  };
+  const api = { async getExplanationCitations(courseId, targetId, { expectedRevision }) {
+    calls.push({ courseId, targetId, expectedRevision });
+    if (failure) throw failure;
+    return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+      courseId, courseRevision: expectedRevision, targetKind: "microsequence_explanation", targetId, citations: [] };
+  } };
+  const repository = new CourseStudyRepository({ bridge, api, cache: local, visitor: true, windowValue: { navigator } });
+  await repository.initialize(); await repository.loadCourse(COURSE_A);
+  return { repository, local, navigator, calls, api, bridge,
+    reference: [COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"], setFailure(value) { failure = value; } };
+}
+
+test("apoio é recuperado da cópia aberta, sem rede, e conserva revisão, origem e estados honestos", async () => {
+  const { repository, reference, calls } = await explanationRepositoryFixture();
+  const before = repository.loadProject();
+  const context = repository.loadExplanationContext(reference);
+  assert.equal(context.state, "available"); assert.equal(context.targetKind, "microsequence_explanation");
+  assert.equal(context.targetId, "micro-a"); assert.equal(context.courseRevision, 1);
+  assert.deepEqual(context.entityPath, reference); assert.equal(context.contentReview.state, "current");
+  context.explanation.title = "Não deve mutar a cópia";
+  assert.deepEqual(repository.loadProject(), before); assert.deepEqual(calls, []);
+  assert.equal(repository.loadExplanationContext([COURSE_A, "outro-modulo", "lesson-a", "micro-a", "unit-a"]), null);
+  const loaded = repository.loadedCourseById.get(COURSE_A);
+  loaded.rows[0].contentReview = { state: "stale", approvedAt: "2026-09-07T00:00:00Z" };
+  assert.equal(repository.loadExplanationContext(reference).state, "draft");
+  assert.equal(repository.loadExplanationContext(reference).contentReview.state, "stale");
+  loaded.rows = []; delete loaded.course.modules[0].lessons[0].microsequences[0].explanation;
+  assert.equal(repository.loadExplanationContext(reference).state, "missing");
+  assert.equal(repository.loadExplanationContext(reference).contentReview.state, "unregistered");
+  loaded.pendingReviewMicrosequenceIds = ["micro-a"];
+  assert.equal(repository.loadExplanationContext(reference).state, "draft");
+  await repository.close();
+});
+
+test("citações do apoio sobrevivem offline e serviço indisponível sem trocar tipo, alvo ou revisão", async () => {
+  const { repository, reference, navigator, calls, setFailure, local } = await explanationRepositoryFixture();
+  const remote = await repository.loadExplanationCitations(reference);
+  navigator.onLine = false;
+  assert.deepEqual(await repository.loadExplanationCitations(reference), remote);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(repository.loadExplanationCitationStatus(reference), {
+    courseRevision: 1, source: "cache", offline: true, serviceUnavailable: false
+  });
+  await assert.rejects(repository.loadExplanationCitations({ courseId: COURSE_A, microsequenceId: "other" }),
+    error => error.code === "explanation_citations_not_saved");
+  navigator.onLine = true; setFailure(Object.assign(new Error("Serviço indisponível"), { status: 503 }));
+  assert.deepEqual(await repository.loadExplanationCitations(reference), remote);
+  assert.equal(repository.loadExplanationCitationStatus(reference).serviceUnavailable, true);
+  assert.equal(repository.loadExplanationCitationStatus(reference).offline, false);
+  repository.loadedCourseById.get(COURSE_A).revision = 2;
+  navigator.onLine = false;
+  await assert.rejects(repository.loadExplanationCitations(reference), error => error.code === "explanation_citations_not_saved");
+  await assert.rejects(repository.loadExplanationCitations({ courseId: COURSE_A, microsequenceId: "micro-a", courseRevision: 1 }),
+    error => error.code === "course_revision_changed");
+  assert.equal((await local.getCache(`course.v1.explanation-citations:${COURSE_A}`)).courseRevision, 1);
+  await repository.close();
+});
+
+test("manual e cópia retida usam citações já salvas; revogação e conflito não são ocultados pelo cache", async () => {
+  const { repository, reference, calls, setFailure, local } = await explanationRepositoryFixture();
+  await repository.loadExplanationCitations(reference);
+  repository.setSynchronizationMode("manual");
+  await repository.loadExplanationCitations(reference); assert.equal(calls.length, 1);
+  repository.setSynchronizationMode("automatic");
+  repository.loadedCourseById.get(COURSE_A).retainedForReview = true;
+  await repository.loadExplanationCitations(reference); assert.equal(calls.length, 1);
+  repository.loadedCourseById.get(COURSE_A).retainedForReview = false;
+  setFailure(Object.assign(new Error("Mudou"), { status: 500, code: "40001" }));
+  await assert.rejects(repository.loadExplanationCitations(reference), error => error.code === "course_revision_changed");
+  setFailure(Object.assign(new Error("Revogado"), { status: 403 }));
+  await assert.rejects(repository.loadExplanationCitations(reference), error => error.status === 403);
+  assert.equal(await local.getCache(`course.v1.explanation-citations:${COURSE_A}`), null);
+  assert.equal(repository.loadExplanationContext(reference), null);
+  await repository.close();
+});
+
+test("resposta tardia de citações não substitui cache de outra revisão", async () => {
+  const { repository, reference, api, local } = await explanationRepositoryFixture();
+  const original = api.getExplanationCitations;
+  api.getExplanationCitations = async (...args) => {
+    const response = await original(...args);
+    repository.loadedCourseById.get(COURSE_A).revision = 2;
+    return response;
+  };
+  await assert.rejects(repository.loadExplanationCitations(reference), error => error.code === "course_revision_changed");
+  assert.equal(await local.getCache(`course.v1.explanation-citations:${COURSE_A}`), null);
+  await repository.close();
+});
+
+test("citações salvas sobrevivem nova instância e rejeitam cache de outro alvo", async () => {
+  const { repository, reference, bridge, api, local, navigator, calls } = await explanationRepositoryFixture();
+  const saved = await repository.loadExplanationCitations(reference);
+  await repository.close(); navigator.onLine = false;
+  const reopened = new CourseStudyRepository({ bridge, api, cache: local, visitor: true, windowValue: { navigator } });
+  await reopened.initialize(); await reopened.loadCourse(COURSE_A);
+  assert.deepEqual(await reopened.loadExplanationCitations(reference), saved);
+  assert.equal(calls.length, 1);
+  const key = `course.v1.explanation-citations:${COURSE_A}`;
+  const cached = await local.getCache(key); cached.items["micro-a"].targetId = "other-micro";
+  await local.putCache(key, cached);
+  await assert.rejects(reopened.loadExplanationCitations(reference), /não correspondem/u);
+  await reopened.close();
+});
+
+test("áudio e PDF externos não ganham autorização offline ao abrir a Explicação", async () => {
+  const { repository, reference, navigator, bridge } = await explanationRepositoryFixture();
+  navigator.onLine = false; let requests = 0;
+  bridge.getCourseMediaDownload = async () => { requests++; throw new Error("Não deve buscar"); };
+  bridge.getCourseSourceAttachmentDownload = async () => { requests++; throw new Error("Não deve buscar"); };
+  await assert.rejects(repository.downloadExplanationMedia(reference, { contentHash: "a".repeat(64), byteSize: 50, mediaType: "audio/wav" }),
+    error => error.code === "study_media_unavailable_offline");
+  await assert.rejects(repository.getStudyCitationAttachmentDownload(reference, { courseRevision: 1 }),
+    error => error.code === "study_attachment_unavailable_offline");
+  await assert.rejects(repository.getStudyInstructionalAttachmentDownload(reference, {}),
+    error => error.code === "study_attachment_unavailable_offline");
+  navigator.onLine = true;
+  await assert.rejects(repository.getStudyInstructionalAttachmentDownload({ courseId: COURSE_A, courseRevision: 2 }, {}),
+    error => error.code === "course_revision_changed");
+  assert.equal(requests, 0); assert.equal(repository.loadExplanationContext(reference).explanation.title, "Processo e transporte");
+  await repository.close();
+});
+
+test("áudio do apoio usa sua microssequência e revisão, valida bytes e recusa alvo ou contexto trocado", async () => {
+  const { repository, reference, bridge, api, local } = await explanationRepositoryFixture();
+  const bytes = wrapGeminiPcmAsWav(new Uint8Array(96));
+  const media = { contentHash: createHash("sha256").update(bytes).digest("hex"), byteSize: bytes.length, mediaType: "audio/wav" };
+  const requests = []; let wrongTarget = false; let downloads = 0;
+  api.http = { projectUrl: "https://example.test", fetchImpl: async () => { downloads++; return new Response(bytes); } };
+  bridge.getCourseMediaDownload = async values => {
+    requests.push(values);
+    return { contract: "aralearn.course-media-download.v1", courseId: COURSE_A, courseRevision: 1,
+      targetKind: "microsequence_explanation", targetId: wrongTarget ? "another-micro" : "micro-a", media,
+      signedUrl: `https://example.test/storage/v1/object/sign/course-media/${COURSE_A}/${media.contentHash}.wav?token=synthetic`,
+      expiresAt: new Date(Date.now() + 300000).toISOString() };
+  };
+  const downloaded = await repository.downloadExplanationMedia(reference, media);
+  assert.deepEqual(new Uint8Array(await downloaded.blob.arrayBuffer()), bytes);
+  assert.deepEqual(requests, [{ courseId: COURSE_A, expectedRevision: 1,
+    targetKind: "microsequence_explanation", targetId: "micro-a", contentHash: media.contentHash }]);
+  assert.equal(await local.getCache(`course.v1.explanation-citations:${COURSE_A}`), null);
+  wrongTarget = true;
+  await assert.rejects(repository.downloadExplanationMedia(reference, media), /não corresponde/u);
+  assert.equal(downloads, 1);
+  const context = repository.loadExplanationContext(reference);
+  repository.loadedCourseById.get(COURSE_A).revision = 2;
+  assert.throws(() => repository.downloadExplanationMedia(context, media), error => error.code === "course_revision_changed");
+  await repository.close();
+});
 
 test("Estudo informa cópia anterior e lê citações do apoio pela revisão íntegra conservada", async () => {
   const document = course(COURSE_A, "a");

@@ -9,6 +9,10 @@ const TRACKED_SCROLL_SELECTORS = [
   ".workbench-editor-panel",
   ".assist-prompt",
   ".card-sheet-content",
+  ".study-explanation-body",
+  ".study-citations-body",
+  ".study-tool-body",
+  "[data-resource-scroll-frame]",
   ".dependency-strip",
   ".dependency-chip-row"
 ];

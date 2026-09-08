@@ -1149,7 +1149,9 @@ export class CourseApiClient {
     const request = courseMediaDownloadRequest(value);
     return boundCourseMediaDownload(await this.requestCourseApi(
       `${courseResourcePath(request.courseId)}/media/${request.contentHash}/download`, {
-        query: { expectedRevision: request.expectedRevision, studyUnitId: request.studyUnitId }
+        query: { expectedRevision: request.expectedRevision,
+          ...(request.targetKind === "microsequence_explanation"
+            ? { targetKind: request.targetKind, targetId: request.targetId } : { studyUnitId: request.studyUnitId }) }
       }), request, { projectUrl: this.http.projectUrl });
   }
 

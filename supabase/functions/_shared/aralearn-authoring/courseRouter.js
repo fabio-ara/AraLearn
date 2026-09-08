@@ -1168,13 +1168,21 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
   if (route.name === "getCourseMedia" || route.name === "getCourseMediaDownload") {
     const query = new URL(request.url).searchParams;
     const download = route.name === "getCourseMediaDownload";
-    const allowed = new Set(download ? ["expectedRevision", "studyUnitId"] : ["expectedRevision", "mode", "cursor", "limit"]);
+    const allowed = new Set(download ? ["expectedRevision", "studyUnitId", "targetKind", "targetId"] : ["expectedRevision", "mode", "cursor", "limit"]);
     if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1)) fail("invalid_course_media", "Consulta de áudio inválida.");
     const expectedRevision = positiveInteger(query.get("expectedRevision"), "expectedRevision");
     const mode = query.get("mode") || "configuration";
     if (!download && !["catalog", "configuration"].includes(mode)) fail("invalid_course_media", "Leitura de áudio desconhecida.");
     if (!download && mode === "catalog" || principal?.authenticationKind !== "public" || principal.actorId !== null) assertPrincipal(principal);
     if (download) {
+      if (query.has("targetKind") || query.has("targetId")) {
+        const targetKind = query.get("targetKind"), targetId = query.get("targetId");
+        if (targetKind !== "microsequence_explanation" || !boundedCourseSourceId(targetId) || query.has("studyUnitId")) {
+          fail("invalid_course_media", "Alvo de áudio inválido.");
+        }
+        return { requestId: null, data: await adapter.getCourseMediaDownload({ principal, courseId: route.courseId,
+          expectedRevision, targetKind, targetId, contentHash: route.contentHash, deadlineAt }) };
+      }
       const studyUnitId = query.get("studyUnitId") || null;
       if (studyUnitId !== null && !boundedCourseSourceId(studyUnitId)) fail("invalid_course_media", "Unidade de áudio inválida.");
       return { requestId: null, data: await adapter.getCourseMediaDownload({ principal, courseId: route.courseId,

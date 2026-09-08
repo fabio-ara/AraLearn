@@ -133,7 +133,9 @@ class CitationStudyRoot extends FakeStudyRoot {
   citationHtml = "";
   citationOverlay = null;
   ownerDocument = { activeElement: null };
-  screen = Object.assign(new FakeActionNode(), { setAttribute() {}, removeAttribute() {} });
+  screen = Object.assign(new FakeActionNode(), {
+    setAttribute() {}, removeAttribute() {}, querySelectorAll() { return []; }, querySelector() { return null; }
+  });
 
   get innerHTML() { return super.innerHTML + this.citationHtml; }
   set innerHTML(value) {
