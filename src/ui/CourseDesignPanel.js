@@ -5,7 +5,7 @@ import { renderCourseAuthoringProfiles } from "./CourseAuthoringProfiles.js";
 
 const ORIGIN_LABELS = Object.freeze({
   system_default: "Calibração contextual pendente",
-  automatic: "Escolha automática explicada",
+  automatic: "Escolha automática",
   author: "Definido pelo autor",
   research_condition: "Condição de pesquisa",
   migration: "Importada"
@@ -104,17 +104,61 @@ function renderScopeContext(design) {
     `<nav aria-label="Caminho do escopo"><ol>${breadcrumbs}</ol></nav>${selector}${more}</details>`;
 }
 
-function renderParameterCard(design, definition, resolution, busy, { editing = false } = {}) {
+function renderParameterInspection(design, definition, resolution, {
+  appliedParameters, appliedFailure = ""
+} = {}) {
+  const effective = resolution.effectiveAssignment;
+  const currentScope = design.scopeContext.current;
+  const source = sourceScopeLabel(design, effective.sourceScope);
+  const automatic = effective.mode === "automatic";
+  const mode = automatic
+    ? "Automático: escolher e justificar conforme o contexto da próxima produção."
+    : `Fixo: ${formatDesignValue(definition, effective.value)}.`;
+  const origin = effective.inherited
+    ? `Herdado de ${source} · ${originLabel(effective.origin)}.`
+    : `${originLabel(effective.origin)}${effective.sourceScope ? ` · ${source}` : ""}.`;
+  const scope = `${SCOPE_LABELS[currentScope.kind]}: ${currentScope.label}.`;
+  let applied;
+  if (currentScope.kind !== "study_unit") {
+    applied = '<p>O registro de produção é inspecionado em cada Unidade de estudo. Neste alcance, os ajustes orientam os escopos abaixo, preservando suas exceções.</p>';
+  } else if (appliedFailure) {
+    applied = `<p role="status">Não foi possível consultar o registro desta produção. ${escapeHtml(appliedFailure)}</p>`;
+  } else if (appliedParameters === undefined) {
+    applied = '<p role="status">Consultando o registro desta produção…</p>';
+  } else {
+    const parameter = appliedParameters?.find(item => item.parameterId === definition.id);
+    if (!parameter) {
+      applied = '<p>Não há valor aplicado registrado para este parâmetro nesta unidade. A configuração atual não preenche esse histórico.</p>';
+    } else {
+      const valuesEqual = JSON.stringify(Array.isArray(effective.value) ? [...effective.value].sort() : effective.value)
+        === JSON.stringify(Array.isArray(parameter.value) ? [...parameter.value].sort() : parameter.value);
+      const relation = automatic
+        ? "Essa escolha descreve a produção existente; o modo automático permite uma nova escolha contextual."
+        : valuesEqual ? "O valor coincide com a configuração atual; isso não comprova que o conteúdo a realiza adequadamente."
+          : "O valor aplicado difere da configuração atual. Salvar um ajuste não atualiza esta produção.";
+      applied = `<p><strong>Aplicado nesta produção:</strong> ${escapeHtml(formatDesignValue(definition, parameter.value))}.</p>` +
+        `<p>${escapeHtml(originLabel(parameter.origin))}${parameter.sourceScope ? ` · ${escapeHtml(sourceScopeLabel(design, parameter.sourceScope))}` : ""}.</p>` +
+        `<p><strong>Motivo registrado:</strong> ${escapeHtml(parameter.reason || "Não há justificativa registrada para esta produção.")}</p>` +
+        `<p>${relation}</p>`;
+    }
+  }
+  return '<details class="course-design-explanation"><summary>Definição e origem</summary>' +
+    `<p><strong>O que regula:</strong> ${escapeHtml(definition.operationalization)}</p>` +
+    `<p><strong>Onde se aplica:</strong> ${escapeHtml(scope)}</p>` +
+    `<p><strong>Configuração atual:</strong> ${escapeHtml(mode)}</p><p>${escapeHtml(origin)}</p>` +
+    `<p><strong>Por que esta configuração:</strong> ${escapeHtml(effective.reason || "Não há justificativa registrada.")}</p>` +
+    applied + `<p><strong>O que muda ao salvar:</strong> a orientação para a próxima produção ou revisão solicitada. O conteúdo existente só muda quando uma alteração de conteúdo é aplicada explicitamente.</p>` +
+    `<p><strong>Limites:</strong> ${escapeHtml(definition.limitations)}</p></details>`;
+}
+
+function renderParameterCard(design, definition, resolution, busy, { editing = false,
+  appliedParameters, appliedFailure = "" } = {}) {
   const local = resolution.localAssignment;
   const effective = resolution.effectiveAssignment;
   const supported = definition.supportedScopes.includes(design.scopeContext.current.kind);
   const draftValue = local ? local.value : effective.value;
   const automatic = (local || effective).mode === "automatic";
   const source = sourceScopeLabel(design, effective.sourceScope);
-  const resolutionLabel = effective.inherited
-    ? `Herdado de ${source} · ${originLabel(effective.origin)}`
-    : local ? `${originLabel(effective.origin)} · definido neste escopo`
-      : `${originLabel(effective.origin)} · ${source}`;
   const displayedOrigin = effective.mode === "automatic" && effective.value !== null
     ? "Valor aplicado · decisão automática"
     : effective.inherited ? `Herdado de ${source}`
@@ -147,16 +191,15 @@ function renderParameterCard(design, definition, resolution, busy, { editing = f
       `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></div></form>`
     : '<div class="course-design-disabled-editor" aria-disabled="true"><p>' +
       `Ajuste disponível em: ${escapeHtml(definition.supportedScopes.map((kind) => SCOPE_LABELS[kind]).join(", "))}. ` +
-      "O valor herdado continua visível neste escopo.</p></div>";
+      "A configuração e o registro de produção continuam inspecionáveis neste escopo.</p></div>";
   if (editing) return `<section class="course-design-parameter-editor" data-parameter-id="${escapeHtml(definition.id)}">` +
-    `<h3>${escapeHtml(definition.label)}</h3>${editor}` +
-    '<details class="course-design-explanation"><summary>Definição e origem</summary>' +
-    `<p>${escapeHtml(definition.construct)}</p><p>${escapeHtml(definition.operationalization)}</p>` +
-    `<p>${escapeHtml(definition.limitations)}</p><p>${escapeHtml(resolutionLabel)}</p>` +
-    `<p>${escapeHtml(effective.reason)}</p></details></section>`;
+    `<h3>${escapeHtml(definition.label)}</h3><p>${escapeHtml(definition.construct)}</p>` +
+    renderParameterInspection(design, definition, resolution, { appliedParameters, appliedFailure }) +
+    '<p class="course-design-context-note">Salvar ajusta a orientação; não reescreve as unidades nem a Explicação já produzidas.</p>' +
+    editor + '</section>';
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
     '<header tabindex="0"><div>' +
-    `<h3>${escapeHtml(definition.label)}</h3><p class="course-authoring-visually-hidden">Valor vigente</p></div>` +
+    `<h3>${escapeHtml(definition.label)}</h3><p class="course-authoring-visually-hidden">Configuração atual</p></div>` +
     `<strong>${escapeHtml(effective.value === null ? "Automático" : formatDesignValue(definition, effective.value))}</strong>` +
     (displayedOrigin ? `<small class="course-design-value-origin">${escapeHtml(displayedOrigin)}</small>` : "") + '</header>' +
     `<button type="button" data-course-authoring-action="edit-design-parameter" data-parameter-id="${escapeHtml(definition.id)}" class="course-authoring-icon-action" aria-label="Ajustar ${escapeHtml(
@@ -313,7 +356,7 @@ export function renderCourseDesignPanel(state) {
       `<button type="button" data-course-authoring-action="select-design-category" data-design-category="${escapeHtml(group.id)}"` +
       `${group.id === selected.id ? ' aria-current="page"' : ""}>${escapeHtml(group.label)}</button>`).join("") + '</nav></details>';
   const content = edited ? renderParameterCard(design, edited,
-    design.parameters.find(parameter => parameter.parameterId === edited.id), state.designBusy, { editing: true }) :
+    design.parameters.find(parameter => parameter.parameterId === edited.id), state.designBusy, { editing: true, appliedParameters: state.designAppliedParameters, appliedFailure: state.designAppliedFailure }) :
     selected.id === "resources" ? renderComponentPolicy(design, state.designBusy) :
     selected.id === "profiles" ? renderCourseAuthoringProfiles({ ...state, profilesOpen: true }) :
     renderParameterGroup(design, state.designBusy, { group: selected.id,

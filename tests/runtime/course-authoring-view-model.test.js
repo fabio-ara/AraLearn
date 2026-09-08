@@ -264,7 +264,9 @@ test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => 
               title: "Primeiro caso",
               objective: "Explicar a relação inicial.",
               dependencyMicrosequenceIds: [],
-              role: "explain"
+              role: "explain",
+              explanationPlan: { purpose: "Explicar conexões.", prerequisites: ["Identificar os pontos."],
+                relations: ["A ligação permite interação."], sourceIds: ["source-a"] }
             }]
           }]
         }]
@@ -351,6 +353,9 @@ test("planejamento normaliza o mapa e projeta partes fora da hierarquia", () => 
     status: "partially_materialized"
   });
   assert.equal(projection.parts[0].linkedMicrosequenceCount, 1);
+  assert.deepEqual(plan.plan.curriculum.modules[0].lessons[0].microsequences[0].explanationPlan,
+    { purpose: "Explicar conexões.", prerequisites: ["Identificar os pontos."],
+      relations: ["A ligação permite interação."], sourceIds: ["source-a"] });
 });
 
 

@@ -258,6 +258,33 @@ hospedada antes da publicação.
 
 ## Documentação
 
+A revisão humana em Conteúdo é coordenada por `CourseMicrosequenceReview`.
+`loadMicrosequenceReviewSnapshot` cerca `exportCourseAuthoring` remoto com duas
+leituras de `getMicrosequenceReview`; exige a mesma impressão protegida e uma
+exportação/proveniência na revisão solicitada. Nunca associa um hash recém-lido
+a um corpo vindo da cópia de Estudo. O diálogo reaproveita o renderer de pacotes,
+o formatador bibliográfico, os detalhes de análise autoral e o painel de Fontes.
+Respostas são exibidas para inspeção e ficam inertes. Hidratação com falha bloqueia
+uma nova aprovação. Atualizações do diálogo restauram controle focado e rolagem.
+
+`CourseMicrosequenceReviewSession` persiste a aprovação pendente em
+`course.v1.pending-content-review:<curso>:<microssequência>` antes do RPC direto
+autenticado. O recibo pode corresponder à aprovação original já superada; a
+releitura posterior determina o estado atual e sua falha não vira sucesso atual.
+A edição usa `saveMicrosequenceExplanation` e o registro canônico de composição
+pendente do Controller, preservando conteúdo e identidade para reconciliação.
+Os registros de pendência são eliminados junto aos caches privados na perda de
+acesso. Esses identificadores não são parâmetros do pedido humano ou de tarefas
+MCP/Actions.
+
+Os focais `tests/runtime/course-microsequence-review.test.js` e
+`tests/e2e/course-microsequence-review.spec.js` verificam bases/revisões incompatíveis,
+aprovação explícita, replay, edição/cancelamento, fontes, foco e larguras
+360/390/430/1280. A galeria `tests/gallery/course-microsequence-review.html` usa
+somente conteúdo sintético e Controller simulado; não é publicada pelo build e
+não comprova autenticação ou PDF remoto. Transporte, SQL e cliente hospedado são
+camadas de prova separadas.
+
 Documentação corrente explica o produto instalado. Reescreva a descrição
 anterior em vez de manter um diário ou contrato antigo como fallback.
 

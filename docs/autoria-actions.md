@@ -10,6 +10,14 @@ fontes da Explicação compartilhada, conforme o
 [contrato comum do MCP](autoria-mcp.md#tarefas-disponíveis). Unidades e apoios do
 lote são gravados juntos; a revisão humana do conteúdo continua na Autoria.
 
+O pedido **Debater com GPT** copiado da Autoria pode ser colado na conversa do
+GPT já conectado por Actions. Ele fornece identidade, recorte e revisão, sem
+chamar a API ao copiar. O GPT lê o estado corrente pelas Actions existentes e
+discute a proposta antes de qualquer aplicação autorizada. A configuração de
+Actions e a leitura efetiva continuam necessárias; copiar o pedido não comprova
+que o cliente acessou o curso. A decisão humana de revisar conteúdo é registrada
+na Autoria, separada da aprovação do mapa e do mandato de produção.
+
 O OpenAPI publicável está em
 [`downloads/aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml).
 

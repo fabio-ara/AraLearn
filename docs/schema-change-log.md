@@ -1,5 +1,48 @@
 # Alterações do schema
 
+## 20260908003749 — ausência de atribuição em Fontes
+
+A leitura de um alvo existente sem atribuição bibliográfica retorna `items: []`.
+A função escalar que resolve a atribuição produzia uma linha composta nula no
+`FROM`; a agregação transformava essa ausência em item com identidade e versão
+nulas, recusado corretamente pelo cliente. O filtro por identidade da atribuição
+corrige a leitura para item do plano, unidade e Explicação, sem inventar versão,
+apagar vínculos existentes ou confundir alvo inexistente com alvo sem fontes.
+
+A mesma migração corrige a codificação das mensagens de erro do ramo manual da
+Explicação. As funções preservam assinaturas, autorização e permissões. Não há
+transformação dos dados armazenados. Testes sintéticos locais distinguem os três
+alvos sem atribuição, atribuição existente, alvo inexistente e mensagem UTF-8.
+
+Salvar conteúdo idêntico com a primeira atribuição vazia pode avançar a revisão
+do curso pela proveniência, conservando conteúdo e versão da microssequência.
+O recibo informa a versão real; o avanço do curso não significa que a entidade
+foi reescrita. Essa distinção é coberta na prova local, sem afirmar revisão humana
+de conteúdo real ou aplicação hospedada.
+
+## 20260908002120 — edição manual da Explicação
+
+A composição existente recebe um ramo focal para a pessoa proprietária editar
+somente a Explicação da microssequência inspecionada. O serviço exige versão da
+microssequência e revisão do curso, conserva pai, posição, demais campos e vínculos
+bibliográficos atuais, e confirma conteúdo e proveniência na mesma transação.
+Não aceita esse ato como MCP ou assistência por provedor, nem como edição de
+metadados do curso. As assinaturas das operações de unidade e composição seguem
+com seus usos existentes; o novo argumento obrigatório distingue o ramo manual
+de apoio, sem resolução ambígua por parâmetros opcionais.
+
+O recibo confirma identidade, versão e origem humana **do ato manual**, além de
+preservar a resposta original para a mesma identidade de solicitação. Isso não
+atribui autoria humana à microssequência inteira nem constitui aprovação. A
+coluna protegida de revisão conserva a decisão anterior; o hash material torna
+a aprovação não atual. A leitura corrente não fornece um novo histórico durável
+de autoria do apoio: a interface só afirma edição manual confirmada após receber
+o recibo correspondente.
+
+A migração não transforma dados existentes. Provas sintéticas locais cobrem
+CAS, replay, recusa de mudança de escopo/fontes, preservação de unidades e revisão,
+e permissões do serviço; clientes e publicação hospedados permanecem no gate final.
+
 ## 20260907222912 — Explicação compartilhada e revisão humana
 
 A microssequência corrente conserva `explanationPlan` e uma `explanation` com

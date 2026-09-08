@@ -487,6 +487,28 @@ ou na unidade de estudo e mostra:
 - unidades de análise e requisitos atribuídos à microssequência;
 - aplicação corrente nas unidades de estudo.
 
+Ao abrir **Ajustar**, a pessoa autora encontra o significado do parâmetro e o
+aviso de que salvar muda a orientação, sem reescrever unidades ou Explicação.
+O detalhe **Definição e origem**, antes do formulário, reúne a operação regulada,
+o alcance, a configuração atual e sua justificativa. **Fixo** indica o valor
+vigente; **Automático** delega a escolha contextual da próxima produção. A
+indicação de herança identifica o nível de origem e não cria uma definição
+local ao consultar.
+
+Na Unidade de estudo, o mesmo detalhe distingue **Aplicado nesta produção** da
+configuração atual. Esse registro vem da leitura autoral já existente, com o
+valor, origem e motivo realmente preservados. Uma fixação nova pode divergir do
+valor aplicado; salvar não atualiza esse histórico. Valores iguais também não
+atestam que o conteúdo realiza adequadamente a intenção. Ausência de registro,
+consulta pendente e falha de leitura são estados diferentes; a configuração
+atual não preenche uma lacuna histórica nem inventa uma justificativa.
+
+Nos níveis acima da Unidade, o painel orienta inspecionar cada produção, sem
+promover o registro de uma unidade a regra para o curso inteiro. Ajustes
+restritos ao Curso continuam legíveis na Unidade, mas não ganham editor em um
+nível não permitido. Definições, opções e limites seguem no mesmo catálogo;
+comparar esses estados não acrescenta parâmetros ou provoca materialização.
+
 `consultar_configuracao` lê valores efetivos e `ajustar_configuracao` define ou
 restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
 indica curso ou microssequência; a camada confiável resolve os controles de

@@ -7,6 +7,14 @@ repetição segura internamente.
 O curso vivo é a autoridade. A interface de autoria, o MCP e Actions leem e
 alteram o mesmo estado, sem manter uma cópia paralela da conversa.
 
+**Debater com GPT**, na Autoria, oferece um pedido copiável com o endereço exato
+do recorte e a revisão observada. O cliente deve resolver essa referência e ler
+o estado atual pelas tarefas existentes, incluindo apoio e fontes pertinentes.
+Se o curso mudou, explicita a diferença. O pedido inicia uma discussão: não
+autoriza escrita, não registra aprovação humana e não supõe que o link contenha
+o texto. Proposta, decisão de aplicar e releitura permanecem etapas distintas;
+a inspeção visual e a aprovação do conteúdo pertencem à pessoa autora.
+
 ## Tarefas disponíveis
 
 As tarefas vêm do catálogo público `aralearn.human-authoring-tasks`, definido em

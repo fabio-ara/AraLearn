@@ -12,7 +12,6 @@ import {
 } from "../../src/ui/CourseInspectionSequence.js";
 import { renderPackageStudyUnitBlocksWithDock } from
   "../../src/render/renderPackageStudyUnit.js";
-import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
@@ -1261,7 +1260,7 @@ test("Inspeção abre atribuição completa da versão exata da Unidade", async 
   sequence.destroy();
 });
 
-test("Unidade não oferece o antigo pedido de clipboard ao ChatGPT", async () => {
+test("Unidade conserva link e oferece debate contextual sem escritor nem pedido antigo", async () => {
   const root = new FakeRoot();
   const requests = [];
   const sequence = createCourseInspectionSequence({
@@ -1278,7 +1277,8 @@ test("Unidade não oferece o antigo pedido de clipboard ao ChatGPT", async () =>
   await sequence.open();
 
   assert.doesNotMatch(root.innerHTML, /data-inspection-request-chat|Trabalhar com o ChatGPT/u);
-  assert.ok(!root.innerHTML.includes(renderUiIcon("sparkles", "course-authoring-button-icon")));
+  assert.ok(root.innerHTML.includes("Debater com GPT"));
+  assert.ok(root.innerHTML.includes("não autoriza escrita"));
   assert.deepEqual(requests, []);
   assert.match(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
   sequence.destroy();

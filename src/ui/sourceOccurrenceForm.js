@@ -20,13 +20,15 @@ export function sourceOccurrenceFromSelection(target, textArea, occurrenceId = c
 }
 
 export function renderSourceOccurrenceForm(state, link) {
-  if (state.targetKind !== "study_unit") return "";
-  const targets = listCourseSourceOccurrenceTargets(state.targetStudyUnit);
+  if (!["study_unit", "microsequence_explanation"].includes(state.targetKind)) return "";
+  const content = state.targetKind === "microsequence_explanation" ? state.targetExplanation : state.targetStudyUnit;
+  const options = { targetKind: state.targetKind };
+  const targets = listCourseSourceOccurrenceTargets(content, options);
   const editor = state.occurrenceEditor?.linkId === link.linkId ? state.occurrenceEditor : null;
   const target = targets[editor?.targetIndex ?? 0];
   return '<section class="source-occurrences"><h4>Onde aparece no item</h4>' +
     (link.occurrences.length ? '<ul>' + link.occurrences.map(occurrence => {
-      const resolved = state.targetStudyUnit && resolveCourseSourceOccurrence(state.targetStudyUnit, occurrence).status === "resolved";
+      const resolved = content && resolveCourseSourceOccurrence(content, occurrence, options).status === "resolved";
       return `<li><blockquote>${escape(occurrence.quote)}</blockquote><span>${resolved ? "Trecho localizado" : "Trecho a conferir"}</span>` +
         `<button type="button" data-source-action="edit-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Localizar trecho">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
         `<button type="button" data-source-action="remove-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Remover trecho">${renderUiIcon("trash", "course-authoring-button-icon")}</button></li>`;

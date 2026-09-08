@@ -367,20 +367,34 @@ original pela mais nova silenciosamente.
 ## Trabalhar com o ChatGPT a partir da Autoria
 
 1. Em **Conteúdo**, localize e inspecione o objeto sobre o qual quer trabalhar.
-2. Registre uma Observação no alvo ou salve a mudança necessária em
-   **Parâmetros**. Os dois tipos de registro permanecem no curso e aparecem na
-   Autoria.
-3. No ChatGPT conectado por MCP ou Actions, identifique o curso e peça que ele
-   leia as Observações ou decisões de Parâmetros pertinentes.
+2. Abra **Debater com GPT** nos detalhes do objeto ou nas tarefas do curso.
+   O pedido copiável identifica o recorte e a revisão observada. No Planejamento,
+   a microssequência também oferece esse pedido junto da Explicação prevista.
+3. Cole o pedido na conversa conectada ao AraLearn por MCP ou Actions. O GPT
+   precisa ler o conteúdo atual, o apoio, as fontes e as configurações pertinentes
+   pelo conector; o link identifica o objeto e não substitui essa leitura.
 4. Examine a proposta. Acrescente condições, discorde ou peça outra solução
    enquanto ela não representar sua intenção.
 5. Autorize explicitamente a operação somente depois de concordar com o efeito.
 6. Volte ao AraLearn e confira o resultado no mesmo curso.
 
-A interface normal não abre um compositor e não exige copiar e colar um pedido.
-O cliente conectado obtém o contexto necessário pelas operações autorizadas,
-respeita o estado corrente e pode devolver um endereço direto para o alvo. Uma
-conversa ou proposta sem aprovação não altera o curso.
+O pedido é opcional e permanece selecionável se a cópia automática estiver
+indisponível. Não envia conteúdo nem abre uma sessão de IA por conta própria.
+Observações e ajustes de Parâmetros continuam disponíveis como registros do
+curso. O cliente conectado obtém o contexto pelas operações autorizadas e
+devolve um endereço direto para reinspeção. Uma conversa ou proposta não altera
+o curso; a aprovação humana do conteúdo é uma ação distinta na Autoria.
+
+No Planejamento, **Explicação prevista** revela finalidade, pressupostos,
+relações a desenvolver e fontes. Ausência de plano ou fonte aparece como
+pendência. O estado **Conteúdo produzido** de uma Parte informa que há unidades
+materializadas; não declara revisão humana. Abra o conteúdo para examinar a
+Explicação compartilhada, as unidades e os vínculos antes de aprovar o conjunto.
+
+Em Parâmetros de uma unidade, **Definição e origem** separa configuração atual
+e registro usado na produção, com seus motivos e alcances. Um ajuste salvo
+orienta a próxima produção ou alteração solicitada; não reescreve as unidades
+existentes. Sem registro aplicado, a tela não o deduz da configuração atual.
 
 Primeiro, o GPT apresenta uma síntese do mapa curricular global e um link para
 inspecionar módulos, lições, microssequências, dependências e cobertura. A pessoa

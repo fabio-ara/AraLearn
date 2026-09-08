@@ -3462,6 +3462,7 @@ export class CourseSupabaseAdapter {
     requestId,
     expectedRevision,
     expectedStudyUnitVersion = null,
+    expectedMicrosequenceVersion = null,
     applicationOrigin = null,
     upserts = [],
     deletes = [],
@@ -3472,11 +3473,17 @@ export class CourseSupabaseAdapter {
     const channel = authoringChannel(principal);
     const hasExpectedStudyUnitVersion = expectedStudyUnitVersion !== null;
     const hasApplicationOrigin = applicationOrigin !== null;
+    const explanationApplication = channel === "application" && expectedMicrosequenceVersion !== null &&
+      !hasExpectedStudyUnitVersion && applicationOrigin === "manual" &&
+      Number.isSafeInteger(expectedMicrosequenceVersion) && expectedMicrosequenceVersion > 0 &&
+      upserts.length === 1 && upserts[0]?.entityType === "microsequence" &&
+      deletes.length === 0 && courseMetadata === null;
     const contextualApplication = channel === "application" &&
       hasExpectedStudyUnitVersion && hasApplicationOrigin;
     const genericApplication = channel === "application" &&
       !hasExpectedStudyUnitVersion && !hasApplicationOrigin;
-    if (channel === "application" && !genericApplication && (
+    if (expectedMicrosequenceVersion !== null && !explanationApplication ||
+      channel === "application" && !genericApplication && !explanationApplication && (
       !contextualApplication ||
       !new Set(["manual", "provider_assistance"]).has(applicationOrigin) ||
       !Number.isSafeInteger(expectedStudyUnitVersion) || expectedStudyUnitVersion < 1 ||
@@ -3508,6 +3515,7 @@ export class CourseSupabaseAdapter {
       p_course_id: courseId,
       p_expected_revision: expectedRevision,
       p_expected_study_unit_version: expectedStudyUnitVersion,
+      ...(expectedMicrosequenceVersion === null ? {} : { p_expected_microsequence_version: expectedMicrosequenceVersion }),
       p_upserts: upserts,
       p_deletes: deletes,
       p_source_attribution_applications: normalizedApplications,

@@ -105,6 +105,30 @@ Na exportação autoral, o texto aparece uma vez na microssequência e as
 atribuições de cada apoio são lidas na mesma revisão do curso. Ausência da
 leitura de proveniência, repetição ou alvo/revisão divergentes impedem exportar
 um artefato que pareça completo.
+
+Na Autoria, o mesmo endpoint de Fontes aceita esse alvo para catálogo contextual,
+obra, âncora e atribuição. As ocorrências da Explicação usam somente conteúdo,
+com seleção literal; resposta e feedback pertencem às unidades. A versão da
+microssequência vem de uma leitura remota na revisão inspecionada, inclusive
+quando ainda não há atribuição bibliográfica.
+
+A edição manual da Explicação usa a composição existente, com comparação da
+revisão do curso e da versão da microssequência. Troca somente `explanation`,
+conserva os demais campos e reaplica os vínculos correntes. O recibo registra
+origem humana dessa mudança, sem atribuir à pessoa todo o conteúdo prévio da
+microssequência. O controlador guarda o pedido exato antes de enviar; resposta
+perdida conserva identidade, conteúdo e proveniência para recuperar o mesmo
+resultado após reabrir. Esse estado local é removido após confirmação ou recusa
+definitiva e acompanha a limpeza por revogação de acesso. Ele não é aprovação.
+O recibo distingue alteração do curso e versão do texto: declarar pela primeira
+vez um conjunto vazio de vínculos pode avançar a revisão do curso sem alterar
+a entidade da microssequência. Nesse caso `changed` é verdadeiro e
+`microsequenceVersion` permanece igual; não se registra uma edição de texto
+que não aconteceu. Antes dessa declaração, a leitura de atribuição ausente
+retorna uma lista vazia, sem item de identidade nula.
+Inspeção e aprovação usam os RPCs autenticados protegidos já existentes; a
+escrita de aprovação não tem repetição automática nem retorno por cache.
+
 Essas regras são verificadas por testes locais de cliente e persistência;
 a migração e as conversas hospedadas precisam de comprovação própria antes da
 publicação. Ver o [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md).

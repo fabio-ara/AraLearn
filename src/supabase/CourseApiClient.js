@@ -177,7 +177,7 @@ const COURSE_DESIGN_SCOPE_KINDS = new Set([
   "course", "module", "lesson", "didactic_microsequence", "study_unit"
 ]);
 const COURSE_SOURCE_MODES = new Set(["catalog", "source", "target"]);
-const COURSE_SOURCE_TARGET_KINDS = new Set(["plan_item", "study_unit"]);
+const COURSE_SOURCE_TARGET_KINDS = new Set(["plan_item", "study_unit", "microsequence_explanation"]);
 
 function boundedIdentifier(value, label, { maximum = 240 } = {}) {
   const normalized = String(value || "").trim();
@@ -1456,6 +1456,52 @@ export class CourseApiClient {
         objective: requiredText(objective, "Objetivo do Curso", 2_000)
       }
     });
+  }
+
+  async saveMicrosequenceExplanation(value = {}) {
+    const source = exactObject(value, new Set([
+      "courseId", "microsequenceId", "expectedRevision", "expectedEntityVersion", "requestId", "entity", "sourceLinks"
+    ]), "Edição manual da Explicação");
+    const courseId = uuid(source.courseId, "Curso");
+    const microsequenceId = boundedIdentifier(source.microsequenceId, "Microssequência");
+    const expectedRevision = positiveInteger(source.expectedRevision, "Versão do Curso");
+    const expectedEntityVersion = positiveInteger(source.expectedEntityVersion, "Versão da microssequência");
+    const requestId = requestIdentity(source.requestId);
+    const entity = exactObject(source.entity, new Set([
+      "entityType", "entityId", "parentType", "parentId", "position", "content"
+    ]), "Microssequência editada");
+    if (entity.entityType !== "microsequence" || entity.entityId !== microsequenceId ||
+        entity.parentType !== "lesson" || !entity.content?.explanation) {
+      throw new TypeError("A edição não corresponde à Explicação solicitada.");
+    }
+    const applications = normalizeSourceAttributionApplications([{
+      targetKind: "microsequence_explanation", targetId: microsequenceId, sourceLinks: source.sourceLinks
+    }]);
+    const result = await this.requestCourseApi(`${courseResourcePath(courseId)}/composition`, {
+      method: "POST", body: boundedJsonObject({ requestId, expectedRevision,
+        expectedMicrosequenceVersion: expectedEntityVersion, applicationOrigin: "manual",
+        upserts: [entity], deletes: [], sourceAttributionApplications: applications
+      }, "Edição manual da Explicação", 480 * 1024)
+    });
+    exactObject(result, new Set(["courseId", "revision", "operation", "createdCount", "updatedCount",
+      "upsertedCount", "deletedCount", "idempotent", "updatedAt", "channel", "applicationOrigin",
+      "expectedStudyUnitVersion", "expectedMicrosequenceVersion", "microsequenceId", "microsequenceVersion",
+      "changeOrigin", "deepLink"]), "Confirmação da edição da Explicação");
+    if (result?.courseId !== courseId || result?.operation !== "commit_course_composition" ||
+        result?.microsequenceId !== microsequenceId || result?.channel !== "application" ||
+        result?.applicationOrigin !== "manual" || result?.changeOrigin !== "human" ||
+        result?.expectedMicrosequenceVersion !== expectedEntityVersion ||
+        result?.expectedStudyUnitVersion !== null || typeof result?.idempotent !== "boolean" ||
+        !Number.isSafeInteger(result?.revision) || result.revision < expectedRevision || result.revision > expectedRevision + 1 ||
+        ![0, 1].includes(result?.updatedCount) || result?.createdCount !== 0 || result?.deletedCount !== 0 ||
+        result?.upsertedCount !== result.updatedCount || result.updatedCount === 1 && result.revision !== expectedRevision + 1 ||
+        typeof result?.updatedAt !== "string" || !Number.isFinite(Date.parse(result.updatedAt)) ||
+        typeof result?.deepLink !== "string" || !result.deepLink ||
+        !Number.isSafeInteger(result?.microsequenceVersion) ||
+        result.microsequenceVersion !== expectedEntityVersion + result.updatedCount) {
+      throw new TypeError("A confirmação não corresponde à edição manual da Explicação.");
+    }
+    return { ...structuredClone(result), requestId, changed: result.revision !== expectedRevision };
   }
 
   async commitCourseComposition(value = {}) {

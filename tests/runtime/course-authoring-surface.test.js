@@ -8,7 +8,7 @@ import {
   renderCourseAuthoringSurface
 } from "../../src/ui/CourseAuthoringSurface.js";
 import { buildCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
-import { normalizeCourseListPage } from "../../src/ui/courseAuthoringViewModel.js";
+import { normalizeCourseListPage, normalizeCourseDesign } from "../../src/ui/courseAuthoringViewModel.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from
   "../../src/domain/courseDesignParameters.js";
 
@@ -1073,7 +1073,8 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     root.innerHTML,
     /course-authoring-(?:materialization|recent-activity)|Etapas e resultados|Fatos da etapa|resultFacts|contextHash|>MCP<|>Actions</iu
   );
-  assert.doesNotMatch(root.innerHTML, /materialize-part|context-chat|Trabalhar no ChatGPT|Copiar pedido/u);
+  assert.doesNotMatch(root.innerHTML, /materialize-part|context-chat|Trabalhar no ChatGPT/u);
+  assert.match(root.innerHTML, /Debater com GPT/u);
   assert.doesNotMatch(root.innerHTML, /course-authoring-part-tools|Adicionar Parte|Editar Parte/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
@@ -1542,6 +1543,46 @@ test("Parâmetros recolhe texto migratório de bastidor sem perder orientação 
   );
 });
 
+for (const diverged of [false, true]) test(`Parâmetros lê produção da unidade exata sem confundir configuração corrente: divergência ${diverged}`, async () => {
+  const root = new FakeRoot();
+  const scope = { kind: "study_unit", ref: "unit-a", label: "Unidade A" };
+  const reads = [];
+  const designFixture = courseDesignFixture({ scope, children: [],
+    targetPlanItems: { instructionalAnalysisUnitIds: [], evidenceRequirementIds: [] },
+    ancestors: [{ kind: "course", ref: COURSE_ID, label: "Fundamentos" },
+      { kind: "module", ref: "module-a", label: "Módulo A" },
+      { kind: "lesson", ref: "lesson-a", label: "Lição A" },
+      { kind: "didactic_microsequence", ref: "micro-a", label: "Microssequência A" }] });
+  normalizeCourseDesign(designFixture);
+  const surface = createCourseAuthoringSurface({ root,
+    controller: controllerFixture({
+      async loadCourseDesign() { return designFixture; },
+      async loadCourseAuthoringAnalytics(courseId, options) {
+        reads.push({ courseId, ...options });
+        return { course: { id: courseId, revision: 5 }, scope: { selected: { kind: "study_unit", ref: "unit-a" } },
+          basis: { studyUnits: [{ studyUnitRef: diverged ? "other-unit" : "unit-a", appliedParameters: [{
+            parameterId: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].id, value: 3, origin: "automatic",
+            reason: "Três relações no exemplo sintético.", sourceScope: { kind: "study_unit", ref: "unit-a" }
+          }] }] } };
+      }
+    }), locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID,
+      { section: "parameters", studyUnitId: "unit-a" }) }, windowValue: new FakeWindow()
+  });
+  assert.equal(await surface.open(), true, root.innerHTML.replace(/<[^>]*>/gu, " ").slice(-1600));
+  await new Promise(resolve => setImmediate(resolve));
+  designAction(root, "edit-design-parameter", { parameterId: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].id });
+  assert.deepEqual(reads, [{ courseId: COURSE_ID, expectedCourseRevision: 5,
+    query: { scope: { kind: "study_unit", ref: "unit-a" } } }]);
+  if (diverged) {
+    assert.doesNotMatch(root.innerHTML, /Três relações no exemplo/u);
+    assert.match(root.innerHTML, /Não foi possível consultar o registro/u);
+  } else {
+    assert.match(root.innerHTML, /Três relações no exemplo sintético/u);
+    assert.match(root.innerHTML, /O valor aplicado difere da configuração atual/u);
+    assert.match(root.innerHTML, /Salvar um ajuste não atualiza esta produção/u);
+  }
+});
+
 test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagógico", async () => {
   const root = new FakeRoot();
   const calls = [];
@@ -1577,7 +1618,7 @@ test("Módulo mostra herança, mas desabilita atribuição de parâmetro pedagó
   assert.match(root.innerHTML, /Ajuste disponível em: Curso/u);
   assert.match(root.innerHTML, /aria-disabled="true"/u);
   assert.doesNotMatch(root.innerHTML, /data-course-design-parameter/u);
-  assert.match(root.innerHTML, /O valor herdado continua visível/u);
+  assert.match(root.innerHTML, /Configuração atual/u);
 });
 
 test("Microssequência mostra parâmetros em linguagem humana sem expor o metamodelo do plano", async () => {
@@ -2131,7 +2172,7 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
 
 
 
-test("Planejamento sem estrutura usa vínculos persistidos e não oferece compositor de clipboard", async () => {
+test("Planejamento sem estrutura oferece referência copiável para debate sem escritor paralelo", async () => {
   const root = new FakeRoot();
   const emptyPlan = structuredClone(authoringPlanFixture());
   emptyPlan.plan.parts = [{
@@ -2166,8 +2207,10 @@ test("Planejamento sem estrutura usa vínculos persistidos e não oferece compos
   assert.doesNotMatch(root.innerHTML, /Vincule uma microssequência/u);
   assert.doesNotMatch(
     root.innerHTML,
-    /Trabalhar no ChatGPT|Copiar pedido|context-chat|prepare-structure|materialize-part/u
+    /Trabalhar no ChatGPT|context-chat|prepare-structure|materialize-part/u
   );
+  assert.match(root.innerHTML, /data-copy-authoring-debate/u);
+  assert.match(root.innerHTML, /não autoriza escrita/u);
 });
 
 

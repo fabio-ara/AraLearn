@@ -5,6 +5,22 @@ autoria em administração de processos técnicos. A conversa com GPT coordena o
 trabalho amplo; a interface visual mantém mapa, conteúdo, fontes, observações,
 configuração e Analytics ao alcance do contexto.
 
+No **Planejamento**, abra a microssequência e sua **Explicação prevista** para
+examinar finalidade, pressupostos, relações e fontes. O apoio é compartilhado
+pelas unidades dessa microssequência. Uma Parte com **Conteúdo produzido** tem
+material já disponível para inspeção; esse estado não atesta revisão humana.
+Mapa aprovado e autorização para produzir não aprovam textos ainda não vistos.
+
+O ícone de Explicação na fileira da unidade abre a inspeção da microssequência
+inteira. Em telas estreitas, quando há ferramentas nessa fileira, **Visualizar**
+fica no menu de detalhes da unidade para preservar o tamanho dos controles.
+
+**Debater com GPT** oferece uma referência copiável do objeto e da revisão em
+exame. Cole-a na conversa conectada por MCP ou Actions, peça a leitura atual e
+discuta a proposta. O pedido não escreve no curso nem inicia assistência por
+API na Autoria. Depois de uma aplicação autorizada, reinspecione o mesmo recorte;
+somente a decisão explícita de revisão do conteúdo registra a aprovação humana.
+
 ## Começar um curso
 
 Crie um curso privado com título e objetivo. Na conversa, descreva público,
@@ -170,6 +186,19 @@ autoridade conceitual automática.
 
 Metadados, localizações e papéis continuam contestáveis. Um PDF enviado por
 conversa só deve ser guardado quando essa intenção estiver clara.
+
+Na inspeção da Explicação, abra suas fontes para conferir obra, localizador,
+papel e trecho associado. Os vínculos pertencem ao apoio compartilhado da
+microssequência; não é preciso repeti-los em cada unidade. Ao localizar uma
+ocorrência, selecione o trecho literal do conteúdo mostrado. Uma referência
+sem ocorrência vale para o apoio inteiro; uma citação direta continua exigindo
+localizador na fonte. Fechar o detalhe da fonte retorna aos vínculos da mesma
+Explicação, preservando o recorte da inspeção.
+
+Conferir a referência bibliográfica não aprova automaticamente o conteúdo.
+Alterar texto, fonte ou vínculo pode exigir nova revisão do conjunto. Uma
+gravação cujo resultado ficou incerto deve ser recuperada pelo mesmo pedido
+antes de iniciar outra edição; o aplicativo conserva esse pedido localmente.
 
 ## Revisar como estudante
 

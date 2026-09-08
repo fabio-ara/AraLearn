@@ -353,6 +353,64 @@ test("mudar estilo após resposta perdida repete o mesmo pedido mesmo após atua
   assert.equal(panel.hasPendingDraft(), false);
 });
 
+test("fontes da Explicação conservam trecho literal, versão da MS e retorno ao recorte", async () => {
+  const root = new FakeRoot();
+  const reads = [];
+  const writes = [];
+  const navigations = [];
+  let closed = 0;
+  let focused = false;
+  const controller = controllerFixture({ onRead: value => reads.push(value), onMutate: value => writes.push(value) });
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (courseId, options) => {
+    const result = await load(courseId, options);
+    if (options.mode === "target") result.query = { sourceId: null,
+      targetKind: "microsequence_explanation", targetId: "micro-a" };
+    return result;
+  };
+  const text = "Uma ligação conecta A e B. Retirar a ligação impede essa interação.";
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5,
+    mode: "target", targetKind: "microsequence_explanation", targetId: "micro-a", targetVersion: 9,
+    targetLabel: "Explicação · Ligações", targetExplanation: { title: "Ligações", content: [{ id: "p",
+      package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } }] },
+    onNavigate: (...args) => navigations.push(args), onClose: () => closed++,
+    documentValue: { querySelectorAll: selector => selector === "[data-inspection-edit-explanation-sources]"
+      ? [{ dataset: { microsequenceId: "micro-a" }, focus: () => { focused = true; } }] : [] }
+  });
+  await panel.open();
+  click(root, "add-target-source", { sourceId: "source-01" });
+  await settle();
+  const linkId = root.innerHTML.match(/data-link-id="([^"]+)"/u)[1];
+  click(root, "add-occurrence", { linkId });
+  assert.ok(root.innerHTML.includes(text));
+  assert.doesNotMatch(root.innerHTML, /Resposta ·|Retorno ·/u);
+  const query = root.querySelector.bind(root);
+  root.querySelector = selector => selector === "[data-source-occurrence-selection]"
+    ? { selectionStart: 0, selectionEnd: 25 } : query(selector);
+  click(root, "save-occurrence", { linkId });
+  assert.match(root.innerHTML, /Trecho localizado/u);
+  click(root, "open-source", { sourceId: "source-01" });
+  await settle();
+  assert.equal(navigations.length, 0);
+  click(root, "close-detail");
+  assert.match(root.innerHTML, /Fontes de Explicação/u);
+  assert.ok(root.innerHTML.includes(text.slice(0, 25)));
+  click(root, "save-target");
+  await settle();
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].command.targetKind, "microsequence_explanation");
+  assert.equal(writes[0].command.targetId, "micro-a");
+  assert.equal(writes[0].command.expectedTargetVersion, 9);
+  assert.equal(writes[0].command.sourceLinks[0].occurrences[0].quote, text.slice(0, 25));
+  assert.equal(writes[0].command.sourceLinks[0].occurrences[0].slot, "content");
+  assert.ok(reads.some(value => value.mode === "source" && value.targetKind === "microsequence_explanation"));
+  click(root, "close-target");
+  await settle();
+  assert.equal(closed, 1);
+  assert.equal(focused, true);
+  panel.destroy();
+});
+
 test("uma fonte admite usos independentes e remover um vínculo preserva o outro", async () => {
   const mutations = [];
   const root = new FakeRoot();

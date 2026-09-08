@@ -303,6 +303,8 @@ test("não converte acesso revogado em fallback local", async () => {
   await store.putCache(`course.v1.explanation-citations:${COURSE_ID}`, {
     courseRevision: 2, items: { "micro-a": { citations: [] } }
   });
+  await store.putCache(`course.v1.pending-content-review:${COURSE_ID}:micro-a`, { requestId: "review-pending-01" });
+  await store.putCache(`course.v1.pending-explanation-composition:${COURSE_ID}:micro-a`, { requestId: "edit-pending-01" });
   revoked = true;
   await assert.rejects(() => controller.getCourse(COURSE_ID), /not found/u);
   assert.equal(

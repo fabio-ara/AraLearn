@@ -150,6 +150,39 @@ na mesma revisão do artefato; não duplica o apoio nas unidades nem concede
 aprovação. As fontes previstas no mapa orientam a produção e não equivalem às
 citações do conteúdo efetivamente produzido.
 
+Em **Conteúdo**, a inspeção de uma unidade abre **Explicação e revisão do
+conteúdo** para a microssequência inteira. A superfície reúne objetivo e proposta,
+apoio, todas as unidades com respostas e feedback, bibliografia, localizações e
+ocorrências citadas. A configuração solicitada e aplicada reutiliza os detalhes
+da análise autoral. Atalhos de fontes abrem o painel existente para a Explicação
+ou para uma unidade determinada; ali continuam a conferência das obras, âncoras,
+ocorrências e o acesso autorizado aos anexos. Abrir a inspeção não registra
+aprovação, resposta, progresso nem leitura efetiva pela pessoa.
+
+**Editar Explicação** permite alterar os campos textuais editáveis dos componentes
+já existentes, com prévia local, cancelamento e gravação manual. Não é geração
+por IA nem um editor de JSON ou de novos componentes. Salvar preserva os demais
+campos da microssequência e suas atribuições de fontes, registra a origem manual
+e exige nova inspeção do conjunto alterado. A presença de um vínculo não garante
+que ele continue adequado ao texto editado: a pessoa deve conferir a ocorrência
+e seu fundamento. Ausência de apoio continua explícita.
+
+A aprovação requer uma confirmação da pessoa proprietária após a apresentação
+do recorte completo. A leitura remota é cercada por duas consultas à impressão
+protegida; exportação e proveniência precisam pertencer à revisão solicitada.
+Antes de enviar a decisão, a UI relê a impressão e o servidor verifica a mesma
+base. Mudança concorrente impede usar conteúdo antigo para aprovar texto novo.
+Depois do recibo, outra leitura distingue aprovação ainda atual, alteração
+posterior e impossibilidade de conferir o estado corrente. A interface não
+infere uma nova decisão a partir de um recibo antigo.
+
+Uma resposta de gravação ou aprovação incerta mantém a identidade original do
+pedido na conta local. A confirmação repete o mesmo pedido; não autoriza uma
+segunda decisão com identidade nova. A gravação manual conserva também o texto
+pendente. Escape ou tentativa de saída durante a edição preserva os campos e
+pede conclusão ou cancelamento; depois de uma falha incerta é necessário
+reconciliar o pedido. Fechar a inspeção concluída devolve o foco à origem.
+
 O catálogo de tarefas passa a `3.0.0`: proposta do apoio no mapa e Explicações
 na materialização são entradas obrigatórias. Permanecem 27 tarefas. Na candidata
 local, o catálogo serializado ocupa 53.379 bytes UTF-8; o OpenAPI minificado,

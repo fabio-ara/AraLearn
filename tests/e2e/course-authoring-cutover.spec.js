@@ -339,6 +339,7 @@ async function mountCourseAuthoring(page, {
   peopleMutationScenario = "default",
   annotationMutationScenario = "default",
   inspectionTools = false,
+  explanationReview = false,
   objective = "Compreender relações essenciais por meio de exemplos graduais.",
   courseTitle = "Fundamentos de relações"
 } = {}) {
@@ -361,6 +362,7 @@ async function mountCourseAuthoring(page, {
     requestedPeopleMutationScenario,
     requestedAnnotationMutationScenario,
     requestedInspectionTools,
+    requestedExplanationReview,
     requestedObjective,
     requestedCourseTitle,
     courseIds,
@@ -419,7 +421,10 @@ async function mountCourseAuthoring(page, {
                 title: "Comparação orientada",
                 objective: "Explicar a relação por uma comparação orientada.",
                 dependencyMicrosequenceIds: [],
-                role: "explain"
+                role: "explain",
+                explanationPlan: { purpose: "Distinguir associação e causa sem pressupor conhecimento de comparação.",
+                  prerequisites: ["Identificar dois casos observados"], relations: ["O critério comum permite comparar os casos"],
+                  sourceIds: ["source-01"] }
               }]
             }]
           }]
@@ -1265,6 +1270,8 @@ async function mountCourseAuthoring(page, {
       }
       const selected = options.query.scope.kind === "course"
         ? { kind: "course", ref: null, label: "Curso inteiro" }
+        : options.query.scope.kind === "study_unit"
+          ? { kind: "study_unit", ref: options.query.scope.ref, label: "Unidade de estudo · Exemplo guiado com diagrama" }
         : {
           kind: "didactic_microsequence",
           ref: "microsequence-a",
@@ -1273,7 +1280,8 @@ async function mountCourseAuthoring(page, {
       const studyUnitCount = selected.kind === "course" ? 2 : 1;
       const canonical = courseAuthoringAnalyticsFixture({
         courseId, revision: course.revision, title: course.title,
-        studyUnits: studyUnits.slice(0, studyUnitCount).map((unit, index) => ({
+        studyUnits: (selected.kind === "study_unit" ? studyUnits.filter(unit => unit.id === selected.ref)
+          : studyUnits.slice(0, studyUnitCount)).map((unit, index) => ({
           studyUnitRef: unit.id, title: unit.title, wordCount: 120,
           declaration: {
             mode: index === 0 ? "mixed" : "expository",
@@ -1499,6 +1507,9 @@ async function mountCourseAuthoring(page, {
             sourceScope: { kind: sourceScopeKind, ref: sourceScopeKind === "course" ? null :
               sourceScopeKind === "study_unit" ? unit.studyUnitRef : "microsequence-a" }
           })));
+      }
+      if (!reading.scope.options.some(scope => scope.kind === selected.kind && scope.ref === selected.ref)) {
+        reading.scope.options.push(structuredClone(selected));
       }
       return reading;
     };
@@ -2246,6 +2257,36 @@ async function mountCourseAuthoring(page, {
         return result;
       }
     };
+    if (requestedExplanationReview) {
+      const explanation = { title: "Critérios de comparação", content: [{ id: "support-comparison",
+        package: "aralearn.resource.paragraph", version: "1.0.0",
+        data: { text: "Um critério comum permite comparar relações sem confundir associação e causa." } }] };
+      const target = { targetKind: "microsequence_explanation", targetId: "microsequence-a", targetVersion: 1,
+        sourceLinks: [{ linkId: "support-link", sourceId: "source-01", relation: "supported_by", roles: ["technical_conceptual"],
+          anchors: [{ anchorId: "anchor-source-01" }], occurrences: [{ occurrenceId: "support-occurrence", slot: "content",
+            resourceId: "support-comparison", path: "text", quote: "Um critério comum", prefix: null, suffix: null }] }],
+        createdAt: "2026-09-07T12:00:00.000Z" };
+      sourceTargets.set(sourceTargetKey(target.targetKind, target.targetId), target);
+      controller.getMicrosequenceReview = async courseId => ({ courseId, microsequenceId: "microsequence-a",
+        basisHash: "a".repeat(64), contentReview: { state: "draft" } });
+      controller.exportCourseAuthoring = async request => {
+        const detail = courseDetail(request.courseId);
+        const analytics = courseAuthoringAnalyticsFixture({ courseId: request.courseId, revision: detail.revision,
+          title: detail.title, studyUnits: studyUnits.map(unit => ({ studyUnitRef: unit.id, title: unit.title })) });
+        analytics.scope = { selected: { kind: "didactic_microsequence", ref: "microsequence-a", label: "Comparação orientada" },
+          options: [{ kind: "didactic_microsequence", ref: "microsequence-a", label: "Comparação orientada" }] };
+        analytics.basis.sources = analyticsPage(request.courseId, { expectedCourseRevision: detail.revision,
+          query: { scope: { kind: "course", ref: null } } }).basis.sources;
+        const guide = { goal: "Comparar com critério.", include: [], exclude: [], notation: [], avoid: [] };
+        const document = { contract: "aralearn.course.v1", courses: [{ id: request.courseId, title: detail.title, goal: detail.goal,
+          modules: [{ id: "module-a", title: "Base conceitual", guide, lessons: [{ id: "lesson-a", title: "Relações e evidências", guide,
+            topics: [], microsequences: [{ id: "microsequence-a", title: "Comparação orientada", goal: "Comparar com critério.",
+              role: "explain", dependsOn: [], covers: [], checks: [], errors: [], studyUnits, explanation }] }] }] }] };
+        const explanationSources = [await controller.loadCourseSources(request.courseId, { expectedRevision: detail.revision,
+          mode: "target", targetKind: target.targetKind, targetId: target.targetId, sourceId: null, cursor: null, limit: 20 })];
+        return assembleCourseAuthoringExport({ analytics, document, explanationSources });
+      };
+    }
     const authoringWindow = {
       addEventListener: window.addEventListener.bind(window),
       removeEventListener: window.removeEventListener.bind(window),
@@ -2304,6 +2345,7 @@ async function mountCourseAuthoring(page, {
     requestedPeopleMutationScenario: peopleMutationScenario,
     requestedAnnotationMutationScenario: annotationMutationScenario,
     requestedInspectionTools: inspectionTools,
+    requestedExplanationReview: explanationReview,
     requestedObjective: objective,
     requestedCourseTitle: courseTitle,
     courseIds: COURSE_IDS,
@@ -2415,6 +2457,60 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
     await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(/section=content$/u);
   }
+});
+
+test("#345 Planejamento revela apoio e debate exatos, Parte reserva espaço sem botão vazio", async ({ page }, info) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  const errors = captureClientErrors(page);
+  await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=planning` });
+  await page.locator('[data-curriculum-expansion="module:module-a"] > summary').click();
+  await page.locator('[data-curriculum-expansion="lesson:lesson-a"] > summary').click();
+  const support = page.locator('[data-curriculum-expansion="explanation:microsequence-a"]');
+  await support.locator('summary').click();
+  await expect(support).toContainText("Identificar dois casos observados");
+  await expect(support).toContainText("O critério comum permite comparar os casos");
+  const source = support.getByRole("link", { name: "source-01", exact: true });
+  await source.click();
+  await expect(page).toHaveURL(/section=sources&sourceId=source-01/u);
+  await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+  await page.getByRole("button", { name: "Voltar para Planejamento", exact: true }).click();
+  await expect(source).toBeFocused();
+  const debate = page.locator('.course-curriculum-map-microsequence .course-authoring-debate');
+  await debate.locator('summary').click();
+  await expect(debate.locator('textarea')).toHaveValue(/didacticMicrosequenceId=microsequence-a/u);
+  await expect(debate.locator('textarea')).toHaveValue(/não autoriza escrita/u);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: info.outputPath('345-planejamento-360.png'), fullPage: true });
+  await page.locator('[data-course-authoring-part-card]').first().getByRole('link', { name: 'Relações iniciais', exact: true }).click();
+  const nav = page.getByRole('navigation', { name: 'Navegação entre partes' });
+  await expect(nav.locator('summary')).toContainText('Parte 1 de');
+  const reserved = nav.locator('.course-authoring-navigation-space').first();
+  expect(await reserved.evaluate(node => ({ background: getComputedStyle(node).backgroundColor,
+    border: getComputedStyle(node).borderTopWidth, tabIndex: node.tabIndex }))).toEqual({ background: 'rgba(0, 0, 0, 0)', border: '0px', tabIndex: -1 });
+  await nav.locator('summary').click();
+  await expect(nav.locator('ol')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: info.outputPath('345-partes-360.png'), fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("#345 Parâmetros mostra produção inspecionada e conserva retorno à unidade", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 820 });
+  await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-01` });
+  const item = page.locator('[data-inspection-study-unit="study-unit-01"]');
+  const action = item.getByRole('button', { name: 'Parâmetros aplicáveis a Exemplo guiado com diagrama', exact: true });
+  await action.click();
+  const dialog = page.getByRole('dialog', { name: 'Parâmetros', exact: true });
+  await dialog.getByRole('button', { name: 'Ajustar Novas unidades de análise', exact: true }).click();
+  await dialog.getByText('Definição e origem', { exact: true }).click();
+  await expect(dialog).toContainText('Aplicado nesta produção:');
+  await expect(dialog).toContainText('Escolha registrada na fixture de autoria.');
+  await expect(dialog).toContainText('Configuração atual:');
+  await page.screenshot({ path: info.outputPath('345-parametros-aplicados-390.png'), fullPage: true });
+  await dialog.getByRole('button', { name: 'Fechar parâmetros', exact: true }).click();
+  await expect(action).toBeFocused();
+  const probe = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe);
+  expect(probe.analyticsReads.at(-1).options.query.scope).toEqual({ kind: 'study_unit', ref: 'study-unit-01' });
 });
 
 test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm edição completa", async ({ page, context }) => {
@@ -5179,4 +5275,111 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
     `#/authoring/courses/${COURSE_IDS[0]}?section=research` +
       "&analyticsScopeKind=course&analyticsRevision=6"
   );
+});
+
+
+test("#345 Perfil mostra prévia e cancelamento preserva curso, exceções e perfil", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=parameters` });
+  await page.evaluate(() => {
+    document.documentElement.dataset.colorMode = "dark";
+    const { controller } = globalThis.__courseAuthoringHarness;
+    const profile = { profileId: "34500000-0000-4000-8000-000000000101", revision: 1, name: "Leitura focal",
+      preferences: [{ parameterId: "study_unit_content_word_target", mode: "fixed", value: 240 }],
+      createdAt: "2026-09-07T12:00:00.000Z", updatedAt: "2026-09-07T12:00:00.000Z" };
+    const probe = globalThis.__profileJourneyProbe = { reads: [], writes: [], profile };
+    controller.listAuthoringProfiles = async () => ({ contract: "aralearn.authoring-profiles.v1", profiles: [structuredClone(profile)] });
+    controller.previewCourseAuthoringProfile = async request => {
+      probe.reads.push(structuredClone(request));
+      return { contract: "aralearn.course-authoring-profile-preview.v1", courseId: request.courseId,
+        courseRevision: request.expectedCourseRevision, profile: structuredClone(profile),
+        assignments: profile.preferences.map(preference => ({ ...preference, origin: "author", reason: "Preferências copiadas do perfil." })),
+        exceptions: [{ parameterId: "study_unit_content_word_target", scope: { kind: "study_unit", ref: "study-unit-01" },
+          scopeLabel: "Exemplo curto preservado", assignment: { mode: "fixed", value: 120, origin: "author", reason: "Recorte focal desta unidade." } }], conflicts: [] };
+    };
+    for (const method of ["mutateAuthoringProfile", "deleteAuthoringProfile"]) controller[method] = async request => {
+      probe.writes.push({ method, request }); throw new Error("Cancelar não pode gravar perfil.");
+    };
+  });
+  const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
+  await dialog.locator(".course-design-category-menu > summary").click();
+  await dialog.getByRole("button", { name: "Perfis", exact: true }).click();
+  await dialog.getByRole("button", { name: "Recarregar perfis", exact: true }).click();
+  const open = dialog.getByRole("button", { name: "Aplicar perfil Leitura focal", exact: true });
+  await open.click();
+  const preview = dialog.locator("[data-course-profile-apply]");
+  await expect(preview).toContainText("O conteúdo existente permanece como foi produzido");
+  await expect(preview).toContainText("Extensão das unidades: 240");
+  const exception = preview.getByRole("checkbox");
+  await expect(exception).not.toBeChecked();
+  await expect(preview).toContainText("Exemplo curto preservado");
+  await exception.check();
+  await page.screenshot({ path: info.outputPath("profile-preview-390-dark.png") });
+  await preview.getByRole("button", { name: "Cancelar aplicação do perfil", exact: true }).click();
+  await expect(preview).toHaveCount(0);
+  await open.click();
+  await expect(preview.getByRole("checkbox")).not.toBeChecked();
+  await preview.getByRole("button", { name: "Cancelar aplicação do perfil", exact: true }).click();
+  await dialog.getByRole("button", { name: "Editar perfil Leitura focal", exact: true }).click();
+  await dialog.getByLabel("Nome do perfil", { exact: true }).fill("Rascunho descartado");
+  await dialog.getByRole("button", { name: "Descartar edição do perfil", exact: true }).click();
+  await expect(dialog.locator("[data-course-profile-editor]")).toHaveCount(0);
+  await expect(open).toBeVisible();
+  const probe = await page.evaluate(() => ({ profiles: globalThis.__profileJourneyProbe,
+    designMutations: globalThis.__courseAuthoringHarness.probe.designMutations }));
+  expect(probe.profiles.reads).toHaveLength(2);
+  expect(probe.profiles.writes).toEqual([]);
+  expect(probe.profiles.profile.name).toBe("Leitura focal");
+  expect(probe.designMutations).toEqual([]);
+  await expectNoHorizontalOverflow(page);
+});
+
+test("Explicação atravessa Autoria real e Fontes com ocorrência literal e retorno à unidade", async ({ page }, info) => {
+  const errors = captureClientErrors(page);
+  await page.setViewportSize({ width: 360, height: 850 });
+  await mountCourseAuthoring(page, { explanationReview: true, inspectionTools: true,
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
+  const open = card.locator('[data-inspection-open-explanation]');
+  await expect(open).toBeVisible();
+  const geometry = await card.locator('.course-inspection-item-actions :is(button,a)').evaluateAll(nodes => nodes.flatMap(node => {
+    const rect = node.getBoundingClientRect(); return rect.width && rect.height ? [{ x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+      label: node.getAttribute('aria-label') }] : [];
+  }));
+  const bounds = await card.boundingBox();
+  for (const control of geometry) {
+    expect(control.width, control.label).toBeGreaterThanOrEqual(43); expect(control.height, control.label).toBeGreaterThanOrEqual(43);
+    expect(Math.abs(control.y - geometry[0].y), control.label).toBeLessThanOrEqual(1);
+    expect(control.x, control.label).toBeGreaterThanOrEqual(bounds.x - 1);
+    expect(control.x + control.width, control.label).toBeLessThanOrEqual(bounds.x + bounds.width + 1);
+  }
+  await card.getByRole('button', { name: 'Editar', exact: true }).click();
+  await expect(card.locator('.study-tool-actions button:disabled')).toHaveCount(1);
+  await card.locator('.course-inspection-item-details > summary').click();
+  const viewInMenu = card.locator('.course-inspection-view-menu');
+  await expect(viewInMenu).toBeVisible(); await viewInMenu.click();
+  await expect(card).toContainText('Prévia da edição. As alterações ainda não foram salvas.');
+  await card.getByRole('button', { name: 'Cancelar edição', exact: true }).click();
+  await expect(card.locator('.study-tool-actions button:disabled')).toHaveCount(0);
+  await expect(open).toBeEnabled();
+  await card.locator('.course-inspection-item-details > summary').click();
+  await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
+  await page.screenshot({ path: info.outputPath('review-entry-tools-360.png'), fullPage: true });
+  await open.click();
+  const review = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
+  await expect(review.getByRole('heading', { name: 'Critérios de comparação', exact: true })).toBeVisible();
+  await review.getByRole('button', { name: 'Fontes da Explicação', exact: true }).click();
+  await expect(review).toHaveCount(0);
+  const sources = page.getByRole('dialog', { name: 'Fontes de Explicação · Comparação orientada', exact: true });
+  await expect(sources).toBeVisible();
+  await expect(sources).toContainText('Um critério comum');
+  await sources.getByRole('button', { name: 'Localizar trecho', exact: true }).click();
+  await expect(sources.getByRole('textbox', { name: 'Selecione o trecho', exact: true })).toHaveValue(
+    'Um critério comum permite comparar relações sem confundir associação e causa.');
+  await sources.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await sources.getByRole('button', { name: 'Fechar', exact: true }).click();
+  await expect(sources).toHaveCount(0); await expect(open).toBeFocused();
+  await expect(card).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations)).toEqual([]);
+  expect(errors).toEqual([]);
 });
