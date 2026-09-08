@@ -30,6 +30,21 @@ Módulo, lição, microssequência e unidade de estudo formam a hierarquia didá
 Parte é lote de autoria e não aparece como pai curricular. Salvar ou redimensionar
 uma parte não cria nem reorganiza currículo.
 
+A microssequência conserva `explanationPlan: {purpose, prerequisites, relations,
+sourceIds}` e o apoio `explanation: {title, content}`. Os componentes de conteúdo
+usam o catálogo comum; o apoio não tem resposta nem progresso próprios. Esses
+campos podem estar ausentes no acervo anterior. A materialização corrente exige
+proposta no mapa e uma Explicação por microssequência da parte, gravada junto às
+unidades, aplicações e fontes.
+
+A leitura de revisão `contentReview` é metadado protegido, separado do conteúdo
+editável. Ela informa revisão não registrada, rascunho, aprovação atual ou
+aprovação desatualizada. O comando autenticado de aprovação verifica a base
+inspecionada pela pessoa proprietária; importação e comandos de IA não podem
+fornecer essa decisão. Fontes e arquivos usados entram na base pertinente.
+O [contrato de revisão humana](explicacao-e-revisao-humana.md) detalha inspeção,
+distribuição, concorrência e limites da preservação local.
+
 A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
 inclusive sem alterações de entidades. Metadados, entidades e atribuições são
 validados na mesma transação, com uma revisão esperada e um recibo de repetição.

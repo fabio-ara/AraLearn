@@ -1,6 +1,6 @@
 # Exemplos de Explicação: fundamentos de redes e SNMP/RMON
 
-Estes exemplos sintéticos ilustram o [contrato planejado de Explicação e revisão humana](../explicacao-e-revisao-humana.md). São rascunhos didáticos, sem aprovação humana de conteúdo, materialização no aplicativo ou evidência de aprendizagem. Casos e números são inventados; não representam cursos reais.
+Estes exemplos sintéticos ilustram o [contrato de Explicação e revisão humana](../explicacao-e-revisao-humana.md). São rascunhos didáticos, sem aprovação humana de conteúdo, materialização no aplicativo ou evidência de aprendizagem. Casos e números são inventados; não representam cursos reais.
 
 Cada exemplo reúne uma microssequência, unidades substantivas, duas práticas e uma única Explicação. Quantidade de unidades, títulos, seções e extensão são decisões locais. Notas de autoria, aplicação e respostas esperadas ficam separadas do texto que será apresentado ao estudante; o gabarito não pertence ao apoio aberto durante a tentativa.
 

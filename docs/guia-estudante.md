@@ -105,8 +105,11 @@ enviada permanece na unidade. **Fontes da Explicação** e os números junto aos
 trechos abrem as referências; **Voltar à Explicação** recupera o trecho. As
 ferramentas disponíveis usam os mesmos controles do restante do Estudo.
 
-O apoio informa se está em rascunho, se mudou depois da revisão ou se sua
-revisão não está registrada. Cursos anteriores podem não ter Explicação: o
+Na prévia da pessoa proprietária, o apoio informa se está em rascunho ou se
+mudou depois da revisão. Esses recortes aguardam aprovação antes de uma nova
+obtenção por estudantes; uma cópia de estudo já guardada não recebe
+silenciosamente o rascunho. O acervo anterior pode indicar que sua revisão não
+está registrada. Cursos anteriores também podem não ter Explicação: o
 aplicativo informa essa ausência e conserva o percurso existente. Consultar um
 apoio não substitui a tentativa de resolver a prática por conta própria.
 

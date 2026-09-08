@@ -20,6 +20,8 @@ for (const width of [360, 390, 430, 1280]) test(`inspeção completa e decisão 
   await page.setViewportSize({ width, height: 850 }); const errors = await mount(page);
   const approve = page.getByRole("button", { name: "Aprovar conteúdo revisado", exact: true });
   await expect(approve).toBeDisabled();
+  await expect(dialog(page).locator('[aria-label="Revisão humana do conteúdo"]')).toContainText(
+    "Interfaces · 2 unidades · Explicação compartilhada · vínculos de fontes.");
   await expect(dialog(page)).toContainText("Um socket é a interface local");
   await expect(dialog(page)).toContainText("1. Interface local · Teoria");
   await expect(dialog(page)).toContainText("2. Distinguir interface e relação · Prática");

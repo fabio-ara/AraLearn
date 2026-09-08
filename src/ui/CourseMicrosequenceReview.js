@@ -241,6 +241,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         renderCourseAuthoringDebate({ courseId: snapshot.courseId, courseRevision: snapshot.courseRevision, title: snapshot.courseTitle,
           route, contextLabel: "a Explicação compartilhada e as unidades desta microssequência" }) +
         '<section aria-label="Revisão humana do conteúdo"><h3>Revisão humana do conteúdo</h3>' +
+        `<p><strong>${escape(ms.title)}</strong> · ${ms.studyUnits.length} ${ms.studyUnits.length === 1 ? "unidade" : "unidades"}` +
+        ` · Explicação ${ms.explanation ? "compartilhada" : "ausente"} · vínculos de fontes.</p>` +
         `<label><input type="checkbox" data-review-confirm${confirmed ? " checked" : ""} disabled> Revisei o conjunto exibido, incluindo suas fontes, e aprovo este conteúdo.</label>` +
         `<button type="button" data-review-approve disabled>${session.pending ? "Confirmar resultado da mesma aprovação" : "Aprovar conteúdo revisado"}</button></section>`;
     }

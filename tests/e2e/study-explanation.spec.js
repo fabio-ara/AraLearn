@@ -136,6 +136,55 @@ test("ferramentas condicionais usam o grupo existente e altura reduzida mantém 
   await page.keyboard.press("Escape"); await expect(openButton(page)).toBeFocused();
 });
 
+test("apoio offline em 360x500 e texto150 alcança fim, tabela e fontes por toque e teclado", async ({ page }, info) => {
+  await page.setViewportSize({ width: 360, height: 500 });
+  await mount(page, "?unit=practice&state=offline&theme=dark");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "150%"; });
+  await openButton(page).tap();
+  const body = page.locator('.study-explanation-body');
+  const close = page.getByRole('button', { name: 'Fechar Explicação', exact: true });
+  await expect(close).toBeFocused();
+  const frame = await body.boundingBox();
+  const touch = await page.context().newCDPSession(page);
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: frame.x + 40, y: frame.y + frame.height - 30 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: frame.x + 40, y: frame.y + 30 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await touch.detach();
+  await expect.poll(() => body.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  await body.focus(); await page.keyboard.press('Control+End');
+  await expect.poll(() => body.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThanOrEqual(2);
+  const lastLine = body.locator('[data-package-instance-id="selective-7"] p');
+  const lastRect = await lastLine.evaluate(node => {
+    const range = document.createRange(); range.selectNodeContents(node);
+    const rects = [...range.getClientRects()]; return rects[rects.length - 1].toJSON();
+  });
+  const tools = await page.locator('.study-explanation-tools').boundingBox();
+  expect(lastRect.bottom).toBeLessThanOrEqual(tools.y + 1);
+  expect(lastRect.top).toBeGreaterThanOrEqual(frame.y);
+  await page.screenshot({ path: info.outputPath('support-last-line-360-short-text150.png') });
+  const lastCell = body.locator('table tbody tr').last().locator('td').last();
+  await lastCell.scrollIntoViewIfNeeded();
+  const cell = await lastCell.boundingBox();
+  expect(cell.y).toBeGreaterThanOrEqual(frame.y - 1);
+  expect(cell.y + cell.height).toBeLessThanOrEqual(tools.y + 1);
+  expect(cell.x + cell.width).toBeLessThanOrEqual(360);
+  await page.screenshot({ path: info.outputPath('support-table-last-cell-360-short-text150.png') });
+  await page.getByRole('button', { name: 'Fontes da Explicação', exact: true }).tap();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  const pdf = page.getByRole('button', { name: 'Abrir PDF em p. 3 de Fonte sintética do mecanismo', exact: true });
+  await pdf.tap(); await expect(overlay(page)).toContainText('este PDF externo precisa de conexão');
+  const unavailable = overlay(page).getByRole('alert');
+  await unavailable.scrollIntoViewIfNeeded();
+  const errorBox = await unavailable.boundingBox();
+  expect(errorBox.y).toBeGreaterThanOrEqual(frame.y - 1);
+  expect(errorBox.y + errorBox.height).toBeLessThanOrEqual(488);
+  await page.screenshot({ path: info.outputPath('support-sources-offline-360-short-text150.png') });
+  await page.keyboard.press('Escape');
+  await close.focus(); await page.keyboard.press('Enter');
+  await expect(openButton(page)).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
+});
+
 async function expandedDiagram(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await mount(page, "?unit=practice");

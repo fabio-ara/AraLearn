@@ -2,16 +2,17 @@
 
 ## Estatuto e problema
 
-Este documento reúne o contrato pedagógico e funcional e o estado de sua
-implementação. A candidata local já estende conteúdo, fontes, materialização,
-correção, exportação e cliente de revisão. O armazenamento e a autorização são
-verificados no PostgreSQL local. Um ensaio com o executor de autoria e HTTP
+Este documento reúne o contrato pedagógico e funcional e sua implementação em
+conteúdo, fontes, materialização, correção, exportação e cliente de revisão.
+Armazenamento e autorização têm provas no PostgreSQL local. Um ensaio com o executor de autoria e HTTP
 PostgREST confirmou duas Explicações, materialização, rematerialização, fontes,
 exportação e correção focal. Ele usa dados sintéticos e não é prova dos clientes
-ChatGPT MCP/Actions. A interface de Explicação já integra a candidata local:
+ChatGPT MCP/Actions. A interface de Explicação reúne:
 ícone no Estudo, leitura compartilhada, fontes no mesmo overlay e ferramentas
-do catálogo existente. A decisão humana na Autoria pertence à etapa seguinte;
-o serviço publicado conserva a versão anterior. Testes sintéticos não certificam aprendizagem nem transformam
+do catálogo existente. A Autoria permite inspecionar o conjunto, editar os
+campos textuais do apoio, conferir fontes e registrar a decisão humana protegida.
+Sua entrega exige corte coordenado e provas próprias dos clientes hospedados,
+além desses ensaios locais. Testes sintéticos não certificam aprendizagem nem transformam
 um rascunho real em conteúdo aprovado.
 
 Uma unidade pode ficar longa ao tentar explicar todos os pressupostos de uma
@@ -109,8 +110,9 @@ dos direitos disponíveis. Ver [Fontes e citações](fontes-e-citacoes.md).
 
 A menor extensão usa a microssequência corrente já existente como proprietária
 do apoio. A unidade o resolve pela relação com sua microssequência; não recebe
-uma cópia do texto. O contrato lógico é o seguinte; nomes físicos e migrações
-serão definidos na implementação correspondente.
+uma cópia do texto. O contrato lógico é o seguinte; a representação corrente e
+as migrações estão descritas no [contrato de dados](aralearn-contract.md) e na
+[documentação do backend](supabase.md).
 
 | Informação | Local e regra |
 | --- | --- |
@@ -185,9 +187,9 @@ reconciliar o pedido. Fechar a inspeção concluída devolve o foco à origem.
 
 O catálogo de tarefas passa a `3.0.0`: proposta do apoio no mapa e Explicações
 na materialização são entradas obrigatórias. Permanecem 27 tarefas. Na candidata
-local, o catálogo serializado ocupa 53.379 bytes UTF-8; o OpenAPI minificado,
-44.976 bytes UTF-8 e 44.687 unidades UTF-16; a projeção formatada do editor,
-96.369 unidades UTF-16. O gerador reutiliza referências de schema sem suprimir
+local auditada em 2026-09-07, o catálogo serializado ocupa 53.476 bytes UTF-8;
+o OpenAPI minificado, 45.092 bytes UTF-8 e 44.801 unidades UTF-16; a projeção
+formatada do editor, 96.566 unidades UTF-16. O gerador reutiliza referências de schema sem suprimir
 campos. Os orçamentos de regressão do catálogo e do texto minificado foram
 ajustados à extensão medida; o limite local de 98 mil caracteres do editor
 permanece. Esses valores não medem uma chamada de materialização nem demonstram

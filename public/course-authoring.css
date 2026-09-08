@@ -4548,6 +4548,7 @@ dialog.course-microsequence-review {
 [data-source-form="bibliography-style"] button { min-width: 44px; min-height: 44px; }
 .source-occurrences li > button { margin-inline-start: 0.4rem; }
 .source-occurrence-editor { display: grid; gap: 0.6rem; }
+.source-occurrence-location { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
 .source-occurrence-editor label,
 [data-source-form="bibliography-style"] label { display: grid; gap: 0.35rem; min-width: 0; }
 .source-occurrence-editor select,

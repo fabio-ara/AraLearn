@@ -2261,6 +2261,9 @@ async function mountCourseAuthoring(page, {
       const explanation = { title: "Critérios de comparação", content: [{ id: "support-comparison",
         package: "aralearn.resource.paragraph", version: "1.0.0",
         data: { text: "Um critério comum permite comparar relações sem confundir associação e causa." } }] };
+      if (requestedExplanationReview === "duplicate-literals") explanation.content.push({
+        ...structuredClone(explanation.content[0]), id: "support-comparison-second"
+      });
       const target = { targetKind: "microsequence_explanation", targetId: "microsequence-a", targetVersion: 1,
         sourceLinks: [{ linkId: "support-link", sourceId: "source-01", relation: "supported_by", roles: ["technical_conceptual"],
           anchors: [{ anchorId: "anchor-source-01" }], occurrences: [{ occurrenceId: "support-occurrence", slot: "content",
@@ -5332,6 +5335,47 @@ test("#345 Perfil mostra prévia e cancelamento preserva curso, exceções e per
   expect(probe.profiles.profile.name).toBe("Leitura focal");
   expect(probe.designMutations).toEqual([]);
   await expectNoHorizontalOverflow(page);
+});
+
+test("ocorrências iguais em blocos distintos mantêm escolha e caminho inequívocos", async ({ browser }, info) => {
+  // Teclado de desktop em largura estreita; toque/Android está no discriminante do Estudo.
+  const context = await browser.newContext({ baseURL: info.project.use.baseURL, viewport: { width: 360, height: 700 } });
+  const page = await context.newPage();
+  await mountCourseAuthoring(page, { explanationReview: "duplicate-literals",
+    hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
+  const open = page.locator('[data-inspection-study-unit="study-unit-12"] [data-inspection-open-explanation]');
+  await open.click();
+  const review = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
+  await review.getByRole('button', { name: 'Fontes da Explicação', exact: true }).click();
+  const sources = page.getByRole('dialog', { name: 'Fontes de Explicação · Comparação orientada', exact: true });
+  await sources.getByRole('button', { name: 'Localizar trecho', exact: true }).click();
+  const select = sources.getByRole('combobox', { name: 'Parte do item', exact: true });
+  const labels = await select.locator('option').allTextContents();
+  expect(labels).toHaveLength(2);
+  expect(new Set(labels).size).toBe(2);
+  await select.selectOption('1');
+  const path = sources.locator('[data-source-occurrence-location]');
+  await expect(path).toContainText('Bloco 2');
+  await expect(path).toContainText('content / support-comparison-second / text');
+  const text = sources.getByRole('textbox', { name: 'Selecione o trecho', exact: true });
+  await text.click(); await expect(text).toBeFocused(); await page.keyboard.press('ControlOrMeta+A');
+  expect(await text.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd))).toBe(await text.inputValue());
+  await path.scrollIntoViewIfNeeded();
+  const geometry = await path.evaluate(node => ({ width: node.clientWidth, scrollWidth: node.scrollWidth,
+    box: node.getBoundingClientRect().toJSON() }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width + 1);
+  expect(geometry.box.x).toBeGreaterThanOrEqual(0); expect(geometry.box.right).toBeLessThanOrEqual(361);
+  await page.screenshot({ path: info.outputPath('occurrence-identical-blocks-360.png') });
+  await sources.getByRole('button', { name: 'Usar trecho selecionado', exact: true }).click();
+  await expect(text).toHaveCount(0);
+  await sources.getByRole('button', { name: 'Salvar fontes', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
+  const mutation = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations[0]);
+  expect(JSON.stringify(mutation)).toContain('support-comparison-second');
+  expect(JSON.stringify(mutation)).toContain('Um critério comum');
+  await expect(sources).toHaveCount(0);
+  await expect(open).toBeFocused();
+  await context.close();
 });
 
 test("Explicação atravessa Autoria real e Fontes com ocorrência literal e retorno à unidade", async ({ page }, info) => {

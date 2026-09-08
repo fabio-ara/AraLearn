@@ -24,6 +24,14 @@ Por exemplo, um teste pode demonstrar que duas oportunidades de prática foram
 gravadas e variam em dimensões declaradas. Isso não demonstra que uma pessoa
 aprendeu ou transferiu conhecimento.
 
+O mesmo vale para a [Explicação compartilhada](explicacao-e-revisao-humana.md):
+testes podem confirmar acesso ao apoio, preservação da resposta e rejeição de
+uma aprovação obsoleta. Não demonstram que a pessoa leu, compreendeu ou usou
+adequadamente a ajuda. Uma investigação desse desenho precisa examinar o
+conjunto de unidades e apoio, seus pressupostos e fontes e a situação de revisão
+do material, sem tratar abertura do overlay ou aprovação autoral como desfecho
+de aprendizagem. O produto não acrescenta coleta de pesquisa para isso.
+
 ## Escolher unidade de análise e medida
 
 Uma pessoa estudando, uma unidade de estudo, um requisito de evidência, uma sessão de
@@ -37,17 +45,24 @@ medidas de aprendizagem.
 
 ## Fixar condições sem arquitetura paralela
 
-O catálogo 1.1.0 possui quatro parâmetros pedagógicos:
+O catálogo corrente 1.2.1 reúne doze decisões. Entre as decisões de conteúdo e
+prática estão:
 
 1. teto de novas unidades de análise por unidade de estudo;
 2. formas de explicação por unidade de análise;
 3. oportunidades mínimas de prática por requisito;
 4. dimensões de variação da prática.
 
-E dois alvos editoriais quantitativos flexíveis:
+Há também dois alvos editoriais quantitativos flexíveis:
 
 1. palavras por resposta de autoria;
 2. palavras por unidade de estudo.
+
+Completam o catálogo a distribuição e a posição da prática, os alvos de
+microssequências por parte e de partes por lote, a frequência de pausa e a
+preferência de interação na conversa. Essas decisões têm alcances distintos;
+o [catálogo de desenho](desenho-instrucional-parametrizado.md) informa significado
+e escopos. Não são doze medidas de aprendizagem intercambiáveis.
 
 Os alvos servem para comparar condições de desenho. No conteúdo, também é
 possível confrontar o alvo com a extensão observada da unidade de estudo. O
@@ -56,8 +71,8 @@ não persiste transcrição. Os alvos não são mínimos ou máximos, não medem
 qualidade e não autorizam ocultar decisões, retirar conteúdo, compactar
 novidades nem atomizar unidades.
 
-Direção editorial é registrada separadamente. O estado `default` exige
-calibração contextual automática pelo GPT para cada microssequência ou unidade;
+Direção editorial é registrada separadamente. O modo automático exige
+calibração contextual pelo GPT no escopo pertinente antes da produção;
 não representa um preset fixo. Para comparar uma condição, crie um curso privado
 independente, fixe deliberadamente os valores pertinentes e documente o que
 deve permanecer igual. Uma definição do pesquisador prevalece sobre a
