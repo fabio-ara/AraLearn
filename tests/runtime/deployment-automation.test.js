@@ -393,7 +393,9 @@ test("gate de banco local cerca os oito inventários e delega integração ao ru
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /supabase@2\.115\.0', 'test', 'db'/u);
-  assert.match(source, /--schema', 'public,private'[\s\S]+--fail-on', 'warning'/u);
+  assert.match(source, /--schema', 'public,private'[\s\S]+--level', 'warning', '--fail-on', 'error'/u);
+  const workflow = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  assert.match(workflow, /db lint --local --schema public,private --level warning --fail-on error/u);
   for (const family of ['pg_class', 'pg_proc', 'pg_index', 'pg_constraint', 'pg_trigger', 'pg_policy', 'relforcerowsecurity', 'storage.buckets']) {
     assert.ok(source.includes(family), family);
   }
@@ -434,7 +436,17 @@ function global:Invoke-NpxMock {
   } elseif ($command -match ' test db') {
     $global:gateCalls.Add('pgtap')
     if ($env:GATE_SCENARIO -eq 'pgtap-failure') { $global:LASTEXITCODE = 9 }
-  } elseif ($command -match ' db lint ') { $global:gateCalls.Add('lint') }
+  } elseif ($command -match ' db lint ') {
+    $global:gateCalls.Add('lint')
+    if (-not $command.EndsWith('--schema public,private --level warning --fail-on error')) {
+      throw 'A política de lint diverge do CI.'
+    }
+    if ($env:GATE_SCENARIO -eq 'lint-warning') { Write-Output 'warning: aviso sintético preservado' }
+    if ($env:GATE_SCENARIO -eq 'lint-error') {
+      Write-Output 'error: erro sintético bloqueante'
+      $global:LASTEXITCODE = 23
+    }
+  }
   else { throw 'Comando npx inesperado na fixture.' }
 }
 function global:npx { Invoke-NpxMock @args }
@@ -485,7 +497,7 @@ if ($failed) { exit 1 }
       assert.ok(line, result.stderr || result.stdout);
       const receipt = JSON.parse(line.slice(7));
       assert.equal(receipt.restored, true);
-      return { ...receipt, exitCode: result.status };
+      return { ...receipt, exitCode: result.status, output: result.stdout + result.stderr };
     };
     const database = execute("success");
     assert.equal(database.exitCode, 0);
@@ -494,14 +506,22 @@ if ($failed) { exit 1 }
     const complete = execute("success", false);
     assert.equal(complete.exitCode, 0);
     assert.deepEqual(complete.calls, [...database.calls, "integration"]);
+    const warning = execute("lint-warning");
+    assert.equal(warning.exitCode, 0);
+    assert.match(warning.output, /warning: aviso sintético preservado/u);
+    assert.deepEqual(warning.calls, database.calls);
     const rejected = execute("remote");
     assert.equal(rejected.exitCode, 1);
     assert.deepEqual(rejected.calls, ["status"]);
-    for (const scenario of ["pgtap-failure", "skip"]) {
+    for (const scenario of ["pgtap-failure", "lint-error", "skip"]) {
       const result = execute(scenario, false);
       assert.equal(result.exitCode, 1);
       assert.equal(result.calls.includes("integration"), false);
       if (scenario === "pgtap-failure") assert.equal(result.calls.includes("inventory"), false);
+      if (scenario === "lint-error") {
+        assert.match(result.output, /error: erro sintético bloqueante/u);
+        assert.equal(result.calls.includes("concurrency"), false);
+      }
     }
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });

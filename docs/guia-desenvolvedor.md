@@ -294,7 +294,8 @@ Testes contra adaptadores sintéticos continuam separados das
 jornadas com Auth, HTTP, PostgreSQL e Storage reais locais.
 
 O gate de banco executa Deno, pgTAP, inventário de paridade, lint e concorrência
-antes das jornadas. Uma migration candidata precisa estar aplicada na stack;
+antes das jornadas. Local e CI registram avisos do lint e bloqueiam erros
+explicitamente. Uma migration candidata precisa estar aplicada na stack;
 alterar silenciosamente uma migration já aplicada é recusado. Fresh, upgrade e
 restore continuam obrigatórios conforme o impacto da mudança e o corte.
 

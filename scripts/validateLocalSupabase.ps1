@@ -3,6 +3,8 @@ param([switch]$DatabaseOnly)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 
 $repositoryRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 . (Join-Path $PSScriptRoot 'deploymentSupport.ps1')
@@ -115,9 +117,9 @@ try {
     & node ./scripts/auditVerticalParity.mjs --database-inventory -
   if ($LASTEXITCODE -ne 0) { throw 'O inventário local diverge da paridade versionada.' }
 
-  Invoke-CheckedCommand 'Lint dos schemas public e private' $npxCommand @(
+  Invoke-CheckedCommand 'Lint dos schemas public e private: avisos visíveis; erros bloqueiam' $npxCommand @(
     '--yes', 'supabase@2.115.0', 'db', 'lint', '--local', '--schema', 'public,private',
-    '--level', 'warning', '--fail-on', 'warning'
+    '--level', 'warning', '--fail-on', 'error'
   )
 
   $concurrency = @(& node --test --test-reporter=tap ./tests/runtime/course-postgres-concurrency.test.js 2>&1)

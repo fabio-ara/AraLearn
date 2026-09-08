@@ -375,7 +375,7 @@ jobs:
 
       - name: Conferir o lint do banco
         shell: bash
-        run: npx --yes supabase@2.115.0 db lint --local --level warning
+        run: npx --yes supabase@2.115.0 db lint --local --schema public,private --level warning --fail-on error
 
       - name: Testar concorrência real dos pedidos de Curso
         shell: bash
