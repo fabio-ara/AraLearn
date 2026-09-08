@@ -224,6 +224,12 @@ produz aprovação da candidata. Sem argumentos, `scripts/runTests.mjs` continua
 executando todos os arquivos das duas suítes; `npm test` conserva também seus
 verificadores anteriores. PGlite verifica transformações SQL e contratos próximos
 de PostgreSQL; Auth, RLS, Storage e concorrência real precisam do Supabase local.
+As jornadas opt-in de acesso em `course-access-local.spec.js` criam contas e
+cursos próprios na stack local. Quando exercitam leitores ou visitantes, suas
+fixtures incluem Explicação e uma aprovação explicitamente simulada pelo RPC
+protegido; essa preparação não constitui revisão humana de um curso real.
+As revisões usadas após a aprovação são relidas, sem fixar o número anterior à
+mudança. Falhas HTTP inesperadas continuam reprovando a jornada.
 Para o navegador, use:
 
 ```powershell

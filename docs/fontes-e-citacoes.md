@@ -6,6 +6,16 @@ onde encontrar o trecho pertinente. Essas informações têm funções diferente
 Uma referência bem formatada ou um PDF acessível não confirma, por si só, uma
 afirmação didática.
 
+Na Autoria, uma fonte selecionada para um vínculo ainda não salvo pode ser
+inspecionada no catálogo do próprio curso. Fechar sua ficha conserva a seleção
+e o rascunho em edição. Depois de salvar o vínculo, a consulta usa também o
+contexto persistido do alvo. Essa distinção evita apresentar a fonte como ausente
+por ainda não ter sido vinculada; não concede acesso ao estudante nem altera as
+permissões dos arquivos ou a revisão humana do conteúdo.
+Durante uma gravação e sua releitura, o botão de voltar fica desabilitado até
+o painel concluir a atualização ou apresentar a falha; a confirmação da escrita
+não é confundida com o término dessa leitura.
+
 ## Texto do autor e referência gerada
 
 A referência escrita pelo autor é uma escolha deliberada. Ela pode ser adequada

@@ -5240,6 +5240,7 @@ dialog.course-microsequence-review {
   max-height: 352px; overflow: auto; display: grid; padding: 6px; border-radius: var(--radius);
   border: 1px solid var(--border-default); background: var(--surface-raised); box-shadow: var(--shadow-card);
 }
+[data-course-design-context-dialog] .course-design-category-menu > nav { position: static; }
 .course-design-category-menu button {
   min-height: var(--tap); text-align: left; border: 0; background: transparent;
   color: var(--text-primary); border-radius: var(--radius-control); padding: 8px 12px; font: 400 var(--type-sm)/var(--leading-normal) var(--font-ui);

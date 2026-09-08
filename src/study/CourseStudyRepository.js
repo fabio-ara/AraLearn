@@ -618,12 +618,48 @@ export class CourseStudyRepository {
     return this.loadCourse(courseId, { initialResult });
   }
 
+  async reconcileSavedCourse(courseIdentity, courseRevision) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    const loaded = this.loadedCourseById.get(courseId);
+    if (this.visitor || !Number.isSafeInteger(courseRevision) || courseRevision < 1 ||
+        !descriptor || descriptor.ownership !== "owned" || descriptor.canEdit !== true ||
+        !loaded || loaded.readOnly === true || loaded.revision > courseRevision ||
+        descriptor.revision > courseRevision || !this.personalByCourseId.has(courseId) ||
+        typeof this.bridge.loadCachedCourse !== "function") return false;
+    let result;
+    try {
+      result = await this.bridge.loadCachedCourse(courseId);
+    } catch {
+      return false;
+    }
+    // The controller already verified and promoted this composition after the save.
+    // A receipt for another revision must never turn a cached draft into current content.
+    if (!plainObject(result) || result.courseId !== courseId || result.revision !== courseRevision ||
+        result.course?.courseId !== courseId || result.course?.revision !== courseRevision ||
+        result.course?.ownership !== "owned" || result.course?.canEdit !== true ||
+        result.offline === true || result.stale === true || result.readOnly === true ||
+        result.retainedForReview === true || result.document?.contract !== COURSE_DOCUMENT_CONTRACT ||
+        !Array.isArray(result.document.courses) || result.document.courses.length !== 1 ||
+        result.document.courses[0]?.id !== courseId ||
+        !Array.isArray(result.document.courses[0]?.modules) || !Array.isArray(result.rows)) return false;
+    // A concurrent load, access change or removal wins over this earlier receipt.
+    if (this.courseList.find((item) => item.courseId === courseId) !== descriptor ||
+        this.loadedCourseById.get(courseId) !== loaded || descriptor.ownership !== "owned" ||
+        descriptor.canEdit !== true || descriptor.revision > courseRevision ||
+        loaded.revision > courseRevision) return false;
+    Object.assign(descriptor, clone(result.course));
+    await this.loadCourse(courseId, { initialResult: result, explicit: true });
+    return this.loadedCourseById.get(courseId)?.revision === courseRevision;
+  }
+
   async loadCourse(courseIdentity, { initialResult = null, explicit = false } = {}) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
     if (!descriptor) throw new Error("O curso solicitado não está acessível.");
     let loaded = this.loadedCourseById.get(courseId);
-    if (!loaded || (explicit || this.synchronizationMode !== "manual") && (loaded.revision !== descriptor.revision || (
+    if (!loaded || (explicit && initialResult !== null) ||
+        (explicit || this.synchronizationMode !== "manual") && (loaded.revision !== descriptor.revision || (
       this.listRuntimeStatus.offline !== true &&
       (loaded.offline === true || loaded.stale === true || loaded.readOnly === true)
     ))) {

@@ -207,6 +207,122 @@ test("Estudo informa cópia anterior e lê citações do apoio pela revisão ín
   await repository.close();
 });
 
+async function savedCourseRepositoryFixture() {
+  const descriptors = [COURSE_A, COURSE_B].map((courseId) => ({
+    courseId, revision: 1, title: "Curso local", ownership: "owned", canEdit: true
+  }));
+  const result = (index, revision = 1) => ({
+    courseId: descriptors[index].courseId, revision,
+    course: { ...descriptors[index], revision },
+    document: { contract: "aralearn.course.v1", courses: [course(descriptors[index].courseId, index ? "b" : "a")] },
+    rows: [], cacheOnly: true
+  });
+  let saved = result(0, 2);
+  const calls = [];
+  const forbidden = () => { throw new Error("A reconciliação não consulta a rede."); };
+  const bridge = {
+    async listCachedCourses() { return { items: descriptors.map((value) => ({ ...value })), hasMore: false }; },
+    listAccessibleCourses: forbidden, loadCourse: forbidden,
+    async loadCachedCourse(courseId) { calls.push({ cache: courseId }); return typeof saved === "function" ? saved() : structuredClone(saved); },
+    async hasOfflineCourse() { return true; }
+  };
+  const repository = new CourseStudyRepository({ bridge, cache: cache(), synchronizationMode: "manual",
+    windowValue: null, BroadcastChannelValue: null, api: {
+      loadPersonalState: forbidden, mutatePersonalState: forbidden,
+      async getStudyUnitCitations(courseId, studyUnitId, options) {
+        calls.push({ courseId, studyUnitId, options });
+        return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+          courseId, courseRevision: options.expectedRevision, studyUnitId, citations: [] };
+      }
+    } });
+  await repository.initialize();
+  for (let index = 0; index < 2; index += 1) await repository.loadCourse(descriptors[index].courseId, { initialResult: result(index) });
+  return { repository, calls, result, setSaved(value) { saved = value; } };
+}
+
+test("reconcilia gravação confirmada pelo cache no modo manual e usa a nova revisão nas citações", async () => {
+  const fixture = await savedCourseRepositoryFixture();
+  const { repository, calls } = fixture;
+  try {
+    const reference = [COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"];
+    await repository.setStudyUnitReviewMark(reference, true);
+    const personal = repository.personalByCourseId.get(COURSE_A);
+    const other = repository.loadedCourseById.get(COURSE_B);
+    const saved = fixture.result(0, 2);
+    saved.document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].data.text = "Texto salvo pela pessoa.";
+    saved.rows = [{ entityType: "study_unit", entityId: "unit-a", version: 2, parentId: "micro-a" }];
+    fixture.setSaved(saved);
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 2), true);
+    assert.deepEqual(repository.loadedCourseById.get(COURSE_A).course, saved.document.courses[0]);
+    assert.deepEqual(repository.loadedCourseById.get(COURSE_A).rows, saved.rows);
+    assert.equal(repository.loadCourseSummaries()[0].revision, 2);
+    assert.equal(repository.loadedCourseById.get(COURSE_B), other);
+    assert.equal(repository.personalByCourseId.get(COURSE_A), personal);
+    assert.equal(repository.isStudyUnitMarkedForReview(reference), true);
+    assert.equal(repository.synchronizationMode, "manual");
+    await repository.loadStudyUnitCitations(reference);
+    assert.deepEqual(calls, [{ cache: COURSE_A }, { courseId: COURSE_A, studyUnitId: "unit-a", options: { expectedRevision: 2 } }]);
+    // A replay of the same saved revision also adopts only the verified composition.
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 2), true);
+  } finally { await repository.close(); }
+});
+
+test("recusa reconciliação sem cache correspondente, com metadados inválidos ou sem acesso editável", async () => {
+  const fixture = await savedCourseRepositoryFixture();
+  const { repository } = fixture;
+  try {
+    const before = repository.loadProject();
+    const loaded = repository.loadedCourseById.get(COURSE_A);
+    const badResults = [null, fixture.result(0, 3), fixture.result(1, 2)];
+    for (const patch of [
+      { courseId: COURSE_B }, { revision: "2" }, { course: { ...fixture.result(0, 2).course, revision: 1 } },
+      { course: { ...fixture.result(0, 2).course, ownership: "public" } },
+      { course: { ...fixture.result(0, 2).course, canEdit: false } },
+      { document: { contract: "wrong", courses: [course(COURSE_A, "a")] } },
+      { document: { contract: "aralearn.course.v1", courses: [course(COURSE_B, "b")] } },
+      { document: { contract: "aralearn.course.v1", courses: [course(COURSE_A, "a"), course(COURSE_B, "b")] } },
+      { rows: null }, { stale: true }, { readOnly: true }, { retainedForReview: true }
+    ]) badResults.push({ ...fixture.result(0, 2), ...patch });
+    for (const value of badResults) {
+      fixture.setSaved(value);
+      assert.equal(await repository.reconcileSavedCourse(COURSE_A, 2), false);
+      assert.equal(repository.loadedCourseById.get(COURSE_A), loaded);
+      assert.deepEqual(repository.loadProject(), before);
+      assert.equal(repository.loadCourseSummaries()[0].revision, 1);
+    }
+    fixture.setSaved(fixture.result(0, 2));
+    repository.courseList[0].canEdit = false;
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 2), false);
+    repository.courseList[0].canEdit = true;
+    repository.visitor = true;
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 2), false);
+    repository.visitor = false;
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, "2"), false);
+  } finally { await repository.close(); }
+});
+
+test("recibo atrasado não rebaixa revisão carregada ou anunciada durante a leitura local", async () => {
+  const fixture = await savedCourseRepositoryFixture();
+  const { repository, calls } = fixture;
+  try {
+    fixture.setSaved(fixture.result(0, 3));
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 3), true);
+    const newer = repository.loadedCourseById.get(COURSE_A);
+    fixture.setSaved(fixture.result(0, 2));
+    const beforeCalls = calls.length;
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 2), false);
+    assert.equal(calls.length, beforeCalls);
+    assert.equal(repository.loadedCourseById.get(COURSE_A), newer);
+    fixture.setSaved(() => {
+      repository.courseList[0].revision = 5;
+      return fixture.result(0, 4);
+    });
+    assert.equal(await repository.reconcileSavedCourse(COURSE_A, 4), false);
+    assert.equal(repository.loadedCourseById.get(COURSE_A), newer);
+    assert.equal(repository.courseList[0].revision, 5);
+  } finally { await repository.close(); }
+});
+
 test("manual usa lista e conteúdo em cache, mantém versão aberta e verifica revogação separadamente", async () => {
   let reads = 0;
   let revision = 1;

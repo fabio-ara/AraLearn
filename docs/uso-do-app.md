@@ -466,6 +466,9 @@ Fechar a folha devolve a leitura, a posição e o foco sem abandonar o rascunho 
 edição que estava aberto. Consultar contexto não salva nem aplica uma correção
 automaticamente. No curso, módulo, lição e microssequência, **Editar** abre os
 metadados e a composição autorizados para aquele nível e exige salvamento explícito.
+Na folha contextual de Parâmetros, o menu de grupos participa da área rolável:
+todos os grupos continuam alcançáveis em telas pequenas, por toque ou teclado,
+sem sair da edição em curso.
 
 Para comparar várias unidades, use **Mostrar várias unidades**. A leitura passa
 a uma sequência vertical sem selecionar alvos para operação em lote. Marque os
@@ -582,6 +585,8 @@ primeira.
 
 A nuvem sinaliza pendência, andamento, sucesso ou falha sem uma notificação
 permanente sobre o conteúdo. No modo manual, ela indica a pausa das atualizações.
+Sem conexão, tocar nesse controle revela o estado da cópia local sem tentar
+sincronizar; Escape fecha o aviso e devolve o foco ao controle.
 Um rascunho alterado impede a troca incompatível do conteúdo até salvar ou descartar; uma
 explicação focal acompanha conflitos que exigem escolha. Uma composição
 desatualizada não é apresentada como perda de conexão.
@@ -604,6 +609,13 @@ preservados. Estudo e Conteúdo podem mostrar essa revisão sem rede como
 confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitura
 igual normaliza a cópia; uma revisão superior a descarta como superada. Sair da
 conta, limpar o curso ou perder acesso purga esse estado.
+
+Após a edição manual, a sessão de Estudo adota também a revisão dessa composição
+confirmada, antes de voltar a consultar citações ou a Explicação compartilhada.
+Essa atualização usa a cópia verificada do mesmo curso e não sincroniza outros
+cursos nem altera o modo manual. Se a cópia não corresponder ao recibo ou sua
+leitura falhar, a edição continua salva e a interface informa sincronização
+pendente; não repete a gravação para tentar recuperar a leitura.
 
 Parâmetros, catálogos privados de fontes e áudios, metadados e bytes de arquivos, caixa autoral
 de Observações, revisão, correções, Analytics, gestão de acesso e mutações

@@ -45,7 +45,9 @@ test("lotes locais dividem, reordenam e reúnem pela interface preservando o map
         modules: [{ moduleId: "parts-module", position: 0, title: "Módulo estável", objective: "Relacionar os casos.",
           lessons: [{ lessonId: "parts-lesson", position: 0, title: "Lição estável", objective: "Percorrer os casos.",
             microsequences: micros.map((title, position) => ({ microsequenceId: `parts-micro-${position}`, position,
-              title, objective: `Desenvolver ${title.toLowerCase()} caso.`, dependencyMicrosequenceIds: [], scopeItemIds: [scopeId] })) }] }]
+              title, objective: `Desenvolver ${title.toLowerCase()} caso.`, dependencyMicrosequenceIds: [], scopeItemIds: [scopeId],
+              explanationPlan: { purpose: `Explicar o ${title.toLowerCase()} caso antes de compará-lo aos demais.`,
+                prerequisites: [], relations: ["Comparar os quatro casos do percurso."], sourceIds: [] } })) }] }]
       } };
     const preparedMap = await adapter.saveCourseCurricularMap(mapRequest);
     await adapter.saveCourseCurricularMap({ ...mapRequest, approved: true, requestId: crypto.randomUUID(),
@@ -101,7 +103,8 @@ test("lotes locais dividem, reordenam e reúnem pela interface preservando o map
     await page.screenshot({ path: info.outputPath("map-return-390.png") });
     const open = async () => {
       if (!await page.getByRole("button", { name: "Reorganizar lotes", exact: true }).isVisible()) {
-        await page.locator(`a[href="#/authoring/courses/${courseId}?section=planning"]`).first().click();
+        await page.locator(".course-authoring-task-menu > summary").click();
+        await page.getByRole("link", { name: "Planejamento", exact: true }).click();
       }
       await page.getByRole("button", { name: "Reorganizar lotes", exact: true }).click();
       await expect(page.getByRole("dialog", { name: "Reorganizar lotes", exact: true })).toBeVisible(); };
