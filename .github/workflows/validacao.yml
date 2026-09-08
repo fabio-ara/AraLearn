@@ -79,7 +79,7 @@ jobs:
     if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.ready_for_integral == 'true'
     runs-on: windows-latest
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/aralearn-playwright
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.validation/playwright-browsers
     outputs:
       pages_id: ${{ steps.pages.outputs.artifact-id }}
       pages_digest: ${{ steps.pages.outputs.artifact-digest }}
@@ -215,7 +215,7 @@ jobs:
     if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.ready_for_integral == 'true'
     runs-on: ubuntu-latest
     env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/aralearn-playwright
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.validation/playwright-browsers
     outputs:
       toolchain: ${{ steps.toolchain.outputs.value }}
 

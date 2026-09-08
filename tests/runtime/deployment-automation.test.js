@@ -1228,6 +1228,22 @@ test("agregador executável recusa rascunho, preflight falho e qualquer integral
   assert.equal(evaluate({ DOCS_ONLY: "true", PREPARATION_RESULT: "failure" }).status, 1);
 });
 
+test("env dos jobs usa contextos aceitos antes da alocação do runner", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8").replaceAll("\r\n", "\n");
+  // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability
+  const allowedContexts = new Set(["github", "needs", "strategy", "matrix", "vars", "secrets", "inputs"]);
+  const environments = [...source.matchAll(/^ {4}env:\n((?: {6}[^\n]+\n)+)/gmu)];
+  assert.ok(environments.length > 0, "O workflow precisa expor os ambientes dos jobs ao guard.");
+  for (const [, environment] of environments) {
+    for (const [, expression] of environment.matchAll(/\$\{\{\s*([^}]+)\}\}/gu)) {
+      const references = expression.matchAll(/(?:^|[^\w.])([a-zA-Z_]\w*)\s*[.[]/gu);
+      for (const [, context] of references) {
+        assert.ok(allowedContexts.has(context), `Contexto ${context} indisponível em jobs.<job_id>.env: ${expression}`);
+      }
+    }
+  }
+});
+
 test("cache é por dependência e somente traces sintéticos podem virar artefato", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   const web = source.slice(source.indexOf("  web:"), source.indexOf("  supabase:"));
