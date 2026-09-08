@@ -14,9 +14,9 @@ import xml.etree.ElementTree as ET
 import zlib
 
 PACKAGE = "com.aralearn.app"
-BASE_VERSION = "0.0.65"
-BASE_CODE = 211
-BASE_SHA = "90e157778492e2411ecb391e6455d0f9ba4f44af072903fa4e373c581d077e17"
+BASE_VERSION = "0.0.66"
+BASE_CODE = 212
+BASE_SHA = "205c77dd5bcd24c4259bf67ff7e9eaa0696ba209d2abf1a813368fe7376e43c1"
 CERTIFICATE = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296"
 SYSTEM_IMAGE = "system-images;android-36;google_apis;x86_64"
 HASH = re.compile(r"[a-f0-9]{64}")
@@ -428,8 +428,30 @@ def upgrade_preserving_theme(device, baseline, candidate):
                 "afterBaseRelaunch": "dark", "afterUpgrade": "dark", "afterReinstall": "dark", "candidateThemeWrites": 0}}
 
 
-def validate_proof(proof, manifest, receipt, env, evidence_dir):
+def validate_preparation_origin(info, jobs, manifest, env, run_id, attempt):
+    identity = promotion_identity(manifest, env)
+    require(type(run_id) is int and run_id > 0 and type(attempt) is int and attempt > 0,
+            "Run/tentativa de preparação inválidos.")
+    require(info.get("id") == run_id and info.get("run_attempt") == attempt
+            and info.get("repository", {}).get("full_name") == identity["repository"]
+            and info.get("head_repository", {}).get("full_name") == identity["repository"]
+            and info.get("path") == ".github/workflows/pages.yml" and info.get("event") == "workflow_dispatch"
+            and info.get("head_branch") == "main" and info.get("head_sha") == identity["sha"]
+            and info.get("status") == "completed" and info.get("conclusion") == "success",
+            "A origem da prova nativa não é uma preparação concluída desta candidata.")
+    for name, step in [("Conferir candidata integrada", "Verificar run, árvore, configuração e digests"),
+                       ("Instalar e atualizar APK assinado", "Provar instalação e upgrade sem conta")]:
+        selected = [job for job in jobs if job.get("name") == name]
+        require(len(selected) == 1 and selected[0].get("conclusion") == "success"
+                and any(item.get("name") == step and item.get("conclusion") == "success"
+                        for item in selected[0].get("steps", [])), "Etapa da preparação não comprovada: " + name)
+    return {"runId": run_id, "runAttempt": attempt}
+
+
+def validate_proof(proof, manifest, receipt, env, evidence_dir, validated_origin=None):
     expected = promotion_identity(manifest, env)
+    if validated_origin is not None:
+        expected.update(validated_origin)
     release = validate_receipt(receipt, manifest)
     expected["apkSha256"] = release["sha256"]
     expected["manifestSha256"] = digest(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())
@@ -616,6 +638,8 @@ def main():
     parser.add_argument("--candidate-folder", required=True)
     parser.add_argument("--folder", required=True)
     parser.add_argument("--proof-sha256")
+    parser.add_argument("--source-run-id", type=int)
+    parser.add_argument("--source-run-attempt", type=int)
     args = parser.parse_args()
     DEADLINE = time.monotonic() + 23 * 60
     manifest = read_json(args.manifest)
@@ -623,15 +647,26 @@ def main():
     candidate_folder = Path(os.path.abspath(args.candidate_folder))
     folder = Path(args.folder).resolve()
     if args.operation == "run":
+        require(args.source_run_id is None and args.source_run_attempt is None,
+                "A execução nativa registra somente o run corrente.")
         folder.mkdir(parents=True, exist_ok=True)
         require(not any(folder.iterdir()), "Pasta da prova deve estar vazia; nada anterior será reutilizado.")
         run_gate(manifest, identity, folder, candidate_folder)
     else:
+        origin = None
+        if args.source_run_id is not None or args.source_run_attempt is not None:
+            require(args.source_run_id and args.source_run_attempt, "A retomada exige run e tentativa completos.")
+            repository = identity["repository"]
+            info = github(f"repos/{repository}/actions/runs/{args.source_run_id}")
+            response = github(f"repos/{repository}/actions/runs/{args.source_run_id}/attempts/{args.source_run_attempt}/jobs?per_page=100")
+            require(response.get("total_count", 101) <= 100, "Inventário de jobs excedeu o limite.")
+            origin = validate_preparation_origin(info, response.get("jobs", []), manifest, os.environ,
+                                                 args.source_run_id, args.source_run_attempt)
         require(args.proof_sha256 and HASH.fullmatch(args.proof_sha256)
                 and digest((folder / "proof.json").read_bytes()) == args.proof_sha256, "Prova não corresponde ao digest do job produtor.")
         receipt, _ = candidate_bundle(candidate_folder, manifest)
-        validate_proof(read_json(folder / "proof.json"), manifest, receipt, os.environ, folder / "evidence")
-        print("Prova Android vinculada ao APK/run/tentativa/SHA atuais; bytes da evidência conferidos.")
+        validate_proof(read_json(folder / "proof.json"), manifest, receipt, os.environ, folder / "evidence", origin)
+        print("Prova Android vinculada ao APK/run/tentativa/SHA de origem; bytes e origem da evidência conferidos.")
 
 
 if __name__ == "__main__":

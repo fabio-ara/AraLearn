@@ -12,7 +12,7 @@ test("prova Android recusa identidade, bytes, licença e perda de tema da base (
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
   });
   assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
-  assert.match(result.stderr, /Ran 30 tests/u);
+  assert.match(result.stderr, /Ran 32 tests/u);
 });
 
 test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissões de assinatura no emulador", () => {
@@ -45,11 +45,10 @@ test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissõ
   assert.match(gate, /theme_selected\(base_xml, base_png\)[\s\S]+theme_selected\(upgraded_xml, upgraded_png\)[\s\S]+theme_selected\(reinstalled_xml, reinstalled_png\)/u);
   assert.match(gate, /"networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True/u);
   for (const [section, publication] of [[pages, "actions/configure-pages"], [release, "finalize-release"]]) {
-    assert.match(section, /needs: \[candidate, android, android-native(?:, pages)?\]/u);
-    assert.match(section, /artifact-ids: \$\{\{ needs\.android-native\.outputs\.proof_artifact_id \}\}/u);
-    assert.match(section, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}[\s\S]+merge-multiple: true[\s\S]+path: \.candidate\/android-release/u);
+    assert.match(section, /resume-(?:preparation|site)/u);
     assert.match(section, /--candidate-folder \.candidate\/android-release/u);
-    assert.match(section, /--proof-sha256 "\$\{\{ needs\.android-native\.outputs\.proof_sha256 \}\}"/u);
+    assert.match(section, /--proof-sha256 "\$PROOF_SHA256" --source-run-id "\$SOURCE_RUN_ID" --source-run-attempt "\$SOURCE_RUN_ATTEMPT"/u);
+    assert.doesNotMatch(section, /GITHUB_RUN_ID:|GITHUB_RUN_ATTEMPT:|androidNativeGate\.py run/u);
     assert.ok(section.indexOf("androidNativeGate.py verify") < section.indexOf(publication));
   }
 });

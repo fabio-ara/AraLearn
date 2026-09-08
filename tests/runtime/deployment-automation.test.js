@@ -926,14 +926,14 @@ test("Android só prepara assinatura pelo coordenador e retoma APK existente", (
   assert.doesNotMatch(triggers, /push:|workflow_dispatch:|workflow_run:/u);
   assert.match(source, /persist-credentials: false/u);
   assert.match(source, /releaseCandidate\.mjs reuse-apk/u);
-  assert.match(source, /releaseCandidate\.mjs stage-release/u);
+  assert.match(source, /releaseCandidate\.mjs prepare-signed-bundle/u);
   assert.match(source, /artifact_id: \$\{\{ steps\.bundle\.outputs\.artifact-id \}\}/u);
   assert.match(source, /AraLearn-\$\{\{ inputs\.version \}\}\.apk\.sha256/u);
   assert.match(source, /verifyDeploymentArtifacts\.ps1/u);
   assert.match(source, /RequireExplicitConfiguration/u);
-  assert.doesNotMatch(source, /npm test|npm run lint|finalize-release|gh release create/u);
+  assert.doesNotMatch(source, /npm test|npm run lint|stage-release|finalize-release|gh release create/u);
   assert.ok(source.indexOf("releaseCandidate.mjs reuse-apk") < source.indexOf("secrets.ARALEARN_ANDROID_KEYSTORE_BASE64"));
-  assert.ok(source.indexOf("verifyDeploymentArtifacts.ps1") < source.indexOf("releaseCandidate.mjs stage-release"));
+  assert.ok(source.indexOf("verifyDeploymentArtifacts.ps1") < source.indexOf("releaseCandidate.mjs prepare-signed-bundle"));
   assert.match(source, /always\(\)[\s\S]+Remove-Item -LiteralPath \$keystorePath/u);
 });
 
@@ -1029,8 +1029,17 @@ test("uma promoção exige candidata exata e ordena Android, Pages e Release", (
   assert.doesNotMatch(triggers, /push:|workflow_run:|pull_request/u);
   assert.match(source, /needs: candidate[\s\S]+uses: \.\/\.github\/workflows\/android-release\.yml/u);
   assert.match(source, /needs: \[candidate, android\]/u);
-  assert.match(source, /needs: \[candidate, android, android-native\]/u);
-  assert.match(source, /needs: \[candidate, android, android-native, pages\]/u);
+  assert.match(source, /options: \[preparar, publicar_site, finalizar_release\]/u);
+  const preparation = source.slice(source.indexOf("  candidate:"), source.indexOf("  pages:"));
+  const pages = source.slice(source.indexOf("  pages:"), source.indexOf("  release:"));
+  const release = source.slice(source.indexOf("  release:"));
+  assert.doesNotMatch(preparation, /verify-backend|stage-release|finalize-release|actions\/deploy-pages/u);
+  assert.match(pages, /inputs.phase == 'publicar_site'/u);
+  assert.match(pages, /resume-preparation/u);
+  assert.doesNotMatch(pages, /finalize-release|androidNativeGate\.py run|npm ci|buildAndroid/u);
+  assert.match(release, /inputs.phase == 'finalizar_release'/u);
+  assert.match(release, /resume-site/u);
+  assert.doesNotMatch(release, /androidNativeGate\.py run|npm ci|buildAndroid|actions\/deploy-pages/u);
   assert.match(source, /releaseCandidate\.mjs prepare/u);
   assert.match(source, /releaseCandidate\.mjs verify-backend/u);
   assert.match(source, /releaseCandidate\.mjs verify-pages/u);

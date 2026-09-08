@@ -4,6 +4,39 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.67] - 2026-09-07
+
+### Adicionado
+
+- Explicação compartilhada por microssequência, planejada na Autoria e acessível
+  durante qualquer unidade, inclusive prática, sem gerar texto ao abrir;
+- inspeção conjunta de Explicação, unidades, respostas, feedback e fontes,
+  com declaração humana sobre o conteúdo revisado antes de sua distribuição;
+- fontes e ocorrências literais da Explicação disponíveis na inspeção, no Estudo
+  e na exportação autoral, com localização de blocos distintos mesmo quando o texto se repete.
+
+### Corrigido
+
+- preparo de materialização extenso pode ser percorrido integralmente pelos canais
+  externos; leitura, produção e correção preservam o apoio compartilhado e suas fontes;
+- apoio, fontes e navegação conservam a origem, o foco e a resposta pendente;
+  conteúdo ampliado e tabelas permanecem alcançáveis por rolagem;
+- Parâmetros distinguem configuração atual, valor aplicado na produção e efeito
+  futuro, sem rematerialização silenciosa; diagramas distinguem hub e repetidor.
+
+### Atualização e limites
+
+- cursos anteriores conservam conteúdo e progresso; ausência de Explicação ou de
+  revisão registrada é indicada, sem reescrita nem aprovação automática do acervo;
+- novo conteúdo produzido com auxílio de IA permanece rascunho inspecionável até
+  a decisão humana; aprovar o mapa não aprova o texto que ainda será produzido;
+- a cópia local preserva apoio e referências; abrir um PDF externo ainda depende
+  de conexão e de acesso autorizado ao arquivo;
+- a entrega prepara e verifica o APK antes do corte, conserva a release em rascunho
+  durante as provas hospedadas e confere os mesmos bytes antes da publicação;
+- instale o APK sobre a versão existente para preservar dados locais. Os fundamentos
+  pedagógicos documentados não constituem prova de eficácia desta interface.
+
 ## [0.0.66] - 2026-09-07
 
 ### Corrigido

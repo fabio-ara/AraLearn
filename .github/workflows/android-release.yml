@@ -32,7 +32,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       artifact_id: ${{ steps.bundle.outputs.artifact-id }}
     env:
@@ -91,9 +91,9 @@ jobs:
       - name: Conferir identidade, certificado e configuração do APK
         shell: pwsh
         run: pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1 -Target Android -ArtifactPath "AraLearn-$env:RELEASE_VERSION.apk" -RequireRuntimeConfig
-      - name: Guardar APK, checksum e manifesto na Release em rascunho
+      - name: Preparar APK, checksum e recibo imutáveis sem publicar
         shell: pwsh
-        run: node ./scripts/releaseCandidate.mjs stage-release "AraLearn-$env:RELEASE_VERSION.apk"
+        run: node ./scripts/releaseCandidate.mjs prepare-signed-bundle "AraLearn-$env:RELEASE_VERSION.apk"
       - name: Transportar bytes assinados para os gates seguintes
         id: bundle
         uses: actions/upload-artifact@v4

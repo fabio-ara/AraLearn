@@ -3,13 +3,27 @@ name: Publicar produto
 on:
   workflow_dispatch:
     inputs:
+      phase:
+        description: Preparar artefatos, publicar site após corte ou finalizar após provas reais
+        required: true
+        type: choice
+        default: preparar
+        options: [preparar, publicar_site, finalizar_release]
       candidate_run_id:
         description: Run integral aprovado da candidata integrada
-        required: true
+        required: false
         type: string
       candidate_run_attempt:
         description: Tentativa exata do run integral
-        required: true
+        required: false
+        type: string
+      promotion_run_id:
+        description: Run concluído de preparar (site) ou publicar_site (finalização)
+        required: false
+        type: string
+      promotion_run_attempt:
+        description: Tentativa exata daquele run de promoção
+        required: false
         type: string
 
 permissions:
@@ -22,14 +36,13 @@ concurrency:
 jobs:
   candidate:
     name: Conferir candidata integrada
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.phase == 'preparar'
     runs-on: windows-latest
     permissions:
       contents: read
       actions: read
     outputs:
       version: ${{ steps.candidate.outputs.version }}
-      site_current: ${{ steps.site.outputs.site_current }}
       promotion_artifact_id: ${{ steps.promotion.outputs.artifact-id }}
     env:
       GH_TOKEN: ${{ github.token }}
@@ -53,13 +66,8 @@ jobs:
           CANDIDATE_RUN_ATTEMPT: ${{ inputs.candidate_run_attempt }}
         shell: pwsh
         run: node ./scripts/releaseCandidate.mjs prepare $env:CANDIDATE_RUN_ID $env:CANDIDATE_RUN_ATTEMPT
-      - name: Conferir backend hospedado exigido pela candidata
-        run: node ./scripts/releaseCandidate.mjs verify-backend
       - name: Conferir configuração e segurança do site aprovado
         run: pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1 -Target Pages -RequireRuntimeConfig
-      - name: Reconhecer site já publicado
-        id: site
-        run: node ./scripts/releaseCandidate.mjs site-current
       - name: Guardar artefatos exatos da promoção
         id: promotion
         uses: actions/upload-artifact@v4
@@ -76,7 +84,7 @@ jobs:
     name: Preparar Android
     needs: candidate
     permissions:
-      contents: write
+      contents: read
     uses: ./.github/workflows/android-release.yml
     with:
       version: ${{ needs.candidate.outputs.version }}
@@ -159,10 +167,11 @@ jobs:
 
   pages:
     name: Publicar Pages aprovado
-    needs: [candidate, android, android-native]
+    if: github.ref == 'refs/heads/main' && inputs.phase == 'publicar_site'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      actions: read
       pages: write
       id-token: write
     environment:
@@ -182,50 +191,62 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Baixar bytes aprovados
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.candidate.outputs.promotion_artifact_id }}
-          merge-multiple: true
-          path: .
+      - name: Recuperar preparação comprovada pela origem e pelos digests
+        id: preparation
+        env:
+          PROMOTION_RUN_ID: ${{ inputs.promotion_run_id }}
+          PROMOTION_RUN_ATTEMPT: ${{ inputs.promotion_run_attempt }}
+        run: node ./scripts/releaseCandidate.mjs resume-preparation "$PROMOTION_RUN_ID" "$PROMOTION_RUN_ATTEMPT"
       - name: Reconfirmar revisão e artefato antes de publicar
         run: |
           node ./scripts/releaseCandidate.mjs current
           node ./scripts/releaseCandidate.mjs verify-pages
-      - name: Baixar prova do APK exato
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.android-native.outputs.proof_artifact_id }}
-          merge-multiple: true
-          path: .candidate/android-native
-      - name: Baixar APK assinado e recibo exatos
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.android.outputs.artifact_id }}
-          merge-multiple: true
-          path: .candidate/android-release
       - name: Conferir instalação antes de Pages
-        run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
+        env:
+          PROOF_SHA256: ${{ steps.preparation.outputs.proof_sha256 }}
+          SOURCE_RUN_ID: ${{ steps.preparation.outputs.preparation_run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ steps.preparation.outputs.preparation_run_attempt }}
+        run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "$PROOF_SHA256" --source-run-id "$SOURCE_RUN_ID" --source-run-attempt "$SOURCE_RUN_ATTEMPT"
+      - name: Conferir backend hospedado depois do corte
+        run: node ./scripts/releaseCandidate.mjs verify-backend
+      - name: Reconhecer site já publicado
+        id: site
+        run: node ./scripts/releaseCandidate.mjs site-current
       - name: Configurar Pages
-        if: needs.candidate.outputs.site_current != 'true'
+        if: steps.site.outputs.site_current != 'true'
         uses: actions/configure-pages@v5
       - name: Enviar artefato Pages
-        if: needs.candidate.outputs.site_current != 'true'
+        if: steps.site.outputs.site_current != 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .pages
       - name: Publicar no GitHub Pages
-        if: needs.candidate.outputs.site_current != 'true'
+        if: steps.site.outputs.site_current != 'true'
         uses: actions/deploy-pages@v4
       - name: Conferir bytes efetivamente publicados
         run: node ./scripts/verifyPublishedSite.mjs --url https://fabio-ara.github.io/AraLearn/ --candidate-manifest .candidate/candidate.json
+      - name: Guardar os mesmos bytes na Release em rascunho
+        env:
+          RELEASE_VERSION: ${{ steps.preparation.outputs.version }}
+        run: node ./scripts/releaseCandidate.mjs stage-release ".candidate/android-release/AraLearn-$RELEASE_VERSION.apk"
+      - name: Registrar promoção do site sem finalizar a Release
+        run: node ./scripts/releaseCandidate.mjs record-site-promotion
+      - name: Guardar origem e prova do corte
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-site-promotion-${{ github.run_attempt }}
+          path: .candidate/site-promotion/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
   release:
     name: Concluir publicação do produto
-    needs: [candidate, android, android-native, pages]
+    if: github.ref == 'refs/heads/main' && inputs.phase == 'finalizar_release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     env:
       GH_TOKEN: ${{ github.token }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
@@ -240,25 +261,17 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Baixar manifesto aprovado
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.candidate.outputs.promotion_artifact_id }}
-          merge-multiple: true
-          path: .
-      - name: Baixar prova do APK exato
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.android-native.outputs.proof_artifact_id }}
-          merge-multiple: true
-          path: .candidate/android-native
-      - name: Baixar APK assinado e recibo exatos
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ needs.android.outputs.artifact_id }}
-          merge-multiple: true
-          path: .candidate/android-release
+      - name: Recuperar site e preparação originais comprovados
+        id: preparation
+        env:
+          PROMOTION_RUN_ID: ${{ inputs.promotion_run_id }}
+          PROMOTION_RUN_ATTEMPT: ${{ inputs.promotion_run_attempt }}
+        run: node ./scripts/releaseCandidate.mjs resume-site "$PROMOTION_RUN_ID" "$PROMOTION_RUN_ATTEMPT"
       - name: Reconfirmar prova nativa antes da Release
-        run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "${{ needs.android-native.outputs.proof_sha256 }}"
+        env:
+          PROOF_SHA256: ${{ steps.preparation.outputs.proof_sha256 }}
+          SOURCE_RUN_ID: ${{ steps.preparation.outputs.preparation_run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ steps.preparation.outputs.preparation_run_attempt }}
+        run: python3 ./scripts/androidNativeGate.py verify --candidate-folder .candidate/android-release --folder .candidate/android-native --proof-sha256 "$PROOF_SHA256" --source-run-id "$SOURCE_RUN_ID" --source-run-attempt "$SOURCE_RUN_ATTEMPT"
       - name: Verificar partes e tornar a Release pública
         run: node ./scripts/releaseCandidate.mjs finalize-release

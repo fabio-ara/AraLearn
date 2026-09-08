@@ -13,6 +13,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHA = /^[a-f0-9]{40}$/u;
 const HASH = /^[a-f0-9]{64}$/u;
 const CANDIDATE = ".candidate/candidate.json";
+const BACKEND_PROOF = ".candidate/backend.json";
+const PREPARATION_ORIGIN = ".candidate/preparation-origin.json";
 const PAGES_NAME = "aralearn-pages-candidate";
 const METADATA_NAME = "aralearn-candidate-manifest";
 const CERTIFICATE = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296";
@@ -33,6 +35,9 @@ function run(command, args, options = {}) {
 }
 
 function git(...args) { return run("git", args).trim(); }
+function python(code, args = []) {
+  return run(process.platform === "win32" ? "python" : "python3", ["-c", code, ...args]);
+}
 function toolVersion(command, args) {
   const result = spawnSync(command, args, { cwd: ROOT, encoding: "utf8" });
   demand(result.status === 0 && !result.error, `Não foi possível registrar a versão de ${command}.`);
@@ -199,30 +204,32 @@ export function validateRun(runInfo, jobs, repository, attempt) {
   }
 }
 
-async function downloadArtifact(artifact, destination, expectedFiles = null) {
+async function downloadArtifact(artifact, destination, expectedFiles = null, allowedPath = null) {
   demand(artifact && !artifact.expired && /^sha256:[a-f0-9]{64}$/u.test(artifact.digest), "Artefato ausente, expirado ou sem digest confiável.");
   const archive = await api(`actions/artifacts/${positive(artifact.id, "Artefato")}/zip`, { binary: true });
-  await extractArtifactArchive(artifact, archive, destination, expectedFiles);
+  await extractArtifactArchive(artifact, archive, destination, expectedFiles, allowedPath);
 }
 
-export async function extractArtifactArchive(artifact, archive, destination, expectedFiles = null) {
+export async function extractArtifactArchive(artifact, archive, destination, expectedFiles = null, allowedPath = null) {
   demand(artifact && !artifact.expired && /^sha256:[a-f0-9]{64}$/u.test(artifact.digest), "Artefato ausente, expirado ou sem digest confiável.");
   demand(`sha256:${sha256(archive)}` === artifact.digest, "Digest do arquivo baixado diverge do GitHub.");
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-candidate-"));
   try {
     const zip = path.join(temporary, "artifact.zip");
     await fs.writeFile(zip, archive);
-    const entries = run("tar", ["-tf", zip]).split(/\r?\n/u).filter(Boolean);
+    const metadata = JSON.parse(python("import json,stat,sys,zipfile\nwith zipfile.ZipFile(sys.argv[1]) as archive:\n print(json.dumps([{'name':i.filename,'mode':stat.S_IFMT(i.external_attr >> 16),'size':i.file_size} for i in archive.infolist()]))", [zip]));
+    demand(metadata.every(entry => [0, 0o100000, 0o040000].includes(entry.mode)), "Links ou entradas especiais recusados.");
+    demand(metadata.reduce((sum, entry) => sum + entry.size, 0) <= 512 * 1024 * 1024, "Artefato expandido excede o limite.");
+    const entries = metadata.map(entry => entry.name);
     validateFiles(entries.map((entry) => ({ path: entry.replace(/\/$/u, ""), sha256: "0".repeat(64), size: 0 })).sort((a, b) => a.path < b.path ? -1 : 1));
     const files = entries.filter((entry) => !entry.endsWith("/"));
     validateFiles(files.map((entry) => ({ path: entry, sha256: "0".repeat(64), size: 0 })).sort((a, b) => a.path < b.path ? -1 : 1));
     if (expectedFiles) assert.deepEqual([...files].sort(), expectedFiles.map((file) => file.path).sort(), "Conteúdo do ZIP inesperado.");
+    else if (allowedPath) demand(files.every(allowedPath), "Artefato contém caminho inesperado.");
     else assert.deepEqual(files, ["candidate.json"], "Manifesto compactado contém entradas inesperadas.");
-    const details = run("tar", ["-tvf", zip]).split(/\r?\n/u).filter(Boolean);
-    demand(details.every((line) => line.startsWith("-") || line.startsWith("d")), "Links ou entradas especiais recusados.");
     await fs.mkdir(destination, { recursive: true });
     demand((await fs.readdir(destination)).length === 0, "Destino do download precisa estar vazio.");
-    run("tar", ["-xf", zip, "-C", path.resolve(destination)]);
+    python("import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1]) as archive:\n archive.extractall(sys.argv[2])", [zip, path.resolve(destination)]);
     if (expectedFiles) await verifyDirectory(destination, expectedFiles);
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
@@ -308,13 +315,9 @@ async function prepare(runId, attempt) {
 
 export async function verifyAndroid(apk, manifest) {
   validateManifest(manifest);
-  const prefix = "assets/www/";
-  const actual = run("tar", ["-tf", apk]).split(/\r?\n/u).filter((entry) => entry.startsWith(prefix) && !entry.endsWith("/")).map((entry) => entry.slice(prefix.length)).sort();
-  assert.deepEqual(actual, manifest.artifacts.android.files.map((file) => file.path).sort(), "Runtime do APK difere da candidata.");
-  for (const file of manifest.artifacts.android.files) {
-    const bytes = run("tar", ["-xOf", apk, `${prefix}${file.path}`], { encoding: null });
-    demand(bytes.length === file.size && sha256(bytes) === file.sha256, `Bytes do APK divergem da candidata: ${file.path}.`);
-  }
+  const files = JSON.parse(python("import hashlib,json,sys,zipfile\nprefix='assets/www/'\nwith zipfile.ZipFile(sys.argv[1]) as archive:\n print(json.dumps(sorted([{'path':i.filename[len(prefix):],'size':i.file_size,'sha256':hashlib.sha256(archive.read(i)).hexdigest()} for i in archive.infolist() if i.filename.startswith(prefix) and not i.is_dir()],key=lambda x:x['path'])))", [apk]));
+  assert.deepEqual(files.map(file => file.path), manifest.artifacts.android.files.map(file => file.path), "Runtime do APK difere da candidata.");
+  assert.deepEqual(files, manifest.artifacts.android.files, "Bytes do APK divergem da candidata.");
 }
 
 export function releasePlan({ tagSha, release, targetSha, version }) {
@@ -381,12 +384,105 @@ async function requirePromotion() {
   return manifest;
 }
 
+export function validatePromotionRun(info, jobs, { repository, sha, attempt, phase }) {
+  demand(info?.repository?.full_name === repository && info.head_repository?.full_name === repository,
+    "Promoção de outro repositório ou fork recusada.");
+  demand(info.path === ".github/workflows/pages.yml" && info.event === "workflow_dispatch" &&
+    info.head_branch === "main" && info.head_sha === sha && info.run_attempt === attempt &&
+    info.status === "completed" && info.conclusion === "success", "Origem da promoção incompleta, superada ou incompatível.");
+  const required = phase === "preparar"
+    ? [["Conferir candidata integrada", "Verificar run, árvore, configuração e digests"],
+      ["Instalar e atualizar APK assinado", "Provar instalação e upgrade sem conta"]]
+    : phase === "publicar_site" ? [["Publicar Pages aprovado", "Conferir bytes efetivamente publicados"]] : [];
+  demand(required.length > 0, "Fase de origem inválida.");
+  for (const [name, step] of required) {
+    const matches = jobs.filter(job => job.name === name);
+    demand(matches.length === 1 && matches[0].conclusion === "success" &&
+      matches[0].steps?.some(item => item.name === step && item.conclusion === "success"),
+    `Prova da promoção ausente: ${name}.`);
+  }
+}
+
+async function promotionArtifacts(runId, attempt, phase) {
+  const id = positive(runId, "Run de promoção"); const number = positive(attempt, "Tentativa de promoção");
+  const sha = await currentMain();
+  const [info, response, artifacts] = await Promise.all([
+    api(`actions/runs/${id}`), api(`actions/runs/${id}/attempts/${number}/jobs?per_page=100`),
+    api(`actions/runs/${id}/artifacts?per_page=100`)
+  ]);
+  demand(info.id === id, "Resposta do GitHub pertence a outro run de promoção.");
+  demand(response.total_count <= 100 && artifacts.total_count <= 100, "Inventário da promoção excedeu o limite.");
+  validatePromotionRun(info, response.jobs, { repository: process.env.GITHUB_REPOSITORY, sha, attempt: number, phase });
+  return { id, attempt: number, find(name) {
+    const matches = artifacts.artifacts.filter(item => item.name === `${name}-${number}`);
+    demand(matches.length === 1, `Artefato único da promoção ausente: ${name}.`);
+    return matches[0];
+  } };
+}
+
+async function resumePreparation(runId, attempt, expectedOrigin = null) {
+  const origin = await promotionArtifacts(runId, attempt, "preparar");
+  const artifacts = { promotion: origin.find("aralearn-promotion"),
+    signed: origin.find("aralearn-android-signed"), native: origin.find("aralearn-android-native") };
+  const binding = { runId: origin.id, runAttempt: origin.attempt,
+    artifacts: Object.fromEntries(Object.entries(artifacts).map(([name, value]) => [name, { id: value.id, digest: value.digest }])) };
+  if (expectedOrigin) assert.deepEqual(binding, expectedOrigin, "A preparação mudou desde a publicação de Pages.");
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-promotion-"));
+  try {
+    await downloadArtifact(artifacts.promotion, path.join(temporary, "promotion"), null,
+      name => name === ".candidate/candidate.json" || name.startsWith(".pages/"));
+    const manifest = validateManifest(await jsonFile(path.join(temporary, "promotion/.candidate/candidate.json")));
+    demand(manifest.promotion?.backend == null && manifest.promotion?.targetSha === process.env.GITHUB_SHA &&
+      manifest.source.repository === process.env.GITHUB_REPOSITORY && manifest.promotion.tree === git("rev-parse", "HEAD^{tree}") &&
+      manifest.source.tree === manifest.promotion.tree && manifest.configurationSha256 === configurationDigest() &&
+      manifest.lockfileSha256 === sha256(await fs.readFile(path.join(ROOT, "package-lock.json"))) &&
+      manifest.backendManifestSha256 === sha256(await fs.readFile(path.join(ROOT, "supabase/runtime-manifest.json"))),
+    "Preparação pertence a outra árvore/configuração ou antecipa prova de backend.");
+    await verifyDirectory(path.join(temporary, "promotion/.pages"), manifest.artifacts.pages.files);
+    await fs.mkdir(".candidate", { recursive: true });
+    await fs.copyFile(path.join(temporary, "promotion/.candidate/candidate.json"), CANDIDATE);
+    await fs.cp(path.join(temporary, "promotion/.pages"), ".pages", { recursive: true });
+    const name = `AraLearn-${manifest.version}`;
+    await downloadArtifact(artifacts.signed, ".candidate/android-release", null,
+      file => [`${name}.apk`, `${name}.apk.sha256`, `${name}.json`].includes(file));
+    await downloadArtifact(artifacts.native, ".candidate/android-native", null,
+      file => file === "proof.json" || file.startsWith("evidence/") || file.startsWith("diagnostics/"));
+    await writeJson(PREPARATION_ORIGIN, binding);
+    await output("version", manifest.version);
+    await output("preparation_run_id", origin.id);
+    await output("preparation_run_attempt", origin.attempt);
+    await output("proof_sha256", sha256(await fs.readFile(".candidate/android-native/proof.json")));
+    return manifest;
+  } finally { await fs.rm(temporary, { recursive: true, force: true }); }
+}
+
+async function resumeSite(runId, attempt) {
+  const origin = await promotionArtifacts(runId, attempt, "publicar_site");
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-site-promotion-"));
+  try {
+    await downloadArtifact(origin.find("aralearn-site-promotion"), path.join(temporary, "receipt"), null,
+      name => ["candidate.json", "backend.json", "preparation-origin.json"].includes(name));
+    const prior = await jsonFile(path.join(temporary, "receipt/candidate.json"));
+    const preparation = await jsonFile(path.join(temporary, "receipt/preparation-origin.json"));
+    const manifest = await resumePreparation(preparation.runId, preparation.runAttempt, preparation);
+    assert.deepEqual(manifest, prior, "O site foi publicado com outra preparação.");
+    const backend = await jsonFile(path.join(temporary, "receipt/backend.json"));
+    validateBackendProof(manifest, backend);
+    await writeJson(BACKEND_PROOF, backend);
+  } finally { await fs.rm(temporary, { recursive: true, force: true }); }
+}
+
+export function validateBackendProof(manifest, proof) {
+  demand(proof?.manifestSha256 === sha256(JSON.stringify(manifest)) && proof.backend?.schemaRevision,
+    "Prova de backend ausente ou de outra preparação.");
+  return proof.backend;
+}
+
 async function verifyBackend() {
   const manifest = await requirePromotion();
   const backend = await verifyHostedBackend({ projectUrl: process.env.ARALEARN_SUPABASE_URL,
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY });
-  manifest.promotion.backend = backend;
-  await writeJson(CANDIDATE, manifest);
+  await writeJson(BACKEND_PROOF, { manifestSha256: sha256(JSON.stringify(manifest)), backend });
 }
 
 async function siteCurrent() {
@@ -434,9 +530,9 @@ export function buildReleaseNotes(changelog, version) {
     "O APK mantém o certificado das versões anteriores. O checksum e o manifesto anexos identificam os artefatos desta versão.\n";
 }
 
-async function stageRelease(apk) {
+async function prepareSignedBundle(apk) {
   const manifest = await requirePromotion();
-  demand(manifest.promotion.backend?.schemaRevision, "Backend hospedado ainda não foi conferido.");
+  demand(manifest.promotion.backend == null, "A preparação nativa não antecipa verificação de backend.");
   await verifyAndroid(apk, manifest);
   const name = `AraLearn-${manifest.version}.apk`;
   if (path.resolve(apk) !== path.resolve(name)) await fs.copyFile(apk, name);
@@ -446,6 +542,13 @@ async function stageRelease(apk) {
   const receipt = { ...manifest, release: { apk: name, sha256: sha256(apkBytes), certificateSha256: CERTIFICATE } };
   await fs.writeFile(checksumName, `${sha256(apkBytes)}  ${name}\n`);
   await writeJson(receiptName, receipt);
+  return { manifest, name, checksumName, receiptName };
+}
+
+async function stageRelease(apk) {
+  const manifest = await requirePromotion();
+  validateBackendProof(manifest, await jsonFile(BACKEND_PROOF));
+  const { name, checksumName, receiptName } = await prepareSignedBundle(apk);
   let state = await releaseState(manifest);
   if (state.create) {
     const notes = buildReleaseNotes(await fs.readFile(path.join(ROOT, "CHANGELOG.md"), "utf8"), manifest.version);
@@ -464,12 +567,19 @@ async function stageRelease(apk) {
   }
 }
 
+export function validateReleaseBundleAssets(remote, approved) {
+  for (const key of ["apk", "checksum", "receipt"]) {
+    demand(Buffer.isBuffer(remote?.[key]) && Buffer.isBuffer(approved?.[key]) &&
+      remote[key].equals(approved[key]), `Asset ${key} não corresponde ao bundle da prova nativa.`);
+  }
+}
+
 async function finalizeRelease() {
   const manifest = await requirePromotion();
-  demand(manifest.promotion.backend?.schemaRevision, "Backend hospedado ainda não foi conferido.");
+  const expectedBackend = validateBackendProof(manifest, await jsonFile(BACKEND_PROOF));
   const backend = await verifyHostedBackend({ projectUrl: process.env.ARALEARN_SUPABASE_URL,
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY });
-  assert.deepEqual(backend, manifest.promotion.backend, "Backend mudou durante a promoção.");
+  assert.deepEqual(backend, expectedBackend, "Backend mudou durante a promoção.");
   await verifyPublishedSite({ siteUrl: "https://fabio-ara.github.io/AraLearn/", candidateManifest: manifest });
   const state = await releaseState(manifest);
   demand(state.release, "Release preparada ausente.");
@@ -478,6 +588,13 @@ async function finalizeRelease() {
   const checksum = await releaseAsset(state.release, `${name}.sha256`);
   const receiptBytes = await releaseAsset(state.release, `AraLearn-${manifest.version}.json`);
   demand(apk && checksum && receiptBytes, "A publicação ainda está parcial.");
+  const [approvedApk, approvedChecksum, approvedReceipt] = await Promise.all([
+    fs.readFile(path.join(".candidate/android-release", name)),
+    fs.readFile(path.join(".candidate/android-release", `${name}.sha256`)),
+    fs.readFile(path.join(".candidate/android-release", `AraLearn-${manifest.version}.json`))
+  ]);
+  validateReleaseBundleAssets({ apk, checksum, receipt: receiptBytes },
+    { apk: approvedApk, checksum: approvedChecksum, receipt: approvedReceipt });
   const receipt = JSON.parse(receiptBytes.toString("utf8"));
   demand(receipt.release?.sha256 === sha256(apk) && checksum.toString("utf8") === `${sha256(apk)}  ${name}\n`, "Checksum publicado diverge.");
   const { release, ...candidate } = receipt;
@@ -493,6 +610,17 @@ async function main() {
   else if (command === "seal") await seal();
   else if (command === "prepare") await prepare(args[0], args[1]);
   else if (command === "verify-backend") await verifyBackend();
+  else if (command === "resume-preparation") await resumePreparation(args[0], args[1]);
+  else if (command === "resume-site") await resumeSite(args[0], args[1]);
+  else if (command === "prepare-signed-bundle") await prepareSignedBundle(args[0]);
+  else if (command === "record-site-promotion") {
+    const manifest = await requirePromotion();
+    validateBackendProof(manifest, await jsonFile(BACKEND_PROOF));
+    await fs.mkdir(".candidate/site-promotion", { recursive: true });
+    for (const file of [CANDIDATE, BACKEND_PROOF, PREPARATION_ORIGIN]) {
+      await fs.copyFile(file, path.join(".candidate/site-promotion", path.basename(file)));
+    }
+  }
   else if (command === "site-current") await siteCurrent();
   else if (command === "verify-pages") await verifyDirectory(".pages", validateManifest(await jsonFile(CANDIDATE)).artifacts.pages.files);
   else if (command === "verify-android") await verifyAndroid(args[0], await jsonFile(CANDIDATE));
