@@ -35,6 +35,8 @@ import {
   normalizeCourseDesign,
   normalizeCourseDesignChange,
   normalizeCourseAuthoringPlan,
+  normalizeCourseSourcesPage,
+  mergeCourseSourceCatalogPages,
   normalizeCourseDetail,
   normalizeCourseListPage,
   projectCoursePlanning
@@ -687,6 +689,7 @@ function renderPlanningSection(state) {
       emptyLabel: "Ainda não definido."
     }) +
     "</div>" + renderCourseCurriculumMap({ courseId: course.courseId, courseRevision: course.revision, ...planning,
+      sourceTitles: state.authoringPlan.sourceTitles,
       expansion: state.curriculumViewByCourse?.get(course.courseId)?.expansion || [] }) +
     renderParts(state, planning) + renderPlanningContext(planning) +
     "</section>";
@@ -1917,7 +1920,37 @@ export function createCourseAuthoringSurface({
         { expectedCourseId: courseId, expectedCourseRevision }
       );
       if (!state.opened || state.course?.courseId !== courseId) return false;
-      state.authoringPlan = result;
+      const sourceIds = new Set(result.plan.curriculum.modules.flatMap(module =>
+        module.lessons.flatMap(lesson => lesson.microsequences.flatMap(ms => ms.explanationPlan?.sourceIds || []))));
+      const sourceTitles = new Map();
+      // Resolve labels through the existing owner catalog at the plan's revision.
+      // A title lookup failure cannot discard an otherwise valid map.
+      if (sourceIds.size) {
+        try {
+          let catalog = null;
+          let cursor = null;
+          const cursors = new Set();
+          do {
+            const page = normalizeCourseSourcesPage(await controller.loadCourseSources(courseId, {
+              mode: "catalog", expectedRevision: expectedCourseRevision, limit: 10, cursor
+            }), { expectedCourseId: courseId, expectedCourseRevision, expectedMode: "catalog" });
+            if (!state.opened || state.course?.courseId !== courseId ||
+                state.course.revision !== expectedCourseRevision) return false;
+            catalog = catalog ? mergeCourseSourceCatalogPages(catalog, page) : page;
+            for (const source of page.items) {
+              if (sourceIds.has(source.sourceId) && source.title) sourceTitles.set(source.sourceId, source.title);
+            }
+            cursor = page.nextCursor;
+            if (cursor && cursors.has(cursor)) throw new Error("source_catalog_cursor_repeated");
+            cursors.add(cursor);
+          } while (cursor && [...sourceIds].some(id => !sourceTitles.has(id)));
+        } catch {
+          sourceTitles.clear();
+        }
+      }
+      if (!state.opened || state.course?.courseId !== courseId ||
+          state.course.revision !== expectedCourseRevision) return false;
+      state.authoringPlan = { ...result, sourceTitles };
       return true;
     } catch (error) {
       if (!state.opened || state.course?.courseId !== courseId) return false;

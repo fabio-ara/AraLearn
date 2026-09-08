@@ -37,7 +37,7 @@ async function mount(page, fixture = curriculumMapFixture()) {
     const scrollRoot = document.querySelector("main");
     window.__mapNavigations = [];
     function render(initialState = null) {
-      host.innerHTML = renderCourseCurriculumMap({ ...fixture, expansion: initialState?.expansion || [] });
+      host.innerHTML = renderCourseCurriculumMap({ ...fixture, sourceTitles: new Map(fixture.sourceTitles || []), expansion: initialState?.expansion || [] });
       window.__mapBinding = bindCourseCurriculumMap(host.querySelector("[data-course-curriculum-map]"), {
         scrollRoot, initialState,
         onStateChange(state) { window.__mapState = state; },
@@ -141,4 +141,32 @@ test("mapa e objetivos longos não transbordam em quatro larguras e dois temas r
     }
   }
   expect(colors.get("light")).not.toBe(colors.get("dark"));
+});
+
+
+test("fonte prevista usa título humano e retorna ao mesmo ramo por teclado", async ({ page }, testInfo) => {
+  const fixture = curriculumMapFixture({ moduleCount: 1 });
+  const sourceId = "f76d44d3-d0e0-8159-acbf-60c7a6cf72ad";
+  fixture.sourceTitles = [[sourceId, "Fonte sintética sobre sockets"]];
+  fixture.curriculum.modules[0].lessons[0].microsequences[0].explanationPlan = {
+    purpose: "Relacionar programa, socket e conexão.", prerequisites: ["Programa em execução"],
+    relations: ["Interface local e relação entre processos"], sourceIds: [sourceId]
+  };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mount(page, fixture);
+  for (const id of ["module:module-1", "lesson:lesson-1-1", "explanation:micro-1-1-1"]) {
+    await disclosure(page, id).locator(":scope > summary").click();
+  }
+  const source = page.getByRole("link", { name: "Fonte sintética sobre sockets", exact: true });
+  await expect(source).toHaveAttribute("href", new RegExp(`section=sources&sourceId=${sourceId}$`));
+  await source.scrollIntoViewIfNeeded();
+  await source.focus();
+  await page.screenshot({ path: testInfo.outputPath("planned-source-title.png"), fullPage: false });
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Destino de inspeção" })).toBeVisible();
+  const navigation = await page.evaluate(() => window.__mapNavigations.at(-1));
+  expect(navigation.options.returnTo).toContain("section=planning");
+  await page.getByRole("button", { name: "Voltar ao mapa" }).click();
+  await expect(source).toBeFocused();
+  await expect(disclosure(page, "explanation:micro-1-1-1")).toHaveAttribute("open", "");
 });

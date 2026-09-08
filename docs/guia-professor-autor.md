@@ -6,7 +6,10 @@ trabalho amplo; a interface visual mantém mapa, conteúdo, fontes, observaçõe
 configuração e Analytics ao alcance do contexto.
 
 No **Planejamento**, abra a microssequência e sua **Explicação prevista** para
-examinar finalidade, pressupostos, relações e fontes. O apoio é compartilhado
+examinar finalidade, pressupostos, relações e fontes. As fontes previstas mostram o título
+do catálogo na mesma revisão do plano e abrem sua inspeção. Quando o título
+não pode ser consultado, o link permanece como **Fonte prevista · título
+indisponível**; isso não afirma que a fonte foi removida. O apoio é compartilhado
 pelas unidades dessa microssequência. Uma parte com **Conteúdo produzido** tem
 material já disponível para inspeção; esse estado não atesta revisão humana.
 Mapa aprovado e autorização para produzir não aprovam textos ainda não vistos.
