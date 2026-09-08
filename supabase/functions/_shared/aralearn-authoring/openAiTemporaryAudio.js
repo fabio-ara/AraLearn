@@ -3,18 +3,34 @@ import { COURSE_AUDIO_MEDIA_TYPES, COURSE_MEDIA_MAX_BYTES, inspectCourseAudioByt
 import { AuthoringApiError } from "./errors.js";
 import { resolveOpenAiTemporaryFile } from "./openAiTemporaryFile.js";
 
+function unsupportedAudioMediaType({ source, mediaType } = {}) {
+  const normalized = typeof mediaType === "string" ? mediaType.trim().toLowerCase() : "";
+  const safeMediaType = typeof mediaType === "string" && mediaType.length <= 96 &&
+    ![...mediaType].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) &&
+    /^[a-z0-9][a-z0-9._+-]*\/[a-z0-9][a-z0-9._+-]*$/u.test(normalized)
+    ? normalized : "valor inválido";
+  const location = source === "descriptor" ? "no descritor do anexo" : "na resposta do download";
+  return new AuthoringApiError(415, "unsupported_audio_media_type",
+    `O tipo de mídia ${location} foi recusado: ${safeMediaType}. Use áudio WAV PCM ou MP3.`);
+}
+
 const AUDIO_POLICY = {
   field: "audio", mediaTypes: new Set(COURSE_AUDIO_MEDIA_TYPES), maxBytes: COURSE_MEDIA_MAX_BYTES,
+  responseMediaTypes: new Set([...COURSE_AUDIO_MEDIA_TYPES, "audio/x-wav"]),
   errors: {
     invalidDescriptor: (path = "audio", rule = "valid_openai_file_reference") => new AuthoringApiError(
       422, "invalid_openai_file", "O arquivo de áudio precisa ser fornecido pelo cliente da conversa.", { path, rule }),
-    unsupportedMediaType: () => new AuthoringApiError(415, "unsupported_audio_media_type", "Use áudio WAV PCM ou MP3."),
+    unsupportedMediaType: unsupportedAudioMediaType,
     expiredFile: () => new AuthoringApiError(410, "openai_file_expired", "O acesso temporário ao áudio expirou. Anexe o arquivo novamente."),
     unavailableFile: () => new AuthoringApiError(502, "openai_file_unavailable", "Não foi possível receber o áudio. Repita a mesma tentativa."),
     timedOutFile: () => new AuthoringApiError(408, "openai_file_timeout", "O recebimento do áudio não terminou a tempo. Repita a mesma tentativa."),
     oversizedFile: () => new AuthoringApiError(413, "audio_too_large", "Use áudio de até 20 MiB.")
   }
 };
+
+function canonicalTransportMediaType(value) {
+  return value === "audio/x-wav" ? "audio/wav" : value;
+}
 
 /** Bytes reais, MIME verificado e nome local; nunca devolve a URL temporária. */
 export async function resolveOpenAiTemporaryAudio(options) {
@@ -24,7 +40,7 @@ export async function resolveOpenAiTemporaryAudio(options) {
       declaredMediaType: options.descriptor.mime_type?.trim().toLowerCase() ?? ""
     });
     if (responseMediaType && responseMediaType !== "application/octet-stream" &&
-        responseMediaType !== inspected.mediaType) throw new TypeError("MIME divergente.");
+        canonicalTransportMediaType(responseMediaType) !== inspected.mediaType) throw new TypeError("MIME divergente.");
     const fileName = normalizeCourseAudioFileName(options.descriptor.file_name ?? `audio.${inspected.extension}`);
     return { bytes, mediaType: inspected.mediaType, fileName };
   } catch {

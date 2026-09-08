@@ -81,13 +81,13 @@ function renderMicrosequence(courseId, microsequence, nodes, expansion) {
     objective("microsequence", microsequence, expansion) + dependencies +
     (microsequence.role ? `<p class="course-curriculum-map-caption">Função no percurso: ${escapeHtml({ explain: "explicação e desenvolvimento teórico", practice: "prática", review: "revisão", support: "apoio" }[microsequence.role] || microsequence.role)}</p>` : "") +
     details(key("explanation", microsequence.id), "Explicação prevista",
-      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id), expansion) +
+      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id, nodes.sourceTitles), expansion) +
     (nodes.courseRevision ? renderCourseAuthoringDebate({ courseId, courseRevision: nodes.courseRevision,
       title: microsequence.title, contextLabel: "o planejamento e a Explicação desta microssequência",
       route: buildCourseAuthoringRoute(courseId, { section: "content", didacticMicrosequenceId: microsequence.id }) }) : "") + '</li>';
 }
 
-function renderExplanationPlan(courseId, plan, microsequenceId) {
+function renderExplanationPlan(courseId, plan, microsequenceId, sourceTitles) {
   if (!plan) return '<p>O apoio desta microssequência ainda não foi planejado. Isso não impede a leitura do conteúdo anterior.</p>';
   const list = (label, values, empty) => `<h6>${label}</h6>` + (values.length
     ? `<ul>${values.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul>` : `<p>${empty}</p>`);
@@ -96,7 +96,7 @@ function renderExplanationPlan(courseId, plan, microsequenceId) {
     list("Relações a explicar", plan.relations, "Nenhuma relação foi registrada no apoio previsto.") +
     '<h6>Fontes previstas</h6>' + (plan.sourceIds.length ? '<ul>' + plan.sourceIds.map(sourceId =>
       `<li><a data-curriculum-navigate data-curriculum-key="${escapeHtml(key("explanation-source", microsequenceId, sourceId))}" href="${escapeHtml(buildCourseAuthoringRoute(courseId,
-        { section: "sources", sourceId }))}">${escapeHtml(sourceId)}</a></li>`).join("") + '</ul>' :
+        { section: "sources", sourceId }))}">${escapeHtml(sourceTitles.get(sourceId) || "Fonte prevista · título indisponível")}</a></li>`).join("") + '</ul>' :
       '<p>Fontes ainda não indicadas. A revisão precisa conferir o apoio e seus vínculos.</p>');
 }
 
@@ -148,10 +148,11 @@ function renderCoverageItem(courseId, item, nodes, expansion) {
 
 /** Receives the already normalized planning projection; expansion is temporary UI state. */
 export function renderCourseCurriculumMap({
-  courseId, courseRevision = null, curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = []
+  courseId, courseRevision = null, sourceTitles = new Map(), curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = []
 }) {
   const nodes = indexCurriculum(curriculum);
   nodes.courseRevision = courseRevision;
+  nodes.sourceTitles = sourceTitles;
   const expanded = new Set(expansion);
   const returnTo = buildCourseAuthoringRoute(courseId, { section: "planning" });
   const content = curriculum.modules.length

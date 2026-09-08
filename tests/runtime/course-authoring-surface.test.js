@@ -1,3 +1,4 @@
+import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -2964,3 +2965,85 @@ test("visibilidade confirma política e repete pedido idêntico se a resposta se
   assert.match(root.innerHTML, /value="public" selected/u);
   surface.destroy();
 });
+
+function planningSource(index = 1, overrides = {}) {
+  return {
+    sourceId: `source-${String(index).padStart(2, "0")}`,
+    revision: 1,
+    status: "active",
+    kind: "book",
+    defaultRoles: ["technical_conceptual"],
+    bibliographic: createEmptyCourseSourceBibliographicMetadata(),
+    citationMode: "manual",
+    title: `Fonte ${index}`,
+    authors: [{ literal: "Autoria" }],
+    publicationDate: "2026",
+    identifier: null,
+    language: "pt-BR",
+    citationText: `Autoria. Fonte ${index}. 2026.`,
+    url: `https://example.test/source-${index}`,
+    editionOrVersion: null,
+    origin: "external",
+    availability: "open_access",
+    verificationStatus: "author_verified",
+    studyVisibility: "citation_and_link",
+    publicFileAccess: "inherit",
+    anchorCount: 1,
+    createdAt: "2026-09-02T12:00:00.000Z",
+    ...overrides
+  };
+}
+
+function catalogPage(items, { revision = 5, nextCursor = null } = {}) {
+  return {
+    contract: "aralearn.course-sources.v3",
+    bibliographyStyle: "abnt-2025",
+    courseId: COURSE_ID,
+    courseRevision: revision,
+    mode: "catalog",
+    query: { sourceId: null, targetKind: null, targetId: null },
+    pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+    items,
+    nextCursor
+  };
+}
+
+for (const mode of ["paged", "absent", "failure", "revision", "unneeded"]) {
+  test(`planejamento conserva mapa e resolve fontes pela leitura existente: ${mode}`, async () => {
+    const root = new FakeRoot();
+    const sourceId = "f76d44d3-d0e0-8159-acbf-60c7a6cf72ad";
+    const plan = authoringPlanFixture();
+    if (mode !== "unneeded") plan.plan.curriculum.modules[0].lessons[0].microsequences[0].explanationPlan = {
+      purpose: "Relacionar sockets.", prerequisites: [], relations: [], sourceIds: [sourceId]
+    };
+    const calls = [];
+    const surface = createCourseAuthoringSurface({ root, windowValue: new FakeWindow(),
+      locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(COURSE_ID, { section: "planning" }) },
+      controller: controllerFixture({
+        async loadAuthoringPlan() { return plan; },
+        async loadCourseSources(courseId, options) {
+          assert.equal(courseId, COURSE_ID);
+          assert.equal(options.mode, "catalog");
+          assert.equal(options.expectedRevision, 5);
+          calls.push(options);
+          if (mode === "failure") throw Object.assign(new Error("Denied"), { status: 403 });
+          if (mode === "absent") return catalogPage([]);
+          if (!options.cursor) return catalogPage([planningSource()], { nextCursor: "cGFnZTI=" });
+          return catalogPage([planningSource(2, { sourceId, title: "Fonte sintética sobre sockets" })],
+            { revision: mode === "revision" ? 6 : 5 });
+        }
+      }) });
+    assert.equal(await surface.open(), true);
+    assert.match(root.innerHTML, /Mapa curricular/u);
+    if (mode === "paged") {
+      assert.equal(calls.length, 2);
+      assert.equal(calls[1].cursor, "cGFnZTI=");
+      assert.match(root.innerHTML, /sourceId=f76d44d3-d0e0-8159-acbf-60c7a6cf72ad">Fonte sintética sobre sockets<\/a>/u);
+    } else if (mode === "unneeded") assert.equal(calls.length, 0);
+    else {
+      assert.match(root.innerHTML, /sourceId=f76d44d3-d0e0-8159-acbf-60c7a6cf72ad">Fonte prevista · título indisponível<\/a>/u);
+      assert.doesNotMatch(root.innerHTML, /Fonte sintética sobre sockets|Fonte removida/u);
+    }
+    surface.destroy();
+  });
+}

@@ -66,6 +66,16 @@ preserva o apoio literal e a proveniência correspondente. As formas de explica�
 registradas na aplicação pedagógica de uma unidade continuam sendo medidas dessa
 unidade: não são o objeto de apoio compartilhado.
 
+Ao corrigir conteúdo com fontes explícitas, o sistema relê a atribuição do alvo
+na mesma revisão. Um vínculo com a mesma fonte, relação e âncoras conserva sua
+identidade; uma ocorrência com o mesmo recurso, seletor e trecho também a
+conserva. Alterar papéis ou trechos aplica os valores declarados, sem duplicar
+o vínculo. Omitir ocorrências preserva as existentes no vínculo correspondente;
+uma lista explicitamente vazia as retira. Vínculos omitidos continuam protegidos
+pela composição. Se mais de um vínculo corresponder, a correção pede inspeção
+em vez de escolher uma identidade. Alterações de relação ou de âncoras que
+substituam um vínculo devem usar a posição desse vínculo em `manter_fonte`.
+
 Produção e correção deixam o conteúdo pendente de revisão. Aprovar o mapa ou
 autorizar um lote não aprova o material futuro. A aprovação do conteúdo
 inspecionado é uma ação humana protegida na Autoria, fora das ferramentas de IA;
@@ -78,6 +88,23 @@ de artefato não substituem `{download_url, file_id, mime_type?, file_name?}`.
 O servidor aceita a origem temporária autorizada e valida bytes antes de
 persistir. Essa extensão depende da capacidade do cliente MCP; não se presume
 acesso a arquivos locais. Ingerir áudio não chama síntese ou transcrição.
+
+Quando um tipo de áudio é recusado, a mensagem distingue o tipo declarado no
+descritor do anexo do tipo recebido na resposta do download. Ela informa somente
+um token MIME válido e limitado; valores inválidos não são reproduzidos. Isso
+permite identificar o ponto da rejeição sem expor a URL temporária, parâmetros
+do cabeçalho ou identificadores do arquivo. O erro continua
+`unsupported_audio_media_type` (HTTP 415); o diagnóstico não aceita tipos novos
+nem substitui a inspeção dos bytes WAV PCM/MP3. A mensagem, isoladamente, não
+afirma que o conteúdo do arquivo é inválido.
+
+O rótulo de transporte `audio/x-wav`, observado na resposta real de download
+do cliente, é tratado como `audio/wav`. O descritor continua declarando
+`audio/wav` ou `audio/mpeg`, conforme o contrato da tarefa. A inspeção exige
+bytes WAV PCM válidos e coerentes com o descritor e a resposta;
+MP3, HTML, PDF ou WAV não PCM sob esse rótulo são recusados. O armazenamento
+e a referência devolvida conservam `audio/wav`. Isso não amplia formatos,
+origens autorizadas, limite de bytes nem seguimento de redirecionamentos.
 
 As ferramentas do Estudo são pacotes do catálogo comum, compostos no `content`
 da unidade. A consulta focal de componentes fornece um contrato por vez; a de

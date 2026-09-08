@@ -20,6 +20,19 @@ test("Explicação prevista revela pressupostos, relações e fontes sem aprovar
   assert.deepEqual(fixture, before);
 });
 
+test("fontes previstas mostram título escapado e preservam identidade, com ausência honesta", () => {
+  const fixture = curriculumMapFixture({ moduleCount: 1 });
+  const sourceId = "f76d44d3-d0e0-8159-acbf-60c7a6cf72ad";
+  fixture.curriculum.modules[0].lessons[0].microsequences[0].explanationPlan = {
+    purpose: "Planejar apoio.", prerequisites: [], relations: [], sourceIds: [sourceId, "ausente"]
+  };
+  const html = renderCourseCurriculumMap({ ...fixture,
+    sourceTitles: new Map([[sourceId, "Fonte sintética sobre sockets <segura>"]]) });
+  assert.match(html, /sourceId=f76d44d3-d0e0-8159-acbf-60c7a6cf72ad">Fonte sintética sobre sockets &lt;segura&gt;<\/a>/u);
+  assert.match(html, /sourceId=ausente">Fonte prevista · título indisponível<\/a>/u);
+  assert.doesNotMatch(html, />f76d44d3-d0e0-8159-acbf-60c7a6cf72ad</u);
+});
+
 test("mapa grande conserva objetivos completos e começa sem expandir módulos, lições ou cobertura", () => {
   const fixture = curriculumMapFixture();
   const html = renderCourseCurriculumMap(fixture);

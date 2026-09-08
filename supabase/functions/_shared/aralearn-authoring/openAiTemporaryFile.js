@@ -52,7 +52,7 @@ function normalizeDescriptor(descriptor, { field, mediaTypes, errors }) {
   if (Object.hasOwn(descriptor, "mime_type")) {
     if (typeof descriptor.mime_type !== "string" ||
         !mediaTypes.has(descriptor.mime_type.trim().toLowerCase())) {
-      throw unsupportedMediaType();
+      throw unsupportedMediaType({ source: "descriptor", mediaType: descriptor.mime_type });
     }
   }
 
@@ -138,7 +138,7 @@ export async function resolveOpenAiTemporaryFile({
   fetchImpl = globalThis.fetch,
   deadlineAt
 } = {}, policy) {
-  const { field, mediaTypes, maxBytes, errors } = policy;
+  const { field, mediaTypes, responseMediaTypes = mediaTypes, maxBytes, errors } = policy;
   const { invalidDescriptor, unsupportedMediaType, expiredFile, unavailableFile, timedOutFile, oversizedFile } = errors;
   const downloadUrl = normalizeDescriptor(descriptor, policy);
   if (typeof fetchImpl !== "function" || !Number.isFinite(deadlineAt)) {
@@ -203,10 +203,10 @@ export async function resolveOpenAiTemporaryFile({
     cancelBody(response);
     throw unavailableFile();
   }
-  if (mediaType && mediaType !== "application/octet-stream" && !mediaTypes.has(mediaType)) {
+  if (mediaType && mediaType !== "application/octet-stream" && !responseMediaTypes.has(mediaType)) {
     clearTimeout(timeoutId);
     cancelBody(response);
-    throw unsupportedMediaType();
+    throw unsupportedMediaType({ source: "response", mediaType });
   }
 
   if (contentLength !== null && contentLength > maxBytes) {

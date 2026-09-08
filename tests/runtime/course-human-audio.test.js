@@ -113,8 +113,10 @@ test("biblioteca usa página humana, revisão estável e não baixa gravações"
 });
 
 test("Actions e MCP aceitam o descritor do cliente sem confundir áudio com PDF", async () => {
-  for (const channel of ["action", "mcp"]) {
-    const adapter = fixture();
+  for (const [channel, responseMimeType] of ["action", "mcp"].flatMap(channel =>
+    ["audio/wav", "audio/x-wav"].map(responseMimeType => [channel, responseMimeType]))) {
+    let downloads = 0;
+    const adapter = fixture({ fetchImpl: async () => { downloads++; return new Response(wave(), { headers: { "content-type": responseMimeType } }); } });
     const handler = channel === "action" ? createAuthoringActionHandler({ adapter, allowedOrigins: new Set([ORIGIN]), actionBaseUrl: BASE, publicAppUrl: adapter.publicAppUrl })
       : createAuthoringMcpHandler({ adapter, allowedOrigins: new Set([ORIGIN]), resourceUrl: MCP, authorizationServer: "https://project.example/auth/v1" });
     const args = channel === "action" ? { curso: "Fonética", openaiFileIdRefs: [{ id: descriptor.file_id, name: descriptor.file_name,
@@ -127,11 +129,43 @@ test("Actions e MCP aceitam o descritor do cliente sem confundir áudio com PDF"
     const payload = await response.json();
     const result = channel === "action" ? payload : payload.result.structuredContent;
     assert.deepEqual(result.context.storedAudio, { ...MEDIA, fileName: "som.wav" });
-    assert.equal(adapter.calls.length, 1); assert.equal(adapter.downloads, 1);
+    assert.equal(adapter.calls.length, 1); assert.equal(downloads, 1);
+    assert.deepEqual(adapter.calls[0].bytes, wave());
+    assert.equal(adapter.calls[0].mediaType, "audio/wav");
     assert.doesNotMatch(JSON.stringify(payload), /hidden-fixture|file-synthetic|oaiusercontent/u);
   }
   assert.deepEqual(COURSE_HUMAN_TASKS.find(t => t.name === "guardar_audio")._meta["openai/fileParams"], ["audio"]);
   assert.deepEqual(COURSE_HUMAN_TASKS.find(t => t.name === "incorporar_pdf_como_fonte")._meta["openai/fileParams"], ["pdf"]);
+});
+
+test("erro de MIME do download chega aos canais sem URL, parâmetro ou gravação", async () => {
+  for (const channel of ["action", "mcp"]) {
+    const adapter = fixture({ fetchImpl: async () => new Response(wave(), {
+      headers: { "content-type": "audio/ogg; token=private-header" }
+    }) });
+    const handler = channel === "action"
+      ? createAuthoringActionHandler({ adapter, allowedOrigins: new Set([ORIGIN]), actionBaseUrl: BASE, publicAppUrl: adapter.publicAppUrl })
+      : createAuthoringMcpHandler({ adapter, allowedOrigins: new Set([ORIGIN]), resourceUrl: MCP, authorizationServer: "https://project.example/auth/v1" });
+    const args = channel === "action" ? { curso: "Fonética", openaiFileIdRefs: [{
+      id: descriptor.file_id, name: descriptor.file_name, mime_type: descriptor.mime_type,
+      download_link: descriptor.download_url
+    }] } : { curso: "Fonética", audio: descriptor };
+    const body = channel === "action" ? args : { jsonrpc: "2.0", id: 1, method: "tools/call",
+      params: { name: "guardar_audio", arguments: args } };
+    const response = await handler(new Request(channel === "action" ? `${BASE}/guardar_audio` : MCP, {
+      method: "POST", headers: { Origin: ORIGIN, Authorization: "Bearer synthetic-token",
+        "Content-Type": "application/json", Accept: "application/json, text/event-stream",
+        "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION }, body: JSON.stringify(body)
+    }));
+    assert.equal(response.status, channel === "action" ? 415 : 200);
+    const payload = await response.json();
+    const result = channel === "action" ? payload : payload.result.structuredContent;
+    assert.equal(result.error.code, "unsupported_audio_media_type");
+    assert.equal(result.error.retryable, false);
+    assert.match(result.error.message, /na resposta do download foi recusado: audio\/ogg/u);
+    assert.doesNotMatch(JSON.stringify(payload), /private-header|hidden-fixture|file-synthetic|oaiusercontent|synthetic-token/u);
+    assert.equal(adapter.calls.length, 0);
+  }
 });
 
 test("descoberta dos5 pacotes ferramenta traz um contrato focal por chamada, sem enum por canal", async () => {
