@@ -48,9 +48,10 @@ export function pendingUpgradeMigrations(names, boundary, expectedRevision, appl
   return ordered.filter((name) => name > boundary && !revisions.has(name.slice(0, 14)));
 }
 
-function command(command, args, { allowFailure = false, timeout = 120_000 } = {}) {
+function command(command, args, { allowFailure = false, timeout = 120_000, input } = {}) {
   const result = spawnSync(command, args, {
     cwd: repositoryRoot,
+    input,
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
     timeout
@@ -286,15 +287,15 @@ function migrationsBefore(firstMigration) {
 }
 
 function applyMigrationFiles(container, migrationNames, containerDirectory) {
+  // Like the CLI, record each successful migration before the next preflight.
+  // One psql process keeps that ordering without hundreds of Docker processes.
+  const input = migrationNames.map((name) =>
+    `\\i ${containerDirectory}/${name}\n${migrationRecordSql(name)};\n`).join("");
   command("docker", ["cp", migrationDirectory, `${container}:${containerDirectory}`]);
   command("docker", [
-    "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
-    "-X", "-v", "ON_ERROR_STOP=1",
-    ...migrationNames.flatMap((name) => ["-f", `${containerDirectory}/${name}`])
-  ], { timeout: 15 * 60_000 });
-  // Schema-only preparation brings no source migration history. Record the
-  // historical chain actually applied, rather than inheriting current rows.
-  for (const name of migrationNames) recordAppliedMigration(container, name);
+    "exec", "-i", container, "psql", "-U", "supabase_admin", "-d", "postgres",
+    "-X", "-v", "ON_ERROR_STOP=1"
+  ], { timeout: 15 * 60_000, input });
 }
 
 async function restoreBackupFile(source, backupPath, target) {
@@ -316,16 +317,11 @@ function copyAndApply(container, localPath, containerPath) {
   ]);
 }
 
-function recordAppliedMigration(container, migration) {
+function migrationRecordSql(migration) {
   const match = /^(001|\d{14})_([a-z0-9_]+)\.sql$/u.exec(path.basename(migration));
   if (!match) throw new TypeError(`Migration final inválida: ${migration}`);
-  command("docker", [
-    "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
-    "-X", "-v", "ON_ERROR_STOP=1", "-c",
-    `insert into supabase_migrations.schema_migrations(version,statements,name) ` +
-    `values('${match[1]}',null,'${match[2]}') on conflict(version) do update ` +
-    `set name=excluded.name`
-  ]);
+  return "insert into supabase_migrations.schema_migrations(version,statements,name) " +
+    `values('${match[1]}',null,'${match[2]}') on conflict(version) do update set name=excluded.name`;
 }
 
 function queryJson(container, sql) {
@@ -339,6 +335,37 @@ function queryJson(container, sql) {
   } catch {
     throw new Error(`A consulta de prova não devolveu JSON: ${value.slice(0, 1000)}`);
   }
+}
+
+// Restore reparses BETWEEN into associative AND checks. PostgreSQL's own
+// pretty deparser removes those redundant parentheses without changing a
+// predicate. Only the four observed CHECK definitions receive this treatment;
+// every other schema byte (apart from the random psql guard) remains compared.
+export function normalizeApplicationSchemaDump(source, constraints = []) {
+  let normalized = source.replaceAll("\r\n", "\n")
+    .split("\n").filter((line) => !/^\\(?:un)?restrict \S+$/u.test(line)).join("\n");
+  for (const { identifier, definition, canonical } of constraints) {
+    const prefix = `    CONSTRAINT ${identifier} `;
+    const literal = `${prefix}${definition}`;
+    assert.equal(normalized.split(literal).length - 1, 1,
+      `A definição CHECK ${identifier} não aparece uma única vez no dump.`);
+    normalized = normalized.replace(literal, `${prefix}${canonical}`);
+  }
+  return normalized;
+}
+
+function applicationSchemaDump(container) {
+  const constraints = queryJson(container, `select jsonb_agg(jsonb_build_object(
+    'identifier',quote_ident(conname),'definition',pg_get_constraintdef(oid,false),
+    'canonical',pg_get_constraintdef(oid,true)) order by conname)
+    from pg_constraint where conname in ('course_instructional_plans_part_range_v1',
+      'course_source_anchors_excerpt_v1','course_source_anchors_human_locator_v1',
+      'course_source_anchors_identity_v1') and contype='c'`);
+  assert.equal(constraints.length, 4, "Os quatro CHECKs de recuperação precisam existir.");
+  return normalizeApplicationSchemaDump(command("docker", [
+    "exec", container, "pg_dump", "-U", "supabase_admin", "-d", "postgres",
+    "--schema-only", "--schema=public", "--schema=private", "--no-owner"
+  ]).stdout, constraints);
 }
 
 const technicalMeasureSql = `
@@ -784,6 +811,33 @@ function readAppliedRevisions(container) {
     "from supabase_migrations.schema_migrations");
 }
 
+export function verifyApplicationConvergence(clean, restored, expectedManifest) {
+    const upgradedSchema = applicationSchemaDump(restored);
+    const cleanSchema = applicationSchemaDump(clean);
+    assert.equal(cleanSchema, upgradedSchema,
+      "Instalação limpa e upgrade divergem no schema executável ou nas permissões.");
+    const catalogsSql = `select jsonb_build_object(
+      'parameters',(select jsonb_agg(to_jsonb(definition)-'created_at' order by parameter_id)
+        from private.course_design_parameter_definitions definition),
+      'components',private.course_component_catalog_v1())`;
+    const cleanCatalogs = queryJson(clean, catalogsSql);
+    assert.deepEqual(cleanCatalogs, queryJson(restored, catalogsSql),
+      "Instalação limpa e upgrade divergem nas definições ou padrões dos catálogos correntes.");
+    compareRuntimeManifest(expectedManifest, queryJson(clean,
+      "select public.get_aralearn_runtime_manifest()"));
+    assert.deepEqual(readAppliedRevisions(clean), readAppliedRevisions(restored),
+      "Instalação limpa e upgrade possuem histórias de migrations diferentes.");
+
+  return Object.freeze({
+    schemaSha256: createHash("sha256").update(cleanSchema).digest("hex"),
+    schemaBytes: Buffer.byteLength(cleanSchema),
+    matchesUpgrade: true,
+    catalogSha256: createHash("sha256").update(JSON.stringify(cleanCatalogs)).digest("hex"),
+    parameterCount: cleanCatalogs.parameters.length,
+    authorizationIncluded: true
+  });
+}
+
 export async function verifyBackupRestoreUpgrade({
   migrations = defaultMigrations,
   fixture = defaultFixture,
@@ -807,6 +861,7 @@ export async function verifyBackupRestoreUpgrade({
   const image = `aralearn-restore-base-${token}`;
   const source = `aralearn_restore_source_${token}`;
   const restored = `aralearn_restore_target_${token}`;
+  const clean = `aralearn_restore_clean_${token}`;
   const backupPath = `/tmp/aralearn-backup-${token}.dump`;
   try {
     command("docker", ["commit", "--pause=false", resolved.sourceContainer, image]);
@@ -832,10 +887,8 @@ export async function verifyBackupRestoreUpgrade({
 
     await startDisposableContainer(restored, image);
     await restoreBackupFile(source, backupPath, restored);
-    for (const [index, migration] of resolved.migrations.entries()) {
-      copyAndApply(restored, migration, `/tmp/migration-${index + 1}-${token}.sql`);
-      recordAppliedMigration(restored, migration);
-    }
+    applyMigrationFiles(restored, resolved.migrations.map((migration) => path.basename(migration)),
+      `/tmp/checkpoint-migrations-${token}`);
 
     const after = {
       technical: queryJson(restored, technicalMeasureSql),
@@ -858,11 +911,7 @@ export async function verifyBackupRestoreUpgrade({
       from private.course_sources where course_id='${COURSE_ID}'`);
     const tail = pendingUpgradeMigrations(availableMigrations, historicalBoundary,
       expectedManifest.schemaRevision, readAppliedRevisions(restored));
-    for (const [index, name] of tail.entries()) {
-      const migration = path.join(migrationDirectory, name);
-      copyAndApply(restored, migration, `/tmp/current-${index + 1}-${token}.sql`);
-      recordAppliedMigration(restored, migration);
-    }
+    applyMigrationFiles(restored, tail, `/tmp/current-migrations-${token}`);
     const currentState = queryJson(restored, afterStateSql);
     assertCurrentState(after.state, currentState, expectedManifest.schemaRevision);
     assert.deepEqual(queryJson(restored, preservedStateSql), preserved,
@@ -895,6 +944,26 @@ export async function verifyBackupRestoreUpgrade({
       expectedManifest.schemaRevision, readAppliedRevisions(restored));
     assert.deepEqual(repeated, [], "Repetir a seleção reaplicaria uma migration já registrada.");
 
+    const legacyReview = queryJson(restored, `select jsonb_build_object(
+      'review',private.course_microsequence_review_v1('${COURSE_ID}','micro-restore'),
+      'registered',(select count(*) from private.course_entities where course_id='${COURSE_ID}'
+        and content_review is not null),
+      'explanations',(select count(*) from private.course_entities where course_id='${COURSE_ID}'
+        and entity_type='microsequence' and content ? 'explanation'),
+      'studentReadable',private.course_entity_readable_v1('${COURSE_ID}',null,
+        'study_unit','unit-restore','micro-restore'))`);
+    assert.equal(legacyReview.review.state, "unregistered");
+    assert.equal(legacyReview.registered, 0, "Upgrade inventou uma decisão de revisão.");
+    assert.equal(legacyReview.explanations, 0, "Upgrade gerou apoio retroativamente.");
+    assert.equal(legacyReview.studentReadable, true, "Upgrade bloqueou acervo anterior legível.");
+
+    await startDisposableContainer(clean, image);
+    await cloneDatabase(resolved.sourceContainer, clean);
+    const orderedMigrations = [...availableMigrations].sort();
+    resetDisposableApplicationState(clean, path.join(migrationDirectory, orderedMigrations[0]));
+    applyMigrationFiles(clean, orderedMigrations, `/tmp/clean-migrations-${token}`);
+    const cleanInstall = verifyApplicationConvergence(clean, restored, expectedManifest);
+
     return Object.freeze({
       contract: "aralearn.backup-restore-upgrade-proof.v3",
       migrations: Object.freeze(migrationNames),
@@ -909,7 +978,9 @@ export async function verifyBackupRestoreUpgrade({
         citationContract: citations.contract,
         designContract: design.contract,
         parameterCatalogVersion: design.parameterCatalogVersion,
-        repeatPendingMigrations: repeated.length
+        repeatPendingMigrations: repeated.length,
+        legacyReview,
+        cleanInstall: Object.freeze({ migrations: orderedMigrations.length, ...cleanInstall })
       }),
       storage: Object.freeze({
         databaseBackupContainsMetadataOnly: before.state.storageObjects === 0,
@@ -918,7 +989,7 @@ export async function verifyBackupRestoreUpgrade({
       disposable: true
     });
   } finally {
-    for (const container of [source, restored]) {
+    for (const container of [source, restored, clean]) {
       command("docker", ["rm", "-f", "-v", container], { allowFailure: true });
     }
     command("docker", ["image", "rm", "-f", image], { allowFailure: true });

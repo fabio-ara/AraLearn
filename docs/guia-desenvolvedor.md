@@ -189,10 +189,20 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 npm.cmd run test:backup-restore:local
 ```
 
-O ensaio de backup e restauração usa bancos PostgreSQL descartáveis, restaura um
-dump anterior, aplica a migração corrente e confere estrutura, planejamento,
-desenho, configuração, fontes, PDFs e Observações. Os bytes do Storage formam
-uma fronteira separada do backup lógico do banco.
+O ensaio de backup e restauração usa bancos PostgreSQL descartáveis e sem rede,
+restaura um dump sintético anterior e percorre a cadeia de migrações até o
+manifesto corrente. Confere estrutura, planejamento, desenho, configuração,
+fontes, metadados de PDFs e Observações. Também instala a cadeia do zero em outro
+banco e compara o schema executável, incluindo grants e políticas, e as definições
+e os padrões dos catálogos de parâmetros e componentes com o banco atualizado. O acervo anterior conserva o estado de revisão não registrado e a
+leitura permitida, sem receber aprovação ou Explicação geradas pelo upgrade.
+Cada migração é registrada no histórico antes da próxima verificação. Quatro
+restrições CHECK antigas têm a mesma expressão com agrupamento diferente de AND
+após o dump/restore; nessas definições a comparação usa o deparser do próprio
+PostgreSQL. Os predicados permanecem comparados, e uma mudança de limite reprova
+o teste. O restante do SQL é comparado literalmente.
+Essa prova não equivale à restauração de um backup hospedado atual. Os bytes do
+Storage formam uma fronteira separada do backup lógico do banco.
 
 Funções `security definer` fixam `search_path`, revogam execução ampla e validam
 a pessoa no corpo da operação. Tabelas expostas exigem privilégio e política de
