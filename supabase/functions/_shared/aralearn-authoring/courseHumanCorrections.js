@@ -172,7 +172,11 @@ async function loadCorrectionState({
 function preserveMatchingSourceIdentities(links, currentLinks, requestedSources) {
   const binding = (link) => canonicalAuthoringValue({ sourceId: link.sourceId,
     relation: link.relation, anchors: link.anchors.map(({ anchorId }) => anchorId).sort() });
-  const occurrence = ({ occurrenceId, ...value }) => canonicalAuthoringValue(value);
+  const occurrence = (entry) => {
+    const value = { ...entry };
+    delete value.occurrenceId;
+    return canonicalAuthoringValue(value);
+  };
   const used = new Set();
   return links.map((link, index) => {
     const matches = currentLinks.filter((current) => binding(current) === binding(link));
