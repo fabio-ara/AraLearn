@@ -230,6 +230,9 @@ fixtures incluem Explicação e uma aprovação explicitamente simulada pelo RPC
 protegido; essa preparação não constitui revisão humana de um curso real.
 As revisões usadas após a aprovação são relidas, sem fixar o número anterior à
 mudança. Falhas HTTP inesperadas continuam reprovando a jornada.
+Fixtures de IndexedDB devem aguardar `transaction.oncomplete` antes de fechar
+a conexão de inspeção e abrir outra versão; o sucesso de uma requisição de
+leitura ainda não confirma o encerramento da transação.
 Para o navegador, use:
 
 ```powershell

@@ -104,18 +104,35 @@ test("#334 IndexedDB real: interrupção no upgrade reverte versão e ambas as i
     try { await CourseLocalStore.open(indexedDB, { userId: user }); }
     catch (error) { errorMessage = error.message; }
     finally { IDBObjectStore.prototype.put = put; }
+    const readEvents = [];
     const before = await new Promise((resolve, reject) => {
       const request = indexedDB.open(name, 1);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
-        const rows = request.result.transaction("course_cache").objectStore("course_cache").getAll();
-        rows.onsuccess = () => { request.result.close(); resolve(rows.result); };
+        const database = request.result;
+        const transaction = database.transaction("course_cache");
+        const rows = transaction.objectStore("course_cache").getAll();
+        rows.onsuccess = () => readEvents.push("rows-success");
+        // O resultado da requisição não encerra a transação. Esta conexão de
+        // inspeção deve terminar antes de o teste solicitar outro upgrade.
+        transaction.oncomplete = () => {
+          readEvents.push("transaction-complete");
+          database.close();
+          readEvents.push("close-request");
+          resolve(rows.result);
+        };
+        transaction.onabort = () => {
+          database.close();
+          reject(transaction.error || new Error("A leitura da versão anterior foi abortada."));
+        };
       };
     });
+    readEvents.push("next-open");
     const store = await CourseLocalStore.open(indexedDB, { userId: user });
     globalThis.draftUpgrade334 = { store };
-    return { errorMessage, before, after: await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY), version: store.database.version };
+    return { errorMessage, before, after: await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY), version: store.database.version, readEvents };
   }, { user: USER, name: DATABASE });
+  expect(result.readEvents).toEqual(["rows-success", "transaction-complete", "close-request", "next-open"]);
   expect(result.errorMessage).toContain("preservados");
   expect(result.before).toHaveLength(3);
   expect(result.after.entries.map(entry => entry.originalSnapshot)).toEqual(snapshots);
