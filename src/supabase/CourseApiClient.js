@@ -63,8 +63,25 @@ const COURSE_READ_MAX_RETRY_WAIT_MS = 10_000;
 const COURSE_READ_RPCS = new Set([
   "list_courses_v1", "list_owned_courses_v1", "get_course_v1", "get_owned_course_v1",
   "list_course_entities_v1", "list_owned_course_entities_v1", "list_course_review_items_v1",
-  "get_course_study_citations_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
+  "get_course_study_citations_v1", "get_course_explanation_citations_v1",
+  "get_course_microsequence_review_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
 ]);
+
+function microsequenceReviewResult(value, courseId, microsequenceId, { approval = false } = {}) {
+  const result = exactObject(value, new Set([
+    "courseId", "microsequenceId", "basisHash", "contentReview", "courseRevision", "idempotent"
+  ]), "Revisão do conteúdo");
+  const review = exactObject(result.contentReview, new Set(["state", "approvedAt"]), "Revisão do conteúdo");
+  if (result.courseId !== courseId || result.microsequenceId !== microsequenceId ||
+      typeof result.basisHash !== "string" || !SHA256_PATTERN.test(result.basisHash) ||
+      !new Set(["unregistered", "draft", "current", "stale"]).has(review.state) ||
+      review.approvedAt != null && (!RFC3339.test(review.approvedAt) || !Number.isFinite(Date.parse(review.approvedAt))) ||
+      new Set(["current", "stale"]).has(review.state) && review.approvedAt == null ||
+      approval && (!Number.isSafeInteger(result.courseRevision) || result.courseRevision < 1 || typeof result.idempotent !== "boolean")) {
+    throw new TypeError("A revisão não corresponde à microssequência solicitada.");
+  }
+  return structuredClone(result);
+}
 
 function readRetryDelay(error) {
   const status = Number(error?.status || 0);
@@ -160,7 +177,7 @@ const COURSE_DESIGN_SCOPE_KINDS = new Set([
   "course", "module", "lesson", "didactic_microsequence", "study_unit"
 ]);
 const COURSE_SOURCE_MODES = new Set(["catalog", "source", "target"]);
-const COURSE_SOURCE_TARGET_KINDS = new Set(["plan_item", "study_unit"]);
+const COURSE_SOURCE_TARGET_KINDS = new Set(["plan_item", "study_unit", "microsequence_explanation"]);
 
 function boundedIdentifier(value, label, { maximum = 240 } = {}) {
   const normalized = String(value || "").trim();
@@ -728,7 +745,7 @@ export class CourseApiClient {
   async rpc(name, parameters = {}, options = {}) {
     const publicRead = this.visitor && new Set([
       "list_courses_v1", "get_course_v1", "list_course_entities_v1",
-      "get_course_study_citations_v1"
+      "get_course_study_citations_v1", "get_course_explanation_citations_v1"
     ]).has(name);
     if (this.visitor && !publicRead) throw Object.assign(
       new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
@@ -831,6 +848,56 @@ export class CourseApiClient {
     if (result.courseId !== normalizedCourseId ||
         result.studyUnitId !== normalizedStudyUnitId) {
       throw new TypeError("As citações não correspondem ao Curso solicitado.");
+    }
+    return result;
+  }
+
+  async getExplanationCitations(courseId, microsequenceId, { expectedRevision } = {}) {
+    const course = uuid(courseId, "Curso");
+    const target = boundedCourseSourceIdentifier(microsequenceId, "Microssequência");
+    const revision = positiveInteger(expectedRevision, "Versão do Curso");
+    let raw;
+    try {
+      raw = await this.rpc("get_course_explanation_citations_v1", {
+        p_course_id: course, p_expected_revision: revision, p_microsequence_id: target
+      });
+    } catch (error) {
+      if (courseRevisionConflict(error)) throw courseRevisionChangedError(error);
+      throw error;
+    }
+    const result = normalizeCourseStudyCitationsRead(raw);
+    if (result.courseRevision !== revision) throw courseRevisionChangedError();
+    if (result.courseId !== course || result.targetKind !== "microsequence_explanation" || result.targetId !== target) {
+      throw new TypeError("As citações não correspondem à Explicação solicitada.");
+    }
+    return result;
+  }
+
+  async getMicrosequenceReview(courseId, microsequenceId) {
+    const course = uuid(courseId, "Curso");
+    const target = boundedIdentifier(microsequenceId, "Microssequência");
+    return microsequenceReviewResult(await this.rpc("get_course_microsequence_review_v1", {
+      p_course_id: course, p_microsequence_id: target
+    }), course, target);
+  }
+
+  async approveMicrosequenceContent(value = {}) {
+    const source = exactObject(value, new Set([
+      "courseId", "microsequenceId", "expectedBasisHash", "requestId"
+    ]), "Aprovação do conteúdo inspecionado");
+    const course = uuid(source.courseId, "Curso");
+    const target = boundedIdentifier(source.microsequenceId, "Microssequência");
+    const basis = source.expectedBasisHash;
+    if (typeof basis !== "string" || !SHA256_PATTERN.test(basis)) throw new TypeError("Base de revisão inválida.");
+    // The caller retains this identity until the original decision is resolved.
+    // This write is deliberately excluded from automatic read recovery.
+    const identity = requestIdentity(source.requestId);
+    const result = microsequenceReviewResult(await this.rpc("approve_course_microsequence_content_v1", {
+      p_course_id: course, p_microsequence_id: target,
+      p_expected_basis_hash: basis, p_request_id: identity
+    }), course, target, { approval: true });
+    if (result.basisHash !== basis || result.contentReview.state !== "current") {
+      throw new TypeError("A confirmação não corresponde ao conteúdo inspecionado.");
     }
     return result;
   }
@@ -1082,7 +1149,9 @@ export class CourseApiClient {
     const request = courseMediaDownloadRequest(value);
     return boundCourseMediaDownload(await this.requestCourseApi(
       `${courseResourcePath(request.courseId)}/media/${request.contentHash}/download`, {
-        query: { expectedRevision: request.expectedRevision, studyUnitId: request.studyUnitId }
+        query: { expectedRevision: request.expectedRevision,
+          ...(request.targetKind === "microsequence_explanation"
+            ? { targetKind: request.targetKind, targetId: request.targetId } : { studyUnitId: request.studyUnitId }) }
       }), request, { projectUrl: this.http.projectUrl });
   }
 
@@ -1387,6 +1456,52 @@ export class CourseApiClient {
         objective: requiredText(objective, "Objetivo do Curso", 2_000)
       }
     });
+  }
+
+  async saveMicrosequenceExplanation(value = {}) {
+    const source = exactObject(value, new Set([
+      "courseId", "microsequenceId", "expectedRevision", "expectedEntityVersion", "requestId", "entity", "sourceLinks"
+    ]), "Edição manual da Explicação");
+    const courseId = uuid(source.courseId, "Curso");
+    const microsequenceId = boundedIdentifier(source.microsequenceId, "Microssequência");
+    const expectedRevision = positiveInteger(source.expectedRevision, "Versão do Curso");
+    const expectedEntityVersion = positiveInteger(source.expectedEntityVersion, "Versão da microssequência");
+    const requestId = requestIdentity(source.requestId);
+    const entity = exactObject(source.entity, new Set([
+      "entityType", "entityId", "parentType", "parentId", "position", "content"
+    ]), "Microssequência editada");
+    if (entity.entityType !== "microsequence" || entity.entityId !== microsequenceId ||
+        entity.parentType !== "lesson" || !entity.content?.explanation) {
+      throw new TypeError("A edição não corresponde à Explicação solicitada.");
+    }
+    const applications = normalizeSourceAttributionApplications([{
+      targetKind: "microsequence_explanation", targetId: microsequenceId, sourceLinks: source.sourceLinks
+    }]);
+    const result = await this.requestCourseApi(`${courseResourcePath(courseId)}/composition`, {
+      method: "POST", body: boundedJsonObject({ requestId, expectedRevision,
+        expectedMicrosequenceVersion: expectedEntityVersion, applicationOrigin: "manual",
+        upserts: [entity], deletes: [], sourceAttributionApplications: applications
+      }, "Edição manual da Explicação", 480 * 1024)
+    });
+    exactObject(result, new Set(["courseId", "revision", "operation", "createdCount", "updatedCount",
+      "upsertedCount", "deletedCount", "idempotent", "updatedAt", "channel", "applicationOrigin",
+      "expectedStudyUnitVersion", "expectedMicrosequenceVersion", "microsequenceId", "microsequenceVersion",
+      "changeOrigin", "deepLink"]), "Confirmação da edição da Explicação");
+    if (result?.courseId !== courseId || result?.operation !== "commit_course_composition" ||
+        result?.microsequenceId !== microsequenceId || result?.channel !== "application" ||
+        result?.applicationOrigin !== "manual" || result?.changeOrigin !== "human" ||
+        result?.expectedMicrosequenceVersion !== expectedEntityVersion ||
+        result?.expectedStudyUnitVersion !== null || typeof result?.idempotent !== "boolean" ||
+        !Number.isSafeInteger(result?.revision) || result.revision < expectedRevision || result.revision > expectedRevision + 1 ||
+        ![0, 1].includes(result?.updatedCount) || result?.createdCount !== 0 || result?.deletedCount !== 0 ||
+        result?.upsertedCount !== result.updatedCount || result.updatedCount === 1 && result.revision !== expectedRevision + 1 ||
+        typeof result?.updatedAt !== "string" || !Number.isFinite(Date.parse(result.updatedAt)) ||
+        typeof result?.deepLink !== "string" || !result.deepLink ||
+        !Number.isSafeInteger(result?.microsequenceVersion) ||
+        result.microsequenceVersion !== expectedEntityVersion + result.updatedCount) {
+      throw new TypeError("A confirmação não corresponde à edição manual da Explicação.");
+    }
+    return { ...structuredClone(result), requestId, changed: result.revision !== expectedRevision };
   }
 
   async commitCourseComposition(value = {}) {

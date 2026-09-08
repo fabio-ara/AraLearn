@@ -91,6 +91,35 @@ daquele ponto. Escolher uma alternativa preenche a mesma lacuna e devolve o foco
 a ela. Acionar uma lacuna já preenchida limpa somente aquele valor, sem alterar
 as demais respostas.
 
+## Consultar a Explicação
+
+O ícone **Explicação**, na fileira de ações da unidade, abre o apoio da
+microssequência. Ele está disponível tanto na leitura quanto na prática. Todas
+as unidades da mesma microssequência levam ao mesmo conteúdo, escrito
+previamente pela autoria. Abrir essa leitura não chama um modelo de linguagem
+nem registra acerto, domínio ou conclusão.
+
+A folha aparece sobre a unidade. Leia as seções necessárias e use **Fechar
+Explicação** ou Escape para voltar ao ponto de estudo. A resposta ainda não
+enviada permanece na unidade. **Fontes da Explicação** e os números junto aos
+trechos abrem as referências; **Voltar à Explicação** recupera o trecho. As
+ferramentas disponíveis usam os mesmos controles do restante do Estudo.
+
+Na prévia da pessoa proprietária, o apoio informa se está em rascunho ou se
+mudou depois da revisão. Esses recortes aguardam aprovação antes de uma nova
+obtenção por estudantes; uma cópia de estudo já guardada não recebe
+silenciosamente o rascunho. O acervo anterior pode indicar que sua revisão não
+está registrada. Cursos anteriores também podem não ter Explicação: o
+aplicativo informa essa ausência e conserva o percurso existente. Consultar um
+apoio não substitui a tentativa de resolver a prática por conta própria.
+
+Ao guardar a composição do curso, o texto e as representações da Explicação
+acompanham a cópia local. As citações ficam salvas depois de uma leitura com
+conexão. Se ainda não tiverem sido consultadas, o estado offline informa que não
+estão salvas, sem afirmar que não existem fontes. PDFs, áudios e endereços
+externos continuam dependendo de disponibilidade e acesso autorizado; salvar o
+texto não promete disponibilidade desses arquivos sem rede.
+
 ## Consultar as Fontes de uma Unidade
 
 Use o ícone **Fontes** dentro da Unidade. A consulta ocorre quando o painel é

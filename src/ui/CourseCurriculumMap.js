@@ -1,5 +1,6 @@
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 
 const MAP_STATUS = Object.freeze({ absent: "Ainda não definido", draft: "Rascunho", approved: "Aprovado" });
 const COVERAGE_STATUS = Object.freeze({ planned: "Planejado", developed: "Desenvolvido" });
@@ -77,7 +78,26 @@ function renderMicrosequence(courseId, microsequence, nodes, expansion) {
     `<h5>${escapeHtml(microsequence.title)}</h5>` +
     link(courseId, "didacticMicrosequenceId", microsequence.id, `Abrir microssequência em Conteúdo: ${microsequence.title}`,
       key("microsequence", microsequence.id), { iconOnly: true }) + '</header>' +
-    objective("microsequence", microsequence, expansion) + dependencies + '</li>';
+    objective("microsequence", microsequence, expansion) + dependencies +
+    (microsequence.role ? `<p class="course-curriculum-map-caption">Função no percurso: ${escapeHtml({ explain: "explicação e desenvolvimento teórico", practice: "prática", review: "revisão", support: "apoio" }[microsequence.role] || microsequence.role)}</p>` : "") +
+    details(key("explanation", microsequence.id), "Explicação prevista",
+      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id), expansion) +
+    (nodes.courseRevision ? renderCourseAuthoringDebate({ courseId, courseRevision: nodes.courseRevision,
+      title: microsequence.title, contextLabel: "o planejamento e a Explicação desta microssequência",
+      route: buildCourseAuthoringRoute(courseId, { section: "content", didacticMicrosequenceId: microsequence.id }) }) : "") + '</li>';
+}
+
+function renderExplanationPlan(courseId, plan, microsequenceId) {
+  if (!plan) return '<p>O apoio desta microssequência ainda não foi planejado. Isso não impede a leitura do conteúdo anterior.</p>';
+  const list = (label, values, empty) => `<h6>${label}</h6>` + (values.length
+    ? `<ul>${values.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul>` : `<p>${empty}</p>`);
+  return `<p>${escapeHtml(plan.purpose)}</p>` +
+    list("Pressupostos a desenvolver", plan.prerequisites, "Nenhum pressuposto foi registrado no apoio previsto.") +
+    list("Relações a explicar", plan.relations, "Nenhuma relação foi registrada no apoio previsto.") +
+    '<h6>Fontes previstas</h6>' + (plan.sourceIds.length ? '<ul>' + plan.sourceIds.map(sourceId =>
+      `<li><a data-curriculum-navigate data-curriculum-key="${escapeHtml(key("explanation-source", microsequenceId, sourceId))}" href="${escapeHtml(buildCourseAuthoringRoute(courseId,
+        { section: "sources", sourceId }))}">${escapeHtml(sourceId)}</a></li>`).join("") + '</ul>' :
+      '<p>Fontes ainda não indicadas. A revisão precisa conferir o apoio e seus vínculos.</p>');
 }
 
 function renderLesson(courseId, lesson, nodes, expansion, index) {
@@ -128,9 +148,10 @@ function renderCoverageItem(courseId, item, nodes, expansion) {
 
 /** Receives the already normalized planning projection; expansion is temporary UI state. */
 export function renderCourseCurriculumMap({
-  courseId, curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = []
+  courseId, courseRevision = null, curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = []
 }) {
   const nodes = indexCurriculum(curriculum);
+  nodes.courseRevision = courseRevision;
   const expanded = new Set(expansion);
   const returnTo = buildCourseAuthoringRoute(courseId, { section: "planning" });
   const content = curriculum.modules.length
@@ -146,7 +167,7 @@ export function renderCourseCurriculumMap({
   return `<section class="course-curriculum-map" data-course-curriculum-map data-curriculum-return="${escapeHtml(returnTo)}"` +
     ' aria-label="Mapa curricular"><header class="course-curriculum-map-header"><h3>Mapa curricular</h3>' +
     `<span class="course-curriculum-map-status">${escapeHtml(MAP_STATUS[curriculumMapStatus])}</span></header>` +
-    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos e os pré-requisitos.</p>' +
+    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a Explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
     content + coverage + '</section>';
 }
 

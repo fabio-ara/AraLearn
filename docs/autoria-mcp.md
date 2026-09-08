@@ -7,6 +7,14 @@ repetição segura internamente.
 O curso vivo é a autoridade. A interface de autoria, o MCP e Actions leem e
 alteram o mesmo estado, sem manter uma cópia paralela da conversa.
 
+**Debater com GPT**, na Autoria, oferece um pedido copiável com o endereço exato
+do recorte e a revisão observada. O cliente deve resolver essa referência e ler
+o estado atual pelas tarefas existentes, incluindo apoio e fontes pertinentes.
+Se o curso mudou, explicita a diferença. O pedido inicia uma discussão: não
+autoriza escrita, não registra aprovação humana e não supõe que o link contenha
+o texto. Proposta, decisão de aplicar e releitura permanecem etapas distintas;
+a inspeção visual e a aprovação do conteúdo pertencem à pessoa autora.
+
 ## Tarefas disponíveis
 
 As tarefas vêm do catálogo público `aralearn.human-authoring-tasks`, definido em
@@ -48,6 +56,21 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 
 Os schemas vêm do mesmo catálogo projetado para Actions. Não há aliases para
 ferramentas antigas nem um comando genérico que exponha a estrutura do banco.
+
+No contrato 3.0.0, o mapa registra a proposta de Explicação por microssequência;
+`materializar_parte` recebe unidades e uma Explicação por microssequência na
+mesma gravação. `aplicar_correcoes` pode alterar unidades, Explicações ou ambas
+num conjunto coerente. `consultar_fontes` e os vínculos de `manter_fonte` aceitam
+a Explicação como alvo, com suas localizações próprias. `exportar_autoria`
+preserva o apoio literal e a proveniência correspondente. As formas de explicação
+registradas na aplicação pedagógica de uma unidade continuam sendo medidas dessa
+unidade: não são o objeto de apoio compartilhado.
+
+Produção e correção deixam o conteúdo pendente de revisão. Aprovar o mapa ou
+autorizar um lote não aprova o material futuro. A aprovação do conteúdo
+inspecionado é uma ação humana protegida na Autoria, fora das ferramentas de IA;
+as leituras apenas informam seu estado. Veja o
+[contrato de Explicação e revisão](explicacao-e-revisao-humana.md).
 
 No cliente compatível, PDF e áudio chegam como objetos oficiais de arquivo
 declarados por `_meta["openai/fileParams"]`. Nome, caminho local ou identificador
@@ -204,7 +227,7 @@ devolve o recorte fielmente. Paginação recupera o que falta; não substitui a
 leitura por resumo nem oculta indisponibilidade. A concisão do chat não reduz a
 explicação, os exemplos ou a prática necessários no material didático.
 
-Na listagem de cursos e nas leituras de fontes e revisão, `temMais: true` e uma
+Na listagem de cursos e nas leituras de preparo, fontes e revisão, `temMais: true` e uma
 `continuacao` não nula sinalizam resposta parcial. O GPT continua o mesmo recorte usando o valor opaco devolvido, sem
 inventá-lo nem pedir decisão por página. Fragmentos `application/json` mantêm
 texto literal e posições UTF-16 contíguas; devem ser reunidos na ordem antes de
@@ -212,6 +235,11 @@ interpretar o documento completo. Enquanto houver trechos pendentes, não se
 declara leitura completa. Se a revisão do curso mudar, a leitura do recorte
 precisa recomeçar. A revisão inclui observações focais e plano imediato; seu
 limite de página não define o alcance pedagógico total da análise.
+
+O preparo inclui a proposta, a Explicação literal, suas fontes e o estado de
+revisão de cada microssequência do lote. Esse apoio compartilhado também pode
+exigir continuação. A leitura preserva o conteúdo inteiro; uma mudança no curso
+ou no conteúdo entre páginas recusa a continuação para evitar combinar versões.
 
 Ambiguidade entre títulos pede uma referência humana mais específica. Falhas
 transitórias permitem retomar; recusa de autorização não é repetida como se
@@ -253,6 +281,17 @@ MCP. Registre o artefato efetivamente carregado e a aceitação em conversa nova
 um teste local de protocolo não comprova essa etapa. O
 [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais)
 separa medidas mecânicas, estimativas e observação do cliente real.
+
+Há também uma fronteira entre o schema servido e a validação feita pelo
+conector. Se um campo obrigatório no catálogo vivo for rejeitado pelo cliente
+como propriedade adicional, preserve o pedido e o erro sanitizados e compare
+os contratos antes de alterar o conteúdo. Não remova uma referência pedagógica
+necessária apenas para passar nessa validação. Atualizar as ferramentas na
+página de detalhes do app recupera ferramentas, descrições e instruções do
+servidor, conforme a [documentação de gestão do app](https://developers.openai.com/api/docs/guides/developer-mode).
+A confirmação exige uma conversa nova e nova prova da chamada.
+Uma indicação genérica de restrição do workspace no erro não identifica, por
+si só, a configuração que causou a divergência.
 
 ## Verificação local
 

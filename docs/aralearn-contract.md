@@ -30,6 +30,21 @@ Módulo, lição, microssequência e unidade de estudo formam a hierarquia didá
 Parte é lote de autoria e não aparece como pai curricular. Salvar ou redimensionar
 uma parte não cria nem reorganiza currículo.
 
+A microssequência conserva `explanationPlan: {purpose, prerequisites, relations,
+sourceIds}` e o apoio `explanation: {title, content}`. Os componentes de conteúdo
+usam o catálogo comum; o apoio não tem resposta nem progresso próprios. Esses
+campos podem estar ausentes no acervo anterior. A materialização corrente exige
+proposta no mapa e uma Explicação por microssequência da parte, gravada junto às
+unidades, aplicações e fontes.
+
+A leitura de revisão `contentReview` é metadado protegido, separado do conteúdo
+editável. Ela informa revisão não registrada, rascunho, aprovação atual ou
+aprovação desatualizada. O comando autenticado de aprovação verifica a base
+inspecionada pela pessoa proprietária; importação e comandos de IA não podem
+fornecer essa decisão. Fontes e arquivos usados entram na base pertinente.
+O [contrato de revisão humana](explicacao-e-revisao-humana.md) detalha inspeção,
+distribuição, concorrência e limites da preservação local.
+
 A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
 inclusive sem alterações de entidades. Metadados, entidades e atribuições são
 validados na mesma transação, com uma revisão esperada e um recibo de repetição.
@@ -134,9 +149,16 @@ os deriva dos bytes. Criar ou revisar a fonte e vincular o PDF ocorre numa únic
 transação e avança a revisão do curso uma vez.
 
 `aralearn.course-study-citations.v2` entrega ao Estudo citação, endereço
-permitido, seletor e localização legível necessários à unidade, além de
-referências lógicas dos anexos disponíveis. Trechos privados de verificação e
-caminhos de Storage ficam fora dessa projeção.
+permitido, seletor e localização legível necessários à unidade ou à Explicação
+compartilhada da microssequência, além de referências lógicas dos anexos
+disponíveis. A unidade usa `studyUnitId`; a Explicação usa
+`targetKind: "microsequence_explanation"` e `targetId` da microssequência, sem
+identidade de unidade. A leitura respeita a revisão esperada, a elegibilidade
+do conteúdo e os direitos de acesso. O proprietário pode inspecionar rascunhos;
+isso não os torna disponíveis ao estudante. Trechos privados de verificação e
+caminhos de Storage ficam fora dessa projeção. O download de PDF conserva a
+identidade da fonte, sua revisão e o hash do arquivo; não cria uma cópia por
+unidade ou um segundo serviço de arquivos para a Explicação.
 
 ## Áudio e ferramentas de estudo
 
@@ -161,13 +183,22 @@ conjunto de PDFs e áudios é verificado com reservas sob concorrência. Remoç�
 exclusão de conta conservam intenção de limpeza recuperável no Storage privado.
 
 `aralearn.course-media-download.v1` liga o endereço temporário ao curso, à
-revisão, à Unidade e ao trio binário do arquivo. Estudantes só acessam arquivos
-referenciados na Unidade corrente; visitantes também dependem da política
-pública de arquivos do curso. O cliente confere tamanho, formato e hash antes
-de criar um Blob local, que é descartado ao fechar a ferramenta. Não há URL de
-Storage persistida no conteúdo nem cópia de bytes no IndexedDB. A configuração
-nativa pode ser reutilizada offline somente na mesma revisão do curso e é
-purgada quando o acesso é retirado.
+revisão, ao alvo e ao trio binário do arquivo. O alvo é a unidade por
+`studyUnitId`, ou a Explicação por `targetKind: "microsequence_explanation"`
+e `targetId` da microssequência. A mesma rota de download aceita esses dois
+formatos mutuamente exclusivos e recusa alvos incompletos ou desconhecidos.
+Estudantes só acessam arquivos referenciados no conteúdo elegível do alvo;
+visitantes também dependem da política pública de arquivos do curso. O serviço
+confere autorização, revisão e identidade antes de assinar o endereço; o
+cliente confere tamanho, formato e hash antes de criar um Blob local, que é
+descartado ao fechar a ferramenta.
+
+Não há URL de Storage persistida no conteúdo nem cópia de bytes no IndexedDB.
+O texto de uma Explicação disponível na cópia local não torna seus arquivos
+externos disponíveis offline: PDF e áudio de arquivo dependem de acesso à
+rede, sem novo cache binário. A configuração nativa pode ser reutilizada
+offline somente na mesma revisão do curso e é purgada quando o acesso é
+retirado.
 
 ## Observações e revisão
 

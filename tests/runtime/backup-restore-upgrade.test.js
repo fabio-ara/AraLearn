@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
-import { pendingUpgradeMigrations } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
+import { pendingUpgradeMigrations, normalizeApplicationSchemaDump } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = fs.readFileSync(path.join(
@@ -60,9 +60,9 @@ test("#307 restauração preserva o checkpoint histórico e continua até o mani
   assert.match(script, /drop schema if exists public cascade/u);
   assert.match(script, /where schemaname='storage'/u);
   assert.match(script, /delete from supabase_migrations\.schema_migrations/u);
-  assert.match(script, /recordAppliedMigration\(restored, migration\)/u);
+  assert.match(script, /applyMigrationFiles\(restored, tail/u);
   assert.match(script, /state\.migrationRevision, expectedManifestRevision/u);
-  assert.match(script, /for \(const \[index, migration\] of resolved\.migrations\.entries\(\)\)/u);
+  assert.match(script, /applyMigrationFiles\(restored, resolved\.migrations/u);
   assert.match(script, /assertAfterState\(after\.state, migrationNames\.at\(-1\)/u);
   assert.match(script, /aralearn\.backup-restore-upgrade-proof\.v3/u);
 });
@@ -99,16 +99,18 @@ test("história pré-corte é registrada pela cadeia reaplicada, incluindo migra
     migrationDirectory: "/repo/supabase/migrations" });
   const apply = script.slice(script.indexOf("function applyMigrationFiles("),
     script.indexOf("async function restoreBackupFile("));
-  const record = script.slice(script.indexOf("function recordAppliedMigration("),
+  const record = script.slice(script.indexOf("function migrationRecordSql("),
     script.indexOf("function queryJson("));
   vm.runInContext(`${apply}\n${record}`, context);
   const names = ["001_initial.sql", "20260901000000_checkpoint.sql"];
   context.applyMigrationFiles("synthetic-history", names, "/tmp/history");
-  assert.equal(calls.length, 4);
-  assert.deepEqual(calls[1][1].slice(-4), ["-f", "/tmp/history/001_initial.sql", "-f", "/tmp/history/20260901000000_checkpoint.sql"]);
-  assert.match(calls[2][1].at(-1), /values\('001',null,'initial'\)/u);
-  assert.match(calls[3][1].at(-1), /values\('20260901000000',null,'checkpoint'\)/u);
-  assert.throws(() => context.recordAppliedMigration("synthetic-history", "001bad_invalid.sql"), /Migration final inválida/u);
+  assert.equal(calls.length, 2);
+  const driver = calls[1][2].input;
+  assert.ok(calls[1][1].includes("ON_ERROR_STOP=1"));
+  assert.ok(driver.indexOf("\\i /tmp/history/001_initial.sql") < driver.indexOf("values('001',null,'initial')"));
+  assert.ok(driver.indexOf("values('001',null,'initial')") < driver.indexOf("\\i /tmp/history/20260901000000_checkpoint.sql"));
+  assert.ok(driver.indexOf("\\i /tmp/history/20260901000000_checkpoint.sql") < driver.indexOf("values('20260901000000',null,'checkpoint')"));
+  assert.throws(() => context.migrationRecordSql("001bad_invalid.sql"), /Migration final inválida/u);
 });
 
 test("#307 upgrade ordena todas as migrations pendentes e repetir a seleção não reaplica SQL", () => {
@@ -183,4 +185,29 @@ test("#274 mede redução técnica e registra a fronteira do backup de Storage",
   ]) assert.match(script, new RegExp(`'${measure}'`, "u"), measure);
   assert.match(script, /databaseBackupContainsMetadataOnly/u);
   assert.match(script, /objectRecoveryRequiresStorageBackup:\s*true/u);
+});
+
+
+test("comparação de instalação só remove o guard aleatório do pg_dump", () => {
+  const sql = "CREATE TABLE public.example(id integer);\nGRANT SELECT ON public.example TO authenticated;\n";
+  assert.equal(normalizeApplicationSchemaDump(`\\restrict abc123\r\n${sql}\\unrestrict abc123\r\n`), sql);
+  assert.notEqual(normalizeApplicationSchemaDump(sql),
+    normalizeApplicationSchemaDump(sql.replace("GRANT SELECT", "GRANT ALL")));
+  assert.notEqual(normalizeApplicationSchemaDump(sql),
+    normalizeApplicationSchemaDump(sql.replace("id integer", "id text")));
+});
+
+
+test("CHECK usa forma nativa só na definição e conserva mudança de predicado", () => {
+  const expanded = "CHECK (((x >= 1) AND (x <= 64)))";
+  const canonical = "CHECK (x >= 1 AND x <= 64)";
+  const tail = `COMMENT ON TABLE example IS '${expanded}';\n`;
+  const old = `    CONSTRAINT example_range ${expanded},\n${tail}`;
+  const current = `    CONSTRAINT example_range ${canonical},\n${tail}`;
+  assert.equal(normalizeApplicationSchemaDump(old, [{ identifier: "example_range",
+    definition: expanded, canonical }]), current);
+  assert.notEqual(normalizeApplicationSchemaDump(old, [{ identifier: "example_range",
+    definition: expanded, canonical: canonical.replace("<= 64", "<= 63") }]), current);
+  assert.throws(() => normalizeApplicationSchemaDump(tail, [{ identifier: "example_range",
+    definition: expanded, canonical }]));
 });

@@ -329,8 +329,12 @@ export async function cleanupLocalMcpSession(config, lifecycle) {
 export async function authorizeLocalActionSession(config, {
   userAccessToken,
   userId,
-  lifecycle = {}
+  lifecycle = {},
+  applicationOrigin = LOCAL_APPLICATION_ORIGIN
 }) {
+  if (!/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/u.test(applicationOrigin)) {
+    throw new Error("O consentimento sintético de Actions aceita somente aplicação local.");
+  }
   const actionUrl = `${config.projectUrl}/functions/v1/aralearn-authoring-action`;
   Object.assign(lifecycle, {
     actionUrl,
@@ -409,8 +413,8 @@ export async function authorizeLocalActionSession(config, {
     String(authorizationResponse.headers.get("location") || ""),
     LOCAL_APPLICATION_ORIGIN
   );
-  if (consentUrl.origin !== LOCAL_APPLICATION_ORIGIN || consentUrl.pathname !== "/") {
-    throw new Error("A autorização de Actions não abriu o consentimento do AraLearn.");
+  if (consentUrl.origin !== applicationOrigin || consentUrl.pathname !== "/") {
+    throw new Error(`A autorização de Actions não abriu o consentimento do AraLearn: ${consentUrl.origin}${consentUrl.pathname}.`);
   }
   const authorizationId = String(
     consentUrl.searchParams.get("action_authorization_id") || ""

@@ -1,16 +1,23 @@
 begin;
 
-select plan(25);
+select plan(27);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260907031059','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20260908023156','o manifesto identifica as capacidades correntes em ordem canônica');
+select is(private.course_component_catalog_v1()->>'version','1-70b27609',
+  'a projeção SQL acompanha a descoberta corrente de componentes');
+select is(private.course_component_catalog_v1()->>'schemaFingerprint',
+  'sha256:eba99ff8f9b3c0c0749e032f2e1bcc3a54cce1c52edd93b545e3ef4323a0514d',
+  'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),48,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),50,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
+  "shared-microsequence-explanation-v1",
+  "human-content-review-v1",
   "course-anchored-annotations-atomic-create-v1",
   "course-business-conflicts-http-409-v1",
   "course-analysis-repertoire-v1",
@@ -158,7 +165,7 @@ select is(array(
   select signature from unnest(array[
     'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
@@ -196,7 +203,7 @@ select is(array(
   select signature from unnest(array[
     'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
@@ -210,7 +217,7 @@ select is(array(
   select signature from unnest(array[
     'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
     'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
@@ -294,10 +301,11 @@ select is((select count(*) from pg_trigger trigger_value
   join pg_class relation on relation.oid=trigger_value.tgrelid
   join pg_namespace namespace_value on namespace_value.oid=relation.relnamespace
   where namespace_value.nspname='private' and not trigger_value.tgisinternal
+    and trigger_value.tgfoid<>'private.mark_course_source_content_review_v1()'::regprocedure
     and relation.relname in(
       'course_sources','course_source_anchors','course_source_attributions',
       'course_source_attribution_sources','course_source_attribution_anchors'
-    )),0::bigint,'estado corrente de Fonte não possui trigger append-only');
+    )),0::bigint,'Fonte corrente só acrescenta invalidação focal de revisão, sem trigger append-only');
 
 select is((select count(*) from private.course_design_parameter_definitions),
   12::bigint,'catálogo de parâmetros de conteúdo, prática, conversa e cadência');

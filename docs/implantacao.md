@@ -116,7 +116,7 @@ desconhecidos, dependências e CI ampliam o alcance.
 | Desenvolvimento | comandos focais locais conforme o risco | saídas locais | nenhuma |
 | Documentação pura | PR e auditorias documentais | sem manifesto publicável | nenhuma |
 | Candidata estável | PR final ou dispatch integral de `validacao.yml`; Windows e Supabase | Pages testado, APK debug e manifesto do gate | nenhuma |
-| Promoção | dispatch de `pages.yml` na `main`, com run e tentativa exatos | Pages aprovado e APK assinado verificado | backend compatível, Pages e uma Release |
+| Promoção | fases de `pages.yml` na `main`, com run e tentativa exatos | Pages aprovado e APK assinado verificado | preparação imutável; corte e Pages; finalização após provas reais |
 
 O check obrigatório **Testar e validar** depende das provas **Testar web e
 Android** e **Testar Supabase local**. Falha, cancelamento ou omissão de prova
@@ -227,12 +227,14 @@ artefato contém HTML, CSS, módulos JavaScript, manifesto de recursos,
 configuração pública e o documento OpenAPI de Actions. Não contém cursos,
 chave secreta nem credencial de provedor.
 
-O workflow `pages.yml` coordena a promoção. Ele não publica por mero push. Após
-integrar a candidata e preparar o backend, informe a execução integral e sua
+O workflow `pages.yml` coordena a promoção em três fases. Ele não publica por
+mero push. Após integrar a candidata, prepare os artefatos enquanto backend e
+site publicados continuam correspondentes. Informe a execução integral e sua
 tentativa, sem procurar o último artefato verde:
 
 ```powershell
 gh workflow run pages.yml --ref main `
+  -f phase=preparar `
   -f candidate_run_id=<run-integral> -f candidate_run_attempt=<tentativa>
 ```
 
@@ -242,11 +244,48 @@ manifesto backend e digests. Artefatos expirados, forks, revisões superadas e
 divergências são recusados. O download precisa corresponder ao SHA-256
 registrado pelo GitHub e cada arquivo precisa corresponder ao manifesto.
 
+Os hashes de `package-lock.json` e `supabase/runtime-manifest.json` identificam
+os bytes dos blobs Git de `HEAD`. Antes de calcular cada hash, o publicador
+confere que o arquivo de trabalho corresponde ao blob, tolerando somente a
+conversão CRLF/LF do checkout. Alterações de conteúdo, espaços ou linhas extras
+são recusadas. Isso permite registrar no Windows e retomar no Linux; os hashes
+de artefatos, APK, recibos e manifestos gerados continuam sobre seus bytes exatos.
+
 O manifesto registra o SHA testado e o SHA integrado separadamente. Um merge
 com SHA diferente só reutiliza a prova quando a árvore e a configuração são
 iguais; a relação com o PR também é conferida. Se essa equivalência não puder
 ser comprovada, execute a validação integral na revisão integrada antes de
 tentar promovê-la. O publicador reutiliza os bytes Pages testados, sem rebuild.
+
+Concluída a preparação e os cuidados de backup/restauração, aplique o backend e
+publique prontamente o site a partir daquele run exato:
+
+```powershell
+gh workflow run pages.yml --ref main `
+  -f phase=publicar_site `
+  -f promotion_run_id=<run-preparar> -f promotion_run_attempt=<tentativa>
+```
+
+Essa fase recupera artefatos e prova nativa pela origem, sem recompilar ou abrir
+o emulador. Verifica o backend já aplicado, publica Pages e conserva a Release
+em rascunho. A prova de backend fica separada do manifesto e do recibo imutáveis
+que identificaram o APK testado; preparar os bytes não declara backend pronto.
+
+Depois das jornadas e provas reais requeridas da mesma candidata, finalize
+usando o run que publicou o site:
+
+```powershell
+gh workflow run pages.yml --ref main `
+  -f phase=finalizar_release `
+  -f promotion_run_id=<run-publicar-site> -f promotion_run_attempt=<tentativa>
+```
+
+A finalização revalida origem, bytes, backend, Pages e prova nativa existente
+antes de tornar a Release pública. APK, checksum e recibo na Release precisam
+ser idênticos aos três arquivos do bundle que a prova nativa examinou; coerência
+apenas entre os arquivos remotos não basta. O dispatch não é evidência de execução das
+jornadas: seus resultados precisam ser conferidos e registrados antes dele.
+Falha material mantém a entrega incompleta.
 
 O verificador hospedado confirma versão, tamanho e SHA-256 de todos os arquivos
 do site, inclusive binários, além de MIME, CSP, configuração e callback:
@@ -289,12 +328,12 @@ confere os bytes do runtime dentro do APK e preserva o certificado histórico.
 A suíte e o lint já aprovados não são repetidos no publicador. O build assinado,
 sua identidade e sua configuração continuam sendo provas próprias.
 
-O APK, seu arquivo `.sha256` e o manifesto de procedência ficam primeiro em uma
-Release em rascunho. Antes de Pages, o job `android-native` instala esses bytes
+O APK, seu arquivo `.sha256` e o manifesto de procedência ficam primeiro nos
+artefatos imutáveis da preparação. Antes do corte, o job `android-native` instala esses bytes
 exatos em dois cenários isolados de um emulador descartável no runner Ubuntu
 24.04. Ele confere
 pacote, certificado, versão, SHA-256 e UID: instalação limpa da candidata e
-upgrade do APK público 0.0.65 (código 211). A versão candidata vem do manifesto
+upgrade do APK público 0.0.66 (código 212). A versão candidata vem do manifesto
 aprovado e deve avançar em relação à base.
 
 O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada,
@@ -310,13 +349,16 @@ Essa prova não cobre dispositivo físico, retenção de curso ou sessão autent
 
 O JSON de prova v2 liga o APK ao manifesto, revisão, run e tentativa da promoção;
 capturas e hierarquias XML de cada etapa têm seus hashes conferidos. Pages e Release
-baixam essa prova por ID, verificam seu digest e reconferem o APK. Falha ou
-evidência de outra tentativa bloqueia a publicação. O artifact nativo é mantido
-por sete dias, incluindo diagnósticos técnicos de falha sem tokens. Ao retomar,
-execute os jobs da promoção juntos para produzir prova da tentativa corrente.
+baixam essa prova por ID, verificam seu digest e reconferem o APK. A retomada
+consulta no GitHub o run e a tentativa originais: repositório, workflow, main,
+SHA, conclusão e execução da etapa nativa precisam corresponder. Ela não troca
+os identificadores do ambiente atual nem transforma uma prova de outra
+candidata em corrente. Os artefatos são mantidos por sete dias, incluindo
+diagnósticos técnicos de falha sem tokens. Ausência, expiração ou divergência
+impedem reutilização; com a origem íntegra, não há nova execução do emulador.
 
-O coordenador só torna a Release pública depois de conferir backend, gate
-nativo e Pages. As notas são geradas a partir das mudanças da versão. As
+O coordenador só torna a Release pública na fase final, depois de conferir
+backend, gate nativo, Pages e jornadas reais requeridas. As notas são geradas a partir das mudanças da versão. As
 jornadas conectadas continuam separadas: em dispositivo descartável ou
 autorizado, confira login,
 retomada, área segura, teclado, rolagem, PDFs, exportação e a Assistência por IA
@@ -332,15 +374,25 @@ Para GitHub Pages com Supabase hospedado, a sequência é:
 3. simular as migrations;
 4. validar repositório e artefatos sem publicar;
 5. integrar a revisão aprovada e confirmar os checks do SHA exato;
-6. aplicar migrations e publicar as Edge Functions;
-7. verificar o backend hospedado;
-8. promover a candidata identificada: preparar o APK, aprovar instalação/upgrade nativos e publicar os bytes do site;
-9. conferir os artefatos e concluir a Release; percorrer as jornadas críticas.
+6. executar `preparar`: assinar o APK e provar instalação/upgrade nativos sem mudar o backend publicado;
+7. concluir backup/restauração pertinente, aplicar migrations e publicar as Edge Functions;
+8. executar `publicar_site`: verificar backend e prova já produzida, publicar os bytes Pages e guardar o APK em rascunho;
+9. executar as jornadas críticas e provas reais de cliente da candidata;
+10. executar `finalizar_release`: revalidar os artefatos e publicar a Release/APK correspondente.
 
 O corte precisa definir o comportamento dos clientes instalados enquanto o
 backend e o site são atualizados. Essa ordem não garante compatibilidade do
 cliente anterior nem atomicidade entre fornecedores: interrupções exigem saber
-qual parte foi confirmada antes de retomar.
+qual parte foi confirmada antes de retomar. A preparação anterior ao corte
+retira compilação e emulador dessa janela, mas não torna a propagação dos
+serviços atômica nem atualiza automaticamente todo cliente instalado.
+
+No contrato de Explicação, o cliente anterior rejeita metadados de revisão nas
+entidades, a versão nova do catálogo e a proveniência acrescida à exportação,
+mesmo em cursos sem apoio. O materializador SQL também exige o argumento novo
+de Explicações. Por isso, manter deliberadamente apenas um lado atualizado
+durante a matriz de clientes não é uma ordem válida de corte. O manifesto é
+verificado pelo publicador; não negocia DTOs em uma sessão antiga do aplicativo.
 
 O backend é aplicado pelo procedimento autorizado de `deploySupabase.ps1`, sem
 introduzir credencial administrativa nos jobs de build. A promoção registra e
@@ -352,9 +404,9 @@ hospedado, antes de anunciar entrega integral.
 
 ## Falhas e recuperação
 
-Uma nova tentativa usa o mesmo run integral e tentativa enquanto seus artefatos
-estiverem disponíveis. A promoção reconhece o site já correspondente e reutiliza
-o APK já preparado na Release em rascunho. Ela completa somente os assets
+Uma nova tentativa da fase apropriada usa a origem exata enquanto seus artefatos
+estiverem disponíveis. A retomada de site/finalização conserva a preparação
+aprovada, reconhece o site já correspondente e reutiliza o APK. Ela completa somente os assets
 ausentes, verifica os existentes e não substitui tag ou asset divergente. Uma
 tag correta sem Release permite criar o rascunho faltante. O rascunho permanece
 visível apenas para quem tem acesso enquanto alguma parte ainda falha; não

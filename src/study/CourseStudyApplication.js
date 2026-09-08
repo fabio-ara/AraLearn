@@ -21,6 +21,7 @@ import { courseSourceOccurrenceTextTargets, resolveCourseSourceOccurrences } fro
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { placeStudyCitationMarkers, renderStudyCitations } from "./studyCitations.js";
 import { createStudyTools, openStudyResourceUrl } from "./studyTools.js";
+import { createStudyExplanation } from "./studyExplanation.js";
 import {
   activateManualStudyUnitEdit,
   applyManualStudyUnitEdit,
@@ -248,6 +249,22 @@ export function createCourseStudyApplication({
     })
   });
 
+  const explanation = createStudyExplanation({
+    root, repository,
+    getReference: () => canonicalReference(state.selection),
+    getContextKey: () => [state.selection.courseId, state.selection.microsequenceId].join("::"),
+    getContext: () => repository.loadExplanationContext?.(canonicalReference(state.selection)) || {
+      courseId: state.selection.courseId, microsequenceId: state.selection.microsequenceId,
+      explanation: context().microsequence?.explanation || null,
+      contentReview: context().microsequence?.contentReview || { state: "unregistered" }
+    },
+    canOpen: () => !destroyed && !state.manualEditing && !state.assistanceSelection &&
+      state.view === "microsequence" && state.microsequenceMode === "play",
+    canAuthorSources: () => coursePermission().ownership === "owned" && coursePermission().canEdit === true,
+    onOpen: () => { studyTools.close(); closeCitations(); closeObservationSheet(); },
+    downloadPdf: downloadCitationPdf
+  });
+
   function setHomeNotice(message, reviewUndo = null) {
     state.homeNotice = message;
     state.reviewUndo = reviewUndo;
@@ -260,7 +277,7 @@ export function createCourseStudyApplication({
     existing?.remove();
     const screen = root.querySelector(".app-shell > .screen");
     if (screen) {
-      screen.inert = state.citationsOpen || state.observationSheetOpen || studyTools.isOpen();
+      screen.inert = state.citationsOpen || state.observationSheetOpen || studyTools.isOpen() || explanation.isOpen();
       if (screen.inert) screen.setAttribute("aria-hidden", "true");
       else screen.removeAttribute("aria-hidden");
     }
@@ -306,7 +323,7 @@ export function createCourseStudyApplication({
   }
 
   function bindCitationMarkers() {
-    root.querySelectorAll("[data-action='open-citation']").forEach(node => {
+    (root.querySelector(".study-reader-screen") || root).querySelectorAll("[data-action='open-citation']").forEach(node => {
       if (citationMarkerBindings.has(node)) return;
       citationMarkerBindings.add(node);
       node.addEventListener("click", event => {
@@ -680,6 +697,7 @@ export function createCourseStudyApplication({
   }
 
   function resetStudyUnitInteraction() {
+    explanation.close({ restore: false });
     const entry = currentResponseEntry();
     if (entry && state.responseByBlockKey[entry.blockKey]) {
       state.responseByBlockKey[entry.blockKey].feedback = null;
@@ -2344,6 +2362,7 @@ export function createCourseStudyApplication({
   }
 
   function goBack() {
+    if (explanation.handleBack()) return true;
     if (providerAssistance?.handleBack?.()) return true;
     if (state.authoringExitConfirmation) { cancelAuthoringContextExit(); return true; }
     if (state.authoringContext) return requestAuthoringContextExit();
@@ -2972,6 +2991,7 @@ export function createCourseStudyApplication({
       () => void openObservations()
     );
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
+    root.querySelector("[data-action='open-explanation']")?.addEventListener("click", () => explanation.open());
     root.querySelectorAll("[data-action='toggle-citations']").forEach((node) =>
       node.addEventListener("click", () => void toggleCitations()));
     bindCitationMarkers();
@@ -2979,6 +2999,7 @@ export function createCourseStudyApplication({
     root.querySelector(".study-reader-screen")?.addEventListener("click", (event) => {
       if (!state.feedbackOpen || typeof event.target?.closest !== "function") return;
       if (event.target.closest(".study-continue-popup") ||
+          event.target.closest("[data-action='open-explanation']") ||
           event.target.closest("[data-action='next-study-unit']") ||
           event.target.closest("[data-action='continue-feedback']")) return;
       state.feedbackOpen = false;
@@ -3207,6 +3228,7 @@ export function createCourseStudyApplication({
     manualInlineController?.destroy?.();
     manualInlineController = null;
     studyTools.beforeRender();
+    explanation.beforeRender();
     root.innerHTML = `<div class="app-shell${state.authoringContext ? ' course-authoring-context-shell' : ''}">` + renderCourseStudyScreen({
       project: state.project,
       view: state.view,
@@ -3269,9 +3291,9 @@ export function createCourseStudyApplication({
     bindActions();
     updateCitationsOverlay();
     studyTools.afterRender();
-    void RESOURCE_PACKAGE_REGISTRY.hydrate(root).then(() => {
+    void RESOURCE_PACKAGE_REGISTRY.hydrate(root.querySelector(".app-shell > .screen") || root).then(() => {
       if (generation !== studyRenderGeneration || destroyed) return;
-      placeStudyCitationMarkers(root, context().studyUnit, state.citations);
+      placeStudyCitationMarkers(root.querySelector(".study-reader-screen") || root, context().studyUnit, state.citations);
       bindCitationMarkers();
       activateManualEditing();
       bindResponseInteraction(root);
@@ -3289,6 +3311,7 @@ export function createCourseStudyApplication({
     }
     focusStudyTarget(pendingStudyFocus || observationFocus);
     revealStudyObservationControl(root.ownerDocument?.activeElement);
+    explanation.afterRender();
     void loadStudyCitations();
   }
 
@@ -3455,6 +3478,7 @@ export function createCourseStudyApplication({
     destroy() {
       destroyed = true;
       studyTools.destroy();
+      explanation.destroy();
       providerAssistance?.destroy?.();
       providerAssistance = null;
       manualInlineController?.destroy?.();

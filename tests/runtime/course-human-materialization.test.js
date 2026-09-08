@@ -4,10 +4,17 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/catalog/resourceC
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { materializeHumanCoursePart } from
+import { materializeHumanCoursePart as materializeCompletePart } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+function explanationFixtures(units) {
+  return [...new Set((units ?? []).map((unit) => unit?.microssequencia).filter((value) => value !== undefined))]
+    .map((microssequencia, index) => ({ microssequencia, conteudo: { title: "Explicação sintética de DNS",
+      content: [{ id: `support-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0",
+        data: { text: "O DNS associa nomes a endereços. Uma consulta usa o nome para obter a informação correspondente." } }] }, fontes: [] }));
+}
+const materializeHumanCoursePart = (args) => materializeCompletePart({ explanations: explanationFixtures(args.units), ...args });
 const PART_ID = "20000000-0000-4000-8000-000000000001";
 const ANALYSIS_ID = "30000000-0000-4000-8000-000000000001";
 const SECOND_ANALYSIS_ID = "30000000-0000-4000-8000-000000000002";
@@ -17,6 +24,30 @@ const PRINCIPAL = {
   actorId: "40000000-0000-4000-8000-000000000001",
   scopes: ["authoring:read", "authoring:write"]
 };
+
+test("Explicação incompleta bloqueia a gravação conjunta sem aprovar ou omitir apoio", async () => {
+  for (const explanations of [undefined, [], [{ ...explanationFixtures([unit()])[0], fontes: {} }],
+    [{ ...explanationFixtures([unit()])[0], conteudo: { title: "Apoio", content: [] } }]]) {
+    const adapter = adapterFixture();
+    await assert.rejects(() => materializeCompletePart({ adapter, principal: PRINCIPAL,
+      course: "Curso de Redes", part: 1, units: [unit()], explanations }),
+    error => ["human_materialization_missing_explanation", "invalid_human_explanation"].includes(error.code));
+    assert.equal(adapter.calls.length, 0);
+  }
+});
+
+test("Explicação conserva fonte e âncora na mesma operação das unidades", async () => {
+  const adapter = adapterFixture();
+  const support = explanationFixtures([unit()])[0];
+  support.fontes = [{ fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"],
+    ancoras: ["Seção 2 — Introdução"] }];
+  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [unit()], explanations: [support] });
+  assert.equal(adapter.calls.length, 1);
+  assert.deepEqual(adapter.calls[0].explanations[0].content, support.conteudo);
+  assert.equal(adapter.calls[0].explanations[0].sourceLinks[0].sourceId, "source-rfc-1035");
+  assert.deepEqual(adapter.calls[0].explanations[0].sourceLinks[0].anchors, [{ anchorId: "anchor-rfc-1035-section-2" }]);
+});
 
 function adapterFixture() {
   const calls = [];
@@ -360,7 +391,11 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   }]);
   assert.equal(receipt.result, "Primeira parte produzida.");
   assert.equal(receipt.deepLink, `#/authoring/courses/${COURSE_ID}?section=content`);
-  assert.equal(receipt.nextDecision, "Posso preparar a próxima parte.");
+  assert.match(receipt.nextDecision, /aguarda revisão humana/u);
+  assert.equal(write.explanations.length, 1);
+  assert.equal(write.explanations[0].microsequenceId, "micro-dns");
+  assert.equal(write.explanations[0].content.title, "Explicação sintética de DNS");
+  assert.equal(Object.hasOwn(write.explanations[0], "contentReview"), false);
   assert.equal(receipt.context.distribuicaoDaPratica[0].observacao.studyUnitCount, 1);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes(COURSE_ID), false);
 });
@@ -405,7 +440,8 @@ test("materializa prática de resposta aberta na primeira tentativa sem resposta
     principal: PRINCIPAL,
     course: "Curso de Redes",
     part: 1,
-    units: [unit(), practice]
+    units: [unit(), practice],
+    explanations: explanationFixtures([unit()])
   });
 
   assert.equal(adapter.calls.length, 1);

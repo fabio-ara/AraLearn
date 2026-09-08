@@ -2,6 +2,7 @@ import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "./courseDesignParameters.js
 import { normalizeCourseAuthoringAnalyticsPage, normalizeCourseAuthoringAnalyticsQuery } from "./courseAuthoringAnalytics.js";
 import { CourseAuthoringBasisError, exactAuthoringObject, authoringText, authoringInteger, canonicalAuthoringValue, normalizeCourseAuthoringParameter, normalizeCourseAuthoringSource, observeCourseAuthoringDimensions } from "./courseAuthoringBasis.js";
 import { flattenCourseDocument, composeCourseDocument } from "./courseEntities.js";
+import { normalizeCourseSourcesRead } from "./courseSources.js";
 
 export const COURSE_AUTHORING_COMPARISON_CONTRACT = "aralearn.course-authoring-comparison.v1";
 export const COURSE_AUTHORING_EXPORT_CONTRACT = "aralearn.course-authoring-export.v1";
@@ -159,19 +160,34 @@ export function normalizeCourseAuthoringComparison(value, { expectedRequest = nu
   }
   return structuredClone(value);
 }
-export function assembleCourseAuthoringExport({ analytics, document }) {
+export function assembleCourseAuthoringExport({ analytics, document, explanationSources = [] }) {
   analytics = normalizeCourseAuthoringAnalyticsPage(analytics);
   const flattened = flattenCourseDocument(document);
   if (flattened.course.id !== analytics.course.id || flattened.course.title !== analytics.course.title) fail("O artefato exportado pertence a outro curso.");
   const normalizedDocument = composeCourseDocument(flattened.course, flattened.rows);
+  const supportIds = new Set(flattened.rows.filter(row => row.entityType === "microsequence" && row.content.explanation).map(row => row.entityId));
+  const seen = new Set();
+  if (!Array.isArray(explanationSources)) fail("A proveniência da Explicação é inválida.");
+  explanationSources = explanationSources.map(value => {
+    const read = normalizeCourseSourcesRead(value);
+    if (read.courseId !== analytics.course.id || read.courseRevision !== analytics.course.revision ||
+        read.mode !== "target" || read.query.targetKind !== "microsequence_explanation" ||
+        !supportIds.has(read.query.targetId) || seen.has(read.query.targetId) || read.nextCursor !== null ||
+        read.items.length > 1 || read.items.some(item => item.targetKind !== "microsequence_explanation" || item.targetId !== read.query.targetId)) {
+      fail("A proveniência da Explicação mistura alvos ou revisões.");
+    }
+    seen.add(read.query.targetId);
+    return read;
+  });
+  if (seen.size !== supportIds.size) fail("A exportação precisa incluir a proveniência de cada Explicação.");
   // Export retains only the aggregate editorial reading and course content; there are no actor records or temporary download URLs.
-  return { contract: COURSE_AUTHORING_EXPORT_CONTRACT, course: analytics.course, scope: analytics.scope.selected, analytics, artifact: { document: normalizedDocument } };
+  return { contract: COURSE_AUTHORING_EXPORT_CONTRACT, course: analytics.course, scope: analytics.scope.selected, analytics, artifact: { document: normalizedDocument, explanationSources } };
 }
 export function normalizeCourseAuthoringExport(value, { expectedSelection = null } = {}) {
-  exactAuthoringObject(value, ["contract", "course", "scope", "analytics", "artifact"]); exactAuthoringObject(value.artifact, ["document"]);
+  exactAuthoringObject(value, ["contract", "course", "scope", "analytics", "artifact"]); exactAuthoringObject(value.artifact, ["document", "explanationSources"]);
   if (value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT) fail("O contrato da exportação é inválido.");
   normalizeSide({ course: value.course, scope: value.scope, deepLink: null }, expectedSelection);
-  const result = assembleCourseAuthoringExport({ analytics: value.analytics, document: value.artifact.document });
+  const result = assembleCourseAuthoringExport({ analytics: value.analytics, document: value.artifact.document, explanationSources: value.artifact.explanationSources });
   if (canonicalAuthoringValue(result.course) !== canonicalAuthoringValue(value.course) || canonicalAuthoringValue(result.scope) !== canonicalAuthoringValue(value.scope)) fail("A exportação mistura cursos, edições ou escopos.");
   return result;
 }

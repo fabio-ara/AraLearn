@@ -50,6 +50,89 @@ Revisão esperada e identificador de pedido resolvem falhas distintas. A revisã
 impede sobrescrita de trabalho concorrente; um recibo temporário permite repetir
 a mesma intenção depois de uma resposta perdida sem duplicar o efeito.
 
+### Revisão do conteúdo e cópia de Estudo
+
+O Estudo obtém a Explicação de `microsequence.explanation` na composição já
+aberta. `loadExplanationContext` devolve o caminho de origem, a revisão e o
+metadado protegido de revisão da linha; não consulta um gerador nem escreve
+progresso. Ausência de apoio, rascunho e conteúdo disponível são estados
+distintos. Uma aprovação antiga permanece identificada como `stale`, e um
+registro anterior sem aprovação permanece `unregistered`.
+
+Após uma leitura autorizada, o repositório salva o DTO redigido de citações do
+apoio em `course.v1.explanation-citations:<courseId>`, separado por revisão e
+microssequência. A leitura offline, a cópia anterior conservada e o modo Manual
+reutilizam esse DTO quando disponível. Falha transitória de serviço também
+permite usar a mesma revisão salva, com estado explícito de indisponibilidade;
+conflito de revisão ou revogação não recebe esse fallback. O cache é removido
+com o curso. Uma resposta tardia não substitui a revisão aberta.
+
+O documento offline já contém o texto e os componentes próprios da Explicação.
+As citações ficam disponíveis offline depois de sua primeira leitura online;
+se ainda não foram salvas, o Estudo informa essa condição em vez de declarar
+que não existem fontes. Esse cache não contém catálogo privado, trechos de
+verificação autoral, bytes de mídia ou URLs assinadas. Áudio e PDF externos
+continuam exigindo conexão e autorização corrente. O áudio do apoio usa o alvo
+`microsequence_explanation`, com a microssequência e a revisão abertas, e passa
+pela mesma validação de identidade, tamanho, formato e hash antes do player.
+
+O cliente da aplicação lê a impressão do conjunto de uma microssequência por
+`get_course_microsequence_review_v1` e envia a decisão explícita por
+`approve_course_microsequence_content_v1`. A aprovação exige sessão da pessoa
+proprietária na aplicação; o servidor não concede essa autoridade ao OAuth de
+MCP/Actions. A impressão corresponde ao conteúdo inspecionado. O cliente
+conserva a identidade da decisão para uma retomada e não repete automaticamente
+uma escrita incerta. Um recibo recuperado confirma a decisão original; a
+situação corrente precisa ser relida caso o conteúdo tenha mudado depois.
+Na leitura de entidades, `contentReview` fica fora de `content` e contém apenas
+situação e data públicas. A composição do documento exportável não incorpora
+esse metadado, de modo que reimportar conteúdo não reaplica a aprovação da origem.
+
+A projeção de Estudo informa quais microssequências aguardam revisão, sem
+distribuir seu novo texto ao estudante. Antes de promover uma composição no
+cache, o controlador verifica se ela retiraria conteúdo disponível na cópia
+anterior. Nesse caso conserva o curso inteiro e sua revisão, incluindo o
+progresso local. A diferença conhecida acompanha a cópia após reiniciar o
+aplicativo. Não mistura microssequências de revisões distintas nem interpreta
+essa retenção como falta de Internet. Uma projeção posterior elegível permite
+a substituição íntegra; o modo manual continua aguardando atualização explícita.
+O acesso a arquivos continua sujeito à autorização corrente.
+
+As citações do apoio usam `get_course_explanation_citations_v1`, com curso,
+microssequência e revisão da cópia efetivamente aberta. Compartilham o contrato
+bibliográfico das unidades e identificam o alvo como `microsequence_explanation`.
+Na exportação autoral, o texto aparece uma vez na microssequência e as
+atribuições de cada apoio são lidas na mesma revisão do curso. Ausência da
+leitura de proveniência, repetição ou alvo/revisão divergentes impedem exportar
+um artefato que pareça completo.
+
+Na Autoria, o mesmo endpoint de fontes aceita esse alvo para catálogo contextual,
+obra, âncora e atribuição. As ocorrências da Explicação usam somente conteúdo,
+com seleção literal; resposta e feedback pertencem às unidades. A versão da
+microssequência vem de uma leitura remota na revisão inspecionada, inclusive
+quando ainda não há atribuição bibliográfica.
+
+A edição manual da Explicação usa a composição existente, com comparação da
+revisão do curso e da versão da microssequência. Troca somente `explanation`,
+conserva os demais campos e reaplica os vínculos correntes. O recibo registra
+origem humana dessa mudança, sem atribuir à pessoa todo o conteúdo prévio da
+microssequência. O controlador guarda o pedido exato antes de enviar; resposta
+perdida conserva identidade, conteúdo e proveniência para recuperar o mesmo
+resultado após reabrir. Esse estado local é removido após confirmação ou recusa
+definitiva e acompanha a limpeza por revogação de acesso. Ele não é aprovação.
+O recibo distingue alteração do curso e versão do texto: declarar pela primeira
+vez um conjunto vazio de vínculos pode avançar a revisão do curso sem alterar
+a entidade da microssequência. Nesse caso `changed` é verdadeiro e
+`microsequenceVersion` permanece igual; não se registra uma edição de texto
+que não aconteceu. Antes dessa declaração, a leitura de atribuição ausente
+retorna uma lista vazia, sem item de identidade nula.
+Inspeção e aprovação usam os RPCs autenticados protegidos já existentes; a
+escrita de aprovação não tem repetição automática nem retorno por cache.
+
+Essas regras são verificadas por testes locais de cliente e persistência;
+a migração e as conversas hospedadas precisam de comprovação própria antes da
+publicação. Ver o [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md).
+
 ## Auth: conta da aplicação e OAuth do MCP
 
 Auth mantém cadastro por e-mail, confirmação, recuperação, sessão e rotação de
@@ -182,6 +265,17 @@ MCP, OAuth e revisão do esquema.
 para a autoria das Edge Functions. O teste local demonstra o estado recriado; não comprova que o
 projeto hospedado recebeu a mesma revisão.
 
+A migração `20260908000533_refresh_network_component_catalog.sql` sincroniza a
+descoberta de hub e repetidor com o catálogo SQL. A versão do catálogo passa a
+`1-70b27609`; as referências, opções e o fingerprint dos schemas permanecem
+iguais. As políticas atuais avançam somente `catalogVersion`, conservando
+disponibilidade, listas de componentes, origem, motivo e data. Conteúdo,
+snapshots de aplicação e decisões de revisão humana não são regravados.
+Preflight e postflight recusam divergência do catálogo precursor ou alteração
+dessas escolhas. O manifesto avança sua revisão sem acrescentar capacidades.
+O teste de atualização local verifica também a estabilidade das bases de
+revisão; essa prova não substitui a aplicação e os gates do ambiente hospedado.
+
 As provas focais de Storage e recuperação usam somente ambientes locais:
 
 ```powershell
@@ -248,3 +342,8 @@ de efeito.
 O procedimento integral, incluindo site, Android e recuperação, está em
 [Implantação](implantacao.md). O modelo de dados e a réplica local estão em
 [Persistência relacional e sincronização](persistencia-relacional.md).
+
+
+### Sincronização da impressão gerada dos pacotes
+
+A migração `20260908023156_refresh_generated_package_fingerprint.sql` acompanha o autoíndice regenerado dos pacotes. O catálogo SQL conserva versão `1-70b27609` e opções; somente `schemaFingerprint` passa a concordar com o registro gerado. A pré-condição verifica a revisão anterior e sua impressão, e a pós-condição impede alteração incidental das opções, identidade ou concessões da função. Nenhuma política, unidade, explicação ou decisão aplicada é regravada. A revisão do manifesto identifica a projeção sincronizada; os testes históricos de catálogos continuam comparando o estado da migração que exercitam, enquanto o check do gerador verifica o catálogo vigente.

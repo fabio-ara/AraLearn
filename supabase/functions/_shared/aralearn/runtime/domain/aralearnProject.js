@@ -4,6 +4,7 @@ import {
   validateStudyUnitEnvelope
 } from "../resources/kernel/studyUnitEnvelope.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
+import { normalizeMicrosequenceExplanation, normalizeMicrosequenceExplanationPlan } from "./courseExplanation.js";
 
 export const PROJECT_CONTRACT = "aralearn.course.v1";
 export const PROJECT_VERSION = 1;
@@ -30,6 +31,8 @@ const MICROSEQUENCE_FIELDS = new Set([
   "covers",
   "checks",
   "errors",
+  "explanationPlan",
+  "explanation",
   "studyUnits"
 ]);
 
@@ -398,6 +401,13 @@ function validateMicrosequence(microsequence, path, errors) {
     })
     .filter(Boolean);
 
+  const explanationFields = {};
+  for (const [field, normalize] of [["explanationPlan", normalizeMicrosequenceExplanationPlan],
+    ["explanation", normalizeMicrosequenceExplanation]]) {
+    if (!hasOwn(microsequence, field)) continue;
+    try { explanationFields[field] = normalize(microsequence[field]); }
+    catch (error) { pushError(errors, `${path}.${field}`, error.message); }
+  }
   return {
     id,
     title,
@@ -410,6 +420,7 @@ function validateMicrosequence(microsequence, path, errors) {
     covers: validateStringList(microsequence, "covers", path, errors),
     checks: validateStringList(microsequence, "checks", path, errors),
     errors: validateStringList(microsequence, "errors", path, errors, { required: false }),
+    ...explanationFields,
     studyUnits
   };
 }

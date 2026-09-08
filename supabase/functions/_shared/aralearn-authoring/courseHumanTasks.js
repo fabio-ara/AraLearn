@@ -41,6 +41,8 @@ import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
+import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
@@ -96,10 +98,19 @@ const PARAMETER_FIELD_TO_ID = Object.freeze(Object.fromEntries(
 const CURRICULAR_MAP_MICROSEQUENCE_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze(["titulo", "objetivo", "dependencias", "cobertura"]),
+  required: Object.freeze(["titulo", "objetivo", "dependencias", "cobertura", "explicacao"]),
   properties: Object.freeze({
     titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
     objetivo: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
+    explicacao: { type: "object", additionalProperties: false,
+      required: ["proposito", "pressupostos", "relacoes", "fontesPrevistas"],
+      properties: {
+        proposito: { type: "string", minLength: 1, maxLength: 2000 },
+        pressupostos: { type: "array", maxItems: 64, uniqueItems: true, items: { type: "string", minLength: 1 } },
+        relacoes: { type: "array", maxItems: 64, uniqueItems: true, items: { type: "string", minLength: 1 } },
+        fontesPrevistas: { type: "array", maxItems: 32, uniqueItems: true, items: { type: "string", minLength: 1 },
+          description: "Títulos das fontes já cadastradas, quando conhecidas." }
+      } },
     dependencias: Object.freeze({
       type: "array", maxItems: 64, uniqueItems: true,
       items: Object.freeze({ type: "string", minLength: 1, maxLength: 300 })
@@ -300,6 +311,15 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
   })]),
   description: "Conteúdo sem controles internos."
 });
+
+const EXPLANATIONS_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
+  description: "Uma Explicação previamente autorada por microssequência, compartilhada pelas unidades. Produzir não aprova conteúdo.",
+  items: { type: "object", additionalProperties: false, required: ["microssequencia", "conteudo", "fontes"],
+    properties: { microssequencia: HUMAN_REFERENCE_SCHEMA,
+      conteudo: { type: "object", additionalProperties: false, required: ["title", "content"],
+        properties: { title: { type: "string", minLength: 1, maxLength: 300 },
+          content: { type: "array", minItems: 1, maxItems: 64, items: COMPONENT_INSTANCE_SCHEMA } } },
+      fontes: SOURCE_LINKS_SCHEMA } } });
 
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
@@ -556,7 +576,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "preparar_materializacao",
     "Preparar a materialização",
     "Lê o lote antes da produção.",
-    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso", "parte"]),
+    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
@@ -605,6 +625,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       fonte: HUMAN_REFERENCE_SCHEMA,
       busca: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
       unidade: HUMAN_REFERENCE_SCHEMA,
+      explicacao: HUMAN_REFERENCE_SCHEMA,
       continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
@@ -700,15 +721,16 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use o recorte preparado com calibração contextual por unidade na materialização. Marque formas, cobertura, novidade, uso e retomada; identidades locais únicas. Não narre a chamada: resultado, link e próxima etapa.",
+    "Use o recorte preparado com calibração contextual por unidade na materialização. Marque formas, cobertura e prática; identidades locais únicas. Grava unidades e uma Explicação por microssequência como rascunho para revisão humana na Autoria.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
+      explicacoes: EXPLANATIONS_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
         description: "Unidades completas do lote."
       })
-    }, ["curso", "parte", "unidades"]),
+    }, ["curso", "parte", "unidades", "explicacoes"]),
     { readOnly: false }
   ),
   task(
@@ -757,8 +779,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Aplica correções autorizadas; não configura.",
-    inputSchema({
+    "Corrige unidades ou Explicações no curso corrente; a aprovação afetada precisa de nova revisão humana.",
+    Object.freeze({ ...inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
         type: "array", minItems: 1, maxItems: 64,
@@ -771,8 +793,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
             fontes: SOURCE_LINKS_SCHEMA
           })
         })
-      })
-    }, ["curso", "correcoes"]),
+      }),
+      explicacoes: EXPLANATIONS_SCHEMA
+    }, ["curso"]), anyOf: [{ required: ["correcoes"] }, { required: ["explicacoes"] }] }),
     { readOnly: false }
   ),
   task(
@@ -803,9 +826,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "array", minItems: 1, maxItems: 64,
         items: Object.freeze({
           type: "object", additionalProperties: false,
-          required: Object.freeze(["unidade", "relacao", "papeis"]),
+          required: Object.freeze(["relacao", "papeis"]),
+          oneOf: Object.freeze([{ required: Object.freeze(["unidade"]) }, { required: Object.freeze(["explicacao"]) }]),
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
+            explicacao: HUMAN_REFERENCE_SCHEMA,
             vinculo: Object.freeze({ type: "integer", minimum: 1, maximum: 32 }),
             ...SOURCE_LINK_PROPERTIES
           })
@@ -909,9 +934,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "2.9.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "3.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:818347253ab3f17a8350640629fa57d68759262ab2bd07ee755df43582bcc06d";
+  "sha256:750f0dbd8c84766ab24ae62a57653869eae3a27b4fadd9f8937d08f474a665f5";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1050,6 +1075,12 @@ function withoutTechnicalState(value) {
       projected[key] = entry.map(({ studyUnit, ...metadata }) => ({
         ...withoutTechnicalState(metadata), studyUnit: structuredClone(studyUnit)
       }));
+      continue;
+    }
+    if (normalizedKey === "explicacoes" && Array.isArray(entry) && entry.every(item =>
+      item && typeof item === "object" && Object.hasOwn(item, "conteudo"))) {
+      projected[key] = entry.map(({ conteudo, ...metadata }) => ({ ...withoutTechnicalState(metadata),
+        conteudo: conteudo === null ? null : normalizeMicrosequenceExplanation(conteudo) }));
       continue;
     }
     if (normalizedKey === "component_authoring_contract") {
@@ -1404,7 +1435,9 @@ function normalizeCurricularMapArguments(args) {
       const microsequences = lessonValue.microssequencias.map((rawMicrosequence, index) => {
         const field = `${lessonField}.microssequencias[${index}]`;
         const item = plainObject(rawMicrosequence, field);
-        exactFields(item, new Set(["titulo", "objetivo", "dependencias", "cobertura"]));
+        exactFields(item, new Set(["titulo", "objetivo", "dependencias", "cobertura", "explicacao"]));
+        const support = plainObject(item.explicacao, `${field}.explicacao`);
+        exactFields(support, new Set(["proposito", "pressupostos", "relacoes", "fontesPrevistas"]));
         const title = text(item.titulo, `${field}.titulo`, 300);
         const key = matchingText(title);
         if (microsequenceTitles.has(key)) {
@@ -1435,6 +1468,12 @@ function normalizeCurricularMapArguments(args) {
           objective: text(item.objetivo, `${field}.objetivo`, 2000),
           dependencies,
           coverage,
+          explanationPlan: {
+            purpose: text(support.proposito, `${field}.explicacao.proposito`, 2000),
+            prerequisites: textList(support.pressupostos, "pressupostos", { maximum: 64 }),
+            relations: textList(support.relacoes, "relacoes", { maximum: 64 }),
+            sourceIds: textList(support.fontesPrevistas, "fontesPrevistas", { maximum: 32 })
+          },
           order: microsequenceOrder
         };
         microsequenceTitles.set(key, normalized);
@@ -1611,6 +1650,7 @@ function semanticCurricularMap(map) {
           .map((microsequence) => ({
             title: String(microsequence?.title || ""),
             objective: String(microsequence?.objective ?? microsequence?.goal ?? ""),
+            ...(microsequence.explanationPlan ? { explanationPlan: structuredClone(microsequence.explanationPlan) } : {}),
             dependencies: (Array.isArray(microsequence?.dependencyMicrosequenceIds)
               ? microsequence.dependencyMicrosequenceIds
               : Array.isArray(microsequence?.dependencies)
@@ -1645,9 +1685,10 @@ function semanticMapFromInput(input) {
         title: lessonTitle,
         objective: lessonObjective,
         microsequences: microsequences.map(({ title: microTitle, objective: microObjective,
-          dependencies, coverage }) => ({
+          dependencies, coverage, explanationPlan }) => ({
           title: microTitle,
           objective: microObjective,
+          ...(explanationPlan ? { explanationPlan: structuredClone(explanationPlan) } : {}),
           dependencies,
           coverage
         }))
@@ -1657,8 +1698,8 @@ function semanticMapFromInput(input) {
 }
 
 function sameCurricularMap(currentMap, input) {
-  return JSON.stringify(semanticCurricularMap(currentMap)) ===
-    JSON.stringify(semanticMapFromInput(input));
+  return canonicalAuthoringValue(semanticCurricularMap(currentMap)) ===
+    canonicalAuthoringValue(semanticMapFromInput(input));
 }
 
 function matchingInternalChild(items, title) {
@@ -1735,6 +1776,7 @@ async function buildCurricularMapWrite({ state, input, newId }) {
           position: microsequencePosition,
           title: microsequenceDefinition.title,
           objective: microsequenceDefinition.objective,
+          explanationPlan: structuredClone(microsequenceDefinition.explanationPlan),
           dependencyTitles: microsequenceDefinition.dependencies,
           scopeItemIds: microsequenceDefinition.coverage.map((statement) =>
             scopeIdByText.get(matchingText(statement)))
@@ -1877,7 +1919,14 @@ function humanCurricularMap(map, status) {
           titulo: microsequence.title,
           objetivo: microsequence.objective,
           dependencias: microsequence.dependencies,
-          cobertura: microsequence.coverage
+          cobertura: microsequence.coverage,
+          ...(microsequence.explanationPlan ? { explicacao: {
+            proposito: microsequence.explanationPlan.purpose,
+            pressupostos: microsequence.explanationPlan.prerequisites,
+            relacoes: microsequence.explanationPlan.relations,
+            quantidadeDeFontesPrevistas: microsequence.explanationPlan.sourceIds.length,
+            consultaDasFontes: "Fontes previstas orientam a produção; os vínculos do conteúdo produzido são inspecionados em Fontes."
+          } } : {})
         }))
       }))
     }))
@@ -2455,10 +2504,39 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   });
 };
 
+async function explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt }) {
+  const sourceCache = new Map();
+  return await Promise.all(microsequences.map(async (microsequence) => {
+    const proposal = microsequence.explanationPlan;
+    const plannedSources = await Promise.all((proposal?.sourceIds ?? []).map(async (sourceId) => {
+      if (!sourceCache.has(sourceId)) sourceCache.set(sourceId, adapter.getCourseSources({
+        principal, courseId: resolved.course.id, expectedRevision: resolved.course.revision,
+        mode: "source", sourceId, targetKind: null, targetId: null, cursor: null, limit: 1, deadlineAt
+      }));
+      const read = await sourceCache.get(sourceId);
+      if (!Array.isArray(read?.items) || read.items.length !== 1) fail("course_service_unavailable", "Uma fonte prevista não pôde ser inspecionada.", null, 503);
+      return withoutTechnicalState(read.items[0]);
+    }));
+    const citations = microsequence.explanation ? await adapter.getCourseSources({ principal,
+      courseId: resolved.course.id, expectedRevision: resolved.course.revision, mode: "target", sourceId: null,
+      targetKind: "microsequence_explanation", targetId: microsequence.id, cursor: null, limit: 1, deadlineAt }) : null;
+    return {
+      microssequencia: microsequence.title,
+      proposta: proposal ? { proposito: proposal.purpose, pressupostos: proposal.prerequisites,
+        relacoes: proposal.relations, fontesPrevistas: plannedSources } : null,
+      conteudo: microsequence.explanation ?? null,
+      revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
+        stale: "Revisão precisa ser atualizada" }[microsequence.contentReview?.state] ?? "Revisão não registrada",
+      fontes: citations ? withoutTechnicalState(citations) : null
+    };
+  }));
+}
+
 HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_materializacao' });
   const part = resolved.part;
   const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
   const [design, existingPage] = await Promise.all([
@@ -2500,12 +2578,14 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     design,
     unitDesign
   );
+  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt });
   return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: null,
     nextDecision: null,
-    context: {
-      parte: projectedPart
-    }
+    context: await paginateHumanReadContext(withoutTechnicalState({
+      parte: projectedPart,
+      explicacoes: explanations
+    }), { state: continuation })
   });
 };
 
@@ -2566,6 +2646,10 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
 }) => {
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  if (!resolved.plan) {
+    resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
+    if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
+  }
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   const unitPage = units.length
     ? { items: resolved.studyUnits, hasMore: false, nextCursor: null }
@@ -2588,8 +2672,14 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     deadlineAt,
     scopeUnits: unitPage.items
   }) : { items: [] };
+  const selectedMicrosequenceIds = new Set(unitPage.items.map(unit => unit.curriculumPath?.didacticMicrosequence?.id));
+  if (resolved.microsequence) selectedMicrosequenceIds.add(resolved.microsequence.id);
+  const reviewMicrosequences = [...new Map((resolved.plan?.plan?.parts ?? []).flatMap(part => part.microsequences ?? [])
+    .filter(microsequence => selectedMicrosequenceIds.has(microsequence.id)).map(microsequence => [microsequence.id, microsequence])).values()];
+  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences, deadlineAt });
   const context = await paginateHumanReadContext(withoutTechnicalState({
     observations, studyUnits: unitPage.items,
+    explicacoes: explanations,
     plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items) : null
   }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
   return result("Preparei este recorte da revisão sem aplicar mudanças.", {
@@ -2599,24 +2689,48 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   });
 };
 
+async function resolveHumanSourceContentTarget({ adapter, principal, resolved, deadlineAt, requireExplanation = false }) {
+  if (!resolved.microsequence) {
+    const unit = resolved.studyUnits[0];
+    return unit ? { kind: "study_unit", id: unit.studyUnit.id,
+      version: Number(unit.version ?? unit.studyUnit.version ?? 1), content: unit.studyUnit } : null;
+  }
+  const microsequenceId = internalIdentity(resolved.microsequence, "microsequence");
+  const entities = await loadAllCourseEntities(adapter, principal, resolved.course, deadlineAt);
+  const entity = entities.find(item => item.entityType === "microsequence" && item.entityId === microsequenceId);
+  if (!entity) throw new AuthoringApiError(404, "human_reference_not_found", "A microssequência não foi localizada no conteúdo corrente.");
+  if (!Number.isSafeInteger(entity.version) || entity.version < 1) {
+    throw new AuthoringApiError(503, "course_service_unavailable", "A versão da microssequência é inválida.");
+  }
+  if (requireExplanation && !entity.content?.explanation) {
+    throw new AuthoringApiError(422, "explanation_not_materialized", "Produza a Explicação antes de atribuir suas fontes de conteúdo.");
+  }
+  return { kind: "microsequence_explanation", id: microsequenceId,
+    version: entity.version, content: entity.content?.explanation ?? null };
+}
+
 HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const units = args.unidade === undefined
     ? []
     : [humanReference(args.unidade, "unidade")];
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  if (args.unidade !== undefined && args.explicacao !== undefined) {
+    fail("invalid_human_task_argument", "Escolha a unidade ou a Explicação da microssequência para consultar fontes.");
+  }
+  const resolved = await resolveTaskContext({ adapter, principal,
+    args: { ...args, microssequencia: args.explicacao }, deadlineAt, units });
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'consultar_fontes' });
-  const unit = resolved.studyUnits[0]?.studyUnit ?? null;
-  const mode = resolved.source ? "source" : unit ? "target" : "catalog";
+  const target = await resolveHumanSourceContentTarget({ adapter, principal, resolved, deadlineAt });
+  const mode = resolved.source ? "source" : target ? "target" : "catalog";
   const sources = await adapter.getCourseSources({
     principal,
     courseId: resolved.course.id,
     expectedRevision: resolved.course.revision,
     mode,
     sourceId: resolved.source?.sourceId ?? null,
-    targetKind: unit ? "study_unit" : null,
-    targetId: unit?.id ?? null,
+    targetKind: target?.kind ?? null,
+    targetId: target?.id ?? null,
     cursor: continuation.p,
     limit: mode === "catalog" ? 24 : 1,
     deadlineAt
@@ -2645,7 +2759,7 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   return result(args.busca !== undefined && context.items?.length === 0
     ? 'Nenhuma fonte corresponde à busca neste trecho.' : "Li as fontes e âncoras deste trecho.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content",
-      unit ? [["studyUnitId", unit.id]] : []),
+      target ? [[target.kind === "study_unit" ? "studyUnitId" : "didacticMicrosequenceId", target.id]] : []),
     nextDecision: null,
     context: readContext
   });
@@ -2822,9 +2936,18 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
         ...resolved.course,
         revision: Number(plan.courseRevision)
       };
-      return { ...resolved, course: savedCourse, plan };
+      const resolvedInput = structuredClone(input);
+      const sources = new Map();
+      for (const microsequence of resolvedInput.modules.flatMap((moduleValue) =>
+        moduleValue.lessons.flatMap((lesson) => lesson.microsequences))) {
+        microsequence.explanationPlan.sourceIds = await Promise.all(microsequence.explanationPlan.sourceIds.map(async (source) => {
+          if (!sources.has(source)) sources.set(source, resolveHumanCourseContext({ adapter, principal, course, source, deadlineAt }));
+          return (await sources.get(source)).source.sourceId;
+        }));
+      }
+      return { ...resolved, course: savedCourse, plan, resolvedInput };
     },
-    build: async (state, { newId }) => await buildCurricularMapWrite({ state, input, newId }),
+    build: async (state, { newId }) => await buildCurricularMapWrite({ state, input: state.resolvedInput, newId }),
     commit: async ({ requestId, ...value }) => await adapter.saveCourseCurricularMap({
       principal, ...value, requestId, deadlineAt
     })
@@ -2921,6 +3044,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   course: humanCourseTitle(args),
   part: humanReference(args.parte, "parte"),
   units: safeClone(args.unidades, "unidades", 480 * 1024),
+  explanations: safeClone(args.explicacoes, "explicacoes", 480 * 1024),
   deadlineAt
 });
 
@@ -2930,7 +3054,8 @@ HUMAN_TASK_HANDLERS.aplicar_correcoes = async ({
   adapter,
   principal,
   course: humanCourseTitle(args),
-  corrections: safeClone(args.correcoes, "correcoes", 480 * 1024),
+  corrections: args.correcoes === undefined ? [] : safeClone(args.correcoes, "correcoes", 480 * 1024),
+  explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024),
   deadlineAt
 });
 
@@ -3544,8 +3669,15 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
       fail("missing_human_task_argument", "Informe fonte para vincular proveniência.");
     }
     const binding = plainObject(bindings[index], `vinculos[${index}]`);
-    exactFields(binding, new Set(["unidade", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
-    const unitReference = humanReference(binding.unidade, `vinculos[${index}].unidade`);
+    exactFields(binding, new Set(["unidade", "explicacao", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
+    if ((binding.unidade === undefined) === (binding.explicacao === undefined)) {
+      fail("invalid_human_task_argument", "Cada vínculo deve escolher uma unidade ou a Explicação de uma microssequência.");
+    }
+    const isExplanation = binding.explicacao !== undefined;
+    if (isExplanation && Array.isArray(binding.ocorrencias) && binding.ocorrencias.some(item => item?.lugar !== "conteudo")) {
+      fail("invalid_human_source_occurrence", "As ocorrências da Explicação usam somente o conteúdo.");
+    }
+    const targetReference = humanReference(isExplanation ? binding.explicacao : binding.unidade, `vinculos[${index}].alvo`);
     await executeTrustedCourseWrite({
       load: async () => {
         const resolved = await resolveHumanCourseContext({
@@ -3554,7 +3686,8 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           course,
           source: internalSourceId === null ? sourceReference : null,
           internalSourceId,
-          studyUnits: [unitReference],
+          microsequence: isExplanation ? targetReference : null,
+          studyUnits: isExplanation ? [] : [targetReference],
           deadlineAt
         });
         return { ...resolved, sourceDetail: await detailedSource(
@@ -3562,7 +3695,8 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
         ) };
       },
       build: async (state, { newId }) => {
-        const unit = state.studyUnits[0];
+        const target = await resolveHumanSourceContentTarget({ adapter, principal,
+          resolved: state, deadlineAt, requireExplanation: isExplanation });
         if (binding.ancoras !== undefined && (!Array.isArray(binding.ancoras) || binding.ancoras.length > 8)) {
           fail("invalid_human_task_argument", "Informe até oito âncoras do vínculo.");
         }
@@ -3579,8 +3713,8 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           expectedRevision: state.course.revision,
           mode: "target",
           sourceId: null,
-          targetKind: "study_unit",
-          targetId: unit.studyUnit.id,
+          targetKind: target.kind,
+          targetId: target.id,
           cursor: null,
           limit: 1,
           deadlineAt
@@ -3605,7 +3739,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           roles: resolveHumanSourceRoles(binding.papeis),
           anchors: binding.ancoras === undefined ? existing?.anchors ?? [] : selectedAnchors,
           occurrences: binding.ocorrencias === undefined ? existing?.occurrences ?? [] :
-            await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: unit.studyUnit,
+            await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: target.content,
               newId, identityPrefix: `source-link:${index}` })
         };
         return {
@@ -3613,9 +3747,9 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           expectedCourseRevision: state.course.revision,
           command: normalizeCourseSourceCommand({
             type: "set_target_sources",
-            targetKind: "study_unit",
-            targetId: unit.studyUnit.id,
-            expectedTargetVersion: Number(unit.version ?? unit.studyUnit.version ?? 1),
+            targetKind: target.kind,
+            targetId: target.id,
+            expectedTargetVersion: target.version,
             sourceLinks: existing
               ? currentLinks.map((link) => link.linkId === existing.linkId ? requestedLink : link)
               : [...currentLinks, requestedLink]

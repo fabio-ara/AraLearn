@@ -63,6 +63,23 @@ segmentação em materiais instrucionais oferecem fundamento para investigar
 essa escolha, mas não comprovam por si sós a eficácia da implementação do
 AraLearn ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
+A microssequência pode oferecer uma **Explicação** compartilhada, planejada em
+Autoria e escrita antes do estudo. Seu ícone abre o mesmo apoio a partir de
+qualquer unidade, inclusive prática, com acesso às fontes e retorno ao ponto de
+origem. A unidade conserva conteúdo ou tarefa inteligível; o apoio desenvolve
+pressupostos, relações e exemplos que não precisam aparecer integralmente em
+cada card. A suficiência é examinada no conjunto, sem reduzir tamanho de fonte,
+truncar texto ou acrescentar níveis de dificuldade. Abrir esse conteúdo não
+aciona geração por IA nem altera progresso.
+
+A pessoa proprietária inspeciona unidades, apoio e fontes da microssequência
+antes de aprovar o conteúdo. Produzir material ou aprovar seu plano não
+substitui essa decisão. Material novo ou alterado permanece para revisão antes
+de nova obtenção por estudantes. Cursos anteriores sem apoio ou revisão
+registrada conservam essa condição explícita; o sistema não inventa aprovação.
+Essas propriedades de [Explicação e revisão humana](explicacao-e-revisao-humana.md)
+não demonstram, por si, compreensão ou aprendizagem.
+
 ## Teoria progressiva, e não teoria resumida
 
 O ponto de partida é um estudante que encontra o assunto pela primeira vez.

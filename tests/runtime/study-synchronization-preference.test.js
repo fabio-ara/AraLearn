@@ -47,4 +47,10 @@ test("nuvem distingue manual, pendência, erro e adiamento sem chamar conteúdo 
   const guest = renderRuntimeStatusControl({ visitor: true, pending: true });
   assert.match(guest, /aria-label="Neste dispositivo"/u);
   assert.doesNotMatch(guest, /data-action="synchronize-study"/u);
+  const offline = renderRuntimeStatusControl({ offline: true, availableOffline: true });
+  assert.match(offline, /aria-label="Sem conexão"/u);
+  assert.match(offline, /popovertargetaction="toggle"/u);
+  assert.match(offline, /A cópia deste dispositivo continua disponível/u);
+  assert.doesNotMatch(offline, /data-action="synchronize-study"/u);
+  assert.match(renderRuntimeStatusControl({ offline: false }), /data-action="synchronize-study"/u);
 });

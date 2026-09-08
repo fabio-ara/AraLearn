@@ -44,7 +44,7 @@ async function createAuthor(config, marker) {
   return { id: created.payload.id, accessToken: signedIn.payload.access_token };
 }
 
-function paragraph(id, text) {
+export function paragraph(id, text) {
   return {
     id,
     package: "aralearn.resource.paragraph",
@@ -55,21 +55,26 @@ function paragraph(id, text) {
 
 function unitCalibration(editorialDirection) {
   return {
-    parametrosPedagogicos: {
-      tetoNovasUnidadesDeAnalise: 1,
-      formasDeExplicacao: ["plain_definition"],
-      minimoDePraticasPorRequisito: 1,
-      dimensoesDeVariacaoDaPratica: ["case_or_data"]
-    },
-    parametrosEditoriais: {
-      alvoDePalavrasPorResposta: 90,
-      alvoDePalavrasPorUnidade: 60
+    motivo: "Calibração da fixture sintética local para uma definição e uma aplicação.",
+    parametros: {
+      maximo_ideias_novas_por_unidade: 1,
+      formas_de_explicacao: ["plain_definition"],
+      oportunidades_distintas_por_requisito: 1,
+      dimensoes_de_variacao_da_pratica: ["case_or_data"],
+      alvo_palavras_conversa: 90,
+      alvo_palavras_unidade: 60,
+      distribuicao_da_pratica: "interleaved",
+      posicao_da_pratica: "after_explanation",
+      alvo_microssequencias_por_parte: 2,
+      alvo_partes_por_lote: 1,
+      frequencia_de_pausa: "each_part",
+      preferencia_da_conversa: "concise"
     },
     direcaoEditorial: editorialDirection
   };
 }
 
-function explanationUnit() {
+export function explanationUnit() {
   return {
     microssequencia: "O que é um socket",
     posicao: 1,
@@ -104,7 +109,7 @@ function explanationUnit() {
   };
 }
 
-function practiceUnit() {
+export function practiceUnit() {
   return {
     microssequencia: "Prática de identificação",
     posicao: 1,
@@ -154,7 +159,7 @@ function practiceUnit() {
   };
 }
 
-function curricularMap(course, approved) {
+export function curricularMap(course, approved) {
   return {
     curso: course,
     aprovado: approved,
@@ -177,11 +182,15 @@ function curricularMap(course, approved) {
         microssequencias: [{
           titulo: "O que é um socket",
           objetivo: "Definir socket sem pressupor uma conexão já estabelecida.",
+          explicacao: { proposito: "Explicar a relação entre processo, interface local e transporte.",
+            pressupostos: ["Um processo executa um programa."], relacoes: ["O socket é uma interface local usada pelo processo."], fontesPrevistas: [] },
           dependencias: [],
           cobertura: ["Compreender o papel de um socket."]
         }, {
           titulo: "Prática de identificação",
           objetivo: "Distinguir processo, socket e conexão em casos variados.",
+          explicacao: { proposito: "Retomar a distinção para examinar um caso de comunicação.",
+            pressupostos: ["Processos usam sockets."], relacoes: ["Uma interface local não é a relação entre as pontas da comunicação."], fontesPrevistas: [] },
           dependencias: ["O que é um socket"],
           cobertura: ["Distinguir processo, socket e conexão."]
         }]
@@ -201,6 +210,16 @@ function approvedPart(course) {
       "Distinguir socket de processo e de conexão em situações concretas."
     ]
   };
+}
+
+function sharedExplanations() {
+  return [{ microssequencia: "O que é um socket", conteudo: {
+    title: "Processo, socket e transporte", content: [paragraph("socket-support",
+      "Um processo é um programa em execução. Para enviar dados, ele usa uma interface local chamada socket. A interface permite entregar dados ao transporte e receber os dados destinados ao processo. Uma conexão relaciona as pontas da comunicação; um socket identifica uma dessas interfaces locais. Um processo pode usar mais de um socket.")]
+  }, fontes: [] }, { microssequencia: "Prática de identificação", conteudo: {
+    title: "Distinguir os participantes da comunicação", content: [paragraph("practice-support",
+      "Separe três perguntas: qual programa está executando, qual interface local ele usa e quais pontas estão relacionadas pela comunicação. Processo responde à primeira, socket à segunda e conexão à terceira. Por exemplo, duas aplicações podem executar no mesmo computador e usar sockets diferentes. Essa distinção permite explicar o caso sem tratar todo o computador como uma única aplicação.")]
+  }, fontes: [] }];
 }
 
 export async function runLocalCourseAuthoringCurrent(environment = process.env) {
@@ -237,6 +256,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       }
     });
     assert.match(created.result, /Criei o curso privado/u);
+    courseId = (await resolveHumanCourseContext({ adapter, principal, course: title })).course.id;
 
     const proposedMap = curricularMap(title, false);
     await executeHumanCourseTask({
@@ -278,7 +298,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: {
         curso: title,
         parte: 1,
-        unidades: [explanationUnit(), practiceUnit()]
+        unidades: [explanationUnit(), practiceUnit()],
+        explicacoes: sharedExplanations()
       }
     });
     assert.equal(materialized.result, "Primeira parte produzida.");
@@ -291,7 +312,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         curso: title,
         unidade: "Socket liga processo e transporte",
         condicao: "fixada_pelo_autor",
-        parametrosPedagogicos: { tetoNovasUnidadesDeAnalise: 1 }
+        parametros: { maximo_ideias_novas_por_unidade: 1 }
       }
     });
     await executeHumanCourseTask({
@@ -304,7 +325,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         unidades: [
           explanationUnit(),
           practiceUnit()
-        ]
+        ],
+        explicacoes: sharedExplanations()
       }
     });
 
@@ -324,7 +346,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         unidades: [
           explanationUnit(),
           practiceUnit()
-        ]
+        ],
+        explicacoes: sharedExplanations()
       }
     });
     const context = await resolveHumanCourseContext({
@@ -441,7 +464,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         curso: title,
         metadados: {
           titulo: "Referência sobre sockets",
-          papel: "tecnica_conceitual",
+          papeisSugeridos: ["tecnica_conceitual"],
           citacao: "AraLearn. Referência sobre sockets, 2026.",
           verificacao: "confirmada_explicitamente_pela_autoria",
           visibilidadeNoEstudo: "citacao"
@@ -454,6 +477,12 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         vinculos: [{
           unidade: units.items[0].studyUnit.title,
           relacao: "supported_by",
+          papeis: ["tecnica_conceitual"],
+          ancoras: [1]
+        }, {
+          explicacao: "O que é um socket",
+          relacao: "supported_by",
+          papeis: ["tecnica_conceitual"],
           ancoras: [1]
         }]
       }
@@ -475,7 +504,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       cursor: null,
       limit: 1
     });
-    assert.equal(sourceDetail.items[0].sourceRole, "technical_conceptual");
+    assert.deepEqual(sourceDetail.items[0].defaultRoles, ["technical_conceptual"]);
     const beforeEditAttribution = await adapter.getCourseSources({
       principal,
       courseId,
@@ -539,6 +568,19 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       anchorCount: 1,
       studyUnitCount: 1
     }]);
+    const exported = await adapter.getCourseAuthoringExport({ principal, courseId,
+      expectedRevision: edited.revision, scope: { kind: "course", ref: null } });
+    const exportedMicrosequences = exported.artifact.document.courses[0].modules.flatMap(module =>
+      module.lessons.flatMap(lesson => lesson.microsequences));
+    assert.deepEqual(exportedMicrosequences.map(microsequence => microsequence.explanation),
+      sharedExplanations().map(support => support.conteudo));
+    assert.equal(exportedMicrosequences.flatMap(microsequence => microsequence.studyUnits)
+      .some(unit => Object.hasOwn(unit, "explanation")), false);
+    assert.equal(exported.artifact.explanationSources.length, 2);
+    assert.equal(exported.artifact.explanationSources.find(read =>
+      read.query.targetId === units.items[0].curriculumPath.didacticMicrosequence.id).items[0].sourceLinks[0].sourceId,
+    sourceContext.source.sourceId);
+    assert.equal(JSON.stringify(exported.artifact.document).includes("contentReview"), false);
     const studyCitations = async (revision) => {
       const response = await localSupabaseRequest(
         config,
@@ -557,11 +599,25 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       return first(response.payload);
     };
     assert.equal((await studyCitations(edited.revision)).citations.length, 1);
+    const deletedUnit = units.items[0].studyUnit.id;
+    await assert.rejects(adapter.commitCourseComposition({ principal, courseId,
+      requestId: randomUUID(), expectedRevision: edited.revision,
+      upserts: [], deletes: [{ entityType: "study_unit", entityId: deletedUnit }], sourceAttributionApplications: [] }),
+    { code: "invalid_course_command" }, "A exclusão não pode descartar a referência sem conservar seu destino.");
+    const retainedUnit = structuredClone(units.items[1].studyUnit);
+    delete retainedUnit.id;
+    delete retainedUnit.position;
+    const preservedReference = await adapter.commitCourseComposition({ principal, courseId,
+      requestId: randomUUID(), expectedRevision: edited.revision,
+      upserts: [{ entityType: "study_unit", entityId: units.items[1].studyUnit.id,
+        parentType: "microsequence", parentId: units.items[1].curriculumPath.didacticMicrosequence.id,
+        position: units.items[1].studyUnit.position, content: retainedUnit }],
+      deletes: [], sourceAttributionApplications: [{ studyUnitId: units.items[1].studyUnit.id, sourceLinks }] });
     const retiredAnchor = await adapter.executeCourseSourceCommand({
       principal,
       courseId,
       requestId: randomUUID(),
-      expectedCourseRevision: edited.revision,
+      expectedCourseRevision: preservedReference.revision,
       command: {
         type: "retire_anchor",
         anchorId: sourceDetail.items[0].anchors[0].anchorId,
@@ -569,9 +625,15 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       }
     });
     const retiredCitations = await studyCitations(retiredAnchor.courseRevision);
-    assert.equal(retiredCitations.citations.length, 0);
+    assert.equal(retiredCitations.citations.length, 1,
+      "Retirar uma âncora não apaga a referência já atribuída ao conteúdo.");
+    assert.equal(retiredCitations.citations[0].sourceId, sourceContext.source.sourceId);
+    assert.equal(retiredCitations.citations[0].anchors[0].anchorId, sourceDetail.items[0].anchors[0].anchorId);
+    const retiredSource = await adapter.getCourseSources({ principal, courseId,
+      expectedRevision: retiredAnchor.courseRevision, mode: "source", sourceId: sourceContext.source.sourceId,
+      targetKind: null, targetId: null, cursor: null, limit: 1 });
+    assert.equal(retiredSource.items[0].anchors[0].status, "retired");
 
-    const deletedUnit = units.items[0].studyUnit.id;
     const deletion = await adapter.commitCourseComposition({
       principal,
       courseId,
@@ -590,6 +652,18 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     assert.equal(afterDeletion.design.studyUnitCount, 1);
     assert.equal(afterDeletion.authorship.explicitParameterOverrideCount, 0);
 
+    const correctedSupport = sharedExplanations()[1];
+    correctedSupport.conteudo.content[0].data.text += " A interface local pode continuar existindo sem uma conexão estabelecida.";
+    await executeHumanCourseTask({ adapter, principal, name: "aplicar_correcoes",
+      rawArguments: { curso: title, explicacoes: [correctedSupport] } });
+    const correctedContext = await resolveHumanCourseContext({ adapter, principal, course: title });
+    const correctedExport = await adapter.getCourseAuthoringExport({ principal, courseId,
+      expectedRevision: correctedContext.course.revision, scope: { kind: "course", ref: null } });
+    const correctedMicrosequences = correctedExport.artifact.document.courses[0].modules.flatMap(module =>
+      module.lessons.flatMap(lesson => lesson.microsequences));
+    assert.deepEqual(correctedMicrosequences[1].explanation, correctedSupport.conteudo);
+    assert.deepEqual(correctedMicrosequences[0].explanation, sharedExplanations()[0].conteudo);
+
     return Object.freeze({
       contract: "aralearn.course-authoring-current-proof.v1",
       partMicrosequenceCount: 2,
@@ -597,6 +671,9 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       analysisIntroductionCount: 1,
       practiceOpportunityCount: 1,
       observationCount: 2,
+      explanationCount: exportedMicrosequences.length,
+      explanationSourceReadCount: exported.artifact.explanationSources.length,
+      explanationCorrectionVerified: true,
       deletedUnitOverrideCount: 0,
       sourceTargetVersion: afterEditAttribution.items[0].targetVersion,
       retiredAnchorCitationCount: retiredCitations.citations.length

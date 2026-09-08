@@ -16,9 +16,13 @@ import {
   releasePlan,
   releaseAssetUploadUrl,
   selectReleaseByTag,
+  sourceFileDigest,
   validateCandidateIdentity,
   validateIntegratedPullRequest,
   validateManifest,
+  validatePromotionRun,
+  validateBackendProof,
+  validateReleaseBundleAssets,
   validateRun,
   validateVersionProgress,
   verifyAndroid,
@@ -38,6 +42,86 @@ const ENV = {
   ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic-test-value"
 };
 const digest = (value) => createHash("sha256").update(value).digest("hex");
+
+test("identidade dos dois fontes usa blob Git, tolera CRLF/LF e recusa conteúdo local alterado", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-source-identity-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const command = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  command("init", "--quiet");
+  command("config", "core.autocrlf", "false");
+  await fs.mkdir(path.join(root, "supabase"));
+  const blob = '{\n  "version": "0.0.67"\n}\n';
+  const files = ["package-lock.json", "supabase/runtime-manifest.json"];
+  for (const file of files) await fs.writeFile(path.join(root, file), blob);
+  command("add", "--", ...files);
+  command("-c", "user.name=Synthetic fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "Synthetic source identity");
+  for (const file of files) {
+    for (const newline of ["\n", "\r\n"]) {
+      await fs.writeFile(path.join(root, file), blob.replaceAll("\n", newline));
+      assert.equal(await sourceFileDigest(file, root), digest(blob));
+    }
+    for (const changed of [blob.replace("0.0.67", "0.0.68"), blob.replace('  "version"', ' "version"'), `${blob}\n`, blob.replace("\n", "\r")]) {
+      await fs.writeFile(path.join(root, file), changed);
+      await assert.rejects(sourceFileDigest(file, root), /diverge do blob Git além de CRLF\/LF/u);
+    }
+    await fs.writeFile(path.join(root, file), blob);
+  }
+  await assert.rejects(sourceFileDigest("../package-lock.json", root), /não autorizada/u);
+});
+
+test("retomada exige promoção concluída da mesma main e as etapas reais da fase", () => {
+  const info = { repository: { full_name: REPOSITORY }, head_repository: { full_name: REPOSITORY },
+    path: ".github/workflows/pages.yml", event: "workflow_dispatch", head_branch: "main", head_sha: TARGET_SHA,
+    run_attempt: 2, status: "completed", conclusion: "success" };
+  const jobs = [["Conferir candidata integrada", "Verificar run, árvore, configuração e digests"],
+    ["Instalar e atualizar APK assinado", "Provar instalação e upgrade sem conta"]]
+    .map(([name, step]) => ({ name, conclusion: "success", steps: [{ name: step, conclusion: "success" }] }));
+  const identity = { repository: REPOSITORY, sha: TARGET_SHA, attempt: 2, phase: "preparar" };
+  validatePromotionRun(info, jobs, identity);
+  for (const change of [{ head_sha: HEAD_SHA }, { run_attempt: 3 }, { conclusion: "failure" },
+    { status: "in_progress" }, { head_branch: "other" }, { event: "push" }, { path: ".github/workflows/validacao.yml" },
+    { head_repository: { full_name: "fork/app" } }]) {
+    assert.throws(() => validatePromotionRun({ ...info, ...change }, jobs, identity));
+  }
+  for (const invalid of [jobs.slice(1), [...jobs, jobs[1]], [jobs[0], { ...jobs[1], steps: [] }]]) {
+    assert.throws(() => validatePromotionRun(info, invalid, identity));
+  }
+  assert.throws(() => validatePromotionRun(info, jobs, { ...identity, phase: "publicar_site" }));
+  validatePromotionRun(info, [{ name: "Publicar Pages aprovado", conclusion: "success", steps: [
+    { name: "Conferir bytes efetivamente publicados", conclusion: "success" }] }], { ...identity, phase: "publicar_site" });
+});
+
+test("backend pendente não é prova e verificação posterior não muda manifesto nativo", () => {
+  const candidate = { preparation: "synthetic-immutable" };
+  const before = structuredClone(candidate);
+  for (const proof of [null, {}, { manifestSha256: digest(JSON.stringify(candidate)), backend: null },
+    { manifestSha256: "0".repeat(64), backend: { schemaRevision: "20260908003749" } }]) {
+    assert.throws(() => validateBackendProof(candidate, proof));
+  }
+  const backend = { schemaRevision: "20260908003749" };
+  assert.equal(validateBackendProof(candidate, { manifestSha256: digest(JSON.stringify(candidate)), backend }), backend);
+  assert.deepEqual(candidate, before);
+});
+
+test("finalização recusa outro APK e recibo coerentes entre si mas alheios à prova nativa", () => {
+  const manifest = candidate();
+  const bundle = bytes => ({ apk: bytes,
+    checksum: Buffer.from(`${digest(bytes)}  AraLearn-${VERSION}.apk\n`),
+    receipt: Buffer.from(JSON.stringify({ ...manifest, release: { apk: `AraLearn-${VERSION}.apk`,
+      sha256: digest(bytes), certificateSha256: CERTIFICATE } })) });
+  const approved = bundle(Buffer.from("synthetic native-tested APK"));
+  validateReleaseBundleAssets(approved, approved);
+  const other = bundle(Buffer.from("another coherent APK, never tested"));
+  assert.equal(JSON.parse(other.receipt).release.certificateSha256, CERTIFICATE);
+  assert.equal(JSON.parse(other.receipt).release.sha256, digest(other.apk));
+  assert.throws(() => validateReleaseBundleAssets(other, approved), /prova nativa/u);
+  for (const key of ["apk", "checksum", "receipt"]) {
+    assert.throws(() => validateReleaseBundleAssets({ ...approved, [key]: other[key] }, approved), /prova nativa/u);
+  }
+});
 
 test("downloads usam o media type específico de cada API do GitHub", () => {
   assert.equal(githubApiAccept("actions/artifacts/123/zip", { binary: true }), GITHUB_API_ACCEPT);
@@ -148,8 +232,8 @@ async function androidArchive(context, bodies) {
   const payload = path.join(directory, "payload");
   await writeFiles(path.join(payload, "assets", "www"), bodies);
   const archive = path.join(directory, "synthetic-runtime.apk");
-  // O tar sintético testa leitura e identidade do runtime; não representa assinatura Android.
-  const packed = spawnSync("tar", ["-cf", archive, "assets"], { cwd: payload, encoding: "utf8" });
+  // ZIP sintético de bytes do runtime; não representa assinatura Android.
+  const packed = packZip(archive, payload);
   assert.equal(packed.status, 0, packed.error?.message || packed.stderr);
   return archive;
 }
@@ -159,11 +243,16 @@ async function artifactZip(context, bodies) {
   const payload = path.join(directory, "payload");
   await writeFiles(payload, bodies);
   const archive = path.join(directory, "artifact.zip");
-  const packed = spawnSync("tar", ["-a", "-cf", archive, ...Object.keys(bodies)], { cwd: payload, encoding: "utf8" });
+  const packed = packZip(archive, payload);
   assert.equal(packed.status, 0, packed.error?.message || packed.stderr);
   const bytes = await fs.readFile(archive);
   assert.equal(bytes.subarray(0, 2).toString("ascii"), "PK", "A prova deve usar ZIP real.");
   return { bytes, artifact: { id: 42, expired: false, digest: `sha256:${digest(bytes)}` } };
+}
+
+function packZip(archive, directory) {
+  return spawnSync(process.platform === "win32" ? "python" : "python3", ["-c",
+    "import pathlib,sys,zipfile\nroot=pathlib.Path(sys.argv[2])\nwith zipfile.ZipFile(sys.argv[1],'w') as archive:\n for file in sorted(root.rglob('*')):\n  if file.is_file(): archive.write(file,file.relative_to(root).as_posix())", archive, directory], { encoding: "utf8" });
 }
 
 test("manifesto completo distingue bytes da candidata, dependências e ambiente", () => {
@@ -484,9 +573,7 @@ test("runtime Android compactado exige lista completa e bytes binários idêntic
   }
 });
 
-test("download de candidata valida ZIP real e extrai somente manifesto ou arquivos aprovados", {
-  skip: process.platform !== "win32" && "O preparador da promoção usa o tar BSD do runner Windows."
-}, async (context) => {
+test("download de candidata valida ZIP real e extrai somente manifesto ou arquivos aprovados", async (context) => {
   const manifestBytes = Buffer.from(JSON.stringify(candidate()));
   const metadata = await artifactZip(context, { "candidate.json": manifestBytes });
   const metadataDirectory = await temporaryDirectory(context);
@@ -500,9 +587,7 @@ test("download de candidata valida ZIP real e extrai somente manifesto ou arquiv
   await verifyDirectory(pagesDirectory, fileList(bodies));
 });
 
-test("download bloqueia ZIP divergente, expirado, inesperado e destino ocupado", {
-  skip: process.platform !== "win32" && "O preparador da promoção usa o tar BSD do runner Windows."
-}, async (context) => {
+test("download bloqueia ZIP divergente, expirado, inesperado e destino ocupado", async (context) => {
   const metadata = await artifactZip(context, { "candidate.json": Buffer.from("{}") });
   const destination = await temporaryDirectory(context);
   const corrupt = Buffer.from(metadata.bytes);
@@ -534,11 +619,29 @@ test("download bloqueia ZIP divergente, expirado, inesperado e destino ocupado",
   assert.equal(await fs.readFile(path.join(destination, "keep.txt"), "utf8"), "existing work");
 });
 
-test("download reprova bytes internos alterados mesmo com ZIP íntegro", {
-  skip: process.platform !== "win32" && "O preparador da promoção usa o tar BSD do runner Windows."
-}, async (context) => {
+test("download reprova bytes internos alterados mesmo com ZIP íntegro", async (context) => {
   const altered = { ...PAGES, "index.html": Buffer.from("different candidate") };
   const archive = await artifactZip(context, altered);
   const destination = await temporaryDirectory(context);
   await assert.rejects(() => extractArtifactArchive(archive.artifact, archive.bytes, destination, fileList(PAGES)), /bytes da candidata/u);
+});
+
+test("retomada extrai bundle real somente nos caminhos previstos e rejeita links ZIP", async (context) => {
+  const bodies = { ".candidate/candidate.json": Buffer.from(JSON.stringify(candidate())),
+    ".pages/index.html": PAGES["index.html"], ".pages/asset-manifest.json": PAGES["asset-manifest.json"] };
+  const archive = await artifactZip(context, bodies);
+  const destination = await temporaryDirectory(context);
+  const allowed = name => name === ".candidate/candidate.json" || name.startsWith(".pages/");
+  await extractArtifactArchive(archive.artifact, archive.bytes, destination, null, allowed);
+  await verifyDirectory(path.join(destination, ".pages"), fileList(PAGES));
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(destination, ".candidate/candidate.json"))), candidate());
+  const extra = await artifactZip(context, { ...bodies, "scripts/execute.js": Buffer.from("unexpected") });
+  await assert.rejects(() => extractArtifactArchive(extra.artifact, extra.bytes, path.join(destination, "unused"), null, allowed), /caminho inesperado/u);
+  const linkArchive = path.join(await temporaryDirectory(context), "link.zip");
+  const result = spawnSync(process.platform === "win32" ? "python" : "python3", ["-c",
+    "import stat,sys,zipfile\ni=zipfile.ZipInfo('candidate.json');i.create_system=3;i.external_attr=(stat.S_IFLNK|0o777)<<16\nwith zipfile.ZipFile(sys.argv[1],'w') as archive: archive.writestr(i,'outside')", linkArchive], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const bytes = await fs.readFile(linkArchive);
+  await assert.rejects(() => extractArtifactArchive({ id: 43, expired: false, digest: `sha256:${digest(bytes)}` }, bytes,
+    path.join(destination, "links")), /Links/u);
 });

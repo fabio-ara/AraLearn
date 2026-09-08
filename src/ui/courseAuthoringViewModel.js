@@ -1,4 +1,5 @@
 import { isCanonicalCourseId } from "./courseAuthoringRoute.js";
+import { normalizeMicrosequenceExplanationPlan } from "../domain/courseExplanation.js";
 import {
   normalizeCourseSourceChange as normalizeCourseSourceChangeDomain,
   normalizeCourseSourceLinks,
@@ -312,6 +313,8 @@ function normalizeCurriculumMicrosequence(value) {
     title: requiredText(value.title, "O título da microssequência", { maximum: 300 }),
     objective: optionalText(value.objective, "O objetivo da microssequência", { maximum: 4_000 }),
     dependencyMicrosequenceIds: Object.freeze(dependencyMicrosequenceIds),
+    explanationPlan: value.explanationPlan == null ? null
+      : normalizeMicrosequenceExplanationPlan(value.explanationPlan),
     role
   });
 }

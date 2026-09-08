@@ -237,7 +237,17 @@ async function materializeFixture(value) {
     principal: PRINCIPAL,
     course: value.course.title,
     part: value.part.position + 1,
-    units
+    units,
+    explanations: [{ microssequencia: value.part.microsequence.title, conteudo: value.part.microsequence.id === "micro-lugar-auditorio" ? {
+      title: "Da indicação do bilhete ao lugar",
+      content: [{ id: "support-seat", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
+        text: "Neste auditório, uma linha reúne assentos na horizontal e recebe uma letra; uma coluna reúne assentos na vertical e recebe um número. Um bilhete B3 indica a linha B e a coluna 3. Cada indicação isolada permite vários assentos, mas o encontro das duas aponta um único assento. Para encontrá-lo, localize a linha indicada e acompanhe-a até a coluna indicada. Confirme as duas indicações antes de se sentar. A organização concreta precisa estar sinalizada no auditório: o exemplo usa essa convenção de letras e números."
+      } }]
+    } : {
+      title: "Como o switch aprende e encaminha",
+      content: [{ id: "support-switch", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
+        text: "Uma interface identifica sua participação na rede local por um endereço MAC. Um quadro Ethernet informa os endereços de origem e destino. Ao receber o quadro, o switch associa o endereço de origem à porta de entrada. Se conhece a porta do destino, encaminha o quadro por ela; se ainda não a conhece, difunde pelas outras portas permitidas. Essa difusão não equivale a aprender o destino: a aprendizagem depende da origem dos quadros recebidos. A tabela muda com o tráfego e com o envelhecimento das entradas."
+      } }] }, fontes: [] }]
   });
   assert.equal(adapter.calls.length, 1);
   const committed = adapter.calls[0].units;

@@ -122,6 +122,20 @@ async function rpc(name, body, token) {
   return request(`/rest/v1/rpc/${name}`, { method: "POST", token, body });
 }
 
+async function approveSyntheticContent(id, microsequenceIds = courseRows(id)
+  .filter(row => row.entityType === "microsequence").map(row => row.entityId)) {
+  const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+    authClient: { getAccessToken: async () => ownerToken } });
+  // Somente a fixture criada neste arquivo: decisão simulada não é revisão humana real.
+  for (const microsequenceId of microsequenceIds) {
+    const review = await client.getMicrosequenceReview(id, microsequenceId);
+    const approved = await client.approveMicrosequenceContent({ courseId: id, microsequenceId,
+      expectedBasisHash: review.basisHash, requestId: crypto.randomUUID() });
+    expect(approved.contentReview.state).toBe("current");
+  }
+  return (await client.getCourse(id)).revision;
+}
+
 function courseRows(id) {
   const guide = (goal) => ({
     goal,
@@ -154,6 +168,10 @@ function courseRows(id) {
     covers: [],
     checks: [],
     errors: [],
+    explanation: { title: `Apoio: ${title}`, content: [{
+      id: `support-${microsequenceId}`, package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: `${goal} Esta sequência sintética permite conferir leitura, acesso e persistência sem usar um curso real.` }
+    }] },
     studyUnits
   });
   const lesson = (lessonId, title, goal, microsequences) => ({
@@ -498,6 +516,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       }
     }, ownerToken);
     expect(composition.data.revision).toBe(2);
+    await approveSyntheticContent(courseId);
   });
 
   test.afterAll(async ({ browserName }, testInfo) => {
@@ -594,6 +613,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url)));
       await expect.poll(async () => (await detail()).attachments.length).toBe(1);
       const attached = await detail();
+      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras$/u }).click();
       await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
       await page.getByLabel("Página inicial", { exact: true }).fill("1");
@@ -601,10 +621,14 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Arquivo a que este trecho se refere", { exact: true }).selectOption(attached.attachments[0].contentHash);
       await page.getByLabel("Localizador para pessoas", { exact: true }).fill("Página usada no ensaio local");
       await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
+      await expect(page.locator('[data-source-form="anchor"]')).toBeHidden();
       await expect.poll(async () => (await detail()).anchors.length).toBe(1);
       const sourceWithAnchor = await detail();
       expect(sourceWithAnchor.anchors[0].contentHash).toBe(attached.attachments[0].contentHash);
-      await page.goto(`/#/authoring/courses/${courseId}?section=content&studyUnitId=study-unit-access-local-1`);
+      await expect(page.getByRole("button", { name: "Voltar ao catálogo", exact: true })).toBeEnabled();
+      await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
+      await expect(page.locator("[data-source-detail-dialog]")).toBeHidden();
+      await page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true }).click();
       await page.getByRole("button", { name: "Fontes e âncoras de Primeira Unidade compartilhada", exact: true }).click();
       const dialog = page.locator("[data-source-target-dialog]");
       await dialog.getByRole("button", { name: `Vincular fonte: ${title}`, exact: true }).click();
@@ -666,6 +690,17 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     const page = await context.newPage();
     const failures = captureBrowserFailures(page);
     const studyRoute = `/#/estudo/${notationCourseId}/module-access-local/lesson-access-local/microsequence-access-local/${unitId}`;
+    const citationReads = [];
+    const citationReadTasks = [];
+    page.on("response", response => {
+      if (!response.url().endsWith("/rpc/get_course_study_citations_v1")) return;
+      citationReadTasks.push((async () => {
+        const payload = await response.json().catch(() => null);
+        citationReads.push({ status: response.status(), request: response.request().postDataJSON(),
+          code: payload?.code ?? null, message: payload?.message ?? null,
+          courseRevision: payload?.courseRevision ?? null });
+      })());
+    });
     const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
       authClient: { getAccessToken: async () => ownerToken } });
     const loadRows = async () => {
@@ -721,6 +756,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       const expected = structuredClone(richParagraphInstance);
       expected.data.blocks[0].inlines[0].text = revisedText;
       expect(await currentRich()).toEqual(expected);
+      await expect.poll(() => citationReads.at(-1)?.courseRevision).toBe(3);
+      expect(citationReads.every(read => read.status === 200)).toBe(true);
       await page.reload();
       await page.goto(studyRoute);
       await expect(page.locator(".package-rich-paragraph")).toContainText(revisedText.trim());
@@ -728,6 +765,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await attachScreenshot(page, testInfo, "notacao-real-editada-390.png");
       expect(failures.failures).toEqual([]);
     } finally {
+      await Promise.all(citationReadTasks);
+      await testInfo.attach("notation-citation-revisions", {
+        body: JSON.stringify(citationReads, null, 2), contentType: "application/json"
+      });
       await context.close();
       await courseApi(`/v1/courses/${notationCourseId}`, { method: "DELETE", body: {
         operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID()
@@ -767,24 +808,31 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(page.locator(".runtime-card-title")).toBeVisible();
       await page.getByRole("button", { name: "Conta e aparência" }).click();
       await page.getByRole("button", { name: "Parâmetros · unidade de estudo" }).click();
-      await expect(page.locator(".course-design-scope strong")).toContainText("unidade de estudo");
+      await expect(page.locator(".course-design-scope > summary")).toContainText("Unidade de estudo");
+      await expect(page.locator(".course-design-scope > summary strong")).toHaveText("Primeira Unidade compartilhada");
       const card = page.locator(`.course-design-parameter[data-parameter-id="${novelty}"]`);
-      await card.locator("summary").click();
-      await card.locator('[name="mode"]').selectOption("automatic");
-      await card.locator('[name="reason"]').fill("Ajustar novidade ao repertório acumulado desta unidade.");
-      await card.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await card.getByRole("button").click();
+      const parameterEditor = page.locator(`.course-design-parameter-editor[data-parameter-id="${novelty}"]`);
+      await parameterEditor.locator('[name="mode"]').selectOption("automatic");
+      await parameterEditor.locator('[name="reason"]').fill("Ajustar novidade ao repertório acumulado desta unidade.");
+      await parameterEditor.getByRole("button", { name: "Salvar neste escopo" }).click();
       await expect(page.locator(".course-authoring-notice")).toContainText(["Escolha automática registrada."]);
       let design = await readDesign("study_unit", unitId);
       expect(parameter(design, novelty).localAssignment).toMatchObject({ mode: "automatic", value: null });
-      await card.locator("summary").click();
-      await card.locator('[name="mode"]').selectOption("fixed");
-      await card.locator('[name="parameterValue"]').fill("5");
-      await card.locator('[name="reason"]').fill("Exceção local a preservar na cópia do perfil.");
-      await card.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await parameterEditor.locator('[name="mode"]').selectOption("fixed");
+      await parameterEditor.locator('[name="parameterValue"]').fill("5");
+      await parameterEditor.locator('[name="reason"]').fill("Exceção local a preservar na cópia do perfil.");
+      await parameterEditor.getByRole("button", { name: "Salvar neste escopo" }).click();
+      await expect.poll(async () => parameter(await readDesign("study_unit", unitId), novelty).localAssignment.value).toBe(5);
+      await expect(parameterEditor.getByRole("button", { name: "Salvar neste escopo" })).toBeEnabled();
+      await page.getByRole("button", { name: "Voltar aos ajustes", exact: true }).click();
       await expect(card.locator("header strong")).toHaveText("5");
+      await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
       await page.goto(`/#/authoring/courses/${designCourseId}?section=parameters`);
-      await expect(page.locator(".course-design-parameter")).toHaveCount(12);
-      await page.locator(".course-authoring-profiles > summary").click();
+      expect((await readDesign()).parameters).toHaveLength(12);
+      await page.locator('.course-design-category-menu > summary').click();
+      await page.getByRole("button", { name: "Perfis", exact: true }).click();
+      await expect(page.locator(".course-authoring-profiles")).toHaveAttribute("open", "");
       await page.getByRole("button", { name: "Criar perfil", exact: true }).click();
       const editor = page.locator("[data-course-profile-editor]");
       await editor.locator('[name="name"]').fill("Explicação e debate");
@@ -1134,7 +1182,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         .toBeVisible();
       await ownerPage.locator(".course-authoring-task-menu > summary").click();
       await ownerPage.getByRole("link", { name: "Pessoas e acesso", exact: true }).click();
-      await expect(ownerPage.getByRole("heading", { name: "Pessoas e acesso", exact: true }))
+      await expect(ownerPage.getByRole("heading", { name: "Pessoas e acesso", exact: true, level: 1 }))
         .toBeVisible();
       await expect(ownerPage.getByText("Somente você tem acesso.", { exact: true })).toBeVisible();
       await ownerPage.getByRole("button", { name: "Conceder acesso" }).click();
@@ -1211,11 +1259,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerContext.setOffline(true);
       await expect(learnerPage.getByText(COURSE_TITLE, { exact: true })).toBeVisible();
       await learnerPage.getByRole("button", { name: "Sem conexão", exact: true }).click();
+      const offlineStatus = learnerPage.getByRole("region", { name: "Estado da sincronização", exact: true });
+      await expect(offlineStatus).toBeVisible();
       await expect(learnerPage.getByText(
         "Sem conexão. A cópia deste dispositivo continua disponível.",
         { exact: true }
       )).toBeVisible();
-      await learnerPage.getByRole("button", { name: "Sem conexão", exact: true }).click();
+      await attachScreenshot(learnerPage, testInfo, "estado-offline-local-390.png");
+      await learnerPage.keyboard.press("Escape");
+      await expect(offlineStatus).toBeHidden();
+      await expect(learnerPage.getByRole("button", { name: "Sem conexão", exact: true })).toBeFocused();
       await learnerContext.setOffline(false);
       learnerFailures.setOffline(false);
       await learnerPage.reload();
@@ -1338,17 +1391,22 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     expect(publicDescriptor).not.toHaveProperty("isPersonalCopy");
     const publicList = await guestClient.listCourses({ query: "Curso público local" });
     expect(publicList.items.some((course) => course.courseId === publicCourseId)).toBe(true);
-    const restricted = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 });
+    await expect(guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 }))
+      .rejects.toMatchObject({ status: 401, code: "42501" });
+    const approvedRevision = await approveSyntheticContent(publicCourseId);
+    const restricted = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: approvedRevision });
     expect(restricted.citations[0].attachments).toEqual([]);
     await expect(guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
-      expectedRevision: 7, sourceId, sourceRevision: 1, contentHash: hash })).rejects.toMatchObject({ status: 403 });
-    const available = await ownerClient.setCourseSourceFileAccess({ courseId: publicCourseId, expectedRevision: 7,
+      expectedRevision: approvedRevision, sourceId, sourceRevision: 1, contentHash: hash })).rejects.toMatchObject({ status: 403 });
+    const available = await ownerClient.setCourseSourceFileAccess({ courseId: publicCourseId, expectedRevision: approvedRevision,
       sourceId, sourceRevision: 1, contentHash: hash, publicFileAccess: "available" });
-    expect(available.courseRevision).toBe(8);
-    const citations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 8 });
+    expect(available.courseRevision).toBe(approvedRevision + 1);
+    expect((await ownerClient.getMicrosequenceReview(publicCourseId, "microsequence-access-local")).contentReview.state).toBe("stale");
+    const fileAccessRevision = await approveSyntheticContent(publicCourseId, ["microsequence-access-local"]);
+    const citations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: fileAccessRevision });
     expect(citations.citations[0].attachments).toEqual([{ contentHash: hash, byteSize: pdfBytes.byteLength, mediaType: "application/pdf" }]);
     const download = await guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
-      expectedRevision: 8, sourceId, sourceRevision: available.sourceRevision, contentHash: hash });
+      expectedRevision: fileAccessRevision, sourceId, sourceRevision: available.sourceRevision, contentHash: hash });
     expect(download.contract).toBe("aralearn.course-source-pdf-download.v2");
     expect(download).not.toHaveProperty("storageOriginCourseId");
     expect(download.attachment).not.toHaveProperty("storagePath");
@@ -1427,6 +1485,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     } }, ownerToken);
     await ownerClient.setCourseVisibility({ courseId: syncCourseId, expectedRevision: 2,
       visibility: "public", publicFileAccess: "restricted", confirmed: true });
+    await approveSyntheticContent(syncCourseId);
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block",
       permissions: ["local-network-access"] });
     context.setDefaultTimeout(15_000);
@@ -1503,9 +1562,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       const changed = rows.find(({ entityType, entityId }) => entityType === "study_unit" && entityId === "study-unit-access-local-1");
       changed.content.content[0].data.text = "Texto atualizado externamente durante o modo manual.";
       await courseApi(`/v1/courses/${syncCourseId}/composition`, { method: "POST", body: {
-        requestId: crypto.randomUUID(), expectedRevision: 3, upserts: [changed], deletes: [],
+        requestId: crypto.randomUUID(), expectedRevision: (await ownerClient.getCourse(syncCourseId)).revision, upserts: [changed], deletes: [],
         sourceAttributionApplications: [{ studyUnitId: changed.entityId, sourceLinks: [] }]
       } }, ownerToken);
+      await approveSyntheticContent(syncCourseId, [changed.parentId]);
       await other.bringToFront();
       await page.bringToFront();
       await page.waitForLoadState("networkidle");

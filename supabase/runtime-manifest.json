@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260907031059",
+  "schemaRevision": "20260908023156",
   "contractVersion": 1,
   "requiredFeatures": [
     "flat-runtime-manifest-v1",
@@ -49,6 +49,8 @@
     "course-product-operations-v1",
     "current-administrative-maintenance-v1",
     "gpt-actions-openapi-v1",
-    "authoring-preference-profiles-v1"
+    "authoring-preference-profiles-v1",
+    "shared-microsequence-explanation-v1",
+    "human-content-review-v1"
   ]
 }

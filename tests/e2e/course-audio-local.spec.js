@@ -123,7 +123,17 @@ test.describe("áudio persistido no Supabase local", () => {
       expect(uploadedMp3.media).toEqual({ contentHash: mp3Hash, byteSize: mp3.length, mediaType: "audio/mpeg" });
       expect((await owner.client.uploadCourseAudio(mp3Request)).idempotent).toBe(true);
       await owner.client.uploadCourseAudio({ courseId, expectedCourseRevision: await revision(), requestId: crypto.randomUUID(), file: new File([orphan], "orfao-sintetico.wav", { type: "audio/wav" }) });
-      const rows = createAudioCourseRows(courseId, reference(waveItem), uploadedMp3.media);
+      const rows = createAudioCourseRows(courseId, reference(waveItem), uploadedMp3.media).map(row => row.entityType !== "microsequence" ? row : {
+        ...row, content: { ...row.content,
+          explanationPlan: { purpose: "Distinguir a fala dos sinais de calibração e conferir o cálculo da diagonal.", prerequisites: [], relations: [], sourceIds: [] },
+          explanation: { title: "Sinais e cálculo da fixture", content: [
+            { id: "synthetic-signal-support", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
+              text: "O WAV desta fixture mantém a frequência de 440 Hz durante um segundo; o MP3 contém silêncio. Esses sinais verificam a reprodução de arquivos e não representam a fala em chinês, apresentada em outra faixa." } },
+            { id: "synthetic-calculation-support", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
+              text: "Para um retângulo de lados 3 e 4, os quadrados dos lados são 9 e 16. A diagonal é a raiz de 25, portanto mede 5. A calculadora permite conferir esse resultado." } }
+          ] }
+        }
+      });
       await owner.client.requestCourseApi(`/v1/courses/${courseId}/composition`, { method: "POST", body: {
         expectedRevision: await revision(), requestId: crypto.randomUUID(), upserts: rows, deletes: [],
         sourceAttributionApplications: [AUDIO_UNIT_ID, CALCULATOR_UNIT_ID].map(studyUnitId => ({ studyUnitId, sourceLinks: [] }))
@@ -131,6 +141,17 @@ test.describe("áudio persistido no Supabase local", () => {
       await owner.client.grantCourseAccess({ courseId, userId: student.id, handle: student.handle, confirmed: true, canCopy: false });
       let currentRevision = await revision();
       await assertDownloaded(owner.client, { courseId, expectedRevision: currentRevision, studyUnitId: null, contentHash: orphanHash }, orphan);
+      // Uma declaração de vínculo não aprova o conteúdo recém-produzido.
+      await expect(student.client.getCourseMediaDownload({ courseId, expectedRevision: currentRevision,
+        studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash })).rejects.toMatchObject({ status: 403 });
+      const microsequenceId = rows.find(row => row.entityType === "microsequence").entityId;
+      const inspected = await owner.client.getMicrosequenceReview(courseId, microsequenceId);
+      expect(inspected.contentReview.state).toBe("draft");
+      // Decisão somente desta fixture, pelo RPC real da sessão do proprietário.
+      const approved = await owner.client.approveMicrosequenceContent({ courseId, microsequenceId,
+        expectedBasisHash: inspected.basisHash, requestId: crypto.randomUUID() });
+      expect(approved.contentReview.state).toBe("current");
+      currentRevision = await revision();
       await assertDownloaded(student.client, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash }, wave);
       await assertDownloaded(student.client, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: mp3Hash }, mp3);
       await expect(student.client.getCourseMediaDownload({ courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: orphanHash })).rejects.toMatchObject({ status: 403 });
@@ -140,7 +161,13 @@ test.describe("áudio persistido no Supabase local", () => {
       const studentFailures = failures(study);
       await signInBrowser(study, student); await study.goto(audioStudyPath(courseId));
       await expect(study.locator("ruby").first()).toBeVisible();
-      await study.getByRole("button", { name: "Áudio", exact: true }).click();
+      const unitTools = study.getByRole("button", { name: "Ferramentas da unidade", exact: true });
+      const openUnitTool = async (toolId) => {
+        await unitTools.click();
+        await study.getByRole("dialog", { name: "Ferramentas", exact: true })
+          .locator(`[data-open-study-tool="${toolId}"]`).click();
+      };
+      await openUnitTool("audio-tracks");
       const tool = study.getByRole("dialog", { name: "Áudio", exact: true });
       await expect(tool).toBeVisible();
       expect(await tool.textContent()).not.toContain(AUDIO_ALTERNATIVE);
@@ -155,8 +182,8 @@ test.describe("áudio persistido no Supabase local", () => {
       expect(await study.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
       await study.screenshot({ path: info.outputPath("study-audio-real-390.png"), fullPage: true });
       await tool.getByRole("button", { name: "Fechar ferramenta" }).click();
-      await expect(study.getByRole("button", { name: "Áudio", exact: true })).toBeFocused();
-      await study.getByRole("button", { name: "Gramática", exact: true }).click();
+      await expect(unitTools).toBeFocused();
+      await openUnitTool("grammar-consultation");
       await expect(study.getByRole("dialog", { name: "Gramática", exact: true }).locator("[data-tool-link-index]")).toHaveCount(2);
       await study.getByRole("button", { name: "Fechar ferramenta" }).click();
       await study.getByRole("radio", { name: "A altura permanece constante." }).click();
@@ -164,7 +191,7 @@ test.describe("áudio persistido no Supabase local", () => {
       await expect(study.locator(".study-continue-popup")).toBeVisible();
       await study.locator(".study-reader-context").click();
       await expect(study.locator(".study-continue-popup")).toBeHidden();
-      await study.getByRole("button", { name: "Áudio", exact: true }).click();
+      await openUnitTool("audio-tracks");
       await expect(tool).toContainText(AUDIO_ALTERNATIVE);
       await study.getByRole("button", { name: "Fechar ferramenta" }).click();
       await study.goto(audioStudyPath(courseId, CALCULATOR_UNIT_ID));

@@ -75,6 +75,29 @@ function documentFixture() {
   };
 }
 
+test("metadados de revisão permanecem na leitura de entidades sem conceder aprovação ao documento", () => {
+  const document = documentFixture();
+  const { course, rows } = flattenCourseDocument(document);
+  const review = { state: "current", approvedAt: "2026-09-07T12:00:00Z" };
+  for (const row of rows) row.contentReview = row.entityType === "microsequence" ? review : null;
+  const normalized = normalizeCourseEntityRows(rows);
+  assert.deepEqual(normalized.find(row => row.entityType === "microsequence").contentReview, review);
+  assert.deepEqual(composeCourseDocument(course, normalized), document);
+  assert.equal(flattenCourseDocument(composeCourseDocument(course, normalized)).rows.some(row => Object.hasOwn(row, "contentReview")), false);
+  for (const invalid of [{ state: "approved" }, { state: "current" }, { state: "current", approvedAt: "ontem" },
+    { state: "draft", approvedAt: review.approvedAt }, { ...review, approvedBy: "private-actor" }]) {
+    const bad = structuredClone(rows);
+    bad.find(row => row.entityType === "microsequence").contentReview = invalid;
+    assert.throws(() => normalizeCourseEntityRows(bad), { code: "invalid_course_content_review" });
+  }
+  const wrongTarget = structuredClone(rows);
+  wrongTarget.find(row => row.entityType === "study_unit").contentReview = review;
+  assert.throws(() => normalizeCourseEntityRows(wrongTarget), { code: "invalid_course_content_review" });
+  const forged = structuredClone(document);
+  forged.courses[0].modules[0].lessons[0].microsequences[0].contentReview = review;
+  assert.throws(() => flattenCourseDocument(forged), { code: "invalid_course_document" });
+});
+
 function globalCurriculumRows() {
   const guide = { goal: "Desenvolver o objetivo.", include: [], exclude: [], notation: [], avoid: [] };
   const scopeIds = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];

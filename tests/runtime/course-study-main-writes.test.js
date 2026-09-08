@@ -52,6 +52,75 @@ function change(overrides = {}) {
       parentId: null, position: 1, content: { title: "Módulo" } }], deletes: [], ...overrides };
 }
 
+function manualHarness({ write, reconcile = async () => true } = {}) {
+  const writes = [];
+  const reconciliations = [];
+  let ids = 0;
+  const controller = {
+    async commitCourseComposition(request) {
+      writes.push(structuredClone(request));
+      return write ? write(request) : { courseId: request.courseId, courseRevision: 4,
+        studyUnit: request.studyUnit, version: 2, reconciled: true };
+    }
+  };
+  const repository = {
+    async reconcileSavedCourse(...args) {
+      reconciliations.push(args);
+      return reconcile(...args);
+    }
+  };
+  const build = new Function("authoringController", "repository", "createUuid",
+    `${mainDeclaration("pendingStudyComposition")}\n${mainDeclaration("saveStudyManualEdit")}\nreturn saveStudyManualEdit;`);
+  return { writes, reconciliations, save: build(controller, repository, () => `request-manual-${++ids}`) };
+}
+
+const manualChange = { courseId: COURSE_ID, expectedCourseRevision: 3, expectedVersion: 1,
+  didacticMicrosequenceId: "microsequence-a", studyUnit: { id: "unit-a", content: "Texto revisado." },
+  origin: "manual" };
+
+test("edição manual adota a revisão confirmada antes de devolver a Unidade à sessão atual", async () => {
+  let adopted = false;
+  const { save, writes, reconciliations } = manualHarness({ reconcile: async () => { adopted = true; return true; } });
+  const result = await save(manualChange);
+  assert.equal(adopted, true);
+  assert.deepEqual(reconciliations, [[COURSE_ID, 4]]);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].expectedStudyUnitVersion, 1);
+  assert.equal(result.reconciled, true);
+  assert.deepEqual(result.studyUnit, manualChange.studyUnit);
+});
+
+test("cache ausente ou leitura local interrompida conserva a gravação confirmada como sincronização pendente", async () => {
+  for (const reconcile of [async () => false, async () => { throw new Error("Leitura local indisponível."); }]) {
+    const { save, writes } = manualHarness({ reconcile });
+    const result = await save(manualChange);
+    assert.equal(result.reconciled, false);
+    assert.equal(result.courseRevision, 4);
+    assert.equal(result.version, 2);
+    assert.deepEqual(result.studyUnit, manualChange.studyUnit);
+    assert.equal(writes.length, 1);
+  }
+});
+
+test("adoção local não declara concluída uma releitura que o Controller deixou pendente", async () => {
+  const { save } = manualHarness({ write: async () => ({ courseId: COURSE_ID,
+    courseRevision: 4, studyUnit: manualChange.studyUnit, version: 2, reconciled: false }) });
+  assert.equal((await save(manualChange)).reconciled, false);
+});
+
+test("falha antes da confirmação manual não reconcilia e preserva a identidade do pedido na repetição", async () => {
+  let attempts = 0;
+  const { save, writes, reconciliations } = manualHarness({ write: async (request) => {
+    if (++attempts === 1) throw new TypeError("Failed to fetch");
+    return { courseId: request.courseId, courseRevision: 4, studyUnit: request.studyUnit, version: 2, reconciled: true };
+  } });
+  await assert.rejects(() => save(manualChange), /Failed to fetch/u);
+  assert.deepEqual(reconciliations, []);
+  assert.equal((await save(manualChange)).reconciled, true);
+  assert.equal(writes[0].requestId, writes[1].requestId);
+  assert.deepEqual(reconciliations, [[COURSE_ID, 4]]);
+});
+
 test("título, objetivo e ordem usam uma composição canônica com a revisão da edição", async () => {
   const { save, writes, loaded } = harness();
   const receipt = await save(change());

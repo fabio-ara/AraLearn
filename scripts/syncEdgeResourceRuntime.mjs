@@ -25,6 +25,7 @@ const fixedFiles = [
   ["src/domain/authoringProfiles.js", "domain/authoringProfiles.js"],
   ["src/domain/coursePracticeDistribution.js", "domain/coursePracticeDistribution.js"],
   ["src/domain/courseEntities.js", "domain/courseEntities.js"],
+  ["src/domain/courseExplanation.js", "domain/courseExplanation.js"],
   ["src/domain/courseComposition.js", "domain/courseComposition.js"],
   ["src/domain/courseCopy.js", "domain/courseCopy.js"],
   ["src/domain/identifiers.js", "domain/identifiers.js"],

@@ -6,6 +6,16 @@ onde encontrar o trecho pertinente. Essas informações têm funções diferente
 Uma referência bem formatada ou um PDF acessível não confirma, por si só, uma
 afirmação didática.
 
+Na Autoria, uma fonte selecionada para um vínculo ainda não salvo pode ser
+inspecionada no catálogo do próprio curso. Fechar sua ficha conserva a seleção
+e o rascunho em edição. Depois de salvar o vínculo, a consulta usa também o
+contexto persistido do alvo. Essa distinção evita apresentar a fonte como ausente
+por ainda não ter sido vinculada; não concede acesso ao estudante nem altera as
+permissões dos arquivos ou a revisão humana do conteúdo.
+Durante uma gravação e sua releitura, o botão de voltar fica desabilitado até
+o painel concluir a atualização ou apresentar a falha; a confirmação da escrita
+não é confundida com o término dessa leitura.
+
 ## Texto do autor e referência gerada
 
 A referência escrita pelo autor é uma escolha deliberada. Ela pode ser adequada
@@ -77,6 +87,21 @@ não decompõe uma autoria escrita livremente. `papeisSugeridos` na ficha serve
 como sugestão, enquanto `papeis` em cada vínculo declara seu uso naquele alvo.
 A mesma fonte pode ter vários vínculos. Ao editar um vínculo pela posição
 apresentada, os demais são conservados.
+
+O vínculo pode pertencer a uma unidade ou à **Explicação compartilhada** de uma
+microssequência. `consultar_fontes` aceita `explicacao` com o título ou a posição
+da microssequência; em `manter_fonte`, cada item de `vinculos` escolhe `unidade`
+ou `explicacao`. O apoio precisa estar produzido para receber vínculos de
+conteúdo. Suas ocorrências apontam somente ao conteúdo do apoio, sem copiar
+referências em todas as unidades e sem usar resposta ou feedback. As fontes
+previstas no planejamento continuam distintas das que sustentam texto produzido.
+
+Os canais releem a versão corrente do alvo antes de gravar. Alterar uma fonte,
+Âncora ou arquivo efetivamente usado pode exigir nova revisão do conteúdo que
+depende dele; conferir uma fonte não aprova automaticamente esse conteúdo.
+Referências e arquivos do rascunho ficam disponíveis à inspeção da autoria;
+a leitura estudantil também observa a situação de revisão e os direitos de
+acesso. Ver [Explicação e revisão humana](explicacao-e-revisao-humana.md).
 
 Uma ocorrência indica o lugar, a posição do componente, a folha textual e o
 trecho literal do curso. Sua localização na fonte é registrada separadamente

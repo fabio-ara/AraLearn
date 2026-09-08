@@ -367,20 +367,34 @@ original pela mais nova silenciosamente.
 ## Trabalhar com o ChatGPT a partir da Autoria
 
 1. Em **Conteúdo**, localize e inspecione o objeto sobre o qual quer trabalhar.
-2. Registre uma Observação no alvo ou salve a mudança necessária em
-   **Parâmetros**. Os dois tipos de registro permanecem no curso e aparecem na
-   Autoria.
-3. No ChatGPT conectado por MCP ou Actions, identifique o curso e peça que ele
-   leia as Observações ou decisões de Parâmetros pertinentes.
+2. Abra **Debater com GPT** nos detalhes do objeto ou nas tarefas do curso.
+   O pedido copiável identifica o recorte e a revisão observada. No Planejamento,
+   a microssequência também oferece esse pedido junto da Explicação prevista.
+3. Cole o pedido na conversa conectada ao AraLearn por MCP ou Actions. O GPT
+   precisa ler o conteúdo atual, o apoio, as fontes e as configurações pertinentes
+   pelo conector; o link identifica o objeto e não substitui essa leitura.
 4. Examine a proposta. Acrescente condições, discorde ou peça outra solução
    enquanto ela não representar sua intenção.
 5. Autorize explicitamente a operação somente depois de concordar com o efeito.
 6. Volte ao AraLearn e confira o resultado no mesmo curso.
 
-A interface normal não abre um compositor e não exige copiar e colar um pedido.
-O cliente conectado obtém o contexto necessário pelas operações autorizadas,
-respeita o estado corrente e pode devolver um endereço direto para o alvo. Uma
-conversa ou proposta sem aprovação não altera o curso.
+O pedido é opcional e permanece selecionável se a cópia automática estiver
+indisponível. Não envia conteúdo nem abre uma sessão de IA por conta própria.
+Observações e ajustes de Parâmetros continuam disponíveis como registros do
+curso. O cliente conectado obtém o contexto pelas operações autorizadas e
+devolve um endereço direto para reinspeção. Uma conversa ou proposta não altera
+o curso; a aprovação humana do conteúdo é uma ação distinta na Autoria.
+
+No Planejamento, **Explicação prevista** revela finalidade, pressupostos,
+relações a desenvolver e fontes. Ausência de plano ou fonte aparece como
+pendência. O estado **Conteúdo produzido** de uma parte informa que há unidades
+materializadas; não declara revisão humana. Abra o conteúdo para examinar a
+Explicação compartilhada, as unidades e os vínculos antes de aprovar o conjunto.
+
+Em Parâmetros de uma unidade, **Definição e origem** separa configuração atual
+e registro usado na produção, com seus motivos e alcances. Um ajuste salvo
+orienta a próxima produção ou alteração solicitada; não reescreve as unidades
+existentes. Sem registro aplicado, a tela não o deduz da configuração atual.
 
 Primeiro, o GPT apresenta uma síntese do mapa curricular global e um link para
 inspecionar módulos, lições, microssequências, dependências e cobertura. A pessoa
@@ -452,6 +466,9 @@ Fechar a folha devolve a leitura, a posição e o foco sem abandonar o rascunho 
 edição que estava aberto. Consultar contexto não salva nem aplica uma correção
 automaticamente. No curso, módulo, lição e microssequência, **Editar** abre os
 metadados e a composição autorizados para aquele nível e exige salvamento explícito.
+Na folha contextual de Parâmetros, o menu de grupos participa da área rolável:
+todos os grupos continuam alcançáveis em telas pequenas, por toque ou teclado,
+sem sair da edição em curso.
 
 Para comparar várias unidades, use **Mostrar várias unidades**. A leitura passa
 a uma sequência vertical sem selecionar alvos para operação em lote. Marque os
@@ -568,6 +585,8 @@ primeira.
 
 A nuvem sinaliza pendência, andamento, sucesso ou falha sem uma notificação
 permanente sobre o conteúdo. No modo manual, ela indica a pausa das atualizações.
+Sem conexão, tocar nesse controle revela o estado da cópia local sem tentar
+sincronizar; Escape fecha o aviso e devolve o foco ao controle.
 Um rascunho alterado impede a troca incompatível do conteúdo até salvar ou descartar; uma
 explicação focal acompanha conflitos que exigem escolha. Uma composição
 desatualizada não é apresentada como perda de conexão.
@@ -590,6 +609,13 @@ preservados. Estudo e Conteúdo podem mostrar essa revisão sem rede como
 confirmada, com sincronização pendente, sem reenviar a gravação. Uma releitura
 igual normaliza a cópia; uma revisão superior a descarta como superada. Sair da
 conta, limpar o curso ou perder acesso purga esse estado.
+
+Após a edição manual, a sessão de Estudo adota também a revisão dessa composição
+confirmada, antes de voltar a consultar citações ou a Explicação compartilhada.
+Essa atualização usa a cópia verificada do mesmo curso e não sincroniza outros
+cursos nem altera o modo manual. Se a cópia não corresponder ao recibo ou sua
+leitura falhar, a edição continua salva e a interface informa sincronização
+pendente; não repete a gravação para tentar recuperar a leitura.
 
 Parâmetros, catálogos privados de fontes e áudios, metadados e bytes de arquivos, caixa autoral
 de Observações, revisão, correções, Analytics, gestão de acesso e mutações

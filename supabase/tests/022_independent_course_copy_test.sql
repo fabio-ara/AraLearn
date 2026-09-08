@@ -137,12 +137,17 @@ select throws_ok($$select pg_temp.run_copy('stranger')$$,'PT404',null,'conta com
 select public.manage_course_access_for_actor_v3(pg_temp.copy_owner(),pg_temp.copy_source(),'grant_access','copy-recipient-306',pg_temp.copy_recipient(),true,'copy306-access-read',false);
 select pg_temp.copy_request('read-only',pg_temp.copy_recipient());
 select throws_ok($$select pg_temp.run_copy('read-only')$$,'PT404',null,'concessão de leitura sozinha não permite copiar');
+-- A fixture representa acervo anterior, não uma aprovação humana simulada.
+select set_config('aralearn.content_review_write','approved-command',true);
+update private.course_entities set content_review=null where course_id=pg_temp.copy_source() and entity_type='microsequence';
+select set_config('aralearn.content_review_write','',true);
 select is(public.manage_course_access_for_actor_v3(pg_temp.copy_owner(),pg_temp.copy_source(),'grant_access','copy-recipient-306',pg_temp.copy_recipient(),true,'copy306-access-copy',true)#>>'{person,canCopy}','true','concessão explícita usa writer de acesso existente');
 select is(public.list_course_access_for_actor_v3(pg_temp.copy_owner(),pg_temp.copy_source())#>>'{people,0,canCopy}','true','lista de pessoas expõe permissão explícita');
 select is(private.course_list_projection_v2(pg_temp.copy_source(),pg_temp.copy_recipient())->>'canCopy','true','lista de curso expõe permissão sem editar origem');
 select is(private.get_course_for_actor_v1(pg_temp.copy_recipient(),pg_temp.copy_source(),false)->>'canEdit','false','permissão de cópia não concede edição da origem');
 select pg_temp.copy_request('recipient',pg_temp.copy_recipient());
 select is(pg_temp.run_copy('recipient')->>'contract','aralearn.course-copy.v1','cópia completa confirma contrato corrente');
+select ok(not exists(select 1 from private.course_entities where course_id=pg_temp.copy_target() and entity_type='microsequence' and content_review is distinct from '{}'::jsonb),'Microssequências copiadas exigem revisão própria');
 select is((select owner_id from public.courses where id=pg_temp.copy_target()),pg_temp.copy_recipient(),'solicitante é dono da cópia autorizada por outra pessoa');
 select is((select visibility||'/'||public_file_access from public.courses where id=pg_temp.copy_target()),'private/restricted','cópia nasce privada e sem autorização pública');
 select is((select revision from public.courses where id=pg_temp.copy_target()),1::bigint,'cópia começa na revisão um');
@@ -151,8 +156,8 @@ select is((select count(*) from public.course_access where course_id=pg_temp.cop
 select is((select count(*) from public.course_personal_states where course_id=pg_temp.copy_target()),0::bigint,'progresso e marcas pessoais existentes não são copiados');
 select is((select count(*) from private.course_anchored_annotations where course_id=pg_temp.copy_target()),0::bigint,'observação pessoal existente não é copiada');
 select is((select count(*) from private.course_entities where course_id=pg_temp.copy_target()),(select count(*) from private.course_entities where course_id=pg_temp.copy_source()),'toda a hierarquia local foi copiada');
-select is((select jsonb_agg(to_jsonb(e)-array['course_id','design_snapshot','design_application'] order by entity_type,entity_id) from private.course_entities e where course_id=pg_temp.copy_target()),
- (select jsonb_agg(to_jsonb(e)-array['course_id','design_snapshot','design_application'] order by entity_type,entity_id) from private.course_entities e where course_id=pg_temp.copy_source()),'conteúdo, IDs locais, hierarquia, ordem e metadados de autoria são iguais');
+select is((select jsonb_agg(to_jsonb(e)-array['course_id','design_snapshot','design_application','content_review'] order by entity_type,entity_id) from private.course_entities e where course_id=pg_temp.copy_target()),
+ (select jsonb_agg(to_jsonb(e)-array['course_id','design_snapshot','design_application','content_review'] order by entity_type,entity_id) from private.course_entities e where course_id=pg_temp.copy_source()),'conteúdo, IDs locais, hierarquia, ordem e metadados de autoria são iguais');
 select isnt((select id from private.course_instructional_plans where course_id=pg_temp.copy_target()),(select id from private.course_instructional_plans where course_id=pg_temp.copy_source()),'UUID global do plano é novo');
 select ok(not exists(select 1 from private.course_authoring_parts d join private.course_authoring_parts s using(id) where d.course_id=pg_temp.copy_target() and s.course_id=pg_temp.copy_source()),'UUIDs globais dos lotes são novos');
 select is((select count(*) from private.course_authoring_part_didactic_microsequences where course_id=pg_temp.copy_target()),4::bigint,'pertencimentos dos quatro alvos sobrevivem ao remapeamento');

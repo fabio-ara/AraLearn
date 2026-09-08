@@ -4,6 +4,22 @@ import { renderCourseCurriculumMap, bindCourseCurriculumMap } from "../../src/ui
 import { parseCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
 import { curriculumMapFixture } from "../fixtures/courseCurriculumMapFixture.js";
 
+test("Explicação prevista revela pressupostos, relações e fontes sem aprovar conteúdo futuro", () => {
+  const fixture = curriculumMapFixture();
+  const ms = fixture.curriculum.modules[0].lessons[0].microsequences[0];
+  ms.explanationPlan = { purpose: "Relacionar processo, socket e conexão.",
+    prerequisites: ["Programa em execução"], relations: ["Uma interface local não é toda a relação"], sourceIds: ["fonte:sintética"] };
+  const before = structuredClone(fixture);
+  const html = renderCourseCurriculumMap({ ...fixture, courseRevision: 7 });
+  for (const literal of [ms.explanationPlan.purpose, ...ms.explanationPlan.prerequisites, ...ms.explanationPlan.relations]) assert.ok(html.includes(literal));
+  assert.match(html, /section=sources&amp;sourceId=fonte%3Asint%C3%A9tica/u);
+  assert.match(html, /o conteúdo produzido exige sua própria revisão/u);
+  assert.match(html, /Revisão observada: 7/u);
+  assert.match(html, /não autoriza escrita/u);
+  assert.match(html, /O apoio desta microssequência ainda não foi planejado/u);
+  assert.deepEqual(fixture, before);
+});
+
 test("mapa grande conserva objetivos completos e começa sem expandir módulos, lições ou cobertura", () => {
   const fixture = curriculumMapFixture();
   const html = renderCourseCurriculumMap(fixture);

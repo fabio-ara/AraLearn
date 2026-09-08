@@ -1446,7 +1446,7 @@
       ],
       "productTerm": "Direção editorial",
       "technicalSymbol": "course_authoring_guidance",
-      "definition": "Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.1.0 de quatro parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis e incapaz de eliminar conteúdo necessário.",
+      "definition": "Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.2.1 de doze decisões de conteúdo, prática, extensão, conversa e produção e incapaz de eliminar conteúdo necessário.",
       "decision": "restringir",
       "layers": [
         "interface",

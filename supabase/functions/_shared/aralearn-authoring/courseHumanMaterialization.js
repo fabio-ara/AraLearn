@@ -9,6 +9,7 @@ import { observeCoursePracticeDistribution } from
   "../aralearn/runtime/domain/coursePracticeDistribution.js";
 import { normalizeCourseSourceLinks } from "../aralearn/runtime/domain/courseSources.js";
 import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
+import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import {
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
@@ -1156,12 +1157,46 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
   }
 }
 
+async function prepareExplanations({ explanations, adapter, principal, context, deadlineAt, newId }) {
+  const microsequences = partMicrosequences(context.part);
+  if (!Array.isArray(explanations) || explanations.length !== microsequences.length) {
+    fail("human_materialization_missing_explanation", "Produza uma Explicação completa para cada microssequência da parte.");
+  }
+  const seen = new Set();
+  const prepared = [];
+  for (const [index, entry] of explanations.entries()) {
+    if (!plainObject(entry) || !Array.isArray(entry.fontes) || Object.keys(entry).some((key) =>
+      !["microssequencia", "conteudo", "fontes"].includes(key))) {
+      fail("invalid_human_explanation", "A Explicação precisa indicar microssequência, conteúdo e fontes utilizadas.");
+    }
+    const microsequence = resolveReference(microsequences, entry.microssequencia, {
+      position: (item) => item.productionPosition ?? item.position,
+      texts: (item) => [item.title], label: "microssequência da Explicação"
+    });
+    if (seen.has(microsequence.id)) fail("invalid_human_explanation", "A parte repete a Explicação de uma microssequência.");
+    seen.add(microsequence.id);
+    let content;
+    try { content = normalizeMicrosequenceExplanation(entry.conteudo); }
+    catch (error) { fail("invalid_human_explanation", error.message); }
+    if (entry.fontes.some((link) => !plainObject(link) ||
+      link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
+        link.ocorrencias.some((occurrence) => !plainObject(occurrence) || occurrence.lugar !== "conteudo")))) {
+      fail("invalid_human_explanation", "A fonte da Explicação deve apontar ao seu conteúdo, sem resposta ou feedback de uma unidade.");
+    }
+    const sourceLinks = await resolveHumanSourceLinks({ adapter, principal, courseContext: context,
+      requested: entry.fontes ?? [], deadlineAt, newId, content, identityPrefix: `explanation:${index}` });
+    prepared.push({ microsequenceId: microsequence.id, content, sourceLinks });
+  }
+  return prepared;
+}
+
 export async function materializeHumanCoursePart({
   adapter,
   principal,
   course,
   part,
   units,
+  explanations,
   deadlineAt = null
 }) {
   validateUnits(units);
@@ -1259,6 +1294,8 @@ export async function materializeHumanCoursePart({
         context.plan,
         new Set([...existingBySlot.values()].map(({ studyUnitId }) => studyUnitId))
       );
+      const preparedExplanations = await prepareExplanations({ explanations, adapter, principal,
+        context, deadlineAt, newId });
       const preparedUnits = [];
       for (const group of groups) {
         for (const unit of group.units) {
@@ -1286,6 +1323,7 @@ export async function materializeHumanCoursePart({
         expectedAuthoringPartVersion: context.part.version,
         planItemUpserts: prepared.inventory.upserts,
         targetPlanItems,
+        explanations: preparedExplanations,
         units: preparedUnits.map((entry) => {
           const unit = { ...entry };
           delete unit.inputIndex;
@@ -1301,7 +1339,7 @@ export async function materializeHumanCoursePart({
       ? "Primeira parte produzida."
       : `Parte ${producedPartPosition} produzida.`,
     deepLink: receipt.deepLink ?? null,
-    nextDecision: "Posso preparar a próxima parte.",
+    nextDecision: "Inspecione as unidades, a Explicação e as fontes; o conteúdo produzido aguarda revisão humana.",
     context: { distribuicaoDaPratica: practiceObservations }
   };
 }

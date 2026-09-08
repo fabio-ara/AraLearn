@@ -242,6 +242,7 @@ export class CourseStudyRepository {
     this.listRuntimeStatus = { offline: false, stale: false, readOnly: false };
     this.studyNavigation = emptyStudyNavigation();
     this.offlineCourseRevisionById = new Map();
+    this.explanationCitationStatus = new Map();
     this.setSynchronizationMode(synchronizationMode);
   }
 
@@ -440,6 +441,8 @@ export class CourseStudyRepository {
       this.personalByCourseId.delete(courseId);
       this.annotationsByCourseId.delete(courseId);
       await this.cache.putCache(`course.v1.audio-configuration:${courseId}`, null);
+      await this.cache.putCache(`course.v1.explanation-citations:${courseId}`, null);
+      this.explanationCitationStatus.delete(courseId);
       this.loadedCourseById.delete(courseId);
       this.offlineCourseRevisionById.delete(courseId);
       this.courseList = this.courseList.filter((item) => item.courseId !== courseId);
@@ -586,6 +589,8 @@ export class CourseStudyRepository {
     this.personalByCourseId.delete(courseId);
     this.annotationsByCourseId.delete(courseId);
     await this.cache.putCache(`course.v1.audio-configuration:${courseId}`, null);
+    await this.cache.putCache(`course.v1.explanation-citations:${courseId}`, null);
+    this.explanationCitationStatus.delete(courseId);
     this.loadedCourseById.delete(courseId);
     this.offlineCourseRevisionById.delete(courseId);
     this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
@@ -613,12 +618,48 @@ export class CourseStudyRepository {
     return this.loadCourse(courseId, { initialResult });
   }
 
+  async reconcileSavedCourse(courseIdentity, courseRevision) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    const loaded = this.loadedCourseById.get(courseId);
+    if (this.visitor || !Number.isSafeInteger(courseRevision) || courseRevision < 1 ||
+        !descriptor || descriptor.ownership !== "owned" || descriptor.canEdit !== true ||
+        !loaded || loaded.readOnly === true || loaded.revision > courseRevision ||
+        descriptor.revision > courseRevision || !this.personalByCourseId.has(courseId) ||
+        typeof this.bridge.loadCachedCourse !== "function") return false;
+    let result;
+    try {
+      result = await this.bridge.loadCachedCourse(courseId);
+    } catch {
+      return false;
+    }
+    // The controller already verified and promoted this composition after the save.
+    // A receipt for another revision must never turn a cached draft into current content.
+    if (!plainObject(result) || result.courseId !== courseId || result.revision !== courseRevision ||
+        result.course?.courseId !== courseId || result.course?.revision !== courseRevision ||
+        result.course?.ownership !== "owned" || result.course?.canEdit !== true ||
+        result.offline === true || result.stale === true || result.readOnly === true ||
+        result.retainedForReview === true || result.document?.contract !== COURSE_DOCUMENT_CONTRACT ||
+        !Array.isArray(result.document.courses) || result.document.courses.length !== 1 ||
+        result.document.courses[0]?.id !== courseId ||
+        !Array.isArray(result.document.courses[0]?.modules) || !Array.isArray(result.rows)) return false;
+    // A concurrent load, access change or removal wins over this earlier receipt.
+    if (this.courseList.find((item) => item.courseId === courseId) !== descriptor ||
+        this.loadedCourseById.get(courseId) !== loaded || descriptor.ownership !== "owned" ||
+        descriptor.canEdit !== true || descriptor.revision > courseRevision ||
+        loaded.revision > courseRevision) return false;
+    Object.assign(descriptor, clone(result.course));
+    await this.loadCourse(courseId, { initialResult: result, explicit: true });
+    return this.loadedCourseById.get(courseId)?.revision === courseRevision;
+  }
+
   async loadCourse(courseIdentity, { initialResult = null, explicit = false } = {}) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
     const descriptor = this.courseList.find((item) => item.courseId === courseId);
     if (!descriptor) throw new Error("O curso solicitado não está acessível.");
     let loaded = this.loadedCourseById.get(courseId);
-    if (!loaded || (explicit || this.synchronizationMode !== "manual") && (loaded.revision !== descriptor.revision || (
+    if (!loaded || (explicit && initialResult !== null) ||
+        (explicit || this.synchronizationMode !== "manual") && (loaded.revision !== descriptor.revision || (
       this.listRuntimeStatus.offline !== true &&
       (loaded.offline === true || loaded.stale === true || loaded.readOnly === true)
     ))) {
@@ -643,6 +684,9 @@ export class CourseStudyRepository {
         revision: resultRevision,
         course: clone(course),
         rows: Array.isArray(result.rows) ? clone(result.rows) : [],
+        pendingReviewMicrosequenceIds: clone(result.pendingReviewMicrosequenceIds || []),
+        retainedForReview: result.retainedForReview === true,
+        availableRevision: result.availableRevision ?? null,
         offline: result.offline === true,
         stale: result.stale === true || resultRevision !== descriptor.revision,
         readOnly: result.readOnly === true || result.offline === true ||
@@ -750,6 +794,104 @@ export class CourseStudyRepository {
     return clone(this.project);
   }
 
+  loadExplanationContext(reference) {
+    const courseId = courseIdFromReference(reference);
+    const path = Array.isArray(reference) ? reference : reference?.entityPath;
+    const microsequenceId = path?.[3] ?? reference?.microsequenceId ?? reference?.targetId;
+    const loaded = this.loadedCourseById.get(courseId);
+    if (!loaded || !microsequenceId) return null;
+    for (const module of loaded.course.modules || []) {
+      for (const lesson of module.lessons || []) {
+        const microsequence = lesson.microsequences.find(item => item.id === microsequenceId);
+        if (!microsequence || path && (path[1] !== module.id || path[2] !== lesson.id ||
+            path[4] && !microsequence.studyUnits.some(unit => unit.id === path[4]))) continue;
+        const contentReview = loaded.rows?.find(row => row.entityType === "microsequence" &&
+          row.entityId === microsequenceId)?.contentReview || { state: "unregistered" };
+        const pending = loaded.pendingReviewMicrosequenceIds?.includes(microsequenceId) && !loaded.retainedForReview;
+        const explanation = microsequence.explanation || null;
+        return clone({ courseId, courseRevision: loaded.revision, microsequenceId,
+          entityPath: path ? [...path] : [courseId, module.id, lesson.id, microsequenceId],
+          targetKind: "microsequence_explanation", targetId: microsequenceId,
+          explanation, contentReview,
+          state: pending || ["draft", "stale"].includes(contentReview.state) ? "draft" : explanation ? "available" : "missing",
+          retainedForReview: loaded.retainedForReview === true,
+          availableRevision: loaded.availableRevision ?? loaded.revision,
+          offline: this.navigatorValue?.onLine === false || loaded.offline === true });
+      }
+    }
+    return null;
+  }
+
+  loadExplanationCitationStatus(reference) {
+    const courseId = courseIdFromReference(reference);
+    const path = Array.isArray(reference) ? reference : reference?.entityPath;
+    const targetId = path?.[3] ?? reference?.microsequenceId ?? reference?.targetId;
+    const status = this.explanationCitationStatus.get(courseId)?.[targetId];
+    return status?.courseRevision === this.loadedCourseById.get(courseId)?.revision ? clone(status) : null;
+  }
+
+  async loadExplanationCitations(reference) {
+    const courseId = courseIdFromReference(reference);
+    const path = Array.isArray(reference) ? reference : reference?.entityPath;
+    const microsequenceId = path?.[3] ?? reference?.microsequenceId ?? reference?.targetId;
+    const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
+    if (reference?.courseRevision && reference.courseRevision !== expectedRevision) throw courseRevisionChangedError();
+    if (!COURSE_ID_PATTERN.test(courseId) || typeof microsequenceId !== "string" ||
+        !microsequenceId || !Number.isSafeInteger(expectedRevision) ||
+        typeof this.api.getExplanationCitations !== "function") {
+      throw new TypeError("Referência de Explicação inválida para citações.");
+    }
+    const key = `course.v1.explanation-citations:${courseId}`;
+    const offline = this.navigatorValue?.onLine === false;
+    const assertContext = citations => {
+      if (citations.courseRevision !== expectedRevision ||
+          this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
+      if (citations.courseId !== courseId || citations.targetKind !== "microsequence_explanation" ||
+          citations.targetId !== microsequenceId) throw new TypeError("As citações não correspondem à Explicação solicitada.");
+      return citations;
+    };
+    const cached = await this.cache.getCache(key);
+    const readCached = () => cached?.courseRevision === expectedRevision && cached.items?.[microsequenceId]
+      ? assertContext(normalizeCourseStudyCitationsRead(cached.items[microsequenceId])) : null;
+    const status = (source, serviceUnavailable = false) => this.explanationCitationStatus.set(courseId, {
+      ...this.explanationCitationStatus.get(courseId), [microsequenceId]: {
+        courseRevision: expectedRevision, source, offline, serviceUnavailable
+      }
+    });
+    if (offline || this.synchronizationMode === "manual" || this.loadedCourseById.get(courseId)?.retainedForReview) {
+      const value = readCached();
+      if (value) { status("cache"); return value; }
+      if (offline) {
+        status(null);
+        throw Object.assign(new Error("As fontes desta Explicação ainda não estão salvas neste dispositivo."), {
+          code: "explanation_citations_not_saved", offline: true
+        });
+      }
+    }
+    try {
+      const citations = assertContext(normalizeCourseStudyCitationsRead(await this.api.getExplanationCitations(
+        courseId, microsequenceId, { expectedRevision }
+      )));
+      await this.cache.updateCache(key, current => {
+        assertContext(citations);
+        return { courseRevision: expectedRevision,
+          items: { ...(current?.courseRevision === expectedRevision ? current.items : {}), [microsequenceId]: citations } };
+      });
+      assertContext(citations);
+      status("remote");
+      return citations;
+    } catch (error) {
+      const normalized = courseRevisionConflict(error) ? courseRevisionChangedError(error) : error;
+      if (courseAccessRevoked(normalized)) await this.#purgeRevokedCourses([courseId]);
+      if (!courseRevisionConflict(normalized) && networkFailure(normalized)) {
+        const value = readCached();
+        if (value) { status("cache", !offline); return value; }
+        status(null, !offline);
+      }
+      throw normalized;
+    }
+  }
+
   async loadStudyAudioConfiguration(reference) {
     const courseId = courseIdFromReference(reference);
     const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
@@ -785,14 +927,26 @@ export class CourseStudyRepository {
     const courseId = courseIdFromReference(reference);
     const studyUnitId = studyUnitIdFromReference(reference);
     const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
+    const explanationTarget = reference?.targetKind === "microsequence_explanation";
+    const targetId = explanationTarget ? reference.targetId : studyUnitId;
     const media = normalizeCourseMediaReference(declaredMedia);
-    if (!expectedRevision || !studyUnitId) throw courseRevisionChangedError();
+    if (!expectedRevision || !targetId || reference?.courseRevision && reference.courseRevision !== expectedRevision) {
+      throw courseRevisionChangedError();
+    }
+    if (this.navigatorValue?.onLine === false) {
+      throw Object.assign(new Error("O arquivo de áudio precisa de conexão para confirmar o acesso. O texto salvo continua disponível."), {
+        code: "study_media_unavailable_offline", offline: true
+      });
+    }
     const result = normalizeCourseMediaDownload(await this.bridge.getCourseMediaDownload({
-      courseId, expectedRevision, studyUnitId, contentHash: media.contentHash
+      courseId, expectedRevision, ...(explanationTarget ? {
+        targetKind: "microsequence_explanation", targetId
+      } : { studyUnitId }), contentHash: media.contentHash
     }), { projectUrl: this.api.http?.projectUrl });
     if (result.courseId !== courseId || result.courseRevision !== expectedRevision ||
-        result.studyUnitId !== studyUnitId || Object.keys(media).some((field) => result.media[field] !== media[field])) {
-      throw new TypeError("O áudio recebido não corresponde à unidade aberta.");
+        (explanationTarget ? result.targetKind !== "microsequence_explanation" || result.targetId !== targetId
+          : result.studyUnitId !== studyUnitId) || Object.keys(media).some((field) => result.media[field] !== media[field])) {
+      throw new TypeError("O áudio recebido não corresponde ao conteúdo aberto.");
     }
     if (this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
     const downloaded = await readCourseMediaBlob(result, media, {
@@ -802,10 +956,25 @@ export class CourseStudyRepository {
     return downloaded;
   }
 
+  downloadExplanationMedia(reference, declaredMedia, options = {}) {
+    const context = this.loadExplanationContext(reference);
+    if (!context?.explanation || reference?.courseRevision && reference.courseRevision !== context.courseRevision) {
+      throw courseRevisionChangedError();
+    }
+    return this.downloadStudyMedia(context, declaredMedia, options);
+  }
+
   async getStudyInstructionalAttachmentDownload(reference, target) {
     const courseId = courseIdFromReference(reference);
     const expectedCourseRevision = this.loadedCourseById.get(courseId)?.revision;
-    if (!expectedCourseRevision) throw courseRevisionChangedError();
+    if (!expectedCourseRevision || reference?.courseRevision && reference.courseRevision !== expectedCourseRevision) {
+      throw courseRevisionChangedError();
+    }
+    if (this.navigatorValue?.onLine === false) {
+      throw Object.assign(new Error("Este PDF externo precisa de conexão para confirmar o acesso."), {
+        code: "study_attachment_unavailable_offline", offline: true
+      });
+    }
     const result = normalizeCourseSourcePdfDownload(await this.bridge.getCourseSourceAttachmentDownload({
       courseId, expectedCourseRevision, sourceId: target.sourceId,
       sourceRevision: target.sourceRevision, contentHash: target.contentHash
@@ -824,6 +993,11 @@ export class CourseStudyRepository {
     if (!expectedCourseRevision || citation?.courseRevision !== expectedCourseRevision ||
         typeof this.bridge.getCourseSourceAttachmentDownload !== "function") {
       throw courseRevisionChangedError();
+    }
+    if (this.navigatorValue?.onLine === false) {
+      throw Object.assign(new Error("O PDF da fonte precisa de conexão para confirmar o acesso. A Explicação salva continua disponível."), {
+        code: "study_attachment_unavailable_offline", offline: true
+      });
     }
     const result = normalizeCourseSourcePdfDownload(await this.bridge.getCourseSourceAttachmentDownload({
       courseId, expectedCourseRevision, sourceId: citation.sourceId,
@@ -1056,6 +1230,12 @@ export class CourseStudyRepository {
       synchronizing: personalStatus?.synchronizing === true,
       syncError: personalStatus?.syncError || null,
       conflict: personalStatus?.conflict || null,
+      ...(loaded?.pendingReviewMicrosequenceIds?.length ? {
+        pendingReviewMicrosequenceIds: loaded.pendingReviewMicrosequenceIds
+      } : {}),
+      ...(loaded?.retainedForReview ? {
+        retainedForReview: true, courseRevision: loaded.revision, availableRevision: loaded.availableRevision
+      } : {}),
       ...(this.visitor ? { visitor: true, localOnly: true } : {})
     });
   }

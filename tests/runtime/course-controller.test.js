@@ -300,6 +300,11 @@ test("não converte acesso revogado em fallback local", async () => {
   await store.putCache("course.v1.review-page", {
     items: [{ courseId: COURSE_ID }]
   });
+  await store.putCache(`course.v1.explanation-citations:${COURSE_ID}`, {
+    courseRevision: 2, items: { "micro-a": { citations: [] } }
+  });
+  await store.putCache(`course.v1.pending-content-review:${COURSE_ID}:micro-a`, { requestId: "review-pending-01" });
+  await store.putCache(`course.v1.pending-explanation-composition:${COURSE_ID}:micro-a`, { requestId: "edit-pending-01" });
   revoked = true;
   await assert.rejects(() => controller.getCourse(COURSE_ID), /not found/u);
   assert.equal(
@@ -879,6 +884,55 @@ test("preserva a última composição válida após revisão inválida e reiníc
   assert.equal(offlineRestart.offline, false, "Falha da API sem sinal offline não comprova ausência de Internet.");
   assert.equal(offlineRestart.stale, true);
   assert.equal(offlineRestart.readOnly, true);
+  store.close();
+});
+
+test("rascunho remoto conserva curso local íntegro através de reinício até substituição elegível", async () => {
+  const indexedDb = new IDBFactory();
+  let store = await CourseLocalStore.open(indexedDb, { userId: COURSE_ID });
+  const fixture = documentWithStudyUnitFixture();
+  const { rows } = flattenCourseDocument(fixture);
+  let revision = 1;
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { return { contract: "aralearn.course.v1", courseId: COURSE_ID,
+      title: `Curso ${revision}`, goal: "Aprender.", revision }; },
+    async getCourseEntities() { return { contract: "aralearn.course-entities.v1", courseId: COURSE_ID,
+      revision, items: (revision === 2 ? rows.filter((row) => row.entityType !== "study_unit") : rows).map(row => ({ ...row,
+        contentReview: row.entityType === "microsequence" ? { state: revision === 2 ? "draft" : "unregistered" } : null })),
+      pendingReviewMicrosequenceIds: revision === 2 ? ["microsequence-a"] : [], hasMore: false, nextCursor: null }; }
+  };
+  let controller = new CourseController({ api, store });
+  const original = await controller.loadCourseDocument(COURSE_ID);
+  assert.deepEqual(original.rows.find(row => row.entityType === "microsequence").contentReview, { state: "unregistered" });
+  assert.equal(JSON.stringify(original.document).includes("contentReview"), false);
+  const progressKey = `${COURSE_PERSONAL_STATE_CACHE_CONTRACT}:${COURSE_ID}`;
+  await store.putCache(progressKey, { fixture: "progresso preservado" });
+  revision = 2;
+  const retained = await controller.loadCourseDocument(COURSE_ID);
+  assert.deepEqual(retained.document, original.document);
+  assert.equal(retained.course.revision, 1);
+  assert.equal(retained.retainedForReview, true);
+  assert.equal(retained.availableRevision, 2);
+  assert.deepEqual(retained.pendingReviewMicrosequenceIds, ["microsequence-a"]);
+  assert.equal(retained.offline, false);
+  assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 1 }), true);
+  store.close();
+  store = await CourseLocalStore.open(indexedDb, { userId: COURSE_ID });
+  controller = new CourseController({ api, store });
+  const offlineCopy = await controller.loadCachedCourseDocument(COURSE_ID);
+  assert.deepEqual(offlineCopy.document, original.document);
+  assert.equal(offlineCopy.retainedForReview, true);
+  assert.equal(offlineCopy.stale, true);
+  const cachedCandidate = await controller.loadCourseDocument(COURSE_ID, { verifiedRevision: 2 });
+  assert.equal(cachedCandidate.retainedForReview, true, "Atalho da revisão remota em cache também respeita o corte");
+  assert.deepEqual(cachedCandidate.document, original.document);
+  revision = 3;
+  const current = await controller.loadCourseDocument(COURSE_ID);
+  assert.equal(current.course.revision, 3);
+  assert.equal(current.retainedForReview, undefined);
+  assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 3 }), true);
+  assert.deepEqual(await store.getCache(progressKey), { fixture: "progresso preservado" });
   store.close();
 });
 

@@ -876,7 +876,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     .toBeFocused();
   await page.getByRole("button", { name: "Abrir para rever: Unidade remota" }).click();
 
-  await page.getByRole("button", { name: "Ver explicação" }).click();
+  await page.getByRole("button", { name: "Ver comentário da unidade" }).click();
   await expect(page.getByText("Se uma delas for falsa", { exact: false })).toBeVisible();
   await page.locator("[data-action='continue-feedback']").click();
   await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();

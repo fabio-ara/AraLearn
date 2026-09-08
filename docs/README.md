@@ -59,6 +59,11 @@ registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
+O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
+define apoio compartilhado, preservação do percurso, fontes e aprovação do
+conteúdo inspecionado. A implementação e suas provas locais são distintas da
+verificação nos clientes hospedados e de uma avaliação de aprendizagem.
+
 ## Aprender no trabalho e formar profissionalmente
 
 Aprendizagem no trabalho, gestão do conhecimento, treinamento e
@@ -124,6 +129,9 @@ O ciclo de revisão possui um capítulo próprio:
 8. [Revisão e correções do Curso](auditoria-de-conformidade-instrucional.md):
    Observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
    reinspeção.
+
+A [prova local dos canais](prova-local-canais-autoria.md) descreve o runner de
+dois lotes por Actions e MCP, suas medições e a distinção da prova no ChatGPT.
 
 Analytics caracteriza o desenho corrente e intervenções observáveis no mesmo
 curso:

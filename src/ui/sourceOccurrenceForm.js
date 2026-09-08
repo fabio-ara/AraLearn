@@ -20,20 +20,28 @@ export function sourceOccurrenceFromSelection(target, textArea, occurrenceId = c
 }
 
 export function renderSourceOccurrenceForm(state, link) {
-  if (state.targetKind !== "study_unit") return "";
-  const targets = listCourseSourceOccurrenceTargets(state.targetStudyUnit);
+  if (!["study_unit", "microsequence_explanation"].includes(state.targetKind)) return "";
+  const content = state.targetKind === "microsequence_explanation" ? state.targetExplanation : state.targetStudyUnit;
+  const options = { targetKind: state.targetKind };
+  const targets = listCourseSourceOccurrenceTargets(content, options);
   const editor = state.occurrenceEditor?.linkId === link.linkId ? state.occurrenceEditor : null;
   const target = targets[editor?.targetIndex ?? 0];
+  const location = item => {
+    const instances = Array.isArray(content?.[item.slot]) ? content[item.slot] : [content?.[item.slot]];
+    const position = instances.findIndex(instance => instance?.id === item.resourceId) + 1;
+    return `${SLOT_LABELS[item.slot]} · Bloco ${position} · ${item.label}`;
+  };
   return '<section class="source-occurrences"><h4>Onde aparece no item</h4>' +
     (link.occurrences.length ? '<ul>' + link.occurrences.map(occurrence => {
-      const resolved = state.targetStudyUnit && resolveCourseSourceOccurrence(state.targetStudyUnit, occurrence).status === "resolved";
+      const resolved = content && resolveCourseSourceOccurrence(content, occurrence, options).status === "resolved";
       return `<li><blockquote>${escape(occurrence.quote)}</blockquote><span>${resolved ? "Trecho localizado" : "Trecho a conferir"}</span>` +
         `<button type="button" data-source-action="edit-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Localizar trecho">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
         `<button type="button" data-source-action="remove-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Remover trecho">${renderUiIcon("trash", "course-authoring-button-icon")}</button></li>`;
     }).join("") + '</ul>' : '<p>A referência vale para o item inteiro.</p>') +
     (editor ? '<div class="source-occurrence-editor">' +
       `<label>Parte do item<select data-source-occurrence-target data-link-id="${escape(link.linkId)}">` + targets.map((item, index) =>
-        `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(SLOT_LABELS[item.slot])} · ${escape(item.label)} · ${escape(item.text.slice(0, 70))}</option>`).join("") + '</select></label>' +
+        `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(location(item))} · ${escape(item.text.slice(0, 70))}</option>`).join("") + '</select></label>' +
+      (target ? `<p class="source-occurrence-location" data-source-occurrence-location>${escape(location(target))}<br><span>Caminho: ${escape(`${target.slot} / ${target.resourceId} / ${target.path}`)}</span></p>` : '') +
       `<label>Selecione o trecho<textarea data-source-occurrence-selection data-link-id="${escape(link.linkId)}" data-source-occurrence-index="${editor.targetIndex ?? 0}" rows="6" readonly>${escape(target?.text || "")}</textarea></label>` +
       `<button type="button" data-source-action="save-occurrence" data-link-id="${escape(link.linkId)}">Usar trecho selecionado</button>` +
       '<button type="button" data-source-action="cancel-occurrence">Cancelar</button></div>' :

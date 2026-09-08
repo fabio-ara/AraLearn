@@ -385,7 +385,7 @@ function courseSourcesQuery(request) {
       mode === "catalog" && hasTargetContext ||
       mode === "target" && (sourceId !== null || !validTargetContext) ||
       mode === "source" && hasTargetContext && !validTargetContext ||
-      (targetKind !== null && !new Set(["plan_item", "study_unit"]).has(targetKind)) ||
+      (targetKind !== null && !new Set(["plan_item", "study_unit", "microsequence_explanation"]).has(targetKind)) ||
       (targetId !== null && !boundedId(targetId)) ||
       (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
       (mode !== "catalog" && (cursor !== null || limit !== 1)) ||
@@ -653,13 +653,13 @@ function validateCreate(body, request) {
 async function validateCompositionChange(body, request) {
   exactFields(body, new Set([
     "requestId", "expectedRevision", "upserts", "deletes",
-    "sourceAttributionApplications", "expectedStudyUnitVersion", "applicationOrigin", "courseMetadata"
+    "sourceAttributionApplications", "expectedStudyUnitVersion", "expectedMicrosequenceVersion", "applicationOrigin", "courseMetadata"
   ]));
   let courseMetadata = null;
   if (Object.hasOwn(body, "courseMetadata")) {
     try { courseMetadata = normalizeCourseMetadata(body.courseMetadata); }
     catch { fail("invalid_course_metadata", "A identidade do curso é inválida."); }
-    if (body.expectedStudyUnitVersion != null || body.applicationOrigin != null) {
+    if (body.expectedStudyUnitVersion != null || body.expectedMicrosequenceVersion != null || body.applicationOrigin != null) {
       fail("invalid_course_metadata", "A edição focal não altera a identidade do curso.");
     }
   }
@@ -670,9 +670,13 @@ async function validateCompositionChange(body, request) {
   const { validateCourseEntityContent } = await import(
     "../aralearn/runtime/domain/courseEntities.js"
   );
-  const upserts = body.upserts.map((value, index) =>
-    validateEntity(value, index, validateCourseEntityContent)
-  );
+  const upserts = body.upserts.map((value, index) => {
+    const normalized = validateEntity(value, index, validateCourseEntityContent);
+    // A focal manual edit must not materialize defaults in unrelated MS fields.
+    return body.expectedMicrosequenceVersion != null && value.entityType === "microsequence"
+      ? { ...normalized, content: { ...structuredClone(value.content), explanation: normalized.content.explanation } }
+      : normalized;
+  });
   const deletes = body.deletes.map(validateEntityIdentity);
   if (!upserts.length && !deletes.length && courseMetadata === null) {
     fail("invalid_course_command", "Informe entidades para inserir, alterar ou excluir.");
@@ -691,6 +695,7 @@ async function validateCompositionChange(body, request) {
     .map(({ entityId }) => entityId)
     .sort((left, right) => left.localeCompare(right, "en"));
   const attributedIds = sourceAttributionApplications
+    .filter(({ targetKind }) => targetKind !== "microsequence_explanation")
     .map(({ studyUnitId }) => studyUnitId)
     .sort((left, right) => left.localeCompare(right, "en"));
   if (JSON.stringify(studyUnitIds) !== JSON.stringify(attributedIds)) {
@@ -699,9 +704,20 @@ async function validateCompositionChange(body, request) {
       "Cada Unidade inserida ou alterada precisa de uma aplicação de proveniência exata."
     );
   }
+  const explanationApplications = sourceAttributionApplications.filter(({ targetKind }) => targetKind === "microsequence_explanation");
+  if (explanationApplications.some(({ targetId }) => !upserts.some(entity =>
+    entity.entityType === "microsequence" && entity.entityId === targetId && entity.content?.explanation)) ||
+      body.expectedMicrosequenceVersion != null && (body.expectedStudyUnitVersion != null ||
+        body.applicationOrigin !== "manual" || upserts.length !== 1 || deletes.length !== 0 ||
+        upserts[0].entityType !== "microsequence" || explanationApplications.length !== 1)) {
+    fail("invalid_course_composition_origin", "A edição da Explicação exige somente a microssequência e sua proveniência.");
+  }
   return {
     requestId: requestIdFrom(request, body),
     expectedRevision,
+    ...(body.expectedMicrosequenceVersion == null ? {} : {
+      expectedMicrosequenceVersion: positiveInteger(body.expectedMicrosequenceVersion, "expectedMicrosequenceVersion")
+    }),
     ...(courseMetadata === null ? {} : { courseMetadata }),
     expectedStudyUnitVersion: body.expectedStudyUnitVersion == null
       ? null
@@ -1168,13 +1184,21 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
   if (route.name === "getCourseMedia" || route.name === "getCourseMediaDownload") {
     const query = new URL(request.url).searchParams;
     const download = route.name === "getCourseMediaDownload";
-    const allowed = new Set(download ? ["expectedRevision", "studyUnitId"] : ["expectedRevision", "mode", "cursor", "limit"]);
+    const allowed = new Set(download ? ["expectedRevision", "studyUnitId", "targetKind", "targetId"] : ["expectedRevision", "mode", "cursor", "limit"]);
     if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1)) fail("invalid_course_media", "Consulta de áudio inválida.");
     const expectedRevision = positiveInteger(query.get("expectedRevision"), "expectedRevision");
     const mode = query.get("mode") || "configuration";
     if (!download && !["catalog", "configuration"].includes(mode)) fail("invalid_course_media", "Leitura de áudio desconhecida.");
     if (!download && mode === "catalog" || principal?.authenticationKind !== "public" || principal.actorId !== null) assertPrincipal(principal);
     if (download) {
+      if (query.has("targetKind") || query.has("targetId")) {
+        const targetKind = query.get("targetKind"), targetId = query.get("targetId");
+        if (targetKind !== "microsequence_explanation" || !boundedCourseSourceId(targetId) || query.has("studyUnitId")) {
+          fail("invalid_course_media", "Alvo de áudio inválido.");
+        }
+        return { requestId: null, data: await adapter.getCourseMediaDownload({ principal, courseId: route.courseId,
+          expectedRevision, targetKind, targetId, contentHash: route.contentHash, deadlineAt }) };
+      }
       const studyUnitId = query.get("studyUnitId") || null;
       if (studyUnitId !== null && !boundedCourseSourceId(studyUnitId)) fail("invalid_course_media", "Unidade de áudio inválida.");
       return { requestId: null, data: await adapter.getCourseMediaDownload({ principal, courseId: route.courseId,

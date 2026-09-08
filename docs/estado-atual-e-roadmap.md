@@ -4,13 +4,16 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Catálogos e capacidades conferidos em **2026-09-05** no runtime, com provas
+Catálogos e capacidades conferidos em **2026-09-07** na candidata local do contrato de
+[Explicação e revisão humana](explicacao-e-revisao-humana.md), com provas
 locais de API, banco e políticas. Implementação disponível não significa entrega
 hospedada verificada; os clientes externos e a publicação exigem provas próprias.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Estudar, responder e rever | sim | após o primeiro carregamento, não | visitante em curso público ou pessoa com acesso | local | sim | sim | produto | visitante conserva progresso e Rever no dispositivo; conta usa estado pessoal |
+| Consultar Explicação compartilhada | sim | texto já guardado dispensa rede; arquivos externos não | proprietário; estudantes em recorte elegível | local | no recorte local | sim | produto | apoio previamente escrito; ausência ou revisão não registrada permanece explícita; abrir não gera conteúdo nem registra domínio |
+| Editar apoio e aprovar conteúdo | sim | para gravar e conferir a base atual | proprietário na Autoria | interface, HTTP e banco locais | no recorte local | sim | produto | inspeção da microssequência completa; aprovação não é tarefa de IA; retorno incerto conserva o mesmo pedido |
 | Registrar observação | sim | para enviar | pessoa autenticada com acesso | local | sim | sim | produto | observação própria não concede edição |
 | Editar Unidade no Estudo | sim | para gravar | proprietário | local | sim | sim | produto | estudante alheio não edita nem cria cópia automática |
 | Escolher identificador e compartilhar | sim | sim | titular do perfil; proprietário do curso | local | sim | sim | produto | identificador único; grant confirma a pessoa selecionada |
@@ -72,8 +75,11 @@ O planejamento mostra primeiro o mapa curricular completo de módulos, lições 
 microssequências, com cobertura do escopo. A aprovação se refere ao mapa
 inspecionável e não materializa conteúdo. Depois, partes agrupam
 microssequências existentes apenas como lotes operacionais. A produção
-confirmada aparece como unidades de estudo em Conteúdo, sem expor passos
-técnicos.
+confirmada aparece como unidades de estudo e apoio compartilhado em Conteúdo,
+sem expor passos técnicos. **Conteúdo produzido** indica disponibilidade para
+inspeção, sem atestar revisão humana. A pessoa proprietária inspeciona o conjunto
+da microssequência e aprova sua base corrente; alterações materiais exigem nova
+revisão antes da obtenção do recorte atualizado por estudantes.
 
 O [catálogo canônico de parâmetros](../src/domain/courseDesignParameters.js)
 reúne doze decisões, na versão 1.2.1, em Explicações, Prática, Leitura e estilo,
@@ -92,7 +98,7 @@ mostra de onde veio cada decisão e o valor efetivamente aplicado.
 
 Fontes e Âncoras possuem estado corrente; o bucket de PDFs é privado. O autor
 define disponibilidade de arquivos com exceções por fonte e por PDF. Uma
-atribuição liga a Unidade à fonte e às Âncoras exatas usadas. Referências sem
+atribuição liga a Unidade ou a Explicação à fonte e às Âncoras exatas usadas. Referências sem
 prova suficiente não aparecem como citação comprovada no Estudo.
 
 Conteúdo percorre a composição sem ativar respostas. Revisão parte das

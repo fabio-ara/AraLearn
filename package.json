@@ -1,6 +1,6 @@
 {
   "name": "aralearn",
-  "version": "0.0.66",
+  "version": "0.0.67",
   "private": true,
   "description": "Aplicativo de estudo offline em microssequências.",
   "type": "module",
@@ -14,6 +14,7 @@
     "test:authoring:mcp:local:oauth": "node ./scripts/runLocalMcpOAuthSmoke.mjs",
     "test:storage:lifecycle:local": "node ./supabase/tests/course-storage-lifecycle-local-smoke.mjs",
     "test:authoring:current:local": "node ./supabase/tests/course-authoring-current-local-smoke.mjs",
+    "test:authoring:channels:local": "node ./supabase/tests/course-authoring-channels-local-smoke.mjs",
     "test:backup-restore:local": "node ./scripts/verifyBackupRestoreUpgrade.mjs",
     "test:authoring:mcp:hosted:oauth": "node ./scripts/runHostedMcpOAuthSmoke.mjs",
     "test:authoring:contract": "node --test ./tests/runtime/chatgpt-action-human-schema.test.js ./tests/runtime/course-authoring-contract-runtime.test.js ./tests/runtime/course-human-task-executor.test.js ./tests/runtime/course-human-materialization.test.js",

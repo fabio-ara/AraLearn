@@ -31,10 +31,28 @@ Um curso reúne:
 - observações e estado necessário à revisão;
 - estado pessoal de estudo por pessoa.
 
-Conteúdo válido fica disponível ao proprietário e às pessoas autorizadas assim
-que existe. Tornar o curso público é uma decisão explícita de acesso, com
+Conteúdo novo fica disponível ao proprietário para inspeção como rascunho.
+A leitura por estudantes exige revisão atual da microssequência; o acervo
+anterior com revisão não registrada conserva sua elegibilidade, sem receber
+aprovação retroativa. Tornar o curso público é uma decisão explícita de acesso, com
 política de arquivos, e mantém o mesmo curso mutável. Revisar uma unidade de
 estudo não cria outra identidade nem uma árvore de versões.
+
+A microssequência guarda uma única `explanation` e sua proposta
+`explanationPlan`; as unidades resolvem esse apoio pela relação já existente.
+Estudo abre um overlay com o renderer, ferramentas e bibliografia comuns.
+Fontes e ocorrências usam o alvo `microsequence_explanation`, com localizações
+no conteúdo do apoio, e os arquivos passam pelas autorizações existentes.
+O texto acompanha a composição local; isso não cria cache binário de PDF ou
+áudio nem permite misturar revisões do curso.
+
+`contentReview` fica fora do conteúdo editável. A aprovação compara a impressão
+do conjunto inspecionado com a corrente, em comando autenticado exclusivo da
+pessoa proprietária. Mudanças materiais nas unidades, apoio ou fontes usadas
+retiram a atualidade da decisão. MCP, Actions e importações não concedem esse
+estado. A interface conserva a identidade de uma aprovação ou gravação manual
+incerta e reconcilia o mesmo pedido. O [contrato de revisão](explicacao-e-revisao-humana.md)
+detalha alcance, distribuição e preservação do acervo.
 
 ## Superfícies do produto
 
@@ -148,8 +166,9 @@ mas não acrescentam nível curricular.
 Com mapa aprovado e percurso autorizado, a preparação reúne somente o lote, sua
 configuração e o repertório necessário. O tamanho do lote não exige uma nova
 confirmação por si só; uma decisão material ainda aberta continua exigindo
-intervenção. A materialização grava as unidades de
-estudo e atualiza, por derivação do estado corrente, onde cada ideia foi
+intervenção. A materialização grava as unidades de estudo e uma Explicação por
+microssequência da parte, junto às aplicações e fontes, na mesma transação.
+Também atualiza, por derivação do estado corrente, onde cada ideia foi
 introduzida, usada ou retomada.
 
 Não existe quantidade-alvo de unidades. O teto de novas unidades de análise

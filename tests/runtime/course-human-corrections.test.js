@@ -48,6 +48,16 @@ function adapterFixture() {
     async listCourseStudyUnits() {
       return { items: units, hasMore: false, nextCursor: null };
     },
+    async getCourseInstructionalPlan() {
+      return { courseRevision: 7, plan: { title: "Curso de Redes", parts: [{ id: "part-a", position: 0,
+        title: "Parte A", microsequences: [{ id: "micro-a", title: "Microssequência A", position: 0 }] }] } };
+    },
+    async listCourseEntities() {
+      return { items: [{ entityType: "microsequence", entityId: "micro-a", parentType: "lesson", parentId: "lesson-a",
+        position: 0, version: 2, contentReview: { state: "current" }, content: { title: "Microssequência A",
+          goal: "Distinguir nomes e endereços", role: "explain", dependsOn: [], covers: [], checks: [], errors: [] } }],
+      hasMore: false, nextCursor: null };
+    },
     async getCourseSources({ mode, targetId }) {
       if (mode === "target") {
         return {
@@ -107,6 +117,37 @@ function correctedContent(title) {
     topics: ["DNS"]
   };
 }
+
+test("correção só do apoio preserva percurso e fontes, sem transportar aprovação", async () => {
+  const adapter = adapterFixture();
+  const { title, content } = correctedContent("Apoio revisto");
+  const receipt = await applyHumanCourseCorrections({ adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content } }] });
+  assert.equal(adapter.commits.length, 1);
+  const write = adapter.commits[0];
+  assert.equal(write.upserts.length, 1);
+  assert.equal(write.upserts[0].entityType, "microsequence");
+  assert.deepEqual(write.upserts[0].content.explanation, { title, content });
+  assert.equal(write.upserts[0].content.goal, "Distinguir nomes e endereços");
+  assert.equal(Object.hasOwn(write.upserts[0].content, "contentReview"), false);
+  assert.deepEqual(write.sourceAttributionApplications, [{ targetKind: "microsequence_explanation", targetId: "micro-a",
+    sourceLinks: [sourceLink("micro-a")] }]);
+  assert.equal(receipt.context.explanationCorrectionCount, 1);
+});
+
+test("correção conjunta escreve unidade e apoio atomicamente e recusa resposta no apoio", async () => {
+  const adapter = adapterFixture();
+  const { title, content } = correctedContent("Apoio conjunto");
+  const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" }, course: "Curso de Redes",
+    corrections: [{ unidade: 1, conteudo: correctedContent("Unidade revista") }],
+    explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content }, fontes: [] }] };
+  await applyHumanCourseCorrections(input);
+  assert.equal(adapter.commits.length, 1);
+  assert.deepEqual(adapter.commits[0].upserts.map(row => row.entityType), ["study_unit", "microsequence"]);
+  input.explanations[0].conteudo.response = {};
+  await assert.rejects(() => applyHumanCourseCorrections(input), { code: "invalid_human_explanation" });
+  assert.equal(adapter.commits.length, 1);
+});
 
 test("#272 correções MCP multi-Unit preservam Fontes e usam composição genérica atômica", async () => {
   const adapter = adapterFixture();

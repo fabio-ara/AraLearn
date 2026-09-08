@@ -1,5 +1,100 @@
 # Alterações do schema
 
+## 20260908023156 — impressão regenerada do catálogo de pacotes
+
+O gate de autoíndice identificou o fingerprint gerado desatualizado. Reexecutar o gerador manteve imports e ordem dos pacotes e atualizou somente `RESOURCE_PACKAGE_CONTRACT_FINGERPRINT`. A projeção SQL passa a anunciar essa impressão, consumida pela descoberta do contrato, mantendo a versão `1-70b27609`, as referências e as opções do catálogo.
+
+O bloco SQL foi produzido por `renderResourcePackageCatalogSql()`. A migração exige revisão e fingerprint anteriores exatos, compara versão/opções e metadados da função após a substituição e não regrava políticas, conteúdo, snapshots ou decisões de revisão. O manifesto avança para distinguir o backend com a projeção sincronizada. Testes focais exercitam preservação e rollback quando a origem diverge ou as opções sofreriam alteração incidental. A igualdade dessa impressão é um contrato de sincronização; não constitui evidência de eficácia pedagógica.
+
+
+## 20260908020737 — conflito de revisão na leitura das citações
+
+A leitura das citações da Explicação passa a devolver `PT409` quando a revisão solicitada ficou antiga, conforme o contrato de conflitos HTTP 409. A mensagem, a assinatura e as guardas de acesso e revisão humana permanecem. Não há alteração de dados, concessões ou aprovações.
+
+A falha foi reproduzida pelo gate SQL de conflitos: a nova leitura ainda levantava `40001`, reservado à serialização nativa. O teste focal agora exerce esse CAS diretamente, além do inventário de guardas e da preservação dos envelopes nativos. Fixtures de acesso público, citações e áudio aprovam seu conjunto exclusivamente sintético pelo RPC de sessão do proprietário; política de arquivo e presença de vínculo não substituem revisão. Chamadas SQL posicionais de metadados tipam o argumento JSON para distinguir os overloads; clientes continuam usando argumentos nomeados.
+
+
+## 20260908003749 — ausência de atribuição em Fontes
+
+A leitura de um alvo existente sem atribuição bibliográfica retorna `items: []`.
+A função escalar que resolve a atribuição produzia uma linha composta nula no
+`FROM`; a agregação transformava essa ausência em item com identidade e versão
+nulas, recusado corretamente pelo cliente. O filtro por identidade da atribuição
+corrige a leitura para item do plano, unidade e Explicação, sem inventar versão,
+apagar vínculos existentes ou confundir alvo inexistente com alvo sem fontes.
+
+A mesma migração corrige a codificação das mensagens de erro do ramo manual da
+Explicação. As funções preservam assinaturas, autorização e permissões. Não há
+transformação dos dados armazenados. Testes sintéticos locais distinguem os três
+alvos sem atribuição, atribuição existente, alvo inexistente e mensagem UTF-8.
+
+Salvar conteúdo idêntico com a primeira atribuição vazia pode avançar a revisão
+do curso pela proveniência, conservando conteúdo e versão da microssequência.
+O recibo informa a versão real; o avanço do curso não significa que a entidade
+foi reescrita. Essa distinção é coberta na prova local, sem afirmar revisão humana
+de conteúdo real ou aplicação hospedada.
+
+## 20260908002120 — edição manual da Explicação
+
+A composição existente recebe um ramo focal para a pessoa proprietária editar
+somente a Explicação da microssequência inspecionada. O serviço exige versão da
+microssequência e revisão do curso, conserva pai, posição, demais campos e vínculos
+bibliográficos atuais, e confirma conteúdo e proveniência na mesma transação.
+Não aceita esse ato como MCP ou assistência por provedor, nem como edição de
+metadados do curso. As assinaturas das operações de unidade e composição seguem
+com seus usos existentes; o novo argumento obrigatório distingue o ramo manual
+de apoio, sem resolução ambígua por parâmetros opcionais.
+
+O recibo confirma identidade, versão e origem humana **do ato manual**, além de
+preservar a resposta original para a mesma identidade de solicitação. Isso não
+atribui autoria humana à microssequência inteira nem constitui aprovação. A
+coluna protegida de revisão conserva a decisão anterior; o hash material torna
+a aprovação não atual. A leitura corrente não fornece um novo histórico durável
+de autoria do apoio: a interface só afirma edição manual confirmada após receber
+o recibo correspondente.
+
+A migração não transforma dados existentes. Provas sintéticas locais cobrem
+CAS, replay, recusa de mudança de escopo/fontes, preservação de unidades e revisão,
+e permissões do serviço; clientes e publicação hospedados permanecem no gate final.
+
+## 20260907222912 — Explicação compartilhada e revisão humana
+
+A microssequência corrente conserva `explanationPlan` e uma `explanation` com
+título e recursos do catálogo comum. Materializar uma parte exige um apoio por
+microssequência produzida; unidades, aplicações e vínculos são confirmados na
+mesma transação e no recibo existente. Uma falha do apoio desfaz o lote. Salvar
+o mapa preserva a Explicação existente e altera somente sua proposta.
+
+`content_review` é metadado protegido, separado do conteúdo importável. O corte
+mantém o acervo anterior sem revisão registrada; novas microssequências e cópias
+começam como rascunho. A aprovação exige a sessão atual do aplicativo da pessoa
+proprietária, unidades e apoio produzidos e a impressão do conjunto inspecionado.
+OAuth, Actions/MCP, importação e correção não concedem aprovação. Replay recupera
+a decisão original; divergência da base retorna HTTP 409, sem rebase automático.
+
+A base inclui conteúdo ordenado, aplicações, dependências existentes, fontes e
+âncoras usadas e arquivos efetivamente vinculados. Alteração material torna a
+aprovação não atual; uma alteração independente não invalida outro recorte.
+Leituras de estudantes, citações, arquivos e cópias compartilhadas respeitam a
+elegibilidade no servidor. A pessoa proprietária continua inspecionando o rascunho.
+O marcador de revisão pendente permite ao cliente conservar a cópia local anterior.
+Não há snapshot aprovado paralelo no servidor nem decisão humana retroativa.
+
+A base literal de Analytics/exportação conserva metadados de fontes e âncoras
+retiradas quando uma atribuição corrente ainda as referencia. Isso evita uma
+referência pendente por omissão do inventário sem apagar o vínculo ou reativar a
+fonte. Retiradas sem uso ficam ausentes. Esse DTO de comparação não carrega status:
+a leitura de fontes continua sendo a superfície que informa retirada/conferência;
+a presença na base não certifica disponibilidade nem verificação.
+
+O alvo de proveniência `microsequence_explanation` reutiliza fontes, ocorrências,
+bibliografia e acesso a PDF/áudio. A projeção de revisão não expõe identificadores
+privados da pessoa revisora. O manifesto declara 50 capacidades em ordem canônica.
+Provas transacionais locais cobrem upgrade, autoridade, replay, conflito focal,
+atomicidade, leitura elegível e cópia; publicação hospedada e clientes reais
+continuam sujeitos aos gates da candidata integrada. Essas provas não demonstram
+aprendizagem nem substituem a inspeção humana do conteúdo.
+
 ## 20260907031059 — declaração do contrato de conflitos HTTP 409
 
 O manifesto passa a anunciar `course-business-conflicts-http-409-v1`, com 48

@@ -1,6 +1,7 @@
 import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { composeCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
 import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
   boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
@@ -52,6 +53,12 @@ const ACCESSIBLE_COURSE_IDS_CACHE_KEY = `${CACHE_PREFIX}.accessible-course-ids`;
 const ACCESSIBLE_COURSE_IDS_CONTRACT = "aralearn.accessible-course-ids.v1";
 const REVIEW_PAGE_CACHE_KEY = `${CACHE_PREFIX}.review-page`;
 const PERSON_PROFILE_CACHE_KEY = "aralearn.person-profile.v2";
+
+function explanationPrivacyCachePrefixes(courseId) {
+  return [`course.v1.explanation-citations:${courseId}`,
+    `course.v1.pending-content-review:${courseId}:`,
+    `course.v1.pending-explanation-composition:${courseId}:`];
+}
 
 function normalizeCachedPersonProfile(value, expectedUserId = null) {
   if (value?.contract !== PERSON_PROFILE_CACHE_KEY ||
@@ -189,7 +196,7 @@ function courseSourcesReadOptions(courseId, options = {}) {
       mode === "catalog" && hasTargetContext ||
       mode === "target" && (sourceId !== null || !validTargetContext) ||
       mode === "source" && hasTargetContext && !validTargetContext ||
-      (targetKind !== null && !new Set(["plan_item", "study_unit"]).has(targetKind)) ||
+      (targetKind !== null && !new Set(["plan_item", "study_unit", "microsequence_explanation"]).has(targetKind)) ||
       (targetId !== null && !courseSourceOpaqueId(targetId)) ||
       (targetKind === "plan_item" && !UUID_PATTERN.test(targetId)) ||
       (mode !== "catalog" && (cursor !== null || limit !== 1)) ||
@@ -296,6 +303,8 @@ function validCourseEntityPage(page, courseId, revision) {
     String(page.courseId || "").trim().toLowerCase() === courseId &&
     Number(page.revision) === revision &&
     Array.isArray(page.items) &&
+    (page.pendingReviewMicrosequenceIds == null || Array.isArray(page.pendingReviewMicrosequenceIds) &&
+      page.pendingReviewMicrosequenceIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 200)) &&
     typeof page.hasMore === "boolean" &&
     (page.hasMore ? page.nextCursor != null : page.nextCursor == null) &&
     page.items.every((row) => !Object.hasOwn(row || {}, "courseId") ||
@@ -1184,6 +1193,7 @@ export class CourseController {
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.course-design:${courseId}:`),
       this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
+      ...explanationPrivacyCachePrefixes(courseId).map(prefix => this.store.deleteCachePrefix(prefix)),
       this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringOutlineCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
@@ -1343,7 +1353,8 @@ export class CourseController {
     if (!UUID_PATTERN.test(String(courseId || ""))) throw new TypeError("A identidade do Curso é inválida.");
     const cached = await this.#readLastVerifiedComposition(courseId);
     if (!cached) return null;
-    return { ...cached, stale: false, readOnly: false, cacheOnly: true };
+    return { ...cached, stale: cached.retainedForReview === true,
+      readOnly: cached.retainedForReview === true, cacheOnly: true };
   }
 
   async getCourse(courseId) {
@@ -1355,6 +1366,7 @@ export class CourseController {
       {
       accessSensitive: true,
       invalidationPrefixes: [
+          ...explanationPrivacyCachePrefixes(courseId),
         `${this.cachePrefix}.list:`,
         courseCacheKey(courseId, this.cachePrefix),
         verifiedCompositionCacheKey(courseId, this.cachePrefix),
@@ -1399,6 +1411,7 @@ export class CourseController {
       {
         accessSensitive: true,
         invalidationPrefixes: [
+          ...explanationPrivacyCachePrefixes(courseId),
           `${this.cachePrefix}.list:`,
           courseCacheKey(courseId, this.cachePrefix),
           verifiedCompositionCacheKey(courseId, this.cachePrefix),
@@ -1464,6 +1477,7 @@ export class CourseController {
     if (String(cachedCourse?.courseId || "").trim().toLowerCase() !== courseId ||
         Number(cachedCourse?.revision) !== revision) return null;
     const rows = [];
+    const pendingReview = new Set();
     const cursors = new Set();
     let cursor = null;
     for (let pageIndex = 0; pageIndex < MAX_ENTITY_PAGES; pageIndex += 1) {
@@ -1472,6 +1486,7 @@ export class CourseController {
       ))?.data;
       if (!validCourseEntityPage(page, courseId, revision)) return null;
       rows.push(...page.items);
+      for (const id of page.pendingReviewMicrosequenceIds || []) pendingReview.add(id);
       if (page.hasMore !== true) {
         let document;
         try {
@@ -1492,7 +1507,8 @@ export class CourseController {
           document,
           offline: false,
           stale: false,
-          cacheVerified: true
+          cacheVerified: true,
+          ...(pendingReview.size ? { pendingReviewMicrosequenceIds: [...pendingReview] } : {})
         };
       }
       if (!page.nextCursor) return null;
@@ -1531,7 +1547,13 @@ export class CourseController {
       ...result,
       stale: true,
       readOnly: true,
-      cachedAt: cached.savedAt || null
+      cachedAt: cached.savedAt || null,
+      ...(cached.reviewRetention?.availableRevision > revision &&
+          Array.isArray(cached.reviewRetention.pendingReviewMicrosequenceIds) ? {
+        retainedForReview: true,
+        availableRevision: cached.reviewRetention.availableRevision,
+        pendingReviewMicrosequenceIds: [...cached.reviewRetention.pendingReviewMicrosequenceIds]
+      } : {})
     };
   }
 
@@ -1653,6 +1675,8 @@ export class CourseController {
           entityPageSize
         );
         if (cached) {
+          const retained = await this.#retainReviewedCopy(courseId, cached);
+          if (retained) return retained;
           await this.#promoteVerifiedComposition(courseId, cached.course, entityPageSize);
           if (pending && revision >= pending.courseRevision) {
             await this.#clearPendingComposition(courseId);
@@ -1673,6 +1697,7 @@ export class CourseController {
       throw new TypeError("A versão do Curso é inválida.");
     }
     const rows = [];
+    const pendingReview = new Set();
     const cursors = new Set();
     let cursor = null;
     let offline = course.offline === true;
@@ -1697,6 +1722,7 @@ export class CourseController {
           throw invalidCourseComposition("A página de entidades do Curso é inválida.");
         }
         rows.push(...page.items);
+        for (const id of page.pendingReviewMicrosequenceIds || []) pendingReview.add(id);
         offline ||= page.offline === true;
         stale ||= page.stale === true;
         if (page.hasMore !== true) {
@@ -1705,6 +1731,10 @@ export class CourseController {
             title: String(course?.title || "").trim(),
             goal: String(course?.goal || "").trim()
           }, rows);
+          const candidate = { course, rows, document, offline, stale,
+            ...(pendingReview.size ? { pendingReviewMicrosequenceIds: [...pendingReview] } : {}) };
+          const retained = await this.#retainReviewedCopy(courseId, candidate);
+          if (retained) return retained;
           await this.#promoteVerifiedComposition(courseId, course, entityPageSize);
           if (pending && offline !== true && stale !== true &&
               revision >= pending.courseRevision) {
@@ -1713,11 +1743,7 @@ export class CourseController {
           if (pendingFallback && (offline === true || stale === true ||
               revision < pending.courseRevision)) return pendingFallback;
           return {
-            course,
-            rows,
-            document,
-            offline,
-            stale,
+            ...candidate,
             ...(offline || stale ? { readOnly: true } : {})
           };
         }
@@ -1747,6 +1773,32 @@ export class CourseController {
       });
       return preserved;
     }
+  }
+
+  async #retainReviewedCopy(courseId, candidate) {
+    if (this.ownerOnly || !candidate.pendingReviewMicrosequenceIds?.length) return null;
+    const previous = await this.#readLastVerifiedComposition(courseId);
+    if (!previous || previous.course.revision >= candidate.course.revision) return null;
+    const pending = new Set(candidate.pendingReviewMicrosequenceIds);
+    const removesAvailableContent = previous.rows.some((row) =>
+      row.entityType === "study_unit" && pending.has(row.parentId) ||
+      row.entityType === "microsequence" && pending.has(row.entityId) && row.content?.explanation != null);
+    if (!removesAvailableContent) return null;
+    const reviewRetention = { availableRevision: candidate.course.revision,
+      pendingReviewMicrosequenceIds: [...pending] };
+    const key = verifiedCompositionCacheKey(courseId, this.cachePrefix);
+    const retain = (cached) => {
+      const value = cachedPayload(cached);
+      return Number(value?.revision) === previous.course.revision
+        ? { ...value, reviewRetention } : cached;
+    };
+    if (typeof this.store.updateCache === "function") await this.store.updateCache(key, retain);
+    else await this.store.putCache(key, retain(await this.store.getCache(key)));
+    // Preserve one complete course revision. Never splice old microsequences
+    // into the newly filtered server projection under its newer revision.
+    return { ...previous, offline: candidate.offline === true, stale: true, readOnly: true,
+      retainedForReview: true, availableRevision: candidate.course.revision,
+      pendingReviewMicrosequenceIds: [...pending] };
   }
 
   clearCourse(courseId, { clearLists = true } = {}) {
@@ -1780,6 +1832,7 @@ export class CourseController {
       {
         accessSensitive: true,
         invalidationPrefixes: [
+          ...explanationPrivacyCachePrefixes(courseId),
           `${this.cachePrefix}.list:`,
           courseCacheKey(courseId, this.cachePrefix),
           instructionalPlanCacheKey(courseId, this.cachePrefix),
@@ -1839,6 +1892,42 @@ export class CourseController {
     return result;
   }
 
+  async getMicrosequenceReview(courseId, microsequenceId) {
+    if (!this.ownerOnly || typeof this.api.getMicrosequenceReview !== "function") {
+      throw new TypeError("Somente a Autoria permite inspecionar a revisão do conteúdo.");
+    }
+    // Always read the authenticated current basis; an offline copy cannot approve content.
+    let result;
+    try { result = await this.api.getMicrosequenceReview(courseId, microsequenceId); }
+    catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+    if (result?.courseId !== courseId || result?.microsequenceId !== microsequenceId) {
+      throw new TypeError("A revisão não corresponde à microssequência solicitada.");
+    }
+    return structuredClone(result);
+  }
+
+  async approveMicrosequenceContent(value = {}) {
+    if (!this.ownerOnly || typeof this.api.approveMicrosequenceContent !== "function") {
+      throw new TypeError("Somente a Autoria permite aprovar o conteúdo inspecionado.");
+    }
+    // The UI owns the request identity; uncertain writes are never retried here.
+    let result;
+    try { result = await this.api.approveMicrosequenceContent(value); }
+    catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(value.courseId, { clearLists: true });
+      throw error;
+    }
+    if (result?.courseId !== value.courseId || result?.microsequenceId !== value.microsequenceId ||
+        result?.basisHash !== value.expectedBasisHash || result?.contentReview?.state !== "current") {
+      throw new TypeError("A confirmação não corresponde ao conteúdo inspecionado.");
+    }
+    await this.#clearCourseDesignCache(value.courseId);
+    return structuredClone(result);
+  }
+
   async loadCourseMedia(courseId, options = {}) {
     const request = courseMediaReadRequest(courseId, options);
     if (request.mode === "catalog" && !this.ownerOnly) throw new TypeError("Somente a Autoria oferece a biblioteca de áudio.");
@@ -1863,6 +1952,7 @@ export class CourseController {
       this.store.deleteCachePrefix(verifiedCompositionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(instructionalPlanCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`course.v1.audio-configuration:${courseId}`),
+      this.store.deleteCachePrefix(`course.v1.explanation-citations:${courseId}`),
       this.store.deleteCachePrefix(courseSourcesCachePrefix(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(authoringInspectionCacheKey(courseId, this.cachePrefix)),
       this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${courseId}:`)
@@ -2075,6 +2165,7 @@ export class CourseController {
         accessSensitive: true,
         normalize: (value) => normalizeAuthoringOutline(courseId, value),
         invalidationPrefixes: [
+          ...explanationPrivacyCachePrefixes(courseId),
           `${this.cachePrefix}.list:`,
           courseCacheKey(courseId, this.cachePrefix),
           instructionalPlanCacheKey(courseId, this.cachePrefix),
@@ -2225,6 +2316,122 @@ export class CourseController {
     return structuredClone(normalized);
   }
 
+
+  async getMicrosequenceForExplanation(courseId, microsequenceId, { expectedRevision } = {}) {
+    if (!this.ownerOnly || !UUID_PATTERN.test(courseId) || !courseSourceOpaqueId(microsequenceId) ||
+        !Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new TypeError("A leitura da Explicação exige um recorte de Autoria válido.");
+    }
+    let cursor = null;
+    const cursors = new Set();
+    for (let index = 0; index < MAX_ENTITY_PAGES; index++) {
+      let page;
+      try { page = await this.api.getCourseEntities(courseId, { ownerOnly: true,
+        revision: expectedRevision, cursor, limit: 500 }); }
+      catch (error) {
+        if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+        throw error;
+      }
+      if (!validCourseEntityPage(page, courseId, expectedRevision)) {
+        throw new TypeError("A leitura não corresponde à revisão inspecionada.");
+      }
+      const entity = page.items.find(row => row.entityType === "microsequence" && row.entityId === microsequenceId);
+      if (entity) {
+        if (!Number.isSafeInteger(entity.version) || entity.version < 1) throw new TypeError("A versão da microssequência é inválida.");
+        return structuredClone(entity);
+      }
+      if (!page.hasMore) break;
+      const next = JSON.stringify(page.nextCursor);
+      if (cursors.has(next)) throw new TypeError("A leitura repetiu a página de conteúdo.");
+      cursors.add(next);
+      cursor = page.nextCursor;
+    }
+    throw new TypeError("A microssequência não foi encontrada na revisão inspecionada.");
+  }
+
+  async loadPendingMicrosequenceExplanationEdit(courseId, microsequenceId) {
+    if (!this.ownerOnly || !UUID_PATTERN.test(courseId) || !courseSourceOpaqueId(microsequenceId)) {
+      throw new TypeError("A recuperação exige um recorte de Autoria válido.");
+    }
+    const pending = await this.store.getCache(`course.v1.pending-explanation-composition:${courseId}:${microsequenceId}`);
+    if (!pending) return null;
+    const command = pending.command;
+    const intent = { courseId: command?.courseId, microsequenceId: command?.microsequenceId,
+      expectedRevision: command?.expectedRevision, expectedEntityVersion: command?.expectedEntityVersion,
+      explanation: normalizeMicrosequenceExplanation(command?.entity?.content?.explanation), requestId: command?.requestId };
+    if (intent.courseId !== courseId || intent.microsequenceId !== microsequenceId ||
+        !Number.isSafeInteger(intent.expectedRevision) || intent.expectedRevision < 1 ||
+        !Number.isSafeInteger(intent.expectedEntityVersion) || intent.expectedEntityVersion < 1 ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(intent.requestId)) {
+      throw new TypeError("A edição pendente não corresponde ao recorte solicitado.");
+    }
+    const original = JSON.parse(pending.signature);
+    if (Object.keys(original).length !== Object.keys(intent).length ||
+        Object.keys(intent).some(key => JSON.stringify(intent[key]) !== JSON.stringify(original[key]))) {
+      throw new TypeError("A edição pendente divergiu do pedido original.");
+    }
+    return structuredClone(original);
+  }
+
+  async saveMicrosequenceExplanation(value = {}) {
+    if (!this.ownerOnly || typeof this.api.saveMicrosequenceExplanation !== "function") {
+      throw new TypeError("Somente a Autoria permite editar a Explicação.");
+    }
+    const fields = new Set(["courseId", "microsequenceId", "expectedRevision", "expectedEntityVersion", "explanation", "requestId"]);
+    if (!value || typeof value !== "object" || Array.isArray(value) ||
+        Object.keys(value).length !== fields.size || Object.keys(value).some(key => !fields.has(key)) ||
+        !UUID_PATTERN.test(value.courseId) || !courseSourceOpaqueId(value.microsequenceId) ||
+        !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision < 1 ||
+        !Number.isSafeInteger(value.expectedEntityVersion) || value.expectedEntityVersion < 1 ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(value.requestId)) {
+      throw new TypeError("Edição manual da Explicação inválida.");
+    }
+    const intent = { ...value, explanation: normalizeMicrosequenceExplanation(value.explanation) };
+    const signature = JSON.stringify(intent);
+    const key = `course.v1.pending-explanation-composition:${intent.courseId}:${intent.microsequenceId}`;
+    let pending = await this.store.getCache(key);
+    if (pending && pending.signature !== signature) {
+      throw new TypeError("Confirme o resultado da edição pendente antes de enviar outro conteúdo.");
+    }
+    if (!pending) {
+      const entity = await this.getMicrosequenceForExplanation(intent.courseId, intent.microsequenceId,
+        { expectedRevision: intent.expectedRevision });
+      if (entity.version !== intent.expectedEntityVersion) {
+        throw new TypeError("A microssequência mudou; releia antes de salvar.");
+      }
+      // Direct owner reads are required: no cached source/content fallback at this boundary.
+      const sources = normalizeCourseSourcesRead(await this.api.loadCourseSources(intent.courseId, {
+        expectedRevision: intent.expectedRevision, mode: "target", targetKind: "microsequence_explanation",
+        targetId: intent.microsequenceId, limit: 1
+      }));
+      const attribution = sources.items[0];
+      if (sources.courseId !== intent.courseId || sources.courseRevision !== intent.expectedRevision ||
+          sources.mode !== "target" || sources.query.targetKind !== "microsequence_explanation" ||
+          sources.query.targetId !== intent.microsequenceId || sources.items.length > 1 ||
+          attribution && attribution.targetVersion !== intent.expectedEntityVersion) {
+        throw new TypeError("As fontes não correspondem à Explicação inspecionada.");
+      }
+      const { explanation, ...identity } = intent;
+      pending = { signature, command: { ...identity, entity: {
+        entityType: "microsequence", entityId: entity.entityId, parentType: entity.parentType,
+        parentId: entity.parentId, position: entity.position,
+        content: { ...structuredClone(entity.content), explanation }
+      }, sourceLinks: structuredClone(attribution?.sourceLinks ?? []) } };
+      await this.store.putCache(key, pending);
+    }
+    try {
+      const result = await this.api.saveMicrosequenceExplanation(structuredClone(pending.command));
+      await this.#clearCourseDesignCache(intent.courseId);
+      await this.store.deleteCachePrefix(`${this.cachePrefix}.entities:${intent.courseId}:`);
+      await this.store.putCache(key, null);
+      return result;
+    } catch (error) {
+      if (Number(error?.status) >= 400 && Number(error?.status) < 500 &&
+          ![408,425,429].includes(Number(error.status))) await this.store.putCache(key, null);
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(intent.courseId, { clearLists: true });
+      throw error;
+    }
+  }
 
   async commitCourseComposition(value = {}) {
     if (!this.ownerOnly || typeof this.api.commitCourseComposition !== "function") {

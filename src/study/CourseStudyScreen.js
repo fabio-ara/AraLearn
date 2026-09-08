@@ -626,7 +626,7 @@ function renderStudyUnit({
   });
   const feedbackEntry = getPackageStudyUnitFeedbackEntry(studyUnit);
   const nextActionLabel = feedbackEntry && !feedbackOpen
-    ? "Ver explicação"
+    ? "Ver comentário da unidade"
     : "Próxima unidade de estudo";
   const feedback = feedbackOpen && feedbackEntry
     ? renderPackageStudyUnitFeedback(feedbackEntry, {
@@ -688,8 +688,11 @@ function renderStudyUnit({
     assistanceSelection ? renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") :
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
-    renderStudyToolActions(studyUnit) +
+    renderStudyToolActions(studyUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true }) +
     '<div class="study-usual-actions">' +
+    '<button class="icon-ghost study-explanation-btn" type="button" data-action="open-explanation"' +
+    ' aria-haspopup="dialog" aria-expanded="false" title="Explicação" aria-label="Explicação">' +
+    renderUiIcon("book-open", "home-tab-icon") + "</button>" +
     '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
     ` aria-expanded="${String(citationsOpen)}" title="Fontes" aria-label="Fontes">` +
     renderUiIcon("study", "home-tab-icon") + "</button>" +

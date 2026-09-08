@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { courseAuthoringAnalyticsFixture, ANALYTICS_COURSE_ID } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import { normalizeCourseAuthoringAnalyticsPage } from "../../src/domain/courseAuthoringAnalytics.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import { buildCourseAuthoringComparison, normalizeCourseAuthoringComparison, normalizeCourseAuthoringComparisonRequest, assembleCourseAuthoringExport, normalizeCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { executeCourseRoute } from "../../supabase/functions/_shared/aralearn-authoring/courseRouter.js";
@@ -29,6 +30,67 @@ function pair() {
   const right = structuredClone(left); right.course.id = OTHER_ID;
   return { left, right };
 }
+
+function sharedExplanationExportFixture() {
+  const analytics = courseAuthoringAnalyticsFixture();
+  analytics.basis.sources = [source()];
+  const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
+  const guide = { goal: "Compreender relações.", include: [], exclude: [], notation: [], avoid: [] };
+  const support = { title: "Processo e comunicação", content: [paragraph("support-body", "Cada processo usa um socket para comunicar. 日本語 & <texto>")] };
+  const microsequence = { id: "micro-a", title: "Processos", goal: "Relacionar processo e comunicação.", role: "explain",
+    dependsOn: [], covers: [], checks: [], errors: [], explanation: support,
+    studyUnits: [1, 2].map(position => ({ id: `unit-${position}`, position, title: `Relação ${position}`, role: "theory",
+      content: [paragraph(`unit-body-${position}`, "Um socket liga o processo ao transporte.")], response: null, feedback: [], topics: [] })) };
+  const document = { contract: "aralearn.course.v1", courses: [{ id: ANALYTICS_COURSE_ID, title: "Curso", goal: "Objetivo",
+    modules: [{ id: "module-a", title: "Módulo", guide,
+      lessons: [{ id: "lesson-a", title: "Lição", guide, topics: [], microsequences: [microsequence] }] }] }] };
+  const explanationSources = [{ contract: "aralearn.course-sources.v3", bibliographyStyle: "abnt-2025",
+    courseId: ANALYTICS_COURSE_ID, courseRevision: 7, mode: "target",
+    query: { sourceId: null, targetKind: "microsequence_explanation", targetId: "micro-a" },
+    pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 }, nextCursor: null,
+    items: [{ targetKind: "microsequence_explanation", targetId: "micro-a", targetVersion: 2,
+      sourceLinks: [{ linkId: "support-source", sourceId: "source-one", relation: "supported_by",
+        roles: ["technical_conceptual"], anchors: [], occurrences: [{ occurrenceId: "support-occurrence", slot: "content",
+          resourceId: "support-body", path: "text", quote: "Cada processo", prefix: null, suffix: null }] }],
+      createdAt: "2026-09-07T12:00:00Z" }] }];
+  return { analytics, document, explanationSources };
+}
+
+test("exportação conserva uma Explicação compartilhada e sua proveniência literal para várias unidades", () => {
+  const fixture = sharedExplanationExportFixture();
+  const result = normalizeCourseAuthoringExport(assembleCourseAuthoringExport(fixture));
+  assert.deepEqual(result.artifact.document, fixture.document);
+  assert.deepEqual(result.artifact.explanationSources, fixture.explanationSources);
+  const microsequence = result.artifact.document.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(microsequence.studyUnits.length, 2);
+  assert.equal(microsequence.studyUnits.some(unit => Object.hasOwn(unit, "explanation")), false);
+  assert.equal(JSON.stringify(result.artifact.document).split('"explanation":').length - 1, 1);
+  assert.deepEqual(result.analytics.basis.sources, fixture.analytics.basis.sources);
+});
+
+test("exportação rejeita proveniência ausente, repetida ou de outro alvo/revisão e aprovação fabricada", () => {
+  const fixture = sharedExplanationExportFixture();
+  assert.throws(() => assembleCourseAuthoringExport({ ...fixture, explanationSources: [] }), /proveniência/u);
+  assert.throws(() => assembleCourseAuthoringExport({ ...fixture,
+    explanationSources: [...fixture.explanationSources, ...fixture.explanationSources] }), /proveniência/u);
+  for (const mutate of [
+    read => { read.courseRevision = 8; },
+    read => { read.courseId = OTHER_ID; },
+    read => { read.query.targetId = "micro-b"; },
+    read => { read.items[0].targetId = "micro-b"; },
+    read => { read.items.push(structuredClone(read.items[0])); }
+  ]) {
+    const input = structuredClone(fixture); mutate(input.explanationSources[0]);
+    assert.throws(() => assembleCourseAuthoringExport(input), /proveniência/u);
+  }
+  const exported = assembleCourseAuthoringExport(fixture);
+  const missing = structuredClone(exported); delete missing.artifact.explanationSources;
+  assert.throws(() => normalizeCourseAuthoringExport(missing));
+  const forged = structuredClone(exported);
+  forged.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].contentReview =
+    { state: "current", approvedAt: "2026-09-07T12:00:00Z" };
+  assert.throws(() => normalizeCourseAuthoringExport(forged));
+});
 test("comparação distingue declaração, observação, ausências e não aplicabilidade com referências", () => {
   const { left, right } = pair();
   const result = normalizeCourseAuthoringComparison(buildCourseAuthoringComparison({ left, right }), { expectedRequest: { left: selection(), right: selection(OTHER_ID) } });
@@ -169,6 +231,30 @@ test("Adapter exporta somente após todas páginas CAS e revisão final, sem usa
   assert.equal(calls[0].expectedRevision, 7);
   adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: OTHER_ID, revision: 7, items: [], hasMore: false, nextCursor: null });
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), (error) => error.status === 503);
+});
+
+test("Adapter lê fontes de cada apoio uma vez na mesma revisão e mantém revisão humana fora do artefato", async () => {
+  const fixture = sharedExplanationExportFixture();
+  const { rows } = flattenCourseDocument(fixture.document);
+  const calls = [];
+  const adapter = adapterFixture();
+  adapter.getCourseAuthoringAnalytics = async () => fixture.analytics;
+  adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
+  adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
+    revision: 7, hasMore: false, nextCursor: null, items: rows.map(row => ({ ...row,
+      contentReview: row.entityType === "microsequence" ? { state: "current", approvedAt: "2026-09-07T12:00:00Z" } : null })) });
+  adapter.getCourseSources = async request => { calls.push(request); return fixture.explanationSources[0]; };
+  const result = await adapter.getCourseAuthoringExport({ principal, ...selection() });
+  assert.deepEqual(result.artifact.document, fixture.document);
+  assert.deepEqual(result.artifact.explanationSources, fixture.explanationSources);
+  assert.equal(calls.length, 1, "Duas unidades compartilham o mesmo apoio e a mesma leitura de fontes.");
+  assert.deepEqual({ targetKind: calls[0].targetKind, targetId: calls[0].targetId, revision: calls[0].expectedRevision },
+    { targetKind: "microsequence_explanation", targetId: "micro-a", revision: 7 });
+  assert.equal(JSON.stringify(result.artifact).includes("contentReview"), false);
+  adapter.getCourseSources = async () => ({ ...fixture.explanationSources[0], courseRevision: 8 });
+  await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), { status: 503 });
+  adapter.getCourseSources = async () => { throw Object.assign(new Error("Revisão mudou"), { status: 409 }); };
+  await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), { status: 409 });
 });
 test("exportação falha fechada quando cursor se repete ou a revisão muda ao terminar", async () => {
   const adapter = adapterFixture(); let calls = 0;

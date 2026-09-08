@@ -5,6 +5,7 @@ import {
   paginateHumanReadContext
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import {
   ARALEARN_MCP_PROTOCOL_VERSION,
@@ -35,6 +36,9 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     },
     async getCourse({ courseId }) {
       return { courseId, revision: adapter.revision, title: courseId === COURSE.id ? TITLE : "Outro curso" };
+    },
+    async getCourseInstructionalPlan() {
+      return { courseRevision: adapter.revision, plan: { title: TITLE, parts: [] } };
     },
     async listCourseStudyUnits(input) {
       calls.units.push(input);
@@ -89,6 +93,69 @@ async function channelCall(channel, adapter, name, args) {
   return { status: response.status, envelope,
     value: channel === "actions" ? payload : payload.result?.structuredContent, payload };
 }
+
+function materializationPreparationFixture(blocks = 32) {
+  const adapter = fixture();
+  const support = normalizeMicrosequenceExplanation({ title: "Explicação sintética de carga", content: Array.from({ length: blocks }, (_, index) => ({
+    id: `p-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0", data: {
+      text: `Seção ${index + 1}. ` + "Uma interface é um ponto de conexão; um host pode possuir mais de uma interface. ".repeat(48)
+    }
+  })) });
+  const microsequence = { id: "ms", title: "Interfaces", goal: "Relacionar host e interface.", productionPosition: 0,
+    explanation: support, explanationPlan: { purpose: "Explicitar a relação.", prerequisites: [], relations: [], sourceIds: [] }, contentReview: { state: "draft" } };
+  const plan = { title: TITLE, instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
+    curriculum: { modules: [{ lessons: [{ microsequences: [microsequence] }] }] },
+    parts: [{ id: "part", position: 0, title: "Interfaces", intent: "Relacionar conceitos.", microsequences: [microsequence] }] };
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
+  adapter.getCourseDesign = async () => ({ parameters: [], targetPlanItems: { instructionalAnalysisUnitIds: [], evidenceRequirementIds: [] } });
+  return { adapter, support };
+}
+
+test("preparo recupera apoio acima do envelope Actions por continuação literal nos dois handlers", async () => {
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter, support } = materializationPreparationFixture();
+    assert.ok(JSON.stringify(support).length > 99_999, "a fixture válida atravessa o limite real de transporte");
+    let continuation, expectedStart = 0, literal = "", calls = 0;
+    do {
+      const read = await channelCall(channel, adapter, "preparar_materializacao", { curso: TITLE, parte: 1,
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(read.status, 200, read.envelope);
+      assert.ok(read.envelope.length <= 99_999, `${channel}: envelope de ${read.envelope.length} unidades UTF-16`);
+      const context = read.value.context;
+      assert.equal(context.fragmento.inicio, expectedStart);
+      assert.equal(context.fragmento.fim - context.fragmento.inicio, context.fragmento.texto.length);
+      literal += context.fragmento.texto;
+      expectedStart = context.fragmento.fim;
+      continuation = context.continuacao;
+      assert.equal(context.temMais, continuation !== null);
+      assert.ok(++calls < 10, "continuação precisa terminar sem repetir trecho");
+    } while (continuation);
+    const restored = JSON.parse(literal);
+    assert.equal(calls, 2);
+    assert.equal(restored.explicacoes.length, 1);
+    assert.deepEqual(restored.explicacoes[0].conteudo, support);
+    assert.equal(restored.explicacoes[0].revisao, "Rascunho");
+    assert.equal(restored.parte.microssequencias[0].titulo, "Interfaces");
+  }
+});
+
+test("preparo pequeno é terminal; continuação não mistura revisão ou texto do apoio alterado", async () => {
+  const small = materializationPreparationFixture(4);
+  const complete = await execute(small.adapter, "preparar_materializacao", { parte: 1 });
+  assert.equal(complete.context.temMais, false);
+  assert.equal(complete.context.continuacao, null);
+  assert.deepEqual(complete.context.explicacoes[0].conteudo, small.support);
+  for (const change of ["revision", "content"]) {
+    const { adapter, support } = materializationPreparationFixture();
+    const first = await execute(adapter, "preparar_materializacao", { parte: 1 });
+    assert.equal(first.context.temMais, true);
+    if (change === "revision") adapter.revision += 1;
+    else support.content[0].data.text += " Alteração material posterior.";
+    await assert.rejects(() => execute(adapter, "preparar_materializacao", {
+      parte: 1, continuacao: first.context.continuacao
+    }), { status: 409, code: "human_read_context_changed" });
+  }
+});
 
 test("continuação liga tarefa, consulta, curso e revisão; argumentos reordenados conservam a leitura", async () => {
   const args = { curso: TITLE, busca: "IPA" };
@@ -242,6 +309,25 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
   assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId), [null, "unit-12"]);
   assert.equal(adapter.calls.annotations.length, 24);
+});
+
+test("revisão inclui um apoio literal por microssequência, com proposta e situação separadas", async () => {
+  const units = [studyUnit(1), studyUnit(2)].map(unit => ({ ...unit,
+    curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
+  const adapter = fixture({ units });
+  const support = { title: "Relação completa", content: [{ id: "support", package: "aralearn.resource.paragraph",
+    version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
+    parts: [{ id: "part", position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
+      explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds: [] },
+      explanation: support, contentReview: { state: "draft" } }] }] } });
+  const read = await execute(adapter, "preparar_revisao", {});
+  assert.equal(read.context.explicacoes.length, 1);
+  assert.deepEqual(read.context.explicacoes[0].conteudo, support);
+  assert.equal(read.context.explicacoes[0].proposta.proposito, "Explicitar a relação");
+  assert.equal(read.context.explicacoes[0].revisao, "Rascunho");
+  assert.equal(read.context.studyUnits.length, 2);
+  assert.equal(adapter.calls.sources[0].targetKind, "microsequence_explanation");
 });
 
 test("curso, busca ou revisão trocados recusam continuação antes de ler outra página", async () => {

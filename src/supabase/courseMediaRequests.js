@@ -29,13 +29,15 @@ export function courseMediaReadRequest(courseId, options = {}) {
 }
 
 export function courseMediaDownloadRequest(value) {
-  exact(value, ["courseId", "expectedRevision", "studyUnitId", "contentHash"]);
-  const studyUnitId = value.studyUnitId ?? null;
-  if (studyUnitId !== null && (typeof studyUnitId !== "string" || !studyUnitId.trim() || studyUnitId !== studyUnitId.trim() ||
-      [...studyUnitId].length > 240 || [...studyUnitId].some((character) => character.codePointAt(0) < 32))) {
-    throw new TypeError("Unidade de estudo inválida para áudio.");
+  const isExplanation = value?.targetKind === "microsequence_explanation";
+  exact(value, ["courseId", "expectedRevision", "contentHash", ...(isExplanation ? ["targetKind", "targetId"] : ["studyUnitId"])]);
+  const targetId = isExplanation ? value.targetId : value.studyUnitId ?? null;
+  if ((isExplanation || targetId !== null) && (typeof targetId !== "string" || !targetId.trim() || targetId !== targetId.trim() ||
+      [...targetId].length > 240 || /\p{Cc}/u.test(targetId))) {
+    throw new TypeError("Alvo de conteúdo inválido para áudio.");
   }
-  return { courseId: id(value.courseId), expectedRevision: revision(value.expectedRevision), studyUnitId, contentHash: hash(value.contentHash) };
+  return { courseId: id(value.courseId), expectedRevision: revision(value.expectedRevision),
+    ...(isExplanation ? { targetKind: value.targetKind, targetId } : { studyUnitId: targetId }), contentHash: hash(value.contentHash) };
 }
 
 export function courseMediaWriteRequest(value, { upload = false } = {}) {
@@ -63,6 +65,7 @@ export function boundCourseMediaRead(value, request) {
 export function boundCourseMediaDownload(value, request, options = {}) {
   const result = normalizeCourseMediaDownload(value, options);
   if (result.courseId !== request.courseId || result.courseRevision !== request.expectedRevision ||
+      result.targetKind !== request.targetKind || result.targetId !== request.targetId ||
       result.studyUnitId !== request.studyUnitId || result.media.contentHash !== request.contentHash) {
     throw new TypeError("O download de áudio não corresponde à consulta.");
   }

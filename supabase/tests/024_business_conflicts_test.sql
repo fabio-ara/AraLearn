@@ -98,12 +98,19 @@ select ok(has_function_privilege('service_role',
   'public.get_owned_course_sources_for_actor_v1(uuid,uuid,bigint,text,text,text,text,text,integer)','execute'),
   'grant do serviço permanece');
 
+-- Leitura das citações do apoio conserva o conflito de negócio HTTP 409.
+select set_config('request.jwt.claim.sub','a3350000-0000-4000-8000-000000000001',true);
+select throws_ok($q$select public.get_course_explanation_citations_v1(
+ 'a3350000-0000-4000-8000-000000000101',1,'synthetic-microsequence')$q$,
+ 'PT409','O Curso mudou durante a leitura de citações.','CAS antigo do apoio usa conflito de negócio antes de projetar citações');
+select set_config('request.jwt.claim.sub','',true);
+
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'40001'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname in('public','private') and p.prokind='f'),0::bigint,'contratos atuais não levantam serialização para conflito de negócio');
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),69::bigint,'69 guardas de negócio usam PT409');
+  where n.nspname in('public','private') and p.prokind='f'),72::bigint,'72 guardas de negócio usam PT409');
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname in('public','private') and p.prokind='f'
     and p.prosrc~$rx$exception when serialization_failure or sqlstate 'PT409' then$rx$),

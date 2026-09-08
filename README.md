@@ -16,13 +16,15 @@ curso → módulo → lição → microssequência didática → unidade de estu
 
 Uma **microssequência didática** organiza um avanço conceitual delimitado. Suas **unidades de estudo** desenvolvem etapas desse avanço por meio de explicações, exemplos, práticas e retorno. Conforme o conteúdo, uma unidade pode usar prosa, fórmulas, código ou outras representações.
 
+A microssequência também pode oferecer uma **Explicação** compartilhada: um apoio previamente escrito, acessível por ícone em qualquer unidade, inclusive nas práticas. Ele desenvolve pressupostos, relações e exemplos sem repetir o texto em cada unidade. Abrir o apoio não gera conteúdo por IA nem registra aprendizagem. Cursos anteriores sem apoio continuam reconhecidos nessa condição.
+
 Essa organização permite acrescentar as etapas necessárias para explicar um assunto sem depender de uma única exposição extensa ou de resumos excessivamente condensados. O [modelo didático](docs/modelo-didatico.md) apresenta os fundamentos e as decisões que orientam essa estrutura.
 
 ## Estudo e autoria
 
 No estudo, é possível percorrer o curso, responder a práticas, receber retorno, marcar unidades para rever, registrar observações e retomar o ponto em que o estudo foi interrompido.
 
-Na autoria, é possível planejar a estrutura do curso, produzir e revisar seu conteúdo e definir quem pode acessá-lo. Um curso pode continuar sendo planejado e corrigido enquanto o conteúdo já produzido permanece disponível para estudo.
+Na autoria, é possível planejar a estrutura do curso, produzir e revisar seu conteúdo e definir quem pode acessá-lo. Conteúdo novo fica em rascunho para inspeção da pessoa proprietária, que aprova explicitamente o conjunto da microssequência. Uma mudança material exige nova revisão antes de disponibilizar esse recorte atualizado a estudantes. O acervo anterior conserva a indicação de revisão não registrada, sem aprovação retroativa automática.
 
 O [guia do estudante](docs/guia-estudante.md) apresenta o percurso de estudo. O [guia do professor e autor](docs/guia-professor-autor.md) apresenta criação, planejamento, produção e revisão de cursos.
 

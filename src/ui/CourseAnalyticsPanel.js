@@ -472,6 +472,13 @@ function inventoryHtml(inventory) {
             `<small>${plural(entry.count, "ocorrência", "ocorrências")}</small></li>`).join("") + '</ul>' : '<p>Nenhuma diferença literal.</p>')).join("") + '</details>';
     }).join("");
 }
+
+/** Evidência somente leitura do mesmo snapshot usado na revisão humana. */
+export function renderCourseAuthoringInspectionEvidence(page) {
+  return '<details class="course-analytics-details"><summary>Configuração solicitada e aplicada</summary>' +
+    parametersHtml(buildCourseAuthoringComparison({ left: page, right: page }).requestedParameters, { single: true }) +
+    renderDesign(page.design, page.basis) + renderMissingData(page.missingData) + '</details>';
+}
 function sheetContent(state) {
   if (state.sheet === "configuration") return '<form data-course-analytics-configuration><label>Dimensão<select name="dimension">' +
     state.page.dimensions.map(({ id, label }) => `<option value="${id}"${id === state.dimension ? " selected" : ""}>${escapeHtml(label)}</option>`).join("") + '</select></label>' +

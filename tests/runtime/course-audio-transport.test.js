@@ -120,3 +120,54 @@ test("download assina apenas a identidade autorizada e remove path interno do DT
   await assert.rejects(value.getCourseMediaDownload(request), error => error.code === "course_media_unavailable");
   assert.equal(signed, 1);
 });
+
+test("rota de download focal discrimina Explicação e não aceita misturar alvos", async () => {
+  const seen = [];
+  const handler = createCourseApiHandler({ allowedOrigins: new Set([origin]), adapter: {
+    resolveApplicationPrincipal: async () => principal,
+    getCourseMediaDownload: async value => { seen.push(value); return { allowedByAdapter: true }; }
+  } });
+  const get = (query, token = false) => new Request(`https://project.example/functions/v1/aralearn-course-api/v1/courses/${courseId}/media/${media.contentHash}/download?expectedRevision=1&${query}`,
+    { headers: { Origin: origin, ...(token ? { Authorization: "Bearer synthetic" } : {}) } });
+  for (const token of [false, true]) {
+    assert.equal((await handler(get("targetKind=microsequence_explanation&targetId=ms", token))).status, 200);
+    assert.equal(seen.at(-1).targetKind, "microsequence_explanation");
+    assert.equal(seen.at(-1).targetId, "ms");
+    assert.equal(Object.hasOwn(seen.at(-1), "studyUnitId"), false);
+    assert.equal(seen.at(-1).principal.actorId, token ? principal.actorId : null);
+  }
+  for (const query of ["targetKind=microsequence_explanation", "targetId=ms", "targetKind=course&targetId=ms",
+    "targetKind=microsequence_explanation&targetId=ms&studyUnitId=u", "targetKind=microsequence_explanation&targetId=ms&targetId=another"]) {
+    assert.equal((await handler(get(query))).status, 422);
+  }
+  assert.equal(seen.length, 2);
+});
+
+test("adapter usa RPC de apoio e só assina depois da decisão de acesso e identidade exata", async () => {
+  let rpcMismatch = false, denied = false, signed = 0;
+  const rpcCalls = [];
+  const path = `${courseId}/${media.contentHash}.wav`;
+  const value = adapter(async (url, options) => {
+    if (url.includes("get_course_explanation_media_download_for_actor_v1")) {
+      rpcCalls.push(JSON.parse(options.body));
+      if (denied) return new Response(JSON.stringify({ code: "42501", message: "Conteúdo aguardando revisão da autoria." }), { status: 403 });
+      return json({ contract: "aralearn.course-media-download-internal.v1", courseId, courseRevision: 1,
+        targetKind: "microsequence_explanation", targetId: rpcMismatch ? "another-ms" : "ms", media, storagePath: path });
+    }
+    if (url.includes("/object/sign/")) { signed++; return json({ signedURL: `/object/sign/course-media/${path}?token=fixture` }); }
+    assert.fail(url);
+  });
+  const request = { principal: { actorId: null, authenticationKind: "public" }, courseId, expectedRevision: 1,
+    targetKind: "microsequence_explanation", targetId: "ms", contentHash: media.contentHash };
+  const result = await value.getCourseMediaDownload(request);
+  assert.deepEqual(rpcCalls[0], { p_actor_id: null, p_course_id: courseId, p_expected_revision: 1, p_microsequence_id: "ms", p_content_hash: media.contentHash });
+  assert.equal(result.targetKind, "microsequence_explanation");
+  assert.equal(result.targetId, "ms");
+  assert.equal(Object.hasOwn(result, "studyUnitId"), false);
+  assert.equal(Object.hasOwn(result, "storagePath"), false);
+  rpcMismatch = true;
+  await assert.rejects(value.getCourseMediaDownload(request), { code: "course_media_unavailable" });
+  denied = true;
+  await assert.rejects(value.getCourseMediaDownload(request), error => error.status === 403);
+  assert.equal(signed, 1, "identidade divergente ou rascunho bloqueado não recebe URL assinada");
+});

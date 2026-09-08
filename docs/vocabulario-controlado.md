@@ -439,7 +439,7 @@ Atribuição intencional em um escopo que substitui integralmente o valor herdad
 
 #### Direção editorial
 
-Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.1.0 de quatro parâmetros pedagógicos e dois alvos editoriais quantitativos flexíveis e incapaz de eliminar conteúdo necessário. Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.
+Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.2.1 de doze decisões de conteúdo, prática, extensão, conversa e produção e incapaz de eliminar conteúdo necessário. Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.
 
 **Domínio e implementação.** Direção editorial; equivalente internacional: editorial direction; símbolo: `course_authoring_guidance`.
 

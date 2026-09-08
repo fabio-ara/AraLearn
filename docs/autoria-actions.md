@@ -5,6 +5,19 @@ Actions oferece no ChatGPT os mesmos casos de uso do
 transporte muda; o curso, as regras de autorização e os efeitos permanecem os
 mesmos.
 
+O contrato 3.0.0 inclui proposta, materialização, correção, leitura integral e
+fontes da Explicação compartilhada, conforme o
+[contrato comum do MCP](autoria-mcp.md#tarefas-disponíveis). Unidades e apoios do
+lote são gravados juntos; a revisão humana do conteúdo continua na Autoria.
+
+O pedido **Debater com GPT** copiado da Autoria pode ser colado na conversa do
+GPT já conectado por Actions. Ele fornece identidade, recorte e revisão, sem
+chamar a API ao copiar. O GPT lê o estado corrente pelas Actions existentes e
+discute a proposta antes de qualquer aplicação autorizada. A configuração de
+Actions e a leitura efetiva continuam necessárias; copiar o pedido não comprova
+que o cliente acessou o curso. A decisão humana de revisar conteúdo é registrada
+na Autoria, separada da aprovação do mapa e do mandato de produção.
+
 O OpenAPI publicável está em
 [`downloads/aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml).
 
@@ -178,7 +191,7 @@ O contexto completo pode permanecer estruturado para o modelo sem ser repetido
 no chat. Um pedido de texto literal, configuração ou fonte recebe o recorte
 fiel, com páginas adicionais quando necessárias, sem resumo substitutivo. Chat
 breve não implica explicação, exemplos ou prática resumidos no curso.
-Fontes e revisão seguem a mesma
+Preparo, fontes e revisão seguem a mesma
 [disciplina de continuação do MCP](autoria-mcp.md#respostas-e-erros): o valor
 opaco retoma o recorte, fragmentos permanecem literais e a leitura só é completa
 ao terminar todas as partes necessárias. Não há confirmação pedagógica por página.
@@ -244,7 +257,17 @@ Essas regras vêm de
 Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
 A importação real do artefato corrente continua sendo uma verificação distinta.
 
-O catálogo atual reúne 27 tarefas. A projeção indentada do OpenAPI ocupa 96.658
+No diagnóstico de 7 de setembro de 2026, os limites de payload e duração foram
+reconferidos na fonte oficial. Para investigar uma materialização sem retorno,
+separe quatro fatos: argumentos produzidos, despacho HTTP, validação e gravação.
+O relato do assistente não comprova sozinho que houve despacho. Registre o
+retorno acessível no cliente e confronte-o com a releitura do recorte e o recibo
+existente antes de repetir uma escrita incerta. Quando argumentos ou duração
+HTTP não estiverem expostos, registre essa lacuna; o tamanho do conteúdo
+exportado não é o tamanho do pedido enviado. Uma fixture que funciona delimita
+o caso observado, sem demonstrar que uma interrupção anterior foi corrigida.
+
+O catálogo atual reúne 27 tarefas. A projeção indentada do OpenAPI ocupa 96.566
 unidades UTF-16 e cabe na margem interna de 98.000; essa medida difere do tamanho
 em bytes UTF-8. Os schemas compartilhados conservam os argumentos de cada tarefa.
 O guard de chamadas e os fragmentos de leitura mantêm limites próprios; ampliar
@@ -259,6 +282,14 @@ Nenhuma dessas proteções trunca ou resume conteúdo silenciosamente: leitura
 grande exige recorte ou paginação; uma escrita possivelmente concluída exige
 releitura antes de recuperação. Medidas e aceitação do cliente seguem o
 [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
+
+Uma fixture sintética com 32 blocos válidos de texto no apoio reproduziu uma
+resposta de preparo de 128.541 unidades UTF-16: o handler Actions recusava o
+envelope com HTTP 413. O preparo agora usa a continuação comum. Na prova local,
+duas páginas abaixo do limite reconstruíram o JSON integral, com a mesma
+Explicação nos handlers Actions e MCP. Essa correção trata a leitura grande
+reproduzida; não demonstra a causa de uma interrupção histórica de escrita nem
+substitui a prova do cliente ChatGPT com o contrato hospedado correspondente.
 
 ## Gerar e validar o OpenAPI
 

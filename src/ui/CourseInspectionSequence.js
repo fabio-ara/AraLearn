@@ -25,6 +25,8 @@ import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
+import { createCourseMicrosequenceReview } from "./CourseMicrosequenceReview.js";
+import { bindCourseAuthoringDebate, renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 import {
   formatObservationTextBudget,
   isObservationTextOverLimit,
@@ -951,8 +953,14 @@ function renderStudyUnit(
     `${escapeHtml(new Date(item.updatedAt).toLocaleString("pt-BR"))}</time></dd></div></dl>` +
     renderAnalysisIdeas(item) +
     renderStudyUnitContextActions(item, state) +
+    renderCourseAuthoringDebate({ courseId: state.courseId, courseRevision: state.pinnedRevision,
+      title: state.courseTitle, route: item.deepLink.startsWith("#") ? item.deepLink : new URL(item.deepLink).hash,
+      contextLabel: `a unidade “${item.studyUnit.title}”` }) +
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
+    (state.canReviewContent ? `<button type="button" data-inspection-open-explanation data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
+      ` data-inspection-control-key="explanation:${escapeHtml(item.studyUnit.id)}" aria-label="Explicação e revisão da microssequência" title="Explicação e revisão da microssequência"${state.manualStudyUnitId ? " disabled" : ""}>` +
+      `${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +
     (renderStudyToolActions(item.studyUnit, RESOURCE_PACKAGE_REGISTRY, {
       disabled: Boolean(state.manualStudyUnitId), compact: true
     }) || '<div class="study-tool-actions" aria-hidden="true"></div>') +
@@ -1331,6 +1339,8 @@ export function createCourseInspectionSequence({
       typeof onEditContent === "function",
     canEditManually: course.ownership === "owned" && course.canEdit === true &&
       typeof onSaveManualEdit === "function",
+    canReviewContent: course.ownership === "owned" && course.canEdit === true &&
+      typeof controller.getMicrosequenceReview === "function" && typeof controller.exportCourseAuthoring === "function",
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
@@ -1422,6 +1432,14 @@ export function createCourseInspectionSequence({
   let manualInlineController = null;
   let toolStudyUnitId = "";
   let toolReturnScroll = null;
+  const debateBinding = bindCourseAuthoringDebate(root, { navigatorValue, locationValue: windowValue?.location, onFeedback });
+  const contentReview = createCourseMicrosequenceReview({ root, controller, onEditSources,
+    navigatorValue, locationValue: windowValue?.location, onFeedback,
+    onChanged(revision) {
+      if (state.destroyed) return;
+      state.pinnedRevision = revision;
+      void loadInitial({ anchorStudyUnitId: state.activeStudyUnitId });
+    } });
   const studyTools = createStudyTools({
     root,
     getStudyUnit(button) {
@@ -3064,6 +3082,16 @@ export function createCourseInspectionSequence({
   }
 
   async function handleClick(event) {
+    const explanationButton = event.target.closest?.("[data-inspection-open-explanation]");
+    if (explanationButton) {
+      if (!state.canReviewContent || hasPendingDraft()) return false;
+      const item = state.items.find(value => value.studyUnit.id === explanationButton.dataset.studyUnitId);
+      if (!item) return false;
+      closeOpenMenus(); studyTools.close();
+      return contentReview.open({ courseId: state.courseId,
+        microsequenceId: item.curriculumPath.didacticMicrosequence.id,
+        expectedRevision: state.pinnedRevision, button: explanationButton });
+    }
     const parameters = event.target.closest?.("[data-inspection-open-parameters]");
     if (parameters) return openUnitContext(parameters, "parameters");
     const sources = event.target.closest?.("[data-inspection-edit-sources]");
@@ -3551,7 +3579,7 @@ export function createCourseInspectionSequence({
         state.observationDraft.rawText !== (editing.rawText || "")
       : state.observationDraft.category !== null || state.observationDraft.rawText !== "";
     return Boolean(
-      state.pendingObservationMutation || state.pendingBatchObservation || state.confirmation ||
+      contentReview.hasPendingDraft() || state.pendingObservationMutation || state.pendingBatchObservation || state.confirmation ||
       state.observationSaving || draftChanged || state.manualSaving ||
       manualDraftChanged()
     );
@@ -3772,6 +3800,8 @@ export function createCourseInspectionSequence({
       root.setAttribute?.("aria-busy", "false");
       onReadState({ syncing: false });
       studyTools.destroy();
+      contentReview.destroy();
+      debateBinding.destroy();
       ++requestEpoch;
       manualInlineController?.destroy?.();
       manualInlineController = null;

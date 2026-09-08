@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Explicação — fixture sintética do AraLearn</title>
+  <link rel="stylesheet" href="/styles-tokens.css">
+  <link rel="stylesheet" href="/styles-shell-baseline.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/course-authoring.css">
+</head>
+<body>
+  <div id="app-root"></div>
+  <script type="module">
+    import { mountStudyExplanationFixture } from "../support/studyExplanationFixture.js";
+    const parameters = new URLSearchParams(location.search);
+    await mountStudyExplanationFixture(document.querySelector("#app-root"), {
+      unit: parameters.get("unit") || "theory", state: parameters.get("state") || "available",
+      theme: parameters.get("theme") || "light"
+    });
+  </script>
+</body>
+</html>

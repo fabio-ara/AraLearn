@@ -18,7 +18,7 @@ async function auth(path, body, { admin = false, method = "POST" } = {}) {
   return result.status === 204 ? null : result.json();
 }
 
-async function verifySheetGeometry(page, dialog, name, info) {
+async function verifySheetGeometry(page, dialog, name, info, { groups = false } = {}) {
   const colors = [];
   for (const width of [360, 390, 430, 1280]) for (const mode of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 844 });
@@ -30,6 +30,19 @@ async function verifySheetGeometry(page, dialog, name, info) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     colors.push(await dialog.evaluate(node => getComputedStyle(node).color));
     await page.screenshot({ path: info.outputPath(`${name}-${width}-${mode}.png`), fullPage: true });
+    if (groups) {
+      const chooser = dialog.getByLabel("Escolher grupo de ajustes");
+      await chooser.press("Enter");
+      const lastGroup = dialog.getByRole("button", { name: "Perfis", exact: true });
+      await lastGroup.scrollIntoViewIfNeeded();
+      expect(await lastGroup.evaluate(node => {
+        const box = node.getBoundingClientRect();
+        return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+      })).toBe(true);
+      await page.screenshot({ path: info.outputPath(`${name}-groups-${width}-${mode}.png`), fullPage: true });
+      await chooser.press("Enter");
+      await expect(lastGroup).toBeHidden();
+    }
   }
   expect(colors[0]).not.toBe(colors[1]);
   for (const key of ["Shift+Tab", ...Array(24).fill("Tab")]) {
@@ -74,6 +87,13 @@ test.describe("folhas contextuais com curso local real", () => {
       context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", permissions: ["local-network-access"] });
       const page = await context.newPage(); page.setDefaultTimeout(15000);
       const errors = []; page.on("pageerror", error => errors.push(error.message));
+      const sourceReads = [];
+      page.on("request", request => {
+        const url = new URL(request.url());
+        if (url.pathname.endsWith("/sources") && url.searchParams.get("mode") === "source") {
+          sourceReads.push({ sourceId: url.searchParams.get("sourceId"), targetKind: url.searchParams.get("targetKind"), targetId: url.searchParams.get("targetId") });
+        }
+      });
       const origin = `http://127.0.0.1:${process.env.ARALEARN_E2E_PORT || "4182"}`;
       await page.route(url => url.origin === origin && url.pathname === "/", async route => {
         const response = await route.fetch();
@@ -98,21 +118,38 @@ test.describe("folhas contextuais com curso local real", () => {
       await sourceDialog.getByRole("button", { name: "Vincular fonte: Documento de consulta sintético", exact: true }).click();
       await verifySheetGeometry(page, sourceDialog, "sources-context", info);
       await sourceDialog.locator('[data-source-action="open-source"]').click();
-      await expect(sourceDialog.getByRole("heading", { name: "Documento de consulta sintético", exact: true })).toBeVisible();
+      await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");
+      // Antes de salvar, a fonte é consultada pela autoria no catálogo; o vínculo
+      // ainda local não pode filtrar a leitura como se estivesse no servidor.
+      expect(sourceReads.at(-1)).toEqual({ sourceId: "fonte-contextual-sintetica", targetKind: null, targetId: null });
       await sourceDialog.getByRole("button", { name: "Voltar ao catálogo" }).click();
       await sourceDialog.getByRole("button", { name: "Salvar fontes", exact: true }).click();
       await expect(sourceDialog).toHaveCount(0);
       await expect(title).toHaveText("Rascunho contextual preservado");
       await expect(sources).toBeFocused();
       const afterSource = await revision();
+      const attribution = await client.loadCourseSources(courseId, { expectedRevision: afterSource, mode: "target",
+        targetKind: "study_unit", targetId: UNIT_ID, limit: 1 });
+      expect(attribution.items[0].sourceLinks.map(link => link.sourceId)).toEqual(["fonte-contextual-sintetica"]);
+      await sources.click();
+      await sourceDialog.locator('[data-source-action="open-source"]').click();
+      await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");
+      expect(sourceReads.at(-1)).toEqual({ sourceId: "fonte-contextual-sintetica", targetKind: "study_unit", targetId: UNIT_ID });
+      await sourceDialog.getByRole("button", { name: "Voltar ao catálogo" }).click();
+      await sourceDialog.getByRole("button", { name: "Fechar", exact: true }).click();
+      await expect(sourceDialog).toHaveCount(0);
+      await expect(sources).toBeFocused();
+      await expect(title).toHaveText("Rascunho contextual preservado");
       const parameters = page.locator("[data-inspection-open-parameters]");
       await parameters.click();
       const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
       await expect(dialog).toBeVisible();
-      await expect(dialog.locator('[data-parameter-id="study_unit_content_word_target"]')).toBeVisible();
-      await verifySheetGeometry(page, dialog, "parameters-context", info);
-      const parameter = dialog.locator('[data-parameter-id="study_unit_content_word_target"]');
-      await parameter.locator("summary").click();
+      await dialog.getByLabel("Escolher grupo de ajustes").click();
+      await dialog.getByRole("button", { name: "Leitura e estilo", exact: true }).click();
+      await expect(dialog.getByRole("button", { name: "Ajustar Extensão das unidades", exact: true })).toBeVisible();
+      await verifySheetGeometry(page, dialog, "parameters-context", info, { groups: true });
+      await dialog.getByRole("button", { name: "Ajustar Extensão das unidades", exact: true }).click();
+      const parameter = dialog.locator('.course-design-parameter-editor[data-parameter-id="study_unit_content_word_target"]');
       await parameter.locator('[name="mode"]').selectOption("fixed");
       await parameter.locator('[name="parameterValue"]').fill("320");
       await parameter.getByLabel("Justificativa").fill("Ajuste sintético para conferir a conciliação do contexto.");

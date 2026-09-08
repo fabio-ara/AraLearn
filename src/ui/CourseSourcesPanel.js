@@ -819,7 +819,7 @@ function renderSourceDetail(state) {
         '<p class="course-source-empty">A fonte não está disponível.</p>';
   return '<div class="course-source-detail-overlay" data-source-detail-backdrop>' +
     '<section class="course-source-detail" data-source-detail-dialog role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="course-source-detail-title">' +
-    '<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo">' +
+    `<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo"${state.busy ? " disabled" : ""}>` +
     `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button><div>` +
     '<h2 id="course-source-detail-title">Fonte</h2></div></header>' +
     '<div class="course-source-detail-body">' + renderNotice(state) + content + '</div>' +
@@ -865,7 +865,7 @@ function renderCatalogPanel(state) {
   const pdfStorage = state.catalog?.pdfStorage;
   const overlay = state.selectedSourceId ? renderSourceDetail(state) : state.sourceEditor ?
     '<div class="course-source-detail-overlay" data-source-detail-backdrop><section class="course-source-detail" data-source-detail-dialog role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="course-source-new-title">' +
-    '<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo">' +
+    `<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo"${state.busy ? " disabled" : ""}>` +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button><div><h2 id="course-source-new-title">Nova fonte</h2></div></header>' +
     '<div class="course-source-detail-body">' + renderNotice(state) + renderSourceForm(state) + '</div></section>' + renderSourceConfirmation(state) + '</div>' : '';
   return `<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title"${overlay ? ' inert aria-hidden="true"' : ''}>` +
@@ -1077,7 +1077,7 @@ function assertDependencies(root, controller, options) {
     throw new TypeError("O contexto de fontes é inválido.");
   }
   if (options.mode === "target" &&
-      (!new Set(["plan_item", "study_unit"]).has(options.targetKind) || !options.targetId ||
+      (!new Set(["plan_item", "study_unit", "microsequence_explanation"]).has(options.targetKind) || !options.targetId ||
        !Number.isSafeInteger(options.targetVersion) || options.targetVersion < 1)) {
     throw new TypeError("O item relacionado às fontes é inválido.");
   }
@@ -1101,6 +1101,7 @@ export function createCourseSourcesPanel({
   targetVersion = null,
   targetLabel = "",
   targetStudyUnit = null,
+  targetExplanation = null,
   initialSourceId = null,
   initialAnchorId = null,
   returnFocusSourceId = null,
@@ -1163,6 +1164,7 @@ export function createCourseSourcesPanel({
     targetVersion,
     targetLabel,
     targetStudyUnit,
+    targetExplanation,
     occurrenceEditor: null,
     references: new Map(),
     bibliographyStyleDraft: null,
@@ -1378,7 +1380,10 @@ export function createCourseSourcesPanel({
           selector: '[data-course-authoring-action="edit-plan-item-sources"]',
           datasetKey: "itemId"
         }
-      : {
+      : state.targetKind === "microsequence_explanation" ? {
+          selector: "[data-inspection-edit-explanation-sources]",
+          datasetKey: "microsequenceId"
+        } : {
           selector: "[data-inspection-edit-sources]",
           datasetKey: "studyUnitId"
         };
@@ -1418,7 +1423,7 @@ export function createCourseSourcesPanel({
     // Close the local dialog before the shell checks whether navigation would
     // leave an active editor. Actual drafts are handled by requestDetailClose.
     render();
-    if (typeof onNavigate === "function") {
+    if (state.mode === "catalog" && typeof onNavigate === "function") {
       invokeSafely(onNavigate, buildCourseAuthoringRoute(state.courseId, { section: "sources" }), { sourceReturnFocusId: sourceId });
     } else {
       const restore = () => sourceId
@@ -1696,10 +1701,13 @@ export function createCourseSourcesPanel({
 
   async function loadDetail(sourceId, {
     target = false,
-    contextualTarget = false,
+    contextualTarget = state.mode === "target",
     preserveExisting = false,
     courseRevision = state.courseRevision
   } = {}) {
+    // A seleção ainda não salva não pertence ao alvo no servidor. A autoria
+    // consulta a fonte no catálogo até persistir o vínculo, conservando o rascunho.
+    const persistedTarget = contextualTarget && state.initialSourceLinks.some(link => link.sourceId === sourceId);
     const requestEpoch = epoch;
     if (target) state.targetDetailsLoading.add(sourceId);
     else {
@@ -1710,7 +1718,7 @@ export function createCourseSourcesPanel({
     }
     if (!preserveExisting) render();
     try {
-      const targetContext = contextualTarget
+      const targetContext = persistedTarget
         ? { targetKind: state.targetKind, targetId: state.targetId }
         : {};
       const page = normalizeCourseSourcesPage(
@@ -1723,7 +1731,7 @@ export function createCourseSourcesPanel({
           expectedCourseRevision: courseRevision,
           expectedMode: "source",
           expectedSourceId: sourceId,
-          ...(contextualTarget ? {
+          ...(persistedTarget ? {
             expectedTargetKind: state.targetKind,
             expectedTargetId: state.targetId
           } : {})
@@ -2527,7 +2535,7 @@ export function createCourseSourcesPanel({
       state.anchorEditor = null;
       const sourceId = String(node.dataset.sourceId || "");
       if (state.observationEditor?.sourceId !== sourceId) state.observationEditor = null;
-      if (typeof onNavigate === "function") {
+      if (state.mode === "catalog" && typeof onNavigate === "function") {
         invokeSafely(onNavigate, routeToSource(sourceId));
       } else {
         void loadDetail(sourceId);
@@ -2716,7 +2724,9 @@ export function createCourseSourcesPanel({
       }
       const link = state.sourceLinks.find(item => item.linkId === node.dataset.linkId);
       if (!link) return;
-      const targets = listCourseSourceOccurrenceTargets(state.targetStudyUnit);
+      const targets = listCourseSourceOccurrenceTargets(
+        state.targetKind === "microsequence_explanation" ? state.targetExplanation : state.targetStudyUnit,
+        { targetKind: state.targetKind });
       const occurrenceId = node.dataset.occurrenceId;
       const occurrence = link.occurrences.find(item => item.occurrenceId === occurrenceId);
       if (action === "remove-occurrence") link.occurrences = link.occurrences.filter(item => item.occurrenceId !== occurrenceId);

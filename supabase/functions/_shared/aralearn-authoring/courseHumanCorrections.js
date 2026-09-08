@@ -6,6 +6,7 @@ import {
 import { resolveHumanSourceLinks } from "./courseHumanMaterialization.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
+import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -15,8 +16,10 @@ function fail(code, message, status = 422) {
   throw new AuthoringApiError(status, code, message);
 }
 
-function validateCorrections(corrections) {
-  if (!Array.isArray(corrections) || corrections.length < 1 || corrections.length > 64) {
+function validateCorrections(corrections, explanations) {
+  if (!Array.isArray(corrections) || corrections.length > 64 ||
+      !Array.isArray(explanations) || explanations.length > 64 ||
+      corrections.length + explanations.length < 1 || corrections.length + explanations.length > 64) {
     fail("invalid_human_corrections", "Informe de 1 a 64 correções focais.");
   }
   for (const [index, correction] of corrections.entries()) {
@@ -26,6 +29,55 @@ function validateCorrections(corrections) {
       fail("invalid_human_corrections", `A correção ${index + 1} é inválida.`);
     }
   }
+  for (const explanation of explanations) {
+    if (!plainObject(explanation) || !Object.hasOwn(explanation, "microssequencia") ||
+        Object.keys(explanation).some((key) => !["microssequencia", "conteudo", "fontes"].includes(key)) ||
+        explanation.fontes !== undefined && !Array.isArray(explanation.fontes)) {
+      fail("invalid_human_explanation", "A correção da Explicação precisa indicar microssequência, conteúdo e fontes pertinentes.");
+    }
+    try { normalizeMicrosequenceExplanation(explanation.conteudo); }
+    catch (error) { fail("invalid_human_explanation", error.message); }
+    if ((explanation.fontes ?? []).some((link) => !plainObject(link) ||
+      link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
+        link.ocorrencias.some((occurrence) => !plainObject(occurrence) || occurrence.lugar !== "conteudo")))) {
+      fail("invalid_human_explanation", "A ocorrência da Explicação pertence somente ao conteúdo do apoio.");
+    }
+  }
+}
+
+async function loadExplanationCorrections({ adapter, principal, course, explanations, deadlineAt }) {
+  if (!explanations.length) return [];
+  const entities = [];
+  let cursor = null;
+  for (let page = 0; page < 100; page += 1) {
+    const result = await adapter.listCourseEntities({ principal, courseId: course.id,
+      expectedRevision: course.revision, limit: 200, afterEntityType: cursor?.entityType ?? null,
+      afterEntityId: cursor?.entityId ?? null, deadlineAt });
+    if (!result || !Array.isArray(result.items)) fail("course_service_unavailable", "A leitura da Explicação está incompleta; releia o recorte.", 503);
+    entities.push(...result.items);
+    if (!result.hasMore) break;
+    if (!result.nextCursor || page === 99) fail("course_service_unavailable", "A leitura da Explicação está incompleta; releia o recorte.", 503);
+    cursor = result.nextCursor;
+  }
+  const seen = new Set();
+  return await Promise.all(explanations.map(async (entry) => {
+    const context = await resolveHumanCourseContext({ adapter, principal, course: course.title,
+      microsequence: entry.microssequencia, deadlineAt });
+    const entity = entities.find((row) => row.entityType === "microsequence" && row.entityId === context.microsequence.id);
+    if (context.course.revision !== course.revision || !entity) fail("course_revision_conflict", "O curso mudou; releia a Explicação antes de corrigir.", 409);
+    if (seen.has(entity.entityId)) fail("invalid_human_explanation", "Uma correção não pode repetir a mesma Explicação.");
+    seen.add(entity.entityId);
+    const support = normalizeMicrosequenceExplanation(entry.conteudo);
+    const content = { ...structuredClone(entity.content), explanation: support };
+    let sourceLinks = null;
+    if (entry.fontes === undefined) {
+      const page = await adapter.getCourseSources({ principal, courseId: course.id, expectedRevision: course.revision,
+        mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: entity.entityId,
+        cursor: null, limit: 1, deadlineAt });
+      sourceLinks = page.items?.[0]?.sourceLinks ?? [];
+    }
+    return { entity, content, support, sourceLinks, requestedSources: entry.fontes };
+  }));
 }
 
 function microsequenceId(item) {
@@ -61,6 +113,7 @@ async function loadCorrectionState({
   principal,
   course,
   corrections,
+  explanations,
   deadlineAt
 }) {
   const resolved = await resolveHumanCourseContext({
@@ -113,17 +166,20 @@ async function loadCorrectionState({
     delete content.position;
     return { unit, content, sourceLinks, requestedSources: correction.fontes };
   }));
-  return { ...resolved, prepared };
+  const preparedExplanations = await loadExplanationCorrections({ adapter, principal,
+    course: resolved.course, explanations, deadlineAt });
+  return { ...resolved, prepared, preparedExplanations };
 }
 
 export async function applyHumanCourseCorrections({
   adapter,
   principal,
   course,
-  corrections,
+  corrections = [],
+  explanations = [],
   deadlineAt = null
 }) {
-  validateCorrections(corrections);
+  validateCorrections(corrections, explanations);
   let correctedCourseId = null;
   let firstCorrectedStudyUnitId = null;
   const receipt = await executeTrustedCourseWrite({
@@ -133,10 +189,11 @@ export async function applyHumanCourseCorrections({
         principal,
         course,
         corrections,
+        explanations,
         deadlineAt
       });
       correctedCourseId = state.course.id;
-      firstCorrectedStudyUnitId = state.prepared[0].unit.studyUnit.id;
+      firstCorrectedStudyUnitId = state.prepared[0]?.unit.studyUnit.id ?? null;
       return state;
     },
     async build(state, { newId }) {
@@ -149,8 +206,14 @@ export async function applyHumanCourseCorrections({
           deadlineAt, sourceCache
         })
       })));
+      applications.push(...await Promise.all(state.preparedExplanations.map(async (entry, index) => ({
+        targetKind: "microsequence_explanation", targetId: entry.entity.entityId,
+        sourceLinks: entry.sourceLinks ?? await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
+          requested: entry.requestedSources, content: entry.support, newId,
+          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache })
+      }))));
       const contextualApplication = principal.authenticationKind === "application" &&
-        state.prepared.length === 1;
+        state.prepared.length === 1 && !state.preparedExplanations.length;
       return {
         principal,
         courseId: state.course.id,
@@ -161,14 +224,17 @@ export async function applyHumanCourseCorrections({
             applicationOrigin: "provider_assistance"
           }
           : {}),
-        upserts: state.prepared.map(({ unit, content }) => ({
+        upserts: [...state.prepared.map(({ unit, content }) => ({
           entityType: "study_unit",
           entityId: unit.studyUnit.id,
           parentType: "microsequence",
           parentId: microsequenceId(unit),
           position: unit.studyUnit.position,
           content
-        })),
+        })), ...state.preparedExplanations.map(({ entity, content }) => ({
+          entityType: "microsequence", entityId: entity.entityId, parentType: entity.parentType,
+          parentId: entity.parentId, position: entity.position, content
+        }))],
         deletes: [],
         sourceAttributionApplications: applications,
         deadlineAt
@@ -180,7 +246,8 @@ export async function applyHumanCourseCorrections({
     })
   });
   return {
-    result: corrections.length === 1
+    result: explanations.length ? "Corrigi o conteúdo e as Explicações indicados; a revisão humana afetada precisa ser atualizada."
+      : corrections.length === 1
       ? "A correção foi aplicada à unidade de estudo afetada."
       : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`,
     deepLink: correctedCourseId && firstCorrectedStudyUnitId && adapter.publicAppUrl
@@ -191,6 +258,7 @@ export async function applyHumanCourseCorrections({
     nextDecision: "Quer reinspecionar o reparo ou rematerializar a parte para aplicar uma configuração alterada?",
     context: {
       correctionCount: corrections.length,
+      explanationCorrectionCount: explanations.length,
       sourceMode: corrections.some(({ fontes }) => fontes !== undefined)
         ? "explicit"
         : "preserved"

@@ -1216,7 +1216,11 @@ async function renderApplication(root, config, authClient, { visitor = false } =
       ...intent
     });
     pendingStudyComposition = null;
-    return result;
+    // The confirmed write already promoted the canonical cache. Adopt its revision
+    // before the current study session asks for citations or shared support again.
+    const reconciled = await repository.reconcileSavedCourse(intent.courseId, result.courseRevision)
+      .catch(() => false);
+    return { ...result, reconciled: result.reconciled !== false && reconciled };
   };
 
   const saveStudyAssistedStructure = async (value) => {

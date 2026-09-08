@@ -353,6 +353,98 @@ test("mudar estilo após resposta perdida repete o mesmo pedido mesmo após atua
   assert.equal(panel.hasPendingDraft(), false);
 });
 
+test("detalhe de fonte distingue seleção local de vínculo persistido sem contornar recusa", async () => {
+  for (const [persisted, denied] of [[false, false], [true, false], [false, true]]) {
+    const root = new FakeRoot();
+    const reads = [];
+    const link = { linkId: "link-a", sourceId: "source-01", relation: "supported_by", roles: [], anchors: [], occurrences: [] };
+    const controller = controllerFixture({ links: persisted ? [link] : [], onRead: value => reads.push(value) });
+    const load = controller.loadCourseSources;
+    controller.loadCourseSources = async (courseId, options) => {
+      const result = await load(courseId, options);
+      if (options.mode === "source") {
+        if (denied) throw Object.assign(new Error("Leitura não autorizada."), { status: 403 });
+        if (!persisted && options.targetKind) result.items = [];
+      }
+      return result;
+    };
+    const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5,
+      mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3 });
+    await panel.open();
+    if (!persisted) click(root, "add-target-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "open-source", { sourceId: "source-01" });
+    await settle();
+    const sourceReads = reads.filter(value => value.mode === "source");
+    assert.equal(sourceReads.length, 2);
+    assert.ok(sourceReads.every(value => persisted ? value.targetId === PLAN_ITEM_ID : value.targetKind == null && value.targetId == null));
+    if (denied) assert.match(root.innerHTML, /Você não tem permissão/u);
+    else assert.match(root.innerHTML, /course-source-current-view/u);
+    click(root, "close-detail");
+    assert.equal(panel.hasPendingDraft(), !persisted);
+    assert.match(root.innerHTML, /data-source-id="source-01"/u);
+    panel.destroy();
+  }
+});
+
+test("fontes da Explicação conservam trecho literal, versão da MS e retorno ao recorte", async () => {
+  const root = new FakeRoot();
+  const reads = [];
+  const writes = [];
+  const navigations = [];
+  let closed = 0;
+  let focused = false;
+  const controller = controllerFixture({ onRead: value => reads.push(value), onMutate: value => writes.push(value) });
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (courseId, options) => {
+    const result = await load(courseId, options);
+    if (options.mode === "target") result.query = { sourceId: null,
+      targetKind: "microsequence_explanation", targetId: "micro-a" };
+    return result;
+  };
+  const text = "Uma ligação conecta A e B. Retirar a ligação impede essa interação.";
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5,
+    mode: "target", targetKind: "microsequence_explanation", targetId: "micro-a", targetVersion: 9,
+    targetLabel: "Explicação · Ligações", targetExplanation: { title: "Ligações", content: [{ id: "p",
+      package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } }] },
+    onNavigate: (...args) => navigations.push(args), onClose: () => closed++,
+    documentValue: { querySelectorAll: selector => selector === "[data-inspection-edit-explanation-sources]"
+      ? [{ dataset: { microsequenceId: "micro-a" }, focus: () => { focused = true; } }] : [] }
+  });
+  await panel.open();
+  click(root, "add-target-source", { sourceId: "source-01" });
+  await settle();
+  const linkId = root.innerHTML.match(/data-link-id="([^"]+)"/u)[1];
+  click(root, "add-occurrence", { linkId });
+  assert.ok(root.innerHTML.includes(text));
+  assert.doesNotMatch(root.innerHTML, /Resposta ·|Retorno ·/u);
+  const query = root.querySelector.bind(root);
+  root.querySelector = selector => selector === "[data-source-occurrence-selection]"
+    ? { selectionStart: 0, selectionEnd: 25 } : query(selector);
+  click(root, "save-occurrence", { linkId });
+  assert.match(root.innerHTML, /Trecho localizado/u);
+  click(root, "open-source", { sourceId: "source-01" });
+  await settle();
+  assert.equal(navigations.length, 0);
+  click(root, "close-detail");
+  assert.match(root.innerHTML, /Fontes de Explicação/u);
+  assert.ok(root.innerHTML.includes(text.slice(0, 25)));
+  click(root, "save-target");
+  await settle();
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].command.targetKind, "microsequence_explanation");
+  assert.equal(writes[0].command.targetId, "micro-a");
+  assert.equal(writes[0].command.expectedTargetVersion, 9);
+  assert.equal(writes[0].command.sourceLinks[0].occurrences[0].quote, text.slice(0, 25));
+  assert.equal(writes[0].command.sourceLinks[0].occurrences[0].slot, "content");
+  assert.ok(reads.some(value => value.mode === "source" && value.targetKind == null));
+  click(root, "close-target");
+  await settle();
+  assert.equal(closed, 1);
+  assert.equal(focused, true);
+  panel.destroy();
+});
+
 test("uma fonte admite usos independentes e remover um vínculo preserva o outro", async () => {
   const mutations = [];
   const root = new FakeRoot();
@@ -753,6 +845,36 @@ test("edição de Âncora preserva CAS interno sem oferecer história", async ()
     sourceRevision: 1,
     expectedAnchorRevision: 1
   });
+});
+
+test("voltar da fonte aguarda a releitura após confirmar a gravação", async () => {
+  const root = new FakeRoot();
+  let refreshing = false;
+  let releaseRead;
+  const readGate = new Promise(resolve => { releaseRead = resolve; });
+  const controller = controllerFixture({ onMutate: () => { refreshing = true; } });
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (...args) => {
+    if (refreshing) await readGate;
+    return load(...args);
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5 });
+  await panel.open();
+  click(root, "open-source", { sourceId: "source-01" });
+  await settle();
+  click(root, "edit-anchor", { anchorId: "anchor-a", sourceRevision: "1" });
+  submit(root, "anchor", anchorFormValues());
+  await settle();
+  assert.doesNotMatch(root.innerHTML, /data-source-form="anchor"/u);
+  assert.match(root.innerHTML, /data-source-action="close-detail"[^>]* disabled/u);
+  click(root, "close-detail");
+  assert.match(root.innerHTML, /data-source-detail-dialog/u);
+  releaseRead();
+  await settle();
+  assert.doesNotMatch(root.innerHTML, /data-source-action="close-detail"[^>]* disabled/u);
+  click(root, "close-detail");
+  assert.doesNotMatch(root.innerHTML, /data-source-detail-dialog/u);
+  panel.destroy();
 });
 
 test("atribuição lê uma Fonte corrente uma vez e salva o conjunto completo", async () => {

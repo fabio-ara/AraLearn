@@ -14,6 +14,7 @@ async function mount(page, theme) {
     document.body.innerHTML = '<div id="app-root"><div id="aralearn-editor-root"><div class="app-shell"></div></div><div id="settings-root"></div></div>';
     const { renderCourseStudyScreen } = await import("/src/study/CourseStudyScreen.js");
     const { renderCourseAuthoringSurface } = await import("/src/ui/CourseAuthoringSurface.js");
+    const { buildCourseAuthoringRoute } = await import("/src/ui/courseAuthoringRoute.js");
     const { renderSettings } = await import("/settings-geometry.js");
     const { createStudyTools, renderStudyToolActions } = await import("/src/study/studyTools.js");
     window.renderFrameProbe = (view, long, reviewQueueOpen = false, editing = false) => {
@@ -50,7 +51,9 @@ async function mount(page, theme) {
       };
     };
     window.renderAuthorHeader = (long = false, section = "people", status = "loaded") => {
-      document.querySelector("#aralearn-editor-root").innerHTML = '<main class="course-authoring-root">' + renderCourseAuthoringSurface({ view: section === "list" ? "list" : "course", section, routeKey: `synthetic-${section}`,
+      document.querySelector("#aralearn-editor-root").innerHTML = '<main class="course-authoring-root">' + renderCourseAuthoringSurface({ view: section === "list" ? "list" : "course", section,
+        // O debate do cabeçalho exige a referência canônica do mesmo curso inspecionado.
+        routeKey: section === "list" ? "#/authoring/courses" : buildCourseAuthoringRoute("e3060000-0000-4000-8000-000000000001", { section }),
         course: status === "loaded" ? { courseId: "e3060000-0000-4000-8000-000000000001", title: long ? "Título extenso do curso ".repeat(20) : "Curso", revision: 1,
           ownership: "owned", canEdit: true, visibility: "private", publicFileAccess: "restricted" } : null,
         loading: status === "loading", failure: status === "error" ? { kind: "error", message: "Curso indisponível." } : null,

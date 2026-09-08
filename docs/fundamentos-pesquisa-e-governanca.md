@@ -350,7 +350,8 @@ crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scopi
 A bibliografia desta documentação e as fontes usadas num curso cumprem funções
 diferentes. Dentro do produto, uma fonte possui identidade e estado correntes;
 uma Âncora localiza página, tempo, fragmento de endereço ou trecho textual; e
-uma atribuição liga essa Âncora a um item do plano ou a uma StudyUnit. A relação
+uma atribuição liga essa Âncora a um item do plano, uma StudyUnit ou à Explicação
+compartilhada de uma microssequência. A relação
 declara se a fonte informa ou sustenta o alvo, ou se o alvo foi adaptado ou
 citado a partir dela.
 
@@ -360,6 +361,15 @@ pertinente ou que o conteúdo derivado é fiel. Essas conclusões exigem leitura
 julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria.
 
 ## Governança de decisões
+
+O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
+separa conteúdo produzido, revisão humana e aprovação atual do material
+inspecionado. Sua conjectura distingue recursos, processos esperados, resultados
+a investigar e riscos. A leitura focal registrada não constitui revisão
+sistemática nem demonstra eficácia. Os estados de revisão estão implementados
+com autorização e comparação do conteúdo inspecionado; testes sintéticos
+verificam essas propriedades técnicas, sem atestar a qualidade da decisão
+humana, sua execução num curso real ou os resultados educacionais propostos.
 
 ### Registro mínimo
 

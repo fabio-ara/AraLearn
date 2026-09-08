@@ -1503,6 +1503,8 @@ test("grava mapa curricular e lote por contratos atômicos distintos", async () 
 });
 
 test("materialização envia repertório e alvos no mesmo commit das unidades", async () => {
+  const explanations = [{ microsequenceId: "micro-a", content: { title: "Apoio", content: [{ id: "support",
+    package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "A relação explica a aplicação." } }] }, sourceLinks: [] }];
   const planItemUpserts = [{
     id: PLAN_ID,
     kind: "instructional_analysis_unit",
@@ -1548,12 +1550,14 @@ test("materialização envia repertório e alvos no mesmo commit das unidades", 
     expectedAuthoringPartVersion: 2,
     planItemUpserts,
     targetPlanItems,
-    units
+    units,
+    explanations
   });
 
   assert.deepEqual(payload.p_plan_item_upserts, planItemUpserts);
   assert.deepEqual(payload.p_target_plan_items, targetPlanItems);
   assert.deepEqual(payload.p_units, units);
+  assert.deepEqual(payload.p_explanations, explanations);
   assert.equal(typeof payload.p_request_hash, "string");
   assert.equal(payload.p_request_hash.length, 64);
 });

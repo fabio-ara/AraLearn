@@ -103,6 +103,14 @@ Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Know
 
 Chave bibliográfica: `alavi2001knowledge`.
 
+<a id="ref-aleven2006helpseeking"></a>
+
+### Aleven et al. (2006)
+
+Vincent Aleven; Bruce McLaren; Ido Roll; Kenneth Koedinger (2006). **Toward Meta-cognitive Tutoring: A Model of Help Seeking with a Cognitive Tutor.** *International Journal of Artificial Intelligence in Education*, 16(2), p. 101–128. [DOI 10.3233/irg-2006-16(2)02](https://doi.org/10.3233/irg-2006-16%282%2902).
+
+Chave bibliográfica: `aleven2006helpseeking`.
+
 <a id="ref-aera2014standards"></a>
 
 ### American Educational Research Association et al. (2014)
@@ -503,6 +511,14 @@ Malcolm S. Knowles (1975). **Self-Directed Learning: A Guide for Learners and Te
 
 Chave bibliográfica: `knowles1975selfdirected`.
 
+<a id="ref-koedinger2007assistance"></a>
+
+### Koedinger e Aleven (2007)
+
+Kenneth R. Koedinger; Vincent Aleven (2007). **Exploring the Assistance Dilemma in Experiments with Cognitive Tutors.** *Educational Psychology Review*, 19(3), p. 239–264. [DOI 10.1007/s10648-007-9049-0](https://doi.org/10.1007/s10648-007-9049-0).
+
+Chave bibliográfica: `koedinger2007assistance`.
+
 <a id="ref-koedinger2012kli"></a>
 
 ### Koedinger et al. (2012)
@@ -782,6 +798,14 @@ Chave bibliográfica: `richter2016signaling`.
 Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860. [DOI 10.1016/j.cedpsych.2020.101860](https://doi.org/10.1016/j.cedpsych.2020.101860).
 
 Chave bibliográfica: `ryan2020motivation`.
+
+<a id="ref-sandoval2014conjecture"></a>
+
+### Sandoval (2014)
+
+William Sandoval (2014). **Conjecture Mapping: An Approach to Systematic Educational Design Research.** *Journal of the Learning Sciences*, 23(1), p. 18–36. [DOI 10.1080/10508406.2013.778204](https://doi.org/10.1080/10508406.2013.778204).
+
+Chave bibliográfica: `sandoval2014conjecture`.
 
 <a id="ref-saussure1916cours"></a>
 

@@ -96,6 +96,8 @@ const samples = {
         microssequencias: [{
           titulo: "Socket e processo",
           objetivo: "Explicar a função do socket.",
+          explicacao: { proposito: "Relacionar processo, socket e transporte.",
+            pressupostos: ["Processos executam programas."], relacoes: ["Socket liga processo e transporte."], fontesPrevistas: [] },
           dependencias: [],
           cobertura: ["comunicação entre processos"]
         }]
@@ -115,6 +117,9 @@ const samples = {
   materializar_parte: {
     curso: "Redes para iniciantes",
     parte: "Sockets",
+    explicacoes: [{ microssequencia: "Sockets", conteudo: {
+      title: "Processo, socket e transporte", content: SAMPLE_THEORY_CONTENT.content
+    }, fontes: [] }],
     unidades: [{
       microssequencia: "Sockets",
       posicao: 1,
@@ -213,7 +218,7 @@ test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "2.9.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "3.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -455,6 +460,35 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
   }
 });
 
+test("MCP e Actions conservam proposta e apoio compartilhado completos sem fabricar revisão humana", () => {
+  for (const tools of [COURSE_HUMAN_TASKS, actionTools]) {
+    const materialize = new Ajv2020({ allErrors: true, strict: false }).compile(
+      tools.find(({ name }) => name === "materializar_parte").inputSchema);
+    const map = new Ajv2020({ allErrors: true, strict: false }).compile(
+      tools.find(({ name }) => name === "salvar_mapa_curricular").inputSchema);
+    const input = structuredClone(samples.materializar_parte);
+    const before = structuredClone(input.explicacoes);
+    assert.equal(materialize(input), true, JSON.stringify(materialize.errors));
+    assert.deepEqual(input.explicacoes, before);
+    assert.equal(input.explicacoes.length, 1);
+    assert.equal(Object.hasOwn(input.unidades[0], "explicacao"), false);
+    delete input.explicacoes;
+    assert.equal(materialize(input), false, "Unidades não substituem o apoio compartilhado.");
+    const noContent = structuredClone(samples.materializar_parte);
+    noContent.explicacoes[0].conteudo.content = [];
+    assert.equal(materialize(noContent), false, "Apoio vazio não é produção completa.");
+    const forged = structuredClone(samples.materializar_parte);
+    forged.explicacoes[0].conteudo.contentReview = { state: "current" };
+    assert.equal(materialize(forged), false, "Conteúdo não pode conceder revisão humana.");
+    const planned = structuredClone(samples.salvar_mapa_curricular);
+    assert.equal(map(planned), true, JSON.stringify(map.errors));
+    const proposal = planned.modulos[0].licoes[0].microssequencias[0].explicacao;
+    assert.deepEqual(proposal, samples.salvar_mapa_curricular.modulos[0].licoes[0].microssequencias[0].explicacao);
+    delete planned.modulos[0].licoes[0].microssequencias[0].explicacao;
+    assert.equal(map(planned), false, "A proposta deve existir já no mapa.");
+  }
+});
+
 test("MCP e Actions não expõem modo como decisão duplicada", () => {
   const schemas = [
     COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
@@ -568,7 +602,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   }
   // Orçamentos internos do artefato; a documentação não fixa esse teto para o
   // editor. O limite oficial <100.000 refere-se a cada payload de chamada.
-  assert.ok(openApiText.length < 44_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(openApiText.length < 46_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 98_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });

@@ -286,7 +286,7 @@ test("a ação da Unidade é icon-only, estável e anuncia a mudança de estado"
   };
   const ready = renderCourseStudyScreen(common);
   const readyButton = ready.match(/<button class="open-mini study-continue-btn"[\s\S]*?<\/button>/u)?.[0] || "";
-  assert.match(readyButton, /aria-label="(?:Ver explicação|Próxima unidade de estudo)"/u);
+  assert.match(readyButton, /aria-label="(?:Ver comentário da unidade|Próxima unidade de estudo)"/u);
   assert.doesNotMatch(readyButton, /<span>/u);
   assert.match(ready, /aria-label="Sincronização pendente"/u);
   assert.doesNotMatch(ready, /study-runtime-notice/u);

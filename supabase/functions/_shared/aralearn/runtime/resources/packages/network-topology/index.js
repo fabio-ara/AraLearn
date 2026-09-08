@@ -11,6 +11,8 @@ const DEVICE_LABELS = Object.freeze({
   host: "Host",
   router: "Roteador",
   switch: "Switch",
+  hub: "Hub Ethernet",
+  repeater: "Repetidor",
   firewall: "Firewall",
   access_point: "Ponto de acesso",
   server: "Servidor",
@@ -22,11 +24,18 @@ const DEVICE_SHAPES = Object.freeze({
   host: "box",
   router: "ellipse",
   switch: "box3d",
+  hub: "box",
+  repeater: "ellipse",
   firewall: "hexagon",
   access_point: "ellipse",
   server: "component",
   cloud: "oval",
   subnet: "folder"
+});
+
+const DEVICE_DESCRIPTIONS = Object.freeze({
+  hub: "Repetidor Ethernet multiporta: repete os sinais recebidos nas demais portas, sem selecionar destino por endereço MAC.",
+  repeater: "Equipamento da camada física: regenera e retransmite sinais entre trechos do meio, sem selecionar destino por endereço MAC."
 });
 
 function text(value) {
@@ -62,7 +71,7 @@ function topologyAccessibleText(data) {
   const segments = new Map(data.segments.map(({ id, label }) => [id, label]));
   return [
     data.prompt,
-    ...data.devices.map((device) => `${device.label}, ${DEVICE_LABELS[device.kind]}${device.address ? `, endereço ${device.address}` : ""}${device.segmentId ? `, no segmento ${segments.get(device.segmentId)}` : ", externo aos segmentos"}.`),
+    ...data.devices.map((device) => `${device.label}, ${DEVICE_LABELS[device.kind]}${device.address ? `, endereço ${device.address}` : ""}${device.segmentId ? `, no segmento ${segments.get(device.segmentId)}` : ", externo aos segmentos"}.${DEVICE_DESCRIPTIONS[device.kind] ? ` ${DEVICE_DESCRIPTIONS[device.kind]}` : ""}`),
     ...data.links.map((link) => `${names.get(link.from)} ${link.directed ? "envia para" : "liga-se a"} ${names.get(link.to)} por ${linkPlainLabel(link)}.`)
   ].filter(Boolean).join(" ");
 }
@@ -71,9 +80,9 @@ function graphvizSource(data) {
   const clustered = new Set();
   const lines = [
     "digraph NetworkTopology {",
-    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.48", ranksep: "0.82", newrank: "true", compound: "true" }))};`,
+    `  graph ${dotAttributes(graphvizLayoutAttributes("block", { fontname: "Arial", fontsize: "16", bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.48", ranksep: "0.82", newrank: "true", compound: "true" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", margin=\"0.14,0.09\"];",
-    "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];"
+    "  edge [fontname=\"Arial\", fontsize=\"14\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\", arrowsize=\"0.72\"];"
   ];
   data.segments.forEach((segment) => {
     const devices = data.devices.filter(({ segmentId }) => segmentId === segment.id);
@@ -126,31 +135,31 @@ export const networkTopologyPackage = Object.freeze({
       practiceModes: ["exposition", "gap", "typing", "selection", "classification"]
     }),
     responseCompatibility: Object.freeze(["aralearn.response.gap", "aralearn.response.choice"]),
-    limitations: Object.freeze(["Topologias muito densas devem ser recortadas por domínio de broadcast, caminho ou camada.", "A geometria é calculada; não declare coordenadas."]),
+    limitations: Object.freeze(["Topologias muito densas devem ser recortadas por domínio de broadcast, caminho ou camada.", "A geometria é calculada; não declare coordenadas.", "Hub significa repetidor Ethernet multiporta; o diagrama não simula sinais, colisões nem encaminhamento."]),
     accessibility: "Segmentos, equipamentos e enlaces possuem descrição textual equivalente."
   }),
   authoringContract: Object.freeze({
     intent: "Declare a semântica da topologia; o renderer calcula clusters, rotas, recortes e espaçamento.",
     required: Object.freeze(["segments", "devices", "links"]),
     optional: Object.freeze(["prompt"]),
-    fieldSemantics: Object.freeze({ segments: "Domínios, sub-redes, VLANs ou zonas que agrupam equipamentos.", devices: "Elementos concretos da rede, tipados por função.", links: "Enlaces físicos ou lógicos; directed só quando a direção é parte da explicação." }),
-    visualGrammar: Object.freeze(["Fronteira tracejada = segmento.", "Forma e estereótipo = papel do equipamento.", "Linha rotulada = enlace.", "Ponta de seta = direção relevante; ausência de ponta = enlace bidirecional."]),
+    fieldSemantics: Object.freeze({ segments: "Domínios, sub-redes, VLANs ou zonas que agrupam equipamentos.", devices: "Elementos concretos da rede, tipados por função. hub é repetidor Ethernet multiporta; repeater regenera e retransmite sinais na camada física. Nenhum deles seleciona destino por endereço MAC como um switch.", links: "Enlaces físicos ou lógicos; directed só quando a direção é parte da explicação." }),
+    visualGrammar: Object.freeze(["Fronteira tracejada = segmento.", "Forma e estereótipo = papel do equipamento; hub em retângulo, repetidor em elipse e switch em caixa tridimensional são convenções locais, sempre acompanhadas do tipo textual.", "Linha rotulada = enlace.", "Ponta de seta = direção relevante; ausência de ponta = enlace bidirecional."]),
     rules: Object.freeze(["Cada equipamento pertence a um segmento ou é externo.", "Todo enlace referencia equipamentos existentes.", "Não use graph matemático para topologia de rede.", "Não declare coordenadas, ícones, cores ou rotas."]),
     example: Object.freeze({
-      prompt: "Acompanhe o caminho HTTPS da estação da VLAN de usuários até a aplicação na DMZ e identifique onde ocorre a filtragem.",
-      segments: [{ id: "users", label: "VLAN 10 · usuários · 10.10.10.0/24" }, { id: "dmz", label: "DMZ · 10.10.30.0/24" }],
+      prompt: "Nesta rede Ethernet sintética, diferencie a repetição de sinais no hub e no repetidor da comutação de quadros no switch. As linhas mostram conexões, não uma simulação de tráfego.",
+      segments: [{ id: "shared", label: "Trechos Ethernet ligados por repetição" }],
       devices: [
-        { id: "client", label: "Estação de trabalho", kind: "host", segmentId: "users", address: "10.10.10.42" },
-        { id: "access", label: "Switch de acesso", kind: "switch", segmentId: "users" },
-        { id: "firewall", label: "Firewall de borda", kind: "firewall", segmentId: null },
-        { id: "app", label: "Servidor de aplicação", kind: "server", segmentId: "dmz", address: "10.10.30.20:443" },
-        { id: "internet", label: "Internet", kind: "cloud", segmentId: null }
+        { id: "station-a", label: "Estação A", kind: "host", segmentId: "shared" },
+        { id: "station-b", label: "Estação B", kind: "host", segmentId: "shared" },
+        { id: "hub", label: "Conexão das estações", kind: "hub", segmentId: "shared" },
+        { id: "repeater", label: "Regeneração entre trechos", kind: "repeater", segmentId: "shared" },
+        { id: "switch", label: "Acesso à rede comutada", kind: "switch", segmentId: null }
       ],
       links: [
-        { id: "l1", from: "client", to: "access", medium: "Ethernet", directed: false },
-        { id: "l2", from: "access", to: "firewall", medium: "trunk 802.1Q", directed: false },
-        { id: "l3", from: "firewall", to: "app", medium: "Ethernet", protocol: "HTTPS", directed: true },
-        { id: "l4", from: "firewall", to: "internet", medium: "WAN", directed: false }
+        { id: "a-hub", from: "station-a", to: "hub", medium: "Ethernet", directed: false },
+        { id: "b-hub", from: "station-b", to: "hub", medium: "Ethernet", directed: false },
+        { id: "hub-repeater", from: "hub", to: "repeater", medium: "Ethernet", directed: false },
+        { id: "repeater-switch", from: "repeater", to: "switch", medium: "Ethernet", directed: false }
       ]
     })
   }),

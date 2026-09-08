@@ -84,12 +84,32 @@ function replaceInteractiveLabel(figure, svg, label) {
       ? "package-system-diagram-edge-label"
       : "package-system-diagram-boundary-label";
   const hasGap = Boolean(template.content.querySelector(GAP_CONTROL_SELECTOR));
-  appendGraphvizForeignLabel(group, template, label.kind === "node" || !hasGap ? bounds : {
+  const foreignLabel = appendGraphvizForeignLabel(group, template, label.kind === "node" || !hasGap ? bounds : {
     x: bounds.x - 8,
     y: bounds.y - 4,
     width: Math.max(64, bounds.width + 16),
     height: Math.max(28, bounds.height + 8)
   }, labelClass);
+  // Marcadores autorais não são controles de resposta. O texto HTML equivalente
+  // conserva a tipografia e as linhas medidas no SVG, em vez de herdar o corpo
+  // da página dentro de uma caixa calculada com outra fonte.
+  if (label.kind !== "node" && !hasGap && texts.length
+      && !template.content.querySelector('[contenteditable]:not([contenteditable="false"])')) {
+    const style = getComputedStyle(texts[0]);
+    const lineHeight = texts.length > 1
+      ? Math.abs(Number(texts[1].getAttribute("y")) - Number(texts[0].getAttribute("y")))
+      : bounds.height;
+    const wrapper = foreignLabel.firstElementChild;
+    wrapper.style.fontFamily = style.fontFamily;
+    wrapper.style.fontSize = style.fontSize;
+    wrapper.style.lineHeight = `${lineHeight}px`;
+    wrapper.style.display = "block";
+    wrapper.style.whiteSpace = texts.length === 1 ? "nowrap" : "normal";
+    foreignLabel.setAttribute("x", String(bounds.x - 1));
+    foreignLabel.setAttribute("y", String(bounds.y - 1));
+    foreignLabel.setAttribute("width", String(Math.ceil(bounds.width) + 2));
+    foreignLabel.setAttribute("height", String(Math.ceil(Math.max(bounds.height, lineHeight * texts.length)) + 2));
+  }
 }
 
 async function hydrateFigure(figure, stateKey) {

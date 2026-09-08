@@ -18,6 +18,7 @@ import {
   normalizeCourseSourceSelector,
   normalizeCourseSourcesRead,
   normalizeCourseStudyCitationsRead,
+  normalizeSourceAttributionApplications,
 } from "../../src/domain/courseSources.js";
 
 const IDS = {
@@ -763,6 +764,35 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
   };
   assert.deepEqual(normalizeCourseSourcesRead(target), target);
 
+  const explanationTarget = {
+    ...target,
+    query: { sourceId: null, targetKind: "microsequence_explanation", targetId: "microsequence-a" },
+    items: [{ ...target.items[0], targetKind: "microsequence_explanation", targetId: "microsequence-a" }]
+  };
+  assert.deepEqual(normalizeCourseSourcesRead(explanationTarget), explanationTarget);
+  const explanationCommand = {
+    type: "set_target_sources", targetKind: "microsequence_explanation", targetId: "microsequence-a",
+    expectedTargetVersion: 1, sourceLinks: [sourceLink({ occurrences: [{
+      occurrenceId: "occurrence-a", slot: "content", resourceId: "explanation-p", path: "text",
+      quote: "Quadro", prefix: null, suffix: null
+    }] })]
+  };
+  assert.deepEqual(normalizeCourseSourceCommand(explanationCommand), explanationCommand);
+  const explanationApplication = { targetKind: "microsequence_explanation", targetId: "microsequence-a",
+    sourceLinks: explanationCommand.sourceLinks };
+  const applications = [{ studyUnitId: "microsequence-a", sourceLinks: [] }, explanationApplication];
+  assert.deepEqual(normalizeSourceAttributionApplications(applications), applications);
+  assert.throws(() => normalizeSourceAttributionApplications([explanationApplication, explanationApplication]),
+    { code: "duplicate_course_source_attribution_application" });
+  for (const slot of ["response", "feedback"]) {
+    const invalid = structuredClone(explanationCommand);
+    invalid.sourceLinks[0].occurrences[0].slot = slot;
+    assert.throws(() => normalizeCourseSourceCommand(invalid), { code: "invalid_course_source_occurrence" });
+    assert.throws(() => normalizeCourseSourcesRead({ ...explanationTarget,
+      items: [{ ...explanationTarget.items[0], sourceLinks: invalid.sourceLinks }] }),
+    { code: "invalid_course_source_occurrence" });
+  }
+
   const contextualSource = {
     ...catalog,
     mode: "source",
@@ -860,6 +890,21 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
     }]
   };
   assert.deepEqual(normalizeCourseStudyCitationsRead(citations), citations);
+  const { studyUnitId, ...sharedCitations } = citations;
+  const explanationCitations = { ...sharedCitations,
+    targetKind: "microsequence_explanation", targetId: "microsequence-a" };
+  assert.deepEqual(normalizeCourseStudyCitationsRead(explanationCitations), explanationCitations);
+  assert.throws(() => normalizeCourseStudyCitationsRead({ ...explanationCitations, studyUnitId }),
+    { code: "invalid_course_study_citations" });
+  assert.throws(() => normalizeCourseStudyCitationsRead({ ...explanationCitations, targetId: "" }),
+    { code: "invalid_course_study_citations" });
+  const invalidExplanationCitations = structuredClone(explanationCitations);
+  invalidExplanationCitations.citations[0].occurrences = [{
+    occurrenceId: "occurrence-a", slot: "feedback", resourceId: "explanation-p", path: "text",
+    quote: "Quadro", prefix: null, suffix: null
+  }];
+  assert.throws(() => normalizeCourseStudyCitationsRead(invalidExplanationCitations),
+    { code: "invalid_course_source_occurrence" });
   const legacyCitations = {
     ...citations,
     citations: Array.from({ length: 128 }, (_, index) => ({ ...citations.citations[0], linkId: `link-${index}` }))

@@ -304,7 +304,7 @@ export function renderRuntimeStatusControl(status = {}, {
         escapeHtml(conflictValue.id) + '">' + text + '</button>').join("")
     : "";
   return '<button class="icon-ghost study-runtime-status-control" type="button"' +
-    (localOnly || failed || conflict ? "" : ' data-action="synchronize-study"') +
+    (localOnly || offline || failed || conflict ? "" : ' data-action="synchronize-study"') +
     ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
     ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '"' +
     (synchronizing ? ' aria-busy="true"' : "") + '>' +

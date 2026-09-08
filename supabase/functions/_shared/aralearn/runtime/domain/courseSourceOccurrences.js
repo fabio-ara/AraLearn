@@ -20,7 +20,13 @@ function literal(value, maximum, label, { nullable = false, identifier = false }
   return value;
 }
 
-export function normalizeCourseSourceOccurrence(value) {
+function targetSlots({ targetKind = "study_unit" } = {}) {
+  if (targetKind === "microsequence_explanation") return ["content"];
+  if (["study_unit", "plan_item"].includes(targetKind)) return SLOTS;
+  fail("O tipo do alvo da ocorrência é inválido.");
+}
+
+export function normalizeCourseSourceOccurrence(value, options) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(value)) ||
       Object.keys(value).length !== FIELDS.length ||
@@ -34,14 +40,14 @@ export function normalizeCourseSourceOccurrence(value) {
     prefix: literal(value.prefix, 500, "Contexto anterior", { nullable: true }),
     suffix: literal(value.suffix, 500, "Contexto posterior", { nullable: true })
   };
-  if (!SLOTS.includes(occurrence.slot) || !PATH_PATTERN.test(occurrence.path) ||
+  if (!targetSlots(options).includes(occurrence.slot) || !PATH_PATTERN.test(occurrence.path) ||
       (occurrence.path.match(/[A-Za-z_$][\w$]*/gu) || []).some(part => ["__proto__", "constructor", "prototype"].includes(part))) fail("O alvo da ocorrência é inválido.");
   return occurrence;
 }
 
-export function normalizeCourseSourceOccurrences(value) {
+export function normalizeCourseSourceOccurrences(value, options) {
   if (!Array.isArray(value) || value.length > COURSE_SOURCE_MAX_OCCURRENCES) fail("A lista de ocorrências excede o limite permitido.");
-  const occurrences = value.map(normalizeCourseSourceOccurrence);
+  const occurrences = value.map((occurrence) => normalizeCourseSourceOccurrence(occurrence, options));
   if (new Set(occurrences.map(({ occurrenceId }) => occurrenceId)).size !== occurrences.length) fail("A lista repete a identidade de uma ocorrência.");
   return occurrences;
 }
@@ -58,8 +64,9 @@ function slotInstances(studyUnit, slot) {
   return Array.isArray(studyUnit?.[slot]) ? studyUnit[slot] : [];
 }
 
-export function listCourseSourceOccurrenceTargets(studyUnit) {
-  return SLOTS.flatMap((slot) => slotInstances(studyUnit, slot).flatMap((instance) => {
+// A superfície recebida é a unidade ou a Explicação, sem copiar o apoio na unidade.
+export function listCourseSourceOccurrenceTargets(studyUnit, options) {
+  return targetSlots(options).flatMap((slot) => slotInstances(studyUnit, slot).flatMap((instance) => {
     if (RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, slot).valid !== true) return [];
     return RESOURCE_PACKAGE_REGISTRY.editableTargets(instance, slot).flatMap((target) => {
       const value = readOwnPath(instance.data, target.path);
@@ -88,22 +95,22 @@ function resolveFromTargets(targets, occurrence) {
   return { ...occurrence, status: resolved ? "resolved" : "needs_review" };
 }
 
-export function resolveCourseSourceOccurrence(studyUnit, value) {
-  return resolveFromTargets(listCourseSourceOccurrenceTargets(studyUnit), normalizeCourseSourceOccurrence(value));
+export function resolveCourseSourceOccurrence(studyUnit, value, options) {
+  return resolveFromTargets(listCourseSourceOccurrenceTargets(studyUnit, options), normalizeCourseSourceOccurrence(value, options));
 }
 
-export function resolveCourseSourceOccurrences(studyUnit, value) {
-  const targets = listCourseSourceOccurrenceTargets(studyUnit);
-  return normalizeCourseSourceOccurrences(value).map((occurrence) => resolveFromTargets(targets, occurrence));
+export function resolveCourseSourceOccurrences(studyUnit, value, options) {
+  const targets = listCourseSourceOccurrenceTargets(studyUnit, options);
+  return normalizeCourseSourceOccurrences(value, options).map((occurrence) => resolveFromTargets(targets, occurrence));
 }
 
 // A mesma lista de folhas já usada pelo editor instrumenta a cópia de renderização.
 // Não acrescenta contenteditable nem marcadores ao conteúdo persistido.
-export function courseSourceOccurrenceTextTargets(studyUnit, values) {
+export function courseSourceOccurrenceTextTargets(studyUnit, values, options) {
   const occurrences = values.map((value) => normalizeCourseSourceOccurrence(
-    Object.fromEntries(FIELDS.map((field) => [field, value[field]]))
+    Object.fromEntries(FIELDS.map((field) => [field, value[field]])), options
   ));
-  const targets = listCourseSourceOccurrenceTargets(studyUnit);
+  const targets = listCourseSourceOccurrenceTargets(studyUnit, options);
   const resolved = occurrences.filter((occurrence) => resolveFromTargets(targets, occurrence).status === "resolved");
   return targets.filter((target) => resolved.some((occurrence) => occurrence.slot === target.slot &&
     occurrence.resourceId === target.resourceId && occurrence.path === target.path));

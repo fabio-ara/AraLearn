@@ -189,10 +189,20 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 npm.cmd run test:backup-restore:local
 ```
 
-O ensaio de backup e restauração usa bancos PostgreSQL descartáveis, restaura um
-dump anterior, aplica a migração corrente e confere estrutura, planejamento,
-desenho, configuração, fontes, PDFs e Observações. Os bytes do Storage formam
-uma fronteira separada do backup lógico do banco.
+O ensaio de backup e restauração usa bancos PostgreSQL descartáveis e sem rede,
+restaura um dump sintético anterior e percorre a cadeia de migrações até o
+manifesto corrente. Confere estrutura, planejamento, desenho, configuração,
+fontes, metadados de PDFs e Observações. Também instala a cadeia do zero em outro
+banco e compara o schema executável, incluindo grants e políticas, e as definições
+e os padrões dos catálogos de parâmetros e componentes com o banco atualizado. O acervo anterior conserva o estado de revisão não registrado e a
+leitura permitida, sem receber aprovação ou Explicação geradas pelo upgrade.
+Cada migração é registrada no histórico antes da próxima verificação. Quatro
+restrições CHECK antigas têm a mesma expressão com agrupamento diferente de AND
+após o dump/restore; nessas definições a comparação usa o deparser do próprio
+PostgreSQL. Os predicados permanecem comparados, e uma mudança de limite reprova
+o teste. O restante do SQL é comparado literalmente.
+Essa prova não equivale à restauração de um backup hospedado atual. Os bytes do
+Storage formam uma fronteira separada do backup lógico do banco.
 
 Funções `security definer` fixam `search_path`, revogam execução ampla e validam
 a pessoa no corpo da operação. Tabelas expostas exigem privilégio e política de
@@ -214,11 +224,54 @@ produz aprovação da candidata. Sem argumentos, `scripts/runTests.mjs` continua
 executando todos os arquivos das duas suítes; `npm test` conserva também seus
 verificadores anteriores. PGlite verifica transformações SQL e contratos próximos
 de PostgreSQL; Auth, RLS, Storage e concorrência real precisam do Supabase local.
+As jornadas opt-in de acesso em `course-access-local.spec.js` criam contas e
+cursos próprios na stack local. Quando exercitam leitores ou visitantes, suas
+fixtures incluem Explicação e uma aprovação explicitamente simulada pelo RPC
+protegido; essa preparação não constitui revisão humana de um curso real.
+As revisões usadas após a aprovação são relidas, sem fixar o número anterior à
+mudança. Falhas HTTP inesperadas continuam reprovando a jornada.
+Fixtures de IndexedDB devem aguardar `transaction.oncomplete` antes de fechar
+a conexão de inspeção e abrir outra versão; o sucesso de uma requisição de
+leitura ainda não confirma o encerramento da transação.
 Para o navegador, use:
 
 ```powershell
 npm.cmd run test:e2e
 ```
+
+O overlay de Explicação tem um percurso focal em
+`tests/e2e/study-explanation.spec.js`. Com a candidata web preparada para o
+runner, execute `npx playwright test tests/e2e/study-explanation.spec.js`.
+O teste usa UI e renderizadores reais com repositório sintético: teoria e
+prática compartilham um apoio longo, tabela, código, topologia de rede, ferramentas
+condicionais e referências com PDF simulado. O download é capturado pelo harness;
+não comprova autorização remota nem leitura de um arquivo hospedado.
+
+Para inspeção local, `tests/gallery/study-explanation.html` monta a mesma fixture
+no servidor de desenvolvimento. Os parâmetros `unit=practice`, `theme=dark` e
+`state=missing|draft|offline|error` selecionam casos sintéticos. Não há conta ou
+conteúdo real nessa página. Os testes fornecem somente os arquivos da fixture
+ao navegador quando executados contra `.pages`; não é necessário publicar a
+galeria no produto. Capturas e traces ficam na saída ignorada do Playwright.
+
+O percurso verifica larguras de 360, 390, 430 e 1280 pixels, altura reduzida,
+texto ampliado, resposta pendente, fontes na mesma folha e retorno de foco e
+rolagem. O diagrama expandido usa o diálogo nativo: uma interrupção precisa
+conservar modalidade, zoom e deslocamento, e Escape deve retornar primeiro ao
+apoio e depois à unidade. A inspeção visual complementa essas assertivas de
+comportamento; nenhuma delas equivale a um teste de aprendizagem com pessoas.
+
+As jornadas em `course-tools-integrated.spec.js` e `study-final-ux.spec.js`
+também seguem esse contrato: seis ações fixas de 44 × 44 px, incluindo
+Explicação, e uma entrada compacta quando há várias ferramentas. O primeiro
+teste abre o painel, confere calculadora, áudio e gramática e exercita cálculo,
+retorno de foco e rolagem nas quatro larguras e nos dois temas. O segundo
+confere a identidade das seis ações e suas dimensões. A contagem do painel
+de ferramentas não deve ser confundida com a quantidade de botões da fileira;
+agrupar não reduz os alvos nem retira uma ferramenta.
+As guardas de rolagem examinam elementos efetivamente renderizados: o texto
+de debate em um `details` fechado não é um scroller de leitura; as fixtures
+de navegação devem usar rotas canônicas com a revisão do curso.
 
 Depois dos testes focais, execute o conjunto proporcional ao destino:
 
@@ -235,6 +288,33 @@ usa `-Scope Full`. Mudança de banco exige fresh, upgrade, restore e verificaç�
 hospedada antes da publicação.
 
 ## Documentação
+
+A revisão humana em Conteúdo é coordenada por `CourseMicrosequenceReview`.
+`loadMicrosequenceReviewSnapshot` cerca `exportCourseAuthoring` remoto com duas
+leituras de `getMicrosequenceReview`; exige a mesma impressão protegida e uma
+exportação/proveniência na revisão solicitada. Nunca associa um hash recém-lido
+a um corpo vindo da cópia de Estudo. O diálogo reaproveita o renderer de pacotes,
+o formatador bibliográfico, os detalhes de análise autoral e o painel de fontes.
+Respostas são exibidas para inspeção e ficam inertes. Hidratação com falha bloqueia
+uma nova aprovação. Atualizações do diálogo restauram controle focado e rolagem.
+
+`CourseMicrosequenceReviewSession` persiste a aprovação pendente em
+`course.v1.pending-content-review:<curso>:<microssequência>` antes do RPC direto
+autenticado. O recibo pode corresponder à aprovação original já superada; a
+releitura posterior determina o estado atual e sua falha não vira sucesso atual.
+A edição usa `saveMicrosequenceExplanation` e o registro canônico de composição
+pendente do Controller, preservando conteúdo e identidade para reconciliação.
+Os registros de pendência são eliminados junto aos caches privados na perda de
+acesso. Esses identificadores não são parâmetros do pedido humano ou de tarefas
+MCP/Actions.
+
+Os focais `tests/runtime/course-microsequence-review.test.js` e
+`tests/e2e/course-microsequence-review.spec.js` verificam bases/revisões incompatíveis,
+aprovação explícita, replay, edição/cancelamento, fontes, foco e larguras
+360/390/430/1280. A galeria `tests/gallery/course-microsequence-review.html` usa
+somente conteúdo sintético e Controller simulado; não é publicada pelo build e
+não comprova autenticação ou PDF remoto. Transporte, SQL e cliente hospedado são
+camadas de prova separadas.
 
 Documentação corrente explica o produto instalado. Reescreva a descrição
 anterior em vez de manter um diário ou contrato antigo como fallback.
