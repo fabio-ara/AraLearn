@@ -111,6 +111,48 @@ function materializationPreparationFixture(blocks = 32) {
   return { adapter, support };
 }
 
+test("vínculos da Explicação conservam referências humanas e paginação nos dois transportes", async () => {
+  const anchors = Array.from({ length: 8 }, (_, index) => ({ anchorId: `private-anchor-${index}`,
+    status: "active", humanLocator: `seção ${index + 1}`, verificationExcerpt: "Trecho sintético α. ".repeat(90),
+    selector: { kind: "whole_source" }, needsReverification: false }));
+  const sources = ["Fonte conceitual", "Fonte de comparação"].map((title, index) => ({
+    sourceId: `private-source-${index}`, title, citationText: `${title}. Citação sintética.`, status: "active", anchors
+  }));
+  const links = Array.from({ length: 32 }, (_, index) => ({ linkId: `private-link-${index}`,
+    sourceId: sources[index % 2].sourceId, relation: "quoted_from", roles: ["recommended_reading"],
+    anchors: anchors.map(({ anchorId }) => ({ anchorId })), occurrences: [] }));
+  const outputs = [];
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter, support } = materializationPreparationFixture(1);
+    adapter.listCourseEntities = async () => ({ items: [{ entityType: "microsequence", entityId: "ms",
+      version: 1, content: { title: "Interfaces", explanation: support } }], hasMore: false, nextCursor: null });
+    adapter.getCourseSources = async input => ({ items: input.mode === "target"
+      ? [{ targetKind: "microsequence_explanation", targetId: "ms", sourceLinks: links }]
+      : sources.filter(source => source.sourceId === input.sourceId), nextCursor: null });
+    let continuation, literal = "", calls = 0;
+    do {
+      const response = await channelCall(channel, adapter, "consultar_fontes", { curso: TITLE, explicacao: "Interfaces",
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(response.status, 200, response.envelope);
+      assert.ok(response.envelope.length < 99_999);
+      assert.equal(response.value.context.fragmento.inicio, literal.length);
+      literal += response.value.context.fragmento.texto;
+      continuation = response.value.context.continuacao;
+      assert.ok(++calls < 20);
+    } while (continuation);
+    assert.ok(calls > 1);
+    assert.doesNotMatch(literal, /private-source|private-link|private-anchor|sourceId|linkId|anchorId|requestId/u);
+    const output = JSON.parse(literal).sources.items[0].sourceLinks;
+    assert.equal(output.length, 32);
+    assert.deepEqual(output.map(link => link.posicao), Array.from({ length: 32 }, (_, index) => index + 1));
+    assert.equal(output[1].fonte.titulo, "Fonte de comparação");
+    assert.equal(output[1].anchors[7].posicao, 8);
+    assert.equal(output[1].anchors[7].verificationExcerpt, anchors[7].verificationExcerpt);
+    outputs.push(output);
+  }
+  assert.deepEqual(outputs[0], outputs[1]);
+});
+
 test("preparo recupera apoio acima do envelope Actions por continuação literal nos dois handlers", async () => {
   for (const channel of ["actions", "mcp"]) {
     const { adapter, support } = materializationPreparationFixture();

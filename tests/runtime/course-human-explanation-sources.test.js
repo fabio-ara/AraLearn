@@ -28,7 +28,7 @@ function fixture({ content = explanation } = {}) {
     },
     async getCourseSources(input) {
       reads.push(structuredClone(input));
-      if (input.mode === "source") return { source, items: [source], nextCursor: null };
+      if (input.mode === "source") return { source, items: input.sourceId === source.sourceId ? [source] : [], nextCursor: null };
       if (input.mode === "target") return { items: [{ targetKind: input.targetKind, targetId: input.targetId, sourceLinks: [retainedLink] }], nextCursor: null };
       return { items: [source], nextCursor: null };
     },
@@ -54,7 +54,7 @@ test("consulta de fonte do apoio usa identidade MS, inclusive contexto de uma Fo
   for (const args of [{ explicacao: "Quadros" }, { explicacao: 1, fonte: "Fonte sintética" }]) {
     const adapter = fixture();
     await call(adapter, "consultar_fontes", args);
-    const read = adapter.reads.at(-1);
+    const read = adapter.reads.find(input => input.mode === (args.fonte ? "source" : "target"));
     assert.equal(read.targetKind, "microsequence_explanation");
     assert.equal(read.targetId, "ms");
     assert.equal(read.mode, args.fonte ? "source" : "target");
@@ -62,6 +62,74 @@ test("consulta de fonte do apoio usa identidade MS, inclusive contexto de uma Fo
   }
   await assert.rejects(() => call(fixture(), "consultar_fontes", { unidade: 1, explicacao: "Quadros" }),
     { code: "invalid_human_task_argument" });
+});
+
+test("leitura do apoio identifica vínculos e âncoras pela ficha corrente sem IDs técnicos", async () => {
+  const adapter = fixture();
+  const sourceA = "10000000-0000-4000-8000-000000000001";
+  const sourceB = "10000000-0000-4000-8000-000000000002";
+  const anchorA = "20000000-0000-4000-8000-000000000001";
+  const anchorB = "20000000-0000-4000-8000-000000000002";
+  const links = [sourceA, sourceB, sourceB].map((sourceId, index) => ({ sourceId,
+    linkId: `30000000-0000-4000-8000-00000000000${index + 1}`, relation: "quoted_from",
+    roles: ["recommended_reading"], anchors: [{ anchorId: index === 0 ? anchorA : anchorB }],
+    occurrences: [{ occurrenceId: "40000000-0000-4000-8000-000000000001",
+      resourceId: "private-resource", slot: "content", path: "text", quote: "Um quadro", prefix: null, suffix: null }] }));
+  const details = [
+    { sourceId: sourceA, title: "Fonte de interfaces", citationText: "Autoria A. Interfaces.", status: "active",
+      anchors: [{ anchorId: anchorA, status: "active", humanLocator: "seção 1",
+        verificationExcerpt: "Uma interface liga sistemas.", selector: { kind: "whole_source" }, needsReverification: false }] },
+    { sourceId: sourceB, title: "Fonte de comparação", citationText: "Autoria B. Comparação.", status: "retired",
+      anchors: [{ anchorId: "unrelated" }, { anchorId: anchorB, status: "retired", humanLocator: "página 1, seção 2",
+        verificationExcerpt: "Um quadro permite a comparação.", selector: { kind: "whole_source" }, needsReverification: true }],
+      attachments: [{ storagePath: "private-pdf-path", contentHash: "a".repeat(64) }] }
+  ];
+  const reads = [];
+  adapter.getCourseSources = async input => {
+    reads.push(input);
+    return { items: input.mode === "target" ? [{ sourceLinks: links }] : details.filter(item => item.sourceId === input.sourceId), nextCursor: null };
+  };
+  const deadlineAt = Date.now() + 30_000;
+  const result = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, deadlineAt,
+    name: "consultar_fontes", rawArguments: { curso: "Redes sintéticas", explicacao: "Quadros" } });
+  const actual = result.context.sources.items[0].sourceLinks;
+  assert.deepEqual(actual.map(link => [link.posicao, link.fonte.titulo, link.fonte.status, link.anchors[0].posicao]),
+    [[1, "Fonte de interfaces", "active", 1], [2, "Fonte de comparação", "retired", 2], [3, "Fonte de comparação", "retired", 2]]);
+  assert.equal(actual[1].anchors[0].humanLocator, "página 1, seção 2");
+  assert.equal(actual[1].anchors[0].verificationExcerpt, "Um quadro permite a comparação.");
+  assert.equal(actual[1].anchors[0].needsReverification, true);
+  assert.equal(actual[1].occurrences[0].quote, "Um quadro");
+  assert.equal(reads.filter(input => input.mode === "source").length, 2, "a mesma Fonte é lida uma vez");
+  assert.ok(reads.every(input => input.expectedRevision === 7 && input.deadlineAt === deadlineAt && input.limit === 1));
+  assert.doesNotMatch(JSON.stringify(result.context), /[0-9a-f]{8}-[0-9a-f-]{27}|sourceId|linkId|anchorId|requestId|storagePath|private-pdf-path|private-resource/u);
+  assert.equal(adapter.writes.length, 0);
+});
+
+test("leitura do apoio registra Fonte ou Âncora ausente sem inventar rótulo", async () => {
+  const adapter = fixture();
+  adapter.getCourseSources = async input => ({ items: input.mode === "target" ? [{ sourceLinks: [
+    { sourceId: "missing", anchors: [{ anchorId: "missing" }], occurrences: [] },
+    { sourceId: "available", anchors: [{ anchorId: "missing" }], occurrences: [] }
+  ] }] : input.sourceId === "available" ? [{ sourceId: "available", title: null, citationText: "Citação sem título", status: "active", anchors: [] }] : [], nextCursor: null });
+  const result = await call(adapter, "consultar_fontes", { explicacao: "Quadros" });
+  const links = result.context.sources.items[0].sourceLinks;
+  assert.deepEqual(links[0].fonte, { localizada: false });
+  assert.deepEqual(links[0].anchors, [{ localizada: false }]);
+  assert.deepEqual(links[1].fonte, { localizada: true, titulo: null, citacao: "Citação sem título", status: "active" });
+  assert.deepEqual(links[1].anchors, [{ localizada: false }]);
+});
+
+test("leitura do apoio recusa ficha de outra Fonte e não disfarça conflito, recusa ou timeout como ausência", async () => {
+  for (const errorCode of [null, "stale_course_state", "access_denied", "request_timeout"]) {
+    const adapter = fixture();
+    adapter.getCourseSources = async input => {
+      if (input.mode === "target") return { items: [{ sourceLinks: [{ sourceId: "expected", anchors: [] }] }], nextCursor: null };
+      if (errorCode) throw Object.assign(new Error("A leitura falhou."), { code: errorCode });
+      return { items: [{ sourceId: "wrong", title: "Não divulgar" }], nextCursor: null };
+    };
+    await assert.rejects(() => call(adapter, "consultar_fontes", { explicacao: "Quadros" }),
+      { code: errorCode ?? "course_service_unavailable" });
+  }
 });
 
 test("vínculo do apoio relê versão da entidade, preserva outras fontes e localiza bloco salvo", async () => {
