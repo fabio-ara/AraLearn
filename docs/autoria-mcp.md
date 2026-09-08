@@ -79,6 +79,23 @@ O servidor aceita a origem temporária autorizada e valida bytes antes de
 persistir. Essa extensão depende da capacidade do cliente MCP; não se presume
 acesso a arquivos locais. Ingerir áudio não chama síntese ou transcrição.
 
+Quando um tipo de áudio é recusado, a mensagem distingue o tipo declarado no
+descritor do anexo do tipo recebido na resposta do download. Ela informa somente
+um token MIME válido e limitado; valores inválidos não são reproduzidos. Isso
+permite identificar o ponto da rejeição sem expor a URL temporária, parâmetros
+do cabeçalho ou identificadores do arquivo. O erro continua
+`unsupported_audio_media_type` (HTTP 415); o diagnóstico não aceita tipos novos
+nem substitui a inspeção dos bytes WAV PCM/MP3. A mensagem, isoladamente, não
+afirma que o conteúdo do arquivo é inválido.
+
+O rótulo de transporte `audio/x-wav`, observado na resposta real de download
+do cliente, é tratado como `audio/wav`. O descritor continua declarando
+`audio/wav` ou `audio/mpeg`, conforme o contrato da tarefa. A inspeção exige
+bytes WAV PCM válidos e coerentes com o descritor e a resposta;
+MP3, HTML, PDF ou WAV não PCM sob esse rótulo são recusados. O armazenamento
+e a referência devolvida conservam `audio/wav`. Isso não amplia formatos,
+origens autorizadas, limite de bytes nem seguimento de redirecionamentos.
+
 As ferramentas do Estudo são pacotes do catálogo comum, compostos no `content`
 da unidade. A consulta focal de componentes fornece um contrato por vez; a de
 fontes fornece alvos lógicos de PDF; a biblioteca fornece referências de áudio
