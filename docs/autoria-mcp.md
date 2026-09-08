@@ -66,6 +66,16 @@ preserva o apoio literal e a proveniência correspondente. As formas de explica�
 registradas na aplicação pedagógica de uma unidade continuam sendo medidas dessa
 unidade: não são o objeto de apoio compartilhado.
 
+Ao corrigir conteúdo com fontes explícitas, o sistema relê a atribuição do alvo
+na mesma revisão. Um vínculo com a mesma fonte, relação e âncoras conserva sua
+identidade; uma ocorrência com o mesmo recurso, seletor e trecho também a
+conserva. Alterar papéis ou trechos aplica os valores declarados, sem duplicar
+o vínculo. Omitir ocorrências preserva as existentes no vínculo correspondente;
+uma lista explicitamente vazia as retira. Vínculos omitidos continuam protegidos
+pela composição. Se mais de um vínculo corresponder, a correção pede inspeção
+em vez de escolher uma identidade. Alterações de relação ou de âncoras que
+substituam um vínculo devem usar a posição desse vínculo em `manter_fonte`.
+
 Produção e correção deixam o conteúdo pendente de revisão. Aprovar o mapa ou
 autorizar um lote não aprova o material futuro. A aprovação do conteúdo
 inspecionado é uma ação humana protegida na Autoria, fora das ferramentas de IA;

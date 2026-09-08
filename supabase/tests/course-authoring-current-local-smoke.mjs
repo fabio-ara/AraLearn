@@ -556,6 +556,20 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       beforeEditAttribution.items[0].targetVersion + 1
     );
     assert.deepEqual(afterEditAttribution.items[0].sourceLinks, sourceLinks);
+    const explanationTarget = units.items[0].curriculumPath.didacticMicrosequence.id;
+    const explanationSources = () => adapter.getCourseSources({ principal, courseId,
+      expectedRevision: edited.revision, mode: "target", sourceId: null,
+      targetKind: "microsequence_explanation", targetId: explanationTarget, cursor: null, limit: 1 });
+    const beforeExplicitCorrection = await explanationSources();
+    await executeHumanCourseTask({ adapter, principal, name: "aplicar_correcoes",
+      rawArguments: { curso: title, explicacoes: [{ ...sharedExplanations()[0], fontes: [{
+        fonte: "Referência sobre sockets", relacao: "supported_by",
+        papeis: ["tecnica_conceitual"], ancoras: [1]
+      }] }] } });
+    assert.equal((await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision,
+      edited.revision, "Repetir fonte/âncora e conteúdo não duplica atribuição nem avança revisão.");
+    assert.deepEqual((await explanationSources()).items, beforeExplicitCorrection.items,
+      "Correção explícita conserva identidade, âncora e versão da atribuição existente.");
     const sourceAnalytics = await adapter.getCourseAuthoringAnalytics({
       principal,
       courseId,
@@ -674,6 +688,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       explanationCount: exportedMicrosequences.length,
       explanationSourceReadCount: exported.artifact.explanationSources.length,
       explanationCorrectionVerified: true,
+      explicitExplanationSourceIdentityVerified: true,
       deletedUnitOverrideCount: 0,
       sourceTargetVersion: afterEditAttribution.items[0].targetVersion,
       retiredAnchorCitationCount: retiredCitations.citations.length

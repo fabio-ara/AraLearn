@@ -7,6 +7,7 @@ import { resolveHumanSourceLinks } from "./courseHumanMaterialization.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
+import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -69,14 +70,12 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
     seen.add(entity.entityId);
     const support = normalizeMicrosequenceExplanation(entry.conteudo);
     const content = { ...structuredClone(entity.content), explanation: support };
-    let sourceLinks = null;
-    if (entry.fontes === undefined) {
-      const page = await adapter.getCourseSources({ principal, courseId: course.id, expectedRevision: course.revision,
-        mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: entity.entityId,
-        cursor: null, limit: 1, deadlineAt });
-      sourceLinks = page.items?.[0]?.sourceLinks ?? [];
-    }
-    return { entity, content, support, sourceLinks, requestedSources: entry.fontes };
+    const page = await adapter.getCourseSources({ principal, courseId: course.id, expectedRevision: course.revision,
+      mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: entity.entityId,
+      cursor: null, limit: 1, deadlineAt });
+    const currentLinks = page.items?.[0]?.sourceLinks ?? [];
+    return { entity, content, support, currentLinks,
+      sourceLinks: entry.fontes === undefined ? currentLinks : null, requestedSources: entry.fontes };
   }));
 }
 
@@ -125,15 +124,14 @@ async function loadCorrectionState({
   });
   const prepared = await Promise.all(corrections.map(async (correction, index) => {
     const unit = resolved.studyUnits[index];
-    const sourceLinks = correction.fontes === undefined
-      ? await currentSourceLinks({
-          adapter,
-          principal,
-          course: resolved.course,
-          unit,
-          deadlineAt
-        })
-      : null;
+    const currentLinks = await currentSourceLinks({
+      adapter,
+      principal,
+      course: resolved.course,
+      unit,
+      deadlineAt
+    });
+    const sourceLinks = correction.fontes === undefined ? currentLinks : null;
     const candidate = {
       ...correction.conteudo,
       id: unit.studyUnit.id,
@@ -164,11 +162,37 @@ async function loadCorrectionState({
     const content = structuredClone(validation.normalized);
     delete content.id;
     delete content.position;
-    return { unit, content, sourceLinks, requestedSources: correction.fontes };
+    return { unit, content, currentLinks, sourceLinks, requestedSources: correction.fontes };
   }));
   const preparedExplanations = await loadExplanationCorrections({ adapter, principal,
     course: resolved.course, explanations, deadlineAt });
   return { ...resolved, prepared, preparedExplanations };
+}
+
+function preserveMatchingSourceIdentities(links, currentLinks, requestedSources) {
+  const binding = (link) => canonicalAuthoringValue({ sourceId: link.sourceId,
+    relation: link.relation, anchors: link.anchors.map(({ anchorId }) => anchorId).sort() });
+  const occurrence = ({ occurrenceId, ...value }) => canonicalAuthoringValue(value);
+  const used = new Set();
+  return links.map((link, index) => {
+    const matches = currentLinks.filter((current) => binding(current) === binding(link));
+    if (matches.length > 1 || matches.length === 1 && used.has(matches[0].linkId)) {
+      fail("ambiguous_human_source_link", "A correção não identifica um único vínculo da fonte; inspecione os vínculos antes de salvar.");
+    }
+    const previous = matches[0];
+    if (!previous) return link;
+    used.add(previous.linkId);
+    const usedOccurrences = new Set();
+    return { ...link, linkId: previous.linkId,
+      occurrences: requestedSources[index].ocorrencias === undefined
+        ? structuredClone(previous.occurrences) : link.occurrences.map((value) => {
+          const existing = previous.occurrences.find((candidate) =>
+            !usedOccurrences.has(candidate.occurrenceId) && occurrence(candidate) === occurrence(value));
+          if (!existing) return value;
+          usedOccurrences.add(existing.occurrenceId);
+          return { ...value, occurrenceId: existing.occurrenceId };
+        }) };
+  });
 }
 
 export async function applyHumanCourseCorrections({
@@ -200,17 +224,17 @@ export async function applyHumanCourseCorrections({
       const sourceCache = new Map();
       const applications = await Promise.all(state.prepared.map(async (entry, index) => ({
         studyUnitId: entry.unit.studyUnit.id,
-        sourceLinks: entry.sourceLinks ?? await resolveHumanSourceLinks({
+        sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({
           adapter, principal, courseContext: state, requested: entry.requestedSources,
           content: entry.content, newId, identityPrefix: `correction:${index}:source-link`,
           deadlineAt, sourceCache
-        })
+        }), entry.currentLinks, entry.requestedSources)
       })));
       applications.push(...await Promise.all(state.preparedExplanations.map(async (entry, index) => ({
         targetKind: "microsequence_explanation", targetId: entry.entity.entityId,
-        sourceLinks: entry.sourceLinks ?? await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
+        sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
           requested: entry.requestedSources, content: entry.support, newId,
-          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache })
+          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache }), entry.currentLinks, entry.requestedSources)
       }))));
       const contextualApplication = principal.authenticationKind === "application" &&
         state.prepared.length === 1 && !state.preparedExplanations.length;
@@ -259,7 +283,7 @@ export async function applyHumanCourseCorrections({
     context: {
       correctionCount: corrections.length,
       explanationCorrectionCount: explanations.length,
-      sourceMode: corrections.some(({ fontes }) => fontes !== undefined)
+      sourceMode: [...corrections, ...explanations].some(({ fontes }) => fontes !== undefined)
         ? "explicit"
         : "preserved"
     }

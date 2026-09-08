@@ -118,6 +118,53 @@ function correctedContent(title) {
   };
 }
 
+for (const authenticationKind of ["oauth", "action"]) {
+  test(`correção ${authenticationKind} reutiliza vínculos explícitos e ocorrência sem duplicar âncoras`, async () => {
+    const adapter = adapterFixture();
+    const { title, content } = correctedContent("Apoio com fontes");
+    const occurrence = { occurrenceId: "occ-existing", slot: "content", resourceId: content[0].id,
+      path: "text", quote: "Conteúdo corrigido", prefix: null, suffix: null };
+    const current = [
+      { ...sourceLink("rfc"), occurrences: [occurrence] },
+      { ...sourceLink("second"), relation: "quoted_from", roles: ["recommended_reading"] }
+    ];
+    adapter.getCourseSources = async ({ mode, sourceId }) => {
+      if (mode === "target") return { items: [{ sourceLinks: structuredClone(current) }] };
+      if (mode === "catalog") return { items: current.map((link, i) => ({ sourceId: link.sourceId,
+        revision: 1, title: `Fonte ${i + 1}` })), nextCursor: null };
+      return { items: [{ sourceId, revision: 1, anchors: current.find(link => link.sourceId === sourceId)
+        .anchors.map(anchor => ({ ...anchor, status: "active", humanLocator: "p. 1" })) }] };
+    };
+    const fontes = current.map((link, i) => ({ fonte: `Fonte ${i + 1}`, relacao: link.relation,
+      papeis: i === 0 ? ["tecnica_conceitual"] : ["leitura_complementar"], ancoras: [1],
+      ...(i === 0 ? { ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: occurrence.quote }] } : {}) }));
+    const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind }, course: "Curso de Redes",
+      explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content }, fontes }] };
+    const result = await applyHumanCourseCorrections(input);
+    assert.deepEqual(adapter.commits[0].sourceAttributionApplications[0].sourceLinks, current);
+    assert.equal(result.context.sourceMode, "explicit");
+    assert.deepEqual(adapter.commits[0].upserts[0].content.explanation, { title, content });
+
+    fontes[0].papeis = ["leitura_complementar"];
+    fontes[0].ocorrencias[0].trecho = "percurso necessário";
+    await applyHumanCourseCorrections(input);
+    const changed = adapter.commits[1].sourceAttributionApplications[0].sourceLinks;
+    assert.equal(changed[0].linkId, current[0].linkId);
+    assert.deepEqual(changed[0].roles, ["recommended_reading"]);
+    assert.equal(changed[0].occurrences[0].quote, "percurso necessário");
+    assert.notEqual(changed[0].occurrences[0].occurrenceId, occurrence.occurrenceId);
+    assert.deepEqual(changed[1], current[1]);
+
+    delete fontes[0].ocorrencias;
+    await applyHumanCourseCorrections(input);
+    assert.deepEqual(adapter.commits[2].sourceAttributionApplications[0].sourceLinks[0].occurrences,
+      current[0].occurrences, "Ocorrências omitidas no vínculo correspondente permanecem intactas.");
+    fontes[0].ocorrencias = [];
+    await applyHumanCourseCorrections(input);
+    assert.deepEqual(adapter.commits[3].sourceAttributionApplications[0].sourceLinks[0].occurrences, []);
+  });
+}
+
 test("correção só do apoio preserva percurso e fontes, sem transportar aprovação", async () => {
   const adapter = adapterFixture();
   const { title, content } = correctedContent("Apoio revisto");
