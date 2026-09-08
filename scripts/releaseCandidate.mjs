@@ -57,8 +57,8 @@ function positive(value, label) {
   demand(/^[1-9][0-9]*$/u.test(String(value)), `${label} inválido.`);
   return Number(value);
 }
-function output(name, value) {
-  demand(/^[a-z_]+$/u.test(name) && !/[\r\n]/u.test(String(value)), "Saída de workflow inválida.");
+export function output(name, value) {
+  demand(/^[a-z_][a-z0-9_]*$/u.test(name) && !/[\r\n]/u.test(String(value)), "Saída de workflow inválida.");
   return process.env.GITHUB_OUTPUT ? fs.appendFile(process.env.GITHUB_OUTPUT, `${name}=${value}\n`) : undefined;
 }
 async function jsonFile(file) { return JSON.parse(await fs.readFile(file, "utf8")); }

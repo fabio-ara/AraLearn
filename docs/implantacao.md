@@ -270,6 +270,11 @@ Essa fase recupera artefatos e prova nativa pela origem, sem recompilar ou abrir
 o emulador. Verifica o backend já aplicado, publica Pages e conserva a Release
 em rascunho. A prova de backend fica separada do manifesto e do recibo imutáveis
 que identificaram o APK testado; preparar os bytes não declara backend pronto.
+A retomada transmite o digest pela saída `proof_sha256`. A validação dos nomes
+permite dígitos após a primeira letra ou sublinhado, pois rejeitá-los bloquearia
+essa saída válida antes da publicação; nomes com separadores e valores com CR/LF
+continuam recusados. Essa regra de transporte não altera a validação da origem,
+da árvore, da configuração ou dos bytes aprovados.
 
 Depois das jornadas e provas reais requeridas da mesma candidata, finalize
 usando o run que publicou o site:

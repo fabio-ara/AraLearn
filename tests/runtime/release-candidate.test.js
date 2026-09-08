@@ -13,6 +13,7 @@ import {
   GITHUB_API_ACCEPT,
   GITHUB_RELEASE_ASSET_ACCEPT,
   githubApiAccept,
+  output,
   releasePlan,
   releaseAssetUploadUrl,
   selectReleaseByTag,
@@ -42,6 +43,31 @@ const ENV = {
   ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic-test-value"
 };
 const digest = (value) => createHash("sha256").update(value).digest("hex");
+
+test("saídas do workflow transportam proof_sha256 sem aceitar nomes ou valores injetados", async () => {
+  const folder = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-workflow-output-"));
+  const file = path.join(folder, "outputs");
+  const previous = process.env.GITHUB_OUTPUT;
+  const proofSha256 = "17793386447d2e1cdb939f114220b6b986af5e85d9d79a2f81767d72b6560a8c";
+  try {
+    process.env.GITHUB_OUTPUT = file;
+    await output("version", "0.0.67");
+    await output("proof_sha256", proofSha256);
+    const expected = `version=0.0.67\nproof_sha256=${proofSha256}\n`;
+    assert.equal(await fs.readFile(file, "utf8"), expected);
+    for (const name of ["1proof", "proof-sha256", "proof=alterado", "proof\nreused", "proof\rreused"]) {
+      assert.throws(() => output(name, proofSha256), /Saída de workflow inválida/u);
+    }
+    for (const separator of ["\n", "\r", "\r\n"]) {
+      assert.throws(() => output("proof_sha256", `${proofSha256}${separator}reused=true`), /Saída de workflow inválida/u);
+    }
+    assert.equal(await fs.readFile(file, "utf8"), expected);
+  } finally {
+    if (previous === undefined) delete process.env.GITHUB_OUTPUT;
+    else process.env.GITHUB_OUTPUT = previous;
+    await fs.rm(folder, { recursive: true, force: true });
+  }
+});
 
 test("identidade dos dois fontes usa blob Git, tolera CRLF/LF e recusa conteúdo local alterado", async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-source-identity-"));
