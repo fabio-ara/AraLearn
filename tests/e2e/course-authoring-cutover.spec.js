@@ -2472,7 +2472,8 @@ test("#345 Planejamento revela apoio e debate exatos, Parte reserva espaço sem 
   await support.locator('summary').click();
   await expect(support).toContainText("Identificar dois casos observados");
   await expect(support).toContainText("O critério comum permite comparar os casos");
-  const source = support.getByRole("link", { name: "source-01", exact: true });
+  const source = support.getByRole("link", { name: "Fonte verificável 1", exact: true });
+  await expect(source).toHaveAttribute("href", /section=sources&sourceId=source-01$/u);
   await source.click();
   await expect(page).toHaveURL(/section=sources&sourceId=source-01/u);
   await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
