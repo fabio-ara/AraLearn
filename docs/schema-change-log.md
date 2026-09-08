@@ -1,5 +1,12 @@
 # Alterações do schema
 
+## 20260908020737 — conflito de revisão na leitura das citações
+
+A leitura das citações da Explicação passa a devolver `PT409` quando a revisão solicitada ficou antiga, conforme o contrato de conflitos HTTP 409. A mensagem, a assinatura e as guardas de acesso e revisão humana permanecem. Não há alteração de dados, concessões ou aprovações.
+
+A falha foi reproduzida pelo gate SQL de conflitos: a nova leitura ainda levantava `40001`, reservado à serialização nativa. O teste focal agora exerce esse CAS diretamente, além do inventário de guardas e da preservação dos envelopes nativos. Fixtures de acesso público, citações e áudio aprovam seu conjunto exclusivamente sintético pelo RPC de sessão do proprietário; política de arquivo e presença de vínculo não substituem revisão. Chamadas SQL posicionais de metadados tipam o argumento JSON para distinguir os overloads; clientes continuam usando argumentos nomeados.
+
+
 ## 20260908003749 — ausência de atribuição em Fontes
 
 A leitura de um alvo existente sem atribuição bibliográfica retorna `items: []`.

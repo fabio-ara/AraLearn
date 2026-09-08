@@ -63,10 +63,24 @@ select throws_ok($$select pg_temp.audio_download(null,'u','a')$$,'PT404',null,'v
 insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content) values
 (pg_temp.audio_course(),'module','m',null,null,0,'{"title":"Módulo"}'),
 (pg_temp.audio_course(),'lesson','l','module','m',0,'{"title":"Lição"}'),
-(pg_temp.audio_course(),'microsequence','s','lesson','l',0,'{"title":"Sequência","dependsOn":[]}'),
+(pg_temp.audio_course(),'microsequence','s','lesson','l',0,'{"title":"Sequência","dependsOn":[],"explanation":{"title":"Conexões sintéticas","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}]}}'),
 (pg_temp.audio_course(),'study_unit','u','microsequence','s',1,jsonb_build_object('title','Escuta sintética','role','theory','content',jsonb_build_array(
  jsonb_build_object('id','audio','package','aralearn.resource.audio','version','1.0.0','data',jsonb_build_object('tracks',jsonb_build_array(
  jsonb_build_object('id','track','label','Sinal sintético','locale','pt-BR','kind','file','media',pg_temp.audio_ingest('a')->'media','alternative',jsonb_build_object('text','Sinal sintético','visibility','always')))))),'response',null,'feedback','[]'::jsonb,'topics','[]'::jsonb));
+select throws_ok($$select pg_temp.audio_download('30300000-0000-4000-8000-000000000002','u','a')$$,'42501',null,'vínculo novo aguarda revisão antes de distribuir áudio');
+-- Decisão exclusivamente sintética, pelo RPC protegido e sessão do proprietário.
+insert into auth.sessions(id,user_id,created_at,updated_at) values('30300000-0000-4000-8000-000000000901','30300000-0000-4000-8000-000000000001',now(),now());
+select set_config('request.jwt.claim.sub','30300000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claims','{"sub":"30300000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30300000-0000-4000-8000-000000000901"}',true);
+set local role authenticated;
+select is(public.approve_course_microsequence_content_v1('30300000-0000-4000-8000-000000000101','s',
+ public.get_course_microsequence_review_v1('30300000-0000-4000-8000-000000000101','s')->>'basisHash','audio-review-01')#>>'{contentReview,state}',
+ 'current','sessão sintética aprova exatamente o conjunto inspecionado');
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+select set_config('request.jwt.claim.role','service_role',true);
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(pg_temp.audio_download('30300000-0000-4000-8000-000000000002','u','a')#>>'{media,contentHash}',repeat('a',64),'compartilhado recebe o trio da unidade autorizada');
 select throws_ok($$select pg_temp.audio_download('30300000-0000-4000-8000-000000000002',null,'a')$$,'42501',null,'compartilhado não utiliza audition genérica de owner');
 select throws_ok($$select public.get_course_media_for_actor_v1('30300000-0000-4000-8000-000000000002',pg_temp.audio_course(),pg_temp.audio_revision(),'catalog')$$,'42501',null,'compartilhado não enumera biblioteca');
@@ -79,6 +93,19 @@ select throws_ok($$select pg_temp.audio_download(null,'missing','a')$$,'42501',n
 select is(public.get_course_media_for_actor_v1(null,pg_temp.audio_course(),pg_temp.audio_revision(),'configuration')->'items','[]'::jsonb,'configuração pública não revela biblioteca');
 select is(public.get_course_media_for_actor_v1(null,pg_temp.audio_course(),pg_temp.audio_revision(),'configuration')->'storage','null'::jsonb,'configuração pública não revela cota');
 update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,byteSize}','523') where course_id=pg_temp.audio_course() and entity_id='u';
+-- Reaprova a fixture alterada para que a negativa seguinte isole a divergência
+-- dos bytes declarados, sem ser satisfeita apenas pela revisão desatualizada.
+select set_config('request.jwt.claim.sub','30300000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claims','{"sub":"30300000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30300000-0000-4000-8000-000000000901"}',true);
+set local role authenticated;
+select is(public.approve_course_microsequence_content_v1('30300000-0000-4000-8000-000000000101','s',
+ public.get_course_microsequence_review_v1('30300000-0000-4000-8000-000000000101','s')->>'basisHash','audio-review-size-02')#>>'{contentReview,state}',
+ 'current','sessão sintética aprova exatamente o conjunto inspecionado');
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+select set_config('request.jwt.claim.role','service_role',true);
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select throws_ok($$select pg_temp.audio_download(null,'u','a')$$,'42501',null,'hash igual com tamanho divergente não autoriza arquivo');
 update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,byteSize}','524') where course_id=pg_temp.audio_course() and entity_id='u';
 update public.courses set visibility='private',public_file_access='restricted' where id=pg_temp.audio_course();
@@ -116,7 +143,6 @@ select ok(not has_table_privilege('authenticated','private.course_media','SELECT
 select ok(not has_table_privilege('anon','private.course_media','SELECT'),'anon não tem SELECT de tabela privada');
 select ok(not has_function_privilege('authenticated','public.get_course_media_download_for_actor_v1(uuid,uuid,bigint,text,text)','EXECUTE'),'authenticated não pode forjar ator em RPC de serviço');
 select ok(not has_function_privilege('anon','public.prepare_course_audio_for_actor_v1(uuid,uuid,bigint,text,bigint,text,text,text)','EXECUTE'),'anon não prepara Storage');
-insert into auth.sessions(id,user_id,created_at,updated_at,not_after) values('30300000-0000-4000-8000-000000000901',pg_temp.audio_owner(),now(),now(),now()+interval '1 hour');
 select set_config('request.jwt.claim.sub',pg_temp.audio_owner()::text,true);
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claims','{"sub":"30300000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30300000-0000-4000-8000-000000000901"}',true);

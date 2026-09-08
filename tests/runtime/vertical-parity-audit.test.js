@@ -35,7 +35,7 @@ test("o registro corrente cobre UI, ferramentas, Edge, manifesto e testes", asyn
   assert.deepEqual(await auditVerticalParity({ repositoryRoot }), []);
 });
 
-test("o registro cobre as dezessete tarefas humanas", async () => {
+test("o registro cobre as tarefas humanas correntes", async () => {
   const current = await registry();
   const registered = current.cases.flatMap((caseRecord) =>
     caseRecord.objects?.mcpTools || []
@@ -70,18 +70,18 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 617);
+  assert.equal(inventory.objects.length, 649);
   assert.deepEqual(counts, {
-    "study-course-experience": 30,
-    "course-authoring-experience": 225,
-    "course-source-provenance": 132,
+    "study-course-experience": 31,
+    "course-authoring-experience": 243,
+    "course-source-provenance": 141,
     "course-anchored-annotations": 56,
     "course-authoring-research": 2,
     "current-data-lifecycle": 20,
     "person-profile-and-course-access": 43,
     "didactic-component-runtime": 1,
     "course-shared-transports": 48,
-    "course-audio-media": 51,
+    "course-audio-media": 55,
     "course-independent-copy": 9
   });
   const currentCaseIds = current.cases
@@ -93,6 +93,8 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     new Set(currentCaseIds)
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
+  assert.equal(assignments.get("function:public.approve_course_microsequence_content_v1(p_course_id uuid, p_microsequence_id text, p_expected_basis_hash text, p_request_id text)"), "course-authoring-experience");
+  assert.equal(assignments.get("function:public.get_course_explanation_citations_v1(p_course_id uuid, p_expected_revision bigint, p_microsequence_id text)"), "course-source-provenance");
   assert.equal(assignments.get("table:private.course_media"), "course-audio-media");
   assert.equal(assignments.get("function:public.copy_course_for_actor_v1(p_actor_id uuid, p_source_course_id uuid, p_expected_source_revision bigint, p_title text, p_confirmed boolean, p_request_id text, p_requested_at timestamp with time zone)"), "course-independent-copy");
   assert.equal(
