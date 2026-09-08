@@ -88,6 +88,18 @@ como sugestão, enquanto `papeis` em cada vínculo declara seu uso naquele alvo.
 A mesma fonte pode ter vários vínculos. Ao editar um vínculo pela posição
 apresentada, os demais são conservados.
 
+Na consulta de uma unidade ou Explicação, cada vínculo informa sua posição
+atual, o título e a citação da fonte, seu estado e as âncoras correspondentes.
+Cada âncora informa a posição na ficha corrente da fonte, o localizador e o
+trecho de verificação disponíveis, sem divulgar identificadores internos.
+As fichas são relidas na mesma revisão do curso; respostas extensas continuam
+pela paginação existente. A posição do vínculo não é o número da fonte no
+catálogo. Títulos ausentes ou repetidos exigem consultar a ficha ou desambiguar
+a fonte pelo mecanismo existente; a leitura não inventa um título nem escolhe
+um homônimo. Uma fonte retirada continua identificada como retirada. Uma ficha
+ou âncora ausente é indicada como não localizada; isso não transforma falhas de
+autorização ou de serviço em ausência e não anuncia acesso a um arquivo.
+
 O vínculo pode pertencer a uma unidade ou à **Explicação compartilhada** de uma
 microssequência. `consultar_fontes` aceita `explicacao` com o título ou a posição
 da microssequência; em `manter_fonte`, cada item de `vinculos` escolhe `unidade`

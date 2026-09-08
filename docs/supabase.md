@@ -224,6 +224,15 @@ fronteiras de revisão, intenção, objeto imutável e confirmação da limpeza.
 
 ## Edge Functions e autenticação no handler
 
+A escolha da origem de uma cópia usa `list_copyable_courses_for_actor_v1`,
+concedida somente a `service_role`. A Edge fornece o ator autenticado; o banco
+exige seu perfil e aplica a mesma política de cópia da operação final. Busca,
+paginação e consulta por UUID só retornam cursos próprios ou com autorização
+explícita de cópia, usando a projeção de metadados vigente. O filtro antecede
+o limite, para que cursos não autorizados não esvaziem páginas nem componham
+seu cursor. A leitura não concede edição, acesso adicional a arquivos ou
+aprovação de conteúdo, e a confirmação da cópia volta a validar a autorização.
+
 | Função | Entrada | Identidade aceita |
 | --- | --- | --- |
 | `aralearn-course-api` | aplicação web e Android | sessão AraLearn validada pelo handler |

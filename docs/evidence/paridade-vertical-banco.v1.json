@@ -1711,6 +1711,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.list_copyable_courses_for_actor_v1(p_actor_id uuid, p_query text, p_limit integer, p_before_updated_at timestamp with time zone, p_before_id uuid, p_course_id uuid)",
+      "caseId": "course-independent-copy"
+    },
+    {
       "object": "function:public.list_course_access_for_actor_v3(p_actor_id uuid, p_course_id uuid)",
       "caseId": "person-profile-and-course-access"
     },

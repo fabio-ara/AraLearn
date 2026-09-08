@@ -1046,7 +1046,8 @@
           "^function:public\\.copy_course_for_actor_v1\\(.*\\)$",
           "^function:private\\.(?:can_copy_course_v1|remap_copied_design_v1|course_file_is_referenced_v1|guard_referenced_course_file_delete_v1|current_object_orphan_classification_v1)\\(.*\\)$",
           "^function:public\\.(?:claim_pending_course_pdf_delete_for_actor_v1|complete_current_orphan_removal_for_actor_v1)\\(.*\\)$",
-          "^index:public\\.courses/courses_copy_request_identity_v1$"
+          "^index:public\\.courses/courses_copy_request_identity_v1$",
+          "^function:public\\.list_copyable_courses_for_actor_v1\\(.*\\)$"
         ]
       },
       "ui": [
@@ -1077,6 +1078,14 @@
         {
           "path": "supabase/tests/022_independent_course_copy_test.sql",
           "token": "no_plan()"
+        },
+        {
+          "path": "supabase/migrations/20260908105357_copyable_course_source_reader.sql",
+          "token": "list_copyable_courses_for_actor_v1"
+        },
+        {
+          "path": "supabase/tests/030_copyable_course_sources_test.sql",
+          "token": "no_plan()"
         }
       ],
       "routes": [
@@ -1099,7 +1108,7 @@
         "tests/runtime/course-copy-files-local.test.js",
         "tests/runtime/course-postgres-concurrency.test.js"
       ],
-      "justification": "Um writer valida autorização, revisão e identidade temporal da intenção. O alvo conserva prova de recuperação além do recibo; referências globais de arquivos impedem a limpeza enquanto outra cópia os utiliza. A última referência usa as intenções existentes para confirmar remoção física. Não copia acessos, progresso, anotações pessoais ou credenciais."
+      "justification": "Um writer valida autorização, revisão e identidade temporal da intenção. O alvo conserva prova de recuperação além do recibo; referências globais de arquivos impedem a limpeza enquanto outra cópia os utiliza. A última referência usa as intenções existentes para confirmar remoção física. Não copia acessos, progresso, anotações pessoais ou credenciais. A escolha da origem reutiliza a política de cópia e filtra antes da paginação; não reativa leitores retirados nem concede edição do original compartilhado."
     }
   ]
 }

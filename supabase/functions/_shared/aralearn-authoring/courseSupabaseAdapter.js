@@ -2005,12 +2005,13 @@ export class CourseSupabaseAdapter {
     deadlineAt = null,
     copySourcesOnly = false
   }) {
-    const result = first(await this.rpc(copySourcesOnly ? "list_courses_for_actor_v1" : "list_owned_courses_for_actor_v1", {
+    const result = first(await this.rpc(copySourcesOnly ? "list_copyable_courses_for_actor_v1" : "list_owned_courses_for_actor_v1", {
       p_actor_id: principal.actorId,
       p_query: query || null,
       p_limit: limit,
       p_before_updated_at: beforeUpdatedAt,
-      p_before_id: beforeId
+      p_before_id: beforeId,
+      ...(copySourcesOnly ? { p_course_id: null } : {})
     }, { deadlineAt }));
     if (copySourcesOnly && !Array.isArray(result?.items)) throw new AuthoringApiError(503, "course_service_unavailable", "A lista de cursos autorizados é inválida.");
     return withDeepLink(copySourcesOnly ? { ...result, items: result.items.filter(item => item?.canCopy === true) } : result, this.publicAppUrl);
@@ -2030,12 +2031,24 @@ export class CourseSupabaseAdapter {
   }
 
   async getCourse({ principal, courseId, includeOutline = true, deadlineAt = null, copySourcesOnly = false }) {
-    const result = first(await this.rpc(copySourcesOnly ? "get_course_for_actor_v1" : "get_owned_course_for_actor_v1", {
+    if (copySourcesOnly) {
+      const page = first(await this.rpc("list_copyable_courses_for_actor_v1", {
+        p_actor_id: principal.actorId, p_query: null, p_limit: 1,
+        p_before_updated_at: null, p_before_id: null, p_course_id: courseId
+      }, { deadlineAt }));
+      if (!Array.isArray(page?.items) || page.items.length > 1 ||
+          (page.items.length === 1 && page.items[0]?.courseId !== courseId)) {
+        throw new AuthoringApiError(503, "course_service_unavailable", "A origem autorizada da cópia é inválida.");
+      }
+      const course = page.items[0];
+      if (course?.canCopy !== true) throw new AuthoringApiError(404, "course_not_found", "Curso inexistente ou cópia não autorizada.");
+      return withDeepLink(course, this.publicAppUrl);
+    }
+    const result = first(await this.rpc("get_owned_course_for_actor_v1", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
       p_include_outline: includeOutline
     }, { deadlineAt }));
-    if (copySourcesOnly && result?.canCopy !== true) throw new AuthoringApiError(404, "course_not_found", "Curso inexistente ou cópia não autorizada.");
     return withDeepLink(result, this.publicAppUrl);
   }
 

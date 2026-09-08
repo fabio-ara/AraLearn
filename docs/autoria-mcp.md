@@ -277,6 +277,20 @@ fosse indisponibilidade.
 O MCP usa OAuth 2.1. A conexão solicita o escopo autoral necessário e o servidor
 volta a conferir pessoa, sessão, cliente e consentimento em cada chamada.
 
+Uma recusa de acesso à operação (`not_authorized`) conserva o erro e não pede
+nova conexão. O desafio OAuth fica reservado à autenticação inválida (`401`)
+ou ao erro explícito de escopo insuficiente (`403`, `insufficient_scope`). Essa
+distinção evita repetir o login quando a sessão funciona e apenas uma operação
+foi recusada. O fluxo de escopo segue a
+[especificação MCP de autorização](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#scope-challenge-handling).
+
+Na preparação de `copiar_curso`, o servidor consulta apenas origens que a pessoa
+pode copiar: cursos próprios ou com autorização de cópia vigente. A busca por
+título e a releitura por identidade usam o mesmo leitor paginado; visibilidade
+pública sozinha não concede cópia. Essa preparação não grava o destino. Ao
+confirmar, o comando existente confere novamente acesso e revisão da origem;
+reconectar não concede uma permissão de curso ausente.
+
 O endereço hospedado do servidor é:
 
 `https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-mcp`

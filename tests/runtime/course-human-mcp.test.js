@@ -1546,6 +1546,31 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
   );
 });
 
+test("MCP distingue recusa de acesso da autenticação e do escopo OAuth", async () => {
+  for (const [status, code, challenged] of [
+    [403, "not_authorized", false],
+    [403, "origin_not_allowed", false],
+    [403, "insufficient_scope", true],
+    [401, "authentication_required", true]
+  ]) {
+    const handler = createAuthoringMcpHandler({
+      adapter: { ...adapter(), async listCourses() {
+        throw new AuthoringApiError(status, code, "Recusa sintética.");
+      } },
+      allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const response = await handler(request("tools/call", {
+      name: "copiar_curso", arguments: { curso: "Redes para iniciantes", titulo: "Cópia sintética" }
+    }));
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.result.isError, true);
+    assert.equal(payload.result.structuredContent.error.code, code);
+    assert.equal(Boolean(payload.result._meta?.["mcp/www_authenticate"]), challenged, code);
+  }
+});
+
 test("MCP reduz falha transitória a impacto e retomada sem expor transporte", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: {

@@ -2709,6 +2709,39 @@ async function resolveHumanSourceContentTarget({ adapter, principal, resolved, d
     version: entity.version, content: entity.content?.explanation ?? null };
 }
 
+async function humanTargetSourceReferences({ adapter, principal, course, sources, deadlineAt }) {
+  const details = new Map();
+  const readSource = (sourceId) => {
+    if (!details.has(sourceId)) details.set(sourceId, (async () => {
+      const read = await adapter.getCourseSources({ principal, courseId: course.id,
+        expectedRevision: course.revision, mode: "source", sourceId,
+        targetKind: null, targetId: null, cursor: null, limit: 1, deadlineAt });
+      if (!Array.isArray(read?.items) || read.items.length > 1 || read.nextCursor != null ||
+          read.items.length === 1 && read.items[0].sourceId !== sourceId) {
+        fail("course_service_unavailable", "A Fonte do vínculo não pôde ser identificada.", null, 503);
+      }
+      return read.items[0] ?? null;
+    })());
+    return details.get(sourceId);
+  };
+  return { ...sources, items: await Promise.all(sources.items.map(async (item) => ({
+    ...item, sourceLinks: await Promise.all(item.sourceLinks.map(async (link, index) => {
+      const source = await readSource(link.sourceId);
+      return { ...link, posicao: index + 1,
+        fonte: source ? { localizada: true, titulo: source.title, citacao: source.citationText,
+          status: source.status } : { localizada: false },
+        anchors: link.anchors.map((reference) => {
+          const position = source?.anchors?.findIndex(anchor => anchor.anchorId === reference.anchorId) ?? -1;
+          if (position < 0) return { localizada: false };
+          const anchor = source.anchors[position];
+          return { localizada: true, posicao: position + 1, status: anchor.status,
+            humanLocator: anchor.humanLocator, verificationExcerpt: anchor.verificationExcerpt,
+            selector: anchor.selector, needsReverification: anchor.needsReverification };
+        }) };
+    }))
+  }))) };
+}
+
 HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   adapter, principal, args, deadlineAt
 }) => {
@@ -2736,11 +2769,14 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     deadlineAt
   });
   if (!Array.isArray(sources?.items)) fail('course_service_unavailable', 'A página de fontes é inválida.', null, 503);
-  const context = args.busca === undefined || !Array.isArray(sources?.items)
-    ? sources
+  const readableSources = mode === "target"
+    ? await humanTargetSourceReferences({ adapter, principal, course: resolved.course, sources, deadlineAt })
+    : sources;
+  const context = args.busca === undefined
+    ? readableSources
     : {
-        ...sources,
-        items: sources.items.filter((item) => JSON.stringify(item)
+        ...readableSources,
+        items: readableSources.items.filter((item) => JSON.stringify(item)
           .toLocaleLowerCase("pt-BR")
           .includes(text(args.busca, "busca", 300).toLocaleLowerCase("pt-BR")))
       };
