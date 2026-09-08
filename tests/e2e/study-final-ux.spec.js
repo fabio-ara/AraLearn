@@ -607,7 +607,7 @@ test("níveis e cards compartilham tipografia e a Unidade preserva a descrição
   }))).toEqual({ overflow: "visible", scrollFits: true });
 });
 
-test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ page }) => {
+test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ page }, testInfo) => {
   for (const [width, colorScheme] of [[360, "light"], [390, "dark"], [430, "light"], [1280, "dark"]]) {
     await page.emulateMedia({ colorScheme });
     await page.setViewportSize({ width, height: 800 });
@@ -672,14 +672,15 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       const dock = document.querySelector(".study-next-wrap").getBoundingClientRect();
       const next = document.querySelector(".study-continue-btn").getBoundingClientRect();
       const nextStyle = getComputedStyle(document.querySelector(".study-continue-btn"));
-      const buttons = [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button")]
-        .map((button) => button.getBoundingClientRect());
+      const controls = [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button")];
+      const buttons = controls.map((button) => button.getBoundingClientRect());
       return {
         display: nextStyle.display,
         fitsDock: next.left >= dock.left && next.right <= dock.right + 1,
         fitsViewport: next.left >= 0 && next.right <= innerWidth,
         singleLine: next.height <= 48,
         documentFits: document.documentElement.scrollWidth <= innerWidth,
+        actions: controls.map(button => button.dataset.action),
         buttonWidths: buttons.map(({ width: value }) => Math.round(value)),
         buttonHeights: buttons.map(({ height: value }) => Math.round(value))
       };
@@ -689,7 +690,11 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.fitsViewport, `Runtime ${width}px`).toBe(true);
     expect(runtimeDock.singleLine, `Runtime ${width}px`).toBe(true);
     expect(runtimeDock.documentFits, `Runtime ${width}px`).toBe(true);
-    expect(runtimeDock.buttonWidths, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
-    expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
+    expect(runtimeDock.actions, `Runtime ${width}px`).toEqual([
+      "open-explanation", "toggle-citations", "open-observation", "toggle-review", "previous-study-unit", "next-study-unit"
+    ]);
+    expect(runtimeDock.buttonWidths, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44, 44]);
+    expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44, 44]);
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-six-actions-360.png"), fullPage: true });
   }
 });

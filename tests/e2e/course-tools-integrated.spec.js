@@ -41,15 +41,23 @@ test("ferramentas integradas preservam card, foco e calculadora em oito combina�
     await document.fonts.ready;
   }, project);
   await expect(page.locator(".card-sheet-content .package-calculator")).toHaveCount(0);
-  await expect(page.getByRole("group", { name: "Ferramentas da unidade" }).getByRole("button")).toHaveCount(3);
-  const calculator = page.getByRole("button", { name: "Calculadora", exact: true });
+  const tools = page.getByRole("group", { name: "Ferramentas da unidade" });
+  await expect(tools.getByRole("button")).toHaveCount(1);
+  const launcher = tools.getByRole("button", { name: "Ferramentas da unidade", exact: true });
   for (const width of [360, 390, 430, 1280]) for (const mode of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 850 });
     await page.evaluate(theme => { document.documentElement.dataset.colorMode = theme; }, mode);
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(mode);
     await page.locator(".card-sheet-content").evaluate(node => { node.scrollTop = 100; });
     const before = await page.locator(".card-sheet-content").evaluate(node => node.scrollTop);
-    await calculator.focus(); await page.keyboard.press("Enter");
+    const launcherSize = await launcher.boundingBox();
+    expect(launcherSize.width).toBe(44); expect(launcherSize.height).toBe(44);
+    await launcher.focus(); await page.keyboard.press("Enter");
+    const menu = page.getByRole("dialog", { name: "Ferramentas", exact: true });
+    await expect(menu.locator("[data-open-study-tool]")).toHaveCount(3);
+    await expect(menu.getByRole("button", { name: /Áudio/u })).toBeVisible();
+    await expect(menu.getByRole("button", { name: /Gramática/u })).toBeVisible();
+    await menu.getByRole("button", { name: /Calculadora/u }).click();
     await expect(page.getByRole("dialog", { name: "Calculadora", exact: true })).toBeVisible();
     await page.getByRole("textbox", { name: "Expressão", exact: true }).fill("2^3^2");
     await page.getByRole("button", { name: "Calcular", exact: true }).click();
@@ -65,16 +73,16 @@ test("ferramentas integradas preservam card, foco e calculadora em oito combina�
     expect(dimensions.every(({ height }) => height >= 44)).toBe(true);
     if (width === 390 && mode === "dark") await page.screenshot({ path: testInfo.outputPath("calculator-390-dark.png"), fullPage: true });
     await page.keyboard.press("Escape");
-    await expect(calculator).toBeFocused();
+    await expect(launcher).toBeFocused();
     expect(Math.abs(await page.locator(".card-sheet-content").evaluate(node => node.scrollTop) - before)).toBeLessThanOrEqual(1);
   }
-  await page.getByRole("button", { name: "Mais ferramentas", exact: true }).click();
+  await launcher.click();
   await page.getByRole("dialog").getByRole("button", { name: /Gramática/u }).click();
   await expect(page.getByRole("button", { name: /Primeira leitura/u })).toBeVisible();
   await expect(page.getByRole("button", { name: /Segunda leitura/u })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("grammar-1280-dark.png"), fullPage: true });
   await page.getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Mais ferramentas", exact: true })).toBeFocused();
+  await expect(launcher).toBeFocused();
 });
 
 test("biblioteca conserva configuração e confirma upload perdido sem repetir geração", async ({ page }) => {

@@ -3279,11 +3279,12 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await page.getByRole("button", { name: "Próxima unidade", exact: true }).click();
     await expect(page.locator("[data-inspection-context-position]")).toHaveText("2/60");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
+    await expect(page.locator('section[aria-label="Unidades de estudo"] [data-authoring-debate-prompt]')).toBeHidden();
     const nestedVerticalScrollers = await page.locator(
       'section[aria-label="Unidades de estudo"]'
     ).evaluate((section) => [...section.querySelectorAll("*")].filter((element) => {
       const overflow = getComputedStyle(element).overflowY;
-      return ["auto", "scroll"].includes(overflow) &&
+      return element.checkVisibility({ visibilityProperty: true }) && ["auto", "scroll"].includes(overflow) &&
         element.scrollHeight > element.clientHeight + 1;
     }).map((element) => element.className));
     expect(nestedVerticalScrollers).toEqual([]);

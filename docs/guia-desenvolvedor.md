@@ -252,6 +252,18 @@ conservar modalidade, zoom e deslocamento, e Escape deve retornar primeiro ao
 apoio e depois à unidade. A inspeção visual complementa essas assertivas de
 comportamento; nenhuma delas equivale a um teste de aprendizagem com pessoas.
 
+As jornadas em `course-tools-integrated.spec.js` e `study-final-ux.spec.js`
+também seguem esse contrato: seis ações fixas de 44 × 44 px, incluindo
+Explicação, e uma entrada compacta quando há várias ferramentas. O primeiro
+teste abre o painel, confere calculadora, áudio e gramática e exercita cálculo,
+retorno de foco e rolagem nas quatro larguras e nos dois temas. O segundo
+confere a identidade das seis ações e suas dimensões. A contagem do painel
+de ferramentas não deve ser confundida com a quantidade de botões da fileira;
+agrupar não reduz os alvos nem retira uma ferramenta.
+As guardas de rolagem examinam elementos efetivamente renderizados: o texto
+de debate em um `details` fechado não é um scroller de leitura; as fixtures
+de navegação devem usar rotas canônicas com a revisão do curso.
+
 Depois dos testes focais, execute o conjunto proporcional ao destino:
 
 ```powershell
