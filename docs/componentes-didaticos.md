@@ -347,6 +347,14 @@ na primeira linha e a unidade, entre parênteses, na segunda. Essa divisão
 preserva o texto e o tamanho tipográfico do título em telas estreitas. Quando
 o eixo não declara unidade, o título contém apenas o rótulo.
 
+Em `aralearn.resource.packet_layout`, a largura interna das palavras acompanha
+a escala tipográfica e preserva a proporção em bits entre os campos. Régua e
+campos compartilham o alinhamento após a coluna de offsets. Em telas estreitas,
+o cabeçalho usa rolagem horizontal local; os rótulos mantêm seu tamanho de texto
+e as descrições completas permanecem na legenda. Cada entrada apresenta o
+rótulo, a faixa de bits e a descrição em linhas sucessivas, inclusive com texto
+ampliado.
+
 ### Sessões textuais observáveis
 
 A sessão textual entre pessoa e sistema, identificada por
