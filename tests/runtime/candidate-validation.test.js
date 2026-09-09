@@ -6,7 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   assertReadyBase, assertReadyIdentity, buildCandidatePlan, executeGate, fingerprintInputs,
-  redactOutput, selectGateInputs, validateCandidate, verifyBrowserReport
+  redactOutput, reusableInputReceipt, selectGateInputs, validateCandidate, verifyBrowserReport
 } from "../../scripts/validateCandidate.mjs";
 
 function fixture(t) {
@@ -81,7 +81,9 @@ test("E2E reutiliza prova após texto documental e invalida após alteração de
 
 test("seleção E2E conserva contratos, scripts e raízes desconhecidas; demais gates conservam tudo", () => {
   const irrelevant = ["README.md", "docs/guide.md", "android/app/build.gradle.kts",
-    "supabase/migrations/new.sql", "supabase/tests/new.sql", ".github/workflows/validacao.yml"];
+    "supabase/migrations/new.sql", "supabase/tests/new.sql", ".github/workflows/validacao.yml",
+    "scripts/runLocalIntegration.mjs", "scripts/validateLocalSupabase.ps1", "scripts/validateCandidate.mjs",
+    "tests/runtime/local-integration-runner.test.js"];
   const relevant = ["public/styles.css", "src/ui/Example.js", "tests/e2e/example.spec.js",
     "scripts/runE2eTests.mjs", "scripts/new.mjs", "package-lock.json", "playwright.config.js",
     "docs/autoria-mcp.md", "docs/downloads/aralearn-chatgpt-action-openapi.yaml",
@@ -91,6 +93,35 @@ test("seleção E2E conserva contratos, scripts e raízes desconhecidas; demais 
   for (const gate of ["preflight", "lint", "runtime-focal", "unknown-gate"]) {
     assert.deepEqual(selectGateInputs(files, gate), files);
   }
+});
+
+test("recibo E2E conserva prova após reparo exclusivo da integração e invalida CSS", async t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "public"));
+  fs.mkdirSync(path.join(root, "scripts"));
+  fs.writeFileSync(path.join(root, "public/styles.css"), "body {color:black}");
+  fs.writeFileSync(path.join(root, "tests/e2e/example.spec.js"), "// ordinary browser fixture");
+  let browsers = 0;
+  const execute = async step => {
+    if (step.gate === "frontend-e2e") {
+      browsers++;
+      fs.writeFileSync(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME), JSON.stringify({ stats: { expected: 1, unexpected: 0, skipped: 0, flaky: 0 }, errors: [] }));
+    }
+    return { result: "passed", exitCode: 0 };
+  };
+  await validateCandidate({ root, base: "HEAD", execute, env: {} });
+  assert.equal(browsers, 1);
+  fs.writeFileSync(path.join(root, "scripts/runLocalIntegration.mjs"), "// migration precondition repaired");
+  const reused = await validateCandidate({ root, base: "HEAD", execute, env: {} });
+  assert.equal(browsers, 1);
+  assert.equal(reused.gates.find(gate => gate.gate === "frontend-e2e").reused, true);
+  const previous = JSON.parse(fs.readFileSync(path.join(root, ".validation/frontend-e2e.receipt.json"), "utf8"));
+  assert.equal(reusableInputReceipt(previous, { root, inputs: Object.keys(previous.inputs), step: { args: ["different command"] }, configuration: previous.configuration, fingerprint: "different" }), false);
+  fs.writeFileSync(path.join(root, "public/styles.css"), "body {color:blue}");
+  await validateCandidate({ root, base: "HEAD", execute, env: {} });
+  assert.equal(browsers, 2);
+  await validateCandidate({ root, base: "HEAD", execute, env: { ARALEARN_MODE: "changed" } });
+  assert.equal(browsers, 3);
 });
 
 test("planejamento não executa comandos nem grava recibo e lock impede concorrência", async t => {

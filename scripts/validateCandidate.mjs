@@ -48,9 +48,20 @@ export function fingerprintInputs(root, files, configuration = {}) {
 export function selectGateInputs(files, gate) {
   if (gate !== "frontend-e2e") return [...files];
   // O E2E ordinário usa o runtime web e seus fixtures. Contratos publicados,
-  // scripts e raízes desconhecidas continuam incluídos por segurança.
+  // scripts de build/browser e raízes desconhecidas continuam incluídos.
   return files.filter(file => !isDocumentationPath(file) &&
-    !/^(?:android\/|supabase\/(?:migrations|tests)\/|\.github\/workflows\/)/u.test(file));
+    !/^(?:android\/|supabase\/(?:migrations|tests)\/|\.github\/workflows\/|tests\/(?:runtime|kernel)\/)/u.test(file) &&
+    !/^scripts\/(?:runLocalIntegration\.mjs|validateLocalSupabase\.ps1|validateCandidate\.mjs|classifyCiPaths\.mjs|validationImpact\.mjs|runPreflight\.mjs)$/u.test(file));
+}
+
+export function reusableInputReceipt(previous, { root, inputs, step, configuration, fingerprint }) {
+  if (previous?.result !== "passed") return false;
+  if (previous.fingerprint === fingerprint) return true;
+  if (previous.schemaVersion !== 2 || previous.configuration !== configuration ||
+      previous.command !== digest(JSON.stringify(step)) || !previous.inputs) return false;
+  // A união detecta inputs removidos, além de arquivos novos ou alterados.
+  const consumed = selectGateInputs([...new Set([...inputs, ...Object.keys(previous.inputs)])], step.gate);
+  return consumed.every(file => previous.inputs[file] === fingerprintInputs(root, [file]));
 }
 
 export function buildCandidatePlan(impact) {
@@ -159,7 +170,7 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
       const fingerprint = fingerprintInputs(root, selectGateInputs(inputs, step.gate), { config, step });
       const receiptPath = path.join(output, `${step.gate}.receipt.json`);
       const previous = readJson(receiptPath);
-      if (!force && step.reusable !== false && previous?.result === "passed" && previous.fingerprint === fingerprint) {
+      if (!force && step.reusable !== false && reusableInputReceipt(previous, { root, inputs, step, configuration: report.configuration, fingerprint })) {
         report.gates.push({ ...previous, reused: true });
         continue;
       }
@@ -179,7 +190,11 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
         result.result = "failed";
         result.failed_tests = [...(result.failed_tests || []), "Inputs mudaram durante a prova; execute novamente."];
       }
-      const receipt = { schemaVersion: 1, scope: "preparation", gate: step.gate, fingerprint, tree, configuration: report.configuration, ...result, elapsedMs: Date.now() - started, finishedAt: new Date().toISOString(), log_refs: [logRef] };
+      const indexed = step.gate === "frontend-e2e" ? {
+        command: digest(JSON.stringify(step)),
+        inputs: Object.fromEntries(selectGateInputs(inputs, step.gate).map(file => [file, fingerprintInputs(root, [file])]))
+      } : {};
+      const receipt = { schemaVersion: step.gate === "frontend-e2e" ? 2 : 1, scope: "preparation", gate: step.gate, fingerprint, tree, configuration: report.configuration, ...indexed, ...result, elapsedMs: Date.now() - started, finishedAt: new Date().toISOString(), log_refs: [logRef] };
       fs.writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);
       report.gates.push(receipt);
       if (receipt.result !== "passed") {

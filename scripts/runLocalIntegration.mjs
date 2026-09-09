@@ -105,19 +105,22 @@ async function probeFunctions(projectUrl, fetchImpl) {
   const [api, mcp, actions] = await Promise.all([
     request(`${base}/aralearn-course-api/v1/courses`, { headers: { Origin: "http://127.0.0.1:4182" } }),
     request(`${base}/aralearn-authoring-mcp/.well-known/oauth-protected-resource`),
-    request(`${base}/aralearn-authoring-action/retomar_curso`, {
-      method: "OPTIONS", headers: { Origin: "https://chatgpt.com", "Access-Control-Request-Method": "POST" }
-    })
+    // Kong local pode responder OPTIONS sem encaminhá-lo ao handler. GET é
+    // recusado sem escrita pelo próprio canal e devolve sua identidade efetiva.
+    request(`${base}/aralearn-authoring-action/retomar_curso`, { headers: { Origin: "https://chatgpt.com" } })
   ]);
   let resource;
   try { resource = JSON.parse(mcp.body).resource; } catch { /* endpoint ainda não está pronto */ }
   const apiReady = api.status === 401 && api.body.includes('"authentication_required"') &&
     api.headers.get("content-type")?.includes("application/json");
   const mcpReady = mcp.status === 200 && resource === `${base}/aralearn-authoring-mcp`;
-  const actionsReady = [200, 204].includes(actions.status) &&
-    actions.headers.get("access-control-allow-origin") === "https://chatgpt.com" &&
-    Boolean(actions.headers.get("x-aralearn-authoring-contract"));
-  return { ready: Boolean(apiReady && mcpReady && actionsReady), active: Boolean(apiReady || mcpReady || actionsReady) };
+  const mcpContract = mcp.headers.get("x-aralearn-authoring-contract");
+  const contractsMatch = Boolean(mcpContract) && actions.headers.get("x-aralearn-authoring-contract") === mcpContract;
+  const actionsReady = actions.status === 405 && actions.body.includes('"method_not_allowed"') &&
+    actions.headers.get("content-type")?.includes("application/json") && contractsMatch;
+  return { ready: Boolean(apiReady && mcpReady && actionsReady), active: Boolean(apiReady || mcpReady || actionsReady),
+    details: { api_status: api.status, mcp_status: mcp.status, actions_status: actions.status,
+      mcp_resource_matches: mcpReady, channel_contracts_match: contractsMatch } };
 }
 
 function parseStatus(source) {
@@ -129,6 +132,17 @@ function parseStatus(source) {
   }
   if (!status.ANON_KEY || !status.SERVICE_ROLE_KEY) throw new Error("Credenciais efêmeras locais ausentes.");
   return { projectUrl: url.origin, publishableKey: status.ANON_KEY, adminKey: status.SERVICE_ROLE_KEY };
+}
+
+export async function readLocalMigrationVersions(cwd = ROOT) {
+  const files = (await fs.readdir(path.join(cwd, "supabase/migrations"))).filter(name => name.endsWith(".sql"));
+  const versions = files.map(name => {
+    const match = /^(\d+)_.+\.sql$/u.exec(name);
+    if (!match) throw new Error("Nome de migration não reconhecido.");
+    return match[1];
+  }).sort();
+  if (new Set(versions).size !== versions.length) throw new Error("Versão de migration duplicada no checkout.");
+  return versions;
 }
 
 async function edgeFingerprint(cwd) {
@@ -220,9 +234,7 @@ export async function runLocalIntegration({
       if (result.status !== 0) throw new Error(`A inspeção local por ${command} falhou; nenhum gate foi aprovado.`);
       return result.stdout.trim();
     };
-    const files = (await fs.readdir(path.join(cwd, "supabase/migrations"))).filter(name => name.endsWith(".sql")).sort();
-    if (files.some(name => !/^\d{14}_.+\.sql$/u.test(name))) throw new Error("Nome de migration não reconhecido.");
-    const versions = files.map(name => name.slice(0, 14));
+    const versions = await readLocalMigrationVersions(cwd);
     const applied = JSON.parse(await read("docker", ["exec", "supabase_db_aralearn", "psql", "-U", "postgres", "-d", "postgres",
       "--no-psqlrc", "--quiet", "--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1", "--command",
       "select coalesce(json_agg(version order by version),'[]'::json) from supabase_migrations.schema_migrations;"]));
@@ -256,9 +268,21 @@ export async function runLocalIntegration({
             hostMountPath(mount.Source) === hostMountPath(path.join(cwd, "supabase/functions")))) {
         throw new Error("O Edge Runtime persistente não comprovou o bind somente leitura deste checkout.");
       }
+      // Ler somente esta configuração pública, sem extrair credenciais do
+      // container. O callback de Actions pode usar outra porta local que a UI.
+      const publicAppEntry = await read("docker", ["inspect", "--format",
+        '{{range .Config.Env}}{{if eq (index (split . "=") 0) "ARALEARN_PUBLIC_APP_URL"}}{{println .}}{{end}}{{end}}',
+        "supabase_edge_runtime_aralearn"]);
+      const publicAppUrl = new URL(publicAppEntry ? publicAppEntry.slice("ARALEARN_PUBLIC_APP_URL=".length) : "http://127.0.0.1:4182");
+      if (publicAppUrl.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(publicAppUrl.hostname) ||
+          publicAppUrl.username || publicAppUrl.password || publicAppUrl.pathname !== "/" || publicAppUrl.search || publicAppUrl.hash) {
+        throw new Error("O callback do runtime persistente precisa corresponder a uma aplicação local.");
+      }
+      localEnvironment.ARALEARN_LOCAL_APPLICATION_ORIGIN = publicAppUrl.origin;
       persistentFingerprint = await edgeFingerprint(cwd);
       report.runtime = { mode: "existing", container_id: inspected.id, edge_sha256: persistentFingerprint,
-        base, limitation: "Runtime persistente sem reinício; nenhuma mudança de Edge/configuração relativa à base é admitida." };
+        base, application_origin: publicAppUrl.origin,
+        limitation: "Runtime persistente sem reinício; nenhuma mudança de Edge/configuração relativa à base é admitida." };
       alive = () => true; // Saúde HTTP é relida em cada etapa; nenhum PID/container alheio é encerrado.
       report.cleanup.functions = "existing_preserved";
     } else if (external) {
@@ -281,7 +305,9 @@ export async function runLocalIntegration({
     do {
       if (signal?.aborted) throw new Error("Integração interrompida antes das fixtures.");
       if (!alive()) throw new Error("O processo das Edge Functions encerrou antes da prontidão.");
-      ready = (external || existing || functions.serving()) && (await probeFunctions(local.projectUrl, fetchImpl)).ready;
+      const readiness = await probeFunctions(local.projectUrl, fetchImpl);
+      report.readiness = readiness.details;
+      ready = (external || existing || functions.serving()) && readiness.ready;
       if (!ready) await pause(500);
     } while (!ready && Date.now() < deadline);
     if (!ready) throw new Error("API, MCP e Actions locais não confirmaram prontidão.");

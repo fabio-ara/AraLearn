@@ -236,8 +236,11 @@ Recibos verdes são reutilizados apenas com os mesmos arquivos, seleção,
 dependências instaladas, Node, plataforma e configuração relevante. Mudanças
 durante uma prova a invalidam. `--force` repete provas mesmo com recibos válidos.
 A impressão de arquivos é conservadora. O E2E ordinário desconsidera texto
-documental sem relação com a interface, Android, migrations e workflows; mantém
-contratos, scripts, configuração e caminhos desconhecidos. Os demais recibos
+documental sem relação com a interface, Android, migrations, workflows e runners
+exclusivos de integração. Seus hashes por arquivo permitem preservar a prova
+quando esses consumidores não mudaram; comando, seleção e configuração também
+precisam ser idênticos. Conserva contratos, build, runner de navegador, fixtures,
+configuração e caminhos desconhecidos. Os demais recibos
 consideram o conjunto de arquivos do repositório. Integração com banco mutável é sempre
 executada quando aplicável; um hash de código não atesta o estado do banco.
 Os recibos locais certificam preparação, nunca substituem o manifesto integral.

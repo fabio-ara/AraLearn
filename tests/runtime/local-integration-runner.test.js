@@ -3,11 +3,20 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { captureLocalCommand, runLocalIntegration } from "../../scripts/runLocalIntegration.mjs";
+import { captureLocalCommand, readLocalMigrationVersions, runLocalIntegration } from "../../scripts/runLocalIntegration.mjs";
 
 const URL = "http://127.0.0.1:54321";
 const VERSION = "20260908000000";
 const HOSTED_SECRET = "sb_secret_fixture_hosted_never_forward";
+
+test("inventário real conserva a versão inicial 001 e todas as migrations do AraLearn", async () => {
+  const versions = await readLocalMigrationVersions();
+  const sqlFiles = (await fs.readdir(new globalThis.URL("../../supabase/migrations/", import.meta.url))).filter(name => name.endsWith(".sql"));
+  assert.equal(versions[0], "001");
+  assert.equal(versions.length, sqlFiles.length);
+  assert.equal(new Set(versions).size, versions.length);
+  assert.ok(versions.includes("20260908023156"));
+});
 
 async function fixture(t, options = {}) {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-integration-"));
@@ -17,18 +26,21 @@ async function fixture(t, options = {}) {
   await fs.writeFile(path.join(cwd, "supabase/config.toml"), 'project_id="aralearn"');
   await fs.writeFile(path.join(cwd, "supabase/functions/index.ts"), "// fixture");
   await fs.writeFile(path.join(cwd, `supabase/migrations/${VERSION}_fixture.sql`), "select 1;");
-  const calls = [], started = [], stopped = [];
+  const calls = [], started = [], stopped = [], probes = [];
   let active = Boolean(options.active), alive = true;
   const environment = { PATH: process.env.PATH, SUPABASE_SECRET_KEY: HOSTED_SECRET,
     ARALEARN_SUPABASE_URL: "https://hosted.example.invalid", OPENAI_API_KEY: "sk-fixture-never-forward",
     ARALEARN_E2E_REUSE_SERVER: "1", ...options.environment };
-  const fetchImpl = async input => {
+  const fetchImpl = async (input, init) => {
+    probes.push({ input, method: init.method || "GET" });
     if (!active) return new Response("inactive", { status: 503 });
     if (input.includes("aralearn-course-api")) return new Response('{"error":{"code":"authentication_required"}}',
       { status: 401, headers: { "content-type": "application/json" } });
-    if (input.includes("aralearn-authoring-mcp")) return Response.json({ resource: `${URL}/functions/v1/aralearn-authoring-mcp` });
-    return new Response(null, { status: 204, headers: { "access-control-allow-origin": "https://chatgpt.com",
-      "x-aralearn-authoring-contract": "synthetic-local-contract" } });
+    if (input.includes("aralearn-authoring-mcp")) return Response.json({ resource: `${URL}/functions/v1/aralearn-authoring-mcp` },
+      { headers: { "x-aralearn-authoring-contract": "synthetic-local-contract" } });
+    if (init.method === "OPTIONS") return new Response(null, { status: 200, headers: { "access-control-allow-origin": "*" } });
+    return Response.json({ error: { code: "method_not_allowed" } }, { status: 405,
+      headers: { "access-control-allow-origin": "*", "x-aralearn-authoring-contract": "synthetic-local-contract" } });
   };
   const start = (command, args) => {
     started.push({ command, args }); active = true;
@@ -41,6 +53,8 @@ async function fixture(t, options = {}) {
       API_URL: options.url || URL, ANON_KEY: "publica-local-sintetica", SERVICE_ROLE_KEY: "admin-local-sintetica"
     }) };
     if (command === "git") return { status: 0, stdout: args.includes("--name-status") ? options.migrationChanges || "" : options.edgeChanges || "" };
+    if (command === "docker" && args.join(" ").includes("ARALEARN_PUBLIC_APP_URL")) return { status: 0,
+      stdout: `ARALEARN_PUBLIC_APP_URL=${options.applicationOrigin || "http://127.0.0.1:4185"}` };
     if (command === "docker") return { status: 0, stdout: args[0] === "inspect" ? JSON.stringify({
       id: "container-local-sintetico", state: { Running: true, Restarting: false },
       mounts: [{ Type: "bind", RW: false, Source: options.foreignMount || path.join(cwd, "supabase/functions") }]
@@ -74,7 +88,7 @@ async function fixture(t, options = {}) {
   };
   const execute = (argv = []) => runLocalIntegration({ cwd, argv, environment, run, start, fetchImpl,
     processAlive: pid => pid === 1234 && options.externalAlive !== false, pause: async () => {} });
-  return { cwd, calls, started, stopped, environment, execute };
+  return { cwd, calls, started, stopped, probes, environment, execute };
 }
 
 test("integração prepara ambiente uma vez, executa todas as provas locais serialmente e encerra só suas funções", async t => {
@@ -97,6 +111,8 @@ test("integração prepara ambiente uma vez, executa todas as provas locais seri
   assert.ok(e2e.args.includes("--forbid-only"));
   assert.ok(e2e.env.PLAYWRIGHT_JSON_OUTPUT_NAME.startsWith(path.join(f.cwd, ".validation/private")));
   assert.deepEqual(report.cleanup, { fixtures: "completed", functions: "stopped" });
+  assert.ok(f.probes.filter(probe => probe.input.includes("aralearn-authoring-action")).every(probe => probe.method === "GET"));
+  assert.equal(report.readiness.channel_contracts_match, true);
   for (const ref of report.log_refs) assert.ok(!(await fs.readFile(path.join(f.cwd, ref), "utf8")).includes(HOSTED_SECRET));
 });
 
@@ -126,6 +142,19 @@ test("URL hospedada, migration ausente ou alterada bloqueiam antes de qualquer f
     assert.equal(report.result, "failed"); assert.equal(f.started.length, 0);
     assert.equal(report.cleanup.fixtures, "not_started");
   }
+});
+
+test("migration curta é confrontada como texto sem perder zeros e duplicatas bloqueiam", async t => {
+  const f = await fixture(t, { applied: ["001", VERSION] });
+  await fs.writeFile(path.join(f.cwd, "supabase/migrations/001_initial.sql"), "select 1;");
+  assert.equal((await f.execute()).result, "passed");
+  await fs.writeFile(path.join(f.cwd, "supabase/migrations/001_duplicate.sql"), "select 2;");
+  const duplicated = await f.execute();
+  assert.equal(duplicated.result, "failed");
+  assert.match(duplicated.error, /duplicada/u);
+  const mismatch = await fixture(t, { applied: ["1", VERSION] });
+  await fs.writeFile(path.join(mismatch.cwd, "supabase/migrations/001_initial.sql"), "select 1;");
+  assert.equal((await mismatch.execute()).result, "failed");
 });
 
 test("funções alheias ativas são preservadas no modo padrão", async t => {
@@ -158,9 +187,12 @@ test("runtime persistente exige mount correto, base sem delta e fingerprint est�
   const f = await fixture(t, { active: true });
   const report = await f.execute(["--functions-existing", "--base", "origin/main"]);
   assert.equal(report.result, "passed"); assert.equal(report.runtime.mode, "existing");
+  assert.equal(report.runtime.application_origin, "http://127.0.0.1:4185");
+  assert.equal(f.calls.find(call => call.args[0].includes("course-authoring-channels-local"))
+    .env.ARALEARN_LOCAL_APPLICATION_ORIGIN, "http://127.0.0.1:4185");
   assert.equal(report.cleanup.functions, "existing_preserved");
   assert.equal(f.started.length, 0); assert.equal(f.stopped.length, 0);
-  for (const option of [{ foreignMount: os.tmpdir() }, { edgeChanges: "supabase/functions/index.ts" },
+  for (const option of [{ foreignMount: os.tmpdir() }, { applicationOrigin: "https://hosted.example.invalid" }, { edgeChanges: "supabase/functions/index.ts" },
     { migrationChanges: "A\tsupabase/migrations/new.sql" }, { changeEdgeDuringProof: true }]) {
     const invalid = await fixture(t, { active: true, ...option });
     assert.equal((await invalid.execute(["--functions-existing"])).result, "failed");
