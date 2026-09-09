@@ -11,6 +11,15 @@ import {
   normalizeCourseAuthoringProfileChange
 } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AuthoringApiError } from "./errors.js";
+import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
+  from "../aralearn/runtime/domain/courseContentReview.js";
+import { createMapApprovalReference, openMapApprovalReference } from "./courseMapApproval.js";
+import { applyCurricularMapSlice, normalizeCurricularMapSlice, inspectCurricularMapCompleteness,
+  normalizeCurricularMapRead, normalizeCurricularMapChange }
+  from "../aralearn/runtime/domain/courseCurricularMapSlices.js";
+import { AuthoringProcessPreferencesError, normalizeAuthoringProcessPreferencesRead,
+  normalizeAuthoringProcessPreferencesSave, normalizeAuthoringProcessPreferencesChange }
+  from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
@@ -42,7 +51,10 @@ import {
   normalizeCourseAnchoredAnnotationCommand,
   normalizeCourseAnchoredAnnotationPage,
   normalizeCourseAnchoredAnnotationQuery,
-  normalizeCourseAnchoredAnnotationReadOptions
+  normalizeCourseAnchoredAnnotationReadOptions,
+  normalizeCourseObservationCorrectionReferences,
+  normalizeCourseObservationCorrectionConfirmations,
+  normalizeCourseObservationCorrection
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import {
   CourseAuthoringAnalyticsError,
@@ -52,6 +64,7 @@ import {
 import { CourseAuthoringBasisError } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
 import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExport, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { composeCourseDocument } from "../aralearn/runtime/domain/courseEntities.js";
+import { collectAppliedExplanationBases } from "../aralearn/runtime/domain/appliedExplanationBasis.js";
 
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const sameCourseMedia = (left, right) => ["contentHash", "byteSize", "mediaType"].every(key => left?.[key] === right?.[key]);
@@ -324,6 +337,13 @@ function validInspectionAnalysisIdeas(value) {
   return true;
 }
 
+function validInspectionPracticeEvidence(value) {
+  return Array.isArray(value) && value.length <= 128 && value.every((entry) =>
+    exactRecord(entry, new Set(["name", "description"])) &&
+    typeof entry.name === "string" && entry.name.trim() && entry.name.length <= 2_000 &&
+    typeof entry.description === "string" && entry.description.length <= 4_000);
+}
+
 function validInspectionDesignState(value) {
   if (!exactRecord(value, new Set(["application"]))) return false;
   const application = value.application;
@@ -331,13 +351,16 @@ function validInspectionDesignState(value) {
   if (!jsonRecord(application) ||
       new TextEncoder().encode(JSON.stringify(application)).byteLength > 65_536 ||
       !exactRecord(application, new Set([
-        "mode", "componentRefs", "analysisIdeas"
+        "mode", "componentRefs", "analysisIdeas",
+        ...(Object.hasOwn(application, "practiceEvidence") ? ["practiceEvidence"] : [])
       ])) ||
       !new Set(["expository", "practice", "mixed"]).has(application.mode) ||
       !Array.isArray(application.componentRefs) || application.componentRefs.length > 64 ||
       application.componentRefs.some((componentRef) =>
         typeof componentRef !== "string" || !componentRef.trim() || componentRef.length > 500) ||
-      !validInspectionAnalysisIdeas(application.analysisIdeas)) return false;
+      !validInspectionAnalysisIdeas(application.analysisIdeas) ||
+      Object.hasOwn(application, "practiceEvidence") &&
+        !validInspectionPracticeEvidence(application.practiceEvidence)) return false;
   return true;
 }
 
@@ -368,7 +391,11 @@ function normalizeInspectionPage(
     invalidInspectionRead();
   }
   const items = value.items.map((item) => {
-    if (!exactRecord(item, INSPECTION_ITEM_FIELDS) || !jsonRecord(item.studyUnit) ||
+    const itemFields = new Set(INSPECTION_ITEM_FIELDS);
+    for (const field of ["contentReview", "pendingAuthoringObservationCount"]) {
+      if (item && Object.hasOwn(item, field)) itemFields.add(field);
+    }
+    if (!exactRecord(item, itemFields) || !jsonRecord(item.studyUnit) ||
         !exactRecord(item.curriculumPath, new Set([
           "module", "lesson", "didacticMicrosequence"
         ]))) {
@@ -397,8 +424,21 @@ function normalizeInspectionPage(
     }
     const studyUnitValidation = validateCourseEntityContent("study_unit", item.studyUnit);
     if (!studyUnitValidation.valid) invalidInspectionRead();
+    const reviewMetadata = {};
+    if (Object.hasOwn(item, "contentReview")) {
+      try {
+        reviewMetadata.contentReview = normalizeCourseContentReviewState(item.contentReview);
+      } catch {
+        invalidInspectionRead();
+      }
+    }
+    if (Object.hasOwn(item, "pendingAuthoringObservationCount")) {
+      if (!nonNegativeSafeInteger(item.pendingAuthoringObservationCount)) invalidInspectionRead();
+      reviewMetadata.pendingAuthoringObservationCount = item.pendingAuthoringObservationCount;
+    }
     return {
       studyUnit: structuredClone(studyUnitValidation.normalized),
+      ...reviewMetadata,
       version: Number(item.version),
       updatedAt: item.updatedAt,
       ordinal: Number(item.ordinal),
@@ -953,7 +993,8 @@ function normalizeCourseDesignDatabaseValue(normalize) {
 function normalizeProfileValue(normalize, { database = false } = {}) {
   try { return normalize(); }
   catch (error) {
-    if (!(error instanceof AuthoringProfilesError) && !(error instanceof CourseDesignParametersError)) throw error;
+    if (!(error instanceof AuthoringProfilesError) && !(error instanceof CourseDesignParametersError) &&
+        !(error instanceof AuthoringProcessPreferencesError)) throw error;
     throw new AuthoringApiError(database ? 503 : 422,
       database ? "course_service_unavailable" : error.code,
       database ? "O serviço devolveu um contrato de perfil inválido." : error.message);
@@ -2057,7 +2098,7 @@ export class CourseSupabaseAdapter {
     courseId,
     deadlineAt = null
   }) {
-    const result = first(await this.rpc("get_owned_course_instructional_plan_for_actor_v3", {
+    const result = first(await this.rpc("get_owned_course_instructional_plan_for_actor_v4", {
       p_actor_id: principal.actorId,
       p_course_id: courseId
     }, { deadlineAt }));
@@ -2075,7 +2116,9 @@ export class CourseSupabaseAdapter {
         "O serviço devolveu um planejamento curricular inválido."
       );
     }
-    return withDeepLink(result, this.publicAppUrl, "planning");
+    const mapApprovalReference = result.plan.curriculumMapStatus === "absent" ? null
+      : createMapApprovalReference({ principal, courseId, basis: result.approvalBasis });
+    return withDeepLink({ ...result, mapApprovalReference }, this.publicAppUrl, "planning");
   }
 
   async listAuthoringProfiles({ principal, deadlineAt = null }) {
@@ -2083,6 +2126,22 @@ export class CourseSupabaseAdapter {
       p_actor_id: principal.actorId
     }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
     return normalizeProfileValue(() => normalizeAuthoringProfileList(value), { database: true });
+  }
+
+  async getAuthoringProcessPreferences({ principal, deadlineAt = null }) {
+    const value = first(await this.rpc("get_authoring_process_preferences_for_actor_v1", {
+      p_actor_id: principal.actorId
+    }, { deadlineAt, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    return normalizeProfileValue(() => normalizeAuthoringProcessPreferencesRead(value), { database: true });
+  }
+
+  async saveAuthoringProcessPreferences({ principal, deadlineAt = null, ...input }) {
+    const command = normalizeProfileValue(() => normalizeAuthoringProcessPreferencesSave(input));
+    const value = first(await this.rpc("save_authoring_process_preferences_for_actor_v1", {
+      p_actor_id: principal.actorId, p_expected_revision: command.expectedRevision,
+      p_preferences: command.preferences, p_request_id: command.requestId
+    }, { deadlineAt, retry: false, responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES }));
+    return normalizeProfileValue(() => normalizeAuthoringProcessPreferencesChange(value, command), { database: true });
   }
 
   saveAuthoringProfile(value) {
@@ -2830,7 +2889,7 @@ export class CourseSupabaseAdapter {
       p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
       p_visibility: visibility, p_public_file_access: publicFileAccess,
       p_confirmed: confirmed, p_request_id: requestId
-    }, { deadlineAt }));
+    }, { deadlineAt, retry: false }));
   }
 
   async setCourseSourceFileAccess({ principal, courseId, expectedRevision, sourceId,
@@ -2839,7 +2898,7 @@ export class CourseSupabaseAdapter {
       p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
       p_source_id: sourceId, p_source_revision: sourceRevision, p_content_hash: contentHash,
       p_public_file_access: publicFileAccess, p_request_id: requestId
-    }, { deadlineAt }));
+    }, { deadlineAt, retry: false }));
   }
 
   async manageCourseAccess({
@@ -2862,7 +2921,7 @@ export class CourseSupabaseAdapter {
       p_confirmed: confirmed,
       p_request_id: requestId,
       p_can_copy: canCopy
-    }, { deadlineAt }));
+    }, { deadlineAt, retry: false }));
   }
 
   async maintainCourse({
@@ -2879,7 +2938,7 @@ export class CourseSupabaseAdapter {
       p_operation: operation,
       p_confirmed: confirmed,
       p_request_id: requestId
-    }, { deadlineAt, timeoutMs: 60_000 });
+    }, { deadlineAt, timeoutMs: 60_000, retry: false });
     let result = first(await execute());
     if (result?.contract === "aralearn.course-lifecycle-preparation.v1") {
       if (!exactRecord(result, new Set(["contract", "courseId", "operation", "requestId", "status"])) ||
@@ -2916,7 +2975,7 @@ export class CourseSupabaseAdapter {
       p_actor_id: principal.actorId, p_source_course_id: request.sourceCourseId,
       p_expected_source_revision: request.expectedSourceRevision, p_title: request.title,
       p_confirmed: request.confirmed, p_request_id: request.requestId, p_requested_at: request.requestedAt
-    }, { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 16384 }));
+    }, { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 16384, retry: false }));
     try { return normalizeCourseCopyResult(raw, request); }
     catch (error) { if (!(error instanceof CourseCopyError)) throw error; throw new AuthoringApiError(503, "invalid_course_copy_result", "A cópia não pôde ser confirmada; preserve o mesmo pedido para retomar."); }
   }
@@ -3009,8 +3068,83 @@ export class CourseSupabaseAdapter {
       p_title: title,
       p_objective: objective,
       p_request_id: requestId
-    }, { deadlineAt }));
+    }, { deadlineAt, retry: false }));
     return withDeepLink(result, this.publicAppUrl);
+  }
+
+  async getCourseContentReview({ principal, courseId, targetKind, targetId, deadlineAt = null }) {
+    const value = first(await this.rpc("get_course_content_review_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_target_kind: targetKind, p_target_id: targetId
+    }, { deadlineAt }));
+    try { return normalizeCourseContentReview(value, { courseId, targetKind, targetId }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "A leitura de revisão não corresponde ao objeto."); }
+  }
+
+  async setCourseContentReview({ principal, courseId, targetKind, targetId, expectedBasisHash, reviewed, requestId, deadlineAt = null }) {
+    const value = first(await this.rpc("set_course_content_review_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_target_kind: targetKind, p_target_id: targetId,
+      p_expected_basis_hash: expectedBasisHash, p_reviewed: reviewed, p_request_id: requestId
+    }, { deadlineAt, retry: false }));
+    try { return normalizeCourseContentReviewChange(value, { courseId, targetKind, targetId, expectedBasisHash, reviewed }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "A revisão salva não pôde ser confirmada. Preserve a tentativa."); }
+  }
+
+  async setCourseContentReviewPolicy({ principal, courseId, expectedRevision, policy, requestId, deadlineAt = null }) {
+    const value = first(await this.rpc("set_course_content_review_policy_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
+      p_policy: policy, p_request_id: requestId
+    }, { deadlineAt, retry: false }));
+    try { return normalizeCourseContentReviewPolicyChange(value, { courseId, policy }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "A política salva não pôde ser confirmada. Preserve a tentativa."); }
+  }
+
+  async commitCourseObservationCorrections({ principal, courseId, requestId, expectedRevision,
+    expectedStudyUnitVersion = null, upserts, sourceAttributionApplications = [], applicationOrigin = null,
+    observations, deadlineAt = null }) {
+    const references = normalizeCourseAnchoredAnnotationsInputValue(() => normalizeCourseObservationCorrectionReferences(observations));
+    if (!references.length) throw new AuthoringApiError(422, "invalid_course_observation_correction", "Identifique as versões tratadas pela correção.");
+    const sources = normalizeCourseSourcesInputValue(() => normalizeSourceAttributionApplications(sourceAttributionApplications));
+    const result = first(await this.rpc("commit_course_observation_corrections_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
+      p_expected_study_unit_version: expectedStudyUnitVersion, p_upserts: upserts,
+      p_source_attribution_applications: sources, p_channel: authoringChannel(principal),
+      p_application_origin: applicationOrigin, p_request_id: requestId, p_observations: references
+    }, { deadlineAt, timeoutMs: 40_000, retry: false }));
+    const receipt = this.#observationCorrectionResult(result, { courseId, requestId });
+    if (receipt.status !== "persisted" || JSON.stringify(receipt.observations.map(({ annotationId, annotationVersion, targetKind, targetId }) =>
+      ({ annotationId, annotationVersion, targetKind, targetId }))) !== JSON.stringify(references)) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A correção não confirmou as versões enviadas. Preserve a tentativa.");
+    }
+    return receipt;
+  }
+
+  #observationCorrectionResult(value, { courseId, requestId }) {
+    const result = normalizeCourseAnchoredAnnotationsDatabaseValue(() => normalizeCourseObservationCorrection(value));
+    if (result.courseId !== courseId || result.requestId !== requestId) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "O recibo pertence a outra correção.");
+    }
+    return result;
+  }
+
+  async getCourseObservationCorrection({ principal, courseId, requestId, deadlineAt = null }) {
+    const result = first(await this.rpc("get_course_observation_correction_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_request_id: requestId
+    }, { deadlineAt }));
+    return this.#observationCorrectionResult(result, { courseId, requestId });
+  }
+
+  async confirmCourseObservationCorrection({ principal, courseId, requestId, confirmations, deadlineAt = null }) {
+    const normalized = normalizeCourseAnchoredAnnotationsInputValue(() => normalizeCourseObservationCorrectionConfirmations(confirmations));
+    const result = first(await this.rpc("confirm_course_observation_correction_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_request_id: requestId, p_confirmations: normalized
+    }, { deadlineAt, retry: false }));
+    const receipt = this.#observationCorrectionResult(result, { courseId, requestId });
+    if (receipt.status === "persisted" && normalized.some(confirmation => !receipt.observations.some(reference =>
+      reference.annotationId === confirmation.annotationId && reference.annotationVersion === confirmation.annotationVersion &&
+      reference.effectHash === confirmation.effectHash))) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A confirmação não corresponde às versões e aos efeitos enviados. Preserve a tentativa.");
+    }
+    return receipt;
   }
 
   async saveCourseCurricularMap({
@@ -3021,6 +3155,7 @@ export class CourseSupabaseAdapter {
     expectedPlanVersion,
     approved,
     curricularMap,
+    requestFingerprint = null,
     deadlineAt = null
   }) {
     if (typeof approved !== "boolean" || !jsonRecord(curricularMap)) {
@@ -3031,7 +3166,7 @@ export class CourseSupabaseAdapter {
       );
     }
     const normalizedMap = structuredClone(curricularMap);
-    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify({
+    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify(requestFingerprint ?? {
       courseId,
       expectedCourseRevision,
       expectedPlanVersion,
@@ -3050,7 +3185,7 @@ export class CourseSupabaseAdapter {
         p_request_id: requestId,
         p_request_hash: requestHash
       },
-      { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024 }
+      { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024, retry: false }
     ));
     const fields = new Set([
       "contract", "courseId", "courseRevision", "planVersion",
@@ -3076,6 +3211,96 @@ export class CourseSupabaseAdapter {
       );
     }
     return withDeepLink(result, this.publicAppUrl, "planning");
+  }
+
+  async approveCourseCurricularMap({ principal, reference, courseId = null, deadlineAt = null }) {
+    const basis = openMapApprovalReference(reference, principal);
+    if (courseId !== null && basis.courseId !== courseId) {
+      throw new AuthoringApiError(422, "invalid_map_approval_reference", "A referência pertence a outro curso.");
+    }
+    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify(basis)));
+    const validate = value => normalizeCurricularMapChange(value, { courseId: basis.courseId,
+      expectedCourseRevision: basis.courseRevision, expectedPlanVersion: basis.planVersion, approval: "approved" });
+    let result;
+    try {
+      result = first(await this.rpc("approve_course_curricular_map_for_actor_v1", {
+        p_actor_id: principal.actorId, p_course_id: basis.courseId,
+        p_expected_course_revision: basis.courseRevision, p_expected_plan_version: basis.planVersion,
+        p_expected_basis_hash: basis.basisHash, p_request_id: basis.requestId, p_request_hash: requestHash
+      }, { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024, retry: false }));
+      validate(result);
+    } catch (error) {
+      if (Number(error?.status) >= 400 && Number(error.status) < 500 && ![408, 425, 429].includes(Number(error.status))) throw error;
+      let recovered = null;
+      try {
+        const receipt = first(await this.rpc("get_course_change_receipt_for_actor_v1", {
+          p_actor_id: principal.actorId, p_course_id: basis.courseId, p_operation: "save_course_curricular_map_v1",
+          p_request_id: basis.requestId, p_request_hash: requestHash
+        }, { deadlineAt, responseLimitBytes: 32 * 1024 }));
+        if (receipt?.status === "confirmed") recovered = validate(receipt.result);
+      } catch { /* Preserve the original attempt when the reread also fails. */ }
+      if (!recovered) throw new AuthoringApiError(409, "course_write_uncertain",
+        "A aprovação ainda precisa ser reconciliada pela mesma referência.",
+        { requestId: basis.requestId, targetCourseId: basis.courseId, operation: "approve_curricular_map" });
+      result = recovered;
+    }
+    return withDeepLink(result, this.publicAppUrl, "planning");
+  }
+
+  async getCourseCurricularMap({ principal, courseId, deadlineAt = null }) {
+    const value = first(await this.rpc("get_owned_course_curricular_map_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId
+    }, { deadlineAt }));
+    try {
+      const { approvalBasis, ...read } = value;
+      if (approvalBasis?.courseRevision !== read.courseRevision || approvalBasis?.planVersion !== read.planVersion) throw new TypeError("Base incoerente.");
+      const mapApprovalReference = createMapApprovalReference({ principal, courseId, basis: approvalBasis });
+      return normalizeCurricularMapRead({ ...read, mapApprovalReference, completeness: inspectCurricularMapCompleteness(read.map) }, courseId);
+    } catch {
+      throw new AuthoringApiError(503, "course_service_unavailable", "O mapa persistido não pôde ser verificado.");
+    }
+  }
+
+  async saveCourseCurricularMapSlice({ principal, courseId, expectedCourseRevision, expectedPlanVersion, command, requestId, deadlineAt = null }) {
+    let normalized;
+    try { normalized = normalizeCurricularMapSlice(command); }
+    catch (error) { throw new AuthoringApiError(422, "invalid_course_curricular_map_slice", error.message); }
+    const fingerprint = { operation: "curricular_map_slice", courseId, expectedCourseRevision, expectedPlanVersion, command: normalized };
+    const hash = await sha256Hex(new TextEncoder().encode(JSON.stringify(fingerprint)));
+    const lookup = async () => {
+      const receipt = first(await this.rpc("get_course_change_receipt_for_actor_v1", {
+        p_actor_id: principal.actorId, p_course_id: courseId, p_operation: "save_course_curricular_map_v1",
+        p_request_id: requestId, p_request_hash: hash
+      }, { deadlineAt, responseLimitBytes: 32 * 1024 }));
+      if (receipt?.status === "confirmed") {
+        try { return normalizeCurricularMapChange(receipt.result, { courseId, expectedCourseRevision, expectedPlanVersion, approval: "draft" }); }
+        catch { throw new AuthoringApiError(503, "course_service_unavailable", "O recibo não confirma este recorte curricular."); }
+      }
+      if (!exactRecord(receipt, new Set(["status"])) || receipt.status !== "absent") {
+        throw new AuthoringApiError(503, "course_service_unavailable", "A tentativa do recorte não pôde ser reconciliada.");
+      }
+      return null;
+    };
+    const previous = await lookup();
+    if (previous) return withDeepLink(previous, this.publicAppUrl, "planning");
+    const current = await this.getCourseCurricularMap({ principal, courseId, deadlineAt });
+    if (current.courseRevision !== expectedCourseRevision || current.planVersion !== expectedPlanVersion) {
+      throw new AuthoringApiError(409, "stale_course_state", "O mapa mudou. Releia o recorte antes de editar.");
+    }
+    let map;
+    try { map = applyCurricularMapSlice(current.map, normalized); }
+    catch (error) { throw new AuthoringApiError(422, "invalid_course_curricular_map_slice", error.message); }
+    try {
+      return await this.saveCourseCurricularMap({ principal, courseId, expectedCourseRevision, expectedPlanVersion,
+        approved: false, curricularMap: map, requestId, requestFingerprint: fingerprint, deadlineAt });
+    } catch (error) {
+      if (!(error instanceof TypeError) && Number(error?.status) < 500 && !["request_timeout", "course_service_unavailable"].includes(error?.code)) throw error;
+      const confirmed = await lookup().catch(() => null);
+      if (confirmed) return withDeepLink(confirmed, this.publicAppUrl, "planning");
+      throw new AuthoringApiError(409, "course_write_uncertain", "O recorte ainda não teve confirmação. Preserve esta tentativa para reconciliar seu resultado.", {
+        requestId, operation: "curricular_map_slice", targetCourseId: courseId
+      });
+    }
   }
 
 
@@ -3109,7 +3334,7 @@ export class CourseSupabaseAdapter {
         p_request_id: requestId,
         p_request_hash: requestHash
       },
-      { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024 }
+      { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024, retry: false }
     ));
     let normalized;
     try { normalized = normalizeCourseAuthoringPartChange(result, command); }
@@ -3143,6 +3368,7 @@ export class CourseSupabaseAdapter {
       p_channel: authoringChannel(principal)
     }, {
       deadlineAt,
+      retry: false,
       timeoutMs: 40_000,
       responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES
     }));
@@ -3188,6 +3414,7 @@ export class CourseSupabaseAdapter {
         p_request_id: requestId
       }, {
         deadlineAt,
+        retry: false,
         timeoutMs: 40_000,
         responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
       }
@@ -3262,6 +3489,7 @@ export class CourseSupabaseAdapter {
         {
           deadlineAt,
           timeoutMs: 40_000,
+          retry: false,
           responseLimitBytes: COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES
         }
       ));
@@ -3343,6 +3571,7 @@ export class CourseSupabaseAdapter {
         {
           deadlineAt,
           timeoutMs: 40_000,
+          retry: false,
           responseLimitBytes: 32 * 1024
         }
       ));
@@ -3438,6 +3667,7 @@ export class CourseSupabaseAdapter {
       {
         deadlineAt,
         timeoutMs: 60_000,
+        retry: false,
         responseLimitBytes: 32 * 1024
       }
     ));
@@ -3539,7 +3769,7 @@ export class CourseSupabaseAdapter {
     const result = first(await this.rpc(
       "commit_course_composition_for_actor_v1",
       rpcInput,
-      { deadlineAt, timeoutMs: 40_000 }
+      { deadlineAt, timeoutMs: 40_000, retry: false }
     ));
     return withDeepLink(result, this.publicAppUrl);
   }
@@ -3664,7 +3894,10 @@ export class CourseSupabaseAdapter {
     if (current?.courseId !== courseId || current.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou durante a exportação.");
     let result;
     try {
-      result = assembleCourseAuthoringExport({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows), explanationSources });
+      result = assembleCourseAuthoringExport({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows, { allowIncompleteCurriculum: true }), explanationSources,
+        appliedExplanationBases: collectAppliedExplanationBases(rows, courseId),
+        contentReviews: rows.filter(row => row.contentReview != null && (row.entityType === "study_unit" || row.entityType === "microsequence" && row.content?.explanation))
+          .map(row => ({ targetKind: row.entityType === "study_unit" ? "study_unit" : "microsequence_explanation", targetId: row.entityId, contentReview: row.contentReview })) });
     } catch {
       throw new AuthoringApiError(503, "course_service_unavailable", "O serviço devolveu um artefato de curso inválido.");
     }

@@ -6,6 +6,9 @@ import { AuthoringApiError } from "./errors.js";
 import { courseUuid, readCourseJsonBody } from "./courseProtocol.js";
 import { normalizeCourseAuthoringComparisonRequest } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { CourseAuthoringBasisError } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
+import { AuthoringProcessPreferencesError, normalizeAuthoringProcessPreferencesSave }
+  from "../aralearn/runtime/domain/authoringProcessPreferences.js";
+import { normalizeCurricularMapSlice } from "../aralearn/runtime/domain/courseCurricularMapSlices.js";
 import {
   AuthoringProfilesError, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
   normalizeCourseAuthoringProfileRequest
@@ -58,7 +61,8 @@ function fail(code, message, details = null, status = 422) {
 function normalizeProfileInput(operation) {
   try { return operation(); }
   catch (error) {
-    if (!(error instanceof AuthoringProfilesError) && !(error instanceof CourseDesignParametersError)) throw error;
+    if (!(error instanceof AuthoringProfilesError) && !(error instanceof CourseDesignParametersError) &&
+        !(error instanceof AuthoringProcessPreferencesError)) throw error;
     throw new AuthoringApiError(422, error.code, error.message);
   }
 }
@@ -1036,6 +1040,43 @@ function validateMaintenanceAction(body) {
 
 export async function executeCourseRoute({ request, route, adapter, principal, deadlineAt = null }) {
   if (!adapter) throw new TypeError("Adaptador de Curso obrigatório.");
+  if (route.name === "getCourseCurricularMap") {
+    assertPrincipal(principal);
+    return { requestId: null, data: await adapter.getCourseCurricularMap({ principal, courseId: route.courseId, deadlineAt }) };
+  }
+  if (route.name === "saveCourseCurricularMapSlice") {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    exactFields(body, new Set(["requestId", "expectedCourseRevision", "expectedPlanVersion", "command"]));
+    let command;
+    try { command = normalizeCurricularMapSlice(body.command); }
+    catch (error) { fail("invalid_course_curricular_map_slice", error.message); }
+    const requestId = requestIdFrom(request, body);
+    return { requestId, data: await adapter.saveCourseCurricularMapSlice({ principal, courseId: route.courseId, requestId,
+      expectedCourseRevision: positiveInteger(body.expectedCourseRevision, "expectedCourseRevision"),
+      expectedPlanVersion: positiveInteger(body.expectedPlanVersion, "expectedPlanVersion"), command, deadlineAt }) };
+  }
+  if (route.name === "approveCourseCurricularMap") {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    exactFields(body, new Set(["reference"]));
+    return { requestId: null, data: await adapter.approveCourseCurricularMap({ principal, courseId: route.courseId,
+      reference: text(body.reference, "reference", { maximum: 2048 }), deadlineAt }) };
+  }
+  if (route.name === "getAuthoringProcessPreferences") {
+    assertPrincipal(principal);
+    if ([...new URL(request.url).searchParams.keys()].length) fail("invalid_authoring_process_preferences", "As preferências pessoais não recebem filtros.");
+    return { requestId: null, data: await adapter.getAuthoringProcessPreferences({ principal, deadlineAt }) };
+  }
+  if (route.name === "saveAuthoringProcessPreferences") {
+    assertPrincipal(principal, { write: true });
+    const body = await readCourseJsonBody(request);
+    exactFields(body, new Set(["requestId", "expectedRevision", "preferences"]));
+    const command = normalizeProfileInput(() => normalizeAuthoringProcessPreferencesSave({
+      ...body, requestId: requestIdFrom(request, body)
+    }));
+    return { requestId: command.requestId, data: await adapter.saveAuthoringProcessPreferences({ principal, ...command, deadlineAt }) };
+  }
   if (route.name === "listAuthoringProfiles") {
     assertPrincipal(principal);
     if ([...new URL(request.url).searchParams.keys()].length) fail("invalid_authoring_profile", "A lista de perfis não recebe filtros.");

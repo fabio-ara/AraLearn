@@ -6,7 +6,10 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
+import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
+import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
@@ -25,7 +28,7 @@ const execute = (adapter, name, args) => executeHumanCourseTask({
 });
 
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
-  const calls = { units: [], sources: [], annotations: [] };
+  const calls = { units: [], sources: [], annotations: [], reviews: [] };
   const adapter = {
     calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
@@ -39,6 +42,24 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     },
     async getCourseInstructionalPlan() {
       return { courseRevision: adapter.revision, plan: { title: TITLE, parts: [] } };
+    },
+    async getAuthoringProcessPreferences() {
+      return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
+        updatedAt: null, preferences: defaultAuthoringProcessPreferences() };
+    },
+    async getCourseDesign({ courseId, scopeKind = "course", scopeRef }) {
+      return courseDesignFixture({ courseId, moduleId: "module", lessonId: "lesson",
+        microsequenceId: scopeKind === "didactic_microsequence" ? scopeRef : "ms",
+        studyUnitId: scopeKind === "study_unit" ? scopeRef : "unit-1"
+      }, { scope: scopeKind, revision: adapter.revision });
+    },
+    async getCourseContentReview(input) {
+      calls.reviews.push(input);
+      const { courseId, targetKind, targetId } = input;
+      const unit = units.find(item => item.studyUnit.id === targetId);
+      return { contract: "aralearn.course-content-review.v1", courseId,
+        courseRevision: adapter.revision, targetKind, targetId, entityVersion: unit?.version ?? 1,
+        basisHash: "a".repeat(64), contentReview: { state: "draft" }, reviewPolicy: "saved" };
     },
     async listCourseStudyUnits(input) {
       calls.units.push(input);
@@ -57,7 +78,7 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     },
     async getCourseAnchoredAnnotations(input) {
       calls.annotations.push(input);
-      return { items: [], nextCursor: null };
+      return { items: [], annotationSetVersion: 1, hasMore: false, nextCursor: null };
     }
   };
   return adapter;
@@ -81,9 +102,10 @@ async function channelCall(channel, adapter, name, args) {
       actionBaseUrl: ACTION_URL, publicAppUrl: adapter.publicAppUrl })
     : createAuthoringMcpHandler({ adapter, allowedOrigins: new Set([ORIGIN]),
       resourceUrl: MCP_URL, authorizationServer: "https://project.example/auth/v1" });
-  const body = channel === "actions" ? args
+  const action = channel === "actions" ? encodeCourseActionTaskRequest(name, args) : null;
+  const body = channel === "actions" ? action.arguments
     : { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } };
-  const response = await handler(new Request(channel === "actions" ? `${ACTION_URL}/${name}` : MCP_URL, {
+  const response = await handler(new Request(channel === "actions" ? `${ACTION_URL}/${action.operationName}` : MCP_URL, {
     method: "POST", headers: { Origin: ORIGIN, Authorization: "Bearer synthetic-local-token",
       "Content-Type": "application/json", Accept: "application/json, text/event-stream",
       "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION }, body: JSON.stringify(body)
@@ -107,7 +129,6 @@ function materializationPreparationFixture(blocks = 32) {
     curriculum: { modules: [{ lessons: [{ microsequences: [microsequence] }] }] },
     parts: [{ id: "part", position: 0, title: "Interfaces", intent: "Relacionar conceitos.", microsequences: [microsequence] }] };
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
-  adapter.getCourseDesign = async () => ({ parameters: [], targetPlanItems: { instructionalAnalysisUnitIds: [], evidenceRequirementIds: [] } });
   return { adapter, support };
 }
 
@@ -337,8 +358,10 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   for (const item of first.context.studyUnits) {
     const metadata = { ...item };
     delete metadata.studyUnit;
-    assert.deepEqual(Object.keys(metadata).sort(), ["authorship", "ordinal"]);
+    assert.deepEqual(Object.keys(metadata).sort(), ["authorship", "ordinal", "referenciaRevisao", "revisao"]);
     assert.deepEqual(metadata.authorship, {});
+    assert.equal(metadata.revisao, "Rascunho");
+    assert.match(metadata.referenciaRevisao, /^[A-Za-z0-9_-]+$/u);
     assert.doesNotMatch(JSON.stringify(metadata), /literal-json-field|requestId|payload|steps|version/u);
   }
   assert.equal(adapter.calls.units.length, 1, "não varrer as cem páginas do curso");
@@ -346,11 +369,14 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   assert.equal(adapter.calls.units[0].expectedRevision, 7);
   assert.deepEqual(adapter.calls.annotations.map(input => input.query.hierarchy.target.id),
     units.slice(0, 12).map(item => item.studyUnit.id));
+  assert.deepEqual(adapter.calls.reviews.map(({ courseId, targetKind, targetId }) => ({ courseId, targetKind, targetId })),
+    units.slice(0, 12).map(item => ({ courseId: COURSE.id, targetKind: "study_unit", targetId: item.studyUnit.id })));
   const second = await execute(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
   assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit), units.slice(12).map(item => item.studyUnit));
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
   assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId), [null, "unit-12"]);
   assert.equal(adapter.calls.annotations.length, 24);
+  assert.equal(adapter.calls.reviews.length, 24);
 });
 
 test("revisão inclui um apoio literal por microssequência, com proposta e situação separadas", async () => {

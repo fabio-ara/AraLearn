@@ -1,0 +1,68 @@
+.study-explanation-reading > .editor-head {
+  grid-template-columns: minmax(0, 1fr) var(--tap);
+}
+.study-explanation-reading > .editor-head > h2 { margin: 0; min-width: 0; }
+.study-explanation-reading > .editor-head > button { width: var(--tap); height: var(--tap); padding: 0; }
+.study-explanation-overlay.is-without-base .study-explanation-panel { height: auto; }
+.study-explanation-body { font-size: var(--type-prose); line-height: var(--leading-prose); color: var(--resource-text); overflow-anchor: none; }
+.study-bibliography { margin-block-start: 24px; padding-block-start: 12px; border-block-start: 1px solid var(--border-subtle); overflow-wrap: anywhere; }
+.study-bibliography > h3 { margin-block: 0 12px; font-size: var(--type-base); font-weight: 600; }
+.study-bibliography .study-citation-reference { font-size: var(--type-prose); line-height: var(--leading-prose); color: var(--resource-text); }
+.study-bibliography .study-citation-list h3 { font-size: var(--type-base); font-weight: 500; }
+.study-bibliography .study-citation-actions { gap: 4px 12px; }
+.study-citation-backlink { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 4px 8px; background: transparent; border: 0; color: var(--action-primary); font: inherit; cursor: pointer; }
+.study-citation-backlink:focus-visible, .study-bibliography [data-citation-reference-id]:focus { outline: 2px solid var(--action-primary); outline-offset: 3px; }
+.study-contextual-authoring { margin-block-end: 8px; }
+.study-contextual-authoring .study-mode-actions { justify-content: flex-end; }
+.course-microsequence-review > .editor-body { font-size: var(--type-prose); line-height: var(--leading-prose); color: var(--resource-text); }
+.course-microsequence-review .source-marker,
+.course-microsequence-review .study-citation-backlink { border: 0; background: transparent; color: var(--action-primary); }
+.source-marker-group { display: inline; white-space: nowrap; }
+/* Citation numbers belong to prose; modal button spacing must not enter its
+   line box. Expand the pointer target separately from the printed number. */
+.source-marker-group > button.source-marker[data-action="open-citation"] {
+  position: relative;
+  top: -.3em;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0 .12em;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--type-xs);
+  line-height: 1;
+  vertical-align: baseline;
+}
+.source-marker-group > button.source-marker[data-action="open-citation"] sup {
+  position: static;
+  top: auto;
+  font: inherit;
+  font-weight: 600;
+  vertical-align: baseline;
+}
+.source-marker-group > button.source-marker[data-action="open-citation"]:hover {
+  background: var(--action-secondary-hover);
+}
+.source-marker-group > button.source-marker::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  transform: translate(-50%, -50%);
+}
+/* Adjacent inline targets retain their own horizontal hit area. Expanding
+   across another number or link would make its destination ambiguous. */
+.source-marker-group:has(> .source-marker + .source-marker) > .source-marker::after,
+.source-marker-group:has(+ :is(.source-marker-group, a, button, input, select, textarea, [tabindex])) > .source-marker::after,
+:is(.source-marker-group, a, button, input, select, textarea, [tabindex]) + .source-marker-group > .source-marker::after {
+  min-width: 0;
+}
+.course-microsequence-review .study-citation-actions a { color: var(--action-primary); }

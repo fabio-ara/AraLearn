@@ -223,7 +223,7 @@ test("#272 resolve Parte, Microssequência, Units e Fonte por posição ou títu
   }), (error) => error.code === "human_reference_not_found");
 });
 
-test("#272 escrita confiável injeta fences/requestId e repete exatamente a falha ambígua", async () => {
+test("#272 escrita confiável relê antes do replay transacional e preserva fences/requestId", async () => {
   let loads = 0;
   let requestIds = 0;
   const commits = [];
@@ -258,7 +258,7 @@ test("#272 escrita confiável injeta fences/requestId e repete exatamente a falh
     }
   });
   assert.equal(result.changed, true);
-  assert.equal(loads, 1);
+  assert.equal(loads, 2);
   assert.equal(requestIds, 1);
   assert.equal(commits.length, 2);
   assert.deepEqual(commits[1], commits[0]);

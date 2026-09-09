@@ -1,4 +1,6 @@
 import { validateProjectDocument } from "./aralearnProject.js";
+import { normalizeCourseContentReviewState } from "./courseContentReview.js";
+import { normalizeAppliedExplanationBasis } from "./appliedExplanationBasis.js";
 
 export { validateCourseEntityContent } from "./aralearnProject.js";
 
@@ -47,6 +49,8 @@ const ROW_FIELDS = new Set([
   "position",
   "content",
   "contentReview",
+  "legacyMicrosequenceReview",
+  "appliedExplanationBasis",
   "version",
   "createdAt",
   "updatedAt"
@@ -191,20 +195,23 @@ function normalizeRow(rawRow, index) {
   if (Object.hasOwn(rawRow, "contentReview")) {
     const review = rawRow.contentReview;
     if (review !== null) {
-      const reviewed = review?.state === "current" || review?.state === "stale";
-      if (entityType !== "microsequence" || !isPlainObject(review) ||
-          Object.keys(review).some(field => !["state", "approvedAt"].includes(field)) ||
-          !["unregistered", "draft", "current", "stale"].includes(review.state) ||
-          reviewed && (typeof review.approvedAt !== "string" ||
-            !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(review.approvedAt) ||
-            !Number.isFinite(Date.parse(review.approvedAt))) ||
-          !reviewed && review.approvedAt != null) {
-        fail("invalid_course_content_review", "Os metadados de revisão da microssequência são inválidos.",
-          { index, entityType, entityId });
-      }
+      if (!["microsequence", "study_unit"].includes(entityType)) fail("invalid_course_content_review", "O objeto não admite revisão de conteúdo.");
+      normalizeCourseContentReviewState(review);
     }
     // Read metadata stays outside editable/importable course content.
     row.contentReview = cloneJson(review, "Revisão do conteúdo");
+  }
+  if (Object.hasOwn(rawRow, "legacyMicrosequenceReview")) {
+    const legacy = rawRow.legacyMicrosequenceReview;
+    if (entityType !== "microsequence" || !isPlainObject(legacy) ||
+        Object.keys(legacy).some(key => !["state", "approvedAt"].includes(key)) ||
+        !["current", "stale"].includes(legacy.state) || typeof legacy.approvedAt !== "string" ||
+        !Number.isFinite(Date.parse(legacy.approvedAt))) fail("invalid_course_content_review", "O registro histórico da revisão é inválido.");
+    row.legacyMicrosequenceReview = cloneJson(legacy, "Revisão histórica");
+  }
+  if (Object.hasOwn(rawRow, "appliedExplanationBasis")) {
+    if (entityType !== "study_unit" && rawRow.appliedExplanationBasis !== null) fail("invalid_applied_explanation_basis", "A aplicação pertence à unidade de estudo.");
+    row.appliedExplanationBasis = normalizeAppliedExplanationBasis(rawRow.appliedExplanationBasis);
   }
   if (Object.hasOwn(rawRow, "courseId")) row.courseId = text(rawRow.courseId);
   if (Object.hasOwn(rawRow, "version")) {
@@ -219,6 +226,14 @@ function normalizeRow(rawRow, index) {
     row.version = version;
   }
   return row;
+}
+
+/** Compatibility for cached aggregate declarations; useful offline content stays intact. */
+export function migrateLegacyCourseEntityReviews(rows) {
+  return rows.map(row => {
+    if (row?.entityType !== "microsequence" || !Object.hasOwn(row?.contentReview ?? {}, "approvedAt")) return row;
+    return { ...row, legacyMicrosequenceReview: structuredClone(row.contentReview), contentReview: { state: "unregistered" } };
+  });
 }
 
 export function normalizeCourseEntityRows(rows = []) {
@@ -290,9 +305,9 @@ export function normalizeCourseEntityRows(rows = []) {
   return normalized;
 }
 
-export function flattenCourseDocument(document) {
+export function flattenCourseDocument(document, { allowIncompleteCurriculum = false } = {}) {
   const candidate = cloneJson(document, "Documento do Curso");
-  const validation = validateProjectDocument(candidate);
+  const validation = validateProjectDocument(candidate, { allowIncompleteCurriculum });
   if (!validation.ok || candidate.courses?.length !== 1) {
     fail(
       "invalid_course_document",
@@ -353,7 +368,7 @@ export function flattenCourseDocument(document) {
   return { course: normalizeCourse(course), rows: normalizeCourseEntityRows(rows) };
 }
 
-export function composeCourseDocument(courseValue, rows = []) {
+export function composeCourseDocument(courseValue, rows = [], { allowIncompleteCurriculum = false } = {}) {
   const course = normalizeCourse(courseValue);
   const normalized = normalizeCourseEntityRows(rows);
   const entities = new Map();
@@ -395,7 +410,7 @@ export function composeCourseDocument(courseValue, rows = []) {
     contract: "aralearn.course.v1",
     courses: [{ ...course, modules }]
   };
-  const validation = validateProjectDocument(document);
+  const validation = validateProjectDocument(document, { allowIncompleteCurriculum });
   if (!validation.ok) {
     fail(
       "invalid_course_document",

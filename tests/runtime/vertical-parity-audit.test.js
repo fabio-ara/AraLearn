@@ -44,6 +44,10 @@ test("o registro cobre as tarefas humanas correntes", async () => {
     registered,
     COURSE_HUMAN_TASKS.map(({ name }) => name).toSorted()
   );
+  assert.equal(registered.length, 54);
+  assert.deepEqual(current.cases.find(item => item.id === "person-profile-and-course-access").objects.mcpTools,
+    ["consultar_acesso", "definir_visibilidade", "alterar_acesso", "definir_acesso_arquivos", "definir_politica_revisao"]);
+  assert.deepEqual(current.cases.find(item => item.id === "current-data-lifecycle").objects.mcpTools, ["excluir_curso"]);
   assert.equal(current.cases.some((caseRecord) =>
     Object.hasOwn(caseRecord.objects || {}, "applicationTools") ||
     Object.hasOwn(caseRecord.objects || {}, "applicationToolPatterns")
@@ -70,18 +74,18 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 650);
+  assert.equal(inventory.objects.length, 679);
   assert.deepEqual(counts, {
     "study-course-experience": 31,
-    "course-authoring-experience": 243,
-    "course-source-provenance": 141,
-    "course-anchored-annotations": 56,
+    "course-authoring-experience": 274,
+    "course-source-provenance": 135,
+    "course-anchored-annotations": 61,
     "course-authoring-research": 2,
     "current-data-lifecycle": 20,
     "person-profile-and-course-access": 43,
     "didactic-component-runtime": 1,
     "course-shared-transports": 48,
-    "course-audio-media": 55,
+    "course-audio-media": 54,
     "course-independent-copy": 10
   });
   const currentCaseIds = current.cases
@@ -93,7 +97,14 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     new Set(currentCaseIds)
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
-  assert.equal(assignments.get("function:public.approve_course_microsequence_content_v1(p_course_id uuid, p_microsequence_id text, p_expected_basis_hash text, p_request_id text)"), "course-authoring-experience");
+  assert.equal(assignments.get("function:public.set_course_content_review_v1(p_course_id uuid, p_target_kind text, p_target_id text, p_expected_basis_hash text, p_reviewed boolean, p_request_id text)"), "course-authoring-experience");
+  for (const signature of [
+    "private.apply_course_design_settings_core_v3(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_request_id text, p_request_hash text, p_channel text)",
+    "private.course_structure_dependency_issues_v1(p_course_id uuid)",
+    "private.remap_course_structure_content_v1(p_type text, p_content jsonb, p_id_map jsonb)",
+    "public.mutate_course_structure_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_expected_plan_version bigint, p_command jsonb, p_request_id text)",
+    "public.reorder_course_study_units_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_microsequence_id text, p_study_unit_ids jsonb, p_request_id text)"
+  ]) assert.equal(assignments.get(`function:${signature}`), "course-authoring-experience", signature);
   assert.equal(assignments.get("function:public.get_course_explanation_citations_v1(p_course_id uuid, p_expected_revision bigint, p_microsequence_id text)"), "course-source-provenance");
   assert.equal(assignments.get("table:private.course_media"), "course-audio-media");
   assert.equal(assignments.get("function:public.copy_course_for_actor_v1(p_actor_id uuid, p_source_course_id uuid, p_expected_source_revision bigint, p_title text, p_confirmed boolean, p_request_id text, p_requested_at timestamp with time zone)"), "course-independent-copy");

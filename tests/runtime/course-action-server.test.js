@@ -1,13 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 
 import {
   ARALEARN_ACTION_CONTRACT_HEADER,
   createAuthoringActionHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import {
-  COURSE_HUMAN_TASK_CATALOG_HEADER
+  COURSE_HUMAN_TASK_CATALOG_HEADER,
+  COURSE_HUMAN_TASKS,
+  courseHumanTaskDefinition
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import {
+  COURSE_ACTION_TASK_GROUPS,
+  encodeCourseActionTaskRequest
+} from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 
@@ -37,6 +45,19 @@ function adapterFixture(overrides = {}, scopes = ["authoring:read", "authoring:w
     },
     async listCourses() {
       return coursePage();
+    },
+    async getAuthoringProcessPreferences() {
+      return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
+        updatedAt: null, preferences: defaultAuthoringProcessPreferences() };
+    },
+    async getCourseDesign({ courseId, scopeKind }) {
+      return courseDesignFixture({ courseId }, { scope: scopeKind, revision: 3 });
+    },
+    async listCourseStudyUnits() {
+      return { items: [], hasMore: false, nextCursor: null };
+    },
+    async getCourseAnchoredAnnotations() {
+      return { items: [], annotationSetVersion: 1, hasMore: false, nextCursor: null };
     },
     async getCourse({ courseId }) {
       return {
@@ -72,7 +93,7 @@ function createHandler(overrides = {}, scopes) {
   });
 }
 
-function request(path, body = {}, headers = {}) {
+function wireRequest(path, body = {}, headers = {}) {
   return new Request(`${BASE_URL}/${path}`, {
     method: "POST",
     headers: {
@@ -85,11 +106,87 @@ function request(path, body = {}, headers = {}) {
   });
 }
 
+function request(taskName, taskArguments = {}, headers = {}) {
+  if (!courseHumanTaskDefinition(taskName)) return wireRequest(taskName, taskArguments, headers);
+  const encoded = encodeCourseActionTaskRequest(taskName, taskArguments);
+  return wireRequest(encoded.operationName, encoded.arguments, headers);
+}
+
 function objectKeys(value) {
   if (Array.isArray(value)) return value.flatMap(objectKeys);
   if (!value || typeof value !== "object") return [];
   return Object.entries(value).flatMap(([key, entry]) => [key, ...objectKeys(entry)]);
 }
+
+test("Actions conserva 54 tarefas em 30 operações e retira as rotas diretas substituídas", async () => {
+  const operations = new Set(COURSE_HUMAN_TASKS.map(task => encodeCourseActionTaskRequest(task.name, {}).operationName));
+  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  assert.equal(operations.size, 30);
+  let authenticated = 0;
+  const handler = createHandler({ async resolveActionPrincipal() { authenticated += 1; throw new Error("Não deve autenticar rota inexistente"); } });
+  for (const task of Object.values(COURSE_ACTION_TASK_GROUPS).flat()) {
+    const response = await handler(wireRequest(task));
+    assert.equal(response.status, 404, task);
+    assert.equal((await response.json()).error.code, "unknown_human_task", task);
+  }
+  assert.equal(authenticated, 0);
+});
+
+test("Actions rejeita tarefa externa ao grupo, cruzamento e campos extras antes de executar", async () => {
+  let authenticated = 0;
+  const handler = createHandler({ async resolveActionPrincipal() { authenticated += 1; throw new Error("Não deve resolver tarefa inválida"); } });
+  const valid = { tarefa: "consultar_acesso", argumentos: { curso: "Redes para iniciantes" } };
+  for (const payload of [null, [], {}, { ...valid, sql: "SELECT 1" }, { tarefa: valid.tarefa },
+    { tarefa: "criar_curso", argumentos: { titulo: "Novo curso" } },
+    { tarefa: "consultar_perfis", argumentos: {} },
+    { tarefa: "definir_visibilidade", argumentos: valid.argumentos },
+    { tarefa: "consultar_acesso", argumentos: { ...valid.argumentos, visibilidade: "public" } },
+    { ...valid, argumentos: [] }]) {
+    const response = await handler(wireRequest("acesso_do_curso", payload));
+    const objectPayload = payload !== null && !Array.isArray(payload);
+    assert.equal(response.status, objectPayload ? 422 : 400, JSON.stringify(payload));
+    const result = await response.json();
+    assert.equal(result.error.code, objectPayload ? "invalid_action_task_binding" : "invalid_json");
+    assert.equal(result.error.retryable, false);
+  }
+  assert.equal(authenticated, 0);
+});
+
+test("Actions aplica o escopo da tarefa escolhida dentro de um grupo com escrita", async () => {
+  const writes = [];
+  const overrides = {
+    async listCourseAccess({ courseId, principal }) {
+      assert.equal(principal.actorId, ACTOR_ID);
+      return { contract: "aralearn.course-people.v3", courseId, people: [] };
+    },
+    async setCourseVisibility(value) {
+      writes.push(value);
+      return { contract: "aralearn.course-visibility-change.v1", courseId: value.courseId,
+        visibility: value.visibility, publicFileAccess: value.publicFileAccess, changed: true, idempotent: false };
+    }
+  };
+  const reader = createHandler(overrides, ["authoring:read"]);
+  const read = await reader(request("consultar_acesso", { curso: "Redes para iniciantes" }));
+  assert.equal(read.status, 200);
+  assert.match((await read.json()).result, /Li os acessos/u);
+  const argumentsForWrite = { curso: "Redes para iniciantes", visibilidade: "public", arquivos: "restricted", confirmado: true };
+  const forbidden = await reader(request("definir_visibilidade", argumentsForWrite));
+  assert.equal(forbidden.status, 403);
+  assert.equal((await forbidden.json()).error.code, "insufficient_scope");
+  assert.equal(writes.length, 0);
+  const writer = createHandler(overrides);
+  const unconfirmed = await writer(request("definir_visibilidade", { ...argumentsForWrite, confirmado: false }));
+  assert.equal(unconfirmed.status, 422);
+  assert.equal(writes.length, 0);
+  const saved = await writer(request("definir_visibilidade", argumentsForWrite));
+  assert.equal(saved.status, 200);
+  assert.deepEqual((await saved.json()).context, { visibilidade: "public", arquivos: "restricted" });
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].principal.actorId, ACTOR_ID);
+  assert.equal(writes[0].courseId, ACTOR_ID);
+  assert.equal(writes[0].expectedRevision, 3);
+  assert.match(writes[0].requestId, /^[A-Za-z0-9_-]{8,128}$/u);
+});
 
 test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técnico", async () => {
   const response = await createHandler()(request("retomar_curso", {
@@ -105,6 +202,10 @@ test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técni
   assert.match(payload.result, /Retomei o curso “Redes para iniciantes”/u);
   assert.match(payload.deepLink, /section=planning/u);
   assert.equal(payload.nextDecision, null);
+  assert.equal(payload.context.preferenciasPessoais.foco, "full_cycle");
+  assert.equal(payload.context.processoCorrente.cadencia, "part");
+  assert.equal(typeof payload.context.referenciaProcesso, "string");
+  assert.deepEqual(payload.context.observations.items, []);
   assert.deepEqual(Object.keys(payload).sort(), ["context", "deepLink", "nextDecision", "result"]);
   assert.doesNotMatch(JSON.stringify({
     result: payload.result,
@@ -160,7 +261,7 @@ test("#272 preflight, OAuth e erros preservam o catálogo humano", async () => {
   assert.deepEqual(await unknown.json(), {
     error: {
       code: "unknown_human_task",
-      message: "Tarefa de autoria inexistente.",
+      message: "Operação de autoria inexistente.",
       retryable: false
     },
     nextDecision: null
@@ -290,16 +391,16 @@ test("#272 referência ambígua e indisponibilidade devolvem retomadas diferente
   );
 });
 
-test("Actions reduz falha transitória a impacto e retomada sem expor transporte", async () => {
+test("Actions reduz falha transitória de leitura a impacto e retomada sem expor transporte", async () => {
   const response = await createHandler({
-    async createCourse() {
+    async listCourses() {
       throw new AuthoringApiError(
         503,
         "network_error",
-        "Falha transitória de conexão antes da confirmação de escrita no servidor."
+        "Falha transitória de conexão ao ler o curso no servidor."
       );
     }
-  })(request("criar_curso", { titulo: "Novo curso", objetivo: "Ensinar redes." }));
+  })(request("retomar_curso", { titulo: "Redes para iniciantes" }));
   const payload = await response.json();
   const publicText = `${payload.error.message} ${payload.nextDecision}`;
 
@@ -312,6 +413,22 @@ test("Actions reduz falha transitória a impacto e retomada sem expor transporte
     JSON.stringify(payload),
     /network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
   );
+});
+
+test("Actions conserva a tentativa de criação incerta e não recomenda outra escrita", async () => {
+  const writes = [];
+  const response = await createHandler({ async createCourse(input) {
+    writes.push(structuredClone(input));
+    throw new AuthoringApiError(503, "network_error", "Resposta de gravação perdida.");
+  } })(request("criar_curso", { titulo: "Novo curso", objetivo: "Ensinar redes." }));
+  const payload = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(payload.error.code, "course_write_uncertain");
+  assert.equal(payload.error.retryable, false);
+  assert.match(payload.error.message, /mesma tentativa/iu);
+  assert.doesNotMatch(payload.nextDecision ?? "", /refaça|tente novamente/iu);
+  assert.equal(writes.length, 2, "a recuperação transacional é limitada ao replay suportado");
+  assert.deepEqual(writes[1], writes[0], "o replay não cria uma nova identidade ou intenção");
 });
 
 test("Actions não manda repetir incorporação de PDF com escrita incerta", async () => {

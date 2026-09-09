@@ -141,20 +141,21 @@ export function renderStudyUnitObservationComposer({
     "</button></div></form>";
 }
 
-function renderItem(item, { saving, editingId, showContributor }) {
+function renderItem(item, { saving, editingId, showContributor, authoringQueue }) {
   const withdrawn = item.state === "withdrawn";
   const canRevise = !withdrawn && item.capabilities?.canRevise === true;
-  const canWithdraw = !withdrawn && item.capabilities?.canWithdraw === true;
+  const canWithdraw = !authoringQueue && !withdrawn && item.capabilities?.canWithdraw === true;
   const syncStatus = item.syncStatus || "synced";
   const selected = item.annotationId === editingId;
   return '<article class="study-observation-item' + (selected ? " is-editing" : "") +
-    '" data-observation-id="' + escapeHtml(item.annotationId) + '">' +
+    '" data-observation-id="' + escapeHtml(item.annotationId) + '" data-observation-version="' + item.annotationVersion + '">' +
     '<header><div class="study-observation-badges">' +
     '<span>' + escapeHtml(categoryLabel(item.category)) + "</span>" +
     '<span data-state="' + escapeHtml(item.state) + '">' +
     escapeHtml(STATE_LABELS[item.state] || item.state) + "</span>" +
     '<span data-sync="' + escapeHtml(syncStatus) + '">' +
     escapeHtml(SYNC_LABELS[syncStatus] || syncStatus) + "</span></div>" +
+    (authoringQueue ? `<small>Versão ${item.annotationVersion}</small>` : '') +
     (showContributor
       ? '<p class="study-observation-contributor"><strong>' +
         escapeHtml(item.contributor?.label || "Contribuição protegida") + "</strong><span>" +
@@ -213,7 +214,8 @@ export function renderStudyUnitObservationSheet({
   contextMessage = "",
   actionHref = "",
   actionLabel = "",
-  actionControlKey = ""
+  actionControlKey = "",
+  authoringQueue = false
 } = {}) {
   const visibleItems = items.filter((item) => item && typeof item === "object");
   const matchingTotal = Number.isSafeInteger(collectionSummary?.matchingTotal)
@@ -226,14 +228,14 @@ export function renderStudyUnitObservationSheet({
   return `<section class="editor-overlay study-observation-overlay" aria-label="${escapeHtml(ariaLabel)}">` +
     '<article class="editor-sheet study-observation-sheet" role="dialog" aria-modal="true"' +
     ' aria-labelledby="study-observation-title">' +
-    '<header class="editor-head"><button class="icon-ghost" type="button"' +
-    ' data-observation-action="close" title="Fechar" aria-label="Fechar">' +
-    renderUiIcon("remove-state", "home-tab-icon") + "</button>" +
-    '<p class="editor-title" id="study-observation-title">' + escapeHtml(title) + "</p>" +
+    '<header class="editor-head">' +
     (activeTotal > 0
       ? '<span class="study-observation-count" aria-label="Quantidade de observações">' +
         String(activeTotal) + "</span>"
-      : '<span class="study-observation-head-slot" aria-hidden="true"></span>') + "</header>" +
+      : '<span class="study-observation-head-slot" aria-hidden="true"></span>') +
+    '<p class="editor-title" id="study-observation-title">' + escapeHtml(title) + "</p>" +
+    '<button class="icon-ghost" type="button" data-observation-action="close" title="Fechar" aria-label="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") + "</button></header>" +
     '<div class="editor-body study-observation-body">' +
     (stale
       ? '<p class="study-observation-stale" role="status">Há mudanças em outra sessão. Seu texto não foi substituído.</p>'
@@ -264,7 +266,7 @@ export function renderStudyUnitObservationSheet({
       ? '<div class="study-observation-list" aria-label="' + escapeHtml(listLabel) + '">' +
         (visibleItems.length
           ? visibleItems.map((item) => renderItem(item, {
-              saving, editingId, showContributor
+              saving, editingId, showContributor, authoringQueue
             })).join("")
           : '<p class="study-observation-empty">' + escapeHtml(emptyLabel) + "</p>") + "</div>"
       : "") +

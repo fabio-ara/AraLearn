@@ -19,6 +19,16 @@ A hierarquia continua curso → módulo → lição → microssequência → uni
 
 Essas definições são decisões operacionais do produto. Contagens e declarações de aplicação não demonstram aprendizagem, carga cognitiva, domínio ou qualidade. A fundamentação, seu escopo de uso e os limites de inferência são tratados no [modelo didático](modelo-didatico.md), no [glossário de construtos](glossario-construtos.md) e na [fundamentação dos recursos](fundamentacao-pedagogica-dos-resources.md). O código confirma propriedades técnicas; a inspeção autoral declara uma ação da pessoa; eficácia pedagógica exige evidência empírica própria.
 
+## Mapa curricular salvo por recortes
+
+O mapa canônico pode ser construído como rascunho antes de estar completo. Público ainda vazio, listas de escopo, módulos, lições ou microssequências vazias, escopo sem cobertura e dependências ainda inexistentes ou posteriores permanecem salvos como pendências. Títulos e objetivos de ramos, formato do plano da Explicação, identidades, posições, tipos e limites continuam obrigatórios. Referências de escopo apontam para itens existentes; sua cobertura pode ser completada depois.
+
+A aprovação exige público e escopo definidos, ao menos um módulo, uma lição em cada módulo e uma microssequência em cada lição. Todo item de escopo precisa estar coberto, e cada dependência precisa apontar para uma microssequência anterior no percurso global. A decisão corresponde ao mapa salvo e inspecionável corrente. Persistir um recorte volta o mapa para rascunho; não declara revisão do conteúdo nem altera acesso ao curso.
+
+Renomear, reordenar e atualizar objetivos, dependências ou outras intenções do mapa preserva as identidades, a Explicação, as unidades e suas configurações aplicadas. Campos fora do recorte são conservados, inclusive detalhes dos guias, verificações e erros previstos. Um ramo com unidades, Explicação salva ou vínculo de fonte não pode ser removido nem transferido para outro pai por omissão no mapa. Itens de escopo com fontes também são protegidos contra remoção. Ramos ainda vazios podem ser retirados pelo planejamento.
+
+A persistência usa o writer curricular existente, com verificação de proprietário, versões do curso/plano e recibo protegido pelo lock da tentativa. Repetir a mesma identidade recupera o resultado confirmado; outra escrita com versão antiga exige releitura. O teste focal `course-curricular-map-drafts-pglite.test.js` executa a migration e esses contratos SQL em relações locais, incluindo as chaves estrangeiras e a ordem diferível. A sessão é simulada; essa evidência não substitui a integração hospedada ou a interação visual.
+
 ## Base observada: parâmetros, origem e persistência
 
 A fonte das doze definições é [courseDesignParameters.js](../src/domain/courseDesignParameters.js). UI, schemas humanos e projeção SQL já consomem esse catálogo. A resolução de intenção é feita no servidor e projetada por [courseDesignContext.js](../src/domain/courseDesignContext.js).
@@ -120,7 +130,7 @@ Configurações mantém o mesmo acesso e os grupos Conta, Aparência, Sincroniza
 
 O controle abre um minipainel no objeto corrente e conserva objeto, rolagem, foco e rascunho. “Neste objeto” é o alvo inicial; escolher outro alcance admitido mostra seu efeito antes de aplicar. O painel conserva valores e textos legíveis mesmo quando as ações principais usam somente ícones. Cada ação tem nome e estado acessível, área de toque suficiente e ajuda utilizável por teclado/toque.
 
-A Explicação abre seu conteúdo salvo. Citações sobrescritas levam às referências no fim e permitem retornar à ocorrência. O detalhe oferece fonte web/PDF conforme os direitos. Acesso equivalente ao acervo permanece disponível mesmo quando ainda não existe Explicação. A fileira/cabeçalho de leitura dispensa botão separado de Fontes após essa equivalência estar preservada; ações autorais permanecem no contexto de autoria. Fechar fica à direita. Respostas tardias não substituem o painel ativo, o objeto ou uma edição pendente.
+A Explicação abre seu conteúdo salvo. Citações sobrescritas levam às referências no fim e permitem retornar à ocorrência. O detalhe oferece fonte web/PDF conforme os direitos. Acesso equivalente ao acervo permanece disponível mesmo quando ainda não existe Explicação. A fileira/cabeçalho de leitura dispensa botão separado de **Fontes** após essa equivalência estar preservada; ações autorais permanecem no contexto de autoria. Fechar fica à direita. Respostas tardias não substituem o painel ativo, o objeto ou uma edição pendente.
 
 ## Aceite verificável e divisão das etapas
 

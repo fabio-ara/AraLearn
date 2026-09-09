@@ -331,8 +331,8 @@ function renderTopbar(runtimeStatus) {
     '<span class="brand-text">AraLearn</span></span></h1>' +
     '<div class="lesson-top-actions">' + renderRuntimeStatusControl(runtimeStatus) +
     '<button class="icon-ghost" type="button" data-action="open-settings"' +
-    ' title="Conta e aparência" aria-label="Conta e aparência">' +
-    renderUiIcon("more", "home-tab-icon") + "</button></div></header>"
+    ' title="Configurações" aria-label="Configurações" aria-haspopup="dialog">' +
+    renderUiIcon("account", "home-tab-icon") + "</button></div></header>"
   );
 }
 

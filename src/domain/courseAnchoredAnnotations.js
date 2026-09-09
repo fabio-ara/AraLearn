@@ -17,7 +17,7 @@ export const COURSE_ANCHORED_ANNOTATION_CHANGE_CONTRACT =
 export const COURSE_ANCHORED_ANNOTATION_CONTRACT =
   "aralearn.course-anchored-annotation.v1";
 export const COURSE_ANCHORED_ANNOTATION_TARGET_KINDS = Object.freeze([
-  "course", "module", "lesson", "topic", "didactic_microsequence", "study_unit",
+  "course", "module", "lesson", "topic", "didactic_microsequence", "microsequence_explanation", "study_unit",
   "source", "source_anchor"
 ]);
 export const COURSE_ANCHORED_ANNOTATION_ORIGINS = Object.freeze([
@@ -585,4 +585,64 @@ export function normalizeCourseAnchoredAnnotationChange(value) {
   if (change.annotation !== null) annotationItem(change.annotation);
   byteBound(change, 65536, "course_anchored_annotation_change_too_large", "A mudança de observação");
   return change;
+}
+
+export const COURSE_OBSERVATION_CORRECTION_CONTRACT = "aralearn.course-observation-correction.v1";
+
+// Only versions explicitly identified as fully addressed belong to a correction.
+// Reading the queue or answering an entry never supplies these references.
+export function normalizeCourseObservationCorrectionReferences(value) {
+  const code = "invalid_course_observation_correction";
+  if (!Array.isArray(value) || value.length > 64) fail(code, "Informe até 64 versões de observações tratadas integralmente.");
+  const seen = new Set();
+  const references = value.map((entry) => {
+    exact(entry, ["annotationId", "annotationVersion", "targetKind", "targetId"], code, "A versão da observação");
+    uuid(entry.annotationId, code, "A identidade da observação");
+    integer(entry.annotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão da observação");
+    enumValue(entry.targetKind, ["microsequence_explanation", "study_unit"], code, "O alvo da correção");
+    opaqueId(entry.targetId, code, "A identidade do alvo");
+    if (seen.has(entry.annotationId)) fail(code, "A correção não pode repetir uma observação.");
+    seen.add(entry.annotationId);
+    return { ...entry };
+  });
+  byteBound(references, 32768, code, "As versões das observações");
+  return references;
+}
+
+export function normalizeCourseObservationCorrectionConfirmations(value) {
+  const code = "invalid_course_observation_correction_confirmation";
+  if (!Array.isArray(value) || value.length > 64) fail(code, "Informe até 64 confirmações da correção.");
+  const seen = new Set();
+  return value.map((entry) => {
+    exact(entry, ["annotationId", "annotationVersion", "effectHash"], code, "A confirmação da correção");
+    uuid(entry.annotationId, code, "A identidade da observação");
+    integer(entry.annotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão da observação");
+    if (typeof entry.effectHash !== "string" || !/^[a-f0-9]{64}$/u.test(entry.effectHash) || seen.has(entry.annotationId)) {
+      fail(code, "A confirmação precisa identificar uma única versão e seu efeito persistido.");
+    }
+    seen.add(entry.annotationId);
+    return { ...entry };
+  });
+}
+
+export function normalizeCourseObservationCorrection(value) {
+  const result = clone(value);
+  const code = "invalid_course_observation_correction_receipt";
+  const absent = result?.status === "absent";
+  exact(result, ["contract", "status", "courseId", "requestId", ...(absent ? [] : ["revision", "idempotent", "observations"])], code, "A correção das observações");
+  if (result.contract !== COURSE_OBSERVATION_CORRECTION_CONTRACT || !["absent", "persisted"].includes(result.status) ||
+      typeof result.requestId !== "string" || !REQUEST_ID_PATTERN.test(result.requestId)) fail(code, "O recibo da correção é inválido.");
+  uuid(result.courseId, code, "A identidade do Curso");
+  if (absent) return result;
+  integer(result.revision, 1, Number.MAX_SAFE_INTEGER, code, "A revisão persistida");
+  if (typeof result.idempotent !== "boolean" || !Array.isArray(result.observations) || !result.observations.length) fail(code, "O resultado da correção é inválido.");
+  normalizeCourseObservationCorrectionReferences(result.observations.map(({ annotationId, annotationVersion, targetKind, targetId }) => ({ annotationId, annotationVersion, targetKind, targetId })));
+  for (const entry of result.observations) {
+    exact(entry, ["annotationId", "annotationVersion", "targetKind", "targetId", "effectHash", "currentEffectHash", "changed", "confirmed"], code, "O efeito da observação");
+    if (typeof entry.effectHash !== "string" || !/^[a-f0-9]{64}$/u.test(entry.effectHash) ||
+        entry.currentEffectHash !== null && (typeof entry.currentEffectHash !== "string" || !/^[a-f0-9]{64}$/u.test(entry.currentEffectHash)) ||
+        typeof entry.changed !== "boolean" || typeof entry.confirmed !== "boolean" || entry.confirmed && !entry.changed) fail(code, "O efeito confirmado é inválido.");
+  }
+  byteBound(result, 65536, code, "O recibo da correção");
+  return result;
 }

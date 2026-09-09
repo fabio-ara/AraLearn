@@ -367,8 +367,8 @@ pelo modelo (tokens).
 | maior resposta de um contrato exato (`flow`) | 13.376 bytes | 16 KiB |
 | soma das 38 respostas de contrato, consultadas separadamente | 220.775 bytes | 224 KiB |
 | Curso de catálogo completo em disco | 400.394 bytes | lido por recortes no produto |
-| descritores das tarefas humanas, incluindo Explicação e revisão do apoio | 27 tarefas; 53.476 bytes | 54.000 bytes |
-| envelope MCP `tools/list`, com OAuth e metadata do catálogo, identificador numérico de um dígito | 57.502 bytes | 58.000 bytes |
+| descritores das tarefas humanas do catálogo contextual 4.0 | 54 tarefas; 100.059 bytes | 105.000 bytes |
+| envelope MCP `tools/list`, com OAuth e metadata do catálogo, identificador numérico de um dígito | 107.919 bytes | 112.000 bytes |
 | código dos componentes na árvore `resources`, na origem e no espelho | 68 arquivos; 625.898 bytes | mesmos caminhos na origem e no espelho; 640 KiB |
 
 O orçamento de código cobre a árvore `resources`, não o conjunto completo da
@@ -378,20 +378,18 @@ ao catálogo anterior. Os limites agregados passam a 640 KiB e 224 KiB para
 acomodar esses consumidores implementados; os limites de cada resposta
 continuam iguais. O teste compara os caminhos
 relativos entre origem e espelho, sem exigir uma quantidade fixa de pacotes ou
-arquivos. Os descritores das tarefas humanas têm orçamento separado, de 54.000 bytes;
-perfis, áudio, cópia, comparação, exportação e Explicação possuem consumidores concretos.
-O orçamento anterior de 48.000 bytes cobria 47.991 bytes do catálogo anterior.
-A proposta e o conteúdo da Explicação, suas correções e fontes, e a continuação
-do preparo aumentaram essa medida para 53.476 bytes. A margem foi ajustada para
-54.000, com uma guarda separada de 58.000 para o envelope de descoberta atual.
-A medição de 57.334 bytes do utilitário de carga omite os 168 bytes da metadata
-do catálogo: o teste de regressão inclui esse campo servido pelo MCP. Essas
-guardas são internas, não limites do fornecedor, medidas de tokens ou provas
-de aceitação no ChatGPT. O orçamento de 98.000 unidades UTF-16 do editor de
-Actions e os limites de requisição/resposta permanecem independentes.
-Descrições repetidas foram reduzidas sem retirar contratos ou confirmações.
-O OpenAPI corrente reúne 27 operações: 44.801 caracteres minificados e 96.566
-formatados, abaixo dos limites locais vigentes de 46.000 e 98.000. Esses limites controlam
+arquivos. Os descritores das 54 tarefas humanas têm orçamento separado, de
+105.000 bytes, incluindo os consumidores de estrutura curricular, preferências,
+base explicativa, desenho contextual, fila e revisão expressa. A medição usa
+`JSON.stringify` do catálogo tipado, em UTF-8. O envelope MCP de 107.919 bytes
+inclui os esquemas completos, requisitos OAuth e metadata do catálogo, com
+guarda separada de 112.000 bytes. Essas guardas são internas, não limites do
+fornecedor, medidas de tokens ou provas de aceitação no ChatGPT. Os orçamentos
+do documento Actions e os limites de requisição/resposta são independentes.
+O OpenAPI corrente representa as mesmas 54 tarefas em 30 operações: seis grupos
+tipados e 24 operações diretas. São 83.701 caracteres minificados e 170.371
+formatados, abaixo dos limites locais de 90.000 e 180.000 unidades UTF-16
+descritos no [guia de Actions](autoria-actions.md). Esses limites controlam
 a definição das ferramentas; respostas Actions têm orçamento próprio, com
 fragmentos literais quando o conteúdo não cabe em um envelope. A medição é de
 caracteres UTF-16 e bytes UTF-8, não de tokens efetivamente cobrados pelo modelo.

@@ -1357,9 +1357,10 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
   };
   let payload = null;
   const value = adapter(async (url, init) => {
-    assert.match(url, /\/rpc\/get_owned_course_instructional_plan_for_actor_v3$/u);
+    assert.match(url, /\/rpc\/get_owned_course_instructional_plan_for_actor_v4$/u);
     payload = JSON.parse(init.body);
-    return json(read);
+    return json({ ...read, approvalBasis: { courseRevision: read.courseRevision,
+      planVersion: read.plan.version, basisHash: "a".repeat(64) } });
   });
 
   const result = await value.getCourseInstructionalPlan({
@@ -1562,7 +1563,7 @@ test("materialização envia repertório e alvos no mesmo commit das unidades", 
   assert.equal(payload.p_request_hash.length, 64);
 });
 
-test("lê inspeção curricular limitada e acrescenta link exato da Unidade", async () => {
+test("lê inspeção curricular com revisão, fila, evidência da prática e link exato da Unidade", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {
     assert.match(url, /\/rpc\/list_owned_course_study_units_for_actor_v2$/u);
@@ -1599,6 +1600,8 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
           topics: []
         },
         version: 2,
+        contentReview: { state: "draft" },
+        pendingAuthoringObservationCount: 2,
         updatedAt: "2026-08-17T10:00:00Z",
         ordinal: 1,
         curriculumPath: {
@@ -1619,6 +1622,7 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
             application: {
               mode: "expository",
               componentRefs: ["aralearn.resource.paragraph@1.0.0"],
+              practiceEvidence: [{ name: "Justificar a porta escolhida", description: "Relacionar a tabela MAC à porta de saída." }],
               analysisIdeas: {
                 introduced: [{
                   name: "tabela MAC",
@@ -1661,6 +1665,10 @@ test("lê inspeção curricular limitada e acrescenta link exato da Unidade", as
   assert.equal(payload.p_scope_kind, "authoring_part");
   assert.equal(payload.p_anchor_study_unit_id, "unit-a");
   assert.equal(payload.p_max_bytes, 262144);
+  assert.deepEqual(result.items[0].contentReview, { state: "draft" });
+  assert.equal(result.items[0].pendingAuthoringObservationCount, 2);
+  assert.deepEqual(result.items[0].authorship.design.application.practiceEvidence,
+    [{ name: "Justificar a porta escolhida", description: "Relacionar a tabela MAC à porta de saída." }]);
   assert.deepEqual(result.items[0].authorship.design.application.analysisIdeas, {
     introduced: [{
       name: "tabela MAC",

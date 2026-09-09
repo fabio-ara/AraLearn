@@ -5,6 +5,7 @@ import {
   readCourseAuthoringKnowledgeResource
 } from "./courseKnowledge.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
+import { projectHumanWriteRecovery } from "./toolErrorEnvelope.js";
 import {
   COURSE_HUMAN_TASKS,
   COURSE_HUMAN_TASK_CATALOG_HEADER,
@@ -259,7 +260,7 @@ function toolSuccess(value) {
 }
 
 function retryableError(error) {
-  if (["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
+  if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
   if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
   return new Set([
     "course_service_unavailable", "request_timeout", "network_error"
@@ -273,14 +274,19 @@ function toolFailure(
 ) {
   const normalized = asAuthoringApiError(error);
   const retryable = retryableError(normalized);
+  const recovery = projectHumanWriteRecovery(normalized);
+  const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
   const publicError = {
     code: retryable
       ? "temporarily_unavailable"
       : String(normalized.code || "human_task_failed"),
-    message: retryable
+    message: uncertain
+      ? "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo."
+      : retryable
       ? "Não consegui concluir esta etapa."
       : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
-    retryable
+    retryable,
+    ...(recovery ? { recovery } : {})
   };
   let nextDecision = normalized.code === "ambiguous_human_reference"
     ? "Informe um título mais específico ou a posição humana do objeto."
@@ -297,6 +303,11 @@ function toolFailure(
             : retryable
               ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
               : null;
+  if (normalized.code === "course_write_uncertain") {
+    nextDecision = "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração.";
+  } else if (recovery) {
+    nextDecision += " Preserve a mesma tentativa durante a conferência, sem reaplicar a alteração.";
+  }
   if (failure.writeState === "complete") {
     publicError.message = "A escrita pode ter sido concluída, mas a resposta excedeu o limite.";
     publicError.retryable = false;

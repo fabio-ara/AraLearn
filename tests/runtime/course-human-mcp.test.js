@@ -1,5 +1,7 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
@@ -43,6 +45,13 @@ const READ_PRINCIPAL = Object.freeze({
   scopes: Object.freeze(["authoring:read"])
 });
 const EXPECTED_NAMES = Object.freeze([
+  "consultar_acesso", "definir_visibilidade", "alterar_acesso", "definir_acesso_arquivos", "definir_politica_revisao",
+  "consultar_repertorio_instrucional", "manter_unidade_analise", "manter_requisito_evidencia",
+  "vincular_repertorio_instrucional", "registrar_aplicacoes_instrucionais", "aplicar_configuracao_instrucional",
+  "ajustar_orientacao", "ajustar_componentes",
+  "alterar_curso", "excluir_curso", "salvar_ramo_curricular", "mover_ramo_curricular",
+  "duplicar_ramo_curricular", "remover_ramo_curricular", "reordenar_unidades",
+  "consultar_preferencias_autoria", "salvar_preferencias_autoria",
   "copiar_curso", "comparar_cursos", "exportar_autoria",
   "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
   "retomar_curso",
@@ -54,12 +63,16 @@ const EXPECTED_NAMES = Object.freeze([
   "consultar_fontes",
   "consultar_componentes",
   "criar_curso",
+  "aprovar_mapa_curricular",
   "salvar_mapa_curricular",
   "salvar_parte",
   "materializar_parte",
   "ajustar_configuracao",
   "registrar_observacao",
+  "editar_observacao",
+  "salvar_explicacoes",
   "aplicar_correcoes",
+  "retomar_correcao", "declarar_revisao",
   "manter_fonte",
   "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
 ]);
@@ -70,6 +83,29 @@ function adapter(principal = PRINCIPAL) {
     supabaseUrl: "https://project.example",
     async resolvePrincipal() {
       return principal;
+    },
+    async getAuthoringProcessPreferences() {
+      return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
+        updatedAt: null, preferences: defaultAuthoringProcessPreferences() };
+    },
+    async getCourseDesign({ courseId, scopeKind = "course" }) {
+      const course = await this.getCourse({ courseId });
+      return courseDesignFixture({ courseId }, { scope: scopeKind, revision: course.revision });
+    },
+    async listCourseStudyUnits() {
+      return { items: [], hasMore: false, nextCursor: null };
+    },
+    async getCourseAnchoredAnnotations() {
+      return { items: [], annotationSetVersion: 1, hasMore: false, nextCursor: null };
+    },
+    async getCourseSources() {
+      return { items: [], hasMore: false, nextCursor: null };
+    },
+    async getCourseContentReview({ courseId, targetKind, targetId }) {
+      const course = await this.getCourse({ courseId });
+      return { contract: "aralearn.course-content-review.v1", courseId,
+        courseRevision: course.revision, targetKind, targetId, entityVersion: 1,
+        basisHash: "a".repeat(64), contentReview: { state: "unregistered" }, reviewPolicy: "saved" };
     },
     async listCourses({ query }) {
       return {
@@ -185,11 +221,10 @@ function globalCourseIdentity(revision = 7) {
   };
 }
 
-function curricularMapArguments(artifactId, approved) {
+function curricularMapArguments(artifactId) {
   const artifact = GLOBAL_AUTHORING_FIXTURE.artifacts[artifactId];
   return {
     curso: GLOBAL_AUTHORING_FIXTURE.course.title,
-    aprovado: approved,
     publico: GLOBAL_AUTHORING_FIXTURE.course.audience,
     preRequisitos: GLOBAL_AUTHORING_FIXTURE.course.prerequisites,
     itensDeEscopo: GLOBAL_AUTHORING_FIXTURE.scopeItems,
@@ -361,14 +396,14 @@ function internalMapEntities(planRead) {
 
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 27);
+  assert.equal(new Set(EXPECTED_NAMES).size, 54);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "3.0.0");
-  // Orçamento local do catálogo com proposta, apoio e vínculos; não é limite de chamada MCP.
-  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 54_000);
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "4.0.0");
+  // Orçamento local das 54 tarefas contextuais; payload de chamada mantém seu gate próprio.
+  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 110_000);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -429,15 +464,22 @@ test("consultar_planejamento projeta mapa e cobertura humanos sem identidades t�
   assert.doesNotMatch(serialized, /AnalysisUnit|StudyUnit|evidenceRequirements/iu);
 });
 
-test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo mapa", async () => {
+test("mapa salvo é relido e a aprovação referencia a versão persistida", async () => {
   let current = mapPlanRead({ artifactId: null, approval: "absent" });
   const mapWrites = [];
+  const approvals = [];
   let partWrites = 0;
   const value = {
     ...adapter(),
     ...globalCourseIdentity(() => current.courseRevision),
     async getCourseInstructionalPlan() {
-      return structuredClone(current);
+      return { ...structuredClone(current), mapApprovalReference: `persisted-map-${current.plan.version}` };
+    },
+    async approveCourseCurricularMap({ reference }) {
+      if (reference !== `persisted-map-${current.plan.version}`) throw new AuthoringApiError(409, "stale_course_state", "O mapa mudou.");
+      approvals.push(reference);
+      current.plan.curriculumMapStatus = "approved";
+      return { courseRevision: ++current.courseRevision, deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}` };
     },
     async saveCourseCurricularMap(input) {
       mapWrites.push(structuredClone(input));
@@ -492,22 +534,22 @@ test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo ma
     assert.match(serializedDraftWrite, new RegExp(microsequence.title, "u"));
   }
 
-  const uninspectedChange = curricularMapArguments("mapa-global-v1", true);
+  const uninspectedChange = { ...curricularMapArguments("mapa-global-v1"), aprovado: true };
   uninspectedChange.modulos[0].objetivo = "Uma mudança que não foi apresentada à pessoa autora.";
   await assert.rejects(() => executeHumanCourseTask({
     adapter: value,
     principal: PRINCIPAL,
     name: "salvar_mapa_curricular",
     rawArguments: uninspectedChange
-  }), (error) => error.code === "curricular_map_draft_mismatch");
+  }));
   assert.equal(mapWrites.length, 1);
 
-  const changedSupport = curricularMapArguments("mapa-global-v1", true);
+  const changedSupport = { ...curricularMapArguments("mapa-global-v1"), aprovado: true };
   changedSupport.modulos[0].licoes[0].microssequencias[0].explicacao.proposito =
     "Uma proposta de apoio que ainda não foi apresentada à pessoa autora.";
   await assert.rejects(() => executeHumanCourseTask({
     adapter: value, principal: PRINCIPAL, name: "salvar_mapa_curricular", rawArguments: changedSupport
-  }), (error) => error.code === "curricular_map_draft_mismatch");
+  }));
   assert.equal(mapWrites.length, 1);
 
   const revisedArguments = curricularMapArguments("mapa-global-v2", false);
@@ -519,16 +561,21 @@ test("salvar_mapa_curricular grava rascunho completo e aprova somente o mesmo ma
   });
   assert.equal(mapWrites.length, 2);
 
+  await assert.rejects(() => executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "aprovar_mapa_curricular", rawArguments: { referencia: draft.context.referenciaParaAprovar }
+  }), error => error.code === "stale_course_state");
+
   const approved = await executeHumanCourseTask({
     adapter: value,
     principal: PRINCIPAL,
-    name: "salvar_mapa_curricular",
-    rawArguments: { ...revisedArguments, aprovado: true }
+    name: "aprovar_mapa_curricular",
+    rawArguments: { referencia: `persisted-map-${current.plan.version}` }
   });
-  assert.equal(mapWrites.length, 3);
+  assert.equal(mapWrites.length, 2);
+  assert.equal(approvals.length, 1);
   assert.equal(partWrites, 0);
   assert.match(JSON.stringify(approved.context), /aprovado/iu);
-  assert.match(approved.nextDecision, /primeira parte/iu);
+  assert.match(approved.nextDecision, /foco|cadência/iu);
   assert.doesNotMatch(approved.nextDecision, /\?/u);
 });
 
@@ -969,6 +1016,7 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
       };
     },
     async getCourseDesign({ scopeKind, scopeRef }) {
+      if (scopeKind === "course") return adapter().getCourseDesign({ courseId: COURSE_ID, scopeKind });
       if (scopeKind === "study_unit") {
         assert.equal(scopeRef, existingStudyUnitId);
         const current = design(microA, [analysisA], [evidenceA], 2);
@@ -1083,7 +1131,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
-      ["manter_fonte", "excluir_perfil"].includes(task.name),
+      ["manter_fonte", "excluir_perfil", "excluir_curso", "remover_ramo_curricular"].includes(task.name),
       task.name
     );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
@@ -1111,6 +1159,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
           /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
             .test(path);
         if (localComponentIdentity) continue;
+        if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
+            ["courseId", "requestId"].includes(name)) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
     });
@@ -1410,7 +1460,7 @@ test("#275 consultar_componentes faz filtros estruturados regerem a função ins
 test("#272 autorização filtra writes e recusa input mecânico antes do domínio", async () => {
   assert.equal(courseHumanTaskIsAllowed("retomar_curso", READ_PRINCIPAL), true);
   assert.equal(courseHumanTaskIsAllowed("criar_curso", READ_PRINCIPAL), false);
-  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 13);
+  assert.equal(courseHumanTasksForPrincipal(READ_PRINCIPAL).length, 16);
   assert.equal(courseHumanTasksForPrincipal({ actorId: PRINCIPAL.actorId, scopes: [] }).length, 0);
   await assert.rejects(
     () => executeHumanCourseTask({
@@ -1456,7 +1506,7 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
 
   const readResponse = await mcpHandler(READ_PRINCIPAL)(request("tools/list"));
   const read = await readResponse.json();
-  assert.equal(read.result.tools.length, 13);
+  assert.equal(read.result.tools.length, 16);
   assert.equal(read.result.tools.every(({ annotations }) => annotations.readOnlyHint), true);
 
   const invalidResponse = await mcpHandler()(request("tools/list", { cursor: "legacy" }));
@@ -1571,15 +1621,15 @@ test("MCP distingue recusa de acesso da autenticação e do escopo OAuth", async
   }
 });
 
-test("MCP reduz falha transitória a impacto e retomada sem expor transporte", async () => {
+test("MCP reduz falha transitória de leitura a impacto e retomada sem expor transporte", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: {
       ...adapter(),
-      async createCourse() {
+      async listCourses() {
         throw new AuthoringApiError(
           503,
           "network_error",
-          "Falha transitória de conexão antes da confirmação de escrita no servidor."
+          "Falha transitória de conexão ao ler o curso no servidor."
         );
       }
     },
@@ -1588,8 +1638,8 @@ test("MCP reduz falha transitória a impacto e retomada sem expor transporte", a
     authorizationServer: "https://project.example/auth/v1"
   });
   const response = await handler(request("tools/call", {
-    name: "criar_curso",
-    arguments: { titulo: "Novo curso", objetivo: "Ensinar redes." }
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
   }));
   const payload = await response.json();
   const publicText = [
@@ -1618,11 +1668,11 @@ test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", a
   const handler = createAuthoringMcpHandler({
     adapter: {
       ...adapter(),
-      async createCourse() {
+      async listCourses() {
         throw new AuthoringApiError(
           429,
           "rate_limit_transport",
-          "Falha transitória de conexão e escrita no servidor."
+          "Falha transitória de conexão ao ler o curso no servidor."
         );
       }
     },
@@ -1631,8 +1681,8 @@ test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", a
     authorizationServer: "https://project.example/auth/v1"
   });
   const response = await handler(request("tools/call", {
-    name: "criar_curso",
-    arguments: { titulo: "Novo curso", objetivo: "Ensinar redes." }
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
   }));
   const payload = await response.json();
 
@@ -1648,6 +1698,30 @@ test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", a
     JSON.stringify(payload),
     /rate_limit_transport|network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
   );
+});
+
+test("MCP conserva a tentativa de criação incerta e não recomenda outra escrita", async () => {
+  const writes = [];
+  const handler = createAuthoringMcpHandler({
+    adapter: { ...adapter(), async createCourse(input) {
+      writes.push(structuredClone(input));
+      throw new AuthoringApiError(503, "network_error", "Resposta de gravação perdida.");
+    } },
+    allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "criar_curso", arguments: { titulo: "Novo curso", objetivo: "Ensinar redes." }
+  }));
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "course_write_uncertain");
+  assert.equal(payload.result.structuredContent.error.retryable, false);
+  assert.match(payload.result.structuredContent.error.message, /mesma tentativa/iu);
+  assert.doesNotMatch(payload.result.structuredContent.nextDecision ?? "", /refaça|tente novamente/iu);
+  assert.equal(writes.length, 2, "a recuperação transacional é limitada ao replay suportado");
+  assert.deepEqual(writes[1], writes[0], "o replay não cria uma nova identidade ou intenção");
 });
 
 test("chamada MCP entrega o deep link como link Markdown sem expor estado técnico", async () => {
@@ -1672,6 +1746,10 @@ test("chamada MCP entrega o deep link como link Markdown sem expor estado técni
   );
   const serializedContext = JSON.stringify(payload.result.structuredContent.context);
   assert.doesNotMatch(serializedContext, /courseId|requestId|revision|version|hash|path|resultFacts/iu);
+  assert.equal(payload.result.structuredContent.context.preferenciasPessoais.foco, "full_cycle");
+  assert.equal(payload.result.structuredContent.context.processoCorrente.cadencia, "part");
+  assert.equal(typeof payload.result.structuredContent.context.referenciaProcesso, "string");
+  assert.deepEqual(payload.result.structuredContent.context.observations.items, []);
 
 });
 
@@ -1949,6 +2027,8 @@ test("nova retirada retoma delete físico pendente antes de declarar sucesso", a
   let courseRevision = 7;
   let activeAttachments = [{ contentHash: "d".repeat(64) }];
   let removeAttempts = 0;
+  const removeRequests = [];
+  const recoveryOrder = [];
   let resumed = 0;
   const sourceAdapter = {
     ...adapter(),
@@ -1963,6 +2043,7 @@ test("nova retirada retoma delete físico pendente antes de declarar sucesso", a
       return { courseId: COURSE_ID, title: "Redes para iniciantes", revision: courseRevision };
     },
     async getCourseSources({ mode }) {
+      if (removeAttempts > 0) recoveryOrder.push("read");
       const source = {
         sourceId: "source-pending-delete",
         revision: 2,
@@ -1973,8 +2054,11 @@ test("nova retirada retoma delete físico pendente antes de declarar sucesso", a
       };
       return { items: mode === "source" || mode === "catalog" ? [source] : [], nextCursor: null };
     },
-    async executeCourseSourceCommand({ command }) {
+    async executeCourseSourceCommand(input) {
+      const { command } = input;
       assert.equal(command.type, "remove_pdf");
+      removeRequests.push(structuredClone(input));
+      recoveryOrder.push("commit");
       removeAttempts += 1;
       activeAttachments = [];
       if (removeAttempts === 1) courseRevision += 1;
@@ -2001,8 +2085,11 @@ test("nova retirada retoma delete físico pendente antes de declarar sucesso", a
   };
 
   await assert.rejects(() => executeHumanCourseTask(input),
-    (error) => error.code === "course_storage_unavailable");
+    (error) => error.code === "course_write_uncertain" &&
+      error.details.requestId === removeRequests[0].requestId);
   assert.equal(removeAttempts, 2, "o replay interno conserva a mesma retirada");
+  assert.deepEqual(removeRequests[1], removeRequests[0], "o replay preserva identidade, versão e arquivo");
+  assert.ok(recoveryOrder.slice(1, -1).includes("read"), "o replay ocorre depois da releitura");
   assert.equal(resumed, 0);
 
   const output = await executeHumanCourseTask(input);
@@ -2660,7 +2747,8 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
     "unidade de estudo"
   );
   assert.match(fixedForResearch.deepLink, /section=parameters/u);
-  assert.match(fixedForResearch.nextDecision, /comparar/iu);
+  assert.match(fixedForResearch.nextDecision, /futuras produções/iu);
+  assert.match(fixedForResearch.nextDecision, /conteúdo existente.*alteração autoral própria/iu);
 
   const commandCountBeforeAutomaticRetry = designCommands.length;
   const preservedResearchCondition = await executeHumanCourseTask({
@@ -2684,7 +2772,8 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
   );
   for (const result of [configured, calibratedMicrosequence]) {
     assert.match(result.deepLink, /section=parameters/u);
-    assert.match(result.nextDecision, /comparar/iu);
+    assert.match(result.nextDecision, /futuras produções/iu);
+    assert.match(result.nextDecision, /conteúdo existente.*alteração autoral própria/iu);
     assert.ok(result.context.configuracao);
   }
 

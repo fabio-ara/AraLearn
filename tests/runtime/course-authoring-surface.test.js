@@ -638,6 +638,30 @@ test("lista abre Curso materializado diretamente no Conteúdo em um toque", asyn
   assert.doesNotMatch(root.innerHTML, /<textarea|Workspace|Trilha|Coleção|publicação/iu);
 });
 
+test("Configurações abre pela Autoria sem renderizar novamente nem mudar a rota", async () => {
+  const root = new TrackingRoot();
+  const locationValue = { pathname: "/", search: "", hash: "" };
+  let opened = 0;
+  const surface = createCourseAuthoringSurface({
+    root, controller: controllerFixture(), locationValue, windowValue: new FakeWindow(),
+    onOpenSettings() { opened += 1; }
+  });
+  await surface.open();
+  const html = root.innerHTML;
+  const route = locationValue.hash;
+  const writes = root.renderWrites.length;
+  assert.match(html, /data-course-authoring-action="open-settings"[^>]*aria-label="Configurações"/u);
+  designAction(root, "open-settings");
+  assert.equal(opened, 1);
+  assert.equal(surface.opened, true);
+  assert.equal(locationValue.hash, route);
+  assert.equal(root.innerHTML, html);
+  assert.equal(root.renderWrites.length, writes);
+  const header = renderCourseAuthoringSurface({ view: "course", section: "people", canOpenSettings: true,
+    course: { courseId: COURSE_ID, revision: 1, title: "Curso", ownership: "owned", canEdit: true } });
+  assert.match(header, /data-course-authoring-action="open-settings"[^>]*aria-label="Configurações"/u);
+});
+
 test("lista oferece retorno visível ao Estudo", async () => {
   const root = new FakeRoot();
   let closed = 0;
@@ -2173,6 +2197,36 @@ test("repete criação confirmada com o mesmo requestId e payload após perder a
 
 
 
+test("aviso de unidades sem parte usa totais do planejamento com lotes ausentes ou parciais", () => {
+  for (const scenario of [
+    { total: 3, withoutParts: true, expected: 3 },
+    { total: 8, courseTotal: 1, expected: 1 },
+    { total: 10, expected: 3 },
+    { total: 7, courseTotal: 20, expected: 0 },
+    { total: 0, withoutParts: true, courseTotal: 3, expected: 0 }
+  ]) {
+    const authoringPlan = authoringPlanFixture();
+    authoringPlan.plan.counts.studyUnitCount = scenario.total;
+    if (scenario.withoutParts) {
+      authoringPlan.plan.parts = [];
+      authoringPlan.plan.counts.authoringPartCount = 0;
+      authoringPlan.plan.counts.linkedDidacticMicrosequenceCount = 0;
+    }
+    const course = courseDetailFixture(scenario.courseTotal === undefined ? {}
+      : { counts: { studyUnitCount: scenario.courseTotal } });
+    const markup = renderCourseAuthoringSurface({ view: "course", section: "planning", course, authoringPlan });
+    const notice = markup.match(/<aside class="course-authoring-unlinked-content"[\s\S]*?<\/aside>/u)?.[0] ?? "";
+    if (!scenario.expected) {
+      assert.equal(notice, "", JSON.stringify(scenario));
+      continue;
+    }
+    const label = scenario.expected === 1 ? "Unidade de estudo sem parte" : "Unidades de estudo sem parte";
+    assert.ok(notice.includes(`aria-label="${scenario.expected} ${label}"`), JSON.stringify(scenario));
+    assert.ok(notice.includes(`<strong>${scenario.expected}</strong><span>${label}</span>`), JSON.stringify(scenario));
+    if (scenario.withoutParts) assert.match(markup, /Nenhum lote de produção foi definido ainda/u);
+  }
+});
+
 test("Planejamento sem estrutura oferece referência copiável para debate sem escritor paralelo", async () => {
   const root = new FakeRoot();
   const emptyPlan = structuredClone(authoringPlanFixture());
@@ -2788,7 +2842,7 @@ test("renderer escapa conteúdo e CSS mantém moldura compacta com um rolador de
   assert.doesNotMatch(surfaceSource, /course-authoring-chat|Trabalhar no ChatGPT|Copiar pedido/u);
   assert.match(
     surfaceSource,
-    /const routeChanged = Boolean\(state\.routeKey && state\.routeKey !== nextKey\);\s*if \(routeChanged\) \{\s*destroyInspectionSequence\(\);[\s\S]*?root\.scrollTop = 0;/u
+    /const routeChanged = Boolean\(state\.routeKey && state\.routeKey !== nextKey\);\s*if \(routeChanged\) \{[\s\S]*?destroyCurriculumMap\(\);\s*destroyInspectionSequence\(\);[\s\S]*?root\.scrollTop = 0;/u
   );
   assert.match(css, /@media \(max-width: 380px\)/u);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/u);

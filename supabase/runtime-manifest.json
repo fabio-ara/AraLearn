@@ -1,7 +1,9 @@
 {
-  "schemaRevision": "20260908105357",
+  "schemaRevision": "20260909072036",
   "contractVersion": 1,
   "requiredFeatures": [
+    "object-content-review-v1",
+    "independent-review-access-v1",
     "flat-runtime-manifest-v1",
     "single-live-course-identity-v1",
     "paged-live-course-composition-v1",

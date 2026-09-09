@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { createEmptyCourseSourceBibliographicMetadata, normalizeCourseSourceDocument } from "../../src/domain/courseSources.js";
-import { CourseSupabaseAdapter } from "../functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 import {
   localSupabaseConfiguration,
   localSupabaseRequest,
+  createConfirmedLocalUser, createLocalFixtureClient, recordLocalFixtureFiles, verifyLocalFixtureFilesAbsent,
   removeLocalUser,
   signInLocalUser
 } from "../../tests/support/localSupabaseE2e.js";
@@ -68,6 +68,11 @@ async function storageObjectExists(config, storagePath) {
     `/object/info/${PDF_BUCKET}/${objectPath(storagePath)}`
   );
   assert.ok([200, 400, 404].includes(response.status), `Storage info devolveu HTTP ${response.status}.`);
+  if (response.status === 400) {
+    const error = await response.json();
+    assert.ok(String(error.statusCode) === "404" || error.message === "Object not found",
+      "Storage devolveu erro sem comprovar ausência do objeto registrado.");
+  }
   return response.status === 200;
 }
 
@@ -101,22 +106,18 @@ function sourceDocument() {
   });
 }
 
-async function createAdministrator(config, marker) {
+async function createAdministrator(config, marker, onCreated) {
   const email = `storage-${marker}@example.test`;
   const password = `Storage-${marker}-Aa1!`;
-  const created = await localSupabaseRequest(config, "/auth/v1/admin/users", {
-    method: "POST",
-    token: config.adminKey,
-    body: {
+  const created = await createConfirmedLocalUser(config, {
       email,
       password,
-      email_confirm: true,
-      app_metadata: { aralearn_role: "administrator" },
-      user_metadata: { test: "course-storage-lifecycle-local-smoke" }
-    }
+      appMetadata: { aralearn_role: "administrator" },
+      marker: "course-storage-lifecycle-local-smoke"
   });
   assert.equal(created.response.status, 200, JSON.stringify(created.payload));
   assert.match(created.payload?.id || "", /^[0-9a-f-]{36}$/u);
+  onCreated(created.payload.id);
   const signedIn = await signInLocalUser(config, { email, password });
   assert.equal(signedIn.response.status, 200, JSON.stringify(signedIn.payload));
   assert.ok(signedIn.payload?.access_token);
@@ -148,6 +149,8 @@ async function ingestPdf(config, {
     p_media_type: MEDIA_TYPE,
     p_request_id: requestId
   });
+  recordLocalFixtureFiles(config, { ownerId: actorId, courseId,
+    files: [{ kind: "pdf", contentHash, storagePath: prepared.attachment.storagePath }] });
   if (prepared.uploadRequired) {
     const uploaded = await storageRequest(
       config,
@@ -256,7 +259,7 @@ async function assertDownloadRejected(config, parameters) {
 export async function runLocalCourseStorageLifecycle(environment = process.env) {
   const config = localSupabaseConfiguration(environment);
   const marker = randomUUID();
-  const cleanupPaths = new Set();
+  let ownerClient;
   let userId = null;
   let courseId = null;
   let sourceId = randomUUID();
@@ -264,18 +267,21 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
   let revision = null;
   let attachment = null;
   try {
-    const user = await createAdministrator(config, marker);
+    const user = await createAdministrator(config, marker, id => { userId = id; });
     userId = user.id;
-    const course = await rpc(config, "create_course_for_actor_v1", {
-      p_actor_id: userId,
-      p_title: `Curso descartável de armazenamento ${marker.slice(0, 8)}`,
-      p_objective: "Provar vínculo, remoção, reativação e coleta segura de um PDF.",
-      p_request_id: randomUUID()
+    ownerClient = await createLocalFixtureClient(config, { ownerId: userId, accessToken: user.accessToken,
+      origin: environment.ARALEARN_LOCAL_APPLICATION_ORIGIN });
+    const course = await ownerClient.createCourse({
+      title: `Curso descartável de armazenamento ${marker.slice(0, 8)}`,
+      objective: "Provar vínculo, remoção, reativação e coleta segura de um PDF.",
+      requestId: randomUUID()
     });
     courseId = course.courseId;
     revision = course.revision;
 
     const bytes = syntheticPdf(marker);
+    recordLocalFixtureFiles(config, { ownerId: userId, courseId,
+      files: [{ kind: "pdf", contentHash: createHash("sha256").update(bytes).digest("hex") }] });
     const revisionBeforeIngestion = revision;
     const sourceIntent = {
       mode: "save",
@@ -296,7 +302,8 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
     revision = ingested.courseRevision;
     sourceRevision = ingested.source.sourceRevision;
     attachment = ingested.attachment;
-    cleanupPaths.add(attachment.storagePath);
+    recordLocalFixtureFiles(config, { ownerId: userId, courseId,
+      files: [{ kind: "pdf", contentHash: attachment.contentHash, storagePath: attachment.storagePath }] });
     assert.equal(await storageObjectExists(config, attachment.storagePath), true);
     const replay = await rpc(config, "get_course_source_pdf_ingestion_receipt_for_actor_v1", {
       p_actor_id: userId,
@@ -383,7 +390,8 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
     const orphanBytes = syntheticPdf(`orphan-${marker}`);
     const orphanHash = createHash("sha256").update(orphanBytes).digest("hex");
     const orphanPath = `${randomUUID()}/${orphanHash}.pdf`;
-    cleanupPaths.add(orphanPath);
+    const orphanFile = { kind: "orphan_pdf", contentHash: orphanHash, storagePath: orphanPath };
+    recordLocalFixtureFiles(config, { ownerId: userId, files: [orphanFile] });
     const uploadedOrphan = await storageRequest(
       config,
       `/object/${PDF_BUCKET}/${objectPath(orphanPath)}`,
@@ -406,7 +414,8 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
     assert.equal(authorization.authorized, true);
     await deleteStorageObjects(config, [authorization.objectPath]);
     assert.equal(await storageObjectExists(config, orphanPath), false);
-    cleanupPaths.delete(orphanPath);
+    await verifyLocalFixtureFilesAbsent(config, { ownerId: userId, files: [orphanFile],
+      verifyAbsent: async file => !await storageObjectExists(config, file.storagePath) });
 
     return Object.freeze({
       contract: "aralearn.course-storage-lifecycle-proof.v1",
@@ -429,14 +438,10 @@ export async function runLocalCourseStorageLifecycle(environment = process.env) 
       if (removal) revision = removal.courseRevision;
     }
     if (userId && courseId) {
-      const adapter = new CourseSupabaseAdapter({ supabaseUrl: config.projectUrl,
-        serverApiKey: config.adminKey, publishableKey: config.publishableKey,
-        publicAppUrl: "http://127.0.0.1:4182" });
-      const completion = await adapter.maintainCourse({ principal: { actorId: userId },
+      const completion = await ownerClient.maintainCourse({
         courseId, operation: "delete_owned_course", confirmed: true, requestId: randomUUID() });
       assert.equal(completion.fileCleanupPending, false, "Preserve a conta enquanto há arquivos pendentes.");
     }
-    await deleteStorageObjects(config, [...cleanupPaths]);
     if (userId) await removeLocalUser(config, userId);
   }
 }

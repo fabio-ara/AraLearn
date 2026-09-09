@@ -7,6 +7,9 @@ import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/c
 
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import { richParagraphInstance } from "../fixtures/package/rich-paragraph.js";
+import { buildCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
+import { createConfirmedLocalUser, createLocalFixtureClient, recordLocalFixtureFiles, removeLocalUser,
+  signInLocalUser, trackLocalFixtureCreation, verifyLocalFixtureFilesAbsent } from "../support/localSupabaseE2e.js";
 
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
 const PROJECT_URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
@@ -14,7 +17,8 @@ const PUBLISHABLE_KEY = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || 
 const ADMIN_KEY = String(
   process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 ).trim();
-const APPLICATION_ORIGIN = "http://127.0.0.1:4182";
+const APPLICATION_ORIGIN = `http://127.0.0.1:${process.env.ARALEARN_E2E_PORT || "4182"}`;
+const FIXTURE_CONFIG = { projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY, adminKey: ADMIN_KEY };
 const COURSE_TITLE = "Curso privado da jornada de acesso";
 const PASSWORD = "AraLearn-access-local-A9!";
 const PNG_1PX = Buffer.from(
@@ -33,6 +37,8 @@ let ownerAvatarObjectKey = "";
 let publicCourseId = "";
 let ownerHandle = "";
 let learnerHandle = "";
+let ownerFixtureClient = null;
+const avatarFiles = [];
 
 function headers(token, { json = true } = {}) {
   return {
@@ -73,49 +79,43 @@ function failure(label, result) {
 }
 
 async function createUser(email) {
-  const result = await request("/auth/v1/admin/users", {
-    method: "POST",
-    token: ADMIN_KEY,
-    body: {
-      email,
-      password: PASSWORD,
-      email_confirm: true,
-      user_metadata: { test: "course-access-local-e2e" }
-    }
-  });
+  const result = await createConfirmedLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD, marker: "course-access-local-e2e" });
   expect(result.response.status, failure("criar usuário local", result)).toBe(200);
   return result.payload;
 }
 
 async function removeUser(userId) {
   if (!userId) return;
-  const result = await request(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
-    method: "DELETE",
-    token: ADMIN_KEY
-  });
+  const result = await removeLocalUser(FIXTURE_CONFIG, userId);
   expect([200, 204, 404], failure("remover usuário local", result))
     .toContain(result.response.status);
 }
 
 async function signIn(email) {
-  const result = await request("/auth/v1/token?grant_type=password", {
-    method: "POST",
-    body: { email, password: PASSWORD }
-  });
-  expect(result.response.status, failure("autenticar usuário local", result)).toBe(200);
-  expect(String(result.payload?.access_token || "")).toMatch(/^[^.]+\.[^.]+\.[^.]+$/u);
+  const result = await signInLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD });
+  expect(result.response.status, "Autenticar usuário sintético local").toBe(200);
+  expect(/^[^.]+\.[^.]+\.[^.]+$/u.test(String(result.payload?.access_token || ""))).toBe(true);
   return result.payload.access_token;
 }
 
 async function courseApi(path, { method = "GET", body = undefined } = {}, token) {
-  const result = await request(`/functions/v1/aralearn-course-api${path}`, {
-    method,
-    token,
-    ...(body === undefined ? {} : { body }),
-    origin: APPLICATION_ORIGIN
-  });
-  expect(result.response.status, failure(`Course API${path}`, result)).toBe(200);
-  return result.payload;
+  const execute = async () => {
+    const result = await request(`/functions/v1/aralearn-course-api${path}`, {
+      method, token, ...(body === undefined ? {} : { body }), origin: APPLICATION_ORIGIN
+    });
+    expect(result.response.status, failure(`Course API${path}`, result)).toBe(200);
+    return result.payload;
+  };
+  if (path === "/v1/courses" && method === "POST") {
+    expect(token === ownerToken, "A fixture pertence ao proprietário registrado.").toBe(true);
+    return trackLocalFixtureCreation(FIXTURE_CONFIG, { ownerId: owner.id, requestId: body.requestId,
+      create: execute, courseIdFromResult: result => result.data.courseId });
+  }
+  if (/^\/v1\/courses\/[^/]+$/u.test(path) && method === "DELETE") {
+    expect(token === ownerToken, "A fixture pertence ao proprietário registrado.").toBe(true);
+    return { data: await ownerFixtureClient.maintainCourse({ ...body, courseId: path.split("/").at(-1) }) };
+  }
+  return execute();
 }
 
 async function rpc(name, body, token) {
@@ -128,9 +128,9 @@ async function approveSyntheticContent(id, microsequenceIds = courseRows(id)
     authClient: { getAccessToken: async () => ownerToken } });
   // Somente a fixture criada neste arquivo: decisão simulada não é revisão humana real.
   for (const microsequenceId of microsequenceIds) {
-    const review = await client.getMicrosequenceReview(id, microsequenceId);
-    const approved = await client.approveMicrosequenceContent({ courseId: id, microsequenceId,
-      expectedBasisHash: review.basisHash, requestId: crypto.randomUUID() });
+    const review = await client.getContentReview(id, "microsequence_explanation", microsequenceId);
+    const approved = await client.setContentReview({ courseId: id, targetKind: "microsequence_explanation", targetId: microsequenceId,
+      reviewed: true, expectedBasisHash: review.basisHash, requestId: crypto.randomUUID() });
     expect(approved.contentReview.state).toBe("current");
   }
   return (await client.getCourse(id)).revision;
@@ -266,16 +266,36 @@ function databaseEvidence() {
 function captureBrowserFailures(page) {
   const failures = [];
   const offlineFailures = [];
+  const pendingCitationReads = new Set();
+  const navigationCitationReads = new Set();
+  let navigationBeforeCommit = false;
   let offline = false;
   const record = (message) => (offline ? offlineFailures : failures).push(message);
+  const localRead = (requestValue, rpcName) => {
+    const url = new URL(requestValue.url());
+    return requestValue.method() === "POST" && url.origin === PROJECT_URL && url.pathname === `/rest/v1/rpc/${rpcName}`;
+  };
+  page.on("request", requestValue => {
+    if (!localRead(requestValue, "get_course_study_citations_v1")) return;
+    pendingCitationReads.add(requestValue);
+    if (navigationBeforeCommit) navigationCitationReads.add(requestValue);
+  });
+  page.on("requestfinished", requestValue => {
+    pendingCitationReads.delete(requestValue); navigationCitationReads.delete(requestValue);
+  });
+  page.on("framenavigated", frame => {
+    if (frame === page.mainFrame()) navigationBeforeCommit = false;
+  });
   page.on("console", (message) => {
     if (message.type() === "error") record(`console: ${message.text()}`);
   });
   page.on("pageerror", (error) => record(`page: ${error.message}`));
   page.on("requestfailed", (requestValue) => {
     const failureText = String(requestValue.failure()?.errorText || "");
-    if (failureText.includes("ERR_ABORTED") &&
-        requestValue.url().includes("list_courses_v1")) {
+    pendingCitationReads.delete(requestValue);
+    const navigationRead = navigationCitationReads.delete(requestValue);
+    if (failureText === "net::ERR_ABORTED" &&
+        (localRead(requestValue, "list_courses_v1") || navigationRead)) {
       return;
     }
     record(`network: ${requestValue.method()} ${requestValue.url()} ${requestValue.failure()?.errorText}`);
@@ -288,6 +308,14 @@ function captureBrowserFailures(page) {
   return {
     failures,
     offlineFailures,
+    async duringNavigation(navigate) {
+      // Reload may cancel a read dispatched by the previous document a few
+      // milliseconds after navigation starts. Stop marking at the new commit.
+      navigationBeforeCommit = true;
+      pendingCitationReads.forEach(requestValue => navigationCitationReads.add(requestValue));
+      try { return await navigate(); }
+      finally { navigationBeforeCommit = false; navigationCitationReads.clear(); }
+    },
     setOffline(value) {
       offline = value;
     }
@@ -345,14 +373,15 @@ async function browserSignIn(page, email) {
     await page.getByLabel("Identificador", { exact: true }).fill(email === owner.email ? ownerHandle : learnerHandle);
     await page.getByRole("button", { name: "Salvar identificador" }).click();
   }
-  await expect(page.getByRole("button", { name: "Conta e aparência" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Configurações" })).toBeVisible();
 }
 
 async function setProfile(page, handle, { avatar = false } = {}) {
-  const settingsTrigger = page.getByRole("button", { name: "Conta e aparência" });
+  const settingsTrigger = page.getByRole("button", { name: "Configurações" });
   await settingsTrigger.click();
   const closeSettings = page.getByRole("button", { name: "Fechar" });
   await expect(closeSettings).toBeFocused();
+  await page.getByRole("button", { name: "Conta", exact: true }).click();
   await expect(page.locator("[data-profile-avatar-fallback]")).toBeVisible();
   const sheetHeight = await page.locator(".account-settings-sheet").evaluate((node) =>
     node.getBoundingClientRect().height);
@@ -363,15 +392,16 @@ async function setProfile(page, handle, { avatar = false } = {}) {
   expect(await page.locator(".account-settings-sheet").evaluate((node) =>
     node.getBoundingClientRect().height)).toBeCloseTo(sheetHeight, 0);
   await page.getByRole("button", { name: "Voltar" }).click();
-  const dataDisclosure = page.getByRole("button", { name: "Dados e conta" });
+  const signOutAndClear = page.getByRole("button", { name: "Sair e remover dados deste dispositivo", exact: true });
+  await expect(signOutAndClear).toBeVisible();
+  expect((await signOutAndClear.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
+  const dataDisclosure = page.getByRole("button", { name: "Sincronização e dados deste dispositivo", exact: true });
   await dataDisclosure.click();
-  await expect(page.locator("[data-settings-title]")).toHaveText("Dados e conta");
+  await expect(page.locator("[data-settings-title]")).toHaveText("Sincronização e dados deste dispositivo");
   expect(await page.locator(".account-settings-sheet").evaluate((node) =>
     node.getBoundingClientRect().height)).toBeCloseTo(sheetHeight, 0);
-  for (const name of [
-    "Remover dados deste dispositivo",
-    "Sair e remover dados deste dispositivo"
-  ]) {
+  for (const name of ["Remover dados deste dispositivo"]) {
     const button = page.getByRole("button", { name, exact: true });
     await expect(button).toBeVisible();
     expect((await button.boundingBox())?.height).toBeGreaterThanOrEqual(44);
@@ -391,16 +421,20 @@ async function setProfile(page, handle, { avatar = false } = {}) {
   await page.keyboard.press("Tab");
   await expect(closeSettings).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.locator("[data-settings-title]")).toHaveText("Conta e aparência");
+  await expect(page.locator("[data-settings-title]")).toHaveText("Configurações");
   await expect(dataDisclosure).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeHidden();
+  await expect(page.getByRole("dialog", { name: "Configurações" })).toBeHidden();
   await expect(settingsTrigger).toBeFocused();
   await settingsTrigger.click();
-  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Configurações" })).toBeVisible();
   await expect(status).toHaveText("");
+  await page.getByRole("button", { name: "Conta", exact: true }).click();
   await page.getByLabel("Identificador público").fill(handle);
   if (avatar) {
+    const file = { kind: "person-avatar", contentHash: Buffer.from(await crypto.subtle.digest("SHA-256", PNG_1PX)).toString("hex") };
+    avatarFiles.push(file);
+    await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, files: [file] });
     await page.locator("[data-profile-avatar-file]").setInputFiles({
       name: "avatar-local.png",
       mimeType: "image/png",
@@ -432,7 +466,6 @@ async function setProfile(page, handle, { avatar = false } = {}) {
     await expect(page.locator("[data-profile-avatar-image]")).toBeHidden();
   }
   let signOutDialogMessage = "";
-  await page.getByRole("button", { name: "Dados e conta" }).click();
   page.once("dialog", async (dialog) => {
     signOutDialogMessage = dialog.message();
     await dialog.dismiss();
@@ -441,15 +474,15 @@ async function setProfile(page, handle, { avatar = false } = {}) {
   expect(signOutDialogMessage).toBe(
     "Sair desta conta? Cursos e dados já salvos permanecerão neste dispositivo. Alterações ainda abertas e não salvas serão perdidas."
   );
-  await expect(page.getByRole("dialog", { name: "Conta e aparência" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Conta", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar" }).click();
 }
 
 async function removeOwnerAvatar() {
-  if (!owner?.id) return;
+  if (!owner?.id || !ownerToken) return;
   const listed = await request("/storage/v1/object/list/person-avatars", {
     method: "POST",
-    token: ADMIN_KEY,
+    token: ownerToken,
     body: { prefix: `${owner.id}/`, limit: 100, offset: 0 }
   });
   expect([200, 404], failure("listar avatares locais", listed)).toContain(listed.response.status);
@@ -461,13 +494,20 @@ async function removeOwnerAvatar() {
   if (ownerAvatarObjectKey && !prefixes.includes(ownerAvatarObjectKey)) {
     prefixes.push(ownerAvatarObjectKey);
   }
-  if (!prefixes.length) return;
-  const result = await request("/storage/v1/object/person-avatars", {
-    method: "DELETE",
-    token: ADMIN_KEY,
-    body: { prefixes }
-  });
-  expect([200, 404], failure("remover avatar local", result)).toContain(result.response.status);
+  if (prefixes.length) {
+    const files = prefixes.map(storagePath => ({ kind: "person-avatar", storagePath }));
+    avatarFiles.push(...files);
+    await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, files });
+    await ownerFixtureClient.updatePersonProfile({ avatarObjectKey: null });
+    for (const objectKey of prefixes) await ownerFixtureClient.deleteOwnAvatar(objectKey);
+  }
+  if (avatarFiles.length) await verifyLocalFixtureFilesAbsent(FIXTURE_CONFIG, { ownerId: owner.id, files: avatarFiles,
+    verifyAbsent: async () => {
+      const read = await request("/storage/v1/object/list/person-avatars", { method: "POST", token: ownerToken,
+        body: { prefix: `${owner.id}/`, limit: 100, offset: 0 } });
+      expect(read.response.status, "Reler somente os avatares da conta sintética").toBe(200);
+      return Array.isArray(read.payload) && read.payload.length === 0;
+    } });
 }
 
 test.describe("acesso direto de Curso no Supabase local", () => {
@@ -481,14 +521,17 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     expect(PUBLISHABLE_KEY).not.toBe("");
     expect(ADMIN_KEY).not.toBe("");
     const suffix = `${Date.now()}-${process.pid}`;
-    owner = await createUser(`owner-${suffix}@aralearn.local`);
-    learner = await createUser(`learner-${suffix}@aralearn.local`);
-    outsider = await createUser(`outsider-${suffix}@aralearn.local`);
+    owner = await createUser(`owner-${suffix}@aralearn.test`);
+    learner = await createUser(`learner-${suffix}@aralearn.test`);
+    outsider = await createUser(`outsider-${suffix}@aralearn.test`);
     ownerHandle = `owner-${owner.id.slice(0, 8)}`;
     learnerHandle = `learner-${learner.id.slice(0, 8)}`;
     ownerToken = await signIn(owner.email);
     learnerToken = await signIn(learner.email);
     outsiderToken = await signIn(outsider.email);
+    ownerFixtureClient = await createLocalFixtureClient(FIXTURE_CONFIG, { ownerId: owner.id, accessToken: ownerToken,
+      origin: APPLICATION_ORIGIN, client: new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLISHABLE_KEY,
+        authClient: { getAccessToken: async () => ownerToken, getSession: () => ({ user: { id: owner.id } }) } }) });
 
     const created = await courseApi("/v1/courses", {
       method: "POST",
@@ -620,7 +663,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
       await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText("(2025)");
       expect((await detail()).citationText).toBe(manual);
-      await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url)));
+      const pdfPath = new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url);
+      const pdfHash = Buffer.from(await crypto.subtle.digest("SHA-256", await readFile(pdfPath))).toString("hex");
+      await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, courseId, files: [{ kind: "source-pdf", contentHash: pdfHash }] });
+      await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
       await expect.poll(async () => (await detail()).attachments.length).toBe(1);
       const attached = await detail();
       await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras$/u }).click();
@@ -670,8 +716,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       expect(attribution.items[0].sourceLinks[1].anchors[0].anchorId).toBe(sourceWithAnchor.anchors[0].anchorId);
       await page.goto(`/#/estudo/${courseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`);
       await page.getByRole("button", { name: "Referência 1", exact: true }).click();
-      await expect(page.getByRole("dialog", { name: "Referência", exact: true })).toContainText(title);
-      await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
+      const explanation = page.getByRole("dialog", { name: "Explicação", exact: true });
+      const unitReferences = explanation.getByRole("region", { name: "Referências desta unidade", exact: true });
+      await expect(unitReferences).toContainText(title);
+      await unitReferences.getByRole("button", { name: "Voltar ao trecho 1 da referência 1 na unidade", exact: true }).click();
+      await expect(explanation).toBeHidden();
       await expect(page.getByRole("button", { name: "Referência 1", exact: true })).toBeFocused();
       expect(failures).toEqual([]);
     } catch (error) {
@@ -732,13 +781,14 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(page.locator("math[display='inline']")).toBeVisible();
       await expect(page.locator("math[display='block']")).toBeVisible();
       await expect(page.locator(".package-rich-paragraph [lang='ar']")).toHaveAttribute("dir", "rtl");
-      const modes = page.locator("header .study-mode-actions");
+      const modes = page.locator(".study-mode-actions");
       const geometry = () => page.locator(".package-rich-paragraph").evaluate((root) => {
         const rect = (node) => { const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height }; };
         return [root, ...root.querySelectorAll("math, ruby, p")].map(rect);
       });
       for (const theme of ["claro", "escuro"]) {
-        await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+        await page.getByRole("button", { name: "Configurações", exact: true }).click();
+        await page.getByRole("button", { name: "Aparência", exact: true }).click();
         await page.getByRole("button", { name: `Tema ${theme}`, exact: true }).click();
         await page.getByRole("button", { name: "Fechar", exact: true }).click();
         for (const width of [360, 390, 430, 1280]) {
@@ -816,8 +866,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await browserSignIn(page, owner.email);
       await page.goto(`/#/estudo/${designCourseId}/module-access-local/lesson-access-local/microsequence-access-local/${unitId}`);
       await expect(page.locator(".runtime-card-title")).toBeVisible();
-      await page.getByRole("button", { name: "Conta e aparência" }).click();
-      await page.getByRole("button", { name: "Parâmetros · unidade de estudo" }).click();
+      await page.goto(buildCourseAuthoringRoute(designCourseId, { studyUnitId: unitId }));
+      await page.locator(`[data-inspection-open-parameters][data-study-unit-id="${unitId}"]`).click();
       await expect(page.locator(".course-design-scope > summary")).toContainText("Unidade de estudo");
       await expect(page.locator(".course-design-scope > summary strong")).toHaveText("Primeira Unidade compartilhada");
       const card = page.locator(`.course-design-parameter[data-parameter-id="${novelty}"]`);
@@ -950,7 +1000,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     context.setDefaultTimeout(15_000);
     const page = await context.newPage();
     const failures = captureBrowserFailures(page);
-    const modes = () => page.locator("header .study-mode-actions");
+    const modes = () => page.locator(".study-mode-actions");
     const revisedTitle = `${COURSE_TITLE} revisado`;
     const firstCardTitle = () => page.locator(".navigation-list article h3").first();
     const moveChild = async (childId, direction) => {
@@ -1087,7 +1137,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       );
       await page.getByRole("button", { name: "Abrir unidade" }).first().click();
 
-      await page.reload();
+      await failures.duringNavigation(() => page.reload());
       await expect(page.locator("[data-action='open-course']")).toHaveAccessibleName(`Abrir ${COURSE_TITLE}`);
       await openHierarchy(
         "Abrir módulo",
@@ -1237,8 +1287,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         { exact: true }
       )).toBeVisible();
       await expectNoHorizontalOverflow(learnerPage, ".study-reader-screen");
-      await expect(learnerPage.locator("header .study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
-      await expect(learnerPage.locator("header .study-mode-actions").getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
+      await expect(learnerPage.locator(".study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+      await expect(learnerPage.locator(".study-mode-actions").getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
 
       const observationsLoaded = learnerPage.waitForResponse((response) =>
         response.url().includes("/rpc/get_my_course_anchored_annotations_v1") &&
@@ -1379,6 +1429,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     } });
     const pdfBytes = await readFile(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url));
     const hash = Buffer.from(await crypto.subtle.digest("SHA-256", pdfBytes)).toString("hex");
+    await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, courseId: publicCourseId, files: [{ kind: "source-pdf", contentHash: hash }] });
     await ownerClient.uploadCourseSourcePdf({ courseId: publicCourseId, expectedRevision: 3,
       sourceId, sourceRevision: 1, file: new Blob([pdfBytes], { type: "application/pdf" }) });
     await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 4, sourceCommand: {
@@ -1401,8 +1452,9 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     expect(publicDescriptor).not.toHaveProperty("isPersonalCopy");
     const publicList = await guestClient.listCourses({ query: "Curso público local" });
     expect(publicList.items.some((course) => course.courseId === publicCourseId)).toBe(true);
-    await expect(guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 }))
-      .rejects.toMatchObject({ status: 401, code: "42501" });
+    const savedCitations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 });
+    expect(savedCitations.citations[0].attachments).toEqual([]);
+    expect((await ownerClient.getContentReview(publicCourseId, "study_unit", "study-unit-access-local-1")).contentReview.state).toBe("draft");
     const approvedRevision = await approveSyntheticContent(publicCourseId);
     const restricted = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: approvedRevision });
     expect(restricted.citations[0].attachments).toEqual([]);
@@ -1411,8 +1463,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     const available = await ownerClient.setCourseSourceFileAccess({ courseId: publicCourseId, expectedRevision: approvedRevision,
       sourceId, sourceRevision: 1, contentHash: hash, publicFileAccess: "available" });
     expect(available.courseRevision).toBe(approvedRevision + 1);
-    expect((await ownerClient.getMicrosequenceReview(publicCourseId, "microsequence-access-local")).contentReview.state).toBe("stale");
-    const fileAccessRevision = await approveSyntheticContent(publicCourseId, ["microsequence-access-local"]);
+    const fileAccessRevision = available.courseRevision;
     const citations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: fileAccessRevision });
     expect(citations.citations[0].attachments).toEqual([{ contentHash: hash, byteSize: pdfBytes.byteLength, mediaType: "application/pdf" }]);
     const download = await guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
@@ -1440,13 +1491,13 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       const path = `#/estudo/${publicCourseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`;
       await page.goto(`/${path}`);
       await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
-      await expect(page.locator("header .study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+      await expect(page.locator(".study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Entre para enviar observações" })).toBeVisible();
       await page.getByRole("button", { name: "Marcar para rever", exact: true }).click();
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
       await page.reload();
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await page.getByRole("button", { name: "Fontes", exact: true }).click();
+      await page.getByRole("button", { name: "Explicação", exact: true }).click();
       await expect(page.getByText("Documento usado na prova local de acesso.", { exact: true })).toBeVisible();
       const browserDownload = page.waitForEvent("download");
       await page.getByRole("button", { name: "Abrir PDF em p. 1 de Documento público de teste", exact: true }).click();
@@ -1460,7 +1511,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       expect(failures.failures).toEqual([]);
       const databases = await page.evaluate(() => indexedDB.databases());
       expect(databases.map(({ name }) => name)).toContain("aralearn-course-v1-visitor");
-      await page.getByRole("button", { name: "Fechar fontes" }).click();
+      await page.getByRole("button", { name: "Fechar Explicação" }).click();
       await page.getByRole("button", { name: "Entre para enviar observações" }).click();
       await page.getByLabel("E-mail").fill(outsider.email);
       await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -1526,7 +1577,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await openUnit(page, 1);
       await expect(review(page)).toHaveAttribute("aria-pressed", "false");
       await page.goto("/");
-      await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+      await page.getByRole("button", { name: "Configurações", exact: true }).click();
+      await page.getByRole("button", { name: "Sincronização e dados deste dispositivo", exact: true }).click();
       await page.getByLabel("Estudo neste dispositivo").selectOption("manual");
       await expect(page.getByLabel("Estudo neste dispositivo")).toHaveValue("manual");
       await page.getByText("Progresso sem conta", { exact: true }).click();
@@ -1594,9 +1646,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       expect(Object.keys(persisted.state.reviewMarks).sort()).toEqual([1, 2, 3].map((number) => `study-unit-access-local-${number}`));
       await attachScreenshot(page, testInfo, "sincronizacao-explicita-390.png");
       await page.goto("/");
-      await page.getByRole("button", { name: "Conta e aparência", exact: true }).click();
+      await page.getByRole("button", { name: "Configurações", exact: true }).click();
+      await page.getByRole("button", { name: "Sincronização e dados deste dispositivo", exact: true }).click();
       await expect(page.getByLabel("Estudo neste dispositivo")).toHaveValue("manual");
-      await page.getByRole("button", { name: "Dados e conta", exact: true }).click();
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
+      await page.getByRole("button", { name: "Conta", exact: true }).click();
       page.once("dialog", (dialog) => dialog.accept());
       await page.getByRole("button", { name: "Sair", exact: true }).click();
       await openUnit(page, 1);

@@ -8,7 +8,8 @@ import {
   applyManualStudyUnitEdit,
   buildManualStudyUnitEditModel,
   listManualStudyUnitEditablePaths,
-  listManualStudyUnitTargetIds
+  listManualStudyUnitTargetIds,
+  serializeManualEditableNode
 } from "../../src/ui/manualStudyUnitEdit.js";
 
 const fixture = JSON.parse(fs.readFileSync(
@@ -17,6 +18,15 @@ const fixture = JSON.parse(fs.readFileSync(
 ));
 const sourceStudyUnit = fixture.courses[0].modules[0].lessons[0]
   .microsequences[0].studyUnits[0];
+
+test("serialização de edição preserva notação e exclui somente os marcadores transitórios de citação", () => {
+  const text = data => ({ nodeType: 3, data });
+  const element = (tagName, children, dataset = {}) => ({ nodeType: 1, tagName, childNodes: children, dataset });
+  const field = element("SPAN", [text("Use /ʃ/ e "), element("STRONG", [text("quadro"),
+    element("SPAN", [element("BUTTON", [text("1")])], { sourceMarkerPlacement: "true" })]),
+  text(" para 中文 e العربية; fonte 2 continua sendo conteúdo.")]);
+  assert.equal(serializeManualEditableNode(field), "Use /ʃ/ e **quadro** para 中文 e العربية; fonte 2 continua sendo conteúdo.");
+});
 
 test("seleção para edição é neutra e preserva parágrafo e ferramenta válidos", () => {
   const unit = structuredClone(sourceStudyUnit);

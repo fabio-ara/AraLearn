@@ -19,7 +19,7 @@ import { parseCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "../ui/courseAuthoringConfirmation.js";
 import { courseSourceOccurrenceTextTargets, resolveCourseSourceOccurrences } from "../domain/courseSourceOccurrences.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
-import { placeStudyCitationMarkers, renderStudyCitations } from "./studyCitations.js";
+import { placeStudyCitationMarkers } from "./studyCitations.js";
 import { createStudyTools, openStudyResourceUrl } from "./studyTools.js";
 import { createStudyExplanation } from "./studyExplanation.js";
 import {
@@ -52,6 +52,11 @@ import { renderCourseStudyScreen, renderStudyDraftRecovery, renderAuthoringEdito
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
+}
+
+function escapeLifecycleText(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
 function canonicalReference(selection) {
@@ -172,18 +177,11 @@ export function createCourseStudyApplication({
     observationSaving: false,
     observationLoading: false,
     observationStale: false,
-    citationsOpen: false,
     citationsLoading: false,
     citations: null,
     citationsError: "",
-    citationDownloadPending: false,
-    citationDownloadError: "",
     citationsReferenceKey: "",
-    selectedCitationLinkId: "",
-    selectedCitationOccurrenceId: "",
     formattedReferences: {},
-    citationReturnState: null,
-    citationReturnFocus: null,
     manualEditing: false,
     manualTargetId: "",
     manualDraft: { pathValues: {} },
@@ -234,7 +232,7 @@ export function createCourseStudyApplication({
     getContextKey: () => studyUnitPathKey(state.selection),
     canOpen: () => !destroyed && !state.manualEditing && !state.assistanceSelection &&
       state.view === "microsequence" && state.microsequenceMode === "play",
-    onOpen: () => { closeCitations(); closeObservationSheet(); },
+    onOpen: () => { closeObservationSheet(); },
     getHost: async () => ({
       canRevealAnswers: context().studyUnit?.role !== "practice" || state.feedbackOpen ||
         Boolean(ensureResponseState()?.feedback),
@@ -252,7 +250,13 @@ export function createCourseStudyApplication({
   const explanation = createStudyExplanation({
     root, repository,
     getReference: () => canonicalReference(state.selection),
-    getContextKey: () => [state.selection.courseId, state.selection.microsequenceId].join("::"),
+    getContextKey: () => [state.selection.courseId, state.selection.microsequenceId, state.selection.studyUnitId].join("::"),
+    getStudyUnit: () => context().studyUnit,
+    loadUnitCitations: async (options = {}) => {
+      await loadStudyCitations(options);
+      return { citations: state.citations, references: state.formattedReferences, error: state.citationsError,
+        status: repository.loadStudyUnitCitationStatus?.(canonicalReference(state.selection)) };
+    },
     getContext: () => repository.loadExplanationContext?.(canonicalReference(state.selection)) || {
       courseId: state.selection.courseId, microsequenceId: state.selection.microsequenceId,
       explanation: context().microsequence?.explanation || null,
@@ -261,7 +265,7 @@ export function createCourseStudyApplication({
     canOpen: () => !destroyed && !state.manualEditing && !state.assistanceSelection &&
       state.view === "microsequence" && state.microsequenceMode === "play",
     canAuthorSources: () => coursePermission().ownership === "owned" && coursePermission().canEdit === true,
-    onOpen: () => { studyTools.close(); closeCitations(); closeObservationSheet(); },
+    onOpen: () => { studyTools.close(); closeObservationSheet(); },
     downloadPdf: downloadCitationPdf
   });
 
@@ -270,65 +274,13 @@ export function createCourseStudyApplication({
     state.reviewUndo = reviewUndo;
   }
 
-  function updateCitationsOverlay({ focus = false } = {}) {
-    const existing = root.querySelector(".study-citations-overlay");
-    const previousFocus = existing?.contains(root.ownerDocument.activeElement) ? currentStudyFocusTarget() : null;
-    const scrollTop = existing?.querySelector(".study-citations-body")?.scrollTop || 0;
-    existing?.remove();
-    const screen = root.querySelector(".app-shell > .screen");
-    if (screen) {
-      screen.inert = state.citationsOpen || state.observationSheetOpen || studyTools.isOpen() || explanation.isOpen();
-      if (screen.inert) screen.setAttribute("aria-hidden", "true");
-      else screen.removeAttribute("aria-hidden");
-    }
-    root.querySelector(".study-citations-btn")?.setAttribute("aria-expanded", String(state.citationsOpen));
-    if (!state.citationsOpen) return;
-    root.querySelector(".app-shell")?.insertAdjacentHTML("beforeend", renderStudyCitations({
-      open: true, loading: state.citationsLoading, value: state.citations, error: state.citationsError,
-      courseId: state.selection.courseId, canAuthorSources: coursePermission().ownership === "owned" && coursePermission().canEdit === true,
-      downloadPending: state.citationDownloadPending, downloadError: state.citationDownloadError,
-      selectedLinkId: state.selectedCitationLinkId, selectedOccurrenceId: state.selectedCitationOccurrenceId,
-      formattedReferences: state.formattedReferences, studyUnit: context().studyUnit
-    }));
-    const overlay = root.querySelector(".study-citations-overlay");
-    if (!overlay) return;
-    overlay.querySelector(".study-citations-body").scrollTop = scrollTop;
-    overlay.querySelector("[data-action='toggle-citations']")?.addEventListener("click", closeCitations);
-    overlay.querySelector("[data-action='retry-citations']")?.addEventListener("click", () => void loadStudyCitations({ retry: true }));
-    overlay.querySelectorAll("[data-action='download-citation-attachment']").forEach(node =>
-      node.addEventListener("click", () => void downloadCitationAttachment(node)));
-    overlay.addEventListener("click", event => { if (event.target === overlay) closeCitations(); });
-    overlay.addEventListener("keydown", event => {
-      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeCitations(); return; }
-      if (event.key !== "Tab") return;
-      const buttons = [...overlay.querySelectorAll("button:not([disabled]), a[href]")];
-      const first = buttons[0]; const last = buttons.at(-1);
-      if (event.shiftKey && root.ownerDocument.activeElement === first) {
-        event.preventDefault(); last?.focus({ preventScroll: true });
-      } else if (!event.shiftKey && root.ownerDocument.activeElement === last) {
-        event.preventDefault(); first?.focus({ preventScroll: true });
-      }
-    });
-    if (focus) overlay.querySelector("[aria-label='Fechar fontes']")?.focus({ preventScroll: true });
-    else if (previousFocus) focusStudyTarget(previousFocus);
-  }
-
-  function closeCitations() {
-    if (!state.citationsOpen) return false;
-    state.citationsOpen = false;
-    updateCitationsOverlay();
-    restoreRenderState(root, state.citationReturnState, { restoreFocus: false });
-    focusStudyTarget(state.citationReturnFocus || { selector: ".study-citations-btn", attributes: {} });
-    return true;
-  }
-
   function bindCitationMarkers() {
     (root.querySelector(".study-reader-screen") || root).querySelectorAll("[data-action='open-citation']").forEach(node => {
       if (citationMarkerBindings.has(node)) return;
       citationMarkerBindings.add(node);
       node.addEventListener("click", event => {
         event.preventDefault(); event.stopPropagation();
-        void toggleCitations(node);
+        explanation.open({ source: "unit", linkId: node.dataset.citationLinkId, occurrenceId: node.dataset.citationOccurrenceId, trigger: node });
       });
     });
   }
@@ -620,18 +572,11 @@ export function createCourseStudyApplication({
   function resetCitations() {
     studyTools.close({ restore: false });
     ++citationsEpoch;
-    state.citationsOpen = false;
     state.citationsLoading = false;
     state.citations = null;
     state.citationsError = "";
-    state.citationDownloadPending = false;
-    state.citationDownloadError = "";
     state.citationsReferenceKey = "";
-    state.selectedCitationLinkId = "";
-    state.selectedCitationOccurrenceId = "";
     state.formattedReferences = {};
-    state.citationReturnState = null;
-    state.citationReturnFocus = null;
   }
 
   function resetObservationSheet() {
@@ -736,27 +681,18 @@ export function createCourseStudyApplication({
     return true;
   }
 
-  async function toggleCitations(node = null) {
-    if (state.citationsOpen) return closeCitations();
-    const reference = canonicalReference(state.selection);
-    if (!reference || typeof repository.loadStudyUnitCitations !== "function") return false;
-    state.selectedCitationLinkId = node?.dataset?.citationLinkId || "";
-    state.selectedCitationOccurrenceId = node?.dataset?.citationOccurrenceId || "";
-    state.citationReturnState = captureRenderState(root);
-    state.citationReturnFocus = node?.dataset?.citationLinkId ? {
-      selector: "[data-action='open-citation']", attributes: {
-        "data-citation-link-id": node.dataset.citationLinkId,
-        "data-citation-occurrence-id": node.dataset.citationOccurrenceId || ""
-      }
-    } : currentStudyFocusTarget();
-    state.citationsOpen = true;
-    state.citationDownloadError = "";
-    updateCitationsOverlay({ focus: true });
-    await loadStudyCitations();
-    return true;
+  let citationsLoad = null;
+  function loadStudyCitations(options = {}) {
+    const key = studyUnitPathKey(state.selection);
+    if (citationsLoad?.key === key && !options.retry) return citationsLoad.promise;
+    const promise = readStudyCitations(options);
+    const request = { key, promise };
+    citationsLoad = request;
+    void promise.then(() => { if (citationsLoad === request) citationsLoad = null; });
+    return promise;
   }
 
-  async function loadStudyCitations({ retry = false } = {}) {
+  async function readStudyCitations({ retry = false } = {}) {
     const reference = canonicalReference(state.selection);
     if (!reference || destroyed || !root.querySelector(".study-reader-screen") ||
         typeof repository.loadStudyUnitCitations !== "function") return false;
@@ -766,7 +702,6 @@ export function createCourseStudyApplication({
     state.citationsReferenceKey = key;
     state.citationsLoading = true;
     state.citationsError = "";
-    updateCitationsOverlay();
     try {
       const result = await repository.loadStudyUnitCitations(reference);
       if (epoch !== citationsEpoch || destroyed) return false;
@@ -783,7 +718,6 @@ export function createCourseStudyApplication({
       }));
       if (epoch !== citationsEpoch || destroyed) return false;
       state.formattedReferences = Object.fromEntries(formatted);
-      updateCitationsOverlay();
       return true;
     } catch (error) {
       if (epoch !== citationsEpoch || destroyed) return false;
@@ -798,49 +732,6 @@ export function createCourseStudyApplication({
     } finally {
       if (epoch === citationsEpoch && !destroyed) {
         state.citationsLoading = false;
-        updateCitationsOverlay();
-      }
-    }
-  }
-
-  async function downloadCitationAttachment(node) {
-    if (state.citationDownloadPending || !state.citationsOpen ||
-        typeof repository.getStudyCitationAttachmentDownload !== "function") return false;
-    const citationIndex = Number(node.dataset.citationIndex);
-    const attachmentIndex = Number(node.dataset.attachmentIndex);
-    if (!Number.isSafeInteger(citationIndex) || citationIndex < 0 ||
-        !Number.isSafeInteger(attachmentIndex) || attachmentIndex < 0) return false;
-    const citation = state.citations?.citations?.[citationIndex];
-    const attachment = citation?.attachments?.[attachmentIndex];
-    if (!attachment) return false;
-    const epoch = citationsEpoch;
-    state.citationDownloadPending = true;
-    state.citationDownloadError = "";
-    updateCitationsOverlay();
-    try {
-      const result = await repository.getStudyCitationAttachmentDownload(canonicalReference(state.selection), {
-        courseRevision: state.citations.courseRevision, sourceId: citation.sourceId,
-        sourceRevision: citation.sourceRevision, attachment: clone(attachment)
-      });
-      if (epoch !== citationsEpoch || destroyed) return false;
-      const url = new URL(result.signedUrl);
-      const localHttp = url.protocol === "http:" && ["127.0.0.1", "localhost", "10.0.2.2"].includes(url.hostname);
-      if (url.protocol !== "https:" && !localHttp || url.username || url.password) throw new TypeError("URL do PDF inválida.");
-      const page = Number(node.dataset.citationPage);
-      if (Number.isSafeInteger(page) && page > 0 && page <= 1_000_000) url.hash = `page=${page}`;
-      downloadCitationPdf(url.href, attachment);
-      return true;
-    } catch (error) {
-      if (epoch !== citationsEpoch || destroyed) return false;
-      state.citationDownloadError = publicErrorMessage(error, "Não foi possível baixar este PDF.", {
-        conflict: "O curso mudou. Reabra a unidade para consultar os PDFs atuais.",
-        network: "Sem conexão para baixar este PDF."
-      });
-      return false;
-    } finally {
-      if (epoch === citationsEpoch && !destroyed) {
-        state.citationDownloadPending = false;
-        updateCitationsOverlay();
       }
     }
   }
@@ -1390,7 +1281,7 @@ export function createCourseStudyApplication({
     state.manualStatus = status;
     state.manualRestoreFocus = restoreFocus;
     state.feedbackOpen = false;
-    if (state.citationsOpen) closeCitations();
+    explanation.close({ restore: false });
     queueStudyFocus("[data-action='study-manual-edit']");
     render({ preserveFocus: false, captureDraft: false });
     return true;
@@ -1448,50 +1339,63 @@ export function createCourseStudyApplication({
   async function maintainCourseFromHome(courseId, operation) {
     if (!courseId || state.homeLoadingCourseId ||
         typeof repository.maintainCourse !== "function") return false;
-    const course = findCourse(state.project, courseId);
+    const pending = repository.loadPendingCourseLifecycles?.().find(item => item.courseId === courseId);
+    const course = findCourse(state.project, courseId) || pending;
     if (!course) return false;
+    operation = pending?.operation || operation;
     const owned = operation === "delete_owned_course";
     const prompt = owned
       ? `Excluir definitivamente ${course.title || "este curso"}? Esta ação também remove os dados compartilhados do curso.`
       : `Sair de ${course.title || "este curso"}? Seu acesso compartilhado será encerrado.`;
-    if (typeof globalThis.confirm === "function" && !globalThis.confirm(prompt)) return false;
+    if (!pending && typeof globalThis.confirm === "function" && !globalThis.confirm(prompt)) return false;
     state.homeLoadingCourseId = courseId;
     state.homeError = "";
     setHomeNotice("");
     render();
     try {
-      await repository.maintainCourse({
-        courseId,
-        operation,
-        confirmed: true,
-        requestId: globalThis.crypto?.randomUUID?.() ||
-          `course-lifecycle-${Date.now()}-${Math.random().toString(16).slice(2)}`
-      });
+      if (pending) await repository.resumeCourseLifecycle(courseId);
+      else await repository.maintainCourse({ courseId, operation, confirmed: true, title: course.title });
+      if (destroyed) return false;
       state.project = repository.loadProject();
-      const nextCourseId = state.project.courses[0]?.id || null;
-      state.selection = nextCourseId
-        ? selectionForCourse(state.project, nextCourseId)
-        : firstSelection(state.project);
-      state.navigationHistory = [];
+      const previousCourseId = state.selection.courseId;
+      const retained = retainContext(state.project, state.selection, state.view);
+      state.selection = retained.selection;
+      state.view = retained.view;
+      if (previousCourseId === courseId) state.navigationHistory = [];
       state.homeLoadingCourseId = "";
       setHomeNotice(owned
         ? `${course.title || "O curso"} foi excluído.`
         : `Seu acesso a ${course.title || "o curso"} foi encerrado.`);
-      if (nextCourseId) persistStudyNavigation({ includePosition: false });
-      queueStudyFocus(nextCourseId
-        ? "[data-field='home-course-select']"
-        : "[data-action='open-authoring']");
-      render({ preserveFocus: false });
+      if (state.view === "courses") {
+        if (state.selection.courseId) persistStudyNavigation({ includePosition: false });
+        queueStudyFocus(state.selection.courseId ? "[data-field='home-course-select']" : "[data-action='open-authoring']");
+      }
+      render({ preserveFocus: state.view !== "courses" });
       return true;
     } catch (error) {
       state.homeLoadingCourseId = "";
+      if (destroyed) return false;
       state.homeError = publicErrorMessage(error, "Não foi possível concluir a ação deste curso.");
-      queueStudyFocus("[data-action='course-lifecycle-menu']", {
-        "data-course-id": courseId
-      });
-      render({ preserveFocus: false });
+      const guarded = repository.loadPendingCourseLifecycles?.().some(item => item.courseId === courseId);
+      if (state.view === "courses") queueStudyFocus(
+        guarded ? "[data-action='resume-course-lifecycle']" : "[data-action='course-lifecycle-menu']", {
+          "data-course-id": courseId
+        });
+      render({ preserveFocus: state.view !== "courses" });
       return false;
     }
+  }
+
+  function renderCourseLifecycleRecovery() {
+    const attempts = repository.loadPendingCourseLifecycles?.() || [];
+    if (!attempts.length || visitor) return "";
+    return '<section class="study-draft-recovery clean-card" aria-label="Ações de curso pendentes">' +
+      '<p>A conclusão destas ações ainda precisa ser confirmada, incluindo os arquivos do curso.</p>' +
+      attempts.map(item => '<div role="group" aria-label="' + escapeLifecycleText(item.title) + '"><p>' + escapeLifecycleText(item.title) + '</p>' +
+        '<button class="open-mini" type="button" data-action="resume-course-lifecycle" data-course-id="' +
+        escapeLifecycleText(item.courseId) + '"' + (state.homeLoadingCourseId ? ' disabled' : '') + '>' +
+        (item.operation === "delete_owned_course" ? "Retomar exclusão" : "Retomar saída do curso") +
+        '</button></div>').join("") + '</section>';
   }
 
   function assistanceCapability(scope) {
@@ -2963,6 +2867,8 @@ export function createCourseStudyApplication({
         node.getAttribute("data-course-id"),
         "leave_shared_course"
       )));
+    root.querySelectorAll("[data-action='resume-course-lifecycle']").forEach(node =>
+      node.addEventListener("click", () => void maintainCourseFromHome(node.getAttribute("data-course-id"))));
     root.querySelectorAll("[data-action='reset-study-progress']").forEach((node) =>
       node.addEventListener("click", () => void resetStudyProgress(node)));
     root.querySelectorAll("[data-action='open-module']").forEach((node) =>
@@ -2992,8 +2898,6 @@ export function createCourseStudyApplication({
     );
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
     root.querySelector("[data-action='open-explanation']")?.addEventListener("click", () => explanation.open());
-    root.querySelectorAll("[data-action='toggle-citations']").forEach((node) =>
-      node.addEventListener("click", () => void toggleCitations()));
     bindCitationMarkers();
 
     root.querySelector(".study-reader-screen")?.addEventListener("click", (event) => {
@@ -3257,17 +3161,14 @@ export function createCourseStudyApplication({
       visitor,
       observationCount: observationItems.filter(({ state: value }) => value !== "withdrawn").length,
       markedForReview: Boolean(reference && repository.isStudyUnitMarkedForReview(reference)),
-      citationsOpen: state.citationsOpen,
       citationsLoading: state.citationsLoading,
       citations: state.citations,
       citationsError: state.citationsError,
-      citationDownloadPending: state.citationDownloadPending,
-      citationDownloadError: state.citationDownloadError,
       canAuthorSources: currentPermission.ownership === "owned" && currentPermission.canEdit === true,
       manualEditor,
       assistance,
       structuralEditor
-    }) + (state.view === "courses" ? renderStudyDraftRecovery({
+    }) + (state.view === "courses" ? renderCourseLifecycleRecovery() + renderStudyDraftRecovery({
       recovery: state.studyDraftRecovery,
       error: state.studyDraftRecoveryError
     }) : "") + (state.observationSheetOpen ? renderStudyUnitObservationSheet({
@@ -3289,7 +3190,6 @@ export function createCourseStudyApplication({
     onViewChange(state.view);
     syncAccountControl();
     bindActions();
-    updateCitationsOverlay();
     studyTools.afterRender();
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root.querySelector(".app-shell > .screen") || root).then(() => {
       if (generation !== studyRenderGeneration || destroyed) return;

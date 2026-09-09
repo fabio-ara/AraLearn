@@ -503,6 +503,46 @@ test("recusa OpenAPI de Actions hospedado com fingerprint divergente", async () 
   );
 });
 
+test("recusa OpenAPI hospedado que perde uma operação agrupada ou uma de suas tarefas", async (context) => {
+  await context.test("operação agrupada ausente", async () => {
+    const incomplete = JSON.parse(ACTIONS_OPENAPI);
+    delete incomplete.paths["/observacoes_autorais"];
+    const { fetchImpl } = createPublishedSiteFetch({
+      overrides: {
+        "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+          body: `${JSON.stringify(incomplete, null, 2)}\n`,
+          type: "application/yaml"
+        }
+      }
+    });
+    await assert.rejects(
+      () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+      /não contém a projeção de transporte corrente/u
+    );
+  });
+  await context.test("tarefa ausente conserva os mesmos operationIds", async () => {
+    const incomplete = JSON.parse(ACTIONS_OPENAPI);
+    const groupSchema = incomplete.paths["/observacoes_autorais"].post.requestBody
+      .content["application/json"].schema;
+    groupSchema.properties.tarefa.enum = groupSchema.properties.tarefa.enum
+      .filter(name => name !== "editar_observacao");
+    groupSchema.oneOf = groupSchema.oneOf
+      .filter(branch => !branch.properties.tarefa.enum.includes("editar_observacao"));
+    const { fetchImpl } = createPublishedSiteFetch({
+      overrides: {
+        "/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml": {
+          body: `${JSON.stringify(incomplete, null, 2)}\n`,
+          type: "application/yaml"
+        }
+      }
+    });
+    await assert.rejects(
+      () => verifyPublishedSite({ siteUrl: BASE_URL, fetchImpl }),
+      /não corresponde ao artefato gerado local desta revisão/u
+    );
+  });
+});
+
 test("recusa projeção OpenAPI defasada mesmo com metadata corrente", async () => {
   const staleProjection = JSON.parse(ACTIONS_OPENAPI);
   staleProjection.paths["/salvar_parte"].post.requestBody

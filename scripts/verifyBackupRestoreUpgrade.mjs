@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { normalizeCourseSourcesRead, normalizeCourseStudyCitationsRead } from "../src/domain/courseSources.js";
 import { normalizeCourseDesignRead, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from "../src/domain/courseDesignParameters.js";
+import { normalizeCourseAnchoredAnnotationPage } from "../src/domain/courseAnchoredAnnotations.js";
 import { compareRuntimeManifest } from "./verifyHostedBackend.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -29,6 +30,12 @@ const defaultFixture = path.join(
 const DEFAULT_SOURCE_CONTAINER = "supabase_db_aralearn";
 const COURSE_ID = "74000000-0000-4000-8000-000000000002";
 const ACTOR_ID = "74000000-0000-4000-8000-000000000001";
+const CONTEXTUAL_BASE = "20260908105357_copyable_course_source_reader.sql";
+const contextualFixture = path.join(repositoryRoot, "tests/fixtures/restore/contextual-state-before-354.sql");
+const CONTEXT_OWNER = "74540000-0000-4000-8000-000000000001";
+const CONTEXT_READER = "74540000-0000-4000-8000-000000000002";
+const CONTEXT_PRIVATE = "74540000-0000-4000-8000-000000000101";
+const CONTEXT_PUBLIC = "74540000-0000-4000-8000-000000000102";
 
 // The fixed checkpoint proves the historical cut. The tail is always derived
 // from the repository and must reach the exact current manifest, without gaps.
@@ -46,6 +53,17 @@ export function pendingUpgradeMigrations(names, boundary, expectedRevision, appl
   }
   const revisions = new Set(applied);
   return ordered.filter((name) => name > boundary && !revisions.has(name.slice(0, 14)));
+}
+
+export function contextualUpgradeStages(tail) {
+  if (!Array.isArray(tail) || tail.some((name, index) => !migrationFilePattern.test(name) || index > 0 && name <= tail[index - 1])) {
+    throw new TypeError("A continuação contextual precisa de migrations ordenadas e únicas.");
+  }
+  const boundary = tail.indexOf(CONTEXTUAL_BASE);
+  if (boundary < 0 || boundary === tail.length - 1) {
+    throw new TypeError("O upgrade precisa atravessar a base de #353 antes de inserir a fixture contextual.");
+  }
+  return { beforeContextual: tail.slice(0, boundary + 1), contextual: tail.slice(boundary + 1) };
 }
 
 function command(command, args, { allowFailure = false, timeout = 120_000, input } = {}) {
@@ -788,6 +806,138 @@ const preservedStateSql = `select jsonb_build_object(
     where course_id='${COURSE_ID}' and design_snapshot is not null)
 )`;
 
+const contextualStateSql = `select jsonb_build_object(
+  'courses',(select jsonb_agg(to_jsonb(v) order by id) from (select id,owner_id,title,goal,revision,visibility,annotation_set_version
+    from public.courses where id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')) v),
+  'entities',(select jsonb_agg(to_jsonb(v) order by course_id,entity_type,entity_id) from (select course_id,entity_type,entity_id,
+    parent_type,parent_id,position,content,version,created_origin,last_revision_origin,design_snapshot,design_application
+    from private.course_entities where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')) v),
+  'reviews',(select jsonb_agg(jsonb_build_object('courseId',course_id,'entityType',entity_type,'entityId',entity_id,'value',content_review)
+    order by course_id,entity_type,entity_id) from private.course_entities
+    where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}') and entity_type in('microsequence','study_unit')),
+  'access',(select jsonb_agg(to_jsonb(v) order by course_id,user_id) from public.course_access v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')),
+  'sources',(select jsonb_agg(to_jsonb(v) order by course_id,source_id) from private.course_sources v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')),
+  'attributions',(select jsonb_agg(to_jsonb(v) order by course_id,id) from private.course_source_attributions v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')),
+  'sourceLinks',(select jsonb_agg(to_jsonb(v) order by course_id,attribution_id,source_ordinal) from private.course_source_attribution_sources v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')),
+  'observations',(select jsonb_agg(to_jsonb(v) order by id) from private.course_anchored_annotations v where course_id='${CONTEXT_PRIVATE}'),
+  'observationReceipts',(select jsonb_agg(to_jsonb(v) order by request_id) from private.course_change_receipts v
+    where course_id='${CONTEXT_PRIVATE}' and operation='execute_course_anchored_annotation'),
+  'changeReceipts',(select jsonb_agg(to_jsonb(v) order by request_id) from private.course_change_receipts v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}'))
+)`;
+
+export function assertContextualPreservation(before, after) {
+  assert.equal(before.courses.length, 2, "A prova contextual exige os cursos privado e explicitamente público.");
+  assert.deepEqual(before.courses.map(({ id, visibility }) => ({ id, visibility })), [
+    { id: CONTEXT_PRIVATE, visibility: "private" }, { id: CONTEXT_PUBLIC, visibility: "public" }
+  ]);
+  assert.equal(before.entities.length, 10, "A fixture precisa de duas bases e quatro unidades completas.");
+  assert.equal(before.sources.length, 2);
+  assert.equal(before.attributions.length, 4);
+  assert.equal(before.access.length, 1);
+  assert.equal(before.observationReceipts.length, 11, "Versões da fixture precisam de recibos reais.");
+  assert.equal(before.courses[0].annotation_set_version, 11);
+  assert.deepEqual(before.observationReceipts.map(({ result }) => result.annotationSetVersion).sort((a, b) => a - b),
+    Array.from({ length: 11 }, (_, index) => index + 1), "Cada mudança precisa do contador confirmado no recibo.");
+  for (const receipt of before.observationReceipts) {
+    assert.equal(receipt.actor_id, CONTEXT_OWNER);
+    assert.equal(receipt.course_id, CONTEXT_PRIVATE);
+    assert.equal(receipt.operation, "execute_course_anchored_annotation");
+    assert.equal(receipt.result.contract, "aralearn.course-anchored-annotation-receipt.v1");
+    assert.equal(receipt.result.changed, true);
+  }
+  for (const observation of before.observations) {
+    assert.deepEqual(before.observationReceipts.filter(({ result }) => result.annotationId === observation.id)
+      .map(({ result }) => result.annotationVersion).sort((a, b) => a - b),
+    Array.from({ length: observation.version }, (_, index) => index + 1), "As versões precisam pertencer à observação preservada.");
+  }
+  assert.deepEqual(before.observations.map(({ target_kind, target_id, state, version }) => ({ target_kind, target_id, state, version })), [
+    { target_kind: "study_unit", target_id: "unit-context-a", state: "open", version: 2 },
+    { target_kind: "study_unit", target_id: "unit-context-b", state: "considered", version: 5 },
+    { target_kind: "didactic_microsequence", target_id: "micro-context", state: "open", version: 4 }
+  ]);
+  const oldReview = before.reviews.find((review) => review.courseId === CONTEXT_PRIVATE && review.entityType === "microsequence");
+  assert.match(oldReview?.value?.approvedBasisHash || "", /^[a-f0-9]{64}$/u, "A revisão anterior precisa ter sido registrada.");
+  assert.equal(oldReview.value.approvedBy, CONTEXT_OWNER);
+  const migratedReviews = before.reviews.map((review) => ({ ...review,
+    value: review.value?.approvedBasisHash ? { legacyMicrosequenceReview: review.value } : review.value }));
+  assert.deepEqual(after, { ...before, reviews: migratedReviews },
+    "Upgrade contextual alterou dados úteis ou inventou revisão por objeto.");
+}
+
+function readContextualEntityPage(container, actor, courseId) {
+  const role = actor ? "authenticated" : "anon";
+  return queryJson(container, `with claims as materialized (
+    select set_config('request.jwt.claim.sub','${actor || ""}',true),set_config('request.jwt.claim.role','${role}',true),
+      set_config('request.jwt.claims','${JSON.stringify({ role, ...(actor ? { sub: actor } : {}) })}',true)
+  ) select public.list_course_entities_v1('${courseId}',(select revision from public.courses where id='${courseId}'),10,null,null) from claims`);
+}
+
+function verifyContextualUpgrade(container, before) {
+  const after = queryJson(container, contextualStateSql);
+  assertContextualPreservation(before, after);
+  const read = queryJson(container, `with claims as materialized (
+    select set_config('request.jwt.claim.role','service_role',true),set_config('request.jwt.claims','{"role":"service_role"}',true)
+  ) select jsonb_build_object(
+    'policies',(select jsonb_agg(content_review_policy order by id) from public.courses where id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')),
+    'entities',(select jsonb_agg(jsonb_build_object('courseId',e.course_id,'entityType',e.entity_type,'entityId',e.entity_id,
+      'complete',private.course_content_complete_v1(e.course_id,case when e.entity_type='study_unit' then 'study_unit' else 'microsequence_explanation' end,e.entity_id),
+      'owner',private.course_entity_readable_v1(e.course_id,'${CONTEXT_OWNER}',e.entity_type,e.entity_id,e.parent_id),
+      'anonymous',private.course_entity_readable_v1(e.course_id,null,e.entity_type,e.entity_id,e.parent_id),
+      'granted',private.course_entity_readable_v1(e.course_id,'${CONTEXT_READER}',e.entity_type,e.entity_id,e.parent_id),
+      'reviewState',private.course_content_review_v1(e.course_id,case when e.entity_type='study_unit' then 'study_unit' else 'microsequence_explanation' end,e.entity_id)->>'state',
+      'appliedExplanationBasis',e.applied_explanation_basis) order by e.course_id,e.entity_type,e.entity_id)
+      from private.course_entities e where e.course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}') and e.entity_type in('microsequence','study_unit')),
+    'observations',public.get_owned_course_anchored_annotations_for_actor_v1('${CONTEXT_OWNER}','${CONTEXT_PRIVATE}',
+      (select revision from public.courses where id='${CONTEXT_PRIVATE}'),null,'inbox',array['author'],'{}',array['open','considered'],'{}',true,'{}',null,null,false,null,null,24)) from claims`);
+  assert.deepEqual(read.policies, ["saved", "saved"], "Upgrade inventou restrição de revisão.");
+  assert.equal(read.entities.length, 6);
+  for (const entity of read.entities) {
+    assert.equal(entity.complete, true, `Conteúdo contextual incompleto: ${entity.entityId}`);
+    assert.equal(entity.owner, true);
+    assert.equal(entity.granted, true, "Acesso concedido ou público deixou de ler conteúdo completo salvo.");
+    assert.equal(entity.anonymous, entity.courseId === CONTEXT_PUBLIC, "Privacidade explícita não foi preservada.");
+    assert.equal(entity.reviewState, entity.entityType === "microsequence" ? "draft" : "unregistered",
+      "Uma revisão de conjunto não pode inventar a revisão de cada objeto.");
+    assert.equal(entity.appliedExplanationBasis, null, "Upgrade inventou proveniência de produção.");
+  }
+  const observations = normalizeCourseAnchoredAnnotationPage(read.observations);
+  assert.equal(observations.hasMore, false);
+  assert.equal(observations.items.length, 3);
+  for (const saved of before.observations) {
+    const item = observations.items.find((annotation) => annotation.annotationId === saved.id);
+    assert.ok(item, "Observação anterior sumiu do leitor autoral corrente.");
+    assert.equal(item.annotationVersion, saved.version);
+    assert.equal(item.rawText, saved.raw_text);
+    assert.equal(item.state, saved.state);
+    assert.equal(item.target.kind, saved.target_kind, "Upgrade atribuiu um novo alvo à observação antiga.");
+    assert.equal(item.target.id, saved.target_id);
+    if (item.target.kind === "study_unit") {
+      assert.equal(item.capabilities.canResolve, false);
+      assert.equal(item.capabilities.canWithdraw, false);
+    }
+  }
+  const readers = [[CONTEXT_OWNER, CONTEXT_PRIVATE], [CONTEXT_READER, CONTEXT_PRIVATE], [null, CONTEXT_PUBLIC]];
+  for (const [actor, courseId] of readers) {
+    const page = readContextualEntityPage(container, actor, courseId);
+    const saved = before.entities.filter((entity) => entity.course_id === courseId);
+    assert.equal(page.items.length, saved.length, "O leitor corrente omitiu objetos salvos e autorizados.");
+    for (const entity of saved) {
+      const item = page.items.find((candidate) => candidate.entityType === entity.entity_type && candidate.entityId === entity.entity_id);
+      assert.ok(item, `Objeto ausente da leitura: ${entity.entity_id}`);
+      assert.deepEqual(item.content, entity.content, "Leitura autorizada substituiu conteúdo completo por placeholder.");
+      assert.equal(item.version, entity.version);
+    }
+  }
+  return { checkpoint: CONTEXTUAL_BASE.slice(0, 14), courses: after.courses.length, entities: after.entities.length,
+    sources: after.sources.length, sourceAttributions: after.attributions.length, pendingObservations: observations.items.map((item) => ({
+      id: item.annotationId, targetKind: item.target.kind, state: item.state, version: item.annotationVersion })),
+    observationReceipts: after.observationReceipts.length, annotationSetVersion: after.courses[0].annotation_set_version,
+    preservedGroups: Object.keys(after),
+    preservedSha256: createHash("sha256").update(JSON.stringify(after)).digest("hex"),
+    review: "legacy declaration preserved; no object review invented", savedContentReadChecks: read.entities,
+    currentEntityReaderContexts: readers.length, storedFiles: false };
+}
+
 function assertCurrentState(historical, current, expectedRevision) {
   assert.equal(current.manifestRevision, expectedRevision);
   assert.equal(current.migrationRevision, expectedRevision);
@@ -853,7 +1003,7 @@ export async function verifyBackupRestoreUpgrade({
   ), "utf8"));
   const availableMigrations = readdirSync(migrationDirectory).filter((name) => migrationFilePattern.test(name));
   const historicalBoundary = path.basename(resolved.migrations.at(-1));
-  pendingUpgradeMigrations(availableMigrations, historicalBoundary, expectedManifest.schemaRevision);
+  contextualUpgradeStages(pendingUpgradeMigrations(availableMigrations, historicalBoundary, expectedManifest.schemaRevision));
   if (!containerRunning(resolved.sourceContainer)) {
     throw new Error("A stack Supabase local de origem não está em execução.");
   }
@@ -911,7 +1061,17 @@ export async function verifyBackupRestoreUpgrade({
       from private.course_sources where course_id='${COURSE_ID}'`);
     const tail = pendingUpgradeMigrations(availableMigrations, historicalBoundary,
       expectedManifest.schemaRevision, readAppliedRevisions(restored));
-    applyMigrationFiles(restored, tail, `/tmp/current-migrations-${token}`);
+    const stages = contextualUpgradeStages(tail);
+    applyMigrationFiles(restored, stages.beforeContextual, `/tmp/pre-contextual-migrations-${token}`);
+    copyAndApply(restored, contextualFixture, `/tmp/contextual-fixture-${token}.sql`);
+    const contextualBefore = queryJson(restored, contextualStateSql);
+    const previousReview = queryJson(restored, `select jsonb_build_object(
+      'private',private.course_microsequence_review_v1('${CONTEXT_PRIVATE}','micro-context')->>'state',
+      'public',private.course_microsequence_review_v1('${CONTEXT_PUBLIC}','micro-context')->>'state')`);
+    assert.deepEqual(previousReview, { private: "current", public: "draft" },
+      "A fixture anterior precisa distinguir revisão registrada e conteúdo sem revisão.");
+    applyMigrationFiles(restored, stages.contextual, `/tmp/current-migrations-${token}`);
+    const contextual = verifyContextualUpgrade(restored, contextualBefore);
     const currentState = queryJson(restored, afterStateSql);
     assertCurrentState(after.state, currentState, expectedManifest.schemaRevision);
     assert.deepEqual(queryJson(restored, preservedStateSql), preserved,
@@ -950,12 +1110,19 @@ export async function verifyBackupRestoreUpgrade({
         and content_review is not null),
       'explanations',(select count(*) from private.course_entities where course_id='${COURSE_ID}'
         and entity_type='microsequence' and content ? 'explanation'),
+      'visibility',(select visibility from public.courses where id='${COURSE_ID}'),
+      'complete',private.course_content_complete_v1('${COURSE_ID}','study_unit','unit-restore'),
+      'ownerReadable',private.course_entity_readable_v1('${COURSE_ID}','${ACTOR_ID}',
+        'study_unit','unit-restore','micro-restore'),
       'studentReadable',private.course_entity_readable_v1('${COURSE_ID}',null,
         'study_unit','unit-restore','micro-restore'))`);
     assert.equal(legacyReview.review.state, "unregistered");
     assert.equal(legacyReview.registered, 0, "Upgrade inventou uma decisão de revisão.");
     assert.equal(legacyReview.explanations, 0, "Upgrade gerou apoio retroativamente.");
-    assert.equal(legacyReview.studentReadable, true, "Upgrade bloqueou acervo anterior legível.");
+    assert.equal(legacyReview.visibility, "private", "Upgrade publicou a fixture histórica privada.");
+    assert.equal(legacyReview.complete, false, "Placeholder histórico foi apresentado como conteúdo completo.");
+    assert.equal(legacyReview.ownerReadable, true, "Proprietário perdeu acesso autoral ao acervo histórico.");
+    assert.equal(legacyReview.studentReadable, false, "Visitante recebeu acesso ao placeholder de curso privado.");
 
     await startDisposableContainer(clean, image);
     await cloneDatabase(resolved.sourceContainer, clean);
@@ -980,6 +1147,7 @@ export async function verifyBackupRestoreUpgrade({
         parameterCatalogVersion: design.parameterCatalogVersion,
         repeatPendingMigrations: repeated.length,
         legacyReview,
+        contextual: Object.freeze({ ...contextual, migrations: stages.contextual }),
         cleanInstall: Object.freeze({ migrations: orderedMigrations.length, ...cleanInstall })
       }),
       storage: Object.freeze({

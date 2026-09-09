@@ -1,9 +1,9 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCourseContentReviewState } from "../domain/courseContentReview.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
   normalizeCourseAnchoredAnnotationCommand,
   normalizeCourseAnchoredAnnotationPage,
-  normalizeCourseAnchoredAnnotationQuery,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
@@ -26,6 +26,8 @@ import { renderUiIcon } from "./renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { createCourseMicrosequenceReview } from "./CourseMicrosequenceReview.js";
+import { CourseAuthoringObservationQueue, authoringObservationQuery, orderAuthoringObservations,
+  isPendingAuthoringObservation } from "./courseAuthoringObservationQueue.js";
 import { bindCourseAuthoringDebate, renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 import {
   formatObservationTextBudget,
@@ -203,9 +205,9 @@ function normalizeAnalysisIdea(value, label) {
   exactRecord(value, ["name", "description"], `${label} é inválida.`);
   const description = value.description == null || value.description === ""
     ? null
-    : requiredText(value.description, `A descrição de ${label.toLowerCase()}`, 2_000);
+    : requiredText(value.description, `A descrição de ${label.toLowerCase()}`, 4_000);
   return Object.freeze({
-    name: requiredText(value.name, `O nome de ${label.toLowerCase()}`, 300),
+    name: requiredText(value.name, `O nome de ${label.toLowerCase()}`, 2_000),
     description
   });
 }
@@ -245,7 +247,7 @@ function normalizeAuthorship(value) {
   if (application) {
     exactRecord(
       application,
-      ["mode", "componentRefs", "analysisIdeas"],
+      ["mode", "componentRefs", "analysisIdeas", ...(Object.hasOwn(application, "practiceEvidence") ? ["practiceEvidence"] : [])],
       "A aplicação do desenho é inválida."
     );
     if (!["expository", "practice", "mixed"].includes(application.mode) ||
@@ -253,6 +255,11 @@ function normalizeAuthorship(value) {
       throw new TypeError("A aplicação do desenho é inválida.");
     }
     application.analysisIdeas = normalizeAnalysisIdeas(application.analysisIdeas);
+    if (application.practiceEvidence != null && (!Array.isArray(application.practiceEvidence) || application.practiceEvidence.length > 128)) {
+      throw new TypeError("A evidência da prática é inválida.");
+    }
+    application.practiceEvidence = application.practiceEvidence == null ? null :
+      application.practiceEvidence.map(item => normalizeAnalysisIdea(item, "Uma evidência da prática"));
   }
   return Object.freeze({
     createdOrigin: value.createdOrigin,
@@ -266,7 +273,8 @@ function normalizeInspectionItem(value, totalCount) {
     value,
     [
       "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath",
-      "authoringPart", "authorship", "deepLink"
+      "authoringPart", "authorship", "deepLink", ...(Object.hasOwn(value, "pendingAuthoringObservationCount") ? ["pendingAuthoringObservationCount"] : []),
+      ...(Object.hasOwn(value, "contentReview") ? ["contentReview"] : [])
     ],
     "Um item de conteúdo é inválido."
   );
@@ -304,6 +312,9 @@ function normalizeInspectionItem(value, totalCount) {
     }),
     authoringPart,
     authorship: normalizeAuthorship(value.authorship),
+    contentReview: value.contentReview == null ? null : normalizeCourseContentReviewState(value.contentReview),
+    pendingAuthoringObservationCount: value.pendingAuthoringObservationCount == null ? null :
+      natural(value.pendingAuthoringObservationCount, "A quantidade de observações autorais pendentes"),
     deepLink
   });
 }
@@ -557,9 +568,9 @@ function renderManualModeActions(item, state, editing, observationCount) {
     `<button type="button" data-inspection-observations data-study-unit-id="${id}"` +
     ` data-inspection-control-key="observations:${id}" aria-label="Observações de ${escapeHtml(
       item.studyUnit.title
-    )}${Number(observationCount) > 0 ? `, ${Number(observationCount)} pendentes` : ""}"` +
-    ' title="Observações">' +
-    `${renderUiIcon("prompt", "course-authoring-button-icon")}</button>` +
+    )}${observationCount === null ? ", contagem ainda não disponível" : `, ${Number(observationCount)} pendentes`}"` +
+    ' title="Observações autorais pendentes">' +
+    `${renderUiIcon("prompt", "course-authoring-button-icon")}<span class="course-inspection-observation-count" aria-hidden="true">${observationCount === null ? "…" : Number(observationCount)}</span></button>` +
     (state.canEditSources
       ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${id}"` +
         ` data-inspection-control-key="sources:${id}" aria-label="Fontes e âncoras de ${escapeHtml(
@@ -905,6 +916,32 @@ function renderAnalysisIdeas(item) {
     : "";
 }
 
+function instructionalFunction(item) {
+  return ({ expository: "Apresentação e explicação", practice: "Prática", mixed: "Explicação e prática" })[item.authorship.design.application?.mode] ||
+    (item.studyUnit.role === "practice" ? "Prática" : "Apresentação e explicação");
+}
+function contentReviewLabel(item) {
+  return ({ current: "Revisão autoral declarada", stale: "Revisão autoral desatualizada",
+    draft: "Revisão autoral pendente", unregistered: "Revisão autoral pendente" })[item.contentReview?.state] || "Estado da revisão ainda não consultado";
+}
+function renderInstructionalDetails(item, observationCount) {
+  const application = item.authorship.design.application;
+  const components = application?.componentRefs.map(ref => {
+    const [id, version] = ref.split("@"); return RESOURCE_PACKAGE_REGISTRY.get(id, version)?.manifest.label || "Componente fora do catálogo atual";
+  }) || [];
+  const origin = value => ({ human: "Autoria humana", gpt: "GPT" })[value] || "Origem não informada";
+  return '<section class="course-inspection-instructional-details" aria-label="Desenho aplicado e estado autoral"><h4>Desenho aplicado e estado autoral</h4><dl>' +
+    `<div><dt>Função instrucional</dt><dd>${escapeHtml(instructionalFunction(item))}</dd></div>` +
+    `<div><dt>Configuração aplicada</dt><dd>${application ? escapeHtml(components.join(" · ") || "Sem componentes registrados") : "Configuração ainda não consultada"}</dd></div>` +
+    `<div><dt>Origem</dt><dd>${escapeHtml(origin(item.authorship.createdOrigin))}</dd></div>` +
+    `<div><dt>Última intervenção</dt><dd>${escapeHtml(origin(item.authorship.lastRevisionOrigin))}</dd></div>` +
+    `<div><dt>Revisão autoral</dt><dd>${escapeHtml(contentReviewLabel(item))}</dd></div>` +
+    `<div><dt>Observações autorais</dt><dd>${observationCount === null ? "Contagem ainda não consultada" : `${observationCount} pendentes`}</dd></div></dl>` +
+    renderAnalysisIdeas(item) +
+    (application?.practiceEvidence?.length ? renderAnalysisIdeaGroup("Prática e evidência esperada", application.practiceEvidence)
+      : `<p>${application?.practiceEvidence === null || !application ? "Evidência da prática ainda não consultada." : "Nenhum requisito de evidência vinculado a esta unidade."}</p>`) + '</section>';
+}
+
 function renderStudyUnit(
   item,
   totalCount,
@@ -951,7 +988,7 @@ function renderStudyUnit(
     `<div><dt>Microssequência</dt><dd>${escapeHtml(path.didacticMicrosequence.title)}</dd></div>` +
     `<div><dt>Atualizado em</dt><dd><time datetime="${escapeHtml(item.updatedAt)}">` +
     `${escapeHtml(new Date(item.updatedAt).toLocaleString("pt-BR"))}</time></dd></div></dl>` +
-    renderAnalysisIdeas(item) +
+    renderInstructionalDetails(item, observationCount) +
     renderStudyUnitContextActions(item, state) +
     renderCourseAuthoringDebate({ courseId: state.courseId, courseRevision: state.pinnedRevision,
       title: state.courseTitle, route: item.deepLink.startsWith("#") ? item.deepLink : new URL(item.deepLink).hash,
@@ -959,8 +996,11 @@ function renderStudyUnit(
     "</div></details></header>" +
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
     (state.canReviewContent ? `<button type="button" data-inspection-open-explanation data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
-      ` data-inspection-control-key="explanation:${escapeHtml(item.studyUnit.id)}" aria-label="Explicação e revisão da microssequência" title="Explicação e revisão da microssequência"${state.manualStudyUnitId ? " disabled" : ""}>` +
-      `${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +
+      ` data-inspection-control-key="explanation:${escapeHtml(item.studyUnit.id)}" aria-label="Base explicativa e revisão" title="Base explicativa e revisão"${state.manualStudyUnitId ? " disabled" : ""}>` +
+      `${renderUiIcon("study", "course-authoring-button-icon")}</button>` +
+      `<button type="button" data-inspection-review-unit data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
+      ` data-inspection-control-key="content-review:${escapeHtml(item.studyUnit.id)}" aria-label="Revisão autoral desta unidade" title="Revisão autoral desta unidade"${state.manualStudyUnitId ? " disabled" : ""}>` +
+      `${renderUiIcon("review", "course-authoring-button-icon")}</button>` : "") +
     (renderStudyToolActions(item.studyUnit, RESOURCE_PACKAGE_REGISTRY, {
       disabled: Boolean(state.manualStudyUnitId), compact: true
     }) || '<div class="study-tool-actions" aria-hidden="true"></div>') +
@@ -993,28 +1033,11 @@ function renderAuthorshipState(item, observationCount = null) {
         : "observações pendentes"}`
     });
   }
-  return states.length
-    ? `<p class="course-inspection-authorship" aria-label="Estado da revisão">${states.map((state) =>
+  return `<p class="course-inspection-authorship" aria-label="Síntese instrucional e estado autoral"><span class="course-inspection-summary-label">${escapeHtml(instructionalFunction(item))}</span>` +
+    `<span class="course-inspection-summary-label">${escapeHtml(contentReviewLabel(item))}</span>` + states.map((state) =>
         `<span data-inspection-review-state="${escapeHtml(state.kind)}"` +
         ` aria-label="${escapeHtml(state.label)}" title="${escapeHtml(state.label)}">` +
-        `${renderUiIcon(state.icon, "course-authoring-button-icon")}</span>`).join("")}</p>`
-    : "";
-}
-
-function renderInspectionConfirmation(state) {
-  if (!state.confirmation) return "";
-  return '<div class="course-authoring-confirm-backdrop" data-inspection-confirmation-backdrop>' +
-    '<section class="course-authoring-confirm-dialog" data-inspection-confirmation role="alertdialog"' +
-    ' aria-modal="true" aria-labelledby="course-inspection-confirmation-title"' +
-    ' aria-describedby="course-inspection-confirmation-message">' +
-    '<h2 id="course-inspection-confirmation-title">Retirar observação?</h2>' +
-    '<p id="course-inspection-confirmation-message">Ela permanecerá no histórico como retirada.</p>' +
-    '<div class="course-authoring-confirm-actions">' +
-    '<button type="button" class="course-authoring-secondary" data-observation-action="cancel-confirmation">' +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
-    '<button type="button" class="is-danger" data-observation-action="confirm-withdraw">' +
-    `${renderUiIcon("trash", "course-authoring-button-icon")}<span>Retirar</span></button>` +
-    "</div></section></div>";
+        `${renderUiIcon(state.icon, "course-authoring-button-icon")}</span>`).join("") + '</p>';
 }
 
 function renderInspectionObservationSheet(state) {
@@ -1029,17 +1052,18 @@ function renderInspectionObservationSheet(state) {
       });
   const sheet = renderStudyUnitObservationSheet({
     items: batch ? [] : state.observationItems,
+    authoringQueue: true,
     draft: state.observationDraft,
     editingId: state.observationEditingId,
     error: state.observationError,
     saving: state.observationSaving,
     loading: batch ? false : state.observationLoading,
-    title: batch ? `Observação em ${targetCount} unidades` : "Observações da unidade",
+    title: batch ? `Observação em ${targetCount} unidades` : `Observações · ${state.items.find(item => item.studyUnit.id === state.observationStudyUnitId)?.studyUnit.title || "Unidade"}`,
     ariaLabel: batch
       ? `Observação em ${targetCount} unidades de estudo`
       : "Observações da unidade de estudo",
-    listLabel: "Observações deste contexto",
-    emptyLabel: "Nenhuma observação neste contexto.",
+    listLabel: "Observações autorais pendentes",
+    emptyLabel: "Nenhuma observação autoral pendente neste contexto.",
     showContributor: true,
     collectionSummary: state.observationCollectionSummary,
     canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "review" }),
@@ -1056,14 +1080,7 @@ function renderInspectionObservationSheet(state) {
       ? "selection:observe"
       : `observations:${state.observationStudyUnitId}`
   });
-  const confirmation = renderInspectionConfirmation(state);
-  const managedSheet = sheet.replace('role="dialog"', 'role="dialog" data-course-authoring-draft-managed');
-  if (!confirmation) return managedSheet;
-  const inactiveSheet = managedSheet.replace(
-    '<section class="editor-overlay study-observation-overlay"',
-    '<section class="editor-overlay study-observation-overlay" inert aria-hidden="true"'
-  );
-  return `${inactiveSheet}${confirmation}`;
+  return sheet.replace('role="dialog"', 'role="dialog" data-course-authoring-draft-managed');
 }
 
 function renderInspectionSearchResults(state) {
@@ -1208,7 +1225,13 @@ function renderSequence(state) {
     body = '<section class="course-authoring-state is-empty" role="status">' +
       `${renderUiIcon("folder", "course-authoring-state-icon")}` +
       '<h3>Nenhuma unidade de estudo materializada</h3>' +
-      '<p>Consulte o mapa para localizar a próxima microssequência a produzir.</p>' +
+      (state.emptyMicrosequences.length && state.canReviewContent
+        ? '<p>As Explicações podem ser consultadas e revisadas antes das unidades.</p>' +
+          '<ul class="course-inspection-empty-explanations">' + state.emptyMicrosequences.map(microsequence =>
+            `<li><span>${escapeHtml(microsequence.title)}</span><button type="button" data-inspection-open-explanation` +
+            ` data-microsequence-id="${escapeHtml(microsequence.id)}" data-inspection-control-key="empty:explanation:${escapeHtml(microsequence.id)}"` +
+            ` aria-label="Explicação de ${escapeHtml(microsequence.title)}" title="Explicação">${renderUiIcon("study", "course-authoring-button-icon")}</button></li>`).join('') + '</ul>'
+        : '<p>Consulte o mapa para localizar a próxima microssequência a produzir.</p>') +
       `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, { section: "planning" }))}"` +
       ' data-inspection-route data-inspection-control-key="empty:curriculum">Abrir mapa curricular</a></section>';
   } else {
@@ -1251,20 +1274,7 @@ function renderSequence(state) {
 }
 
 function annotationTargetQuery(studyUnitId) {
-  return normalizeCourseAnchoredAnnotationQuery({
-    mode: "target",
-    origins: [],
-    channels: [],
-    states: [],
-    categories: [],
-    includeUncategorized: true,
-    subjectIds: [],
-    hierarchy: {
-      target: { kind: "study_unit", id: studyUnitId },
-      includeDescendants: false
-    },
-    annotationId: null
-  });
+  return authoringObservationQuery("study_unit", studyUnitId);
 }
 
 function normalizeInspectionPosition(value, expectedCourseRevision = null) {
@@ -1340,7 +1350,7 @@ export function createCourseInspectionSequence({
     canEditManually: course.ownership === "owned" && course.canEdit === true &&
       typeof onSaveManualEdit === "function",
     canReviewContent: course.ownership === "owned" && course.canEdit === true &&
-      typeof controller.getMicrosequenceReview === "function" && typeof controller.exportCourseAuthoring === "function",
+      typeof controller.getContentReview === "function" && typeof controller.setContentReview === "function" && typeof controller.exportCourseAuthoring === "function",
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
@@ -1365,6 +1375,7 @@ export function createCourseInspectionSequence({
     stale: false,
     hydrationFailure: "",
     observationCounts: {},
+    emptyMicrosequences: [],
     multipleView: false,
     modeBlock: null,
     selectedStudyUnitIds: new Set(),
@@ -1376,6 +1387,7 @@ export function createCourseInspectionSequence({
     observationCollectionSummary: null,
     observationDraft: { category: null, rawText: "" },
     observationEditingId: null,
+    observationEditingSnapshot: null,
     observationLoading: false,
     observationSaving: false,
     observationError: "",
@@ -1384,7 +1396,6 @@ export function createCourseInspectionSequence({
     pendingBatchObservation: null,
     restoreObservationFocus: false,
     restoreObservationCloseFocus: false,
-    confirmation: null,
     manualStudyUnitId: null,
     manualTargetId: "",
     manualDraft: { pathValues: {} },
@@ -1437,8 +1448,9 @@ export function createCourseInspectionSequence({
     navigatorValue, locationValue: windowValue?.location, onFeedback,
     onChanged(revision) {
       if (state.destroyed) return;
+      const anchor = captureAnchor();
       state.pinnedRevision = revision;
-      void loadInitial({ anchorStudyUnitId: state.activeStudyUnitId });
+      void loadInitial({ anchorStudyUnitId: anchor.studyUnitId, offset: anchor.offsetFromStickyTop, returnAnchor: anchor });
     } });
   const studyTools = createStudyTools({
     root,
@@ -1538,35 +1550,6 @@ export function createCourseInspectionSequence({
     revealStudyObservationControl(control);
   }
 
-  function cancelConfirmation({ restoreFocus = true } = {}) {
-    const confirmation = state.confirmation;
-    if (!confirmation) return false;
-    state.confirmation = null;
-    render({ restorePosition: false });
-    if (restoreFocus) focus(confirmation.returnFocusSelector);
-    return true;
-  }
-
-  function requestWithdraw(item) {
-    state.confirmation = {
-      command: {
-        type: "withdraw_anchored_annotation",
-        annotationId: item.annotationId,
-        expectedAnnotationVersion: item.annotationVersion
-      },
-      returnFocusSelector: `[data-observation-action="withdraw"][data-observation-id="${item.annotationId}"]`
-    };
-    render({ restorePosition: false });
-    focus('[data-observation-action="cancel-confirmation"]');
-  }
-
-  function confirmWithdraw() {
-    const confirmation = state.confirmation;
-    if (!confirmation || state.observationSaving) return false;
-    state.confirmation = null;
-    return mutateObservation(confirmation.command, "Observação retirada.");
-  }
-
   function closeOpenMenus({ except = null, restoreFocus = false } = {}) {
     const openMenus = [...(root.querySelectorAll?.(INSPECTION_MENU_SELECTOR) || [])]
       .filter((menu) => menu.open);
@@ -1584,10 +1567,6 @@ export function createCourseInspectionSequence({
     if (event?.target && typeof documentValue?.documentElement?.contains === "function" &&
         !documentValue.documentElement.contains(event.target)) {
       return;
-    }
-    if (state.confirmation &&
-        event?.target?.matches?.("[data-inspection-confirmation-backdrop]")) {
-      cancelConfirmation();
     }
     const containingMenu = event?.target?.closest?.(INSPECTION_MENU_SELECTOR) || null;
     closeOpenMenus({ except: containingMenu });
@@ -1626,15 +1605,6 @@ export function createCourseInspectionSequence({
       void saveManualEdit();
       return;
     }
-    if (state.confirmation && event?.key === "Tab") {
-      trapAuthoringConfirmationTab({
-        event,
-        root,
-        confirmationSelector: "[data-inspection-confirmation]",
-        documentValue
-      });
-      return;
-    }
     if (state.observationSheetOpen && event?.key === "Tab") {
       trapAuthoringConfirmationTab({
         event,
@@ -1645,11 +1615,6 @@ export function createCourseInspectionSequence({
       return;
     }
     if (event?.key !== "Escape") return;
-    if (cancelConfirmation()) {
-      event.preventDefault?.();
-      event.stopPropagation?.();
-      return;
-    }
     if (state.observationSheetOpen) {
       root.querySelector?.('[data-observation-action="close"]')?.click?.();
       event.preventDefault?.();
@@ -1697,6 +1662,7 @@ export function createCourseInspectionSequence({
     const content = element?.querySelector?.(".card-sheet-content");
     return {
       studyUnitId: selectedId || null,
+      containerScrollTop: scrollTarget && "scrollTop" in scrollTarget ? scrollTarget.scrollTop : null,
       contentScroll: content ? {
         studyUnitId: selectedId,
         top: content.scrollTop,
@@ -1744,7 +1710,10 @@ export function createCourseInspectionSequence({
 
   function restoreAnchor(snapshot, { initial = false } = {}) {
     const id = snapshot?.studyUnitId || state.activeStudyUnitId;
-    if (!id) return;
+    if (!id) {
+      if (Number.isFinite(snapshot?.containerScrollTop) && scrollTarget && "scrollTop" in scrollTarget) scrollTarget.scrollTop = snapshot.containerScrollTop;
+      restoreControlState(snapshot); return;
+    }
     const escapedId = globalThis.CSS?.escape ? globalThis.CSS.escape(id) : id.replace(/["\\]/gu, "\\$&");
     const element = root.querySelector?.(`[data-inspection-study-unit="${escapedId}"]`);
     if (!element?.getBoundingClientRect) return;
@@ -1865,9 +1834,7 @@ export function createCourseInspectionSequence({
     const items = new Map(state.items.map((item) => [item.studyUnit.id, item]));
     page.items.forEach((item) => {
       items.set(item.studyUnit.id, item);
-      if (!Object.hasOwn(state.observationCounts, item.studyUnit.id)) {
-        state.observationCounts[item.studyUnit.id] = 0;
-      }
+      state.observationCounts[item.studyUnit.id] = item.pendingAuthoringObservationCount;
     });
     const ordered = [...items.values()].sort((left, right) => left.ordinal - right.ordinal);
     if (ordered.some((item, index) => index > 0 && item.ordinal !== ordered[index - 1].ordinal + 1)) {
@@ -2040,7 +2007,7 @@ export function createCourseInspectionSequence({
       const activeTotal = pendingTotal + (summary.byState.resolved || 0);
       if (items.length === MAX_ANNOTATIONS_PER_TARGET || !page.hasMore) {
         return {
-          items,
+          items: orderAuthoringObservations(items.filter(isPendingAuthoringObservation)),
           matchingTotal: summary.matchingTotal,
           activeTotal,
           pendingTotal,
@@ -2072,9 +2039,11 @@ export function createCourseInspectionSequence({
     state.observationSheetOpen = true;
     state.observationItems = [];
     state.observationCollectionSummary = null;
-    if (!hasObservationDraft()) state.observationDraft = { category: null, rawText: "" };
+    if (!hasObservationDraft()) {
+      state.observationDraft = { category: null, rawText: "" };
+      state.observationEditingId = null; state.observationEditingSnapshot = null;
+    }
     state.observationDraftStudyUnitId = studyUnitId;
-    state.observationEditingId = null;
     state.observationError = "";
     state.observationMessage = "";
     state.pendingBatchObservation = null;
@@ -2082,6 +2051,16 @@ export function createCourseInspectionSequence({
     state.restoreObservationFocus = true;
     render({ anchor });
     try {
+      const recovery = new CourseAuthoringObservationQueue({ controller, courseId: state.courseId,
+        targetKind: "study_unit", targetId: studyUnitId, expectedRevision: state.pinnedRevision });
+      await recovery.restorePending();
+      if (state.destroyed || epoch !== observationEpoch) return false;
+      if (recovery.pending) {
+        state.pendingObservationMutation = { request: recovery.pending, draft: null };
+        state.observationDraft = { category: recovery.pending.command.category, rawText: recovery.pending.command.rawText };
+        state.observationEditingId = recovery.pending.command.type === "revise_anchored_annotation" ? recovery.pending.command.annotationId : null;
+        state.observationMessage = "Confirme o resultado do envio pendente antes de adicionar outra observação.";
+      }
       const observations = await loadTargetObservations(studyUnitId);
       if (state.destroyed || epoch !== observationEpoch) return false;
       state.observationItems = observations.items;
@@ -2194,6 +2173,15 @@ export function createCourseInspectionSequence({
     try {
       for (const entry of pending.requests) {
         if (completed.has(entry.targetId)) continue;
+        const recovery = new CourseAuthoringObservationQueue({ controller, courseId: state.courseId,
+          targetKind: "study_unit", targetId: entry.targetId, expectedRevision: state.pinnedRevision });
+        await recovery.restorePending();
+        if (recovery.pending && recovery.pending.requestId !== entry.request.requestId) {
+          throw Object.assign(new Error("Esta unidade tem outro envio pendente. Abra sua fila e confirme o resultado antes de enviar este lote."), { ambiguous: true });
+        }
+        const reconciled = recovery.pending ? await recovery.reconcilePending() : false;
+        if (!reconciled) {
+        await recovery.persistPending(entry.request);
         const change = normalizeCourseAnchoredAnnotationChange(
           await controller.mutateCourseAnchoredAnnotations(structuredClone(entry.request))
         );
@@ -2202,6 +2190,8 @@ export function createCourseInspectionSequence({
             change.annotation &&
               change.annotation.annotationId !== entry.request.command.annotationId) {
           throw new TypeError("A confirmação não corresponde à observação enviada.");
+        }
+        await recovery.persistPending(null);
         }
         completed.add(entry.targetId);
         pending.completedTargetIds = [...completed];
@@ -2235,7 +2225,11 @@ export function createCourseInspectionSequence({
     if (typeof controller.mutateCourseAnchoredAnnotations !== "function") return false;
     const normalized = normalizeCourseAnchoredAnnotationCommand(command);
     const draft = structuredClone(operationDraft);
-    if (!pendingObservationMatches(state.pendingObservationMutation, draft)) {
+    if (state.pendingObservationMutation?.draft && !pendingObservationMatches(state.pendingObservationMutation, draft)) {
+      state.observationError = "Confirme o envio pendente antes de alterar a observação.";
+      render(); return false;
+    }
+    if (!state.pendingObservationMutation) {
       state.pendingObservationMutation = null;
     }
     const expectedCourseRevision = normalized.type === "create_anchored_annotation"
@@ -2255,22 +2249,42 @@ export function createCourseInspectionSequence({
     state.observationError = "";
     state.restoreObservationCloseFocus = true;
     render();
+    const targetId = state.observationStudyUnitId;
+    const mutationEpoch = observationEpoch;
+    const stillCurrent = () => !state.destroyed && observationEpoch === mutationEpoch && state.observationStudyUnitId === targetId;
+    const recovery = new CourseAuthoringObservationQueue({ controller, courseId: state.courseId,
+      targetKind: "study_unit", targetId, expectedRevision: state.pinnedRevision });
     let mutationConfirmed = false;
+    let writeStarted = false; let writeReturned = false;
     try {
-      const change = normalizeCourseAnchoredAnnotationChange(
-        await controller.mutateCourseAnchoredAnnotations(structuredClone(request))
-      );
-      if (change.courseId !== state.courseId || change.requestId !== request.requestId ||
-          change.annotation && change.annotation.annotationId !== normalized.annotationId) {
-        throw new TypeError("A confirmação não corresponde à observação enviada.");
+      await recovery.restorePending();
+      if (recovery.pending && recovery.pending.requestId !== request.requestId) {
+        throw Object.assign(new Error("Há outro envio pendente nesta fila. Reabra o objeto para conferir o resultado."), { ambiguous: true });
       }
-      mutationConfirmed = true;
+      if (recovery.pending && await recovery.reconcilePending()) {
+        mutationConfirmed = true;
+      } else {
+        await recovery.persistPending(request);
+        writeStarted = true;
+        const response = await controller.mutateCourseAnchoredAnnotations(structuredClone(request));
+        writeReturned = true;
+        const change = normalizeCourseAnchoredAnnotationChange(response);
+        if (change.courseId !== state.courseId || change.requestId !== request.requestId ||
+            change.annotation && change.annotation.annotationId !== normalized.annotationId) {
+          throw new TypeError("A confirmação não corresponde à observação enviada.");
+        }
+        mutationConfirmed = true;
+        await recovery.persistPending(null);
+      }
+      if (!stillCurrent()) return true;
       state.pendingObservationMutation = null;
       const studyUnitId = state.observationStudyUnitId;
       state.observationDraft = { category: null, rawText: "" };
       state.observationDraftStudyUnitId = state.selectedStudyUnitId;
       state.observationEditingId = null;
+      state.observationEditingSnapshot = null;
       const observations = await loadTargetObservations(studyUnitId);
+      if (!stillCurrent()) return true;
       state.observationItems = observations.items;
       state.observationCollectionSummary = observations;
       state.observationCounts[studyUnitId] = observations.pendingTotal;
@@ -2278,12 +2292,13 @@ export function createCourseInspectionSequence({
       state.observationMessage = `${successMessage} Você pode registrar outra Observação.`;
       return true;
     } catch (error) {
+      if (!stillCurrent()) return false;
       if (mutationConfirmed) {
         state.observationError = `${successMessage} Não foi possível atualizar a lista agora.`;
         return true;
       }
-      const ambiguous = ambiguousObservationFailure(error);
-      if (!ambiguous) state.pendingObservationMutation = null;
+      const ambiguous = !writeStarted || writeReturned || ambiguousObservationFailure(error);
+      if (!ambiguous) { state.pendingObservationMutation = null; await recovery.persistPending(null); }
       const detail = publicErrorMessage(error, "Não foi possível alterar a observação.");
       state.observationError = ambiguous
         ? `${detail} Tente novamente para confirmar exatamente a mesma operação.`
@@ -2291,9 +2306,11 @@ export function createCourseInspectionSequence({
       state.restoreObservationFocus = true;
       return false;
     } finally {
-      state.observationSaving = false;
-      state.restoreObservationFocus = true;
-      render();
+      if (stillCurrent()) {
+        state.observationSaving = false;
+        state.restoreObservationFocus = true;
+        render();
+      }
     }
   }
 
@@ -2301,7 +2318,8 @@ export function createCourseInspectionSequence({
     anchorStudyUnitId = state.requestedAnchorStudyUnitId,
     offset = 0,
     allowRebase = true,
-    entry = null
+    entry = null,
+    returnAnchor = null
   } = {}) {
     const hasRequestedPosition = Boolean(anchorStudyUnitId);
     const epoch = ++requestEpoch;
@@ -2325,6 +2343,7 @@ export function createCourseInspectionSequence({
       state.items = [];
       mergePage(page, "initial");
       state.emptyScopeContext = null;
+      state.emptyMicrosequences = [];
       if (state.items.length === 0) {
         try {
           const { index } = await loadCourseSearchIndex();
@@ -2332,6 +2351,8 @@ export function createCourseInspectionSequence({
           const scopeId = state.scope.kind === "course" ? state.courseId : state.scope.id;
           state.emptyScopeContext = index.find(({ kind, id }) =>
             kind === state.scope.kind && id === scopeId) || null;
+          state.emptyMicrosequences = index.filter(entry => entry.kind === "didactic_microsequence" &&
+            (state.scope.kind === "course" || entry.entityPath.includes(scopeId)));
         } catch {
           state.emptyScopeContext = null;
         }
@@ -2364,13 +2385,13 @@ export function createCourseInspectionSequence({
       if (!state.destroyed && epoch === requestEpoch) {
         state.initialLoading = false;
         render({
-          anchor: {
+          anchor: returnAnchor || {
             studyUnitId: state.activeStudyUnitId || anchorStudyUnitId,
             offsetFromStickyTop: offset,
             controlKey: pendingInitialFocusKey
           },
           initial: true,
-          restorePosition: hasRequestedPosition
+          restorePosition: hasRequestedPosition || Boolean(returnAnchor)
         });
         pendingInitialFocusKey = "";
         if (!hasRequestedPosition && scrollTarget && "scrollTop" in scrollTarget) {
@@ -3082,14 +3103,18 @@ export function createCourseInspectionSequence({
   }
 
   async function handleClick(event) {
-    const explanationButton = event.target.closest?.("[data-inspection-open-explanation]");
+    const explanationButton = event.target.closest?.("[data-inspection-open-explanation], [data-inspection-review-unit]");
     if (explanationButton) {
       if (!state.canReviewContent || hasPendingDraft()) return false;
       const item = state.items.find(value => value.studyUnit.id === explanationButton.dataset.studyUnitId);
-      if (!item) return false;
+      const microsequenceId = item?.curriculumPath.didacticMicrosequence.id ||
+        state.emptyMicrosequences.find(value => value.id === explanationButton.dataset.microsequenceId)?.id;
+      if (!microsequenceId || explanationButton.hasAttribute("data-inspection-review-unit") && !item) return false;
       closeOpenMenus(); studyTools.close();
       return contentReview.open({ courseId: state.courseId,
-        microsequenceId: item.curriculumPath.didacticMicrosequence.id,
+        microsequenceId,
+        targetKind: explanationButton.hasAttribute("data-inspection-review-unit") ? "study_unit" : "microsequence_explanation",
+        targetId: explanationButton.hasAttribute("data-inspection-review-unit") ? item.studyUnit.id : microsequenceId,
         expectedRevision: state.pinnedRevision, button: explanationButton });
     }
     const parameters = event.target.closest?.("[data-inspection-open-parameters]");
@@ -3286,11 +3311,7 @@ export function createCourseInspectionSequence({
     if (observationAction) {
       const action = observationAction.dataset.observationAction;
       const annotationId = observationAction.dataset.observationId;
-      if (action === "cancel-confirmation") {
-        cancelConfirmation();
-      } else if (action === "confirm-withdraw") {
-        return confirmWithdraw();
-      } else if (action === "close") {
+      if (action === "close") {
         if (state.pendingBatchObservation || state.pendingObservationMutation || state.observationSaving) {
           state.observationError = state.pendingBatchObservation
             ? "Conclua o envio parcial antes de fechar esta observação em lote."
@@ -3309,14 +3330,14 @@ export function createCourseInspectionSequence({
           anchor.studyUnitId = studyUnitId;
           anchor.controlKey = `observations:${studyUnitId}`;
         }
-        const preserveCreationDraft = !state.observationEditingId && hasObservationDraft();
+        const preserveCreationDraft = hasObservationDraft();
         state.observationSheetOpen = false;
         state.observationStudyUnitId = null;
         if (!preserveCreationDraft) state.observationTargetIds = [];
         state.observationItems = [];
         state.observationCollectionSummary = null;
         if (!preserveCreationDraft) state.observationDraft = { category: null, rawText: "" };
-        state.observationEditingId = null;
+        if (!preserveCreationDraft) { state.observationEditingId = null; state.observationEditingSnapshot = null; }
         state.observationMessage = "";
         render({ anchor });
       } else if (action === "edit") {
@@ -3324,17 +3345,16 @@ export function createCourseInspectionSequence({
           candidate.annotationId === annotationId);
         if (item?.capabilities?.canRevise) {
           state.observationEditingId = annotationId;
+          state.observationEditingSnapshot = structuredClone(item);
           state.observationDraft = { category: item.category, rawText: item.rawText || "" };
           render();
         }
       } else if (action === "cancel-edit") {
         state.observationEditingId = null;
+        state.observationEditingSnapshot = null;
         state.observationDraft = { category: null, rawText: "" };
         render();
-      } else if (action === "withdraw") {
-        const item = state.observationItems.find((candidate) =>
-          candidate.annotationId === annotationId);
-        if (item?.capabilities?.canWithdraw) requestWithdraw(item);
+
       }
       return true;
     }
@@ -3450,7 +3470,7 @@ export function createCourseInspectionSequence({
       return;
     }
     state.observationStudyUnitId = submittedStudyUnitId;
-    const editing = state.observationItems.find(({ annotationId }) =>
+    const editing = state.observationEditingSnapshot || state.observationItems.find(({ annotationId }) =>
       annotationId === state.observationEditingId);
     const operationDraft = editing ? {
       type: "revise_anchored_annotation",
@@ -3466,7 +3486,7 @@ export function createCourseInspectionSequence({
       category: state.observationDraft.category,
       briefSummary: null
     };
-    const command = pendingObservationMatches(state.pendingObservationMutation, operationDraft)
+    const command = state.pendingObservationMutation && (state.pendingObservationMutation.draft === null || pendingObservationMatches(state.pendingObservationMutation, operationDraft))
       ? structuredClone(state.pendingObservationMutation.request.command)
       : editing
         ? operationDraft
@@ -3579,7 +3599,7 @@ export function createCourseInspectionSequence({
         state.observationDraft.rawText !== (editing.rawText || "")
       : state.observationDraft.category !== null || state.observationDraft.rawText !== "";
     return Boolean(
-      contentReview.hasPendingDraft() || state.pendingObservationMutation || state.pendingBatchObservation || state.confirmation ||
+      contentReview.hasPendingDraft() || state.pendingObservationMutation || state.pendingBatchObservation ||
       state.observationSaving || draftChanged || state.manualSaving ||
       manualDraftChanged()
     );

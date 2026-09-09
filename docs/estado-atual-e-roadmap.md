@@ -4,23 +4,26 @@ Esta página reúne o que uma pessoa pode fazer no AraLearn e os limites que
 precisa conhecer. Ela descreve o produto corrente, sem transformar planos ou
 hipóteses de pesquisa em funções disponíveis.
 
-Catálogos e capacidades conferidos em **2026-09-07** na candidata local do contrato de
-[Explicação e revisão humana](explicacao-e-revisao-humana.md), com provas
-locais de API, banco e políticas. Implementação disponível não significa entrega
-hospedada verificada; os clientes externos e a publicação exigem provas próprias.
+Descrição reconciliada em **2026-09-09** com o contrato contextual **4.0.0** e
+**54 tarefas** no
+[catálogo conversacional](autoria-mcp.md#tarefas-disponíveis), e o contrato de
+[Explicação e revisão humana](explicacao-e-revisao-humana.md). As provas locais
+são delimitadas por API, banco, políticas e interação exercitados. Implementação
+disponível não significa entrega hospedada verificada; os clientes externos e a
+publicação exigem provas próprias.
 
 | Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Estudar, responder e rever | sim | após o primeiro carregamento, não | visitante em curso público ou pessoa com acesso | local | sim | sim | produto | visitante conserva progresso e Rever no dispositivo; conta usa estado pessoal |
-| Consultar Explicação compartilhada | sim | texto já guardado dispensa rede; arquivos externos não | proprietário; estudantes em recorte elegível | local | no recorte local | sim | produto | apoio previamente escrito; ausência ou revisão não registrada permanece explícita; abrir não gera conteúdo nem registra domínio |
-| Editar apoio e aprovar conteúdo | sim | para gravar e conferir a base atual | proprietário na Autoria | interface, HTTP e banco locais | no recorte local | sim | produto | inspeção da microssequência completa; aprovação não é tarefa de IA; retorno incerto conserva o mesmo pedido |
+| Consultar Explicação compartilhada | sim | texto já guardado dispensa rede; arquivos externos não | proprietário ou pessoa com acesso | local | no recorte local | sim | produto | base salva antes ou depois das unidades; acesso independente da marca, salvo política expressa de somente revisado; abrir não gera conteúdo nem registra domínio |
+| Editar e declarar revisão autoral | sim | para gravar e conferir o conteúdo atual | proprietário na interface ou canal autorizado | interface, HTTP e banco locais | no recorte local | sim | produto | marca reversível por Explicação ou unidade; tarefa exige decisão humana expressa e referência salva; retorno incerto conserva o mesmo pedido |
 | Registrar observação | sim | para enviar | pessoa autenticada com acesso | local | sim | sim | produto | observação própria não concede edição |
 | Editar Unidade no Estudo | sim | para gravar | proprietário | local | sim | sim | produto | estudante alheio não edita nem cria cópia automática |
 | Escolher identificador e compartilhar | sim | sim | titular do perfil; proprietário do curso | local | sim | sim | produto | identificador único; grant confirma a pessoa selecionada |
 | Disponibilizar curso público | sim | para publicar e primeiro acesso | proprietário publica; visitante estuda | local | sim | sim | produto | confirmação e política de arquivos explícitas; bucket privado |
-| Planejar, materializar e revisar curso | sim | sim | proprietário | sim | sim | sim | produto | não há fila autoral genérica sem conexão |
+| Planejar, materializar e revisar curso | sim | sim | proprietário | local | no recorte local | sim | produto | base antes das unidades; fila autoral durável por objeto e versão; gravações autorais dependem de conexão |
 | Usar Assistência por IA | sim | sim | proprietário | interface e contratos locais; serviços pendentes | condicionado ao provedor | sim | produto | prévia, aplicação ao rascunho e gravação são explícitas; não há comprovação corrente de todos os provedores |
-| Criar por MCP | sim | sim | proprietário ou pessoa com permissão específica de cópia | protocolo local | no recorte local | sim | produto | tarefas do catálogo compartilhado; inclui perfis de autoria, mas não perfil pessoal ou manutenção; cliente ChatGPT hospedado pendente |
+| Criar por MCP | sim | sim | proprietário ou pessoa com permissão específica de cópia | protocolo local | no recorte local | sim | produto | catálogo compartilhado inclui preferências de processo, estrutura, acesso e revisão humana expressa; perfil pessoal e Manutenção ficam no aplicativo; cliente ChatGPT hospedado pendente |
 | Criar por GPT com Actions | sim | sim | proprietário ou pessoa com permissão específica de cópia | protocolo local | no recorte local | sim | produto | mesmas tarefas com OAuth próprio; importação e conversa no cliente hospedado pendentes |
 | Inspecionar unidades focadas no chat ou na autoria | sim | sim | proprietário com integração válida | sim | sim | sim | produto | a resposta traz um endereço direto; a autoria abre a mesma unidade em foco |
 | Excluir curso próprio ou sair de curso compartilhado | sim | sim | relação correspondente | sim | sim | sim | produto | confirmação explícita; efeitos diferentes |
@@ -68,25 +71,31 @@ outro curso para resolver a pendência.
 
 Autoria lista somente os cursos próprios. A pessoa pode criar um curso privado,
 definir título, objetivo, público e alcance e organizar sua estrutura. Ao abrir
-o curso, **Conteúdo** recebe o foco; Planejamento fica no cabeçalho e
-Parâmetros, **Fontes**, Revisão, Analytics e Pessoas ficam no menu compacto.
+o curso, **Conteúdo** recebe o foco. Planejamento e conteúdo têm acessos diretos,
+e o menu reúne as tarefas ocasionais. Os controles de desenho e fontes ficam
+também junto do objeto correspondente, preservando leitura, foco e rascunho.
 
-O planejamento mostra primeiro o mapa curricular completo de módulos, lições e
-microssequências, com cobertura do escopo. A aprovação se refere ao mapa
-inspecionável e não materializa conteúdo. Depois, partes agrupam
-microssequências existentes apenas como lotes operacionais. A produção
-confirmada aparece como unidades de estudo e apoio compartilhado em Conteúdo,
-sem expor passos técnicos. **Conteúdo produzido** indica disponibilidade para
-inspeção, sem atestar revisão humana. A pessoa proprietária inspeciona o conjunto
-da microssequência e aprova sua base corrente; alterações materiais exigem nova
-revisão antes da obtenção do recorte atualizado por estudantes.
+O mapa reúne módulos, lições, microssequências, dependências e cobertura do
+escopo. Pode evoluir por ramos; sua aprovação referencia a versão completa
+persistida e inspecionada. A Explicação pode ser desenvolvida antes das unidades,
+inclusive com mapa em rascunho. Partes agrupam microssequências existentes como
+lotes operacionais. **Conteúdo produzido** indica disponibilidade para inspeção,
+sem atestar revisão humana. Cada Explicação e unidade tem uma marca própria,
+reversível, ligada ao conteúdo salvo. Mudança material desatualiza a marca
+afetada; acesso ao conteúdo completo salvo independe dela, salvo política
+expressa de somente revisado.
 
 O [catálogo canônico de parâmetros](../src/domain/courseDesignParameters.js)
-reúne doze decisões, na versão 1.2.1, em Explicações, Prática, Leitura e estilo,
-Conversa e Produção. Cada decisão admite os escopos definidos pelo catálogo;
-granularidade de parte, lote e frequência de pausa são independentes e têm
-escopo de curso. Orientações editoriais e política de componentes complementam
-essas decisões.
+explicita natureza, significado, origem, efeito e escopos válidos. Planejamento
+concentra decisões do curso e ramo; a microssequência reúne base, fontes e
+desenho; a unidade mostra configuração aplicada e revisão. Orientações
+editoriais e política de componentes complementam essas decisões.
+
+**Configurações** tem os mesmos quatro grupos em Estudo e Autoria: Conta,
+Aparência, Sincronização e dados deste dispositivo e Preferências de autoria.
+Preferências pessoais separam foco Conteúdo/Ciclo completo, cadência, pontos de
+revisão e diálogo. Os canais as consultam ao retomar; mudanças não reescrevem
+cursos, aplicações ou condições de pesquisa. Manutenção exige papel autorizado.
 
 Herdar conserva a intenção do escopo anterior. O modo automático pode ainda não
 ter um valor escolhido; a produção precisa calibrá-lo pelo público, conteúdo e
@@ -96,15 +105,20 @@ preferências por cópia, com prévia das exceções antes de aplicar. Os alvos 
 palavras são flexíveis, não limites, e não autorizam compressão. A interface
 mostra de onde veio cada decisão e o valor efetivamente aplicado.
 
-Fontes e Âncoras possuem estado corrente; o bucket de PDFs é privado. O autor
+As referências aparecem no fim do corpo da Explicação, com retornos às citações
+sobrescritas e distinção dos vínculos da base e da unidade, inclusive em acervo
+sem base. Fontes e Âncoras possuem estado corrente; o bucket de PDFs é privado. O autor
 define disponibilidade de arquivos com exceções por fonte e por PDF. Uma
 atribuição liga a Unidade ou a Explicação à fonte e às Âncoras exatas usadas. Referências sem
 prova suficiente não aparecem como citação comprovada no Estudo.
 
-Conteúdo percorre a composição sem ativar respostas. Revisão parte das
-Observações abertas e alcança outras unidades quando a coerência do percurso
-exigir. Analytics apresenta desenho e intervenções correntes em números simples,
-sem inferir eficácia ou causalidade.
+Conteúdo percorre a composição sem ativar respostas. Cada base e unidade
+mantém uma fila durável de observações autorais identificadas e versionadas.
+A correção considera as pendências pertinentes e só consome a versão exata
+cujo efeito foi persistido e confirmado por releitura. Ler, responder ou iniciar
+uma tentativa não consome a entrada; aplicação parcial ou versão editada
+permanece pendente. Consumo não declara revisão humana. Analytics apresenta
+desenho e intervenções correntes sem inferir eficácia ou causalidade.
 
 ## Assistência por IA
 
@@ -140,9 +154,12 @@ O AraLearn oferece dois canais conversacionais distintos.
 
 O **Model Context Protocol (MCP)** conecta um cliente compatível ao
 [catálogo compartilhado de tarefas humanas](autoria-mcp.md#tarefas-disponíveis).
-Ele permite retomar, planejar, materializar, configurar, reutilizar perfis de
-autoria, tratar Observações, revisar, operar fontes e áudios, consultar
-componentes, copiar cursos autorizados e comparar ou exportar recortes próprios.
+Ele permite retomar preferências e curso, desenvolver bases antes das unidades,
+planejar, materializar, configurar, reutilizar perfis, tratar observações,
+registrar revisão humana expressa, operar fontes e áudios e consultar componentes.
+Também oferece renomear e excluir cursos próprios; incluir, editar, mover,
+reordenar, duplicar e remover ramos; reordenar unidades; gerir acesso; copiar
+cursos autorizados e comparar ou exportar recortes próprios.
 OAuth, escopos e principal do MCP pertencem a esse canal.
 
 Um **GPT personalizado com Actions** usa uma descrição OpenAPI e chamadas HTTP
@@ -164,9 +181,12 @@ declarar leitura completa quando a continuação termina. As provas de protocolo
 local não substituem a renovação do MCP e a importação de Actions em conversas
 novas no cliente hospedado.
 
-Perfil pessoal, concessão e revogação de acesso, exclusão de curso ou conta e
-Manutenção permanecem ações do aplicativo autenticado. Perfis de autoria e
-cópia autorizada são tarefas distintas, presentes no catálogo conversacional.
+Concessão e revogação, visibilidade, políticas de arquivos e revisão, exclusão de
+curso próprio e cópia autorizada têm tarefas tipadas no catálogo. Perfil
+pessoal, exclusão de conta e Manutenção permanecem no aplicativo autenticado.
+Uma resposta perdida exige reconciliar a tentativa original com o estado e o
+recibo disponíveis; a ausência momentânea de recibo não prova que a escrita não
+ocorreu. Referências de recuperação conservam a tentativa sem expor credenciais.
 
 ## Dados, acesso e ciclo de vida
 
@@ -186,7 +206,7 @@ a conta, cursos próprios, inclusive cópias anteriores, e objetos vinculados se
 contrato de exclusão.
 
 Uma identidade administrativa autorizada também encontra **Manutenção** em
-**Conta e aparência**. Essa área mostra o agendamento de retenção e somente os
+**Configurações**. Essa área mostra o agendamento de retenção e somente os
 resíduos que o AraLearn sabe classificar. Cada remoção revalida no servidor a
 classe e o objeto exatos e atualiza o inventário. A área não oferece consulta
 genérica ao banco nem ao armazenamento.

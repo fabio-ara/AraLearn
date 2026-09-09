@@ -36,6 +36,9 @@ a calculadora, dicionários, gramática e leituras escolhidas para a unidade.
 [Fontes, citações e referências](fontes-e-citacoes.md) explica os dados
 bibliográficos, os estilos e os vínculos entre obras e conteúdo didático.
 
+[Configurações](configuracoes.md) reúne conta, aparência, dados do dispositivo
+e preferências pessoais de autoria, com o mesmo acesso em Estudo e Autoria.
+
 ## Estudar o modelo pedagógico
 
 1. [Modelo didático](modelo-didatico.md): Microssequência didática,
@@ -133,6 +136,12 @@ O ciclo de revisão possui um capítulo próprio:
 8. [Revisão e correções do Curso](auditoria-de-conformidade-instrucional.md):
    Observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
    reinspeção.
+
+[Planejamento contextual](planejamento-contextual.md) apresenta a navegação e
+os controles junto ao objeto. [Parâmetros de autoria](parametros-de-autoria.md)
+relaciona intenção, origem e configuração aplicada. As operações de mover,
+duplicar e reordenar estão em
+[Estrutura curricular por referência](estrutura-curricular-por-referencia.md).
 
 A [prova local dos canais](prova-local-canais-autoria.md) descreve o runner de
 dois lotes por Actions e MCP, suas medições e a distinção da prova no ChatGPT.

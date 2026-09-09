@@ -1,5 +1,6 @@
 import { isCanonicalCourseId } from "./courseAuthoringRoute.js";
 import { normalizeMicrosequenceExplanationPlan } from "../domain/courseExplanation.js";
+import { normalizeCurricularMapRead } from "../domain/courseCurricularMapSlices.js";
 import {
   normalizeCourseSourceChange as normalizeCourseSourceChangeDomain,
   normalizeCourseSourceLinks,
@@ -367,7 +368,7 @@ function normalizeCurriculumModule(value) {
   });
 }
 
-function normalizeCurriculum(value) {
+function normalizeCurriculum(value, { allowPendingReferences = false } = {}) {
   if (!isPlainObject(value)) {
     fail("invalid_authoring_plan", "O mapa curricular é inválido.");
   }
@@ -387,7 +388,7 @@ function normalizeCurriculum(value) {
     item.id, position
   ]));
   for (const [position, microsequence] of microsequences.entries()) {
-    if (microsequence.dependencyMicrosequenceIds.some((id) =>
+    if (!allowPendingReferences && microsequence.dependencyMicrosequenceIds.some((id) =>
       !positionByMicrosequenceId.has(id) || positionByMicrosequenceId.get(id) >= position)) {
       fail(
         "invalid_authoring_plan",
@@ -712,7 +713,7 @@ export function normalizeCourseAuthoringPlan(value, {
   const declaredPrerequisites = normalizeDeclaredPrerequisites(
     value.plan.declaredPrerequisites
   );
-  const curriculum = normalizeCurriculum(value.plan.curriculum);
+  const curriculum = normalizeCurriculum(value.plan.curriculum, { allowPendingReferences: curriculumMapStatus === "draft" });
   const indexedCurriculum = curriculumIndex(curriculum);
   const curriculumScopeItems = normalizeCurriculumScopeItems(
     value.plan.curriculumScopeItems,
@@ -765,13 +766,15 @@ export function normalizeCourseAuthoringPlan(value, {
     instructionalAnalysisUnitCount: instructionalAnalysisUnits.length,
     evidenceRequirementCount: evidenceRequirements.length,
     authoringPartCount: parts.length,
-    linkedDidacticMicrosequenceCount: linkedMicrosequenceIds.length,
-    studyUnitCount: parts.reduce((total, part) => total + part.microsequences.reduce(
-      (partTotal, microsequence) => partTotal + microsequence.studyUnitCount,
-      0
-    ), 0)
+    linkedDidacticMicrosequenceCount: linkedMicrosequenceIds.length
   };
-  if (Object.entries(computedCounts).some(([field, count]) => counts[field] !== count)) {
+  const linkedStudyUnitCount = parts.reduce((total, part) => total + part.progress.studyUnitCount, 0);
+  // The SQL total includes units whose microsequence has no production part.
+  // Exact equality is knowable only when the parts cover the full curriculum.
+  const allMicrosequencesLinked = linkedMicrosequenceIds.length === indexedCurriculum.microsequences.size;
+  if (Object.entries(computedCounts).some(([field, count]) => counts[field] !== count) ||
+      counts.studyUnitCount < linkedStudyUnitCount ||
+      allMicrosequencesLinked && counts.studyUnitCount !== linkedStudyUnitCount) {
     fail("invalid_authoring_plan", "As contagens do planejamento são inconsistentes.");
   }
   return Object.freeze({
@@ -799,6 +802,32 @@ export function normalizeCourseAuthoringPlan(value, {
       counts
     })
   });
+}
+
+/** Projects the inspected persisted map; production metadata only joins the same revision. */
+export function projectPersistedCurricularMap(value, authoringPlan = null) {
+  const read = normalizeCurricularMapRead(value);
+  const matchingPlan = authoringPlan?.courseId === read.courseId && authoringPlan.courseRevision === read.courseRevision &&
+    authoringPlan.plan.version === read.planVersion ? authoringPlan.plan : null;
+  const produced = new Map((matchingPlan?.curriculum.modules || []).flatMap(module =>
+    module.lessons.flatMap(lesson => lesson.microsequences.map(ms => [ms.id, ms]))));
+  const curriculum = { modules: read.map.modules.map(module => ({
+    id: module.moduleId, position: module.position, title: module.title, objective: module.objective,
+    lessons: module.lessons.map(lesson => ({ id: lesson.lessonId, position: lesson.position, title: lesson.title, objective: lesson.objective,
+      microsequences: lesson.microsequences.map(ms => ({ id: ms.microsequenceId, position: ms.position,
+        title: ms.title, objective: ms.objective, dependencyMicrosequenceIds: [...ms.dependencyMicrosequenceIds],
+        explanationPlan: structuredClone(ms.explanationPlan), role: produced.get(ms.microsequenceId)?.role || null })) }))
+  })) };
+  const curriculumScopeItems = read.map.scopeItems.map(item => {
+    const stored = matchingPlan?.curriculumScopeItems.find(entry => entry.id === item.id);
+    return { ...item, state: stored?.state || "planned", developedIn: structuredClone(stored?.developedIn || []),
+      curriculumTargets: read.map.modules.flatMap(module => module.lessons.flatMap(lesson => {
+        const ids = lesson.microsequences.filter(ms => ms.scopeItemIds.includes(item.id)).map(ms => ms.microsequenceId);
+        return ids.length ? [{ moduleId: module.moduleId, lessonId: lesson.lessonId, didacticMicrosequenceIds: ids }] : [];
+      })) };
+  });
+  return { audience: read.map.audience, declaredPrerequisites: [...read.map.prerequisites], curriculum, curriculumScopeItems,
+    completeness: structuredClone(read.completeness) };
 }
 
 export function projectCoursePlanning(course, authoringPlan) {
@@ -829,6 +858,7 @@ export function projectCoursePlanning(course, authoringPlan) {
     preferredPartCount: authoringPlan.plan.preferredPartCount,
     parts: Object.freeze(parts),
     linkedMicrosequenceCount: authoringPlan.plan.counts.linkedDidacticMicrosequenceCount,
+    linkedStudyUnitCount: parts.reduce((total, part) => total + part.studyUnitCount, 0),
     studyUnitCount: authoringPlan.plan.counts.studyUnitCount,
     intendedLearningOutcomes: authoringPlan.plan.intendedLearningOutcomes,
     instructionalAnalysisUnits: authoringPlan.plan.instructionalAnalysisUnits,

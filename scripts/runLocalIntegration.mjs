@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { localFixtureLedgerSummary } from "../tests/support/localFixtureLedger.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const SPECS = ["course-access-local", "course-audio-local", "course-authoring-context-local", "course-parts-local"]
@@ -251,7 +252,8 @@ export async function runLocalIntegration({
       SUPABASE_URL: local.projectUrl, SUPABASE_ANON_KEY: local.publishableKey,
       SUPABASE_PUBLISHABLE_KEY: local.publishableKey, SUPABASE_SERVICE_ROLE_KEY: local.adminKey,
       ARALEARN_E2E_PORT: "4182", ARALEARN_E2E_REUSE_SERVER: "0", ARALEARN_E2E_REAL_SUPABASE: "1",
-      ARALEARN_LOCAL_APPLICATION_ORIGIN: "http://127.0.0.1:4182", ARALEARN_TEST_REAL_LOCAL_COPY_FILES: "1"
+      ARALEARN_LOCAL_APPLICATION_ORIGIN: "http://127.0.0.1:4182", ARALEARN_TEST_REAL_LOCAL_COPY_FILES: "1",
+      ARALEARN_LOCAL_FIXTURE_LEDGER_DIR: path.join(privateDirectory, "fixtures")
     };
     localEnvironment.MAILPIT_URL = "http://127.0.0.1:54324";
     localEnvironment.INBUCKET_URL = localEnvironment.MAILPIT_URL;
@@ -317,11 +319,14 @@ export async function runLocalIntegration({
         throw new Error("Execução interrompida ou funções indisponíveis.");
       }
       const row = report.stages.find(stage => stage.name === name);
+      const ledgerConfig = { projectUrl: local.projectUrl, fixtureLedgerDirectory: localEnvironment.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR };
+      const requiresCourseLedger = ["storage-local", "current-local", "channels-local", "e2e-local", "copy-files-local"].includes(name);
+      const before = requiresCourseLedger ? localFixtureLedgerSummary(ledgerConfig) : null;
       row.result = "running"; report.cleanup.fixtures = "unverified"; await save();
       const started = Date.now();
       const logPath = path.join(privateDirectory, `${name}.log`);
       const result = await run(process.execPath, args, {
-        cwd, env: { ...localEnvironment, ...extraEnvironment }, signal, timeoutMs: 1_200_000
+        cwd, env: { ...localEnvironment, ...extraEnvironment, ARALEARN_LOCAL_FIXTURE_ORIGIN: name }, signal, timeoutMs: 1_200_000
       });
       await fs.writeFile(logPath, redact(`${result.stdout || ""}\n${result.stderr || ""}`), { mode: 0o600 });
       row.log_refs = [relative(logPath)]; report.log_refs.push(...row.log_refs);
@@ -329,8 +334,23 @@ export async function runLocalIntegration({
       let receipt;
       try { receipt = await verify(result); }
       catch { receipt = { ok: false, failed_tests: [name], cleanup: "unverified" }; }
+      if (requiresCourseLedger) {
+        row.fixture_ledger = localFixtureLedgerSummary(ledgerConfig);
+        // A failed assertion/exit does not erase independently confirmed
+        // teardown. Require records from this stage, not only an older ledger.
+        const cleanupConfirmed = row.fixture_ledger.completed && row.fixture_ledger.registered > before.registered;
+        receipt = { ...receipt, cleanup: receipt.cleanup === "failed" ? "failed" : cleanupConfirmed ? "completed" : "unverified" };
+        if (!row.fixture_ledger.completed || row.fixture_ledger.courses <= before.courses ||
+            row.fixture_ledger.cleanupProbes <= before.cleanupProbes) {
+          receipt = { ...receipt, ok: false, failed_tests: [name] };
+        }
+        report.fixture_ledger = { ref: relative(localEnvironment.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR),
+          ...row.fixture_ledger };
+      }
       Object.assign(row, receipt, { result: result.status === 0 && receipt.ok ? "passed" : "failed" });
       delete row.ok;
+      report.cleanup.fixtures = report.stages.filter(stage => stage.result !== "not_run")
+        .every(stage => stage.cleanup === "completed") ? "completed" : "unverified";
       if (row.result === "failed") {
         report.failed_tests.push(...(receipt.failed_tests?.length ? receipt.failed_tests : [name]));
         await save(); throw new Error(`O gate ${name} falhou; consulte seu log privado redigido.`);

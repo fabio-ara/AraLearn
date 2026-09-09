@@ -70,7 +70,7 @@
   /* Opções tipográficas e geométricas. */
   --font-ui: "Aptos", "Segoe UI Variable Text", "SF Pro Text", "Inter", "Noto Sans", "Roboto", sans-serif;
   --font-display: "Aptos Display", "Segoe UI Variable Display", "SF Pro Display", "Inter", "Noto Sans", "Roboto", sans-serif;
-  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-mono: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace;
   --type-xs: 0.8125rem;
   --type-sm: 0.875rem;
   --type-dense: 0.9375rem;
@@ -138,14 +138,14 @@
   --scrollbar-thumb-hover: var(--color-gray-450);
   --theme-color: var(--color-gray-25);
 
-  /* Decisões próprias do leitor e dos dezoito resources. */
+  /* Decisões próprias do leitor e do catálogo de componentes. */
   --study-card-surface: var(--surface-raised);
   --study-card-border: var(--border-default);
   --study-card-title: var(--text-primary);
   --resource-surface: var(--surface-raised);
   --resource-surface-subtle: var(--surface-subtle);
   --resource-surface-sunken: var(--surface-sunken);
-  --resource-text: var(--text-primary);
+  --resource-text: var(--color-gray-700);
   --resource-text-secondary: var(--text-secondary);
   --resource-border: var(--border-default);
   --resource-border-strong: var(--border-strong);
@@ -181,6 +181,7 @@
   --surface-selection: var(--color-blue-800);
   --text-primary: var(--color-ink-on-dark);
   --text-secondary: var(--color-gray-200);
+  --resource-text: var(--color-gray-300);
   --text-tertiary: var(--color-gray-250);
   --text-on-action: var(--color-blue-ink);
   --border-subtle: var(--color-gray-750);

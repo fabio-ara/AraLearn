@@ -127,60 +127,6 @@ class FakeStudyRoot {
   }
 }
 
-// The citation sheet is inserted beside the screen without replacing its DOM.
-// Keep that boundary in the harness so downloads exercise the real listeners.
-class CitationStudyRoot extends FakeStudyRoot {
-  citationHtml = "";
-  citationOverlay = null;
-  ownerDocument = { activeElement: null };
-  screen = Object.assign(new FakeActionNode(), {
-    setAttribute() {}, removeAttribute() {}, querySelectorAll() { return []; }, querySelector() { return null; }
-  });
-
-  get innerHTML() { return super.innerHTML + this.citationHtml; }
-  set innerHTML(value) {
-    super.innerHTML = value;
-    this.citationHtml = "";
-    this.citationOverlay = null;
-  }
-
-  insertCitationSheet(markup) {
-    this.citationHtml = markup;
-    const nodes = new Map();
-    const body = { scrollTop: 0 };
-    const overlay = new FakeActionNode();
-    overlay.contains = () => false;
-    overlay.remove = () => { this.citationHtml = ""; this.citationOverlay = null; };
-    overlay.querySelector = selector => {
-      if (selector === ".study-citations-body") return body;
-      if (selector === "[aria-label='Fechar fontes']") selector = "[data-action='toggle-citations']";
-      const match = /^\[data-action='([^']+)'\]$/u.exec(selector);
-      if (!match || !this.citationHtml.includes(`data-action="${match[1]}"`)) return null;
-      if (!nodes.has(selector)) {
-        const node = new FakeActionNode();
-        if (match[1] === "download-citation-attachment") node.dataset = { citationIndex: "0", attachmentIndex: "0", citationPage: "" };
-        nodes.set(selector, node);
-      }
-      return nodes.get(selector);
-    };
-    overlay.querySelectorAll = selector => {
-      const node = overlay.querySelector(selector);
-      return node ? [node] : [];
-    };
-    this.citationOverlay = overlay;
-  }
-
-  querySelector(selector) {
-    if (selector === ".app-shell") return { insertAdjacentHTML: (position, html) => {
-      assert.equal(position, "beforeend"); this.insertCitationSheet(html);
-    } };
-    if (selector === ".app-shell > .screen") return this.screen;
-    if (selector === ".study-reader-screen") return super.innerHTML.includes("study-reader-screen") ? this.screen : null;
-    if (selector === ".study-citations-overlay") return this.citationOverlay;
-    return this.citationOverlay?.querySelector(selector) || super.querySelector(selector);
-  }
-}
-
 function nextTurn() {
   return new Promise((resolve) => setImmediate(resolve));
 }
@@ -402,56 +348,27 @@ test("curso vazio oferece parâmetros ao proprietário sem posição completa de
   app.destroy();
 });
 
-test("visitante baixa PDF permitido pela citação sem sair da unidade, e falha mantém as fontes", async () => {
+test("visitante consulta fontes por objeto sem resolver PDF ao abrir o conteúdo", async () => {
   const document = project();
   const repository = applicationRepository(document, async () => {});
-  const attachment = { contentHash: "a".repeat(64), byteSize: 1_024, mediaType: "application/pdf" };
-  const calls = [];
-  let failure = false;
-  let signedUrl = "https://project.example/authorized.pdf?token=sealed";
-  repository.loadStudyUnitCitations = async () => ({ contract: "aralearn.course-study-citations.v2",
-    courseRevision: 4, bibliographyStyle: "apa7", citations: [{
-    linkId: "link-a", sourceId: "source-a", sourceRevision: 2, title: "Fonte pública",
-    citationMode: "manual", citationText: "Referência.", relation: "supported_by", roles: ["technical_conceptual"], occurrences: [],
-    url: null, editionOrVersion: null, anchors: [], attachments: [attachment]
-  }] });
-  repository.getStudyCitationAttachmentDownload = async (reference, citation) => {
-    calls.push({ reference, citation });
-    if (failure) throw Object.assign(new Error("private storage details"), { code: "course_revision_changed", status: 409 });
-    return { signedUrl };
+  const reads = []; const downloads = [];
+  repository.loadStudyUnitCitations = async reference => {
+    reads.push(reference);
+    return { contract: "aralearn.course-study-citations.v2", courseRevision: 4,
+      bibliographyStyle: "apa7", citations: [] };
   };
-  const downloads = [];
-  const root = new CitationStudyRoot();
-  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true,
-    downloadCitationPdf: (...values) => downloads.push(values) });
-  await openFirstStudyUnit(app);
-  root.click("toggle-citations");
-  await nextTurn();
-  root.click("download-citation-attachment");
-  await nextTurn();
-  assert.deepEqual(calls[0], { reference: { courseId: COURSE_ID, moduleId: "module-a", lessonId: "lesson-a", microsequenceId: "micro-a", studyUnitId: "unit-a" },
-    citation: { courseRevision: 4, sourceId: "source-a", sourceRevision: 2, attachment } });
-  assert.equal(downloads.length, 1);
-  assert.equal(downloads[0][0], "https://project.example/authorized.pdf?token=sealed");
-  assert.match(root.innerHTML, /Conteúdo 1\./u);
-  assert.match(root.innerHTML, /Fonte pública/u);
-  for (const host of ["127.0.0.1", "localhost", "10.0.2.2"]) {
-    signedUrl = `http://${host}:54321/authorized.pdf?token=sealed`;
-    root.click("download-citation-attachment");
-    await nextTurn();
-    assert.equal(downloads.at(-1)[0], signedUrl);
-  }
-  signedUrl = "http://external.example/unauthorized.pdf";
-  root.click("download-citation-attachment");
-  await nextTurn();
-  assert.equal(downloads.length, 4);
-  failure = true;
-  root.click("download-citation-attachment");
-  await nextTurn();
-  assert.equal(downloads.length, 4);
-  assert.match(root.innerHTML, /O curso mudou/u);
-  assert.match(root.innerHTML, /data-action="download-citation-attachment"/u);
-  assert.doesNotMatch(root.innerHTML, /private storage details/u);
+  repository.getStudyCitationAttachmentDownload = async reference => downloads.push(reference);
+  const root = new FakeStudyRoot();
+  const query = root.querySelector.bind(root);
+  root.querySelector = selector => selector === ".study-reader-screen" && root.innerHTML.includes("study-reader-screen")
+    ? Object.assign(new FakeActionNode(), { querySelectorAll: () => [] }) : query(selector);
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  await openFirstStudyUnit(app); await nextTurn();
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0].studyUnitId, "unit-a");
+  assert.equal(downloads.length, 0);
+  assert.match(root.innerHTML, /data-action="open-explanation"/u);
+  assert.doesNotMatch(root.innerHTML, /data-action="toggle-citations"/u);
   app.destroy();
 });
 

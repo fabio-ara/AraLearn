@@ -31,7 +31,7 @@ Para receber acesso a um curso privado, entre ou crie uma conta e escolha seu
 números, pontos, traços ou sublinhados, começa e termina com letra ou número e
 não distingue maiúsculas de minúsculas. Uma colisão pede outra escolha sem perder
 a sessão. O avatar é opcional; não é necessário informar outro nome. A escolha
-pode ser alterada em **Conta e aparência**, mantendo a propriedade e os acessos.
+pode ser alterada em **Configurações → Conta**, mantendo a propriedade e os acessos.
 
 Um estudante autenticado pode enviar observações no curso ao qual tem acesso.
 Visitantes precisam entrar numa conta para isso. A concessão de estudo não
@@ -101,17 +101,19 @@ nem registra acerto, domínio ou conclusão.
 
 A folha aparece sobre a unidade. Leia as seções necessárias e use **Fechar
 Explicação** ou Escape para voltar ao ponto de estudo. A resposta ainda não
-enviada permanece na unidade. **Fontes da Explicação** e os números junto aos
-trechos abrem as referências; **Voltar à Explicação** recupera o trecho. As
-ferramentas disponíveis usam os mesmos controles do restante do Estudo.
+enviada permanece na unidade. Os números sobrescritos nos trechos levam às
+referências no fim do corpo da Explicação; cada referência oferece retorno à
+ocorrência. A área distingue **Referências da Explicação** e **Referências desta
+unidade**, conservando os vínculos de cada objeto. O botão de fechar fica à direita.
 
-Na prévia da pessoa proprietária, o apoio informa se está em rascunho ou se
-mudou depois da revisão. Esses recortes aguardam aprovação antes de uma nova
-obtenção por estudantes; uma cópia de estudo já guardada não recebe
-silenciosamente o rascunho. O acervo anterior pode indicar que sua revisão não
-está registrada. Cursos anteriores também podem não ter Explicação: o
-aplicativo informa essa ausência e conserva o percurso existente. Consultar um
-apoio não substitui a tentativa de resolver a prática por conta própria.
+A revisão autoral é uma marca sobre o conteúdo salvo, distinta do direito de
+estudar. Conteúdo completo salvo pode ser obtido por quem tem acesso mesmo sem
+revisão; a exigência de somente conteúdo revisado depende de uma política
+expressa do curso. Edições locais não salvas e gravações parciais não são
+expostas. A ausência de revisão registrada em acervo anterior não é convertida
+em aprovação. Cursos anteriores também podem não ter Explicação: o aplicativo
+informa essa ausência, mantém as referências disponíveis e conserva o percurso.
+Consultar um apoio não substitui a tentativa de resolver a prática por conta própria.
 
 Ao guardar a composição do curso, o texto e as representações da Explicação
 acompanham a cópia local. As citações ficam salvas depois de uma leitura com
@@ -122,10 +124,12 @@ texto não promete disponibilidade desses arquivos sem rede.
 
 ## Consultar as Fontes de uma Unidade
 
-Use o ícone **Fontes** dentro da Unidade. A consulta ocorre quando o painel é
-aberto; o catálogo privado do curso não acompanha o conteúdo de Estudo.
+Abra **Explicação** ou siga uma citação sobrescrita do texto. As referências da
+unidade ficam no fim dessa leitura, junto às referências da base, com seus
+alvos separados. Esse acesso permanece disponível quando a microssequência
+não tem base explicativa. O catálogo privado do curso não acompanha o Estudo.
 
-O painel pode apresentar título, citação, edição ou versão, um localizador
+A referência pode apresentar título, citação, edição ou versão, um localizador
 legível como capítulo, slide ou figura, a localização exata e endereço externo.
 A visibilidade definida pela pessoa autora controla o que é
 mostrado:
@@ -154,7 +158,8 @@ aplicativo carrega o curso, se necessário, e leva ao alvo; **Voltar** retorna a
 mesmo item, com posição e foco restaurados. Também é possível retirar a marca
 diretamente na Home. A confirmação oferece **Desfazer** sem abrir a Unidade.
 
-A marca pertence à pessoa e não altera o conteúdo do curso.
+A marca pertence à pessoa e não altera o conteúdo do curso. **Rever** é uma
+escolha pessoal de estudo; não é a **Revisão autoral** da base ou da unidade.
 
 ## Registrar uma observação
 
@@ -176,7 +181,8 @@ auditoria e verificação.
 
 ## Escolher quando sincronizar
 
-Em **Conta e aparência**, escolha **Automática** ou **Manual** em
+Em **Configurações → Sincronização e dados deste dispositivo**, escolha
+**Automática** ou **Manual** em
 **Sincronização**. A preferência vale para o aplicativo neste dispositivo,
 inclusive nas outras abas. No modo manual, progresso e Rever continuam sendo
 gravados localmente. O retorno da conexão não envia esses dados nem substitui o
@@ -232,42 +238,43 @@ gravação exige **Salvar**; cancelar preserva o estado salvo anteriormente.
 
 **Assistência por IA** está disponível em lição, microssequência e Unidade. Ela
 abre uma conversa contextual em memória sobre o alvo atual. Cada resposta traz
-uma proposta; a pessoa pode discuti-la até que represente sua intenção. Somente
-**Aceitar e aplicar** autoriza gerar, validar e colocar o resultado no rascunho,
-e **Salvar** permanece separado. Uma proposta inválida, cancelada ou não
+uma proposta; a pessoa pode discuti-la até que represente sua intenção.
+**Preparar prévia** gera e valida o resultado para comparação; **Aplicar ao
+rascunho** confirma essa escolha, e **Salvar** permanece separado. Uma proposta
+inválida, cancelada ou não
 renderizável não substitui o conteúdo corrente.
 
-Se o curso for seu, **Editar** grava a Unidade no próprio curso. Se ele foi
-compartilhado, o aviso explica que **Salvar na minha cópia** criará um curso
-pessoal privado e deixará o original intacto. A edição manual e a assistência
-por IA usam o mesmo conteúdo e a mesma prévia. Pedir uma sugestão, cancelar ou
-sair sem uma mudança material não cria a cópia.
+**Editar** grava no curso do proprietário. Uma concessão de estudo permite
+consultar, praticar e enviar observações; não permite editar nem cria uma cópia
+automática. Cópias próprias já existentes continuam independentes. Copiar um
+curso é uma operação separada, disponível nos [canais de autoria](autoria-mcp.md#tarefas-disponíveis)
+para o proprietário ou mediante permissão específica.
 
-Depois da primeira gravação, o AraLearn continua na mesma Unidade da nova cópia.
-A estrutura e o conteúdo corrente são materializados nela, mas planejamento,
-fontes, PDFs, acessos, progresso e Observações começam separados. A cópia aparece
-como **Cópia pessoal**; o curso de origem continua como **Curso compartilhado**.
-
-Se a conexão cair antes da confirmação, o rascunho e o pedido delimitado ficam
-pendentes no dispositivo. Ao reconectar, o aplicativo repete a mesma intenção
-sem criar outra cópia. Um conflito em outra aba conserva o rascunho para
-recuperação. Também é possível registrar uma observação situada no curso em que
-a pessoa estiver estudando e conversar com o proprietário pelos canais definidos.
+Se uma gravação perder a resposta, o aplicativo conserva o rascunho e reconcilia
+a mesma tentativa antes de iniciar outra alteração. Rascunhos de cópias antigas
+podem recuperar o curso próprio quando a gravação anterior é comprovada; essa
+consulta não reaplica a edição nem cria outra cópia. Sem confirmação, o
+rascunho permanece disponível para recuperação.
 
 ## Cuidar da conta e dos dados do dispositivo
 
-Abra **Conta e aparência** para alterar o nome de apresentação, escolher ou
-remover uma foto e definir o tema do sistema, claro ou escuro. A foto pode ser
-JPEG, PNG ou WebP de até 512 KiB e fica em armazenamento privado. Ao fechar a
-área, o foco retorna ao controle que a abriu.
+**Configurações** mantém o mesmo acesso em Estudo e Autoria, com quatro grupos:
+**Conta**, **Aparência**, **Sincronização e dados deste dispositivo** e
+**Preferências de autoria**. Sem conta, os grupos informam quais escolhas ficam
+no dispositivo e quais exigem autenticação. Manutenção aparece somente para o
+papel autorizado.
 
-O painel conserva a mesma altura enquanto alterna entre a vista principal,
-**Foto do perfil** e **Dados e conta**. **Voltar** ou `Esc` retorna da subvista à
-vista principal; outro `Esc` fecha o painel. **Remover foto** só aparece quando
-há uma foto corrente ou uma nova escolha ainda não salva.
+Em **Conta**, altere o identificador público e a foto opcional. A foto pode ser
+JPEG, PNG ou WebP de até 512 KiB e fica em armazenamento privado. **Aparência**
+permite escolher sistema, claro ou escuro. **Preferências de autoria** contém
+padrões pessoais de processo; alterá-los não reescreve cursos nem condições de
+pesquisa. Em **Foto do perfil**, **Voltar** ou `Esc` retorna a Conta; nos grupos,
+retorna à lista principal. Outro `Esc` fecha o painel e devolve o foco ao controle
+que o abriu. **Remover foto** só aparece quando há algo a remover.
 
-**Remover dados deste dispositivo** apaga somente a réplica local da conta
-ativa e mantém a conta e os dados remotos. **Sair** encerra a sessão, mas pode
+Em **Sincronização e dados deste dispositivo**, **Remover dados deste
+dispositivo** apaga somente a réplica local da conta
+ativa e mantém a conta e os dados remotos. Em **Conta**, **Sair** encerra a sessão, mas pode
 manter dados locais já gravados; **Sair e remover dados deste dispositivo** faz
 as duas coisas. Formulários ainda abertos e não salvos não fazem parte da
 réplica. Em aparelho compartilhado, confira o alcance indicado antes de

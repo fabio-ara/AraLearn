@@ -2,6 +2,7 @@ import { choiceResponseInteraction } from "./interaction.js";
 import {
   escapePackageAttribute,
   renderPackageActionIcon,
+  renderPackageCode,
   renderPackageInline,
   renderPackageProse
 } from "../../sdk/html.js";
@@ -16,7 +17,7 @@ function instruction(data) {
   if (data.selectionCriterion === "best") return "Selecione a melhor alternativa.";
   return data.selectionMode === "multiple"
     ? "Selecione todas as alternativas corretas."
-    : "Selecione a alternativa correta.";
+    : "";
 }
 
 function responseFeedback(blockKey, feedback) {
@@ -81,7 +82,7 @@ export const choiceResponsePackage = Object.freeze({
         evaluatedWrong && checked && !shouldBeChecked ? "selected-incorrect" : ""
       ].filter(Boolean).join(" ");
       const value = option.kind === "code"
-        ? `<pre class="multiple-choice-code"><code data-language="${escapePackageAttribute(option.language)}">${renderPackageInline(option.code)}</code></pre>`
+        ? `<pre class="multiple-choice-code"><code data-language="${escapePackageAttribute(option.language)}">${renderPackageCode(option.code)}</code></pre>`
         : renderPackageInline(option.text);
       const optionFeedback = option.feedback && (
         revealAnswers || checked && (evaluatedCorrect || evaluatedWrong)
@@ -102,7 +103,10 @@ export const choiceResponsePackage = Object.freeze({
     const instructionText = revealAnswers
       ? "Alternativas e resposta esperada."
       : instruction(data);
-    return `<section class="runtime-block runtime-choice-block multiple-choice-exercise package-choice-response"><div class="runtime-choice-body"><div>${renderPackageProse(data.question)}</div><p class="multiple-choice-instruction" id="${escapePackageAttribute(`${blockKey}::instruction`)}">${instructionText}</p></div><div class="multiple-choice-list" role="${listRole}" aria-labelledby="${escapePackageAttribute(`${blockKey}::instruction`)}">${optionsHtml}</div>${Array.isArray(options.dockExerciseParts) ? "" : feedbackHtml}</section>`;
+    const questionId = escapePackageAttribute(`${blockKey}::question`);
+    const instructionId = escapePackageAttribute(`${blockKey}::instruction`);
+    const instructionHtml = instructionText ? `<p class="multiple-choice-instruction" id="${instructionId}">${instructionText}</p>` : "";
+    return `<section class="runtime-block runtime-choice-block multiple-choice-exercise package-choice-response"><div class="runtime-choice-body"><div id="${questionId}">${renderPackageProse(data.question)}</div>${instructionHtml}</div><div class="multiple-choice-list" role="${listRole}" aria-labelledby="${questionId}"${instructionText ? ` aria-describedby="${instructionId}"` : ""}>${optionsHtml}</div>${Array.isArray(options.dockExerciseParts) ? "" : feedbackHtml}</section>`;
   },
   accessibleText(data) { return `${data.question} ${data.options.map((option, index) => `${index + 1}: ${optionValue(option)}`).join("; ")}`; },
   editableTargets(data) { return [{ path: "question", label: "Editar pergunta" }, ...data.options.flatMap((option, index) => [{ path: `options[${index}].${option.kind === "code" ? "code" : "text"}`, label: `Editar alternativa ${index + 1}` }, ...(option.feedback ? [{ path: `options[${index}].feedback`, label: `Editar feedback ${index + 1}` }] : [])])]; },

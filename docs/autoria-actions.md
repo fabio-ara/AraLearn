@@ -5,53 +5,58 @@ Actions oferece no ChatGPT os mesmos casos de uso do
 transporte muda; o curso, as regras de autorização e os efeitos permanecem os
 mesmos.
 
-O contrato 3.0.0 inclui proposta, materialização, correção, leitura integral e
-fontes da Explicação compartilhada, conforme o
-[contrato comum do MCP](autoria-mcp.md#tarefas-disponíveis). Unidades e apoios do
-lote são gravados juntos; a revisão humana do conteúdo continua na Autoria.
+O contrato 4.0.0 inclui preferências pessoais de processo, estrutura por recortes,
+Explicação antes das unidades, desenho aplicado, fila versionada de observações,
+declaração humana expressa e políticas de acesso. As capacidades e seus efeitos
+estão no [catálogo comum do MCP](autoria-mcp.md#tarefas-disponíveis).
+`salvar_explicacoes` preserva as unidades existentes; `materializar_parte`
+reutiliza as bases salvas e recebe somente aquelas que também serão alteradas.
 
 O pedido **Debater com GPT** copiado da Autoria pode ser colado na conversa do
 GPT já conectado por Actions. Ele fornece identidade, recorte e revisão, sem
 chamar a API ao copiar. O GPT lê o estado corrente pelas Actions existentes e
 discute a proposta antes de qualquer aplicação autorizada. A configuração de
 Actions e a leitura efetiva continuam necessárias; copiar o pedido não comprova
-que o cliente acessou o curso. A decisão humana de revisar conteúdo é registrada
-na Autoria, separada da aprovação do mapa e do mandato de produção.
+que o cliente acessou o curso. A declaração humana de revisão pode ser
+registrada na Autoria ou por `declarar_revisao`, com a referência do conteúdo
+salvo e a escolha expressa da pessoa. Ela permanece separada da aprovação do
+mapa, do mandato de produção e da avaliação feita pelo GPT.
 
 O OpenAPI publicável está em
 [`downloads/aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml).
 
 ## Operações
 
-As leituras são:
+As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
+definem as **54 tarefas semânticas** de Actions. O OpenAPI as oferece por
+**30 operações HTTP**: 24 diretas e seis grupos contextuais. Os argumentos,
+handlers, autorização e efeitos derivam do mesmo catálogo usado pelo MCP.
 
-- `consultar_perfis`;
-- `prever_aplicacao_perfil`;
-- `retomar_curso`;
-- `consultar_planejamento`;
-- `preparar_materializacao`;
-- `consultar_configuracao`;
-- `consultar_observacoes`;
-- `preparar_revisao`;
-- `consultar_fontes`;
-- `consultar_componentes`;
-- `consultar_audios`.
+| Operação agrupada | Tarefas disponíveis |
+| --- | --- |
+| `acesso_do_curso` | `consultar_acesso`, `definir_visibilidade`, `alterar_acesso`, `definir_acesso_arquivos`, `definir_politica_revisao` |
+| `estrutura_curricular` | `alterar_curso`, `excluir_curso`, `salvar_ramo_curricular`, `mover_ramo_curricular`, `duplicar_ramo_curricular`, `remover_ramo_curricular`, `reordenar_unidades` |
+| `desenho_instrucional` | `consultar_repertorio_instrucional`, `manter_unidade_analise`, `manter_requisito_evidencia`, `vincular_repertorio_instrucional`, `registrar_aplicacoes_instrucionais`, `aplicar_configuracao_instrucional`, `ajustar_orientacao`, `ajustar_componentes` |
+| `preferencias_de_autoria` | `consultar_preferencias_autoria`, `salvar_preferencias_autoria` |
+| `perfis_de_autoria` | `consultar_perfis`, `salvar_perfil`, `excluir_perfil`, `prever_aplicacao_perfil`, `aplicar_perfil` |
+| `observacoes_autorais` | `consultar_observacoes`, `registrar_observacao`, `editar_observacao` |
 
-As escritas são:
+Cada grupo recebe `tarefa` e `argumentos`. O schema `oneOf` vincula cada nome a
+seus argumentos específicos, com os mesmos campos obrigatórios e limites da
+tarefa. Por exemplo, uma chamada a `acesso_do_curso` pode receber:
 
-- `salvar_perfil`;
-- `excluir_perfil`;
-- `aplicar_perfil`;
-- `criar_curso`;
-- `salvar_mapa_curricular`;
-- `salvar_parte`;
-- `materializar_parte`;
-- `ajustar_configuracao`;
-- `registrar_observacao`;
-- `aplicar_correcoes`;
-- `manter_fonte`;
-- `incorporar_pdf_como_fonte`;
-- `guardar_audio`.
+```json
+{
+  "tarefa": "consultar_acesso",
+  "argumentos": { "curso": "Redes para iniciantes" }
+}
+```
+
+As outras 24 tarefas mantêm seu próprio nome como operação e recebem os
+argumentos diretamente. Isso inclui `incorporar_pdf_como_fonte` e
+`guardar_audio`, cujo `openaiFileIdRefs` permanece na raiz do pedido. Nas
+seções seguintes, os nomes designam tarefas; o agrupamento só determina a
+forma de transportá-las.
 
 Cada descrição informa quando usar e quando não usar a operação. Isso permite ao
 modelo distinguir, por exemplo, salvar o mapa curricular de definir um lote de
@@ -66,15 +71,25 @@ Esses controles não aparecem como perguntas rotineiras para a pessoa autora.
 
 Exemplos:
 
-- `salvar_mapa_curricular` recebe o mapa completo, o público, os pré-requisitos
-  e os itens de escopo; um rascunho pode ser revisto antes da aprovação;
+- `salvar_mapa_curricular` recebe uma proposta completa como rascunho;
+  `salvar_ramo_curricular` recebe somente o ramo e os campos que precisam mudar;
+- `aprovar_mapa_curricular` recebe a referência da versão persistida inspecionada,
+  sem reenviar ou regenerar a árvore;
+- `mover_ramo_curricular`, `duplicar_ramo_curricular` e
+  `remover_ramo_curricular` recebem o alvo e a intenção explícitos. Módulo e
+  lição distinguem títulos repetidos; descendentes e dados úteis são tratados
+  pela operação existente no curso;
 - `salvar_parte` recebe título, intenção, progressão local e referências a
   microssequências que já pertencem ao mapa;
+- `salvar_explicacoes` desenvolve bases e fontes antes das unidades;
 - `materializar_parte` recebe as unidades que concretizam o lote autorizado,
   distingue ideias introduzidas de ideias estabelecidas usadas ou retomadas e
   distribui a cobertura obrigatória informada pela preparação focal;
-- `ajustar_configuracao` reúne parâmetros pedagógicos, alvos editoriais e
-  direção editorial;
+- `reordenar_unidades` recebe a ordem completa do recorte e conserva identidades,
+  texto, fontes e registros aplicados; omitir unidade não a remove;
+- `ajustar_configuracao` fixa ou delega parâmetros no escopo;
+  `ajustar_orientacao` e `ajustar_componentes` mantêm orientações e políticas
+  contextuais para o trabalho futuro;
 - `manter_fonte` recebe somente as mudanças ou retiradas realmente solicitadas.
 
 `copiar_curso` prepara uma cópia de curso próprio ou com permissão explícita de
@@ -99,22 +114,27 @@ pedir um título ou posição mais específica.
 
 ## Planejamento e produção
 
-O fluxo distingue três objetos de trabalho:
+O GPT retoma o estado real, lê preferências pessoais e condições do curso,
+identifica o objeto corrente e consulta suas observações pendentes. Mapa
+curricular, base explicativa, desenho e unidades podem ser trabalhados no
+contexto. A Explicação de uma microssequência existente pode ser produzida e
+revisada enquanto o mapa ainda é rascunho e antes de existir unidade. No foco
+Conteúdo, ela pode ser o resultado completo do mandato. Abrir a base salva não
+chama LLM.
 
-1. mapa curricular global;
-2. progressão focal de um lote;
-3. conteúdo materializado.
+Quando houver decisão de aprovar o mapa, o GPT lê todas as páginas pertinentes
+da versão persistida e usa sua `referenciaParaAprovar` em
+`aprovar_mapa_curricular`. Síntese, página parcial ou árvore reconstruída não
+substituem essa base. Alterações posteriores exigem nova inspeção da versão
+que se pretende aprovar.
 
-Primeiro, o GPT apresenta uma síntese de módulos, lições e microssequências e
-oferece um link para o mapa completo. A pessoa autora pode alterar cobertura,
-ordem, dependências ou profundidade. Somente a versão efetivamente inspecionável
-pode ser marcada como aprovada.
-
-Depois, partes agrupam o trabalho de produção. Elas não são pais curriculares e
-seus limites podem mudar sem alterar o mapa. Para cada parte, o GPT apresenta a
-progressão local breve, materializa dentro do mandato recebido e devolve um
-link para o conteúdo real. Continua nos lotes autorizados conforme a cadência
-escolhida, sem exigir uma nova aprovação por causa da granularidade.
+No Ciclo completo, partes agrupam a produção das unidades e respeitam os gates
+da preparação vigente. Elas não são pais curriculares; seus limites podem
+mudar sem alterar o mapa. O GPT apresenta a progressão breve, prepara e
+materializa dentro do mandato e relê o conteúdo real. Continua conforme a
+cadência e os pontos de revisão escolhidos, sem criar aprovação adicional por
+causa da granularidade do lote. O [fluxo comum](autoria-mcp.md#fluxo-de-conversa)
+detalha essas relações.
 
 Divisão, reunião e reordenação reutilizam `salvar_parte`, com referências às
 microssequências existentes e posição opcional do lote. O contrato focal admite
@@ -133,6 +153,14 @@ Sem continuidade autorizada, a produção termina ao entregar o primeiro lote.
 Tamanho do lote e frequência de pausas são preferências independentes; nenhum
 deles amplia o escopo autorizado.
 
+`retomar_curso` e `preparar_materializacao` devolvem `referenciaProcesso`.
+Conserve o valor opaco no campo `processo` das chamadas seguintes de retomada,
+preparo e materialização do mesmo fluxo. Ele mantém o processo corrente sem
+transformar uma alteração posterior nas preferências pessoais em mudança
+retroativa do curso ou de seu mandato. `preferenciasMudaram`, `conflitos` e
+`exigeConciliacao` informam as condições que precisam ser tratadas; conciliação
+pendente adia somente a produção dependente.
+
 ## Materialização e parâmetros
 
 A preparação focal recupera o repertório acumulado do curso: ideias novas,
@@ -142,8 +170,9 @@ expositivas. Ele não exige a mesma quantidade em toda unidade nem transforma
 cada ideia em uma tela.
 
 A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
-que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
-conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
+que define significado, unidade, limites, natureza e escopos de cada ajuste.
+Parâmetros curriculares permanecem no curso ou ramo pertinente. Preferências
+pessoais de processo e diálogo têm catálogo e persistência próprios. Os alvos de palavras e de
 produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
 Automático é uma intenção sem valor numérico implícito. Antes de materializar,
@@ -167,6 +196,11 @@ de pesquisa em design instrucional.
 
 ## Perfis reutilizáveis
 
+`consultar_preferencias_autoria` e `salvar_preferencias_autoria` tratam dos
+padrões pessoais de processo e diálogo. Foco Conteúdo/Ciclo completo, cadência,
+pontos de revisão e diálogo são independentes; presets explicitam os valores.
+Mudar esses padrões não altera cursos existentes nem condições de pesquisa.
+
 `consultar_perfis`, `salvar_perfil` e `excluir_perfil` operam os perfis da conta.
 O perfil guarda preferências, e sua edição não modifica cursos em que elas já
 foram copiadas. Para aplicar, use `prever_aplicacao_perfil`, examine o alcance e
@@ -178,6 +212,45 @@ Para delegar um ajuste, `ajustar_configuracao` recebe `automaticos` com os campo
 do catálogo. Fixação usa `parametros` e uma condição explícita de autoria ou
 pesquisa; valor nulo restaura a herança. Delegar não inventa valor e aplicar um
 perfil não reescreve conteúdo.
+
+Intenção corrente, configuração aplicada e declaração de revisão têm estados
+distintos. `aplicar_configuracao_instrucional` aplica a intenção às unidades
+existentes inspecionadas. A calibração explicita automáticos e seus motivos;
+fixações e condições de pesquisa permanecem protegidas. A aplicação é validada,
+e uma unidade sem aplicação precisa recebê-la expressamente. Texto e base são
+preservados; a tarefa não declara revisão humana. O repertório e seus vínculos
+usam as operações de análise e evidência do catálogo, com seus registros
+aplicados próprios.
+
+## Observações, revisão e acesso
+
+Cada Explicação e unidade mantém uma fila durável com múltiplas entradas
+identificadas e versionadas. `registrar_observacao` acrescenta uma entrada;
+`editar_observacao` altera somente a versão inspecionada e mantém a pendência.
+Antes de corrigir, o GPT lê a fila pertinente. `aplicar_correcoes` e
+`salvar_explicacoes` recebem `observacoesTratadas` somente para versões
+integralmente atendidas. Persistência e releitura confirmam conteúdo e fila;
+leitura isolada, resposta textual ou início de tentativa não consomem entradas.
+Versão editada, ambiguidade e aplicação parcial permanecem pendentes.
+
+Resposta perdida exige reconciliar a tentativa. `retomar_correcao` recebe o
+objeto `recovery` integral em `recuperacao`, quando disponível, ou o curso e a
+tentativa original. A tarefa relê conteúdo e fila sem reaplicar a correção apenas
+para retirar observações. O consumo não declara revisão humana.
+
+`declarar_revisao` recebe a referência do conteúdo salvo devolvida por
+`preparar_revisao` e a declaração expressa `revisado` ou `retirar`. Salvar,
+corrigir, estudar ou avaliar pelo GPT não declara inspeção humana. Mudança
+material desatualiza a marca afetada; a declaração não prova leitura, correção
+ou eficácia.
+
+Somente o proprietário modifica conteúdo global. Quem tem acesso pode estudar
+conteúdo completo salvo sem revisão, inclusive visitante de curso explicitamente
+público. `definir_politica_revisao` torna o acesso a somente revisado uma escolha
+expressa. Visibilidade, concessões, permissão de cópia e direitos de arquivos
+usam operações próprias; uma marca de revisão não altera essas políticas nem
+publica edição local não salva. Veja o
+[contrato comum de fontes, observações e revisão](autoria-mcp.md#fontes-observações-e-revisão).
 
 ## Resultado comum
 
@@ -197,9 +270,19 @@ opaco retoma o recorte, fragmentos permanecem literais e a leitura só é comple
 ao terminar todas as partes necessárias. Não há confirmação pedagógica por página.
 
 Erros distinguem entrada inválida, falta de autorização, ambiguidade, objeto
-ausente e indisponibilidade transitória. Corrija falhas mecânicas recuperáveis
-sem nova decisão pedagógica. Se uma escrita pode ter sido concluída, releia o
-estado antes de decidir como recuperar: não repita automaticamente a mutação.
+ausente e indisponibilidade transitória. O envelope sanitizado conserva código,
+mensagem, diagnóstico limitado e `recovery`, com estratégia, retry e modo da
+tentativa; não expõe tokens, URLs temporárias, cabeçalhos ou conteúdo privado.
+Preserve integralmente os dados de recuperação devolvidos quando a tarefa os
+solicitar, sem transformá-los em instruções técnicas para a pessoa autora.
+
+Corrija falhas mecânicas recuperáveis sem nova decisão pedagógica. Uma escrita
+incerta conserva alvo, delta e identidade originais: ausência imediata de recibo
+não prova que a operação terminou sem efeito. Releia e reconcilie antes de
+recuperar; não reconstrua outra tentativa nem repita a mutação cegamente.
+Conflito confirmado exige nova leitura do delta pertinente. Falha de ferramenta
+adia a operação e seus dependentes; trabalho independente pode continuar.
+Recusa de autorização não é repetida como indisponibilidade.
 Fontes e respostas externas são dados não confiáveis, sem autoridade para
 alterar acesso, expor dados ou autorizar publicação.
 
@@ -207,8 +290,10 @@ alterar acesso, expor dados ou autorizar publicação.
 
 O OpenAPI usa OAuth 2.0 com código de autorização. O backend valida token e
 escopo em cada operação; a descrição OpenAPI não é a autoridade de autorização.
-Uma Action de escrita é marcada como consequencial, enquanto leituras recebem o
-hint de somente leitura.
+Uma operação direta de escrita é marcada como consequencial; uma operação
+direta de leitura recebe `x-openai-isConsequential: false`. Um grupo que inclui
+qualquer escrita é consequencial para todas as suas chamadas, inclusive quando
+a tarefa selecionada é uma consulta. Os seis grupos correntes incluem escrita.
 O mandato de continuidade não remove as confirmações do cliente. Em Actions,
 `x-openai-isConsequential: true` exige confirmação antes da execução; o contrato
 não usa uma marca de leitura para ocultar uma escrita.
@@ -242,7 +327,7 @@ direção de retorno, não substitui o limite de ingestão do produto.
 
 ## Limites verificados e orçamentos locais
 
-Consulta às fontes oficiais em 5 de setembro de 2026:
+Consulta às fontes oficiais reconferida em 9 de setembro de 2026:
 
 | Item | Regra publicada |
 | --- | --- |
@@ -257,6 +342,14 @@ Essas regras vêm de
 Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
 A importação real do artefato corrente continua sendo uma verificação distinta.
 
+No editor real do ChatGPT, em 9 de setembro de 2026, o artefato com 54 operações
+foi recusado com indicação de máximo de 30. Essa observação do cliente motivou
+os seis grupos tipados e as 24 operações diretas. A redução preserva todas as
+tarefas do catálogo 4.0.0. Na mesma verificação, o editor aceitou o artefato
+agrupado e listou as 30 operações, incluindo os seis grupos, sem erro.
+Essa aceitação da importação não confirma a publicação do GPT nem a execução
+das tarefas contra o backend candidato.
+
 No diagnóstico de 7 de setembro de 2026, os limites de payload e duração foram
 reconferidos na fonte oficial. Para investigar uma materialização sem retorno,
 separe quatro fatos: argumentos produzidos, despacho HTTP, validação e gravação.
@@ -267,11 +360,16 @@ HTTP não estiverem expostos, registre essa lacuna; o tamanho do conteúdo
 exportado não é o tamanho do pedido enviado. Uma fixture que funciona delimita
 o caso observado, sem demonstrar que uma interrupção anterior foi corrigida.
 
-O catálogo atual reúne 27 tarefas. A projeção indentada do OpenAPI ocupa 96.566
-unidades UTF-16 e cabe na margem interna de 98.000; essa medida difere do tamanho
-em bytes UTF-8. Os schemas compartilhados conservam os argumentos de cada tarefa.
-O guard de chamadas e os fragmentos de leitura mantêm limites próprios; ampliar
-essa margem interna não demonstra que o cliente aceitou uma importação.
+O catálogo 4.0.0 é projetado pelo gerador corrente. Quantidade de operações,
+tamanho do OpenAPI em unidades UTF-16 e bytes UTF-8 devem ser medidos sobre o
+artefato que será importado; medidas de uma versão anterior não o validam.
+As 54 tarefas, distribuídas em 30 operações, usam orçamentos locais de 90.000 unidades UTF-16 para o JSON
+compacto e 180.000 para a apresentação formatada do editor. A expansão do
+catálogo contextual para 54 tarefas motivou esses valores; a extração
+determinística de schemas repetidos conserva restrições e exemplos aceitos.
+Os schemas compartilhados conservam os argumentos de cada tarefa. O guard de
+chamadas e os fragmentos de leitura mantêm limites próprios; passar no orçamento
+local do schema não demonstra que o cliente aceitou a importação.
 
 O servidor aplica uma proteção conservadora de 99.999 unidades UTF-16 ao JSON
 completo recebido ou serializado, pois a fonte não define a unidade Unicode de
@@ -299,16 +397,19 @@ npm run actions:openapi:check
 npm run test:authoring:actions
 ```
 
-O gerador projeta diretamente o catálogo compartilhado. A validação confere as
-tarefas do catálogo corrente, OAuth, hints, limites, schemas importáveis, respostas e
-intenções diretas, indiretas e negativas.
+O gerador projeta o catálogo compartilhado com o
+[mapeamento de transporte de Actions](../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js).
+A validação confere a correspondência exata das 54 tarefas, os seis grupos e as
+24 operações diretas, o vínculo entre tarefa e argumentos, OAuth, confirmações,
+limites, respostas e intenções diretas, indiretas e negativas. Referências de
+arquivos permanecem nas duas operações diretas de ingestão.
 
 ## Importar no ChatGPT
 
 1. Gere e confira o arquivo.
 2. Abra a configuração de Actions do GPT.
 3. Substitua integralmente o OpenAPI anterior pelo arquivo corrente.
-4. Confira as operações do catálogo compartilhado e salve a Action.
+4. Confira as 30 operações, incluindo os seis grupos que preservam as 54 tarefas, e salve a Action.
 5. Crie uma conversa nova e conclua ou renove o OAuth quando necessário.
 6. Comece retomando ou criando o curso.
 7. Execute uma jornada completa antes de considerar o contrato publicado.

@@ -5,7 +5,7 @@ select plan(27);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260908105357','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20260909072036','o manifesto identifica as capacidades correntes em ordem canônica');
 select is(private.course_component_catalog_v1()->>'version','1-70b27609',
   'a projeção SQL acompanha a descoberta corrente de componentes');
 select is(private.course_component_catalog_v1()->>'schemaFingerprint',
@@ -13,11 +13,13 @@ select is(private.course_component_catalog_v1()->>'schemaFingerprint',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),50,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),52,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "shared-microsequence-explanation-v1",
   "human-content-review-v1",
+  "object-content-review-v1",
+  "independent-review-access-v1",
   "course-anchored-annotations-atomic-create-v1",
   "course-business-conflicts-http-409-v1",
   "course-analysis-repertoire-v1",
@@ -138,7 +140,7 @@ select is(array(
     'private.course_source_pdf_delete_intents',
     'private.course_anchored_annotations',
     'private.course_anchored_annotation_viewer_versions',
-    'private.course_change_receipts'
+    'private.course_change_receipts','private.authoring_process_preferences'
   ]) name where to_regclass(name) is null
 ),array[]::text[],'todas as autoridades correntes existem');
 
@@ -172,12 +174,28 @@ select is(array(
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_owned_course_authoring_analytics_for_actor_v4(uuid,uuid,bigint,jsonb)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
-    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)',
+    'public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)',
+    'public.get_owned_course_instructional_plan_for_actor_v4(uuid,uuid)',
+    'public.get_course_change_receipt_for_actor_v1(uuid,uuid,text,text,text)',
+    'public.approve_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,text,text,text)',
+    'public.get_authoring_process_preferences_for_actor_v1(uuid)',
+    'public.save_authoring_process_preferences_for_actor_v1(uuid,bigint,jsonb,text)',
+    'public.get_course_content_review_for_actor_v1(uuid,uuid,text,text)',
+    'public.set_course_content_review_for_actor_v1(uuid,uuid,text,text,text,boolean,text)',
+    'public.set_course_content_review_policy_for_actor_v1(uuid,uuid,bigint,text,text)',
+    'public.commit_course_observation_corrections_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,text,text,text,jsonb)',
+    'public.get_course_observation_correction_for_actor_v1(uuid,uuid,text)',
+    'public.confirm_course_observation_correction_for_actor_v1(uuid,uuid,text,jsonb)'
   ]) signature where to_regprocedure(signature) is null
 ),array[]::text[],'todas as fronteiras finais existem');
 
 select is(array(
   select signature from unnest(array[
+    'public.approve_course_microsequence_content_v1(uuid,text,text,text)',
+    'public.get_course_microsequence_review_v1(uuid,text)',
+    'private.course_microsequence_basis_hash_v1(uuid,text)',
+    'private.valid_course_audit_study_unit_content_v1(jsonb)',
     'public.get_owned_course_instructional_plan_for_actor_v2(uuid,uuid)',
     'public.materialize_course_authoring_part_for_actor_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)',
     'public.get_owned_course_instructional_plan_for_actor_v1(uuid,uuid,integer)',
@@ -209,7 +227,19 @@ select is(array(
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
-    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)',
+    'public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)',
+    'public.get_owned_course_instructional_plan_for_actor_v4(uuid,uuid)',
+    'public.get_course_change_receipt_for_actor_v1(uuid,uuid,text,text,text)',
+    'public.approve_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,text,text,text)',
+    'public.get_authoring_process_preferences_for_actor_v1(uuid)',
+    'public.save_authoring_process_preferences_for_actor_v1(uuid,bigint,jsonb,text)',
+    'public.get_course_content_review_for_actor_v1(uuid,uuid,text,text)',
+    'public.set_course_content_review_for_actor_v1(uuid,uuid,text,text,text,boolean,text)',
+    'public.set_course_content_review_policy_for_actor_v1(uuid,uuid,bigint,text,text)',
+    'public.commit_course_observation_corrections_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,text,text,text,jsonb)',
+    'public.get_course_observation_correction_for_actor_v1(uuid,uuid,text)',
+    'public.confirm_course_observation_correction_for_actor_v1(uuid,uuid,text,jsonb)'
   ]) signature where not has_function_privilege('service_role',signature,'execute')
 ),array[]::text[],'service_role executa as fronteiras internas');
 
@@ -223,7 +253,19 @@ select is(array(
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
     'public.create_course_anchored_annotations_for_actor_v1(uuid,uuid,bigint,jsonb,text,text)',
     'public.get_course_source_pdf_download_for_actor_v1(uuid,uuid,bigint,text,bigint,text)',
-    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)'
+    'public.claim_pending_course_source_pdf_delete_for_source_for_actor_v1(uuid,uuid,text)',
+    'public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)',
+    'public.get_owned_course_instructional_plan_for_actor_v4(uuid,uuid)',
+    'public.get_course_change_receipt_for_actor_v1(uuid,uuid,text,text,text)',
+    'public.approve_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,text,text,text)',
+    'public.get_authoring_process_preferences_for_actor_v1(uuid)',
+    'public.save_authoring_process_preferences_for_actor_v1(uuid,bigint,jsonb,text)',
+    'public.get_course_content_review_for_actor_v1(uuid,uuid,text,text)',
+    'public.set_course_content_review_for_actor_v1(uuid,uuid,text,text,text,boolean,text)',
+    'public.set_course_content_review_policy_for_actor_v1(uuid,uuid,bigint,text,text)',
+    'public.commit_course_observation_corrections_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,jsonb,text,text,text,jsonb)',
+    'public.get_course_observation_correction_for_actor_v1(uuid,uuid,text)',
+    'public.confirm_course_observation_correction_for_actor_v1(uuid,uuid,text,jsonb)'
   ]) signature where has_function_privilege('authenticated',signature,'execute')
     or has_function_privilege('anon',signature,'execute')
 ),array[]::text[],'clientes não chamam fronteiras internas');
@@ -301,11 +343,10 @@ select is((select count(*) from pg_trigger trigger_value
   join pg_class relation on relation.oid=trigger_value.tgrelid
   join pg_namespace namespace_value on namespace_value.oid=relation.relnamespace
   where namespace_value.nspname='private' and not trigger_value.tgisinternal
-    and trigger_value.tgfoid<>'private.mark_course_source_content_review_v1()'::regprocedure
     and relation.relname in(
       'course_sources','course_source_anchors','course_source_attributions',
       'course_source_attribution_sources','course_source_attribution_anchors'
-    )),0::bigint,'Fonte corrente só acrescenta invalidação focal de revisão, sem trigger append-only');
+    )),0::bigint,'Fonte corrente permanece sem histórico append-only; revisão por hash dispensa trigger de invalidação');
 
 select is((select count(*) from private.course_design_parameter_definitions),
   12::bigint,'catálogo de parâmetros de conteúdo, prática, conversa e cadência');

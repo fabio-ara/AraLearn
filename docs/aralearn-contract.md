@@ -271,8 +271,13 @@ ferramentas antigas.
 
 ## Projeção Actions
 
-O gerador `buildChatGptActionOpenApi.mjs` cria uma operação HTTP por tarefa. O
-OpenAPI conserva OAuth, hints e schemas importáveis e não duplica o catálogo.
+O gerador `buildChatGptActionOpenApi.mjs` projeta as 54 tarefas do catálogo em
+30 operações HTTP: seis grupos tipados e 24 operações diretas. O binding
+`courseActionBindings.js` vincula `tarefa` e `argumentos` nos grupos e conserva
+os argumentos na raiz das operações diretas. A validação e os casos de uso
+continuam compartilhados com o MCP; o OpenAPI preserva OAuth, hints e schemas
+específicos de cada tarefa. Os grupos estão descritos em
+[Autoria por Actions](autoria-actions.md#operações).
 
 `incorporar_pdf_como_fonte` adapta `openaiFileIdRefs` fornecido pelo ChatGPT. A
 URL temporária do transporte é aceita apenas de origem autorizada e não entra no

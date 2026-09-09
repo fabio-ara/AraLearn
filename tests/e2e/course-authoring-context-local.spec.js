@@ -1,22 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
+import { createConfirmedLocalUser, createLocalFixtureClient, localFixtureLedgerSummary, removeLocalUser, signInLocalUser } from "../support/localSupabaseE2e.js";
 
 const PROJECT_URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
 const PUBLIC_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY;
 const ADMIN_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PASSWORD = "Synthetic-context-304-A9!";
 const UNIT_ID = "card-fixture-minimal-regra";
-async function auth(path, body, { admin = false, method = "POST" } = {}) {
-  const result = await fetch(`${PROJECT_URL}/auth/v1/${path}`, { method,
-    headers: { apikey: admin ? ADMIN_KEY : PUBLIC_KEY, "Content-Type": "application/json",
-      ...(admin ? { Authorization: `Bearer ${ADMIN_KEY}` } : {}) },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  expect(result.ok, `Auth local: ${result.status}`).toBe(true);
-  return result.status === 204 ? null : result.json();
-}
+const FIXTURE_CONFIG = { projectUrl: PROJECT_URL, publishableKey: PUBLIC_KEY, adminKey: ADMIN_KEY };
+const ORIGIN = `http://127.0.0.1:${process.env.ARALEARN_E2E_PORT || "4182"}`;
 
 async function holdRealResponse(page, url) {
   let release, markReady;
@@ -71,15 +65,16 @@ test.describe("folhas contextuais com curso local real", () => {
   test.setTimeout(120000);
   test("fontes e parâmetros conservam edição e reconciliam a revisão antes de salvar", async ({ browser }, info) => {
     expect(PROJECT_URL).toMatch(/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/u);
-    const email = `context304-${Date.now()}-${process.pid}@aralearn.local`;
+    const email = `context304-${Date.now()}-${process.pid}@aralearn.test`;
     let user, client, courseId, context;
     const heldResponses = [];
     try {
-      user = await auth("admin/users", { email, password: PASSWORD, email_confirm: true,
-        user_metadata: { test: "course-authoring-context-local-304" } }, { admin: true });
-      const session = await auth("token?grant_type=password", { email, password: PASSWORD });
-      client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLIC_KEY,
-        authClient: { getAccessToken: async () => session.access_token } });
+      const createdUser = await createConfirmedLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD, marker: "course-authoring-context-local-304" });
+      expect(createdUser.response.ok).toBe(true);
+      user = createdUser.payload;
+      const session = await signInLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD });
+      expect(session.response.ok).toBe(true);
+      client = await createLocalFixtureClient(FIXTURE_CONFIG, { ownerId: user.id, accessToken: session.payload.access_token, origin: ORIGIN });
       await client.updatePersonProfile({ handle: `context-${user.id.slice(0, 8)}` });
       courseId = (await client.createCourse({ title: "Contexto de autoria — ensaio sintético",
         objective: "Conferir a preservação de edição durante consulta contextual.", requestId: crypto.randomUUID() })).courseId;
@@ -118,7 +113,7 @@ test.describe("folhas contextuais com curso local real", () => {
       await page.goto("/?acesso=entrar");
       await page.getByLabel("E-mail").fill(email); await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Conta e aparência" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Configurações" })).toBeVisible();
       const route = `/#/authoring/courses/${courseId}?section=content&studyUnitId=${UNIT_ID}`;
       await page.goto(route);
       await page.getByRole("button", { name: "Editar", exact: true }).click();
@@ -218,9 +213,12 @@ test.describe("folhas contextuais com curso local real", () => {
         const removed = await client.maintainCourse({ courseId, operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() });
         expect(removed.fileCleanupPending).toBe(false);
       }
-      if (user) await auth(`admin/users/${user.id}`, undefined, { admin: true, method: "DELETE" });
+      if (user) {
+        const deleted = await removeLocalUser(FIXTURE_CONFIG, user.id);
+        expect([200, 204, 404]).toContain(deleted.response.status);
+      }
       await info.attach('local-fixture-cleanup', { contentType: 'application/json', body: JSON.stringify({
-        courseId, userId: user?.id, courseDeleted: Boolean(courseId), userDeleted: Boolean(user), fileCleanupPending: false
+        courseId, userId: user?.id, ledger: await localFixtureLedgerSummary(FIXTURE_CONFIG)
       }) });
     }
   });

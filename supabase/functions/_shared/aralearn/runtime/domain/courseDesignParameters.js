@@ -751,7 +751,7 @@ function validateGuidance(value, scopePath, currentScope) {
     "invalid_course_design_read",
     "A direção editorial"
   );
-  if (!Array.isArray(value.effectiveAssignments) || value.effectiveAssignments.length > 4) {
+  if (!Array.isArray(value.effectiveAssignments) || value.effectiveAssignments.length > scopePath.length) {
     fail("invalid_course_design_read", "As direções editoriais excedem a cadeia de escopos.");
   }
   const pathDepth = new Map(scopePath.map((scope, index) => [

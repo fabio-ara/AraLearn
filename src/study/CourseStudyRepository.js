@@ -13,6 +13,7 @@ import { readCourseMediaBlob } from "../supabase/readCourseMediaBlob.js";
 import { normalizeCourseAudioConfig, normalizeCourseMediaRead, normalizeCourseMediaReference,
   normalizeCourseMediaDownload } from "../domain/courseMedia.js";
 import { findCourse } from "./CourseStudyNavigation.js";
+import { createUuid } from "../domain/identifiers.js";
 
 const COURSE_DOCUMENT_CONTRACT = "aralearn.course.v1";
 const MAX_LIST_PAGES = 100;
@@ -24,6 +25,24 @@ const STUDY_NAVIGATION_CHANNEL = "aralearn-course-study-navigation-v1";
 const MAX_STUDY_NAVIGATION_POSITIONS = 64;
 const COURSE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const STUDY_NAVIGATION_VIEWS = new Set(["course", "module", "lesson", "microsequence"]);
+const COURSE_LIFECYCLE_CACHE_KEY = "course-lifecycle.pending.v1";
+const COURSE_LIFECYCLE_OPERATIONS = new Set(["delete_owned_course", "leave_shared_course"]);
+
+function normalizeLifecycleAttempts(value, actorId) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.some((item) => !plainObject(item) ||
+      item.actorId !== actorId || !COURSE_ID_PATTERN.test(item.courseId) ||
+      !COURSE_LIFECYCLE_OPERATIONS.has(item.operation) ||
+      typeof item.requestId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(item.requestId) ||
+      typeof item.title !== "string" || item.title.length > 1000 ||
+      typeof item.requestedAt !== "string" || !Number.isFinite(Date.parse(item.requestedAt)) ||
+      Object.keys(item).some(key => !new Set([
+        "actorId", "courseId", "operation", "requestId", "title", "requestedAt"
+      ]).has(key))) || new Set(value.map(item => item.courseId)).size !== value.length) {
+    throw new TypeError("A tentativa guardada de exclusão não corresponde a esta conta. Os dados foram preservados.");
+  }
+  return clone(value);
+}
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -203,6 +222,7 @@ export class CourseStudyRepository {
   #studyNavigationListeners = new Set();
   #studyNavigationReload = Promise.resolve();
   #studyNavigationWrite = Promise.resolve();
+  #lifecycleInFlight = new Map();
 
   constructor({
     bridge,
@@ -231,6 +251,9 @@ export class CourseStudyRepository {
     this.navigatorValue = windowValue?.navigator ?? null;
     this.BroadcastChannelValue = windowValue?.BroadcastChannel;
     this.navigationScope = String(cache.name || "course-cache");
+    this.lifecycleActorId = this.navigationScope.match(/^aralearn-course-v1-([0-9a-f-]{36})$/u)?.[1]
+      || api.authClient?.getSession?.()?.user?.id || null;
+    this.pendingCourseLifecycles = [];
     this.project = { contract: COURSE_DOCUMENT_CONTRACT, courses: [] };
     this.personalByCourseId = new Map();
     this.annotationsByCourseId = new Map();
@@ -243,6 +266,7 @@ export class CourseStudyRepository {
     this.studyNavigation = emptyStudyNavigation();
     this.offlineCourseRevisionById = new Map();
     this.explanationCitationStatus = new Map();
+    this.studyUnitCitationStatus = new Map();
     this.setSynchronizationMode(synchronizationMode);
   }
 
@@ -442,7 +466,9 @@ export class CourseStudyRepository {
       this.annotationsByCourseId.delete(courseId);
       await this.cache.putCache(`course.v1.audio-configuration:${courseId}`, null);
       await this.cache.putCache(`course.v1.explanation-citations:${courseId}`, null);
+      await this.cache.putCache(`course.v1.study-unit-citations:${courseId}`, null);
       this.explanationCitationStatus.delete(courseId);
+      this.studyUnitCitationStatus.delete(courseId);
       this.loadedCourseById.delete(courseId);
       this.offlineCourseRevisionById.delete(courseId);
       this.courseList = this.courseList.filter((item) => item.courseId !== courseId);
@@ -457,6 +483,7 @@ export class CourseStudyRepository {
   }
 
   async refreshCourses({ explicit = false } = {}) {
+    await this.refreshPendingCourseLifecycles();
     if (this.synchronizationMode === "manual" && !explicit) {
       if (!this.courseList.length) this.courseList = (await this.#listAllCourses({ cacheOnly: true })).items;
       const cached = await this.cache.getCache(REVIEW_PAGE_CACHE_KEY);
@@ -561,19 +588,96 @@ export class CourseStudyRepository {
     return this.loadProject();
   }
 
-  async maintainCourse({ courseId, operation, confirmed, requestId } = {}) {
+  loadPendingCourseLifecycles() {
+    return clone(this.pendingCourseLifecycles);
+  }
+
+  async refreshPendingCourseLifecycles() {
+    if (this.visitor || !this.lifecycleActorId) return [];
+    this.pendingCourseLifecycles = normalizeLifecycleAttempts(
+      await this.cache.getCache(COURSE_LIFECYCLE_CACHE_KEY), this.lifecycleActorId);
+    return this.loadPendingCourseLifecycles();
+  }
+
+  #assertLifecycleActor() {
+    const current = this.api.authClient?.getSession?.()?.user?.id;
+    if (!COURSE_ID_PATTERN.test(this.lifecycleActorId) || current !== this.lifecycleActorId) {
+      const error = new Error("Entre novamente na conta que iniciou esta ação para retomá-la.");
+      error.status = 401;
+      error.code = "course_lifecycle_account_required";
+      throw error;
+    }
+    return current;
+  }
+
+  async resumeCourseLifecycle(courseId) {
+    this.#assertLifecycleActor();
+    const pending = (await this.refreshPendingCourseLifecycles()).find(item => item.courseId === courseId);
+    if (!pending) return null;
+    return this.maintainCourse({ ...pending, confirmed: true });
+  }
+
+  async maintainCourse({ courseId, operation, confirmed, requestId, title } = {}) {
     if (this.visitor) throw new Error("Entre na sua conta para gerenciar cursos.");
     if (typeof this.bridge.maintainCourse !== "function") {
       throw new TypeError("O ciclo de vida do curso não está disponível.");
     }
-    const result = await this.bridge.maintainCourse({
-      courseId,
-      operation,
-      confirmed,
-      requestId
-    });
-    await this.#purgeRevokedCourses([courseId], { clearLists: true });
-    return result;
+    const actorId = this.#assertLifecycleActor();
+    if (!COURSE_ID_PATTERN.test(courseId) || !COURSE_LIFECYCLE_OPERATIONS.has(operation) || confirmed !== true) {
+      throw new TypeError("Confirme a ação sobre o curso antes de continuar.");
+    }
+    const inflight = this.#lifecycleInFlight.get(courseId);
+    if (inflight) {
+      const savedId = this.pendingCourseLifecycles.find(item => item.courseId === courseId)?.requestId;
+      if (inflight.operation !== operation || requestId && requestId !== inflight.requestId && requestId !== savedId) {
+        throw new Error("Aguarde a ação em andamento neste curso.");
+      }
+      return inflight.promise;
+    }
+    const execute = async () => {
+      const attempts = await this.cache.updateCache(COURSE_LIFECYCLE_CACHE_KEY, cached => {
+        const current = normalizeLifecycleAttempts(cached, actorId);
+        const pending = current.find(item => item.courseId === courseId);
+        if (pending) {
+          if (pending.operation !== operation || requestId && pending.requestId !== requestId) {
+            throw new TypeError("Retome a tentativa guardada antes de iniciar outra ação neste curso.");
+          }
+          return current;
+        }
+        const descriptor = this.courseList.find(item => item.courseId === courseId);
+        if (!descriptor || (operation === "delete_owned_course" ? descriptor.ownership !== "owned"
+          : descriptor.ownership !== "shared")) throw new Error("O curso não está disponível para esta ação.");
+        return normalizeLifecycleAttempts([...current, {
+          actorId, courseId, operation, requestId: requestId || createUuid(),
+          title: String(title ?? descriptor.title ?? "Curso").slice(0, 1000), requestedAt: nowIso(this.clock)
+        }], actorId);
+      });
+      this.pendingCourseLifecycles = attempts;
+      const pending = attempts.find(item => item.courseId === courseId);
+      this.#assertLifecycleActor();
+      // The same endpoint reconciles removal intents and returns only after
+      // database deletion and file claims have been resolved. A missing list
+      // entry or a failed request cannot replace this confirmation.
+      const result = await this.bridge.maintainCourse({ courseId, operation,
+        confirmed: true, requestId: pending.requestId });
+      this.#assertLifecycleActor();
+      if (result?.contract !== "aralearn.course-lifecycle.v1" || result.courseId !== courseId ||
+          result.operation !== operation || result.requestId !== pending.requestId ||
+          !new Set(["completed", "already_absent"]).has(result.status) ||
+          typeof result.changed !== "boolean" || result.fileCleanupPending !== false) {
+        throw new Error("A conclusão ainda não foi confirmada. Retome a ação guardada para verificar o curso e seus arquivos.");
+      }
+      await this.#purgeRevokedCourses([courseId], { clearLists: true });
+      this.#assertLifecycleActor();
+      this.pendingCourseLifecycles = await this.cache.updateCache(COURSE_LIFECYCLE_CACHE_KEY, cached =>
+        normalizeLifecycleAttempts(cached, actorId).filter(item =>
+          item.courseId !== courseId || item.requestId !== pending.requestId));
+      return result;
+    };
+    const running = execute();
+    this.#lifecycleInFlight.set(courseId, { operation, requestId, promise: running });
+    try { return await running; }
+    finally { this.#lifecycleInFlight.delete(courseId); }
   }
 
   async clearLocalCourse(courseIdentity) {
@@ -590,7 +694,9 @@ export class CourseStudyRepository {
     this.annotationsByCourseId.delete(courseId);
     await this.cache.putCache(`course.v1.audio-configuration:${courseId}`, null);
     await this.cache.putCache(`course.v1.explanation-citations:${courseId}`, null);
+    await this.cache.putCache(`course.v1.study-unit-citations:${courseId}`, null);
     this.explanationCitationStatus.delete(courseId);
+    this.studyUnitCitationStatus.delete(courseId);
     this.loadedCourseById.delete(courseId);
     this.offlineCourseRevisionById.delete(courseId);
     this.reviewItems = this.reviewItems.filter((item) => item.courseId !== courseId);
@@ -753,41 +859,7 @@ export class CourseStudyRepository {
   }
 
   async loadStudyUnitCitations(reference) {
-    if (typeof this.api.getStudyUnitCitations !== "function") {
-      throw new TypeError("API de citações do Estudo indisponível.");
-    }
-    const courseId = courseIdFromReference(reference);
-    const studyUnitId = studyUnitIdFromReference(reference);
-    const descriptor = this.courseList.find((item) => item.courseId === courseId);
-    const loaded = this.loadedCourseById.get(courseId);
-    const expectedRevision = loaded?.revision || descriptor?.revision;
-    if (!COURSE_ID_PATTERN.test(courseId) || !studyUnitId ||
-        !Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
-      throw new TypeError("Referência de unidade de estudo inválida para citações.");
-    }
-    let rawCitations;
-    try {
-      rawCitations = await this.api.getStudyUnitCitations(
-        courseId,
-        studyUnitId,
-        { expectedRevision }
-      );
-    } catch (error) {
-      const normalizedError = courseRevisionConflict(error)
-        ? courseRevisionChangedError(error)
-        : error;
-      if (courseAccessRevoked(normalizedError)) await this.#purgeRevokedCourses([courseId]);
-      throw normalizedError;
-    }
-    const citations = normalizeCourseStudyCitationsRead(rawCitations);
-    if (citations.courseId !== courseId || citations.courseRevision !== expectedRevision ||
-        citations.studyUnitId !== studyUnitId) {
-      if (citations.courseRevision !== expectedRevision) {
-        throw courseRevisionChangedError();
-      }
-      throw new TypeError("As citações não correspondem à Unidade solicitada.");
-    }
-    return citations;
+    return this.#loadTargetCitations(reference, false);
   }
 
   loadProject() {
@@ -822,6 +894,12 @@ export class CourseStudyRepository {
     return null;
   }
 
+  loadStudyUnitCitationStatus(reference) {
+    const courseId = courseIdFromReference(reference);
+    const status = this.studyUnitCitationStatus.get(courseId)?.[studyUnitIdFromReference(reference)];
+    return status?.courseRevision === this.loadedCourseById.get(courseId)?.revision ? clone(status) : null;
+  }
+
   loadExplanationCitationStatus(reference) {
     const courseId = courseIdFromReference(reference);
     const path = Array.isArray(reference) ? reference : reference?.entityPath;
@@ -831,30 +909,37 @@ export class CourseStudyRepository {
   }
 
   async loadExplanationCitations(reference) {
+    return this.#loadTargetCitations(reference, true);
+  }
+
+  async #loadTargetCitations(reference, explanation) {
     const courseId = courseIdFromReference(reference);
     const path = Array.isArray(reference) ? reference : reference?.entityPath;
-    const microsequenceId = path?.[3] ?? reference?.microsequenceId ?? reference?.targetId;
-    const expectedRevision = this.loadedCourseById.get(courseId)?.revision;
+    const targetId = explanation ? path?.[3] ?? reference?.microsequenceId ?? reference?.targetId : studyUnitIdFromReference(reference);
+    const currentRevision = () => this.loadedCourseById.get(courseId)?.revision || this.courseList.find(item => item.courseId === courseId)?.revision;
+    const expectedRevision = currentRevision();
+    const read = explanation ? this.api.getExplanationCitations : this.api.getStudyUnitCitations;
     if (reference?.courseRevision && reference.courseRevision !== expectedRevision) throw courseRevisionChangedError();
-    if (!COURSE_ID_PATTERN.test(courseId) || typeof microsequenceId !== "string" ||
-        !microsequenceId || !Number.isSafeInteger(expectedRevision) ||
-        typeof this.api.getExplanationCitations !== "function") {
-      throw new TypeError("Referência de Explicação inválida para citações.");
+    if (!COURSE_ID_PATTERN.test(courseId) || typeof targetId !== "string" ||
+        !targetId || !Number.isSafeInteger(expectedRevision) ||
+        typeof read !== "function") {
+      throw new TypeError("Referência de conteúdo inválida para citações.");
     }
-    const key = `course.v1.explanation-citations:${courseId}`;
+    const key = `course.v1.${explanation ? "explanation" : "study-unit"}-citations:${courseId}`;
     const offline = this.navigatorValue?.onLine === false;
     const assertContext = citations => {
       if (citations.courseRevision !== expectedRevision ||
-          this.loadedCourseById.get(courseId)?.revision !== expectedRevision) throw courseRevisionChangedError();
-      if (citations.courseId !== courseId || citations.targetKind !== "microsequence_explanation" ||
-          citations.targetId !== microsequenceId) throw new TypeError("As citações não correspondem à Explicação solicitada.");
+          currentRevision() !== expectedRevision) throw courseRevisionChangedError();
+      if (citations.courseId !== courseId || (explanation ? citations.targetKind !== "microsequence_explanation" ||
+          citations.targetId !== targetId : citations.studyUnitId !== targetId)) throw new TypeError("As citações não correspondem ao conteúdo solicitado.");
       return citations;
     };
     const cached = await this.cache.getCache(key);
-    const readCached = () => cached?.courseRevision === expectedRevision && cached.items?.[microsequenceId]
-      ? assertContext(normalizeCourseStudyCitationsRead(cached.items[microsequenceId])) : null;
-    const status = (source, serviceUnavailable = false) => this.explanationCitationStatus.set(courseId, {
-      ...this.explanationCitationStatus.get(courseId), [microsequenceId]: {
+    const readCached = () => cached?.courseRevision === expectedRevision && cached.items?.[targetId]
+      ? assertContext(normalizeCourseStudyCitationsRead(cached.items[targetId])) : null;
+    const statusStore = explanation ? this.explanationCitationStatus : this.studyUnitCitationStatus;
+    const status = (source, serviceUnavailable = false) => statusStore.set(courseId, {
+      ...statusStore.get(courseId), [targetId]: {
         courseRevision: expectedRevision, source, offline, serviceUnavailable
       }
     });
@@ -863,19 +948,19 @@ export class CourseStudyRepository {
       if (value) { status("cache"); return value; }
       if (offline) {
         status(null);
-        throw Object.assign(new Error("As fontes desta Explicação ainda não estão salvas neste dispositivo."), {
-          code: "explanation_citations_not_saved", offline: true
+        throw Object.assign(new Error("As fontes deste conteúdo ainda não estão salvas neste dispositivo."), {
+          code: explanation ? "explanation_citations_not_saved" : "study_citations_not_saved", offline: true
         });
       }
     }
     try {
-      const citations = assertContext(normalizeCourseStudyCitationsRead(await this.api.getExplanationCitations(
-        courseId, microsequenceId, { expectedRevision }
+      const citations = assertContext(normalizeCourseStudyCitationsRead(await read.call(this.api,
+        courseId, targetId, { expectedRevision }
       )));
       await this.cache.updateCache(key, current => {
         assertContext(citations);
         return { courseRevision: expectedRevision,
-          items: { ...(current?.courseRevision === expectedRevision ? current.items : {}), [microsequenceId]: citations } };
+          items: { ...(current?.courseRevision === expectedRevision ? current.items : {}), [targetId]: citations } };
       });
       assertContext(citations);
       status("remote");

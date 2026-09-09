@@ -13,6 +13,8 @@ import {
 import {
   projectHumanAuthoringTasksForActions
 } from "../../scripts/projectHumanAuthoringActions.mjs";
+import { encodeCourseActionTaskRequest } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 
 const fixture = JSON.parse(await fs.readFile(new URL(
   "../fixtures/contextual-review-repair.v1.json",
@@ -56,8 +58,9 @@ test("#271 guidance conduz Observações abertas até reparo contextual e reinsp
     .instructions.join(" ");
   const componentText = courseAuthoringGuidanceForCall("consultar_componentes")
     .instructions.join(" ");
-  assert.match(inspectionText, /caixa de observações abertas/iu);
-  assert.match(inspectionText, /não crie entidade persistente de lote/iu);
+  assert.match(inspectionText, /fila autoral da Explicação e das unidades/iu);
+  assert.match(inspectionText, /abertas ou consideradas.*versão exata.*persistida.*confirmada por releitura/iu);
+  assert.match(inspectionText, /sem entidade de lote de inspeção/iu);
   assert.match(inspectionText, /progressão, pré-requisitos, transições, exemplos ou prática/iu);
   assert.match(reviewText, /inspecionar, observar, pedir revisão.*propor reparo.*reinspecionar/iu);
   assert.match(reviewText, /não apenas os alvos anotados/iu);
@@ -163,7 +166,17 @@ test("#271 OpenAPI usa somente as tarefas humanas e o resultado curto", () => {
     "consultar_observacoes", "preparar_revisao", "registrar_observacao",
     "aplicar_correcoes", "consultar_fontes", "consultar_componentes",
     "ajustar_configuracao"
-  ]) assert.ok(openApi.paths[`/${name}`], name);
+  ]) {
+    const wire = encodeCourseActionTaskRequest(name, {});
+    const operation = openApi.paths[`/${wire.operationName}`]?.post;
+    assert.ok(operation, name);
+    assert.equal(operation.operationId, wire.operationName);
+    if (wire.operationName !== name) {
+      const schema = operation.requestBody.content["application/json"].schema;
+      assert.ok(schema.properties.tarefa.enum.includes(name));
+      assert.ok(schema.oneOf.some(branch => branch.properties.tarefa.enum.includes(name)));
+    }
+  }
   assert.deepEqual(openApi.components.schemas.HumanTaskResult.required, [
     "result", "deepLink", "nextDecision"
   ]);

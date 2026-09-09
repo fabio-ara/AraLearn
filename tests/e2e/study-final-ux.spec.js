@@ -150,7 +150,7 @@ async function capture(page, name) {
 }
 
 function modeButton(page, name) {
-  return page.locator("header .study-mode-actions").getByRole("button", { name });
+  return page.locator(".study-mode-actions").getByRole("button", { name });
 }
 
 test("jornada por cliques mantém voltar e modos contextuais distintos", async ({ page }) => {
@@ -226,7 +226,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
   await expect(modeButton(page, "Assistência por IA")).toBeFocused();
   await page.locator("[data-action='open-study-unit']").first().click();
   await expect(modeButton(page, "Assistência por IA")).toBeVisible();
-  const modeGeometry = await page.locator("header .study-mode-button").evaluateAll((buttons) =>
+  const modeGeometry = await page.locator(".study-mode-button").evaluateAll((buttons) =>
     buttons.map((button) => {
       const rect = button.getBoundingClientRect();
       return { width: rect.width, height: rect.height, center: rect.top + rect.height / 2 };
@@ -284,7 +284,7 @@ test("jornada por cliques mantém voltar e modos contextuais distintos", async (
     };
     return {
       back: bounds("[data-action='go-back']"),
-      modes: bounds("header .study-mode-actions"),
+      modes: bounds(".study-mode-actions"),
       viewport: innerWidth
     };
   });
@@ -691,10 +691,10 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.singleLine, `Runtime ${width}px`).toBe(true);
     expect(runtimeDock.documentFits, `Runtime ${width}px`).toBe(true);
     expect(runtimeDock.actions, `Runtime ${width}px`).toEqual([
-      "open-explanation", "toggle-citations", "open-observation", "toggle-review", "previous-study-unit", "next-study-unit"
+      "open-explanation", "open-observation", "toggle-review", "previous-study-unit", "next-study-unit"
     ]);
-    expect(runtimeDock.buttonWidths, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44, 44]);
-    expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44, 44]);
-    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-six-actions-360.png"), fullPage: true });
+    expect(runtimeDock.buttonWidths, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
+    expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-five-actions-360.png"), fullPage: true });
   }
 });

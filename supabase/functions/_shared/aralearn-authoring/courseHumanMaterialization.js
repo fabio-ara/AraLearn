@@ -1159,8 +1159,9 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
 
 async function prepareExplanations({ explanations, adapter, principal, context, deadlineAt, newId }) {
   const microsequences = partMicrosequences(context.part);
-  if (!Array.isArray(explanations) || explanations.length !== microsequences.length) {
-    fail("human_materialization_missing_explanation", "Produza uma Explicação completa para cada microssequência da parte.");
+  explanations ??= [];
+  if (!Array.isArray(explanations) || explanations.length > microsequences.length) {
+    fail("human_materialization_missing_explanation", "Informe somente as Explicações que deseja produzir ou alterar nesta parte.");
   }
   const seen = new Set();
   const prepared = [];
@@ -1186,6 +1187,23 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
     const sourceLinks = await resolveHumanSourceLinks({ adapter, principal, courseContext: context,
       requested: entry.fontes ?? [], deadlineAt, newId, content, identityPrefix: `explanation:${index}` });
     prepared.push({ microsequenceId: microsequence.id, content, sourceLinks });
+  }
+  const saved = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
+    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+  for (const microsequence of microsequences.filter(item => !seen.has(item.id))) {
+    const persisted = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id) ?? microsequence;
+    if (!persisted.explanation) {
+      fail("human_materialization_missing_explanation", `Salve a Explicação de “${microsequence.title}” antes de produzir suas unidades, ou inclua-a neste pedido.`);
+    }
+    const content = normalizeMicrosequenceExplanation(persisted.explanation);
+    const sources = await adapter.getCourseSources({ principal, courseId: context.course.id,
+      expectedRevision: context.course.revision, mode: "target", sourceId: null,
+      targetKind: "microsequence_explanation", targetId: microsequence.id, cursor: null, limit: 1, deadlineAt });
+    if (!Array.isArray(sources?.items) || sources.items.length !== 1) {
+      fail("course_service_unavailable", "As fontes da base salva não puderam ser relidas.", 503);
+    }
+    prepared.push({ microsequenceId: microsequence.id, content,
+      sourceLinks: normalizeCourseSourceLinks(sources.items[0].sourceLinks ?? []) });
   }
   return prepared;
 }

@@ -45,6 +45,9 @@ function adapterFixture() {
     async getCourse() {
       return { courseId: COURSE_ID, title: "Curso de Redes", revision: 7 };
     },
+    async getCourseAnchoredAnnotations() {
+      return { items: [], annotationSetVersion: 0, hasMore: false, nextCursor: null };
+    },
     async listCourseStudyUnits() {
       return { items: units, hasMore: false, nextCursor: null };
     },

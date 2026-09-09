@@ -113,10 +113,14 @@ existentes.
 
 ## MCP e Actions
 
-`COURSE_HUMAN_TASKS` é a lista canônica das tarefas humanas. O MCP
-publica cada tarefa com metadados próprios; Actions cria um caminho HTTP para
-cada uma. Os schemas podem receber adaptações de transporte, como a referência
-de arquivo gerida pelo ChatGPT, mas os casos de uso e efeitos permanecem iguais.
+`COURSE_HUMAN_TASKS` é a lista canônica das 54 tarefas humanas. O MCP publica
+cada tarefa com metadados próprios. Actions usa o binding tipado de
+`courseActionBindings.js` para oferecê-las em 30 operações HTTP: seis grupos
+recebem `tarefa` e `argumentos`, e 24 operações diretas recebem os argumentos na
+raiz. O binding encaminha cada tarefa à mesma validação e ao mesmo caso de uso
+do MCP. As referências de arquivo geridas pelo ChatGPT permanecem na raiz das
+operações diretas de ingestão, conforme o
+[contrato de Actions](autoria-actions.md#operações).
 
 Ao alterar o catálogo:
 
@@ -148,6 +152,32 @@ Uma composição nova permanece candidata no IndexedDB até a validação integr
 Nunca apague a última revisão válida para aceitar uma candidata incompleta.
 Estado pessoal e Anotações possuem filas específicas. Planejamento, produção,
 fontes, configuração, revisão e Analytics exigem o estado remoto corrente.
+
+### Recuperação da exclusão de cursos
+
+Ao confirmar a exclusão ou a saída de um curso, o repositório de Estudo salva
+uma tentativa no compartimento IndexedDB da conta antes de enviar a ação. Ela
+contém ator, curso, operação, identidade da requisição, data e título para
+apresentação. O título não identifica o alvo. Uma resposta perdida, sessão
+expirada ou limpeza interrompida conserva essa tentativa; a Home oferece sua
+retomada mesmo quando o curso já não aparece na listagem.
+
+`CourseStudyRepository.resumeCourseLifecycle(courseId)` retoma somente uma
+tentativa guardada, na conta que a iniciou. A sessão pode ser renovada pelos
+mecanismos normais; a identidade da operação permanece igual. O endpoint de
+ciclo de vida reconcilia a exclusão e as intenções de remoção de arquivos,
+preservando referências de cópias independentes. O cliente encerra a tentativa
+apenas com contrato final correspondente e `fileCleanupPending:false`, seguido
+da limpeza da réplica local. Ausência na listagem e erro de transporte não
+confirmam conclusão. A interface não pede novamente a confirmação de uma
+tentativa já autorizada.
+
+`refreshPendingCourseLifecycles()` relê as tentativas persistidas e
+`loadPendingCourseLifecycles()` fornece seu snapshot para apresentação e
+instrumentação autorizada. Nenhum deles despacha exclusão. O teste focal
+`tests/runtime/course-lifecycle-recovery.test.js` usa IndexedDB local sintético
+e respostas simuladas; a prova de sessão, confirmação e limpeza no cliente
+hospedado permanece uma verificação separada.
 
 ## Interface
 

@@ -674,7 +674,7 @@ test("a edição em Estudo preserva o fluxo direto do proprietário sem criar c�
 
 });
 
-test("Study conserva a unidade e revela as citações somente na folha lazy externa", async () => {
+test("Study preserva a unidade e concentra referências no corpo da Explicação", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -732,19 +732,20 @@ test("Study conserva a unidade e revela as citações somente na folha lazy exte
   };
 
   const closed = renderCourseStudyScreen({ ...common, citationsOpen: false });
-  assert.match(closed, /data-action="toggle-citations"/u);
+  assert.match(closed, /data-action="open-explanation"/u);
+  assert.doesNotMatch(closed, /data-action="toggle-citations"/u);
   assert.doesNotMatch(closed, /Fonte somente citada|Fonte com link público/u);
 
   const activeScreen = renderCourseStudyScreen({ ...common, citationsOpen: true });
-  assert.match(activeScreen, /data-action="toggle-citations" aria-expanded="true"/u);
+  assert.doesNotMatch(activeScreen, /data-action="toggle-citations"/u);
   assert.doesNotMatch(activeScreen, /study-citations-overlay|Fonte somente citada|Fonte com link público/u);
-  const sheet = { value: common.citations, courseId: course.id, studyUnit };
+  const sheet = { value: common.citations, courseId: course.id, studyUnit, bibliography: true, contextId: "unit" };
   assert.equal(renderStudyCitations({ ...sheet, open: false }), "");
   const open = renderStudyCitations({ ...sheet, open: true });
-  assert.match(open, /role="dialog" aria-modal="true" aria-labelledby="study-citations-title"/u);
-  assert.match(open, /data-action="toggle-citations" aria-label="Fechar fontes"/u);
+  assert.match(open, /class="study-bibliography" data-citation-context="unit"/u);
+  assert.match(open, /data-action="return-citation"/u);
   assert.doesNotMatch(open, /Proveniência desta Unidade/u);
-  assert.match(open, /<h2 id="study-citations-title">Fontes<\/h2>/u);
+  assert.match(open, /<h3>Referências<\/h3>/u);
   assert.match(open, /Fonte somente citada/u);
   assert.match(open, /Fonte com link público/u);
   assert.match(open, /pp\. 8–9/u);

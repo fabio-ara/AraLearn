@@ -247,6 +247,78 @@ O pacote escolhe a tecnologia conforme a classe do problema:
 
 O objetivo não é eliminar CSS, mas evitar que geometria acadêmica dependa de coordenadas autorais ou medições artesanais. Motores externos também têm limites: Graphviz não decide o valor pedagógico de um grafo, Vega não escolhe a escala cientificamente correta e MathML não valida uma equação.
 
+### Inventário tipográfico do catálogo
+
+O registro em `src/resources/packages/generated.js` contém os 38 pacotes abaixo,
+todos na versão 1.0.0. A lista deriva das identidades instaladas; diretórios de
+apoio não são componentes adicionais. `public/styles-tokens.css` fornece os
+papéis, `public/styles.css` os aplica aos renderers e `public/study-references.css`
+liga a Explicação à mesma prosa. Os 34 pacotes de conteúdo podem ocupar os
+papéis admitidos em seus manifestos; feedback substantivo usa a representação
+do próprio pacote, enquanto acerto, erro e ausência de resposta são estados.
+
+| Pacote | Papéis textuais e mecanismo | Extremo a conservar na inspeção |
+| --- | --- | --- |
+| `aralearn.resource.paragraph` | Prosa, listas, literais e feedback; HTML/rich + MathML | Texto longo, IPA com diacríticos, ruby CJK, RTL com matemática LTR |
+| `aralearn.resource.code` | Enunciado em prosa; bloco `pre/code` monoespaçado | Indentação, linhas longas, crases, operadores e Unicode |
+| `aralearn.resource.table` | Cabeçalhos, células e legenda; tabela HTML na escala densa | Colunas longas, unidades, rolagem local e ordem de leitura |
+| `aralearn.resource.annotated_text` | Texto-fonte, chamadas, excertos e notas; HTML | Anotação extensa, numeração, caracteres e retorno ao trecho |
+| `aralearn.resource.bpmn_process` | Tarefas, eventos, raias e mensagens; Graphviz/SVG + rótulos HTML | Rótulos longos, tipos de evento e direção do processo |
+| `aralearn.resource.interlinear_gloss` | Forma, glosa, tradução e abreviações; HTML com idioma/direção | IPA, diacríticos, morfemas alinhados e RTL |
+| `aralearn.response.choice` | Enunciado, alternativas e feedback; grupo ARIA e botões | Seleção múltipla, melhor resposta, código literal e alternativas longas |
+| `aralearn.response.gap` | Lacuna herda o texto-alvo; campos e opções do SDK | Lacuna em prosa, código, tabela ou diagrama sem mudar notação |
+| `aralearn.response.ordering` | Expressões e controles de movimento do SDK | Ordem, texto longo e alcance por teclado |
+| `aralearn.resource.tree` | Nós, relações e contorno textual; Graphviz/SVG + HTML | Hierarquia profunda, rótulos extensos e rolagem/zoom local |
+| `aralearn.resource.matrix` | Nome, valores, índices e delimitadores; MathML/HTML | Matrizes altas/largas, sinais e cercas que acompanham o conteúdo |
+| `aralearn.resource.reaction` | Espécies, coeficientes, estados e condições; HTML químico | Subscritos, cargas, setas e condições extensas |
+| `aralearn.resource.flow` | Nós, arestas e enunciado; Graphviz + rótulos HTML | Decisões, ciclos, rótulos longos e geometria medida |
+| `aralearn.resource.formula` | Expressão e leitura acessível; MathML | Frações, raízes aninhadas, tensores, integrais e limites |
+| `aralearn.resource.plane` | Eixos, coordenadas, objetos e legenda; Vega/SVG + HTML | Sinais, unidades, escala e rótulos próximos |
+| `aralearn.resource.chart` | Eixos, séries, legenda e descrição; Vega/SVG + HTML | Unidades, incerteza, números extensos e séries distinguíveis |
+| `aralearn.resource.software_system_context` | Pessoas, sistemas e relações; Graphviz/SVG + HTML | Nomes, descrições e rótulos de relação longos |
+| `aralearn.resource.software_container` | Contêineres, tecnologia e relações; Graphviz/SVG + HTML | Tecnologias com caixa significativa e fronteiras do sistema |
+| `aralearn.resource.system_internal_block` | Blocos, portas e fluxos; Graphviz/SVG + HTML | Portas, direções e multiplicidades legíveis |
+| `aralearn.resource.graph` | Vértices e arestas; Graphviz/SVG + rótulos HTML | Laços, multiarestas, nomes longos e símbolos |
+| `aralearn.resource.relation_map` | Objetos e relações nomeadas; Graphviz/SVG + HTML | Rótulos verbais e setas sem ambiguidade |
+| `aralearn.resource.database_schema` | Relações, atributos e chaves; Graphviz/SVG + HTML | PK/FK, tipos e identificadores longos |
+| `aralearn.resource.memory_layout` | Endereços, valores e direção; HTML/CSS grid | Hexadecimal, alinhamento e ordem dos endereços |
+| `aralearn.resource.network_topology` | Equipamentos, interfaces e enlaces; Graphviz/SVG + HTML | Endereços, portas, hub/repetidor e tipos de enlace |
+| `aralearn.resource.packet_layout` | Bits, offsets, campos e legenda; HTML/CSS grid | Offsets monoespaçados, campos repartidos e largura em bits |
+| `aralearn.resource.set_diagram` | Conjuntos, regiões e valores; SVG + HTML | Interseções, regiões vazias e rótulos |
+| `aralearn.resource.state_machine` | Estados, eventos e guardas; Graphviz/SVG + HTML | Transições múltiplas, estados inicial/final e guardas extensas |
+| `aralearn.resource.truth_table` | Variáveis, operadores e resultados; tabela HTML | Negação, condicionais e valores lógicos alinhados |
+| `aralearn.resource.entity_relationship` | Entidades, atributos e relações; Graphviz/SVG + HTML | Cardinalidade, opcionalidade e nomes extensos |
+| `aralearn.resource.state_transition_table` | Estado atual, entrada, saída e destino; tabela HTML | Condições, transições e ausência de destino explícita |
+| `aralearn.resource.call_stack` | Quadros, chamada, variáveis e retorno; HTML | Topo, função ativa, continuação e valores longos |
+| `aralearn.resource.audio` | Títulos, orientação, transcrição e estado; controles nativos | Transcrição longa, IPA, consentimento e faixa indisponível |
+| `aralearn.resource.calculator` | Expressão, resultado, rótulos e limites; formulário HTML | Sinal, separador decimal, erro e alcance dos controles |
+| `aralearn.resource.dictionary` | Verbetes, idioma e orientação de consulta; HTML | Palavra em outro alfabeto e destino de consulta |
+| `aralearn.resource.grammar` | Construções, idioma e orientação de consulta; HTML | Exemplos em outro idioma e descrições longas |
+| `aralearn.resource.reading` | Título, orientação e destino; HTML | Referência extensa, PDF autorizado e retorno ao estudo |
+| `aralearn.resource.terminal_session` | Prompt, comando, streams e código de saída; `pre/code/samp` | Espaços, stdout/stderr, linhas longas e saída vazia |
+| `aralearn.response.open` | Enunciado, resposta e estado; textarea associado ao prompt | Texto ampliado, resposta longa e pista de escrita |
+
+Prosa e enunciados compartilham a família de interface e o cinza de leitura;
+alternativas e valores usam o degrau de 1 rem, tabelas/código o de 0,9375 rem,
+legendas o de 0,875 rem e metadados o de 0,8125 rem. Diagramas calculados mantêm
+as métricas adotadas por Graphviz/Vega; medidas internas em pixels não devem ser
+substituídas por CSS depois do layout. MathML mantém sua fonte matemática.
+Essas exceções conservam a convenção do objeto, sem criar um segundo tema.
+
+No `choice` single/correct, o enunciado nomeia o grupo e a seleção dispensa
+instrução genérica adicional. Multiple e best mantêm a condição visível como
+descrição acessível do grupo. O modo de resposta revelada e os avisos de
+resposta incompleta continuam explícitos. Alternativas de código usam o mesmo
+escape literal do pacote de código: crases, asteriscos e indentação não viram
+formatação de prosa.
+
+O teste [de tipografia](../tests/runtime/resource-typography.test.js) confronta
+esta lista com o registro e verifica os papéis comuns; o teste
+[de instruções de escolha](../tests/runtime/choice-instructions.test.js) exercita
+os três modos, seus nomes e código literal. A galeria existente e os cursos
+acadêmicos de estresse oferecem os casos para inspeção visual. Essa cobertura
+estática não aprova pixels, zoom, reflow, interação ou eficácia pedagógica.
+
 ## 9. Regras de representação acadêmica
 
 Um contrato de alto nível deve usar conceitos da área. Exemplos:

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
-import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { createConfirmedLocalUser, createLocalFixtureClient, removeLocalUser, signInLocalUser } from "../support/localSupabaseE2e.js";
 
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
 const URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
@@ -9,13 +9,7 @@ const PUBLIC_KEY = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "");
 const ADMIN_KEY = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 const ORIGIN = `http://127.0.0.1:${process.env.ARALEARN_E2E_PORT || "4182"}`;
 const PASSWORD = "Synthetic-parts-304-A9!";
-async function auth(path, body, { admin = false, method = "POST" } = {}) {
-  const response = await fetch(`${URL}/auth/v1/${path}`, { method,
-    headers: { apikey: admin ? ADMIN_KEY : PUBLIC_KEY, ...(admin ? { Authorization: `Bearer ${ADMIN_KEY}` } : {}), "Content-Type": "application/json" },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  expect(response.ok, `Auth sintético local: ${response.status}`).toBe(true);
-  return response.status === 204 ? null : response.json();
-}
+const FIXTURE_CONFIG = { projectUrl: URL, publishableKey: PUBLIC_KEY, adminKey: ADMIN_KEY };
 
 test("lotes locais dividem, reordenam e reúnem pela interface preservando o mapa e as unidades", async ({ browser }, info) => {
   test.skip(!ENABLED, "Exige Supabase local explícito e migration304 aplicada.");
@@ -24,11 +18,13 @@ test("lotes locais dividem, reordenam e reúnem pela interface preservando o map
   expect(PUBLIC_KEY).not.toBe(""); expect(ADMIN_KEY).not.toBe("");
   let user, client, courseId, context, page, primaryError, cleanupError;
   try {
-    const email = `parts304-${Date.now()}-${process.pid}@aralearn.local`;
-    user = await auth("admin/users", { email, password: PASSWORD, email_confirm: true,
-      user_metadata: { test: "course-parts-local-304" } }, { admin: true });
-    const session = await auth("token?grant_type=password", { email, password: PASSWORD });
-    client = new CourseApiClient({ projectUrl: URL, publishableKey: PUBLIC_KEY, authClient: { getAccessToken: async () => session.access_token } });
+    const email = `parts304-${Date.now()}-${process.pid}@aralearn.test`;
+    const createdUser = await createConfirmedLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD, marker: "course-parts-local-304" });
+    expect(createdUser.response.ok).toBe(true);
+    user = createdUser.payload;
+    const session = await signInLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD });
+    expect(session.response.ok).toBe(true);
+    client = await createLocalFixtureClient(FIXTURE_CONFIG, { ownerId: user.id, accessToken: session.payload.access_token, origin: ORIGIN });
     await client.updatePersonProfile({ handle: `parts-${user.id.slice(0, 8)}` });
     courseId = (await client.createCourse({ title: "Lotes sintéticos304", objective: "Reorganizar grupos sem mudar o currículo.", requestId: crypto.randomUUID() })).courseId;
     const adapter = new CourseSupabaseAdapter({ supabaseUrl: URL, serverApiKey: ADMIN_KEY, publishableKey: PUBLIC_KEY, publicAppUrl: ORIGIN,
@@ -50,8 +46,11 @@ test("lotes locais dividem, reordenam e reúnem pela interface preservando o map
                 prerequisites: [], relations: ["Comparar os quatro casos do percurso."], sourceIds: [] } })) }] }]
       } };
     const preparedMap = await adapter.saveCourseCurricularMap(mapRequest);
-    await adapter.saveCourseCurricularMap({ ...mapRequest, approved: true, requestId: crypto.randomUUID(),
-      expectedCourseRevision: preparedMap.courseRevision, expectedPlanVersion: preparedMap.planVersion });
+    const inspectedMap = await adapter.getCourseCurricularMap({ principal: { actorId: user.id }, courseId });
+    expect(inspectedMap.courseRevision).toBe(preparedMap.courseRevision);
+    expect(inspectedMap.planVersion).toBe(preparedMap.planVersion);
+    expect(inspectedMap.map.modules[0].lessons[0].microsequences).toHaveLength(micros.length);
+    await adapter.approveCourseCurricularMap({ principal: { actorId: user.id }, courseId, reference: inspectedMap.mapApprovalReference });
     const revision = async () => (await client.getCourse(courseId)).revision;
     await client.requestCourseApi(`/v1/courses/${courseId}/composition`, { method: "POST", body: {
       expectedRevision: await revision(), requestId: crypto.randomUUID(), deletes: [],
@@ -83,7 +82,7 @@ test("lotes locais dividem, reordenam e reúnem pela interface preservando o map
     await page.goto("/?acesso=entrar");
     await page.getByLabel("E-mail").fill(email); await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Conta e aparência" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Configurações" })).toBeVisible();
     const route = `/#/authoring/courses/${courseId}?section=planning`;
     await page.goto(route);
     const module = page.locator('[data-curriculum-expansion="module:parts-module"]');
@@ -159,7 +158,10 @@ test("lotes locais dividem, reordenam e reúnem pela interface preservando o map
       const result = await client.maintainCourse({ courseId, operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() });
       expect(result.fileCleanupPending).toBe(false); removed = true;
     } catch (error) { cleanupError = error; }
-    if (removed && user) await auth(`admin/users/${user.id}`, undefined, { admin: true, method: "DELETE" });
+    if (removed && user) {
+      const deleted = await removeLocalUser(FIXTURE_CONFIG, user.id);
+      expect([200, 204, 404]).toContain(deleted.response.status);
+    }
   }
   if (primaryError) throw primaryError;
   if (cleanupError) throw cleanupError;

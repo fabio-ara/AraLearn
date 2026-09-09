@@ -1,6 +1,8 @@
 import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
+import { normalizeCourseContentReview, normalizeCourseContentReviewChange,
+  normalizeCourseContentReviewPolicyChange } from "../domain/courseContentReview.js";
 import { normalizeCourseAuthoringSelection, normalizeCourseAuthoringComparisonRequest,
   normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import {
@@ -43,6 +45,9 @@ import { SupabaseHttpClient, SupabaseHttpError } from "./SupabaseHttpClient.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
   boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
 import { inspectCourseAudioBytes } from "../domain/courseMedia.js";
+import { normalizeAuthoringProcessPreferencesRead, normalizeAuthoringProcessPreferencesSave,
+  normalizeAuthoringProcessPreferencesChange } from "../domain/authoringProcessPreferences.js";
+import { normalizeCurricularMapSlice, normalizeCurricularMapRead, normalizeCurricularMapChange } from "../domain/courseCurricularMapSlices.js";
 
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -64,23 +69,12 @@ const COURSE_READ_RPCS = new Set([
   "list_courses_v1", "list_owned_courses_v1", "get_course_v1", "get_owned_course_v1",
   "list_course_entities_v1", "list_owned_course_entities_v1", "list_course_review_items_v1",
   "get_course_study_citations_v1", "get_course_explanation_citations_v1",
-  "get_course_microsequence_review_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
+  "get_course_content_review_v1", "get_my_course_anchored_annotations_v1", "load_course_personal_state_v2"
 ]);
 
-function microsequenceReviewResult(value, courseId, microsequenceId, { approval = false } = {}) {
-  const result = exactObject(value, new Set([
-    "courseId", "microsequenceId", "basisHash", "contentReview", "courseRevision", "idempotent"
-  ]), "Revisão do conteúdo");
-  const review = exactObject(result.contentReview, new Set(["state", "approvedAt"]), "Revisão do conteúdo");
-  if (result.courseId !== courseId || result.microsequenceId !== microsequenceId ||
-      typeof result.basisHash !== "string" || !SHA256_PATTERN.test(result.basisHash) ||
-      !new Set(["unregistered", "draft", "current", "stale"]).has(review.state) ||
-      review.approvedAt != null && (!RFC3339.test(review.approvedAt) || !Number.isFinite(Date.parse(review.approvedAt))) ||
-      new Set(["current", "stale"]).has(review.state) && review.approvedAt == null ||
-      approval && (!Number.isSafeInteger(result.courseRevision) || result.courseRevision < 1 || typeof result.idempotent !== "boolean")) {
-    throw new TypeError("A revisão não corresponde à microssequência solicitada.");
-  }
-  return structuredClone(result);
+function contentReviewTarget(courseId, targetKind, targetId) {
+  if (!["microsequence_explanation", "study_unit"].includes(targetKind)) throw new TypeError("Objeto de revisão inválido.");
+  return { courseId: uuid(courseId, "Curso"), targetKind, targetId: boundedIdentifier(targetId, "Objeto de revisão") };
 }
 
 function readRetryDelay(error) {
@@ -873,33 +867,39 @@ export class CourseApiClient {
     return result;
   }
 
-  async getMicrosequenceReview(courseId, microsequenceId) {
-    const course = uuid(courseId, "Curso");
-    const target = boundedIdentifier(microsequenceId, "Microssequência");
-    return microsequenceReviewResult(await this.rpc("get_course_microsequence_review_v1", {
-      p_course_id: course, p_microsequence_id: target
-    }), course, target);
+  async getContentReview(courseId, targetKind, targetId) {
+    const target = contentReviewTarget(courseId, targetKind, targetId);
+    return normalizeCourseContentReview(await this.rpc("get_course_content_review_v1", {
+      p_course_id: target.courseId, p_target_kind: target.targetKind, p_target_id: target.targetId
+    }), target);
   }
 
-  async approveMicrosequenceContent(value = {}) {
+  async setContentReview(value = {}) {
     const source = exactObject(value, new Set([
-      "courseId", "microsequenceId", "expectedBasisHash", "requestId"
-    ]), "Aprovação do conteúdo inspecionado");
-    const course = uuid(source.courseId, "Curso");
-    const target = boundedIdentifier(source.microsequenceId, "Microssequência");
+      "courseId", "targetKind", "targetId", "expectedBasisHash", "reviewed", "requestId"
+    ]), "Revisão do conteúdo inspecionado");
+    const target = contentReviewTarget(source.courseId, source.targetKind, source.targetId);
     const basis = source.expectedBasisHash;
     if (typeof basis !== "string" || !SHA256_PATTERN.test(basis)) throw new TypeError("Base de revisão inválida.");
+    if (typeof source.reviewed !== "boolean") throw new TypeError("Declare a marca de revisão desejada.");
     // The caller retains this identity until the original decision is resolved.
     // This write is deliberately excluded from automatic read recovery.
     const identity = requestIdentity(source.requestId);
-    const result = microsequenceReviewResult(await this.rpc("approve_course_microsequence_content_v1", {
-      p_course_id: course, p_microsequence_id: target,
-      p_expected_basis_hash: basis, p_request_id: identity
-    }), course, target, { approval: true });
-    if (result.basisHash !== basis || result.contentReview.state !== "current") {
-      throw new TypeError("A confirmação não corresponde ao conteúdo inspecionado.");
-    }
-    return result;
+    return normalizeCourseContentReviewChange(await this.rpc("set_course_content_review_v1", {
+      p_course_id: target.courseId, p_target_kind: target.targetKind, p_target_id: target.targetId,
+      p_expected_basis_hash: basis, p_reviewed: source.reviewed, p_request_id: identity
+    }), { ...target, expectedBasisHash: basis, reviewed: source.reviewed });
+  }
+
+  async setContentReviewPolicy(value = {}) {
+    const source = exactObject(value, new Set(["courseId", "expectedRevision", "policy", "requestId"]), "Política de revisão");
+    const courseId = uuid(source.courseId, "Curso");
+    if (!Number.isSafeInteger(source.expectedRevision) || source.expectedRevision < 1 ||
+        !["saved", "reviewed_only"].includes(source.policy)) throw new TypeError("Política de revisão inválida.");
+    return normalizeCourseContentReviewPolicyChange(await this.rpc("set_course_content_review_policy_v1", {
+      p_course_id: courseId, p_expected_revision: source.expectedRevision,
+      p_policy: source.policy, p_request_id: requestIdentity(source.requestId)
+    }), { courseId, policy: source.policy });
   }
 
   async getMyCourseAnchoredAnnotations(courseId, value = {}) {
@@ -1104,6 +1104,39 @@ export class CourseApiClient {
 
   listAuthoringProfiles() {
     return this.requestCourseApi("/v1/authoring-profiles").then(normalizeAuthoringProfileList);
+  }
+
+  getAuthoringProcessPreferences() {
+    return this.requestCourseApi("/v1/authoring-process-preferences").then(normalizeAuthoringProcessPreferencesRead);
+  }
+
+  getCurricularMap(courseId) {
+    const id = uuid(courseId, "Curso");
+    return this.requestCourseApi(`${courseResourcePath(id)}/curricular-map`).then(result => normalizeCurricularMapRead(result, id));
+  }
+
+  saveCurricularMapSlice(value) {
+    const source = exactObject(value, new Set(["courseId", "expectedCourseRevision", "expectedPlanVersion", "command", "requestId"]), "Recorte curricular");
+    return this.requestCourseApi(`${courseResourcePath(source.courseId)}/curricular-map`, {
+      method: "PATCH", body: { expectedCourseRevision: positiveInteger(source.expectedCourseRevision, "Revisão do curso"),
+        expectedPlanVersion: positiveInteger(source.expectedPlanVersion, "Versão do mapa"),
+        command: normalizeCurricularMapSlice(source.command), requestId: requestIdentity(source.requestId) }
+    }).then(result => normalizeCurricularMapChange(result, { ...source, approval: "draft" }));
+  }
+
+  approveCurricularMap(courseId, reference) {
+    const id = uuid(courseId, "Curso");
+    if (typeof reference !== "string" || !/^[A-Za-z0-9_-]+$/u.test(reference) || reference.length > 2048) throw new TypeError("Referência curricular inválida.");
+    return this.requestCourseApi(`${courseResourcePath(courseId)}/curricular-map/approval`, {
+      method: "POST", body: { reference }
+    }).then(result => normalizeCurricularMapChange(result, { courseId: id, approval: "approved" }));
+  }
+
+  saveAuthoringProcessPreferences(value) {
+    const command = normalizeAuthoringProcessPreferencesSave(value);
+    return this.requestCourseApi("/v1/authoring-process-preferences", {
+      method: "PATCH", body: command
+    }).then(result => normalizeAuthoringProcessPreferencesChange(result, command));
   }
 
   mutateAuthoringProfile(value = {}) {

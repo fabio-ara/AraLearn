@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { CourseSupabaseAdapter } from "../functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { encodeCourseActionTaskRequest } from "../functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { resolveHumanCourseContext } from "../functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 import { curricularMap, explanationUnit, practiceUnit, paragraph } from "./course-authoring-current-local-smoke.mjs";
 import { localSupabaseConfiguration, createConfirmedLocalUser, signInLocalUser, removeLocalUser,
+  createLocalFixtureClient, trackLocalFixtureCreation,
   authorizeLocalMcpSession, cleanupLocalMcpSession, authorizeLocalActionSession,
   LOCAL_APPLICATION_ORIGIN, CHATGPT_ACTION_ORIGIN } from "../../tests/support/localSupabaseE2e.js";
 
@@ -59,19 +61,21 @@ function fixtures(course) {
   return { map, lots };
 }
 
-function wireClient(config, channel, accessToken, measurements) {
+export function wireClient(config, channel, accessToken, measurements) {
   let serial = 0;
   const endpoint = `${config.projectUrl}/functions/v1/aralearn-authoring-${channel === "mcp" ? "mcp" : "action"}`;
   async function exchange(task, args, method = "tools/call") {
+    const action = channel === "mcp" ? null : encodeCourseActionTaskRequest(task, args);
     const value = channel === "mcp" ? { jsonrpc: "2.0", id: ++serial, method,
-      params: method === "tools/call" ? { name: task, arguments: args } : args } : args;
+      params: method === "tools/call" ? { name: task, arguments: args } : args } : action.arguments;
     const body = JSON.stringify(value); const started = performance.now();
-    const response = await fetch(channel === "mcp" ? endpoint : `${endpoint}/${task}`, {
+    const response = await fetch(channel === "mcp" ? endpoint : `${endpoint}/${encodeURIComponent(action.operationName)}`, {
       method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json",
         Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2025-11-25",
         Origin: channel === "mcp" ? LOCAL_APPLICATION_ORIGIN : CHATGPT_ACTION_ORIGIN }, body });
     const source = await response.text();
     measurements.push({ channel, task, method: channel === "mcp" ? method : "POST", status: response.status,
+      ...(action ? { operationName: action.operationName } : {}),
       elapsedMs: Math.round((performance.now() - started) * 100) / 100,
       arguments: size(JSON.stringify(args)), request: size(body), response: size(source),
       contract: response.headers.get("x-aralearn-authoring-contract") });
@@ -114,7 +118,7 @@ export async function runLocalAuthoringChannels(environment = process.env) {
   const config = localSupabaseConfiguration(environment);
   const marker = randomUUID(); const password = `Channels-${marker}-Aa1!`;
   const email = `channels-${marker}@example.test`; const courses = []; const measurements = [];
-  const mcpLifecycle = {}; const actionLifecycle = {}; let userId; let primaryError;
+  const mcpLifecycle = {}; const actionLifecycle = {}; let userId; let primaryError; let ownerClient;
   const adapter = new CourseSupabaseAdapter({ supabaseUrl: config.projectUrl, publicSupabaseUrl: config.projectUrl,
     serverApiKey: config.adminKey, publishableKey: config.publishableKey,
     publicAppUrl: environment.ARALEARN_LOCAL_APPLICATION_ORIGIN || LOCAL_APPLICATION_ORIGIN, attempts: 1 });
@@ -126,6 +130,8 @@ export async function runLocalAuthoringChannels(environment = process.env) {
     const signIn = await signInLocalUser(config, { email, password });
     assert.equal(signIn.response.status, 200);
     const userAccessToken = signIn.payload.access_token;
+    ownerClient = await createLocalFixtureClient(config, { ownerId: userId, accessToken: userAccessToken,
+      origin: environment.ARALEARN_LOCAL_APPLICATION_ORIGIN || LOCAL_APPLICATION_ORIGIN });
     const principal = { actorId: userId, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] };
     for (const channel of ["actions", "mcp"]) {
       const lifecycle = channel === "mcp" ? mcpLifecycle : actionLifecycle;
@@ -136,16 +142,19 @@ export async function runLocalAuthoringChannels(environment = process.env) {
       await client.initialize();
       const title = `Fixture canais ${channel} ${marker.slice(0, 8)}`;
       const fixture = fixtures(title);
-      await client.call("criar_curso", { titulo: title, objetivo: "Distinguir processo, socket e conexão em seis casos sintéticos." });
+      await trackLocalFixtureCreation(config, { ownerId: userId,
+        courseIdFromResult: result => { const id = result.deepLink?.match(/\/courses\/([0-9a-f-]{36})/u)?.[1]; if (id) courses.push(id); return id; },
+        create: () => client.call("criar_curso", { titulo: title, objetivo: "Distinguir processo, socket e conexão em seis casos sintéticos." }) });
       const initial = await resolveHumanCourseContext({ adapter, principal, course: title });
-      const courseId = initial.course.id; courses.push(courseId);
+      const courseId = initial.course.id; assert.ok(courses.includes(courseId));
       await client.call("manter_fonte", { curso: title, metadados: { titulo: SOURCE,
         papeisSugeridos: ["tecnica_conceitual"], citacao: "AraLearn. Fonte sintética sobre sockets para testes locais. 2026.",
         verificacao: "nao_verificada", visibilidadeNoEstudo: "citacao" }, ancoras: [{
         seletor: { tipo: "paginas", paginaInicial: 1, paginaFinal: 1 }, localizadorHumano: "p. 1 da fixture",
         trechoDeVerificacao: "Um socket liga o processo ao transporte." }] });
       await client.call("salvar_mapa_curricular", fixture.map);
-      await client.call("salvar_mapa_curricular", { ...fixture.map, aprovado: true });
+      const savedMap = await completeRead(client, "consultar_planejamento", { curso: title });
+      await client.call("aprovar_mapa_curricular", { referencia: savedMap.context.referenciaParaAprovar });
       let firstLot; let firstSourceLinks; const lots = [];
       for (const [index, lot] of fixture.lots.entries()) {
         await client.call("salvar_parte", lot.part);
@@ -184,7 +193,7 @@ export async function runLocalAuthoringChannels(environment = process.env) {
   } catch (error) { primaryError = error; }
   const cleanupErrors = [];
   for (const courseId of courses) {
-    await adapter.maintainCourse({ principal: { actorId: userId }, courseId,
+    await ownerClient.maintainCourse({ courseId,
       operation: "delete_owned_course", confirmed: true, requestId: randomUUID() })
       .then(result => assert.equal(result.fileCleanupPending, false, "A limpeza do curso sintético deve terminar antes da conta."))
       .catch(error => cleanupErrors.push(error));

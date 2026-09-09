@@ -3,6 +3,8 @@
 Um cliente conectado por MCP ou um GPT com Actions pode trabalhar no mesmo
 curso que a interface visual. A conversa coordena decisões; o AraLearn mantém
 o mapa curricular, o conteúdo, os parâmetros, as fontes e as observações.
+Os dois canais projetam o mesmo [catálogo de 54 tarefas, contrato 4.0.0](autoria-mcp.md#tarefas-disponíveis),
+incluindo estrutura curricular, bases, unidades, fontes, acesso e revisão expressa.
 
 ## Comece pelo contexto que muda o desenho
 
@@ -20,28 +22,34 @@ O GPT não deve presumir que a pessoa autora é estudante. Se o curso se destina
 a iniciantes, a conversa dirá que o público é iniciante, sem atribuir esse nível
 à pessoa que está criando o material.
 
-No uso comum, o estado `default` exige que o GPT calibre automaticamente os
+No uso comum, uma escolha automática exige que o GPT calibre os
 parâmetros para cada microssequência ou unidade conforme conteúdo, função e
 público; não é um preset fixo. Numa pesquisa, valores deliberadamente fixados
 prevalecem e tornam a condição auditável. Finalidade de concurso, treinamento
 corporativo ou outra aplicação pode mudar vocabulário, precisão e tipos de
 prática, mas não é o princípio organizador universal do AraLearn.
 
-O catálogo reúne quatro parâmetros pedagógicos e dois alvos editoriais
-quantitativos flexíveis: palavras por resposta de autoria e por unidade de
-estudo. Os alvos não são limites e não autorizam omitir decisões ou comprimir o
-conteúdo para atingir uma contagem.
+O [catálogo de parâmetros](../src/domain/courseDesignParameters.js) informa
+significado, origem, efeito e escopos válidos. Os alvos de palavras são flexíveis
+e não autorizam omitir decisões ou comprimir conteúdo para atingir uma contagem.
+Intenção corrente, configuração aplicada e declaração de revisão são distintas.
 
-O mapa global antes dos lotes, a aprovação apenas do que estava inspecionável e
-a conversa em linguagem humana são invariantes. Distribuição editorial, formas
+Em **Configurações → Preferências de autoria**, foco **Conteúdo / Ciclo
+completo**, cadência, pontos de revisão e diálogo são escolhas independentes.
+O GPT consulta essas preferências e o trabalho já combinado ao retomar. Conteúdo
+trabalha bases e fontes; Ciclo completo inclui também desenho e unidades.
+Alterar o padrão pessoal não modifica cursos ou condições de pesquisa já fixadas.
+
+A aprovação apenas do que estava inspecionável e a conversa em linguagem
+humana são invariantes. Distribuição editorial, formas
 de explicação e prática pertencem às dimensões que podem ser calibradas pela
 configuração existente; isso não exige uma entidade para cada princípio
 pedagógico.
 
-## Planeje o mapa curricular completo
+## Desenvolva o mapa e as bases explicativas
 
-Antes de produzir conteúdo, o GPT propõe a arquitetura curricular de todo o
-curso:
+O mapa organiza a arquitetura curricular do curso e pode ser desenvolvido por
+recortes coerentes:
 
 ```text
 curso
@@ -70,35 +78,43 @@ Exemplo resumido:
 > • Topologias
 
 A pessoa autora pode mudar cobertura, ordem ou ênfase antes de aprovar. A
-aprovação vale para o mapa que estava visível e inspecionável; não aprova
+aprovação usa a referência da versão completa persistida e inspecionada, sem
+reescrever a árvore no envio. Ela não aprova
 silenciosamente exercícios, componentes, formulações ou a estrutura interna de
 unidades futuras.
 
+A Explicação é a base explicativa da microssequência: conteúdo desenvolvido,
+pressupostos, relações e fontes. `salvar_explicacoes` permite produzi-la e
+corrigi-la antes das unidades, inclusive com mapa em rascunho. Abrir a base salva
+não chama um modelo. As unidades são episódios instrucionais derivados dessa
+base e do desenho escolhido, não fatias do texto por quantidade de palavras.
+
 ## Produza em lotes manejáveis
 
-Depois da aprovação do mapa, o GPT divide o trabalho em partes operacionais.
+Quando o trabalho inclui unidades, o GPT organiza a produção em partes operacionais.
 Uma parte pode corresponder a uma lição, reunir várias microssequências ou
 atravessar mais de uma lição quando isso facilitar produção e revisão. Ela não
 é nível curricular: mudar seus limites não muda o mapa do curso.
 
 O ciclo de produção é:
 
-1. o GPT apresenta brevemente a progressão local da próxima parte;
-2. a pessoa autora corrige apenas decisões substantivas, quando necessário;
-3. depois da aprovação local, o GPT prepara e materializa o conteúdo;
-4. a pessoa abre o resultado no AraLearn e o inspeciona;
-5. o GPT segue para a próxima parte.
+1. o GPT relê o recorte, as preferências e as observações pertinentes;
+2. desenvolve ou revisa a Explicação e suas fontes;
+3. no Ciclo completo, prepara o desenho e materializa as unidades, reutilizando
+   a base salva;
+4. a pessoa inspeciona os objetos nos pontos de revisão combinados;
+5. o GPT continua conforme a cadência e a autorização vigentes.
 
 Uma conversa adequada permanece no nível da decisão presente. Por exemplo:
 
 > Para a primeira parte, proponho começar por situações concretas de
 > comunicação, distinguir dados de sinais e então comparar meios guiados e não
-> guiados. Quer mudar alguma ênfase antes de eu produzir?
+> guiados. Vou desenvolver a base explicativa desse recorte conforme combinado.
 
 Depois da produção:
 
 > Primeira parte produzida. [Abrir conteúdo] \
-> Posso preparar a segunda parte.
+> A próxima parte segue a cadência combinada.
 
 O chat não precisa mostrar contagens, nomes de campos ou detalhes do mecanismo.
 
@@ -208,6 +224,20 @@ momento.
 Ao revisar, considere os pontos afetados por progressão, pré-requisitos,
 transições, exemplos ou prática. A pessoa autora aprova a correção concreta; a
 revisão não ganha autoridade automática para reescrever o restante do curso.
+
+Cada Explicação e unidade conserva uma fila durável de observações identificadas
+e versionadas. O GPT lê as pendências pertinentes e trata as compatíveis com o
+pedido. Só a versão cuja correção foi persistida e confirmada por releitura sai
+da fila; leitura, resposta textual e tentativa não consomem pendências. Se uma
+resposta se perder, `retomar_correcao` reconcilia o conteúdo e a fila pela mesma
+tentativa, sem reaplicar a alteração apenas para retirar a observação.
+
+Salvar uma base, unidade ou correção não declara revisão humana. Cada objeto
+tem uma marca reversível vinculada ao conteúdo salvo. Depois da inspeção, uma
+escolha humana expressa pode ser registrada no aplicativo ou por
+`declarar_revisao`, usando a referência recebida na preparação. Mudança material
+desatualiza a marca afetada. Conteúdo completo salvo pode ser estudado por quem
+tem acesso; exigir somente revisado é uma política opcional e expressa do curso.
 
 Veja [Autoria pelo MCP](autoria-mcp.md), [Autoria por Actions](autoria-actions.md)
 e [Analytics da autoria](analytics-instrucionais.md) para os detalhes de cada

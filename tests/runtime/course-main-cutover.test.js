@@ -112,7 +112,7 @@ test("o scanner semântico distingue contrato de Unidade de estudo de classes vi
 test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", async () => {
   const graph = await importGraph(mainPath);
   const mainSource = graph.get(mainPath);
-  assert.match(mainSource, /class="account-settings-overlay"/u);
+  assert.match(mainSource, /class="account-settings-overlay(?: [^"]+)?"/u);
   assert.match(
     mainSource,
     /button\.setAttribute\("aria-label", selected \? `\$\{button\.title\}, selecionado` : button\.title\)/u,
@@ -140,24 +140,27 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
       `A operação de conta ${visibleAccountContract} não possui consumo humano visível.`
     );
   }
-  assert.match(
-    mainSource,
-    /data-settings-open-view="account"[\s\S]*?>Dados e conta<[\s\S]*?data-settings-view="account" hidden/u,
-    "Dados e conta deve abrir uma subvisão sem expandir a folha principal."
-  );
+  for (const [view, label] of [["account", "Conta"], ["appearance", "Aparência"],
+    ["device", "Sincronização e dados deste dispositivo"], ["authoring", "Preferências de autoria"]]) {
+    assert.match(mainSource, new RegExp(`\\["${view}", "[^"]+", "${label}"\\]`, "u"));
+    assert.match(mainSource, new RegExp(`data-settings-view="${view}" hidden aria-label="${label}"`, "u"),
+      `O grupo ${label} deve abrir no mesmo diálogo de Configurações.`);
+  }
   assert.match(
     mainSource,
     /data-settings-signout\][\s\S]*?Sair desta conta\?[\s\S]*?Alterações ainda abertas e não salvas serão perdidas[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?repository\?\.flush\(\)[\s\S]*?authClient\.signOut\(\)/u,
     "A saída comum precisa confirmar a perda do estado que existe somente em memória."
   );
+  for (const control of [
+    /data-settings-clear-device[\s\S]*?Remover dados deste dispositivo/u,
+    /data-settings-signout-clear[\s\S]*?Sair e remover dados deste dispositivo/u
+  ]) {
+    assert.match(mainSource, control,
+      "Configurações deve oferecer limpeza local independente e limpeza junto da saída.");
+  }
   assert.match(
     mainSource,
-    /data-settings-clear-device[\s\S]*?Remover dados deste dispositivo[\s\S]*?data-settings-signout-clear[\s\S]*?Sair e remover dados deste dispositivo/u,
-    "A conta deve oferecer limpeza local independente e limpeza junto da saída."
-  );
-  assert.match(
-    mainSource,
-    /data-settings-open-view="account"[\s\S]*?data-settings-view="account" hidden/u,
+    /data-settings-view="device" hidden aria-label="Sincronização e dados deste dispositivo"/u,
     "Os controles de dados locais precisam de um nome de seção acessível."
   );
   assert.match(

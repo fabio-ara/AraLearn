@@ -176,10 +176,12 @@ function partMicrosequences(part) {
 
 function resolveMicrosequence(planRead, part, referenceValue) {
   const reference = humanReference(referenceValue, "A microssequência");
+  const curriculum = (planRead?.plan?.curriculum?.modules ?? [])
+    .flatMap(module => (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
   const candidates = part
     ? partMicrosequences(part)
-    : (Array.isArray(planRead?.plan?.parts) ? planRead.plan.parts : [])
-      .flatMap(partMicrosequences);
+    : uniqueBy([...curriculum, ...(Array.isArray(planRead?.plan?.parts) ? planRead.plan.parts : [])
+      .flatMap(partMicrosequences)], item => item.id);
   return positionedMatch(
     candidates,
     reference,
@@ -194,15 +196,17 @@ async function listStudyUnits({
   principal,
   course,
   part,
+  module,
+  lesson,
   microsequence,
   deadlineAt
 }) {
   const scopeKind = microsequence
     ? "didactic_microsequence"
-    : part
+    : lesson ? "lesson" : module ? "module" : part
       ? "authoring_part"
       : "course";
-  const scopeId = microsequence?.id ?? part?.id ?? null;
+  const scopeId = microsequence?.id ?? lesson?.id ?? module?.id ?? part?.id ?? null;
   const items = [];
   const seenIds = new Set();
   const seenCursors = new Set();
@@ -362,6 +366,8 @@ export async function resolveHumanCourseContext({
   principal,
   course,
   part = null,
+  module = null,
+  lesson = null,
   microsequence = null,
   studyUnits = [],
   source = null,
@@ -376,8 +382,10 @@ export async function resolveHumanCourseContext({
   const resolvedCourse = await resolveCourse({ adapter, principal, course, deadlineAt, copySourcesOnly });
   let plan = null;
   let resolvedPart = null;
+  let resolvedModule = null;
+  let resolvedLesson = null;
   let resolvedMicrosequence = null;
-  if (part !== null || microsequence !== null) {
+  if (part !== null || module !== null || lesson !== null || microsequence !== null) {
     plan = await adapter.getCourseInstructionalPlan({
       principal,
       courseId: resolvedCourse.id,
@@ -391,8 +399,20 @@ export async function resolveHumanCourseContext({
     resolvedCourse.revision = revision;
     if (typeof plan.plan.title === "string" && plan.plan.title) resolvedCourse.title = plan.plan.title;
     if (part !== null) resolvedPart = resolvePart(plan, part);
+    const modules = plan.plan.curriculum?.modules ?? [];
+    if (module !== null) resolvedModule = positionedMatch(modules, humanReference(module, "O módulo"),
+      item => item.position, item => [item.title], "O módulo");
+    const lessons = (resolvedModule ? [resolvedModule] : modules).flatMap(item => item.lessons ?? []);
+    if (lesson !== null) resolvedLesson = positionedMatch(lessons, humanReference(lesson, "A lição"),
+      item => item.position, item => [item.title], "A lição");
     if (microsequence !== null) {
-      resolvedMicrosequence = resolveMicrosequence(plan, resolvedPart, microsequence);
+      if (resolvedModule || resolvedLesson) {
+        const partIds = resolvedPart ? new Set(partMicrosequences(resolvedPart).map(item => item.id)) : null;
+        const candidates = (resolvedLesson ? [resolvedLesson] : lessons).flatMap(item => item.microsequences ?? [])
+          .filter(item => partIds === null || partIds.has(item.id));
+        resolvedMicrosequence = positionedMatch(candidates, humanReference(microsequence, "A microssequência"),
+          item => item.position, item => [item.title], "A microssequência");
+      } else resolvedMicrosequence = resolveMicrosequence(plan, resolvedPart, microsequence);
     }
   }
   const resolvedStudyUnits = studyUnits.length
@@ -401,6 +421,8 @@ export async function resolveHumanCourseContext({
         principal,
         course: resolvedCourse,
         part: resolvedPart,
+        module: resolvedModule,
+        lesson: resolvedLesson,
         microsequence: resolvedMicrosequence,
         deadlineAt
       }), studyUnits)
@@ -426,6 +448,8 @@ export async function resolveHumanCourseContext({
     course: resolvedCourse,
     plan,
     part: resolvedPart,
+    module: resolvedModule,
+    lesson: resolvedLesson,
     microsequence: resolvedMicrosequence,
     studyUnits: resolvedStudyUnits,
     source: resolvedSource
@@ -494,14 +518,37 @@ async function internalEntityId(factory, requestId, slot) {
   return value;
 }
 
+function uncertainWriteError(error, request, operation) {
+  const code = new Set(["course_source_pdf_write_uncertain", "course_media_write_uncertain"]).has(error?.code)
+    ? error.code : "course_write_uncertain";
+  return new AuthoringApiError(409, code,
+    "A escrita ainda não foi confirmada. Releia o resultado da mesma tentativa antes de iniciar outra alteração.", {
+      requestId: request.requestId, operation,
+      ...(typeof request.courseId === "string" && UUID_PATTERN.test(request.courseId)
+        ? { targetCourseId: request.courseId } : {})
+    });
+}
+
 /**
  * Coordena uma escrita humana concreta: os handlers fornecem leitura, build e
  * commit do caso de uso; este ponto mantém requestId, replay e CAS internos.
+ * Sem reconcile, commit deve conferir receipt e hash sob lock da mesma
+ * identidade antes de aplicar qualquer efeito. O replay transacional ocorre
+ * uma vez, após releitura, com o snapshot original. Os consumidores atuais
+ * usam esse contrato em course_change_receipts ou no preparo de PDF/áudio.
+ *
+ * reconcile({ request, state, error }) pode realizar a leitura focal do recibo
+ * e dos efeitos por identidade salva, inclusive quando o alvo sumiu da lista.
+ * Somente { status: "confirmed", result } encerra a escrita. Pending, ausência
+ * de recibo ou falha de leitura conservam incerteza; não autorizam outro commit.
+ * Depois de ambiguidade, nenhum caminho relê para reconstruir ou gerar IDs.
  */
 export async function executeTrustedCourseWrite({
   load,
   build,
   commit,
+  reconcile = null,
+  operation = "course_write",
   requestIdFactory = defaultRequestId,
   entityIdFactory = defaultEntityId,
   maxCasRetries = 1
@@ -509,6 +556,8 @@ export async function executeTrustedCourseWrite({
   if (typeof load !== "function" || typeof build !== "function" ||
       typeof commit !== "function" || typeof requestIdFactory !== "function" ||
       typeof entityIdFactory !== "function" ||
+      reconcile !== null && typeof reconcile !== "function" ||
+      typeof operation !== "string" || !/^[A-Za-z][A-Za-z0-9_.:-]{0,95}$/u.test(operation) ||
       !Number.isSafeInteger(maxCasRetries) || maxCasRetries < 0 || maxCasRetries > 2) {
     throw new TypeError("Dependências da escrita confiável são inválidas.");
   }
@@ -522,24 +571,30 @@ export async function executeTrustedCourseWrite({
     if (!plainObject(built) || Object.hasOwn(built, "requestId")) {
       throw new TypeError("O caso de uso deve devolver argumentos sem requestId.");
     }
-    const request = { ...built, requestId };
+    const request = structuredClone({ ...built, requestId });
     try {
-      return await commit(request);
+      return await commit(structuredClone(request));
     } catch (firstError) {
-      let error = firstError;
       if (ambiguousWriteFailure(firstError)) {
         try {
-          return await commit(request);
-        } catch (replayError) {
-          // Depois de uma confirmação divergente, qualquer falha no replay
-          // ainda deixa a escrita original incerta. Publicar o segundo erro
-          // como transitório permitiria uma nova identidade e outra Fonte.
-          error = ["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(firstError?.code)
-            ? firstError
-            : replayError;
+          if (reconcile) {
+            const recovered = await reconcile({ request: structuredClone(request), state, error: firstError });
+            if (plainObject(recovered) && recovered.status === "confirmed" && Object.hasOwn(recovered, "result")) {
+              return recovered.result;
+            }
+          } else {
+            // Rereading may reveal a new revision or a renamed object, but
+            // never replaces the saved target, fences, body or requestId.
+            await load({ request: structuredClone(request), state, recovery: true });
+            return await commit(structuredClone(request));
+          }
+        } catch {
+          // Even a conflict/denial on recovery cannot prove the original
+          // transaction did not commit or is no longer in flight.
         }
+        throw uncertainWriteError(firstError, request, operation);
       }
-      if (!staleWriteFailure(error) || casAttempts >= maxCasRetries) throw error;
+      if (!staleWriteFailure(firstError) || casAttempts >= maxCasRetries) throw firstError;
       casAttempts += 1;
       state = await load();
     }

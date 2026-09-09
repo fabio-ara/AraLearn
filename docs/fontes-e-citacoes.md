@@ -122,6 +122,51 @@ não pode ser informado como uma confirmação pelo canal de autoria. A tarefa
 `manter_fonte` também permite escolher `apa7` ou `abnt-2025` para o curso, sem
 reescrever o material didático ou apagar uma referência manual.
 
+## Referências no Estudo
+
+A ação **Explicação** abre a base salva da microssequência e as referências no
+fim do mesmo corpo rolável. O estudante conserva a unidade, a posição de leitura
+e a resposta ainda não enviada. A abertura não gera conteúdo. O cabeçalho contém
+o título da folha e o controle de fechar à direita; os controles de autoria da
+unidade ficam no seu contexto e só aparecem ao proprietário com acesso de edição.
+
+As referências da base e as da unidade aparecem em grupos distintos. Essa
+apresentação conserva o alvo de cada vínculo, seus papéis, ocorrências e âncoras.
+Os números são controles locais de navegação, sem alterar o texto ou a fonte
+persistidos. Um sobrescrito junto ao trecho abre sua referência no fim da folha.
+Quando uma fonte tem várias ocorrências, cada retorno identifica o trecho a que
+leva. O retorno a uma ocorrência da unidade fecha a folha e devolve o foco àquela
+ocorrência; o retorno à base mantém a Explicação aberta. Quando a notação impede
+inserir o controle junto ao texto de forma inequívoca, ele acompanha o campo ou
+componente que contém a ocorrência, preservando a notação.
+
+A inspeção na Autoria usa essa mesma navegação no snapshot do objeto. As fontes
+da base e de cada unidade conservam seus grupos e destinos; abrir uma referência
+ou um PDF não grava conteúdo, consome observações nem declara revisão humana.
+
+O destino web é identificado por seu vínculo. Um PDF autorizado é resolvido
+somente no clique, usando o arquivo e, quando declarada, a página da âncora. A URL
+temporária não integra o documento nem o cache de referências. Falha de rede ou
+de acesso permanece visível e não transforma o arquivo em ausente. Ao editar um
+campo com citações, a serialização conserva o conteúdo autorizado e exclui os
+números transitórios; alterar o trecho pode tornar sua ocorrência pendente de
+revisão, sem apagar o vínculo ou declarar revisão humana.
+
+Um acervo sem base explicativa continua estudável e mantém as referências já
+vinculadas. A folha informa a falta da base e cresce conforme o conteúdo
+disponível. A mesma entrada substitui o botão permanente de **Fontes**. A leitura da
+base salva não exige revisão autoral declarada: o acesso segue a política do curso
+e os direitos de cada arquivo, conforme [Explicação e revisão
+humana](explicacao-e-revisao-humana.md).
+
+A cópia preparada conserva a base na revisão do conteúdo. As referências
+consultadas são armazenadas por curso, revisão e alvo; quando disponíveis,
+continuam legíveis offline nessa mesma revisão. Referências ainda não guardadas
+e arquivos externos indisponíveis são indicados explicitamente. Uma revisão nova
+invalida a reutilização da anterior, e a revogação de acesso remove os respectivos
+caches locais. Corpo e referências usam os tokens comuns de prosa e contraste;
+controles preservam nomes acessíveis e área de toque com texto ampliado.
+
 ## Estilos fixados e adaptação ABNT
 
 O estilo [APA 7](https://raw.githubusercontent.com/citation-style-language/styles/32078ede72b9224e1ed02c546668e20ee7c75585/apa.csl)

@@ -12,10 +12,12 @@ import {
   normalizeCourseDesignPreference,
   normalizeCourseDesignParameterAssignment,
   normalizeCourseDesignParameterValue,
+  normalizeCourseDesignRead,
 } from "../../src/domain/courseDesignParameters.js";
 import { renderCourseDesignParameterCatalogSql } from "../../scripts/syncCourseDesignParameterCatalog.mjs";
 import { normalizeCourseDesignCommand as normalizeEdgeCommand } from
   "../../supabase/functions/_shared/aralearn/runtime/domain/courseDesignParameters.js";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 
 const COURSE = "10000000-0000-4000-8000-000000000001";
 const LESSON = "lesson-a";
@@ -25,6 +27,21 @@ const ANALYSIS_IDS = Array.from(
   (_, index) => `20000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
 );
 const EVIDENCE = "30000000-0000-4000-8000-000000000001";
+
+test("orientações efetivas cobrem cinco escopos reais sem aceitar repetição ou origem externa", () => {
+  const read = courseDesignFixture({ courseId: COURSE, moduleId: "module-a", lessonId: LESSON,
+    microsequenceId: MICROSEQUENCE, studyUnitId: "unit-a" });
+  const path = [...read.scopeContext.ancestors, read.scopeContext.current];
+  read.guidance.effectiveAssignments = path.map(({ kind, ref }, index) => ({ guidance: `Orientação ${index + 1}.`,
+    origin: "author", reason: "Escolha expressa.", sourceScope: { kind, ref }, inherited: index < path.length - 1 }));
+  const local = read.guidance.effectiveAssignments.at(-1);
+  read.guidance.localAssignment = { guidance: local.guidance, origin: local.origin, reason: local.reason };
+  assert.equal(normalizeCourseDesignRead(read).guidance.effectiveAssignments.length, 5);
+  const repeated = structuredClone(read); repeated.guidance.effectiveAssignments.push(structuredClone(local));
+  assert.throws(() => normalizeCourseDesignRead(repeated), error => error.code === "invalid_course_design_read");
+  const outside = structuredClone(read); outside.guidance.effectiveAssignments[1].sourceScope.ref = "other-module";
+  assert.throws(() => normalizeCourseDesignRead(outside), error => error.code === "invalid_course_design_read");
+});
 
 
 test("catálogo v1.2 reúne definições tipadas com metadados para todos os consumidores", () => {

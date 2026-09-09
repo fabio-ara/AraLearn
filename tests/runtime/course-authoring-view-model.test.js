@@ -455,6 +455,60 @@ test("caminho curricular usa o mesmo limite canônico de 240 caracteres", () => 
   }
 });
 
+test("planejamento distingue unidades do curso e unidades ligadas a lotes sem perder consistência", () => {
+  const course = normalizeCourseDetail({ courseId: COURSE_ID, title: "Fundamentos",
+    goal: "Aprender.", revision: 3, ownership: "owned", canEdit: true });
+  const microsequences = ["micro-a", "micro-b"].map((id, position) => ({ id, position,
+    title: id, objective: "Aprender.", role: "explain", dependencyMicrosequenceIds: [] }));
+  const base = { contract: "aralearn.course-instructional-plan.v3", courseId: COURSE_ID,
+    courseRevision: 3, plan: { id: PLAN_ID, version: 1, title: course.title, objective: course.goal,
+      curriculumMapStatus: "approved", audience: null, declaredPrerequisites: [], scope: null,
+      curriculum: { modules: [{ id: "module-a", position: 0, title: "Módulo", objective: "Aprender.",
+        lessons: [{ id: "lesson-a", position: 0, title: "Lição", objective: "Aprender.", microsequences }] }] },
+      curriculumScopeItems: [], preferredPartCount: { minimum: 7, maximum: 12, origin: "automatic" },
+      intendedLearningOutcomes: [], instructionalAnalysisUnits: [], evidenceRequirements: [], parts: [],
+      counts: { intendedLearningOutcomeCount: 0, instructionalAnalysisUnitCount: 0, evidenceRequirementCount: 0,
+        authoringPartCount: 0, linkedDidacticMicrosequenceCount: 0, studyUnitCount: 5 },
+      updatedAt: "2026-08-17T10:10:00Z" } };
+  const normalize = value => normalizeCourseAuthoringPlan(value,
+    { expectedCourseId: COURSE_ID, expectedCourseRevision: 3 });
+  const noParts = projectCoursePlanning(course, normalize(base));
+  assert.equal(noParts.studyUnitCount, 5);
+  assert.equal(noParts.linkedStudyUnitCount, 0);
+
+  base.plan.parts = [{ id: PART_ID, title: "Lote", intent: null, version: 1, position: 0,
+    progression: [], microsequences: [{ id: "micro-a", productionPosition: 0, title: "micro-a",
+      goal: "Aprender.", role: "explain", studyUnitCount: 2,
+      curriculumPath: { moduleId: "module-a", moduleTitle: "Módulo", lessonId: "lesson-a", lessonTitle: "Lição" } }],
+    progress: { state: "materialized", microsequenceCount: 1, studyUnitCount: 2 } }];
+  Object.assign(base.plan.counts, { authoringPartCount: 1, linkedDidacticMicrosequenceCount: 1 });
+  const partial = projectCoursePlanning(course, normalize(base));
+  assert.equal(partial.studyUnitCount, 5);
+  assert.equal(partial.linkedStudyUnitCount, 2);
+  assert.equal(partial.parts[0].studyUnitCount, 2);
+  assert.equal(partial.counts.studyUnitCount, 5);
+
+  for (const field of Object.keys(base.plan.counts).filter(key => key !== "studyUnitCount")) {
+    const invalid = structuredClone(base); invalid.plan.counts[field] += 1;
+    assert.throws(() => normalize(invalid), error => error.code === "invalid_authoring_plan", field);
+  }
+  for (const total of [-1, 1, 10_001]) {
+    const invalid = structuredClone(base); invalid.plan.counts.studyUnitCount = total;
+    assert.throws(() => normalize(invalid), error => error.code === "invalid_authoring_plan");
+  }
+  const allLinked = structuredClone(base);
+  allLinked.plan.curriculum.modules[0].lessons[0].microsequences.pop();
+  assert.throws(() => normalize(allLinked), error => error.code === "invalid_authoring_plan",
+    "se todos os recortes estão ligados, o total deve ser exatamente a soma dos lotes");
+  allLinked.plan.counts.studyUnitCount = 2;
+  const complete = projectCoursePlanning(course, normalize(allLinked));
+  assert.equal(complete.studyUnitCount, complete.linkedStudyUnitCount);
+  assert.throws(() => normalizeCourseAuthoringPlan(base, { expectedCourseId: SECOND_COURSE_ID }),
+    error => error.code === "invalid_authoring_plan");
+  assert.throws(() => normalizeCourseAuthoringPlan(base, { expectedCourseRevision: 4 }),
+    error => error.code === "course_revision_changed");
+});
+
 test("planejamento recusa segunda autoridade de título ou objetivo e vínculos duplicados", () => {
   const course = normalizeCourseDetail({
     courseId: COURSE_ID,

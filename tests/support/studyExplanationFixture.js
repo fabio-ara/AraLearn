@@ -47,7 +47,9 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       bibliographic: createEmptyCourseSourceBibliographicMetadata(), citationMode: "manual", citationText: "Autoria sintética. Referência local para inspeção da interface. 2026.",
       url: null, editionOrVersion: null, relation: "supported_by", roles: ["technical_conceptual"],
       occurrences: [{ occurrenceId: "support-occurrence", slot: "content", resourceId: "support-lead", path: "text",
-        quote: "**quadro**", prefix: "Um ", suffix: " transporta", status: "resolved" }],
+        quote: "**quadro**", prefix: "Um ", suffix: " transporta", status: "resolved" },
+      { occurrenceId: "support-process-occurrence", slot: "content", resourceId: "support-lead", path: "text",
+        quote: "Um processo", prefix: null, suffix: " é um programa", status: "resolved" }],
       anchors: [{ anchorId: "support-page", selector: { kind: "page_range", startPage: 3, endPage: 3 }, humanLocator: "Mecanismo", contentHash: hash }],
       attachments: [{ contentHash: hash, byteSize: 128, mediaType: "application/pdf" }] }] };
   const repository = {
