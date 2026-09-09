@@ -352,7 +352,7 @@ artefatos imutáveis da preparação. Antes do corte, o job `android-native` ins
 exatos em dois cenários isolados de um emulador descartável no runner Ubuntu
 24.04. Ele confere
 pacote, certificado, versão, SHA-256 e UID: instalação limpa da candidata e
-upgrade do APK público 0.0.66 (código 212). A versão candidata vem do manifesto
+upgrade do APK público 0.0.67 (código 213). A versão candidata vem do manifesto
 aprovado e deve avançar em relação à base.
 
 O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada,
