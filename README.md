@@ -24,7 +24,7 @@ Essa organização permite acrescentar as etapas necessárias para explicar um a
 
 No estudo, é possível percorrer o curso, responder a práticas, receber retorno, marcar unidades para rever, registrar observações e retomar o ponto em que o estudo foi interrompido.
 
-Na autoria, é possível planejar a estrutura do curso, produzir e revisar seu conteúdo e definir quem pode acessá-lo. Conteúdo novo fica em rascunho para inspeção da pessoa proprietária, que aprova explicitamente o conjunto da microssequência. Uma mudança material exige nova revisão antes de disponibilizar esse recorte atualizado a estudantes. O acervo anterior conserva a indicação de revisão não registrada, sem aprovação retroativa automática.
+Na autoria, é possível planejar a estrutura do curso, produzir e revisar seu conteúdo e definir quem pode acessá-lo. Conteúdo completo salvo pode ser estudado por quem tem acesso, mesmo sem revisão registrada. A pessoa proprietária pode escolher expressamente a política de disponibilizar somente conteúdo revisado. Cada Explicação e unidade mantém sua própria marca de revisão; uma mudança material desatualiza a marca pertinente. Edições não salvas permanecem privadas, e o acervo anterior conserva a indicação de revisão não registrada, sem aprovação retroativa automática.
 
 O [guia do estudante](docs/guia-estudante.md) apresenta o percurso de estudo. O [guia do professor e autor](docs/guia-professor-autor.md) apresenta criação, planejamento, produção e revisão de cursos.
 

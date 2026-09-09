@@ -83,19 +83,21 @@ switch ($Profile) {
       Add-Step 'android-verify' 'Examinar o runtime Android' automatic 'Confere configuração pública, segredos e ausência de catálogo embarcado.' `
         'pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android -RequireRuntimeConfig'
     }
-    Add-Step 'integrate-main' 'Integrar e validar a revisão' manual 'Integre a revisão em main com o backend anterior ativo, aguarde a validação verde do SHA exato e cancele os fluxos automáticos de Pages e Android, ou confirme que terminaram sem publicar, antes do corte.'
-    Add-Step 'database-apply' 'Aplicar migrations e funções aprovadas' automatic 'Depois da migração transacional de identidade aplicável, executa migrations versionadas, sem reset nem seed, e implanta a API e o MCP.' `
+    Add-Step 'integrate-main' 'Integrar e validar a revisão' manual 'Conclua candidate:ready e a integral protegida Testar e validar, depois integre a candidata por merge normal. Preserve o run integral e sua tentativa exata; o publicador confere vínculo com o PR integrado, árvore e configuração. Pages é publicado somente pelas fases explícitas de pages.yml.'
+    Add-Step 'prepare-product' 'Preparar os artefatos da promoção' manual 'Com site e backend anteriores ainda correspondentes, execute preparar no SHA integrado. Aguarde assinatura histórica, conferência dos artefatos e prova nativa de instalação e upgrade. Registre o run e a tentativa desta preparação; ela não publica o produto nem comprova o backend novo.' `
+      'gh workflow run pages.yml --ref main -f phase=preparar -f candidate_run_id=<run-integral> -f candidate_run_attempt=<tentativa-integral>'
+    Add-Step 'backup-restore' 'Concluir a recuperação anterior ao corte' manual 'Preserve um backup atual do banco e dos objetos Storage afetados, com hashes, direitos e restauração ensaiada. A prova sintética local não substitui o backup hospedado atual. Defina a atualização dos clientes instalados e prepare a publicação pronta do site e dos contratos de MCP e Actions.'
+    Add-Step 'database-apply' 'Aplicar migrations e funções aprovadas' automatic 'Depois da preparação e da recuperação verificadas, aplica migrations versionadas, sem reset nem seed, e implanta API, MCP e Actions. Se uma resposta se perder, confira migrations e estado publicado antes de repetir.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply -DeployAuthoringFunctions -PublicAppUrl $applicationArgument/"
-    Add-Step 'verify-hosted' 'Conferir o contrato hospedado' automatic 'Comprova o manifesto remoto exigido pelos artefatos antes de iniciar qualquer publicação.' `
+    Add-Step 'verify-hosted' 'Conferir o contrato hospedado' automatic 'Comprova o manifesto remoto exigido pelos artefatos antes de publicar o site. A prova de manifesto não substitui as jornadas dos clientes reais.' `
       'npm.cmd run deployment:verify-hosted'
-    $publicationInstruction = if ($IncludeAndroid) {
-      'Dispare manualmente os fluxos de Pages e Android para o mesmo SHA de main já aprovado.'
-    } else {
-      'Dispare manualmente o fluxo de Pages para o mesmo SHA de main já aprovado.'
-    }
-    Add-Step 'publish' 'Publicar os artefatos aprovados' manual $publicationInstruction
-    Add-Step 'verify-published' 'Conferir o endereço publicado' automatic 'Valida recursos, MIME, CSP, configuração pública e callback PKCE no endereço entregue pelo Pages.' `
+    Add-Step 'publish' 'Publicar o site da preparação aprovada' manual 'Execute publicar_site com o run e a tentativa de preparar. O workflow recupera os mesmos bytes Pages, APK e prova nativa, verifica o backend, publica o site e guarda o APK em Release rascunho. Atualize OpenAPI, instruções e Knowledge de Actions e a conexão MCP de forma coordenada com o backend.' `
+      'gh workflow run pages.yml --ref main -f phase=publicar_site -f promotion_run_id=<run-preparar> -f promotion_run_attempt=<tentativa-preparar>'
+    Add-Step 'verify-published' 'Conferir o endereço publicado' automatic 'Valida recursos, MIME, CSP, configuração pública e callback PKCE. O workflow também confere tamanho e SHA-256 de todos os arquivos contra o manifesto da candidata.' `
       "npm.cmd run deployment:verify-site -- --url $applicationArgument/"
+    Add-Step 'client-proof' 'Conferir as jornadas hospedadas da candidata' manual 'Execute e registre as provas requeridas de autenticação, Estudo, Autoria, MCP e Actions em sessões novas e existentes. Releia as escritas, reconcilie resultados incertos e limpe somente fixtures registradas. Uma prova obrigatória pendente impede a finalização.'
+    Add-Step 'finalize-release' 'Concluir a Release verificada' manual 'Após as provas reais, execute finalizar_release com o run e a tentativa de publicar_site. O workflow reconfere backend, site, prova nativa, APK, checksum e recibo antes de tornar a mesma Release pública.' `
+      'gh workflow run pages.yml --ref main -f phase=finalizar_release -f promotion_run_id=<run-publicar-site> -f promotion_run_attempt=<tentativa-publicar-site>'
   }
   'StaticHostManagedSupabase' {
     Add-Step 'diagnose' 'Conferir a máquina' automatic 'Verifica ferramentas, arquivos e configuração pública usada no build.' `
