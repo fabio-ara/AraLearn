@@ -59,6 +59,10 @@ registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
+[Autoria contextual](autoria-contextual.md) reúne responsabilidades, escopos,
+origem dos controles e o contrato de evolução de Explicação, desenho, revisão
+e preferências pessoais, distinguindo base observada e aceite ainda necessário.
+
 O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
 define apoio compartilhado, preservação do percurso, fontes e aprovação do
 conteúdo inspecionado. A implementação e suas provas locais são distintas da

@@ -159,6 +159,14 @@ Amanda Baughan; Mingrui Ray Zhang; Raveena Rao; Kai Lukoff; Anastasia Schaadhard
 
 Chave bibliográfica: `baughan2022dissociation`.
 
+<a id="ref-biggs1996alignment"></a>
+
+### Biggs (1996)
+
+John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364. [DOI 10.1007/bf00138871](https://doi.org/10.1007/bf00138871).
+
+Chave bibliográfica: `biggs1996alignment`.
+
 <a id="ref-bjork2011desirable"></a>
 
 ### Bjork e Bjork (2011)
@@ -334,6 +342,14 @@ Chave bibliográfica: `dyson2004layout`.
 Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488. [DOI 10.1037/xlm0000251](https://doi.org/10.1037/xlm0000251).
 
 Chave bibliográfica: `foroughi2016resumption`.
+
+<a id="ref-fourcidmodel"></a>
+
+### Four-Component Instructional Design (s.d.)
+
+Four-Component Instructional Design (s.d.). **About the 4C/ID Model.** [acesso ao documento](https://www.4cid.org/about/).
+
+Chave bibliográfica: `fourcidmodel`.
 
 <a id="ref-gazzola2022textcomplexity"></a>
 
@@ -535,6 +551,14 @@ Yuzhi Lai; Nadira Saab; Wilfried Admiraal (2022). **Learning Strategies in Self-
 
 Chave bibliográfica: `lai2022mobile`.
 
+<a id="ref-laurillard2018learningdesigner"></a>
+
+### Laurillard et al. (2018)
+
+Diana Laurillard; Eileen Kennedy; Patricia Charlton; Joanna Wild; Dionisis Dimakopoulos (2018). **Using Technology to Develop Teachers as Designers of TEL: Evaluating the Learning Designer.** *British Journal of Educational Technology*, 49(6), p. 1044–1058. [DOI 10.1111/bjet.12697](https://doi.org/10.1111/bjet.12697) · [acesso ao documento](https://discovery.ucl.ac.uk/id/eprint/10056851/).
+
+Chave bibliográfica: `laurillard2018learningdesigner`.
+
 <a id="ref-leal2024nilcmetrix"></a>
 
 ### Leal et al. (2024)
@@ -606,6 +630,14 @@ Chave bibliográfica: `mcnamara1996coherence`.
 Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749. [DOI 10.1037/0003-066x.50.9.741](https://doi.org/10.1037/0003-066x.50.9.741).
 
 Chave bibliográfica: `messick1995validity`.
+
+<a id="ref-microsofthaxcorrection"></a>
+
+### Microsoft (s.d.)
+
+Microsoft (s.d.). **Guideline 9: Support Efficient Correction.** [acesso ao documento](https://www.microsoft.com/en-us/haxtoolkit/guideline/support-efficient-correction/).
+
+Chave bibliográfica: `microsofthaxcorrection`.
 
 <a id="ref-miller1984genre"></a>
 
@@ -1030,6 +1062,22 @@ Chave bibliográfica: `wood1976tutoring`.
 World Wide Web Consortium (2023). **Web Content Accessibility Guidelines (WCAG) 2.2.** [acesso ao documento](https://www.w3.org/TR/WCAG22/).
 
 Chave bibliográfica: `w3c2023wcag22`.
+
+<a id="ref-w3capgdialog"></a>
+
+### World Wide Web Consortium (s.d.)
+
+World Wide Web Consortium (s.d.). **Dialog (Modal) Pattern: ARIA Authoring Practices Guide.** [acesso ao documento](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+
+Chave bibliográfica: `w3capgdialog`.
+
+<a id="ref-w3capgtoolbar"></a>
+
+### World Wide Web Consortium (s.d.)
+
+World Wide Web Consortium (s.d.). **Toolbar Pattern: ARIA Authoring Practices Guide.** [acesso ao documento](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/).
+
+Chave bibliográfica: `w3capgtoolbar`.
 
 <a id="ref-xie2021colormode"></a>
 

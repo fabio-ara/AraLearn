@@ -45,7 +45,7 @@ pedagógica avaliada por rubrica.
 
 Vocabulário criado ou delimitado pelo AraLearn para organizar o produto. Não
 tem pretensão de se tornar um construto universal. Exemplos: microssequência e
-microteoria.
+base explicativa.
 
 ### Política de desenho
 
@@ -505,19 +505,32 @@ construto.
 
 ## Termos operacionais de Curso e Autoria
 
+As definições desta seção e do modelo didático constituem o contrato conceitual
+da autoria contextual. Uma definição estabelece significado e comportamento
+exigido; a disponibilidade de cada operação depende da implementação e de sua
+verificação. O [fundamento e o alcance da leitura
+bibliográfica](fundamentos-pesquisa-e-governanca.md#revisão-focal-da-autoria-contextual)
+distinguem essas decisões de resultados educacionais. O [contrato de autoria
+contextual](autoria-contextual.md) especifica onde cada controle aparece e seu
+efeito na interface e nos canais.
+
 ### Curso
 
 Objeto instrucional vivo e identificável que reúne hierarquia, conteúdo,
-desenho, fontes, Observações e estado de Autoria. O curso pode ser estudado à
-medida que é produzido e não depende de uma etapa de publicação para existir.
+desenho, fontes, Observações e estado de Autoria. Cada recorte completo salvo
+pode ser estudado por quem tem acesso enquanto a produção do curso continua;
+o curso não depende de uma etapa de publicação para existir.
 É unidade de propriedade e autorização do produto, não turma, disciplina,
 intervenção educacional validada ou programa institucional.
 
 ### Materialização
 
-Operação que transforma planejamento aprovado e contexto focal em StudyUnits
-persistidas. Ela grava composição, configuração aplicada e proveniência na
-mesma transação, sem conservar etapas intermediárias como produto.
+Operação que transforma desenho e contexto focal autorizados em unidades de
+estudo persistidas. Seu resultado conserva composição, configuração aplicada e
+proveniência correspondentes. A produção da base explicativa é uma operação
+autoral própria e pode anteceder a materialização das unidades. Um rascunho
+intermediário que permita recuperar trabalho permanece identificável como
+incompleto; uma composição parcialmente substituída não é uma entrega pronta.
 Materialização não equivale a geração textual, publicação, qualidade autoral ou
 aprendizagem; seu término demonstra apenas que a operação de Autoria alcançou
 um estado persistido verificável.
@@ -552,12 +565,113 @@ aplicada nem prova de eficácia da auditoria.
 
 ### Parâmetro de desenho
 
-Decisão versionada por escopo. Quatro parâmetros pedagógicos orientam novidade,
-formas de explicação, oportunidades de prática e dimensões de variação; dois
-alvos editoriais quantitativos orientam palavras por resposta de autoria e por
-unidade de estudo. No estado `default`, cada valor exige calibração contextual
-automática. Um alvo não é limite, e nenhum parâmetro constitui dose pedagógica
-validada, medida de qualidade ou perfil de estudante.
+Decisão com natureza, objeto dono, escopos admitidos, origem, valor efetivo e
+efeito observável. Decisões de análise e prática orientam a realização
+instrucional; alvos editoriais orientam apresentação; preferências de processo
+orientam o trabalho autoral. O catálogo vigente define valores e escopos, sem
+deduzi-los apenas da hierarquia navegável. Um alvo editorial é flexível; um teto
+de ideias novas é uma restrição de desenho, sem constituir medida de carga
+cognitiva. Nenhum desses valores é dose pedagógica validada ou perfil de
+estudante. A calibração contextual deve declarar sua origem.
+
+### Configuração corrente ou intenção corrente
+
+Decisão vigente que orienta uma próxima produção ou aplicação autorizada,
+resolvida pelos escopos e pela origem admitidos no catálogo. O detalhe de um
+valor informa onde ele foi fixado, o que foi herdado e qual objeto a mudança
+alcançará. Modificar a intenção não reescreve conteúdo existente, configuração
+aplicada ou condição de pesquisa fixada. Aplicar a nova intenção a conteúdo já
+salvo exige operação própria, com recorte e efeito explícitos.
+
+### Configuração aplicada
+
+Registro das decisões que orientaram a produção efetiva de uma base ou unidade
+identificada, no alcance em que essas decisões são pertinentes. Preserva o
+valor e a origem conhecidos naquele momento, inclusive calibração automática
+ou aplicação solicitada pelo autor. Diferença em relação à intenção corrente
+permanece visível; uma preferência posterior não atualiza esse registro
+retroativamente. A declaração da IA sobre o que aplicou é um dado a inspecionar,
+não prova de que o conteúdo realiza corretamente o desenho.
+
+### Edição e intervenção humana
+
+Edição é a alteração de campos de conteúdo autorizados. Enquanto não salva,
+permanece rascunho local; salvar registra a intervenção realizada pela pessoa
+proprietária. A autoria do texto e a origem da intervenção permanecem
+distinguíveis: aceitar uma proposta redigida por IA não transforma sua geração
+em redação humana. Salvar, abrir, comentar e encerrar uma edição não declaram
+revisão autoral.
+
+### Revisão autoral
+
+Declaração reversível da pessoa de que inspecionou o conteúdo salvo identificado
+de uma base explicativa ou unidade de estudo. O estado distingue ausência de
+declaração, declaração pertinente ao conteúdo corrente e declaração
+desatualizada após mudança material. Marcar com edição pendente requer resolver
+salvar ou descartar; retirar a marca não desfaz a edição.
+
+A declaração sobre uma base não revisa automaticamente suas unidades. Mudanças
+conhecidas em base, fonte ou requisitos podem exigir reinspeção dos objetos
+relacionados. O agregado deve revelar pendências e preservar a ausência de
+registros do acervo antigo. A marca não prova leitura, acerto, qualidade,
+eficácia ou concessão de acesso. É distinta de **Rever**, a marca pessoal do
+estudante para retomar uma unidade.
+
+### Visibilidade e acesso
+
+Visibilidade expressa a decisão autorizada sobre quem pode encontrar ou estudar
+o curso; acesso é a permissão efetiva de consultar o objeto e seus arquivos.
+Conteúdo completo salvo pode ser estudado sem revisão autoral por quem possui
+acesso, inclusive visitante anônimo de curso explicitamente público. Uma
+política expressa de disponibilizar somente conteúdo revisado acrescenta uma
+condição de acesso; não é o padrão universal nem o significado da revisão.
+Rascunho local, gravação parcial e arquivo sem direito de acesso permanecem
+protegidos. Migração não presume revisão nem torna público um curso privado.
+
+### Preferências do processo de autoria
+
+Padrões pessoais de foco, cadência, pontos de revisão e diálogo, disponíveis
+aos canais no recorte necessário ao trabalho. Podem iniciar ou orientar a
+continuidade de um mandato, que é o pedido autoral com escopo e condições
+acordados. Exceções explícitas de curso ou pesquisa ficam identificáveis.
+Mudanças posteriores de preferência são conciliadas com o mandato em curso;
+não rematerializam cursos nem alteram silenciosamente uma condição fixada.
+Um perfil salvo é cópia de preferências, não herança viva obrigatória.
+
+### Foco Conteúdo e Ciclo completo
+
+**Foco Conteúdo** organiza o trabalho sobre bases explicativas e fontes,
+microssequência por microssequência, com objetivo, público, escopo e dependências
+suficientes para delimitar cada produção. Permite produzir e revisar bases
+antes de desenhar suas unidades.
+
+**Ciclo completo** articula planejamento focal, base explicativa, desenho,
+materialização e revisão no recorte acordado. O foco define quais
+responsabilidades entram no trabalho; não determina quanto produzir por vez,
+quando pausar ou quão longa será a conversa.
+
+### Cadência de autoria
+
+Organização do avanço por microssequência, parte ou lote. Parte agrupa trabalho
+coerente; lote coordena partes sucessivas. A cadência define o recorte de
+coordenação e continuidade, sem fixar quantidade pedagógica, extensão da base
+ou unidade de análise pela capacidade de uma chamada técnica.
+
+### Ponto de revisão
+
+Momento ou objeto em que o processo solicita inspeção autoral, por exemplo após
+a base, a unidade, a parte ou o lote. A preferência de quando revisar não
+registra a revisão: a declaração precisa corresponder ao objeto salvo. Quando
+se exige revisão por unidade, a inspeção é confirmada em cada objeto; abrir um
+lote, enviar comentário ou fazer uma pausa não confirma todas as unidades.
+
+### Estilo de diálogo e preset
+
+Estilo de diálogo orienta concisão, explicitação de decisões e interação durante
+a autoria. Um alvo de palavras da conversa não reduz o conteúdo intelectual
+necessário à base ou às unidades. **Preset** é um atalho que configura valores
+visíveis de foco, cadência, revisão e diálogo; esses eixos continuam
+independentes e podem ser ajustados separadamente.
 
 ### Política de componentes
 
@@ -600,12 +714,14 @@ diretamente nível pedagógico, diagnóstico ou nota de qualidade.
 
 ### Unidade de estudo
 
-Menor unidade persistida, ordenável, endereçável e renderizável apresentada em
-Estudo e Autoria. Pode ser somente expositiva ou também reunir uma ou mais
-representações, solicitação de resposta e retorno. É termo operacional próprio
-do AraLearn: não equivale a gênero discursivo, componente de conhecimento ou
-unidade psicológica. A aparência corrente em bloco retangular não define essa
-ontologia, e o termo não promete interatividade quando ela não existe.
+Episódio instrucional apresentado ao estudante, com função delimitada no desenho
+da microssequência: exposição, exemplo, contraste, prática ou integração, entre
+outras funções pertinentes. É persistido, ordenável e endereçável e pode reunir
+representações, solicitação de resposta e retorno. Seu limite acompanha a tarefa
+e suas relações, sem ser determinado por contagem de palavras. É termo
+operacional do AraLearn, distinto de componente de conhecimento, unidade
+psicológica ou unidade estatística de uma pesquisa. Card é sua apresentação
+visual possível; componente é um recurso usado em sua composição.
 
 ### Cartão de memorização (`flashcard`)
 
@@ -624,10 +740,18 @@ retorno e retomada. Não equivale a sequência longa ou uniformidade visual.
 
 ### Unidade de análise instrucional
 
-Recorte editorial revisável que relaciona fonte, objetivo, pressuposto de
-conhecimento prévio, explicação e evidência pretendida. É uma
-operacionalização do AraLearn; não equivale a componente de conhecimento
-validado, conceito psicológico ou unidade pedagógica universal.
+Recorte semântico revisável que acompanha um conceito, relação, condição,
+procedimento ou operação relevante ao desenho do curso. Relaciona objetivo,
+fontes, conhecimento prévio presumido, explicação e evidência pretendida; a base
+pode desenvolvê-lo e as unidades indicar onde é introduzido, usado ou retomado.
+Uma unidade de estudo pode mobilizar vários recortes; um recorte pode atravessar
+várias unidades.
+
+É uma hipótese de análise instrucional do AraLearn, distinta de palavra,
+token, card, componente, medida cognitiva e unidade estatística de análise.
+A distinção de níveis, eventos observáveis e aprendizagem inferida no KLI ajuda
+a explicitar esse limite ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli));
+não valida a correspondência entre cada recorte e um componente de conhecimento.
 
 ### Conjunto de coordenação
 
@@ -711,25 +835,61 @@ alegação de que a resposta será eficaz.
 
 ### Microssequência didática
 
-Termo operacional do AraLearn: conjunto ordenado de unidades de estudo e
-interação orientado a um objetivo instrucional delimitado, com contexto, teoria
-e prática suficientes para esse escopo. Não corresponde automaticamente a
-parágrafo, subtópico, duração ou quantidade fixa e não é apresentado como
-unidade universal da pesquisa educacional.
+Recorte didático orientado a um objetivo delimitado e a uma progressão, com
+público, repertório presumido, escopo e dependências pertinentes. Reúne base
+explicativa, desenho e unidades de estudo, que podem estar em estágios distintos
+de produção. Sua identidade não depende de já possuir unidades materializadas.
+Conserva a hierarquia curso → módulo → lição → microssequência → unidade.
+É termo operacional do AraLearn, sem duração ou quantidade fixa e sem pretensão
+de constituir unidade universal da pesquisa educacional.
+
+### Base explicativa da microssequência — Explicação
+
+Exposição intelectual e documental desenvolvida para o objetivo da
+microssequência, com pressupostos, conceitos, relações, mecanismos, exemplos,
+limites e fontes pertinentes. **Explicação** é seu nome na interface. Pode ser
+produzida e revisada antes das unidades e, no Estudo, funciona também como apoio
+sob demanda. O contrato prevê uma instância salva por microssequência,
+consultada sem geração por IA ao abrir.
+
+A base distingue elaboração autoral, resultado documentado, interpretação e
+hipótese. Sua suficiência depende do objetivo e do público; um alvo editorial
+da unidade não limita sua extensão. Casos, dados e figuras próprios de uma
+atividade podem possuir fontes na unidade que os usa. Referências reunidas na
+apresentação conservam esses vínculos de proveniência.
+
+O termo é uma decisão de produto. A distinção entre tarefas e informação de
+suporte no 4C/ID oferece comparação parcial
+([Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel)),
+sem tornar a base tradução canônica de *supportive information* nem adoção
+integral do modelo. Consultar a base não comprova domínio ou altera
+automaticamente o repertório atribuído ao estudante.
+
+### Desenho instrucional da microssequência
+
+Intenção articulada sobre como apresentar e mobilizar o conteúdo para o público
+e o objetivo: análise de conhecimento, evidência pretendida, parâmetros,
+representações, componentes, prática e sequência. Orienta episódios
+instrucionais, não apenas contagens ou o preenchimento de uma tela. A relação
+entre objetivo, atividade e avaliação fundamenta o cuidado com alinhamento
+([Biggs (1996)](referencias.md#ref-biggs1996alignment)); esse fundamento não
+determina uma taxonomia única, forma obrigatória ou teto universal de ideias.
 
 ### Parte de autoria
 
 Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
-dependências, complexidade das microssequências e volume de revisão. É uma
-unidade de materialização, não um nível didático. A faixa orientativa de 7 a 12
-partes por curso é um valor padrão configurável para coordenar produção e
-revisão, não cota pedagógica nem quantidade universal; cada parte pode abranger
-várias microssequências.
+dependências, complexidade das microssequências e volume de revisão. É recorte
+de coordenação da produção de bases e/ou unidades, não nível curricular. Seus
+alvos configuráveis coordenam trabalho e revisão, sem impor cota pedagógica ou
+quantidade universal; cada parte pode abranger várias microssequências.
 
 ### Microteoria
 
-Conjunto de unidades teóricas suficiente para fundamentar as práticas locais.
-Não significa teoria resumida, rasa ou desconectada de pré-requisitos.
+Termo de documentos anteriores para o conjunto de unidades teóricas que
+fundamentava práticas locais. Para nomear o conteúdo intelectual/documental
+salvo da microssequência, usar **base explicativa**; para sua realização em
+episódios do percurso, usar **unidades de estudo**. Essa distinção permite
+reconhecer o vocabulário anterior sem criar outro objeto curricular.
 
 ### Baixa consequência
 
@@ -1043,6 +1203,7 @@ desenvolvimento e validação próprios.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Bandura (2001)](referencias.md#ref-bandura2001agency): Albert Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26.
 - [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards): Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506.
+- [Biggs (1996)](referencias.md#ref-biggs1996alignment): John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364.
 - [Bjork e Bjork (2011)](referencias.md#ref-bjork2011desirable): Elizabeth L. Bjork; Robert A. Bjork (2011). **Making Things Hard on Yourself, but in a Good Way: Creating Desirable Difficulties to Enhance Learning.** In: *Psychology and the Real World: Essays Illustrating Fundamental Contributions to Society*, Worth Publishers, p. 56–64.
 - [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative): E. N. Bridwell-Mitchell (2016). **Collaborative Institutional Agency: How Peer Learning in Communities of Practice Enables and Inhibits Micro-Institutional Change.** *Organization Studies*, 37(2), p. 161–192.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
@@ -1052,6 +1213,7 @@ desenvolvimento e validação próprios.
 - [Chun et al. (2011)](referencias.md#ref-chun2011attention): Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of External and Internal Attention.** *Annual Review of Psychology*, 62(1), p. 73–101.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
+- [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel): Four-Component Instructional Design (s.d.). **About the 4C/ID Model.**
 - [Gazzola et al. (2022)](referencias.md#ref-gazzola2022textcomplexity): Murilo Gazzola; Sidney Leal; Breno Pedroni; Fábio Theoto Rocha; Sabine Pompéia; Sandra Aluísio (2022). **Text Complexity of Open Educational Resources in Portuguese: Mixing Written and Spoken Registers in a Multi-task Approach.** *Language Resources and Evaluation*, 56(2), p. 621–650.
 - [Graesser et al. (2004)](referencias.md#ref-graesser2004cohmetrix): Arthur C. Graesser; Danielle S. McNamara; Max M. Louwerse; Zhiqiang Cai (2004). **Coh-Metrix: Analysis of Text on Cohesion and Language.** *Behavior Research Methods, Instruments, & Computers*, 36(2), p. 193–202.
 - [Henrie et al. (2015)](referencias.md#ref-henrie2015engagement): Curtis R. Henrie; Lisa R. Halverson; Charles R. Graham (2015). **Measuring Student Engagement in Technology-mediated Learning: A Review.** *Computers & Education*, 90, p. 36–53.

@@ -274,6 +274,89 @@ o alcance dos dados.
 
 ## Fundamentos que orientam o desenho
 
+### Revisão focal da autoria contextual
+
+A consulta de **9 de setembro de 2026 (UTC)** foi orientada às decisões de
+nomenclatura, separação entre conteúdo e realização, controle autoral e
+acessibilidade. Partiu de referências já pertinentes ao problema, conferindo
+páginas primárias das editoras, repositório institucional dos autores e fontes
+oficiais. O critério de encerramento foi obter fundamento e limite explícitos
+para cada decisão desta seção. Não houve busca exaustiva, comparação sistemática
+de estudos ou nova avaliação de eficácia do AraLearn.
+
+O alcance efetivamente consultado está registrado abaixo. Quando uma página
+editorial não abriu diretamente, usou-se o resumo que ela disponibilizava na
+busca ou o repositório institucional indicado; isso não foi contado como leitura
+integral. Os metadados pertencem a [`referencias.bib`](referencias.bib).
+
+| Fonte primária | Escopo consultado | Papel na decisão | Limite de inferência |
+| --- | --- | --- | --- |
+| [Biggs (1996)](referencias.md#ref-biggs1996alignment) | Resumo e metadados na página da Springer; texto integral não consultado | Articular objetivos, atividades e avaliação ao delimitar o desenho | Não prescreve a interface, a extensão da base ou um número de unidades |
+| [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli) | Resumo e seções 1.2, sobre níveis de análise, e 2.1, sobre eventos, no HTML da Wiley | Distinguir recorte de conhecimento, episódio instrucional e aprendizagem inferida | Não valida a unidade de análise instrucional do AraLearn como componente cognitivo nem como medida |
+| [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner) | Resumo e metadados da editora e do depósito UCL; não leitura integral | Precedente de ferramenta que representa escolhas de desenho e apoia professores como designers | Resultados do Learning Designer pertencem à ferramenta e aos contextos estudados; não são resultados deste produto |
+| [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture) | Resumo e metadados editoriais retornados pela busca; artigo integral não consultado | Separar conjectura sobre o funcionamento do desenho da relação teórica com resultados | O resumo sustenta a distinção geral; não basta para alegar aplicação integral do método |
+| [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai) e [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection) | Página da publicação dos autores e orientação oficial HAX G9 para correção; sem leitura integral do artigo ou estudo dos exemplos de produtos | Tornar intervenções de IA compreensíveis e permitir editar, corrigir e recuperar | Diretrizes de interação não comprovam inspeção crítica ou eficácia das decisões humanas no AraLearn |
+| [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel) | Página oficial, descrição dos quatro componentes | Comparação parcial entre tarefas e informações de suporte | A base explicativa é definição própria; não é equivalência canônica com *supportive information* nem adoção integral do 4C/ID |
+| [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22) | WCAG 2.2, critério 1.4.10; texto dos critérios e intenção nas páginas oficiais Understanding de 1.4.3, 1.4.11, 2.5.8 e 4.1.2, listadas abaixo | Restrições verificáveis de apresentação e operação dos controles | WCAG é referência normativa; Understanding é explicação informativa. Esta consulta não é auditoria integral de conformidade |
+| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgtoolbar), padrão Toolbar | Agrupamento, interação por teclado, foco, papéis e nomes no APG | Orientar grupos que de fato adotem o padrão de barra de ferramentas | Fileira visual de ícones não recebe automaticamente esse papel; o padrão não comprova reconhecimento do símbolo |
+| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog), padrão Dialog (Modal) | Interação por teclado, foco inicial, fechamento, retorno do foco e semântica no APG | Orientar detalhes modais que preservem a continuidade do contexto | O padrão não é componente pronto nem certificação da implementação |
+
+As páginas informativas consultadas foram
+[Contraste mínimo](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+[Contraste não textual](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html),
+[Tamanho mínimo do alvo](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+e [Nome, papel e valor](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html).
+As referências de interface restringem escolhas de produto: ações principais
+por ícone precisam conservar nome e estado acessíveis, ajuda acessível por
+teclado e toque e área de ativação adequada. Ícone menor não exige alvo menor;
+cinza ou corpo menor não dispensam legibilidade e contraste. A preferência
+visual por esses recursos permanece uma decisão a inspecionar com conteúdo real,
+sem alegação de redução de carga cognitiva ou melhora de aprendizagem.
+
+### Conteúdo, desenho e evidência
+
+O [glossário](glossario-construtos.md#termos-operacionais-do-modelo-didático)
+separa quatro responsabilidades. A microssequência delimita objetivo e
+progressão. Sua **base explicativa**, chamada Explicação na interface,
+desenvolve conteúdo intelectual/documental e fontes. O **desenho instrucional**
+articula a intenção sobre apresentação, tarefa, evidência e prática. As
+**unidades de estudo** realizam episódios desse desenho. A **unidade de análise
+instrucional** acompanha um recorte semântico, podendo atravessar vários
+episódios, sem se tornar unidade estatística ou medida de aprendizagem.
+
+Essa organização é uma **decisão de produto fundamentada por inferência**.
+Permite especificar bases antes das unidades, sem supor que uma base pronta
+resolve toda a realização instrucional. Objetivo, público, escopo e dependências
+delimitam o conteúdo; fontes próprias de uma tarefa continuam ligadas à unidade
+que as mobiliza. A disponibilidade de apoio e as condições de uso precisam ser
+descritas em cada investigação: abrir a Explicação não demonstra domínio e não
+transforma leitura em oportunidade de prática.
+
+O [contrato de autoria contextual](autoria-contextual.md) define objeto dono,
+escopo, origem, persistência, acesso e efeito de cada controle. Ele distingue
+intenção para próximas produções, configuração aplicada ao conteúdo identificado
+e declaração de revisão. Essa distinção deve ser demonstrada pela releitura do
+estado e por inspeção dos fluxos; sua descrição documental não comprova que os
+clientes já executam todas as operações.
+
+### Conjecturas da autoria contextual
+
+As relações abaixo são hipóteses de desenho a investigar. Os critérios técnicos
+comprovam funcionamento do artefato no cenário executado; os processos e
+resultados humanos exigem avaliação com participantes e instrumentos próprios.
+
+| Conjectura | Processo humano esperado | Prova técnica pertinente | Questão humana e risco a investigar |
+| --- | --- | --- | --- |
+| **Controle contextual:** decisões junto do objeto, com alcance e intenção/aplicado visíveis, podem reduzir erros de alvo | A pessoa prevê o efeito, escolhe o alcance e corrige uma decisão | Alterar apenas o alvo autorizado; manter objeto, foco, rolagem e rascunho ao abrir/fechar detalhes e receber resposta tardia | Autores compreendem a origem e o alcance? Ícones ou valores herdados podem ser interpretados incorretamente |
+| **Conteúdo e realização separados:** base identificável e episódios ligados ao desenho podem facilitar inspeção e reformulação | A pessoa localiza a afirmação e decide se precisa mudar base, tarefa ou representação | Produzir/revisar base sem unidades; conservar fontes por alvo; preservar configuração aplicada e indicar reinspeção pertinente após mudança material | A separação ajuda a revisar ou cria duplicação e base excessiva? Unidades podem perder substância ou ficar desatualizadas |
+| **Cadência transparente:** foco, cadência, revisão e diálogo independentes podem acomodar modos distintos de trabalho | A pessoa combina produção e inspeção sem perder as condições acordadas | Preferência pessoal nova não altera conteúdo ou condição fixada; cada revisão corresponde ao objeto salvo indicado | A pessoa reconhece os valores do preset e o que realmente revisou? Pausa ou aceitação em lote podem gerar confirmação sem inspeção |
+| **Apoio no Estudo:** base salva disponível sob demanda pode ajudar a recuperar pressupostos | O estudante reconhece uma lacuna, encontra o apoio e retoma a tarefa | Abrir a instância salva sem gerar conteúdo; manter ponto do percurso e acesso conforme os direitos | Novatos reconhecem quando consultar? Há riscos de recurso invisível, leitura passiva e dependência do apoio |
+
+O programa técnico não inicia coleta com estudantes, inferência de domínio,
+randomização ou experimento de eficácia. Uma avaliação futura particulariza
+essas conjecturas e sua condição de refutação. Provas sintéticas, revisão de IA
+e integração contínua não são observação humana nem resultados de aprendizagem.
+
 ### Carga, segmentação e representação
 
 A teoria da carga cognitiva destaca demandas introduzidas pelo desenho
@@ -363,13 +446,26 @@ julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria
 ## Governança de decisões
 
 O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
-separa conteúdo produzido, revisão humana e aprovação atual do material
-inspecionado. Sua conjectura distingue recursos, processos esperados, resultados
-a investigar e riscos. A leitura focal registrada não constitui revisão
-sistemática nem demonstra eficácia. Os estados de revisão estão implementados
-com autorização e comparação do conteúdo inspecionado; testes sintéticos
-verificam essas propriedades técnicas, sem atestar a qualidade da decisão
-humana, sua execução num curso real ou os resultados educacionais propostos.
+e o [contrato contextual](autoria-contextual.md) separam conteúdo produzido,
+intervenção humana, declaração de revisão e acesso. A base anterior do produto
+possui seu fluxo de revisão e aprovação; isso não demonstra a implementação
+completa do contrato contextual de revisão por base e unidade. Cada afirmação
+de implementação deve identificar a versão, o objeto e a prova que a sustenta.
+
+No contrato contextual, revisão é uma declaração reversível ligada ao conteúdo
+salvo inspecionado. Mudança material pode desatualizá-la. Salvar uma edição,
+registrar Observação ou abrir conteúdo mantém significado próprio; nenhum
+desses atos declara revisão. Comentário também não aplica nova intenção ao
+conteúdo. O clique de revisão registra uma declaração, sem comprovar leitura,
+correção ou eficácia.
+
+Revisão e acesso são decisões independentes. Conteúdo completo salvo não
+revisado pode ser estudado por quem possui acesso, inclusive visitante de curso
+explicitamente público. A política de disponibilizar somente material revisado
+é opcional e expressa. Em qualquer política, a revisão não concede propriedade,
+publicidade ou direito a arquivos; rascunho local e gravação parcial não se
+tornam conteúdo público. Ausência de registro antigo permanece ausência, sem
+reconstrução fictícia de aprovação.
 
 ### Registro mínimo
 
@@ -434,6 +530,15 @@ Uma investigação pode usar cursos privados independentes para produzir
 condições diferentes. O protocolo externo registra a pergunta, o inventário
 semântico comum, a configuração fixada, o artefato efetivamente exposto, a
 população, a atribuição, os instrumentos, os dados ausentes e a análise.
+
+Intenção corrente, configuração aplicada, proveniência e declaração de revisão
+precisam permanecer distinguíveis nesse registro. A preferência pessoal de
+processo não modifica uma condição fixada. Nova geração pode alterar linguagem,
+exemplos e dificuldade junto com o parâmetro escolhido; copiar o curso ou
+alterar um controle não demonstra que somente uma variável mudou. A base, suas
+fontes, unidades, divergências e regras de consulta do apoio integram a condição
+efetivamente apresentada. Modelo e configuração só são registrados quando
+conhecidos, sem preencher lacunas por adivinhação.
 
 O produto não cria uma entidade de Variante nem bloqueia o curso. Separar os
 cursos ajuda a evitar mistura acidental, mas não garante equivalência semântica,
@@ -532,20 +637,25 @@ limites antes de orientar outro contexto.
 - [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
+- [Biggs (1996)](referencias.md#ref-biggs1996alignment): John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364.
 - [Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving): Markus Brunmair; Tobias Richter (2019). **Similarity Matters: A Meta-Analysis of Interleaved Learning and Its Moderators.** *Psychological Bulletin*, 145(11), p. 1029–1052.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
+- [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel): Four-Component Instructional Design (s.d.). **About the 4C/ID Model.**
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
 - [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
 - [Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol): Angela C. Karich; Matthew K. Burns; Kathrin E. Maki (2014). **Updated Meta-Analysis of Learner Control Within Educational Technology.** *Review of Educational Research*, 84(3), p. 392–410.
+- [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
+- [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner): Diana Laurillard; Eileen Kennedy; Patricia Charlton; Joanna Wild; Dionisis Dimakopoulos (2018). **Using Technology to Develop Teachers as Designers of TEL: Evaluating the Learning Designer.** *British Journal of Educational Technology*, 49(6), p. 1044–1058.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
 - [Messick (1995)](referencias.md#ref-messick1995validity): Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749.
+- [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection): Microsoft (s.d.). **Guideline 9: Support Efficient Correction.**
 - [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.
 - [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
@@ -554,6 +664,7 @@ limites antes de orientar outro contexto.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
+- [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture): William Sandoval (2014). **Conjecture Mapping: An Approach to Systematic Educational Design Research.** *Journal of the Learning Sciences*, 23(1), p. 18–36.
 - [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
@@ -563,6 +674,9 @@ limites antes de orientar outro contexto.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.
 - [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased): Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23.
+- [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22): World Wide Web Consortium (2023). **Web Content Accessibility Guidelines (WCAG) 2.2.**
+- [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog): World Wide Web Consortium (s.d.). **Dialog (Modal) Pattern: ARIA Authoring Practices Guide.**
+- [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgtoolbar): World Wide Web Consortium (s.d.). **Toolbar Pattern: ARIA Authoring Practices Guide.**
 - [Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated): Barry J. Zimmerman (2002). **Becoming a Self-Regulated Learner: An Overview.** *Theory Into Practice*, 41(2), p. 64–70.
 
 <!-- referências locais: fim -->
