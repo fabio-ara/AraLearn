@@ -37,6 +37,10 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 
 ## Percurso de dados
 
+As migrations usam LF também nos checkouts Windows, conforme `.gitattributes`.
+Isso preserva as comparações literais entre definições SQL e os trechos que
+as migrations transformam, independentemente da configuração `core.autocrlf`.
+
 Ao abrir um curso, o navegador busca a composição em páginas, valida o conjunto
 e só então promove a nova revisão local. Estado pessoal e Anotações possuem
 repositórios próprios e podem retomar envios depois de uma falha.
