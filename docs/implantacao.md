@@ -359,8 +359,10 @@ O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada,
 verifica que as licenças não mudaram e exige KVM. Não aceita novas licenças nem
 substitui a aceleração indisponível. A aplicação consulta a configuração pública
 antes do isolamento de rede, sem conta ou curso, e as ações usam os limites
-observados pela hierarquia nativa. No cenário
-de upgrade, o tema escuro é escolhido na UI da versão base e conferido após
+observados pela hierarquia nativa. Na candidata, os controles de tema ficam em
+Configurações → Aparência; na base 0.0.67, ficam em Conta e aparência. A prova
+confere o percurso de cada versão. No cenário de upgrade, o tema escuro é
+escolhido na UI da versão base e conferido após
 force-stop e reabertura. A preferência precisa sobreviver ao upgrade e à
 reinstalação `-r` da candidata, antes de qualquer nova escolha de tema. O cenário
 de instalação limpa verifica a preferência escolhida na própria candidata.

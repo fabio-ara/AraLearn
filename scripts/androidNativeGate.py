@@ -362,9 +362,23 @@ class Device:
     def stop(self):
         self.call("shell", "am", "force-stop", PACKAGE)
 
-    def settings(self):
-        self.tap("Conta e aparência")
-        return self.wait_label("Aparência", clickable=False)
+    def settings(self, *, baseline=False):
+        # The pinned public baseline opens appearance directly. The candidate
+        # keeps it in the shared Settings groups; never guess a coordinate or
+        # accept the old entry point as a fallback for the candidate.
+        self.tap("Conta e aparência" if baseline else "Configurações")
+        if not baseline:
+            self.tap("Aparência")
+        until = time.monotonic() + 60
+        while time.monotonic() < until:
+            try:
+                xml = self.hierarchy()
+                for label in ["Tema escuro", "Tema claro", "Tema do sistema"]:
+                    theme_control(xml, label)
+                return xml
+            except (RuntimeError, ET.ParseError, subprocess.TimeoutExpired):
+                time.sleep(1)
+        raise RuntimeError("Controles de tema indisponíveis na aparência nativa.")
 
     def wait_dark_selected(self, timeout=15):
         until = time.monotonic() + timeout
@@ -378,8 +392,8 @@ class Device:
                 time.sleep(1)
         raise RuntimeError("Tema escuro não está marcado na UI nativa.")
 
-    def dark(self):
-        self.settings()
+    def dark(self, *, baseline=False):
+        self.settings(baseline=baseline)
         self.tap("Tema escuro")
         self.wait_dark_selected()
 
@@ -397,12 +411,12 @@ def upgrade_preserving_theme(device, baseline, candidate):
     device.wait_label("Conta e aparência")
     device.capture("base-initial")
     device.isolate_network()
-    device.dark()
+    device.dark(baseline=True)
     selected_xml, selected_png = device.capture("base-selected")
     theme_selected(selected_xml, selected_png)
     device.stop()
     device.launch()
-    device.settings()
+    device.settings(baseline=True)
     base_xml, base_png = device.capture("base-relaunched")
     theme_selected(base_xml, base_png)
     device.stop()
@@ -410,7 +424,7 @@ def upgrade_preserving_theme(device, baseline, candidate):
     device.call("install", "-r", str(candidate), timeout=120)
     after = device.installed()
     device.launch()
-    device.wait_label("Conta e aparência")
+    device.wait_label("Configurações")
     device.isolate_network()
     # Opening settings observes the old preference; no candidate theme is set.
     device.settings()
@@ -499,8 +513,8 @@ def validate_proof(proof, manifest, receipt, env, evidence_dir, validated_origin
     for stem in ["clean-selected", "clean-relaunched", "base-selected", "base-relaunched", "upgraded", "candidate-reinstalled"]:
         theme_selected((directory / (stem + ".xml")).read_text(encoding="utf-8"),
                        (directory / (stem + ".png")).read_bytes())
-    for stem in ["clean-initial", "base-initial"]:
-        ui_target((directory / (stem + ".xml")).read_text(encoding="utf-8"), "Conta e aparência")
+    for stem, label in [("clean-initial", "Configurações"), ("base-initial", "Conta e aparência")]:
+        ui_target((directory / (stem + ".xml")).read_text(encoding="utf-8"), label)
     require(not screen_is_dark((directory / "clean-initial.png").read_bytes())
             and not screen_is_dark((directory / "base-initial.png").read_bytes()),
             "Estado inicial claro do emulador não foi comprovado.")
@@ -578,7 +592,7 @@ def run_gate(manifest, identity, folder, candidate_folder):
                 device.call("install", str(candidate), timeout=120)
                 clean = device.installed()
                 device.launch()
-                device.wait_label("Conta e aparência")
+                device.wait_label("Configurações")
                 device.capture("clean-initial")
                 device.isolate_network()
                 device.dark()
