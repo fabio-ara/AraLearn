@@ -32,6 +32,39 @@ def hierarchy(*nodes):
 THEME = hierarchy(node("Tema escuro, selecionado"), node("Tema claro"), node("Tema do sistema"))
 
 
+class SyntheticSettingsDevice(gate.Device):
+    """Uses real XML target lookup and tap coordinates, with no ADB process."""
+    def __init__(self, baseline=False):
+        self.stage, self.events = "home", []
+        self.home_label = "Conta e aparência" if baseline else "Configurações"
+        self.views = {
+            "home": hierarchy(node(self.home_label, bounds="[939,133][1057,252]")),
+            "groups": hierarchy(node("Configurações", clickable="false"),
+                                node("Conta", bounds="[50,100][1030,220]"),
+                                node("Aparência", bounds="[50,240][1030,360]")),
+            "appearance": THEME,
+        }
+        self.transitions = {("home", "998", "192"): "appearance" if baseline else "groups",
+                            ("groups", "540", "300"): "appearance"}
+
+    def hierarchy(self):
+        return self.views[self.stage]
+
+    def wait_label(self, label, *, clickable=True, **_options):
+        xml = self.hierarchy()
+        gate.ui_target(xml, label, clickable=clickable)
+        return xml
+
+    def call(self, *args, **_options):
+        if args == ("shell", "wm", "size"):
+            return "Physical size: 1080x2400"
+        if args[:3] != ("shell", "input", "tap"):
+            raise AssertionError("Comando inesperado no dispositivo XML sintético.")
+        self.events.append((self.stage, *args[3:]))
+        self.stage = self.transitions[(self.stage, *args[3:])]
+        return ""
+
+
 class SyntheticUpgradeDevice:
     """Only exercises the existing command sequence; it is not Android evidence."""
     def __init__(self, lose_at=None):
@@ -51,8 +84,15 @@ class SyntheticUpgradeDevice:
     def isolate_network(self): self.events.append(("offline",))
     def restore_network(self): self.events.append(("online",))
     def stop(self): self.events.append(("stop", self.version))
-    def settings(self): self.events.append(("settings", self.version))
-    def dark(self): self.events.append(("choose-dark", self.version))
+    def settings(self, *, baseline=False):
+        if baseline != (self.code == gate.BASE_CODE):
+            raise AssertionError("Fluxo de Configurações incompatível com o APK instalado.")
+        self.events.append(("settings", self.version))
+
+    def dark(self, *, baseline=False):
+        if baseline != (self.code == gate.BASE_CODE):
+            raise AssertionError("Escolha de tema no fluxo de outra versão.")
+        self.events.append(("choose-dark", self.version))
 
     def capture(self, name):
         self.events.append(("capture", name))
@@ -93,7 +133,8 @@ class NativeGateTests(unittest.TestCase):
                 "themePreference": {"source": "baseline-ui", "selected": "dark", "afterBaseRelaunch": "dark",
                     "afterUpgrade": "dark", "afterReinstall": "dark", "candidateThemeWrites": 0}}}
         for name in ["clean-initial", "clean-selected", "clean-relaunched", "base-initial", "base-selected", "base-relaunched", "upgraded", "candidate-reinstalled"]:
-            xml = hierarchy(node("Conta e aparência")) if name in {"clean-initial", "base-initial"} else THEME
+            xml = hierarchy(node("Configurações")) if name == "clean-initial" else \
+                hierarchy(node("Conta e aparência")) if name == "base-initial" else THEME
             (self.evidence / (name + ".xml")).write_text(xml, encoding="utf-8")
             dark = name not in {"clean-initial", "base-initial"}
             (self.evidence / (name + ".png")).write_bytes(DARK_PNG if dark else LIGHT_PNG)
@@ -109,6 +150,38 @@ class NativeGateTests(unittest.TestCase):
     def test_uses_current_public_baseline(self):
         self.assertEqual((gate.BASE_VERSION, gate.BASE_CODE, gate.BASE_SHA), (
             "0.0.67", 213, "aeca494678e218ec160708d5b115c5a2f2843ba7a33b2765f7aae28441513148"))
+
+    def test_candidate_settings_opens_appearance_through_observed_xml_without_selecting_theme(self):
+        device = SyntheticSettingsDevice()
+        self.assertEqual(device.settings(), THEME)
+        self.assertEqual(device.events, [("home", "998", "192"), ("groups", "540", "300")])
+        self.assertEqual(device.stage, "appearance")
+
+    def test_baseline_settings_keeps_its_direct_appearance_flow(self):
+        device = SyntheticSettingsDevice(baseline=True)
+        self.assertEqual(device.settings(baseline=True), THEME)
+        self.assertEqual(device.events, [("home", "998", "192")])
+
+    def test_settings_rejects_wrong_version_missing_or_ambiguous_navigation(self):
+        cases = [(False, "home", hierarchy(node("Conta e aparência"))),
+                 (True, "home", hierarchy(node("Configurações"))),
+                 (False, "groups", hierarchy(node("Aparência", clickable="false"))),
+                 (False, "groups", hierarchy(node("Aparência"), node("Aparência")))]
+        for baseline, stage, xml in cases:
+            with self.subTest(baseline=baseline, stage=stage, xml=xml):
+                device = SyntheticSettingsDevice(baseline=baseline)
+                device.views[stage] = xml
+                with self.assertRaisesRegex(RuntimeError, "alvo único"):
+                    device.settings(baseline=baseline)
+                self.assertEqual(len(device.events), 0 if stage == "home" else 1)
+
+    def test_appearance_group_without_theme_controls_cannot_complete_settings(self):
+        device = SyntheticSettingsDevice()
+        device.views["appearance"] = hierarchy(node("Aparência", clickable="false"))
+        with patch.object(gate.time, "monotonic", side_effect=[0, 1, 100]), patch.object(gate.time, "sleep"), \
+                self.assertRaisesRegex(RuntimeError, "Controles de tema"):
+            device.settings()
+        self.assertEqual(device.events, [("home", "998", "192"), ("groups", "540", "300")])
 
     def test_rejects_proof_without_preference_from_baseline(self):
         self.proof["schema"] = "aralearn.android-native-proof.v1"
@@ -128,6 +201,10 @@ class NativeGateTests(unittest.TestCase):
             ("call", "install", "-r", "candidate.apk"), ("launch", "0.0.68"), ("capture", "upgraded"),
             ("stop", "0.0.68"), ("call", "install", "-r", "candidate.apk"),
             ("launch", "0.0.68"), ("capture", "candidate-reinstalled")])
+        self.assertEqual([event for event in device.events if event[0] == "wait"], [
+            ("wait", "Conta e aparência"), ("wait", "Configurações")])
+        self.assertEqual([event for event in device.events if event[0] == "settings"], [
+            ("settings", "0.0.67"), ("settings", "0.0.68"), ("settings", "0.0.68")])
 
     def test_upgrade_stops_on_preference_loss_without_masking_it_by_another_choice(self):
         for stage in ["base-relaunched", "upgraded", "candidate-reinstalled"]:
@@ -311,19 +388,31 @@ class NativeGateTests(unittest.TestCase):
             gate.screen_is_dark(bytes(changed))
 
     def test_base_and_candidate_launch_must_be_observed_before_theme_choice(self):
-        for name in ["clean-initial", "base-initial"]:
+        for name, label in [("clean-initial", "Configurações"), ("base-initial", "Conta e aparência")]:
             with self.subTest(step=name):
                 target = self.evidence / (name + ".xml")
                 target.write_text(hierarchy(node("Entrar")), encoding="utf-8")
                 self.refresh_evidence()
-                with self.assertRaisesRegex(RuntimeError, "Conta e aparência"):
+                with self.assertRaisesRegex(RuntimeError, label):
                     self.validate()
-                target.write_text(hierarchy(node("Conta e aparência")), encoding="utf-8")
+                target.write_text(hierarchy(node(label)), encoding="utf-8")
                 (self.evidence / (name + ".png")).write_bytes(DARK_PNG)
                 self.refresh_evidence()
                 with self.assertRaisesRegex(RuntimeError, "Estado inicial claro"):
                     self.validate()
                 (self.evidence / (name + ".png")).write_bytes(LIGHT_PNG)
+                self.refresh_evidence()
+
+    def test_initial_capture_from_the_other_version_cannot_validate(self):
+        for name, expected, wrong in [("clean-initial", "Configurações", "Conta e aparência"),
+                                       ("base-initial", "Conta e aparência", "Configurações")]:
+            with self.subTest(step=name):
+                target = self.evidence / (name + ".xml")
+                target.write_text(hierarchy(node(wrong)), encoding="utf-8")
+                self.refresh_evidence()
+                with self.assertRaisesRegex(RuntimeError, expected):
+                    self.validate()
+                target.write_text(hierarchy(node(expected)), encoding="utf-8")
                 self.refresh_evidence()
 
     def test_rejects_empty_changed_or_unidentified_licenses(self):
