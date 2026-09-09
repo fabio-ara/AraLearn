@@ -520,7 +520,7 @@ test("recusa OpenAPI hospedado que perde uma operação agrupada ou uma de suas 
       /não contém a projeção de transporte corrente/u
     );
   });
-  await context.test("tarefa ausente conserva os mesmos operationIds", async () => {
+  await context.test("tarefa ausente conserva os identificadores das operações OpenAPI", async () => {
     const incomplete = JSON.parse(ACTIONS_OPENAPI);
     const groupSchema = incomplete.paths["/observacoes_autorais"].post.requestBody
       .content["application/json"].schema;
