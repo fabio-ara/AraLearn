@@ -30,7 +30,13 @@ async function verifySheetGeometry(page, dialog, name, info, { groups = false } 
   for (const width of [360, 390, 430, 1280]) for (const mode of ["light", "dark"]) {
     await page.setViewportSize({ width, height: 844 });
     await page.evaluate(value => { document.documentElement.dataset.colorMode = value; }, mode);
-    const box = await dialog.boundingBox();
+    // A resposta do detalhe pode substituir o diálogo entre a resolução do
+    // locator e a medição. Aguarde uma caixa do nó atual antes de conferir os limites.
+    let box = null;
+    await expect.poll(async () => {
+      box = await dialog.boundingBox();
+      return box;
+    }, { message: `${name}: diálogo mensurável em ${width}px/${mode}` }).not.toBeNull();
     expect(box.x).toBeGreaterThanOrEqual(-1); expect(box.y).toBeGreaterThanOrEqual(-1);
     expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
     expect(box.y + box.height).toBeLessThanOrEqual(845);

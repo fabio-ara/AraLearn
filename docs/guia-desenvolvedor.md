@@ -310,6 +310,11 @@ fixtures incluem Explicação e uma aprovação explicitamente simulada pelo RPC
 protegido; essa preparação não constitui revisão humana de um curso real.
 As revisões usadas após a aprovação são relidas, sem fixar o número anterior à
 mudança. Falhas HTTP inesperadas continuam reprovando a jornada.
+O inventário local de fixtures conserva cada tentativa e seu recibo de limpeza.
+Se o sistema de arquivos bloquear temporariamente a substituição do recibo, o
+helper reconcilia os bytes e retenta apenas a mesma renomeação, por prazo limitado.
+Uma falha persistente conserva o arquivo anterior e o temporário para recuperação;
+a operação remota não é repetida para reparar a gravação local do inventário.
 Fixtures de IndexedDB devem aguardar `transaction.oncomplete` antes de fechar
 a conexão de inspeção e abrir outra versão; o sucesso de uma requisição de
 leitura ainda não confirma o encerramento da transação.

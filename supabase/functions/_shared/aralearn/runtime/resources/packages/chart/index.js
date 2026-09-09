@@ -48,7 +48,11 @@ function baseEncoding(data, theme) {
     x: {
       field: "x",
       type: data.xAxis.type,
-      title: axisTitle(data.xAxis),
+      // Em autosize fit, o Vega não reserva a extensão horizontal do título.
+      // Nome e unidade em linhas nativas conservam o texto e a fonte no celular.
+      title: data.xAxis.unit
+        ? [data.xAxis.label, `(${data.xAxis.unit})`]
+        : data.xAxis.label,
       scale: axisScale(data.xAxis),
       axis: { labelOverlap: "greedy", labelLimit: 72, titlePadding: 10, tickCount: 5 }
     },

@@ -1,5 +1,6 @@
 import { academicProfile } from "../../sdk/academic.js";
 import { stripPackageManualTextMarkersDeep } from "../../kernel/manualTextMarkers.js";
+import { hydrateDiagramViewport, renderDiagramViewportShell } from "../../sdk/diagramViewport.js";
 import {
   appendGraphvizForeignLabel,
   dotAttributes,
@@ -135,7 +136,8 @@ function renderGraphFigure(data) {
     ...data.vertices.map((vertex) => labelTemplate("vertex", vertex.id, vertex.label)),
     ...data.edges.filter((edge) => edgeLabel(edge)).map((edge) => labelTemplate("edge", edge.id, edgeLabel(edge)))
   ].join("");
-  return `<figure class="package-math-graph" data-graphviz-engine="${engine}"><div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="img" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInlineReference(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
+  const canvas = `<div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="region" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>`;
+  return `<figure class="package-math-graph" data-graphviz-engine="${engine}">${renderDiagramViewportShell({ canvasHtml: canvas })}${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInlineReference(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
 }
 
 function vertexBounds(group) {
@@ -178,9 +180,10 @@ function replaceInteractiveLabels(figure, svg, data) {
   });
 }
 
-async function hydrateGraph(figure) {
+async function hydrateGraph(figure, stateKey) {
   const canvas = figure.querySelector(".package-math-graph-canvas");
-  if (!canvas || canvas.dataset.graphvizStatus === "ready") return;
+  if (!canvas || ["loading", "ready"].includes(canvas.dataset.graphvizStatus)) return;
+  canvas.dataset.graphvizStatus = "loading";
   try {
     const data = JSON.parse(decodeURIComponent(figure.dataset.graphData || ""));
     const svg = await renderGraphvizSvg(canvas, {
@@ -189,6 +192,7 @@ async function hydrateGraph(figure) {
       className: "package-math-graph-svg"
     });
     replaceInteractiveLabels(figure, svg, data);
+    await hydrateDiagramViewport({ figure, canvas, svg, stateKey });
     canvas.dataset.graphvizStatus = "ready";
     canvas.setAttribute("aria-busy", "false");
   } catch (error) {
@@ -301,11 +305,13 @@ export const graphPackage = Object.freeze({
     return `<div class="runtime-block runtime-graph-block">${renderPackageProse(data.prompt)}<div data-graph-data="${escapePackageAttribute(encodedData)}">${renderGraphFigure(data)}</div></div>`;
   },
   async hydrate(instanceRoot) {
-    await Promise.all([...instanceRoot.querySelectorAll("[data-graph-data]")].map(async (host) => {
+    const baseKey = instanceRoot.dataset.packageRenderKey
+      || `${instanceRoot.dataset.package || "package"}:${instanceRoot.dataset.packageInstanceId || "instance"}`;
+    await Promise.all([...instanceRoot.querySelectorAll("[data-graph-data]")].map(async (host, index) => {
       const figure = host.querySelector(".package-math-graph");
       if (figure) {
         figure.dataset.graphData = host.dataset.graphData;
-        await hydrateGraph(figure);
+        await hydrateGraph(figure, `${baseKey}:graph:${index}`);
       }
     }));
   },

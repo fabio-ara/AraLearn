@@ -477,6 +477,10 @@ test("modo Estudo entrega o grafo matemático ao Graphviz sem coordenadas autora
   }));
   assert.match(html, /package-math-graph/u);
   assert.match(html, /data-graphviz-engine="dot"/u);
+  assert.match(html, /data-diagram-viewport-home/u);
+  assert.match(html, /aria-label="Aumentar zoom"/u);
+  assert.match(html, /aria-label="Explorar diagrama em tela inteira"/u);
+  assert.equal((html.match(/class="package-math-graph-canvas"/gu) || []).length, 1);
   assert.match(html, /digraph/u);
   assert.match(html, /Estação central de gerência/u);
   assert.match(html, /envia solicitação de leitura/u);

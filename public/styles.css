@@ -2639,6 +2639,25 @@ button.account-settings-back[hidden] {
   text-transform: uppercase;
 }
 
+@media (max-width: 620px) {
+  .package-memory-stack li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .package-memory-stack li > code {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .package-memory-stack li > code:first-child { justify-items: start; }
+  .package-memory-stack li > code:last-child { justify-items: end; }
+
+  .package-memory-stack li > div {
+    border-inline: 0;
+    border-block: 1px solid var(--resource-border);
+  }
+}
+
 .runtime-feedback-icon {
   display: block;
   width: 20px;
@@ -2912,22 +2931,6 @@ button.account-settings-back[hidden] {
   overflow: clip;
 }
 
-.package-math-graph-canvas {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  padding: 10px;
-  max-height: min(48dvh, 430px);
-  overflow: auto;
-  border: 1px solid var(--resource-border);
-  border-radius: 15px;
-  background: var(--resource-surface-subtle);
-  overscroll-behavior-inline: contain;
-  overscroll-behavior-block: auto;
-  touch-action: pan-x pan-y;
-  -webkit-overflow-scrolling: touch;
-}
-
 .package-diagram-viewport-home,
 .package-diagram-viewport {
   width: 100%;
@@ -3013,6 +3016,7 @@ button.account-settings-back[hidden] {
   stroke-linejoin: round;
 }
 
+.package-math-graph-canvas,
 .package-system-diagram-canvas {
   width: 100%;
   max-width: 100%;
@@ -3031,10 +3035,12 @@ button.account-settings-back[hidden] {
   -webkit-overflow-scrolling: touch;
 }
 
+.package-math-graph-canvas.is-diagram-panning,
 .package-system-diagram-canvas.is-diagram-panning {
   cursor: grabbing;
 }
 
+.package-math-graph-canvas[data-diagram-viewport-mode="explore"],
 .package-system-diagram-canvas[data-diagram-viewport-mode="explore"] {
   overflow: auto;
   overscroll-behavior: contain;

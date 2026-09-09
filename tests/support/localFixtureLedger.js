@@ -34,8 +34,22 @@ function records(config) {
 function save(config, row) {
   const target = path.join(directory(config), `${identity(row.attemptId)}.json`);
   const temporary = `${target}.${randomUUID()}.tmp`;
-  fs.writeFileSync(temporary, `${JSON.stringify({ ...row, updatedAt: now() }, null, 2)}\n`, { mode: 0o600 });
-  fs.renameSync(temporary, target);
+  const bytes = Buffer.from(`${JSON.stringify({ ...row, updatedAt: now() }, null, 2)}\n`);
+  fs.writeFileSync(temporary, bytes, { mode: 0o600 });
+  for (let attempt = 0; ; attempt++) {
+    try { fs.renameSync(temporary, target); break; }
+    catch (error) {
+      if (!["EPERM", "EBUSY"].includes(error.code)) throw error;
+      // Reconcile an uncertain local rename before retrying that same file.
+      // Never replay a remote lifecycle operation to repair ledger I/O.
+      try { if (fs.readFileSync(target).equals(bytes)) return row; }
+      catch (readError) {
+        if (!["ENOENT", "EPERM", "EBUSY"].includes(readError.code)) throw readError;
+      }
+      if (attempt === 4) throw error; // Preserve the original bytes and .tmp for recovery.
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50 * 2 ** attempt);
+    }
+  }
   return row;
 }
 function begin(config, fields) {

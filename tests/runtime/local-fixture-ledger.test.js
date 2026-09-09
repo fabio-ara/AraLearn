@@ -146,3 +146,90 @@ test("falha na prova mínima impede o lote e conserva seu ID para retomada", asy
   assert.equal(f.calls.filter(call => call.method === "create").length, 2, "a retomada reaproveitou a prova mínima existente");
   assert.equal(f.rows().filter(row => row.kind === "cleanup_probe").length, 1);
 });
+
+test("rename transitório do ledger repete os mesmos bytes sem repetir DELETE ou releitura remota", async t => {
+  const f = await fixture(t); const created = await f.api.createCourse({ title: "rename transitório" });
+  recordLocalFixtureFiles(f.config, { ownerId: f.ownerId, courseId: created.courseId,
+    files: [{ kind: "pdf", contentHash: "b".repeat(64) }] });
+  const rename = fs.renameSync, attempts = [], offset = f.calls.length;
+  t.mock.method(fs, "renameSync", (source, target) => {
+    const bytes = fs.readFileSync(source), row = JSON.parse(bytes);
+    if (row.id === created.courseId && row.state === "absent") {
+      attempts.push({ source, target, bytes });
+      if (attempts.length <= 2) throw Object.assign(new Error("bloqueio transitório"), { code: attempts.length === 1 ? "EPERM" : "EBUSY" });
+    }
+    return rename(source, target);
+  });
+  await f.remove(created.courseId);
+  assert.equal(attempts.length, 3);
+  for (const attempt of attempts) {
+    assert.equal(attempt.source, attempts[0].source);
+    assert.equal(attempt.target, attempts[0].target);
+    assert.deepEqual(attempt.bytes, attempts[0].bytes);
+  }
+  assert.deepEqual(f.calls.slice(offset).map(call => call.method), ["delete", "read"]);
+  const saved = f.rows().find(row => row.id === created.courseId);
+  assert.equal(saved.state, "absent");
+  assert.equal(saved.verification, "owner-get-course-404");
+  assert.equal(saved.cleanupResult.fileCleanupPending, false);
+  assert.equal(saved.files[0].state, "absent");
+  assert.equal(fs.existsSync(attempts[0].source), false);
+  await f.removeUser();
+  assert.equal(localFixtureLedgerSummary(f.config).completed, true);
+});
+
+test("rename confirmado pelos bytes do destino reconcilia a exceção sem repetir a operação", async t => {
+  const f = await fixture(t); const created = await f.api.createCourse({ title: "rename reconciliado" });
+  const rename = fs.renameSync, offset = f.calls.length; let attempts = 0;
+  t.mock.method(fs, "renameSync", (source, target) => {
+    const row = JSON.parse(fs.readFileSync(source, "utf8"));
+    const result = rename(source, target);
+    if (row.id === created.courseId && row.state === "absent") {
+      attempts++;
+      throw Object.assign(new Error("confirmação local perdida"), { code: "EPERM" });
+    }
+    return result;
+  });
+  await f.remove(created.courseId);
+  assert.equal(attempts, 1);
+  assert.deepEqual(f.calls.slice(offset).map(call => call.method), ["delete", "read"]);
+  assert.equal(f.rows().find(row => row.id === created.courseId).state, "absent");
+  await f.removeUser();
+  assert.equal(localFixtureLedgerSummary(f.config).completed, true);
+});
+
+test("rename persistente conserva destino anterior e temporário confirmado sem promover cleanup a PASS", async t => {
+  for (const code of ["EPERM", "EBUSY", "EIO"]) await t.test(code, async child => {
+    const f = await fixture(child); const created = await f.api.createCourse({ title: "rename bloqueado" });
+    const rename = fs.renameSync, attempts = [], offset = f.calls.length;
+    child.mock.method(fs, "renameSync", (source, target) => {
+      const bytes = fs.readFileSync(source), row = JSON.parse(bytes);
+      if (row.id === created.courseId && row.state === "absent") {
+        attempts.push({ source, target, bytes });
+        throw Object.assign(new Error("gravação local bloqueada"), { code });
+      }
+      return rename(source, target);
+    });
+    await assert.rejects(() => f.remove(created.courseId), error => error.code === code);
+    assert.equal(attempts.length, code === "EIO" ? 1 : 5);
+    for (const attempt of attempts) {
+      assert.equal(attempt.source, attempts[0].source);
+      assert.equal(attempt.target, attempts[0].target);
+      assert.deepEqual(attempt.bytes, attempts[0].bytes);
+    }
+    assert.deepEqual(f.calls.slice(offset).map(call => call.method), ["delete", "read"]);
+    assert.equal(f.courses.has(created.courseId), false);
+    const previous = f.rows().find(row => row.id === created.courseId);
+    assert.equal(previous.state, "deleting");
+    const pendingBytes = fs.readFileSync(attempts[0].source);
+    assert.deepEqual(pendingBytes, attempts[0].bytes);
+    const pending = JSON.parse(pendingBytes);
+    assert.equal(pending.attemptId, previous.attemptId);
+    assert.equal(pending.cleanupRequestId, previous.cleanupRequestId);
+    assert.equal(pending.state, "absent");
+    assert.equal(pending.verification, "owner-get-course-404");
+    assert.equal(pending.cleanupResult.fileCleanupPending, false);
+    assert.equal(localFixtureLedgerSummary(f.config).completed, false);
+    await assert.rejects(f.removeUser, /pendentes/u);
+  });
+});

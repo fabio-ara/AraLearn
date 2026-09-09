@@ -342,6 +342,11 @@ pacote preserve convenções. Quando duas áreas usam diagramas superficialmente
 parecidos com semânticas distintas, pacotes separados são preferíveis a um
 contrato genérico repleto de exceções.
 
+Em `aralearn.resource.chart`, o título do eixo horizontal apresenta o rótulo
+na primeira linha e a unidade, entre parênteses, na segunda. Essa divisão
+preserva o texto e o tamanho tipográfico do título em telas estreitas. Quando
+o eixo não declara unidade, o título contém apenas o rótulo.
+
 ### Sessões textuais observáveis
 
 A sessão textual entre pessoa e sistema, identificada por
@@ -484,14 +489,17 @@ fluxo em bloco. Relações cuja leitura é genuinamente lateral podem conservar
 elementos no mesmo nível, pois a ampliação não depende de forçar toda topologia para
 uma única coluna.
 
-A camada compartilhada abrange `bpmn_process`, `database_schema`,
+A camada compartilhada abrange `bpmn_process`, `database_schema`, `graph`,
 `entity_relationship`, `network_topology`, `relation_map`, `software_container`,
 `software_system_context`, `state_machine`, `system_internal_block` e `tree`.
 `flow` abre na escala natural, com rolagem local para conservar a leitura dos
-rótulos; oferece o mesmo mecanismo de ampliação e expansão. `graph` mantém seu
-mecanismo próprio de navegação. A validação visual
+rótulos; oferece o mesmo mecanismo de ampliação e expansão. A validação visual
 inclui larguras móveis, temas e exemplos capazes de expor cruzamentos,
 transbordamento, legendas, múltiplas lacunas e textos extensos.
+
+Em telas estreitas, o mapa de memória apresenta cada segmento na ordem endereço
+inicial, descrição e endereço final. A descrição ocupa a largura disponível;
+endereços e direção conservam sua notação e ordem, inclusive com texto ampliado.
 
 ## 12. Acessibilidade
 

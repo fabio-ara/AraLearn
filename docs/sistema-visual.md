@@ -332,6 +332,11 @@ navegam na Unidade. Teclado alcança a área e seus controles. A tela cheia
 mantém ações de reduzir, ampliar e retornar, sem criar outra superfície de
 edição.
 
+O grafo matemático compartilha os controles de enquadramento, ampliação e retorno
+dos diagramas. Nos mapas de memória em telas estreitas, o endereço inicial e o
+final delimitam a descrição em linhas próprias, preservando a largura de leitura
+e a ordem dos segmentos.
+
 ## Prática, retorno e movimento
 
 Seleção, resposta correta, resposta incorreta, foco e indisponibilidade são
