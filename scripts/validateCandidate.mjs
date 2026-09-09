@@ -45,11 +45,25 @@ export function fingerprintInputs(root, files, configuration = {}) {
   return hash.digest("hex");
 }
 
-export function selectGateInputs(files, gate) {
+function selectedBrowserSpecs(args) {
+  if (!Array.isArray(args) || args[0] !== "scripts/runE2eTests.mjs") return null;
+  const specs = [];
+  for (const arg of args.slice(1)) {
+    if (/^tests\/e2e\/[A-Za-z0-9_-]+\.spec\.js$/u.test(arg)) specs.push(new RegExp(arg, "i"));
+    else if (!/^--(?:retries=\d+|forbid-only|reporter=json)$/u.test(arg)) return null;
+  }
+  // Sem seleção explícita, ou com outro formato de comando, conservar todas.
+  // Playwright interpreta os paths posicionais como regex sem âncoras.
+  return specs.length ? specs : null;
+}
+
+export function selectGateInputs(files, gate, args = null) {
   if (gate !== "frontend-e2e") return [...files];
+  const specs = selectedBrowserSpecs(args);
   // O E2E ordinário usa o runtime web e seus fixtures. Contratos publicados,
   // scripts de build/browser e raízes desconhecidas continuam incluídos.
   return files.filter(file => !isDocumentationPath(file) &&
+    (!specs || !/^tests\/e2e\/[^/]+\.spec\.js$/u.test(file) || specs.some(pattern => pattern.test(file))) &&
     !/^(?:android\/|supabase\/(?:migrations|tests)\/|\.github\/workflows\/|tests\/(?:runtime|kernel)\/)/u.test(file) &&
     !/^scripts\/(?:runLocalIntegration\.mjs|validateLocalSupabase\.ps1|validateCandidate\.mjs|classifyCiPaths\.mjs|validationImpact\.mjs|runPreflight\.mjs)$/u.test(file));
 }
@@ -60,7 +74,7 @@ export function reusableInputReceipt(previous, { root, inputs, step, configurati
   if (previous.schemaVersion !== 2 || previous.configuration !== configuration ||
       previous.command !== digest(JSON.stringify(step)) || !previous.inputs) return false;
   // A união detecta inputs removidos, além de arquivos novos ou alterados.
-  const consumed = selectGateInputs([...new Set([...inputs, ...Object.keys(previous.inputs)])], step.gate);
+  const consumed = selectGateInputs([...new Set([...inputs, ...Object.keys(previous.inputs)])], step.gate, step.args);
   return consumed.every(file => previous.inputs[file] === fingerprintInputs(root, [file]));
 }
 
@@ -167,7 +181,7 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
     const tree = fingerprintInputs(root, files);
     const report = { schemaVersion: 1, scope: "preparation", tree, configuration: digest(JSON.stringify(config)), base, paths, impact, result: "passed", gates: [], failed_tests: [], log_refs: [] };
     for (const step of gates) {
-      const fingerprint = fingerprintInputs(root, selectGateInputs(inputs, step.gate), { config, step });
+      const fingerprint = fingerprintInputs(root, selectGateInputs(inputs, step.gate, step.args), { config, step });
       const receiptPath = path.join(output, `${step.gate}.receipt.json`);
       const previous = readJson(receiptPath);
       if (!force && step.reusable !== false && reusableInputReceipt(previous, { root, inputs, step, configuration: report.configuration, fingerprint })) {
@@ -186,13 +200,13 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
         try { result.tests = verifyBrowserReport(readJson(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME))); }
         catch (error) { result.result = "failed"; result.failed_tests = [error.message]; }
       }
-      if (fingerprintInputs(root, selectGateInputs([...candidateFiles(root), dependencyState], step.gate), { config, step }) !== fingerprint) {
+      if (fingerprintInputs(root, selectGateInputs([...candidateFiles(root), dependencyState], step.gate, step.args), { config, step }) !== fingerprint) {
         result.result = "failed";
         result.failed_tests = [...(result.failed_tests || []), "Inputs mudaram durante a prova; execute novamente."];
       }
       const indexed = step.gate === "frontend-e2e" ? {
         command: digest(JSON.stringify(step)),
-        inputs: Object.fromEntries(selectGateInputs(inputs, step.gate).map(file => [file, fingerprintInputs(root, [file])]))
+        inputs: Object.fromEntries(selectGateInputs(inputs, step.gate, step.args).map(file => [file, fingerprintInputs(root, [file])]))
       } : {};
       const receipt = { schemaVersion: step.gate === "frontend-e2e" ? 2 : 1, scope: "preparation", gate: step.gate, fingerprint, tree, configuration: report.configuration, ...indexed, ...result, elapsedMs: Date.now() - started, finishedAt: new Date().toISOString(), log_refs: [logRef] };
       fs.writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);

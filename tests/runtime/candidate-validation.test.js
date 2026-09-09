@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -93,6 +94,55 @@ test("seleção E2E conserva contratos, scripts e raízes desconhecidas; demais 
   for (const gate of ["preflight", "lint", "runtime-focal", "unknown-gate"]) {
     assert.deepEqual(selectGateInputs(files, gate), files);
   }
+});
+
+test("specs E2E seguem a seleção efetiva e comandos desconhecidos conservam todos os inputs", () => {
+  const selected = "tests/e2e/example.spec.js";
+  const unselected = "tests/e2e/course-authoring-context-local.spec.js";
+  const regexOverlap = "tests/e2e/example.spec.js-extra.spec.js";
+  const files = [selected, unselected, regexOverlap, "tests/e2e/helper.js", "tests/fixtures/course.json",
+    "tests/helpers/browser.js", "scripts/runE2eTests.mjs", "unknown/input.js"];
+  const args = ["scripts/runE2eTests.mjs", selected, "--retries=0", "--forbid-only", "--reporter=json"];
+  assert.deepEqual(selectGateInputs(files, "frontend-e2e", args), files.filter(file => file !== unselected));
+  for (const alternate of [null, ["scripts/runE2eTests.mjs", "--reporter=json"],
+    [...args, "--config=custom.config.js"], ["another-runner.mjs", selected]]) {
+    assert.deepEqual(selectGateInputs(files, "frontend-e2e", alternate), files);
+  }
+  assert.deepEqual(selectGateInputs(files, "runtime-focal", args), files);
+});
+
+test("recibo indexado ignora spec não selecionada e invalida spec, fixture, seleção e novos inputs consumidos", t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "tests/fixtures"));
+  const selected = "tests/e2e/example.spec.js";
+  const unselected = "tests/e2e/course-authoring-context-local.spec.js";
+  const fixturePath = "tests/fixtures/course.json";
+  const files = [selected, unselected, fixturePath];
+  for (const file of files) fs.writeFileSync(path.join(root, file), "before\n");
+  const step = { gate: "frontend-e2e", args: ["scripts/runE2eTests.mjs", selected, "--retries=0", "--forbid-only", "--reporter=json"] };
+  // Simula o formato indexado anterior, que guardava também as specs não executadas.
+  const previous = {
+    schemaVersion: 2, result: "passed", configuration: "same-configuration", fingerprint: "previous-wide-fingerprint",
+    command: createHash("sha256").update(JSON.stringify(step)).digest("hex"),
+    inputs: Object.fromEntries(files.map(file => [file, fingerprintInputs(root, [file])]))
+  };
+  const reusable = (inputs = files, nextStep = step) => reusableInputReceipt(previous, {
+    root, inputs, step: nextStep, configuration: previous.configuration, fingerprint: "new-selected-fingerprint"
+  });
+  fs.writeFileSync(path.join(root, unselected), "integration-only repair\n");
+  assert.equal(reusable(), true);
+  assert.equal(reusable(files, { ...step, args: [...step.args, unselected] }), false, "a seleção faz parte do hash do comando");
+  fs.writeFileSync(path.join(root, selected), "browser assertion changed\n");
+  assert.equal(reusable(), false);
+  fs.writeFileSync(path.join(root, selected), "before\n");
+  fs.writeFileSync(path.join(root, fixturePath), "fixture changed\n");
+  assert.equal(reusable(), false);
+  fs.writeFileSync(path.join(root, fixturePath), "before\n");
+  const added = "tests/e2e/example.spec.js-extra.spec.js";
+  fs.writeFileSync(path.join(root, added), "new matching spec\n");
+  assert.equal(reusable([...files, added]), false, "nova spec que casa com a regex também é consumida");
+  fs.unlinkSync(path.join(root, selected));
+  assert.equal(reusable(files.filter(file => file !== selected)), false, "a união conserva a origem removida");
 });
 
 test("recibo E2E conserva prova após reparo exclusivo da integração e invalida CSS", async t => {

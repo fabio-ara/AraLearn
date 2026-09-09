@@ -18,6 +18,19 @@ async function auth(path, body, { admin = false, method = "POST" } = {}) {
   return result.status === 204 ? null : result.json();
 }
 
+async function holdRealResponse(page, url) {
+  let release, markReady;
+  const released = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { markReady = resolve; });
+  await page.route(url, async route => {
+    const response = await route.fetch();
+    markReady(response.status());
+    await released;
+    await route.fulfill({ response });
+  });
+  return { ready, release };
+}
+
 async function verifySheetGeometry(page, dialog, name, info, { groups = false } = {}) {
   const colors = [];
   for (const width of [360, 390, 430, 1280]) for (const mode of ["light", "dark"]) {
@@ -60,6 +73,7 @@ test.describe("folhas contextuais com curso local real", () => {
     expect(PROJECT_URL).toMatch(/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/u);
     const email = `context304-${Date.now()}-${process.pid}@aralearn.local`;
     let user, client, courseId, context;
+    const heldResponses = [];
     try {
       user = await auth("admin/users", { email, password: PASSWORD, email_confirm: true,
         user_metadata: { test: "course-authoring-context-local-304" } }, { admin: true });
@@ -140,12 +154,37 @@ test.describe("folhas contextuais com curso local real", () => {
       await expect(sourceDialog).toHaveCount(0);
       await expect(sources).toBeFocused();
       await expect(title).toHaveText("Rascunho contextual preservado");
+      const profilesResponse = await holdRealResponse(page,
+        url => url.origin === PROJECT_URL && url.pathname.endsWith('/v1/authoring-profiles'));
+      const appliedResponse = await holdRealResponse(page,
+        url => url.origin === PROJECT_URL && url.pathname.endsWith(`/v1/courses/${courseId}/research`));
+      heldResponses.push(profilesResponse, appliedResponse);
       const parameters = page.locator("[data-inspection-open-parameters]");
       await parameters.click();
       const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
       await expect(dialog).toBeVisible();
-      await dialog.getByLabel("Escolher grupo de ajustes").click();
-      await dialog.getByRole("button", { name: "Leitura e estilo", exact: true }).click();
+      const chooser = dialog.getByLabel("Escolher grupo de ajustes");
+      const categoryMenu = dialog.locator('.course-design-category-menu');
+      const editorialGroup = dialog.getByRole("button", { name: "Leitura e estilo", exact: true });
+      await chooser.click();
+      expect(await profilesResponse.ready).toBe(200);
+      expect(await appliedResponse.ready).toBe(200);
+      // As respostas são locais reais; somente a entrega ao navegador é
+      // controlada para exercitar a atualização com o grupo já aberto.
+      const menuBeforeProfiles = await categoryMenu.elementHandle();
+      profilesResponse.release();
+      await expect.poll(() => menuBeforeProfiles.evaluate(node => node.isConnected)).toBe(false);
+      await expect(categoryMenu).toHaveJSProperty('open', true);
+      await expect(chooser).toBeFocused();
+      await editorialGroup.focus();
+      const menuBeforeApplied = await categoryMenu.elementHandle();
+      appliedResponse.release();
+      await expect.poll(() => menuBeforeApplied.evaluate(node => node.isConnected)).toBe(false);
+      await expect(categoryMenu).toHaveJSProperty('open', true);
+      await expect(editorialGroup).toBeFocused();
+      await page.screenshot({ path: info.outputPath('parameters-late-responses-menu-open.png'), fullPage: true });
+      await editorialGroup.click();
+      await expect(categoryMenu).toHaveJSProperty('open', false);
       await expect(dialog.getByRole("button", { name: "Ajustar Extensão das unidades", exact: true })).toBeVisible();
       await verifySheetGeometry(page, dialog, "parameters-context", info, { groups: true });
       await dialog.getByRole("button", { name: "Ajustar Extensão das unidades", exact: true }).click();
@@ -173,12 +212,16 @@ test.describe("folhas contextuais com curso local real", () => {
       expect(errors).toEqual([]);
       await page.screenshot({ path: info.outputPath("context-return-390.png"), fullPage: true });
     } finally {
+      for (const response of heldResponses) response.release();
       await context?.close().catch(() => {});
       if (courseId) {
         const removed = await client.maintainCourse({ courseId, operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() });
         expect(removed.fileCleanupPending).toBe(false);
       }
       if (user) await auth(`admin/users/${user.id}`, undefined, { admin: true, method: "DELETE" });
+      await info.attach('local-fixture-cleanup', { contentType: 'application/json', body: JSON.stringify({
+        courseId, userId: user?.id, courseDeleted: Boolean(courseId), userDeleted: Boolean(user), fileCleanupPending: false
+      }) });
     }
   });
 });
