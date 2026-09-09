@@ -3962,7 +3962,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-inspection-item-actions {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   border-block: 1px solid var(--border-subtle);
   padding-block: 5px;
   min-height: calc(var(--tap) + 12px);
@@ -3971,7 +3971,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-inspection-item-actions:has(.study-tool-actions) {
   flex-wrap: nowrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
@@ -4002,7 +4002,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 }
 
 .course-inspection-item-actions .course-inspection-mode-actions :is(button, a),
-.course-inspection-item-actions > :is([data-inspection-open-explanation], [data-inspection-review-unit]) {
+.course-inspection-item-actions > [data-inspection-open-explanation] {
   flex: 0 0 var(--tap);
   width: var(--tap);
   min-width: var(--tap);

@@ -130,6 +130,8 @@ Configurações mantém o mesmo acesso e os grupos Conta, Aparência, Sincroniza
 
 O controle abre um minipainel no objeto corrente e conserva objeto, rolagem, foco e rascunho. “Neste objeto” é o alvo inicial; escolher outro alcance admitido mostra seu efeito antes de aplicar. O painel conserva valores e textos legíveis mesmo quando as ações principais usam somente ícones. Cada ação tem nome e estado acessível, área de toque suficiente e ajuda utilizável por teclado/toque.
 
+Na inspeção, **Revisar unidade** fica no menu de detalhes da própria unidade e abre sua revisão individual; fechar devolve o foco ao acionador do menu. A barra mantém acesso à base explicativa. Em larguras estreitas, as ações podem ocupar outra linha, com grupos alinhados ao topo e alvos de 44 px preservados. O editor contextual conserva a disposição móvel do cabeçalho de origem ao entrar, salvar ou cancelar.
+
 A Explicação abre seu conteúdo salvo. Citações sobrescritas levam às referências no fim e permitem retornar à ocorrência. O detalhe oferece fonte web/PDF conforme os direitos. Acesso equivalente ao acervo permanece disponível mesmo quando ainda não existe Explicação. A fileira/cabeçalho de leitura dispensa botão separado de **Fontes** após essa equivalência estar preservada; ações autorais permanecem no contexto de autoria. Fechar fica à direita. Respostas tardias não substituem o painel ativo, o objeto ou uma edição pendente.
 
 ## Aceite verificável e divisão das etapas

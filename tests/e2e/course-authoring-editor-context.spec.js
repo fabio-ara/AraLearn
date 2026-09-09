@@ -27,7 +27,7 @@ async function mount(page, theme, { long = true } = {}) {
     const route = buildCourseAuthoringRoute(courseId, { studyUnitId: unit.id });
     history.replaceState(null, "", route);
     const authoringRoot = document.querySelector("#course-authoring-root"), editorRoot = document.querySelector("#aralearn-editor-root");
-    authoringRoot.innerHTML = renderCourseAuthoringSurface({ view: "course", section: "content", routeKey: route,
+    authoringRoot.innerHTML = renderCourseAuthoringSurface({ view: "course", section: "content", routeKey: route, canOpenSettings: true,
       course: { courseId, revision: 7, title: course.title, ownership: "owned", canEdit: true, visibility: "private", publicFileAccess: "restricted" } });
     authoringRoot.insertAdjacentHTML("beforeend", '<div style="height:900px"></div><button data-context-origin>Editar alvo selecionado</button>');
     const origin = authoringRoot.querySelector("[data-context-origin]");

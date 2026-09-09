@@ -572,7 +572,7 @@ async function mountCourseAuthoring(page, {
       firstCourse.plan.parts = [];
       firstCourse.plan.counts.authoringPartCount = 0;
       firstCourse.plan.counts.linkedDidacticMicrosequenceCount = 0;
-      firstCourse.plan.counts.studyUnitCount = 0;
+      firstCourse.plan.counts.studyUnitCount = 60;
     }
     if (requestedPlanningScenario === "two-parts") {
       const firstCourse = definitions[0];
@@ -5197,7 +5197,7 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   const jsonPath = await jsonDownload.path();
   const exported = JSON.parse(await readFile(jsonPath, "utf8"));
   expect(jsonDownload.suggestedFilename()).toBe("aralearn-curso-e-analise-edicao-5.json");
-  expect(exported.contract).toBe("aralearn.course-authoring-export.v1");
+  expect(exported.contract).toBe("aralearn.course-authoring-export.v2");
   expect(exported.analytics.contract).toBe("aralearn.course-authoring-analytics.v4");
   expect(exported.scope).toEqual({
     kind: "didactic_microsequence",
@@ -5449,6 +5449,15 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await expect(open).toBeEnabled();
   await card.locator('.course-inspection-item-details > summary').click();
   await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
+  const details = card.locator('.course-inspection-item-details > summary');
+  await details.click();
+  await card.getByRole('button', { name: 'Revisão autoral desta unidade', exact: true }).click();
+  const unitReview = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
+  await expect(unitReview.getByRole('heading', { name: 'Unidade de estudo', exact: true })).toBeVisible();
+  await expect(unitReview).toContainText('Unidade curricular 12');
+  await unitReview.getByRole('button', { name: 'Fechar inspeção da unidade', exact: true }).click();
+  await expect(details).toBeFocused();
+  await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
   await page.screenshot({ path: info.outputPath('review-entry-tools-360.png'), fullPage: true });
   await open.click();
   const review = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
@@ -5465,6 +5474,31 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await sources.getByRole('button', { name: 'Fechar', exact: true }).click();
   await expect(sources).toHaveCount(0); await expect(open).toBeFocused();
   await expect(card).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 850 });
+  await card.getByRole('button', { name: 'Mostrar várias unidades', exact: true }).click();
+  const narrowActions = await card.locator('.course-inspection-item-actions').evaluate(bar => {
+    const bounds = bar.getBoundingClientRect();
+    const controls = [...bar.querySelectorAll('button')].flatMap(button => {
+      const rect = button.getBoundingClientRect();
+      if (!rect.width || !rect.height) return [];
+      return [{ x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+        hit: [[.5, .5], [.15, .5], [.85, .5], [.5, .15], [.5, .85]].every(([x, y]) =>
+          button.contains(document.elementFromPoint(rect.x + rect.width * x, rect.y + rect.height * y))) }];
+    });
+    return { left: bounds.left, right: bounds.right, controls };
+  });
+  expect(narrowActions.controls).toHaveLength(8);
+  for (const control of narrowActions.controls) {
+    expect(control.width).toBeGreaterThanOrEqual(44);
+    expect(control.height).toBeGreaterThanOrEqual(44);
+    expect(control.x).toBeGreaterThanOrEqual(narrowActions.left - 1);
+    expect(control.x + control.width).toBeLessThanOrEqual(narrowActions.right + 1);
+    expect(control.hit).toBe(true);
+  }
+  expect(Math.abs(narrowActions.controls[0].y - narrowActions.controls[2].y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(narrowActions.controls[1].y - narrowActions.controls[2].y)).toBeLessThanOrEqual(1);
+  await card.getByRole('checkbox', { name: 'Adicionar Unidade curricular 12 à seleção para observação', exact: true }).click();
+  await expect(card.getByRole('checkbox')).toBeChecked();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations)).toEqual([]);
   expect(errors).toEqual([]);
 });

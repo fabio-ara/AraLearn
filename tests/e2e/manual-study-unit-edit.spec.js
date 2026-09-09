@@ -9,7 +9,7 @@ import {
 } from "../../src/ui/manualStudyUnitEdit.js";
 
 const STYLES = ["/styles-tokens.css", "/styles-shell-baseline.css", "/styles.css",
-  "/course-authoring.css"];
+  "/course-authoring.css", "/authoring-observations.css", "/study-references.css"];
 const VIEWPORTS = [360, 390, 430, 1280];
 const GEOMETRY_TOLERANCE = 1;
 const fixture = JSON.parse(fs.readFileSync(
@@ -1309,8 +1309,8 @@ function expectSameGeometry(before, after, context) {
 test("edição conserva cabeçalho e prática até 1px; prosa cresce sem mover controles", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   const controls = ['header [data-action="go-back"]', 'header [data-action="go-home"]',
-    'header [aria-label="Visualizar"]', 'header [aria-label="Editar"]',
-    'header [aria-label="Assistência por IA"]', 'header [data-action="open-settings"]'];
+    '.study-contextual-authoring [aria-label="Visualizar"]', '.study-contextual-authoring [aria-label="Editar"]',
+    '.study-contextual-authoring [aria-label="Assistência por IA"]', 'header [data-action="open-settings"]'];
   const content = [".runtime-card-title", ".runtime-paragraph-block > p", ".study-stage"];
   for (const theme of ["light", "dark"]) {
     for (const width of VIEWPORTS) {
@@ -1386,25 +1386,32 @@ test("inspeção preserva título e cabeçalho ao editar nos temas e quatro larg
 test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", async ({ page }) => {
   test.setTimeout(120_000);
   const selectors = ['header [data-action="go-back"]', 'header [data-action="go-home"]',
-    'header [aria-label="Visualizar"]', 'header [aria-label="Editar"]',
+    'header .study-runtime-status-control',
     'header [data-action="open-settings"]'];
+  const levelModeSelectors = ['header [aria-label="Visualizar"]', 'header [aria-label="Editar"]'];
   const evidence = [];
   for (const theme of ["light", "dark"]) {
     for (const width of VIEWPORTS) {
       await page.setViewportSize({ width, height: 900 });
       await openStudyUnit(page, "owned", { longTitles: true });
       await page.evaluate((theme) => { document.documentElement.dataset.colorMode = theme; }, theme);
+      await expect(page.locator('header .study-mode-actions')).toHaveCount(0);
+      await expect(page.locator('.study-contextual-authoring').getByRole("button", { name: "Visualizar", exact: true })).toBeVisible();
+      await expect(page.locator('.study-contextual-authoring').getByRole("button", { name: "Editar", exact: true })).toBeVisible();
       const reference = await elementGeometry(page, selectors);
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
       const microsequence = await elementGeometry(page, selectors);
+      const levelModeReference = await elementGeometry(page, levelModeSelectors);
       expectSameGeometry(reference, microsequence, `${width}/${theme}/microssequência`);
-      evidence.push({ width, theme, level: "microssequência", controls: microsequence });
+      evidence.push({ width, theme, level: "microssequência", controls: { ...microsequence, ...levelModeReference } });
       await page.evaluate(() => globalThis.__manualStudyApp.openCourse("10000000-0000-4000-8000-000000000001"));
       for (const [level, next] of [["curso", "Abrir módulo"], ["módulo", "Abrir lição"],
         ["lição", "Abrir microssequência didática"]]) {
         const actual = await elementGeometry(page, selectors);
         expectSameGeometry(reference, actual, `${width}/${theme}/${level}`);
-        evidence.push({ width, theme, level, controls: actual });
+        const levelModes = await elementGeometry(page, levelModeSelectors);
+        expectSameGeometry(levelModeReference, levelModes, `${width}/${theme}/${level}/modos`);
+        evidence.push({ width, theme, level, controls: { ...actual, ...levelModes } });
         await page.getByRole("button", { name: next, exact: true }).first().click({ timeout: 5000 });
       }
     }

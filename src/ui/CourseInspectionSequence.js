@@ -845,9 +845,14 @@ function renderStudyUnitContextActions(item, state) {
     `<button type="button" data-inspection-copy-link data-deep-link="${escapeHtml(item.deepLink)}"` +
     ` data-inspection-control-key="copy:${studyUnitId}">` +
     `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar link</span></button>` +
-    `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, { section: "review", studyUnitId: item.studyUnit.id }))}"` +
+    (state.canReviewContent
+      ? `<button type="button" data-inspection-review-unit data-study-unit-id="${studyUnitId}"` +
+        ` data-inspection-control-key="content-review:${studyUnitId}" aria-label="Revisão autoral desta unidade"` +
+        `${state.manualStudyUnitId ? " disabled" : ""}>` +
+        `${renderUiIcon("review", "course-authoring-button-icon")}<span>Revisar unidade</span></button>`
+      : `<a href="${escapeHtml(buildCourseAuthoringRoute(state.courseId, { section: "review", studyUnitId: item.studyUnit.id }))}"` +
     ` data-inspection-route data-inspection-control-key="review:${studyUnitId}">` +
-    `${renderUiIcon("review", "course-authoring-button-icon")}<span>Revisar unidade</span></a>` +
+    `${renderUiIcon("review", "course-authoring-button-icon")}<span>Revisar unidade</span></a>`) +
     `<button type="button" class="course-inspection-view-menu" data-inspection-unit-mode="view"` +
     ` data-study-unit-id="${studyUnitId}"${state.manualSaving ? " disabled" : ""}>` +
     `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Visualizar</span></button>` +
@@ -997,10 +1002,7 @@ function renderStudyUnit(
     '<div class="course-inspection-item-actions" aria-label="Ações contextuais">' +
     (state.canReviewContent ? `<button type="button" data-inspection-open-explanation data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
       ` data-inspection-control-key="explanation:${escapeHtml(item.studyUnit.id)}" aria-label="Base explicativa e revisão" title="Base explicativa e revisão"${state.manualStudyUnitId ? " disabled" : ""}>` +
-      `${renderUiIcon("study", "course-authoring-button-icon")}</button>` +
-      `<button type="button" data-inspection-review-unit data-study-unit-id="${escapeHtml(item.studyUnit.id)}"` +
-      ` data-inspection-control-key="content-review:${escapeHtml(item.studyUnit.id)}" aria-label="Revisão autoral desta unidade" title="Revisão autoral desta unidade"${state.manualStudyUnitId ? " disabled" : ""}>` +
-      `${renderUiIcon("review", "course-authoring-button-icon")}</button>` : "") +
+      `${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +
     (renderStudyToolActions(item.studyUnit, RESOURCE_PACKAGE_REGISTRY, {
       disabled: Boolean(state.manualStudyUnitId), compact: true
     }) || '<div class="study-tool-actions" aria-hidden="true"></div>') +
@@ -3110,12 +3112,13 @@ export function createCourseInspectionSequence({
       const microsequenceId = item?.curriculumPath.didacticMicrosequence.id ||
         state.emptyMicrosequences.find(value => value.id === explanationButton.dataset.microsequenceId)?.id;
       if (!microsequenceId || explanationButton.hasAttribute("data-inspection-review-unit") && !item) return false;
+      const returnButton = explanationButton.closest?.("details")?.querySelector(":scope > summary") || explanationButton;
       closeOpenMenus(); studyTools.close();
       return contentReview.open({ courseId: state.courseId,
         microsequenceId,
         targetKind: explanationButton.hasAttribute("data-inspection-review-unit") ? "study_unit" : "microsequence_explanation",
         targetId: explanationButton.hasAttribute("data-inspection-review-unit") ? item.studyUnit.id : microsequenceId,
-        expectedRevision: state.pinnedRevision, button: explanationButton });
+        expectedRevision: state.pinnedRevision, button: returnButton });
     }
     const parameters = event.target.closest?.("[data-inspection-open-parameters]");
     if (parameters) return openUnitContext(parameters, "parameters");

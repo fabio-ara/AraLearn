@@ -387,7 +387,8 @@ for (const [width, height, theme, zoom, ordinal = 3] of [[360, 640, "light", 1],
     await page.setViewportSize({ width, height });
     const origin = card(page, ordinal).locator("[data-inspection-observations]");
     await origin.click();
-    const dialog = page.getByRole("dialog", { name: "Observações da unidade", exact: true });
+    const title = await card(page, ordinal).locator("h3").first().innerText();
+    const dialog = page.getByRole("dialog", { name: `Observações · ${title}`, exact: true });
     const field = dialog.getByRole("textbox", { name: "Observação", exact: true });
     await expect(field).toBeFocused();
     const focus = await field.evaluate(node => {

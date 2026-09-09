@@ -65,13 +65,16 @@
   grid-template-columns: repeat(3, var(--tap));
 }
 @media (max-width: 620px) {
-  .course-authoring-course-header:has([data-action="open-settings"]):has(.course-authoring-primary-navigation) {
+  .course-authoring-course-header:has([data-action="open-settings"]):has(.course-authoring-primary-navigation),
+  .course-authoring-context-topbar > .course-authoring-course-header {
     height: auto;
     grid-template-columns: var(--tap) minmax(0, 1fr);
   }
-  .course-authoring-course-header:has([data-action="open-settings"]):has(.course-authoring-primary-navigation) > .course-authoring-header-actions {
+  .course-authoring-course-header:has([data-action="open-settings"]):has(.course-authoring-primary-navigation) > .course-authoring-header-actions,
+  .course-authoring-context-topbar > .course-authoring-course-header > .course-authoring-header-actions {
     grid-column: 1 / -1;
     width: 100%;
   }
+  .course-authoring-context-shell .course-authoring-context-topbar { height: auto; }
   .course-authoring-course-header:has([data-action="open-settings"]) .course-authoring-primary-navigation { margin-right: auto; }
 }
