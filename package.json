@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
-    "test": "node ./scripts/buildReadableReferences.mjs --check && node ./scripts/buildVegaInterpreterVendor.mjs --check && node ./scripts/buildBibliographyVendor.mjs --check && node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/buildResourceCatalogCourse.mjs --check && node ./scripts/buildResourceGalleryFixture.mjs --check && node ./scripts/buildChatGptActionOpenApi.mjs --check && node ./scripts/auditCurrentArchitecture.mjs && node ./scripts/auditTerminology.mjs && node ./scripts/auditFrontendStyles.mjs && node ./scripts/auditFrontendResidues.mjs && node ./scripts/auditVerticalParity.mjs && node ./scripts/auditChoicePromptDuplication.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs",
+    "test": "node ./scripts/runPreflight.mjs && node ./scripts/runTests.mjs",
     "test:focal": "node ./scripts/runTests.mjs --focal",
     "test:supabase:smoke": "node ./scripts/validateCourseRuntime.mjs && node --test ./tests/runtime/course-human-task-executor.test.js ./tests/runtime/course-human-materialization.test.js ./tests/runtime/course-human-corrections.test.js",
     "test:authoring:mcp:local": "node --test ./tests/runtime/course-human-mcp.test.js ./tests/runtime/course-human-task-executor.test.js ./tests/runtime/course-human-materialization.test.js ./tests/runtime/course-human-corrections.test.js",
@@ -52,7 +52,12 @@
     "actions:openapi:check": "node ./scripts/buildChatGptActionOpenApi.mjs --check",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "android:release": "pwsh -NoProfile -File ./scripts/buildAndroidRelease.ps1",
-    "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"
+    "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1",
+    "test:preflight": "node ./scripts/runPreflight.mjs",
+    "test:runtime": "node ./scripts/runTests.mjs",
+    "validate:candidate": "node ./scripts/validateCandidate.mjs",
+    "candidate:ready": "node ./scripts/validateCandidate.mjs --ready",
+    "test:integration:local": "node ./scripts/runLocalIntegration.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.14",

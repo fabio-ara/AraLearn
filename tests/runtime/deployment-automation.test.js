@@ -384,27 +384,148 @@ test("scripts focais de MCP e Actions incluem o contrato público comum", () => 
   assert.match(packageManifest.scripts["test:authoring:actions"], /^npm run test:authoring:contract &&/u);
 });
 
-test("validação integrada do Supabase só aceita o stack local e restaura o ambiente", () => {
+test("gate de banco local cerca os oito inventários e delega integração ao runner único", () => {
   const source = fs.readFileSync(scripts.validateLocalSupabase, "utf8");
-  assert.match(source, /Assert-LocalProjectUrl/u);
+  assert.match(source, /param\(\[switch\]\$DatabaseOnly\)/u);
+  assert.match(source, /\$uri\.Host -notin @\('localhost', '127\.0\.0\.1'\)/u);
   assert.match(source, /--local/u);
-  assert.match(source, /auth-email-smoke\.mjs/u);
-  assert.match(source, /test:authoring:mcp:local/u);
-  assert.match(source, /aralearn-course-api/u);
-  assert.match(source, /test:supabase:smoke/u);
-  assert.match(source, /test:storage:lifecycle:local/u);
+  assert.match(source, /'aralearn-authoring-mcp', 'aralearn-course-api', 'aralearn-authoring-action'/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /supabase@2\.115\.0', 'test', 'db'/u);
+  assert.match(source, /--schema', 'public,private'[\s\S]+--level', 'warning', '--fail-on', 'error'/u);
+  const workflow = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  assert.match(workflow, /db lint --local --schema public,private --level warning --fail-on error/u);
+  for (const family of ['pg_class', 'pg_proc', 'pg_index', 'pg_constraint', 'pg_trigger', 'pg_policy', 'relforcerowsecurity', 'storage.buckets']) {
+    assert.ok(source.includes(family), family);
+  }
+  assert.match(source, /auditVerticalParity\.mjs --database-inventory -/u);
+  assert.match(source, /course-postgres-concurrency\.test\.js/u);
+  assert.match(source, /\$skipCount -ne '0'/u);
+  assert.match(source, /if \(-not \$DatabaseOnly\)[\s\S]+runLocalIntegration\.mjs/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
-  assert.equal((source.match(/= Start-LocalEdgeFunctions/g) || []).length, 1);
-  assert.doesNotMatch(source, /Start-LocalEdgeFunction -Name/u);
-  assert.match(source, /taskkill\.exe \/PID \$Process\.Id \/T \/F/u);
+  assert.doesNotMatch(source, /Start-LocalEdge|Stop-LocalEdge|Show-EdgeFailureLog|functions.*serve|taskkill|test:supabase:smoke|auth-email-smoke|test:storage:lifecycle/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.doesNotMatch(
     source,
     /--linked|db\s+reset|SUPABASE_DB_PASSWORD|publishCatalogFixtures/u
   );
+});
+
+test("DatabaseOnly executa o script com comandos sintéticos, recusa skips e restaura o ambiente", {
+  skip: !powerShellAvailable
+}, () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-local-database-gate-"));
+  try {
+    fs.mkdirSync(path.join(temporaryRoot, "scripts"));
+    fs.mkdirSync(path.join(temporaryRoot, "supabase"));
+    fs.copyFileSync(scripts.validateLocalSupabase, path.join(temporaryRoot, "scripts/validateLocalSupabase.ps1"));
+    fs.writeFileSync(path.join(temporaryRoot, "scripts/deploymentSupport.ps1"),
+      "function Resolve-AraLearnDenoCommand { return 'Invoke-DenoMock' }\n");
+    fs.writeFileSync(path.join(temporaryRoot, "supabase/config.toml"), 'project_id = "aralearn"\n');
+    const wrapper = path.join(temporaryRoot, "exercise.ps1");
+    fs.writeFileSync(wrapper, `
+$global:gateCalls = [Collections.Generic.List[string]]::new()
+function global:Invoke-NpxMock {
+  $global:LASTEXITCODE = 0
+  $command = $args -join ' '
+  if ($command -match ' status ') {
+    $global:gateCalls.Add('status')
+    $hostName = if ($env:GATE_SCENARIO -eq 'remote') { 'remote.example' } else { '127.0.0.1' }
+    Write-Output ('{"DB_URL":"postgresql://postgres:private-sentinel@' + $hostName + ':54322/postgres","SERVICE_ROLE_KEY":"private-sentinel"}')
+  } elseif ($command -match ' test db') {
+    $global:gateCalls.Add('pgtap')
+    if ($env:GATE_SCENARIO -eq 'pgtap-failure') { $global:LASTEXITCODE = 9 }
+  } elseif ($command -match ' db lint ') {
+    $global:gateCalls.Add('lint')
+    if (-not $command.EndsWith('--schema public,private --level warning --fail-on error')) {
+      throw 'A política de lint diverge do CI.'
+    }
+    if ($env:GATE_SCENARIO -eq 'lint-warning') { Write-Output 'warning: aviso sintético preservado' }
+    if ($env:GATE_SCENARIO -eq 'lint-error') {
+      Write-Output 'error: erro sintético bloqueante'
+      $global:LASTEXITCODE = 23
+    }
+  }
+  else { throw 'Comando npx inesperado na fixture.' }
+}
+function global:npx { Invoke-NpxMock @args }
+function global:npx.cmd { Invoke-NpxMock @args }
+function global:Invoke-DenoMock {
+  $global:LASTEXITCODE = 0
+  $global:gateCalls.Add('deno:' + $args[0])
+}
+function global:docker {
+  $global:LASTEXITCODE = 0
+  $global:gateCalls.Add('inventory')
+  Write-Output 'table|public.courses'
+}
+function global:node {
+  $global:LASTEXITCODE = 0
+  $command = $args -join ' '
+  if ($command -match 'auditVerticalParity') {
+    $input | Out-Null
+    $global:gateCalls.Add('parity')
+  } elseif ($command -match 'course-postgres-concurrency') {
+    $global:gateCalls.Add('concurrency')
+    Write-Output '# tests 2'
+    if ($env:GATE_SCENARIO -eq 'skip') {
+      Write-Output '# pass 1'
+      Write-Output '# skipped 1'
+    } else {
+      Write-Output '# pass 2'
+      Write-Output '# skipped 0'
+    }
+  } elseif ($command -match 'runLocalIntegration') { $global:gateCalls.Add('integration') }
+  else { throw 'Comando Node inesperado na fixture.' }
+}
+$env:ARALEARN_TEST_DATABASE_URL = 'original-connection'
+$env:ARALEARN_TEST_DATABASE_CONTAINER = 'original-container'
+$failed = $false
+try {
+  $databaseOnly = $env:GATE_DATABASE_ONLY -eq '1'
+  & (Join-Path $PSScriptRoot 'scripts/validateLocalSupabase.ps1') -DatabaseOnly:$databaseOnly
+} catch { $failed = $true }
+$restored = $env:ARALEARN_TEST_DATABASE_URL -eq 'original-connection' -and $env:ARALEARN_TEST_DATABASE_CONTAINER -eq 'original-container'
+Write-Output ('RESULT:' + (@{ calls = @($global:gateCalls); failed = $failed; restored = $restored } | ConvertTo-Json -Compress))
+if ($failed) { exit 1 }
+`);
+    const execute = (scenario, databaseOnly = true) => {
+      const result = runScript(wrapper, [], { GATE_SCENARIO: scenario, GATE_DATABASE_ONLY: databaseOnly ? "1" : "0" });
+      assert.doesNotMatch(result.stdout + result.stderr, /private-sentinel/u);
+      const line = result.stdout.split(/\r?\n/u).find(value => value.startsWith("RESULT:"));
+      assert.ok(line, result.stderr || result.stdout);
+      const receipt = JSON.parse(line.slice(7));
+      assert.equal(receipt.restored, true);
+      return { ...receipt, exitCode: result.status, output: result.stdout + result.stderr };
+    };
+    const database = execute("success");
+    assert.equal(database.exitCode, 0);
+    assert.deepEqual(database.calls, ["status", "deno:test", "deno:check", "deno:check", "deno:check",
+      "pgtap", "inventory", "parity", "lint", "concurrency"]);
+    const complete = execute("success", false);
+    assert.equal(complete.exitCode, 0);
+    assert.deepEqual(complete.calls, [...database.calls, "integration"]);
+    const warning = execute("lint-warning");
+    assert.equal(warning.exitCode, 0);
+    assert.match(warning.output, /warning: aviso sintético preservado/u);
+    assert.deepEqual(warning.calls, database.calls);
+    const rejected = execute("remote");
+    assert.equal(rejected.exitCode, 1);
+    assert.deepEqual(rejected.calls, ["status"]);
+    for (const scenario of ["pgtap-failure", "lint-error", "skip"]) {
+      const result = execute(scenario, false);
+      assert.equal(result.exitCode, 1);
+      assert.equal(result.calls.includes("integration"), false);
+      if (scenario === "pgtap-failure") assert.equal(result.calls.includes("inventory"), false);
+      if (scenario === "lint-error") {
+        assert.match(result.output, /error: erro sintético bloqueante/u);
+        assert.equal(result.calls.includes("concurrency"), false);
+      }
+    }
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("CI só considera a API de Cursos pronta depois de alcançar seu handler", () => {
@@ -1054,53 +1175,117 @@ test("validação do repositório usa permissão mínima", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   assert.match(source, /permissions:\s*\n\s*contents: read/u);
   assert.doesNotMatch(source, /contents: write|actions: write|pages: write|id-token: write/u);
-  assert.match(source, /npm test/u);
+  assert.match(source, /npm run test:preflight/u);
+  assert.match(source, /npm run test:runtime/u);
+  assert.doesNotMatch(source, /run: npm test/u);
 });
 
-test("validação obrigatória distingue documentação sem omitir os jobs existentes", () => {
+test("preflight único prepara o PR e só candidata pronta inicia os jobs integrais", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
+  const preparation = source.slice(source.indexOf("  preparar:"), source.indexOf("  web:"));
+  const web = source.slice(source.indexOf("  web:"), source.indexOf("  supabase:"));
+  const supabase = source.slice(source.indexOf("  supabase:"), source.indexOf("  validacao:"));
   assert.match(triggers, /pull_request:\s*\n\s*branches:\s*\n\s*- main\s*\n\s*- release\/\*\*/u);
+  assert.match(triggers, /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/u);
   assert.match(triggers, /workflow_dispatch:/u);
   assert.doesNotMatch(triggers, /push:|paths-ignore:/u);
-  assert.match(source, /name: Testar e validar/u);
-  assert.match(source, /name: Testar Supabase local/u);
-  assert.equal(source.match(/node \.\/scripts\/classifyCiPaths\.mjs/gu)?.length, 2);
+  assert.match(preparation, /name: Preparar candidata/u);
+  assert.match(preparation, /github\.event_name == 'workflow_dispatch' && github\.ref != 'refs\/heads\/main'[\s\S]+exit 1/u);
+  assert.match(preparation, /ready_for_integral: \$\{\{ github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft \}\}/u);
+  assert.match(preparation, /trusted_origin: \$\{\{ github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository \}\}/u);
+  assert.equal(source.match(/node \.\/scripts\/classifyCiPaths\.mjs/gu)?.length, 1);
   for (const validator of [
     "npm run audit:docs",
     "npm run audit:terminology",
-    "npm run docs:references:check"
+    "npm run docs:references:check",
+    "npm run test:preflight",
+    "npm run lint",
+    "node ./scripts/validateCourseRuntime.mjs"
   ]) {
-    assert.match(source, new RegExp(validator.replaceAll(".", "\\."), "u"));
+    assert.ok(preparation.includes(validator), validator);
   }
-  assert.match(source, /git diff --check/u);
-  assert.match(source, /Registrar backend não afetado[\s\S]+docs_only == 'true'/u);
-  for (const expensiveStep of [
-    "Preparar Java",
-    "Instalar Chromium para testes de interface",
-    "Gerar e testar o artefato web no navegador",
-    "Compilar aplicativo Android",
-    "Instalar Chromium da integração local",
-    "Preparar Deno",
-    "Iniciar stack Supabase"
-  ]) {
-    assert.match(
-      source,
-      new RegExp(`- name: ${expensiveStep}[\\s\\S]{0,120}if: steps\\.paths\\.outputs\\.docs_only != 'true'`, "u")
-    );
+  assert.match(preparation, /git diff --check/u);
+  assert.doesNotMatch(preparation, /npm run test:runtime|playwright|supabase@|Preparar Java|android:debug/u);
+  for (const job of [web, supabase]) {
+    assert.match(job, /needs: preparar\s*\n\s*if: needs\.preparar\.outputs\.docs_only == 'false' && needs\.preparar\.outputs\.ready_for_integral == 'true'/u);
+    assert.doesNotMatch(job, /steps\.paths\.outputs|test:preflight|npm run lint/u);
   }
+  assert.match(web, /name: Testar web e Android/u);
+  assert.match(web, /name: Executar testes\s*\n\s*run: npm run test:runtime/u);
+  assert.match(supabase, /name: Testar Supabase local/u);
   assert.match(
-    source,
+    supabase,
     /deno check --config supabase\/functions\/deno\.json supabase\/functions\/aralearn-authoring-action\/index\.ts/u
   );
-  assert.match(source, /always\(\) && steps\.paths\.outputs\.docs_only != 'true'/u);
+  assert.match(supabase, /name: Encerrar stack Supabase\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
+});
+
+test("agregador executável recusa rascunho, preflight falho e qualquer integral incompleta", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8").replaceAll("\r\n", "\n");
+  const gate = source.match(/node --input-type=module <<'NODE'\n([\s\S]+?)\n\s*NODE\n/u)?.[1];
+  assert.ok(gate, "O gate executável precisa estar presente no workflow.");
+  const complete = { PREPARATION_RESULT: "success", DOCS_ONLY: "false", READY_FOR_INTEGRAL: "true",
+    WEB_RESULT: "success", SUPABASE_RESULT: "success" };
+  const evaluate = values => spawnSync(process.execPath, ["--input-type=module", "--eval", gate], {
+    encoding: "utf8", env: { ...process.env, ...complete, ...values }
+  });
+  assert.equal(evaluate({}).status, 0);
+  assert.equal(evaluate({ DOCS_ONLY: "true", READY_FOR_INTEGRAL: "false",
+    WEB_RESULT: "skipped", SUPABASE_RESULT: "skipped" }).status, 0);
+  for (const field of ["PREPARATION_RESULT", "WEB_RESULT", "SUPABASE_RESULT"]) {
+    for (const result of ["", "skipped", "failure", "cancelled"]) {
+      const execution = evaluate({ [field]: result });
+      assert.equal(execution.status, 1, `${field}=${result}: ${execution.stderr}`);
+    }
+  }
+  for (const classification of ["", "unknown"]) {
+    assert.equal(evaluate({ DOCS_ONLY: classification }).status, 1);
+  }
+  const draft = evaluate({ READY_FOR_INTEGRAL: "false", WEB_RESULT: "skipped", SUPABASE_RESULT: "skipped" });
+  assert.equal(draft.status, 1);
+  assert.match(draft.stderr, /PR em rascunho/u);
+  assert.equal(evaluate({ DOCS_ONLY: "true", PREPARATION_RESULT: "failure" }).status, 1);
+});
+
+test("env dos jobs usa contextos aceitos antes da alocação do runner", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8").replaceAll("\r\n", "\n");
+  // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability
+  const allowedContexts = new Set(["github", "needs", "strategy", "matrix", "vars", "secrets", "inputs"]);
+  const environments = [...source.matchAll(/^ {4}env:\n((?: {6}[^\n]+\n)+)/gmu)];
+  assert.ok(environments.length > 0, "O workflow precisa expor os ambientes dos jobs ao guard.");
+  for (const [, environment] of environments) {
+    for (const [, expression] of environment.matchAll(/\$\{\{\s*([^}]+)\}\}/gu)) {
+      const references = expression.matchAll(/(?:^|[^\w.])([a-zA-Z_]\w*)\s*[.[]/gu);
+      for (const [, context] of references) {
+        assert.ok(allowedContexts.has(context), `Contexto ${context} indisponível em jobs.<job_id>.env: ${expression}`);
+      }
+    }
+  }
+});
+
+test("cache é por dependência e somente traces sintéticos podem virar artefato", () => {
+  const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
+  const web = source.slice(source.indexOf("  web:"), source.indexOf("  supabase:"));
+  const supabase = source.slice(source.indexOf("  supabase:"), source.indexOf("  validacao:"));
+  assert.equal(source.match(/cache: npm/gu)?.length, 3);
+  assert.match(web, /cache: gradle/u);
+  assert.equal(source.match(/key: \$\{\{ runner\.os \}\}-playwright-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/gu)?.length, 2);
+  assert.match(web, /ARALEARN_E2E_REAL_SUPABASE: '0'/u);
+  assert.match(web, /npm run test:e2e -- --forbid-only --output=test-results-stub/u);
+  assert.match(web, /if: failure\(\) && steps\.e2e\.outcome == 'failure'/u);
+  assert.match(web, /path: test-results-stub\/\*\*\/trace\.zip/u);
+  assert.doesNotMatch(supabase, /upload-artifact|test-results-stub/u);
+  assert.ok(supabase.indexOf("Instalar Chromium da integração local") > supabase.indexOf("Executar testes pgTAP"));
+  assert.ok(supabase.indexOf("runLocalIntegration.mjs --functions-external --ci") > supabase.indexOf("npm run test:storage:lifecycle:local"));
+  assert.match(supabase, /ARALEARN_LOCAL_FUNCTIONS_PID="\$FUNCTIONS_PID"/u);
 });
 
 test("PR conserva artefatos e apenas o gate integral sela a candidata", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
-  assert.match(source, /name: Testar e validar\s*\n\s*needs: \[web, supabase\]\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
-  assert.match(source, /test "\$WEB_RESULT" = success/u);
-  assert.match(source, /test "\$SUPABASE_RESULT" = success/u);
+  assert.match(source, /name: Testar e validar\s*\n\s*needs: \[preparar, web, supabase\]\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
+  assert.match(source, /assert\.equal\(WEB_RESULT, "success"/u);
+  assert.match(source, /assert\.equal\(SUPABASE_RESULT, "success"/u);
   assert.match(source, /aralearn-pages-candidate-\$\{\{ github\.run_attempt \}\}/u);
   assert.match(source, /aralearn-candidate-manifest-\$\{\{ github\.run_attempt \}\}/u);
   assert.match(source, /releaseCandidate\.mjs record/u);

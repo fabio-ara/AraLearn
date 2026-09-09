@@ -522,13 +522,23 @@ test.describe("acesso direto de Curso no Supabase local", () => {
   test.afterAll(async ({ browserName }, testInfo) => {
     void browserName;
     testInfo.setTimeout(60_000);
-    if (publicCourseId) await courseApi(`/v1/courses/${publicCourseId}`, {
-      method: "DELETE", body: { operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() }
-    }, ownerToken);
-    await removeOwnerAvatar();
-    await removeUser(learner?.id);
-    await removeUser(outsider?.id);
-    await removeUser(owner?.id);
+    const failures = [];
+    let preserveOwner = false;
+    for (const id of new Set([publicCourseId, courseId].filter(Boolean))) {
+      try {
+        const removed = await courseApi(`/v1/courses/${id}`, {
+          method: "DELETE", body: { operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() }
+        }, ownerToken);
+        expect(removed.data?.fileCleanupPending ?? removed.fileCleanupPending ?? false).toBe(false);
+      } catch (error) { failures.push(error); preserveOwner = true; }
+    }
+    try { await removeOwnerAvatar(); }
+    catch (error) { failures.push(error); preserveOwner = true; }
+    for (const user of [learner, outsider, ...(preserveOwner ? [] : [owner])]) {
+      try { await removeUser(user?.id); } catch (error) { failures.push(error); }
+    }
+    if (failures.length) throw new AggregateError(failures,
+      "Falha na limpeza sintética de acesso; a conta proprietária foi preservada quando havia arquivos pendentes.");
   });
 
   test("fontes contextuais persistem referência, estilo, PDF e usos independentes no curso real", async ({ browser }, testInfo) => {

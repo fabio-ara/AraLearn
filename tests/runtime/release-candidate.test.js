@@ -297,6 +297,7 @@ test("manifesto recusa gate omitido, focal, pulado, cancelado ou falho", async (
   const variants = [
     ["ausente", (manifest) => { delete manifest.gate; }],
     ["focal", (manifest) => { manifest.gate.scope = "focal"; }],
+    ["candidate-ready", (manifest) => { manifest.gate.scope = "candidate-ready"; }],
     ...["web", "supabase"].flatMap((job) => [undefined, "skipped", "failure", "cancelled"]
       .map((result) => [`${job}: ${result}`, (manifest) => { manifest.gate[job] = result; }]))
   ];
@@ -392,6 +393,16 @@ test("run verde não substitui job nem etapa integral ausente ou malsucedida", a
       }
     }
   }
+});
+
+test("preflight aprovado em PR rascunho não certifica a candidata para promoção", () => {
+  const preparation = { name: "Preparar candidata", status: "completed", conclusion: "success", steps: [] };
+  const info = runInfo();
+  info.pull_requests[0].draft = true;
+  assert.throws(() => validateRun(info, [preparation], REPOSITORY, 2), /Prova obrigatória/u);
+  const partialJobs = requiredJobs().map(job => ({ ...job, conclusion: "skipped" }));
+  assert.throws(() => validateRun(info, [preparation, ...partialJobs], REPOSITORY, 2), /Prova obrigatória/u);
+  assert.doesNotThrow(() => validateRun(runInfo(), [preparation, ...requiredJobs()], REPOSITORY, 2));
 });
 
 test("identidade admite SHA de merge distinto quando árvore e entradas são as mesmas", () => {

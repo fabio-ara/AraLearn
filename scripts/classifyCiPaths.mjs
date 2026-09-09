@@ -2,48 +2,10 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { classifyValidationImpact, isDocumentationPath, normalizeRepositoryPath } from "./validationImpact.mjs";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
-const DOCUMENTATION_SEARCH_LOG = "docs/evidence/registro-buscas-bibliograficas.csv";
-const ROOT_DOCUMENTS = new Set(["README.md", "LICENSE.md", "CHANGELOG.md", "CONTRIBUTING.md"]);
-// Esses capítulos definem o uso dos contratos pelos clientes reais. Uma edição
-// neles precisa ser confrontada com o runtime, mesmo quando só muda Markdown.
-const CONTRACT_DOCUMENTS = new Set([
-  "docs/aralearn-contract.md",
-  "docs/autoria-actions.md",
-  "docs/autoria-mcp.md"
-]);
-
-function normalizeRepositoryPath(value) {
-  const candidate = String(value || "");
-  if (
-    !candidate ||
-    candidate !== candidate.trim() ||
-    candidate.includes("\\") ||
-    candidate.startsWith("/") ||
-    candidate.includes("\0")
-  ) {
-    return "";
-  }
-  const segments = candidate.split("/");
-  if (segments.some((segment) => !segment || segment === "." || segment === "..")) {
-    return "";
-  }
-  return candidate;
-}
-
-export function isDocumentationPath(value) {
-  const repositoryPath = normalizeRepositoryPath(value);
-  if (!repositoryPath) return false;
-  if (/^(?:.*\/)?(?:AGENTS(?:\.override)?|SKILL)\.md$/u.test(repositoryPath)) return false;
-  if (CONTRACT_DOCUMENTS.has(repositoryPath)) return false;
-  if (ROOT_DOCUMENTS.has(repositoryPath)) return true;
-  if (repositoryPath === DOCUMENTATION_SEARCH_LOG) return true;
-  // Downloads, instruções e pastas novas não recebem dispensa por extensão.
-  // O OpenAPI publicado é um artefato de runtime, não documentação inofensiva.
-  if (/^docs\/[^/]+\.(?:md|bib)$/u.test(repositoryPath)) return true;
-  return /^ux-atlas\/.+\.md$/u.test(repositoryPath);
-}
+export { isDocumentationPath };
 
 export function classifyChangedPaths(paths) {
   const candidates = Array.from(paths || []);
@@ -53,36 +15,46 @@ export function classifyChangedPaths(paths) {
     repositoryPath && isDocumentationPath(repositoryPath));
 }
 
-export function classifyGitDiff(output) {
-  if (typeof output !== "string" || !output.endsWith("\0")) return false;
+export function parseGitDiffPaths(output) {
+  if (typeof output !== "string" || !output.endsWith("\0")) return null;
   const entries = output.slice(0, -1).split("\0");
-  if (entries.length % 2 !== 0) return false;
+  if (entries.length % 2 !== 0) return null;
   const paths = [];
   for (let index = 0; index < entries.length; index += 2) {
     // --no-renames apresenta origem removida e destino novo separadamente.
     // Mudança de tipo, conflito ou estado desconhecido exige o gate integral.
-    if (!["A", "M", "D"].includes(entries[index])) return false;
+    if (!["A", "M", "D"].includes(entries[index]) || !normalizeRepositoryPath(entries[index + 1])) return null;
     paths.push(entries[index + 1]);
   }
-  return classifyChangedPaths(paths);
+  return paths;
 }
 
-function writeResult(docsOnly, outputPath = "") {
-  const line = `docs_only=${docsOnly ? "true" : "false"}`;
-  process.stdout.write(`${line}\n`);
-  if (outputPath) fs.appendFileSync(outputPath, `${line}\n`, "utf8");
+export function classifyGitDiff(output) {
+  return classifyChangedPaths(parseGitDiffPaths(output));
+}
+
+function writeResult(result, outputPath = "", json = false) {
+  const line = `docs_only=${result.docsOnly ? "true" : "false"}`;
+  process.stdout.write(json ? `${JSON.stringify(result)}\n` : `${line}\n`);
+  if (outputPath) fs.appendFileSync(outputPath, [
+    line,
+    `requires_supabase=${result.requires.supabase}`,
+    `requires_web=${result.requires.web}`,
+    `requires_android=${result.requires.android}`,
+    `categories=${JSON.stringify(result.categories)}`
+  ].join("\n") + "\n", "utf8");
 }
 
 function classifyStandardInput() {
   const paths = fs.readFileSync(0, "utf8").split(/\r?\n/u).filter(Boolean);
-  writeResult(classifyChangedPaths(paths));
+  writeResult(classifyValidationImpact(paths), process.env.GITHUB_OUTPUT, process.argv.includes("--json"));
 }
 
 function classifyGitHubPullRequest() {
-  let docsOnly;
+  let paths = null;
   try {
     if (process.env.GITHUB_EVENT_NAME !== "pull_request") {
-      writeResult(false, process.env.GITHUB_OUTPUT);
+      writeResult(classifyValidationImpact(null), process.env.GITHUB_OUTPUT);
       return;
     }
     const eventPath = String(process.env.GITHUB_EVENT_PATH || "").trim();
@@ -100,19 +72,19 @@ function classifyGitHubPullRequest() {
     if (comparison.status !== 0 || comparison.error) {
       throw comparison.error || new Error(comparison.stderr || "Falha ao comparar a pull request.");
     }
-    docsOnly = classifyGitDiff(comparison.stdout);
+    paths = parseGitDiffPaths(comparison.stdout);
+    if (!paths) throw new Error("O diff contém estado ou caminho não reconhecido.");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`Classificação inconclusiva; usando pipeline integral: ${message}\n`);
-    docsOnly = false;
   }
-  writeResult(docsOnly, process.env.GITHUB_OUTPUT);
+  writeResult(classifyValidationImpact(paths), process.env.GITHUB_OUTPUT);
 }
 
 const modulePath = path.resolve(fileURLToPath(import.meta.url));
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
 if (modulePath.toLowerCase() === invokedPath.toLowerCase()) {
-  if (process.argv.includes("--stdin")) {
+  if (process.argv.includes("--stdin") || process.argv.includes("--json")) {
     classifyStandardInput();
   } else {
     classifyGitHubPullRequest();

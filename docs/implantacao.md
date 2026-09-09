@@ -113,15 +113,29 @@ desconhecidos, dependências e CI ampliam o alcance.
 
 | Momento | Gatilho e prova | Artefato | Publicação |
 | --- | --- | --- | --- |
-| Desenvolvimento | comandos focais locais conforme o risco | saídas locais | nenhuma |
+| Desenvolvimento | impacto e `validate:candidate`; PR em rascunho executa preparação barata | recibos locais ignorados pelo Git | nenhuma |
 | Documentação pura | PR e auditorias documentais | sem manifesto publicável | nenhuma |
-| Candidata estável | PR final ou dispatch integral de `validacao.yml`; Windows e Supabase | Pages testado, APK debug e manifesto do gate | nenhuma |
+| Candidata estável | `candidate:ready` libera PR após provas locais; integral em Windows e Supabase; dispatch somente na `main` para recuperação | Pages testado, APK debug e manifesto do gate | nenhuma |
 | Promoção | fases de `pages.yml` na `main`, com run e tentativa exatos | Pages aprovado e APK assinado verificado | preparação imutável; corte e Pages; finalização após provas reais |
 
 O check obrigatório **Testar e validar** depende das provas **Testar web e
-Android** e **Testar Supabase local**. Falha, cancelamento ou omissão de prova
+Android**, **Testar Supabase local** e **Preparar candidata**. Falha, cancelamento ou omissão de prova
 aplicável impede seu sucesso. Somente a validação integral produz o manifesto
 publicável. O nome obrigatório e a proteção da branch permanecem preservados.
+
+Em PR não documental em rascunho, apenas a preparação barata executa; o check
+obrigatório não aprova uma integral omitida. `ready_for_review` libera os jobs
+completos. `synchronize` preserva a integral para PRs já prontos; retorne a
+rascunho antes de enviar correções ainda em desenvolvimento. Concurrency já
+cancela a execução superada da mesma referência. Não use dispatch em branch
+de PR para duplicar esse caminho.
+
+A preparação comum executa auditorias e verificadores antes dos dois jobs
+caros. O job web executa o runtime sem repetir essa preparação. Caches de npm,
+Chromium e Gradle reutilizam downloads compatíveis com plataforma e lockfile;
+cache não é prova. A integração acrescenta os opt-ins reais na mesma stack e
+no processo de funções já preparado. Recibos locais e provas parciais não são
+aceitos pela promoção como manifesto de aprovação integral.
 
 Instale exatamente as dependências fixadas:
 

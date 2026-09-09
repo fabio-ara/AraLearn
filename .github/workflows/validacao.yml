@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - release/**
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -15,12 +16,71 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web:
-    name: Testar web e Android
-    runs-on: windows-latest
+  preparar:
+    name: Preparar candidata
+    runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.paths.outputs.docs_only }}
+      requires_supabase: ${{ steps.paths.outputs.requires_supabase }}
       trusted_origin: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      ready_for_integral: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    steps:
+      - name: Recusar dispatch fora da main
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo 'O dispatch de validação é reservado à main; a candidata de PR usa seu evento próprio.' >&2
+          exit 1
+
+      - name: Baixar repositório
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Classificar arquivos alterados
+        id: paths
+        run: node ./scripts/classifyCiPaths.mjs
+
+      - name: Validar documentação
+        if: steps.paths.outputs.docs_only == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --check "$BASE_SHA...$HEAD_SHA" --
+          npm run audit:docs
+          npm run audit:terminology
+          npm run docs:references:check
+
+      - name: Instalar dependências do preflight
+        if: steps.paths.outputs.docs_only != 'true'
+        run: npm ci
+
+      - name: Conferir artefatos gerados e arquitetura
+        if: steps.paths.outputs.docs_only != 'true'
+        run: npm run test:preflight
+
+      - name: Analisar código
+        if: steps.paths.outputs.docs_only != 'true'
+        run: npm run lint
+
+      - name: Validar runtime de Curso
+        if: steps.paths.outputs.docs_only != 'true'
+        run: node ./scripts/validateCourseRuntime.mjs
+
+  web:
+    name: Testar web e Android
+    needs: preparar
+    if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.ready_for_integral == 'true'
+    runs-on: windows-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.validation/playwright-browsers
+    outputs:
       pages_id: ${{ steps.pages.outputs.artifact-id }}
       pages_digest: ${{ steps.pages.outputs.artifact-digest }}
 
@@ -34,57 +94,53 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-
-      - name: Classificar arquivos alterados
-        id: paths
-        run: node ./scripts/classifyCiPaths.mjs
-
-      - name: Validar documentação
-        if: steps.paths.outputs.docs_only == 'true'
-        shell: pwsh
-        run: |
-          & git diff --check "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" --
-          if ($LASTEXITCODE -ne 0) { throw 'A documentação contém problemas de whitespace.' }
-          npm run audit:docs
-          npm run audit:terminology
-          npm run docs:references:check
+          cache: npm
 
       - name: Preparar Java
-        if: steps.paths.outputs.docs_only != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle.kts
+            android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Instalar dependências
-        if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
       - name: Executar testes
-        if: steps.paths.outputs.docs_only != 'true'
-        run: npm test
+        run: npm run test:runtime
 
-      - name: Analisar código
-        if: steps.paths.outputs.docs_only != 'true'
-        run: npm run lint
-
-      - name: Validar runtime de Curso
-        if: steps.paths.outputs.docs_only != 'true'
-        run: npm run validate:course-runtime
+      - name: Recuperar Chromium
+        id: chromium
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
 
       - name: Instalar Chromium para testes de interface
-        if: steps.paths.outputs.docs_only != 'true'
+        if: steps.chromium.outputs.cache-hit != 'true'
         run: npx playwright install chromium
 
       - name: Gerar e testar o artefato web no navegador
-        if: steps.paths.outputs.docs_only != 'true'
+        id: e2e
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
           ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
-        run: npm run test:e2e
+          ARALEARN_E2E_REAL_SUPABASE: '0'
+        run: npm run test:e2e -- --forbid-only --output=test-results-stub
+
+      - name: Guardar traces da interface sintética que falhou
+        if: failure() && steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-e2e-stub-failure-${{ github.run_attempt }}
+          path: test-results-stub/**/trace.zip
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Examinar o runtime web
-        if: steps.paths.outputs.docs_only != 'true'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
@@ -93,7 +149,7 @@ jobs:
       - name: Guardar prévia web da candidata
         id: pages
         if: >-
-          ${{ steps.paths.outputs.docs_only != 'true' &&
+          ${{ needs.preparar.outputs.docs_only == 'false' &&
               (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
@@ -104,14 +160,12 @@ jobs:
           retention-days: 7
 
       - name: Compilar aplicativo Android
-        if: steps.paths.outputs.docs_only != 'true'
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
           ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: npm run android:debug
 
       - name: Examinar o runtime Android
-        if: steps.paths.outputs.docs_only != 'true'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
@@ -119,7 +173,7 @@ jobs:
 
       - name: Guardar APK de teste da candidata
         if: >-
-          ${{ steps.paths.outputs.docs_only != 'true' &&
+          ${{ needs.preparar.outputs.docs_only == 'false' &&
               (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
@@ -129,7 +183,6 @@ jobs:
           retention-days: 7
 
       - name: Analisar aplicativo Android
-        if: steps.paths.outputs.docs_only != 'true'
         working-directory: android
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
@@ -137,18 +190,17 @@ jobs:
         run: .\gradlew.bat :app:lintDebug --no-daemon
 
       - name: Validar exemplo público
-        if: steps.paths.outputs.docs_only != 'true'
         run: npm run validate:example
 
       - name: Registrar identidade e bytes da candidata
-        if: steps.paths.outputs.docs_only != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: needs.preparar.outputs.trusted_origin == 'true'
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
           ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: node ./scripts/releaseCandidate.mjs record
 
       - name: Guardar identidade para o gate
-        if: steps.paths.outputs.docs_only != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: aralearn-candidate-metadata-${{ github.run_attempt }}
@@ -159,7 +211,11 @@ jobs:
 
   supabase:
     name: Testar Supabase local
+    needs: preparar
+    if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.ready_for_integral == 'true'
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.validation/playwright-browsers
     outputs:
       toolchain: ${{ steps.toolchain.outputs.value }}
 
@@ -173,37 +229,22 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-
-      - name: Classificar arquivos alterados
-        id: paths
-        run: node ./scripts/classifyCiPaths.mjs
-
-      - name: Registrar backend não afetado
-        if: steps.paths.outputs.docs_only == 'true'
-        run: echo "Alteração exclusivamente documental; a stack Supabase não será iniciada."
+          cache: npm
 
       - name: Instalar dependências da integração local
-        if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
-      - name: Instalar Chromium da integração local
-        if: steps.paths.outputs.docs_only != 'true'
-        run: npx playwright install --with-deps chromium
-
       - name: Preparar Deno
-        if: steps.paths.outputs.docs_only != 'true'
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
       - name: Registrar ferramentas da integração
         id: toolchain
-        if: steps.paths.outputs.docs_only != 'true'
         run: |
           node --input-type=module -e 'import fs from "node:fs"; import {execFileSync} from "node:child_process"; fs.appendFileSync(process.env.GITHUB_OUTPUT, "value=" + JSON.stringify({node:process.version,deno:execFileSync("deno",["--version"],{encoding:"utf8"}).trim(),supabase:"2.115.0",runner:process.env.ImageOS,image:process.env.ImageVersion,architecture:process.arch}) + "\n");'
 
       - name: Testar e conferir a Edge Function
-        if: steps.paths.outputs.docs_only != 'true'
         run: |
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
@@ -211,7 +252,6 @@ jobs:
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-action/index.ts
 
       - name: Iniciar stack Supabase
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           npx --yes supabase@2.115.0 stop --no-backup || true
@@ -231,15 +271,12 @@ jobs:
           done
 
       - name: Reaplicar migration e seed
-        if: steps.paths.outputs.docs_only != 'true'
         run: npx --yes supabase@2.115.0 db reset
 
       - name: Executar testes pgTAP
-        if: steps.paths.outputs.docs_only != 'true'
         run: npx --yes supabase@2.115.0 test db
 
       - name: Conferir paridade vertical no banco real
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -337,12 +374,10 @@ jobs:
           } | node scripts/auditVerticalParity.mjs --database-inventory -
 
       - name: Conferir o lint do banco
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
-        run: npx --yes supabase@2.115.0 db lint --local --level warning
+        run: npx --yes supabase@2.115.0 db lint --local --schema public,private --level warning --fail-on error
 
       - name: Testar concorrência real dos pedidos de Curso
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           command -v psql
@@ -353,7 +388,6 @@ jobs:
           node --test ./tests/runtime/course-postgres-concurrency.test.js
 
       - name: Servir e testar a API, o PostgREST e o RLS de Curso
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -417,7 +451,6 @@ jobs:
           npm run test:supabase:smoke
 
       - name: Testar confirmação e recuperação por e-mail
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -425,8 +458,16 @@ jobs:
           set +a
           node ./supabase/tests/auth-email-smoke.mjs
 
+      - name: Recuperar Chromium da integração local
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Instalar Chromium da integração local
+        run: npx playwright install --with-deps chromium
+
       - name: Servir e testar o gateway MCP e a Autoria real
-        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           set -a
@@ -501,50 +542,62 @@ jobs:
           ARALEARN_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY" \
           SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
             npm run test:storage:lifecycle:local
+          ARALEARN_LOCAL_FUNCTIONS_PID="$FUNCTIONS_PID" \
+            node ./scripts/runLocalIntegration.mjs --functions-external --ci
 
       - name: Encerrar stack Supabase
-        if: ${{ always() && steps.paths.outputs.docs_only != 'true' }}
+        if: ${{ always() }}
         run: npx --yes supabase@2.115.0 stop --no-backup
 
   validacao:
     name: Testar e validar
-    needs: [web, supabase]
+    needs: [preparar, web, supabase]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Exigir todas as provas aplicáveis
         env:
+          PREPARATION_RESULT: ${{ needs.preparar.result }}
           WEB_RESULT: ${{ needs.web.result }}
           SUPABASE_RESULT: ${{ needs.supabase.result }}
-          DOCS_ONLY: ${{ needs.web.outputs.docs_only }}
+          DOCS_ONLY: ${{ needs.preparar.outputs.docs_only }}
+          READY_FOR_INTEGRAL: ${{ needs.preparar.outputs.ready_for_integral }}
         run: |
-          test "$WEB_RESULT" = success
-          test "$SUPABASE_RESULT" = success
-          case "$DOCS_ONLY" in true|false) ;; *) exit 1 ;; esac
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          const { PREPARATION_RESULT, DOCS_ONLY, READY_FOR_INTEGRAL, WEB_RESULT, SUPABASE_RESULT } = process.env;
+          assert.equal(PREPARATION_RESULT, "success", "O preflight da candidata não passou.");
+          assert.ok(["true", "false"].includes(DOCS_ONLY), "Classificação ausente ou inválida.");
+          if (DOCS_ONLY === "false") {
+            assert.equal(READY_FOR_INTEGRAL, "true", "PR em rascunho: falta concluir candidate:ready antes da integral.");
+            assert.equal(WEB_RESULT, "success", "A prova integral web e Android não passou.");
+            assert.equal(SUPABASE_RESULT, "success", "A prova integral Supabase não passou.");
+          }
+          NODE
 
       - name: Baixar repositório
-        if: needs.web.outputs.docs_only == 'false' && needs.web.outputs.trusted_origin == 'true'
+        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Preparar Node.js
-        if: needs.web.outputs.docs_only == 'false' && needs.web.outputs.trusted_origin == 'true'
+        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 22
 
       - name: Baixar identidade da candidata
-        if: needs.web.outputs.docs_only == 'false' && needs.web.outputs.trusted_origin == 'true'
+        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/download-artifact@v4
         with:
           name: aralearn-candidate-metadata-${{ github.run_attempt }}
           path: .candidate
 
       - name: Vincular manifesto ao gate integral
-        if: needs.web.outputs.docs_only == 'false' && needs.web.outputs.trusted_origin == 'true'
+        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         env:
-          DOCS_ONLY: ${{ needs.web.outputs.docs_only }}
+          DOCS_ONLY: ${{ needs.preparar.outputs.docs_only }}
           WEB_RESULT: ${{ needs.web.result }}
           SUPABASE_RESULT: ${{ needs.supabase.result }}
           PAGES_ARTIFACT_ID: ${{ needs.web.outputs.pages_id }}
@@ -553,7 +606,7 @@ jobs:
         run: node ./scripts/releaseCandidate.mjs seal
 
       - name: Guardar prova integral da candidata
-        if: needs.web.outputs.docs_only == 'false' && needs.web.outputs.trusted_origin == 'true'
+        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: aralearn-candidate-manifest-${{ github.run_attempt }}

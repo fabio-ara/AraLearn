@@ -1,20 +1,15 @@
 [CmdletBinding()]
-param()
+param([switch]$DatabaseOnly)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 
 $repositoryRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 . (Join-Path $PSScriptRoot 'deploymentSupport.ps1')
-$temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) "aralearn-supabase-$PID"
-$edgeProcesses = [Collections.Generic.List[Diagnostics.Process]]::new()
-$environmentNames = @(
-  'ARALEARN_SUPABASE_URL',
-  'ARALEARN_SUPABASE_PUBLISHABLE_KEY',
-  'SUPABASE_URL',
-  'SUPABASE_PUBLISHABLE_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY'
-)
+$npxCommand = if ($IsWindows) { 'npx.cmd' } else { 'npx' }
+$environmentNames = @('ARALEARN_TEST_DATABASE_URL', 'ARALEARN_TEST_DATABASE_CONTAINER')
 $previousEnvironment = @{}
 
 function Invoke-CheckedCommand {
@@ -23,115 +18,75 @@ function Invoke-CheckedCommand {
     [Parameter(Mandatory)][string]$FilePath,
     [string[]]$Arguments = @()
   )
-
-  Write-Host "`n== $Label =="
+  Write-Host $Label
   & $FilePath @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "$Label falhou com código $LASTEXITCODE."
-  }
+  if ($LASTEXITCODE -ne 0) { throw "$Label falhou com código $LASTEXITCODE." }
 }
 
-function Get-LocalSupabaseStatus {
-  $source = @(& npx.cmd --yes supabase@2.115.0 status -o json 2>&1) -join "`n"
-  if ($LASTEXITCODE -ne 0) {
-    throw 'O Supabase local não respondeu. Execute npx.cmd --yes supabase@2.115.0 start.'
-  }
-  $objectStart = $source.IndexOf('{')
-  $objectEnd = $source.LastIndexOf('}')
-  if ($objectStart -lt 0 -or $objectEnd -lt $objectStart) {
-    throw 'A Supabase CLI não retornou o estado local em JSON.'
-  }
-  return $source.Substring($objectStart, $objectEnd - $objectStart + 1) | ConvertFrom-Json
-}
-
-function Assert-LocalProjectUrl {
-  param([Parameter(Mandatory)][string]$Value)
-
-  $uri = [Uri]$Value
-  if ($uri.Scheme -ne 'http' -or $uri.Host -notin @('127.0.0.1', 'localhost', '::1', '[::1]')) {
-    throw 'Esta validação aceita somente o stack Supabase local descartável.'
-  }
-}
-
-function Start-LocalEdgeFunctions {
-  $stdout = Join-Path $temporaryRoot 'edge-functions.stdout.log'
-  $stderr = Join-Path $temporaryRoot 'edge-functions.stderr.log'
-  $arguments = @(
-    '--yes',
-    'supabase@2.115.0',
-    'functions',
-    'serve',
-    '--no-verify-jwt'
-  )
-  $parameters = @{
-    FilePath = 'npx.cmd'
-    ArgumentList = $arguments
-    WorkingDirectory = $repositoryRoot
-    PassThru = $true
-    RedirectStandardOutput = $stdout
-    RedirectStandardError = $stderr
-  }
-  if ($IsWindows) {
-    $parameters.WindowStyle = 'Hidden'
-  }
-  $process = Start-Process @parameters
-  $edgeProcesses.Add($process)
-  return [pscustomobject]@{ Process = $process; Stdout = $stdout; Stderr = $stderr }
-}
-
-function Wait-LocalEdgeFunction {
-  param(
-    [Parameter(Mandatory)][string]$Url,
-    [Parameter(Mandatory)][Diagnostics.Process]$Process
-  )
-
-  for ($attempt = 0; $attempt -lt 60; $attempt += 1) {
-    if ($Process.HasExited) {
-      throw "A função local terminou antes de responder: $Url"
+function Get-LocalDatabaseUrl {
+  # Capturar o JSON somente em memória; a CLI inclui credenciais que não são logs.
+  $source = @(& $npxCommand --yes supabase@2.115.0 status --output json 2>&1) -join "`n"
+  if ($LASTEXITCODE -ne 0) { throw 'Prepare a stack Supabase local antes deste gate.' }
+  $start = $source.IndexOf('{')
+  $end = $source.LastIndexOf('}')
+  if ($start -lt 0 -or $end -lt $start) { throw 'Estado local inválido.' }
+  try {
+    $connection = [string](($source.Substring($start, $end - $start + 1) | ConvertFrom-Json).DB_URL)
+    $uri = [Uri]$connection
+    if ($uri.Scheme -notin @('postgres', 'postgresql') -or
+        $uri.Host -notin @('localhost', '127.0.0.1') -or $uri.UserInfo -notmatch '^[^:]+:.+$') {
+      throw 'invalid'
     }
-    try {
-      $response = Invoke-WebRequest -Uri $Url -Method Options -Headers @{ Origin = 'http://127.0.0.1:4182' } `
-        -SkipHttpErrorCheck -TimeoutSec 2
-      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
-        return
-      }
-    }
-    catch {
-      # O worker pode recusar a conexão durante a inicialização.
-    }
-    Start-Sleep -Milliseconds 500
   }
-  throw "A função local não respondeu dentro do prazo: $Url"
+  catch { throw 'Este gate exige uma conexão PostgreSQL local completa.' }
+  return $connection
 }
 
-function Stop-LocalEdgeFunction {
-  param([Diagnostics.Process]$Process)
-
-  if ($Process -and -not $Process.HasExited) {
-    if ($IsWindows) {
-      # Start-Process abre npx.cmd por um wrapper; encerrar somente o wrapper
-      # deixa a CLI do Supabase viva e segurando os logs redirecionados.
-      & taskkill.exe /PID $Process.Id /T /F 2>$null | Out-Null
-    }
-    else {
-      Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-    }
-    $Process.WaitForExit(5000)
-  }
-}
-
-function Show-EdgeFailureLog {
-  param([Parameter(Mandatory)]$Handle)
-
-  foreach ($path in @($Handle.Stdout, $Handle.Stderr)) {
-    if (-not (Test-Path -LiteralPath $path)) { continue }
-    Get-Content -LiteralPath $path -Tail 200 |
-      ForEach-Object {
-        $_ `
-          -replace '(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+', '[credencial JWT omitida]'
-      } |
-      Write-Host
-  }
+function Get-LocalDatabaseInventory {
+  param([Parameter(Mandatory)][string]$Container, [Parameter(Mandatory)][Uri]$DatabaseUrl)
+  # As mesmas oito famílias do CI: relações, funções, índices, restrições,
+  # triggers, policies, estado RLS e buckets. Somente metadados de banco local.
+  $query = @'
+select case when c.relkind in ('r', 'p') then 'table'
+            when c.relkind = 'v' then 'view' else 'materialized_view' end,
+       n.nspname || '.' || c.relname
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname in ('public', 'private') and c.relkind in ('r', 'p', 'v', 'm')
+union all
+select 'function', n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname in ('public', 'private')
+union all
+select 'index', n.nspname || '.' || t.relname || '/' || i.relname
+from pg_index x join pg_class t on t.oid = x.indrelid join pg_class i on i.oid = x.indexrelid
+join pg_namespace n on n.oid = t.relnamespace where n.nspname in ('public', 'private')
+union all
+select 'constraint', n.nspname || '.' || c.relname || '/' || k.conname || '[' ||
+       case k.contype when 'c' then 'check' when 'f' then 'foreign_key' when 'p' then 'primary_key'
+       when 'u' then 'unique' when 'x' then 'exclusion' when 'n' then 'not_null' else k.contype::text end || ']'
+from pg_constraint k join pg_class c on c.oid = k.conrelid join pg_namespace n on n.oid = c.relnamespace
+where n.nspname in ('public', 'private')
+union all
+select 'trigger', n.nspname || '.' || c.relname || '/' || t.tgname
+from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace
+where n.nspname in ('public', 'private') and not t.tgisinternal
+union all
+select 'policy', n.nspname || '.' || c.relname || '/' || p.polname
+from pg_policy p join pg_class c on c.oid = p.polrelid join pg_namespace n on n.oid = c.relnamespace
+where n.nspname in ('public', 'private')
+union all
+select 'rls', n.nspname || '.' || c.relname || '=' ||
+       case when c.relforcerowsecurity then 'forced' when c.relrowsecurity then 'enabled' else 'disabled' end
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname in ('public', 'private') and c.relkind in ('r', 'p')
+union all select 'bucket', 'storage.' || id from storage.buckets
+order by 1, 2;
+'@
+  $databaseUser = [Uri]::UnescapeDataString($DatabaseUrl.UserInfo.Split(':')[0])
+  $databaseName = [Uri]::UnescapeDataString($DatabaseUrl.AbsolutePath.TrimStart('/'))
+  $inventory = @(& docker exec $Container psql -U $databaseUser -d $databaseName -X -v ON_ERROR_STOP=1 -At -F '|' -c $query 2>&1)
+  if ($LASTEXITCODE -ne 0) { throw 'Não foi possível ler o inventário do banco local.' }
+  return $inventory -join "`n"
 }
 
 Push-Location $repositoryRoot
@@ -139,92 +94,52 @@ try {
   foreach ($name in $environmentNames) {
     $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
   }
-  New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null
-
-  $status = Get-LocalSupabaseStatus
-  $apiUrl = [string]$status.API_URL
-  $publishableKey = [string]$status.ANON_KEY
-  $serviceRoleKey = [string]$status.SERVICE_ROLE_KEY
-  Assert-LocalProjectUrl -Value $apiUrl
-  if ([string]::IsNullOrWhiteSpace($publishableKey) -or [string]::IsNullOrWhiteSpace($serviceRoleKey)) {
-    throw 'O estado local não contém as chaves efêmeras necessárias aos testes.'
-  }
-
-  $env:ARALEARN_SUPABASE_URL = $apiUrl
-  $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = $publishableKey
-  $env:SUPABASE_URL = $apiUrl
-  $env:SUPABASE_PUBLISHABLE_KEY = $publishableKey
-  $env:SUPABASE_SERVICE_ROLE_KEY = $serviceRoleKey
+  $databaseUrl = Get-LocalDatabaseUrl
+  $configuration = Get-Content -LiteralPath (Join-Path $repositoryRoot 'supabase/config.toml') -Raw
+  $project = [regex]::Match($configuration, '(?m)^project_id\s*=\s*"([a-z0-9_-]+)"').Groups[1].Value
+  if (-not $project) { throw 'Identidade do projeto Supabase local ausente.' }
+  $container = "supabase_db_$project"
+  $env:ARALEARN_TEST_DATABASE_URL = $databaseUrl
+  $env:ARALEARN_TEST_DATABASE_CONTAINER = $container
 
   $deno = Resolve-AraLearnDenoCommand
   Invoke-CheckedCommand 'Testes Deno do gateway MCP' $deno @(
-    'test', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
+    'test', '--config', 'supabase/functions/deno.json', 'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
   )
-  Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
-    'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-authoring-mcp/index.ts'
-  )
-  Invoke-CheckedCommand 'Verificação Deno da API de Cursos' $deno @(
-    'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-course-api/index.ts'
-  )
+  foreach ($entry in @('aralearn-authoring-mcp', 'aralearn-course-api', 'aralearn-authoring-action')) {
+    Invoke-CheckedCommand "Verificação Deno: $entry" $deno @(
+      'check', '--config', 'supabase/functions/deno.json', "supabase/functions/$entry/index.ts"
+    )
+  }
+  Invoke-CheckedCommand 'Testes pgTAP do banco local' $npxCommand @('--yes', 'supabase@2.115.0', 'test', 'db')
 
-  Invoke-CheckedCommand 'Testes pgTAP do banco local' 'npx.cmd' @(
-    '--yes', 'supabase@2.115.0', 'test', 'db'
-  )
+  Get-LocalDatabaseInventory -Container $container -DatabaseUrl ([Uri]$databaseUrl) |
+    & node ./scripts/auditVerticalParity.mjs --database-inventory -
+  if ($LASTEXITCODE -ne 0) { throw 'O inventário local diverge da paridade versionada.' }
 
-  Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
+  Invoke-CheckedCommand 'Lint dos schemas public e private: avisos visíveis; erros bloqueiam' $npxCommand @(
     '--yes', 'supabase@2.115.0', 'db', 'lint', '--local', '--schema', 'public,private',
-    '--level', 'warning', '--fail-on', 'warning'
+    '--level', 'warning', '--fail-on', 'error'
   )
 
-  # A stack possui um único Edge Runtime. Mantê-lo vivo durante toda a prova
-  # evita reinicializar o upstream entre a API de Curso e o refresh OAuth MCP.
-  $edgeHandle = Start-LocalEdgeFunctions
-  try {
-    Wait-LocalEdgeFunction `
-      -Url "$apiUrl/functions/v1/aralearn-course-api/v1/courses" `
-      -Process $edgeHandle.Process
-    Wait-LocalEdgeFunction `
-      -Url "$apiUrl/functions/v1/aralearn-authoring-mcp" `
-      -Process $edgeHandle.Process
-    Invoke-CheckedCommand 'Smoke da API, do PostgREST e do RLS de Curso' 'npm.cmd' @(
-      'run',
-      'test:supabase:smoke'
-    )
-
-    Invoke-CheckedCommand 'Ciclo de vida de PDFs pela Storage API' 'npm.cmd' @(
-      'run',
-      'test:storage:lifecycle:local'
-    )
-
-    Invoke-CheckedCommand 'Smoke dos e-mails de Auth' 'node' @('.\supabase\tests\auth-email-smoke.mjs')
-
-    Invoke-CheckedCommand 'Smoke OAuth do gateway MCP de autoria' 'npm.cmd' @(
-      'run',
-      'test:authoring:mcp:local:oauth'
-    )
+  $concurrency = @(& node --test --test-reporter=tap ./tests/runtime/course-postgres-concurrency.test.js 2>&1)
+  $concurrencyExit = $LASTEXITCODE
+  $summary = $concurrency | Where-Object { $_ -match '^(not ok |# (tests|pass|fail|cancelled|skipped|todo|duration_ms) )' }
+  $summary | ForEach-Object { Write-Host $_ }
+  $testCount = [regex]::Match(($concurrency -join "`n"), '(?m)^# tests ([1-9][0-9]*)\r?$').Groups[1].Value
+  $passCount = [regex]::Match(($concurrency -join "`n"), '(?m)^# pass ([0-9]+)\r?$').Groups[1].Value
+  $skipCount = [regex]::Match(($concurrency -join "`n"), '(?m)^# skipped ([0-9]+)\r?$').Groups[1].Value
+  if ($concurrencyExit -ne 0 -or -not $testCount -or $testCount -ne $passCount -or $skipCount -ne '0') {
+    throw 'A concorrência PostgreSQL exige todos os casos aprovados, sem skips.'
   }
-  catch {
-    Show-EdgeFailureLog -Handle $edgeHandle
-    throw
+  if (-not $DatabaseOnly) {
+    Invoke-CheckedCommand 'Integração HTTP, canais e navegador locais' 'node' @('./scripts/runLocalIntegration.mjs')
   }
-  finally {
-    Stop-LocalEdgeFunction -Process $edgeHandle.Process
-  }
-
-  Write-Host "`nSupabase local validado sem falhas."
+  Write-Host 'Gate de banco Supabase local aprovado.'
 }
 finally {
-  foreach ($process in $edgeProcesses) {
-    Stop-LocalEdgeFunction -Process $process
-  }
   foreach ($name in $environmentNames) {
     [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
-  }
-  if (Test-Path -LiteralPath $temporaryRoot) {
-    Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
   }
   Pop-Location
 }

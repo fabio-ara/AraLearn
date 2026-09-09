@@ -4,8 +4,10 @@ node_modules/
 .tmp/
 .pages/
 .candidate/
+.validation/
 playwright-report/
 test-results/
+test-results-stub/
 tests/reports/
 
 # Configurações e material de assinatura locais: nunca versionar.

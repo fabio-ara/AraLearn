@@ -34,9 +34,16 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
   const statusArguments = process.platform === "win32"
     ? ["/d", "/s", "/c", "npx --yes supabase@2.115.0 status --output json"]
     : ["--yes", "supabase@2.115.0", "status", "--output", "json"];
-  const status = JSON.parse(execFileSync(statusCommand, statusArguments,
+  const localEnvironment = process.env.ARALEARN_SUPABASE_URL || process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const status = localEnvironment ? {
+    API_URL: process.env.ARALEARN_SUPABASE_URL,
+    ANON_KEY: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY,
+    SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
+  } : JSON.parse(execFileSync(statusCommand, statusArguments,
     { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
-  assert.equal(new URL(status.API_URL).origin, "http://127.0.0.1:54321");
+  assert.ok(["http://127.0.0.1:54321", "http://localhost:54321"].includes(status.API_URL));
+  assert.ok(status.ANON_KEY && status.SERVICE_ROLE_KEY, "Credenciais efêmeras locais completas são obrigatórias.");
   const origin = "http://127.0.0.1:4182";
   const marker = randomUUID();
   const proof = { marker, type: "API e Storage locais reais; fixture sintética", checks: [], courseIds: [], userIds: [], cleanup: [] };

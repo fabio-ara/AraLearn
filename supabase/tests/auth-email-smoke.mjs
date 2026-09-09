@@ -117,7 +117,7 @@ function callbackLocation(callback) {
 async function deleteTemporaryUser(apiUrl, serviceRoleKey, userId) {
   if (!userId || !serviceRoleKey) return;
   const response = await fetch(
-    `${apiUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}?should_soft_delete=true`,
+    `${apiUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
     {
       method: "DELETE",
       headers: {
@@ -129,7 +129,8 @@ async function deleteTemporaryUser(apiUrl, serviceRoleKey, userId) {
   assert(response.ok, `O teardown do usuário temporário respondeu com HTTP ${response.status}.`);
 }
 
-const localStatus = readLocalSupabaseStatus();
+const hasLocalEnvironment = Boolean(process.env.SUPABASE_URL || process.env.API_URL);
+const localStatus = hasLocalEnvironment ? {} : readLocalSupabaseStatus();
 const apiUrl = assertLocalUrl(
   String(process.env.SUPABASE_URL || process.env.API_URL || localStatus.API_URL || ""),
   "O smoke de e-mail"
@@ -158,6 +159,7 @@ const replacementPassword = `AraLearn-email-${suffix}-B8!`;
 const redirectUrl = "http://127.0.0.1:4182/";
 const store = createSessionStore();
 let userId = "";
+let primaryError;
 
 try {
   const auth = new SupabaseAuthClient({
@@ -216,6 +218,12 @@ try {
   await signInAuth.signOut();
 
   console.log("Smoke de e-mail Auth: cadastro, confirmação PKCE e recuperação aprovados.");
+} catch (error) {
+  primaryError = error;
+  throw error;
 } finally {
-  await deleteTemporaryUser(apiUrl, serviceRoleKey, userId);
+  try { await deleteTemporaryUser(apiUrl, serviceRoleKey, userId); }
+  catch (error) {
+    throw new AggregateError(primaryError ? [primaryError, error] : [error], "Falha no teardown da fixture de e-mail Auth.");
+  }
 }
