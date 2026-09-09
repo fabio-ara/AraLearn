@@ -14,8 +14,8 @@ pelas unidades dessa microssequência. Uma parte com **Conteúdo produzido** tem
 material já disponível para inspeção; esse estado não atesta revisão humana.
 Mapa aprovado e autorização para produzir não aprovam textos ainda não vistos.
 
-O ícone de Explicação na fileira da unidade abre a inspeção da microssequência
-inteira. Em telas estreitas, quando há ferramentas nessa fileira, **Visualizar**
+O ícone de Explicação na fileira da unidade abre a base explicativa da
+microssequência. Em telas estreitas, quando há ferramentas nessa fileira, **Visualizar**
 fica no menu de detalhes da unidade para preservar o tamanho dos controles.
 
 **Debater com GPT** oferece uma referência copiável do objeto e da revisão em
@@ -24,9 +24,9 @@ discuta a proposta. O pedido não escreve no curso nem inicia assistência por
 API na Autoria. Depois de uma aplicação autorizada, reinspecione o mesmo recorte;
 somente a decisão explícita de revisão do conteúdo registra a aprovação humana.
 
-Junto à declaração de revisão, confira o nome da microssequência, a quantidade
-de unidades e a presença da Explicação. A decisão abrange esse conjunto e seus
-vínculos de fontes, mesmo após uma inspeção longa.
+Junto à declaração de revisão, confira o objeto e a versão salva em exame.
+A marca da Explicação não revisa automaticamente as unidades, e a marca de uma
+unidade não alcança as demais. Os vínculos pertinentes integram a base da revisão.
 
 ## Começar um curso
 
@@ -59,7 +59,7 @@ contas não favorecidas, preservando proprietário e acessos individuais.
 
 ## Aprovar o mapa curricular
 
-O primeiro resultado substantivo é o mapa de todo o curso:
+O mapa organiza o curso:
 
 ```text
 curso → módulos → lições → microssequências
@@ -70,22 +70,24 @@ dependências relevantes e a cobertura do escopo. O chat pode mostrar uma
 síntese, mas o mapa completo precisa estar acessível no AraLearn.
 
 Peça mudanças de cobertura, ordem, profundidade ou ênfase antes de aprovar. A
-aprovação vale somente para o mapa apresentado. Ela não aprova exercícios,
+aprovação usa a referência da versão persistida que foi inspecionada, sem
+regenerar a árvore no envio. O mapa pode evoluir por ramos, e uma Explicação
+pode ser desenvolvida antes dessa aprovação. Aprovar o mapa não aprova exercícios,
 componentes, formulações nem unidades de estudo que ainda serão produzidas.
 
 ## Produzir em partes
 
-Depois do mapa, partes dividem a produção em lotes manejáveis. Elas não aparecem
+Partes dividem a produção em lotes manejáveis. Elas não aparecem
 na hierarquia curricular e podem ser redimensionadas sem alterar módulos, lições
 ou microssequências.
 
 Para cada parte:
 
-1. leia a progressão local proposta no chat;
-2. corrija somente decisões substantivas;
-3. aprove a preparação daquele lote;
-4. abra as unidades materializadas no AraLearn;
-5. inspecione o percurso antes de seguir.
+1. confira o recorte e a progressão local conforme o trabalho combinado;
+2. desenvolva e inspecione a Explicação e suas fontes;
+3. no Ciclo completo, prepare o desenho e as unidades a partir dessa base;
+4. abra o resultado salvo e inspecione os objetos pertinentes;
+5. continue segundo a cadência e os pontos de revisão escolhidos.
 
 O chat deve permanecer curto. Detalhes ficam no mapa e no conteúdo, não em
 explicações sobre o mecanismo do AraLearn.
@@ -102,24 +104,29 @@ alvos separadamente quando quiser registrar uma observação em lote. O comando
 condições indicadas pelo aviso. Essa edição é manual; a Assistência por IA fica
 em Estudo.
 
-Na inspeção **Explicação e revisão do conteúdo**, confira objetivo, proposta,
-apoio, todas as unidades com respostas e feedback e os vínculos de fontes.
+Na inspeção da **Explicação**, confira a base explicativa salva: conteúdo
+desenvolvido, pressupostos, relações e fontes. Ela pode ser produzida e revisada
+antes das unidades, inclusive com o mapa ainda em rascunho. Depois, confira as
+unidades com respostas, feedback e os vínculos pertinentes a cada uma.
 **Editar Explicação** abre os campos textuais editáveis dos componentes já
 presentes. Examine a prévia e use **Salvar Explicação** ou **Cancelar edição**.
 Essa edição não acrescenta componentes nem gera apoio ausente. Salvar preserva
 os demais dados e vínculos; confira se os trechos citados ainda sustentam o
-texto alterado. Mudanças materiais exigem nova revisão antes de disponibilizar
-o recorte atualizado a estudantes.
+texto alterado. Mudanças materiais desatualizam a revisão do objeto afetado.
+Conteúdo completo salvo pode ser estudado por quem tem acesso mesmo sem essa
+marca; exigir somente conteúdo revisado é uma política opcional do curso.
 
-Depois de examinar o conjunto completo e resolver alterações pendentes, marque
-a declaração de revisão e use **Aprovar conteúdo revisado**. A aprovação vale
-para essa base; uma mudança concorrente exige releitura. Abrir a inspeção não
-comprova leitura nem aprova o material. Se o resultado de salvar ou aprovar
-ficar incerto, a opção **Confirmar resultado** recupera o mesmo pedido, inclusive
-ao reabrir a inspeção. Ela não cria uma nova decisão nem substitui a conferência
-da situação corrente.
+Cada Explicação e cada unidade tem sua própria **Revisão autoral**. Depois de
+inspecionar o objeto e salvar ou descartar edições pendentes, use **Marcar como
+revisado**; **Retirar marca de revisão** desfaz a declaração. A marca referencia
+o conteúdo salvo e não demonstra leitura, correção ou eficácia. No chat, a
+tarefa `declarar_revisao` também registra a escolha humana expressa sobre o
+objeto referenciado. Salvar uma edição ou corrigir uma observação não faz essa
+declaração. Se o resultado ficar incerto, **Confirmar resultado** recupera o
+mesmo pedido, inclusive ao reabrir a inspeção.
 
-**Parâmetros** permite consultar os escopos do curso e distinguir intenção
+**Parâmetros** fica no contexto do objeto: curso e ramo no Planejamento,
+microssequência junto da Explicação e unidade em sua inspeção. Permite distinguir intenção
 automática, valor fixo e herança. Trocar o escopo conserva os ajustes ainda não
 salvos em seu contexto. **Observações** pode ser aberta apenas para consultar;
 um texto alterado ou um envio parcial é que exige retomar o trabalho antes de
@@ -176,9 +183,18 @@ conclusão de exemplo e integração conforme o objetivo.
 ## Ajustar o desenho
 
 A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
-que define significado, unidade, limites e escopos de cada ajuste. Ela reúne
-conteúdo, prática, conversa e cadência de produção. Os alvos de palavras e de
-produção orientam o trabalho; não são licença para omitir conteúdo necessário.
+que define significado, unidade, limites e escopos de cada ajuste. Intenção
+corrente, configuração aplicada e declaração de revisão são registros distintos.
+Os alvos de palavras e de produção orientam o trabalho; não são licença para
+omitir conteúdo necessário.
+
+**Configurações** tem os mesmos quatro grupos em Estudo e Autoria: **Conta**,
+**Aparência**, **Sincronização e dados deste dispositivo** e **Preferências de
+autoria**. Manutenção aparece somente para o papel autorizado. As preferências
+pessoais de autoria separam foco **Conteúdo / Ciclo completo**, cadência, pontos
+de revisão e diálogo. O GPT as consulta ao retomar; salvá-las não altera cursos,
+configurações aplicadas ou condições de pesquisa retroativamente. Conteúdo
+trabalha bases e fontes; Ciclo completo inclui desenho e unidades no recorte combinado.
 
 Automático é uma intenção sem valor numérico implícito. Antes de materializar,
 o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
@@ -197,8 +213,8 @@ declarado e onde aparece, sem atribuir uma nota pedagógica.
 Direção editorial é separada. Ela pode orientar extensão, estilo, títulos e
 organização, mas não retirar conteúdo necessário.
 
-Mapa global antes dos lotes, aprovação apenas do que estava inspecionável e
-linguagem pública compreensível são invariantes. As dimensões pedagógicas e
+Referência ao mapa efetivamente inspecionado e linguagem pública compreensível
+são invariantes. As dimensões pedagógicas e
 editoriais podem ser calibradas sem criar uma entidade para cada heurística.
 
 ## Trabalhar com fontes
@@ -211,7 +227,7 @@ autoridade conceitual automática.
 Metadados, localizações e papéis continuam contestáveis. Um PDF enviado por
 conversa só deve ser guardado quando essa intenção estiver clara.
 
-Na inspeção da Explicação, abra suas fontes para conferir obra, localizador,
+Na inspeção da Explicação, consulte as referências no fim do corpo para conferir obra, localizador,
 papel e trecho associado. Os vínculos pertencem ao apoio compartilhado da
 microssequência; não é preciso repeti-los em cada unidade. Ao localizar uma
 ocorrência, selecione o trecho literal do conteúdo mostrado. A posição do bloco
@@ -222,7 +238,7 @@ localizador na fonte. Fechar o detalhe da fonte retorna aos vínculos da mesma
 Explicação, preservando o recorte da inspeção.
 
 Conferir a referência bibliográfica não aprova automaticamente o conteúdo.
-Alterar texto, fonte ou vínculo pode exigir nova revisão do conjunto. Uma
+Alterar texto, fonte ou vínculo pode desatualizar a revisão do objeto afetado. Uma
 gravação cujo resultado ficou incerto deve ser recuperada pelo mesmo pedido
 antes de iniciar outra edição; o aplicativo conserva esse pedido localmente.
 
@@ -257,6 +273,14 @@ inspecionar → observar → preparar contexto → propor
 
 Aplicar uma proposta não demonstra que ela resolveu o problema; confira o
 conteúdo corrente.
+
+Cada Explicação e unidade conserva uma fila durável de observações autorais.
+O campo de texto acrescenta uma entrada; o ícone com contagem abre a fila para
+consulta e edição. O GPT lê as pendências pertinentes antes de corrigir. Somente
+a versão exata cuja correção foi persistida e confirmada por releitura sai da
+fila. Ler, responder ou começar uma tentativa não consome a entrada; versões
+editadas, conflitos e aplicações parciais permanecem pendentes. Se a resposta
+se perder, a retomada reconcilia conteúdo e fila pela mesma tentativa.
 
 No minichat **Assistência por IA**, disponível ao proprietário em Estudo, você
 pode discutir sem alterar conteúdo. Quando houver proposta, use **Preparar

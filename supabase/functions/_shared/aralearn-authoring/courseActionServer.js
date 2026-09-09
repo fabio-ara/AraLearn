@@ -14,6 +14,8 @@ import {
 } from "./security.js";
 import { isTrustedOpenAiFileHost } from "./openAiTemporaryFile.js";
 import { readActionPayload, serializeActionPayload } from "./courseActionPayload.js";
+import { projectHumanWriteRecovery } from "./toolErrorEnvelope.js";
+import { decodeCourseActionTaskRequest, isCourseActionOperation } from "./courseActionBindings.js";
 
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
@@ -121,7 +123,7 @@ function normalizedResult(value) {
 }
 
 function retryableError(error) {
-  if (["course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
+  if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
   if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
   return new Set([
     "course_service_unavailable", "request_timeout", "network_error"
@@ -158,6 +160,18 @@ function nextDecisionForError(error, retryable) {
 }
 
 function publicError(error, { writeTaskStarted = false } = {}) {
+  const recovery = projectHumanWriteRecovery(error);
+  if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) {
+    return {
+      error: { code: error.code,
+        message: "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo.",
+        retryable: false, ...(recovery ? { recovery } : {}) },
+      nextDecision: error.code === "course_write_uncertain"
+        ? "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração."
+        : `${nextDecisionForError(error, false)}${recovery
+          ? " Preserve a mesma tentativa durante a conferência, sem reaplicar a alteração." : ""}`
+    };
+  }
   if (writeTaskStarted && ["action_response_too_large", "human_task_result_too_large"].includes(error.code)) {
     return {
       error: {
@@ -217,12 +231,14 @@ export function createAuthoringActionHandler({
       if (request.method !== "POST") {
         throw new AuthoringApiError(405, "method_not_allowed", "A Action aceita somente POST.");
       }
-      const taskName = route.length === 1 ? route[0] : "";
-      const task = courseHumanTaskDefinition(taskName);
-      if (!task) throw new AuthoringApiError(404, "unknown_human_task", "Tarefa de autoria inexistente.");
+      const operationName = route.length === 1 ? route[0] : "";
+      if (!isCourseActionOperation(operationName)) throw new AuthoringApiError(404, "unknown_human_task", "Operação de autoria inexistente.");
       const authentication = readAuthoringOAuthAuthorization(request);
       const deadlineAt = Date.now() + 40_000;
-      const rawArguments = normalizeActionArguments(taskName, await readActionPayload(request));
+      const binding = decodeCourseActionTaskRequest(operationName, await readActionPayload(request));
+      const taskName = binding.taskName;
+      const task = courseHumanTaskDefinition(taskName);
+      const rawArguments = normalizeActionArguments(taskName, binding.arguments);
       const principal = await adapter.resolveActionPrincipal(
         await sha256Hex(authentication.credential),
         { deadlineAt }

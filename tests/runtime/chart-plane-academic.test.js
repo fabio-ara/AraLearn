@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { RESOURCE_PACKAGE_REGISTRY, chartPackage, planePackage } from "../../src/resources/packages/index.js";
 import { compileChartVegaLite } from "../../src/resources/packages/chart/index.js";
 import { compilePlaneVegaLite } from "../../src/resources/packages/plane/index.js";
+import { compile as compileVegaLite } from "vega-lite";
+import { instrumentPackageManualTextTargets } from "../../src/resources/kernel/manualTextMarkers.js";
 
 const theme = Object.freeze({
   colors: ["#2563eb", "#b45309", "#15803d", "#7e22ce", "#be123c", "#0369a1"],
@@ -42,6 +44,29 @@ test("chart rejeita a antiga tupla categórica e tipos declarados sem renderer",
   }), "content");
   assert.equal(old.valid, false);
   assert.match(old.errors.join(" "), /schema|chartType|xAxis|values/iu);
+});
+
+test("chart conserva nome e unidade do eixo x em linhas nativas sem reduzir fonte ou perder edição", () => {
+  const data = chartPackage.normalize(chartPackage.authoringContract.example);
+  const specification = compileChartVegaLite(data, theme);
+  const compiled = compileVegaLite(specification).spec;
+  const horizontal = compiled.axes.find(axis => axis.scale === "x" && axis.title);
+  assert.deepEqual(horizontal.title, ["Concorrência", "(requisições simultâneas)"]);
+  assert.equal(horizontal.title.join(" "), `${data.xAxis.label} (${data.xAxis.unit})`);
+  assert.ok(horizontal.titleLimit == null || horizontal.titleLimit === 0);
+  assert.equal(specification.config.axis.titleFontSize, 12);
+  assert.equal(compiled.axes.find(axis => axis.scale === "y" && axis.title).title,
+    `${data.yAxis.label} (${data.yAxis.unit})`);
+  assert.ok(chartPackage.accessibleText(data).includes(horizontal.title.join(" ")));
+  const html = chartPackage.render(instrumentPackageManualTextTargets(data, chartPackage.editableTargets(data)));
+  assert.match(html, /data-package-manual-x-axis-path="xAxis.label"/u);
+  assert.ok(html.includes(`data-package-manual-x-axis-suffix=" (${data.xAxis.unit})"`));
+  const encoded = /data-chart-data="([^"]+)"/u.exec(html)[1];
+  assert.deepEqual(JSON.parse(decodeURIComponent(encoded)), data, "A quebra visual não modifica a base salva nem a cópia de edição.");
+  const withoutUnit = structuredClone(data);
+  delete withoutUnit.xAxis.unit;
+  assert.equal(compileVegaLite(compileChartVegaLite(withoutUnit, theme)).spec.axes
+    .find(axis => axis.scale === "x" && axis.title).title, data.xAxis.label);
 });
 
 test("plane acadêmico diferencia pontos, vetores aplicados e regiões em domínios explícitos", () => {

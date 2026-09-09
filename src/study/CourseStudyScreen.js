@@ -34,8 +34,9 @@ function topbar(title, backTitle = "Voltar", modeControls = "", runtimeStatus = 
     '<div class="course-authoring-course-identity" tabindex="0"><span>Curso</span><p id="context-editor-course-identity">' +
     escapeHtml(authoringContext.courseTitle) + '</p></div><button type="button" data-action="authoring-context-back">' +
     renderUiIcon("arrow-left", "course-authoring-button-icon") + '<span>Voltar ao Conteúdo</span></button>' +
-    '<button type="button" data-action="open-settings">' + renderUiIcon("account", "course-authoring-button-icon") +
-    '<span>Conta e aparência</span></button></nav></details></div></header></div>';
+    '</nav></details><button class="course-authoring-header-action" type="button" data-action="open-settings"' +
+    ' title="Configurações" aria-label="Configurações" aria-haspopup="dialog">' + renderUiIcon("account", "course-authoring-button-icon") +
+    '</button></div></header></div>';
   return (
     '<header class="topbar lesson-topbar navigation-topbar">' +
     '<nav class="navigation-primary-actions" aria-label="Navegação">' +
@@ -48,8 +49,8 @@ function topbar(title, backTitle = "Voltar", modeControls = "", runtimeStatus = 
     '</span>' + modeControls + '</div><div class="lesson-top-actions">' +
     renderRuntimeStatusControl(runtimeStatus) +
     '<button class="icon-ghost" type="button" data-action="open-settings"' +
-    ' title="Conta e aparência" aria-label="Conta e aparência">' +
-    renderUiIcon("more", "home-tab-icon") + "</button></div></header>"
+    ' title="Configurações" aria-label="Configurações" aria-haspopup="dialog">' +
+    renderUiIcon("account", "home-tab-icon") + "</button></div></header>"
   );
 }
 
@@ -599,7 +600,6 @@ function renderStudyUnit({
   visitor = false,
   markedForReview,
   runtimeStatus,
-  citationsOpen,
   citations,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
@@ -656,7 +656,7 @@ function renderStudyUnit({
     unit: true
   });
   return '<section class="screen microsequence-workbench-screen">' +
-    topbar(course.title || "Curso", "Voltar", modes, runtimeStatus, manualEditor.authoringContext) +
+    topbar(course.title || "Curso", "Voltar", "", runtimeStatus, manualEditor.authoringContext) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen"' +
@@ -670,6 +670,7 @@ function renderStudyUnit({
     '<section class="card-portrait editor-card-portrait study-stage">' +
     '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
     '<div class="runtime-card-rendered-content"><div class="card-sheet-content">' +
+    (modes && !manualEditor.authoringContext ? '<div class="study-contextual-authoring" aria-label="Ações de autoria desta unidade">' + modes + "</div>" : "") +
     renderStudyManualTitle(studyUnit, manualEditor) + runtime.bodyHtml +
     renderStudySourceMarkers(studyCitationMarkers(studyUnit, citations).filter(marker => !marker.target)) + "</div>" + runtime.dockHtml + "</div></article></section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Unidade de estudo ' +
@@ -693,9 +694,6 @@ function renderStudyUnit({
     '<button class="icon-ghost study-explanation-btn" type="button" data-action="open-explanation"' +
     ' aria-haspopup="dialog" aria-expanded="false" title="Explicação" aria-label="Explicação">' +
     renderUiIcon("book-open", "home-tab-icon") + "</button>" +
-    '<button class="icon-ghost study-citations-btn" type="button" data-action="toggle-citations"' +
-    ` aria-expanded="${String(citationsOpen)}" title="Fontes" aria-label="Fontes">` +
-    renderUiIcon("study", "home-tab-icon") + "</button>" +
     '<button class="icon-ghost study-observation-btn' +
     (observationCount > 0 ? " has-observations" : "") +
     '" type="button" data-action="open-observation" title="' + (visitor ? "Entre para enviar observações" : "Observações") + '" aria-label="' + (visitor ? "Entre para enviar observações" : "Observações") +
@@ -752,7 +750,6 @@ export function renderCourseStudyScreen({
   advanceError = "",
   observationCount = 0,
   markedForReview = false,
-  citationsOpen = false,
   citations = null,
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } },
   assistance = { enabled: false, activeScope: "", draft: null, saving: false, error: "" },
@@ -806,8 +803,7 @@ export function renderCourseStudyScreen({
     visitor,
     markedForReview,
     runtimeStatus,
-    citationsOpen,
-    citations,
+      citations,
     manualEditor
   });
 }

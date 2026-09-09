@@ -15,6 +15,9 @@ import {
 import {
   localSupabaseConfiguration,
   localSupabaseRequest,
+  createConfirmedLocalUser,
+  createLocalFixtureClient,
+  trackLocalFixtureCreation,
   removeLocalUser,
   signInLocalUser
 } from "../../tests/support/localSupabaseE2e.js";
@@ -25,16 +28,11 @@ function first(value) {
 
 async function createAuthor(config, marker, onCreated) {
   const password = `Authoring-${marker}-Aa1!`;
-  const created = await localSupabaseRequest(config, "/auth/v1/admin/users", {
-    method: "POST",
-    token: config.adminKey,
-    body: {
+  const created = await createConfirmedLocalUser(config, {
       email: `authoring-${marker}@example.test`,
       password,
-      email_confirm: true,
-      app_metadata: { aralearn_role: "administrator" },
-      user_metadata: { test: "course-authoring-current-local-smoke" }
-    }
+      appMetadata: { aralearn_role: "administrator" },
+      marker: "course-authoring-current-local-smoke"
   });
   assert.equal(created.response.status, 200, `Criação da fixture: HTTP ${created.response.status}`);
   onCreated(created.payload.id);
@@ -160,10 +158,9 @@ export function practiceUnit() {
   };
 }
 
-export function curricularMap(course, approved) {
+export function curricularMap(course) {
   return {
     curso: course,
-    aprovado: approved,
     publico: "Pessoas iniciantes em comunicação de rede",
     preRequisitos: [
       "Reconhecer um processo computacional.",
@@ -230,6 +227,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
   let actorId = null;
   let accessToken = null;
   let courseId = null;
+  let ownerClient;
   let primaryError;
   const cleanup = { completed: false, courseRemoved: false, userRemoved: false };
   const adapter = new CourseSupabaseAdapter({
@@ -244,12 +242,16 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     const author = await createAuthor(config, marker, id => { actorId = id; });
     actorId = author.id;
     accessToken = author.accessToken;
+    ownerClient = await createLocalFixtureClient(config, { ownerId: actorId, accessToken,
+      origin: environment.ARALEARN_LOCAL_APPLICATION_ORIGIN });
     const principal = {
       actorId,
       authenticationKind: "oauth",
       scopes: ["authoring:read", "authoring:write"]
     };
-    const created = await executeHumanCourseTask({
+    const created = await trackLocalFixtureCreation(config, { ownerId: actorId,
+      courseIdFromResult: result => { courseId = result.deepLink?.match(/\/courses\/([0-9a-f-]{36})/u)?.[1]; return courseId; },
+      create: () => executeHumanCourseTask({
       adapter,
       principal,
       name: "criar_curso",
@@ -257,12 +259,12 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         titulo: title,
         objetivo: "Distinguir processo, socket e conexão a partir dos pré-requisitos declarados."
       }
-    });
+    }) });
     assert.match(created.result, /Criei o curso privado/u);
     courseId = (await resolveHumanCourseContext({ adapter, principal, course: title })).course.id;
 
-    const proposedMap = curricularMap(title, false);
-    await executeHumanCourseTask({
+    const proposedMap = curricularMap(title);
+    const savedMap = await executeHumanCourseTask({
       adapter,
       principal,
       name: "salvar_mapa_curricular",
@@ -271,8 +273,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     await executeHumanCourseTask({
       adapter,
       principal,
-      name: "salvar_mapa_curricular",
-      rawArguments: { ...proposedMap, aprovado: true }
+      name: "aprovar_mapa_curricular",
+      rawArguments: { referencia: savedMap.context.referenciaParaAprovar }
     });
 
     await executeHumanCourseTask({
@@ -704,7 +706,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     const failures = [];
     if (actorId && courseId) {
       try {
-        const removed = await adapter.maintainCourse({ principal: { actorId }, courseId,
+        const removed = await ownerClient.maintainCourse({ courseId,
           operation: "delete_owned_course", confirmed: true, requestId: randomUUID() });
         assert.equal(removed.fileCleanupPending, false, "A limpeza do curso sintético deve terminar antes da conta.");
         cleanup.courseRemoved = true;

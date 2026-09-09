@@ -1,5 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
+import { trackLocalFixtureUserCreation, trackLocalFixtureUserRemoval } from "./localFixtureLedger.js";
+import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
+export { createLocalFixtureClient, trackLocalFixtureCreation, recordLocalFixtureFiles,
+  verifyLocalFixtureFilesAbsent, localFixtureLedgerSummary } from "./localFixtureLedger.js";
 
 export const LOCAL_APPLICATION_ORIGIN = "http://127.0.0.1:4182";
 export const CHATGPT_ACTION_ORIGIN = "https://chatgpt.com";
@@ -24,7 +28,9 @@ export function localSupabaseConfiguration(environment = process.env) {
   if (!publishableKey || !adminKey) {
     throw new Error("As chaves efêmeras da stack Supabase local estão ausentes.");
   }
-  return Object.freeze({ projectUrl, publishableKey, adminKey });
+  return Object.freeze({ projectUrl, publishableKey, adminKey,
+    fixtureLedgerDirectory: environment.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR,
+    fixtureOrigin: environment.ARALEARN_LOCAL_FIXTURE_ORIGIN });
 }
 
 async function responsePayload(response) {
@@ -101,25 +107,34 @@ export function localSupabaseFailure(label, result) {
   return `${label}: HTTP ${result.response.status}: ${JSON.stringify(result.payload)}`;
 }
 
-export async function createConfirmedLocalUser(config, { email, password, marker }) {
-  return localSupabaseRequest(config, "/auth/v1/admin/users", {
+export async function createConfirmedLocalUser(config, { email, password, marker, appMetadata }) {
+  return trackLocalFixtureUserCreation(config, { email, marker, create: () => localSupabaseRequest(config, "/auth/v1/admin/users", {
     method: "POST",
     token: config.adminKey,
     body: {
       email,
       password,
       email_confirm: true,
-      user_metadata: { test: marker }
+      user_metadata: { test: marker },
+      ...(appMetadata ? { app_metadata: appMetadata } : {})
     }
-  });
+  }), reconcile: async () => {
+    const listed = await localSupabaseRequest(config, "/auth/v1/admin/users?page=1&per_page=1000", { token: config.adminKey });
+    if (!listed.response.ok) return null;
+    const found = listed.payload?.users?.filter(user => user.email === email && user.user_metadata?.test === marker) || [];
+    return found.length === 1 ? { response: listed.response, payload: found[0] } : null;
+  } });
 }
 
 export async function removeLocalUser(config, userId) {
   if (!userId) return null;
-  return localSupabaseRequest(config, `/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+  return trackLocalFixtureUserRemoval(config, userId, { remove: () => localSupabaseRequest(config, `/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
     method: "DELETE",
     token: config.adminKey
-  });
+  }), read: async () => {
+    const result = await localSupabaseRequest(config, `/auth/v1/admin/users/${encodeURIComponent(userId)}`, { token: config.adminKey });
+    return { absent: result.response.status === 404 };
+  } });
 }
 
 export async function signInLocalUser(config, { email, password }) {
@@ -542,10 +557,11 @@ export async function courseAction(config, name, body, token) {
 }
 
 export async function chatGptAction(config, name, body, token) {
+  const request = encodeCourseActionTaskRequest(name, body === undefined ? {} : body);
   return localSupabaseRequest(
     config,
-    `/functions/v1/aralearn-authoring-action/${encodeURIComponent(name)}`,
-    { method: "POST", token, body, origin: CHATGPT_ACTION_ORIGIN }
+    `/functions/v1/aralearn-authoring-action/${encodeURIComponent(request.operationName)}`,
+    { method: "POST", token, body: request.arguments, origin: CHATGPT_ACTION_ORIGIN }
   );
 }
 

@@ -8,6 +8,8 @@ import { createCourseObservationsPanel } from "./CourseObservationsPanel.js";
 import { renderCourseDesignPanel } from "./CourseDesignPanel.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { renderCourseCurriculumMap, bindCourseCurriculumMap } from "./CourseCurriculumMap.js";
+import { createCourseMicrosequenceReview } from "./CourseMicrosequenceReview.js";
+import { normalizeCurricularMapRead, normalizeCurricularMapChange } from "../domain/courseCurricularMapSlices.js";
 import { createCourseAudioPanel } from "./CourseAudioPanel.js";
 import { createCoursePartsPanel } from "./CoursePartsPanel.js";
 import { formatProfilePreference } from "./CourseAuthoringProfiles.js";
@@ -39,7 +41,8 @@ import {
   mergeCourseSourceCatalogPages,
   normalizeCourseDetail,
   normalizeCourseListPage,
-  projectCoursePlanning
+  projectCoursePlanning,
+  projectPersistedCurricularMap
 } from "./courseAuthoringViewModel.js";
 
 const DEFAULT_COURSE_LIMIT = 24;
@@ -241,7 +244,7 @@ function renderCourseList(state) {
     renderUiIcon("rotate", "course-authoring-button-icon") + '<span>Atualizar cursos</span></button>' +
     `<section class="course-authoring-feedback-explanation" data-list-feedback-explanation aria-label="Aviso"${notice ? '' : ' hidden'}>` +
     `<p role="alert" data-list-feedback-message>${escapeHtml(notice)}</p>` +
-    '</section></nav></details></div></header>' +
+    '</section></nav></details>' + renderSettingsEntry(state) + '</div></header>' +
     '<form class="course-authoring-search" role="search" data-course-authoring-search>' +
     '<label class="course-authoring-visually-hidden" for="course-authoring-query">Buscar cursos</label>' +
     `<input id="course-authoring-query" type="search" maxlength="120" autocomplete="off"` +
@@ -257,6 +260,13 @@ function renderCourseList(state) {
 function listFeedbackFailure(state) {
   return state.writeFailure || state.listRequestFailure || (state.list ? state.failure?.message : "") ||
     (state.list?.offlineKnown ? "Exibindo os cursos disponíveis neste dispositivo." : "");
+}
+
+function renderSettingsEntry(state) {
+  return state.canOpenSettings ? '<button class="course-authoring-header-action" type="button"' +
+    ' data-action="open-settings" data-course-authoring-action="open-settings"' +
+    ' title="Configurações" aria-label="Configurações" aria-haspopup="dialog">' +
+    renderUiIcon("account", "course-authoring-button-icon") + '</button>' : '';
 }
 
 function canAccessPlanning(course) {
@@ -292,8 +302,9 @@ function renderCourseHeader(course, state) {
       renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button>" +
       '<div class="course-authoring-course-heading">' +
       `<h1>${escapeHtml(title)}</h1></div>` +
-      '<div class="course-authoring-header-actions" aria-hidden="true">' +
-      '<span class="course-authoring-header-slot"></span>'.repeat(["content", "planning"].includes(state.section) ? 3 : 2) +
+      '<div class="course-authoring-header-actions">' +
+      '<span class="course-authoring-header-slot" aria-hidden="true"></span>'.repeat(["content", "planning"].includes(state.section) ? 3 : 2) +
+      renderSettingsEntry(state) +
       '</div></header>';
   }
   const backSection = state.contextualReturn && state.contextualReturn.route === state.routeKey
@@ -344,7 +355,7 @@ function renderCourseHeader(course, state) {
       courseRevision: course.revision, title: course.title,
       route: state.routeKey || buildCourseAuthoringRoute(course.courseId, { section: state.section }),
       contextLabel: title }) : "") +
-    "</nav></details></div></header>";
+    "</nav></details>" + renderSettingsEntry(state) + "</div></header>";
 }
 
 function renderActionConfirmation(confirmation) {
@@ -606,8 +617,8 @@ function renderParts(state, planning) {
 }
 
 function renderUnlinkedContentNotice(state, planning) {
-  const contentStudyUnits = Number(state.course?.counts?.studyUnitCount || 0);
-  const plannedStudyUnits = Number(planning.studyUnitCount || 0);
+  const contentStudyUnits = Number(planning.studyUnitCount || 0);
+  const plannedStudyUnits = Number(planning.linkedStudyUnitCount || 0);
   if (contentStudyUnits <= plannedStudyUnits) return "";
   const unlinkedCount = contentStudyUnits - plannedStudyUnits;
   const label = unlinkedCount === 1 ? "Unidade de estudo sem parte" : "Unidades de estudo sem parte";
@@ -673,6 +684,10 @@ function renderPlanningSection(state) {
     });
   }
   const planning = projectCoursePlanning(course, state.authoringPlan);
+  const mapRead = state.curricularMapRead?.courseId === course.courseId && state.curricularMapRead.courseRevision === course.revision &&
+    state.curricularMapRead.planVersion === state.authoringPlan.plan.version ? state.curricularMapRead : null;
+  const map = mapRead ? projectPersistedCurricularMap(mapRead, state.authoringPlan) : planning;
+  const mapView = state.curriculumViewByCourse?.get(course.courseId) || {};
   const targetPart = state.routeTarget?.kind === "authoring_part"
     ? planning.parts.find(({ id }) => id === state.routeTarget.id) || null
     : null;
@@ -688,10 +703,13 @@ function renderPlanningSection(state) {
       value: planning?.objective,
       emptyLabel: "Ainda não definido."
     }) +
-    "</div>" + renderCourseCurriculumMap({ courseId: course.courseId, courseRevision: course.revision, ...planning,
+    "</div>" + (state.curricularMapFailure ? `<p class="course-authoring-notice is-error" role="status">${escapeHtml(state.curricularMapFailure)}</p>` : "") +
+    renderCourseCurriculumMap({ courseId: course.courseId, courseTitle: course.title, courseRevision: course.revision, ...planning, ...map,
       sourceTitles: state.authoringPlan.sourceTitles,
-      expansion: state.curriculumViewByCourse?.get(course.courseId)?.expansion || [] }) +
-    renderParts(state, planning) + renderPlanningContext(planning) +
+      contextual: true, expansion: mapView.expansion || [], query: mapView.query || "", pendingOnly: mapView.pendingOnly === true,
+      approval: mapRead ? { planVersion: mapRead.planVersion, inspected: state.curricularMapInspectedReference === mapRead.mapApprovalReference,
+        pending: state.curricularMapPending, busy: state.curricularMapBusy, message: state.curricularMapMessage } : null }) +
+    renderParts(state, planning) + renderPlanningContext({ ...planning, ...map }) +
     "</section>";
 }
 
@@ -930,6 +948,7 @@ export function createCourseAuthoringSurface({
   navigatorValue = globalThis.navigator || null,
   urlValue = globalThis.URL || null,
   onOpenStudyContent = null,
+  onOpenSettings = null,
   onCopyCourse = null,
   onClose = () => {}
 } = {}) {
@@ -943,6 +962,9 @@ export function createCourseAuthoringSurface({
   if (onOpenStudyContent !== null && typeof onOpenStudyContent !== "function") {
     throw new TypeError("Abertura do editor contextual inválida.");
   }
+  if (onOpenSettings !== null && typeof onOpenSettings !== "function") {
+    throw new TypeError("Abertura de Configurações inválida.");
+  }
 
   let listEpoch = 0;
   let courseEpoch = 0;
@@ -951,6 +973,9 @@ export function createCourseAuthoringSurface({
   let documentPointerListening = false;
   let inspectionSequence = null;
   let reviewPanel = null;
+  let planningExplanation = null;
+  let planningExplanationCourseId = null;
+  let curriculumContextEpoch = 0;
   let analyticsPanel = null;
   let sourcesPanel = null;
   let sourceReturnFocus = null;
@@ -974,6 +999,7 @@ export function createCourseAuthoringSurface({
     inspectionReturnFocus: null,
     inspectionReturnPosition: null,
     canOpenStudyContent: typeof onOpenStudyContent === "function",
+    canOpenSettings: typeof onOpenSettings === "function",
     canCopyCourse: typeof onCopyCourse === "function",
     loading: false,
     list: null,
@@ -998,6 +1024,12 @@ export function createCourseAuthoringSurface({
     createDraft: null,
     listRequestFailure: "",
     authoringPlan: null,
+    curricularMapRead: null,
+    curricularMapPending: null,
+    curricularMapInspectedReference: null,
+    curricularMapBusy: false,
+    curricularMapMessage: "",
+    curricularMapFailure: "",
     curriculumViewByCourse: new Map(),
     planningLoading: false,
     planningFailure: "",
@@ -1005,6 +1037,8 @@ export function createCourseAuthoringSurface({
     designLoading: false,
     designFailure: "",
     designMessage: "",
+    designInstructionalContext: null,
+    designInstructionalLoading: false,
     designBusy: false,
     designCategory: "content",
     designParameterId: null,
@@ -1058,7 +1092,103 @@ export function createCourseAuthoringSurface({
     curriculumMapBinding = bindCourseCurriculumMap(host, { scrollRoot: root,
       initialState: state.curriculumViewByCourse.get(courseId),
       onStateChange: value => state.curriculumViewByCourse.set(courseId, value),
+      onOpenContext: target => { void openCurriculumContext(target); },
+      onInspectionChange: inspected => {
+        state.curricularMapInspectedReference = inspected ? state.curricularMapRead?.mapApprovalReference || null : null;
+        const button = host.querySelector?.('[data-curriculum-approve]');
+        if (button) button.disabled = state.curricularMapBusy || (!state.curricularMapPending &&
+          (!inspected || !state.curricularMapRead?.completeness.complete || state.authoringPlan?.plan.curriculumMapStatus === "approved"));
+      },
+      onApprove: () => { void approveInspectedCurriculum(); },
       onNavigate: (hash, options) => navigate(hash, options) });
+  }
+
+  async function openCurriculumContext({ action, targetKind, targetId, targetLabel, button }) {
+    if (!state.course || !canAccessPlanning(state.course)) return false;
+    const epoch = ++curriculumContextEpoch;
+    const courseId = state.course.courseId;
+    const revision = state.course.revision;
+    if (["parameters", "guidance", "instruction"].includes(action)) {
+      state.designCategory = action === "guidance" ? "editorial" : action === "instruction" ? "instruction" : "content";
+      state.designParameterId = null;
+      return openTargetParameters({ targetScope: { kind: targetKind, ref: targetId }, returnFocusKey: button?.dataset.curriculumKey });
+    }
+    if (targetKind !== "didactic_microsequence") return false;
+    if (action === "explanation") {
+      if (planningExplanation && planningExplanationCourseId !== courseId) {
+        planningExplanation.destroy(); planningExplanation = null;
+      }
+      planningExplanationCourseId = courseId;
+      planningExplanation ||= createCourseMicrosequenceReview({ root, controller, navigatorValue, locationValue,
+        onFeedback: setRequestFeedback,
+        onEditSources: target => openTargetSources(target),
+        onChanged: revision => {
+          if (!state.course || state.course.courseId !== courseId) return;
+          acceptSourcesCourseRevision(revision);
+          if (state.section === "planning") void loadPlanning(courseId, { expectedCourseRevision: revision });
+        }
+      });
+      return planningExplanation.open({ courseId, microsequenceId: targetId, expectedRevision: revision, button });
+    }
+    if (action === "sources") {
+      try {
+        const entity = await controller.getMicrosequenceForExplanation(courseId, targetId, { expectedRevision: revision });
+        if (!state.opened || state.course?.courseId !== courseId || state.course.revision !== revision ||
+            epoch !== curriculumContextEpoch || button && documentValue?.activeElement !== button ||
+            state.section !== "planning" || state.parameterTarget || state.sourceTarget || planningExplanation?.hasPendingDraft()) return false;
+        const explanation = entity.content?.explanation || null;
+        if (!explanation) {
+          setRequestFeedback("A base explicativa ainda não tem conteúdo salvo. Abra Explicação para consultar seu planejamento.");
+          return false;
+        }
+        button?.focus?.({ preventScroll: true });
+        openTargetSources({ targetKind: "microsequence_explanation", targetId, targetVersion: entity.version,
+          targetLabel, targetExplanation: explanation, returnFocusKey: button?.dataset.curriculumKey });
+        return true;
+      } catch (error) {
+        if (state.course?.courseId === courseId) setRequestFeedback(writeFailureMessage(error), { error: true });
+      }
+    }
+    return false;
+  }
+
+  async function approveInspectedCurriculum() {
+    if (state.curricularMapBusy || !state.course) return false;
+    const courseId = state.course.courseId;
+    const pending = state.curricularMapPending;
+    const read = state.curricularMapRead;
+    if (!pending && (!read || read.courseRevision !== state.course.revision || !read.completeness.complete ||
+        state.curricularMapInspectedReference !== read.mapApprovalReference)) return false;
+    const command = pending?.command || { courseId, reference: read.mapApprovalReference };
+    state.curricularMapBusy = true;
+    state.curricularMapMessage = pending ? "Confirmando a alteração curricular pendente…" : "Confirmando a aprovação do mapa inspecionado…";
+    render();
+    try {
+      const value = pending?.operation === "slice" ? await controller.saveCurricularMapSlice(command)
+        : await controller.approveCurricularMap(courseId, command.reference);
+      const result = normalizeCurricularMapChange(value, { courseId, approval: pending?.operation === "slice" ? "draft" : "approved" });
+      if (!state.opened || state.course?.courseId !== courseId) return true;
+      state.curricularMapPending = null;
+      state.curricularMapInspectedReference = null;
+      state.curricularMapMessage = result.approval === "approved" ? "Mapa inspecionado aprovado." : "Alteração curricular confirmada.";
+      state.course = Object.freeze({ ...state.course, revision: Math.max(state.course.revision, result.courseRevision) });
+      state.knownCourse = state.course; knownCourses.set(courseId, state.course);
+      state.authoringPlan = null; state.curricularMapRead = null;
+      if (state.section === "planning" && !state.parameterTarget && !state.sourceTarget) await loadPlanning(courseId, { expectedCourseRevision: state.course.revision });
+      return true;
+    } catch (error) {
+      if (!state.opened || state.course?.courseId !== courseId) return false;
+      state.curricularMapInspectedReference = null;
+      try { state.curricularMapPending = await controller.getPendingCurricularMapChange?.(courseId) || null; }
+      catch { state.curricularMapPending = pending || { operation: "approval", command }; }
+      state.curricularMapMessage = state.curricularMapPending
+        ? "A alteração ainda não foi confirmada. Retome o pedido original; o mapa e sua posição foram preservados."
+        : publicErrorMessage(error, "Não foi possível aprovar esta versão. Atualize o mapa para inspecionar a versão corrente.");
+      return false;
+    } finally {
+      state.curricularMapBusy = false;
+      if (state.opened && state.course?.courseId === courseId && state.section === "planning" && !state.parameterTarget && !state.sourceTarget) render();
+    }
   }
 
   function contextualDesignOpen() { return Boolean(state.parameterTarget); }
@@ -1096,7 +1226,10 @@ export function createCourseAuthoringSurface({
     state.designLoading = false;
     removeContextSheet();
     if (returning && state.course?.courseId === returning.courseId) {
-      if (state.course.revision !== returning.revision && returning.section === "planning") render();
+        if (state.course.revision !== returning.revision && returning.section === "planning") {
+          if (!state.authoringPlan) await loadPlanning(returning.courseId, { expectedCourseRevision: state.course.revision });
+          else render();
+        }
       if (state.course.revision !== returning.revision && returning.section === "content") {
         try {
           await inspectionSequence?.refreshContext?.(state.course.revision, returning);
@@ -1107,7 +1240,12 @@ export function createCourseAuthoringSurface({
       restoreRenderState(root, returning.renderState);
       root.scrollTop = returning.scrollTop; root.scrollLeft = returning.scrollLeft;
       if (returning.element?.isConnected) returning.element.focus?.({ preventScroll: true });
-      else if (returning.returnFocusKey) inspectionSequence?.focusControl?.(returning.returnFocusKey);
+      else if (returning.returnFocusKey) {
+        const mapControl = [...(root.querySelectorAll?.('[data-curriculum-key]') || [])]
+          .find(node => node.dataset.curriculumKey === returning.returnFocusKey);
+        if (mapControl) mapControl.focus?.({ preventScroll: true });
+        else inspectionSequence?.focusControl?.(returning.returnFocusKey);
+      }
     }
     return true;
   }
@@ -1923,10 +2061,8 @@ export function createCourseAuthoringSurface({
     state.planningFailure = "";
     render();
     try {
-      const result = normalizeCourseAuthoringPlan(
-        await controller.loadAuthoringPlan(courseId),
-        { expectedCourseId: courseId, expectedCourseRevision }
-      );
+      const snapshot = await readPlanningSnapshot(courseId, expectedCourseRevision);
+      const result = snapshot.plan;
       if (!state.opened || state.course?.courseId !== courseId) return false;
       const sourceIds = new Set(result.plan.curriculum.modules.flatMap(module =>
         module.lessons.flatMap(lesson => lesson.microsequences.flatMap(ms => ms.explanationPlan?.sourceIds || []))));
@@ -1959,6 +2095,7 @@ export function createCourseAuthoringSurface({
       if (!state.opened || state.course?.courseId !== courseId ||
           state.course.revision !== expectedCourseRevision) return false;
       state.authoringPlan = { ...result, sourceTitles };
+      acceptPlanningMap(snapshot);
       return true;
     } catch (error) {
       if (!state.opened || state.course?.courseId !== courseId) return false;
@@ -1972,6 +2109,27 @@ export function createCourseAuthoringSurface({
         render();
       }
     }
+  }
+
+  async function readPlanningSnapshot(courseId, expectedCourseRevision) {
+    const [planRead, mapRead, pending] = await Promise.all([
+      controller.loadAuthoringPlan(courseId),
+      typeof controller.getCurricularMap === "function" ? controller.getCurricularMap(courseId) : null,
+      controller.getPendingCurricularMapChange?.(courseId) || null
+    ]);
+    const plan = normalizeCourseAuthoringPlan(planRead, { expectedCourseId: courseId, expectedCourseRevision });
+    const map = mapRead ? normalizeCurricularMapRead(mapRead, courseId) : null;
+    if (map && (map.courseRevision !== plan.courseRevision || map.planVersion !== plan.plan.version)) {
+      throw new Error("O mapa mudou durante a leitura. Atualize para inspecionar a mesma versão completa.");
+    }
+    return { plan, planRead, map, pending };
+  }
+
+  function acceptPlanningMap(snapshot) {
+    if (state.curricularMapRead?.mapApprovalReference !== snapshot.map?.mapApprovalReference) state.curricularMapInspectedReference = null;
+    state.curricularMapRead = snapshot.map || null;
+    state.curricularMapPending = snapshot.pending || null;
+    state.curricularMapFailure = "";
   }
 
   async function loadDesignAppliedParameters(page, scope, epoch) {
@@ -2002,6 +2160,34 @@ export function createCourseAuthoringSurface({
     if (current()) render();
   }
 
+  async function loadDesignInstructionalContext(page, scope, epoch = designEpoch) {
+    if (scope.kind !== "didactic_microsequence" || state.designInstructionalLoading) return;
+    state.designInstructionalLoading = true;
+    const current = () => state.opened && epoch === designEpoch && state.course?.courseId === page.courseId &&
+      state.course.revision === page.courseRevision && state.courseDesign?.scopeContext.current.ref === scope.ref;
+    const results = await Promise.allSettled([
+      controller.getMicrosequenceForExplanation?.(page.courseId, scope.ref, { expectedRevision: page.courseRevision }) || Promise.reject(new Error("Leitura da base indisponível.")),
+      controller.getContentReview?.(page.courseId, "microsequence_explanation", scope.ref) || Promise.reject(new Error("Leitura da revisão indisponível.")),
+      controller.loadCourseAuthoringAnalytics?.(page.courseId, { expectedCourseRevision: page.courseRevision,
+        query: { scope: { kind: "didactic_microsequence", ref: scope.ref } } }) || Promise.reject(new Error("Leitura da análise instrucional indisponível."))
+    ]);
+    if (!current()) return;
+    const context = { errors: [] };
+    for (const [index, result] of results.entries()) {
+      if (result.status === "rejected") { context.errors.push(publicErrorMessage(result.reason, "Uma parte do contexto não pôde ser consultada.")); continue; }
+      const value = result.value;
+      if (index === 0 && value.entityId === scope.ref && value.entityType === "microsequence") context.entity = value;
+      else if (index === 1 && value.courseId === page.courseId && value.courseRevision === page.courseRevision &&
+          value.targetKind === "microsequence_explanation" && value.targetId === scope.ref) context.review = value.contentReview;
+      else if (index === 2 && value.course?.id === page.courseId && value.course.revision === page.courseRevision &&
+          value.scope?.selected?.kind === "didactic_microsequence" && value.scope.selected.ref === scope.ref) context.basis = value.basis;
+      else context.errors.push("A leitura não corresponde à microssequência nesta revisão. Atualize para consultar os dados correntes.");
+    }
+    state.designInstructionalContext = context;
+    state.designInstructionalLoading = false;
+    render();
+  }
+
   async function loadDesign(courseId, {
     scope = state.parameterTarget?.scope || designScopeForRoute(courseId, state.routeTarget),
     cursor = null,
@@ -2015,6 +2201,8 @@ export function createCourseAuthoringSurface({
     state.designFailure = "";
     state.designAppliedParameters = undefined;
     state.designAppliedFailure = "";
+    state.designInstructionalContext = null;
+    state.designInstructionalLoading = false;
     state.designMessage = append ? "Carregando mais escopos…" : "";
     if (!append && !preserveExisting) state.courseDesign = null;
     render();
@@ -2038,6 +2226,7 @@ export function createCourseAuthoringSurface({
         ? mergeCourseDesignScopePages(state.courseDesign, page)
         : page;
       void loadDesignAppliedParameters(page, scope, epoch);
+      if (state.designCategory === "instruction") void loadDesignInstructionalContext(page, scope, epoch);
       if (state.profilePreview && (state.profilePreview.courseId !== page.courseId ||
           state.profilePreview.courseRevision !== page.courseRevision)) state.profilePreview = null;
       state.designMessage = "";
@@ -2196,6 +2385,8 @@ export function createCourseAuthoringSurface({
       const nextKey = hash;
       const routeChanged = Boolean(state.routeKey && state.routeKey !== nextKey);
       if (routeChanged) {
+        // Capture the planning viewport before resetting scroll for the destination.
+        destroyCurriculumMap();
         destroyInspectionSequence();
         state.requestMessage = "";
         state.requestFailure = "";
@@ -2390,6 +2581,8 @@ export function createCourseAuthoringSurface({
     destroyReviewPanel();
     destroyAnalyticsPanel();
     destroySourcesPanels();
+    planningExplanation?.destroy(); planningExplanation = null; planningExplanationCourseId = null;
+    curriculumContextEpoch += 1;
     if (hashListening && typeof windowValue?.removeEventListener === "function") {
       windowValue.removeEventListener("hashchange", handleHashChange);
       hashListening = false;
@@ -2525,7 +2718,7 @@ export function createCourseAuthoringSurface({
   }
 
   function hasPendingAuthoringDraft() {
-    if (hasPendingWriteEnvelope() || hasTransientAuthoringDraft() ||
+    if (state.curricularMapBusy || planningExplanation?.hasPendingDraft() || hasPendingWriteEnvelope() || hasTransientAuthoringDraft() ||
         mountedPanelHasPendingDraft()) return true;
     if (root.querySelector?.(
       '[role="alertdialog"], [role="dialog"]:not([data-course-authoring-readonly-dialog]):not([data-course-authoring-draft-managed])'
@@ -2576,6 +2769,7 @@ export function createCourseAuthoringSurface({
   async function refreshCourseAtomically(route) {
     const previousCourse = state.course;
     const previousPlan = state.authoringPlan;
+    const previousMapReference = state.curricularMapRead?.mapApprovalReference;
     const previousDesign = state.courseDesign;
     const previousPeople = state.people;
     try {
@@ -2592,6 +2786,7 @@ export function createCourseAuthoringSurface({
         const needsPlan = route.section === "planning" || needsTargetPlan;
         let plan = needsPlan ? null : undefined;
         let planRead = null;
+        let mapSnapshot = null;
         let design;
         let designRead = null;
         let people;
@@ -2599,11 +2794,9 @@ export function createCourseAuthoringSurface({
         let planningFailure = "";
         try {
           if (needsPlan) {
-            planRead = await controller.loadAuthoringPlan(route.courseId);
-            plan = normalizeCourseAuthoringPlan(planRead, {
-              expectedCourseId: route.courseId,
-              expectedCourseRevision: course.revision
-            });
+            mapSnapshot = await readPlanningSnapshot(route.courseId, course.revision);
+            planRead = mapSnapshot.planRead;
+            plan = mapSnapshot.plan;
           }
           if (route.section === "parameters") {
             designRead = await controller.loadCourseDesign(route.courseId, {
@@ -2626,6 +2819,7 @@ export function createCourseAuthoringSurface({
             detail,
             plan,
             planRead,
+            mapSnapshot,
             design,
             designRead,
             people,
@@ -2644,6 +2838,7 @@ export function createCourseAuthoringSurface({
         return false;
       }
       const changed = JSON.stringify(previousCourse) !== JSON.stringify(snapshot.course) ||
+        previousMapReference !== snapshot.mapSnapshot?.map?.mapApprovalReference ||
         (snapshot.plan !== undefined &&
           JSON.stringify(previousPlan) !== JSON.stringify(snapshot.plan)) ||
         (snapshot.design !== undefined &&
@@ -2652,6 +2847,7 @@ export function createCourseAuthoringSurface({
           JSON.stringify(previousPeople) !== JSON.stringify(snapshot.people));
       rememberCourse(snapshot.course);
       if (snapshot.plan !== undefined) state.authoringPlan = snapshot.plan;
+      if (snapshot.mapSnapshot) acceptPlanningMap(snapshot.mapSnapshot);
       if (snapshot.design !== undefined) {
         state.courseDesign = snapshot.design;
         state.designAppliedParameters = undefined;
@@ -3694,6 +3890,12 @@ export function createCourseAuthoringSurface({
     const node = event.target.closest?.("[data-course-authoring-action]");
     if (!node || (typeof root.contains === "function" && !root.contains(node))) return;
     const action = node.dataset.courseAuthoringAction;
+    if (action === "open-settings") {
+      event.preventDefault();
+      closeTransientMenus();
+      onOpenSettings?.();
+      return;
+    }
     if (action === "close-design-direct") { closeDirectDesign(); return; }
     if (action === "select-design-category" || action === "edit-design-parameter" || action === "design-group-back") {
       if (!state.courseDesign || state.designBusy || state.profileBusy) return;
@@ -3702,6 +3904,9 @@ export function createCourseAuthoringSurface({
         if (categoryMenu) categoryMenu.open = false;
         state.designCategory = node.dataset.designCategory;
         state.designParameterId = null;
+        if (state.designCategory === "instruction" && !state.designInstructionalContext) {
+          void loadDesignInstructionalContext(state.courseDesign, state.courseDesign.scopeContext.current);
+        }
       } else if (action === "edit-design-parameter") state.designParameterId = node.dataset.parameterId;
       else state.designParameterId = null;
       render({ focus: action === "edit-design-parameter" ? "[data-course-design-parameter] select" : "[data-course-design-context-dialog], .course-design-direct-dialog" });

@@ -509,6 +509,554 @@ function anchorFormValues(overrides = {}) {
   };
 }
 
+function promiseGate() {
+  let resolve;
+  const promise = new Promise((release) => { resolve = release; });
+  return { promise, resolve };
+}
+
+function enterAnchorDraft(root, overrides = {}) {
+  const draft = form("anchor", anchorFormValues(overrides));
+  change(root, "[data-source-anchor-kind]", draft.elements.selectorKind);
+  return draft;
+}
+
+test("PDF pendente impede abertura e troca de editor até terminar a releitura", async () => {
+  const root = new FakeRoot();
+  const uploaded = promiseGate();
+  const refreshed = promiseGate();
+  const controller = controllerFixture({ catalog: [source(), source(2)] });
+  let refreshStarted = false;
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (...args) => {
+    if (args[1].expectedRevision === 6) {
+      refreshStarted = true;
+      await refreshed.promise;
+    }
+    return load(...args);
+  };
+  controller.uploadCourseSourcePdf = async request => {
+    await uploaded.promise;
+    return { ...changeResult(request.requestId, 6), changed: true,
+      change: { type: "ingest_pdf", subjectId: request.sourceId, revision: request.sourceRevision } };
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, initialSourceId: "source-01" });
+  try {
+    await panel.open();
+    change(root, "[data-source-pdf-input]", { files: [new File(["%PDF-synthetic"], "local.pdf")] });
+    await settle();
+    function assertBlocked() {
+      for (const action of ["add-source", "open-source", "edit-source", "retire-source",
+        "add-anchor", "edit-anchor", "retire-anchor"]) {
+        assert.match(root.innerHTML, new RegExp(`data-source-action="${action}"[^>]* disabled`, "u"));
+        const before = root.innerHTML;
+        click(root, action, { sourceId: "source-02", sourceRevision: "1", anchorId: "anchor-a", anchorRevision: "1" });
+        assert.equal(root.innerHTML, before, `${action} deve conservar o contexto ocupado`);
+      }
+      assert.doesNotMatch(root.innerHTML, /data-source-form="(?:source|anchor)"/u);
+    }
+    assertBlocked();
+    uploaded.resolve();
+    await settle();
+    assert.equal(refreshStarted, true);
+    assertBlocked();
+    refreshed.resolve();
+    await settle();
+    assert.doesNotMatch(root.innerHTML, /data-source-action="add-anchor"[^>]* disabled/u);
+    click(root, "add-anchor");
+    assert.match(root.innerHTML, /data-source-form="anchor"/u);
+  } finally {
+    uploaded.resolve();
+    refreshed.resolve();
+    await settle();
+    panel.destroy();
+  }
+});
+
+test("PDF e releitura preservam rascunho, arquivo e CAS da âncora já aberta", async (t) => {
+  for (const existing of [false, true]) await t.test(existing ? "editar âncora" : "nova âncora", async () => {
+    const root = new FakeRoot();
+    const uploaded = promiseGate();
+    const catalogRead = promiseGate();
+    const detailRead = promiseGate();
+    const current = source(1, { attachments: [attachment()] });
+    const controller = controllerFixture({ catalog: [current] });
+    const writes = [];
+    const uploads = [];
+    let detailStarted = false;
+    const load = controller.loadCourseSources;
+    controller.loadCourseSources = async (...args) => {
+      if (args[1].expectedRevision === 6) {
+        if (args[1].mode === "catalog") await catalogRead.promise;
+        if (args[1].mode === "source") {
+          detailStarted = true;
+          await detailRead.promise;
+        }
+      }
+      return load(...args);
+    };
+    controller.uploadCourseSourcePdf = async request => {
+      uploads.push(request);
+      current.attachments.push(attachment({ contentHash: "b".repeat(64) }));
+      await uploaded.promise;
+      return { ...changeResult(request.requestId, 6), changed: true,
+        change: { type: "ingest_pdf", subjectId: request.sourceId, revision: request.sourceRevision } };
+    };
+    controller.mutateCourseSources = async request => {
+      writes.push(request);
+      return { ...changeResult(request.requestId, 7), changed: true,
+        change: { type: "save_anchor", subjectId: request.command.anchorId, revision: existing ? 2 : 1 } };
+    };
+    const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+      courseRevision: 5, initialSourceId: current.sourceId, initialAnchorId: "anchor-a" });
+    try {
+      await panel.open();
+      click(root, existing ? "edit-anchor" : "add-anchor", { anchorId: "anchor-a", sourceRevision: "1" });
+      enterAnchorDraft(root, { contentHash: HASH, humanLocator: "Rascunho anterior ao PDF" });
+      const file = new File(["%PDF-synthetic"], "local.pdf", { type: "application/pdf" });
+      change(root, "[data-source-pdf-input]", { files: [file] });
+      await settle();
+      const finalDraft = anchorFormValues({ contentHash: HASH, humanLocator: "Rascunho editado durante o PDF" });
+      enterAnchorDraft(root, finalDraft);
+      function assertDraft() {
+        assert.match(root.innerHTML, /data-source-form="anchor"/u);
+        assert.match(root.innerHTML, /value="Rascunho editado durante o PDF"/u);
+        assert.match(root.innerHTML, new RegExp(`<option value="${HASH}" selected`, "u"));
+        assert.match(root.innerHTML, /name="startPage"[^>]*value="4"/u);
+        assert.equal(panel.hasPendingDraft(), true);
+        assert.equal(writes.length, 0);
+      }
+      assertDraft();
+      uploaded.resolve();
+      await settle();
+      assertDraft();
+      catalogRead.resolve();
+      await settle();
+      assert.equal(detailStarted, true);
+      assertDraft();
+      detailRead.resolve();
+      await settle();
+      assertDraft();
+      assert.match(root.innerHTML, new RegExp(`<option value="${"b".repeat(64)}"`, "u"));
+      assert.equal(uploads.length, 1);
+      assert.equal(uploads[0].file, file);
+      root.focusedSelectors.length = 0;
+      await panel.refresh(6);
+      await settle();
+      assertDraft();
+      assert.equal(root.focusedSelectors.includes("[data-source-deep-linked-anchor]"), false);
+      submit(root, "anchor", finalDraft);
+      await settle();
+      assert.equal(writes.length, 1);
+      assert.equal(writes[0].expectedCourseRevision, 6);
+      assert.equal(writes[0].command.sourceId, current.sourceId);
+      assert.equal(writes[0].command.sourceRevision, 1);
+      assert.equal(writes[0].command.expectedAnchorRevision, existing ? 1 : 0);
+      assert.equal(writes[0].command.contentHash, HASH);
+      assert.equal(writes[0].command.humanLocator, finalDraft.humanLocator);
+      assert.doesNotMatch(root.innerHTML, /data-source-form="anchor"/u);
+      assert.equal(panel.hasPendingDraft(), false);
+    } finally {
+      uploaded.resolve();
+      catalogRead.resolve();
+      detailRead.resolve();
+      await settle();
+      panel.destroy();
+    }
+  });
+});
+
+test("confirmação idempotente e falha da releitura do PDF mantêm a edição e o mesmo pedido", async () => {
+  const root = new FakeRoot();
+  const current = source(1, { attachments: [attachment()] });
+  const controller = controllerFixture({ catalog: [current] });
+  const requests = [];
+  let failRead = false;
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (...args) => {
+    if (failRead && args[1].expectedRevision === 6) throw new TypeError("Failed to fetch");
+    return load(...args);
+  };
+  controller.uploadCourseSourcePdf = async request => {
+    requests.push(request);
+    if (requests.length === 1) throw new TypeError("Failed to fetch");
+    failRead = true;
+    return { ...changeResult(request.requestId, 6), idempotent: true, changed: true,
+      change: { type: "ingest_pdf", subjectId: request.sourceId, revision: request.sourceRevision } };
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, initialSourceId: current.sourceId });
+  await panel.open();
+  click(root, "edit-anchor", { anchorId: "anchor-a", sourceRevision: "1" });
+  enterAnchorDraft(root, { humanLocator: "Conservar após confirmação", contentHash: HASH });
+  const file = new File(["%PDF-synthetic"], "local.pdf", { type: "application/pdf" });
+  change(root, "[data-source-pdf-input]", { files: [file] });
+  await settle();
+  click(root, "retry-attachment");
+  await settle();
+  assert.deepEqual(requests[1], requests[0]);
+  assert.equal(requests[1].file, file);
+  assert.match(root.innerHTML, /confirmada, mas a lista está desatualizada/u);
+  assert.match(root.innerHTML, /value="Conservar após confirmação"/u);
+  assert.equal(panel.hasPendingDraft(), true);
+  failRead = false;
+  click(root, "retry-detail");
+  await settle();
+  assert.match(root.innerHTML, /value="Conservar após confirmação"/u);
+  assert.equal(requests.length, 2);
+  panel.destroy();
+});
+
+test("permissão e remoção de PDF preservam a âncora independente em edição", async (t) => {
+  for (const operation of ["access", "remove"]) await t.test(operation, async () => {
+    const root = new FakeRoot();
+    const current = source(1, { attachments: [attachment()] });
+    const controller = controllerFixture({ catalog: [current] });
+    const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+      courseRevision: 5, initialSourceId: current.sourceId });
+    await panel.open();
+    click(root, "edit-anchor", { anchorId: "anchor-a", sourceRevision: "1" });
+    enterAnchorDraft(root, { contentHash: HASH, humanLocator: "Edição independente" });
+    if (operation === "access") {
+      submit(root, "file-access", { sourceId: current.sourceId, contentHash: HASH, publicFileAccess: "restricted" });
+      click(root, "confirm-file-access");
+    } else {
+      click(root, "remove-attachment", { sourceRevision: "1", contentHash: HASH });
+      click(root, "confirm-retirement");
+    }
+    await settle();
+    assert.match(root.innerHTML, /data-source-form="anchor"/u);
+    assert.match(root.innerHTML, /value="Edição independente"/u);
+    assert.match(root.innerHTML, new RegExp(`<option value="${HASH}" selected`, "u"));
+    assert.equal(panel.hasPendingDraft(), true);
+    panel.destroy();
+  });
+});
+
+test("PDF conserva edição e vínculos ainda não salvos no alvo contextual", async () => {
+  const root = new FakeRoot();
+  const writes = [];
+  const controller = controllerFixture({ onMutate: request => writes.push(request) });
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3 });
+  await panel.open();
+  click(root, "add-target-source", { sourceId: "source-01" });
+  await settle();
+  click(root, "open-source", { sourceId: "source-01" });
+  await settle();
+  click(root, "add-anchor");
+  enterAnchorDraft(root, { humanLocator: "Rascunho no alvo" });
+  change(root, "[data-source-pdf-input]", { files: [new File(["%PDF-synthetic"], "local.pdf")] });
+  await settle();
+  assert.match(root.innerHTML, /value="Rascunho no alvo"/u);
+  assert.equal(writes.length, 0);
+  click(root, "cancel-anchor-form");
+  click(root, "close-detail");
+  click(root, "save-target");
+  await settle();
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].command.type, "set_target_sources");
+  assert.equal(writes[0].command.targetId, PLAN_ITEM_ID);
+  assert.equal(writes[0].command.sourceLinks.length, 1);
+  assert.equal(writes[0].command.sourceLinks[0].sourceId, "source-01");
+  panel.destroy();
+});
+
+test("adicionar vínculo aguarda a atribuição inicial e a recuperação de falha", async (t) => {
+  for (const failFirst of [false, true]) await t.test(failFirst ? "leitura falha" : "leitura atrasada", async () => {
+    const root = new FakeRoot();
+    const targetRead = promiseGate();
+    const controller = controllerFixture();
+    const load = controller.loadCourseSources;
+    let reads = 0;
+    controller.loadCourseSources = async (...args) => {
+      if (args[1].mode === "target" && ++reads === 1) {
+        await targetRead.promise;
+        if (failFirst) throw new TypeError("Failed to fetch");
+      }
+      return load(...args);
+    };
+    const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+      courseRevision: 5, mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3 });
+    const opening = panel.open();
+    try {
+      await settle();
+      function assertUnavailable() {
+        assert.match(root.innerHTML, /data-source-action="add-target-source"[^>]* disabled/u);
+        click(root, "add-target-source", { sourceId: "source-01" });
+        assert.equal(panel.hasPendingDraft(), false);
+        assert.doesNotMatch(root.innerHTML, /class="course-source-card is-selected"/u);
+      }
+      assertUnavailable();
+      targetRead.resolve();
+      await opening;
+      await settle();
+      if (failFirst) {
+        assertUnavailable();
+        click(root, "retry-target");
+        await settle();
+      }
+      assert.doesNotMatch(root.innerHTML, /data-source-action="add-target-source"[^>]* disabled/u);
+      click(root, "add-target-source", { sourceId: "source-01" });
+      await settle();
+      assert.match(root.innerHTML, /class="course-source-target-link"/u);
+      assert.equal(panel.hasPendingDraft(), true);
+    } finally {
+      targetRead.resolve();
+      await opening;
+      panel.destroy();
+    }
+  });
+});
+
+test("releitura do alvo conserva edições e remoções feitas enquanto a resposta está pendente", async () => {
+  const root = new FakeRoot();
+  const targetRead = promiseGate();
+  const links = [1, 2, 3].map(index => ({ linkId: `link-${index}`, sourceId: "source-01",
+    relation: "supported_by", roles: ["technical_conceptual"], anchors: [], occurrences: [] }));
+  const writes = [];
+  const controller = controllerFixture({ links, onMutate: request => {
+    writes.push(request);
+    links.splice(0, links.length, ...structuredClone(request.command.sourceLinks));
+  } });
+  const load = controller.loadCourseSources;
+  let targetReads = 0;
+  controller.loadCourseSources = async (...args) => {
+    if (args[1].mode === "target") {
+      targetReads++;
+      if (targetReads === 2) throw new TypeError("Failed to fetch");
+      if (targetReads === 3) await targetRead.promise;
+    }
+    return load(...args);
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3 });
+  try {
+    await panel.open();
+    await settle();
+    click(root, "open-source", { sourceId: "source-01" });
+    await settle();
+    change(root, "[data-source-pdf-input]", { files: [new File(["%PDF-synthetic"], "local.pdf")] });
+    await settle();
+    click(root, "close-detail");
+    assert.match(root.innerHTML, /data-source-action="retry-target"/u);
+    click(root, "retry-target");
+    await settle();
+    assert.equal(targetReads, 3);
+    assert.match(root.innerHTML, /class="course-source-target-link"/u);
+    assert.match(root.innerHTML, /data-source-action="add-target-source"[^>]* disabled/u);
+    assert.match(root.innerHTML, /data-source-action="save-target"[^>]* disabled/u);
+    change(root, "[data-source-target-relation]", { dataset: { linkId: "link-1" }, value: "contrasted_with" });
+    change(root, "[data-source-target-role]", { dataset: { linkId: "link-1", sourceTargetRole: "assessment_evidence" }, checked: true });
+    change(root, "[data-source-target-anchor]", { dataset: { linkId: "link-1", anchorId: "anchor-a" }, checked: true });
+    click(root, "move-target-source-up", { linkId: "link-3" });
+    click(root, "move-target-source-up", { linkId: "link-3" });
+    click(root, "remove-target-source", { linkId: "link-2" });
+    click(root, "save-target");
+    assert.equal(writes.length, 0);
+    targetRead.resolve();
+    await settle();
+    assert.equal(panel.hasPendingDraft(), true);
+    click(root, "save-target");
+    await settle();
+    assert.equal(writes.length, 1);
+    assert.deepEqual(writes[0].command.sourceLinks.map(link => link.linkId), ["link-3", "link-1"]);
+    assert.deepEqual(writes[0].command.sourceLinks[1], {
+      linkId: "link-1", sourceId: "source-01", relation: "contrasted_with",
+      roles: ["assessment_evidence", "technical_conceptual"], anchors: [{ anchorId: "anchor-a" }], occurrences: []
+    });
+    assert.equal(panel.hasPendingDraft(), false);
+  } finally {
+    targetRead.resolve();
+    await settle();
+    panel.destroy();
+  }
+});
+
+test("confirmação dos vínculos não declara salvo um rascunho alterado durante a escrita", async () => {
+  const root = new FakeRoot();
+  const committed = promiseGate();
+  const links = [1, 2].map(index => ({ linkId: `link-${index}`, sourceId: "source-01",
+    relation: "supported_by", roles: ["technical_conceptual"], anchors: [], occurrences: [] }));
+  const writes = [];
+  let saved = 0;
+  const controller = controllerFixture({ links });
+  controller.mutateCourseSources = async request => {
+    writes.push(structuredClone(request));
+    await committed.promise;
+    links.splice(0, links.length, ...structuredClone(request.command.sourceLinks));
+    return changeResult(request.requestId, request.expectedCourseRevision);
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3,
+    onTargetSaved: () => { saved++; panel.destroy(); } });
+  try {
+    await panel.open();
+    await settle();
+    change(root, "[data-source-target-relation]", { dataset: { linkId: "link-1" }, value: "contrasted_with" });
+    click(root, "save-target");
+    await settle();
+    assert.equal(writes.length, 1);
+    change(root, "[data-source-target-relation]", { dataset: { linkId: "link-1" }, value: "supported_by" });
+    click(root, "remove-target-source", { linkId: "link-2" });
+    committed.resolve();
+    await settle();
+    assert.equal(panel.hasPendingDraft(), true);
+    assert.equal(writes.length, 1);
+    assert.equal(saved, 0);
+    assert.match(root.innerHTML, /data-source-target-dialog/u);
+    click(root, "save-target");
+    await settle();
+    assert.equal(writes.length, 2);
+    assert.deepEqual(writes[1].command.sourceLinks, [{
+      linkId: "link-1", sourceId: "source-01", relation: "supported_by",
+      roles: ["technical_conceptual"], anchors: [], occurrences: []
+    }]);
+    assert.equal(panel.hasPendingDraft(), false);
+    assert.equal(saved, 1);
+    assert.equal(root.innerHTML, "");
+  } finally {
+    committed.resolve();
+    await settle();
+    panel.destroy();
+  }
+});
+
+test("salvar a referência encerra seu editor e conserva a âncora ainda não salva", async () => {
+  const root = new FakeRoot();
+  const writes = [];
+  const panel = createCourseSourcesPanel({ root, controller: controllerFixture({
+    onMutate: request => writes.push(request)
+  }), courseId: COURSE_ID, courseRevision: 5, initialSourceId: "source-01" });
+  await panel.open();
+  click(root, "edit-anchor", { anchorId: "anchor-a", sourceRevision: "1" });
+  const draft = anchorFormValues({ humanLocator: "Âncora independente da referência" });
+  enterAnchorDraft(root, draft);
+  click(root, "edit-source");
+  submit(root, "source", sourceFormValues({ sourceId: "source-01" }));
+  await settle();
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].command.type, "save_source");
+  assert.doesNotMatch(root.innerHTML, /data-source-form="source"/u);
+  assert.match(root.innerHTML, /value="Âncora independente da referência"/u);
+  assert.equal(panel.hasPendingDraft(), true);
+  submit(root, "anchor", draft);
+  await settle();
+  assert.equal(writes.length, 2);
+  assert.equal(writes[1].command.type, "save_anchor");
+  assert.equal(writes[1].command.expectedAnchorRevision, 1);
+  assert.doesNotMatch(root.innerHTML, /data-source-form="anchor"/u);
+  assert.equal(panel.hasPendingDraft(), false);
+  panel.destroy();
+});
+
+test("edição posterior ao envio da fonte ou âncora permanece com sua revisão original", async (t) => {
+  for (const kind of ["source", "anchor"]) for (const uncertain of [false, true]) {
+    await t.test(`${kind}: ${uncertain ? "retorno perdido e reconciliação" : "confirmação direta"}`, async () => {
+      const root = new FakeRoot();
+      const committed = promiseGate();
+      const current = source(1, { anchors: [anchor()] });
+      const requests = [];
+      const controller = controllerFixture({ catalog: [current] });
+      controller.mutateCourseSources = async request => {
+        requests.push(structuredClone(request));
+        if (requests.length === 1) {
+          await committed.promise;
+          if (kind === "source") Object.assign(current, request.command.source, { revision: 2 });
+          else current.anchors[0].revision = 2;
+          if (uncertain) throw new TypeError("Failed to fetch");
+        } else if (!uncertain || requests.length !== 2 || request.requestId !== requests[0].requestId) {
+          throw Object.assign(new Error("conflict"), { status: 409 });
+        }
+        return { ...changeResult(request.requestId, 6), changed: true, idempotent: requests.length > 1,
+          change: { type: `save_${kind}`, subjectId: kind === "source" ? current.sourceId : "anchor-a", revision: 2 } };
+      };
+      const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+        courseRevision: 5, initialSourceId: current.sourceId });
+      try {
+        await panel.open();
+        click(root, `edit-${kind}`, { anchorId: "anchor-a", sourceRevision: "1" });
+        const sent = kind === "source" ? sourceFormValues({ sourceId: current.sourceId, title: "Texto enviado" })
+          : anchorFormValues({ humanLocator: "Texto enviado" });
+        submit(root, kind, sent);
+        await settle();
+        const later = kind === "source" ? { ...sent, title: "Texto posterior ao envio" }
+          : { ...sent, humanLocator: "Texto posterior ao envio" };
+        const changed = form(kind, later);
+        root.listeners.get("input")({ target: changed.elements[kind === "source" ? "title" : "humanLocator"] });
+        committed.resolve();
+        await settle();
+        if (uncertain) {
+          click(root, "retry-command");
+          await settle();
+          assert.deepEqual(requests[1], requests[0]);
+        }
+        assert.match(root.innerHTML, new RegExp(`data-source-form="${kind}"`, "u"));
+        assert.match(root.innerHTML, /value="Texto posterior ao envio"/u);
+        assert.equal(panel.hasPendingDraft(), true);
+        const confirmedCount = requests.length;
+        submit(root, kind, later);
+        await settle();
+        assert.equal(requests.length, confirmedCount + 1);
+        assert.equal(requests.at(-1).command[kind === "source" ? "expectedSourceRevision" : "expectedAnchorRevision"], 1);
+        assert.match(root.innerHTML, /O curso mudou/u);
+        assert.match(root.innerHTML, /value="Texto posterior ao envio"/u);
+        assert.equal(panel.hasPendingDraft(), true);
+      } finally {
+        committed.resolve();
+        await settle();
+        panel.destroy();
+      }
+    });
+  }
+});
+
+test("confirmação dos vínculos não fecha uma seleção de trecho iniciada durante a escrita", async () => {
+  const root = new FakeRoot();
+  const committed = promiseGate();
+  const link = { linkId: "link-1", sourceId: "source-01", relation: "supported_by",
+    roles: ["technical_conceptual"], anchors: [], occurrences: [] };
+  const controller = controllerFixture({ links: [link] });
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (...args) => {
+    const page = await load(...args);
+    if (args[1].mode === "target") page.query = { sourceId: null, targetKind: "microsequence_explanation", targetId: "micro-a" };
+    return page;
+  };
+  controller.mutateCourseSources = async request => {
+    await committed.promise;
+    return changeResult(request.requestId, request.expectedCourseRevision);
+  };
+  let saved = 0;
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5,
+    mode: "target", targetKind: "microsequence_explanation", targetId: "micro-a", targetVersion: 3,
+    targetExplanation: { title: "Ligações", content: [{ id: "p", package: "aralearn.resource.paragraph",
+      version: "1.0.0", data: { text: "Uma ligação conecta A e B." } }] },
+    onTargetSaved: () => { saved++; panel.destroy(); } });
+  try {
+    await panel.open();
+    await settle();
+    click(root, "save-target");
+    await settle();
+    click(root, "add-occurrence", { linkId: link.linkId });
+    assert.match(root.innerHTML, /data-source-occurrence-selection/u);
+    committed.resolve();
+    await settle();
+    assert.equal(saved, 0);
+    assert.match(root.innerHTML, /data-source-occurrence-selection/u);
+    click(root, "cancel-occurrence");
+    click(root, "save-target");
+    await settle();
+    assert.equal(saved, 1);
+    assert.equal(root.innerHTML, "");
+  } finally {
+    committed.resolve();
+    await settle();
+    panel.destroy();
+  }
+});
+
 async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));

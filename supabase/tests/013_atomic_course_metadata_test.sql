@@ -14,7 +14,7 @@ insert into private.course_entities(course_id,entity_type,entity_id,parent_type,
  ('96000000-0000-4000-8000-000000000101','module','m',null,null,0,'{"title":"Módulo"}'::jsonb),
  ('96000000-0000-4000-8000-000000000101','lesson','l','module','m',0,'{"title":"Lição"}'::jsonb),
  ('96000000-0000-4000-8000-000000000101','microsequence','s','lesson','l',0,'{"title":"Sequência","dependsOn":[],"explanation":{"title":"Conexões sintéticas","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}]}}'::jsonb),
- ('96000000-0000-4000-8000-000000000101','study_unit','u','microsequence','s',1,'{"title":"Unidade","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}],"response":null,"feedback":[],"topics":[]}'::jsonb);
+ ('96000000-0000-4000-8000-000000000101','study_unit','u','microsequence','s',1,'{"title":"Unidade","role":"theory","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}],"response":null,"feedback":[],"topics":[]}'::jsonb);
 create temporary table metadata_result as select public.commit_course_composition_for_actor_v1(
  '96000000-0000-4000-8000-000000000001','96000000-0000-4000-8000-000000000101',1,null,'[]','[]','[]',
  'application',null,'metadata-only-01','{"title":"Título novo","objective":"Objetivo novo"}'::jsonb) result;
@@ -63,7 +63,7 @@ insert into private.course_source_anchors(course_id,anchor_id,revision,source_id
  values('96000000-0000-4000-8000-000000000101','anchor',1,'source',1,'active','{"kind":"page_range","startPage":2,"endPage":2}','Trecho privado de verificação','p. 2');
 select is(public.commit_course_composition_for_actor_v1('96000000-0000-4000-8000-000000000001',
  '96000000-0000-4000-8000-000000000101',3,null,
- '[{"entityType":"study_unit","entityId":"u","parentType":"microsequence","parentId":"s","position":1,"content":{"title":"Unidade","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}],"response":null,"feedback":[],"topics":[]}}]',
+ '[{"entityType":"study_unit","entityId":"u","parentType":"microsequence","parentId":"s","position":1,"content":{"title":"Unidade","role":"theory","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}],"response":null,"feedback":[],"topics":[]}}]',
  '[]','[{"studyUnitId":"u","sourceLinks":[{"linkId":"metadata-source-link","sourceId":"source","relation":"supported_by","roles":[],"anchors":[{"anchorId":"anchor"}],"occurrences":[]}]}]',
  'application',null,'metadata-source-01','{"title":"Título com fonte","objective":"Objetivo com fonte"}'::jsonb)->>'revision','4','metadados e atribuição sem mudança textual não duplicam revisão');
 select is(public.commit_course_composition_for_actor_v1('96000000-0000-4000-8000-000000000001',
@@ -82,8 +82,8 @@ select ok(not private.can_read_course_file_v1('96000000-0000-4000-8000-000000000
 select is(public.set_course_source_file_access_for_actor_v1('96000000-0000-4000-8000-000000000001',
  '96000000-0000-4000-8000-000000000101',4,'source',1,'available','citation-file-01',repeat('b',64))->>'sourceRevision','2',
  'liberação por arquivo confirma revisão da fonte');
-select ok(not private.can_read_course_file_v1('96000000-0000-4000-8000-000000000101',null,'source',repeat('b',64)),
- 'política de arquivo não distribui conteúdo ainda sem revisão');
+select ok(private.can_read_course_file_v1('96000000-0000-4000-8000-000000000101',null,'source',repeat('b',64)),
+ 'arquivo explicitamente disponível é acessível no conteúdo salvo sem revisão');
 select is(public.set_course_source_file_access_for_actor_v1('96000000-0000-4000-8000-000000000001',
  '96000000-0000-4000-8000-000000000101',4,'source',1,'available','citation-file-01',repeat('b',64))->>'idempotent','true',
  'retry da liberação não altera revisão novamente');
@@ -93,15 +93,15 @@ select set_config('request.jwt.claim.sub','96000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claims','{"sub":"96000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"96000000-0000-4000-8000-000000000901"}',true);
 set local role authenticated;
-select is(public.approve_course_microsequence_content_v1('96000000-0000-4000-8000-000000000101','s',
- public.get_course_microsequence_review_v1('96000000-0000-4000-8000-000000000101','s')->>'basisHash','metadata-review-01')#>>'{contentReview,state}',
- 'current','sessão sintética aprova exatamente o conjunto inspecionado');
+select is(public.set_course_content_review_v1('96000000-0000-4000-8000-000000000101','microsequence_explanation','s',
+ public.get_course_content_review_v1('96000000-0000-4000-8000-000000000101','microsequence_explanation','s')->>'basisHash',true,'metadata-review-01')#>>'{contentReview,state}',
+ 'current','sessão sintética declara a revisão da base inspecionada');
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 select set_config('request.jwt.claim.role','service_role',true);
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select ok(private.can_read_course_file_v1('96000000-0000-4000-8000-000000000101',null,'source',repeat('b',64)),
- 'arquivo explicitamente disponível fica acessível após revisão sintética');
+ 'declaração de revisão preserva o direito já concedido ao arquivo');
 select is(public.get_course_source_pdf_download_for_actor_v1(null,'96000000-0000-4000-8000-000000000101',6,'source',2,repeat('b',64))->>'contract',
  'aralearn.course-source-pdf-download.v1','autorização interna de download concorda com política pública');
 select set_config('request.jwt.claim.sub','',true);

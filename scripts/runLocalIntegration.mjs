@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { localFixtureLedgerSummary } from "../tests/support/localFixtureLedger.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const SPECS = ["course-access-local", "course-audio-local", "course-authoring-context-local", "course-parts-local"]
@@ -166,12 +167,17 @@ function hostMountPath(source) {
   return process.platform === "win32" ? result.toLowerCase() : result;
 }
 
-function playwrightReceipt(report) {
+function playwrightReceipt(report, redact) {
+  const diagnosticText = (value, limit) => redact(typeof value === "string" ? value : "").slice(0, limit);
+  const diagnosticLocation = value => ({ file: diagnosticText(value?.file, 500),
+    line: Number.isSafeInteger(value?.line) ? value.line : null,
+    column: Number.isSafeInteger(value?.column) ? value.column : null });
   const tests = [];
   function visit(suites) {
     for (const suite of suites || []) {
       for (const spec of suite.specs || []) for (const test of spec.tests || []) tests.push({
         title: `${spec.file || suite.file || ""}: ${spec.title}`, status: test.status,
+        location: { file: spec.file || suite.file, line: spec.line, column: spec.column },
         attempts: test.results || []
       });
       visit(suite.suites);
@@ -181,7 +187,21 @@ function playwrightReceipt(report) {
   const failed = tests.filter(test => test.status !== "expected" || test.attempts.length !== 1 || test.attempts[0].status !== "passed");
   const ok = tests.length === 10 && !failed.length && !report.errors?.length &&
     report.stats?.expected === 10 && report.stats?.unexpected === 0 && report.stats?.skipped === 0 && report.stats?.flaky === 0;
-  return { ok, executed: tests.length, failed_tests: failed.map(test => test.title), cleanup: ok ? "completed" : "unverified" };
+  const failure_details = failed.slice(0, 10).map(test => {
+    const index = Math.max(0, test.attempts.findIndex(attempt => attempt.status !== "passed"));
+    const attempt = test.attempts[index] || {};
+    const errors = attempt.errors?.length ? attempt.errors : attempt.error ? [attempt.error] : [];
+    return { title: diagnosticText(test.title, 500), location: diagnosticLocation(test.location),
+      attempt: index + 1, attempt_count: test.attempts.length,
+      retry: Number.isSafeInteger(attempt.retry) ? attempt.retry : index,
+      status: diagnosticText(attempt.status || test.status, 40),
+      errors: errors.slice(0, 2).map(error => ({
+        message: diagnosticText(error.message || error.value || error.stack, 2000),
+        location: diagnosticLocation(error.location || test.location)
+      })) };
+  });
+  return { ok, executed: tests.length, failed_tests: failed.map(test => test.title), failure_details,
+    cleanup: ok ? "completed" : "unverified" };
 }
 
 export async function runLocalIntegration({
@@ -251,7 +271,8 @@ export async function runLocalIntegration({
       SUPABASE_URL: local.projectUrl, SUPABASE_ANON_KEY: local.publishableKey,
       SUPABASE_PUBLISHABLE_KEY: local.publishableKey, SUPABASE_SERVICE_ROLE_KEY: local.adminKey,
       ARALEARN_E2E_PORT: "4182", ARALEARN_E2E_REUSE_SERVER: "0", ARALEARN_E2E_REAL_SUPABASE: "1",
-      ARALEARN_LOCAL_APPLICATION_ORIGIN: "http://127.0.0.1:4182", ARALEARN_TEST_REAL_LOCAL_COPY_FILES: "1"
+      ARALEARN_LOCAL_APPLICATION_ORIGIN: "http://127.0.0.1:4182", ARALEARN_TEST_REAL_LOCAL_COPY_FILES: "1",
+      ARALEARN_LOCAL_FIXTURE_LEDGER_DIR: path.join(privateDirectory, "fixtures")
     };
     localEnvironment.MAILPIT_URL = "http://127.0.0.1:54324";
     localEnvironment.INBUCKET_URL = localEnvironment.MAILPIT_URL;
@@ -317,11 +338,14 @@ export async function runLocalIntegration({
         throw new Error("Execução interrompida ou funções indisponíveis.");
       }
       const row = report.stages.find(stage => stage.name === name);
+      const ledgerConfig = { projectUrl: local.projectUrl, fixtureLedgerDirectory: localEnvironment.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR };
+      const requiresCourseLedger = ["storage-local", "current-local", "channels-local", "e2e-local", "copy-files-local"].includes(name);
+      const before = requiresCourseLedger ? localFixtureLedgerSummary(ledgerConfig) : null;
       row.result = "running"; report.cleanup.fixtures = "unverified"; await save();
       const started = Date.now();
       const logPath = path.join(privateDirectory, `${name}.log`);
       const result = await run(process.execPath, args, {
-        cwd, env: { ...localEnvironment, ...extraEnvironment }, signal, timeoutMs: 1_200_000
+        cwd, env: { ...localEnvironment, ...extraEnvironment, ARALEARN_LOCAL_FIXTURE_ORIGIN: name }, signal, timeoutMs: 1_200_000
       });
       await fs.writeFile(logPath, redact(`${result.stdout || ""}\n${result.stderr || ""}`), { mode: 0o600 });
       row.log_refs = [relative(logPath)]; report.log_refs.push(...row.log_refs);
@@ -329,8 +353,23 @@ export async function runLocalIntegration({
       let receipt;
       try { receipt = await verify(result); }
       catch { receipt = { ok: false, failed_tests: [name], cleanup: "unverified" }; }
+      if (requiresCourseLedger) {
+        row.fixture_ledger = localFixtureLedgerSummary(ledgerConfig);
+        // A failed assertion/exit does not erase independently confirmed
+        // teardown. Require records from this stage, not only an older ledger.
+        const cleanupConfirmed = row.fixture_ledger.completed && row.fixture_ledger.registered > before.registered;
+        receipt = { ...receipt, cleanup: receipt.cleanup === "failed" ? "failed" : cleanupConfirmed ? "completed" : "unverified" };
+        if (!row.fixture_ledger.completed || row.fixture_ledger.courses <= before.courses ||
+            row.fixture_ledger.cleanupProbes <= before.cleanupProbes) {
+          receipt = { ...receipt, ok: false, failed_tests: [name] };
+        }
+        report.fixture_ledger = { ref: relative(localEnvironment.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR),
+          ...row.fixture_ledger };
+      }
       Object.assign(row, receipt, { result: result.status === 0 && receipt.ok ? "passed" : "failed" });
       delete row.ok;
+      report.cleanup.fixtures = report.stages.filter(stage => stage.result !== "not_run")
+        .every(stage => stage.cleanup === "completed") ? "completed" : "unverified";
       if (row.result === "failed") {
         report.failed_tests.push(...(receipt.failed_tests?.length ? receipt.failed_tests : [name]));
         await save(); throw new Error(`O gate ${name} falhou; consulte seu log privado redigido.`);
@@ -367,7 +406,7 @@ export async function runLocalIntegration({
     }, async () => {
       const source = await fs.readFile(playwrightPath, "utf8");
       await fs.writeFile(playwrightPath, redact(source), { mode: 0o600 });
-      return playwrightReceipt(JSON.parse(source));
+      return playwrightReceipt(JSON.parse(source), redact);
     });
     const copyPath = path.join(privateDirectory, "copy-files.json");
     await stage("copy-files-local", ["--test", "--test-reporter=tap", "tests/runtime/course-copy-files-local.test.js"], {
@@ -407,14 +446,20 @@ export async function runLocalIntegration({
   return JSON.parse(redact(JSON.stringify(report)));
 }
 
+export function localIntegrationSummary(report) {
+  return { result: report.result, failed_tests: report.failed_tests,
+    failure_details: report.stages.flatMap(stage => (stage.failure_details || [])
+      .map(detail => ({ stage: stage.name, ...detail }))),
+    report: ".validation/local-integration.json", cleanup: report.cleanup };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const controller = new AbortController();
   const abort = () => controller.abort();
   process.on("SIGINT", abort); process.on("SIGTERM", abort);
   try {
     const report = await runLocalIntegration({ signal: controller.signal });
-    process.stdout.write(`${JSON.stringify({ result: report.result, failed_tests: report.failed_tests,
-      report: ".validation/local-integration.json", cleanup: report.cleanup })}\n`);
+    process.stdout.write(`${JSON.stringify(localIntegrationSummary(report))}\n`);
     process.exitCode = report.result === "passed" ? 0 : 1;
   } catch {
     process.stderr.write("Não foi possível registrar a prova local. Nenhum resultado deve ser considerado aprovado.\n");

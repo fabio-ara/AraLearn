@@ -110,7 +110,7 @@ select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]
   where n.nspname in('public','private') and p.prokind='f'),0::bigint,'contratos atuais não levantam serialização para conflito de negócio');
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),72::bigint,'72 guardas de negócio usam PT409');
+  where n.nspname in('public','private') and p.prokind='f'),83::bigint,'83 guardas de negócio usam PT409, incluindo estrutura, desenho, mapa, preferências e fila contextual');
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname in('public','private') and p.prokind='f'
     and p.prosrc~$rx$exception when serialization_failure or sqlstate 'PT409' then$rx$),

@@ -10,7 +10,13 @@ import {
   COURSE_HUMAN_TASKS
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
-  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+  COURSE_ACTION_TASK_GROUPS,
+  courseActionOperationName,
+  encodeCourseActionTaskRequest
+} from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
+import {
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+  COURSE_AUTHORING_GUIDES
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
   HUMAN_ACTION_FILE_FIELD,
@@ -23,6 +29,22 @@ const openApiText = await fs.readFile(new URL(
 ), "utf8");
 const openApi = JSON.parse(openApiText);
 const actionTools = projectHumanAuthoringTasksForActions(COURSE_HUMAN_TASKS);
+const expectedActionGroups = {
+  acesso_do_curso: ["consultar_acesso", "definir_visibilidade", "alterar_acesso",
+    "definir_acesso_arquivos", "definir_politica_revisao"],
+  estrutura_curricular: ["alterar_curso", "excluir_curso", "salvar_ramo_curricular",
+    "mover_ramo_curricular", "duplicar_ramo_curricular", "remover_ramo_curricular", "reordenar_unidades"],
+  desenho_instrucional: ["consultar_repertorio_instrucional", "manter_unidade_analise",
+    "manter_requisito_evidencia", "vincular_repertorio_instrucional", "registrar_aplicacoes_instrucionais",
+    "aplicar_configuracao_instrucional", "ajustar_orientacao", "ajustar_componentes"],
+  preferencias_de_autoria: ["consultar_preferencias_autoria", "salvar_preferencias_autoria"],
+  perfis_de_autoria: ["consultar_perfis", "salvar_perfil", "excluir_perfil",
+    "prever_aplicacao_perfil", "aplicar_perfil"],
+  observacoes_autorais: ["consultar_observacoes", "registrar_observacao", "editar_observacao"]
+};
+const planningGuidance = COURSE_AUTHORING_GUIDES.planning_design.instructions.join("\n");
+const materializationGuidance = COURSE_AUTHORING_GUIDES.materialization.instructions.join("\n");
+const knowledgeGuidance = Object.values(COURSE_AUTHORING_GUIDES).flatMap(({ instructions }) => instructions).join("\n");
 const golden = JSON.parse(await fs.readFile(new URL(
   "../fixtures/human-authoring-golden-prompts.v2.json",
   import.meta.url
@@ -43,6 +65,44 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 });
 
 const samples = {
+  consultar_preferencias_autoria: {},
+  salvar_preferencias_autoria: { foco: "content", cadencia: "microsequence", pontosDeRevisao: ["explanation"] },
+  consultar_acesso: { curso: "Redes para iniciantes" },
+  definir_visibilidade: { curso: "Redes para iniciantes", visibilidade: "private", arquivos: "restricted", confirmado: true },
+  alterar_acesso: { curso: "Redes para iniciantes", pessoa: "colega_fixture", operacao: "conceder", permitirCopia: false, confirmado: true },
+  definir_acesso_arquivos: { curso: "Redes para iniciantes", fonte: "Manual do proxy", arquivos: "restricted", confirmado: true },
+  definir_politica_revisao: { curso: "Redes para iniciantes", politica: "saved", confirmado: true },
+  consultar_repertorio_instrucional: { curso: "Redes para iniciantes", microssequencia: "Sockets" },
+  manter_unidade_analise: { curso: "Redes para iniciantes", operacao: "criar", enunciado: "Socket liga processo ao transporte." },
+  manter_requisito_evidencia: { curso: "Redes para iniciantes", operacao: "criar", enunciado: "Identificar a porta do serviço no exemplo." },
+  vincular_repertorio_instrucional: { curso: "Redes para iniciantes", microssequencia: "Sockets", analise: [1], evidencias: [1] },
+  registrar_aplicacoes_instrucionais: { curso: "Redes para iniciantes", microssequencia: "Sockets", unidades: [{
+    unidade: 1, modo: "expository", ideiasIntroduzidas: [1], ideiasUtilizadas: [], cobertura: [1],
+    explicacoes: [{ ideia: 1, formas: ["plain_definition"] }], praticas: []
+  }] },
+  aplicar_configuracao_instrucional: { curso: "Redes para iniciantes", microssequencia: "Sockets", unidades: [{
+    unidade: 1, calibracao: { parametros: { maximo_ideias_novas_por_unidade: 1 }, motivo: "A unidade introduz apenas a função do socket." }
+  }] },
+  ajustar_orientacao: { curso: "Redes para iniciantes", licao: "Sockets", orientacao: "Mantenha o mesmo exemplo de processo durante a lição." },
+  ajustar_componentes: { curso: "Redes para iniciantes", microssequencia: "Sockets", disponibilidade: "todos", preferidos: ["aralearn.resource.paragraph@1.0.0"] },
+  alterar_curso: { curso: "Redes para iniciantes", titulo: "Redes: processos e serviços" },
+  excluir_curso: { curso: "Curso sintético para excluir" },
+  salvar_ramo_curricular: { curso: "Redes para iniciantes", tipo: "licao", destino: { modulo: "Comunicação" }, titulo: "Portas", objetivo: "Relacionar portas e serviços." },
+  mover_ramo_curricular: { curso: "Redes para iniciantes", alvo: { licao: "Portas" }, destino: { modulo: "Comunicação" }, posicao: 2 },
+  duplicar_ramo_curricular: { curso: "Redes para iniciantes", alvo: { licao: "Portas" }, titulo: "Portas: retomada" },
+  remover_ramo_curricular: { curso: "Redes para iniciantes", alvo: { licao: "Portas: retomada" } },
+  reordenar_unidades: { curso: "Redes para iniciantes", alvo: { microssequencia: "Sockets" }, unidades: [2, 1] },
+  aprovar_mapa_curricular: { referencia: "referencia-opaca-do-mapa-inspecionado" },
+  editar_observacao: { curso: "Redes para iniciantes", observacao: {
+    annotationId: "30000000-0000-4000-8000-000000000001", annotationVersion: 2,
+    targetKind: "microsequence_explanation", targetId: "micro-sockets"
+  }, texto: "Esclarecer a relação entre processo e socket." },
+  salvar_explicacoes: { curso: "Redes para iniciantes", explicacoes: [{ microssequencia: "Sockets", conteudo: {
+    title: "Processo, socket e transporte", content: SAMPLE_THEORY_CONTENT.content
+  }, fontes: [] }] },
+  retomar_correcao: { recuperacao: { courseId: "10000000-0000-4000-8000-000000000001",
+    requestId: "original-attempt-1", operation: "course_observation_correction" } },
+  declarar_revisao: { referencia: "referencia-opaca-da-base-inspecionada", declaracao: "revisado" },
   copiar_curso: { curso: "Redes para iniciantes", titulo: "Minha cópia" },
   comparar_cursos: { esquerda: { curso: "Redes para iniciantes" }, direita: { curso: "Minha cópia" } },
   exportar_autoria: { recorte: { curso: "Redes para iniciantes" } },
@@ -83,7 +143,6 @@ const samples = {
   },
   salvar_mapa_curricular: {
     curso: "Redes para iniciantes",
-    aprovado: false,
     publico: "Pessoas iniciantes em redes",
     preRequisitos: [],
     itensDeEscopo: ["comunicação entre processos"],
@@ -201,7 +260,24 @@ function resolveReferences(value) {
 }
 
 function operation(name) {
-  return resolveReferences(openApi.paths[`/${name}`]?.post);
+  return resolveReferences(openApi.paths[`/${courseActionOperationName(name)}`]?.post);
+}
+
+function taskVariant(name) {
+  return operation(name).requestBody.content["application/json"].schema.oneOf
+    ?.find(({ properties }) => properties?.tarefa?.enum?.[0] === name);
+}
+
+function taskInputSchema(name) {
+  return taskVariant(name)?.properties.argumentos ??
+    operation(name).requestBody.content["application/json"].schema;
+}
+
+function constraints(value) {
+  if (Array.isArray(value)) return value.map(constraints);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "description")
+    .map(([key, entry]) => [key, constraints(entry)]));
 }
 
 function visit(value, callback, path = "$") {
@@ -211,14 +287,46 @@ function visit(value, callback, path = "$") {
   else Object.entries(value).forEach(([key, entry]) => visit(entry, callback, `${path}.${key}`));
 }
 
-test("#272 OpenAPI publica exatamente as tarefas humanas correntes", () => {
-  assert.deepEqual(Object.keys(openApi.paths), COURSE_HUMAN_TASKS.map(({ name }) => `/${name}`));
+test("#357 OpenAPI preserva 54 tarefas em seis grupos e 24 operações diretas", () => {
+  assert.deepEqual(COURSE_ACTION_TASK_GROUPS, expectedActionGroups);
+  const groupedNames = Object.values(expectedActionGroups).flat();
+  const directNames = COURSE_HUMAN_TASKS.map(({ name }) => name)
+    .filter(name => !groupedNames.includes(name));
+  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  assert.equal(Object.keys(expectedActionGroups).length, 6);
+  assert.equal(groupedNames.length, 30);
+  assert.equal(new Set(groupedNames).size, 30);
+  assert.equal(directNames.length, 24);
+  assert.equal(Object.keys(openApi.paths).length, 30);
+  assert.deepEqual(Object.keys(openApi.paths).sort(),
+    [...Object.keys(expectedActionGroups), ...directNames].map(name => `/${name}`).sort());
+  for (const [name, tasks] of Object.entries(expectedActionGroups)) {
+    const schema = resolveReferences(openApi.paths[`/${name}`].post)
+      .requestBody.content["application/json"].schema;
+    assert.equal(schema.type, "object", name);
+    assert.equal(schema.additionalProperties, false, name);
+    assert.deepEqual([...schema.required].sort(), ["argumentos", "tarefa"], name);
+    assert.deepEqual(Object.keys(schema.properties).sort(), ["argumentos", "tarefa"], name);
+    assert.deepEqual(schema.properties.tarefa.enum, tasks, name);
+    assert.equal(schema.oneOf.length, tasks.length, name);
+    assert.deepEqual(schema.oneOf.map(branch => branch.properties.tarefa.enum), tasks.map(task => [task]), name);
+    for (const branch of schema.oneOf) {
+      assert.equal(branch.type, "object", name);
+      assert.deepEqual(Object.keys(branch.properties).sort(), ["argumentos", "tarefa"], name);
+      assert.equal(branch.properties.tarefa.type, "string", name);
+    }
+    for (const task of tasks) assert.equal(courseActionOperationName(task), name, task);
+  }
+  for (const task of directNames) assert.equal(courseActionOperationName(task), task, task);
+  for (const [path, { post }] of Object.entries(openApi.paths)) {
+    assert.equal(post.operationId, path.slice(1));
+  }
   assert.equal(openApi.info["x-aralearn-task-catalog"], COURSE_HUMAN_TASK_CATALOG_METADATA.id);
   assert.equal(
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "3.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "4.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -233,13 +341,16 @@ test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real"
     assert.equal(task.annotations.openWorldHint, false, task.name);
     assert.equal(
       task.annotations.destructiveHint,
-      ["manter_fonte", "excluir_perfil"].includes(task.name),
+      ["manter_fonte", "excluir_perfil", "excluir_curso", "remover_ramo_curricular"].includes(task.name),
       task.name
     );
     assert.equal(typeof task.annotations.readOnlyHint, "boolean", task.name);
     const action = operation(task.name);
-    assert.equal(action.description, task.description);
-    assert.equal(action["x-openai-isConsequential"], task.annotations.readOnlyHint !== true);
+    assert.equal(taskVariant(task.name)?.description ?? action.description, task.description);
+    const group = expectedActionGroups[courseActionOperationName(task.name)] ?? [task.name];
+    const consequential = COURSE_HUMAN_TASKS.some(candidate =>
+      group.includes(candidate.name) && candidate.annotations.readOnlyHint !== true);
+    assert.equal(action["x-openai-isConsequential"], consequential, task.name);
   }
 });
 
@@ -261,6 +372,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
           /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
             .test(path);
         if (localComponentIdentity) continue;
+        if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
+            ["courseId", "requestId"].includes(name)) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
     });
@@ -274,19 +387,20 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
-  assert.match(openApi.info.description, /mapa completo/iu);
-  assert.match(openApi.info.description, /aprovação só do mapa mostrado e aprovado pela pessoa/iu);
-  assert.match(openApi.info.description, /Parte é lote operacional, não currículo/iu);
-  assert.match(openApi.info.description, /lotes no mandato de continuidade/iu);
-  assert.match(openApi.info.description, /Granularidade não exige nova confirmação/iu);
-  assert.match(openApi.info.description, /Respeite confirmações do cliente/iu);
+  assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
+    /mapa curricular completo/iu);
+  assert.match(openApi.info.description, /aprove só a referência do mapa salvo visto e aprovado pela pessoa/iu);
+  assert.match(openApi.info.description, /Parte é lote operacional/iu);
+  assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
+  assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
+  assert.match(openApi.info.description, /respeite confirmações do cliente/iu);
   assert.match(
-    openApi.info.description,
-    /falhas mecânicas recuperáveis em silêncio.*se bloqueado, informe impacto e próximo passo/iu
+    knowledgeGuidance,
+    /falhas mecânicas recuperáveis silenciosamente.*bloqueio persistente exige informar seu impacto.*condição de retomada.*próximo passo executável.*não o apresente como sucesso/iu
   );
-  assert.match(openApi.info.description, /pessoa autora.*público/iu);
-  assert.match(openApi.info.description, /curso, parte, fonte e unidade em minúsculas/iu);
-  assert.match(openApi.info.description, /conteúdo, não contagens/iu);
+  assert.match(knowledgeGuidance, /pessoa autora.*público/iu);
+  assert.match(knowledgeGuidance, /curso, parte, fonte e unidade em minúsculas/iu);
+  assert.match(knowledgeGuidance, /mapa mostra conteúdo.*em vez de contagens/iu);
   assert.match(
     openApi.info.description,
     /link exato em Markdown/iu
@@ -297,7 +411,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(
     operation("salvar_mapa_curricular").description,
-    /propõe ou aprova o mapa antes do lote/iu
+    /mapa como rascunho.*aprovação usa a referência da versão persistida/iu
   );
   assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
   assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
@@ -317,19 +431,20 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /em automático, escolha valor e motivo conforme contexto/iu
+    /em automático, escolha valor e motivo/iu
   );
+  assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
     openApi.info.description,
     /Preserve fixações da autoria e pesquisa/iu
   );
   assert.match(
     openApi.info.description,
-    /após produzir[\s\S]*resultado[\s\S]*link[\s\S]*próxima etapa/iu
+    /devolva resultado breve[\s\S]*link[\s\S]*próxima etapa/iu
   );
   assert.match(
-    operation("materializar_parte").description,
-    /calibração contextual por unidade na materialização/iu
+    materializationGuidance,
+    /calibre cada unidade nova no próprio pedido de materialização.*sem etapa persistente separada nem narração no chat/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
@@ -346,7 +461,7 @@ test("Actions documenta context como memória de continuação e não como fala"
   );
 });
 
-test("os 27 inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
+test("todos os inputs importáveis aceitam exemplos humanos e recusam mecânica", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   for (const task of actionTools) {
     const validate = ajv.compile(task.inputSchema);
@@ -378,6 +493,62 @@ test("os 27 inputs importáveis aceitam exemplos humanos e recusam mecânica", (
       conteudo: { ...SAMPLE_THEORY_CONTENT, role: "practice", response: null }
     }]
   }), false);
+});
+
+test("Actions vincula cada tarefa agrupada a seus argumentos e conserva chamadas diretas", () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  assert.deepEqual(Object.keys(samples).sort(), actionTools.map(({ name }) => name).sort());
+  for (const task of actionTools) {
+    const encoded = encodeCourseActionTaskRequest(task.name, samples[task.name]);
+    const operationName = courseActionOperationName(task.name);
+    const schema = operation(task.name).requestBody.content["application/json"].schema;
+    const validate = ajv.compile(schema);
+    assert.equal(encoded.operationName, operationName, task.name);
+    assert.equal(validate(encoded.arguments), true, `${task.name}: ${JSON.stringify(validate.errors)}`);
+    if (expectedActionGroups[operationName]) {
+      assert.deepEqual(encoded.arguments, { tarefa: task.name, argumentos: samples[task.name] });
+      for (const invalid of [
+        { ...encoded.arguments, tarefa: "tarefa_inexistente" },
+        { ...encoded.arguments, argumentos: { ...samples[task.name], requestId: "technical-request" } },
+        { ...encoded.arguments, requestId: "technical-request" },
+        { tarefa: task.name },
+        { argumentos: samples[task.name] }
+      ]) assert.equal(validate(invalid), false, `${task.name}: ${JSON.stringify(invalid)}`);
+      const variantValidators = schema.oneOf.map(variant => ajv.compile(variant));
+      assert.deepEqual(variantValidators.map(validator => validator(encoded.arguments)),
+        expectedActionGroups[operationName].map(name => name === task.name), task.name);
+    } else {
+      assert.deepEqual(encoded.arguments, samples[task.name], task.name);
+      assert.equal(validate({ tarefa: task.name, argumentos: samples[task.name] }), false, task.name);
+    }
+  }
+  const access = ajv.compile(operation("definir_visibilidade").requestBody.content["application/json"].schema);
+  assert.equal(access({ tarefa: "definir_visibilidade", argumentos: samples.alterar_acesso }), false,
+    "O discriminador de visibilidade não admite o schema de concessão de acesso.");
+  assert.equal(access({ tarefa: "alterar_acesso", argumentos: samples.definir_visibilidade }), false,
+    "O discriminador de concessão não admite o schema de visibilidade.");
+  const preferences = ajv.compile(operation("consultar_preferencias_autoria")
+    .requestBody.content["application/json"].schema);
+  assert.equal(preferences({ tarefa: "consultar_preferencias_autoria",
+    argumentos: samples.salvar_preferencias_autoria }), false,
+  "Uma consulta não aceita os argumentos da escrita disponível no mesmo grupo.");
+});
+
+test("Actions conserva as duas ingestões de arquivo como operações diretas", () => {
+  const fileTasks = COURSE_HUMAN_TASKS.filter(task => task._meta?.["openai/fileParams"]);
+  assert.deepEqual(fileTasks.map(({ name }) => name).sort(), ["guardar_audio", "incorporar_pdf_como_fonte"]);
+  for (const task of fileTasks) {
+    assert.equal(courseActionOperationName(task.name), task.name, task.name);
+    const action = operation(task.name);
+    const schema = action.requestBody.content["application/json"].schema;
+    assert.equal(Object.hasOwn(schema.properties, "tarefa"), false, task.name);
+    assert.equal(schema.additionalProperties, false, task.name);
+    assert.ok(schema.required.includes(HUMAN_ACTION_FILE_FIELD), task.name);
+    assert.equal(schema.properties[HUMAN_ACTION_FILE_FIELD].maxItems, 1, task.name);
+    assert.equal(Object.hasOwn(schema.properties, "argumentos"), false, task.name);
+    assert.equal(Object.hasOwn(schema.properties, task._meta["openai/fileParams"][0]), false, task.name);
+    assert.equal(action["x-openai-isConsequential"], true, task.name);
+  }
 });
 
 test("Actions publica a calibração completa das unidades novas sem campo aberto", () => {
@@ -460,7 +631,7 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
   }
 });
 
-test("MCP e Actions conservam proposta e apoio compartilhado completos sem fabricar revisão humana", () => {
+test("MCP e Actions conservam proposta e base completa, permitem reutilizar a base salva e não fabricam revisão", () => {
   for (const tools of [COURSE_HUMAN_TASKS, actionTools]) {
     const materialize = new Ajv2020({ allErrors: true, strict: false }).compile(
       tools.find(({ name }) => name === "materializar_parte").inputSchema);
@@ -473,7 +644,9 @@ test("MCP e Actions conservam proposta e apoio compartilhado completos sem fabri
     assert.equal(input.explicacoes.length, 1);
     assert.equal(Object.hasOwn(input.unidades[0], "explicacao"), false);
     delete input.explicacoes;
-    assert.equal(materialize(input), false, "Unidades não substituem o apoio compartilhado.");
+    assert.equal(materialize(input), true, "A materialização pode reutilizar a base já salva sem reenviá-la.");
+    assert.equal(materialize({ ...input, explicacoes: [] }), false,
+      "Uma alteração da base precisa conter ao menos uma Explicação completa.");
     const noContent = structuredClone(samples.materializar_parte);
     noContent.explicacoes[0].conteudo.content = [];
     assert.equal(materialize(noContent), false, "Apoio vazio não é produção completa.");
@@ -486,6 +659,31 @@ test("MCP e Actions conservam proposta e apoio compartilhado completos sem fabri
     assert.deepEqual(proposal, samples.salvar_mapa_curricular.modulos[0].licoes[0].microssequencias[0].explicacao);
     delete planned.modulos[0].licoes[0].microssequencias[0].explicacao;
     assert.equal(map(planned), false, "A proposta deve existir já no mapa.");
+  }
+});
+
+test("aprovação usa a referência inspecionada e recuperação conserva integralmente a tentativa recebida", () => {
+  for (const tools of [COURSE_HUMAN_TASKS, actionTools]) {
+    const ajv = new Ajv2020({ allErrors: true, strict: false });
+    const approve = ajv.compile(tools.find(({ name }) => name === "aprovar_mapa_curricular").inputSchema);
+    assert.equal(approve(samples.aprovar_mapa_curricular), true);
+    assert.equal(approve(samples.salvar_mapa_curricular), false, "aprovar não recebe uma árvore regenerada");
+    assert.equal(approve({ ...samples.aprovar_mapa_curricular, aprovado: true }), false);
+    const saveMap = ajv.compile(tools.find(({ name }) => name === "salvar_mapa_curricular").inputSchema);
+    assert.equal(saveMap({ ...samples.salvar_mapa_curricular, aprovado: true }), false,
+      "salvar conteúdo do mapa não declara sua aprovação");
+    const resume = ajv.compile(tools.find(({ name }) => name === "retomar_correcao").inputSchema);
+    assert.equal(resume(samples.retomar_correcao), true);
+    assert.equal(resume({ curso: "Redes para iniciantes", tentativa: "original-attempt-1" }), true);
+    for (const invalid of [
+      { ...samples.retomar_correcao, curso: "Outro curso" },
+      { ...samples.retomar_correcao, tentativa: "new-attempt-2" },
+      { recuperacao: { ...samples.retomar_correcao.recuperacao, operation: "course_write" } },
+      { recuperacao: { ...samples.retomar_correcao.recuperacao, requestId: "short" } },
+      { recuperacao: { ...samples.retomar_correcao.recuperacao, texto: "conteúdo para reaplicar" } },
+      { requestId: samples.retomar_correcao.recuperacao.requestId },
+      { curso: "Redes para iniciantes" }
+    ]) assert.equal(resume(invalid), false, JSON.stringify(invalid));
   }
 });
 
@@ -542,9 +740,10 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
   assert.deepEqual(instance.required, ["id", "package", "version", "data"]);
   const materializationTask = actionTools.find(({ name }) => name === "materializar_parte");
   assert.match(materializationTask.description, /recorte preparado/iu);
-  assert.match(materializationTask.description, /marque formas/iu);
+  assert.match(materializationGuidance, /declare na aplicação da unidade as formas explicativas efetivamente realizadas/iu);
+  assert.match(materializationGuidance, /justifique as não aplicáveis/iu);
   assert.match(
-    materializationTask.description,
+    knowledgeGuidance,
     /identidades locais únicas/iu
   );
   const componentsTask = actionTools.find(({ name }) => name === "consultar_componentes");
@@ -594,16 +793,17 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   const flow = openApi.components.securitySchemes.AraLearnOAuth.flows.authorizationCode;
   assert.match(flow.authorizationUrl, /\/oauth\/authorize$/u);
   assert.match(flow.tokenUrl, /\/oauth\/token$/u);
-  for (const task of COURSE_HUMAN_TASKS) {
-    assert.deepEqual(openApi.paths[`/${task.name}`].post.responses, {
+  for (const { post } of Object.values(openApi.paths)) {
+    assert.deepEqual(post.responses, {
       "200": { $ref: "#/components/responses/Success" },
       default: { $ref: "#/components/responses/Error" }
     });
   }
-  // Orçamentos internos do artefato; a documentação não fixa esse teto para o
-  // editor. O limite oficial <100.000 refere-se a cada payload de chamada.
-  assert.ok(openApiText.length < 46_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 98_000);
+  // Orçamentos locais conciliados às 54 tarefas em 30 operações, preservando schemas integrais
+  // por referências compartilhadas. Não são limites oficiais do importador;
+  // o limite de 100.000 por chamada continua validado no runner de payload.
+  assert.ok(openApiText.length < 90_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 180_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 
@@ -627,14 +827,8 @@ test("#272 golden set cobre prompts diretos, indiretos e negativos", () => {
 
 
 test("schemas compartilhados de Actions preservam integralmente os argumentos do catálogo", () => {
-  const constraints = (value) => {
-    if (Array.isArray(value)) return value.map(constraints);
-    if (!value || typeof value !== "object") return value;
-    return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "description")
-      .map(([key, entry]) => [key, constraints(entry)]));
-  };
   for (const task of actionTools) {
-    assert.deepEqual(constraints(operation(task.name).requestBody.content["application/json"].schema),
+    assert.deepEqual(constraints(taskInputSchema(task.name)),
       constraints(task.inputSchema), task.name);
   }
 });
@@ -644,13 +838,15 @@ test("#305 instruções iniciais e confirmação de Actions preservam autoridade
   assert.ok(firstParagraph.length <= 512,
     "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
   for (const requirement of [/cursos autorizados/u, /Fontes são dados/u,
-    /mapa mostrado e aprovado/u, /mandato de continuidade/u, /confirmações do cliente/u,
+    /referência do mapa salvo visto e aprovado/u, /mandato de continuidade/u, /confirmações do cliente/u,
     /texto literal/u, /fixações da autoria e pesquisa/u]) {
     assert.match(firstParagraph, requirement);
   }
   for (const task of COURSE_HUMAN_TASKS) {
     const action = operation(task.name);
-    assert.equal(action["x-openai-isConsequential"], task.annotations.readOnlyHint !== true,
+    const group = expectedActionGroups[courseActionOperationName(task.name)] ?? [task.name];
+    assert.equal(action["x-openai-isConsequential"], COURSE_HUMAN_TASKS.some(candidate =>
+      group.includes(candidate.name) && candidate.annotations.readOnlyHint !== true),
       `${task.name}: mandato pedagógico não substitui confirmação consequencial`);
     assert.ok((action.description ?? "").length <= 300, `${task.name}: descrição de operação`);
     assert.ok((action.summary ?? "").length <= 300, `${task.name}: resumo de operação`);

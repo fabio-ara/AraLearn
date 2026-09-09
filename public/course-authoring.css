@@ -2214,7 +2214,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   }
 }
 
-
 /* Parâmetros conserva condições pedagógicas e editoriais, direção e componentes. */
 .course-authoring-surface[data-section="parameters"] {
   width: min(100%, 430px);
@@ -2866,7 +2865,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   align-items: center;
   gap: 5px;
 }
-
 
 .course-inspection-search {
   position: relative;
@@ -3554,7 +3552,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   width: 100%;
 }
 
-
 .course-observations-panel,
 .course-observations-list,
 .course-observation-card,
@@ -3965,7 +3962,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-inspection-item-actions {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   border-block: 1px solid var(--border-subtle);
   padding-block: 5px;
   min-height: calc(var(--tap) + 12px);
@@ -3974,7 +3971,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-inspection-item-actions:has(.study-tool-actions) {
   flex-wrap: nowrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
@@ -5141,8 +5138,6 @@ dialog.course-microsequence-review {
   line-height: var(--leading-normal);
 }
 
-
-
 @media (max-width: 700px) {
   .course-source-catalog,
   .course-source-form-grid,
@@ -5172,8 +5167,7 @@ dialog.course-microsequence-review {
 @media (max-width: 380px) {
   .course-source-current,
   .course-source-target-link,
-  .course-source-form,
-  .study-citations-panel {
+  .course-source-form {
     padding-inline: 9px;
   }
 

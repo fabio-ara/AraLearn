@@ -1,0 +1,43 @@
+.course-authoring-observation-context { margin-block: 12px; }
+.course-authoring-observation-toggle { display: inline-flex; align-items: center; gap: 6px; }
+.course-authoring-observation-toggle > span { font-size: var(--type-sm); font-variant-numeric: tabular-nums; }
+.course-authoring-observation-panel { margin-block-start: 8px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 12px; }
+.course-authoring-observation-panel > header,
+.course-authoring-observation-entries li > div,
+.course-authoring-observation-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.course-authoring-observation-panel > header h3 { margin: 0; font-size: var(--type-md); }
+.course-authoring-observation-panel button { flex-shrink: 0; min-width: var(--tap); min-height: var(--tap); }
+.course-authoring-observation-entries { display: grid; gap: 12px; margin-block: 12px; padding-inline-start: 24px; }
+.course-authoring-observation-entries li { padding-block-end: 8px; border-bottom: 1px solid var(--border-subtle); }
+.course-authoring-observation-entries li > p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.course-authoring-observation-panel form label { display: grid; gap: 6px; }
+.course-authoring-observation-panel textarea { box-sizing: border-box; width: 100%; min-height: 96px; resize: vertical; }
+.course-authoring-observation-panel small { font-size: var(--type-sm); color: var(--text-secondary); }
+.course-authoring-observation-context :focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
+.course-microsequence-review > .editor-head { grid-template-columns: minmax(0, 1fr) var(--tap); }
+.course-inspection-observation-count { font-size: var(--type-sm); font-variant-numeric: tabular-nums; }
+.course-explanation-actions { display: flex; align-items: center; gap: 6px; min-height: var(--tap); margin-block: 12px; }
+.course-explanation-actions > button { min-width: var(--tap); min-height: var(--tap); display: grid; place-items: center; padding: 8px; }
+.course-explanation-inline { display: grid; gap: 0; }
+.course-explanation-component { min-width: 0; position: relative; }
+.course-explanation-component [data-manual-edit-path],
+.course-explanation-inline [data-review-title][contenteditable="plaintext-only"] {
+  outline: 1px dashed var(--action-primary); outline-offset: 2px; cursor: text; caret-color: var(--action-primary);
+}
+.course-explanation-component [data-manual-edit-path]:focus,
+.course-explanation-inline [data-review-title][contenteditable="plaintext-only"]:focus { outline: 2px solid var(--action-primary); }
+.course-inspection-empty-explanations { display: grid; gap: 8px; width: min(100%, 640px); margin: 0; padding: 0; list-style: none; }
+.course-inspection-empty-explanations > li { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: start; }
+.course-inspection-empty-explanations button { flex: 0 0 var(--tap); min-height: var(--tap); display: grid; place-items: center; }
+.course-inspection-instructional-details dl { display: grid; gap: 8px; }
+.course-inspection-instructional-details dl > div { display: grid; gap: 2px; }
+.course-inspection-instructional-details dt { color: var(--text-secondary); font-size: var(--type-sm); }
+.course-inspection-instructional-details dd { margin: 0; }
+.course-inspection-item-detail-panel:has(.course-inspection-instructional-details) {
+  max-height: min(52dvh, 520px); overflow-y: auto; overscroll-behavior: contain;
+}
+.course-inspection-authorship > .course-inspection-summary-label {
+  display: inline; width: auto; min-width: 0; height: auto; max-width: 100%; padding: 0; border: 0;
+  border-radius: 0; background: transparent; color: var(--text-secondary); font-size: var(--type-sm); overflow-wrap: anywhere;
+}
+.course-inspection-authorship > .course-inspection-summary-label + .course-inspection-summary-label::before { content: "· "; }

@@ -7,8 +7,22 @@ import {
   courseEntityOutline,
   flattenCourseDocument,
   normalizeCourseEntityRows,
+  migrateLegacyCourseEntityReviews,
   validateCourseEntityContent
 } from "../../src/domain/courseEntities.js";
+
+test("cache de revisão agregada conserva conteúdo sem fabricar declaração individual", () => {
+  const rows = flattenCourseDocument(documentFixture()).rows;
+  const original = rows.find(row => row.entityType === "microsequence");
+  original.contentReview = { state: "current", approvedAt: "2026-09-07T12:00:00Z" };
+  const migrated = migrateLegacyCourseEntityReviews(rows);
+  const current = normalizeCourseEntityRows(migrated).find(row => row.entityId === original.entityId);
+  assert.deepEqual(current.content, original.content);
+  assert.deepEqual(current.contentReview, { state: "unregistered" });
+  assert.deepEqual(current.legacyMicrosequenceReview, original.contentReview);
+  assert.equal(original.contentReview.state, "current");
+  assert.deepEqual(migrateLegacyCourseEntityReviews(migrated), migrated);
+});
 
 function documentFixture() {
   return {
@@ -75,23 +89,36 @@ function documentFixture() {
   };
 }
 
+test("leitura explícita de rascunho conserva dependências pendentes e conteúdo sem aprovar importação", () => {
+  const document = documentFixture();
+  const microsequence = document.courses[0].modules[0].lessons[0].microsequences[0];
+  microsequence.dependsOn = ["microsequence-pendente"];
+  assert.throws(() => flattenCourseDocument(document), { code: "invalid_course_document" });
+  const { course, rows } = flattenCourseDocument(document, { allowIncompleteCurriculum: true });
+  assert.throws(() => composeCourseDocument(course, rows), { code: "invalid_course_document" });
+  assert.deepEqual(composeCourseDocument(course, rows, { allowIncompleteCurriculum: true }), document);
+  const invalid = structuredClone(document);
+  invalid.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].package = "unknown";
+  assert.throws(() => flattenCourseDocument(invalid, { allowIncompleteCurriculum: true }), { code: "invalid_course_document" });
+});
+
 test("metadados de revisão permanecem na leitura de entidades sem conceder aprovação ao documento", () => {
   const document = documentFixture();
   const { course, rows } = flattenCourseDocument(document);
-  const review = { state: "current", approvedAt: "2026-09-07T12:00:00Z" };
+  const review = { state: "current", reviewedAt: "2026-09-07T12:00:00Z" };
   for (const row of rows) row.contentReview = row.entityType === "microsequence" ? review : null;
   const normalized = normalizeCourseEntityRows(rows);
   assert.deepEqual(normalized.find(row => row.entityType === "microsequence").contentReview, review);
   assert.deepEqual(composeCourseDocument(course, normalized), document);
   assert.equal(flattenCourseDocument(composeCourseDocument(course, normalized)).rows.some(row => Object.hasOwn(row, "contentReview")), false);
-  for (const invalid of [{ state: "approved" }, { state: "current" }, { state: "current", approvedAt: "ontem" },
-    { state: "draft", approvedAt: review.approvedAt }, { ...review, approvedBy: "private-actor" }]) {
+  for (const invalid of [{ state: "approved" }, { state: "current" }, { state: "current", reviewedAt: "ontem" },
+    { state: "draft", reviewedAt: review.reviewedAt }, { ...review, reviewedBy: "private-actor" }]) {
     const bad = structuredClone(rows);
     bad.find(row => row.entityType === "microsequence").contentReview = invalid;
     assert.throws(() => normalizeCourseEntityRows(bad), { code: "invalid_course_content_review" });
   }
   const wrongTarget = structuredClone(rows);
-  wrongTarget.find(row => row.entityType === "study_unit").contentReview = review;
+  wrongTarget.find(row => row.entityType === "module").contentReview = review;
   assert.throws(() => normalizeCourseEntityRows(wrongTarget), { code: "invalid_course_content_review" });
   const forged = structuredClone(document);
   forged.courses[0].modules[0].lessons[0].microsequences[0].contentReview = review;

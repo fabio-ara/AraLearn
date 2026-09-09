@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 import {
   COURSE_HUMAN_TASK_CATALOG_METADATA,
@@ -12,6 +13,7 @@ import {
 import {
   projectHumanAuthoringTasksForActions
 } from "./projectHumanAuthoringActions.mjs";
+import { courseActionOperationDefinitions, courseActionOperationName } from "../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packageMetadata = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
@@ -32,15 +34,28 @@ const errorSchema = {
       properties: {
         code: { type: "string", minLength: 1, maxLength: 120 },
         message: { type: "string", minLength: 1, maxLength: 1000 },
-        retryable: { type: "boolean" }
+        retryable: { type: "boolean" },
+        recovery: {
+          type: "object", additionalProperties: false, required: ["requestId", "operation"],
+          properties: {
+            requestId: { type: "string", minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+            operation: { type: "string", minLength: 1, maxLength: 96, pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,95}$" },
+            courseId: { type: "string", format: "uuid" },
+            retomada: { type: "string", minLength: 1, maxLength: 480000, pattern: "^[A-Za-z0-9_-]+$",
+              description: "Referência estrutural original. Reutilize na mesma tarefa com o mesmo pedido para reconciliar a tentativa." }
+          }
+        }
       }
     },
     nextDecision: { type: ["string", "null"], maxLength: 1000 }
   }
 };
-// Local review margin for the formatted schema, counted as UTF-16 code units.
-// This is not a documented OpenAPI import limit or the per-call Actions guard.
-const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 98_000;
+// Local artifact budgets for the complete contextual catalog (#357), measured
+// after shared-schema projection. They are not OpenAPI import limits: the
+// documented 100,000-character limit concerns each Actions call's payload.
+// Acceptance in the actual editor remains a separate hosted release gate.
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 180_000;
+const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 90_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!resultSchema || actionTools.some(({ outputSchema }) => (
@@ -99,22 +114,27 @@ for (const [name, value] of Object.entries(sharedInputSchemas)) {
   delete schema.description;
   sharedInputSchemas[name] = schema;
 }
+function schemaKey(value) {
+  if (Array.isArray(value)) return `[${value.map(schemaKey).join(",")}]`;
+  if (!value || typeof value !== "object") return JSON.stringify(value);
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${schemaKey(value[key])}`).join(",")}}`;
+}
 function shareHumanReferences(value) {
   if (Array.isArray(value)) return value.map(shareHumanReferences);
   if (!value || typeof value !== "object") return value;
   const { description, ...shape } = value;
   if (shape.minItems === 1) {
     const { minItems, ...optionalRoles } = shape;
-    if (JSON.stringify(optionalRoles) === JSON.stringify(sharedInputSchemas.HumanSourceRoles)) {
+    if (schemaKey(optionalRoles) === schemaKey(sharedInputSchemas.HumanSourceRoles)) {
       return { $ref: "#/components/schemas/HumanSourceRoles", minItems,
         ...(description ? { description } : {}) };
     }
   }
-  if (JSON.stringify(shape) === JSON.stringify(humanReferenceSchema)) {
+  if (schemaKey(shape) === schemaKey(humanReferenceSchema)) {
     return { $ref: "#/components/schemas/HumanReference", ...(description ? { description } : {}) };
   }
   for (const [name, schema] of Object.entries(sharedInputSchemas)) {
-    if (JSON.stringify(shape) === JSON.stringify(schema)) {
+    if (schemaKey(shape) === schemaKey(schema)) {
       return { $ref: `#/components/schemas/${name}`, ...(description ? { description } : {}) };
     }
   }
@@ -160,7 +180,17 @@ function inputSchemaWithSharedContent(tool) {
   return shareHumanReferences(schema);
 }
 
-const paths = Object.fromEntries(actionTools.map((tool) => [
+const groupedInputSchemas = {};
+const actionOperations = courseActionOperationDefinitions(actionTools.map(tool => {
+  const schema = inputSchemaWithSharedContent(tool);
+  if (courseActionOperationName(tool.name) === tool.name) return { ...tool, inputSchema: schema };
+  const name = `ActionArguments_${tool.name}`;
+  groupedInputSchemas[name] = schema;
+  return { ...tool, inputSchema: { $ref: `#/components/schemas/${name}` } };
+}));
+// Observed in the actual editor; a successful import remains a hosted gate.
+if (actionOperations.length > 30) throw new Error("O editor de Actions aceita no máximo 30 operações.");
+const paths = Object.fromEntries(actionOperations.map((tool) => [
   `/${tool.name}`,
   {
     post: {
@@ -170,7 +200,7 @@ const paths = Object.fromEntries(actionTools.map((tool) => [
       "x-openai-isConsequential": tool.annotations?.readOnlyHint !== true,
       requestBody: {
         required: true,
-        content: { "application/json": { schema: inputSchemaWithSharedContent(tool) } }
+        content: { "application/json": { schema: tool.inputSchema } }
       },
       responses: {
         "200": { $ref: "#/components/responses/Success" },
@@ -203,6 +233,7 @@ const document = {
       HumanStudyUnitContent: shareHumanReferences(studyUnitContentSchema),
       HumanDesignParameters: designParametersSchema,
       HumanReference: humanReferenceSchema,
+      ...groupedInputSchemas,
       ...Object.fromEntries(Object.entries(sharedInputSchemas).map(([name, schema]) => [name,
         Object.fromEntries(Object.entries(schema).map(([key, value]) => [key, shareHumanReferences(value)]))
       ]))
@@ -239,7 +270,58 @@ const document = {
   }
 };
 
+// Intern identical schema fragments added by the contextual tasks. Constraints
+// and local descriptions survive; this changes transport repetition only.
+const repeated = new Map();
+function collectSchemas(value) {
+  if (!value || typeof value !== "object") return;
+  if (!Array.isArray(value) && (typeof value.type === "string" || Array.isArray(value.type) || value.anyOf || value.oneOf)) {
+    const shape = { ...value }; delete shape.description;
+    const key = schemaKey(shape);
+    if (key.length > 90) {
+      const found = repeated.get(key) ?? { count: 0, shape, name: `Shared${createHash("sha256").update(key).digest("hex").slice(0, 10)}` };
+      found.count++; repeated.set(key, found);
+    }
+  }
+  Object.values(value).forEach(collectSchemas);
+}
+collectSchemas(document.paths);
+collectSchemas(document.components.schemas);
+for (const [key, value] of repeated) if (value.count < 2) repeated.delete(key);
+function internSchemas(value, root = false) {
+  if (Array.isArray(value)) return value.map(item => internSchemas(item));
+  if (!value || typeof value !== "object") return value;
+  const { description, ...shape } = value;
+  const entry = root ? null : repeated.get(schemaKey(shape));
+  if (entry) return { $ref: `#/components/schemas/${entry.name}`, ...(description ? { description } : {}) };
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, internSchemas(item)]));
+}
+for (const path of Object.values(document.paths)) {
+  const input = path.post.requestBody.content["application/json"];
+  input.schema = internSchemas(input.schema, true);
+}
+for (const [name, schema] of Object.entries(document.components.schemas)) document.components.schemas[name] = internSchemas(schema, true);
+for (const entry of repeated.values()) document.components.schemas[entry.name] = internSchemas(entry.shape, true);
+// A shared parent can make a child definition redundant; omit only generated
+// definitions with no references after interning, never a capability or field.
+let removed;
+do {
+  removed = false;
+  const all = JSON.stringify(document);
+  for (const entry of repeated.values()) if (Object.hasOwn(document.components.schemas, entry.name) &&
+      !all.includes(`"$ref":"#/components/schemas/${entry.name}"`)) {
+    delete document.components.schemas[entry.name]; removed = true;
+  }
+} while (removed);
 const editorProjectionLength = JSON.stringify(document, null, 2).length;
+if (process.argv.includes("--measure")) {
+  console.log(JSON.stringify({ taskCount: actionTools.length, operationCount: actionOperations.length,
+    minified: JSON.stringify(document).length, editor: editorProjectionLength,
+    paths: Object.entries(document.paths).map(([name, value]) => ({ name, size: JSON.stringify(value, null, 2).length }))
+      .sort((a, b) => b.size - a.size).slice(0, 10),
+    schemas: Object.entries(document.components.schemas).map(([name, value]) => ({ name, size: JSON.stringify(value, null, 2).length }))
+      .sort((a, b) => b.size - a.size).slice(0, 10) }, null, 2));
+}
 if (editorProjectionLength >= CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET) {
   throw new Error(
     `O OpenAPI de Actions ocupa ${editorProjectionLength} caracteres no editor; ` +
@@ -247,6 +329,9 @@ if (editorProjectionLength >= CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET) {
   );
 }
 const output = `${JSON.stringify(document)}\n`;
+if (output.length >= CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET) {
+  throw new Error(`O catálogo minificado ocupa ${output.length} caracteres; orçamento local ${CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET}.`);
+}
 if (process.argv.includes("--check")) {
   const current = await fs.readFile(target, "utf8").catch(() => "");
   if (current.replaceAll("\r\n", "\n") !== output) {

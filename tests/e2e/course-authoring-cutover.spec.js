@@ -572,7 +572,7 @@ async function mountCourseAuthoring(page, {
       firstCourse.plan.parts = [];
       firstCourse.plan.counts.authoringPartCount = 0;
       firstCourse.plan.counts.linkedDidacticMicrosequenceCount = 0;
-      firstCourse.plan.counts.studyUnitCount = 0;
+      firstCourse.plan.counts.studyUnitCount = 60;
     }
     if (requestedPlanningScenario === "two-parts") {
       const firstCourse = definitions[0];
@@ -1745,6 +1745,9 @@ async function mountCourseAuthoring(page, {
         const end = start + selected.length;
         const items = selected.map((studyUnit, index) => ({
           studyUnit: structuredClone(studyUnit),
+          pendingAuthoringObservationCount: annotations.filter(item => item.courseId === courseId &&
+            item.provenance.origin === "author" && item.target.kind === "study_unit" && item.target.id === studyUnit.id &&
+            ["open", "considered"].includes(item.state)).length,
           version: studyUnitVersions.get(studyUnit.id),
           updatedAt: studyUnit.id === "study-unit-50"
             ? "2026-09-05T10:00:00.000Z" : "2026-08-17T12:00:00.000Z",
@@ -2270,8 +2273,12 @@ async function mountCourseAuthoring(page, {
             resourceId: "support-comparison", path: "text", quote: "Um critério comum", prefix: null, suffix: null }] }],
         createdAt: "2026-09-07T12:00:00.000Z" };
       sourceTargets.set(sourceTargetKey(target.targetKind, target.targetId), target);
-      controller.getMicrosequenceReview = async courseId => ({ courseId, microsequenceId: "microsequence-a",
+      controller.getContentReview = async (courseId, targetKind, targetId) => ({ contract: "aralearn.course-content-review.v1",
+        courseId, targetKind, targetId, courseRevision: courseDetail(courseId).revision, entityVersion: 1, reviewPolicy: "saved",
         basisHash: "a".repeat(64), contentReview: { state: "draft" } });
+      controller.setContentReview = async request => ({ ...await controller.getContentReview(request.courseId, request.targetKind, request.targetId),
+        contract: "aralearn.course-content-review-change.v1", changed: true, idempotent: false,
+        contentReview: request.reviewed ? { state: "current", reviewedAt: "2026-09-09T12:00:00Z" } : { state: "draft" } });
       controller.exportCourseAuthoring = async request => {
         const detail = courseDetail(request.courseId);
         const analytics = courseAuthoringAnalyticsFixture({ courseId: request.courseId, revision: detail.revision,
@@ -3784,7 +3791,48 @@ test("Observações confirmam a escrita uma vez quando a atualização da lista 
   expect(clientErrors).toEqual([]);
 });
 
-test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo", async ({ page }) => {
+test("Minipainel mostra desenho aplicado, evidência, origem e revisão por objeto", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 820 });
+  const errors = captureClientErrors(page);
+  await mountCourseAuthoring(page, { cardinality: "many", hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content` });
+  await page.evaluate(async () => {
+    const harness = globalThis.__courseAuthoringHarness;
+    const read = harness.controller.loadAuthoringStudyUnits.bind(harness.controller);
+    harness.controller.loadAuthoringStudyUnits = async (...args) => {
+      const page = await read(...args);
+      for (const item of page.items) {
+        item.contentReview = { state: "stale", reviewedAt: "2026-09-09T04:00:00Z" };
+        item.pendingAuthoringObservationCount = 3;
+        item.authorship.design.application = { mode: "mixed",
+          componentRefs: item.studyUnit.content.map(instance => `${instance.package}@${instance.version}`),
+          analysisIdeas: { introduced: [{ name: "inclusão entre conjuntos", description: "Relação explicitada no diagrama." }], used: [], revisited: [] },
+          practiceEvidence: [{ name: "Justificar a inclusão", description: "Relacionar os elementos de cada conjunto." }] };
+      }
+      return page;
+    };
+    await harness.surface.refresh();
+  });
+  await expect(page.locator(".course-inspection-authorship")).toContainText("Revisão autoral desatualizada");
+  await page.screenshot({ path: info.outputPath("unit-instructional-summary-390.png") });
+  const details = page.locator(".course-inspection-item-details").first();
+  await details.locator(":scope > summary").tap();
+  await expect(details.getByRole("heading", { name: "Desenho aplicado e estado autoral", exact: true })).toBeVisible();
+  await expect(details).toContainText("Justificar a inclusão");
+  await expect(details).toContainText("3 pendentes");
+  await expect(details).toContainText("GPT");
+  const panel = details.locator(".course-inspection-item-detail-panel");
+  const panelBounds = await panel.boundingBox();
+  expect(panelBounds.y + panelBounds.height).toBeLessThanOrEqual(821);
+  const evidence = details.getByText("Justificar a inclusão", { exact: true });
+  await evidence.scrollIntoViewIfNeeded();
+  await expect(evidence).toBeInViewport();
+  await page.screenshot({ path: info.outputPath("unit-instructional-minipanel-390.png") });
+  await expectNoHorizontalOverflow(page);
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observações", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 820 });
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
@@ -3800,12 +3848,12 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await expect(details).not.toHaveAttribute("open", "");
   await expect(detailsTrigger).toBeFocused();
   const observationsAction = page.getByRole("button", {
-    name: "Observações de Exemplo guiado com diagrama",
+    name: "Observações de Exemplo guiado com diagrama, 0 pendentes",
     exact: true
   });
   await observationsAction.click();
   await expect(details).not.toHaveAttribute("open", "");
-  const observationDialog = page.getByRole("dialog", { name: "Observações da unidade" });
+  const observationDialog = page.getByRole("dialog", { name: "Observações · Exemplo guiado com diagrama" });
   await expectModalDialogOwnsTopLayer(observationDialog);
   const observationText = page.getByRole("textbox", { name: "Observação" });
   await expect(observationText).toBeFocused();
@@ -3819,7 +3867,7 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await expect(page.getByText(
     "A relação entre os conjuntos precisa de mais contexto.",
     { exact: true }
-  )).toBeVisible();
+  )).toHaveCount(0);
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(2);
   await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
@@ -3828,6 +3876,9 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await page.getByRole("button", { name: "Enviar observação" }).click();
   await expect(page.getByText("😀a", { exact: true })).toBeVisible();
   await expect(observationText).toBeFocused();
+  await observationText.fill("Detalhar a relação do exemplo.");
+  await page.getByRole("button", { name: "Enviar observação" }).click();
+  await expect(page.getByText("Detalhar a relação do exemplo.", { exact: true })).toBeVisible();
   await observationDialog
     .getByRole("button", { name: "Fechar" }).click();
   const observationsWithCount = page.getByRole("button", {
@@ -3847,28 +3898,16 @@ test("Inspeção abre contagem contextual sob demanda e não faz N+1 decorativo"
   await observationsWithCount.click();
   await expect(details).not.toHaveAttribute("open", "");
   await expectModalDialogOwnsTopLayer(observationDialog);
-  const withdraw = page.getByRole("button", { name: "Retirar observação", exact: true });
-  await withdraw.click();
-  const confirmation = page.getByRole("alertdialog", { name: "Retirar observação?" });
-  await expect(confirmation).toBeVisible();
-  await expect(confirmation).toHaveAttribute("aria-modal", "true");
-  await expect(page.locator(".study-observation-overlay")).toHaveAttribute("inert", "");
-  const bounds = await confirmation.boundingBox();
-  expect(bounds).not.toBeNull();
-  expect(bounds.x).toBeGreaterThanOrEqual(0);
-  expect(bounds.y).toBeGreaterThanOrEqual(0);
-  expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
-  expect(bounds.y + bounds.height).toBeLessThanOrEqual(820);
-  const cancel = confirmation.getByRole("button", { name: "Cancelar", exact: true });
-  const confirmWithdrawal = confirmation.getByRole("button", { name: "Retirar", exact: true });
-  await expect(cancel).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
-  await expect(confirmWithdrawal).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(cancel).toBeFocused();
-  await page.locator("[data-inspection-confirmation-backdrop]").click({ position: { x: 2, y: 2 } });
-  await expect(confirmation).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Retirar observação", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Retirar observação", exact: true })).toHaveCount(0);
+  const firstObservation = observationDialog.locator(".study-observation-item").filter({ hasText: "😀a" });
+  await firstObservation.getByRole("button", { name: "Editar observação", exact: true }).click();
+  await observationText.fill("Notação ajustada no pedido, sem alterar o conteúdo.");
+  await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+  await expect(observationDialog.getByText("Notação ajustada no pedido, sem alterar o conteúdo.", { exact: true })).toBeVisible();
+  await expect(observationDialog.locator('[data-observation-version="2"]')).toHaveCount(1);
+  await expect(observationDialog.locator(".study-observation-item")).toHaveCount(2);
+  expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.annotationMutations.map(value => value.command.type)))
+    .toEqual(["create_anchored_annotation", "create_anchored_annotation", "revise_anchored_annotation"]);
   await expect.poll(() => page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   expect(clientErrors).toEqual([]);
@@ -5158,7 +5197,7 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   const jsonPath = await jsonDownload.path();
   const exported = JSON.parse(await readFile(jsonPath, "utf8"));
   expect(jsonDownload.suggestedFilename()).toBe("aralearn-curso-e-analise-edicao-5.json");
-  expect(exported.contract).toBe("aralearn.course-authoring-export.v1");
+  expect(exported.contract).toBe("aralearn.course-authoring-export.v2");
   expect(exported.analytics.contract).toBe("aralearn.course-authoring-analytics.v4");
   expect(exported.scope).toEqual({
     kind: "didactic_microsequence",
@@ -5410,6 +5449,15 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await expect(open).toBeEnabled();
   await card.locator('.course-inspection-item-details > summary').click();
   await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
+  const details = card.locator('.course-inspection-item-details > summary');
+  await details.click();
+  await card.getByRole('button', { name: 'Revisão autoral desta unidade', exact: true }).click();
+  const unitReview = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
+  await expect(unitReview.getByRole('heading', { name: 'Unidade de estudo', exact: true })).toBeVisible();
+  await expect(unitReview).toContainText('Unidade curricular 12');
+  await unitReview.getByRole('button', { name: 'Fechar inspeção da unidade', exact: true }).click();
+  await expect(details).toBeFocused();
+  await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
   await page.screenshot({ path: info.outputPath('review-entry-tools-360.png'), fullPage: true });
   await open.click();
   const review = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
@@ -5426,6 +5474,31 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await sources.getByRole('button', { name: 'Fechar', exact: true }).click();
   await expect(sources).toHaveCount(0); await expect(open).toBeFocused();
   await expect(card).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 850 });
+  await card.getByRole('button', { name: 'Mostrar várias unidades', exact: true }).click();
+  const narrowActions = await card.locator('.course-inspection-item-actions').evaluate(bar => {
+    const bounds = bar.getBoundingClientRect();
+    const controls = [...bar.querySelectorAll('button')].flatMap(button => {
+      const rect = button.getBoundingClientRect();
+      if (!rect.width || !rect.height) return [];
+      return [{ x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+        hit: [[.5, .5], [.15, .5], [.85, .5], [.5, .15], [.5, .85]].every(([x, y]) =>
+          button.contains(document.elementFromPoint(rect.x + rect.width * x, rect.y + rect.height * y))) }];
+    });
+    return { left: bounds.left, right: bounds.right, controls };
+  });
+  expect(narrowActions.controls).toHaveLength(8);
+  for (const control of narrowActions.controls) {
+    expect(control.width).toBeGreaterThanOrEqual(44);
+    expect(control.height).toBeGreaterThanOrEqual(44);
+    expect(control.x).toBeGreaterThanOrEqual(narrowActions.left - 1);
+    expect(control.x + control.width).toBeLessThanOrEqual(narrowActions.right + 1);
+    expect(control.hit).toBe(true);
+  }
+  expect(Math.abs(narrowActions.controls[0].y - narrowActions.controls[2].y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(narrowActions.controls[1].y - narrowActions.controls[2].y)).toBeLessThanOrEqual(1);
+  await card.getByRole('checkbox', { name: 'Adicionar Unidade curricular 12 à seleção para observação', exact: true }).click();
+  await expect(card.getByRole('checkbox')).toBeChecked();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations)).toEqual([]);
   expect(errors).toEqual([]);
 });

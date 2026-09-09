@@ -21,7 +21,8 @@ import {
 } from "../aralearn/runtime/domain/courseSources.js";
 import {
   COURSE_ANCHORED_ANNOTATION_CATEGORIES,
-  normalizeCourseAnchoredAnnotationCommand
+  normalizeCourseAnchoredAnnotationCommand,
+  normalizeCourseObservationCorrectionReferences
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
@@ -35,14 +36,23 @@ import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeC
   "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
   resolveHumanSourceOccurrences } from "./courseHumanMaterialization.js";
-import { applyHumanCourseCorrections } from "./courseHumanCorrections.js";
+import { applyHumanCourseCorrections, resumeHumanCourseObservationCorrection } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
+import { AUTHORING_PROCESS_FOCUS, AUTHORING_PROCESS_CADENCE, AUTHORING_PROCESS_REVIEW_POINTS,
+  AUTHORING_PROCESS_PARAMETER_DEFINITIONS, normalizeAuthoringProcessPreferences,
+  resolveAuthoringProcessPreferences } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
+import { createContentReviewReference, openContentReviewReference } from "./courseContentReviewReference.js";
+import { normalizeCourseContentReview } from "../aralearn/runtime/domain/courseContentReview.js";
+import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
+import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS } from "./courseHumanDesignTasks.js";
+import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS } from "./courseHumanStructureTasks.js";
+import { AUTHORING_PROCESS_REFERENCE_SCHEMA, createAuthoringProcessReference, openAuthoringProcessReference } from "./courseAuthoringProcessReference.js";
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
@@ -74,6 +84,17 @@ const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   items: HUMAN_REFERENCE_SCHEMA
 });
 
+const OBSERVATION_REFERENCE_SCHEMA = Object.freeze({ type: "object", additionalProperties: false,
+  required: ["annotationId", "annotationVersion", "targetKind", "targetId"], properties: {
+    annotationId: { type: "string", pattern: "^[a-f0-9-]{36}$" },
+    annotationVersion: { type: "integer", minimum: 1 },
+    targetKind: { type: "string", enum: ["microsequence_explanation", "study_unit"] },
+    targetId: { type: "string", minLength: 1, maxLength: 240 }
+  }, description: "Referência exata devolvida pela fila inspecionada; conserve identidade, alvo e versão." });
+const TREATED_OBSERVATIONS_SCHEMA = Object.freeze({ type: "array", maxItems: 64,
+  items: OBSERVATION_REFERENCE_SCHEMA,
+  description: "Somente as versões integralmente atendidas pela correção. Ambiguidades e aplicação parcial ficam pendentes." });
+
 function parameterValueSchema(definition, { nullable = false } = {}) {
   const value = definition.valueSchema;
   const schema = value.type === "set" ? {
@@ -83,9 +104,9 @@ function parameterValueSchema(definition, { nullable = false } = {}) {
     : { type: value.type, minimum: value.minimum, maximum: value.maximum };
   return nullable ? { anyOf: [schema, { type: "null" }] } : schema;
 }
-function parametersSchema({ nullable = false } = {}) {
+function parametersSchema({ nullable = false, definitions = COURSE_DESIGN_PARAMETER_DEFINITIONS } = {}) {
   return { type: "object", additionalProperties: false, minProperties: 1,
-    properties: Object.fromEntries(COURSE_DESIGN_PARAMETER_DEFINITIONS.map((definition) => [
+    properties: Object.fromEntries(definitions.map((definition) => [
       definition.humanField, parameterValueSchema(definition, { nullable })
     ])) };
 }
@@ -456,7 +477,6 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   titulo: "Novo título.",
   objetivo: "Objetivo do curso.",
   curso: "Nome do curso.",
-  aprovado: "Aprova o mapa exibido.",
   publico: "Público do curso.",
   preRequisitos: "Pré-requisitos do curso.",
   itensDeEscopo: "Escopo obrigatório.",
@@ -527,6 +547,20 @@ function task(name, title, description, schema, {
 }
 
 export const COURSE_HUMAN_TASKS = Object.freeze([
+  ...COURSE_HUMAN_ACCESS_TASK_DEFINITIONS.map(({ name, title, description, inputSchema: schema, options }) => task(name, title, description, schema, options)),
+  ...COURSE_HUMAN_DESIGN_TASK_DEFINITIONS.map(({ name, title, description, inputSchema: schema, options }) => task(name, title, description, schema, options)),
+  ...COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS.map(({ name, title, description, inputSchema: schema, options }) => task(name, title, description, schema, options)),
+  task("consultar_preferencias_autoria", "Consultar preferências de autoria", "Lê foco, cadência, revisão e diálogo da conta; com curso, explicita também suas condições.",
+    inputSchema({ curso: COURSE_SCHEMA }), { readOnly: true }),
+  task("salvar_preferencias_autoria", "Salvar preferências pessoais de autoria", "Altera os padrões da conta para novos fluxos. Campos omitidos conservam seu valor.",
+    inputSchema({ foco: { type: "string", enum: AUTHORING_PROCESS_FOCUS },
+      cadencia: { type: "string", enum: AUTHORING_PROCESS_CADENCE },
+      pontosDeRevisao: { type: "array", maxItems: AUTHORING_PROCESS_REVIEW_POINTS.length, uniqueItems: true,
+        items: { type: "string", enum: AUTHORING_PROCESS_REVIEW_POINTS } },
+      parametros: parametersSchema({ definitions: AUTHORING_PROCESS_PARAMETER_DEFINITIONS }), automaticos: { type: "array", uniqueItems: true,
+        maxItems: AUTHORING_PROCESS_PARAMETER_DEFINITIONS.length,
+        items: { type: "string", enum: AUTHORING_PROCESS_PARAMETER_DEFINITIONS.map(item => item.humanField) } }
+    }), { readOnly: false }),
   task("copiar_curso", "Copiar um curso", "Prepara cópia privada autorizada; confirme e retome com o mesmo valor devolvido.",
     inputSchema({ curso: COURSE_SCHEMA, titulo: COURSE_SCHEMA,
       confirmacao: { type: "string", maxLength: 4096, description: "Valor opaco da preparação; não editar." } }, ["curso", "titulo"]), { readOnly: false }),
@@ -561,6 +595,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "Lista cursos ou retoma o título informado.",
     inputSchema({
       titulo: Object.freeze({ type: "string", minLength: 1, maxLength: 300, description: 'Nome do curso.' }),
+      parte: HUMAN_REFERENCE_SCHEMA,
+      microssequencia: HUMAN_REFERENCE_SCHEMA,
+      processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       continuacao: READ_CONTINUATION_SCHEMA
     }),
     { readOnly: true }
@@ -569,14 +606,15 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "consultar_planejamento",
     "Consultar o planejamento",
     "Lê mapa e lote.",
-    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA }, ["curso"]),
+    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
     "preparar_materializacao",
     "Preparar a materialização",
     "Lê o lote antes da produção.",
-    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
+    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+      continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
   task(
@@ -585,6 +623,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "Lê configuração.",
     inputSchema({
       curso: COURSE_SCHEMA,
+      modulo: HUMAN_REFERENCE_SCHEMA,
+      licao: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidade: HUMAN_REFERENCE_SCHEMA
     }, ["curso"]),
@@ -674,12 +714,18 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     { readOnly: false }
   ),
   task(
+    "aprovar_mapa_curricular",
+    "Aprovar o mapa inspecionado",
+    "Aprova a base persistida lida, por referência; não reenvia ou regenera o mapa.",
+    inputSchema({ referencia: Object.freeze({ type: "string", minLength: 1, maxLength: 2048 }) }, ["referencia"]),
+    { readOnly: false }
+  ),
+  task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Propõe ou aprova o mapa antes do lote; não produz.",
+    "Salva o mapa como rascunho para inspeção. A aprovação usa a referência da versão persistida.",
     inputSchema({
       curso: COURSE_SCHEMA,
-      aprovado: Object.freeze({ type: "boolean" }),
       publico: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
       preRequisitos: Object.freeze({
         type: "array", maxItems: 64, uniqueItems: true,
@@ -693,7 +739,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "array", minItems: 1, maxItems: 64,
         items: CURRICULAR_MAP_MODULE_SCHEMA
       })
-    }, ["curso", "aprovado", "publico", "preRequisitos", "itensDeEscopo", "modulos"]),
+    }, ["curso", "publico", "preRequisitos", "itensDeEscopo", "modulos"]),
     { readOnly: false }
   ),
   task(
@@ -721,16 +767,17 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Use o recorte preparado com calibração contextual por unidade na materialização. Marque formas, cobertura e prática; identidades locais únicas. Grava unidades e uma Explicação por microssequência como rascunho para revisão humana na Autoria.",
+    "Produz unidades do recorte preparado. Reutiliza as Explicações salvas; inclua somente bases que deseja alterar. Registra o desenho aplicado e mantém revisão independente.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       explicacoes: EXPLANATIONS_SCHEMA,
+      processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
         description: "Unidades completas do lote."
       })
-    }, ["curso", "parte", "unidades", "explicacoes"]),
+    }, ["curso", "parte", "unidades"]),
     { readOnly: false }
   ),
   task(
@@ -740,6 +787,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     Object.freeze({
       ...inputSchema({
       curso: COURSE_SCHEMA,
+      modulo: HUMAN_REFERENCE_SCHEMA,
+      licao: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidade: HUMAN_REFERENCE_SCHEMA,
       condicao: Object.freeze({
@@ -762,10 +811,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "registrar_observacao",
     "Registrar observação",
-    "Anota unidades; não corrige.",
-    inputSchema({
+    "Acrescenta à fila da Explicação ou das unidades; não aplica correção nem declara revisão.",
+    { ...inputSchema({
       curso: COURSE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
+      microssequencia: HUMAN_REFERENCE_SCHEMA,
       texto: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
       categoria: Object.freeze({
         type: ["string", "null"], enum: Object.freeze([
@@ -773,7 +823,21 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           null
         ])
       })
-    }, ["curso", "unidades", "texto"]),
+    }, ["curso", "texto"]), oneOf: [{ required: ["unidades"] }, { required: ["microssequencia"] }] },
+    { readOnly: false }
+  ),
+  task("editar_observacao", "Editar uma observação pendente",
+    "Altera somente a versão inspecionada da entrada; conserva a pendência e não modifica o conteúdo do curso.",
+    inputSchema({ curso: COURSE_SCHEMA, observacao: OBSERVATION_REFERENCE_SCHEMA,
+      texto: { type: "string", minLength: 1, maxLength: 2000 },
+      categoria: { type: ["string", "null"], enum: [...COURSE_ANCHORED_ANNOTATION_CATEGORIES, null] }
+    }, ["curso", "observacao", "texto"]), { readOnly: false }),
+  task(
+    "salvar_explicacoes",
+    "Salvar Explicações",
+    "Produz ou edita bases e fontes antes ou depois das unidades. Preserva unidades existentes; salvar não declara revisão.",
+    inputSchema({ curso: COURSE_SCHEMA, explicacoes: EXPLANATIONS_SCHEMA,
+      observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA }, ["curso", "explicacoes"]),
     { readOnly: false }
   ),
   task(
@@ -794,10 +858,26 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           })
         })
       }),
-      explicacoes: EXPLANATIONS_SCHEMA
+      explicacoes: EXPLANATIONS_SCHEMA,
+      observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA
     }, ["curso"]), anyOf: [{ required: ["correcoes"] }, { required: ["explicacoes"] }] }),
     { readOnly: false }
   ),
+  task("retomar_correcao", "Reconciliar uma correção de observações",
+    "Relê o conteúdo, a fila e a tentativa original; confirma somente os efeitos persistidos. Não reescreve o conteúdo.",
+    { ...inputSchema({ curso: COURSE_SCHEMA, tentativa: { type: "string", minLength: 8, maxLength: 128,
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$", description: "Identidade devolvida pela correção ou pelo erro; não gere outra." }
+      ,recuperacao: { type: "object", additionalProperties: false, required: ["courseId", "requestId", "operation"],
+        description: "Objeto recovery devolvido pelo erro da correção. Use-o integralmente para preservar o alvo mesmo após renomeação.",
+        properties: { courseId: { type: "string", format: "uuid" }, requestId: { type: "string", minLength: 8, maxLength: 128,
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }, operation: { type: "string", const: "course_observation_correction" } } }
+    }), oneOf: [{ required: ["curso", "tentativa"], not: { required: ["recuperacao"] } },
+      { required: ["recuperacao"], not: { anyOf: [{ required: ["curso"] }, { required: ["tentativa"] }] } }] }, { readOnly: false }),
+  task("declarar_revisao", "Registrar ou retirar revisão expressa",
+    "Use somente após a pessoa autora declarar sua inspeção. A referência vem do conteúdo salvo preparado para revisão; não deduza revisão da correção ou do estudo.",
+    inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 },
+      declaracao: { type: "string", enum: ["revisado", "retirar"] }
+    }, ["referencia", "declaracao"]), { readOnly: false }),
   task(
     "manter_fonte",
     "Manter fonte e âncoras",
@@ -934,9 +1014,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "3.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:750f0dbd8c84766ab24ae62a57653869eae3a27b4fadd9f8937d08f474a665f5";
+  "sha256:c6554a774e5350f1cecbfd543b5be0cabf6e6faddde339e8e25fc3601983477c";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1065,6 +1145,17 @@ function withoutTechnicalState(value) {
       projected[key] = normalizedKey === "authoring_export" ? normalizeCourseAuthoringExport(entry) : normalizeCourseAuthoringComparison(entry);
       continue;
     }
+    if (normalizedKey === "referencia_observacao") {
+      projected[key] = normalizeCourseObservationCorrectionReferences([entry])[0];
+      continue;
+    }
+    if (normalizedKey === "correction_request_id") {
+      if (typeof entry !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(entry)) {
+        fail("course_service_unavailable", "A tentativa de correção não pôde ser identificada.", null, 503);
+      }
+      projected.tentativaDeCorrecao = entry;
+      continue;
+    }
     if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
         entry.every((role) => COURSE_SOURCE_ROLES.includes(role))) {
       projected[normalizedKey === "default_roles" ? "papeisSugeridos" : "papeis"] =
@@ -1190,9 +1281,81 @@ export async function executeHumanCourseTask({
 }
 
 const HUMAN_TASK_HANDLERS = Object.create(null);
+Object.assign(HUMAN_TASK_HANDLERS, COURSE_HUMAN_ACCESS_TASK_HANDLERS);
+Object.assign(HUMAN_TASK_HANDLERS, COURSE_HUMAN_DESIGN_TASK_HANDLERS);
+Object.assign(HUMAN_TASK_HANDLERS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS);
 HUMAN_TASK_HANDLERS.copiar_curso = copyHumanCourse;
 HUMAN_TASK_HANDLERS.comparar_cursos = compareHumanCourses;
 HUMAN_TASK_HANDLERS.exportar_autoria = exportHumanCourse;
+
+function processPreferencesContext(value) {
+  return { foco: value.focus, cadencia: value.cadence, pontosDeRevisao: value.reviewPoints,
+    parametros: profileContext({ name: "Processo de autoria", preferences: value.parameters }).preferencias };
+}
+
+async function currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference = null }) {
+  const scope = designScope(resolved);
+  const [account, courseDesign] = await Promise.all([
+    adapter.getAuthoringProcessPreferences({ principal, deadlineAt }),
+    adapter.getCourseDesign({ principal, courseId: resolved.course.id, scopeKind: scope.kind, scopeRef: scope.ref, deadlineAt })
+  ]);
+  const mandate = processReference === null ? null : openAuthoringProcessReference(processReference, principal, resolved.course.id);
+  const resolution = resolveAuthoringProcessPreferences({ account, courseDesign, mandate });
+  if (resolution.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "As condições do recorte mudaram; releia antes de continuar.", null, 409);
+  return { preferenciasPessoais: processPreferencesContext(account.preferences),
+    processoCorrente: processPreferencesContext(resolution.preferences),
+    preferenciasMudaram: resolution.personalPreferencesChanged,
+    ...(!resolution.requiresReconciliation ? { referenciaProcesso: processReference ?? createAuthoringProcessReference(principal, resolution) } : {}),
+    condicoesDoRecorte: projectConfiguration(courseDesign), conflitos: resolution.conflicts,
+    exigeConciliacao: resolution.requiresReconciliation };
+}
+
+HUMAN_TASK_HANDLERS.consultar_preferencias_autoria = async ({ adapter, principal, args, deadlineAt }) => {
+  const account = await adapter.getAuthoringProcessPreferences({ principal, deadlineAt });
+  let resolution = null;
+  if (args.curso !== undefined) {
+    const state = await resolveHumanCourseContext({ adapter, principal, course: args.curso, deadlineAt });
+    const courseDesign = await adapter.getCourseDesign({ principal, courseId: state.course.id,
+      scopeKind: "course", scopeRef: state.course.id, deadlineAt });
+    resolution = resolveAuthoringProcessPreferences({ account, courseDesign });
+  }
+  return result("Li as preferências pessoais de autoria.", { context: {
+    preferenciasPessoais: processPreferencesContext(account.preferences),
+    ...(resolution ? { processoCorrente: processPreferencesContext(resolution.currentPreferences),
+      condicoesDoCurso: resolution.courseConditions, conflitos: resolution.conflicts,
+      exigeConciliacao: resolution.requiresReconciliation } : {})
+  } });
+};
+
+HUMAN_TASK_HANDLERS.salvar_preferencias_autoria = async ({ adapter, principal, args, deadlineAt }) => {
+  if (!Object.keys(args).length) fail("invalid_human_task_argument", "Indique qual preferência pessoal deseja mudar.");
+  const fields = new Map(AUTHORING_PROCESS_PARAMETER_DEFINITIONS.map(item => [item.humanField, item.id]));
+  const parameters = args.parametros ?? {};
+  if (Object.keys(parameters).some(key => !fields.has(key))) {
+    fail("invalid_human_task_argument", "A preferência pessoal aceita somente parâmetros de processo e diálogo.");
+  }
+  const automatic = args.automaticos ?? [];
+  if (automatic.some(key => Object.hasOwn(parameters, key))) fail("invalid_human_task_argument", "Escolha valor fixo ou automático para cada preferência.");
+  const saved = await executeTrustedCourseWrite({
+    maxCasRetries: 0,
+    load: () => adapter.getAuthoringProcessPreferences({ principal, deadlineAt }),
+    build: current => ({ expectedRevision: current.revision,
+      preferences: normalizeAuthoringProcessPreferences({
+        focus: args.foco ?? current.preferences.focus,
+        cadence: args.cadencia ?? current.preferences.cadence,
+        reviewPoints: args.pontosDeRevisao ?? current.preferences.reviewPoints,
+        parameters: current.preferences.parameters.map(value => {
+          const field = AUTHORING_PROCESS_PARAMETER_DEFINITIONS.find(item => item.id === value.parameterId).humanField;
+          return Object.hasOwn(parameters, field) ? { ...value, mode: "fixed", value: parameters[field] }
+            : automatic.includes(field) ? { ...value, mode: "automatic", value: null } : value;
+        })
+      }) }),
+    commit: request => adapter.saveAuthoringProcessPreferences({ principal, ...request, deadlineAt })
+  });
+  return result("Salvei os padrões pessoais para novos fluxos de autoria.", {
+    context: { preferenciasPessoais: processPreferencesContext(saved.preferences) }
+  });
+};
 
 async function readHumanProfiles(adapter, principal, deadlineAt) {
   const result = await adapter.listAuthoringProfiles({ principal, deadlineAt });
@@ -1390,11 +1553,6 @@ function uniqueTitles(items, field) {
 }
 
 function normalizeCurricularMapArguments(args) {
-  if (typeof args.aprovado !== "boolean") {
-    fail("invalid_human_task_argument", "aprovado precisa ser verdadeiro ou falso.", {
-      field: "aprovado"
-    });
-  }
   const audience = text(args.publico, "publico", 2000);
   const prerequisites = textList(args.preRequisitos, "preRequisitos", { maximum: 64 });
   const scopeItems = textList(args.itensDeEscopo, "itensDeEscopo", {
@@ -1521,7 +1679,7 @@ function normalizeCurricularMapArguments(args) {
       }
     }
   }
-  return { approved: args.aprovado, audience, prerequisites, scopeItems, modules };
+  return { approved: false, audience, prerequisites, scopeItems, modules };
 }
 
 async function loadAllCourseEntities(adapter, principal, course, deadlineAt) {
@@ -1886,6 +2044,8 @@ async function resolveTaskContext({ adapter, principal, args, deadlineAt, units 
     adapter,
     principal,
     course: humanCourseTitle(args),
+    module: optionalReference(args.modulo, "modulo") ?? null,
+    lesson: optionalReference(args.licao, "licao") ?? null,
     part: optionalReference(args.parte, "parte") ?? null,
     microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null,
     studyUnits: units,
@@ -1973,6 +2133,7 @@ function projectedPlanContext(plan, part) {
   return {
     titulo: source.title ?? null,
     objetivo: source.objective ?? null,
+    ...(plan?.mapApprovalReference ? { referenciaParaAprovar: plan.mapApprovalReference } : {}),
     mapaCurricular: humanCurricularMap(map, mapStatus),
     cobertura: [...coverageLocations.entries()].map(([normalizedStatement, previstaEm]) => ({
       item: map.scopeItems.find((statement) => matchingText(statement) === normalizedStatement),
@@ -1984,9 +2145,10 @@ function projectedPlanContext(plan, part) {
   };
 }
 
-function focusedReviewPlan(plan, part, units) {
+function focusedReviewPlan(plan, part, units, microsequences = []) {
   const projected = projectedPlanContext(plan, part);
   const titles = new Set(units.map(item => item.curriculumPath?.didacticMicrosequence?.title).filter(Boolean));
+  microsequences.forEach(item => titles.add(item.title));
   const modules = projected.mapaCurricular.modulos ?? [];
   const micros = modules.flatMap(module => module.licoes.flatMap(lesson => lesson.microssequencias));
   const relevant = new Set(titles);
@@ -2072,86 +2234,88 @@ async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, l
   );
 }
 
-function observationBelongsToStudyUnits(item, studyUnitIds) {
-  if (item?.target?.kind === "study_unit" && studyUnitIds.has(item.target.id)) return true;
-  const paths = [item?.target?.currentPath, item?.target?.observedPath];
-  return paths.some((path) => Array.isArray(path) && path.some((entry) =>
-    entry?.kind === "study_unit" && studyUnitIds.has(entry.id)));
+function focalMicrosequences(resolved, units = resolved.studyUnits ?? []) {
+  const all = new Map();
+  for (const value of internalMapCollections(curricularMapFromPlan(resolved.plan)).microsequences) {
+    const id = internalIdentity(value, "microsequence");
+    all.set(id, { ...value, id });
+  }
+  for (const part of resolved.plan?.plan?.parts ?? []) for (const value of part.microsequences ?? []) {
+    all.set(value.id, { ...all.get(value.id), ...value });
+  }
+  if (resolved.microsequence) return [{ ...all.get(resolved.microsequence.id), ...resolved.microsequence }];
+  const ids = resolved.studyUnits?.length
+    ? new Set(units.map(value => value.curriculumPath?.didacticMicrosequence?.id).filter(Boolean))
+    : resolved.part ? new Set((resolved.part.microsequences ?? []).map(value => value.id)) : null;
+  return [...all.values()].filter(value => ids === null || ids.has(value.id));
 }
 
-async function readObservations({
-  adapter,
-  principal,
-  resolved,
-  args,
-  deadlineAt,
-  scopeUnits = null
-}) {
-  const selected = resolved.studyUnits;
-  const partStudyUnitIds = !selected.length && !resolved.microsequence && resolved.part
-    ? new Set((scopeUnits ?? (await listUnitsForContext({
-        adapter, principal, resolved, deadlineAt
-      })).items).map((item) => item?.studyUnit?.id).filter(Boolean))
-    : null;
-  if (partStudyUnitIds?.size === 0) return { items: [] };
+function projectObservations(items) {
+  return { items: items.map(item => ({ ...item,
+    ...(item.provenance?.origin === "author" && ["open", "considered"].includes(item.state) &&
+        ["study_unit", "microsequence_explanation"].includes(item.target?.kind)
+      ? { referenciaObservacao: normalizeCourseObservationCorrectionReferences([{
+        annotationId: item.annotationId, annotationVersion: item.annotationVersion,
+        targetKind: item.target.kind, targetId: item.target.id
+      }])[0] } : {})
+  })) };
+}
+
+async function readObservations({ adapter, principal, resolved, args, deadlineAt,
+  scopeUnits = null, scopeMicrosequences = null }) {
+  const selected = resolved.studyUnits ?? [];
+  const micros = scopeMicrosequences ?? focalMicrosequences(resolved, scopeUnits ?? selected);
+  const partUnitIds = !selected.length && !resolved.microsequence && resolved.part
+    ? new Set((scopeUnits ?? (await listUnitsForContext({ adapter, principal, resolved, deadlineAt })).items)
+      .map(item => item?.studyUnit?.id).filter(Boolean)) : null;
+  const microIds = new Set(micros.map(value => value.id));
   const hierarchies = selected.length
-    ? selected.map(({ studyUnit }) => ({
-        target: { kind: "study_unit", id: studyUnit.id },
-        includeDescendants: false
-      }))
+    ? selected.map(({ studyUnit }) => ({ target: { kind: "study_unit", id: studyUnit.id }, includeDescendants: false }))
     : [resolved.microsequence
-        ? {
-            target: { kind: "didactic_microsequence", id: resolved.microsequence.id },
-            includeDescendants: true
-          }
-        : { target: { kind: "course", id: resolved.course.id }, includeDescendants: true }];
+      ? { target: { kind: "didactic_microsequence", id: resolved.microsequence.id }, includeDescendants: true }
+      : { target: { kind: "course", id: resolved.course.id }, includeDescendants: true }];
+  // Base e unidade são objetos independentes; uma seleção de unidades também lê suas bases.
+  if (selected.length) hierarchies.push(...micros.map(value => ({
+    target: { kind: "microsequence_explanation", id: value.id }, includeDescendants: false
+  })));
   const items = [];
+  let annotationSetVersion = null;
   for (const hierarchy of hierarchies) {
     let cursor = null;
     const seen = new Set();
-    while (true) {
-      const page = await adapter.getCourseAnchoredAnnotations({
-        principal,
-        courseId: resolved.course.id,
-        expectedCourseRevision: resolved.course.revision,
-        annotationSetVersion: null,
-        query: {
-          mode: "inbox",
-          origins: [],
-          channels: [],
-          states: args.somenteAbertas === false ? [] : ["open"],
-          categories: [],
-          includeUncategorized: true,
-          subjectIds: [],
-          hierarchy,
-          annotationId: null
-        },
-        cursor,
-        limit: 24,
-        deadlineAt
-      });
-      items.push(...(Array.isArray(page?.items) ? page.items : []));
-      if (page?.nextCursor == null) break;
-      if (typeof page.nextCursor !== "string" || !page.nextCursor || seen.has(page.nextCursor)) {
-        throw new AuthoringApiError(
-          503,
-          "course_service_unavailable",
-          "A paginação de observações perdeu o ponto de retomada."
-        );
+    for (let pageIndex = 0; pageIndex < MAX_CONTEXT_PAGES; pageIndex += 1) {
+      const page = await adapter.getCourseAnchoredAnnotations({ principal,
+        courseId: resolved.course.id, expectedCourseRevision: resolved.course.revision, annotationSetVersion,
+        query: { mode: "inbox", origins: [], channels: [],
+          states: args.somenteAbertas === false ? [] : ["open", "considered"], categories: [],
+          includeUncategorized: true, subjectIds: [], hierarchy, annotationId: null },
+        cursor, limit: 24, deadlineAt });
+      if (!Array.isArray(page?.items) || annotationSetVersion !== null && page.annotationSetVersion !== annotationSetVersion) {
+        fail("course_service_unavailable", "A fila mudou ou sua leitura está incompleta; releia o recorte.", null, 503);
+      }
+      annotationSetVersion = page.annotationSetVersion ?? null;
+      items.push(...page.items);
+      if (page.nextCursor == null && !page.hasMore) break;
+      if (typeof page.nextCursor !== "string" || !page.nextCursor || seen.has(page.nextCursor) || pageIndex === MAX_CONTEXT_PAGES - 1) {
+        fail("course_service_unavailable", "A paginação de observações perdeu o ponto de retomada.", null, 503);
       }
       seen.add(page.nextCursor);
       cursor = page.nextCursor;
     }
   }
   const uniqueItems = [...new Map(items.map((item, index) => [
-    item.annotationId ?? item.id ?? `${index}:${JSON.stringify(item)}`,
-    item
+    item.annotationId ?? item.id ?? `${index}:${JSON.stringify(item)}`, item
   ])).values()];
-  return {
-    items: partStudyUnitIds === null
-      ? uniqueItems
-      : uniqueItems.filter((item) => observationBelongsToStudyUnits(item, partStudyUnitIds))
-  };
+  const focal = partUnitIds === null ? uniqueItems : uniqueItems.filter(item => {
+    if (item.target?.kind === "study_unit" && partUnitIds.has(item.target.id)) return true;
+    if (["didactic_microsequence", "microsequence_explanation"].includes(item.target?.kind) && microIds.has(item.target.id)) return true;
+    return [item.target?.currentPath, item.target?.observedPath].some(path => Array.isArray(path) && path.some(entry =>
+      entry?.kind === "study_unit" && partUnitIds.has(entry.id) ||
+      ["didactic_microsequence", "microsequence_explanation"].includes(entry?.kind) && microIds.has(entry.id)));
+  });
+  focal.sort((left, right) => String(left.createdAt ?? left.provenance?.capturedAt ?? "").localeCompare(
+    String(right.createdAt ?? right.provenance?.capturedAt ?? "")) || String(left.annotationId ?? left.id).localeCompare(String(right.annotationId ?? right.id)));
+  return projectObservations(focal);
 }
 
 function humanDesignOrigin(value) {
@@ -2472,18 +2636,27 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
     );
   }
   const titulo = text(args.titulo, "titulo", 300);
-  if (args.continuacao !== undefined) fail('invalid_read_continuation', 'A continuação pertence à lista de cursos; abra o curso pelo título.');
   const resolved = await resolveHumanCourseContext({
-    adapter, principal, course: titulo, deadlineAt
+    adapter, principal, course: titulo, part: optionalReference(args.parte, "parte") ?? null,
+    microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null, deadlineAt
   });
-  const plan = await loadPlan(adapter, principal, resolved.course, deadlineAt);
-  const part = focusedPart(plan);
+  const plan = resolved.plan ?? await loadPlan(adapter, principal, resolved.course, deadlineAt);
+  const part = focusedPart(plan, resolved.part);
+  const focal = { ...resolved, plan, part };
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "retomar_curso" });
+  const [process, observations, explanations] = await Promise.all([
+    currentAuthoringProcessContext({ adapter, principal, resolved: focal, deadlineAt, processReference: args.processo ?? null }),
+    readObservations({ adapter, principal, resolved: focal, args: { somenteAbertas: true }, deadlineAt }),
+    explanationReadContext({ adapter, principal, resolved: focal, microsequences: focalMicrosequences(focal), deadlineAt })
+  ]);
   const map = curricularMapFromPlan(plan);
   return result(`Retomei o curso “${resolved.course.title}”.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: map && map.approval !== "approved" ? "Quer revisar ou aprovar o mapa curricular?" : null,
-    context: projectedPlanContext(plan, part)
+    nextDecision: process.processoCorrente.foco === "content" ? "Continue a Explicação e as fontes da microssequência no foco e na cadência vigentes."
+      : map && map.approval !== "approved" ? "Inspecione o mapa salvo e suas pendências antes da aprovação." : null,
+    context: await paginateHumanReadContext(withoutTechnicalState({ ...projectedPlanContext(plan, part),
+      ...process, observations, explicacoes: explanations }), { state: continuation })
   });
 };
 
@@ -2495,12 +2668,13 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   const part = focusedPart(plan, resolved.part);
   const map = curricularMapFromPlan(plan);
   const mapStatus = map?.approval === "approved" ? "aprovado" : map ? "em rascunho" : "ausente";
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "consultar_planejamento" });
   return result(`Li o mapa curricular global; ele está ${mapStatus}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
     nextDecision: map && map.approval !== "approved"
       ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?" : null,
-    context: projectedPlanContext(plan, part)
+    context: await paginateHumanReadContext(withoutTechnicalState(projectedPlanContext(plan, part)), { state: continuation })
   });
 };
 
@@ -2520,16 +2694,26 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
     const citations = microsequence.explanation ? await adapter.getCourseSources({ principal,
       courseId: resolved.course.id, expectedRevision: resolved.course.revision, mode: "target", sourceId: null,
       targetKind: "microsequence_explanation", targetId: microsequence.id, cursor: null, limit: 1, deadlineAt }) : null;
+    const review = await readReviewContext({ adapter, principal, resolved,
+      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt });
     return {
       microssequencia: microsequence.title,
       proposta: proposal ? { proposito: proposal.purpose, pressupostos: proposal.prerequisites,
         relacoes: proposal.relations, fontesPrevistas: plannedSources } : null,
       conteudo: microsequence.explanation ?? null,
-      revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
-        stale: "Revisão precisa ser atualizada" }[microsequence.contentReview?.state] ?? "Revisão não registrada",
+      ...review,
       fontes: citations ? withoutTechnicalState(citations) : null
     };
   }));
+}
+
+async function readReviewContext({ adapter, principal, resolved, targetKind, targetId, deadlineAt }) {
+  const read = normalizeCourseContentReview(await adapter.getCourseContentReview({ principal,
+    courseId: resolved.course.id, targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId });
+  if (read.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O objeto mudou; releia o recorte antes da revisão.", null, 409);
+  return { revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
+    stale: "Revisão precisa ser atualizada" }[read.contentReview.state],
+    referenciaRevisao: await createContentReviewReference({ principal, read }) };
 }
 
 HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
@@ -2579,12 +2763,17 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     unitDesign
   );
   const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt });
+  const [process, observations] = await Promise.all([
+    currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null }),
+    readObservations({ adapter, principal, resolved, args: { ...args, somenteAbertas: true }, deadlineAt,
+      scopeUnits: existingPage.items, scopeMicrosequences: microsequences })
+  ]);
   return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: null,
     nextDecision: null,
     context: await paginateHumanReadContext(withoutTechnicalState({
       parte: projectedPart,
-      explicacoes: explanations
+      explicacoes: explanations, observations, ...process
     }), { state: continuation })
   });
 };
@@ -2599,10 +2788,7 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
     adapter, principal, args, deadlineAt, units: unitRefs
   });
   const unit = resolved.studyUnits[0] ?? null;
-  const scopeRef = unit?.studyUnit?.id ?? resolved.microsequence?.id ?? resolved.course.id;
-  const scopeKind = unit ? "study_unit" : resolved.microsequence
-    ? "didactic_microsequence"
-    : "course";
+  const { kind: scopeKind, ref: scopeRef } = designScope(resolved);
   const configuration = await adapter.getCourseDesign({
     principal,
     courseId: resolved.course.id,
@@ -2618,7 +2804,8 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
         ? [["studyUnitId", scopeRef]]
         : scopeKind === "didactic_microsequence"
           ? [["didacticMicrosequenceId", scopeRef]]
-          : []),
+          : scopeKind === "lesson" ? [["lessonId", scopeRef]]
+            : scopeKind === "module" ? [["moduleId", scopeRef]] : []),
     nextDecision: "Quer manter a herança ou fixar alguma condição?",
     context: {
       configuracao: projectConfiguration(configuration),
@@ -2664,23 +2851,24 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
        !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
     fail('course_service_unavailable', 'A página da revisão perdeu o ponto de continuação.', null, 503);
   }
-  const observations = unitPage.items.length ? await readObservations({
+  const reviewMicrosequences = focalMicrosequences(resolved, unitPage.items);
+  const observations = await readObservations({
     adapter,
     principal,
     resolved: { ...resolved, studyUnits: unitPage.items },
     args: { ...args, somenteAbertas: true },
     deadlineAt,
-    scopeUnits: unitPage.items
-  }) : { items: [] };
-  const selectedMicrosequenceIds = new Set(unitPage.items.map(unit => unit.curriculumPath?.didacticMicrosequence?.id));
-  if (resolved.microsequence) selectedMicrosequenceIds.add(resolved.microsequence.id);
-  const reviewMicrosequences = [...new Map((resolved.plan?.plan?.parts ?? []).flatMap(part => part.microsequences ?? [])
-    .filter(microsequence => selectedMicrosequenceIds.has(microsequence.id)).map(microsequence => [microsequence.id, microsequence])).values()];
+    scopeUnits: unitPage.items,
+    scopeMicrosequences: reviewMicrosequences
+  });
   const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences, deadlineAt });
+  const studyUnits = await Promise.all(unitPage.items.map(async unit => ({ ...unit,
+    ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit", targetId: unit.studyUnit.id, deadlineAt })
+  })));
   const context = await paginateHumanReadContext(withoutTechnicalState({
-    observations, studyUnits: unitPage.items,
+    observations, studyUnits,
     explicacoes: explanations,
-    plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items) : null
+    plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
   }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
   return result("Preparei este recorte da revisão sem aplicar mudanças.", {
     deepLink: courseDeepLink(adapter, resolved.course, "review"),
@@ -2951,6 +3139,21 @@ HUMAN_TASK_HANDLERS.criar_curso = async ({ adapter, principal, args, deadlineAt 
   });
 };
 
+HUMAN_TASK_HANDLERS.aprovar_mapa_curricular = async ({ adapter, principal, args, deadlineAt }) => {
+  const receipt = await adapter.approveCourseCurricularMap({ principal, reference: args.referencia, deadlineAt });
+  return result(receipt.idempotent ? "Recuperei a aprovação da mesma base inspecionada." : "Aprovei o mapa inspecionado.", {
+    deepLink: receipt.deepLink, nextDecision: "Continue no foco e na cadência acordados.",
+    context: { revisaoDoCurso: receipt.courseRevision, mapa: "aprovado", referencia: args.referencia }
+  });
+};
+
+HUMAN_TASK_HANDLERS.salvar_explicacoes = async ({ adapter, principal, args, deadlineAt }) => {
+  const response = await applyHumanCourseCorrections({ adapter, principal, course: args.curso,
+    explanations: args.explicacoes,
+    observations: normalizeCourseObservationCorrectionReferences(args.observacoesTratadas ?? []), deadlineAt });
+  return { ...response, result: "Salvei as Explicações e suas fontes. As unidades existentes foram preservadas; a revisão autoral é uma declaração separada." };
+};
+
 HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
   adapter, principal, args, deadlineAt
 }) => {
@@ -2988,20 +3191,11 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
       principal, ...value, requestId, deadlineAt
     })
   });
-  const publicMap = semanticMapFromInput(input);
-  return result(input.approved
-    ? "Mapa curricular aprovado."
-    : "Salvei o mapa curricular como rascunho para inspeção.", {
+  const persisted = await loadPlan(adapter, principal, savedCourse, deadlineAt);
+  return result("Salvei o mapa curricular como rascunho para inspeção.", {
     deepLink: courseDeepLink(adapter, savedCourse, "planning"),
-    nextDecision: input.approved
-      ? "A etapa seguinte é a progressão focal da primeira parte de produção."
-      : "Aprova este mapa curricular ou quer mudar cobertura, ordem ou ênfase?",
-    context: {
-      mapaCurricular: {
-        ...humanCurricularMap(publicMap, input.approved ? "aprovado" : "rascunho"),
-        itensDeEscopo: publicMap.scopeItems
-      }
-    }
+    nextDecision: "Inspecione a cobertura, a ordem e a ênfase; a aprovação usa a referência desta versão salva.",
+    context: projectedPlanContext(persisted, null)
   });
 };
 
@@ -3074,15 +3268,22 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
 
 HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
-}) => await materializeHumanCoursePart({
-  adapter,
-  principal,
-  course: humanCourseTitle(args),
-  part: humanReference(args.parte, "parte"),
-  units: safeClone(args.unidades, "unidades", 480 * 1024),
-  explanations: safeClone(args.explicacoes, "explicacoes", 480 * 1024),
-  deadlineAt
-});
+}) => {
+  const course = humanCourseTitle(args);
+  const part = humanReference(args.parte, "parte");
+  const resolved = await resolveHumanCourseContext({ adapter, principal, course, part, deadlineAt });
+  const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+  if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
+  const output = await materializeHumanCoursePart({ adapter, principal, course, part,
+    units: safeClone(args.unidades, "unidades", 480 * 1024),
+    explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
+  return { ...output, context: { ...output.context, ...process },
+    nextDecision: process.processoCorrente.pontosDeRevisao.includes("study_unit")
+      ? "Ofereça a inspeção das unidades no ponto de revisão escolhido. A declaração de revisão pertence à pessoa autora."
+      : process.processoCorrente.foco === "content"
+      ? "Continue as Explicações e fontes no recorte autorizado, seguindo a cadência vigente."
+      : "Continue o ciclo autorizado na cadência vigente, respeitando os pontos de revisão e as condições do recorte." };
+};
 
 HUMAN_TASK_HANDLERS.aplicar_correcoes = async ({
   adapter, principal, args, deadlineAt
@@ -3092,8 +3293,58 @@ HUMAN_TASK_HANDLERS.aplicar_correcoes = async ({
   course: humanCourseTitle(args),
   corrections: args.correcoes === undefined ? [] : safeClone(args.correcoes, "correcoes", 480 * 1024),
   explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024),
+  observations: normalizeCourseObservationCorrectionReferences(args.observacoesTratadas ?? []),
   deadlineAt
 });
+
+HUMAN_TASK_HANDLERS.retomar_correcao = async ({ adapter, principal, args, deadlineAt }) => {
+  if (args.recuperacao !== undefined) {
+    const value = args.recuperacao;
+    if (args.curso !== undefined || args.tentativa !== undefined || !value || typeof value !== "object" ||
+        Object.keys(value).sort().join(",") !== "courseId,operation,requestId" || value.operation !== "course_observation_correction" ||
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u.test(value.courseId) ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(value.requestId)) {
+      fail("invalid_observation_recovery", "Use a recuperação exata devolvida pela correção deste curso.");
+    }
+    return resumeHumanCourseObservationCorrection({ adapter, principal, courseId: value.courseId,
+      requestId: value.requestId, deadlineAt });
+  }
+  if (typeof args.tentativa !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(args.tentativa)) {
+    fail("invalid_observation_recovery", "Conserve a identidade da tentativa original.");
+  }
+  const resolved = await resolveHumanCourseContext({ adapter, principal, course: args.curso, deadlineAt });
+  return resumeHumanCourseObservationCorrection({ adapter, principal, courseId: resolved.course.id,
+    requestId: args.tentativa, deadlineAt });
+};
+
+HUMAN_TASK_HANDLERS.declarar_revisao = async ({ adapter, principal, args, deadlineAt }) => {
+  if (!["revisado", "retirar"].includes(args.declaracao)) fail("invalid_human_task_argument", "Informe a declaração expressa da pessoa autora.");
+  const reference = openContentReviewReference(args.referencia, principal);
+  const { courseId, targetKind, targetId, basisHash, requestId } = reference;
+  const reviewed = args.declaracao === "revisado";
+  const read = async () => normalizeCourseContentReview(await adapter.getCourseContentReview({ principal,
+    courseId, targetKind, targetId, deadlineAt }), { courseId, targetKind, targetId });
+  const before = await read();
+  if (before.basisHash !== basisHash) fail("course_content_review_conflict", "O conteúdo salvo mudou; inspecione a base atual antes de declarar revisão.", null, 409);
+  let saved;
+  try {
+    saved = await adapter.setCourseContentReview({ principal, courseId, targetKind, targetId,
+      expectedBasisHash: basisHash, reviewed, requestId, deadlineAt });
+  } catch (error) {
+    if (Number(error?.status) >= 400 && Number(error.status) < 500 && ![408, 425, 429].includes(Number(error.status))) throw error;
+    const current = await read().catch(() => null);
+    if (!current || current.basisHash !== basisHash || reviewed !== (current.contentReview.state === "current")) {
+      throw new AuthoringApiError(409, "course_write_uncertain", "A declaração ainda precisa ser reconciliada pela mesma referência.",
+        { requestId, targetCourseId: courseId, operation: "course_content_review" });
+    }
+    saved = current;
+  }
+  return result(reviewed ? "Registrei a declaração expressa de revisão desta base salva." : "Retirei a declaração de revisão deste objeto.", {
+    deepLink: courseDeepLink(adapter, { id: courseId }, "content", targetKind === "study_unit"
+      ? [["studyUnitId", targetId]] : [["didacticMicrosequenceId", targetId]]),
+    context: { revisao: saved.contentReview.state, referencia: args.referencia }
+  });
+};
 
 function designScope(resolved) {
   const unitId = resolved.studyUnits?.[0]?.studyUnit?.id ?? null;
@@ -3101,17 +3352,19 @@ function designScope(resolved) {
     ? { kind: "study_unit", ref: unitId }
     : resolved.microsequence
     ? { kind: "didactic_microsequence", ref: resolved.microsequence.id }
+    : resolved.lesson ? { kind: "lesson", ref: resolved.lesson.id }
+    : resolved.module ? { kind: "module", ref: resolved.module.id }
     : { kind: "course", ref: resolved.course.id };
 }
 
 async function applyDesignCommand({
-  adapter, principal, course, microsequence, studyUnit, command, deadlineAt
+  adapter, principal, course, module = null, lesson = null, microsequence, studyUnit, command, deadlineAt
 }) {
   return await executeTrustedCourseWrite({
     load: async () => await resolveHumanCourseContext({
       adapter,
       principal,
-      course,
+      course, module, lesson,
       microsequence: microsequence ?? null,
       studyUnits: studyUnit == null ? [] : [studyUnit],
       deadlineAt
@@ -3134,6 +3387,8 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const course = humanCourseTitle(args);
+  const module = optionalReference(args.modulo, "modulo") ?? null;
+  const lesson = optionalReference(args.licao, "licao") ?? null;
   const microsequence = optionalReference(args.microssequencia, "microssequencia");
   const studyUnit = optionalReference(args.unidade, "unidade");
   const origin = {
@@ -3172,7 +3427,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   const preflightState = await resolveHumanCourseContext({
     adapter,
     principal,
-    course,
+    course, module, lesson,
     microsequence: microsequence ?? null,
     studyUnits: studyUnit == null ? [] : [studyUnit],
     deadlineAt
@@ -3271,7 +3526,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     await applyDesignCommand({
       adapter,
       principal,
-      course,
+      course, module, lesson,
       microsequence,
       studyUnit,
       deadlineAt,
@@ -3284,7 +3539,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   const resolved = await resolveHumanCourseContext({
     adapter,
     principal,
-    course,
+    course, module, lesson,
     microsequence: microsequence ?? null,
     studyUnits: studyUnit == null ? [] : [studyUnit],
     deadlineAt
@@ -3316,8 +3571,9 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
           ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
           : resolved.microsequence
             ? [["didacticMicrosequenceId", resolved.microsequence.id]]
-            : []),
-    nextDecision: automatic ? null : "Quer comparar esta condição com outra configuração?",
+            : resolved.lesson ? [["lessonId", resolved.lesson.id]]
+            : resolved.module ? [["moduleId", resolved.module.id]] : []),
+    nextDecision: automatic ? null : "A intenção orienta futuras produções; aplicar ao conteúdo existente é uma alteração autoral própria.",
     context: { configuracao: projectConfiguration(configuration) }
   });
 };
@@ -3326,7 +3582,8 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const course = humanCourseTitle(args);
-  const units = humanReferenceList(args.unidades, "unidades");
+  const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
+  if (Boolean(units.length) === (args.microssequencia !== undefined)) fail("invalid_human_task_argument", "Escolha uma Explicação ou as unidades para acrescentar a observação.");
   const rawText = text(args.texto, "texto", 2000);
   const capturedAt = new Date().toISOString();
   const category = args.categoria === undefined || args.categoria === null
@@ -3341,7 +3598,8 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
   await executeTrustedCourseWrite({
     load: async () => {
       const resolved = await resolveHumanCourseContext({
-        adapter, principal, course, studyUnits: units, deadlineAt
+        adapter, principal, course, studyUnits: units,
+        microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null, deadlineAt
       });
       savedCourse = resolved.course;
       return resolved;
@@ -3349,11 +3607,13 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
     build: async (resolved, { newId }) => ({
       courseId: resolved.course.id,
       expectedCourseRevision: resolved.course.revision,
-      commands: await Promise.all(resolved.studyUnits.map(async (unit, index) =>
+      commands: await Promise.all((resolved.microsequence
+        ? [{ kind: "microsequence_explanation", id: resolved.microsequence.id }]
+        : resolved.studyUnits.map(unit => ({ kind: "study_unit", id: unit.studyUnit.id }))).map(async (target, index) =>
         normalizeCourseAnchoredAnnotationCommand({
           type: "create_anchored_annotation",
           annotationId: await newId(`observation:${index}`),
-          target: { kind: "study_unit", id: unit.studyUnit.id },
+          target,
           rawText,
           category,
           capturedAt,
@@ -3367,15 +3627,59 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
       })
   });
   return result(
-    units.length === 1
+    args.microssequencia !== undefined ? "Acrescentei a observação à fila da Explicação." : units.length === 1
       ? "Registrei a observação na unidade selecionada."
       : `Registrei a observação separadamente em ${units.length} unidades.`,
     {
       deepLink: courseDeepLink(adapter, savedCourse, "review"),
       nextDecision: "Quer registrar outra observação ou preparar a revisão das abertas?",
-      context: { observationCount: units.length }
+      context: { observationCount: args.microssequencia !== undefined ? 1 : units.length }
     }
   );
+};
+
+HUMAN_TASK_HANDLERS.editar_observacao = async ({ adapter, principal, args, deadlineAt }) => {
+  const reference = normalizeCourseObservationCorrectionReferences([args.observacao])[0];
+  const rawText = text(args.texto, "texto", 2000);
+  const resolved = await resolveHumanCourseContext({ adapter, principal, course: humanCourseTitle(args), deadlineAt });
+  const read = async () => {
+    const course = await adapter.getCourse({ principal, courseId: resolved.course.id, includeOutline: false, deadlineAt });
+    if (course.courseId !== resolved.course.id || !Number.isSafeInteger(course.revision) || course.revision < 1) {
+      fail("course_service_unavailable", "A revisão corrente do curso não pôde ser confirmada.", null, 503);
+    }
+    const page = await adapter.getCourseAnchoredAnnotations({ principal, courseId: resolved.course.id,
+      expectedCourseRevision: course.revision, annotationSetVersion: null, cursor: null, limit: 1, deadlineAt,
+      query: { mode: "inbox", origins: ["author"], channels: [], states: ["open", "considered"], categories: [],
+        includeUncategorized: true, subjectIds: [], hierarchy: { target: { kind: reference.targetKind, id: reference.targetId },
+          includeDescendants: false }, annotationId: reference.annotationId } });
+    const item = page?.items?.[0];
+    if (!Array.isArray(page?.items) || page.items.length !== 1 || item.annotationId !== reference.annotationId ||
+        item.provenance?.origin !== "author" || !["open", "considered"].includes(item.state) ||
+        item.target?.kind !== reference.targetKind || item.target.id !== reference.targetId) {
+      fail("course_observation_version_conflict", "A observação não está mais pendente neste objeto; releia a fila.", null, 409);
+    }
+    return item;
+  };
+  const original = await read();
+  if (original.annotationVersion !== reference.annotationVersion) fail("course_observation_version_conflict", "A observação mudou; inspecione a nova versão antes de editá-la.", null, 409);
+  const category = args.categoria === undefined ? original.category ?? null : args.categoria;
+  const command = normalizeCourseAnchoredAnnotationCommand({ type: "revise_anchored_annotation",
+    annotationId: reference.annotationId, expectedAnnotationVersion: reference.annotationVersion,
+    rawText, category, briefSummary: original.briefSummary ?? null });
+  if (original.rawText !== rawText || (original.category ?? null) !== category) await executeTrustedCourseWrite({
+    operation: "edit_authoring_observation", maxCasRetries: 0, load: () => read(),
+    build: () => ({ courseId: resolved.course.id, expectedCourseRevision: null, command }),
+    commit: request => adapter.executeCourseAnchoredAnnotationCommand({ principal, ...request, deadlineAt }),
+    reconcile: async () => {
+      const current = await read();
+      return current.annotationVersion === reference.annotationVersion + 1 && current.rawText === rawText &&
+        (current.category ?? null) === category ? { status: "confirmed", result: current } : { status: "pending" };
+    }
+  });
+  const current = await read();
+  return result("Atualizei a entrada e confirmei que ela continua pendente.", { context: {
+    observations: projectObservations([current])
+  } });
 };
 
 function sourceDocument(publicValue, previous = null) {

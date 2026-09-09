@@ -11,6 +11,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "flat-runtime-manifest-v1",
   "shared-microsequence-explanation-v1",
   "human-content-review-v1",
+  "object-content-review-v1",
+  "independent-review-access-v1",
   "single-live-course-identity-v1",
   "paged-live-course-composition-v1",
   "direct-course-access-v1",
@@ -295,7 +297,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260908105357" ||
+  if (manifest.schemaRevision !== "20260909072036" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -526,9 +528,13 @@ async function validateRuntimeFiles() {
     relativePath.endsWith("/courseSupabaseAdapter.js"))?.source || "";
   for (const required of [
     "aralearn.course-instructional-plan.v3",
-    "get_owned_course_instructional_plan_for_actor_v3",
+    "get_owned_course_instructional_plan_for_actor_v4",
     "save_course_curricular_map_for_actor_v1",
-    "materialize_course_authoring_part_for_actor_v2"
+    "materialize_course_authoring_part_for_actor_v2",
+    "get_course_content_review_for_actor_v1",
+    "commit_course_observation_corrections_for_actor_v1",
+    "get_authoring_process_preferences_for_actor_v1",
+    "get_owned_course_curricular_map_for_actor_v1"
   ]) {
     if (!adapter.includes(required)) {
       fail(`O adapter final não usa ${required}.`);
@@ -562,17 +568,23 @@ async function validateEdgeAndMcp() {
   )).href);
   const names = toolsModule.COURSE_HUMAN_TASKS.map(({ name }) => name);
   const expected = [
+    "consultar_acesso", "definir_visibilidade", "alterar_acesso", "definir_acesso_arquivos", "definir_politica_revisao",
+    "consultar_repertorio_instrucional", "manter_unidade_analise", "manter_requisito_evidencia",
+    "vincular_repertorio_instrucional", "registrar_aplicacoes_instrucionais", "aplicar_configuracao_instrucional",
+    "ajustar_orientacao", "ajustar_componentes", "alterar_curso", "excluir_curso", "salvar_ramo_curricular",
+    "mover_ramo_curricular", "duplicar_ramo_curricular", "remover_ramo_curricular", "reordenar_unidades",
+    "consultar_preferencias_autoria", "salvar_preferencias_autoria",
     "copiar_curso", "comparar_cursos", "exportar_autoria",
     "consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil",
     "retomar_curso", "consultar_planejamento", "preparar_materializacao",
     "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
-    "consultar_fontes", "consultar_componentes", "criar_curso", "salvar_mapa_curricular",
+    "consultar_fontes", "consultar_componentes", "criar_curso", "aprovar_mapa_curricular", "salvar_mapa_curricular",
     "salvar_parte",
-    "materializar_parte", "ajustar_configuracao", "registrar_observacao",
-    "aplicar_correcoes", "manter_fonte", "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
+    "materializar_parte", "ajustar_configuracao", "registrar_observacao", "editar_observacao", "salvar_explicacoes",
+    "aplicar_correcoes", "retomar_correcao", "declarar_revisao", "manter_fonte", "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às vinte e sete tarefas humanas esperadas.");
+    fail("O catálogo MCP não corresponde às 54 tarefas humanas contextuais esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

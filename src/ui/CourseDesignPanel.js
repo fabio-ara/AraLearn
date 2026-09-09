@@ -325,6 +325,37 @@ function renderDesignStatus({ kind, title, message, retry = false }) {
       : "") + "</section>";
 }
 
+function renderInstructionalContext(state) {
+  const context = state.designInstructionalContext;
+  if (!context) return '<p role="status">Consultando a base, a revisão e os vínculos instrucionais desta microssequência…</p>';
+  const entity = context.entity;
+  const reviewLabels = { unregistered: "Sem declaração de revisão", draft: "Sem declaração de revisão", current: "Revisão atual", stale: "Revisão desatualizada" };
+  const basis = context.basis;
+  const units = basis?.studyUnits || [];
+  const declarations = units.flatMap(unit => unit.declaration ? [unit.declaration] : []);
+  const analysisRefs = new Set(declarations.flatMap(value => [...value.introducedInstructionalAnalysisUnitIds,
+    ...value.usedInstructionalAnalysisUnitIds, ...value.explanationApplications.map(item => item.instructionalAnalysisUnitId)]));
+  const evidenceRefs = new Set(declarations.flatMap(value => value.practiceApplications.map(item => item.evidenceRequirementId)));
+  const intendedAnalysis = new Set(state.courseDesign.targetPlanItems?.instructionalAnalysisUnitIds || []);
+  const intendedEvidence = new Set(state.courseDesign.targetPlanItems?.evidenceRequirementIds || []);
+  const inventory = (items, intended, selected, label) => `<section><h3>${label}</h3>` +
+    (items.length ? `<ul>${items.map(item => `<li><strong>${escapeHtml(item.statement)}</strong>${item.description ? `<p>${escapeHtml(item.description)}</p>` : ""}` +
+      `<p>${intended.has(item.ref) ? "Previsto na intenção corrente desta microssequência." : "Sem vínculo na intenção corrente desta microssequência."}</p>` +
+      `<p>${selected.has(item.ref) ? "Vinculado ao desenho aplicado nas unidades deste recorte." : "Inventário do curso; vínculo aplicado não registrado neste recorte."}</p></li>`).join("")}</ul>` : '<p>Nenhum item consta nesta leitura do inventário do curso.</p>') + '</section>';
+  const plan = entity?.content?.explanationPlan;
+  return '<section class="course-design-instructional-context" aria-label="Base, análise e evidência da microssequência">' +
+    (context.errors.length ? `<div role="status">${context.errors.map(error => `<p>${escapeHtml(error)}</p>`).join("")}</div>` : "") +
+    '<section><h3>Base explicativa</h3>' + (entity ? `<p>${entity.content?.explanation ? "Há uma base explicativa salva." : "A microssequência ainda não tem base explicativa salva."}</p>` : '<p>O estado da base não pôde ser confirmado.</p>') +
+    `<p>${context.review ? escapeHtml(reviewLabels[context.review.state]) : "O estado da revisão não pôde ser confirmado."}</p>` +
+    (plan ? `<details><summary>Intenção da base</summary><p>${escapeHtml(plan.purpose)}</p>` +
+      (plan.prerequisites.length ? `<h4>Pressupostos</h4><ul>${plan.prerequisites.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul>` : "") +
+      (plan.relations.length ? `<h4>Relações</h4><ul>${plan.relations.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul>` : "") + '</details>' : "") +
+    '<p>A configuração corrente orienta próximas produções. O registro de qual base sustentou uma produção pertence à unidade que a utilizou.</p></section>' +
+    (basis ? inventory(basis.analysisUnits, intendedAnalysis, analysisRefs, "Unidades de análise instrucional") +
+      inventory(basis.evidenceRequirements, intendedEvidence, evidenceRefs, "Requisitos de evidência") +
+      `<p>${units.length ? "Os vínculos acima vêm das declarações salvas nas unidades desta microssequência." : "Ainda não há unidades neste recorte para consultar declarações de aplicação."}</p>` : "") + '</section>';
+}
+
 export function renderCourseDesignPanel(state) {
   if ((state.designLoading || state.loading) && !state.courseDesign) {
     return renderDesignStatus({
@@ -347,6 +378,7 @@ export function renderCourseDesignPanel(state) {
   })));
   const groups = [...new Map(design.definitions.map(definition => [definition.group, definition.groupLabel]))]
     .map(([id, label]) => ({ id, label }));
+  if (design.scopeContext.current.kind === "didactic_microsequence") groups.push({ id: "instruction", label: "Base, análise e evidência" });
   groups.push({ id: "resources", label: "Recursos" }, { id: "profiles", label: "Perfis" });
   const selected = groups.find(group => group.id === state.designCategory) || groups[0];
   const edited = design.definitions.find(definition => definition.id === state.designParameterId);
@@ -357,6 +389,7 @@ export function renderCourseDesignPanel(state) {
       `${group.id === selected.id ? ' aria-current="page"' : ""}>${escapeHtml(group.label)}</button>`).join("") + '</nav></details>';
   const content = edited ? renderParameterCard(design, edited,
     design.parameters.find(parameter => parameter.parameterId === edited.id), state.designBusy, { editing: true, appliedParameters: state.designAppliedParameters, appliedFailure: state.designAppliedFailure }) :
+    selected.id === "instruction" ? renderInstructionalContext(state) :
     selected.id === "resources" ? renderComponentPolicy(design, state.designBusy) :
     selected.id === "profiles" ? renderCourseAuthoringProfiles({ ...state, profilesOpen: true }) :
     renderParameterGroup(design, state.designBusy, { group: selected.id,

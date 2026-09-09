@@ -124,15 +124,16 @@ test("adapter manual da Explicação recusa canal externo e alvos misturados ant
   assert.equal(f.rpcCalls.length, 0);
 });
 
-test("revisão humana usa leitura corrente e não repete aprovação incerta", async () => {
+test("revisão humana usa leitura corrente por objeto e não repete decisão incerta", async () => {
   const f = fixture();
   let attempts = 0;
   const basisHash = "a".repeat(64);
-  f.api.getMicrosequenceReview = async () => ({ courseId, microsequenceId: "ms-a", basisHash, contentReview: { state: "draft" } });
-  f.api.approveMicrosequenceContent = async () => { attempts++; throw new TypeError("Failed to fetch"); };
-  assert.equal((await f.controller.getMicrosequenceReview(courseId, "ms-a")).basisHash, basisHash);
-  await assert.rejects(f.controller.approveMicrosequenceContent({ courseId, microsequenceId: "ms-a", expectedBasisHash: basisHash,
+  f.api.getContentReview = async () => ({ contract: "aralearn.course-content-review.v1", courseId, targetKind: "microsequence_explanation",
+    targetId: "ms-a", courseRevision: 7, entityVersion: 3, reviewPolicy: "saved", basisHash, contentReview: { state: "draft" } });
+  f.api.setContentReview = async () => { attempts++; throw new TypeError("Failed to fetch"); };
+  assert.equal((await f.controller.getContentReview(courseId, "microsequence_explanation", "ms-a")).basisHash, basisHash);
+  await assert.rejects(f.controller.setContentReview({ courseId, targetKind: "microsequence_explanation", targetId: "ms-a", reviewed: true, expectedBasisHash: basisHash,
     requestId: "review-explanation-0001" }), /fetch/u);
   assert.equal(attempts, 1);
-  await assert.rejects(new CourseController({ api: f.api, store: f.store }).getMicrosequenceReview(courseId, "ms-a"), /Autoria/u);
+  await assert.rejects(new CourseController({ api: f.api, store: f.store }).getContentReview(courseId, "microsequence_explanation", "ms-a"), /Autoria/u);
 });

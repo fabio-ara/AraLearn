@@ -13,7 +13,7 @@ insert into private.course_entities(course_id,entity_type,entity_id,parent_type,
 ('99270000-0000-4000-8000-000000000101','lesson','l','module','m',0,'{"title":"Lição"}'),
 ('99270000-0000-4000-8000-000000000101','microsequence','s','lesson','l',0,'{"title":"Sequência","dependsOn":[],"explanationPlan":{"purpose":"Relacionar quadro e interface.","prerequisites":[],"relations":[],"sourceIds":[]},"explanation":{"title":"Quadro e interface","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Um quadro transporta dados entre interfaces."}}]}}'),
 ('99270000-0000-4000-8000-000000000101','microsequence','other','lesson','l',1,'{"title":"Outra sequência","dependsOn":[]}'),
-('99270000-0000-4000-8000-000000000101','study_unit','u','microsequence','s',1,'{"title":"Unidade","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Compare as interfaces."}}],"response":null,"feedback":[],"topics":[]}');
+('99270000-0000-4000-8000-000000000101','study_unit','u','microsequence','s',1,'{"title":"Unidade","role":"theory","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Compare as interfaces."}}],"response":null,"feedback":[],"topics":[]}');
 create function pg_temp.write_342_sources(command jsonb,request_id text) returns jsonb language sql as $f$
  select public.execute_course_source_command_for_actor_v1('99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
  (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),command,'application',request_id)
@@ -38,20 +38,26 @@ select is((select value->>'targetId' from explanation_citations_342),'s','Identi
 select ok((select not value?'studyUnitId' and value::text not like '%storagePath%' and value::text not like '%approvedBy%' from explanation_citations_342),'Citações não fingem unidade nem expõem metadados privados');
 select is((select jsonb_array_length(value->'citations') from explanation_citations_342),1,'Proprietário inspeciona fonte do rascunho');
 select set_config('request.jwt.claim.sub','',true);
-select throws_ok($q$select public.get_course_explanation_citations_v1('99270000-0000-4000-8000-000000000101',
- (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s')$q$,'42501','Explicação indisponível ou aguardando revisão da autoria.','Leitor não recebe referências de rascunho');
-select throws_ok($q$select public.get_course_study_citations_v1('99270000-0000-4000-8000-000000000101',
- (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'u')$q$,'42501','Conteúdo aguardando revisão da autoria.','Unidade do mesmo rascunho obedece à revisão');
--- Simula exclusivamente o estado de acervo anterior, sem atribuir aprovação.
-select set_config('aralearn.content_review_write','approved-command',true);
-update private.course_entities set content_review=null where course_id='99270000-0000-4000-8000-000000000101' and entity_type='microsequence';
-select set_config('aralearn.content_review_write','',true);
-select is(private.course_microsequence_review_v1('99270000-0000-4000-8000-000000000101','s')->>'state','unregistered','Ausência de revisão continua explícita');
 select lives_ok($q$select public.get_course_explanation_citations_v1('99270000-0000-4000-8000-000000000101',
- (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s')$q$,'Acervo anterior conserva leitura permitida');
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s')$q$,'Leitor recebe referências da base completa salva ainda não revisada');
+select lives_ok($q$select public.get_course_study_citations_v1('99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'u')$q$,'Unidade salva obedece à política padrão de acesso independente');
+select public.set_course_content_review_policy_for_actor_v1('99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'reviewed_only','source-342-policy-reviewed');
+select throws_ok($q$select public.get_course_explanation_citations_v1('99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s')$q$,'42501','Explicação indisponível ou aguardando revisão da autoria.','Política somente revisado expressa restringe base pendente');
+select throws_ok($q$select public.get_course_study_citations_v1('99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'u')$q$,'42501','Conteúdo aguardando revisão da autoria.','Política expressa também restringe unidade pendente');
+create function pg_temp.review_342(request text) returns jsonb language sql as $$
+ select public.set_course_content_review_for_actor_v1('99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
+ 'microsequence_explanation','s',private.course_content_basis_hash_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s'),true,request)$$;
+select is(pg_temp.review_342('source-342-reviewed')#>>'{contentReview,state}','current','Declaração expressa registra revisão da base com suas fontes');
+select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','study_unit','u')->>'state','draft','Revisão da base não declara inspeção da unidade');
+select lives_ok($q$select public.get_course_explanation_citations_v1('99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s')$q$,'Base revisada conserva leitura conforme política explícita');
 update private.course_sources set title='Fonte sintética alterada' where course_id='99270000-0000-4000-8000-000000000101' and source_id='source';
-select is(private.course_microsequence_review_v1('99270000-0000-4000-8000-000000000101','s')->>'state','draft','Alteração material de fonte usada inicia revisão no recorte anterior');
-select is(private.course_microsequence_review_v1('99270000-0000-4000-8000-000000000101','other')->>'state','unregistered','Outra microssequência sem dependência não é invalidada');
+select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s')->>'state','stale','Alteração de fonte usada desatualiza a revisão da base pertinente');
+select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','other')->>'state','draft','Outra base sem dependência conserva seu estado');
 -- Metadados sintéticos comprovam autorização SQL, não upload/decodificação de bytes.
 insert into private.course_source_attachments(course_id,source_id,source_revision,content_hash,byte_size,media_type,storage_path)
 values('99270000-0000-4000-8000-000000000101','source',1,repeat('a',64),64,'application/pdf','99270000-0000-4000-8000-000000000101/'||repeat('a',64)||'.pdf');
@@ -69,9 +75,7 @@ select is(public.get_course_explanation_media_download_for_actor_v1('99270000-00
  (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s',repeat('b',64))->>'targetKind','microsequence_explanation','Download autoral de áudio conserva identidade do apoio');
 select throws_ok($q$select public.get_course_explanation_media_download_for_actor_v1(null,'99270000-0000-4000-8000-000000000101',
  (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s',repeat('b',64))$q$,'42501','O áudio não está disponível neste conteúdo.','Áudio de apoio pendente não é entregue ao público');
-select set_config('aralearn.content_review_write','approved-command',true);
-update private.course_entities set content_review=null where course_id='99270000-0000-4000-8000-000000000101' and entity_type='microsequence' and entity_id='s';
-select set_config('aralearn.content_review_write','',true);
+select is(pg_temp.review_342('source-342-reviewed-media')#>>'{contentReview,state}','current','Declaração expressa inspeciona base com fonte e áudio atuais');
 select ok(private.can_read_course_file_v1('99270000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'PDF elegível continua sujeito à política pública vigente');
 select is(public.get_course_explanation_media_download_for_actor_v1(null,'99270000-0000-4000-8000-000000000101',
  (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'s',repeat('b',64))#>>'{media,contentHash}',repeat('b',64),'Áudio é localizado na Explicação da microssequência elegível');
@@ -80,6 +84,6 @@ select throws_ok($q$select public.get_course_explanation_media_download_for_acto
 update private.course_source_attachments set public_file_access='restricted',version=version+1,updated_at=clock_timestamp() where course_id='99270000-0000-4000-8000-000000000101' and content_hash=repeat('a',64);
 select ok(not private.can_read_course_file_v1('99270000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'Restrição de arquivo prevalece mesmo para recorte elegível');
 update private.course_media set status='removed' where course_id='99270000-0000-4000-8000-000000000101' and content_hash=repeat('b',64);
-select is(private.course_microsequence_review_v1('99270000-0000-4000-8000-000000000101','s')->>'state','draft','Retirar áudio usado inicia revisão no recorte antigo');
+select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s')->>'state','stale','Retirar áudio usado desatualiza a base que o utiliza');
 select * from finish();
 rollback;

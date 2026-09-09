@@ -11,6 +11,9 @@ import { placeStudyCitationMarkers, renderStudyCitations, renderStudySourceMarke
 import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "./studyTools.js";
 
 const SOURCE_OPTIONS = Object.freeze({ targetKind: "microsequence_explanation" });
+const citationStatusNotice = status => status?.serviceUnavailable ? "Serviço indisponível. Exibindo as fontes salvas desta revisão." :
+  status?.offline ? "Sem conexão. Exibindo as fontes salvas nesta cópia; arquivos externos podem estar indisponíveis." :
+  status?.source === "cache" ? "Fontes da revisão salva nesta cópia." : "";
 const contentSignature = value => JSON.stringify(value && {
   courseId: value.courseId, courseRevision: value.courseRevision, microsequenceId: value.microsequenceId,
   explanation: value.explanation, contentReview: value.contentReview
@@ -24,7 +27,7 @@ export function explanationRenderingUnit(explanation, id = "explanation") {
 
 export function explanationReviewMessage(review) {
   return {
-    draft: "Rascunho: este conteúdo ainda aguarda revisão da autoria.",
+    draft: "Conteúdo salvo sem revisão autoral declarada.",
     stale: "O conteúdo mudou depois da revisão. A autoria precisa revisá-lo novamente.",
     unregistered: "A revisão deste conteúdo não está registrada.",
     current: "Revisado pela autoria nesta versão."
@@ -33,7 +36,7 @@ export function explanationReviewMessage(review) {
 
 /** Folha de leitura: mantém o card montado e usa os mesmos componentes, fontes e ferramentas. */
 export function createStudyExplanation({ root, repository, getContext, getReference, getContextKey,
-  canOpen, canAuthorSources, onOpen, downloadPdf }) {
+  getStudyUnit = () => null, loadUnitCitations, canOpen, canAuthorSources, onOpen, downloadPdf }) {
   let overlay = null;
   let tools = null;
   let captured = null;
@@ -49,12 +52,15 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   let sourceNotice = "";
   let sourceOpen = false;
   let sourceReturn = null;
-  let selectedLinkId = "";
   let selectedOccurrenceId = "";
   let downloadPending = false;
   let downloadError = "";
   let detachedFocus = null;
   let detachedState = null;
+  let unitSources = null;
+  let unitValue = null;
+  let requestedCitation = null;
+  let sourceScroll = 0;
   const scrollByContext = new Map();
 
   const panel = () => overlay?.querySelector(".study-explanation-panel");
@@ -83,7 +89,9 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     setBackground(false);
     if (restore) {
       restoreRenderState(root, captured, { restoreFocus: false, restorePageScroll: true });
-      root.querySelector("[data-action='open-explanation']")?.focus({ preventScroll: true });
+      const returnNode = requestedCitation?.trigger?.isConnected ? requestedCitation.trigger :
+        root.querySelector("[data-action='open-explanation']");
+      returnNode?.focus({ preventScroll: true });
     }
     return true;
   }
@@ -109,40 +117,70 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   function closeSources() {
     if (!sourceOpen) return false;
     sourceOpen = false;
-    overlay.querySelector(".study-explanation-reading").hidden = false;
-    overlay.querySelector(".study-explanation-sources").hidden = true;
-    if (sourceReturn?.isConnected) sourceReturn.focus({ preventScroll: true });
-    else overlay.querySelector("[data-explanation-sources]")?.focus({ preventScroll: true });
+    const returnNode = sourceReturn?.isConnected && overlay.contains(sourceReturn) ? sourceReturn :
+      [...body().querySelectorAll("[data-action='open-citation']")].find(node =>
+        node.dataset.citationLinkId === sourceReturn?.dataset?.citationLinkId &&
+        node.dataset.citationOccurrenceId === sourceReturn?.dataset?.citationOccurrenceId);
+    if (returnNode) {
+      body().scrollTop = sourceScroll;
+      returnNode.focus({ preventScroll: true });
+    } else if (requestedCitation?.source === "unit") close();
+    else overlay.querySelector("[data-close-explanation]")?.focus({ preventScroll: true });
     return true;
   }
 
-  function updateSources({ focus = false } = {}) {
-    if (!overlay || !sourceOpen) return;
-    const host = overlay.querySelector(".study-explanation-sources");
-    const scrollTop = host.querySelector(".study-citations-body")?.scrollTop || 0;
-    host.innerHTML = renderStudyCitations({ open: true, embedded: true, closeLabel: "Voltar à Explicação",
+  function updateSources() {
+    if (!overlay) return;
+    const host = overlay.querySelector("[data-explanation-references]");
+    const scrollTop = body().scrollTop;
+    const previous = captureRenderState(host);
+    host.innerHTML = renderStudyCitations({ open: true, heading: "Referências da Explicação",
       loading, value: citations, error: sourceError, courseId: contextValue.courseId,
-      canAuthorSources: canAuthorSources(), downloadPending, downloadError, selectedLinkId,
+      canAuthorSources: canAuthorSources(), downloadPending, downloadError,
       selectedOccurrenceId, formattedReferences: references, studyUnit: contextValue.explanation,
-      sourceOptions: SOURCE_OPTIONS });
-    if (sourceNotice) host.querySelector(".study-citations-body").insertAdjacentHTML("afterbegin",
-      `<p class="study-citations-status" role="status">${escape(sourceNotice)}</p>`);
-    host.querySelector(".study-citations-body").scrollTop = scrollTop;
-    host.querySelector("[data-action='toggle-citations']").addEventListener("click", closeSources);
-    host.querySelector("[data-action='retry-citations']")?.addEventListener("click", () => void loadSources());
+      sourceOptions: SOURCE_OPTIONS }) + renderStudyCitations({ open: true, contextId: "unit",
+      heading: "Referências desta unidade", loading: !unitSources, value: unitSources?.citations,
+      error: unitSources?.error, formattedReferences: unitSources?.references, studyUnit: unitValue,
+      courseId: contextValue.courseId, canAuthorSources: canAuthorSources(),
+      downloadPending: unitSources?.downloadPending, downloadError: unitSources?.downloadError });
+    for (const [context, notice] of [["explanation", sourceNotice], ["unit", citationStatusNotice(unitSources?.status)]]) {
+      if (notice) host.querySelector(`[data-citation-context='${context}']`).insertAdjacentHTML("afterbegin",
+        `<p class="study-citations-status" role="status">${escape(notice)}</p>`);
+    }
+    body().scrollTop = scrollTop;
+    restoreRenderState(host, previous, { restorePageScroll: false });
+    host.querySelectorAll("[data-action='retry-citations']").forEach(node => node.addEventListener("click", () => void loadSources({ retry: true })));
     host.querySelectorAll("[data-action='download-citation-attachment']").forEach(node =>
       node.addEventListener("click", () => void downloadAttachment(node)));
-    if (focus) host.querySelector("[data-action='toggle-citations']").focus({ preventScroll: true });
+    host.querySelectorAll("[data-action='return-citation']").forEach(node => node.addEventListener("click", () => returnToOccurrence(node)));
+    if (requestedCitation && !requestedCitation.focused && !loading && unitSources) {
+      requestedCitation.focused = true;
+      openSources(requestedCitation.trigger, requestedCitation.source, requestedCitation.linkId);
+    }
   }
 
-  function openSources(node) {
+  function openSources(node, source = "explanation", linkId = node?.dataset.citationLinkId || "") {
     sourceReturn = node || root.ownerDocument.activeElement;
-    selectedLinkId = node?.dataset.citationLinkId || "";
+    sourceScroll = body().scrollTop;
     selectedOccurrenceId = node?.dataset.citationOccurrenceId || "";
     sourceOpen = true;
-    overlay.querySelector(".study-explanation-reading").hidden = true;
-    overlay.querySelector(".study-explanation-sources").hidden = false;
-    updateSources({ focus: true });
+    const section = [...overlay.querySelectorAll(".study-bibliography")].find(item => item.dataset.citationContext === source);
+    const target = [...section?.querySelectorAll("[data-citation-reference-id]") || []]
+      .find(item => item.dataset.citationReferenceId === linkId) || section;
+    target?.scrollIntoView({ block: "start" });
+    target?.focus({ preventScroll: true });
+  }
+
+  function returnToOccurrence(node) {
+    const unit = node.dataset.citationContext === "unit";
+    const host = unit ? root.querySelector(".study-reader-screen") : body();
+    const marker = [...host.querySelectorAll("[data-action='open-citation']")].find(item =>
+      item.dataset.citationLinkId === node.dataset.citationLinkId &&
+      item.dataset.citationOccurrenceId === node.dataset.citationOccurrenceId);
+    if (unit) close();
+    sourceOpen = false;
+    marker?.scrollIntoView({ block: "nearest" });
+    marker?.focus({ preventScroll: true });
   }
 
   function placeSources() {
@@ -156,13 +194,21 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       node.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); openSources(node); }));
   }
 
-  async function loadSources() {
+  async function loadSources({ retry = false } = {}) {
     const ownEpoch = ++epoch;
     loading = true; sourceError = ""; sourceNotice = ""; updateSources();
     try {
-      if (typeof repository.loadExplanationCitations !== "function") throw new Error("Fontes indisponíveis nesta cópia.");
-      const result = await repository.loadExplanationCitations(reference());
+      const [baseResult, unitResult] = await Promise.allSettled([
+        typeof repository.loadExplanationCitations === "function" ? repository.loadExplanationCitations(reference()) :
+          Promise.resolve({ citations: [], courseRevision: contextValue.courseRevision }),
+        typeof loadUnitCitations === "function" ? loadUnitCitations({ retry }) : Promise.resolve({ citations: null, references: {} })
+      ]);
       if (!overlay || ownEpoch !== epoch) return;
+      unitSources = unitResult.status === "fulfilled" ? unitResult.value : {
+        citations: null, references: {}, error: publicErrorMessage(unitResult.reason, "Não foi possível consultar as fontes desta unidade.")
+      };
+      if (baseResult.status === "rejected") throw baseResult.reason;
+      const result = baseResult.value;
       citations = { ...result, citations: result.citations.map(citation => ({ ...citation,
         occurrences: resolveCourseSourceOccurrences(contextValue.explanation,
           (citation.occurrences || []).map(occurrence => Object.fromEntries(
@@ -174,9 +220,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       if (!overlay || ownEpoch !== epoch) return;
       references = formatted;
       const status = repository.loadExplanationCitationStatus?.(reference());
-      sourceNotice = status?.serviceUnavailable ? "Serviço indisponível. Exibindo as fontes salvas desta revisão." :
-        status?.offline ? "Sem conexão. Exibindo as fontes salvas nesta cópia; arquivos externos podem estar indisponíveis." :
-        status?.source === "cache" ? "Fontes da revisão salva nesta cópia." : "";
+      sourceNotice = citationStatusNotice(status);
       placeSources();
     } catch (error) {
       if (!overlay || ownEpoch !== epoch) return;
@@ -191,14 +235,18 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
 
   async function downloadAttachment(node) {
     if (downloadPending) return;
-    const citation = citations?.citations?.[Number(node.dataset.citationIndex)];
+    const unit = node.closest("[data-citation-context]")?.dataset.citationContext === "unit";
+    const selectedCitations = unit ? unitSources?.citations : citations;
+    const citation = selectedCitations?.citations?.[Number(node.dataset.citationIndex)];
     const attachment = citation?.attachments?.[Number(node.dataset.attachmentIndex)];
     if (!attachment) return;
     const ownEpoch = epoch;
-    downloadPending = true; downloadError = ""; updateSources();
+    downloadPending = true; downloadError = "";
+    if (unit) unitSources = { ...unitSources, downloadPending: true, downloadError: "" };
+    updateSources();
     try {
-      const result = await repository.getStudyCitationAttachmentDownload(reference(), {
-        courseRevision: citations.courseRevision, sourceId: citation.sourceId,
+      const result = await repository.getStudyCitationAttachmentDownload(unit ? getReference() : reference(), {
+        courseRevision: selectedCitations.courseRevision, sourceId: citation.sourceId,
         sourceRevision: citation.sourceRevision, attachment: structuredClone(attachment)
       });
       if (!overlay || ownEpoch !== epoch) return;
@@ -214,19 +262,22 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
         network: "O texto está salvo, mas este PDF externo precisa de conexão e acesso autorizado.",
         conflict: "O curso mudou. Reabra a Explicação para consultar o PDF atual."
       });
+      if (unit) { unitSources.downloadError = downloadError; downloadError = ""; }
     } finally {
-      if (overlay && ownEpoch === epoch) { downloadPending = false; updateSources(); }
+      if (overlay && ownEpoch === epoch) { downloadPending = false; if (unitSources) unitSources.downloadPending = false; updateSources(); }
     }
   }
 
-  function open() {
+  function open(request = null) {
     if (!canOpen()) return false;
     onOpen();
     close({ restore: false });
     captured = captureRenderState(root, { includePageScroll: true });
+    requestedCitation = request;
+    unitValue = getStudyUnit(); unitSources = null;
     contextKey = getContextKey();
     citations = null; references = {}; loading = false; sourceError = ""; sourceNotice = "";
-    sourceOpen = false; selectedLinkId = ""; selectedOccurrenceId = "";
+    sourceOpen = false; selectedOccurrenceId = "";
     downloadPending = false; downloadError = "";
     contextValue = null; signature = "";
     let content;
@@ -248,18 +299,16 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     overlay.className = "editor-overlay study-explanation-overlay";
     overlay.innerHTML = '<article class="editor-sheet study-explanation-panel" role="dialog" aria-modal="true" aria-labelledby="study-explanation-title">' +
       '<div class="study-explanation-reading"><header class="editor-head">' +
-      '<button class="icon-ghost" type="button" data-close-explanation aria-label="Fechar Explicação" title="Fechar Explicação">' +
-      renderUiIcon("remove-state", "home-tab-icon") + '</button><h2 id="study-explanation-title">Explicação</h2>' +
-      '<button class="icon-ghost" type="button" data-explanation-sources aria-label="Fontes da Explicação" title="Fontes da Explicação"' +
-      (renderingUnit ? "" : " disabled") + '>' + renderUiIcon("study", "home-tab-icon") + '</button></header>' +
-      `<div class="editor-body study-explanation-body" tabindex="0">${content}<div data-explanation-source-markers></div></div>` +
+      '<h2 id="study-explanation-title">Explicação</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="Fechar Explicação" title="Fechar Explicação">' +
+      renderUiIcon("remove-state", "home-tab-icon") + '</button></header>' +
+      `<div class="editor-body study-explanation-body" tabindex="0">${content}<div data-explanation-source-markers></div><div data-explanation-references></div></div>` +
       (renderingUnit ? `<footer class="study-explanation-tools">${renderStudyToolActions(renderingUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true })}</footer>` : "") +
-      '</div><div class="study-explanation-sources" hidden></div></article>';
+      '</div></article>';
+    overlay.classList.toggle("is-without-base", !renderingUnit);
     root.querySelector(".app-shell").append(overlay);
     setBackground(true);
     body().scrollTop = scrollByContext.get(contextKey) || 0;
     overlay.querySelector("[data-close-explanation]").addEventListener("click", () => close());
-    overlay.querySelector("[data-explanation-sources]").addEventListener("click", event => openSources(event.currentTarget));
     overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
     root.ownerDocument.addEventListener("keydown", handleKeyDown);
     overlay.querySelector("[data-close-explanation]").focus({ preventScroll: true });
@@ -282,7 +331,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     }).catch(() => {
       if (overlay === currentOverlay) body().insertAdjacentHTML("beforeend", '<p role="alert">Um componente não pôde ser preparado. Feche e reabra a Explicação para tentar novamente.</p>');
     });
-    if (renderingUnit) void loadSources();
+    if (contextValue) void loadSources();
     return true;
   }
 

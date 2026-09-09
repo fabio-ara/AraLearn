@@ -14,9 +14,9 @@ import xml.etree.ElementTree as ET
 import zlib
 
 PACKAGE = "com.aralearn.app"
-BASE_VERSION = "0.0.66"
-BASE_CODE = 212
-BASE_SHA = "205c77dd5bcd24c4259bf67ff7e9eaa0696ba209d2abf1a813368fe7376e43c1"
+BASE_VERSION = "0.0.67"
+BASE_CODE = 213
+BASE_SHA = "aeca494678e218ec160708d5b115c5a2f2843ba7a33b2765f7aae28441513148"
 CERTIFICATE = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296"
 SYSTEM_IMAGE = "system-images;android-36;google_apis;x86_64"
 HASH = re.compile(r"[a-f0-9]{64}")

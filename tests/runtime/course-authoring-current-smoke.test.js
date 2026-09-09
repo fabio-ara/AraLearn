@@ -20,8 +20,11 @@ test("#274 prova a jornada autoral corrente no Supabase local", () => {
   ]) {
     assert.match(source, new RegExp(`name: "${task}"`, "u"));
   }
-  assert.match(source, /const proposedMap = curricularMap\(title, false\)/u);
-  assert.match(source, /\.\.\.proposedMap, aprovado: true/u);
+  assert.match(source, /const proposedMap = curricularMap\(title\)/u);
+  assert.match(source, /name: "aprovar_mapa_curricular"/u);
+  assert.match(source, /referencia: savedMap\.context\.referenciaParaAprovar/u);
+  assert.match(source, /trackLocalFixtureCreation\(config/u);
+  assert.match(source, /ownerClient\.maintainCourse/u);
   assert.match(source, /preRequisitos/u);
   assert.match(source, /itensDeEscopo/u);
   assert.match(source, /dependencias/u);

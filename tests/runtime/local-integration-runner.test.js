@@ -3,7 +3,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { captureLocalCommand, readLocalMigrationVersions, runLocalIntegration } from "../../scripts/runLocalIntegration.mjs";
+import { createHash, randomUUID } from "node:crypto";
+import { captureLocalCommand, readLocalMigrationVersions, runLocalIntegration, localIntegrationSummary } from "../../scripts/runLocalIntegration.mjs";
 
 const URL = "http://127.0.0.1:54321";
 const VERSION = "20260908000000";
@@ -60,7 +61,21 @@ async function fixture(t, options = {}) {
       mounts: [{ Type: "bind", RW: false, Source: options.foreignMount || path.join(cwd, "supabase/functions") }]
     }) : JSON.stringify(options.applied || [VERSION]) };
     if (options.throwAt === args[0]) throw new Error(`erro de processo com ${HOSTED_SECRET}`);
-    if (args[0].includes("course-authoring-current-local")) return { status: 0, stdout: JSON.stringify({
+    if (settings.env.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR && !options.missingLedger &&
+        options.missingLedgerAt !== settings.env.ARALEARN_LOCAL_FIXTURE_ORIGIN &&
+        ["storage-local", "current-local", "channels-local", "e2e-local", "copy-files-local"].includes(settings.env.ARALEARN_LOCAL_FIXTURE_ORIGIN)) {
+      const dir = path.join(settings.env.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR, createHash("sha256").update(URL).digest("hex").slice(0, 16));
+      await fs.mkdir(dir, { recursive: true });
+      const ownerId = randomUUID();
+      for (const kind of ["user", "cleanup_probe", "course"]) {
+        const attemptId = randomUUID();
+        await fs.writeFile(path.join(dir, `${attemptId}.json`), JSON.stringify({ contract: "aralearn.local-fixture.v1",
+          environment: URL, attemptId, kind, ownerId, id: kind === "user" ? ownerId : randomUUID(), files: [],
+          state: options.pendingLedger && kind === "course" ? "uncertain" : "absent",
+          ...(kind === "cleanup_probe" ? { verification: "owner-get-course-404", cleanupResult: { fileCleanupPending: false } } : {}) }));
+      }
+    }
+    if (args[0].includes("course-authoring-current-local")) return { status: options.functionalFailure ? 1 : 0, stdout: JSON.stringify({
       contract: "aralearn.course-authoring-current-proof.v1", cleanup: { completed: !options.cleanupFailure }
     }), stderr: `Bearer ${HOSTED_SECRET}` };
     if (args[0].includes("course-authoring-channels-local")) return { status: 0, stdout: JSON.stringify({
@@ -70,12 +85,16 @@ async function fixture(t, options = {}) {
       stdout: JSON.stringify({ contract: "aralearn.course-storage-lifecycle-proof.v1", orphanCollected: true }) };
     if (args[0].includes("runE2eTests")) {
       const skipped = options.skippedE2e ? 1 : 0;
+      const failed = options.e2eFailure ? 1 : 0;
       await fs.writeFile(settings.env.PLAYWRIGHT_JSON_OUTPUT_NAME, JSON.stringify({
-        stats: { expected: 10 - skipped, skipped, unexpected: 0, flaky: 0 }, errors: [],
+        stats: { expected: 10 - skipped - failed, skipped, unexpected: failed, flaky: 0 }, errors: [],
         suites: [{ specs: Array.from({ length: 10 }, (_, index) => ({ file: "synthetic.spec.js", title: `jornada ${index}`,
-          tests: [{ status: skipped && index === 0 ? "skipped" : "expected", results: [{ status: skipped && index === 0 ? "skipped" : "passed" }] }] })) }]
+          line: 12, column: 3,
+          tests: [{ status: failed && index === 0 ? "unexpected" : skipped && index === 0 ? "skipped" : "expected",
+            results: [{ status: failed && index === 0 ? "failed" : skipped && index === 0 ? "skipped" : "passed",
+              retry: 0, ...(failed && index === 0 ? options.e2eFailure : {}) }] }] })) }]
       }));
-      return { status: 0, stdout: "build sintético" };
+      return { status: failed ? 1 : 0, stdout: "build sintético" };
     }
     if (args[0] === "--test") {
       await fs.writeFile(settings.env.ARALEARN_LOCAL_COPY_PROOF_PATH, JSON.stringify({ ok: true,
@@ -165,12 +184,73 @@ test("funções alheias ativas são preservadas no modo padrão", async t => {
 });
 
 test("cleanup de smoke falho, E2E ignorado e cópia ignorada nunca viram PASS", async t => {
-  for (const option of [{ cleanupFailure: true }, { skippedE2e: true }, { skippedCopy: true }]) {
+  for (const option of [{ cleanupFailure: true }, { skippedE2e: true }, { skippedCopy: true }, { missingLedger: true }, { pendingLedger: true }]) {
     const f = await fixture(t, option); const report = await f.execute();
     assert.equal(report.result, "failed"); assert.equal(f.stopped.length, 1);
     assert.ok(report.failed_tests.length > 0);
-    assert.notEqual(report.cleanup.fixtures, "completed");
+    if (option.cleanupFailure || option.missingLedger || option.pendingLedger) assert.notEqual(report.cleanup.fixtures, "completed");
+    else assert.equal(report.cleanup.fixtures, "completed", "o cenário ignorado reprova o gate sem apagar o teardown comprovado");
   }
+});
+
+test("falha funcional conserva limpeza confirmada e mantém o gate reprovado e os dependentes sem executar", async t => {
+  const f = await fixture(t, { functionalFailure: true });
+  const report = await f.execute();
+  const current = report.stages.find(stage => stage.name === "current-local");
+  assert.equal(report.result, "failed"); assert.equal(current.result, "failed"); assert.equal(current.exit_code, 1);
+  assert.deepEqual(report.failed_tests, ["current-local"]);
+  assert.equal(current.fixture_ledger.pending, 0); assert.equal(current.fixture_ledger.completed, true);
+  assert.equal(current.cleanup, "completed"); assert.equal(report.cleanup.fixtures, "completed");
+  assert.ok(report.stages.slice(report.stages.indexOf(current) + 1).every(stage => stage.result === "not_run"));
+  assert.equal(f.stopped.length, 1);
+  const stored = JSON.parse(await fs.readFile(path.join(f.cwd, ".validation/local-integration.json"), "utf8"));
+  assert.equal(stored.result, "failed"); assert.equal(stored.cleanup.fixtures, "completed");
+});
+
+test("diagnóstico E2E preserva erro, localização e tentativa sem segredo ou alteração do gate/cleanup", async t => {
+  const prefix = "Locator.click: Fontes não foi encontrado. ";
+  const message = prefix + "x".repeat(1980 - prefix.length) + HOSTED_SECRET + "fim".repeat(1000);
+  const f = await fixture(t, { e2eFailure: { errors: [
+    { message, location: { file: "tests/e2e/course-authoring-context-local.spec.js", line: 217, column: 19 } },
+    { message: `Bearer ${HOSTED_SECRET}` },
+    { message: "terceiro erro fora do resumo" }
+  ], stdout: [{ text: "stdout não pertence ao diagnóstico" }], attachments: [{ body: HOSTED_SECRET }] } });
+  const report = await f.execute();
+  const e2e = report.stages.find(stage => stage.name === "e2e-local");
+  assert.equal(report.result, "failed"); assert.equal(e2e.result, "failed"); assert.equal(e2e.exit_code, 1);
+  assert.equal(e2e.executed, 10); assert.deepEqual(report.failed_tests, ["synthetic.spec.js: jornada 0"]);
+  assert.equal(e2e.fixture_ledger.pending, 0); assert.equal(e2e.cleanup, "completed");
+  assert.deepEqual(report.cleanup, { fixtures: "completed", functions: "stopped" });
+  assert.equal(report.stages.find(stage => stage.name === "copy-files-local").result, "not_run");
+  assert.equal(f.stopped.length, 1);
+  const summary = localIntegrationSummary(report);
+  assert.equal(summary.result, "failed"); assert.equal(summary.cleanup.fixtures, "completed");
+  assert.deepEqual(summary.failed_tests, report.failed_tests);
+  assert.equal(summary.failure_details.length, 1);
+  const detail = summary.failure_details[0];
+  assert.equal(detail.stage, "e2e-local"); assert.equal(detail.title, "synthetic.spec.js: jornada 0");
+  assert.equal(detail.attempt, 1); assert.equal(detail.retry, 0); assert.equal(detail.attempt_count, 1);
+  assert.equal(detail.status, "failed"); assert.equal(detail.errors.length, 2);
+  assert.ok(detail.errors[0].message.startsWith(prefix));
+  assert.equal(detail.errors[0].message.length, 2000);
+  assert.deepEqual(detail.errors[0].location, { file: "tests/e2e/course-authoring-context-local.spec.js", line: 217, column: 19 });
+  assert.deepEqual(detail.errors[1].location, { file: "synthetic.spec.js", line: 12, column: 3 });
+  const stored = await fs.readFile(path.join(f.cwd, ".validation/local-integration.json"), "utf8");
+  for (const serialized of [JSON.stringify(report), JSON.stringify(summary), stored]) {
+    assert.ok(!serialized.includes(HOSTED_SECRET.slice(0, 16)), "redigir antes de truncar evita vazar prefixo da credencial");
+    assert.ok(!serialized.includes("terceiro erro fora do resumo"));
+    assert.ok(!serialized.includes("stdout não pertence ao diagnóstico"));
+  }
+  assert.deepEqual(JSON.parse(stored).stages.find(stage => stage.name === "e2e-local").failure_details, e2e.failure_details);
+});
+
+test("ledger limpo de etapa anterior não comprova o teardown da etapa corrente sem registros", async t => {
+  const f = await fixture(t, { functionalFailure: true, missingLedgerAt: "current-local" });
+  const report = await f.execute();
+  const current = report.stages.find(stage => stage.name === "current-local");
+  assert.equal(current.fixture_ledger.completed, true, "o inventário anterior permanece reconciliado");
+  assert.equal(current.cleanup, "unverified"); assert.equal(report.cleanup.fixtures, "unverified");
+  assert.equal(report.result, "failed"); assert.deepEqual(report.failed_tests, ["current-local"]);
 });
 
 test("falha de processo ou encerramento conserva relatório redigido e bloqueia", async t => {

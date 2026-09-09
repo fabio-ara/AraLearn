@@ -67,16 +67,16 @@ insert into private.course_entities(course_id,entity_type,entity_id,parent_type,
 (pg_temp.audio_course(),'study_unit','u','microsequence','s',1,jsonb_build_object('title','Escuta sintética','role','theory','content',jsonb_build_array(
  jsonb_build_object('id','audio','package','aralearn.resource.audio','version','1.0.0','data',jsonb_build_object('tracks',jsonb_build_array(
  jsonb_build_object('id','track','label','Sinal sintético','locale','pt-BR','kind','file','media',pg_temp.audio_ingest('a')->'media','alternative',jsonb_build_object('text','Sinal sintético','visibility','always')))))),'response',null,'feedback','[]'::jsonb,'topics','[]'::jsonb));
-select throws_ok($$select pg_temp.audio_download('30300000-0000-4000-8000-000000000002','u','a')$$,'42501',null,'vínculo novo aguarda revisão antes de distribuir áudio');
+select is(pg_temp.audio_download('30300000-0000-4000-8000-000000000002','u','a')#>>'{media,contentHash}',repeat('a',64),'compartilhado lê áudio autorizado da unidade salva sem revisão');
 -- Decisão exclusivamente sintética, pelo RPC protegido e sessão do proprietário.
 insert into auth.sessions(id,user_id,created_at,updated_at) values('30300000-0000-4000-8000-000000000901','30300000-0000-4000-8000-000000000001',now(),now());
 select set_config('request.jwt.claim.sub','30300000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claims','{"sub":"30300000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30300000-0000-4000-8000-000000000901"}',true);
 set local role authenticated;
-select is(public.approve_course_microsequence_content_v1('30300000-0000-4000-8000-000000000101','s',
- public.get_course_microsequence_review_v1('30300000-0000-4000-8000-000000000101','s')->>'basisHash','audio-review-01')#>>'{contentReview,state}',
- 'current','sessão sintética aprova exatamente o conjunto inspecionado');
+select is(public.set_course_content_review_v1('30300000-0000-4000-8000-000000000101','study_unit','u',
+ public.get_course_content_review_v1('30300000-0000-4000-8000-000000000101','study_unit','u')->>'basisHash',true,'audio-review-01')#>>'{contentReview,state}',
+ 'current','sessão sintética declara a revisão da unidade inspecionada');
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 select set_config('request.jwt.claim.role','service_role',true);
@@ -99,9 +99,9 @@ select set_config('request.jwt.claim.sub','30300000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claims','{"sub":"30300000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30300000-0000-4000-8000-000000000901"}',true);
 set local role authenticated;
-select is(public.approve_course_microsequence_content_v1('30300000-0000-4000-8000-000000000101','s',
- public.get_course_microsequence_review_v1('30300000-0000-4000-8000-000000000101','s')->>'basisHash','audio-review-size-02')#>>'{contentReview,state}',
- 'current','sessão sintética aprova exatamente o conjunto inspecionado');
+select is(public.set_course_content_review_v1('30300000-0000-4000-8000-000000000101','study_unit','u',
+ public.get_course_content_review_v1('30300000-0000-4000-8000-000000000101','study_unit','u')->>'basisHash',true,'audio-review-size-02')#>>'{contentReview,state}',
+ 'current','sessão sintética declara a revisão da unidade inspecionada');
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 select set_config('request.jwt.claim.role','service_role',true);

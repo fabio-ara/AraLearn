@@ -36,6 +36,9 @@ a calculadora, dicionários, gramática e leituras escolhidas para a unidade.
 [Fontes, citações e referências](fontes-e-citacoes.md) explica os dados
 bibliográficos, os estilos e os vínculos entre obras e conteúdo didático.
 
+[Configurações](configuracoes.md) reúne conta, aparência, dados do dispositivo
+e preferências pessoais de autoria, com o mesmo acesso em Estudo e Autoria.
+
 ## Estudar o modelo pedagógico
 
 1. [Modelo didático](modelo-didatico.md): Microssequência didática,
@@ -58,6 +61,10 @@ educacionais e metodológicos. O [vocabulário controlado](vocabulario-controlad
 registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
+
+[Autoria contextual](autoria-contextual.md) reúne responsabilidades, escopos,
+origem dos controles e o contrato de evolução de Explicação, desenho, revisão
+e preferências pessoais, distinguindo base observada e aceite ainda necessário.
 
 O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
 define apoio compartilhado, preservação do percurso, fontes e aprovação do
@@ -129,6 +136,12 @@ O ciclo de revisão possui um capítulo próprio:
 8. [Revisão e correções do Curso](auditoria-de-conformidade-instrucional.md):
    Observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
    reinspeção.
+
+[Planejamento contextual](planejamento-contextual.md) apresenta a navegação e
+os controles junto ao objeto. [Parâmetros de autoria](parametros-de-autoria.md)
+relaciona intenção, origem e configuração aplicada. As operações de mover,
+duplicar e reordenar estão em
+[Estrutura curricular por referência](estrutura-curricular-por-referencia.md).
 
 A [prova local dos canais](prova-local-canais-autoria.md) descreve o runner de
 dois lotes por Actions e MCP, suas medições e a distinção da prova no ChatGPT.

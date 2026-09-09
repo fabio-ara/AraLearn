@@ -68,6 +68,17 @@ test("exportação conserva uma Explicação compartilhada e sua proveniência l
   assert.deepEqual(result.analytics.basis.sources, fixture.analytics.basis.sources);
 });
 
+test("exportação de rascunho mantém Explicação sem unidades e dependências ainda pendentes", () => {
+  const fixture = sharedExplanationExportFixture();
+  const microsequence = fixture.document.courses[0].modules[0].lessons[0].microsequences[0];
+  microsequence.studyUnits = [];
+  microsequence.dependsOn = ["microsequence-por-criar"];
+  const result = normalizeCourseAuthoringExport(assembleCourseAuthoringExport(fixture));
+  assert.deepEqual(result.artifact.document, fixture.document);
+  assert.deepEqual(result.artifact.explanationSources, fixture.explanationSources);
+  assert.throws(() => flattenCourseDocument(result.artifact.document), { code: "invalid_course_document" });
+});
+
 test("exportação rejeita proveniência ausente, repetida ou de outro alvo/revisão e aprovação fabricada", () => {
   const fixture = sharedExplanationExportFixture();
   assert.throws(() => assembleCourseAuthoringExport({ ...fixture, explanationSources: [] }), /proveniência/u);
@@ -233,7 +244,7 @@ test("Adapter exporta somente após todas páginas CAS e revisão final, sem usa
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), (error) => error.status === 503);
 });
 
-test("Adapter lê fontes de cada apoio uma vez na mesma revisão e mantém revisão humana fora do artefato", async () => {
+test("Adapter exporta fonte, aplicação e revisão do objeto fora do documento importável", async () => {
   const fixture = sharedExplanationExportFixture();
   const { rows } = flattenCourseDocument(fixture.document);
   const calls = [];
@@ -242,7 +253,10 @@ test("Adapter lê fontes de cada apoio uma vez na mesma revisão e mantém revis
   adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
   adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
     revision: 7, hasMore: false, nextCursor: null, items: rows.map(row => ({ ...row,
-      contentReview: row.entityType === "microsequence" ? { state: "current", approvedAt: "2026-09-07T12:00:00Z" } : null })) });
+      contentReview: row.entityType === "microsequence" ? { state: "current", reviewedAt: "2026-09-07T12:00:00Z" } : null,
+      appliedExplanationBasis: row.entityType === "study_unit" ? {
+        contract: "aralearn.applied-explanation-basis.v1", microsequenceId: "micro-a", basisHash: "a".repeat(64), entityVersion: 2
+      } : null })) });
   adapter.getCourseSources = async request => { calls.push(request); return fixture.explanationSources[0]; };
   const result = await adapter.getCourseAuthoringExport({ principal, ...selection() });
   assert.deepEqual(result.artifact.document, fixture.document);
@@ -250,7 +264,12 @@ test("Adapter lê fontes de cada apoio uma vez na mesma revisão e mantém revis
   assert.equal(calls.length, 1, "Duas unidades compartilham o mesmo apoio e a mesma leitura de fontes.");
   assert.deepEqual({ targetKind: calls[0].targetKind, targetId: calls[0].targetId, revision: calls[0].expectedRevision },
     { targetKind: "microsequence_explanation", targetId: "micro-a", revision: 7 });
-  assert.equal(JSON.stringify(result.artifact).includes("contentReview"), false);
+  assert.equal(JSON.stringify(result.artifact.document).includes("contentReview"), false);
+  assert.deepEqual(result.artifact.contentReviews, [{ targetKind: "microsequence_explanation", targetId: "micro-a",
+    contentReview: { state: "current", reviewedAt: "2026-09-07T12:00:00Z" } }]);
+  assert.equal(result.artifact.appliedExplanationBases.length, rows.filter(row => row.entityType === "study_unit").length);
+  assert.ok(result.artifact.appliedExplanationBases.every(entry => entry.basis.sourceCourseId === ANALYTICS_COURSE_ID));
+  assert.deepEqual(normalizeCourseAuthoringExport(result), result);
   adapter.getCourseSources = async () => ({ ...fixture.explanationSources[0], courseRevision: 8 });
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), { status: 503 });
   adapter.getCourseSources = async () => { throw Object.assign(new Error("Revisão mudou"), { status: 409 }); };

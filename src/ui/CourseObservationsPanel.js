@@ -10,6 +10,7 @@ import {
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { isPendingAuthoringObservation } from "./courseAuthoringObservationQueue.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { normalizeCourseAuthoringOutline } from "./courseAuthoringViewModel.js";
@@ -125,6 +126,7 @@ function targetLinkLabel(kind) {
     lesson: "lição",
     topic: "tópico",
     didactic_microsequence: "microssequência",
+    microsequence_explanation: "Explicação",
     study_unit: "unidade de estudo"
   })[kind] || "contexto"}`;
 }
@@ -389,9 +391,9 @@ function renderDetail(state, item) {
   const disabled = state.loading ? " disabled" : "";
   const actionButtons = [
     ["consider", "Considerar", item.capabilities.canConsider],
-    ["resolve", "Resolver", item.capabilities.canResolve],
+    ["resolve", "Resolver", item.capabilities.canResolve && !isPendingAuthoringObservation(item)],
     ["reopen", "Reabrir", item.capabilities.canReopen],
-    ["withdraw", "Retirar", item.capabilities.canWithdraw]
+    ["withdraw", "Retirar", item.capabilities.canWithdraw && !isPendingAuthoringObservation(item)]
   ].filter(([, , allowed]) => allowed).map(([action, title]) =>
     `<button type="button" data-observations-action="${action}">${escapeHtml(title)}</button>`
   ).join("");
@@ -977,6 +979,7 @@ export function createCourseObservationsPanel({
     } else if (["consider", "resolve", "reopen", "withdraw"].includes(action)) {
       const item = detailItem();
       if (!item) return;
+      if (isPendingAuthoringObservation(item) && ["resolve", "withdraw"].includes(action)) return;
       if (action === "withdraw") {
         requestWithdraw(item);
         return;

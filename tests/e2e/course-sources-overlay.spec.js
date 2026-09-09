@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
-async function mountSources(page, { theme = "light", mode = "catalog", initialAnchorId = null, fileAccess = false, retired = false } = {}) {
+async function mountSources(page, { theme = "light", mode = "catalog", initialAnchorId = null, fileAccess = false, retired = false,
+  deferredTarget = false, deferredUpload = false } = {}) {
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   await page.goto("/");
-  await page.evaluate(async ({ theme, mode, initialAnchorId, fileAccess, retired }) => {
+  await page.evaluate(async ({ theme, mode, initialAnchorId, fileAccess, retired, deferredTarget, deferredUpload }) => {
     document.documentElement.dataset.colorMode = theme;
     document.body.innerHTML = '<div id="app-root"><main class="course-authoring-root"><section class="course-authoring-surface" data-section="sources"><div data-sources-host></div></section></main></div>';
     const { createCourseSourcesPanel } = await import("/src/ui/CourseSourcesPanel.js");
@@ -22,21 +24,77 @@ async function mountSources(page, { theme = "light", mode = "catalog", initialAn
     const anchor = { anchorId: "anchor-overlay", revision: 1, sourceRevision: 1, status: "active",
       selector: { kind: "page_range", startPage: 10, endPage: 12 }, humanLocator: "Localização sintética",
       verificationExcerpt: null, contentHash: null, needsReverification: false, createdAt: source.createdAt };
+    if (deferredUpload) {
+      source.title = "Protocolos — fonte sintética";
+      source.citationText = "Autoria sintética. Protocolos. 2026.";
+    }
+    const attachments = [];
+    const pendingReads = new Map();
+    let uploadConfirmed = false;
+    let releaseUpload = null;
     window.sourceRequests = [];
+    window.sourceReadRequests = [];
+    window.sourceUploadRequests = [];
     window.failNextSourceWrite = false;
     let appliedReceipt = null;
+    window.sourceAsyncControls = {
+      pendingReads: () => [...pendingReads.keys()],
+      releaseRead(readMode) {
+        const release = pendingReads.get(readMode);
+        if (!release) throw new Error("A leitura solicitada não está pendente.");
+        pendingReads.delete(readMode);
+        release();
+      },
+      async releaseUpload() {
+        if (!releaseUpload) throw new Error("Nenhum upload pendente.");
+        const release = releaseUpload;
+        releaseUpload = null;
+        await release();
+      },
+      snapshot: () => structuredClone({ revision, source, anchor, attachments, appliedReceipt })
+    };
     const controller = {
       ...(fileAccess ? { async setCourseSourceFileAccess() { throw new Error("Esta prova visual não escreve permissões."); } } : {}),
       async mutateCourseAnchoredAnnotations() { throw new Error("Escritor fora do recorte sintético."); },
       async loadCourseSources(_courseId, options) {
-        return { contract: "aralearn.course-sources.v3", bibliographyStyle: "abnt-2025", courseId,
+        window.sourceReadRequests.push(structuredClone(options));
+        const result = structuredClone({ contract: "aralearn.course-sources.v3", bibliographyStyle: "abnt-2025", courseId,
           courseRevision: revision, mode: options.mode,
           query: { sourceId: options.sourceId ?? null, targetKind: options.targetKind ?? null, targetId: options.targetId ?? null },
-          pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 },
+          pdfStorage: { uniqueBytes: attachments.reduce((sum, item) => sum + item.byteSize, 0), maxUniqueBytes: 64 * 1024 * 1024 },
           items: options.mode === "target" ? [{ targetKind: "plan_item", targetId, targetVersion: 3,
             sourceLinks: [], createdAt: source.createdAt }] : options.mode === "source"
-            ? [{ ...source, anchors: [anchor], attachments: [] }] : [source], nextCursor: null };
+            ? [{ ...source, anchors: [anchor], attachments }] : [source], nextCursor: null });
+        if (deferredTarget && options.mode === "target" || uploadConfirmed && ["catalog", "source"].includes(options.mode)) {
+          return new Promise(resolve => pendingReads.set(options.mode, () => resolve(result)));
+        }
+        return result;
       },
+      ...(deferredUpload ? { async uploadCourseSourcePdf(request) {
+        if (releaseUpload || uploadConfirmed || request.courseId !== courseId || request.sourceId !== source.sourceId ||
+            request.expectedCourseRevision !== revision || request.sourceRevision !== source.revision || !(request.file instanceof File)) {
+          throw new Error("Upload fora da tentativa sintética esperada.");
+        }
+        const { file, ...identity } = request;
+        window.sourceUploadRequests.push({ ...structuredClone(identity), file: { name: file.name, size: file.size, type: file.type } });
+        return new Promise(resolve => {
+          releaseUpload = async () => {
+            const bytes = await file.arrayBuffer();
+            const contentHash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+              .map(value => value.toString(16).padStart(2, "0")).join("");
+            revision += 1;
+            source.revision += 1;
+            anchor.sourceRevision = source.revision;
+            attachments.push({ contentHash, byteSize: bytes.byteLength, mediaType: "application/pdf",
+              storagePath: `${courseId}/${contentHash}.pdf`, createdAt: source.createdAt, publicFileAccess: "inherit" });
+            appliedReceipt = { contract: "aralearn.course-source-change.v1", courseId, courseRevision: revision,
+              requestId: request.requestId, changed: true, idempotent: false,
+              change: { type: "ingest_pdf", subjectId: source.sourceId, revision: source.revision } };
+            uploadConfirmed = true;
+            resolve(structuredClone(appliedReceipt));
+          };
+        });
+      } } : {}),
       async loadCourseAnchoredAnnotations(_courseId, options) {
         return { contract: "aralearn.course-anchored-annotation-page.v1", courseId, courseRevision: revision,
           annotationSetVersion: 0, query: structuredClone(options.query), items: [], hasMore: false, nextCursor: null,
@@ -64,8 +122,9 @@ async function mountSources(page, { theme = "light", mode = "catalog", initialAn
       courseId, courseRevision: revision, mode, ...(mode === "target" ? {
         targetKind: "plan_item", targetId, targetVersion: 3, targetLabel: "Item sintético" } : {}),
       ...(initialAnchorId ? { initialSourceId: source.sourceId, initialAnchorId } : {}) });
-    await window.sourcesPanel.open();
-  }, { theme, mode, initialAnchorId, fileAccess, retired });
+    window.sourcePanelOpening = window.sourcesPanel.open();
+    if (!deferredTarget) await window.sourcePanelOpening;
+  }, { theme, mode, initialAnchorId, fileAccess, retired, deferredTarget, deferredUpload });
 }
 
 for (const theme of ["light", "dark"]) {
@@ -252,4 +311,116 @@ test("Fonte mantém vínculo contextual e abre âncora de entrada", async ({ pag
   await mountSources(page, { initialAnchorId: "anchor-overlay" });
   await expect(page.locator('[data-source-disclosure="anchors"]')).toHaveAttribute("open", "");
   await expect(page.locator("[data-source-deep-linked-anchor]")).toContainText("Localização sintética · Páginas 10–12");
+});
+
+test("Vincular fonte aguarda a atribuição inicial e conserva vínculo e foco após a leitura", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountSources(page, { mode: "target", deferredTarget: true });
+  const add = page.locator('[data-source-action="add-target-source"]');
+  await expect(add).toBeVisible();
+  await expect(add).toBeDisabled();
+  await expect(page.getByText("Carregando atribuição…", { exact: true })).toBeVisible();
+  await expect(page.locator(".course-source-target-link")).toHaveCount(0);
+  expect(await page.evaluate(() => window.sourceAsyncControls.pendingReads())).toEqual(["target"]);
+  expect(await page.evaluate(() => window.sourceReadRequests.map(value => value.mode))).toEqual(["catalog", "target"]);
+  await page.evaluate(async () => {
+    window.sourceAsyncControls.releaseRead("target");
+    await window.sourcePanelOpening;
+  });
+  await expect(add).toBeEnabled();
+  await add.focus();
+  await page.keyboard.press("Enter");
+  const link = page.locator(".course-source-target-link");
+  await expect(link).toHaveCount(1);
+  await expect(link.getByText("Carregando âncoras…", { exact: true })).toHaveCount(0);
+  await expect(add).toBeFocused();
+  const remove = link.locator('[data-source-action="remove-target-source"]');
+  const linkId = await remove.getAttribute("data-link-id");
+  expect(linkId).toBeTruthy();
+  await expect(link.locator("[data-source-target-relation]")).toHaveValue("supported_by");
+  const opener = link.locator('[data-source-action="open-source"]');
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("[data-source-detail-dialog]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(opener).toBeFocused();
+  await expect(link).toHaveCount(1);
+  await expect(remove).toHaveAttribute("data-link-id", linkId);
+  expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
+  expect(await page.evaluate(() => window.sourceRequests)).toEqual([]);
+});
+
+test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas releituras atrasadas", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountSources(page, { deferredUpload: true });
+  await page.locator('[data-source-action="open-source"]').click();
+  const dialog = page.locator("[data-source-detail-dialog]");
+  await dialog.locator('[data-source-disclosure="files"] > summary').click();
+  await dialog.locator('[data-source-disclosure="anchors"] > summary').click();
+  await dialog.getByRole("button", { name: "Editar âncora", exact: true }).click();
+  const form = dialog.locator('[data-source-form="anchor"]');
+  const excerpt = form.locator('[name="verificationExcerpt"]');
+  const locatorText = "Capítulo de protocolos — localização ainda não salva";
+  const excerptText = "Trecho em rascunho: regras compartilhadas e programas que as implementam.";
+  await form.locator('[name="startPage"]').fill("11");
+  await form.locator('[name="endPage"]').fill("13");
+  await form.locator('[name="humanLocator"]').fill(locatorText);
+  await excerpt.fill(excerptText);
+  expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
+  const pdfPath = fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url));
+  await dialog.locator("[data-source-pdf-input]").setInputFiles(pdfPath);
+  await expect.poll(() => page.evaluate(() => window.sourceUploadRequests.length)).toBe(1);
+  await expect(form.getByRole("button", { name: "Salvar âncora", exact: true })).toBeDisabled();
+  await expect(excerpt).toBeEditable();
+  await excerpt.scrollIntoViewIfNeeded();
+  await excerpt.focus();
+  await excerpt.evaluate(node => node.setSelectionRange(7, 24));
+  const scrollBefore = await dialog.locator(".course-source-detail-body").evaluate(node => node.scrollTop);
+  expect(scrollBefore).toBeGreaterThan(0);
+  const assertDraft = async () => {
+    await expect(form).toBeVisible();
+    await expect(form.locator('[name="selectorKind"]')).toHaveValue("page_range");
+    await expect(form.locator('[name="startPage"]')).toHaveValue("11");
+    await expect(form.locator('[name="endPage"]')).toHaveValue("13");
+    await expect(form.locator('[name="contentHash"]')).toHaveValue("");
+    await expect(form.locator('[name="humanLocator"]')).toHaveValue(locatorText);
+    await expect(excerpt).toHaveValue(excerptText);
+    await expect(excerpt).toBeFocused();
+    expect(await excerpt.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([7, 24]);
+    const scrollAfter = await dialog.locator(".course-source-detail-body").evaluate(node => node.scrollTop);
+    expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThanOrEqual(1);
+    expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
+  };
+  await assertDraft();
+  await page.screenshot({ path: testInfo.outputPath("source-anchor-pdf-pending-390.png") });
+  expect(await page.evaluate(() => window.sourceAsyncControls.snapshot().revision)).toBe(5);
+  await page.evaluate(() => window.sourceAsyncControls.releaseUpload());
+  await expect.poll(() => page.evaluate(() => window.sourceAsyncControls.pendingReads())).toEqual(["catalog"]);
+  await assertDraft();
+  await page.evaluate(() => window.sourceAsyncControls.releaseRead("catalog"));
+  await expect.poll(() => page.evaluate(() => window.sourceAsyncControls.pendingReads())).toEqual(["source"]);
+  await assertDraft();
+  await page.evaluate(() => window.sourceAsyncControls.releaseRead("source"));
+  await expect(dialog.locator('[data-source-action="download-attachment"]')).toHaveCount(1);
+  await expect(form.getByRole("button", { name: "Salvar âncora", exact: true })).toBeEnabled();
+  await assertDraft();
+  await page.screenshot({ path: testInfo.outputPath("source-anchor-pdf-refreshed-390.png") });
+  const result = await page.evaluate(() => ({ ...window.sourceAsyncControls.snapshot(),
+    uploads: window.sourceUploadRequests, reads: window.sourceReadRequests, writes: window.sourceRequests }));
+  expect(result.uploads).toHaveLength(1);
+  expect(result.uploads[0]).toMatchObject({ expectedCourseRevision: 5, sourceRevision: 1,
+    sourceId: "source-overlay", file: { name: "edital-dataprev-2026-perfil-13-pagina-44.pdf", type: "application/pdf" } });
+  expect(result.uploads[0].file.size).toBeGreaterThan(0);
+  expect(result.revision).toBe(6);
+  expect(result.source.revision).toBe(2);
+  expect(result.appliedReceipt).toMatchObject({ requestId: result.uploads[0].requestId, courseRevision: 6,
+    changed: true, change: { type: "ingest_pdf", subjectId: "source-overlay", revision: 2 } });
+  expect(result.anchor).toMatchObject({ anchorId: "anchor-overlay", revision: 1, sourceRevision: 2,
+    selector: { kind: "page_range", startPage: 10, endPage: 12 }, humanLocator: "Localização sintética",
+    verificationExcerpt: null, contentHash: null });
+  expect(result.attachments).toHaveLength(1);
+  expect(result.attachments[0].byteSize).toBe(result.uploads[0].file.size);
+  expect(result.reads.filter(value => value.mode === "catalog").map(value => value.expectedRevision)).toEqual([5, 6]);
+  expect(result.reads.filter(value => value.mode === "source").map(value => value.expectedRevision)).toEqual([5, 6]);
+  expect(result.writes).toEqual([]);
 });

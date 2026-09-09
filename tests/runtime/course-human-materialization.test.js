@@ -1,5 +1,7 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
-import { fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
+import { fixtureAppliedParameters, courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
+import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/catalog/resourceCatalog.js";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -25,6 +27,29 @@ const PRINCIPAL = {
   scopes: ["authoring:read", "authoring:write"]
 };
 
+test("materialização pelo catálogo relê processo pessoal e mantém cadência, revisão e curso independentes", async () => {
+  for (const focus of ["content", "full_cycle"]) {
+    const adapter = adapterFixture(); const reads = [];
+    adapter.getAuthoringProcessPreferences = async () => { reads.push("preferences"); return {
+      contract: "aralearn.authoring-process-preferences.v1", revision: 2, updatedAt: "2026-09-09T00:00:00Z",
+      preferences: { ...defaultAuthoringProcessPreferences(), focus, cadence: "batch", reviewPoints: [] }
+    }; };
+    const get = adapter.getCourseDesign;
+    adapter.getCourseDesign = async request => request.scopeKind === "course"
+      ? courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 }) : get(request);
+    const output = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, name: "materializar_parte",
+      rawArguments: { curso: "Curso de Redes", parte: 1, unidades: [unit()], explicacoes: explanationFixtures([unit()]) } });
+    assert.deepEqual(reads, ["preferences"]);
+    assert.equal(output.context.processoCorrente.foco, focus);
+    assert.equal(output.context.processoCorrente.cadencia, "batch");
+    assert.deepEqual(output.context.processoCorrente.pontosDeRevisao, []);
+    assert.match(output.nextDecision, focus === "content" ? /Explicações e fontes/u : /ciclo autorizado/u);
+    assert.equal(adapter.calls.length, 1);
+    assert.equal(Object.hasOwn(adapter.calls[0], "preferences"), false);
+    assert.equal(Object.hasOwn(adapter.calls[0], "reviewed"), false);
+  }
+});
+
 test("Explicação incompleta bloqueia a gravação conjunta sem aprovar ou omitir apoio", async () => {
   for (const explanations of [undefined, [], [{ ...explanationFixtures([unit()])[0], fontes: {} }],
     [{ ...explanationFixtures([unit()])[0], conteudo: { title: "Apoio", content: [] } }]]) {
@@ -47,6 +72,50 @@ test("Explicação conserva fonte e âncora na mesma operação das unidades", a
   assert.deepEqual(adapter.calls[0].explanations[0].content, support.conteudo);
   assert.equal(adapter.calls[0].explanations[0].sourceLinks[0].sourceId, "source-rfc-1035");
   assert.deepEqual(adapter.calls[0].explanations[0].sourceLinks[0].anchors, [{ anchorId: "anchor-rfc-1035-section-2" }]);
+});
+
+test("unidades reutilizam base salva antes da produção e vínculos exatos, sem pedir nova Explicação", async () => {
+  const adapter = adapterFixture();
+  const explanation = explanationFixtures([unit()])[0].conteudo;
+  explanation.content[0].data.text = "Base salva anteriormente.  Relação: nome → endereço; P(A | B).";
+  const links = [{ linkId: "persisted-link", sourceId: "source-rfc-1035", relation: "supported_by", roles: ["technical_conceptual"],
+    occurrences: [{ occurrenceId: "persisted-occurrence", slot: "content", resourceId: explanation.content[0].id,
+      path: "text", quote: "nome → endereço", prefix: null, suffix: null }], anchors: [{ anchorId: "anchor-rfc-1035-section-2" }] }];
+  const plan = adapter.getCourseInstructionalPlan.bind(adapter);
+  adapter.getCourseInstructionalPlan = async (...args) => {
+    const saved = await plan(...args);
+    saved.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation = structuredClone(explanation);
+    return saved;
+  };
+  const sourceReads = [];
+  adapter.getCourseSources = async request => {
+    sourceReads.push(request);
+    assert.equal(request.mode, "target");
+    return { items: [{ sourceLinks: structuredClone(links) }] };
+  };
+  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()] });
+  assert.equal(adapter.calls.length, 1);
+  assert.equal(sourceReads.length, 1);
+  assert.equal(sourceReads[0].targetKind, "microsequence_explanation");
+  assert.equal(sourceReads[0].targetId, "micro-dns");
+  assert.equal(sourceReads[0].expectedRevision, 8);
+  assert.deepEqual(adapter.calls[0].explanations, [{ microsequenceId: "micro-dns", content: explanation, sourceLinks: links }]);
+  assert.equal(adapter.calls[0].units.length, 1);
+  assert.equal(Object.hasOwn(adapter.calls[0].explanations[0], "contentReview"), false);
+});
+
+test("base persistida não dispensa releitura completa de fontes antes de produzir unidades", async () => {
+  const adapter = adapterFixture();
+  const plan = adapter.getCourseInstructionalPlan.bind(adapter);
+  adapter.getCourseInstructionalPlan = async (...args) => {
+    const saved = await plan(...args);
+    saved.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation = explanationFixtures([unit()])[0].conteudo;
+    return saved;
+  };
+  adapter.getCourseSources = async () => ({ items: [] });
+  await assert.rejects(materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()] }),
+    error => error.code === "course_service_unavailable");
+  assert.equal(adapter.calls.length, 0);
 });
 
 function adapterFixture() {

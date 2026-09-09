@@ -516,30 +516,6 @@ textarea {
   line-height: var(--leading-normal);
 }
 
-.account-settings-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 7px;
-  padding-top: 7px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.account-settings-primary-actions {
-  flex: 0 0 auto;
-}
-
-.account-settings-footer .theme-choice {
-  margin-inline: auto;
-}
-
-.account-settings-account-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .account-settings-header {
   position: relative;
   z-index: 2;
@@ -618,22 +594,6 @@ textarea {
   height: 16px;
 }
 
-.account-settings-primary-actions,
-.account-settings-account-actions {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.account-settings-primary-actions .icon-ghost,
-.account-settings-account-actions .icon-ghost {
-  width: var(--tap);
-  height: var(--tap);
-  min-width: var(--tap);
-  min-height: var(--tap);
-  border-radius: 10px;
-}
-
 .icon-ghost.is-danger {
   border-color: var(--status-danger);
   color: var(--status-danger);
@@ -663,14 +623,6 @@ textarea {
   display: block;
   width: 16px;
   height: 16px;
-}
-
-.account-settings-footer .icon-ghost {
-  min-width: var(--tap);
-  min-height: var(--tap);
-  width: var(--tap);
-  height: var(--tap);
-  border-radius: 10px;
 }
 
 select,
@@ -1636,9 +1588,9 @@ button.account-settings-back[hidden] {
   font-size: var(--type-base);
   font-weight: 700;
   line-height: var(--leading-snug);
-  letter-spacing: var(--tracking-heading);
-  font-variant-caps: all-small-caps;
-  text-transform: lowercase;
+  letter-spacing: normal;
+  font-variant-caps: normal;
+  text-transform: none;
   color: var(--study-card-title);
   width: 100%;
   min-width: 0;
@@ -1657,7 +1609,7 @@ button.account-settings-back[hidden] {
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  color: var(--text-primary);
+  color: var(--resource-text);
   line-height: var(--leading-prose);
   overflow-y: auto;
   overflow-x: auto;
@@ -1717,7 +1669,7 @@ button.account-settings-back[hidden] {
   border: 1px solid var(--resource-border);
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
-  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-dense);
   line-height: 1.4;
   white-space: break-spaces;
@@ -1822,7 +1774,7 @@ button.account-settings-back[hidden] {
   border: 1px solid var(--resource-border);
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
-  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-dense);
   line-height: var(--leading-dense);
   overflow-x: auto;
@@ -1951,7 +1903,7 @@ button.account-settings-back[hidden] {
 .package-terminal-stream-label code,
 .package-terminal-exit code {
   color: var(--resource-text);
-  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-xs);
 }
 
@@ -1969,7 +1921,7 @@ button.account-settings-back[hidden] {
   overflow: auto;
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
-  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-dense);
   line-height: var(--leading-dense);
   tab-size: 2;
@@ -2037,8 +1989,8 @@ button.account-settings-back[hidden] {
   border-radius: 12px;
   border: 1px solid var(--resource-border);
   background: var(--resource-surface);
-  color: var(--text-primary);
-  text-align: left;
+  color: var(--resource-text);
+  text-align: start;
   cursor: pointer;
   font-size: var(--type-base);
   line-height: var(--leading-normal);
@@ -2138,7 +2090,7 @@ button.account-settings-back[hidden] {
   border: 1px solid var(--resource-border);
   background: var(--resource-surface-sunken);
   color: var(--resource-text);
-  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-base);
   line-height: 1.56;
   white-space: pre-wrap;
@@ -2411,7 +2363,7 @@ button.account-settings-back[hidden] {
 
 .package-packet-frame {
   width: 100%;
-  min-width: min(100%, var(--packet-min-width));
+  min-width: 0;
   overflow-x: auto;
   border: 1px solid var(--resource-border-strong);
   border-radius: 10px;
@@ -2425,6 +2377,7 @@ button.account-settings-back[hidden] {
 }
 
 .package-packet-ruler {
+  min-width: var(--packet-min-width);
   margin-inline-start: 36px;
   border-bottom: 1px solid var(--resource-border-strong);
   color: var(--resource-text-secondary);
@@ -2440,6 +2393,7 @@ button.account-settings-back[hidden] {
 .package-packet-row {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr);
+  min-width: calc(var(--packet-min-width) + 36px);
 }
 
 .package-packet-row + .package-packet-row {
@@ -2451,7 +2405,7 @@ button.account-settings-back[hidden] {
   place-items: center;
   border-inline-end: 1px solid var(--resource-border-strong);
   color: var(--resource-text-secondary);
-  font-family: "Cascadia Code", "Consolas", monospace;
+  font-family: var(--font-mono);
   font-size: var(--type-xs);
 }
 
@@ -2490,7 +2444,7 @@ button.account-settings-back[hidden] {
 
 .package-packet-legend li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px 8px;
   padding: 7px 9px;
   border-radius: 9px;
@@ -2685,6 +2639,25 @@ button.account-settings-back[hidden] {
   color: var(--resource-text-secondary);
   font-size: var(--type-sm);
   text-transform: uppercase;
+}
+
+@media (max-width: 620px) {
+  .package-memory-stack li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .package-memory-stack li > code {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .package-memory-stack li > code:first-child { justify-items: start; }
+  .package-memory-stack li > code:last-child { justify-items: end; }
+
+  .package-memory-stack li > div {
+    border-inline: 0;
+    border-block: 1px solid var(--resource-border);
+  }
 }
 
 .runtime-feedback-icon {
@@ -2960,22 +2933,6 @@ button.account-settings-back[hidden] {
   overflow: clip;
 }
 
-.package-math-graph-canvas {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  padding: 10px;
-  max-height: min(48dvh, 430px);
-  overflow: auto;
-  border: 1px solid var(--resource-border);
-  border-radius: 15px;
-  background: var(--resource-surface-subtle);
-  overscroll-behavior-inline: contain;
-  overscroll-behavior-block: auto;
-  touch-action: pan-x pan-y;
-  -webkit-overflow-scrolling: touch;
-}
-
 .package-diagram-viewport-home,
 .package-diagram-viewport {
   width: 100%;
@@ -3061,6 +3018,7 @@ button.account-settings-back[hidden] {
   stroke-linejoin: round;
 }
 
+.package-math-graph-canvas,
 .package-system-diagram-canvas {
   width: 100%;
   max-width: 100%;
@@ -3079,10 +3037,12 @@ button.account-settings-back[hidden] {
   -webkit-overflow-scrolling: touch;
 }
 
+.package-math-graph-canvas.is-diagram-panning,
 .package-system-diagram-canvas.is-diagram-panning {
   cursor: grabbing;
 }
 
+.package-math-graph-canvas[data-diagram-viewport-mode="explore"],
 .package-system-diagram-canvas[data-diagram-viewport-mode="explore"] {
   overflow: auto;
   overscroll-behavior: contain;
@@ -4232,18 +4192,19 @@ button.account-settings-back[hidden] {
 }
 
 .token-option {
-  min-height: 28px;
+  min-height: 44px;
+  min-width: 44px;
   border: 1px solid var(--resource-border);
   border-radius: 8px;
   background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
   color: var(--text-primary);
-  padding: 3px 6px;
+  padding: 8px 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.69rem;
+  font-size: var(--type-base);
   font-weight: 400;
-  line-height: 1.14;
+  line-height: var(--leading-normal);
   cursor: pointer;
   flex: 0 0 auto;
   max-width: 100%;
@@ -4253,6 +4214,11 @@ button.account-settings-back[hidden] {
 
 .token-option:hover {
   background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
+}
+
+.token-option:focus-visible {
+  outline: 3px solid var(--resource-gap-focus);
+  outline-offset: -3px;
 }
 
 .token-option:active {
@@ -5162,33 +5128,6 @@ button.account-settings-back[hidden] {
   font-weight: 800;
 }
 
-.study-citations-panel > header {
-  display: grid;
-  grid-template-columns: var(--tap) minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-
-.study-citations-panel > header > h2 {
-  min-width: 0;
-  margin: 0;
-  font-size: var(--type-md);
-}
-
-.study-citations-panel > header > .icon-ghost {
-  width: var(--tap);
-  min-width: var(--tap);
-  height: var(--tap);
-  min-height: var(--tap);
-  padding: 0;
-  border-radius: var(--radius-control);
-}
-
-.study-citations-overlay {
-  z-index: 90;
-  padding: max(8px, var(--safe-top)) max(8px, var(--safe-right)) max(8px, var(--safe-bottom)) max(8px, var(--safe-left));
-}
-
 .study-explanation-overlay {
   z-index: 90;
   padding: max(12px, var(--safe-top)) max(8px, var(--safe-right)) max(12px, var(--safe-bottom)) max(8px, var(--safe-left));
@@ -5201,8 +5140,7 @@ button.account-settings-back[hidden] {
   min-height: 0;
   overflow: hidden;
 }
-.study-explanation-reading,
-.study-explanation-sources {
+.study-explanation-reading {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -5234,16 +5172,6 @@ button.account-settings-back[hidden] {
 .study-explanation-body .package-instance { min-width: 0; margin-block: 12px; }
 .study-explanation-tools { padding: 0 12px 8px; }
 .study-explanation-tools:empty { display: none; }
-.study-explanation-sources > .study-citations-body { flex: 1 1 auto; }
-
-.study-citations-panel {
-  width: min(100%, 680px);
-  max-height: calc(100dvh - 24px);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
 
 .study-citations-body {
   min-height: 0;
@@ -6486,7 +6414,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .package-calculator-limits,
 .package-tool-description {
   color: var(--text-secondary);
-  font-size: var(--type-small);
+  font-size: var(--type-sm);
   line-height: 1.5;
 }
 .package-auxiliary-links ol { padding-inline-start: 1.5em; }
@@ -6541,7 +6469,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .home-topbar .lesson-top-actions { gap: 4px; }
 
 /* Interface compacta; a prosa e as convenções dos recursos mantêm seus próprios estilos. */
-:is(.topbar, .account-settings-overlay, .account-device-data, .account-maintenance, .study-device-settings, .editor-head, .auth-panel, .study-citations-panel > header) :is(h1, h2, h3, h4),
+:is(.topbar, .account-settings-overlay, .account-device-data, .account-maintenance, .study-device-settings, .editor-head, .auth-panel) :is(h1, h2, h3, h4),
 .topbar-title,
 .account-settings-title,
 .card-title,
@@ -6567,8 +6495,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 }
 
 .account-settings-content,
-.study-tools-panel :is(label, summary, small),
-.study-citations-panel :is(label, summary, small) {
+.study-tools-panel :is(label, summary, small) {
   color: var(--text-secondary);
 }
 

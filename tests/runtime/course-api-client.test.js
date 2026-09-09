@@ -12,33 +12,53 @@ const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const USER_ID = "20000000-0000-4000-8000-000000000002";
 const AVATAR_ID = "30000000-0000-4000-8000-000000000003";
 
-test("aprovação usa base inspecionada e identidade explícita sem repetir escrita incerta", async () => {
+test("revisão por objeto usa base inspecionada e identidade explícita sem repetir escrita incerta", async () => {
   const basisHash = "a".repeat(64);
-  const command = { courseId: COURSE_ID, microsequenceId: "micro-a", expectedBasisHash: basisHash,
+  const command = { courseId: COURSE_ID, targetKind: "microsequence_explanation", targetId: "micro-a", reviewed: true, expectedBasisHash: basisHash,
     requestId: "review-fixture-0001" };
-  const read = { courseId: COURSE_ID, microsequenceId: "micro-a", basisHash, contentReview: { state: "draft" } };
-  const approved = { ...read, contentReview: { state: "current", approvedAt: "2026-09-07T12:00:00Z" },
-    courseRevision: 8, idempotent: true };
+  const read = { contract: "aralearn.course-content-review.v1", courseId: COURSE_ID, targetKind: "microsequence_explanation",
+    targetId: "micro-a", courseRevision: 7, entityVersion: 2, reviewPolicy: "saved", basisHash, contentReview: { state: "draft" } };
+  const reviewed = { ...read, contract: "aralearn.course-content-review-change.v1", contentReview: { state: "current", reviewedAt: "2026-09-09T12:00:00Z" },
+    courseRevision: 8, changed: true, idempotent: true };
   const calls = [];
   let uncertain = false;
   const { client } = clientWithFetch(async (url, init) => {
     calls.push({ url, body: parsedBody(init) });
     if (uncertain) throw new TypeError("Failed to fetch");
-    return jsonResponse(url.endsWith("get_course_microsequence_review_v1") ? read : approved);
+    return jsonResponse(url.endsWith("get_course_content_review_v1") ? read : reviewed);
   });
-  assert.deepEqual(await client.getMicrosequenceReview(COURSE_ID, "micro-a"), read);
-  assert.deepEqual(await client.approveMicrosequenceContent(command), approved);
-  assert.deepEqual(calls[1].body, { p_course_id: COURSE_ID, p_microsequence_id: "micro-a",
-    p_expected_basis_hash: basisHash, p_request_id: command.requestId });
-  await assert.rejects(client.approveMicrosequenceContent({ ...command, requestId: undefined }), /Identidade/u);
-  await assert.rejects(client.approveMicrosequenceContent({ ...command, contentReview: { state: "current" } }), /inválid/u);
+  assert.deepEqual(await client.getContentReview(COURSE_ID, "microsequence_explanation", "micro-a"), read);
+  assert.deepEqual(await client.setContentReview(command), reviewed);
+  assert.deepEqual(calls[1].body, { p_course_id: COURSE_ID, p_target_kind: "microsequence_explanation", p_target_id: "micro-a",
+    p_expected_basis_hash: basisHash, p_reviewed: true, p_request_id: command.requestId });
+  await assert.rejects(client.setContentReview({ ...command, requestId: undefined }), /Identidade/u);
+  await assert.rejects(client.setContentReview({ ...command, contentReview: { state: "current" } }), /inválid/u);
   uncertain = true;
   const before = calls.length;
-  await assert.rejects(client.approveMicrosequenceContent(command), /fetch/u);
+  await assert.rejects(client.setContentReview(command), /fetch/u);
   assert.equal(calls.length, before + 1);
   assert.equal(calls.at(-1).body.p_request_id, command.requestId);
-  const wrong = clientWithFetch(async () => jsonResponse({ ...approved, basisHash: "b".repeat(64) })).client;
-  await assert.rejects(wrong.approveMicrosequenceContent(command), /conteúdo inspecionado/u);
+  const wrong = clientWithFetch(async () => jsonResponse({ ...reviewed, basisHash: "b".repeat(64) })).client;
+  await assert.rejects(wrong.setContentReview(command), { code: "invalid_course_content_review" });
+});
+
+test("retirada e política de acesso usam decisões explícitas e recibos próprios", async () => {
+  const calls = [];
+  const policy = { contract: "aralearn.course-content-review-policy.v1", courseId: COURSE_ID,
+    courseRevision: 9, reviewPolicy: "reviewed_only", changed: true, idempotent: false };
+  const { client } = clientWithFetch(async (url, init) => { calls.push({ url, body: parsedBody(init) }); return jsonResponse(policy); });
+  const command = { courseId: COURSE_ID, expectedRevision: 8, policy: "reviewed_only", requestId: "review-policy-0001" };
+  assert.deepEqual(await client.setContentReviewPolicy(command), policy);
+  assert.match(calls[0].url, /set_course_content_review_policy_v1$/u);
+  assert.deepEqual(calls[0].body, { p_course_id: COURSE_ID, p_expected_revision: 8, p_policy: "reviewed_only", p_request_id: command.requestId });
+  await assert.rejects(client.setContentReviewPolicy({ ...command, policy: "public" }), /inválid/u);
+  await assert.rejects(client.getContentReview(COURSE_ID, "course", "micro-a"), /inválido/u);
+  const review = { contract: "aralearn.course-content-review-change.v1", courseId: COURSE_ID, courseRevision: 9,
+    targetKind: "study_unit", targetId: "unit-a", entityVersion: 3, basisHash: "b".repeat(64), contentReview: { state: "draft" },
+    reviewPolicy: "saved", changed: true, idempotent: false };
+  const withdrawal = clientWithFetch(async (_url, init) => { assert.equal(parsedBody(init).p_reviewed, false); return jsonResponse(review); }).client;
+  assert.deepEqual(await withdrawal.setContentReview({ courseId: COURSE_ID, targetKind: "study_unit", targetId: "unit-a",
+    expectedBasisHash: review.basisHash, reviewed: false, requestId: "review-withdraw-001" }), review);
 });
 
 test("citações da Explicação vinculam curso, microssequência e revisão sem identidade de unidade", async () => {

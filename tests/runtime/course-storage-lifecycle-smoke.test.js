@@ -32,7 +32,11 @@ test("#274 prova os quatro estados e limpa cada fixture mesmo após falha", () =
   }
   assert.match(source, /storageMutationPath:\s*"storage-api"/u);
   assert.match(source, /finally\s*\{/u);
-  assert.match(source, /deleteStorageObjects\(config, \[\.\.\.cleanupPaths\]\)/u);
+  assert.match(source, /ownerClient\.maintainCourse/u);
+  assert.match(source, /completion\.fileCleanupPending, false/u);
+  assert.match(source, /recordLocalFixtureFiles\(config/u);
+  assert.match(source, /verifyLocalFixtureFilesAbsent\(config/u);
+  assert.doesNotMatch(source, /deleteStorageObjects\(config, \[\.\.\.cleanupPaths\]\)/u);
   assert.match(source, /removeLocalUser\(config, userId\)/u);
 });
 

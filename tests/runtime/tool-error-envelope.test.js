@@ -195,6 +195,16 @@ test("confirmação incerta de PDF exige releitura sem nova incorporação", () 
 
   assert.equal(projected.recovery.strategy, "stop");
   assert.equal(projected.recovery.retryable, false);
-  assert.equal(projected.recovery.requestIdMode, "none");
-  assert.match(projected.recovery.steps.join(" "), /Releia as fontes|Não repita/iu);
+  assert.equal(projected.recovery.requestIdMode, "same");
+  assert.match(projected.recovery.steps.join(" "), /identidade|objeto salvo/iu);
+});
+
+test("escrita incerta mantém identidade e não se transforma em repetição com novo pedido", () => {
+  const projected = toolErrorData(new AuthoringApiError(409, "course_write_uncertain", "A escrita aguarda reconciliação.", {
+    requestId: "uncertain-attempt-01", operation: "curricular_map_slice", targetCourseId: TARGET_COURSE_ID,
+    privatePayload: "não projetar"
+  }));
+  assert.equal(projected.recovery.strategy, "stop");
+  assert.equal(projected.recovery.requestIdMode, "same");
+  assert.deepEqual(projected.details, { requestId: "uncertain-attempt-01", operation: "curricular_map_slice", targetCourseId: TARGET_COURSE_ID });
 });

@@ -41,7 +41,7 @@ class SyntheticUpgradeDevice:
     def call(self, *args, **options):
         self.events.append(("call", *args))
         if args[0] == "install":
-            self.version, self.code = (gate.BASE_VERSION, gate.BASE_CODE) if args[-1] == "baseline.apk" else ("0.0.67", 213)
+            self.version, self.code = (gate.BASE_VERSION, gate.BASE_CODE) if args[-1] == "baseline.apk" else ("0.0.68", 214)
 
     def installed(self):
         return {"package": gate.PACKAGE, "version": self.version, "versionCode": self.code, "uid": 10101}
@@ -68,13 +68,13 @@ class NativeGateTests(unittest.TestCase):
         self.evidence.mkdir()
         self.env = {"GITHUB_ACTIONS": "true", "GITHUB_REF": "refs/heads/main", "GITHUB_REPOSITORY": "fixture/app",
                     "GITHUB_SHA": "1" * 40, "GITHUB_RUN_ID": "901", "GITHUB_RUN_ATTEMPT": "2"}
-        self.manifest = {"version": "0.0.67", "source": {"repository": "fixture/app"},
+        self.manifest = {"version": "0.0.68", "source": {"repository": "fixture/app"},
                          "promotion": {"targetSha": "1" * 40}, "run": {"id": 801, "attempt": 3},
-                         "android": {"versionCode": 213, "certificateSha256": gate.CERTIFICATE},
+                         "android": {"versionCode": 214, "certificateSha256": gate.CERTIFICATE},
                          "gate": {"scope": "integral", "web": "success", "supabase": "success"}}
-        self.receipt = {**copy.deepcopy(self.manifest), "release": {"apk": "AraLearn-0.0.67.apk",
+        self.receipt = {**copy.deepcopy(self.manifest), "release": {"apk": "AraLearn-0.0.68.apk",
                          "sha256": "a" * 64, "certificateSha256": gate.CERTIFICATE}}
-        installed = {"package": gate.PACKAGE, "version": "0.0.67", "versionCode": 213, "uid": 10101}
+        installed = {"package": gate.PACKAGE, "version": "0.0.68", "versionCode": 214, "uid": 10101}
         self.proof = {"schema": "aralearn.android-native-proof.v2", "promotion": {
             **gate.promotion_identity(self.manifest, self.env), "apkSha256": "a" * 64,
             "manifestSha256": gate.digest(json.dumps(self.manifest, sort_keys=True, separators=(",", ":")).encode())},
@@ -108,7 +108,7 @@ class NativeGateTests(unittest.TestCase):
 
     def test_uses_current_public_baseline(self):
         self.assertEqual((gate.BASE_VERSION, gate.BASE_CODE, gate.BASE_SHA), (
-            "0.0.66", 212, "205c77dd5bcd24c4259bf67ff7e9eaa0696ba209d2abf1a813368fe7376e43c1"))
+            "0.0.67", 213, "aeca494678e218ec160708d5b115c5a2f2843ba7a33b2765f7aae28441513148"))
 
     def test_rejects_proof_without_preference_from_baseline(self):
         self.proof["schema"] = "aralearn.android-native-proof.v1"
@@ -122,12 +122,12 @@ class NativeGateTests(unittest.TestCase):
         result = gate.upgrade_preserving_theme(device, Path("baseline.apk"), Path("candidate.apk"))
         self.assertEqual(result, self.proof["upgrade"])
         self.assertEqual([event for event in device.events if event[0] in {"call", "choose-dark", "stop", "launch", "capture"}], [
-            ("call", "install", "baseline.apk"), ("launch", "0.0.66"), ("capture", "base-initial"),
-            ("choose-dark", "0.0.66"), ("capture", "base-selected"), ("stop", "0.0.66"),
-            ("launch", "0.0.66"), ("capture", "base-relaunched"), ("stop", "0.0.66"),
-            ("call", "install", "-r", "candidate.apk"), ("launch", "0.0.67"), ("capture", "upgraded"),
-            ("stop", "0.0.67"), ("call", "install", "-r", "candidate.apk"),
-            ("launch", "0.0.67"), ("capture", "candidate-reinstalled")])
+            ("call", "install", "baseline.apk"), ("launch", "0.0.67"), ("capture", "base-initial"),
+            ("choose-dark", "0.0.67"), ("capture", "base-selected"), ("stop", "0.0.67"),
+            ("launch", "0.0.67"), ("capture", "base-relaunched"), ("stop", "0.0.67"),
+            ("call", "install", "-r", "candidate.apk"), ("launch", "0.0.68"), ("capture", "upgraded"),
+            ("stop", "0.0.68"), ("call", "install", "-r", "candidate.apk"),
+            ("launch", "0.0.68"), ("capture", "candidate-reinstalled")])
 
     def test_upgrade_stops_on_preference_loss_without_masking_it_by_another_choice(self):
         for stage in ["base-relaunched", "upgraded", "candidate-reinstalled"]:
@@ -135,7 +135,7 @@ class NativeGateTests(unittest.TestCase):
                 device = SyntheticUpgradeDevice(lose_at=stage)
                 with self.assertRaisesRegex(RuntimeError, "Tema escuro"):
                     gate.upgrade_preserving_theme(device, Path("baseline.apk"), Path("candidate.apk"))
-                self.assertEqual([event for event in device.events if event[0] == "choose-dark"], [("choose-dark", "0.0.66")])
+                self.assertEqual([event for event in device.events if event[0] == "choose-dark"], [("choose-dark", "0.0.67")])
                 self.assertEqual(device.events[-1], ("capture", stage))
 
     def test_verify_refuses_a_proof_file_with_another_producer_hash(self):
@@ -201,7 +201,7 @@ class NativeGateTests(unittest.TestCase):
     def test_requires_main_integral_and_exact_candidate(self):
         cases = [(self.env, "GITHUB_REF", "refs/heads/other"), (self.env, "GITHUB_ACTIONS", "false"),
                  (self.manifest, "gate", {"scope": "focal", "web": "success", "supabase": "success"}),
-                 (self.manifest, "version", "0.0.66"), (self.manifest["android"], "versionCode", 212)]
+                 (self.manifest, "version", "0.0.67"), (self.manifest["android"], "versionCode", 213)]
         for target, key, value in cases:
             with self.subTest(key=key):
                 original = target[key]
@@ -211,15 +211,15 @@ class NativeGateTests(unittest.TestCase):
                 target[key] = original
 
     def test_future_candidate_derives_version_from_approved_manifest(self):
-        self.manifest["version"] = "0.0.67"
-        self.manifest["android"]["versionCode"] = 213
+        self.manifest["version"] = "0.0.69"
+        self.manifest["android"]["versionCode"] = 215
         identity = gate.promotion_identity(self.manifest, self.env)
-        self.receipt = {**copy.deepcopy(self.manifest), "release": {**self.receipt["release"], "apk": "AraLearn-0.0.67.apk"}}
+        self.receipt = {**copy.deepcopy(self.manifest), "release": {**self.receipt["release"], "apk": "AraLearn-0.0.69.apk"}}
         self.proof["promotion"] = {**identity, "apkSha256": "a" * 64,
             "manifestSha256": gate.digest(json.dumps(self.manifest, sort_keys=True, separators=(",", ":")).encode())}
         for target in [self.proof["candidate"], self.proof["cleanInstall"]["installed"],
                        self.proof["upgrade"]["after"], self.proof["upgrade"]["afterReinstall"]]:
-            target.update({"version": "0.0.67", "versionCode": 213})
+            target.update({"version": "0.0.69", "versionCode": 215})
         self.validate()
 
     def test_requires_the_original_receipt_and_certificate(self):
@@ -403,8 +403,8 @@ class NativeGateTests(unittest.TestCase):
         for invalid in [valid.replace(gate.CERTIFICATE, "0" * 64), valid + "\n" + valid.replace("#1", "#2"), "verified"]:
             with self.assertRaises(RuntimeError):
                 gate.parse_certificate(invalid)
-        self.assertEqual(gate.parse_badging("package: name='com.aralearn.app' versionCode='212' versionName='0.0.66'"),
-                         {"package": gate.PACKAGE, "versionCode": 212, "version": "0.0.66"})
+        self.assertEqual(gate.parse_badging("package: name='com.aralearn.app' versionCode='213' versionName='0.0.67'"),
+                         {"package": gate.PACKAGE, "versionCode": 213, "version": "0.0.67"})
 
     def test_asset_digest_and_length_are_checked(self):
         data = b"synthetic apk bytes"

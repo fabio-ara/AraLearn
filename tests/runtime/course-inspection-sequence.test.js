@@ -201,8 +201,8 @@ function anchoredAnnotation(index) {
     annotationId,
     annotationVersion: 1,
     courseId: COURSE_ID,
-    provenance: { origin: "learner", channel: "study_interface" },
-    contributor: { kind: "self", role: "learner", ref: "self", label: "Você" },
+    provenance: { origin: "author", channel: "authoring_interface" },
+    contributor: { kind: "self", role: "author", ref: "self", label: "Você" },
     target: {
       kind: "study_unit",
       id: "unit-01",
@@ -355,6 +355,30 @@ function controllerFixture(overrides = {}, { totalCount = 60 } = {}) {
   return controller;
 }
 
+test("minipainel mostra função, evidência aplicada, origem, revisão e contagem sem leitura adicional", async () => {
+  const root = new FakeRoot(); let annotationReads = 0;
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) {
+      const page = pageFor(options, 1); const item = page.items[0];
+      item.pendingAuthoringObservationCount = 3;
+      item.contentReview = { state: "stale", reviewedAt: "2026-09-09T04:00:00Z" };
+      item.authorship.design.application.practiceEvidence = [{ name: "Identificar a porta de saída", description: "A resposta deve relacionar endereço e porta." }];
+      return page;
+    },
+    async loadCourseAnchoredAnnotations() { annotationReads++; throw new Error("Não deve consultar a fila antes de abri-la."); }
+  });
+  const sequence = createCourseInspectionSequence({ root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION }, windowValue: new FakeWindow(), documentValue: { activeElement: null }, navigatorValue: null });
+  await sequence.open();
+  assert.match(root.innerHTML, /Função instrucional/u);
+  assert.match(root.innerHTML, /Texto explicado/u);
+  assert.match(root.innerHTML, /Identificar a porta de saída/u);
+  assert.match(root.innerHTML, /Revisão autoral desatualizada/u);
+  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>GPT<\/dd>/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 3 pendentes"/u);
+  assert.equal(annotationReads, 0); sequence.destroy();
+});
+
 test("índice curricular pesquisa hierarquia sem acento e prioriza título, caminho e ordinal", () => {
   const source = courseDocument(40).document;
   const course = source.courses[0];
@@ -449,6 +473,29 @@ test("normaliza o DTO paginado exato e recusa revisão, ordem ou campos extras",
   }), /ordem/u);
 });
 
+test("inspeção conserva enunciados e descrições integrais de ideias e evidências nos limites persistidos", () => {
+  const value = pageFor({ scope: { kind: "course", id: null }, direction: "forward", limit: 1 }, 1);
+  const entry = { name: "E".repeat(2_000), description: "D".repeat(4_000) };
+  const application = value.items[0].authorship.design.application;
+  application.practiceEvidence = [structuredClone(entry)];
+  for (const field of ["introduced", "used", "revisited"]) application.analysisIdeas[field] = [structuredClone(entry)];
+  const normalized = normalizeCourseInspectionPage(value).items[0].authorship.design.application;
+  assert.deepEqual(normalized.practiceEvidence, [entry]);
+  for (const field of ["introduced", "used", "revisited"]) assert.deepEqual(normalized.analysisIdeas[field], [entry]);
+  for (const group of ["practiceEvidence", "introduced", "used", "revisited"]) {
+    for (const field of ["name", "description"]) {
+      const invalid = structuredClone(value);
+      const target = invalid.items[0].authorship.design.application;
+      const entries = group === "practiceEvidence" ? target.practiceEvidence : target.analysisIdeas[group];
+      entries[0][field] += "X";
+      assert.throws(() => normalizeCourseInspectionPage(invalid), /inválido/u, `${group}.${field} deve respeitar o contrato persistido`);
+    }
+  }
+  const invalidTitle = structuredClone(value);
+  invalidTitle.items[0].curriculumPath.module.title = "T".repeat(301);
+  assert.throws(() => normalizeCourseInspectionPage(invalidTitle), /inválido/u, "títulos mantêm seu limite próprio");
+});
+
 test("traduz cada alvo de rota para um único scope ou âncora", () => {
   assert.deepEqual(inspectionRequestFromTarget(null), {
     scope: { kind: "course", id: null },
@@ -494,7 +541,7 @@ test("Unidade oferece parâmetros, fontes e observações imediatas e revisão n
     root.innerHTML,
     /<button type="button" data-inspection-open-parameters data-study-unit-id="unit-01" data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/button>/u
   );
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1" title="Observações"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, contagem ainda não disponível" title="Observações autorais pendentes"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e âncoras de Unidade 1" title="Fontes e âncoras"><svg/u);
   assert.match(root.innerHTML, /data-inspection-control-key="review:unit-01">[\s\S]*?<span>Revisar unidade<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-provider-assistance/u);
@@ -1507,7 +1554,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"/u);
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1"/u);
+  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, contagem ainda não disponível"/u);
   assert.match(root.innerHTML, /aria-label="Visualizar"/u);
   assert.doesNotMatch(root.innerHTML.match(/<nav class="course-inspection-mode-actions"[\s\S]*?<\/nav>/u)?.[0], /<span>Visualizar<\/span>/u);
   assert.match(root.innerHTML, /data-inspection-view-action="toggle-multiple"[^>]*aria-pressed="false"/u);
@@ -1530,7 +1577,8 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   assert.equal(annotationCalls.length, 1);
   assert.equal(annotationCalls[0].options.limit, 24);
   assert.equal(annotationCalls[0].options.query.mode, "target");
-  assert.deepEqual(annotationCalls[0].options.query.states, []);
+  assert.deepEqual(annotationCalls[0].options.query.states, ["open", "considered"]);
+  assert.deepEqual(annotationCalls[0].options.query.origins, ["author"]);
 
   const counter = { textContent: "" };
   root.querySelector = (selector) => selector === "#study-observation-counter" ? counter : null;
@@ -1724,6 +1772,22 @@ test("visão múltipla pagina nos dois sentidos e focaliza unidade carregada dep
   assert.equal(saved.at(-1).studyUnitId, "unit-60");
   assert.equal(saved.at(-1).offsetFromStickyTop, 0);
   assert.ok(focusKeys.includes('[data-inspection-control-key="view:unit-60"]'));
+  sequence.destroy();
+});
+
+test("ações de revisão autoral identificam base e unidade individualmente", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({
+    async loadAuthoringStudyUnits(_courseId, options) { return pageFor(options, 2); },
+    async getContentReview() {}, async setContentReview() {}, async exportCourseAuthoring() {}
+  });
+  const sequence = createCourseInspectionSequence({ root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+    windowValue: new FakeWindow(), documentValue: { activeElement: null }, navigatorValue: null });
+  assert.equal(await sequence.open(), true);
+  assert.match(root.innerHTML, /data-inspection-open-explanation[^>]*data-study-unit-id="unit-01"[^>]*aria-label="Base explicativa e revisão"/u);
+  assert.match(root.innerHTML, /data-inspection-review-unit[^>]*data-study-unit-id="unit-01"[^>]*data-inspection-control-key="content-review:unit-01"[^>]*aria-label="Revisão autoral desta unidade"/u);
+  assert.doesNotMatch(root.innerHTML, /aria-label="Explicação e revisão da microssequência"/u);
   sequence.destroy();
 });
 
@@ -1922,7 +1986,7 @@ test("observação resolvida deixa de marcar a Unidade como pendente", async () 
   sequence.destroy();
 });
 
-test("retirada na Inspeção usa confirmação modal, contém Tab e preserva foco", async () => {
+test("fila autoral não oferece retirada nem consome ao acionar controle antigo", async () => {
   const root = new FakeRoot();
   const focusedSelectors = [];
   root.querySelector = (selector) => selector.includes("data-observation-action")
@@ -2010,36 +2074,12 @@ test("retirada na Inspeção usa confirmação modal, contém Tab e preserva foc
     }
   });
 
-  await clickObservationAction("withdraw");
-  assert.match(root.innerHTML, /role="alertdialog"/u);
-  assert.match(root.innerHTML, /class="course-authoring-confirm-backdrop" data-inspection-confirmation-backdrop/u);
-  assert.match(root.innerHTML, /role="alertdialog" aria-modal="true"/u);
-  assert.equal(commands.length, 0);
-  assert.equal(focusedSelectors.at(-1), '[data-observation-action="cancel-confirmation"]');
-  let tabPrevented = false;
-  root.listeners.get("keydown")({ key: "Tab", preventDefault() { tabPrevented = true; } });
-  assert.equal(tabPrevented, true);
-  assert.equal(tabMoves.at(-1), "cancel");
-  root.listeners.get("keydown")({ key: "Escape", preventDefault() {}, stopPropagation() {} });
-  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
-  assert.equal(focusedSelectors.at(-1),
-    `[data-observation-action="withdraw"][data-observation-id="${annotationId}"]`);
-
-  await clickObservationAction("withdraw");
-  documentListeners.get("click")({
-    target: {
-      matches: (selector) => selector === "[data-inspection-confirmation-backdrop]",
-      closest: () => null
-    }
-  });
-  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  assert.doesNotMatch(root.innerHTML, /data-observation-action="withdraw"/u);
   await clickObservationAction("withdraw");
   await clickObservationAction("confirm-withdraw");
-  assert.deepEqual(commands, [{
-    type: "withdraw_anchored_annotation",
-    annotationId,
-    expectedAnnotationVersion: 1
-  }]);
+  assert.doesNotMatch(root.innerHTML, /role="alertdialog"/u);
+  assert.equal(commands.length, 0);
+  assert.match(root.innerHTML, /Observação da página 1/u);
   sequence.destroy();
   assert.equal(documentListeners.size, 0);
 });
@@ -2106,7 +2146,7 @@ test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", as
       const annotation = anchoredAnnotation(index + 1);
       annotation.contributor = {
         kind: "protected_person",
-        role: "learner",
+        role: "author",
         ref: "person-0123456789abcdef",
         label: index < 128 ? "Estudante A" : "Estudante B"
       };

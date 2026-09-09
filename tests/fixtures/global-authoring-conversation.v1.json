@@ -569,7 +569,17 @@
     },
     {
       "sequence": 4,
-      "task": "salvar_mapa_curricular",
+      "task": "consultar_planejamento",
+      "afterTurn": 4,
+      "artifact": "mapa-global-v2",
+      "referenceForApproval": "synthetic-persisted-map-reference-v2",
+      "arguments": { "curso": "Redes de computadores para iniciantes" },
+      "resultingState": "mapa_global_ajustado_inspecionado"
+    },
+    {
+      "sequence": 5,
+      "task": "aprovar_mapa_curricular",
+      "arguments": { "referencia": "synthetic-persisted-map-reference-v2" },
       "afterTurn": 5,
       "artifact": "mapa-global-v2",
       "approved": true,
@@ -577,14 +587,14 @@
       "resultingState": "mapa_global_aprovado"
     },
     {
-      "sequence": 5,
+      "sequence": 6,
       "task": "consultar_planejamento",
       "afterTurn": 5,
       "arguments": { "curso": "Redes de computadores para iniciantes" },
       "resultingState": "mapa_global_aprovado"
     },
     {
-      "sequence": 6,
+      "sequence": 7,
       "task": "salvar_parte",
       "afterTurn": 9,
       "artifact": "parte-1-v2",
@@ -592,14 +602,14 @@
       "resultingState": "parte_1_aprovada"
     },
     {
-      "sequence": 7,
+      "sequence": 8,
       "task": "preparar_materializacao",
       "afterTurn": 9,
       "arguments": { "curso": "Redes de computadores para iniciantes", "parte": 1 },
       "resultingState": "parte_1_pronta_para_produzir"
     },
     {
-      "sequence": 8,
+      "sequence": 9,
       "task": "materializar_parte",
       "afterTurn": 9,
       "course": "Redes de computadores para iniciantes",
@@ -617,14 +627,14 @@
       "resultingState": "parte_1_materializada"
     },
     {
-      "sequence": 9,
+      "sequence": 10,
       "task": "consultar_planejamento",
       "afterTurn": 11,
       "arguments": { "curso": "Redes de computadores para iniciantes" },
       "resultingState": "planejamento_da_parte_2"
     },
     {
-      "sequence": 10,
+      "sequence": 11,
       "task": "manter_fonte",
       "afterTurn": 15,
       "arguments": {
@@ -647,7 +657,7 @@
       "resultingState": "fonte_tecnica_disponivel"
     },
     {
-      "sequence": 11,
+      "sequence": 12,
       "task": "salvar_parte",
       "afterTurn": 17,
       "artifact": "parte-2-v2",
@@ -655,7 +665,7 @@
       "resultingState": "parte_2_aprovada"
     },
     {
-      "sequence": 12,
+      "sequence": 13,
       "task": "preparar_materializacao",
       "afterTurn": 17,
       "arguments": { "curso": "Redes de computadores para iniciantes", "parte": 2 },
@@ -663,7 +673,7 @@
       "resultingState": "parte_2_pronta_para_produzir"
     },
     {
-      "sequence": 13,
+      "sequence": 14,
       "task": "materializar_parte",
       "afterTurn": 17,
       "course": "Redes de computadores para iniciantes",

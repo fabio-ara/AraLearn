@@ -1,7 +1,10 @@
 import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
-import { composeCourseDocument } from "../domain/courseEntities.js";
+import { composeCourseDocument as composeStoredCourseDocument, migrateLegacyCourseEntityReviews } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeCurricularMapRead, normalizeCurricularMapSlice, normalizeCurricularMapChange } from "../domain/courseCurricularMapSlices.js";
 import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
+import { normalizeCourseContentReview, normalizeCourseContentReviewChange,
+  normalizeCourseContentReviewPolicyChange } from "../domain/courseContentReview.js";
 import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
   boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
@@ -43,6 +46,9 @@ import {
 } from "../persistence/CoursePersonalStateRepository.js";
 import { STUDY_DRAFT_RECOVERY_CACHE_KEY, readStudyDraftRecoveries } from "../persistence/studyDraftRecovery.js";
 
+// Stored course content remains readable while its current curriculum is a
+// draft. Approval/import retain their independent completeness checks.
+const composeCourseDocument = (course, rows) => composeStoredCourseDocument(course, rows, { allowIncompleteCurriculum: true });
 const CACHE_PREFIX = "course.v1";
 const MAX_ENTITY_PAGES = 100;
 const VERIFIED_COMPOSITION_CACHE_CONTRACT =
@@ -56,7 +62,11 @@ const PERSON_PROFILE_CACHE_KEY = "aralearn.person-profile.v2";
 
 function explanationPrivacyCachePrefixes(courseId) {
   return [`course.v1.explanation-citations:${courseId}`,
+    `course.v1.study-unit-citations:${courseId}`,
     `course.v1.pending-content-review:${courseId}:`,
+    `course.v2.pending-content-review:${courseId}:`,
+    `course.v1.pending-authoring-observation:${courseId}:`,
+    `course.v1.pending-curricular-map:${courseId}`,
     `course.v1.pending-explanation-composition:${courseId}:`];
 }
 
@@ -395,9 +405,12 @@ function normalizeCourseListPage(value) {
 
 function cachedPayload(row) {
   const value = row?.value ?? row;
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? structuredClone(value)
-    : null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const result = structuredClone(value);
+  if (result.data?.contract === "aralearn.course-entities.v1" && Array.isArray(result.data.items)) {
+    result.data.items = migrateLegacyCourseEntityReviews(result.data.items);
+  }
+  return result;
 }
 
 function courseIdsFromList(items) {
@@ -450,6 +463,10 @@ function normalizeInspectionPage(value) {
   }
   const scope = normalizedInspectionScope(value.scope);
   const studyUnitIds = value.items.map((item) => String(item?.studyUnit?.id || "").trim());
+  if (value.items.some(item => item.pendingAuthoringObservationCount != null &&
+      (!Number.isSafeInteger(item.pendingAuthoringObservationCount) || item.pendingAuthoringObservationCount < 0))) {
+    throw new TypeError("A contagem de observações da inspeção é inválida.");
+  }
   if (studyUnitIds.some((id) => !id || id.length > 240) ||
       new Set(studyUnitIds).size !== studyUnitIds.length) {
     throw new TypeError("Página da inspeção inválida.");
@@ -1805,6 +1822,80 @@ export class CourseController {
     return this.#purgeCoursePrivacyCache(courseId, { clearLists: clearLists !== false });
   }
 
+  async getCurricularMap(courseId) {
+    if (!this.ownerOnly || typeof this.api.getCurricularMap !== "function") throw new TypeError("O mapa exige acesso de autoria.");
+    try { return normalizeCurricularMapRead(await this.api.getCurricularMap(courseId), courseId); }
+    catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
+  async getPendingCurricularMapChange(courseId) {
+    if (!this.ownerOnly || !UUID_PATTERN.test(courseId)) throw new TypeError("O mapa exige acesso de autoria.");
+    const pending = await this.store.getCache(`course.v1.pending-curricular-map:${courseId}`);
+    if (pending == null) return null;
+    if (!["slice", "approval"].includes(pending.operation) || pending.command?.courseId !== courseId ||
+        pending.signature !== JSON.stringify(pending.command) || typeof pending.uncertain !== "boolean") {
+      throw new TypeError("A tentativa curricular pendente é inválida.");
+    }
+    return structuredClone(pending);
+  }
+
+  async #writeCurricularMap(operation, command) {
+    if (!this.ownerOnly || !UUID_PATTERN.test(command.courseId)) throw new TypeError("O mapa exige acesso de autoria.");
+    const { courseId } = command;
+    const signature = JSON.stringify(command);
+    const key = `course.v1.pending-curricular-map:${courseId}`;
+    let pending = await this.getPendingCurricularMapChange(courseId);
+    if (pending && (pending.signature !== signature || pending.operation !== operation)) {
+      throw new TypeError("Reconcilie a tentativa curricular pendente antes de enviar outra alteração.");
+    }
+    if (pending?.uncertain) await this.getCurricularMap(courseId);
+    if (!pending) {
+      pending = { operation, command: structuredClone(command), signature, uncertain: true };
+      await this.store.putCache(key, pending);
+    }
+    try {
+      const value = operation === "approval"
+        ? await this.api.approveCurricularMap(courseId, command.reference)
+        : await this.api.saveCurricularMapSlice(structuredClone(command));
+      const result = normalizeCurricularMapChange(value, { ...command, approval: operation === "approval" ? "approved" : "draft" });
+      await this.#clearCourseDesignCache(courseId);
+      await Promise.all([
+        `${this.cachePrefix}.entities:${courseId}:`, `${this.cachePrefix}.list:`,
+        courseCacheKey(courseId, this.cachePrefix),
+        verifiedCompositionCacheKey(courseId, this.cachePrefix),
+        instructionalPlanCacheKey(courseId, this.cachePrefix),
+        authoringOutlineCacheKey(courseId, this.cachePrefix),
+        authoringInspectionCacheKey(courseId, this.cachePrefix)
+      ].map(prefix => this.store.deleteCachePrefix(prefix)));
+      await this.store.putCache(key, null);
+      return result;
+    } catch (error) {
+      if (Number(error?.status) >= 400 && Number(error?.status) < 500 &&
+          ![408, 425, 429].includes(Number(error.status)) && error?.code !== "course_write_uncertain") {
+        await this.store.putCache(key, null);
+      }
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
+  saveCurricularMapSlice(value) {
+    const fields = ["courseId", "expectedCourseRevision", "expectedPlanVersion", "command", "requestId"];
+    if (!value || fields.some(key => !Object.hasOwn(value, key)) || Object.keys(value).some(key => !fields.includes(key)) ||
+        !Number.isSafeInteger(value.expectedCourseRevision) || value.expectedCourseRevision < 1 ||
+        !Number.isSafeInteger(value.expectedPlanVersion) || value.expectedPlanVersion < 1 ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(value.requestId)) throw new TypeError("Recorte curricular inválido.");
+    return this.#writeCurricularMap("slice", { ...value, command: normalizeCurricularMapSlice(value.command) });
+  }
+
+  approveCurricularMap(courseId, reference) {
+    if (typeof reference !== "string" || reference.length > 2048 || !/^[A-Za-z0-9_-]+$/u.test(reference)) throw new TypeError("Referência curricular inválida.");
+    return this.#writeCurricularMap("approval", { courseId, reference });
+  }
+
   async saveCourseAuthoringPart(value) {
     if (!this.ownerOnly) throw new TypeError("Somente a Autoria permite reorganizar os lotes.");
     const request = normalizeCourseAuthoringPartRequest(value);
@@ -1892,40 +1983,49 @@ export class CourseController {
     return result;
   }
 
-  async getMicrosequenceReview(courseId, microsequenceId) {
-    if (!this.ownerOnly || typeof this.api.getMicrosequenceReview !== "function") {
+  async getContentReview(courseId, targetKind, targetId) {
+    if (!this.ownerOnly || typeof this.api.getContentReview !== "function") {
       throw new TypeError("Somente a Autoria permite inspecionar a revisão do conteúdo.");
     }
-    // Always read the authenticated current basis; an offline copy cannot approve content.
+    // Always inspect the authenticated saved basis, including after uncertain writes.
     let result;
-    try { result = await this.api.getMicrosequenceReview(courseId, microsequenceId); }
+    try { result = await this.api.getContentReview(courseId, targetKind, targetId); }
     catch (error) {
       if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
       throw error;
     }
-    if (result?.courseId !== courseId || result?.microsequenceId !== microsequenceId) {
-      throw new TypeError("A revisão não corresponde à microssequência solicitada.");
-    }
-    return structuredClone(result);
+    return normalizeCourseContentReview(result, { courseId, targetKind, targetId });
   }
 
-  async approveMicrosequenceContent(value = {}) {
-    if (!this.ownerOnly || typeof this.api.approveMicrosequenceContent !== "function") {
-      throw new TypeError("Somente a Autoria permite aprovar o conteúdo inspecionado.");
+  async setContentReview(value = {}) {
+    if (!this.ownerOnly || typeof this.api.setContentReview !== "function") {
+      throw new TypeError("Somente a Autoria permite declarar a revisão do conteúdo inspecionado.");
     }
     // The UI owns the request identity; uncertain writes are never retried here.
     let result;
-    try { result = await this.api.approveMicrosequenceContent(value); }
+    try { result = await this.api.setContentReview(value); }
     catch (error) {
       if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(value.courseId, { clearLists: true });
       throw error;
     }
-    if (result?.courseId !== value.courseId || result?.microsequenceId !== value.microsequenceId ||
-        result?.basisHash !== value.expectedBasisHash || result?.contentReview?.state !== "current") {
-      throw new TypeError("A confirmação não corresponde ao conteúdo inspecionado.");
-    }
+    const normalized = normalizeCourseContentReviewChange(result, value);
     await this.#clearCourseDesignCache(value.courseId);
-    return structuredClone(result);
+    return normalized;
+  }
+
+  async setContentReviewPolicy(value = {}) {
+    if (!this.ownerOnly || typeof this.api.setContentReviewPolicy !== "function") {
+      throw new TypeError("Somente a Autoria permite alterar a política de revisão.");
+    }
+    let result;
+    try { result = await this.api.setContentReviewPolicy(value); }
+    catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(value.courseId, { clearLists: true });
+      throw error;
+    }
+    const normalized = normalizeCourseContentReviewPolicyChange(result, value);
+    await this.#clearCourseDesignCache(value.courseId);
+    return normalized;
   }
 
   async loadCourseMedia(courseId, options = {}) {
@@ -2427,7 +2527,7 @@ export class CourseController {
       return result;
     } catch (error) {
       if (Number(error?.status) >= 400 && Number(error?.status) < 500 &&
-          ![408,425,429].includes(Number(error.status))) await this.store.putCache(key, null);
+          ![408,425,429].includes(Number(error.status)) && error?.code !== "course_write_uncertain") await this.store.putCache(key, null);
       if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(intent.courseId, { clearLists: true });
       throw error;
     }

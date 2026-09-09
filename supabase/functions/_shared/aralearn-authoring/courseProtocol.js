@@ -41,6 +41,10 @@ export function routeCourseRequest(method, pathname) {
     if (verb === "GET") return { name: "listAuthoringProfiles" };
     if (verb === "POST") return { name: "createAuthoringProfile" };
   }
+  if (path === "/v1/authoring-process-preferences") {
+    if (verb === "GET") return { name: "getAuthoringProcessPreferences" };
+    if (verb === "PATCH") return { name: "saveAuthoringProcessPreferences" };
+  }
   const authoringProfile = path.match(/^\/v1\/authoring-profiles\/([^/]+)$/u);
   if (authoringProfile && new Set(["PATCH", "DELETE"]).has(verb)) {
     return { name: verb === "PATCH" ? "updateAuthoringProfile" : "deleteAuthoringProfile",
@@ -54,6 +58,13 @@ export function routeCourseRequest(method, pathname) {
   const authoringPart = path.match(/^\/v1\/courses\/([^/]+)\/authoring-parts$/u);
   if (authoringPart && verb === "POST") return { name: "saveCourseAuthoringPart", courseId: courseUuid(authoringPart[1]) };
   const instructionalPlan = path.match(/^\/v1\/courses\/([^/]+)\/instructional-plan$/u);
+  const curricularMap = path.match(/^\/v1\/courses\/([^/]+)\/curricular-map(?:\/(approval))?$/u);
+  if (curricularMap) {
+    const courseId = courseUuid(curricularMap[1]);
+    if (verb === "GET" && !curricularMap[2]) return { name: "getCourseCurricularMap", courseId };
+    if (verb === "PATCH" && !curricularMap[2]) return { name: "saveCourseCurricularMapSlice", courseId };
+    if (verb === "POST" && curricularMap[2]) return { name: "approveCourseCurricularMap", courseId };
+  }
   if (instructionalPlan && verb === "GET") {
     return {
       name: "getCourseInstructionalPlan",

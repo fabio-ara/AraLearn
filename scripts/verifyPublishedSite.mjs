@@ -9,6 +9,7 @@ import {
   COURSE_HUMAN_TASK_CATALOG_METADATA,
   COURSE_HUMAN_TASKS
 } from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { courseActionOperationName } from "../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { fileURLToPath } from "node:url";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -32,7 +33,7 @@ const EXPECTED_ACTIONS_OPENAPI_SOURCE = readFileSync(
   "utf8"
 );
 const ACTIONS_OPERATION_IDS = Object.freeze(
-  COURSE_HUMAN_TASKS.map(({ name }) => name).sort()
+  [...new Set(COURSE_HUMAN_TASKS.map(({ name }) => courseActionOperationName(name)))].sort()
 );
 const REQUIRED_ASSETS = Object.freeze([
   "./index.html",

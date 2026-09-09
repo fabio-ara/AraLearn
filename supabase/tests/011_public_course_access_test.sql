@@ -21,7 +21,7 @@ insert into private.course_entities(course_id,entity_type,entity_id,position,con
 insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content) values
  ('93000000-0000-4000-8000-000000000101','lesson','public-lesson','module','public-module',0,'{"title":"Lição pública"}'),
  ('93000000-0000-4000-8000-000000000101','microsequence','public-sequence','lesson','public-lesson',0,'{"title":"Sequência pública","dependsOn":[],"explanation":{"title":"Conexões sintéticas","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}]}}'),
- ('93000000-0000-4000-8000-000000000101','study_unit','public-unit','microsequence','public-sequence',1,'{"title":"Unidade pública","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}],"response":null,"feedback":[],"topics":[]}');
+ ('93000000-0000-4000-8000-000000000101','study_unit','public-unit','microsequence','public-sequence',1,'{"title":"Unidade pública","role":"theory","content":[{"id":"p","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Dois elementos ligados podem interagir pela conexão."}}],"response":null,"feedback":[],"topics":[]}');
 
 select is(public.get_person_profile_for_actor_v2('93000000-0000-4000-8000-000000000001')->>'handle',null::text,'perfil novo exige escolha de identificador');
 select is(public.update_person_profile_for_actor_v2('93000000-0000-4000-8000-000000000001','{"handle":" @AUTOR-um "}')->>'handle','autor-um','identificador canônico aceita @ e minúsculas');
@@ -81,9 +81,9 @@ select set_config('request.jwt.claim.sub','93000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claims','{"sub":"93000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"93000000-0000-4000-8000-000000000901"}',true);
 set local role authenticated;
-select is(public.approve_course_microsequence_content_v1('93000000-0000-4000-8000-000000000101','public-sequence',
- public.get_course_microsequence_review_v1('93000000-0000-4000-8000-000000000101','public-sequence')->>'basisHash','public-review-01')#>>'{contentReview,state}',
- 'current','sessão sintética aprova exatamente o conjunto inspecionado');
+select is(public.set_course_content_review_v1('93000000-0000-4000-8000-000000000101','microsequence_explanation','public-sequence',
+ public.get_course_content_review_v1('93000000-0000-4000-8000-000000000101','microsequence_explanation','public-sequence')->>'basisHash',true,'public-review-01')#>>'{contentReview,state}',
+ 'current','sessão sintética declara a revisão da base inspecionada');
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 select set_config('request.jwt.claim.role','service_role',true);
@@ -94,7 +94,7 @@ set local role anon;
 select is(public.get_course_v1('93000000-0000-4000-8000-000000000101')->>'ownership','public','visitante lê curso público sem conta');
 select is(public.get_course_v1('93000000-0000-4000-8000-000000000101')->>'canObserve','false','visitante não pode observar');
 select ok(not (public.get_course_v1('93000000-0000-4000-8000-000000000101') ?| array['ownerId','copyOrigin','brief','authoringState','canDerive']), 'projeção pública exclui dados internos');
-select is(jsonb_array_length(public.list_course_entities_v1('93000000-0000-4000-8000-000000000101',3,10,null,null)->'items'),4,'visitante lê conteúdo permitido com revisão');
+select is(jsonb_array_length(public.list_course_entities_v1('93000000-0000-4000-8000-000000000101',3,10,null,null)->'items'),4,'visitante lê base e unidade salvas mesmo com unidade ainda não revisada');
 select is(public.list_courses_v1('Curso sintético',10,null,null)->>'contract','aralearn.course-list.v2','visitante usa catálogo projetado');
 select is(jsonb_array_length(public.list_courses_v1('Curso sintético',10,null,null)->'items'),1,'catálogo anônimo exclui curso privado');
 select is(jsonb_array_length(public.get_course_study_citations_v1('93000000-0000-4000-8000-000000000101',3,'public-unit')->'citations'),0,'visitante lê referências sem conta');
@@ -152,5 +152,9 @@ select is(to_regprocedure('public.manage_course_access_for_actor_v1(uuid,uuid,te
 select ok(not has_table_privilege('anon','private.person_profile_identity_migration_backup','select'),'arquivo de migração não é público');
 select ok(public.get_aralearn_runtime_manifest()->'features' ?& array['person-profile-v2','public-course-study-v1','private-person-avatar-v1'],'manifesto identifica identidade e acesso protegido a avatares');
 select ok(not (public.get_aralearn_runtime_manifest()->'features' ? 'personal-course-copy-edit-v1'),'manifesto não promete escritor retirado');
+select is(public.get_owned_course_for_actor_v1('93000000-0000-4000-8000-000000000001',
+ '93000000-0000-4000-8000-000000000101',false)->>'reviewPolicy','saved','owner lê política corrente sem deduzir revisão da publicação');
+select throws_ok($t$select public.get_owned_course_for_actor_v1('93000000-0000-4000-8000-000000000002',
+ '93000000-0000-4000-8000-000000000101',false)$t$,'42501','Edição do Curso não autorizada.','política autoral não abre leitura de autoria a leitor');
 select * from finish();
 rollback;

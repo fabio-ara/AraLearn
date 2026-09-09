@@ -14,8 +14,9 @@ e foto opcional, usados para reconhecer relações diretas de curso. A pessoa
 escolhe o identificador ao concluir o cadastro ou a atualização de perfil antigo.
 
 Um **Curso vivo** é o mesmo objeto em Estudo, Autoria e ferramentas
-conversacionais. O conteúdo pode mudar sob a mesma identidade e fica disponível
-para Estudo assim que contém Unidades válidas.
+conversacionais. O conteúdo pode mudar sob a mesma identidade. Conteúdo completo
+salvo fica disponível para Estudo a quem tem acesso; exigir somente revisado é
+uma política opcional do curso. Edições locais não salvas não são expostas.
 
 **Estudo** permite selecionar cursos próprios, compartilhados ou públicos,
 começar, continuar ou retomar o percurso e marcar unidades para rever. Cursos
@@ -24,8 +25,9 @@ Visitantes conservam progresso e Rever neste navegador; registrar observações
 exige conta, e editar exige ser proprietário.
 
 **Autoria** apresenta somente cursos próprios e abre diretamente em Conteúdo.
-Planejamento fica sempre à mão; Parâmetros, **Fontes**, Revisão, Analytics e Pessoas
-e acesso aparecem no menu de tarefas.
+Planejamento fica sempre à mão, e o menu reúne tarefas como catálogos, Revisão,
+Analytics e Pessoas e acesso. Desenho e fontes também têm controles junto ao
+objeto correspondente, sem impor passagem pelo Planejamento para abrir conteúdo.
 
 Uma **réplica local** é a cópia dos dados necessários à continuidade no
 dispositivo. Ela permite retomar conteúdo carregado, enquanto o servidor
@@ -62,14 +64,20 @@ recusado. Nesse caso, solicite outro link pelo aplicativo.
 
 ## Alterar perfil e aparência
 
-Abra **Conta e aparência**. O identificador tem de 3 a 30 caracteres ASCII:
+Abra **Configurações** em Estudo ou Autoria. Os quatro grupos são **Conta**,
+**Aparência**, **Sincronização e dados deste dispositivo** e **Preferências de
+autoria**. Visitantes encontram os mesmos grupos com os limites da sessão sem
+conta; **Manutenção** aparece somente para o papel autorizado.
+
+Em **Conta**, o identificador tem de 3 a 30 caracteres ASCII:
 letras minúsculas, números, ponto, sublinhado ou hífen, com primeiro e último
 caracteres alfanuméricos. A entrada aceita `@` inicial e converte maiúsculas;
 não há segundo nome obrigatório. Se o identificador estiver ocupado, escolha
 outro. A foto pode ser
 JPEG, PNG ou WebP de até 512 KiB. Abra **Foto do perfil** para escolher ou
 substituir uma imagem; **Remover foto** só aparece quando existe algo a remover.
-Use **Voltar** ou `Esc` para retornar à vista principal e salve o perfil.
+Use **Voltar** ou `Esc` para retornar a Conta e salve o perfil. Ao voltar de um
+grupo, a lista principal reaparece; fechá-la devolve o foco ao controle de origem.
 
 A foto fica em armazenamento privado. Ao substituí-la, o aplicativo primeiro
 registra a nova referência e depois remove o objeto anterior. Uma falha nessa
@@ -79,8 +87,15 @@ apaga uma foto que já tenha virado a referência ativa. Quando não consegue
 confirmar o resultado, a tela preserva o objeto e pede **Salvar** novamente para
 confirmar o vínculo ou removê-lo antes de escolher outro arquivo.
 
-Na mesma área, escolha o tema do sistema, claro ou escuro. A preferência fica no
-dispositivo e não altera nenhum curso.
+Em **Aparência**, escolha o tema do sistema, claro ou escuro. A preferência fica
+no dispositivo e não altera nenhum curso.
+
+**Preferências de autoria** guarda o padrão pessoal de processo: foco
+**Conteúdo / Ciclo completo**, cadência, pontos de revisão e diálogo são
+independentes. Conteúdo trabalha bases e fontes; Ciclo completo inclui desenho
+e unidades no recorte combinado. Os canais de autoria consultam essas escolhas
+na retomada. Salvá-las não altera cursos, aplicações, declarações de revisão ou
+condições de pesquisa retroativamente; um trabalho combinado conserva seu acordo.
 
 ## Alternar entre Estudo e Autoria
 
@@ -107,8 +122,10 @@ Na primeira abertura, o aplicativo baixa a composição em páginas, confirma qu
 todas pertencem à mesma revisão e valida o documento. Depois, mantém uma cópia
 local para retomada.
 
-Quando a Unidade possuir proveniência pública, use **Fontes**. A consulta
-apresenta somente as fontes e localizações autorizadas. Uma fonte oculta não
+Para consultar referências, abra **Explicação** ou siga uma citação sobrescrita.
+As referências da base e da unidade ficam identificadas no fim do corpo, com
+retorno à ocorrência, inclusive quando não há base salva. A consulta apresenta
+somente as fontes e localizações autorizadas. Uma fonte oculta não
 aparece. Um uso pendente de verificação é identificado como tal. **Referência**
 omite o endereço; **Referência e acesso** permite os meios autorizados.
 
@@ -169,11 +186,13 @@ A seta abre ou recolhe o ramo; o acesso ao conteúdo é uma ação separada. Na
 cobertura, leia a declaração e seus vínculos recuados sem alterar a pontuação
 do texto curricular.
 
-Confira o mapa completo antes de aprová-lo. Expandir um ramo é apenas uma ação
-de leitura e não exige aprová-lo separadamente. A aprovação global não inclui
-exercícios, componentes ou unidades futuras que ainda não existem.
+O mapa pode ser desenvolvido por ramos. Confira sua versão completa antes de
+aprovar: a aprovação referencia o mapa persistido inspecionado, sem enviar uma
+árvore regenerada. Expandir um ramo é uma ação de leitura. A aprovação não
+inclui exercícios, componentes ou unidades futuras. A Explicação pode ser
+produzida antes das unidades, inclusive com mapa em rascunho.
 
-Depois da aprovação global, **Lotes de produção** mostra as partes usadas para
+**Lotes de produção** mostra as partes usadas para
 materializar e revisar o curso aos poucos. Uma parte pode agrupar uma ou mais
 microssequências, mas não pertence à hierarquia curricular. Dividir, unir ou
 reordenar lotes preserva o mapa. O conteúdo confirmado fica em Conteúdo, não num
@@ -218,12 +237,12 @@ offline do aplicativo. Veja os formatos, privacidade e limites em [Áudio](audio
 
 ## Configurar o desenho do curso
 
-Em **Parâmetros**, escolha o escopo e abra o ajuste desejado. O valor vigente
-aparece primeiro; origem, justificativa e definição ficam no ajuste revelado.
-Em Conteúdo, o atalho da unidade abre uma folha sobre a leitura, preservando o
-editor e seu rascunho. Em Estudo, o proprietário também encontra
-**Parâmetros · escopo atual** em **Conta e aparência**, depois de salvar ou
-descartar qualquer edição aberta. A entrada preserva os níveis do Estudo.
+Abra os parâmetros no contexto correspondente: curso e ramo em Planejamento,
+microssequência junto da Explicação e unidade em sua inspeção de Conteúdo.
+O valor vigente aparece primeiro; significado, origem, justificativa, alcance
+e aplicação ficam nos detalhes. A folha contextual preserva leitura, foco,
+rolagem e rascunho. Configurações reúne preferências pessoais; o desenho do
+curso permanece vinculado a seus objetos.
 
 O seletor de escopo permite consultar curso, módulo, lição, microssequência e
 unidade. **Automático**, valor fixo e valor herdado conservam seus significados;
@@ -231,12 +250,12 @@ mudar o escopo de consulta não modifica o desenho. Ajustes ainda não salvos
 permanecem associados ao escopo em que foram feitos; volte a ele para salvar
 ou descartar a alteração.
 
-O catálogo organiza as escolhas por conteúdo, prática, conversa e cadência.
+O catálogo define natureza, significado, efeito e escopos de cada escolha.
 Além de novidade, explicações, quantidade e variação de prática, permite escolher
-distribuição e posição das práticas. Granularidade de partes e lotes e frequência
-de pausa são decisões independentes. A conversa pode favorecer concisão, debate
-ou explicação; isso não reduz o material didático. Alvos de palavras são flexíveis
-e não autorizam compressão. Direção editorial e componentes têm ajustes próprios.
+distribuição e posição das práticas. Preferências pessoais de conversa e cadência
+ficam em Configurações; valores já fixados no curso ou para pesquisa conservam
+seu alcance. Alvos de palavras são flexíveis e não autorizam compressão.
+Direção editorial e componentes têm ajustes próprios.
 
 **Fixar valor** registra uma decisão sua ou uma condição de pesquisa, com
 justificativa. **Automático pelo contexto** delega uma escolha explicada à IA
@@ -375,7 +394,8 @@ original pela mais nova silenciosamente.
    pelo conector; o link identifica o objeto e não substitui essa leitura.
 4. Examine a proposta. Acrescente condições, discorde ou peça outra solução
    enquanto ela não representar sua intenção.
-5. Autorize explicitamente a operação somente depois de concordar com o efeito.
+5. Decida os efeitos materiais ainda não combinados; o trabalho já autorizado
+   segue conforme o recorte, a cadência e os pontos de revisão escolhidos.
 6. Volte ao AraLearn e confira o resultado no mesmo curso.
 
 O pedido é opcional e permanece selecionável se a cópia automática estiver
@@ -383,33 +403,41 @@ indisponível. Não envia conteúdo nem abre uma sessão de IA por conta própri
 Observações e ajustes de Parâmetros continuam disponíveis como registros do
 curso. O cliente conectado obtém o contexto pelas operações autorizadas e
 devolve um endereço direto para reinspeção. Uma conversa ou proposta não altera
-o curso; a aprovação humana do conteúdo é uma ação distinta na Autoria.
+o curso. A declaração humana de revisão é uma ação distinta por Explicação ou
+unidade, disponível na interface e na tarefa `declarar_revisao` mediante decisão
+expressa sobre o conteúdo salvo referenciado.
 
 No Planejamento, **Explicação prevista** revela finalidade, pressupostos,
 relações a desenvolver e fontes. Ausência de plano ou fonte aparece como
 pendência. O estado **Conteúdo produzido** de uma parte informa que há unidades
 materializadas; não declara revisão humana. Abra o conteúdo para examinar a
-Explicação compartilhada, as unidades e os vínculos antes de aprovar o conjunto.
+Explicação, as unidades e os vínculos pertinentes. Cada objeto tem sua própria
+marca reversível, desatualizada por mudança material. Salvar uma edição não
+marca revisão. Uma edição pendente precisa ser salva ou descartada antes da declaração.
 
 Em Parâmetros de uma unidade, **Definição e origem** separa configuração atual
 e registro usado na produção, com seus motivos e alcances. Um ajuste salvo
 orienta a próxima produção ou alteração solicitada; não reescreve as unidades
 existentes. Sem registro aplicado, a tela não o deduz da configuração atual.
 
-Primeiro, o GPT apresenta uma síntese do mapa curricular global e um link para
-inspecionar módulos, lições, microssequências, dependências e cobertura. A pessoa
-autora pode ajustar ordem, escopo e ênfase. Somente o mapa visto pode ser
-aprovado, e nenhuma unidade de estudo é criada nessa etapa.
+O GPT consulta as preferências e o estado corrente. O mapa pode evoluir por
+recortes, e sua aprovação usa a referência da versão completa inspecionada.
+Bases explicativas e fontes podem ser desenvolvidas antes das unidades,
+inclusive com o mapa em rascunho. No Ciclo completo, o desenho e as unidades
+partem dessas bases salvas; abrir uma base não chama modelo de linguagem.
 
-Depois, o GPT propõe brevemente a progressão da primeira parte operacional.
-Quando ela é aprovada, o conteúdo materializado aparece em Conteúdo. A inspeção
-mostra as unidades reais e, quando pertinente, as ideias introduzidas, as ideias
-estabelecidas usadas e as retomadas. O mesmo ciclo continua para a parte
-seguinte, sem expor detalhes técnicos da execução.
+As partes organizam a produção de unidades segundo a cadência combinada. O
+resultado confirmado aparece em Conteúdo. A inspeção mostra as unidades reais
+e, quando pertinente, as ideias introduzidas, estabelecidas usadas e retomadas.
+Os pontos de revisão indicam onde inspecionar; não declaram revisão automaticamente.
 
 Curso, módulo, lição, tópico, microssequência, unidade, parâmetro, fonte e âncora
 podem ser alvos de leitura ou alteração conforme a operação disponível.
-Materialização continua restrita à parte operacional.
+A produção de unidades usa uma parte operacional; bases explicativas podem ser
+salvas separadamente. O [catálogo 4.0.0 de 54 tarefas](autoria-mcp.md#tarefas-disponíveis)
+também permite renomear e excluir cursos próprios, incluir ou editar ramos,
+mover, reordenar, duplicar e remover ramos completos, reordenar unidades e gerir
+acesso, fontes e políticas dentro da autorização vigente.
 
 No modo automático, ao voltar para a guia ou janela do AraLearn, a aplicação relê o cabeçalho
 canônico e atualiza a área visível. Isso também ocorre quando outra janela
@@ -428,12 +456,11 @@ comportamento abrange Parâmetros, fontes e Âncoras, Observações na caixa aut
 e em Conteúdo. **Descartar** ou **Cancelar** remove o rascunho de propósito.
 
 Se a rede cair depois do envio e não for possível saber se o servidor confirmou
-a mudança, a mensagem oferece a repetição natural pelo mesmo formulário. Sem
-editar os campos, essa nova tentativa reutiliza o comando, as versões, as
-identidades geradas e o mesmo identificador de pedido. O servidor devolve o
-recibo anterior em vez de duplicar o efeito. Recupere o resultado dessa tentativa
-antes de preparar uma alteração diferente; uma nova intenção precisa partir do
-estado confirmado.
+a mudança, retome pelo mesmo formulário. O aplicativo relê o estado e procura
+a confirmação da tentativa original; quando precisa confirmá-la por novo envio,
+reutiliza comando, versões e identidades. A ausência momentânea de recibo não
+prova que a escrita não ocorreu. Recupere o resultado antes de preparar uma
+alteração diferente; uma nova intenção precisa partir do estado confirmado.
 
 Rascunhos de cópias antigas com resposta perdida podem continuar guardados no
 dispositivo. O aplicativo consulta a prova da gravação anterior e, quando
@@ -458,10 +485,12 @@ próprio conteúdo.
 No localizador, **Ir à atualização mais recente** abre a unidade modificada mais
 recentemente no escopo corrente. **Atualizado em** informa essa atualização,
 não a data de criação. A partir desse ponto, anterior e próxima continuam pela
-ordem curricular. Se o escopo ainda não tem unidades, **Abrir mapa curricular**
-oferece uma próxima ação.
+ordem curricular. Uma microssequência sem unidades ainda permite abrir sua
+Explicação, fontes e parâmetros; **Abrir mapa curricular** oferece o contexto
+do ramo. Ausência de unidades não implica ausência de base salva.
 
-**Fontes**, **Observações** e **Parâmetros** abrem folhas sobre a unidade corrente.
+Referências ficam no corpo da leitura. Os controles de autoria para fontes,
+**Observações** e **Parâmetros** abrem detalhes sobre o objeto corrente.
 Fechar a folha devolve a leitura, a posição e o foco sem abandonar o rascunho de
 edição que estava aberto. Consultar contexto não salva nem aplica uma correção
 automaticamente. No curso, módulo, lição e microssequência, **Editar** abre os
@@ -487,20 +516,25 @@ revisão, procura a mesma identidade de unidade.
 
 ## Usar Revisão
 
-Em **Revisão**, a tarefa **Observações** reúne as Anotações do curso.
+Em **Revisão**, a tarefa **Observações** reúne os registros do curso.
 Use filtros para encontrar o alvo e abra o detalhe para considerar, responder,
 resolver, reabrir, retirar ou revisar o registro, conforme as ações permitidas.
 
-Uma Observação salva fica visível no alvo e na caixa de entrada autoral. O
-ChatGPT conectado pode ler as Observações pendentes, discutir uma proposta e,
-depois da aprovação explícita, executar a alteração pertinente ou registrar a
-decisão de manter o estado. O resultado atualizado permanece no mesmo curso.
+Cada Explicação e unidade mantém uma fila durável de observações autorais com
+múltiplas entradas identificadas e versionadas. O campo de texto acrescenta uma
+entrada; o ícone com contagem abre a fila para inspeção e edição. O ChatGPT
+conectado lê as pendências pertinentes e trata as compatíveis com o pedido.
+Somente a versão exata cuja correção foi persistida e confirmada por releitura
+sai da fila. Ler, responder ou iniciar uma tentativa não consome a entrada;
+versão editada, conflito ou aplicação parcial permanece pendente.
 
 Para pedir uma correção ampla, use o GPT conectado. Ele consulta as Observações
 abertas, prepara uma revisão com progressão, pré-requisitos, transições,
 exemplos e prática afetados e apresenta uma proposta. Depois da decisão,
 `aplicar_correcoes` grava o conjunto aprovado. Volte ao deep link e reinspecione
-as unidades de estudo; aplicação não demonstra que a questão foi resolvida.
+as bases e unidades afetadas; aplicação não demonstra que a questão foi resolvida.
+Se a resposta se perder, `retomar_correcao` reconcilia conteúdo, fila e tentativa
+original. Consumir uma observação corrigida não declara revisão humana.
 
 A identificação da pessoa acompanha a observação; uma contribuição do estudante
 não autoriza a edição do curso. Não haver observações pendentes também não
@@ -570,7 +604,7 @@ mesmo curso vivo.
 Conteúdo já carregado pode ser estudado sem rede. Progresso e marcas **Rever**
 usam a fila do estado pessoal; Observações usam outra fila e outra cópia local.
 No modo automático, o retorno da conexão permite comparar a revisão remota e
-enviar operações pendentes. Em **Conta e aparência → Sincronização**, o modo
+enviar operações pendentes. Em **Configurações → Sincronização e dados deste dispositivo**, o modo
 **Manual** suspende esse intercâmbio de fundo e a atualização do conteúdo aberto.
 A nuvem sincroniza por solicitação; salvar uma alteração autoral ou enviar uma
 observação permanece uma ação explícita. A preferência pertence ao dispositivo,
@@ -630,7 +664,7 @@ recentes importantes.
 
 ## Sair
 
-Em **Conta e aparência**, abra **Dados e conta** e use **Sair**. Se houver uma interrupção, o aplicativo
+Em **Configurações → Conta**, use **Sair**. Se houver uma interrupção, o aplicativo
 permite repetir a saída.
 Sair encerra a sessão, mas cursos, estado pessoal e filas já gravados localmente
 podem permanecer no dispositivo. A confirmação avisa que uma alteração ainda
@@ -644,8 +678,8 @@ preserva texto que ainda exista apenas num formulário aberto.
 
 ## Excluir a conta
 
-1. Abra **Conta e aparência**.
-2. Abra **Dados e conta** e use **Excluir conta**.
+1. Abra **Configurações**.
+2. Abra **Conta** e use **Excluir conta**.
 3. Digite exatamente `EXCLUIR MINHA CONTA`.
 
 A operação exige conexão e é irreversível. O aplicativo envia uma única

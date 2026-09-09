@@ -210,6 +210,10 @@ test("MCP e Actions orientam reler biblioteca depois de confirmação incerta, s
     const failure = channel === "action" ? payload : payload.result.structuredContent;
     assert.equal(failure.error.code, "course_media_write_uncertain");
     assert.equal(failure.error.retryable, false); assert.match(failure.nextDecision, /Consulte os áudios/u);
+    assert.match(failure.nextDecision, /mesma tentativa.*sem reaplicar/u);
+    assert.doesNotMatch(failure.nextDecision, /pendências|observações/u);
     assert.equal(adapter.calls.length, 2); assert.equal(adapter.calls[0].requestId, adapter.calls[1].requestId);
+    assert.equal(failure.error.recovery.requestId, adapter.calls[0].requestId);
+    assert.equal(failure.error.recovery.courseId, COURSE_ID);
   }
 });

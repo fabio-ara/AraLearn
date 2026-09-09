@@ -475,7 +475,7 @@ function validateModule(moduleValue, path, errors) {
   };
 }
 
-function validateCourse(course, path, errors) {
+function validateCourse(course, path, errors, { allowIncompleteCurriculum = false } = {}) {
   if (!isPlainObject(course)) {
     pushError(errors, path, "Curso deve ser objeto.");
     return null;
@@ -483,7 +483,7 @@ function validateCourse(course, path, errors) {
   rejectUnknownFields(course, COURSE_FIELDS, path, errors);
   const modulesInput = validateRequiredArray(course, "modules", path, errors);
   validateSiblingIds(modulesInput, `${path}.modules`, errors, "módulos do curso");
-  validateCourseDependencies(modulesInput, `${path}.modules`, errors);
+  if (!allowIncompleteCurriculum) validateCourseDependencies(modulesInput, `${path}.modules`, errors);
   return {
     id: validateRequiredText(course, "id", path, errors, "course.id"),
     title: validateRequiredText(course, "title", path, errors, "course.title", {
@@ -557,7 +557,7 @@ export function validateCourseEntityContent(entityType, entity) {
   return { valid: true, errors: [], normalized: relationFree };
 }
 
-export function validateProjectDocument(document) {
+export function validateProjectDocument(document, options = {}) {
   const errors = [];
   if (!isPlainObject(document)) {
     return { ok: false, errors: [{ path: "$", message: "Projeto deve ser um objeto." }] };
@@ -576,7 +576,7 @@ export function validateProjectDocument(document) {
   validateSiblingIds(coursesInput, "$.courses", errors, "cursos do projeto");
   validateEntityIdsPerCourse(coursesInput, errors);
   const courses = coursesInput
-    .map((course, index) => validateCourse(course, `$.courses[${index}]`, errors))
+    .map((course, index) => validateCourse(course, `$.courses[${index}]`, errors, options))
     .filter(Boolean);
   return finalizeValidation(errors, {
     contract: PROJECT_CONTRACT,

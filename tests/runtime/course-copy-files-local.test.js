@@ -6,6 +6,8 @@ import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 import { createCourseCopyRequestIdentity } from "../../src/domain/courseCopy.js";
+import { createConfirmedLocalUser, signInLocalUser, removeLocalUser, createLocalFixtureClient,
+  recordLocalFixtureFiles } from "../support/localSupabaseE2e.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import { createSyntheticWave, createAudioCourseRows, AUDIO_UNIT_ID } from "../fixtures/package/course-audio.js";
 
@@ -48,15 +50,8 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
   const marker = randomUUID();
   const proof = { marker, type: "API e Storage locais reais; fixture sintética", checks: [], courseIds: [], userIds: [], cleanup: [] };
   const courses = new Set();
+  const config = { projectUrl: status.API_URL, publishableKey: status.ANON_KEY, adminKey: status.SERVICE_ROLE_KEY };
   let ownerId, api, primaryError, phase = "readiness";
-  const auth = async (path, { body, admin = false, method = "POST" } = {}) => {
-    const response = await fetch(`${status.API_URL}/auth/v1/${path}`, { method, redirect: "manual",
-      headers: { apikey: admin ? status.SERVICE_ROLE_KEY : status.ANON_KEY,
-        ...(admin ? { Authorization: `Bearer ${status.SERVICE_ROLE_KEY}` } : {}), "Content-Type": "application/json" },
-      ...(body ? { body: JSON.stringify(body) } : {}) });
-    assert.ok(response.ok, `Auth da fixture: HTTP ${response.status}`);
-    return response.status === 204 ? null : response.json();
-  };
   const removeCourse = async courseId => {
     const receipt = await api.maintainCourse({ courseId, operation: "delete_owned_course", confirmed: true, requestId: randomUUID() });
     assert.equal(receipt.status, "completed"); courses.delete(courseId);
@@ -67,9 +62,13 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
     assert.equal(health.status, 401, "A stack local deve ter Edge ativo e JWT obrigatório.");
     phase = "own account";
     const email = `copy-files-${marker}@example.test`, password = `Synthetic-306-${randomUUID()}-A9!`;
-    const owner = await auth("admin/users", { admin: true, body: { email, password, email_confirm: true } });
+    const createdUser = await createConfirmedLocalUser(config, { email, password, marker });
+    assert.equal(createdUser.response.status, 200);
+    const owner = createdUser.payload;
     ownerId = owner.id; proof.userIds.push(ownerId);
-    const session = await auth("token?grant_type=password", { body: { email, password } });
+    const signedIn = await signInLocalUser(config, { email, password });
+    assert.equal(signedIn.response.status, 200);
+    const session = signedIn.payload;
     api = new CourseApiClient({ projectUrl: status.API_URL, publishableKey: status.ANON_KEY,
       authClient: { getAccessToken: async () => session.access_token },
       fetchImpl: (url, options) => {
@@ -77,6 +76,7 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
         const headers = new Headers(options.headers); headers.set("Origin", origin);
         return fetch(url, { ...options, headers, redirect: "manual" });
       } });
+    api = await createLocalFixtureClient(config, { ownerId, accessToken: session.access_token, origin, client: api });
     const sourceId = "source-copy-files", anchorId = "page-copy-files", linkId = "link-copy-files";
     const original = await api.createCourse({ title: `Arquivos sintéticos ${marker}`, objective: "Conferir cópia independente de arquivos.", requestId: randomUUID() });
     const courseId = original.courseId; courses.add(courseId); proof.courseIds.push(courseId);
@@ -86,6 +86,7 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
     const media = { contentHash: sha256(wave), byteSize: wave.byteLength, mediaType: "audio/wav" };
     const pdfHash = sha256(pdf);
     proof.files = [{ kind: "wav", ...media }, { kind: "pdf", contentHash: pdfHash, byteSize: pdf.length }];
+    recordLocalFixtureFiles(config, { ownerId, courseId, files: proof.files });
     phase = "audio ingestion";
     revision = (await api.uploadCourseAudio({ courseId, expectedCourseRevision: revision, requestId: randomUUID(),
       file: new File([wave], "sinal-sintetico.wav", { type: "audio/wav" }) })).courseRevision;
@@ -132,6 +133,7 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
     const originalUrls = await download(courseId, revision);
     const request = { sourceCourseId: courseId, expectedSourceRevision: revision, title: `Cópia de arquivos ${marker}`, confirmed: true, ...createCourseCopyRequestIdentity() };
     const copied = await api.copyCourse(request); const copyId = copied.targetCourseId;
+    recordLocalFixtureFiles(config, { ownerId, courseId: copyId, files: proof.files });
     courses.add(copyId); proof.courseIds.push(copyId);
     assert.equal((await api.copyCourse(request)).targetCourseId, copyId);
     const copiedUrls = await download(copyId, 1);
@@ -157,7 +159,7 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
       catch (error) { primaryError ||= error; proof.cleanup.push({ courseId, status: "pending", code: error.code ?? null }); }
     }
     if (ownerId && courses.size === 0) {
-      try { await auth(`admin/users/${ownerId}`, { admin: true, method: "DELETE" }); proof.cleanup.push({ userId: ownerId, status: "deleted" }); }
+      try { await removeLocalUser(config, ownerId); proof.cleanup.push({ userId: ownerId, status: "deleted" }); }
       catch (error) { primaryError ||= error; }
     }
     proof.ok = !primaryError;

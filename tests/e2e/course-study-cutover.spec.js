@@ -322,8 +322,9 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([]);
   await page.getByRole("button", { name: "Tentar novamente Curso A" }).press("Enter");
   await openFirstStudyUnitByClicks(page);
-  await page.getByRole("button", { name: "Fontes" }).click();
+  await page.getByRole("button", { name: "Explicação" }).click();
   await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar Explicação", exact: true }).click();
   await page.evaluate(() => {
     for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
@@ -720,25 +721,25 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toBeVisible();
 
   await expect.poll(() => page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.locator("[data-action='toggle-citations']").click();
-  await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
+  await page.locator("[data-action='open-explanation']").click();
+  await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeVisible();
   await expect(page.getByText("Fonte somente citada", { exact: true })).toBeVisible();
   await expect(page.getByText("Capítulo 4, seção 2 · pp. 8–9", {
     exact: true
   })).toBeVisible();
   await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Abrir fonte" })).toHaveCount(1);
-  await expect(page.locator(".study-citations-panel"))
+  await expect(page.locator(".study-explanation-panel"))
     .not.toContainText("Fonte oculta");
-  await expect(page.locator(".study-citations-panel"))
+  await expect(page.locator(".study-explanation-panel"))
     .not.toContainText("Legado não resolvido");
-  await expect(page.locator(".study-citations-panel [data-source-action]")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeInViewport();
-  await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeInViewport();
-  expect(await page.locator(".study-citations-panel").evaluate((panel) =>
-    panel.parentElement?.classList.contains("study-citations-overlay"))).toBe(true);
-  await expect(page.getByRole("dialog", { name: "Fontes", exact: true })).toBeVisible();
+  await expect(page.locator(".study-explanation-panel [data-source-action]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Fechar Explicação" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Fechar Explicação" })).toBeInViewport();
+  await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeInViewport();
+  expect(await page.locator(".study-explanation-panel").evaluate((panel) =>
+    panel.parentElement?.classList.contains("study-explanation-overlay"))).toBe(true);
+  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
   expect(await page.locator(".app-shell > .screen").evaluate((screen) => screen.inert)).toBe(true);
   expect(await page.evaluate(() => ({
     documentFits: document.documentElement.scrollHeight <= innerHeight + 1,
@@ -746,28 +747,28 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
       document.querySelector(".microsequence-generator-screen").clientHeight + 1,
     contentOverflowY: getComputedStyle(document.querySelector(".card-sheet-content")).overflowY
   }))).toEqual({ documentFits: true, outerScrollable: false, contentOverflowY: "auto" });
-  await page.locator(".study-citations-body").evaluate((content) => {
+  await page.locator(".study-explanation-body").evaluate((content) => {
     content.scrollTop = content.scrollHeight;
   });
   await expect(page.getByText("Fonte extensa 18", { exact: true })).toBeInViewport();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Fontes", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar Explicação", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
   await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fechar fontes" }).click();
+  await page.getByRole("button", { name: "Fechar Explicação" }).click();
 
   await page.evaluate(async (documentValue) => {
     globalThis.__courseStudyProbe.citationRevision = 5;
     await globalThis.__courseStudyApp.replaceProject(structuredClone(documentValue));
   }, project);
-  await expect(page.locator(".study-citations-panel")).toHaveCount(0);
-  await page.locator("[data-action='toggle-citations']").click();
+  await expect(page.locator(".study-explanation-panel")).toHaveCount(0);
+  await page.locator("[data-action='open-explanation']").click();
   await expect(page.getByText("Fonte somente citada atualizada", { exact: true })).toBeVisible();
   await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(2);
-  await page.getByRole("button", { name: "Fechar fontes" }).click();
+  await page.getByRole("button", { name: "Fechar Explicação" }).click();
 
   await page.evaluate(() => globalThis.__courseStudyApp.setOfflineStatus(true));
   await page.getByRole("button", { name: "Sem conexão" }).click();
@@ -1018,7 +1019,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
     "Nenhum Curso está disponível para estudo nesta conta."
   )).toBeVisible();
   await expect(page.locator(".study-observation-sheet")).toHaveCount(0);
-  await expect(page.locator(".study-citations-panel")).toHaveCount(0);
+  await expect(page.locator(".study-explanation-panel")).toHaveCount(0);
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toHaveCount(0);
   await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toHaveCount(0);
 });

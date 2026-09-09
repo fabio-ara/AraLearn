@@ -9,6 +9,27 @@ const SAFE_NUMERIC_DETAIL_KEYS = new Set([
   "expectedRevision", "actualRevision", "currentRevision"
 ]);
 
+export function projectHumanWriteRecovery(error) {
+  if (!["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error?.code)) {
+    return undefined;
+  }
+  const details = error.details;
+  if (!details || typeof details !== "object" || Array.isArray(details) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(details)) ||
+      typeof details.requestId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(details.requestId) ||
+      typeof details.operation !== "string" || !/^[A-Za-z][A-Za-z0-9_.:-]{0,95}$/u.test(details.operation) ||
+      Object.hasOwn(details, "targetCourseId") &&
+        (typeof details.targetCourseId !== "string" || !UUID.test(details.targetCourseId))) {
+    return undefined;
+  }
+  const structuralResume = ["alterar_curso", "salvar_ramo_curricular", "mover_ramo_curricular",
+    "duplicar_ramo_curricular", "remover_ramo_curricular", "reordenar_unidades"].includes(details.operation) &&
+    typeof details.retomada === "string" && details.retomada.length <= 480000 && /^[A-Za-z0-9_-]+$/u.test(details.retomada);
+  return { requestId: details.requestId, operation: details.operation,
+    ...(Object.hasOwn(details, "targetCourseId") ? { courseId: details.targetCourseId.toLowerCase() } : {}),
+    ...(structuralResume ? { retomada: details.retomada } : {}) };
+}
+
 function publicErrorMessage(error) {
   if (UNKNOWN_FIELD_MESSAGE.test(String(error.message || ""))) {
     return "O pedido contém uma informação não reconhecida.";
@@ -26,7 +47,7 @@ function projectedDiagnostic(value, key) {
   if (new Set(["field", "path", "rule"]).has(key)) {
     return DIAGNOSTIC_PATH.test(value) ? value : undefined;
   }
-  if (new Set(["parameterId", "studyUnitId"]).has(key)) {
+  if (new Set(["parameterId", "studyUnitId", "requestId", "operation"]).has(key)) {
     return DIAGNOSTIC_ID.test(value) ? value : undefined;
   }
   return undefined;
@@ -36,7 +57,7 @@ function projectDiagnosticObject(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const projected = {};
   for (const key of [
-    "field", "path", "rule", "parameterId", "studyUnitId", "targetCourseId",
+    "field", "path", "rule", "parameterId", "studyUnitId", "targetCourseId", "requestId", "operation",
     ...SAFE_NUMERIC_DETAIL_KEYS
   ]) {
     const normalized = projectedDiagnostic(value[key], key);
@@ -110,14 +131,15 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
-  if (error.code === "course_source_pdf_write_uncertain") {
+  if (new Set(["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"]).has(error.code)) {
     return {
       strategy: "stop",
       retryable: false,
-      requestIdMode: "none",
+      requestIdMode: "same",
       steps: [
-        "Releia as fontes antes de decidir se ainda precisa incorporar o PDF.",
-        "Não repita a incorporação enquanto o resultado corrente não for conhecido."
+        "Conserve a identidade e os dados desta tentativa enquanto seu resultado estiver incerto.",
+        "Consulte o recibo e o objeto salvo; uma ausência imediata não confirma que a escrita terminou sem efeito.",
+        "Retome pela mesma tentativa quando houver confirmação suficiente; não reconstrua a operação com nova identidade."
       ]
     };
   }

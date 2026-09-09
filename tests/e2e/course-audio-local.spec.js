@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
+import { createConfirmedLocalUser, createLocalFixtureClient, recordLocalFixtureFiles, removeLocalUser, signInLocalUser } from "../support/localSupabaseE2e.js";
 import { createSyntheticWave, createSyntheticMp3, createAudioCourseRows, audioStudyPath,
   AUDIO_COURSE_TITLE, AUDIO_UNIT_ID, CALCULATOR_UNIT_ID, AUDIO_ALTERNATIVE } from "../fixtures/package/course-audio.js";
 
@@ -10,25 +11,20 @@ const PUBLIC_KEY = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "");
 const ADMIN_KEY = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 const ORIGIN = `http://127.0.0.1:${process.env.ARALEARN_E2E_PORT || "4182"}`;
 const PASSWORD = "Synthetic-audio-303-A9!";
+const FIXTURE_CONFIG = { projectUrl: PROJECT_URL, publishableKey: PUBLIC_KEY, adminKey: ADMIN_KEY };
 const digest = async bytes => Buffer.from(await crypto.subtle.digest("SHA-256", bytes)).toString("hex");
 const reference = value => ({ contentHash: value.contentHash, byteSize: value.byteSize, mediaType: value.mediaType });
 
-async function authRequest(path, { method = "POST", admin = false, body } = {}) {
-  const response = await fetch(`${PROJECT_URL}/auth/v1/${path}`, { method,
-    headers: { apikey: admin ? ADMIN_KEY : PUBLIC_KEY, ...(admin ? { Authorization: `Bearer ${ADMIN_KEY}` } : {}), "Content-Type": "application/json" },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  expect(response.ok, `Auth local: HTTP ${response.status}`).toBe(true);
-  return response.status === 204 ? null : response.json();
-}
 async function person(role, createdUsers) {
-  const email = `audio303-${role}-${Date.now()}-${process.pid}@aralearn.local`;
-  const user = await authRequest("admin/users", { admin: true, body: { email, password: PASSWORD, email_confirm: true,
-    user_metadata: { test: "course-audio-local-303" } } });
+  const email = `audio303-${role}-${Date.now()}-${process.pid}@aralearn.test`;
+  const created = await createConfirmedLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD, marker: "course-audio-local-303" });
+  expect(created.response.ok).toBe(true);
+  const user = created.payload;
   createdUsers.push({ id: user.id, email });
-  const session = await authRequest("token?grant_type=password", { body: { email, password: PASSWORD } });
+  const session = await signInLocalUser(FIXTURE_CONFIG, { email, password: PASSWORD });
+  expect(session.response.ok).toBe(true);
   const handle = `audio-${role}-${user.id.slice(0, 8)}`;
-  const client = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLIC_KEY,
-    authClient: { getAccessToken: async () => session.access_token } });
+  const client = await createLocalFixtureClient(FIXTURE_CONFIG, { ownerId: user.id, accessToken: session.payload.access_token, origin: ORIGIN });
   await client.updatePersonProfile({ handle });
   return { id: user.id, email, handle, client };
 }
@@ -44,7 +40,7 @@ async function signInBrowser(page, user) {
   await configureBrowser(page); await page.goto("/?acesso=entrar");
   await page.getByLabel("E-mail").fill(user.email); await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Conta e aparência" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Configurações" })).toBeVisible();
 }
 const contextOptions = { viewport: { width: 390, height: 844 }, serviceWorkers: "block", permissions: ["local-network-access"] };
 function failures(page) {
@@ -82,6 +78,8 @@ test.describe("áudio persistido no Supabase local", () => {
       const catalog = async () => owner.client.loadCourseMedia(courseId, { expectedRevision: await revision(), mode: "catalog", limit: 20 });
       const wave = createSyntheticWave(), mp3 = createSyntheticMp3(), orphan = createSyntheticWave({ frequency: 660 });
       const waveHash = await digest(wave), mp3Hash = await digest(mp3), orphanHash = await digest(orphan);
+      await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, courseId,
+        files: [waveHash, mp3Hash, orphanHash].map(contentHash => ({ kind: "course-audio", contentHash })) });
       await writeFile(info.outputPath("fixture-identities.json"), JSON.stringify({ courseId, ownerId: owner.id, studentId: student.id,
         waveHash, mp3Hash, orphanHash }, null, 2));
       const ownerContext = await browser.newContext(contextOptions); contexts.push(ownerContext);
@@ -141,16 +139,22 @@ test.describe("áudio persistido no Supabase local", () => {
       await owner.client.grantCourseAccess({ courseId, userId: student.id, handle: student.handle, confirmed: true, canCopy: false });
       let currentRevision = await revision();
       await assertDownloaded(owner.client, { courseId, expectedRevision: currentRevision, studyUnitId: null, contentHash: orphanHash }, orphan);
-      // Uma declaração de vínculo não aprova o conteúdo recém-produzido.
+      // Conteúdo salvo e direito de acesso permitem estudar sem declarar revisão.
+      await assertDownloaded(student.client, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash }, wave);
+      await owner.client.setContentReviewPolicy({ courseId, expectedRevision: currentRevision, policy: "reviewed_only", requestId: crypto.randomUUID() });
+      currentRevision = await revision();
+      // Somente a política expressa exige uma marca atual para este objeto.
       await expect(student.client.getCourseMediaDownload({ courseId, expectedRevision: currentRevision,
         studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash })).rejects.toMatchObject({ status: 403 });
       const microsequenceId = rows.find(row => row.entityType === "microsequence").entityId;
-      const inspected = await owner.client.getMicrosequenceReview(courseId, microsequenceId);
-      expect(inspected.contentReview.state).toBe("draft");
       // Decisão somente desta fixture, pelo RPC real da sessão do proprietário.
-      const approved = await owner.client.approveMicrosequenceContent({ courseId, microsequenceId,
-        expectedBasisHash: inspected.basisHash, requestId: crypto.randomUUID() });
-      expect(approved.contentReview.state).toBe("current");
+      for (const [targetKind, targetId] of [["microsequence_explanation", microsequenceId], ["study_unit", AUDIO_UNIT_ID], ["study_unit", CALCULATOR_UNIT_ID]]) {
+        const inspected = await owner.client.getContentReview(courseId, targetKind, targetId);
+        expect(inspected.contentReview.state).toBe("draft");
+        const reviewed = await owner.client.setContentReview({ courseId, targetKind, targetId, reviewed: true,
+          expectedBasisHash: inspected.basisHash, requestId: crypto.randomUUID() });
+        expect(reviewed.contentReview.state).toBe("current");
+      }
       currentRevision = await revision();
       await assertDownloaded(student.client, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash }, wave);
       await assertDownloaded(student.client, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: mp3Hash }, mp3);
@@ -235,7 +239,10 @@ test.describe("áudio persistido no Supabase local", () => {
           await info.attach("cleanup-failure.txt", { body: String(error.message), contentType: "text/plain" });
         }
       }
-      if (cleanupCompleted) for (const user of createdUsers.toReversed()) await authRequest(`admin/users/${user.id}`, { method: "DELETE", admin: true });
+      if (cleanupCompleted) for (const user of createdUsers.toReversed()) {
+        const deleted = await removeLocalUser(FIXTURE_CONFIG, user.id);
+        expect([200, 204, 404]).toContain(deleted.response.status);
+      }
     }
     if (primaryError) throw primaryError;
     if (cleanupError) throw cleanupError;

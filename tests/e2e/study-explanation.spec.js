@@ -30,7 +30,7 @@ for (const width of [360, 390, 430, 1280]) {
     await openButton(page).focus(); await page.keyboard.press("Enter");
     await expect(overlay(page)).toBeVisible();
     await expect(page.getByRole("button", { name: "Fechar Explicação", exact: true })).toBeFocused();
-    await expect(page.locator(".study-explanation-body h3")).toContainText("Processos, interfaces e transporte");
+    await expect(page.locator(".study-explanation-body > h3")).toContainText("Processos, interfaces e transporte");
     await expect(page.locator(".study-explanation-body table")).toBeVisible();
     expect(await page.locator(".app-shell > .screen").evaluate(node => node.inert)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -50,45 +50,83 @@ for (const width of [360, 390, 430, 1280]) {
     await page.getByRole("button", { name: "Fechar Explicação", exact: true }).click();
     await page.evaluate(() => globalThis.__explanationFixture.openUnit("theory"));
     await openButton(page).click();
-    await expect(page.locator(".study-explanation-body h3")).toContainText("Processos, interfaces e transporte");
+    await expect(page.locator(".study-explanation-body > h3")).toContainText("Processos, interfaces e transporte");
     expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
     expect(errors).toEqual([]);
   });
 }
 
-test("fontes com ocorrência e PDF ocupam a mesma folha e retornam ao trecho", async ({ page }, testInfo) => {
+test("referência no fim da Explicação abre PDF e retorna à ocorrência sem ocultar a leitura", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 }); await mount(page);
   await openButton(page).tap();
-  const marker = overlay(page).getByRole("button", { name: "Referência 1", exact: true });
+  const marker = overlay(page).getByRole("button", { name: "Referência 1", exact: true }).first();
   await expect(marker).toBeVisible(); await marker.tap();
+  const reference = overlay(page).locator('[data-citation-reference-id="support-link"]');
+  await expect(reference).toBeFocused();
+  await expect(overlay(page).locator('.study-explanation-body > h3')).toBeAttached();
+  await expect(overlay(page).locator('.study-explanation-reading')).not.toHaveAttribute('hidden');
   await expect(page.getByRole("dialog")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Voltar à Explicação", exact: true })).toBeFocused();
-  await expect(overlay(page)).toContainText("Fonte sintética do mecanismo");
-  await expect(overlay(page)).toContainText("Mecanismo · p. 3");
+  await expect(reference).toContainText("Mecanismo · p. 3");
   await page.getByRole("button", { name: "Abrir PDF em p. 3 de Fonte sintética do mecanismo", exact: true }).tap();
   await expect.poll(() => page.evaluate(() => globalThis.__explanationFixture.probe.opened.length)).toBe(1);
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.opened[0])).toBe("https://example.test/synthetic.pdf?token=fixture-1#page=3");
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.downloads[0].reference.targetKind)).toBe("microsequence_explanation");
-  await page.screenshot({ path: testInfo.outputPath("explanation-sources-390.png"), fullPage: true });
-  await page.keyboard.press("Escape"); await expect(marker).toBeFocused();
-  await expect(overlay(page)).toBeVisible();
-  await page.getByRole("button", { name: "Fontes da Explicação", exact: true }).tap();
-  await expect(page.getByRole("dialog")).toHaveCount(1);
-  await page.getByRole("button", { name: "Voltar à Explicação", exact: true }).tap();
+  await page.screenshot({ path: testInfo.outputPath("explanation-sources-390.png") });
+  await reference.getByRole('button', { name: 'Voltar ao trecho 1 da referência 1 na Explicação', exact: true }).tap();
+  await expect(marker).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Fontes da Explicação', exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape"); await expect(openButton(page)).toBeFocused();
+});
+
+test("referências distinguem retornos múltiplos em 320px com texto 200%", async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 700 }); await mount(page, "?theme=dark&unit=practice");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  await openButton(page).tap();
+  const markers = overlay(page).getByRole("button", { name: "Referência 1", exact: true });
+  await expect(markers).toHaveCount(2);
+  await markers.nth(1).tap();
+  const reference = overlay(page).locator('[data-citation-reference-id="support-link"]');
+  await expect(reference).toBeFocused();
+  await reference.getByRole("button", { name: "Voltar ao trecho 2 da referência 1 na Explicação", exact: true }).tap();
+  await expect(markers.nth(1)).toBeFocused();
+  await markers.first().tap();
+  await reference.getByRole("button", { name: "Voltar ao trecho 1 da referência 1 na Explicação", exact: true }).tap();
+  await expect(markers.first()).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  const close = page.getByRole("button", { name: "Fechar Explicação", exact: true });
+  const closeBox = await close.boundingBox();
+  const titleBox = await overlay(page).getByRole("heading", { name: "Explicação", exact: true }).boundingBox();
+  expect(closeBox.x).toBeGreaterThan(titleBox.x);
+  await page.screenshot({ path: info.outputPath("explanation-citations-320-text200.png") });
+  await close.tap(); await expect(openButton(page)).toBeFocused();
+});
+
+test("acervo sem base mantém fontes existentes na folha proporcional ao conteúdo", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await mount(page, "?state=missing");
+  await expect(page.getByRole("button", { name: "Fontes", exact: true })).toHaveCount(0);
+  await openButton(page).tap();
+  await expect(overlay(page)).toContainText("Esta microssequência ainda não tem Explicação");
+  const source = overlay(page).locator('[data-citation-reference-id="support-link"]');
+  await expect(source).toContainText("Fonte sintética do mecanismo");
+  await expect(source.getByRole("button", { name: /Voltar ao trecho/u })).toHaveCount(0);
+  await source.getByRole("button", { name: "Abrir PDF em p. 3 de Fonte sintética do mecanismo", exact: true }).tap();
+  await expect.poll(() => page.evaluate(() => globalThis.__explanationFixture.probe.opened.length)).toBe(1);
+  await page.screenshot({ path: info.outputPath("legacy-references-390.png") });
+  await page.keyboard.press("Escape"); await expect(openButton(page)).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
 });
 
 test("apoio ausente, rascunho, offline e erro têm estados explícitos", async ({ page }) => {
   for (const [state, message] of [["missing", "Esta microssequência ainda não tem Explicação"],
-    ["draft", "Rascunho: este conteúdo ainda aguarda revisão"], ["error", "A Explicação desta cópia está indisponível"]]) {
+    ["draft", "Conteúdo salvo sem revisão autoral declarada"], ["error", "A Explicação desta cópia está indisponível"]]) {
     await mount(page, `?state=${state}`); await openButton(page).click();
     await expect(overlay(page)).toContainText(message);
     if (state === "error") await expect(overlay(page).getByRole("alert")).toHaveCount(1);
     await page.keyboard.press("Escape"); await expect(openButton(page)).toBeFocused();
   }
   await mount(page, "?state=offline"); await openButton(page).click();
-  await expect(page.locator(".study-explanation-body h3")).toContainText("Processos, interfaces e transporte");
-  await page.getByRole("button", { name: "Fontes da Explicação", exact: true }).click();
+  await expect(page.locator(".study-explanation-body > h3")).toContainText("Processos, interfaces e transporte");
+  await overlay(page).locator(".study-bibliography").first().scrollIntoViewIfNeeded();
   await expect(overlay(page)).toContainText("Fonte sintética do mecanismo");
   await page.getByRole("button", { name: "Abrir PDF em p. 3 de Fonte sintética do mecanismo", exact: true }).click();
   await expect(overlay(page)).toContainText("este PDF externo precisa de conexão");
@@ -101,14 +139,14 @@ test("mudança de conexão conserva overlay, foco e resposta pendente", async ({
   await answer.fill("Minha resposta pendente permanece aqui.");
   await openButton(page).click();
   await page.locator(".study-explanation-body").evaluate(node => { node.scrollTop = 180; });
-  await page.getByRole("button", { name: "Fontes da Explicação", exact: true }).focus();
+  await page.getByRole("button", { name: "Fechar Explicação", exact: true }).focus();
   expect(await page.locator(".study-explanation-body").evaluate(node => node.scrollTop)).toBe(180);
   await page.evaluate(() => {
     globalThis.__explanationFixture.probe.offline = true;
     globalThis.__explanationFixture.app.setOfflineStatus(true);
   });
   await expect(overlay(page)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Fontes da Explicação", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Fechar Explicação", exact: true })).toBeFocused();
   expect(await page.locator(".study-explanation-body").evaluate(node => node.scrollTop)).toBe(180);
   await page.keyboard.press("Escape"); await expect(answer).toHaveValue("Minha resposta pendente permanece aqui.");
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
@@ -154,6 +192,7 @@ test("apoio offline em 360x500 e texto150 alcança fim, tabela e fontes por toqu
   await body.focus(); await page.keyboard.press('Control+End');
   await expect.poll(() => body.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThanOrEqual(2);
   const lastLine = body.locator('[data-package-instance-id="selective-7"] p');
+  await lastLine.evaluate(node => node.scrollIntoView({ block: "end" }));
   const lastRect = await lastLine.evaluate(node => {
     const range = document.createRange(); range.selectNodeContents(node);
     const rects = [...range.getClientRects()]; return rects[rects.length - 1].toJSON();
@@ -169,7 +208,7 @@ test("apoio offline em 360x500 e texto150 alcança fim, tabela e fontes por toqu
   expect(cell.y + cell.height).toBeLessThanOrEqual(tools.y + 1);
   expect(cell.x + cell.width).toBeLessThanOrEqual(360);
   await page.screenshot({ path: info.outputPath('support-table-last-cell-360-short-text150.png') });
-  await page.getByRole('button', { name: 'Fontes da Explicação', exact: true }).tap();
+  await overlay(page).locator(".study-bibliography").first().scrollIntoViewIfNeeded();
   await expect(page.getByRole('dialog')).toHaveCount(1);
   const pdf = page.getByRole('button', { name: 'Abrir PDF em p. 3 de Fonte sintética do mecanismo', exact: true });
   await pdf.tap(); await expect(overlay(page)).toContainText('este PDF externo precisa de conexão');
@@ -179,7 +218,6 @@ test("apoio offline em 360x500 e texto150 alcança fim, tabela e fontes por toqu
   expect(errorBox.y).toBeGreaterThanOrEqual(frame.y - 1);
   expect(errorBox.y + errorBox.height).toBeLessThanOrEqual(488);
   await page.screenshot({ path: info.outputPath('support-sources-offline-360-short-text150.png') });
-  await page.keyboard.press('Escape');
   await close.focus(); await page.keyboard.press('Enter');
   await expect(openButton(page)).toBeFocused();
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);

@@ -214,8 +214,29 @@ resume o curso numa nota.
 
 A tipografia usa famílias do sistema para permanecer disponível sem conexão e
 conservar métricas adequadas a cada plataforma. A prosa principal parte de
-15,5 px e entrelinha de 1,5. Títulos distinguem somente os níveis necessários,
+`--type-prose` (0,96875 rem, equivalente a 15,5 px com raiz de 16 px) e
+entrelinha de 1,5. Cards e Explicação usam o mesmo papel `--resource-text`:
+cinza `gray-700` no claro e `gray-300` no escuro. O apoio usa
+`--resource-text-secondary`, distinto de indisponibilidade. Títulos distinguem somente os níveis necessários,
 sem competir com o conteúdo. Texto corrido não usa alinhamento justificado.
+
+A escala existente preserva 1 rem para alternativas e valores principais,
+0,9375 rem para código e tabelas, 0,875 rem para legendas e 0,8125 rem para
+metadados. Reduzir o corpo não é um mecanismo de ajuste automático de conteúdo.
+Títulos de unidade conservam maiúsculas, minúsculas e símbolos do autor;
+nenhuma transformação visual converte `TCP`, `pH` ou `NaCl` em outras grafias.
+Código, terminal e alternativas de código usam o único token `--font-mono`,
+mantendo espaços, linhas e literais. A família de interface não substitui
+fontes matemáticas nem altera glosas, IPA, ruby, CJK ou direção RTL.
+
+O [inventário de papéis do catálogo](componentes-didaticos.md#inventário-tipográfico-do-catálogo)
+relaciona os 38 pacotes, seus renderers e extremos pertinentes. Os testes
+[tipográficos](../tests/runtime/resource-typography.test.js) conferem tokens,
+contraste das combinações declaradas e preservação textual. Eles não medem
+métricas de fontes instaladas, reflow ou legibilidade dos pixels: 320 CSS px,
+ampliação de 200%, larguras móveis, temas e interação exigem a inspeção real
+coordenada no Chrome. SVGs com geometria calculada mantêm a família e o tamanho
+usados pelo motor; CSS não troca sua métrica depois do cálculo.
 
 A interface usa títulos de 16 px, com peso entre 550 e 600, controles textuais
 de 14 px e apoio de 13 px. Cinzas legíveis e pesos moderados organizam as tarefas;
@@ -310,6 +331,11 @@ dentro dela movem a representação; a pinça altera a ampliação; gestos fora 
 navegam na Unidade. Teclado alcança a área e seus controles. A tela cheia
 mantém ações de reduzir, ampliar e retornar, sem criar outra superfície de
 edição.
+
+O grafo matemático compartilha os controles de enquadramento, ampliação e retorno
+dos diagramas. Nos mapas de memória em telas estreitas, o endereço inicial e o
+final delimitam a descrição em linhas próprias, preservando a largura de leitura
+e a ordem dos segmentos.
 
 ## Prática, retorno e movimento
 

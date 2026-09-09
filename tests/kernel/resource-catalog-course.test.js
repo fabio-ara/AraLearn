@@ -319,17 +319,17 @@ test("catálogo MCP e recursos Edge respeitam orçamentos locais de regressão",
     javascriptRuntimeMetrics("src/resources"),
     javascriptRuntimeMetrics("supabase/functions/_shared/aralearn/runtime/resources")
   ]);
-  assert.equal(COURSE_HUMAN_TASKS.length, 27);
-  // Explicação/proposta, correções/fontes do apoio e continuação do preparo
-  // elevaram o registry de 47.991 para 53.476 bytes. Não são limites do fornecedor.
+  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  // Catálogo contextual 4.0.0: 100.059 bytes de tarefas e 107.919 de descoberta.
+  // Preferências, estrutura, revisão e fila mantêm schemas completos; limites locais.
   const registryBytes = byteLength(COURSE_HUMAN_TASKS);
-  assert.ok(registryBytes <= 54_000, `Registry: ${registryBytes} bytes UTF-8.`);
+  assert.ok(registryBytes <= 105_000, `Registry: ${registryBytes} bytes UTF-8.`);
   const tools = courseHumanTasksForPrincipal({ actorId: "synthetic-catalog-reader",
     scopes: ["authoring:read", "authoring:write"] });
   assert.deepEqual(tools.map(({ name }) => name), COURSE_HUMAN_TASKS.map(({ name }) => name));
   const discoveryBytes = byteLength({ jsonrpc: "2.0", id: 1,
     result: { tools, _meta: { humanTaskCatalog: COURSE_HUMAN_TASK_CATALOG_METADATA } } });
-  assert.ok(discoveryBytes <= 58_000, `tools/list: ${discoveryBytes} bytes UTF-8.`);
+  assert.ok(discoveryBytes <= 112_000, `tools/list: ${discoveryBytes} bytes UTF-8.`);
   assert.ok(discoveryBytes > registryBytes, "Descoberta inclui OAuth e metadata, não só o registry.");
   // O validador do documento é local; nenhuma função Edge o consome.
   const localValidator = path.join("kernel", "courseContract.js");

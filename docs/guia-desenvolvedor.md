@@ -37,6 +37,10 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 
 ## Percurso de dados
 
+As migrations usam LF também nos checkouts Windows, conforme `.gitattributes`.
+Isso preserva as comparações literais entre definições SQL e os trechos que
+as migrations transformam, independentemente da configuração `core.autocrlf`.
+
 Ao abrir um curso, o navegador busca a composição em páginas, valida o conjunto
 e só então promove a nova revisão local. Estado pessoal e Anotações possuem
 repositórios próprios e podem retomar envios depois de uma falha.
@@ -113,10 +117,14 @@ existentes.
 
 ## MCP e Actions
 
-`COURSE_HUMAN_TASKS` é a lista canônica das tarefas humanas. O MCP
-publica cada tarefa com metadados próprios; Actions cria um caminho HTTP para
-cada uma. Os schemas podem receber adaptações de transporte, como a referência
-de arquivo gerida pelo ChatGPT, mas os casos de uso e efeitos permanecem iguais.
+`COURSE_HUMAN_TASKS` é a lista canônica das 54 tarefas humanas. O MCP publica
+cada tarefa com metadados próprios. Actions usa o binding tipado de
+`courseActionBindings.js` para oferecê-las em 30 operações HTTP: seis grupos
+recebem `tarefa` e `argumentos`, e 24 operações diretas recebem os argumentos na
+raiz. O binding encaminha cada tarefa à mesma validação e ao mesmo caso de uso
+do MCP. As referências de arquivo geridas pelo ChatGPT permanecem na raiz das
+operações diretas de ingestão, conforme o
+[contrato de Actions](autoria-actions.md#operações).
 
 Ao alterar o catálogo:
 
@@ -148,6 +156,32 @@ Uma composição nova permanece candidata no IndexedDB até a validação integr
 Nunca apague a última revisão válida para aceitar uma candidata incompleta.
 Estado pessoal e Anotações possuem filas específicas. Planejamento, produção,
 fontes, configuração, revisão e Analytics exigem o estado remoto corrente.
+
+### Recuperação da exclusão de cursos
+
+Ao confirmar a exclusão ou a saída de um curso, o repositório de Estudo salva
+uma tentativa no compartimento IndexedDB da conta antes de enviar a ação. Ela
+contém ator, curso, operação, identidade da requisição, data e título para
+apresentação. O título não identifica o alvo. Uma resposta perdida, sessão
+expirada ou limpeza interrompida conserva essa tentativa; a Home oferece sua
+retomada mesmo quando o curso já não aparece na listagem.
+
+`CourseStudyRepository.resumeCourseLifecycle(courseId)` retoma somente uma
+tentativa guardada, na conta que a iniciou. A sessão pode ser renovada pelos
+mecanismos normais; a identidade da operação permanece igual. O endpoint de
+ciclo de vida reconcilia a exclusão e as intenções de remoção de arquivos,
+preservando referências de cópias independentes. O cliente encerra a tentativa
+apenas com contrato final correspondente e `fileCleanupPending:false`, seguido
+da limpeza da réplica local. Ausência na listagem e erro de transporte não
+confirmam conclusão. A interface não pede novamente a confirmação de uma
+tentativa já autorizada.
+
+`refreshPendingCourseLifecycles()` relê as tentativas persistidas e
+`loadPendingCourseLifecycles()` fornece seu snapshot para apresentação e
+instrumentação autorizada. Nenhum deles despacha exclusão. O teste focal
+`tests/runtime/course-lifecycle-recovery.test.js` usa IndexedDB local sintético
+e respostas simuladas; a prova de sessão, confirmação e limpeza no cliente
+hospedado permanece uma verificação separada.
 
 ## Interface
 
@@ -280,6 +314,11 @@ fixtures incluem Explicação e uma aprovação explicitamente simulada pelo RPC
 protegido; essa preparação não constitui revisão humana de um curso real.
 As revisões usadas após a aprovação são relidas, sem fixar o número anterior à
 mudança. Falhas HTTP inesperadas continuam reprovando a jornada.
+O inventário local de fixtures conserva cada tentativa e seu recibo de limpeza.
+Se o sistema de arquivos bloquear temporariamente a substituição do recibo, o
+helper reconcilia os bytes e retenta apenas a mesma renomeação, por prazo limitado.
+Uma falha persistente conserva o arquivo anterior e o temporário para recuperação;
+a operação remota não é repetida para reparar a gravação local do inventário.
 Fixtures de IndexedDB devem aguardar `transaction.oncomplete` antes de fechar
 a conexão de inspeção e abrir outra versão; o sucesso de uma requisição de
 leitura ainda não confirma o encerramento da transação.
@@ -314,6 +353,12 @@ quando seu código não foi alterado. Para o orquestrador, a opção corresponde
 `ARALEARN_LOCAL_FUNCTIONS_EXISTING=1`. Falha de
 limpeza bloqueia a prova. Contas e arquivos são sintéticos; esses testes não
 aprovam cursos reais nem substituem ChatGPT, MCP ou Actions hospedados.
+
+Quando uma jornada falha, o resumo da integração informa o teste, a localização
+e a primeira tentativa malsucedida, com até duas mensagens de erro. O runner
+remove credenciais antes de limitar o texto e mantém o relatório completo local.
+Esse diagnóstico conserva o resultado do gate e distingue falha funcional de
+limpeza já confirmada; etapas dependentes permanecem sem execução.
 
 O overlay de Explicação tem um percurso focal em
 `tests/e2e/study-explanation.spec.js`. Com a candidata web preparada para o

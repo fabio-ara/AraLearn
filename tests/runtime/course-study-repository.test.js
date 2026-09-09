@@ -38,6 +38,30 @@ async function explanationRepositoryFixture() {
     reference: [COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"], setFailure(value) { failure = value; } };
 }
 
+test("fontes da unidade conservam snapshot offline, invalidam revisão e são purgadas com o acesso", async () => {
+  const { repository, api, local, navigator, reference } = await explanationRepositoryFixture();
+  let reads = 0;
+  api.getStudyUnitCitations = async (courseId, studyUnitId, { expectedRevision }) => {
+    reads += 1;
+    return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+      courseId, courseRevision: expectedRevision, studyUnitId, citations: [] };
+  };
+  const saved = await repository.loadStudyUnitCitations(reference);
+  navigator.onLine = false;
+  assert.deepEqual(await repository.loadStudyUnitCitations(reference), saved);
+  assert.equal(reads, 1);
+  assert.equal(repository.loadStudyUnitCitationStatus(reference).offline, true);
+  await assert.rejects(repository.loadStudyUnitCitations([...reference.slice(0, 4), "other"]),
+    error => error.code === "study_citations_not_saved");
+  repository.loadedCourseById.get(COURSE_A).revision = 2;
+  await assert.rejects(repository.loadStudyUnitCitations(reference), error => error.code === "study_citations_not_saved");
+  navigator.onLine = true;
+  api.getStudyUnitCitations = async () => { throw Object.assign(new Error("Acesso encerrado"), { status: 403 }); };
+  await assert.rejects(repository.loadStudyUnitCitations(reference), error => error.status === 403);
+  assert.equal(await local.getCache(`course.v1.study-unit-citations:${COURSE_A}`), null);
+  assert.equal(repository.loadExplanationContext(reference), null);
+});
+
 test("apoio é recuperado da cópia aberta, sem rede, e conserva revisão, origem e estados honestos", async () => {
   const { repository, reference, calls } = await explanationRepositoryFixture();
   const before = repository.loadProject();

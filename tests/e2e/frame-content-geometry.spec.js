@@ -158,8 +158,8 @@ test("cabeçalho conserva título e retorno durante carga e erro", async ({ page
   }
 });
 
-test("cabeçalhos de todas as áreas conservam os controles nos mesmos pixels", async ({ page }, testInfo) => {
-  for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+  test(`cabeçalhos de todas as áreas conservam os controles nos mesmos pixels em ${width} ${theme}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await mount(page, theme);
     await page.evaluate(() => window.renderFrameProbe("course", false));
@@ -184,8 +184,8 @@ test("cabeçalhos de todas as áreas conservam os controles nos mesmos pixels", 
     }
     await page.evaluate(() => window.renderAuthorHeader(false, "list"));
     await page.screenshot({ path: testInfo.outputPath(`all-headers-list-${width}-${theme}.png`) });
-  }
-});
+  });
+}
 
 for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
   test(`frames e tipografia independem de texto em ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -253,6 +253,8 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     await page.getByRole("button", { name: "Fechar ferramenta" }).click();
     await page.evaluate(() => window.frameSettings.open());
     await expect(page.locator("[data-settings-status]")).toBeEmpty();
+    await page.getByRole("button", { name: "Sincronização e dados deste dispositivo", exact: true }).click();
+    await expect(page.locator('[data-settings-view="device"]')).toBeVisible();
     const settings = await box(page, ".account-settings-sheet");
     expect(await page.locator("#study-sync-title").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(17);
     await expect(page.locator(".study-sync-explanation")).not.toHaveAttribute("open", "");

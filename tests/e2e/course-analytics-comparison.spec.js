@@ -86,7 +86,7 @@ test("Análise: distribuição, comparação, teclado e exportação nas oito ge
     await dialog.getByRole("button", { name: "Baixar arquivo JSON" }).click();
     expect(await page.evaluate(() => window.analyticsProbe.exports.length)).toBe(1);
     const exported = await page.evaluate(() => JSON.parse(window.analyticsProbe.downloads[0].content));
-    expect(exported.contract).toBe("aralearn.course-authoring-export.v1"); expect(exported.artifact.document.courses[0].goal).toBe("Objetivo integral");
+    expect(exported.contract).toBe("aralearn.course-authoring-export.v2"); expect(exported.artifact.document.courses[0].goal).toBe("Objetivo integral");
     await page.keyboard.press("Escape");
     expect(await panel.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
     await page.unrouteAll({ behavior: "wait" });

@@ -3,9 +3,11 @@ import { normalizeCourseAuthoringAnalyticsPage, normalizeCourseAuthoringAnalytic
 import { CourseAuthoringBasisError, exactAuthoringObject, authoringText, authoringInteger, canonicalAuthoringValue, normalizeCourseAuthoringParameter, normalizeCourseAuthoringSource, observeCourseAuthoringDimensions } from "./courseAuthoringBasis.js";
 import { flattenCourseDocument, composeCourseDocument } from "./courseEntities.js";
 import { normalizeCourseSourcesRead } from "./courseSources.js";
+import { normalizeAppliedExplanationBasis } from "./appliedExplanationBasis.js";
+import { normalizeCourseContentReviewState } from "./courseContentReview.js";
 
 export const COURSE_AUTHORING_COMPARISON_CONTRACT = "aralearn.course-authoring-comparison.v1";
-export const COURSE_AUTHORING_EXPORT_CONTRACT = "aralearn.course-authoring-export.v1";
+export const COURSE_AUTHORING_EXPORT_CONTRACT = "aralearn.course-authoring-export.v2";
 export const COURSE_AUTHORING_EXPORT_MAX_BYTES = 32 * 1024 * 1024;
 export function serializeCourseAuthoringExport(value) {
   const content = JSON.stringify(value);
@@ -160,11 +162,11 @@ export function normalizeCourseAuthoringComparison(value, { expectedRequest = nu
   }
   return structuredClone(value);
 }
-export function assembleCourseAuthoringExport({ analytics, document, explanationSources = [] }) {
+export function assembleCourseAuthoringExport({ analytics, document, explanationSources = [], appliedExplanationBases = [], contentReviews = [] }) {
   analytics = normalizeCourseAuthoringAnalyticsPage(analytics);
-  const flattened = flattenCourseDocument(document);
+  const flattened = flattenCourseDocument(document, { allowIncompleteCurriculum: true });
   if (flattened.course.id !== analytics.course.id || flattened.course.title !== analytics.course.title) fail("O artefato exportado pertence a outro curso.");
-  const normalizedDocument = composeCourseDocument(flattened.course, flattened.rows);
+  const normalizedDocument = composeCourseDocument(flattened.course, flattened.rows, { allowIncompleteCurriculum: true });
   const supportIds = new Set(flattened.rows.filter(row => row.entityType === "microsequence" && row.content.explanation).map(row => row.entityId));
   const seen = new Set();
   if (!Array.isArray(explanationSources)) fail("A proveniência da Explicação é inválida.");
@@ -180,14 +182,37 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
     return read;
   });
   if (seen.size !== supportIds.size) fail("A exportação precisa incluir a proveniência de cada Explicação.");
-  // Export retains only the aggregate editorial reading and course content; there are no actor records or temporary download URLs.
-  return { contract: COURSE_AUTHORING_EXPORT_CONTRACT, course: analytics.course, scope: analytics.scope.selected, analytics, artifact: { document: normalizedDocument, explanationSources } };
+  const unitIds = new Set(flattened.rows.filter(row => row.entityType === "study_unit").map(row => row.entityId));
+  const appliedIds = new Set();
+  if (!Array.isArray(appliedExplanationBases) || !Array.isArray(contentReviews)) fail("Os metadados autorais precisam formar listas.");
+  appliedExplanationBases = appliedExplanationBases.map(entry => {
+    exactAuthoringObject(entry, ["studyUnitId", "basis"]);
+    if (!unitIds.has(entry.studyUnitId) || appliedIds.has(entry.studyUnitId)) fail("A base aplicada não corresponde a uma unidade do artefato.");
+    appliedIds.add(entry.studyUnitId);
+    const basis = normalizeAppliedExplanationBasis(entry.basis);
+    if (!basis?.sourceCourseId) fail("A exportação identifica a origem da base aplicada.");
+    return { studyUnitId: entry.studyUnitId, basis };
+  });
+  const reviewIds = new Set();
+  contentReviews = contentReviews.map(entry => {
+    exactAuthoringObject(entry, ["targetKind", "targetId", "contentReview"]);
+    const ids = entry.targetKind === "microsequence_explanation" ? supportIds : entry.targetKind === "study_unit" ? unitIds : null;
+    const key = `${entry.targetKind}:${entry.targetId}`;
+    if (!ids?.has(entry.targetId) || reviewIds.has(key)) fail("A revisão não corresponde a um objeto do artefato.");
+    reviewIds.add(key);
+    return { targetKind: entry.targetKind, targetId: entry.targetId, contentReview: normalizeCourseContentReviewState(entry.contentReview) };
+  });
+  // Read metadata is exported separately from the importable course content.
+  return { contract: COURSE_AUTHORING_EXPORT_CONTRACT, course: analytics.course, scope: analytics.scope.selected, analytics,
+    artifact: { document: normalizedDocument, explanationSources, appliedExplanationBases, contentReviews } };
 }
 export function normalizeCourseAuthoringExport(value, { expectedSelection = null } = {}) {
-  exactAuthoringObject(value, ["contract", "course", "scope", "analytics", "artifact"]); exactAuthoringObject(value.artifact, ["document", "explanationSources"]);
-  if (value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT) fail("O contrato da exportação é inválido.");
+  exactAuthoringObject(value, ["contract", "course", "scope", "analytics", "artifact"]);
+  const legacy = value.contract === "aralearn.course-authoring-export.v1";
+  exactAuthoringObject(value.artifact, ["document", "explanationSources", ...(legacy ? [] : ["appliedExplanationBases", "contentReviews"])]);
+  if (!legacy && value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT) fail("O contrato da exportação é inválido.");
   normalizeSide({ course: value.course, scope: value.scope, deepLink: null }, expectedSelection);
-  const result = assembleCourseAuthoringExport({ analytics: value.analytics, document: value.artifact.document, explanationSources: value.artifact.explanationSources });
+  const result = assembleCourseAuthoringExport({ analytics: value.analytics, ...value.artifact });
   if (canonicalAuthoringValue(result.course) !== canonicalAuthoringValue(value.course) || canonicalAuthoringValue(result.scope) !== canonicalAuthoringValue(value.scope)) fail("A exportação mistura cursos, edições ou escopos.");
   return result;
 }
