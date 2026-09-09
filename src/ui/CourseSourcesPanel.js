@@ -671,8 +671,8 @@ function renderAnchor(anchor, sourceRevision, state) {
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
     (editable ? '<div class="course-source-compact-actions">' +
-      `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Editar âncora" title="Editar âncora">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
-          `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
+      `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Editar âncora" title="Editar âncora"${state.busy ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
+          `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora"${state.busy ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         + "</div>"
       : "") + "</article>";
 }
@@ -770,9 +770,9 @@ function renderSource(source, state) {
     '</div>' +
     (source.status !== "retired"
       ? '<div class="course-source-compact-actions">' +
-      `<button type="button" data-source-action="edit-source" aria-label="Editar fonte" title="Editar fonte">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
+      `<button type="button" data-source-action="edit-source" aria-label="Editar fonte" title="Editar fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
       (source.status === "active"
-        ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte">${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
+        ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         : "") + "</div>" : "") + "</header>" +
     `<p class="course-source-display-title" tabindex="0">${escapeHtml(sourceTitle(source))}</p>` +
     `<details class="source-reference-fields"${sourceDisclosure(state, "reference")}><summary>Referência e dados</summary>` +
@@ -798,7 +798,7 @@ function renderSource(source, state) {
     `<details class="course-source-detail-section"${sourceDisclosure(state, "anchors")}><summary>Âncoras</summary>` +
     `<section class="course-source-anchors"><header><div><h4 class="visually-hidden">Âncoras</h4><p>${source.anchors.length}</p></div>` +
     (source.status === "active"
-      ? '<button type="button" data-source-action="add-anchor" aria-label="Adicionar âncora" title="Adicionar âncora">' +
+      ? `<button type="button" data-source-action="add-anchor" aria-label="Adicionar âncora" title="Adicionar âncora"${state.busy ? " disabled" : ""}>` +
         `${renderUiIcon("add", "course-authoring-button-icon")}</button>`
       : "") + "</header>" +
     renderAnchorForm(state) +
@@ -828,12 +828,13 @@ function renderSourceDetail(state) {
 
 function renderCatalogCard(source, state, { selectable = false, selected = false } = {}) {
   const action = selectable ? "add-target-source" : "open-source";
+  const disabled = state.busy || selectable && !targetAttributionReady(state);
   return `<article class="course-source-card${selected ? " is-selected" : ""}">` +
     '<div class="course-source-card-copy" tabindex="0" role="region" aria-label="Fonte">' +
     sourceStatusMarkup(source) + `<strong>${escapeHtml(sourceTitle(source))}</strong>` +
     (selectable && selected ? '<small>Já usada neste item</small>' : '') + '</div>' +
     `<button type="button" data-source-action="${action}" data-source-id="${escapeHtml(source.sourceId)}"` +
-    ` aria-label="${selectable ? selected ? "Adicionar outro vínculo" : "Vincular fonte" : "Abrir fonte"}: ${escapeHtml(sourceTitle(source))}" title="${selectable ? "Vincular fonte" : "Abrir fonte"}">` +
+    ` aria-label="${selectable ? selected ? "Adicionar outro vínculo" : "Vincular fonte" : "Abrir fonte"}: ${escapeHtml(sourceTitle(source))}" title="${selectable ? "Vincular fonte" : "Abrir fonte"}"${disabled ? " disabled" : ""}>` +
     (selectable ? selected ? renderUiIcon("save", "course-authoring-arrow") : renderUiIcon("add", "course-authoring-arrow") : renderUiIcon("arrow-right", "course-authoring-arrow")) +
     "</button></article>";
 }
@@ -872,7 +873,7 @@ function renderCatalogPanel(state) {
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Fontes</h2>' +
     '<header class="course-authoring-section-toolbar" aria-label="Ações de fontes">' +
     `<span class="course-source-catalog-summary">${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} ${state.catalog?.items.length === 1 && !state.catalog?.nextCursor ? "fonte" : "fontes"}</span>` +
-    '<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte">' +
+    `<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte"${state.busy ? " disabled" : ""}>` +
     `${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderNotice(state) +
     `<details class="source-reference-fields" data-source-bibliography-settings${state.styleSettingsOpen ? " open" : ""}><summary>Estilo das referências</summary>` +
@@ -922,7 +923,7 @@ function renderTargetLink(state, link, index) {
     '<div class="course-source-compact-actions">' +
     `<button type="button" data-source-action="move-target-source-up" data-link-id="${escapeHtml(link.linkId)}"${index === 0 ? " disabled" : ""} aria-label="Mover fonte para cima">${renderUiIcon("arrow-up", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="move-target-source-down" data-link-id="${escapeHtml(link.linkId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
-    `<button type="button" data-source-action="open-source" data-source-id="${escapeHtml(link.sourceId)}" aria-label="Abrir fonte: ${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}" title="Abrir fonte">${renderUiIcon("study", "course-authoring-button-icon")}</button>` +
+    `<button type="button" data-source-action="open-source" data-source-id="${escapeHtml(link.sourceId)}" aria-label="Abrir fonte: ${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}" title="Abrir fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("study", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="remove-target-source" data-link-id="${escapeHtml(link.linkId)}" aria-label="Remover vínculo">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
     (source ? referenceMarkup(source, state) : "") +
     (unavailableReference
@@ -945,6 +946,10 @@ function renderTargetLink(state, link, index) {
     "</article>";
 }
 
+function targetAttributionReady(state) {
+  return !state.targetLoading && !state.targetFailure && state.targetAttribution !== undefined;
+}
+
 function renderTargetPanel(state) {
   const selected = state.sourceLinks.length
     ? `<div class="course-source-target-links">${state.sourceLinks.map((link, index) =>
@@ -965,7 +970,7 @@ function renderTargetPanel(state) {
   return header +
     '<div class="course-source-target-body">' +
     renderNotice(state) + renderSourceConfirmation(state) +
-    (state.targetLoading
+    (state.targetLoading && state.targetAttribution === undefined
       ? '<p class="course-authoring-loading" role="status">Carregando atribuição…</p>'
       : state.targetFailure
         ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.targetFailure)}</p>` +
@@ -975,7 +980,7 @@ function renderTargetPanel(state) {
           '<div class="course-source-target-actions">' +
           `<button type="button" class="course-source-export-target" data-source-action="export-target" aria-label="Exportar proveniência" title="Exportar proveniência"${targetExportReady(state) && !state.busy ? "" : " disabled"}>` +
           `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
-          `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy ? " disabled" : ""}>` +
+          `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy || !targetAttributionReady(state) ? " disabled" : ""}>` +
           `${renderUiIcon("save", "course-authoring-button-icon")}</button></div></section>`) +
     '<section class="course-source-available"><h3>Catálogo</h3>' +
     renderCatalog(state, { selectable: true }) + "</section></div></section>";
@@ -1800,14 +1805,12 @@ export function createCourseSourcesPanel({
       anchorRevision: anchor.revision
     };
     render();
-    focusInitialAnchor();
+    if (!preserveExisting) focusInitialAnchor();
     return true;
   }
 
   async function loadTarget({ preserveDraft = false } = {}) {
     const requestEpoch = epoch;
-    const draft = preserveDraft && JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks)
-      ? structuredClone(state.sourceLinks) : null;
     state.targetLoading = true;
     state.targetFailure = "";
     render();
@@ -1834,6 +1837,8 @@ export function createCourseSourcesPanel({
       if (attribution && attribution.targetVersion !== state.targetVersion) {
         throw new TypeError("O item mudou. Feche esta janela e abra as fontes novamente.");
       }
+      const draft = preserveDraft && JSON.stringify(state.sourceLinks) !== JSON.stringify(state.initialSourceLinks)
+        ? structuredClone(state.sourceLinks) : null;
       state.initialSourceLinks = structuredClone(attribution?.sourceLinks || []);
       state.sourceLinks = draft || structuredClone(state.initialSourceLinks);
       void Promise.all(state.sourceLinks.map(({ sourceId }) =>
@@ -1874,19 +1879,19 @@ export function createCourseSourcesPanel({
   async function refreshAfterChange(change) {
     state.message = sourceChangeMessage(change);
     state.failure = "";
-    state.sourceEditor = null;
-    state.anchorEditor = null;
     state.targetDetails.clear();
+    const selectedSourceId = state.selectedSourceId;
     applyCourseRevision(change.courseRevision);
+    render();
     if (state.mode === "target") {
-      const refreshed = await Promise.all([loadCatalog(), loadTarget({ preserveDraft: true })]);
-      const detailRefreshed = state.selectedSourceId ? Boolean(await loadDetail(state.selectedSourceId)) : true;
+      const refreshed = await Promise.all([loadCatalog({ preserveExisting: true }), loadTarget({ preserveDraft: true })]);
+      const detailRefreshed = selectedSourceId
+        ? Boolean(await loadDetail(selectedSourceId, { preserveExisting: true })) : true;
       return refreshed.every(Boolean) && detailRefreshed;
     }
-    const selectedSourceId = state.selectedSourceId;
-    const catalogRefreshed = await loadCatalog();
+    const catalogRefreshed = await loadCatalog({ preserveExisting: true });
     const detailRefreshed = selectedSourceId
-      ? Boolean(await loadDetail(selectedSourceId))
+      ? Boolean(await loadDetail(selectedSourceId, { preserveExisting: true }))
       : true;
     return catalogRefreshed && detailRefreshed;
   }
@@ -2000,11 +2005,15 @@ export function createCourseSourcesPanel({
     if (!matches) state.pendingCommand = null;
     let pending;
     try {
+      const editor = command.type === "save_source" ? state.sourceEditor
+        : command.type === "save_anchor" ? state.anchorEditor : null;
       pending = matches ? state.pendingCommand : {
         requestId: createUuid(),
         expectedCourseRevision: state.courseRevision,
         command: normalizeCourseSourceCommand(command),
-        draft: structuredClone(draft)
+        draft: structuredClone(draft),
+        editor,
+        editorDraft: editor ? structuredClone(editor.draft) : null
       };
     } catch (error) {
       state.message = "";
@@ -2042,15 +2051,29 @@ export function createCourseSourcesPanel({
     }
     if (!state.opened) return false;
     state.pendingCommand = null;
+    const confirmedEditor = pending.editor &&
+      JSON.stringify(pending.editor.draft) === JSON.stringify(pending.editorDraft) ? pending.editor : null;
+    const sourceEditorId = state.sourceEditor?.source?.sourceId || state.sourceEditor?.draft?.sourceId;
+    if ((pending.command.type === "save_source" && state.sourceEditor === confirmedEditor) ||
+        (pending.command.type === "retire_source" && sourceEditorId === pending.command.sourceId)) {
+      state.sourceEditor = null;
+    }
+    const anchorEditorId = state.anchorEditor?.anchor?.anchorId || state.anchorEditor?.anchorId;
+    if ((pending.command.type === "save_anchor" && state.anchorEditor === confirmedEditor) ||
+        (pending.command.type === "retire_anchor" && anchorEditorId === pending.command.anchorId) ||
+        (pending.command.type === "retire_source" && state.selectedSourceId === pending.command.sourceId)) {
+      state.anchorEditor = null;
+    }
     if (pending.command.type === "set_bibliography_style") state.bibliographyStyleDraft = null;
     if (state.mode === "target" && pending.command.type === "set_target_sources") {
-      state.initialSourceLinks = structuredClone(state.sourceLinks);
+      state.initialSourceLinks = structuredClone(pending.command.sourceLinks);
     }
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
     if (!refreshed) {
       reportConfirmedRefreshFailure(sourceChangeMessage(result));
-    } else if (state.mode === "target" && pending.command.type === "set_target_sources") {
+    } else if (state.mode === "target" && pending.command.type === "set_target_sources" &&
+        !hasPendingDraft() && !state.occurrenceEditor) {
       onTargetSaved(result);
     }
     state.busy = false;
@@ -2485,6 +2508,8 @@ export function createCourseSourcesPanel({
     if (!node || (typeof root.contains === "function" && !root.contains(node))) return;
     event.preventDefault();
     const action = node.dataset.sourceAction;
+    if (state.busy && ["add-source", "open-source", "edit-source", "retire-source",
+      "add-anchor", "edit-anchor", "retire-anchor"].includes(action)) return;
     if (action === "cancel-confirmation") {
       cancelConfirmation();
     } else if (action === "confirm-file-access" && state.confirmation?.action === action) {
@@ -2543,9 +2568,10 @@ export function createCourseSourcesPanel({
     } else if (action === "close-detail") {
       requestDetailClose();
     } else if (action === "retry-detail" && state.selectedSourceId) {
+      const preserveExisting = Boolean(state.detail);
       void (state.initialSourceId === state.selectedSourceId
-        ? loadInitialDetail()
-        : loadDetail(state.selectedSourceId));
+        ? loadInitialDetail({ preserveExisting })
+        : loadDetail(state.selectedSourceId, { preserveExisting }));
     } else if (action === "edit-source") {
       const source = state.detail?.items?.[0];
       if (!source) return;
@@ -2685,6 +2711,7 @@ export function createCourseSourcesPanel({
     } else if (action === "close-target") {
       requestTargetClose();
     } else if (action === "add-target-source") {
+      if (state.busy || !targetAttributionReady(state)) return;
       const sourceId = String(node.dataset.sourceId || "");
       const source = state.catalog?.items.find((item) => item.sourceId === sourceId);
       if (!source || source.status !== "active") return;
@@ -2751,6 +2778,7 @@ export function createCourseSourcesPanel({
       if (state.occurrenceEditor) focus("[data-source-occurrence-selection]");
       else focusByIdentity({ selector: '[data-source-action="add-occurrence"]', datasetKey: "linkId", datasetValue: link.linkId });
     } else if (action === "save-target") {
+      if (state.busy || !targetAttributionReady(state)) return;
       if (!targetLinksValid()) {
         state.failure = "Confira as fontes e os localizadores ativos. Uma citação direta exige ao menos um localizador na fonte.";
         render();

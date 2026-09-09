@@ -167,12 +167,17 @@ function hostMountPath(source) {
   return process.platform === "win32" ? result.toLowerCase() : result;
 }
 
-function playwrightReceipt(report) {
+function playwrightReceipt(report, redact) {
+  const diagnosticText = (value, limit) => redact(typeof value === "string" ? value : "").slice(0, limit);
+  const diagnosticLocation = value => ({ file: diagnosticText(value?.file, 500),
+    line: Number.isSafeInteger(value?.line) ? value.line : null,
+    column: Number.isSafeInteger(value?.column) ? value.column : null });
   const tests = [];
   function visit(suites) {
     for (const suite of suites || []) {
       for (const spec of suite.specs || []) for (const test of spec.tests || []) tests.push({
         title: `${spec.file || suite.file || ""}: ${spec.title}`, status: test.status,
+        location: { file: spec.file || suite.file, line: spec.line, column: spec.column },
         attempts: test.results || []
       });
       visit(suite.suites);
@@ -182,7 +187,21 @@ function playwrightReceipt(report) {
   const failed = tests.filter(test => test.status !== "expected" || test.attempts.length !== 1 || test.attempts[0].status !== "passed");
   const ok = tests.length === 10 && !failed.length && !report.errors?.length &&
     report.stats?.expected === 10 && report.stats?.unexpected === 0 && report.stats?.skipped === 0 && report.stats?.flaky === 0;
-  return { ok, executed: tests.length, failed_tests: failed.map(test => test.title), cleanup: ok ? "completed" : "unverified" };
+  const failure_details = failed.slice(0, 10).map(test => {
+    const index = Math.max(0, test.attempts.findIndex(attempt => attempt.status !== "passed"));
+    const attempt = test.attempts[index] || {};
+    const errors = attempt.errors?.length ? attempt.errors : attempt.error ? [attempt.error] : [];
+    return { title: diagnosticText(test.title, 500), location: diagnosticLocation(test.location),
+      attempt: index + 1, attempt_count: test.attempts.length,
+      retry: Number.isSafeInteger(attempt.retry) ? attempt.retry : index,
+      status: diagnosticText(attempt.status || test.status, 40),
+      errors: errors.slice(0, 2).map(error => ({
+        message: diagnosticText(error.message || error.value || error.stack, 2000),
+        location: diagnosticLocation(error.location || test.location)
+      })) };
+  });
+  return { ok, executed: tests.length, failed_tests: failed.map(test => test.title), failure_details,
+    cleanup: ok ? "completed" : "unverified" };
 }
 
 export async function runLocalIntegration({
@@ -387,7 +406,7 @@ export async function runLocalIntegration({
     }, async () => {
       const source = await fs.readFile(playwrightPath, "utf8");
       await fs.writeFile(playwrightPath, redact(source), { mode: 0o600 });
-      return playwrightReceipt(JSON.parse(source));
+      return playwrightReceipt(JSON.parse(source), redact);
     });
     const copyPath = path.join(privateDirectory, "copy-files.json");
     await stage("copy-files-local", ["--test", "--test-reporter=tap", "tests/runtime/course-copy-files-local.test.js"], {
@@ -427,14 +446,20 @@ export async function runLocalIntegration({
   return JSON.parse(redact(JSON.stringify(report)));
 }
 
+export function localIntegrationSummary(report) {
+  return { result: report.result, failed_tests: report.failed_tests,
+    failure_details: report.stages.flatMap(stage => (stage.failure_details || [])
+      .map(detail => ({ stage: stage.name, ...detail }))),
+    report: ".validation/local-integration.json", cleanup: report.cleanup };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const controller = new AbortController();
   const abort = () => controller.abort();
   process.on("SIGINT", abort); process.on("SIGTERM", abort);
   try {
     const report = await runLocalIntegration({ signal: controller.signal });
-    process.stdout.write(`${JSON.stringify({ result: report.result, failed_tests: report.failed_tests,
-      report: ".validation/local-integration.json", cleanup: report.cleanup })}\n`);
+    process.stdout.write(`${JSON.stringify(localIntegrationSummary(report))}\n`);
     process.exitCode = report.result === "passed" ? 0 : 1;
   } catch {
     process.stderr.write("Não foi possível registrar a prova local. Nenhum resultado deve ser considerado aprovado.\n");

@@ -16,6 +16,14 @@ Durante uma gravação e sua releitura, o botão de voltar fica desabilitado at�
 o painel concluir a atualização ou apresentar a falha; a confirmação da escrita
 não é confundida com o término dessa leitura.
 
+No vínculo contextual, as ações de seleção ficam disponíveis depois que a
+atribuição do item foi carregada. Uma releitura conserva as alterações feitas
+durante a espera. Anexar ou remover um PDF e alterar seu acesso também conservam
+o rascunho de fonte ou âncora, seu foco e sua seleção. A confirmação de salvar
+encerra somente o editor correspondente; a revisão original do rascunho continua
+protegendo contra alterações concorrentes. Uma falha na atualização da lista
+mantém a edição disponível e informa que o estado salvo precisa ser relido.
+
 ## Texto do autor e referência gerada
 
 A referência escrita pelo autor é uma escolha deliberada. Ela pode ser adequada

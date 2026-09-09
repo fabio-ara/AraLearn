@@ -354,6 +354,12 @@ quando seu código não foi alterado. Para o orquestrador, a opção corresponde
 limpeza bloqueia a prova. Contas e arquivos são sintéticos; esses testes não
 aprovam cursos reais nem substituem ChatGPT, MCP ou Actions hospedados.
 
+Quando uma jornada falha, o resumo da integração informa o teste, a localização
+e a primeira tentativa malsucedida, com até duas mensagens de erro. O runner
+remove credenciais antes de limitar o texto e mantém o relatório completo local.
+Esse diagnóstico conserva o resultado do gate e distingue falha funcional de
+limpeza já confirmada; etapas dependentes permanecem sem execução.
+
 O overlay de Explicação tem um percurso focal em
 `tests/e2e/study-explanation.spec.js`. Com a candidata web preparada para o
 runner, execute `npx playwright test tests/e2e/study-explanation.spec.js`.
