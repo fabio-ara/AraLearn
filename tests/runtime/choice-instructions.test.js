@@ -34,6 +34,13 @@ test("resposta revelada, incompletude e feedback continuam distintos da instruç
   assert.match(revealed, /Alternativas e resposta esperada\./u);
   assert.match(revealed, /Resposta esperada exibida\./u);
   assert.match(revealed, /role="group" aria-labelledby="reveal::question" aria-describedby="reveal::instruction"/u);
+  for (const answerIds of [["a"], ["a", "c"]]) {
+    const html = choice.render({ ...data(answerIds.length > 1 ? "multiple" : "single"), answerIds }, { revealPracticeAnswers: true });
+    const options = [...html.matchAll(/<div class="multiple-choice-option[^"]*"[^>]*data-choice-option-id="([^"]+)"[^>]*>([\s\S]*?)<\/div>/gu)];
+    assert.equal(options.length, 3);
+    for (const option of options) assert.equal(option[2].includes('class="visually-hidden">Resposta esperada: </span>'), answerIds.includes(option[1]));
+    assert.doesNotMatch(html, /<button|role="radio"|role="checkbox"|data-action="choice-/u);
+  }
   const incomplete = choice.render(data(), { responseState: { feedback: "incomplete" } });
   assert.match(incomplete, /role="alert" aria-live="assertive"/u);
   assert.match(incomplete, /Selecione pelo menos uma resposta\./u);

@@ -77,5 +77,5 @@ export async function exportHumanCourse({ adapter, principal, args, deadlineAt }
     { expectedSelection: selected });
   return { result: "Preparei a exportação literal do artefato e da leitura autoral; continue até receber todos os trechos.",
     deepLink: exported.analytics.deepLink, nextDecision: null,
-    context: await paginateHumanReadContext({ authoringExport: exported }, { state }) };
+    context: await paginateHumanReadContext({ authoringExport: exported }, { state, escapeNonbreakingHyphen: true }) };
 }

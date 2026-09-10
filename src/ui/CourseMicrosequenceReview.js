@@ -314,7 +314,6 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       if (openedDetails.includes(node.querySelector(":scope > summary")?.textContent)) node.open = true;
     });
     dialog.querySelectorAll('.package-instance[data-package^="aralearn.response."], .card-answer-dock').forEach(container => {
-      container.setAttribute("aria-disabled", "true"); container.setAttribute("inert", "");
       container.querySelectorAll("button, input, select, textarea, [contenteditable]").forEach(control => {
         if ("disabled" in control) control.disabled = true;
         control.setAttribute("tabindex", "-1"); control.removeAttribute("contenteditable");
