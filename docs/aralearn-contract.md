@@ -68,6 +68,9 @@ explícitas de editar e observar. Busca de pessoas exige curso próprio, prefixo
 de ao menos dois caracteres e no máximo dez resultados; o grant confirma UUID
 e identificador selecionados. Troca ou reutilização do identificador não
 redireciona permissões já concedidas.
+Cada pessoa autora dispõe de até 60 buscas e 10 tentativas de concessão por
+janela de dez minutos. Ao vencer a janela, a próxima operação inicia uma nova
+contagem, preservando as concessões existentes.
 
 Cursos começam privados. Tornar público exige confirmação e política de acesso
 a arquivos. Visitantes recebem somente projeções de estudo e não podem editar

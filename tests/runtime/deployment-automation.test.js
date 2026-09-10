@@ -598,7 +598,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260910134141");
+  assert.equal(manifest.schemaRevision, "20260910210609");
   assert.equal(manifest.requiredFeatures.includes("object-content-review-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("independent-review-access-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-business-conflicts-http-409-v1"), true);
@@ -679,8 +679,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260910134141_copied_curriculum_scope_integrity.sql",
-    revision: "20260910134141"
+    fileName: "20260910210609_course_people_rate_window_atomic.sql",
+    revision: "20260910210609"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
