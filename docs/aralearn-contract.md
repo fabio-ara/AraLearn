@@ -45,6 +45,14 @@ fornecer essa decisão. Fontes e arquivos usados entram na base pertinente.
 O [contrato de revisão humana](explicacao-e-revisao-humana.md) detalha inspeção,
 distribuição, concorrência e limites da preservação local.
 
+Na leitura restrita do Estudo, `pendingReviewMicrosequenceIds` identifica as
+bases ocultas na mesma revisão das páginas de entidades. Essas microssequências
+conservam identidade, posição e o título de estado "Aguardando revisão da
+autoria", sem objetivo, papel pedagógico ou conteúdo da base. Cada unidade
+acessível é validada integralmente e conserva sua elegibilidade independente da
+base. O montador reconhece esse marcador apenas no recorte explícito de leitura,
+inclusive no cache; importação e autoria exigem a composição curricular completa.
+
 A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
 inclusive sem alterações de entidades. Metadados, entidades e atribuições são
 validados na mesma transação, com uma revisão esperada e um recibo de repetição.

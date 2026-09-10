@@ -6,7 +6,7 @@ import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesi
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
-import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import { composeCourseDocument, flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import {
   assembleCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
@@ -887,6 +887,72 @@ test("preserva a última composição válida após revisão inválida e reiníc
   store.close();
 });
 
+test("projeção restrita preserva marcador e unidade elegível no cache após reinício", async () => {
+  const indexedDb = new IDBFactory();
+  let store = await CourseLocalStore.open(indexedDb, { userId: COURSE_ID });
+  const fixture = documentWithStudyUnitFixture();
+  const { rows } = flattenCourseDocument(fixture);
+  const projectedRows = rows.map(row => row.entityType === "microsequence"
+    ? { ...row, content: { title: "Aguardando revisão da autoria" }, contentReview: { state: "draft" } } : row);
+  const descriptor = { contract: "aralearn.course.v1", courseId: COURSE_ID, title: "Curso", goal: "Aprender.", revision: 20 };
+  let online = true;
+  const api = {
+    async listCourses() { return courseListPage(); },
+    async getCourse() { if (!online) throw networkFailure(); return descriptor; },
+    async getCourseEntities() {
+      if (!online) throw networkFailure();
+      return { contract: "aralearn.course-entities.v1", courseId: COURSE_ID, revision: 20,
+        items: projectedRows, pendingReviewMicrosequenceIds: ["microsequence-a"], hasMore: false, nextCursor: null };
+    }
+  };
+  let controller = new CourseController({ api, store });
+  const loaded = await controller.loadCourseDocument(COURSE_ID);
+  const expected = { id: "microsequence-a", title: "Aguardando revisão da autoria",
+    studyUnits: fixture.courses[0].modules[0].lessons[0].microsequences[0].studyUnits };
+  assert.deepEqual(loaded.document.courses[0].modules[0].lessons[0].microsequences[0], expected);
+  assert.deepEqual(loaded.rows, projectedRows, "O marcador permanece literal nas entidades guardadas");
+  assert.throws(() => flattenCourseDocument(loaded.document), error => error.code === "invalid_course_document",
+    "Uma projeção de leitura não é um documento importável");
+  assert.throws(() => composeCourseDocument(fixture.courses[0], projectedRows), error => error.code === "invalid_course_document");
+  store.close(); online = false;
+  store = await CourseLocalStore.open(indexedDb, { userId: COURSE_ID });
+  controller = new CourseController({ api, store });
+  try {
+    const cached = await controller.loadCachedCourseDocument(COURSE_ID);
+    assert.deepEqual(cached.document, loaded.document);
+    assert.deepEqual(cached.pendingReviewMicrosequenceIds, ["microsequence-a"]);
+    assert.equal(await controller.hasVerifiedCourseDocument(COURSE_ID, { revision: 20 }), true);
+  } finally { store.close(); }
+});
+
+test("marcador exige recorte explícito de leitura e não dispensa validação de conteúdo ativo", async t => {
+  for (const variant of ["missing-marker", "unknown-id", "owner", "wrong-title", "extra-field", "current-review", "malformed-unit", "malformed-active-micro"]) {
+    await t.test(variant, async () => {
+      const fixture = documentWithStudyUnitFixture();
+      const { rows } = flattenCourseDocument(fixture);
+      const micro = rows.find(row => row.entityType === "microsequence");
+      micro.content = { title: "Aguardando revisão da autoria" };
+      micro.contentReview = { state: "draft" };
+      let pending = [micro.entityId];
+      if (variant === "missing-marker") pending = [];
+      if (variant === "unknown-id") pending = ["other-microsequence"];
+      if (variant === "wrong-title") micro.content.title = "Microssequência incompleta";
+      if (variant === "extra-field") micro.content.explanation = { title: "Não expor", content: [] };
+      if (variant === "current-review") micro.contentReview = { state: "current", reviewedAt: "2026-09-10T21:30:00Z" };
+      if (variant === "malformed-unit") rows.find(row => row.entityType === "study_unit").content.role = "invalid";
+      if (variant === "malformed-active-micro") rows.push({ ...micro, entityId: "active-b", position: 1,
+        contentReview: { state: "draft" }, content: { title: "Ativa sem objetivo" } });
+      const controller = new CourseController({ store: new MemoryStateStore(), ownerOnly: variant === "owner", api: {
+        async listCourses() { return courseListPage(); },
+        async getCourse() { return { contract: "aralearn.course.v1", courseId: COURSE_ID, title: "Curso", goal: "Aprender.", revision: 20 }; },
+        async getCourseEntities() { return { contract: "aralearn.course-entities.v1", courseId: COURSE_ID, revision: 20,
+          items: rows, pendingReviewMicrosequenceIds: pending, hasMore: false, nextCursor: null }; }
+      } });
+      await assert.rejects(controller.loadCourseDocument(COURSE_ID), error => error.name === "CourseEntityError");
+    });
+  }
+});
+
 test("rascunho remoto conserva curso local íntegro através de reinício até substituição elegível", async () => {
   const indexedDb = new IDBFactory();
   let store = await CourseLocalStore.open(indexedDb, { userId: COURSE_ID });
@@ -899,6 +965,7 @@ test("rascunho remoto conserva curso local íntegro através de reinício até s
       title: `Curso ${revision}`, goal: "Aprender.", revision }; },
     async getCourseEntities() { return { contract: "aralearn.course-entities.v1", courseId: COURSE_ID,
       revision, items: (revision === 2 ? rows.filter((row) => row.entityType !== "study_unit") : rows).map(row => ({ ...row,
+        ...(revision === 2 && row.entityType === "microsequence" ? { content: { title: "Aguardando revisão da autoria" } } : {}),
         contentReview: row.entityType === "microsequence" ? { state: revision === 2 ? "draft" : "unregistered" } : null })),
       pendingReviewMicrosequenceIds: revision === 2 ? ["microsequence-a"] : [], hasMore: false, nextCursor: null }; }
   };

@@ -368,9 +368,20 @@ export function flattenCourseDocument(document, { allowIncompleteCurriculum = fa
   return { course: normalizeCourse(course), rows: normalizeCourseEntityRows(rows) };
 }
 
-export function composeCourseDocument(courseValue, rows = [], { allowIncompleteCurriculum = false } = {}) {
+export function composeCourseDocument(courseValue, rows = [], {
+  allowIncompleteCurriculum = false,
+  pendingReviewMicrosequenceIds = []
+} = {}) {
   const course = normalizeCourse(courseValue);
   const normalized = normalizeCourseEntityRows(rows);
+  const microsequences = new Map(normalized.filter(row => row.entityType === "microsequence")
+    .map(row => [row.entityId, row]));
+  if (!Array.isArray(pendingReviewMicrosequenceIds) ||
+      new Set(pendingReviewMicrosequenceIds).size !== pendingReviewMicrosequenceIds.length ||
+      pendingReviewMicrosequenceIds.some(id => typeof id !== "string" ||
+        !["draft", "stale", "unregistered"].includes(microsequences.get(id)?.contentReview?.state))) {
+    fail("invalid_course_read_projection", "O recorte de leitura restrita não corresponde às entidades do Curso.");
+  }
   const entities = new Map();
   for (const row of normalized) {
     const entity = cloneJson(row.content, "Conteúdo da entidade");
@@ -410,7 +421,10 @@ export function composeCourseDocument(courseValue, rows = [], { allowIncompleteC
     contract: "aralearn.course.v1",
     courses: [{ ...course, modules }]
   };
-  const validation = validateProjectDocument(document, { allowIncompleteCurriculum });
+  const validation = validateProjectDocument(document, { allowIncompleteCurriculum,
+    ...(pendingReviewMicrosequenceIds.length ? {
+      reviewProjection: { courseId: course.id, microsequenceIds: pendingReviewMicrosequenceIds }
+    } : {}) });
   if (!validation.ok) {
     fail(
       "invalid_course_document",

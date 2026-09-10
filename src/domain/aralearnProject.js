@@ -356,12 +356,30 @@ function validateTopic(topic, path, errors) {
   };
 }
 
-function validateMicrosequence(microsequence, path, errors) {
+function validateMicrosequenceStudyUnits(microsequence, path, errors) {
+  return validateRequiredArray(microsequence, "studyUnits", path, errors)
+    .map((studyUnit, index) => {
+      const studyUnitPath = `${path}.studyUnits[${index}]`;
+      if (isPlainObject(studyUnit)) {
+        validateRequiredText(studyUnit, "id", studyUnitPath, errors, "study_unit.id");
+      }
+      const result = validateStudyUnitEnvelope(studyUnit, RESOURCE_PACKAGE_REGISTRY, studyUnitPath);
+      if (!result.valid) {
+        result.errors.forEach((message) => pushError(errors, studyUnitPath, message));
+        return null;
+      }
+      return normalizeStudyUnitEnvelope(studyUnit, RESOURCE_PACKAGE_REGISTRY);
+    })
+    .filter(Boolean);
+}
+
+function validateMicrosequence(microsequence, path, errors, restrictedIds = null) {
   if (!isPlainObject(microsequence)) {
     pushError(errors, path, "Microssequência deve ser objeto.");
     return null;
   }
-  rejectUnknownFields(microsequence, MICROSEQUENCE_FIELDS, path, errors);
+  const restricted = restrictedIds?.has(microsequence.id) === true;
+  rejectUnknownFields(microsequence, restricted ? new Set(["id", "title", "studyUnits"]) : MICROSEQUENCE_FIELDS, path, errors);
   const id = validateRequiredText(microsequence, "id", path, errors, "microsequence.id");
   const title = validateRequiredText(
     microsequence,
@@ -371,6 +389,13 @@ function validateMicrosequence(microsequence, path, errors) {
     "microsequence.title",
     { maximum: 300, rejectControls: true, allowLayoutWhitespace: true }
   );
+  if (restricted) {
+    if (microsequence.title !== "Aguardando revisão da autoria") {
+      pushError(errors, `${path}.title`, "O marcador de conteúdo restrito é inválido.");
+    }
+    // Read projection only: no invented pedagogical fields. Units have their own eligibility.
+    return { id, title, studyUnits: validateMicrosequenceStudyUnits(microsequence, path, errors) };
+  }
   const goal = validateRequiredText(microsequence, "goal", path, errors, "microsequence.goal");
   const role = validateRequiredText(microsequence, "role", path, errors, "microsequence.role");
   if (role && !MICROSEQUENCE_ROLES.has(role)) {
@@ -385,21 +410,7 @@ function validateMicrosequence(microsequence, path, errors) {
     }
   }
 
-  const studyUnitInputs = validateRequiredArray(microsequence, "studyUnits", path, errors);
-  const studyUnits = studyUnitInputs
-    .map((studyUnit, index) => {
-      const studyUnitPath = `${path}.studyUnits[${index}]`;
-      if (isPlainObject(studyUnit)) {
-        validateRequiredText(studyUnit, "id", studyUnitPath, errors, "study_unit.id");
-      }
-      const result = validateStudyUnitEnvelope(studyUnit, RESOURCE_PACKAGE_REGISTRY, studyUnitPath);
-      if (!result.valid) {
-        result.errors.forEach((message) => pushError(errors, studyUnitPath, message));
-        return null;
-      }
-      return normalizeStudyUnitEnvelope(studyUnit, RESOURCE_PACKAGE_REGISTRY);
-    })
-    .filter(Boolean);
+  const studyUnits = validateMicrosequenceStudyUnits(microsequence, path, errors);
 
   const explanationFields = {};
   for (const [field, normalize] of [["explanationPlan", normalizeMicrosequenceExplanationPlan],
@@ -425,7 +436,7 @@ function validateMicrosequence(microsequence, path, errors) {
   };
 }
 
-function validateLesson(lesson, path, errors) {
+function validateLesson(lesson, path, errors, restrictedIds = null) {
   if (!isPlainObject(lesson)) {
     pushError(errors, path, "Lição deve ser objeto.");
     return null;
@@ -448,12 +459,12 @@ function validateLesson(lesson, path, errors) {
       .map((topic, index) => validateTopic(topic, `${path}.topics[${index}]`, errors))
       .filter(Boolean),
     microsequences: microsequencesInput
-      .map((item, index) => validateMicrosequence(item, `${path}.microsequences[${index}]`, errors))
+      .map((item, index) => validateMicrosequence(item, `${path}.microsequences[${index}]`, errors, restrictedIds))
       .filter(Boolean)
   };
 }
 
-function validateModule(moduleValue, path, errors) {
+function validateModule(moduleValue, path, errors, restrictedIds = null) {
   if (!isPlainObject(moduleValue)) {
     pushError(errors, path, "Módulo deve ser objeto.");
     return null;
@@ -470,18 +481,20 @@ function validateModule(moduleValue, path, errors) {
     }),
     guide: validateGuide(moduleValue.guide, `${path}.guide`, errors),
     lessons: lessonsInput
-      .map((lesson, index) => validateLesson(lesson, `${path}.lessons[${index}]`, errors))
+      .map((lesson, index) => validateLesson(lesson, `${path}.lessons[${index}]`, errors, restrictedIds))
       .filter(Boolean)
   };
 }
 
-function validateCourse(course, path, errors, { allowIncompleteCurriculum = false } = {}) {
+function validateCourse(course, path, errors, { allowIncompleteCurriculum = false, reviewProjection = null } = {}) {
   if (!isPlainObject(course)) {
     pushError(errors, path, "Curso deve ser objeto.");
     return null;
   }
   rejectUnknownFields(course, COURSE_FIELDS, path, errors);
   const modulesInput = validateRequiredArray(course, "modules", path, errors);
+  const restrictedIds = reviewProjection && reviewProjection.courseId === course.id
+    ? new Set(reviewProjection.microsequenceIds) : null;
   validateSiblingIds(modulesInput, `${path}.modules`, errors, "módulos do curso");
   if (!allowIncompleteCurriculum) validateCourseDependencies(modulesInput, `${path}.modules`, errors);
   return {
@@ -493,7 +506,7 @@ function validateCourse(course, path, errors, { allowIncompleteCurriculum = fals
     }),
     goal: validateRequiredText(course, "goal", path, errors, "course.goal"),
     modules: modulesInput
-      .map((moduleValue, index) => validateModule(moduleValue, `${path}.modules[${index}]`, errors))
+      .map((moduleValue, index) => validateModule(moduleValue, `${path}.modules[${index}]`, errors, restrictedIds))
       .filter(Boolean)
   };
 }
@@ -573,6 +586,16 @@ export function validateProjectDocument(document, options = {}) {
   }
 
   const coursesInput = validateRequiredArray(document, "courses", "$", errors);
+  if (options.reviewProjection != null) {
+    const projection = options.reviewProjection;
+    if (!isPlainObject(projection) || Object.keys(projection).some(key => !["courseId", "microsequenceIds"].includes(key)) ||
+        typeof projection.courseId !== "string" || !projection.courseId ||
+        coursesInput.length !== 1 || projection.courseId !== coursesInput[0]?.id ||
+        !Array.isArray(projection.microsequenceIds) || projection.microsequenceIds.some(id => typeof id !== "string" || !id) ||
+        new Set(projection.microsequenceIds).size !== projection.microsequenceIds.length) {
+      return { ok: false, errors: [{ path: "$", message: "O recorte de leitura restrita não corresponde ao Curso." }] };
+    }
+  }
   validateSiblingIds(coursesInput, "$.courses", errors, "cursos do projeto");
   validateEntityIdsPerCourse(coursesInput, errors);
   const courses = coursesInput
