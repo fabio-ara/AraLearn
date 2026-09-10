@@ -129,7 +129,7 @@ function materializationPreparationFixture(blocks = 32) {
     curriculum: { modules: [{ lessons: [{ microsequences: [microsequence] }] }] },
     parts: [{ id: "part", position: 0, title: "Interfaces", intent: "Relacionar conceitos.", microsequences: [microsequence] }] };
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
-  return { adapter, support };
+  return { adapter, support, plan };
 }
 
 test("vínculos da Explicação conservam referências humanas e paginação nos dois transportes", async () => {
@@ -202,18 +202,60 @@ test("preparo recupera apoio acima do envelope Actions por continuação literal
   }
 });
 
-test("preparo pequeno é terminal; continuação não mistura revisão ou texto do apoio alterado", async () => {
+test("preparo conserva repertório disponível extenso sem introduzir nem vincular ideias nos dois transportes", async () => {
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter, plan } = materializationPreparationFixture(1);
+    plan.instructionalAnalysisUnits = Array.from({ length: 32 }, (_, index) => ({
+      id: `available-${index}`, position: index, statement: `Ideia disponível ${index + 1}`,
+      description: `Definição ${index + 1}: ` + "α → β; condição, relação e contraste preservados. ".repeat(65),
+      introducedAt: null, usedBy: [], revisitedBy: []
+    }));
+    plan.evidenceRequirements = [{ id: "available-evidence", position: 0,
+      statement: "Distinguir os papéis em uma mensagem.", description: "Critério disponível; nenhuma prática declarada." }];
+    const before = structuredClone(plan);
+    let continuation, literal = "", calls = 0;
+    do {
+      const read = await channelCall(channel, adapter, "preparar_materializacao", { curso: TITLE, parte: 1,
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(read.status, 200, read.envelope);
+      assert.ok(read.envelope.length <= 99_999);
+      assert.equal(read.value.context.fragmento?.inicio, literal.length);
+      literal += read.value.context.fragmento.texto;
+      continuation = read.value.context.continuacao;
+      assert.equal(read.value.context.temMais, continuation !== null);
+      assert.ok(++calls < 10);
+    } while (continuation);
+    assert.ok(calls > 1, "o repertório extenso precisa de continuação");
+    const part = JSON.parse(literal).parte;
+    assert.deepEqual(part.repertorioDisponivelDoCurso.ideias, before.instructionalAnalysisUnits.map((item, index) => ({
+      posicao: index + 1, ideia: item.statement, descricao: item.description
+    })));
+    assert.deepEqual(part.repertorioDisponivelDoCurso.requisitosDeEvidencia, [{
+      posicao: 1, ideia: before.evidenceRequirements[0].statement, descricao: before.evidenceRequirements[0].description
+    }]);
+    assert.deepEqual(part.ideiasEstabelecidas, []);
+    assert.deepEqual(part.microssequencias[0].ideiasPlanejadas, []);
+    assert.deepEqual(part.microssequencias[0].ideiasEstabelecidasDesdeOInicioDaParte, []);
+    assert.deepEqual(part.microssequencias[0].requisitosDeEvidencia, []);
+    assert.deepEqual(plan, before);
+  }
+});
+
+test("preparo pequeno é terminal; continuação não mistura revisão, apoio ou repertório alterado", async () => {
   const small = materializationPreparationFixture(4);
   const complete = await execute(small.adapter, "preparar_materializacao", { parte: 1 });
   assert.equal(complete.context.temMais, false);
   assert.equal(complete.context.continuacao, null);
   assert.deepEqual(complete.context.explicacoes[0].conteudo, small.support);
-  for (const change of ["revision", "content"]) {
-    const { adapter, support } = materializationPreparationFixture();
+  for (const change of ["revision", "content", "repertoire"]) {
+    const { adapter, support, plan } = materializationPreparationFixture();
     const first = await execute(adapter, "preparar_materializacao", { parte: 1 });
     assert.equal(first.context.temMais, true);
     if (change === "revision") adapter.revision += 1;
-    else support.content[0].data.text += " Alteração material posterior.";
+    else if (change === "content") support.content[0].data.text += " Alteração material posterior.";
+    else plan.instructionalAnalysisUnits.push({ id: "available", position: 0,
+      statement: "Origem", description: "Papel do dispositivo que envia a mensagem.",
+      introducedAt: null, usedBy: [], revisitedBy: [] });
     await assert.rejects(() => execute(adapter, "preparar_materializacao", {
       parte: 1, continuacao: first.context.continuacao
     }), { status: 409, code: "human_read_context_changed" });

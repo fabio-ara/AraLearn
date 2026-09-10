@@ -224,6 +224,136 @@ select is(public.maintain_course_for_actor_v1(pg_temp.copy_recipient(),pg_temp.c
 select ok(not has_function_privilege('anon','public.copy_course_for_actor_v1(uuid,uuid,bigint,text,boolean,text,timestamptz)','EXECUTE'),'anon não forja ator no writer de cópia');
 select ok(not has_function_privilege('authenticated','public.copy_course_for_actor_v1(uuid,uuid,bigint,text,boolean,text,timestamptz)','EXECUTE'),'authenticated não ignora o principal verificado da Edge');
 select ok(not has_table_privilege('authenticated','private.course_media','SELECT'),'cópia não abre catálogo Storage privado');
+
+-- Mapa preparado pelo writer, separado do inventário histórico de uma única UA.
+-- A ordem das referências difere da ordem do plano para detectar reordenação.
+insert into public.courses(id,owner_id,title,goal) values(
+  '36600000-0000-4000-8000-000000000102',pg_temp.copy_owner(),
+  'Cópia com cobertura curricular sintética','Preservar as associações do mapa.');
+insert into private.course_instructional_plans(course_id)
+values('36600000-0000-4000-8000-000000000102');
+create function pg_temp.scope_copy_source() returns uuid language sql as
+$$select '36600000-0000-4000-8000-000000000102'::uuid$$;
+select lives_ok($test$
+  select public.save_course_curricular_map_for_actor_v1(
+    pg_temp.copy_owner(),pg_temp.scope_copy_source(),1,1,false,'{
+      "audience":"Iniciantes","prerequisites":[],
+      "scopeItems":[
+        {"id":"36600000-0000-4000-8000-000000000201","position":0,"statement":"Identificar origem e destino."},
+        {"id":"36600000-0000-4000-8000-000000000202","position":1,"statement":"Relacionar os enlaces do caminho."}
+      ],
+      "modules":[{"moduleId":"scope-module","position":0,"title":"Comunicação","objective":"Explicar uma troca.",
+        "lessons":[{"lessonId":"scope-lesson","position":0,"title":"Elementos","objective":"Relacionar os elementos.",
+          "microsequences":[
+            {"microsequenceId":"scope-first","position":0,"title":"A troca","objective":"Identificar elementos e enlaces.",
+              "dependencyMicrosequenceIds":[],
+              "scopeItemIds":["36600000-0000-4000-8000-000000000202","36600000-0000-4000-8000-000000000201"],
+              "explanationPlan":{"purpose":"Explicar os papéis numa troca.","prerequisites":[],"relations":[],"sourceIds":[]}},
+            {"microsequenceId":"scope-second","position":1,"title":"O caminho","objective":"Relacionar enlaces sucessivos.",
+              "dependencyMicrosequenceIds":["scope-first"],
+              "scopeItemIds":["36600000-0000-4000-8000-000000000202"],
+              "explanationPlan":{"purpose":"Explicar o caminho composto.","prerequisites":[],"relations":[],"sourceIds":[]}}
+          ]}]}]
+    }'::jsonb,'copy366-source-map',repeat('6',64))
+$test$,'writer prepara origem com associações curriculares não vazias');
+create temporary table scope_copy_state as select
+  date_trunc('milliseconds',statement_timestamp()) requested_at,
+  private.current_course_curricular_map_v1(pg_temp.scope_copy_source()) source_map,
+  (select to_jsonb(c) from public.courses c where id=pg_temp.scope_copy_source()) source_course,
+  (select to_jsonb(p) from private.course_instructional_plans p where course_id=pg_temp.scope_copy_source()) source_plan,
+  (select jsonb_agg(to_jsonb(e) order by entity_type,entity_id) from private.course_entities e
+    where course_id=pg_temp.scope_copy_source()) source_entities,
+  (select jsonb_agg(to_jsonb(i) order by position,id) from private.course_instructional_plan_items i
+    where course_id=pg_temp.scope_copy_source()) source_items,
+  null::jsonb result;
+select lives_ok($test$
+  update scope_copy_state set result=public.copy_course_for_actor_v1(
+    pg_temp.copy_owner(),pg_temp.scope_copy_source(),(source_course->>'revision')::bigint,
+    'Destino sintético com escopos locais',true,
+    'copy:'||(extract(epoch from requested_at)*1000)::bigint::text||':'||gen_random_uuid()::text,
+    requested_at)
+$test$,'writer copia o mapa com cobertura curricular');
+create function pg_temp.scope_copy_target() returns uuid language sql as
+$$select (result->>'targetCourseId')::uuid from scope_copy_state$$;
+select is((select result->>'contract' from scope_copy_state),'aralearn.course-copy.v1',
+  'cópia curricular confirma o contrato corrente');
+select is((select count(*) from private.course_entities e
+  cross join lateral jsonb_array_elements_text(e.content->'scopeItemIds') ref(value)
+  where e.course_id=pg_temp.scope_copy_target() and e.entity_type='microsequence'),3::bigint,
+  'cópia preserva as três ocorrências de associação em duas microssequências');
+select ok(not exists(select 1 from private.course_entities e
+  cross join lateral jsonb_array_elements_text(e.content->'scopeItemIds') ref(value)
+  where e.course_id=pg_temp.scope_copy_target() and e.entity_type='microsequence'
+    and not exists(select 1 from private.course_instructional_plan_items i
+      join private.course_instructional_plans p on p.id=i.instructional_plan_id and p.course_id=i.course_id
+      where i.course_id=e.course_id and i.item_kind='curriculum_scope_item' and i.id::text=ref.value)),
+  'todas as referências da cópia pertencem a itens de escopo do seu próprio plano');
+select ok(not exists(select 1 from private.course_entities e
+  cross join lateral jsonb_array_elements_text(e.content->'scopeItemIds') ref(value)
+  join private.course_instructional_plan_items original on original.id::text=ref.value
+  where e.course_id=pg_temp.scope_copy_target() and original.course_id=pg_temp.scope_copy_source()),
+  'nenhuma microssequência copiada conserva UUID de item da origem');
+create function pg_temp.scope_copy_associations(p_course_id uuid) returns jsonb language sql as $f$
+  select jsonb_agg(jsonb_build_object('microsequenceId',e.entity_id,'statements',(
+    select jsonb_agg(i.statement order by ref.ordinal)
+    from jsonb_array_elements_text(e.content->'scopeItemIds') with ordinality ref(value,ordinal)
+    left join private.course_instructional_plan_items i on i.course_id=e.course_id
+      and i.item_kind='curriculum_scope_item' and i.id::text=ref.value
+  )) order by e.entity_id)
+  from private.course_entities e where e.course_id=p_course_id and e.entity_type='microsequence'
+$f$;
+select is(pg_temp.scope_copy_associations(pg_temp.scope_copy_target()),
+  pg_temp.scope_copy_associations(pg_temp.scope_copy_source()),
+  'remapeamento conserva o significado e a ordem de cada associação, inclusive escopo reutilizado');
+select ok(not exists(select 1 from private.course_entities e
+  where e.course_id=pg_temp.scope_copy_target() and e.entity_type='microsequence'
+    and (select jsonb_agg(ref.value order by ref.value)
+      from jsonb_array_elements_text(e.content->'scopeItemIds') ref(value)) is distinct from
+    (select jsonb_agg(t.plan_item_id::text order by t.plan_item_id::text)
+      from private.course_design_target_plan_items t where t.course_id=e.course_id
+        and t.didactic_microsequence_id=e.entity_id and t.plan_item_kind='curriculum_scope_item')),
+  'associações no conteúdo e vínculos relacionais da cópia têm o mesmo conjunto');
+
+-- Releitura autenticada e guarda atual: uma mudança legítima no mapa copiado
+-- deve funcionar sem remover associações para contornar referências inválidas.
+create temporary table scope_copy_map_read as select
+  public.get_owned_course_curricular_map_for_actor_v1(pg_temp.copy_owner(),pg_temp.scope_copy_target()) value;
+select lives_ok($test$
+  select public.save_course_curricular_map_for_actor_v1(
+    pg_temp.copy_owner(),pg_temp.scope_copy_target(),(value->>'courseRevision')::bigint,
+    (value->>'planVersion')::bigint,false,
+    jsonb_set(value->'map','{modules,0,lessons}',value#>'{map,modules,0,lessons}'||'[{
+      "lessonId":"scope-new-lesson","position":1,"title":"Aplicações posteriores",
+      "objective":"Preparar outro recorte sem alterar o existente.","microsequences":[]}]'::jsonb),
+    'copy366-edit-map',repeat('7',64)) from scope_copy_map_read
+$test$,'mapa relido da cópia admite nova lição sem retirar as associações anteriores');
+select is((select count(*) from private.course_entities where course_id=pg_temp.scope_copy_target()
+  and entity_type='lesson' and entity_id='scope-new-lesson' and parent_id='scope-module'),1::bigint,
+  'nova lição foi persistida somente na cópia');
+select is(pg_temp.scope_copy_associations(pg_temp.scope_copy_target()),
+  pg_temp.scope_copy_associations(pg_temp.scope_copy_source()),
+  'edição independente do mapa conserva a cobertura e sua ordem');
+update scope_copy_map_read set value=public.get_owned_course_curricular_map_for_actor_v1(
+  pg_temp.copy_owner(),pg_temp.scope_copy_target());
+select throws_ok($test$
+  select public.save_course_curricular_map_for_actor_v1(
+    pg_temp.copy_owner(),pg_temp.scope_copy_target(),(value->>'courseRevision')::bigint,
+    (value->>'planVersion')::bigint,false,
+    jsonb_set(value->'map','{modules,0,lessons,0,microsequences,0,scopeItemIds}',
+      '["36600000-0000-4000-8000-000000000299"]'::jsonb),
+    'copy366-invalid-map',repeat('8',64)) from scope_copy_map_read
+$test$,'23514',null,'guarda atual ainda rejeita referência curricular inexistente na cópia');
+select is(private.current_course_curricular_map_v1(pg_temp.scope_copy_target()),
+  (select value->'map' from scope_copy_map_read),'mapa da cópia permanece intacto após rejeição');
+select is(jsonb_build_object(
+  'map',private.current_course_curricular_map_v1(pg_temp.scope_copy_source()),
+  'course',(select to_jsonb(c) from public.courses c where id=pg_temp.scope_copy_source()),
+  'plan',(select to_jsonb(p) from private.course_instructional_plans p where course_id=pg_temp.scope_copy_source()),
+  'entities',(select jsonb_agg(to_jsonb(e) order by entity_type,entity_id) from private.course_entities e where course_id=pg_temp.scope_copy_source()),
+  'items',(select jsonb_agg(to_jsonb(i) order by position,id) from private.course_instructional_plan_items i where course_id=pg_temp.scope_copy_source())),
+  (select jsonb_build_object('map',source_map,'course',source_course,'plan',source_plan,
+    'entities',source_entities,'items',source_items) from scope_copy_state),
+  'origem mantém mapa, versões, conteúdo e inventário após cópia e edição do destino');
 set constraints all immediate;
 select * from finish();
 rollback;

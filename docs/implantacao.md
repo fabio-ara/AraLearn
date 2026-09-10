@@ -226,6 +226,12 @@ coincidir também no ensaio de restauração. A migration
 fiel de aplicações existentes da completude de prática exigida ao materializar,
 sem regravar cursos. Ela avança o manifesto e deve estar aplicada antes de
 validar esse comportamento pelos canais hospedados. A migration
+`20260910134141_copied_curriculum_scope_integrity.sql` remapeia a cobertura nas
+novas cópias e repara referências órfãs em cópias existentes pelos vínculos locais
+íntegros. Ela transforma dados úteis: exige backup atual, restauração e ensaio
+de preservação antes da aplicação hospedada. Ambiguidade impede o reparo; as
+filas de observações, fontes, arquivos, acesso e conteúdo devem permanecer.
+A migration
 `20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
 autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
 quando o próprio documento mudar; uma correção interna do vínculo OAuth não
