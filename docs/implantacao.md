@@ -222,6 +222,10 @@ explica os cuidados de cada mudança. A migration
 capacidade `course-business-conflicts-http-409-v1` somente após a correção de
 conflitos estar aplicada. A revisão do manifesto e a última migration precisam
 coincidir também no ensaio de restauração. A migration
+`20260910054749_contextual_recorded_practice_integrity.sql` separa o registro
+fiel de aplicações existentes da completude de prática exigida ao materializar,
+sem regravar cursos. Ela avança o manifesto e deve estar aplicada antes de
+validar esse comportamento pelos canais hospedados. A migration
 `20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a
 autoridade do callback real de Actions. Reimporte o OpenAPI no GPT somente
 quando o próprio documento mudar; uma correção interna do vínculo OAuth não

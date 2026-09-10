@@ -1,5 +1,21 @@
 # Alterações do schema
 
+## 20260910054749 — aplicações existentes e prática planejada
+
+O registro de aplicações e a aplicação expressa de configuração em unidades
+existentes conservam requisitos de prática ainda não realizados ou parcialmente
+realizados. Um núcleo privado compartilhado valida a integridade das declarações;
+o caminho de materialização completa também exige cobertura, quantidade mínima
+de oportunidades e dimensões de variação. O modo é escolhido pelo escritor,
+sem acrescentar campo aos canais de autoria.
+
+A migration preserva os vínculos e dados do curso, snapshots, fontes e revisão.
+Referências, oportunidades duplicadas, operação invariável, componentes, acesso,
+calibração e versões continuam protegidos. Testes PGlite com escritores e
+validadores SQL reais cobrem registro fiel, aplicação parcial, preservação,
+recibos e recusas atômicas; não substituem integração autenticada ou prova
+hospedada. O manifesto avança para exigir esta revisão no corte.
+
 ## 20260908105357 — leitura de origens autorizadas para cópia
 
 A preparação de cópia usa uma leitura de serviço específica para cursos próprios ou com permissão explícita de cópia. As chamadas anteriores alcançavam wrappers de leitura cujo acesso já havia sido revogado. A migração acrescenta `list_copyable_courses_for_actor_v1`, sem reativar esses wrappers nem conceder edição da origem compartilhada.

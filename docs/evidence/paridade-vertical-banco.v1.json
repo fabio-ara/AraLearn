@@ -1023,6 +1023,10 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "function:private.assert_course_application_pedagogy_v1(p_course_id uuid, p_units jsonb, p_require_complete_practice boolean)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.assert_course_lesson_dependencies_v1(p_course_id uuid, p_lesson_ids text[])",
       "caseId": "course-authoring-experience"
     },

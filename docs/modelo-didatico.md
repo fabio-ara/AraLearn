@@ -234,6 +234,15 @@ observadas semanticamente pelo banco. Identidades de unidades, pai/alvo e
 permitem confrontar planejado e declarado como aplicado; não constituem pontuação,
 diagnóstico ou resultado de aprendizagem.
 
+Ao registrar aplicações em unidades já salvas, o relato conserva somente o
+que foi realizado. Um requisito de prática previsto no desenho pode continuar
+sem oportunidade aplicada, ou com quantidade e variação ainda incompletas.
+Essa diferença permanece identificável no plano e no registro aplicado;
+registrá-la não declara cumprimento. Referências, operações e identidades
+das oportunidades declaradas continuam validadas. A materialização de um
+lote completo exige a cobertura, a quantidade e a variação de prática
+estabelecidas na sua configuração.
+
 Uma unidade de análise é introduzida uma vez, mas pode ser desenvolvida em
 várias unidades de estudo. Cada continuação declara uso ou retomada e a
 cobertura explicativa é reunida no lote; isso permite aprofundar sem condensar
