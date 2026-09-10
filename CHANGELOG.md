@@ -35,6 +35,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Corrigido
 
+- consultas de uma microssequência incluem as observações da Explicação mesmo
+  antes de existirem unidades de estudo;
 - unidades com calibração contextual pendente recebem orientação para completá-la,
   preservando as condições fixadas pela autoria;
 - tarefas agrupadas das Actions apresentam seus argumentos tipados ao cliente,

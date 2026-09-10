@@ -2274,8 +2274,8 @@ async function readObservations({ adapter, principal, resolved, args, deadlineAt
     : [resolved.microsequence
       ? { target: { kind: "didactic_microsequence", id: resolved.microsequence.id }, includeDescendants: true }
       : { target: { kind: "course", id: resolved.course.id }, includeDescendants: true }];
-  // Base e unidade são objetos independentes; uma seleção de unidades também lê suas bases.
-  if (selected.length) hierarchies.push(...micros.map(value => ({
+  // A microssequência e sua Explicação têm alvos distintos na fila.
+  if (selected.length || resolved.microsequence) hierarchies.push(...micros.map(value => ({
     target: { kind: "microsequence_explanation", id: value.id }, includeDescendants: false
   })));
   const items = [];

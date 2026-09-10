@@ -11,6 +11,12 @@ const annotationId='30000000-0000-4000-8000-000000000001';
 const reference={annotationId,annotationVersion:2,targetKind:'microsequence_explanation',targetId:'micro'};
 function harness({large=false}={}) {
   const events=[]; let revision=1; let reviewed=false;
+  const queueRequests=[];
+  const observations=[{annotationId,annotationVersion:2,provenance:{origin:'author',channel:'authoring_interface'},
+    target:{kind:'microsequence_explanation',id:'micro',observedPath:[
+      {kind:'course',id:courseId},{kind:'module',id:'module'},{kind:'lesson',id:'lesson'},
+      {kind:'microsequence_explanation',id:'micro'}]},
+    rawText:'Esclarecer a relação causal.',state:'considered',createdAt:'2026-09-09T00:00:00Z'}];
   const explanation={title:'Explicação',content:Array.from({length:large?20:1},(_,index)=>({id:`body-${index}`,
     package:'aralearn.resource.paragraph',version:'1.0.0',
     data:{text:large ? 'Conhecimento e relações. '.repeat(400).trim() : 'Base desenvolvida antes das unidades.'}}))};
@@ -33,12 +39,19 @@ function harness({large=false}={}) {
     async getCourseSources(){events.push('sources');return{items:[],hasMore:false,nextCursor:null};},
     async getCourseContentReview(){events.push('review');return read();},
     async getCourseAnchoredAnnotations(request){events.push(['queue',request.query.hierarchy,request.query.states,request.annotationSetVersion]);
-      return{items:[{annotationId,annotationVersion:2,provenance:{origin:'author'},target:{kind:'microsequence_explanation',id:'micro'},
-        rawText:'Esclarecer a relação causal.',state:'considered',createdAt:'2026-09-09T00:00:00Z'}],annotationSetVersion:4,hasMore:false,nextCursor:null};},
+      queueRequests.push(structuredClone(request));
+      const {hierarchy,states=[],origins=[],channels=[]}=request.query;
+      const items=observations.filter(item=>(!states.length||states.includes(item.state))&&
+        (!origins.length||origins.includes(item.provenance.origin))&&
+        (!channels.length||channels.includes(item.provenance.channel))&&
+        (!hierarchy||item.target.kind===hierarchy.target.kind&&item.target.id===hierarchy.target.id||
+          hierarchy.includeDescendants&&item.target.observedPath.some(entry=>
+            entry.kind===hierarchy.target.kind&&entry.id===hierarchy.target.id)));
+      return{items:structuredClone(items),annotationSetVersion:4,hasMore:false,nextCursor:null};},
     async setCourseContentReview(request){events.push(['write',request]);reviewed=request.reviewed;revision++;
       throw Object.assign(new Error('Resposta perdida'),{status:503});}
   };
-  return {adapter,events,read};
+  return {adapter,events,read,observations,queueRequests};
 }
 const execute=(adapter,name,args,who=principal)=>executeHumanCourseTask({adapter,principal:who,name,rawArguments:args});
 test('retomada focal inclui preferências atuais, condições, base e pendências sem modificar o curso',async()=>{
@@ -85,8 +98,9 @@ test('pedido de parâmetro em lição resolve o ramo e preserva unidades já pro
   assert.equal(Object.hasOwn(writes[0],'upserts'),false);
 });
 test('revisão de base sem parte ou unidades lê conteúdo/fontes/fila e conserva referência exata pendente',async()=>{
-  const {adapter,events}=harness();
+  const {adapter,events,queueRequests}=harness();
   const output=await execute(adapter,'preparar_revisao',{curso:'Curso',microssequencia:'Relações'});
+  assert.equal(output.context.observations.items.length,1);
   assert.deepEqual(output.context.observations.items[0].referenciaObservacao,reference);
   assert.equal(output.context.explicacoes[0].conteudo.content[0].data.text,'Base desenvolvida antes das unidades.');
   assert.equal(output.context.explicacoes[0].revisao,'Rascunho');
@@ -94,7 +108,52 @@ test('revisão de base sem parte ou unidades lê conteúdo/fontes/fila e conserv
   assert.equal(openContentReviewReference(output.context.explicacoes[0].referenciaRevisao,principal).targetId,'micro');
   assert.ok(events.includes('sources'));
   assert.ok(events.some(value=>Array.isArray(value)&&value[0]==='queue'&&value[2].includes('considered')));
+  assert.deepEqual(queueRequests.map(request=>request.query.hierarchy),[
+    {target:{kind:'didactic_microsequence',id:'micro'},includeDescendants:true},
+    {target:{kind:'microsequence_explanation',id:'micro'},includeDescendants:false}
+  ]);
+  assert.deepEqual(queueRequests.map(request=>request.annotationSetVersion),[null,4]);
   assert.equal(events.some(value=>Array.isArray(value)&&value[0]==='write'),false);
+});
+test('consulta por microssequência encontra a base sem unidades e respeita estado e recorte',async()=>{
+  const {adapter,observations}=harness();
+  observations.push({...structuredClone(observations[0]),annotationId:'30000000-0000-4000-8000-000000000002',
+    state:'resolved',rawText:'Observação já resolvida desta base.'});
+  const elsewhere=structuredClone(observations[0]);
+  elsewhere.annotationId='30000000-0000-4000-8000-000000000003';
+  elsewhere.target.id='outra-base';elsewhere.target.observedPath.at(-1).id='outra-base';
+  elsewhere.rawText='Observação de outra base.';
+  observations.push(elsewhere);
+  const args={curso:'Curso',microssequencia:'Relações'};
+  const pending=await execute(adapter,'consultar_observacoes',args);
+  assert.equal(pending.context.observations.items.length,1);
+  assert.deepEqual(pending.context.observations.items[0].referenciaObservacao,reference);
+  const all=await execute(adapter,'consultar_observacoes',{...args,somenteAbertas:false});
+  assert.deepEqual(all.context.observations.items.map(item=>[item.state,item.rawText]),
+    [['considered','Esclarecer a relação causal.'],['resolved','Observação já resolvida desta base.']]);
+  assert.deepEqual(all.context.observations.items[0].referenciaObservacao,reference);
+  assert.equal(Object.hasOwn(all.context.observations.items[1],'referenciaObservacao'),false);
+});
+test('leitura adicional da base preserva paginação, versão da fila e deduplicação',async()=>{
+  for(const changedVersion of [false,true]){
+    const {adapter,queueRequests}=harness();const get=adapter.getCourseAnchoredAnnotations;
+    adapter.getCourseAnchoredAnnotations=async request=>{
+      const page=await get(request);
+      if(request.query.hierarchy.target.kind!=='microsequence_explanation')return page;
+      return request.cursor===null?{...page,hasMore:true,nextCursor:'base-2'}:
+        {...page,annotationSetVersion:changedVersion?5:4};
+    };
+    const task=()=>execute(adapter,'consultar_observacoes',{curso:'Curso',microssequencia:'Relações'});
+    if(changedVersion)await assert.rejects(task,error=>error.code==='course_service_unavailable');
+    else{
+      const output=await task();
+      assert.equal(output.context.observations.items.length,1);
+      assert.deepEqual(output.context.observations.items[0].referenciaObservacao,reference);
+    }
+    assert.deepEqual(queueRequests.map(request=>[request.annotationSetVersion,request.cursor]),
+      [[null,null],[4,null],[4,'base-2']]);
+    assert.ok(queueRequests.every(request=>request.courseId===courseId&&request.expectedCourseRevision===1));
+  }
 });
 test('declaração expressa usa referência pequena e após resposta perdida relê sem segunda escrita',async()=>{
   const {adapter,events}=harness();
