@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 
 import { createCourseStudyApplication } from
   "../../src/study/CourseStudyApplication.js";
+import { IDBFactory } from "fake-indexeddb";
+import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import { CourseLocalStore } from "../../src/persistence/CourseLocalStore.js";
+import { CourseController } from "../../src/supabase/CourseController.js";
+import { CourseStudyBridge } from "../../src/study/CourseStudyBridge.js";
+import { CourseStudyRepository } from "../../src/study/CourseStudyRepository.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 
@@ -177,6 +183,81 @@ async function openFirstStudyUnit(app) {
     "unit-a"
   ]);
 }
+
+test("visitante abre projeção revisada pelo Controller e Estudo reais sem expor bases ou unidades ocultas", async (t) => {
+  const complete = project();
+  const first = complete.courses[0].modules[0].lessons[0].microsequences[0];
+  first.explanation = { title: "Base disponível", content: [structuredClone(first.studyUnits[0].content[0])] };
+  const restricted = structuredClone(first);
+  restricted.id = "micro-restricted";
+  restricted.title = "Título protegido da base";
+  restricted.goal = "Objetivo protegido da base";
+  restricted.explanation.content[0].data.text = "Texto protegido da base";
+  restricted.studyUnits.forEach((unit, index) => {
+    unit.id = `restricted-parent-unit-${index}`;
+    unit.content[0].data.text = index === 0 ? "Unidade revisada com base pendente." : "Unidade protegida.";
+  });
+  complete.courses[0].modules[0].lessons[0].microsequences.push(restricted);
+  const { rows } = flattenCourseDocument(complete);
+  // Stub da projeção SQL: revisão de base e unidade é independente.
+  const visibleRows = rows.filter(row => row.entityType !== "study_unit" ||
+    ["unit-a", "restricted-parent-unit-0"].includes(row.entityId)).map(row => ({
+    ...row,
+    ...(row.entityType === "microsequence" || row.entityType === "study_unit" ? {
+      contentReview: row.entityId === restricted.id ? { state: "draft" }
+        : { state: "current", reviewedAt: "2026-09-10T21:30:00Z" }
+    } : {}),
+    ...(row.entityId === restricted.id ? { content: { title: "Aguardando revisão da autoria" } } : {})
+  }));
+  const descriptor = {
+    courseId: COURSE_ID, title: "Curso", goal: "Aprender.", revision: 20,
+    ownership: "public", visibility: "public", publicFileAccess: "restricted",
+    canEdit: false, canObserve: false, canCopy: false,
+    moduleCount: 1, lessonCount: 1, topicCount: 0, microsequenceCount: 2,
+    studyUnitCount: 4, completedStudyUnitCount: 0, updatedAt: "2026-09-10T21:30:00Z"
+  };
+  const pageCalls = [];
+  const api = {
+    async listCourses() { return { contract: "aralearn.course-list.v2", items: [descriptor], hasMore: false, nextCursor: null }; },
+    async getCourse() { return { ...descriptor, contract: "aralearn.course.v1" }; },
+    async getCourseEntities(courseId, { revision, cursor }) {
+      assert.equal(courseId, COURSE_ID); assert.equal(revision, 20);
+      pageCalls.push(cursor);
+      return { contract: "aralearn.course-entities.v1", courseId, revision,
+        items: cursor ? visibleRows.slice(3) : visibleRows.slice(0, 3),
+        pendingReviewMicrosequenceIds: [restricted.id], hasMore: !cursor,
+        nextCursor: cursor ? null : { entityType: visibleRows[2].entityType, entityId: visibleRows[2].entityId } };
+    }
+  };
+  const store = await CourseLocalStore.open(new IDBFactory(), { userId: COURSE_ID });
+  const controller = new CourseController({ api, store });
+  const repository = new CourseStudyRepository({ bridge: new CourseStudyBridge({ controller }), api,
+    cache: store, visitor: true, windowValue: { navigator: { onLine: true } } });
+  await repository.initialize();
+  const root = new FakeStudyRoot();
+  const errors = [];
+  root.dispatchEvent = event => { if (event.type === "aralearn:course-load-error") errors.push(event.detail.error); return true; };
+  const app = createCourseStudyApplication({ root, repository, initialProject: repository.loadProject(), visitor: true });
+  t.after(async () => { app.destroy(); await repository.close(); store.close(); });
+  assert.equal(await app.openCourse(COURSE_ID), true, JSON.stringify(errors.map(error => ({ code: error.code, details: error.details }))));
+  assert.deepEqual(errors, []);
+  assert.equal(pageCalls.length, 2, "A projeção só é composta depois da última página");
+  assert.match(root.innerHTML, /Abrir módulo/u);
+  const projected = repository.loadProject();
+  const [active, pending] = projected.courses[0].modules[0].lessons[0].microsequences;
+  assert.deepEqual(active.explanation, first.explanation);
+  assert.deepEqual(active.studyUnits, [first.studyUnits[0]]);
+  assert.deepEqual(pending, { id: restricted.id, title: "Aguardando revisão da autoria", studyUnits: [restricted.studyUnits[0]] });
+  assert.doesNotMatch(JSON.stringify(projected), /Título protegido|Objetivo protegido|Texto protegido|Unidade protegida|"unit-b"/u);
+  await openFirstStudyUnit(app);
+  assert.match(root.innerHTML, /Conteúdo 1\./u);
+  assert.equal(await app.openEntityPath([COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-b"]), false);
+  assert.equal(await app.openEntityPath([COURSE_ID, "module-a", "lesson-a", restricted.id, "restricted-parent-unit-0"]), true);
+  assert.match(root.innerHTML, /Unidade revisada com base pendente\./u);
+  const context = repository.loadExplanationContext([COURSE_ID, "module-a", "lesson-a", restricted.id, "restricted-parent-unit-0"]);
+  assert.equal(context.state, "draft"); assert.equal(context.explanation, null);
+  assert.equal(controller.ownerOnly, false);
+});
 
 test("visitante mantém a leitura e pede conta ao abrir observações, sem abrir edição", async () => {
   const document = project();

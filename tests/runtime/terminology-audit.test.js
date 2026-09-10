@@ -176,6 +176,16 @@ test("o audit rejeita símbolo abolido fora de migration ou evidência históric
   await mkdir(path.join(repositoryRoot, "src"), { recursive: true });
   await mkdir(path.join(repositoryRoot, "docs"), { recursive: true });
   await mkdir(path.join(repositoryRoot, "supabase", ".temp", "start-secrets"), { recursive: true });
+  await mkdir(path.join(repositoryRoot, ".validation", "private"), { recursive: true });
+  await mkdir(path.join(repositoryRoot, ".validation-active"), { recursive: true });
+  const historicalEvidence = '{"LegacyTerm":"retorno histórico preservado"}\n';
+  const evidencePath = path.join(repositoryRoot, ".validation", "private", "response.json");
+  await writeFile(evidencePath, historicalEvidence, "utf8");
+  await writeFile(
+    path.join(repositoryRoot, ".validation-active", "current.js"),
+    "export const LegacyTerm = true;\n",
+    "utf8"
+  );
   await writeFile(
     path.join(repositoryRoot, "supabase", ".temp", "start-secrets", "main.ts"),
     "export const LegacyTerm = true;\n",
@@ -209,6 +219,11 @@ test("o audit rejeita símbolo abolido fora de migration ou evidência históric
     "docs/vocabulario-controlado.md: contém símbolo abolido"
   )), false);
   assert.equal(findings.some((finding) => finding.startsWith("supabase/.temp/")), false);
+  assert.equal(findings.some((finding) => finding.startsWith(".validation/")), false);
+  assert.ok(findings.includes(
+    ".validation-active/current.js: contém símbolo abolido \"LegacyTerm\" (synthetic-term)."
+  ));
+  assert.equal(await readFile(evidencePath, "utf8"), historicalEvidence);
 });
 
 test("o padrão operation.* não bloqueia o namespace canônico task_operation", async (context) => {

@@ -48,7 +48,9 @@ import { STUDY_DRAFT_RECOVERY_CACHE_KEY, readStudyDraftRecoveries } from "../per
 
 // Stored course content remains readable while its current curriculum is a
 // draft. Approval/import retain their independent completeness checks.
-const composeCourseDocument = (course, rows) => composeStoredCourseDocument(course, rows, { allowIncompleteCurriculum: true });
+const composeCourseDocument = (course, rows, pendingReviewMicrosequenceIds = []) => composeStoredCourseDocument(course, rows, {
+  allowIncompleteCurriculum: true, pendingReviewMicrosequenceIds
+});
 const CACHE_PREFIX = "course.v1";
 const MAX_ENTITY_PAGES = 100;
 const VERIFIED_COMPOSITION_CACHE_CONTRACT =
@@ -1517,7 +1519,7 @@ export class CourseController {
             id: String(cachedCourse.courseId || "").trim(),
             title: String(cachedCourse.title || "").trim(),
             goal: String(cachedCourse.goal || "").trim()
-          }, rows);
+          }, rows, this.ownerOnly ? [] : [...pendingReview]);
         } catch {
           await this.store.deleteCachePrefix(
             `${prefix}.entities:${courseId}:${revision}:`
@@ -1753,7 +1755,7 @@ export class CourseController {
             id: String(course?.courseId || "").trim(),
             title: String(course?.title || "").trim(),
             goal: String(course?.goal || "").trim()
-          }, rows);
+          }, rows, this.ownerOnly ? [] : [...pendingReview]);
           const candidate = { course, rows, document, offline, stale,
             ...(pendingReview.size ? { pendingReviewMicrosequenceIds: [...pendingReview] } : {}) };
           const retained = await this.#retainReviewedCopy(courseId, candidate);

@@ -688,7 +688,7 @@ function fileAccessDescription(policy, inheritedPolicy, inheritedLabel) {
     const effective = PUBLIC_FILE_ACCESS[inheritedPolicy];
     return `Herdar ${inheritedLabel}${effective ? ` · ${effective.toLowerCase()}` : ""}`;
   }
-  return policy === "available" ? "Disponível no curso público" : "Somente quem tem acesso concedido ao curso";
+  return policy === "available" ? "Disponível no curso público" : "Sem acesso público ao PDF";
 }
 
 function renderFileAccessForm(source, attachment, state, label) {

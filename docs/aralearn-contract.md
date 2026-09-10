@@ -45,6 +45,14 @@ fornecer essa decisão. Fontes e arquivos usados entram na base pertinente.
 O [contrato de revisão humana](explicacao-e-revisao-humana.md) detalha inspeção,
 distribuição, concorrência e limites da preservação local.
 
+Na leitura restrita do Estudo, `pendingReviewMicrosequenceIds` identifica as
+bases ocultas na mesma revisão das páginas de entidades. Essas microssequências
+conservam identidade, posição e o título de estado "Aguardando revisão da
+autoria", sem objetivo, papel pedagógico ou conteúdo da base. Cada unidade
+acessível é validada integralmente e conserva sua elegibilidade independente da
+base. O montador reconhece esse marcador apenas no recorte explícito de leitura,
+inclusive no cache; importação e autoria exigem a composição curricular completa.
+
 A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
 inclusive sem alterações de entidades. Metadados, entidades e atribuições são
 validados na mesma transação, com uma revisão esperada e um recibo de repetição.
@@ -68,6 +76,9 @@ explícitas de editar e observar. Busca de pessoas exige curso próprio, prefixo
 de ao menos dois caracteres e no máximo dez resultados; o grant confirma UUID
 e identificador selecionados. Troca ou reutilização do identificador não
 redireciona permissões já concedidas.
+Cada pessoa autora dispõe de até 60 buscas e 10 tentativas de concessão por
+janela de dez minutos. Ao vencer a janela, a próxima operação inicia uma nova
+contagem, preservando as concessões existentes.
 
 Cursos começam privados. Tornar público exige confirmação e política de acesso
 a arquivos. Visitantes recebem somente projeções de estudo e não podem editar
