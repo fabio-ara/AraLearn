@@ -354,3 +354,104 @@ test("cobertura explicativa conserva escopo, identidade e justificativa de não 
     await assert.rejects(validate([introduction, notApplicable]), error => error.code === "22023");
   } finally { await db.close(); }
 });
+
+async function recordedPracticeFixture() {
+  const db = await fixture({ units: true, currentOrder: true });
+  try {
+    await installCurrentConfiguration(db);
+    await db.exec("alter table private.course_design_parameter_definitions add column supported_scopes text[]");
+    for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+      await db.query("update private.course_design_parameter_definitions set supported_scopes=$2 where parameter_id=$1",
+        [definition.id, definition.supportedScopes]);
+    }
+    await db.exec(functionSql(await load("20260905083846_contextual_automatic_design_application.sql"), "private.valid_applied_course_design_parameters_v1"));
+    await db.exec(await load("20260909071110_contextual_calibration_provenance.sql"));
+    await db.exec(await load("20260910045104_contextual_explanation_forms_across_units.sql"));
+    await db.exec(await load("20260910054749_contextual_recorded_practice_integrity.sql"));
+    await write(db, saveItem(analysisId), "recorded-analysis");
+    await write(db, saveItem(evidenceId, "evidence_requirement"), "recorded-future-evidence");
+    await write(db, { ...links([analysisId]), evidenceRequirementIds: [evidenceId] }, "recorded-target-links");
+    await db.exec(`update private.course_design_parameter_assignments set value='2'
+      where parameter_id='minimum_distinct_practice_opportunities_per_evidence_requirement';
+      update private.course_design_parameter_assignments set value='["case_or_data","external_representation"]'
+      where parameter_id='required_practice_variation_dimensions';`);
+    return db;
+  } catch (error) { await db.close(); throw error; }
+}
+
+const recordConfiguration = entries => ({ type: "apply_study_unit_configuration", scope: { kind: "didactic_microsequence", ref: "micro" },
+  units: entries.map(([studyUnitId, supplied]) => ({ studyUnitId, expectedStudyUnitVersion: 1, automaticParameters: [], application: supplied })) });
+const establishedUse = () => ({ ...application(), introducedInstructionalAnalysisUnitIds: [], usedInstructionalAnalysisUnitIds: [analysisId], explanationApplications: [] });
+const persistedPedagogy = db => value(db, `select jsonb_agg(jsonb_build_object('studyUnitId',entity_id,'didacticMicrosequenceId',parent_id,
+  'designSnapshot',design_snapshot,'designApplication',design_application)) value from private.course_entities where entity_type='study_unit'`);
+
+test("registro fiel de unidades expositivas conserva requisito futuro, dados e retomada sem declarar prática", async () => {
+  const db = await recordedPracticeFixture();
+  try {
+    await db.exec(`insert into private.course_entities select course_id,entity_type,'unit-c',parent_id,3,content,version,
+      design_snapshot,design_application,applied_explanation_basis,content_review,updated_at from private.course_entities where entity_id='unit-b';
+      insert into private.course_source_attributions values('${courseId}','study_unit','unit-a');`);
+    const entities = () => db.query("select entity_id,content,version,applied_explanation_basis,content_review from private.course_entities order by entity_id");
+    const before = (await entities()).rows;
+    const planned = (await db.query("select * from private.course_design_target_plan_items order by plan_item_id")).rows;
+    const command = recordConfiguration([["unit-a", application()], ["unit-b", establishedUse()], ["unit-c", establishedUse()]]);
+    const firstRevision = await value(db, "select revision value from public.courses");
+    command.expectedPlanVersion = await value(db, "select version value from private.course_instructional_plans");
+    const result = await write(db, command, "recorded-three-expository", { revision: firstRevision });
+    assert.equal(result.changed, true);
+    assert.deepEqual((await entities()).rows, before);
+    assert.deepEqual((await db.query("select * from private.course_design_target_plan_items order by plan_item_id")).rows, planned);
+    assert.equal(await value(db, "select count(*)::integer value from private.course_source_attributions where target_id='unit-a'"), 1);
+    for (const unit of await persistedPedagogy(db)) {
+      assert.deepEqual(unit.designSnapshot.evidenceRequirementIds, [evidenceId]);
+      assert.deepEqual(unit.designApplication.practiceApplications, []);
+      assert.equal(unit.designSnapshot.parameters.find(item => item.parameterId === "minimum_distinct_practice_opportunities_per_evidence_requirement").value, 2);
+    }
+    assert.equal((await write(db, command, "recorded-three-expository", { revision: firstRevision })).idempotent, true);
+    assert.equal((await write(db, apply([["unit-a", application()], ["unit-b", establishedUse()], ["unit-c", establishedUse()]]), "recorded-same-applications")).changed, false);
+    await assert.rejects(db.query("select private.assert_course_materialization_pedagogy_v1($1,$2)", [courseId, await persistedPedagogy(db)]),
+      error => error.code === "23514" && error.message === "A pratica nao cumpre a configuracao efetiva.");
+    await assert.rejects(write(db, command, "recorded-stale-course", { revision: firstRevision }), error => error.code === "PT409");
+    await assert.rejects(write(db, command, "recorded-other-owner", { actor: other }), error => error.code === "42501");
+    const fixed = structuredClone(command); fixed.units[0].automaticParameters = [{ parameterId: "required_explanation_forms", value: ["worked_example"], reason: "Sobrescrever fixação." }];
+    await assert.rejects(write(db, fixed, "recorded-fixed-override"), error => error.code === "22023");
+    assert.deepEqual((await entities()).rows, before);
+    assert.equal(await value(db, "select count(*)::integer value from private.course_change_receipts where request_id in('recorded-stale-course','recorded-other-owner','recorded-fixed-override')"), 0);
+    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), { schemaRevision: "20260910054749", features: { fixture: true } });
+    for (const role of ["anon", "authenticated", "service_role"]) {
+      assert.equal(await value(db, "select has_function_privilege($1,'private.assert_course_application_pedagogy_v1(uuid,jsonb,boolean)','execute') value", [role]), false);
+    }
+  } finally { await db.close(); }
+});
+
+test("registro parcial conserva integridade da prática e materialização exige quantidade e variação completas", async () => {
+  const db = await recordedPracticeFixture();
+  try {
+    const practice = { ...establishedUse(), mode: "practice", practiceApplications: [{ evidenceRequirementId: evidenceId,
+      opportunityId: "caso-1", invariantTaskOperation: "Relação", variedDimensions: ["case_or_data"] }] };
+    await write(db, recordConfiguration([["unit-a", application()], ["unit-b", practice]]), "recorded-partial-practice");
+    const partial = await persistedPedagogy(db);
+    const materialize = units => db.query("select private.assert_course_materialization_pedagogy_v1($1,$2)", [courseId, units]);
+    const incomplete = error => error.code === "23514" && error.message === "A pratica nao cumpre a configuracao efetiva.";
+    await assert.rejects(materialize(partial), incomplete);
+    const twoCases = structuredClone(partial);
+    const practiced = twoCases.find(unit => unit.studyUnitId === "unit-b").designApplication.practiceApplications;
+    practiced.push({ ...practiced[0], opportunityId: "caso-2" });
+    await assert.rejects(materialize(twoCases), incomplete);
+    practiced[1].variedDimensions.push("external_representation");
+    await materialize(twoCases);
+    const failures = [
+      ["duplicate-opportunity", { ...practice, practiceApplications: [...practice.practiceApplications, ...practice.practiceApplications] }],
+      ["wrong-operation", { ...practice, practiceApplications: [{ ...practice.practiceApplications[0], invariantTaskOperation: "Outra operação" }] }],
+      ["outside-requirement", { ...practice, practiceApplications: [{ ...practice.practiceApplications[0], evidenceRequirementId: analysisId }] }],
+      ["invalid-dimension", { ...practice, practiceApplications: [{ ...practice.practiceApplications[0], variedDimensions: ["invented"] }] }],
+      ["used-and-developed", { ...practice, explanationApplications: application().explanationApplications }]
+    ];
+    for (const [name, invalid] of failures) {
+      await assert.rejects(write(db, apply([["unit-b", invalid]]), `recorded-${name}`), error => ["22023", "23514"].includes(error.code));
+      assert.deepEqual(await persistedPedagogy(db), partial, name);
+      assert.equal(await value(db, "select count(*)::integer value from private.course_change_receipts where request_id=$1", [`recorded-${name}`]), 0);
+    }
+    await assert.rejects(db.query("select private.assert_course_application_pedagogy_v1($1,$2,null)", [courseId, partial]), error => error.code === "22023");
+  } finally { await db.close(); }
+});

@@ -56,6 +56,13 @@ Cada parâmetro pertence a uma atribuição do curso, identificada por parâmetr
 
 O painel [CourseDesignPanel](../src/ui/CourseDesignPanel.js) apresenta valor, origem, alcance, justificativa, limites e, na unidade, configuração aplicada. O comando `clear_parameter` retira a atribuição local para restaurar a resolução herdada; `delegate_parameter` pede escolha contextual. Salvar intenção altera a orientação para a próxima produção ou revisão solicitada. O conteúdo salvo e seu registro aplicado só mudam mediante uma operação de conteúdo pertinente.
 
+O registro expresso das aplicações de unidades existentes descreve o conteúdo
+realizado e conserva os requisitos planejados, inclusive prática futura ainda
+ausente ou incompleta. Aplicar configuração e calibração a essas unidades pode
+acompanhar essa declaração fiel, preservando texto, fontes e revisão. A lacuna
+entre prática planejada e aplicada permanece visível; materializar um lote
+completo continua exigindo a cobertura prevista.
+
 O equivalente humano atual é `consultar_configuracao` / `ajustar_configuracao`, com seleção de curso, microssequência ou unidade. Embora o domínio aceite lição para nove parâmetros, o schema humano atual não a oferece. A expansão dos canais precisa preservar as definições e os escopos de cada decisão, incluindo essa lacuna.
 
 ## Base observada: controles além do catálogo

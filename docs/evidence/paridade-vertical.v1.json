@@ -197,6 +197,7 @@
           "^function:public\\.(?:approve_course_curricular_map_for_actor_v1|get_authoring_process_preferences_for_actor_v1|get_course_change_receipt_for_actor_v1|get_course_content_review_for_actor_v1|get_course_content_review_v1|get_owned_course_curricular_map_for_actor_v1|get_owned_course_instructional_plan_for_actor_v4|save_authoring_process_preferences_for_actor_v1|set_course_content_review_for_actor_v1|set_course_content_review_policy_for_actor_v1|set_course_content_review_policy_v1|set_course_content_review_v1)\\(.*\\)$",
           "^function:private\\.require_course_review_session_v1\\(.*\\)$",
           "^function:private\\.(?:apply_course_design_settings_core_v3|course_structure_dependency_issues_v1|remap_course_structure_content_v1)\\(.*\\)$",
+          "^function:private\\.assert_course_application_pedagogy_v1\\(p_course_id uuid, p_units jsonb, p_require_complete_practice boolean\\)$",
           "^function:public\\.(?:mutate_course_structure_for_actor_v1|reorder_course_study_units_for_actor_v1)\\(.*\\)$"
         ]
       },
@@ -324,6 +325,10 @@
         {
           "path": "supabase/migrations/20260909065357_contextual_instructional_snapshot_order.sql",
           "token": "jsonb_agg(a.plan_item_id order by i.position,i.id)"
+        },
+        {
+          "path": "supabase/migrations/20260910054749_contextual_recorded_practice_integrity.sql",
+          "token": "assert_course_application_pedagogy_v1"
         }
       ],
       "routes": [
