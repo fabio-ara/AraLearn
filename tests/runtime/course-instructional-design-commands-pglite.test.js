@@ -290,3 +290,67 @@ test("snapshot conserva a ordem position/id exigida pelo reader e materializador
     assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), { schemaRevision: "20260909065357", features: { fixture: true } });
   } finally { await db.close(); }
 });
+
+async function installCurrentFormCoverage(db) {
+  await db.exec(`create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$
+    select '{"schemaRevision":"20260909072036","features":{"fixture":true}}'::jsonb$$;`);
+  await db.exec(await load("20260910045104_contextual_explanation_forms_across_units.sql"));
+}
+
+test("formas requeridas se completam em unidades da mesma microssequência sem alterar conteúdo", async () => {
+  const db = await fixture({ units: true });
+  try {
+    await write(db, saveItem(analysisId), "distributed-forms-analysis");
+    await write(db, links([analysisId]), "distributed-forms-link");
+    await db.query("update private.course_entities set design_snapshot=jsonb_set(design_snapshot,'{parameters,1,value}',$1) where entity_type='study_unit'",
+      [["plain_definition", "worked_example"]]);
+    const before = (await db.query("select entity_id,content,version,design_snapshot,design_application from private.course_entities where entity_type='study_unit' order by position")).rows;
+    await installCurrentFormCoverage(db);
+    assert.deepEqual((await db.query("select entity_id,content,version,design_snapshot,design_application from private.course_entities where entity_type='study_unit' order by position")).rows, before);
+    const continuation = { ...application(), introducedInstructionalAnalysisUnitIds: [],
+      explanationApplications: [{ instructionalAnalysisUnitId: analysisId, developedForms: ["worked_example"], notApplicable: [] }] };
+    assert.equal((await write(db, apply([["unit-a", application()], ["unit-b", continuation]]), "distributed-forms-save")).changed, true);
+    const saved = (await db.query("select entity_id,content,version,design_snapshot,design_application from private.course_entities where entity_type='study_unit' order by position")).rows;
+    assert.deepEqual(saved.map(({ entity_id, content, version }) => ({ entity_id, content, version })),
+      before.map(({ entity_id, content, version }) => ({ entity_id, content, version })));
+    assert.deepEqual(saved[0].design_application.explanationApplications[0].developedForms, ["plain_definition"]);
+    assert.deepEqual(saved[1].design_application.explanationApplications[0].developedForms, ["worked_example"]);
+    const missing = { ...continuation, usedInstructionalAnalysisUnitIds: [analysisId], explanationApplications: [] };
+    await assert.rejects(write(db, apply([["unit-b", missing]]), "distributed-forms-missing"),
+      error => error.code === "23514" && error.message === "Uma forma requerida para ideia nova nao foi tratada.");
+    assert.deepEqual((await db.query("select entity_id,content,version,design_snapshot,design_application from private.course_entities where entity_type='study_unit' order by position")).rows, saved);
+    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"),
+      { schemaRevision: "20260910045104", features: { fixture: true } });
+  } finally { await db.close(); }
+});
+
+test("cobertura explicativa conserva escopo, identidade e justificativa de não aplicabilidade", async () => {
+  const db = await fixture();
+  try {
+    await installCurrentFormCoverage(db);
+    const design = structuredClone(snapshot);
+    design.parameters[1].value = ["plain_definition", "worked_example"];
+    const introduction = { studyUnitId: "intro", didacticMicrosequenceId: "micro", designSnapshot: design, designApplication: application() };
+    const continuation = { studyUnitId: "continuation", didacticMicrosequenceId: "micro", designSnapshot: design,
+      designApplication: { ...application(), introducedInstructionalAnalysisUnitIds: [],
+        explanationApplications: [{ instructionalAnalysisUnitId: analysisId, developedForms: ["worked_example"], notApplicable: [] }] } };
+    const validate = units => db.query("select private.assert_course_materialization_pedagogy_v1($1,$2)", [courseId, units]);
+    const missingForm = error => error.code === "23514" && error.message === "Uma forma requerida para ideia nova nao foi tratada.";
+    await assert.rejects(validate([introduction]), missingForm);
+    await assert.rejects(validate([introduction, { ...continuation, didacticMicrosequenceId: "other-micro" }]), missingForm);
+    const otherIdea = structuredClone(continuation);
+    otherIdea.designApplication.explanationApplications[0].instructionalAnalysisUnitId = evidenceId;
+    await assert.rejects(validate([introduction, otherIdea]), missingForm);
+    await validate([introduction, continuation]);
+    const notApplicable = structuredClone(continuation);
+    notApplicable.designApplication.explanationApplications[0] = { instructionalAnalysisUnitId: analysisId, developedForms: [],
+      notApplicable: [{ form: "worked_example", reason: "Este objeto não comporta procedimento resolvido." }] };
+    await validate([introduction, notApplicable]);
+    notApplicable.studyUnitId = "not-applicable";
+    await assert.rejects(validate([introduction, continuation, notApplicable]),
+      error => error.code === "23514" && error.message === "A introducao ou retomada explicativa e incoerente.");
+    await validate([introduction, continuation, { ...notApplicable, didacticMicrosequenceId: "other-micro" }]);
+    notApplicable.designApplication.explanationApplications[0].notApplicable[0].reason = "";
+    await assert.rejects(validate([introduction, notApplicable]), error => error.code === "22023");
+  } finally { await db.close(); }
+});
