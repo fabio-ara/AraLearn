@@ -13,7 +13,7 @@ import {
 import {
   projectHumanAuthoringTasksForActions
 } from "./projectHumanAuthoringActions.mjs";
-import { courseActionOperationDefinitions, courseActionOperationName } from "../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
+import { COURSE_ACTION_TASK_GROUPS, courseActionOperationDefinitions, courseActionOperationName } from "../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packageMetadata = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
@@ -186,8 +186,16 @@ const actionOperations = courseActionOperationDefinitions(actionTools.map(tool =
   if (courseActionOperationName(tool.name) === tool.name) return { ...tool, inputSchema: schema };
   const name = `ActionArguments_${tool.name}`;
   groupedInputSchemas[name] = schema;
-  return { ...tool, inputSchema: { $ref: `#/components/schemas/${name}` } };
+  return { ...tool, inputSchema: schema };
 }));
+// Build the visible argument fields before sharing each exact task contract.
+for (const operation of actionOperations) {
+  if (!Object.hasOwn(COURSE_ACTION_TASK_GROUPS, operation.name)) continue;
+  for (const variant of operation.inputSchema.oneOf) {
+    const taskName = variant.properties.tarefa.enum[0];
+    variant.properties.argumentos = { $ref: `#/components/schemas/ActionArguments_${taskName}` };
+  }
+}
 // Observed in the actual editor; a successful import remains a hosted gate.
 if (actionOperations.length > 30) throw new Error("O editor de Actions aceita no máximo 30 operações.");
 const paths = Object.fromEntries(actionOperations.map((tool) => [
@@ -275,25 +283,35 @@ const document = {
 const repeated = new Map();
 function collectSchemas(value) {
   if (!value || typeof value !== "object") return;
-  if (!Array.isArray(value) && (typeof value.type === "string" || Array.isArray(value.type) || value.anyOf || value.oneOf)) {
+  if (!Array.isArray(value) && (typeof value.type === "string" || Array.isArray(value.type) || value.anyOf || value.oneOf || value.$ref)) {
     const shape = { ...value }; delete shape.description;
     const key = schemaKey(shape);
-    if (key.length > 90) {
-      const found = repeated.get(key) ?? { count: 0, shape, name: `Shared${createHash("sha256").update(key).digest("hex").slice(0, 10)}` };
-      found.count++; repeated.set(key, found);
-    }
+    const found = repeated.get(key) ?? { count: 0, shape, descriptions: new Set(),
+      name: `Shared${createHash("sha256").update(key).digest("hex").slice(0, 10)}` };
+    found.count++; found.descriptions.add(value.description); repeated.set(key, found);
   }
   Object.values(value).forEach(collectSchemas);
 }
 collectSchemas(document.paths);
 collectSchemas(document.components.schemas);
-for (const [key, value] of repeated) if (value.count < 2) repeated.delete(key);
+for (const [key, value] of repeated) {
+  // A description is shared only when every occurrence has the same one,
+  // including unannotated occurrences. Keep only fragments that save bytes.
+  if (value.descriptions.size === 1 && typeof [...value.descriptions][0] === "string") {
+    value.shape.description = [...value.descriptions][0];
+  }
+  const shapeLength = JSON.stringify(value.shape).length;
+  const referenceLength = JSON.stringify({ $ref: `#/components/schemas/${value.name}` }).length;
+  const definitionLength = shapeLength + JSON.stringify(value.name).length + 1;
+  if (value.count * (shapeLength - referenceLength) <= definitionLength) repeated.delete(key);
+}
 function internSchemas(value, root = false) {
   if (Array.isArray(value)) return value.map(item => internSchemas(item));
   if (!value || typeof value !== "object") return value;
   const { description, ...shape } = value;
   const entry = root ? null : repeated.get(schemaKey(shape));
-  if (entry) return { $ref: `#/components/schemas/${entry.name}`, ...(description ? { description } : {}) };
+  if (entry) return { $ref: `#/components/schemas/${entry.name}`,
+    ...(description && description !== entry.shape.description ? { description } : {}) };
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, internSchemas(item)]));
 }
 for (const path of Object.values(document.paths)) {

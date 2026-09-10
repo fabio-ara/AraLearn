@@ -806,6 +806,13 @@ function effectiveParameter(design, parameterId) {
   if (!plainObject(parameter?.effectiveAssignment)) {
     fail("course_service_unavailable", "A configuração pedagógica efetiva está incompleta.", 503);
   }
+  if (parameter.effectiveAssignment.mode === "automatic" && parameter.effectiveAssignment.value === null) {
+    fail(
+      "human_materialization_contextual_calibration_required",
+      "Uma unidade nova ainda está sem calibração contextual.",
+      409
+    );
+  }
   return parameter.effectiveAssignment.value;
 }
 

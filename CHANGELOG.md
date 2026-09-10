@@ -35,6 +35,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Corrigido
 
+- unidades com calibração contextual pendente recebem orientação para completá-la,
+  preservando as condições fixadas pela autoria;
+- tarefas agrupadas das Actions apresentam seus argumentos tipados ao cliente,
+  conservando os campos e requisitos próprios de cada tarefa;
+- salvar uma edição manual atualiza imediatamente a revisão e a autoria conforme
+  o conteúdo relido; metadados sem confirmação permanecem desconhecidos;
 - respostas tardias preservam objeto, foco e rascunhos, incluindo dados de conta,
   fontes e controles contextuais de autoria;
 - correções com resposta perdida conservam a identidade da tentativa e reconciliam

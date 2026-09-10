@@ -5,6 +5,9 @@ import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralear
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/catalog/resourceCatalog.js";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createAuthoringMcpHandler, ARALEARN_MCP_PROTOCOL_VERSION } from
+  "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 
 import { materializeHumanCoursePart as materializeCompletePart } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
@@ -563,40 +566,84 @@ test("erro de elemento repetido orienta a retomada sem expor sua identificação
   });
 });
 
-test("materialização exige uma decisão contextual para valores ainda no padrão", async () => {
-  const value = adapterFixture();
-  const inheritedDesign = value.getCourseDesign;
-  value.getCourseDesign = async (...args) => {
-    const design = await inheritedDesign(...args);
-    const target = design.parameters.find(({ parameterId }) =>
-      parameterId === "authoring_chat_response_word_target");
-    target.effectiveAssignment = {
-      mode: "automatic", value: null,
-      origin: "system_default",
-      sourceScope: null
+test("materialização exige uma decisão contextual para cada parâmetro delegado ainda sem valor", async (t) => {
+  for (const { id } of COURSE_DESIGN_PARAMETER_DEFINITIONS) await t.test(id, async () => {
+    const value = adapterFixture();
+    const inheritedDesign = value.getCourseDesign;
+    value.getCourseDesign = async (...args) => {
+      const design = await inheritedDesign(...args);
+      const target = design.parameters.find(({ parameterId }) =>
+        parameterId === id);
+      target.effectiveAssignment = {
+        mode: "automatic", value: null,
+        origin: "system_default",
+        sourceScope: null
+      };
+      return design;
     };
-    return design;
-  };
 
-  await assert.rejects(() => materializeHumanCoursePart({
-    adapter: value,
-    principal: PRINCIPAL,
-    course: "Curso de Redes",
-    part: 1,
-    units: [unit()]
-  }), (error) => {
-    assert.equal(error.code, "human_materialization_contextual_calibration_required");
-    assert.equal(
-      error.message,
-      "Uma unidade nova ainda está sem calibração contextual."
-    );
-    assert.doesNotMatch(
-      error.message,
-      /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
-    );
-    return true;
+    await assert.rejects(() => materializeHumanCoursePart({
+      adapter: value,
+      principal: PRINCIPAL,
+      course: "Curso de Redes",
+      part: 1,
+      units: [unit()]
+    }), (error) => {
+      assert.equal(error.code, "human_materialization_contextual_calibration_required");
+      assert.equal(error.status, 409);
+      assert.equal(
+        error.message,
+        "Uma unidade nova ainda está sem calibração contextual."
+      );
+      assert.doesNotMatch(
+        error.message,
+        /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+      );
+      return true;
+    });
+    assert.deepEqual(value.calls, []);
   });
-  assert.deepEqual(value.calls, []);
+});
+
+test("MCP pede calibração pendente sem repetir escrita e conserva a classificação de falha do serviço", async () => {
+  for (const unavailable of [false, true]) {
+    const adapter = adapterFixture();
+    adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
+    adapter.getAuthoringProcessPreferences = async () => ({
+      contract: "aralearn.authoring-process-preferences.v1", revision: 2, updatedAt: "2026-09-09T00:00:00Z",
+      preferences: defaultAuthoringProcessPreferences()
+    });
+    const readDesign = adapter.getCourseDesign;
+    adapter.getCourseDesign = async request => {
+      if (request.scopeKind === "course") return courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 });
+      if (unavailable) throw new AuthoringApiError(503, "course_service_unavailable", "Leitura indisponível.");
+      const design = await readDesign(request);
+      design.parameters.find(({ parameterId }) => parameterId ===
+        "minimum_distinct_practice_opportunities_per_evidence_requirement").effectiveAssignment = {
+        mode: "automatic", value: null, origin: "system_default", sourceScope: null
+      };
+      return design;
+    };
+    const resourceUrl = "https://edge.example/functions/v1/aralearn-authoring-mcp";
+    const handler = createAuthoringMcpHandler({ adapter, resourceUrl,
+      allowedOrigins: new Set(["https://chatgpt.com"]), authorizationServer: "https://project.example/auth/v1" });
+    const response = await handler(new Request(resourceUrl, { method: "POST", headers: {
+      Origin: "https://chatgpt.com", Authorization: "Bearer synthetic-token",
+      Accept: "application/json, text/event-stream", "Content-Type": "application/json",
+      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
+    }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
+      name: "materializar_parte", arguments: { curso: "Curso de Redes", parte: 1,
+        unidades: [unit()], explicacoes: explanationFixtures([unit()]) }
+    } }) }));
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.result.isError, true);
+    const failure = payload.result.structuredContent;
+    assert.equal(failure.error.code, unavailable ? "temporarily_unavailable" : "human_materialization_contextual_calibration_required");
+    assert.equal(failure.error.retryable, unavailable);
+    if (!unavailable) assert.equal(failure.nextDecision, "Inclua a calibração contextual nas unidades e refaça a produção da parte.");
+    assert.deepEqual(adapter.calls, []);
+  }
 });
 
 test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisão duplicada", async () => {

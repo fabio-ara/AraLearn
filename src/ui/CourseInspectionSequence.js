@@ -2936,12 +2936,19 @@ export function createCourseInspectionSequence({
     return true;
   }
 
-  function replaceManualItem(current, studyUnit, version) {
+  function replaceManualItem(current, studyUnit, version, confirmation) {
+    const metadata = confirmation?.reconciled === false ? null : confirmation;
     const replacement = normalizeInspectionItem({
       ...current,
       studyUnit,
       version,
-      updatedAt: new Date().toISOString()
+      contentReview: metadata?.contentReview ?? null,
+      authorship: metadata?.authorship ?? {
+        createdOrigin: current.authorship.createdOrigin,
+        lastRevisionOrigin: null,
+        design: { application: null }
+      },
+      updatedAt: confirmation?.updatedAt ?? new Date().toISOString()
     }, state.totalCount);
     state.items = state.items.map((item) =>
       item.studyUnit.id === current.studyUnit.id ? replacement : item
@@ -2986,7 +2993,7 @@ export function createCourseInspectionSequence({
       );
     }
     return {
-      item: replaceManualItem(current, confirmedStudyUnit, version),
+      item: replaceManualItem(current, confirmedStudyUnit, version, result),
       reconciled: result?.reconciled !== false
     };
   }

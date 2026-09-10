@@ -1878,6 +1878,53 @@ test("contexto não muda a revisão de uma gravação ambígua nem repete o escr
   sequence.destroy();
 });
 
+test("edição manual atualiza revisão e autoria relidas sem recarregar e não mantém metadados sem confirmação", async (t) => {
+  for (const reconciled of [true, false]) await t.test(`reconciled=${reconciled}`, async () => {
+    const root = new FakeRoot();
+    let reads = 0;
+    let writes = 0;
+    const sequence = createCourseInspectionSequence({
+      root,
+      controller: controllerFixture({
+        async loadAuthoringStudyUnits(_courseId, options) {
+          reads += 1;
+          const page = pageFor(options, 1);
+          page.items[0].contentReview = { state: "current", reviewedAt: "2026-09-09T04:00:00Z" };
+          return page;
+        }
+      }),
+      course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
+      onSaveManualEdit(payload) {
+        writes += 1;
+        return { studyUnit: payload.studyUnit, version: 2, courseRevision: REVISION + 1,
+          updatedAt: "2026-09-09T04:05:00Z", reconciled,
+          contentReview: reconciled ? { state: "stale", reviewedAt: "2026-09-09T04:00:00Z" } : null,
+          authorship: reconciled ? { createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null } } : null };
+      },
+      windowValue: new FakeWindow(), documentValue: { activeElement: null }, navigatorValue: null
+    });
+    await sequence.open();
+    assert.match(root.innerHTML, /Revisão autoral declarada/u);
+    assert.match(root.innerHTML, /<dt>Última intervenção<\/dt><dd>GPT<\/dd>/u);
+    await editInspectionTitle(root, "unit-01", "Título revisado manualmente");
+    assert.equal(await clickInspection(root, "[data-inspection-manual-action]", { inspectionManualAction: "save" }), true);
+    assert.match(root.innerHTML, /Título revisado manualmente/u);
+    assert.doesNotMatch(root.innerHTML, /Revisão autoral declarada/u);
+    assert.match(root.innerHTML, reconciled ? /Revisão autoral desatualizada/u : /Estado da revisão ainda não consultado/u);
+    assert.match(root.innerHTML, reconciled
+      ? /<dt>Última intervenção<\/dt><dd>Autoria humana<\/dd>/u
+      : /<dt>Última intervenção<\/dt><dd>Origem não informada<\/dd>/u);
+    assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>GPT<\/dd>/u);
+    assert.match(root.innerHTML, /Configuração ainda não consultada/u);
+    assert.doesNotMatch(root.innerHTML, /Ideias introduzidas aqui/u);
+    assert.equal(reads, 1);
+    assert.equal(writes, 1);
+    assert.equal(sequence.snapshot().courseRevision, REVISION + 1);
+    assert.equal(sequence.hasPendingDraft(), false);
+    sequence.destroy();
+  });
+});
+
 test("vazio oferece o mapa existente e parâmetros sem callback não geram rota substituta", async () => {
   const root = new FakeRoot();
   const sequence = createCourseInspectionSequence({

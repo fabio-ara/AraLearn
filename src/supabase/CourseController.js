@@ -1002,7 +1002,13 @@ export class CourseController {
             ...structuredClone(item),
             studyUnit: structuredClone(intent.studyUnit),
             version: result.studyUnitVersion,
-            updatedAt: result.updatedAt
+            updatedAt: result.updatedAt,
+            contentReview: null,
+            authorship: {
+              createdOrigin: item.authorship?.createdOrigin ?? null,
+              lastRevisionOrigin: null,
+              design: { application: null }
+            }
           },
           inspectionScopeOptions: structuredClone(page.scopeOptions)
         };
@@ -2621,6 +2627,8 @@ export class CourseController {
           ...result,
           studyUnit: structuredClone(intent.studyUnit),
           version: result.studyUnitVersion,
+          contentReview: null,
+          authorship: null,
           reconciled: false
         };
       }
@@ -2637,6 +2645,8 @@ export class CourseController {
           ...result,
           studyUnit: structuredClone(intent.studyUnit),
           version: result.studyUnitVersion,
+          contentReview: null,
+          authorship: null,
           reconciled: false
         };
       }
@@ -2664,6 +2674,8 @@ export class CourseController {
         ...result,
         studyUnit: normalizedCommitted.studyUnit,
         version: committed.version,
+        contentReview: structuredClone(committed.contentReview ?? null),
+        authorship: structuredClone(committed.authorship ?? null),
         reconciled: true
       };
     } catch (error) {

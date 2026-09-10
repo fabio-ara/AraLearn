@@ -346,6 +346,27 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   const canonical = editedStudyUnit();
   canonical.title = "Unidade canônica relida";
   canonical.content[0].data.text = "Conteúdo canônico reconciliado.";
+  const originalReview = { state: "current", reviewedAt: "2026-08-20T12:00:00.000Z" };
+  const originalAuthorship = {
+    createdOrigin: "gpt",
+    lastRevisionOrigin: "gpt",
+    design: {
+      application: {
+        mode: "expository",
+        componentRefs: ["aralearn.resource.paragraph@1.0.0"],
+        analysisIdeas: {
+          introduced: [{ name: "Conceito original", description: "A ideia aplicada antes da edição." }],
+          used: [],
+          revisited: []
+        },
+        practiceEvidence: []
+      }
+    }
+  };
+  const canonicalReview = { ...originalReview, state: "stale" };
+  const canonicalAuthorship = {
+    createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null }
+  };
   let online = true;
   const navigatorValue = { get onLine() { return online; } };
   let failInspectionReread = false;
@@ -412,11 +433,11 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
     async loadAuthoringStudyUnits(courseId) {
       if (!online || failInspectionReread) throw networkFailure();
       return {
-        ...inspectionPage(remoteRevision, [inspectionItem(
-          remoteUnit,
-          remoteVersion,
-          "2026-08-20T22:46:00.000Z"
-        )]),
+        ...inspectionPage(remoteRevision, [{
+          ...inspectionItem(remoteUnit, remoteVersion, "2026-08-20T22:46:00.000Z"),
+          contentReview: structuredClone(remoteRevision === 4 ? originalReview : canonicalReview),
+          authorship: structuredClone(remoteRevision === 4 ? originalAuthorship : canonicalAuthorship)
+        }]),
         courseId
       };
     }
@@ -427,6 +448,11 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   await study.listCourses();
   await study.loadCourseDocument(COURSE_ID);
   await authoring.listCourses();
+  const initialInspection = await authoring.loadAuthoringStudyUnits(COURSE_ID, {
+    expectedRevision: 4, anchorStudyUnitId: "unit-a", limit: 1, maxBytes: 64 * 1024
+  });
+  assert.deepEqual(initialInspection.items[0].contentReview, originalReview);
+  assert.deepEqual(initialInspection.items[0].authorship, originalAuthorship);
 
   const saved = await authoring.commitCourseComposition({
     requestId: "request-confirmed-pending-reload-01",
@@ -471,6 +497,10 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   assert.equal(offlineInspection.offline, true);
   assert.equal(offlineInspection.items[0].version, 3);
   assert.deepEqual(offlineInspection.items[0].studyUnit, submitted);
+  assert.equal(offlineInspection.items[0].contentReview, null);
+  assert.deepEqual(offlineInspection.items[0].authorship, {
+    createdOrigin: "gpt", lastRevisionOrigin: null, design: { application: null }
+  });
   assert.deepEqual(offlineInspection.items[0].curriculumPath, {
     module: { id: "module-a", position: 0, title: "Módulo A" },
     lesson: { id: "lesson-a", position: 0, title: "Lição A" },
@@ -489,6 +519,8 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   });
   assert.equal(reconciled.offline, false);
   assert.deepEqual(reconciled.items[0].studyUnit, canonical);
+  assert.deepEqual(reconciled.items[0].contentReview, canonicalReview);
+  assert.deepEqual(reconciled.items[0].authorship, canonicalAuthorship);
   assert.equal(await offlineStore.getCache(
     coursePendingCompositionCacheKey(COURSE_ID)
   ), null);
@@ -500,6 +532,15 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   });
   assert.deepEqual(canonicalOffline.document.courses[0].modules[0].lessons[0]
     .microsequences[0].studyUnits[0], canonical);
+  const afterReconciliationAuthoring = new CourseController({
+    api, store: offlineStore, ownerOnly: true, navigatorValue
+  });
+  const canonicalOfflineInspection = await afterReconciliationAuthoring.loadAuthoringStudyUnits(COURSE_ID, {
+    expectedRevision: 5, anchorStudyUnitId: "unit-a", limit: 1, maxBytes: 64 * 1024
+  });
+  assert.equal(canonicalOfflineInspection.offline, true);
+  assert.deepEqual(canonicalOfflineInspection.items[0].contentReview, canonicalReview);
+  assert.deepEqual(canonicalOfflineInspection.items[0].authorship, canonicalAuthorship);
   assert.equal(commits, 1);
 });
 

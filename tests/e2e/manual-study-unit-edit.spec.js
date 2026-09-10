@@ -437,6 +437,13 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
     const requests = [];
     let courseRevision = 7;
     let studyUnitVersion = 1;
+    let contentReview = { state: "current", reviewedAt: "2026-08-20T12:00:00.000Z" };
+    let authorship = {
+      createdOrigin: "gpt",
+      lastRevisionOrigin: "gpt",
+      design: { application: null }
+    };
+    // O Controller é um stub; a sequência e o renderer são os reais.
     const controller = {
       async loadAuthoringStudyUnits(_courseId, options) {
         return {
@@ -474,13 +481,8 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
               title: "Parte inicial",
               state: "materialized"
             },
-            authorship: {
-              createdOrigin: "human",
-              lastRevisionOrigin: "human",
-              design: {
-                application: null
-              }
-            },
+            contentReview: structuredClone(contentReview),
+            authorship: structuredClone(authorship),
             deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=${studyUnit.id}`
           }],
           hasPrevious: false,
@@ -521,6 +523,8 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
         courseRevision += 1;
         studyUnitVersion += 1;
         Object.assign(studyUnit, structuredClone(request.studyUnit));
+        contentReview = { ...contentReview, state: "stale" };
+        authorship = { ...authorship, lastRevisionOrigin: "human" };
         return {
           courseId,
           courseRevision,
@@ -529,6 +533,8 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
           studyUnit: structuredClone(request.studyUnit),
           version: studyUnitVersion,
           reconciled: true,
+          contentReview: structuredClone(contentReview),
+          authorship: structuredClone(authorship),
           changed: true,
           idempotent: false,
           channel: "application",
@@ -1162,12 +1168,26 @@ test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como r
   await openInspectionUnit(page, "owned");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
+  const reviewState = page.locator(".course-inspection-authorship");
+  const instructionalDetails = page.locator(".course-inspection-instructional-details");
+  const lastIntervention = instructionalDetails.getByText("Última intervenção", { exact: true })
+    .locator("..").locator("dd");
+  await expect(reviewState).toContainText("Revisão autoral declarada");
+  await expect(lastIntervention).toHaveText("GPT");
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
   const field = page.locator('[data-manual-edit-path="text"]');
   await field.fill("Texto de inspeção revisado.");
   await page.getByRole("button", { name: "Salvar edição" }).click();
   await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
+  await expect(reviewState).toContainText("Revisão autoral desatualizada");
+  await expect(reviewState).not.toContainText("Revisão autoral declarada");
+  await page.locator(".course-inspection-item-details > summary").click();
+  await expect(lastIntervention).toBeVisible();
+  await expect(lastIntervention).toHaveText("Autoria humana");
+  await expect(instructionalDetails.getByText("Origem", { exact: true })
+    .locator("..").locator("dd")).toHaveText("GPT");
+  await page.locator(".course-inspection-item-details > summary").click();
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toMatchObject([{
     courseId: "10000000-0000-4000-8000-000000000001",
     expectedCourseRevision: 7,

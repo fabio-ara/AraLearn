@@ -532,6 +532,45 @@ test("Actions vincula cada tarefa agrupada a seus argumentos e conserva chamadas
   assert.equal(preferences({ tarefa: "consultar_preferencias_autoria",
     argumentos: samples.salvar_preferencias_autoria }), false,
   "Uma consulta não aceita os argumentos da escrita disponível no mesmo grupo.");
+  assert.equal(access({ tarefa: "definir_acesso_arquivos", argumentos: {
+    ...samples.definir_acesso_arquivos, arquivos: "inherit" } }), true);
+  assert.equal(access({ tarefa: "definir_visibilidade", argumentos: {
+    ...samples.definir_visibilidade, arquivos: "inherit" } }), false,
+  "A união visível de arquivos não amplia o enum da tarefa de visibilidade.");
+  const design = ajv.compile(operation("consultar_repertorio_instrucional")
+    .requestBody.content["application/json"].schema);
+  assert.equal(design({ tarefa: "consultar_repertorio_instrucional", argumentos: {} }), false);
+  for (const [task, other] of [["registrar_aplicacoes_instrucionais", "aplicar_configuracao_instrucional"],
+    ["aplicar_configuracao_instrucional", "registrar_aplicacoes_instrucionais"]]) {
+    assert.equal(design({ tarefa: task, argumentos: samples[other] }), false,
+      "A união visível de unidades não troca aplicação por configuração.");
+  }
+});
+
+test("Actions expõe argumentos tipados nas properties sem depender da descoberta de oneOf", () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  for (const [group, taskNames] of Object.entries(expectedActionGroups)) {
+    const schema = openApi.paths[`/${group}`].post.requestBody.content["application/json"].schema;
+    const visible = schema.properties.argumentos;
+    assert.equal(visible.type, "object", group);
+    assert.equal(visible.additionalProperties, false, group);
+    assert.ok(visible.properties && Object.keys(visible.properties).length > 0, group);
+    const fields = [...new Set(taskNames.flatMap(name => Object.keys(
+      actionTools.find(task => task.name === name).inputSchema.properties)))].sort();
+    assert.deepEqual(Object.keys(visible.properties).sort(), fields, group);
+    const validate = ajv.compile(resolveReferences(visible));
+    for (const taskName of taskNames) {
+      assert.equal(validate(samples[taskName]), true, `${taskName}: ${JSON.stringify(validate.errors)}`);
+      assert.equal(validate({ ...samples[taskName], sql: "SELECT 1" }), false, taskName);
+    }
+    if (fields.includes("curso")) assert.equal(validate({ curso: [] }), false, group);
+  }
+  const profiles = ajv.compile(operation("consultar_perfis").requestBody.content["application/json"].schema);
+  assert.equal(profiles({ tarefa: "consultar_perfis", argumentos: {} }), true);
+  for (const argumentos of [null, [], { curso: "Redes para iniciantes" }]) {
+    assert.equal(profiles({ tarefa: "consultar_perfis", argumentos }), false);
+  }
+  assert.equal(profiles({ tarefa: "consultar_perfis" }), false);
 });
 
 test("Actions conserva as duas ingestões de arquivo como operações diretas", () => {
@@ -830,6 +869,10 @@ test("schemas compartilhados de Actions preservam integralmente os argumentos do
   for (const task of actionTools) {
     assert.deepEqual(constraints(taskInputSchema(task.name)),
       constraints(task.inputSchema), task.name);
+    if (expectedActionGroups[courseActionOperationName(task.name)]) {
+      assert.deepEqual(taskInputSchema(task.name), task.inputSchema,
+        `${task.name}: compartilhar descrições não pode perder a documentação do contrato.`);
+    }
   }
 });
 
