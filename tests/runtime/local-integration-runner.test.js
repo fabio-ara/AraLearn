@@ -34,14 +34,16 @@ async function fixture(t, options = {}) {
     ARALEARN_E2E_REUSE_SERVER: "1", ...options.environment };
   const fetchImpl = async (input, init) => {
     probes.push({ input, method: init.method || "GET" });
-    if (!active) return new Response("inactive", { status: 503 });
-    if (input.includes("aralearn-course-api")) return new Response('{"error":{"code":"authentication_required"}}',
+    let response;
+    if (!active) response = new Response("inactive", { status: 503 });
+    else if (input.includes("aralearn-course-api")) response = new Response('{"error":{"code":"authentication_required"}}',
       { status: 401, headers: { "content-type": "application/json" } });
-    if (input.includes("aralearn-authoring-mcp")) return Response.json({ resource: `${URL}/functions/v1/aralearn-authoring-mcp` },
+    else if (input.includes("aralearn-authoring-mcp")) response = Response.json({ resource: `${URL}/functions/v1/aralearn-authoring-mcp` },
       { headers: { "x-aralearn-authoring-contract": "synthetic-local-contract" } });
-    if (init.method === "OPTIONS") return new Response(null, { status: 200, headers: { "access-control-allow-origin": "*" } });
-    return Response.json({ error: { code: "method_not_allowed" } }, { status: 405,
+    else if (init.method === "OPTIONS") response = new Response(null, { status: 200, headers: { "access-control-allow-origin": "*" } });
+    else response = Response.json({ error: { code: "method_not_allowed" } }, { status: 405,
       headers: { "access-control-allow-origin": "*", "x-aralearn-authoring-contract": "synthetic-local-contract" } });
+    return await options.probe?.({ input, init, response, call: probes.length, stop: () => { alive = false; } }) ?? response;
   };
   const start = (command, args) => {
     started.push({ command, args }); active = true;
@@ -106,7 +108,7 @@ async function fixture(t, options = {}) {
     return { status: 0, stdout: "smoke sintético com teardown" };
   };
   const execute = (argv = []) => runLocalIntegration({ cwd, argv, environment, run, start, fetchImpl,
-    processAlive: pid => pid === 1234 && options.externalAlive !== false, pause: async () => {} });
+    processAlive: pid => pid === 1234 && options.externalAlive !== false, pause: async () => {}, signal: options.signal });
   return { cwd, calls, started, stopped, probes, environment, execute };
 }
 
@@ -133,6 +135,111 @@ test("integração prepara ambiente uma vez, executa todas as provas locais seri
   assert.ok(f.probes.filter(probe => probe.input.includes("aralearn-authoring-action")).every(probe => probe.method === "GET"));
   assert.equal(report.readiness.channel_contracts_match, true);
   for (const ref of report.log_refs) assert.ok(!(await fs.readFile(path.join(f.cwd, ref), "utf8")).includes(HOSTED_SECRET));
+});
+
+test("disponibilidade admite resposta íntegra após 1,5 s sem mudar o contrato ou repetir a etapa", async t => {
+  const f = await fixture(t, { probe: ({ call, response, init }) => {
+    if (call === 7) {
+      const text = response.text.bind(response);
+      response.text = async () => {
+        await new Promise(resolve => setTimeout(resolve, 1650));
+        init.signal.throwIfAborted();
+        return text();
+      };
+    }
+  } });
+  const report = await f.execute();
+  assert.equal(report.result, "passed");
+  assert.equal(f.calls.filter(call => call.args[0] === "scripts/runLocalMcpOAuthSmoke.mjs").length, 1);
+  assert.equal(report.readiness.timeout_ms, 5000);
+});
+
+test("timeout em headers ou no body conserva o diagnóstico atual e impede iniciar fixtures", async t => {
+  const timeout = AbortSignal.timeout.bind(AbortSignal);
+  for (const phase of ["headers", "body"]) {
+    const requestedTimeouts = [];
+    const mock = t.mock.method(AbortSignal, "timeout", milliseconds => {
+      requestedTimeouts.push(milliseconds);
+      // A mesma sinalização real de prazo, abreviada somente no probe da etapa.
+      return timeout(requestedTimeouts.length === 7 ? 5 : milliseconds);
+    });
+    const f = await fixture(t, { probe: async ({ call, init, response }) => {
+      if (call !== 7) return;
+      const expire = () => new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("O sinal de prazo não chegou.")), 1000);
+        const aborted = () => { clearTimeout(timer); reject(init.signal.reason); };
+        if (init.signal.aborted) aborted();
+        else init.signal.addEventListener("abort", aborted, { once: true });
+      });
+      if (phase === "headers") await expire();
+      else response.text = expire;
+    } });
+    const report = await f.execute();
+    mock.mock.restore();
+    assert.equal(report.result, "failed");
+    assert.ok(requestedTimeouts.every(value => value === 5000));
+    assert.equal(report.availability.stage, "oauth-local");
+    assert.equal(report.availability.reason, "probe_failed");
+    assert.equal(report.availability.process_alive, true);
+    assert.equal(report.readiness.api_status, 0, "falha de body não conserva prontidão anterior");
+    const detail = report.readiness.requests.api;
+    assert.equal(detail.status, phase === "headers" ? 0 : 401);
+    assert.equal(detail.error_phase, phase);
+    assert.equal(detail.error_name, "TimeoutError");
+    assert.equal(detail.aborted, true);
+    assert.equal(detail.body_complete, false);
+    assert.equal(phase === "headers" ? detail.headers_ms === null : detail.headers_ms >= 0, true);
+    assert.ok(detail.elapsed_ms >= 0);
+    assert.deepEqual(localIntegrationSummary(report).availability, report.availability);
+    assert.deepEqual(localIntegrationSummary(report).readiness, report.readiness);
+    assert.ok(report.stages.every(stage => stage.result === "not_run"));
+    assert.equal(report.cleanup.fixtures, "not_started");
+    assert.equal(f.calls.some(call => call.args[0] === "scripts/runLocalMcpOAuthSmoke.mjs"), false);
+    assert.equal(f.stopped.length, 1);
+  }
+});
+
+test("status incorreto ou contratos divergentes na etapa continuam bloqueando após prontidão válida", async t => {
+  for (const mismatch of ["status", "contract"]) {
+    const f = await fixture(t, { probe: ({ call, response }) => {
+      if (mismatch === "status" && call === 7) return Response.json({ error: { code: "authentication_required" } }, { status: 200 });
+      if (mismatch === "contract" && call === 9) response.headers.set("x-aralearn-authoring-contract", "different-contract");
+    } });
+    const report = await f.execute();
+    assert.equal(report.result, "failed");
+    assert.equal(report.availability.reason, "probe_failed");
+    assert.equal(report.readiness.api_status, mismatch === "status" ? 200 : 401);
+    assert.equal(report.readiness.channel_contracts_match, mismatch !== "contract");
+    assert.ok(Object.values(report.readiness.requests).every(request => request.body_complete));
+    assert.equal(report.cleanup.fixtures, "not_started");
+  }
+});
+
+test("cancelamento e processo encerrado são distintos, inclusive durante o probe, sem executar a etapa", async t => {
+  for (const phase of ["before", "during"]) for (const failure of ["signal", "process"]) {
+    const controller = new AbortController();
+    const f = await fixture(t, { signal: controller.signal, probe: ({ call, response, stop }) => {
+      if (call !== (phase === "before" ? 6 : 9)) return;
+      const text = response.text.bind(response);
+      response.text = async () => {
+        const body = await text();
+        if (failure === "signal") controller.abort();
+        else stop();
+        return body;
+      };
+    } });
+    const report = await f.execute();
+    assert.equal(report.result, "failed");
+    assert.equal(report.availability.stage, "oauth-local");
+    assert.equal(report.availability.reason, failure === "signal" ? "signal_aborted" : "process_exited");
+    assert.equal(report.availability.signal_aborted, failure === "signal");
+    assert.equal(report.availability.process_alive, failure !== "process");
+    if (phase === "before") assert.equal(report.readiness, null, "nenhum probe da etapa executou");
+    else assert.equal(report.readiness.channel_contracts_match, true, "HTTP íntegro não ignora interrupção concorrente");
+    assert.equal(f.probes.length, phase === "before" ? 6 : 9);
+    assert.equal(report.cleanup.fixtures, "not_started");
+    assert.equal(f.calls.some(call => call.args[0] === "scripts/runLocalMcpOAuthSmoke.mjs"), false);
+  }
 });
 
 test("CI reutiliza somente o processo explicitamente identificado e não repete provas já feitas pelo workflow", async t => {
