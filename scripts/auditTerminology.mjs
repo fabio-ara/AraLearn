@@ -71,6 +71,7 @@ const ignoredDirectories = new Set([
   ".pages",
   ".temp",
   ".tmp",
+  ".validation",
   "build",
   "dist",
   "node_modules",
