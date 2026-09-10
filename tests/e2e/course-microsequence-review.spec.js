@@ -137,13 +137,31 @@ test("marca e retirada da base preservam a revisão independente da unidade", as
   expect(new Set(calls.map(value => value.requestId)).size).toBe(3);
   expect(errors).toEqual([]);
 });
-test("fontes de unidade preservam literal completo e retorno contextual; foco permanece no diálogo", async ({ page }) => {
+test("fontes de unidade preservam literal completo e retorno contextual; foco permanece no diálogo", async ({ page }, info) => {
   const errors = await mount(page);
   await expect(page.getByRole("button", { name: "Fechar inspeção da Explicação" })).toBeFocused();
   await expect(dialog(page)).toContainText("AUTORIA SINTÉTICA");
   await expect(dialog(page)).toContainText("Capítulo 2, páginas 12–13");
   await expect(dialog(page)).toContainText("Observe qual elemento é local ao processo");
-  await expect(dialog(page).locator('[data-package="aralearn.response.open"]')).toHaveAttribute("inert", "");
+  const response = dialog(page).locator('[data-package="aralearn.response.open"]');
+  const accessibility = await page.context().newCDPSession(page);
+  const nativeTree = await accessibility.send("Accessibility.getFullAXTree");
+  await accessibility.detach();
+  const accessibleNames = nativeTree.nodes.filter(node => !node.ignored).map(node => node.name?.value || "");
+  await info.attach("open-native-accessibility", { body: JSON.stringify(accessibleNames), contentType: "application/json" });
+  expect(accessibleNames).toContain("Explique a diferença com suas palavras.");
+  expect(accessibleNames).toContain("Resposta aberta, sem correção automática.");
+  const responseSnapshot = await response.ariaSnapshot();
+  await info.attach("open-review-accessibility", { body: responseSnapshot, contentType: "text/plain" });
+  expect(responseSnapshot).toContain("Explique a diferença com suas palavras.");
+  expect(responseSnapshot).toContain("Resposta aberta, sem correção automática.");
+  await expect(response).not.toHaveAttribute("inert", "");
+  await expect(response).not.toHaveAttribute("aria-disabled", "true");
+  await expect(response.locator("button, input, select, textarea, [contenteditable], [data-action^='open-response-']")).toHaveCount(0);
+  await response.getByText("Explique a diferença com suas palavras.", { exact: true }).click();
+  expect(await response.ariaSnapshot()).toBe(responseSnapshot);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
+  await response.screenshot({ path: info.outputPath("open-review-accessible.png") });
   await confirm(page).check(); await expect(confirm(page)).toBeFocused();
   await page.keyboard.press("Tab"); await expect(page.getByRole("button", { name: "Marcar como revisado", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "Fontes de Interface local", exact: true }).click();

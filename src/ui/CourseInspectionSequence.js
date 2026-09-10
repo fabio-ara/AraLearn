@@ -1744,8 +1744,6 @@ export function createCourseInspectionSequence({
       '.package-instance[data-package^="aralearn.response."], .card-answer-dock'
     ).forEach((container) => {
       if (container.closest?.(".runtime-resource-edit-target.is-inline-editing")) return;
-      container.setAttribute("aria-disabled", "true");
-      container.setAttribute("inert", "");
       container.querySelectorAll?.("button, input, select, textarea, [contenteditable]").forEach((control) => {
         if ("disabled" in control) control.disabled = true;
         control.setAttribute("aria-disabled", "true");

@@ -93,7 +93,8 @@ export const choiceResponsePackage = Object.freeze({
       const interaction = revealAnswers
         ? ""
         : ` type="button"${manualEditing ? "" : ` data-action="choice-toggle" data-choice-block-key="${escapePackageAttribute(blockKey)}"`} role="${data.selectionMode === "single" ? "radio" : "checkbox"}" aria-checked="${checked ? "true" : "false"}"`;
-      return `<${tag} class="multiple-choice-option${classes ? ` ${classes}` : ""}"${interaction} data-choice-option-id="${escapePackageAttribute(option.id)}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label"><span>${value}</span>${optionFeedback}</span></${tag}>`;
+      const expectedLabel = revealAnswers && shouldBeChecked ? '<span class="visually-hidden">Resposta esperada: </span>' : "";
+      return `<${tag} class="multiple-choice-option${classes ? ` ${classes}` : ""}"${interaction} data-choice-option-id="${escapePackageAttribute(option.id)}"><span class="multiple-choice-mark">${checked ? '<span class="multiple-choice-dot" aria-hidden="true"></span>' : ""}</span><span class="multiple-choice-label">${expectedLabel}<span>${value}</span>${optionFeedback}</span></${tag}>`;
     }).join("");
     const feedbackHtml = revealAnswers
       ? '<div class="inline-feedback ok"><p class="tiny">Resposta esperada exibida.</p></div>'
