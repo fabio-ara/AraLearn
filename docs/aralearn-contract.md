@@ -226,6 +226,17 @@ snapshot normalizado.
 
 ## Recuperação de cópias próprias e estado de Estudo
 
+Cópias independentes mantêm o conteúdo e remapeiam as identidades dos itens de
+planejamento tanto nas associações curriculares quanto em `scopeItemIds` das
+microssequências. A cobertura representa um conjunto; a cópia nova conserva a
+ordem declarada ao traduzir os IDs. Cópias anteriores com referências órfãs são
+reparadas pelas associações canônicas do próprio plano, em ordem de posição e
+ID, somente quando cardinalidade, unicidade e referências locais existentes
+são compatíveis. Associação ausente ou ambígua interrompe o reparo. Ele preserva
+identidade, conteúdo restante, fontes, arquivos, observações e declarações de
+revisão; incrementa as versões afetadas e devolve o mapa a rascunho para nova
+aprovação. A recuperação não depende do estado atual do curso de origem.
+
 O comando de criação automática de cópia por estudante foi retirado.
 `aralearn.owned-course-copy-recovery.v1` consulta a prova migrada de uma intenção
 anterior e retorna `confirmed`, `unchanged` ou `unresolved`. A confirmação exige

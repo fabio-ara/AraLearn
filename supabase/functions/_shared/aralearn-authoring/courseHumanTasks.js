@@ -2538,6 +2538,18 @@ function projectMaterializationPart(planRead, part, designReads, unitDesignReads
     posicao: partPosition + 1,
     titulo: part.title,
     intencao: part.intent,
+    repertorioDisponivelDoCurso: {
+      ideias: projectFocalPlanItems(
+        plan.instructionalAnalysisUnits,
+        (plan.instructionalAnalysisUnits ?? []).map(({ id }) => id),
+        "unidades de análise"
+      ),
+      requisitosDeEvidencia: projectFocalPlanItems(
+        plan.evidenceRequirements,
+        (plan.evidenceRequirements ?? []).map(({ id }) => id),
+        "requisitos de evidência"
+      )
+    },
     ideiasEstabelecidas: humanAnalysisUnits(repertoire.establishedBeforePart),
     microssequencias: microsequences.map((microsequence, index) => {
       const design = designReads[index];

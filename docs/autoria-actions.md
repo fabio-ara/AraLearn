@@ -163,11 +163,21 @@ pendente adia somente a produção dependente.
 
 ## Materialização e parâmetros
 
-A preparação focal recupera o repertório acumulado do curso: ideias novas,
-ideias estabelecidas que podem ser usadas e retomadas deliberadas. O teto de
-novidades limita apenas introduções semanticamente novas em unidades
-expositivas. Ele não exige a mesma quantidade em toda unidade nem transforma
-cada ideia em uma tela.
+A preparação distingue o `repertorioDisponivelDoCurso`, com ideias, definições
+e requisitos de evidência já cadastrados, das ideias planejadas para cada
+microssequência e das ideias já estabelecidas no percurso. Um item disponível
+pode ainda não ter vínculo nem introdução em unidade; listas focais vazias não
+significam repertório vazio. Referencie os itens existentes por nome ou posição,
+conservando suas definições. Uma redefinição conflitante exige conciliação
+expressa, sem substituir a descrição durante a materialização.
+
+O repertório e o restante do preparo usam a mesma continuação quando excedem
+o envelope do canal. Leia todos os trechos necessários antes de produzir;
+uma alteração no repertório invalida a continuação anterior. Disponibilidade
+não declara introdução, prática nem vínculo à microssequência. O teto de novidades
+limita apenas introduções semanticamente novas em unidades expositivas. Ele
+não exige a mesma quantidade em toda unidade nem transforma cada ideia em uma
+tela.
 
 A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
 que define significado, unidade, limites, natureza e escopos de cada ajuste.

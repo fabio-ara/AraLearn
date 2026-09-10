@@ -10,6 +10,8 @@ const SPECS = ["course-access-local", "course-audio-local", "course-authoring-co
   .map(name => `tests/e2e/${name}.spec.js`);
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const sensitiveName = name => /SUPABASE|TOKEN|SECRET|PASSWORD|API_KEY|ACCESS_KEY/iu.test(name);
+// Prazo operacional de disponibilidade local, incluindo o body; não é SLO do produto.
+const PROBE_TIMEOUT_MS = 5_000;
 
 export function redactLocalIntegrationOutput(value, environment = {}) {
   let result = String(value);
@@ -97,10 +99,24 @@ export async function captureLocalCommand(command, args, options) {
 
 async function probeFunctions(projectUrl, fetchImpl) {
   const request = async (url, init = {}) => {
+    const started = performance.now();
+    const signal = AbortSignal.timeout(PROBE_TIMEOUT_MS);
+    let response, headersMs = null;
     try {
-      const response = await fetchImpl(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(1500) });
-      return { status: response.status, headers: response.headers, body: await response.text() };
-    } catch { return { status: 0, headers: new Headers(), body: "" }; }
+      response = await fetchImpl(url, { ...init, redirect: "manual", signal });
+      headersMs = Math.round(performance.now() - started);
+      const body = await response.text();
+      return { status: response.status, headers: response.headers, body,
+        diagnostic: { status: response.status, headers_ms: headersMs,
+          elapsed_ms: Math.round(performance.now() - started), body_complete: true } };
+    } catch (error) {
+      return { status: 0, headers: new Headers(), body: "",
+        diagnostic: { status: response?.status ?? 0, headers_ms: headersMs,
+          elapsed_ms: Math.round(performance.now() - started), body_complete: false,
+          error_phase: response ? "body" : "headers", error_name: error?.name || "Error",
+          error_code: error?.cause?.code ?? error?.code ?? null,
+          aborted: signal.aborted, abort_name: signal.reason?.name ?? null } };
+    }
   };
   const base = `${projectUrl}/functions/v1`;
   const [api, mcp, actions] = await Promise.all([
@@ -121,7 +137,9 @@ async function probeFunctions(projectUrl, fetchImpl) {
     actions.headers.get("content-type")?.includes("application/json") && contractsMatch;
   return { ready: Boolean(apiReady && mcpReady && actionsReady), active: Boolean(apiReady || mcpReady || actionsReady),
     details: { api_status: api.status, mcp_status: mcp.status, actions_status: actions.status,
-      mcp_resource_matches: mcpReady, channel_contracts_match: contractsMatch } };
+      api_ready: Boolean(apiReady), actions_ready: Boolean(actionsReady),
+      mcp_resource_matches: mcpReady, channel_contracts_match: contractsMatch, timeout_ms: PROBE_TIMEOUT_MS,
+      requests: { api: api.diagnostic, mcp: mcp.diagnostic, actions: actions.diagnostic } } };
 }
 
 function parseStatus(source) {
@@ -334,8 +352,18 @@ export async function runLocalIntegration({
     if (!ready) throw new Error("API, MCP e Actions locais não confirmaram prontidão.");
 
     async function stage(name, args, extraEnvironment, verify) {
-      if (signal?.aborted || !alive() || !(await probeFunctions(local.projectUrl, fetchImpl)).ready) {
-        throw new Error("Execução interrompida ou funções indisponíveis.");
+      let interrupted = Boolean(signal?.aborted), processAlive = alive(), readiness = null;
+      if (!interrupted && processAlive) {
+        readiness = await probeFunctions(local.projectUrl, fetchImpl);
+        // Uma resposta íntegra não autoriza a etapa se houve interrupção durante o probe.
+        interrupted = Boolean(signal?.aborted); processAlive = alive();
+      }
+      const reason = interrupted ? "signal_aborted" : !processAlive ? "process_exited" : !readiness?.ready ? "probe_failed" : null;
+      report.readiness = readiness?.details ?? null;
+      report.availability = { stage: name, reason, signal_aborted: interrupted, process_alive: processAlive };
+      if (reason) {
+        const cause = interrupted ? "Integração interrompida" : !processAlive ? "Processo das Edge Functions encerrado" : "API, MCP ou Actions sem prontidão";
+        throw new Error(`${cause} antes da etapa ${name}; consulte availability/readiness no relatório local.`);
       }
       const row = report.stages.find(stage => stage.name === name);
       const ledgerConfig = { projectUrl: local.projectUrl, fixtureLedgerDirectory: localEnvironment.ARALEARN_LOCAL_FIXTURE_LEDGER_DIR };
@@ -448,6 +476,7 @@ export async function runLocalIntegration({
 
 export function localIntegrationSummary(report) {
   return { result: report.result, failed_tests: report.failed_tests,
+    ...(report.availability?.reason ? { availability: report.availability, readiness: report.readiness } : {}),
     failure_details: report.stages.flatMap(stage => (stage.failure_details || [])
       .map(detail => ({ stage: stage.name, ...detail }))),
     report: ".validation/local-integration.json", cleanup: report.cleanup };

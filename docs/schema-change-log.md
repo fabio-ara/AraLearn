@@ -1,5 +1,19 @@
 # Alterações do schema
 
+## 20260910134141 — cobertura curricular de cópias independentes
+
+A cópia remapeia a cobertura das microssequências para os itens de escopo do
+novo curso. Nas cópias existentes com referências órfãs, o reparo usa os vínculos
+locais de cobertura já remapeados e exige correspondência completa e inequívoca.
+Isso recupera a edição estrutural sem depender do estado posterior da origem.
+
+O reparo avança as versões das microssequências afetadas, do plano e do curso,
+e coloca o plano em rascunho para nova inspeção. Conteúdo explicativo, unidades,
+fontes, arquivos, observações, acessos e declarações de revisão permanecem.
+Associações insuficientes ou ambíguas interrompem a migração atomicamente.
+A revisão do manifesto identifica esse contrato; antes da aplicação hospedada,
+a restauração e o ensaio do upgrade devem conferir os dados úteis preservados.
+
 ## 20260910054749 — aplicações existentes e prática planejada
 
 O registro de aplicações e a aplicação expressa de configuração em unidades

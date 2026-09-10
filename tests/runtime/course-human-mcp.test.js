@@ -787,6 +787,7 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   const analysisB = "50000000-0000-4000-8000-000000000006";
   const analysisOutsidePart = "50000000-0000-4000-8000-000000000007";
   const analysisBetween = "50000000-0000-4000-8000-000000000008";
+  const analysisAvailable = "50000000-0000-4000-8000-000000000009";
   const prerequisiteUnit = "70000000-0000-4000-8000-000000000099";
   const futureUnit = "70000000-0000-4000-8000-000000000098";
   const prerequisiteMicro = "micro-prerequisito";
@@ -794,6 +795,7 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   const betweenMicro = "micro-intermediario";
   const evidenceA = "60000000-0000-4000-8000-000000000001";
   const evidenceB = "60000000-0000-4000-8000-000000000002";
+  const evidenceAvailable = "60000000-0000-4000-8000-000000000003";
   const microA = "micro-definicao";
   const microB = "micro-mecanismo";
   const existingStudyUnitId = "70000000-0000-4000-8000-000000000001";
@@ -961,11 +963,22 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
             },
             usedBy: [],
             revisitedBy: []
+          }, {
+            id: analysisAvailable,
+            position: 5,
+            statement: "Origem",
+            description: "Papel do dispositivo que envia a mensagem considerada.",
+            introducedAt: null,
+            usedBy: [],
+            revisitedBy: []
           }],
           evidenceRequirements: [{
             id: evidenceA, position: 0, statement: "Distinguir processo e socket."
           }, {
             id: evidenceB, position: 1, statement: "Relacionar endereço e comunicação."
+          }, {
+            id: evidenceAvailable, position: 2, statement: "Identificar quem envia a mensagem.",
+            description: "Distinguir origem e destino na mensagem considerada, sem pressupor papéis permanentes."
           }],
           parts: [{
             id: "20000000-0000-4000-8000-000000000001",
@@ -1046,6 +1059,17 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   assert.equal(output.deepLink, null);
   assert.equal(output.nextDecision, null);
   assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  const available = output.context.parte.repertorioDisponivelDoCurso;
+  assert.equal(available?.ideias.length, 6);
+  assert.deepEqual(available.ideias.at(-1), {
+    posicao: 6, ideia: "Origem",
+    descricao: "Papel do dispositivo que envia a mensagem considerada."
+  });
+  assert.equal(available.requisitosDeEvidencia.length, 3);
+  assert.deepEqual(available.requisitosDeEvidencia.at(-1), {
+    posicao: 3, ideia: "Identificar quem envia a mensagem.",
+    descricao: "Distinguir origem e destino na mensagem considerada, sem pressupor papéis permanentes."
+  });
   assert.deepEqual(output.context.parte.ideiasEstabelecidas, [{
     posicao: 1,
     ideia: "Processos trocam dados por serviços de transporte."
@@ -1114,7 +1138,11 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
       ideia: "Uma ideia foi estabelecida entre as duas etapas do lote."
     }]
   );
-  assert.doesNotMatch(JSON.stringify(output.context.parte), /Novidade de outra Parte/u);
+  assert.equal(available.ideias[3].ideia, "Novidade de outra Parte.");
+  assert.doesNotMatch(JSON.stringify({
+    estabelecidas: output.context.parte.ideiasEstabelecidas,
+    microssequencias: output.context.parte.microssequencias
+  }), /Novidade de outra Parte/u);
   assert.doesNotMatch(JSON.stringify(output.context.parte), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
 });
 

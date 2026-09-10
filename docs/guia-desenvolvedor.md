@@ -354,6 +354,13 @@ quando seu código não foi alterado. Para o orquestrador, a opção corresponde
 limpeza bloqueia a prova. Contas e arquivos são sintéticos; esses testes não
 aprovam cursos reais nem substituem ChatGPT, MCP ou Actions hospedados.
 
+Antes de cada etapa, a disponibilidade é confirmada por GETs que verificam os
+status, o recurso OAuth e a identidade dos contratos. Cada pedido tem prazo
+operacional de cinco segundos, incluindo a leitura do corpo. Uma falha registra
+o estado corrente em `availability` e `readiness`: interrupção, processo encerrado
+ou probe recusado, com status, tempos e fase do erro (headers ou corpo). A etapa
+permanece sem execução até essa verificação passar.
+
 Quando uma jornada falha, o resumo da integração informa o teste, a localização
 e a primeira tentativa malsucedida, com até duas mensagens de erro. O runner
 remove credenciais antes de limitar o texto e mantém o relatório completo local.
