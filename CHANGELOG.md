@@ -4,6 +4,63 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Não publicado]
 
+## [0.0.68] - 2026-09-09
+
+### Adicionado
+
+- Explicação como base explicativa salva da microssequência, desenvolvida e
+  revisada antes das unidades quando necessário, com fontes e desenho no contexto;
+- fila durável de observações por Explicação e unidade, com entradas identificadas
+  e versionadas; a correção confirmada por releitura consome apenas as versões atendidas;
+- Configurações com os mesmos quatro grupos em Estudo e Autoria: Conta, Aparência,
+  Sincronização e dados deste dispositivo, e Preferências de autoria;
+- preferências pessoais de foco, cadência, pontos de revisão e diálogo, consultadas
+  pelos canais sem alterar retroativamente cursos ou configurações aplicadas;
+- catálogo contextual 4.0.0 com 54 tarefas de autoria em MCP e Actions, incluindo
+  estrutura curricular, perfis, fontes, acesso e declaração humana expressa de revisão;
+  Actions apresenta essas tarefas em 30 operações tipadas.
+
+### Alterado
+
+- aprovação do mapa referencia a versão persistida e inspecionada; planejamento,
+  conteúdo e parâmetros são acessíveis no contexto do curso, ramo ou microssequência;
+- cada Explicação e unidade tem declaração reversível de revisão vinculada ao
+  conteúdo salvo; editar registra intervenção, e mudança material desatualiza a marca;
+- acesso e revisão são independentes: conteúdo completo salvo pode ser estudado
+  por quem tem acesso, salvo política expressa de somente conteúdo revisado;
+- operações de estrutura preservam descendentes, fontes e proveniência;
+  duplicação não herda a declaração humana de revisão nem o progresso pessoal;
+- referências integram o corpo da leitura, com citações que levam à bibliografia
+  e permitem retornar à ocorrência, preservando localizações e acesso autorizado.
+
+### Corrigido
+
+- consultas de uma microssequência incluem as observações da Explicação mesmo
+  antes de existirem unidades de estudo;
+- unidades com calibração contextual pendente recebem orientação para completá-la,
+  preservando as condições fixadas pela autoria;
+- tarefas agrupadas das Actions apresentam seus argumentos tipados ao cliente,
+  conservando os campos e requisitos próprios de cada tarefa;
+- salvar uma edição manual atualiza imediatamente a revisão e a autoria conforme
+  o conteúdo relido; metadados sem confirmação permanecem desconhecidos;
+- respostas tardias preservam objeto, foco e rascunhos, incluindo dados de conta,
+  fontes e controles contextuais de autoria;
+- correções com resposta perdida conservam a identidade da tentativa e reconciliam
+  conteúdo e fila antes da retomada; observações editadas ou não atendidas permanecem pendentes;
+- componentes didáticos e controles de prática conservam texto e notações em telas
+  estreitas; diagramas, gráficos e pacotes usam espaço e rolagem para manter a leitura.
+
+### Atualização e limites
+
+- a atualização preserva o conteúdo e o progresso existentes, sem atribuir revisão
+  humana ao acervo que não a possui;
+- para continuar a autoria pelo ChatGPT, atualize a configuração de Actions ou
+  reconecte o MCP e retome em uma conversa nova com o contrato atual;
+- no Android, instale o APK sobre a versão existente para conservar dados locais;
+  consultas a arquivos externos continuam dependendo de conexão e acesso autorizado;
+- registros de revisão, parâmetros e análises descrevem decisões e conteúdo;
+  não constituem medida de aprendizagem ou prova de eficácia pedagógica.
+
 ## [0.0.67] - 2026-09-07
 
 ### Adicionado

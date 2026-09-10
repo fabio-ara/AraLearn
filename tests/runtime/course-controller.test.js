@@ -1841,6 +1841,8 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
           studyUnit: editableStudyUnit(),
           version: 3,
           updatedAt: "2026-08-20T22:45:00.000Z",
+          contentReview: { state: "stale", reviewedAt: "2026-08-20T22:40:00.000Z" },
+          authorship: { createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null } },
           ordinal: 1,
           curriculumPath: {
             module: { id: "module-a", position: 0, title: "Módulo A" },
@@ -1891,6 +1893,8 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
   assert.deepEqual(result.studyUnit, editableStudyUnit());
   assert.equal(result.version, 3);
   assert.equal(result.reconciled, true);
+  assert.deepEqual(result.contentReview, { state: "stale", reviewedAt: "2026-08-20T22:40:00.000Z" });
+  assert.deepEqual(result.authorship, { createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null } });
   assert.deepEqual(calls[0], ["sources", COURSE_ID, {
     expectedRevision: 4,
     mode: "target",
@@ -2136,6 +2140,8 @@ test("falha transitória da releitura não transforma receipt confirmado em escr
   assert.equal(result.version, 3);
   assert.equal(result.reconciled, false);
   assert.deepEqual(result.studyUnit, editableStudyUnit());
+  assert.equal(result.contentReview, null);
+  assert.equal(result.authorship, null);
   assert.equal(store.values.has(
     `course-authoring.v1.study-unit-inspection:${COURSE_ID}`
   ), false);

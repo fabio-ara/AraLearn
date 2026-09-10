@@ -1329,8 +1329,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerPage.keyboard.press("Escape");
       await expect(offlineStatus).toBeHidden();
       await expect(learnerPage.getByRole("button", { name: "Sem conexão", exact: true })).toBeFocused();
+      const reconnectedCourseRead = learnerPage.waitForResponse((response) => {
+        const url = new URL(response.url());
+        const request = response.request();
+        return url.origin === PROJECT_URL && url.pathname === "/rest/v1/rpc/get_course_v1" &&
+          request.method() === "POST" && request.postDataJSON()?.p_course_id === courseId;
+      });
       await learnerContext.setOffline(false);
       learnerFailures.setOffline(false);
+      expect((await reconnectedCourseRead).status()).toBe(200);
+      await learnerPage.waitForLoadState("networkidle");
       await learnerPage.reload();
 
       await expect.poll(databaseEvidence).toEqual({

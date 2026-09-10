@@ -56,6 +56,28 @@ export function decodeCourseActionTaskRequest(operationName, payload) {
   return { taskName: payload.tarefa, arguments: payload.argumentos };
 }
 
+function schemaShape(value) {
+  if (Array.isArray(value)) return value.map(schemaShape);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).filter(key => key !== "description").sort()
+    .map(key => [key, schemaShape(value[key])]));
+}
+
+function groupArgumentSchema(members) {
+  const fields = new Map();
+  for (const member of members) for (const [name, schema] of Object.entries(member.inputSchema.properties)) {
+    if (!fields.has(name)) fields.set(name, new Map());
+    const variants = fields.get(name), shape = JSON.stringify(schemaShape(schema));
+    if (!variants.has(shape)) variants.set(shape, structuredClone(schema));
+  }
+  // Expose the typed fields to clients that discover inputs from properties.
+  // Each task's oneOf branch still enforces its exact fields and requirements.
+  return { type: "object", additionalProperties: false,
+    description: "Envie somente os argumentos da tarefa escolhida; envie {} quando ela não tiver argumentos.",
+    properties: Object.fromEntries([...fields].map(([name, variants]) => [name,
+      variants.size === 1 ? [...variants.values()][0] : { anyOf: [...variants.values()] }])) };
+}
+
 export function courseActionOperationDefinitions(tasks) {
   if (!Array.isArray(tasks) || new Set(tasks.map(task => task.name)).size !== tasks.length) throw new TypeError("Catálogo de Actions inválido.");
   const byName = new Map(tasks.map(task => [task.name, task]));
@@ -74,7 +96,7 @@ export function courseActionOperationDefinitions(tasks) {
       annotations: { readOnlyHint: members.every(member => member.annotations?.readOnlyHint === true) },
       outputSchema: structuredClone(members[0].outputSchema),
       inputSchema: { type: "object", additionalProperties: false, required: ["tarefa", "argumentos"],
-        properties: { tarefa: { type: "string", enum: [...COURSE_ACTION_TASK_GROUPS[group]] }, argumentos: { type: "object" } },
+        properties: { tarefa: { type: "string", enum: [...COURSE_ACTION_TASK_GROUPS[group]] }, argumentos: groupArgumentSchema(members) },
         oneOf: members.map(member => ({ type: "object", description: member.description,
           properties: { tarefa: { type: "string", enum: [member.name] }, argumentos: structuredClone(member.inputSchema) } }))
       }

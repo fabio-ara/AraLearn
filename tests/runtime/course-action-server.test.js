@@ -152,6 +152,41 @@ test("Actions rejeita tarefa externa ao grupo, cruzamento e campos extras antes 
   assert.equal(authenticated, 0);
 });
 
+test("Actions lê perfis com objeto vazio e repertório com curso sem reparar envelopes incompletos", async () => {
+  let authenticated = 0, profileReads = 0;
+  const handler = createHandler({
+    async resolveActionPrincipal() {
+      authenticated += 1;
+      return { actorId: ACTOR_ID, authenticationKind: "action", scopes: ["authoring:read"] };
+    },
+    async listAuthoringProfiles() { profileReads += 1; return { profiles: [] }; }
+  });
+  for (const [operationName, payload] of [
+    ["perfis_de_autoria", { tarefa: "consultar_perfis" }],
+    ["perfis_de_autoria", { tarefa: "consultar_perfis", argumentos: null }],
+    ["perfis_de_autoria", { tarefa: "consultar_perfis", argumentos: [] }],
+    ["perfis_de_autoria", { tarefa: "consultar_perfis", argumentos: { curso: "Redes para iniciantes" } }],
+    ["desenho_instrucional", { tarefa: "consultar_repertorio_instrucional", argumentos: {} }],
+    ["desenho_instrucional", { tarefa: "consultar_repertorio_instrucional",
+      argumentos: { curso: "Redes para iniciantes", operacao: "criar" } }]
+  ]) {
+    const response = await handler(wireRequest(operationName, payload));
+    assert.equal(response.status, 422, JSON.stringify(payload));
+    assert.equal((await response.json()).error.code, "invalid_action_task_binding");
+  }
+  assert.equal(authenticated, 0);
+  assert.equal(profileReads, 0);
+  const profiles = await handler(wireRequest("perfis_de_autoria", { tarefa: "consultar_perfis", argumentos: {} }));
+  assert.equal(profiles.status, 200);
+  assert.deepEqual((await profiles.json()).context.perfis, []);
+  const repertoire = await handler(wireRequest("desenho_instrucional", {
+    tarefa: "consultar_repertorio_instrucional", argumentos: { curso: "Redes para iniciantes" }
+  }));
+  assert.equal(repertoire.status, 200);
+  assert.equal(authenticated, 2);
+  assert.equal(profileReads, 1);
+});
+
 test("Actions aplica o escopo da tarefa escolhida dentro de um grupo com escrita", async () => {
   const writes = [];
   const overrides = {
