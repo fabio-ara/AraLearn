@@ -41,8 +41,9 @@ que o está criando.
 ## Compartilhar estudo e arquivos
 
 Em **Pessoas e acesso**, escolha privado ou público. A mudança exige confirmação;
-ao publicar, confira também se os arquivos ficam restritos às pessoas autorizadas
-ou disponíveis a visitantes. Em **Fontes**, cada fonte e cada PDF podem herdar a
+ao publicar, confira também se os arquivos ficam sem acesso público ou disponíveis
+para leitura pública. A concessão de acesso ao curso não libera, por si só, um PDF
+restrito no curso público. Em **Fontes**, cada fonte e cada PDF podem herdar a
 regra anterior ou definir uma exceção. O arquivo prevalece sobre a fonte, que
 prevalece sobre o curso. Um arquivo já baixado não pode ser recolhido.
 
