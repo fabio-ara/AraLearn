@@ -127,9 +127,9 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
   });
 }
 
-test("Lista conserva cards e controles com erro revelado, recuperação e aviso transitório", async ({ page }, testInfo) => {
-  await page.clock.install();
-  for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
+  test(`Lista conserva cards e controles com erro revelado, recuperação e aviso transitório ${width} ${theme}`, async ({ page }, testInfo) => {
+    await page.clock.install();
     await page.setViewportSize({ width, height: 844 });
     await mount(page, theme);
     const menu = page.locator(".course-authoring-task-menu > summary");
@@ -179,5 +179,5 @@ test("Lista conserva cards e controles com erro revelado, recuperação e aviso 
     expect(await card.boundingBox()).toEqual(before.card);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: testInfo.outputPath(`list-${width}-${theme}.png`) });
-  }
-});
+  });
+}

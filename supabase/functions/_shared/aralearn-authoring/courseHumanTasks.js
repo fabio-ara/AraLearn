@@ -3661,9 +3661,8 @@ HUMAN_TASK_HANDLERS.editar_observacao = async ({ adapter, principal, args, deadl
     }
     const page = await adapter.getCourseAnchoredAnnotations({ principal, courseId: resolved.course.id,
       expectedCourseRevision: course.revision, annotationSetVersion: null, cursor: null, limit: 1, deadlineAt,
-      query: { mode: "inbox", origins: ["author"], channels: [], states: ["open", "considered"], categories: [],
-        includeUncategorized: true, subjectIds: [], hierarchy: { target: { kind: reference.targetKind, id: reference.targetId },
-          includeDescendants: false }, annotationId: reference.annotationId } });
+      query: { mode: "detail", origins: ["author"], channels: [], states: ["open", "considered"], categories: [],
+        includeUncategorized: true, subjectIds: [], hierarchy: null, annotationId: reference.annotationId } });
     const item = page?.items?.[0];
     if (!Array.isArray(page?.items) || page.items.length !== 1 || item.annotationId !== reference.annotationId ||
         item.provenance?.origin !== "author" || !["open", "considered"].includes(item.state) ||

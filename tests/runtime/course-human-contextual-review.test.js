@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { executeHumanCourseTask } from '../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js';
 import { openContentReviewReference } from '../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js';
 import { defaultAuthoringProcessPreferences } from '../../src/domain/authoringProcessPreferences.js';
+import { normalizeCourseAnchoredAnnotationReadOptions } from '../../src/domain/courseAnchoredAnnotations.js';
 import { courseDesignFixture } from '../helpers/courseDesignFixture.js';
 const courseId='10000000-0000-4000-8000-000000000001';
 const actorId='20000000-0000-4000-8000-000000000001';
@@ -38,10 +39,14 @@ function harness({large=false}={}) {
     async listCourseStudyUnits(){events.push('units');return{items:[],hasMore:false,nextCursor:null};},
     async getCourseSources(){events.push('sources');return{items:[],hasMore:false,nextCursor:null};},
     async getCourseContentReview(){events.push('review');return read();},
-    async getCourseAnchoredAnnotations(request){events.push(['queue',request.query.hierarchy,request.query.states,request.annotationSetVersion]);
+    async getCourseAnchoredAnnotations(request){
+      const {expectedCourseRevision,annotationSetVersion,query,cursor,limit}=request;
+      normalizeCourseAnchoredAnnotationReadOptions({expectedCourseRevision,annotationSetVersion,query,cursor,limit});
+      events.push(['queue',request.query.hierarchy,request.query.states,request.annotationSetVersion]);
       queueRequests.push(structuredClone(request));
-      const {hierarchy,states=[],origins=[],channels=[]}=request.query;
-      const items=observations.filter(item=>(!states.length||states.includes(item.state))&&
+      const {hierarchy,states=[],origins=[],channels=[],annotationId:requestedId}=request.query;
+      const items=observations.filter(item=>(requestedId===null||item.annotationId===requestedId)&&
+        (!states.length||states.includes(item.state))&&
         (!origins.length||origins.includes(item.provenance.origin))&&
         (!channels.length||channels.includes(item.provenance.channel))&&
         (!hierarchy||item.target.kind===hierarchy.target.kind&&item.target.id===hierarchy.target.id||
@@ -199,27 +204,91 @@ test('paginação da fila exige a mesma versão e não apresenta mistura como co
   await assert.rejects(execute(adapter,'consultar_observacoes',{curso:'Curso',microssequencia:1}),
     error=>error.code==='course_service_unavailable');
 });
-test('editar a versão exata da observação relê o efeito perdido e não consome nem repete',async()=>{
-  const {adapter}=harness();let writes=0;
-  const get=adapter.getCourseAnchoredAnnotations;let updated=null;
-  adapter.getCourseAnchoredAnnotations=async request=>{
-    const page=await get(request);return{...page,items:updated?[updated]:page.items};
-  };
-  adapter.executeCourseAnchoredAnnotationCommand=async request=>{
-    writes++;assert.equal(request.expectedCourseRevision,null);
-    assert.equal(request.command.expectedAnnotationVersion,2);
-    const page=await get({query:{hierarchy:null,states:[]}});
-    updated={...page.items[0],annotationVersion:3,rawText:request.command.rawText,category:request.command.category};
-    throw Object.assign(new Error('Resposta perdida'),{status:503});
-  };
-  const output=await execute(adapter,'editar_observacao',{curso:'Curso',observacao:reference,texto:'Nova observação preservada.'});
-  assert.equal(writes,1);
-  assert.equal(output.context.observations.items[0].referenciaObservacao.annotationVersion,3);
-  assert.equal(output.context.observations.items[0].state,'considered');
-  await assert.rejects(execute(adapter,'editar_observacao',{curso:'Curso',observacao:reference,texto:'Texto obsoleto.'}),
-    error=>error.code==='course_observation_version_conflict');
-  assert.equal(writes,1);
-});
+for(const targetKind of ['microsequence_explanation','study_unit']){
+  test(`${targetKind}: editar por identidade aceita a consulta real, relê perda e preserva no-op/versão antiga`,async()=>{
+    for(const lostResponse of [false,true]){
+      const {adapter,observations,queueRequests}=harness();const writes=[];
+      const targetId=targetKind==='study_unit'?'unit':'micro';
+      observations[0].target.kind=targetKind;observations[0].target.id=targetId;
+      const ref={...reference,targetKind,targetId};
+      adapter.executeCourseAnchoredAnnotationCommand=async request=>{
+        writes.push(structuredClone(request));
+        assert.equal(request.principal.actorId,actorId);assert.equal(request.courseId,courseId);
+        assert.equal(request.expectedCourseRevision,null);
+        assert.equal(request.command.type,'revise_anchored_annotation');
+        assert.equal(request.command.expectedAnnotationVersion,2);
+        observations[0]={...observations[0],annotationVersion:3,rawText:request.command.rawText,category:request.command.category};
+        if(lostResponse)throw Object.assign(new Error('Resposta perdida'),{status:503});
+        return{changed:true};
+      };
+      const unchanged=await execute(adapter,'editar_observacao',{curso:'Curso',observacao:ref,texto:observations[0].rawText});
+      assert.deepEqual(unchanged.context.observations.items[0].referenciaObservacao,ref);
+      assert.equal(writes.length,0,'Texto idêntico não cria escrita ou versão.');
+      const output=await execute(adapter,'editar_observacao',{curso:'Curso',observacao:ref,texto:'Nova observação preservada.'});
+      const currentRef={...ref,annotationVersion:3};
+      assert.equal(writes.length,1,'Releitura da resposta perdida não repete a escrita.');
+      assert.deepEqual(output.context.observations.items[0].referenciaObservacao,currentRef);
+      assert.equal(output.context.observations.items[0].rawText,'Nova observação preservada.');
+      assert.equal(output.context.observations.items[0].state,'considered');
+      await execute(adapter,'editar_observacao',{curso:'Curso',observacao:currentRef,texto:observations[0].rawText});
+      await assert.rejects(execute(adapter,'editar_observacao',{curso:'Curso',observacao:ref,texto:'Texto obsoleto.'}),
+        error=>error.code==='course_observation_version_conflict');
+      assert.equal(writes.length,1);
+      assert.ok(queueRequests.every(request=>request.principal.actorId===actorId&&request.courseId===courseId&&
+        request.query.mode==='detail'&&request.query.hierarchy===null&&request.query.annotationId===annotationId));
+    }
+  });
+
+  test(`${targetKind}: detalhe não substitui as guardas de identidade, alvo, origem e pendência`,async()=>{
+    const {adapter,observations}=harness();
+    const targetId=targetKind==='study_unit'?'unit':'micro';
+    observations[0].target.kind=targetKind;observations[0].target.id=targetId;
+    const args={curso:'Curso',observacao:{...reference,targetKind,targetId},texto:'Texto novo.'};
+    adapter.executeCourseAnchoredAnnotationCommand=()=>assert.fail('Consulta divergente não autoriza edição.');
+    const get=adapter.getCourseAnchoredAnnotations;
+    for(const change of [
+      item=>({...item,annotationId:'30000000-0000-4000-8000-000000000002'}),
+      item=>({...item,target:{...item.target,id:'outro-alvo'}}),
+      item=>({...item,target:{...item.target,kind:targetKind==='study_unit'?'microsequence_explanation':'study_unit'}}),
+      item=>({...item,provenance:{...item.provenance,origin:'learner'}}),
+      item=>({...item,state:'resolved'})
+    ]){
+      adapter.getCourseAnchoredAnnotations=async request=>{
+        const page=await get(request);return{...page,items:page.items.map(change)};
+      };
+      await assert.rejects(execute(adapter,'editar_observacao',args),error=>error.code==='course_observation_version_conflict');
+    }
+    adapter.getCourseAnchoredAnnotations=()=>assert.fail('Sem escopo de escrita não inicia a leitura para editar.');
+    await assert.rejects(execute(adapter,'editar_observacao',args,{...principal,scopes:['authoring:read']}),
+      error=>error.code==='insufficient_scope');
+  });
+
+  test(`${targetKind}: edição persistida sem releitura conserva a tentativa e não repete ao reencontrar versão nova`,async()=>{
+    const {adapter,observations}=harness();const writes=[];let unavailable=false;
+    const targetId=targetKind==='study_unit'?'unit':'micro';
+    observations[0].target.kind=targetKind;observations[0].target.id=targetId;
+    const args={curso:'Curso',observacao:{...reference,targetKind,targetId},texto:'Texto persistido sem resposta.'};
+    const get=adapter.getCourseAnchoredAnnotations;
+    adapter.getCourseAnchoredAnnotations=async request=>{
+      const page=await get(request);
+      if(unavailable)throw Object.assign(new Error('Releitura indisponível'),{status:503});
+      return page;
+    };
+    adapter.executeCourseAnchoredAnnotationCommand=async request=>{
+      writes.push(structuredClone(request));
+      observations[0]={...observations[0],annotationVersion:3,rawText:request.command.rawText};
+      unavailable=true;
+      throw Object.assign(new Error('Resposta perdida'),{status:503});
+    };
+    await assert.rejects(execute(adapter,'editar_observacao',args),error=>error.code==='course_write_uncertain'&&
+      error.details.requestId===writes[0].requestId&&error.details.operation==='edit_authoring_observation');
+    assert.equal(writes.length,1);assert.equal(observations[0].rawText,args.texto);
+    assert.equal(observations[0].state,'considered');
+    unavailable=false;
+    await assert.rejects(execute(adapter,'editar_observacao',args),error=>error.code==='course_observation_version_conflict');
+    assert.equal(writes.length,1);
+  });
+}
 test('registro na base sem unidades acrescenta observação e não envia correção ou revisão',async()=>{
   const {adapter}=harness();const writes=[];
   adapter.createCourseAnchoredAnnotations=async request=>{writes.push(request);return{changed:true};};
