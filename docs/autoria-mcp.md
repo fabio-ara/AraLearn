@@ -358,6 +358,11 @@ declara leitura completa. Se a revisão do curso mudar, a leitura do recorte
 precisa recomeçar. A revisão inclui observações focais e plano imediato; seu
 limite de página não define o alcance pedagógico total da análise.
 
+`exportar_autoria` usa fragmentos de JSON também quando basta uma resposta.
+O hífen inseparável U+2011 é representado pelo escape JSON `\u2011`; concatenar
+os trechos e aplicar `JSON.parse` recupera exatamente o conteúdo original.
+Posições UTF-16 e hash de continuação correspondem ao JSON com esse escape.
+
 O preparo inclui a proposta, a Explicação literal, suas fontes e o estado de
 revisão de cada microssequência do lote. Essa base compartilhada também pode
 exigir continuação. A leitura preserva o conteúdo inteiro; uma mudança no curso

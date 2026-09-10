@@ -43,11 +43,14 @@ function fits(value) {
   const json = JSON.stringify(value);
   return json.length <= MAX_CONTEXT_CHARACTERS && encoder.encode(json).byteLength <= MAX_CONTEXT_BYTES;
 }
-export async function paginateHumanReadContext(context, { state, nextPage = null }) {
+export async function paginateHumanReadContext(context, { state, nextPage = null, escapeNonbreakingHyphen = false }) {
   const next = nextPage === null ? null : encode({ ...state, p: nextPage, o: 0, h: null });
   const complete = { ...context, continuacao: next, temMais: next !== null };
-  if (state.o === 0 && fits(complete)) return complete;
-  const literal = JSON.stringify(context);
+  if (!escapeNonbreakingHyphen && state.o === 0 && fits(complete)) return complete;
+  const json = JSON.stringify(context);
+  // The inner JSON escape survives envelope decoding; JSON.parse restores U+2011.
+  // Hashes and offsets describe this representation, including a one-fragment export.
+  const literal = escapeNonbreakingHyphen ? json.replaceAll('\u2011', '\\u2011') : json;
   const digest = await sha256Hex(literal);
   if (state.o >= literal.length || state.h !== null && state.h !== digest) {
     fail('O conteúdo da consulta mudou. Recomece para não combinar trechos diferentes.', 409);

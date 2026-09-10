@@ -299,7 +299,7 @@ test("continuações malformadas falham com 422 e mensagem sem conteúdo do curs
 });
 
 test("fragmentos JSON preservam Unicode, aspas, escapes e limites de envelope sem cortar pares substitutos", async () => {
-  const content = { studyUnits: [studyUnit(1, '𝄞😀漢字 العربية e\u0301 IPA /ɲ/ "aspas" \\ caminho\n'.repeat(8000))] };
+  const content = { studyUnits: [studyUnit(1, '𝄞😀漢字 العربية e\u0301 IPA /ɲ/ Wi\u2011Fi "aspas" \\ caminho\n'.repeat(8000))] };
   const literal = JSON.stringify(content);
   const args = { curso: TITLE };
   let cursor;

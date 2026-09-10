@@ -101,9 +101,13 @@ anotações pessoais continuam na origem. Leitura pública não concede cópia.
 
 `comparar_cursos` confronta dois recortes identificados por curso e, opcionalmente,
 lote, microssequência ou unidade. `exportar_autoria` entrega o artefato literal e
-sua leitura autoral. Ambas exigem acesso de autoria aos cursos selecionados;
-resultados grandes usam a mesma continuação opaca e os mesmos fragmentos de JSON
-das outras leituras. A comparação não certifica equivalência pedagógica.
+sua leitura autoral. Ambas exigem acesso de autoria aos cursos selecionados.
+A exportação sempre usa fragmentos de JSON, inclusive quando cabe em uma resposta;
+a comparação usa fragmentos quando o resultado é grande. A continuação é opaca,
+como nas demais leituras. Na exportação, o hífen inseparável U+2011 é representado
+pelo escape JSON `\u2011`. Os trechos devem ser concatenados antes de `JSON.parse`,
+que recupera exatamente o conteúdo original. Posições UTF-16 e hash de continuação
+correspondem ao JSON com esse escape. A comparação não certifica equivalência pedagógica.
 
 Para produzir conteúdo, `consultar_componentes` primeiro busca candidatos pela
 função instrucional e depois lê o contrato exato apenas do componente escolhido.
