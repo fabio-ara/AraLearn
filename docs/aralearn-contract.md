@@ -72,7 +72,11 @@ Identificadores usam ASCII minúsculo, 3–30 caracteres e extremos alfanuméric
 o `@` inicial é aceito na entrada. Perfis ainda sem identificador exigem escolha.
 
 `aralearn.course-list.v2` distingue `owned`, `shared` e `public`, com permissões
-explícitas de editar e observar. Busca de pessoas exige curso próprio, prefixo
+explícitas de editar, copiar e observar. O menu da Home oferece copiar quando
+o resumo de acesso autoriza `canCopy`, a pessoa está autenticada e há conexão.
+Essa permissão permanece separada do documento de conteúdo, inclusive após
+abrir o curso e retornar à Home; propriedade ou visibilidade não a substituem.
+Busca de pessoas exige curso próprio, prefixo
 de ao menos dois caracteres e no máximo dez resultados; o grant confirma UUID
 e identificador selecionados. Troca ou reutilização do identificador não
 redireciona permissões já concedidas.
