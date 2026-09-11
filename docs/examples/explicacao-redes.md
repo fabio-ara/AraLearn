@@ -13,7 +13,7 @@ uma única base explicativa, acessível pelo comando **Explicação**. Quantidad
 
 **Pressupostos a desenvolver no apoio:** uma aplicação é um programa que realiza uma tarefa; comunicar envolve informação enviada e recebida; uma conexão pode usar cabo ou rádio. Não se exige conhecer endereços, camadas, roteamento ou nomes de protocolos antes deste recorte. A distinção entre interface física e lógica será localizada como limite, sem virar requisito de avaliação aqui.
 
-**Proposta da explicação:** desenvolver a relação participante–interface–regra em uma situação concreta; explicitar o que o desenho representa; contrastar uma máquina com duas interfaces e duas máquinas com uma interface cada. A fonte prevista é a RFC 1122, §§1.1.1, 1.1.3 e 1.3.3. Seu papel é técnico/conceitual, não evidência de avaliação nem fonte de edital.
+**Proposta da explicação:** desenvolver a relação participante–interface–regra em uma situação concreta; explicitar o que o desenho representa; contrastar uma máquina com duas interfaces e duas máquinas com uma interface cada. A fonte prevista é a RFC 1122, §§1.1.1, 1.1.3 e 1.3.3. RFC (*Request for Comments*) é uma série de documentos técnicos sobre a Internet, que inclui padrões e outras propostas; o número identifica o documento consultado. Seu papel é técnico/conceitual, não evidência de avaliação nem fonte de edital.
 
 **Requisito de evidência F-E1:** selecionar uma descrição que preserve corretamente as três funções e sua relação quando o caso muda. As duas respostas constituem oportunidades de prática planejadas; não certificam capacidade geral de explicar redes.
 
@@ -58,8 +58,7 @@ No laboratório, o notebook N tem uma interface cabeada C e uma interface sem fi
 A relação abaixo representa **pertencimento**: as duas interfaces pertencem
 ao notebook N. Elas não acrescentam outros participantes. Um diagrama em
 árvore pode apresentar o notebook acima de suas interfaces; contar seus três
-elementos não equivale a contar três hosts. A composição proposta para o
-aplicativo aparece depois das práticas.
+elementos não equivale a contar três hosts.
 
 | Participante | Interfaces que lhe pertencem |
 | --- | --- |
@@ -144,7 +143,19 @@ pergunta; quem formula a consulta é o gerente.²
 
 #### G-U2 — Nome, instância e valor
 
-A **MIB**, Base de Informações de Gerência, organiza os objetos acessíveis. Um **OID**, identificador de objeto, nomeia um objeto ou sua instância. Na notação simbólica `ifOperStatus.2`, o nome indica estado operacional e `.2` seleciona a interface de índice 2. Uma consulta **Get** pede o valor da instância exata. Se a resposta for `up(1)`, informa que essa interface está pronta para passar tráfego naquele estado; o valor não é seu nome. Uma leitura atual, sozinha, não descreve os dez minutos anteriores.³⁴⁵
+Para consultar o estado de uma interface, o gerente precisa indicar **qual informação deseja** e **a qual interface ela se refere**. No exemplo, a informação é o estado operacional e a interface escolhida tem índice 2, um número que a identifica dentro daquele equipamento.
+
+O nome `ifOperStatus` identifica a informação de estado operacional. Acrescentar `.2` escolhe uma instância: essa informação para a interface específica de índice 2. A resposta traz um terceiro elemento, o valor encontrado.⁴⁵
+
+| Parte da consulta e da resposta | Função no caso |
+| --- | --- |
+| `ifOperStatus` | Nomear a informação desejada: estado operacional |
+| `.2` | Escolher a interface a que a informação se refere |
+| `up(1)` | Informar o valor: a interface está pronta para passar tráfego nesse estado |
+
+A operação **Get** solicita o valor da instância exata, como `ifOperStatus.2`. Receber `up(1)` não muda o nome nem o índice da interface; informa seu estado naquele momento. A leitura não descreve, sozinha, os dez minutos anteriores.³⁵
+
+A documentação desses objetos é organizada em módulos MIB, da expressão **Base de Informações de Gerência**. Ela permite consultar o significado e o tipo de cada informação. Um **OID**, identificador de objeto, é o nome numérico usado para identificar o objeto ou sua instância; nomes simbólicos como `ifOperStatus` tornam essa identificação mais legível. A explicação compartilhada desenvolve essa relação.⁴⁵
 
 #### G-U3 — O histórico precisa ter sido coletado
 
@@ -238,14 +249,14 @@ Nas quatro práticas, a composição prevista de `response.choice` usa `selectio
 
 ## Fontes, leitura e limites
 
-As chamadas ¹–⁶ marcam vínculos previstos. Em uma futura versão de teste no aplicativo, devem apontar às fontes/âncoras pelo catálogo e pelos componentes de apresentação existentes, com ocorrência no trecho, retorno à origem e acesso de citação/link. A leitura técnica registrada abaixo não equivale a conferência humana da fonte. Todos os vínculos permanecem **não verificados por pessoa autora** neste rascunho. Nada precisa copiar o texto integral da RFC para o curso.
+As chamadas ¹–⁶ marcam vínculos previstos. Em uma futura versão de teste no aplicativo, devem apontar às fontes/âncoras pelo catálogo e pelos componentes de apresentação existentes, com ocorrência no trecho, retorno à origem e acesso de citação/link. Todos os vínculos permanecem **não verificados por pessoa autora** neste rascunho. As referências abaixo identificam os trechos técnicos usados para permitir essa conferência, sem reproduzir o texto integral das obras.
 
 | Chamada | Fonte primária e localização consultada em 07/09/2026 | Papel no exemplo e limite |
 |---|---|---|
 | ¹ | R. Braden (ed.), [RFC 1122 — Requirements for Internet Hosts: Communication Layers](https://www.rfc-editor.org/rfc/rfc1122.html#section-1.1.1), outubro de 1989, §§1.1.1, 1.1.3, 1.3.3, trecho introdutório de §3.3.4.1 | Host, interface e contexto de protocolos. Leitura focal desses trechos, não integral. Não é catálogo atualizado de implementação de toda a pilha. O laboratório e seus pedidos são criação sintética. |
 | ² | D. Harrington, R. Presuhn e B. Wijnen, [RFC 3411 — An Architecture for Describing SNMP Management Frameworks](https://www.rfc-editor.org/rfc/rfc3411.html#section-3.1.3), dezembro de 2002, §§3.1.2, 3.1.3–3.1.3.2 e 3.3–3.3.1 | Papéis de software e escopo contextual da informação. Leitura dos trechos textuais localizados; não auditoria de todos os diagramas ou modelos de segurança. |
 | ³ | R. Presuhn (ed.), [RFC 3416 — Version 2 of the Protocol Operations for SNMP](https://www.rfc-editor.org/rfc/rfc3416.html#section-4.2.1), dezembro de 2002, introdução e §4.2.1 | MIB e consulta Get, correspondência exata e exceções. Leitura focal. “Versão 2 das operações” não significa que o exemplo recomende credenciais ou segurança de SNMPv2c. |
-| ⁴ | K. McCloghrie, D. Perkins e J. Schoenwaelder, [RFC 2578 — Structure of Management Information Version 2](https://www.rfc-editor.org/rfc/rfc2578.html#section-3.5), abril de 1999, §§3.5–3.6, 7.5 e 7.7 (incluindo regra de índice inteiro) | OID, significado documentado e instância de linha. Acrescentada porque “OID” não pode ser apenas uma sigla solta. Sem ensinar toda a linguagem de definição de MIB. |
+| ⁴ | K. McCloghrie, D. Perkins e J. Schoenwaelder, [RFC 2578 — Structure of Management Information Version 2](https://www.rfc-editor.org/rfc/rfc2578.html#section-3.5), abril de 1999, §§3.5–3.6, 7.5 e 7.7 (incluindo regra de índice inteiro) | OID, significado documentado e instância de linha. Desenvolve a identificação necessária para ler as consultas do exemplo, sem ensinar toda a linguagem de definição de MIB. |
 | ⁵ | K. McCloghrie e F. Kastenholz, [RFC 2863 — The Interfaces Group MIB](https://www.rfc-editor.org/rfc/rfc2863.html#section-6), junho de 2000, §6, definições `ifIndex`, `ifDescr`, `ifAdminStatus` e `ifOperStatus` | Semântica de índice e estado operacional. Leitura focal das definições; não associação dos índices a equipamento real nem prova de funcionamento da aplicação. |
 | ⁶ | S. Waldbusser, [RFC 2819 — Remote Network Monitoring Management Information Base](https://www.rfc-editor.org/rfc/rfc2819.html#section-2.1), maio de 2000, §§2–2.1, 2.3–2.3.3 e §5, definições `historyControlIndex`, `historyControlDataSource`, `historyControlBucketsGranted`, `historyControlInterval` | Coleta local, histórico, amostragem e retenção. Leitura focal. Não se afirma que todos os grupos estejam implementados ou que o monitor enxergue tráfego de toda a rede. Intervalos de um minuto são dados do caso, não recomendação operacional universal. |
 

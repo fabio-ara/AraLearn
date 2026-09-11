@@ -14,7 +14,7 @@ Entre 2009 e 2013, fiz Bacharelado em Letras, com habilitação em Linguística,
 
 Um exemplo era a memorização de *kanji*, logogramas de origem chinesa utilizados na escrita japonesa. Para estudá-los, eu precisava associar a forma gráfica, os significados e diferentes leituras de muitos caracteres, e essas associações se perdiam com facilidade sem revisão. O Anki era útil para esse tipo de memorização, mas ainda não ocupava uma posição central na minha forma de estudar.
 
-Naquele período, *smartphones* ainda não faziam parte da minha rotina de estudo, e eu não usava o [AnkiDroid](https://ankidroid.org/), aplicativo para Android que mais tarde me permitiria estudar no celular os mesmos *decks* do Anki.
+Naquele período, *smartphones* ainda não faziam parte da minha rotina de estudo, e eu não usava o [AnkiDroid](https://ankidroid.org/), aplicativo para Android que mais tarde me permitiria estudar no celular os mesmos *decks* do Anki, isto é, suas coleções de cartões.
 
 Entre 2014 e 2020, durante o Bacharelado em Ciências Biológicas na USP, encontrar formas mais eficientes de estudar ganhou muito mais importância. As disciplinas envolviam grande quantidade de conceitos e terminologia especializada, leituras frequentemente em inglês e livros que podiam chegar a centenas ou milhares de páginas. Passei então a usar *flashcards* com muito mais intensidade.
 

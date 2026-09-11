@@ -1,77 +1,85 @@
 # Comparar condições de desenho
 
-O AraLearn permite calibrar parâmetros pedagógicos, alvos editoriais e direção
-editorial pelo contexto ou fixá-los para produzir cursos sob condições
-deliberadas. Essa capacidade ajuda a preparar um estudo; ela não transforma
-automaticamente os cursos em grupos experimentais nem demonstra efeito
-educacional.
+Um estudo pode comparar maneiras de apresentar o mesmo conhecimento. Por
+exemplo, duas versões de um percurso sobre taxas percentuais podem conservar
+o objetivo e as fontes, mas distribuir de forma diferente a explicação e a
+prática. O AraLearn ajuda a preparar e inspecionar esses materiais. A pergunta,
+os participantes e a avaliação pertencem ao protocolo da pesquisa.
 
-## O que pode ser comparado
+## Escolher a diferença que interessa
 
-O [catálogo de desenho](desenho-instrucional-parametrizado.md) permite produzir
-diferenças concretas em:
+Os [parâmetros de autoria](parametros-de-autoria.md) orientam a produção das
+unidades de estudo. Sua escolha depende da relação investigada:
 
-- distribuição de novas unidades de análise;
-- formas de explicação;
-- quantidade de prática por requisito de evidência;
-- dimensões de variação da prática;
-- distribuição e posição das práticas em relação às explicações.
+| Pergunta de desenho | Condição que pode variar |
+| --- | --- |
+| como distribuir o conhecimento novo? | quantidade de unidades de análise introduzidas em cada etapa, conservando o inventário total quando essa for a comparação |
+| que explicação torna uma relação compreensível? | formas de explicação e representações apropriadas à tarefa |
+| quanta prática solicitar e para quê? | quantidade de oportunidades por requisito de evidência, isto é, pelo desempenho que se pretende observar |
+| como variar a prática? | operações, dados ou contextos do problema, em vez de apenas sua aparência |
+| onde situar explicação e prática? | distribuição e posição das atividades ao longo do percurso |
 
-Dois alvos editoriais quantitativos flexíveis permitem comparar:
+A **unidade de análise instrucional** identifica um conhecimento a desenvolver;
+a **unidade de estudo** é uma etapa apresentada no percurso. Um conhecimento
+pode atravessar várias etapas. No exemplo das taxas, aumentar o número de
+etapas não implica acrescentar conceitos. O [corpus de recortes](corpus-unidades-de-analise.md)
+mostra como explicitar esse inventário e conferir diferenças entre materiais.
 
-- palavras por resposta de autoria;
-- palavras por unidade de estudo.
+Há ainda dois alvos flexíveis de extensão: palavras por resposta do assistente
+e palavras por unidade de estudo. Eles se referem a objetos diferentes. Uma
+resposta de autoria pode reunir várias unidades; a extensão desejada de uma
+não determina a extensão da outra. Os alvos orientam a redação e podem ser
+ultrapassados para preservar explicações e relações necessárias.
 
-Esses alvos expressam uma intenção de extensão, não um mínimo ou máximo. A
-resposta ou a unidade pode ultrapassá-los, e o alvo não autoriza ocultar decisões,
-retirar conteúdo necessário, compactar novidades ou fragmentar uma explicação.
+## Fixar valores e conferir o que foi produzido
 
-A direção editorial pode variar títulos, parágrafos e apresentação, mas não
-eliminar conteúdo necessário. Componentes devem variar quando houver função
-instrucional distinta, não para preencher um catálogo.
+No modo automático, identificado tecnicamente por `default`, o assistente
+calibra os valores conforme conteúdo, função e público. Para uma comparação
+com condições definidas, o pesquisador escolhe os valores que precisam
+permanecer fixos e registra sua justificativa. Também confere se uma decisão
+mais específica, numa parte do curso, altera o valor esperado.
 
-No estado `default`, o assistente de IA precisa calibrar automaticamente cada parâmetro para a
-microssequência ou unidade, conforme conteúdo, função e público. Esse estado não
-é uma condição fixa. Para tornar uma comparação auditável, o pesquisador define
-explicitamente os valores que devem prevalecer e registra o que permanecerá
-constante.
+A intenção registrada orienta a produção seguinte. A **configuração aplicada**
+conserva as decisões usadas em cada unidade produzida, e o conteúdo precisa
+ser inspecionado para verificar como as realizou. A base explicativa possui
+sua própria versão e fontes. Uma nova geração pode mudar exemplos, linguagem
+e dificuldade junto com o parâmetro escolhido; a inspeção identifica essas
+outras diferenças antes de atribuir um resultado à condição pretendida.
 
-Granularidade de partes e lotes, frequência de pausa e preferência da conversa
-são configurações independentes do trabalho de autoria. Perfis podem copiar
-preferências entre cursos, mas não ativam condições de pesquisa. Uma fixação
-experimental exige escolha explícita de origem e justificativa; conflitos em
-escopos descendentes devem ser resolvidos antes de aplicar ou produzir.
+Preferências de processo, como a frequência de pausas, organizam o trabalho de
+autoria. Copiar um perfil não estabelece uma condição de pesquisa. Para estudar
+esse trabalho, essas preferências também podem integrar o protocolo, desde
+que o pesquisador explicite o que variou e em que episódios.
 
-## Procedimento mínimo
+## Preparar e conservar os materiais
 
-1. Defina público, objetivo, conhecimentos prévios, mapa curricular e repertório
-   semântico.
+1. Defina público, objetivo, conhecimentos prévios, fontes e conhecimentos que
+   o percurso precisa desenvolver.
 2. Crie cursos privados separados para as condições que serão comparadas.
-3. Fixe explicitamente apenas os parâmetros que distinguem as condições.
-4. Preserve o mesmo repertório de unidades de análise quando essa for a
-   comparação.
-5. Produza quantas unidades de estudo cada condição exigir.
-6. Abra Analytics e confira configuração aplicada, extensão observada,
-   distribuição, componentes e prática.
-7. Use **Exportar curso e análise** em Analytics para guardar o conteúdo integral
-   salvo e a análise do escopo escolhido, incluindo os registros disponíveis de
-   fontes, configuração aplicada e revisão.
-8. Preserve também os PDFs, áudios e demais materiais externos efetivamente
-   apresentados, pois a exportação contém suas referências, sem os arquivos.
+3. Escolha os parâmetros que distinguem as condições e registre os elementos
+   que devem permanecer constantes.
+4. Produza as unidades necessárias e confira o inventário de conhecimentos,
+   suas relações e a prática em cada condição.
+5. Em **Dados de autoria**, examine configuração aplicada, extensão observada,
+   distribuição e componentes. Inspecione também a explicação e o conteúdo
+   efetivamente apresentado.
+6. Use **Exportar curso e análise** para conservar o conteúdo integral salvo e
+   a análise do escopo escolhido, incluindo os registros disponíveis de fontes,
+   configuração aplicada e revisão.
+7. Preserve os PDFs, áudios e demais arquivos usados: a exportação contém suas
+   referências, sem incorporar os arquivos externos.
 
-Use a configuração efetivamente aplicada e selada em cada unidade, e não apenas
-o valor geral pretendido, para conferir a condição produzida. A exportação
-explícita do artefato e de seus parâmetros permite comparar versões publicadas
-ou cópias experimentais. Cada curso continua mutável; os arquivos conservados pelo estudo identificam
-qual conteúdo foi efetivamente apresentado em cada condição.
+Cada curso continua editável. Os arquivos conservados pelo estudo identificam
+qual material foi apresentado em cada condição e momento. Separar cursos ajuda
+a evitar mistura acidental, mas a equivalência dos materiais depende da
+conferência do objetivo, dos conteúdos e das condições de exposição.
 
-## O que o AraLearn não decide
+## Relacionar os materiais à investigação
 
-Uma comparação educacional ainda precisa definir população, atribuição,
-instrumentos, desfechos, tratamento de perdas, análise e limites de inferência.
-Diferença entre cursos não demonstra causalidade. Ausência de observação humana
-não significa aceitação, e contagem de prática não mede aprendizagem.
-
-O [Guia de investigação](guia-pesquisador.md) desenvolve essas decisões; o
-[Protocolo de avaliação](protocolo-avaliacao-artefato.md) separa propriedade de
-software, hipótese e evidência empírica.
+Depois de preparar os cursos, a pesquisa define quem participa, como cada
+pessoa encontra uma condição, o que fará e como seu desempenho ou sua
+experiência serão examinados. Uma análise de qualidade autoral, uma investigação
+de estratégias de estudo e uma comparação de retenção demandam procedimentos
+diferentes. O [guia de investigação](guia-pesquisador.md) ajuda a formular essa
+relação; o [protocolo de avaliação](protocolo-avaliacao-artefato.md) desenvolve
+amostragem, instrumentos, análise e limites da conclusão.

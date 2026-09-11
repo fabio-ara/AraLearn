@@ -238,7 +238,38 @@ A pesquisa dentro do APK não produz resultado. O verificador confirma manifesto
 restrições da `WebView`, ausência de SDK Supabase nativo e regras de preparação do
 artefato.
 
+## Verificação automatizada de instalação e atualização
+
+Uma atualização precisa preservar as preferências já salvas e ser aceita como
+continuação do aplicativo instalado. Antes da publicação, o teste automatizado
+instala o APK candidato em dois cenários: instalação limpa e atualização da versão
+pública 0.0.67, código 213. A versão candidata é obtida do manifesto aprovado e
+precisa avançar em relação à base. Pacote, certificado, versão, impressão digital
+SHA-256 e identificador da instalação Android são conferidos.
+
+O script `scripts/androidNativeGate.py` usa um emulador descartável. O conjunto de
+ferramentas Android (SDK) e suas licenças precisam estar disponíveis; o script mantém
+a entrada padrão fechada e verifica que não houve alteração de licenças. A execução
+Linux exige aceleração de virtualização KVM. A ausência dessa aceleração interrompe
+o ensaio.
+
+A aplicação consulta a configuração pública antes do isolamento de rede, sem conta
+ou curso. As ações são localizadas pela hierarquia nativa de controles. Na candidata,
+o tema fica em **Configurações → Aparência**; na versão base, em **Conta e aparência**.
+O teste escolhe o tema escuro na base, encerra o processo e o reabre antes de
+atualizar. A preferência precisa sobreviver à atualização e à reinstalação com `-r`,
+que preserva os dados existentes, antes de qualquer nova escolha. Na instalação
+limpa, a preferência é escolhida e verificada na própria candidata.
+
+Esse ensaio verifica instalação e preferências. As jornadas com dispositivo físico,
+cursos e sessão autenticada continuam separadas. A vinculação entre o APK testado,
+as capturas e os artefatos publicados está no
+[procedimento de implantação](../docs/implantacao.md#gerar-e-verificar-o-android).
+
 ## Roteiro de teste manual
+
+As jornadas abaixo conferem operações conectadas e continuidade de estudo. Use um
+curso descartável de teste quando for alterar dados.
 
 1. Instale o APK e confirme a entrada como visitante e a opção explícita de login.
 2. Entre em uma conta, feche o aplicativo e confirme a restauração da sessão.

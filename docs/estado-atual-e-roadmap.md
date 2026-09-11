@@ -1,40 +1,38 @@
 # Capacidades e limites atuais
 
-O AraLearn permite criar cursos com assistência de IA, inspecionar seu conteúdo
+O AraLearn permite criar cursos com assistência de inteligência artificial (IA), inspecionar seu conteúdo
 e suas fontes e estudar as trilhas resultantes no celular. A pessoa autora
 orienta as alterações e declara a revisão do conteúdo que examinou. O estudo
 pode continuar sem conexão depois que o curso foi carregado no dispositivo.
 
-Estado documental reconciliado em **2026-09-11**, com o
-[catálogo conversacional 4.0.0](autoria-mcp.md#tarefas-disponíveis), de 54 tarefas,
-e a implementação corrente. A data identifica a revisão da documentação;
-os registros de verificação conservam as datas, os ambientes e os recortes
-em que foram produzidos.
+Referência atualizada em **2026-09-11**. A seção de
+[verificação técnica](#verificação-técnica) indica onde consultar as condições
+em que o funcionamento foi examinado.
 
 ## Quadro de capacidades
 
-**Existe** indica implementação no produto. **Conectado** informa quando a
-operação precisa de internet; **Acessível**, quem pode utilizá-la.
-**Uso verificado** identifica o alcance documentado das verificações e
-**Funciona** conserva esse mesmo limite, sem estendê-lo a todos os dispositivos
-ou clientes. **Necessário** registra a função atendida, e **Alinhamento** situa
-a capacidade no produto, na operação ou na pesquisa.
+As funções disponíveis têm condições diferentes de acesso e conexão. A revisão
+humana do conteúdo e a autorização para estudá-lo também são decisões distintas.
 
-| Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Estudar, responder e rever | sim | primeiro carregamento e sincronização | visitante em curso público ou pessoa com acesso | local documentado | no recorte verificado | continuidade do estudo | produto | conteúdo preparado fica no dispositivo; [guia do estudante](guia-estudante.md) |
-| Consultar explicação compartilhada | sim | dispensável para texto já guardado | pessoa com acesso ao conteúdo | local documentado | no recorte verificado | recuperar desenvolvimento e fontes | produto | base salva antes ou depois das unidades; arquivos têm regras próprias; [explicação](explicacao-e-revisao-humana.md) |
-| Editar e declarar revisão autoral | sim | para gravar e conferir a versão atual | proprietário, na interface ou canal autorizado | interface, serviço e banco locais | no recorte verificado | inspeção e correção humanas | produto | edição e marca de revisão são ações separadas; [guia da pessoa autora](guia-professor-autor.md) |
-| Registrar observação | sim | para enviar; a fila pode aguardar | pessoa autenticada com acesso | local documentado | no recorte verificado | contribuição ligada ao conteúdo | produto | registro próprio não concede edição; [observações](observacoes-pedagogicas.md) |
-| Compartilhar e tornar público | sim | para alterar acesso e abrir pela primeira vez | proprietário concede; destinatário ou visitante estuda | local documentado | no recorte verificado | acesso ao curso | produto | publicação não libera automaticamente arquivos; [acesso](uso-do-app.md#conceder-e-revogar-acesso) |
-| Planejar e produzir cursos | sim | para consultar e gravar autoria | proprietário | local documentado | no recorte verificado | autoria | produto | mapa, explicação e unidades têm estados próprios; [autoria contextual](autoria-contextual.md) |
-| Usar Assistência por IA no estudo | sim | durante a conversa e a gravação | proprietário | interface e contratos locais | depende também do provedor | alteração contextual assistida | produto | prévia, aplicação ao rascunho e salvamento separados; [assistência](assistencia-por-ia.md) |
-| Usar MCP | sim | sim | proprietário; cópia exige direito próprio | protocolo local documentado | no recorte verificado | autoria por conversa | produto | compatibilidade depende do cliente; [MCP e limitações conhecidas](autoria-mcp.md) |
-| Usar Actions/OpenAPI | sim | sim | proprietário; cópia exige direito próprio | protocolo local documentado | no recorte verificado | autoria por conversa | produto | integração específica de GPTs personalizados; [Actions](autoria-actions.md) |
-| Consultar e comparar dados de autoria | sim | sim | proprietário dos cursos consultados | local documentado | no recorte verificado | inspeção do desenho realizado | produto e pesquisa | dimensões, configurações e inventários; [dados de autoria](analytics-instrucionais.md) |
-| Excluir curso próprio ou sair de compartilhado | sim | sim | pessoa com a relação correspondente | local documentado | no recorte verificado | gestão do acervo | produto | excluir e sair têm efeitos distintos; [ciclo de vida](#dados-acesso-e-ciclo-de-vida) |
-| Executar Manutenção | sim | sim | identidade administrativa autorizada | local documentado | no recorte verificado | manutenção dos dados | operação | remoção delimitada e revalidada; [privacidade](privacidade.md) |
-| Medir efeito educacional | não automaticamente | conforme o estudo | pesquisa autorizada | exige investigação própria | depende do método e da execução | responder pergunta empírica | pesquisa | [protocolo de avaliação](protocolo-avaliacao-artefato.md) |
+| Capacidade | Quem pode usar | Conexão e condições | Limites e aprofundamento |
+| --- | --- | --- | --- |
+| Estudar, responder e rever | visitante em curso público ou pessoa com acesso | internet no primeiro carregamento e na sincronização; depois, o conteúdo guardado permite continuar sem conexão | [guia do estudante](guia-estudante.md) |
+| Consultar a explicação compartilhada | pessoa com acesso ao conteúdo | texto já guardado dispensa internet; arquivos têm regras próprias | a base pode ser salva antes ou depois das unidades; [explicação e revisão humana](explicacao-e-revisao-humana.md) |
+| Editar e declarar revisão autoral | proprietário, na interface ou por canal autorizado | internet para gravar e conferir a versão atual | editar o material e registrar sua revisão são ações separadas; [guia da pessoa autora](guia-professor-autor.md) |
+| Registrar observação | pessoa autenticada com acesso | internet para enviar; uma observação pendente de envio pode aguardar no dispositivo | observar não concede edição do curso; [observações](observacoes-pedagogicas.md) |
+| Compartilhar e tornar público | proprietário define o acesso; destinatário ou visitante estuda | internet para alterar o acesso e abrir o curso pela primeira vez | tornar o curso público não libera automaticamente seus arquivos; [acesso](uso-do-app.md#conceder-e-revogar-acesso) |
+| Planejar e produzir cursos | proprietário | internet para consultar e gravar a autoria | mapa, explicação e unidades têm estados próprios de produção e revisão; [autoria contextual](autoria-contextual.md) |
+| Usar assistência por IA durante o estudo | proprietário | internet e acesso a um dos serviços de IA oferecidos | prévia, aplicação ao rascunho e salvamento são etapas separadas; [assistência](assistencia-por-ia.md) |
+| Usar um assistente externo por MCP | proprietário; copiar outro curso exige permissão específica | internet e aplicação compatível configurada | [MCP e limitações conhecidas](autoria-mcp.md) |
+| Usar um assistente externo por Actions/OpenAPI | proprietário; copiar outro curso exige permissão específica | internet e configuração do canal no serviço externo | [OpenAPI e Actions](autoria-actions.md) explica o cliente atualmente utilizado e as condições do canal |
+| Consultar e comparar dados de autoria | proprietário dos cursos consultados | internet para consultar os dados salvos | descreve escolhas e material produzido; [dados de autoria](analytics-instrucionais.md) |
+| Excluir curso próprio ou sair de compartilhado | proprietário exclui; pessoa convidada pode sair | internet e confirmação da ação | sair preserva o original; [ciclo de vida](#dados-acesso-e-ciclo-de-vida) |
+| Executar manutenção dos dados | identidade administrativa autorizada | internet; cada remoção é novamente verificada no servidor | operações administrativas delimitadas; [privacidade](privacidade.md) |
+
+Medir um efeito sobre a aprendizagem exige uma investigação própria. O aplicativo
+oferece conteúdo e registros que podem apoiar esse trabalho; a
+[avaliação](#avaliação-e-desenvolvimento) depende da pergunta, das pessoas
+participantes e do método escolhido.
 
 ## Estudo
 
@@ -85,12 +83,12 @@ A [fila de observações](observacoes-pedagogicas.md) conserva os apontamentos
 sobre cada objeto. Uma correção confirmada trata somente as versões atendidas;
 entradas editadas ou parcialmente atendidas continuam pendentes.
 
-**Dados de autoria** permite inspecionar dimensões do desenho, abrir as unidades
-que compõem uma distribuição e comparar cursos próprios. **Exportar curso e
-análise** reúne o conteúdo integral, o inventário e as configurações, além das
-declarações e contagens do recorte. PDFs, áudios e dados pessoais ficam fora
-desse arquivo. O [capítulo de dados de autoria](analytics-instrucionais.md)
-detalha seu alcance.
+**Dados de autoria** permite examinar as escolhas usadas na produção, ver em
+quais unidades elas aparecem e comparar cursos próprios. **Exportar curso e
+análise** reúne o conteúdo integral salvo e seus registros de autoria, incluindo
+fontes, configurações e declarações de revisão. Os arquivos de PDF e áudio e os
+dados pessoais ficam fora da exportação. O
+[capítulo de dados de autoria](analytics-instrucionais.md) detalha seu alcance.
 
 ## Assistência por IA
 
@@ -159,14 +157,29 @@ A [persistência](persistencia-relacional.md) detalha quais dados permanecem no
 dispositivo, e [Uso do aplicativo](uso-do-app.md#trabalhar-sem-conexão) orienta
 sua preparação e retomada.
 
+## Verificação técnica
+
+A [matriz técnica](matriz-conformidade-tecnica.md) relaciona as propriedades
+do produto à implementação e às verificações correspondentes. Esses testes
+examinam, por exemplo, se o conteúdo é salvo, se as permissões são respeitadas
+e se a navegação preserva o contexto. Os resultados se referem às versões,
+aos ambientes e às operações efetivamente exercitados.
+
+O [procedimento de verificação dos canais de autoria](prova-local-canais-autoria.md)
+permite reproduzir chamadas de MCP e OpenAPI e conferir seus efeitos no banco.
+O [catálogo conversacional 4.0.0](autoria-mcp.md#tarefas-disponíveis) reúne
+54 tarefas. Os testes locais do protocolo verificam a comunicação com o
+AraLearn; o funcionamento numa aplicação externa depende também da conexão,
+da autorização e das capacidades dessa aplicação. As verificações dos serviços
+de IA possuem igualmente o alcance registrado na
+[documentação da assistência](assistencia-por-ia.md).
+
 ## Avaliação e desenvolvimento
 
-A verificação técnica examina se conteúdo, permissões, gravação e navegação
-funcionam nas condições exercitadas. Compreensão, aprendizagem e transferência
-para novas situações exigem investigação com pessoas, tarefas e instrumentos
-adequados. O [protocolo de avaliação](protocolo-avaliacao-artefato.md) relaciona
-perguntas, métodos e evidências; a
-[matriz técnica](matriz-conformidade-tecnica.md) localiza as verificações do produto.
+Compreensão, aprendizagem e transferência para novas situações exigem
+investigação com pessoas, tarefas e instrumentos adequados. O
+[protocolo de avaliação](protocolo-avaliacao-artefato.md) relaciona perguntas,
+métodos e evidências para examinar esses efeitos.
 
 Hipóteses de extensão, como as medidas experimentais de ocupação visual do
 [benchmark editorial](benchmark-footprint-editorial.md), conservam seu caráter

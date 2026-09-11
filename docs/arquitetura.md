@@ -1,7 +1,7 @@
 # Arquitetura do AraLearn
 
 O AraLearn mantém no servidor o curso que a pessoa planeja, inspeciona e revisa com
-assistência de IA. O aplicativo apresenta esse conteúdo para estudo no celular e
+assistência de inteligência artificial (IA). O aplicativo apresenta esse conteúdo para estudo no celular e
 conserva uma cópia local para continuidade sem rede. A conversa pode mudar de cliente;
 o curso e suas relações permanecem no aplicativo.
 
@@ -12,8 +12,10 @@ A arquitetura separa quatro responsabilidades:
 - [Storage do Supabase](https://supabase.com/docs/guides/storage) guarda os
   arquivos em áreas privadas, com acesso autorizado pelo servidor;
 - o navegador apresenta **Estudo** e **Autoria** e conserva os dados locais;
-- [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md) dão aos clientes de
-  IA acesso às tarefas de autoria, com as mesmas regras do aplicativo.
+- clientes externos de IA enviam pedidos de autoria por [MCP](autoria-mcp.md),
+  protocolo de descoberta e chamada de ferramentas, ou por operações descritas em
+  [OpenAPI](autoria-actions.md), usadas pelo canal Actions. Os pedidos passam pelas
+  mesmas regras de conteúdo e autorização da interface.
 
 A [matriz técnica](matriz-conformidade-tecnica.md) relaciona capacidades e
 verificações. A [história do esquema](schema-change-log.md) registra sua evolução.
@@ -25,17 +27,21 @@ organiza o percurso; o plano antecipa o que será ensinado. Unidades de análise
 identificam as ideias acompanhadas no percurso, e requisitos de evidência indicam o
 que uma prática deve permitir observar.
 
-Um curso reúne:
+A estrutura organiza módulos, lições, microssequências e unidades de estudo
+(`StudyUnit` no código). O mapa curricular antecipa esse percurso; as partes de
+autoria agrupam a produção de trechos já previstos. O repertório de unidades de
+análise (`AnalysisUnit`) permite acompanhar em que ponto uma ideia é introduzida ou
+usada novamente.
 
-- título, objetivo, proprietário, visibilidade e acesso direto;
-- módulos, lições, microssequências e unidades de estudo (`StudyUnit` no código);
-- mapa curricular global e partes operacionais de autoria;
-- repertório de unidades de análise (`AnalysisUnit` no código) e requisitos de evidência;
-- [parâmetros](parametros-de-autoria.md) de conteúdo, prática, conversa e ritmo
-  de produção, com orientações editoriais qualitativas separadas;
-- fontes, âncoras, PDFs, áudios e vínculos de proveniência;
-- observações e estado necessário à revisão;
-- estado pessoal de estudo por pessoa.
+Os [parâmetros](parametros-de-autoria.md) orientam conteúdo, prática, conversa e ritmo
+de produção. As orientações editoriais qualitativas complementam essas escolhas.
+[Fontes e seus vínculos](fontes-e-citacoes.md) registram os materiais utilizados e
+as passagens que sustentam o conteúdo; PDFs e áudios podem acompanhar esses registros.
+Observações ligadas aos objetos permitem solicitar e acompanhar revisões.
+
+Título e objetivo identificam o curso. Propriedade, visibilidade e concessões de
+acesso determinam quem pode lê-lo ou alterá-lo. O estado de estudo de cada pessoa
+fica separado: avançar numa atividade não altera o curso dos demais leitores.
 
 O proprietário inspeciona e revisa o conteúdo salvo. O acesso ao curso e a declaração
 humana de revisão são decisões independentes: a política padrão permite estudar o
@@ -49,7 +55,7 @@ A microssequência guarda uma base explicativa, `explanation`, e sua proposta,
 desenvolvida antes das unidades; elas registram a base usada na sua produção. Em
 Estudo, ela abre numa sobreposição que usa os mesmos componentes, ferramentas e
 recursos bibliográficos das unidades. Fontes e ocorrências usam o alvo
-`microsequence_explanation`, com localizações no conteúdo do apoio, e os arquivos
+`microsequence_explanation`, com localizações no texto-base, e os arquivos
 passam pelas autorizações existentes. O texto acompanha a composição local; isso não
 cria cache binário de PDF ou áudio nem permite misturar revisões do curso.
 
@@ -62,7 +68,7 @@ expressa. Gerar, corrigir ou importar conteúdo não declara revisão por implic
 resposta incerta conserva a identidade do pedido para
 [reconciliação](persistencia-relacional.md#escritas-concorrentes).
 
-## Superfícies do produto
+## Áreas do produto
 
 **Estudo** apresenta os cursos acessíveis, a hierarquia curricular, uma unidade de
 estudo por vez, prática, progresso pessoal, marcas para rever e observações. Um curso
@@ -79,10 +85,9 @@ começa privado, com arquivos restritos. Estrutura, inventário, conteúdo, conf
 fontes e arquivos são preservados, enquanto acessos e estado pessoal permanecem na
 origem. Leitura pública não concede essa permissão.
 
-Cópias próprias anteriores conservam identidade, conteúdo e propriedade. Sua origem
-útil migra para metadados privados do curso-alvo. Um rascunho antigo só é reconciliado
-com um alvo comprovado; a recuperação não reaplica a edição nem cria curso. O comando
-de cópia automática foi retirado.
+A [persistência das cópias](persistencia-relacional.md#cópia-independente) também
+preserva os cursos criados por versões anteriores e permite recuperar tentativas
+cujo resultado ainda não foi confirmado.
 
 **Autoria** apresenta apenas cursos próprios. O curso abre diretamente em Conteúdo;
 Conteúdo e Planejamento permanecem no cabeçalho; o menu reúne **Parâmetros**,
@@ -126,13 +131,16 @@ como texto longo.
 
 ## Fluxo entre navegador e Supabase
 
-`CourseController` coordena a interface e a réplica local. `CourseApiClient` envia
-operações da aplicação para `aralearn-course-api`. O servidor valida sessão e rota
-antes de chamar `courseRouter` e `CourseSupabaseAdapter`.
+Ao salvar uma edição, a interface precisa enviar a mudança, conferir se a pessoa
+ainda pode realizá-la e receber o resultado para atualizar a cópia local. O
+`CourseController` coordena esse percurso no navegador. O `CourseApiClient` envia
+o pedido pela rede à função `aralearn-course-api`; no servidor, o `courseRouter`
+seleciona a operação e o `CourseSupabaseAdapter` a traduz para o banco.
 
 O adaptador chama funções escritas em SQL, a linguagem de consulta e alteração do
 banco, usando credencial mantida no servidor. A função SQL volta a verificar
-propriedade, versão e formato e executa a transação. Esse desenho evita conceder
+propriedade, versão e formato e executa uma transação: as alterações relacionadas
+são confirmadas juntas ou desfeitas em caso de falha. Esse desenho evita conceder
 acesso direto às tabelas privadas e mantém a decisão de autorização junto do dado.
 
 Visitantes alcançam somente funções remotas de leitura, chamadas RPCs, que selecionam
@@ -144,7 +152,8 @@ para cursos públicos.
 
 OAuth permite que a pessoa conecte um cliente à sua conta sem entregar a senha da
 conta a esse cliente. O MCP usa `aralearn-authoring-mcp` e OAuth 2.1. Actions usa
-`aralearn-authoring-action` e um OAuth próprio para o GPT. Credenciais de um canal são
+`aralearn-authoring-action` e uma autorização própria para o cliente externo de
+Actions. Credenciais de um canal são
 recusadas no outro.
 
 ## Estrutura e leitura paginada
@@ -232,7 +241,12 @@ consumidor trata o conflito sem promover silenciosamente a revisão de um rascun
 reconstrução automática só cabe quando conserva a intenção verificável; caso
 contrário, a edição permanece disponível para revisão.
 
-Um recibo temporário por pedido permite recuperar resposta perdida sem duplicar
+Por exemplo, a pessoa pode salvar uma explicação numa aba enquanto outra ainda
+mostra o texto anterior. A segunda aba precisa reler a mudança antes de gravar uma
+edição incompatível. Essa comparação de revisões protege o trabalho concorrente.
+
+Outro problema ocorre quando o banco salva a edição, mas a resposta não chega ao
+dispositivo. Um recibo temporário por pedido permite recuperar resposta perdida sem duplicar
 efeito. Recibos expirados são removidos pela retenção. Eles não formam um histórico
 universal de mudanças. A cópia independente também grava no alvo sua origem e
 identidade de pedido. Essa prova permite recuperar a mesma cópia após expirar o recibo
@@ -280,15 +294,15 @@ transições, exemplos e prática. Aplicar correções grava o conjunto aprovado
 inspeção seguinte permite conferir o resultado. Reversibilidade cotidiana vem de poder
 reabrir qualquer ponto e revisá-lo outra vez.
 
-## Analytics
+## Dados de autoria
 
-Analytics deriva um snapshot quantitativo do estado corrente. **Desenho** conta
-unidades de estudo, ideias do repertório, prática, fontes, valores pedagógicos, alvos
-e extensão editorial observada, formas e componentes. **Autoria** conta observações
-abertas, parâmetros definidos e a origem observável da criação e da última revisão das
-unidades.
+O painel **Dados de autoria** apresenta contagens derivadas do estado salvo, também
+chamadas de *analytics* no código. A pessoa escolhe a dimensão que quer examinar e o
+recorte do curso. O desenho reúne dados das unidades, ideias, prática, fontes,
+parâmetros, extensão textual e componentes; a autoria reúne observações, escolhas
+registradas e a origem observável da criação e da última revisão das unidades.
 
-O snapshot não usa telemetria de atenção, conversa ou rastreamento da execução. A
+Esse retrato não usa telemetria de atenção, conversa ou rastreamento da execução. A
 exportação JSON combina a leitura autoral com o documento literal do curso. Ela não
 inclui progresso, contas, credenciais ou bytes dos arquivos. A comparação confronta
 inventários completos e recortes selecionados, conserva a distinção entre parâmetros

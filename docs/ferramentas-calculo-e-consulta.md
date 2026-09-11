@@ -5,11 +5,11 @@ tarefa em estudo: conferir um valor, consultar uma construção, interpretar uma
 palavra ou aprofundar uma comparação. Os controles do estudo abrem a ferramenta
 sem substituir a unidade e permitem voltar à mesma leitura.
 
-Essas ferramentas pertencem ao
-[catálogo de componentes didáticos](componentes-didaticos.md). São instâncias
-em `content` que declaram rótulo e ícone em `manifest.tool` e implementam
-`toolInteraction.bind(root, data, host)`. Esse contrato liga os controles da
-ferramenta ao aplicativo e encerra a interação quando ela é fechada.
+As ferramentas pertencem ao [catálogo de componentes didáticos](componentes-didaticos.md),
+conjunto de formatos que o autor pode incluir numa unidade. A calculadora
+opera no dispositivo; gramática, dicionário e leitura abrem materiais
+selecionados para consulta. A disponibilidade de um destino externo depende
+de sua conexão e das permissões do material.
 
 O título e a orientação devem explicar por que usar a ferramenta naquela
 tarefa. Abrir uma calculadora ou um recurso externo não registra uma resposta
@@ -104,6 +104,14 @@ evidência são papéis distintos, ainda que compartilhem documento ou URL.
 
 ## Contrato dos recursos de consulta
 
+Na implementação, uma ocorrência de ferramenta é uma **instância** de componente
+no espaço de conteúdo, `content`. Ela informa rótulo e ícone em `manifest.tool`,
+a descrição de seus controles. A função `toolInteraction.bind(root, data, host)`
+ativa a interação e oferece um procedimento de limpeza ao fechar a ferramenta.
+`host` representa os serviços que o aplicativo fornece ao componente, como
+abrir um arquivo autorizado. O [contrato comum dos pacotes](componentes-didaticos.md)
+explica essa separação.
+
 Os três pacotes de consulta compartilham os mesmos dados: `title`, `items` e
 `prompt` opcional. Há de um a 32 itens por instância; cada item tem `id`,
 `label`, `target` e, opcionalmente, `description` e `languageTag`. Rótulos usam
@@ -131,13 +139,15 @@ exercita teclado, unidades angulares, múltiplos itens, falha, nova tentativa e
 fechamento, com abertura pelo aplicativo simulado. Isso não equivale a uma abertura hospedada de PDF nem à
 verificação de serviços externos; o fluxo integrado conserva essa distinção.
 
-## Composição nos canais humanos
+<a id="composição-nos-canais-humanos"></a>
+
+## Composição nos canais de autoria
 
 `consultar_componentes` descobre os pacotes pelo mesmo catálogo utilizado no
 estudo. Uma consulta focal devolve o contrato de um pacote, seu exemplo e, quando
 existe, `ferramenta: {label, icon}`. `materializar_parte` e `aplicar_correcoes`
-recebem as instâncias no `content` comum; não há enum de ferramentas em cada
-canal nem escritor por pacote. A consulta focal de uma fonte também fornece
+recebem as instâncias no `content` comum; o canal usa o contrato comum de conteúdo, sem uma lista de tipos ou
+rotina de gravação separada para cada ferramenta. A consulta focal de uma fonte também fornece
 `arquivosParaConteudo`, com alvos lógicos de PDF e rótulos por posição. Esses
 alvos permitem compor leituras auxiliares sem inventar identidades, transformar
 o arquivo em evidência ou persistir URLs de Storage.
@@ -151,25 +161,14 @@ a leitura. A gravação confere a versão corrente do curso e retorna um recibo;
 identidade da tentativa. Uma confirmação divergente orienta consultar a
 biblioteca antes de decidir por nova ingestão.
 
-As Actions usam `openaiFileIdRefs`: o schema publicado declara uma lista de
-strings e o ChatGPT envia objetos com `id`, `name`, `mime_type` e
-`download_link`. Esse comportamento e a validade temporária da URL estão na
-[documentação oficial de arquivos nas Actions](https://developers.openai.com/api/docs/actions/sending-files).
-Para MCP, `_meta["openai/fileParams"]` declara o campo `audio`; o cliente
-compatível fornece `{download_url, file_id, mime_type?, file_name?}`. A
-[referência oficial do descritor de arquivos](https://developers.openai.com/plugins/reference)
-exige declarar as quatro propriedades e requer somente as duas primeiras.
-Um caminho local, uma URI de artefato ou um identificador isolado não são
-convertidos em acesso a um arquivo. A capacidade depende do cliente.
+A forma de fornecer o arquivo depende do cliente conectado. Os guias de
+[MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md) mantêm os campos,
+os limites de transporte e as verificações de origem e formato. O capítulo de
+[áudio](audio.md) distingue síntese de voz, arquivo existente e reprodução no
+estudo. Um caminho local ou um identificador de arquivo, isoladamente, não dá
+ao serviço acesso ao conteúdo.
 
-PDF e áudio compartilham somente o download limitado: HTTPS, origens de
-arquivos OpenAI já autorizadas, sem redirecionamentos, credenciais do servidor
-ou cookies, com prazo e limite de 20 MiB. Cada consumidor mantém seu próprio
-MIME. Áudio exige WAV PCM inteiro ou quadros MP3 completos; declarar um tipo ou
-renomear a extensão não basta. Não se sintetiza, transcreve nem interpreta o
-arquivo nessa tarefa, e nenhuma credencial de provedor de voz é recebida.
-
-Os testes de canais usam handlers HTTP reais com OAuth, transporte de arquivo
-e persistência simulados. Exercitam descoberta, bytes sintéticos válidos,
-falhas, concorrência, repetição, paginação e retornos sem dados internos. Isso prova o contrato local;
-a conversa conectada e a Action hospedada precisam de sua própria verificação.
+A [prova dos canais de autoria](prova-local-canais-autoria.md) distingue testes
+locais, dependências simuladas e verificação da conversa conectada. A aceitação
+do contrato de uma ferramenta e o acesso efetivo ao material externo são
+verificações diferentes.

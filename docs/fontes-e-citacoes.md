@@ -1,35 +1,30 @@
 # Fontes, citações e referências
 
-Uma fonte identifica uma obra ou um material. A referência bibliográfica ajuda a
-reconhecer essa obra; o vínculo explica como ela foi usada; a localização indica
-onde encontrar o trecho pertinente. A âncora registra essa localização na fonte;
-a ocorrência identifica o trecho do curso que usa a referência. Juntos, esses
-registros tornam possível conferir o apoio dado pela fonte durante a revisão.
-A conferência exige ler a fonte e avaliar sua relação com a afirmação didática;
-a formatação bibliográfica e a disponibilidade do PDF atendem a outras partes
-desse trabalho.
+Uma afirmação de um curso precisa poder ser conferida. Imagine que uma explicação descreve um fenômeno e se apoia na página 42 de um livro. Para examiná-la, a pessoa autora precisa reconhecer o livro, encontrar aquela página e saber qual trecho do curso está sendo sustentado por ela.
+
+No AraLearn, a **fonte** é o cadastro da obra ou material. A **referência bibliográfica** reúne os dados usados para reconhecê-lo, como autoria, título e publicação. O **vínculo** registra o uso daquela fonte em uma explicação ou unidade. Esse uso pode ter uma localização nos dois lados: a **âncora** aponta ao trecho da obra; a **ocorrência** aponta ao trecho do curso.
+
+Esses registros ajudam a voltar ao material durante a revisão. Conferir a interpretação exige ler a fonte e compará-la com a afirmação. Formatar uma referência ou anexar um PDF realiza outra parte do trabalho: torna o material identificável e, quando autorizado, acessível.
+
+## Registrar a obra e seu papel
+
+Em **Fontes**, use **Nova fonte** para informar o que já conhece sobre o material. **Dados da referência** abre os campos adicionais de autoria, título, data, publicação e outros dados pertinentes. Esses dados que descrevem a obra são chamados de metadados. Não é necessário inventar uma data ou decompor um nome institucional para completar a ficha. **Conferir referência** mostra a apresentação antes de salvar.
+
+Uma ementa pode delimitar os assuntos obrigatórios; uma prova pode ajudar a examinar como um conhecimento é solicitado; um livro ou artigo pode fundamentar uma explicação. Os papéis sugeridos no cadastro ajudam a preencher novos vínculos, mas cada uso mantém sua própria indicação. A mesma obra pode cumprir funções diferentes em pontos diferentes do curso.
+
+No detalhe, **Registrar observação** permite apontar uma dúvida, contestar uma interpretação ou pedir reformulação. O alvo pode ser a fonte inteira ou uma âncora ativa. A [revisão das observações](observacoes-pedagogicas.md#relação-com-fontes) considera esse contexto antes de alterar o conteúdo relacionado.
 
 ## Texto do autor e referência gerada
 
-A referência escrita pelo autor é uma escolha deliberada. Ela pode ser adequada
-a uma orientação institucional ou a um material que ainda tem poucos dados
-conhecidos. Esse texto deve permanecer intacto ao trocar o estilo do curso.
+Você pode escrever a referência ou pedir que o aplicativo a forme a partir dos dados conhecidos. A referência escrita pode atender a uma orientação institucional ou registrar um material com poucos dados disponíveis. O texto informado é preservado ao alternar modos e estilos.
 
-A referência gerada utiliza os metadados estruturados conhecidos: autoria,
-título, data, veículo, edição, editora, localização e identificadores pertinentes
-ao tipo de fonte. Sobrenomes, datas, páginas e títulos não são inferidos para
-preencher uma ficha. Um nome institucional pode permanecer literal; componentes
-de um nome pessoal só são usados quando foram informados dessa forma.
+Em **Fontes → Estilo das referências**, escolha o estilo de formatação ABNT ou APA para o curso. A troca reformata as referências geradas; não reescreve as referências manuais, altera a identidade das fontes ou muda seus vínculos com o conteúdo.
 
-Quando faltam dados, o autor pode completar a ficha ou manter uma referência
-manual. O simples fato de um processador produzir uma linha não prova sua
-suficiência: com um item inteiramente vazio, os estilos ensaiados ainda produzem
-abreviações e pontuação. Por isso, o adaptador verifica os dados antes de oferecer
-uma referência gerada.
+A referência gerada utiliza os dados informados na ficha. Sobrenomes, datas, páginas e títulos ausentes não são deduzidos para preencher campos. Se faltarem informações, complete as que conseguir verificar ou mantenha uma referência manual. A geração de uma linha formatada não garante que a identificação da obra esteja suficiente.
 
 ## Estilos e orientação institucional
 
-Os estilos iniciais são APA, 7ª edição, e ABNT com base na NBR 6023:2025. A norma
+Os estilos iniciais são o da American Psychological Association (APA), 7ª edição, e o baseado nas normas da Associação Brasileira de Normas Técnicas (ABNT), com a NBR 6023:2025. A norma
 brasileira de citações em documentos é a NBR 10520:2023; não se confunde com a
 norma de referências. As bibliotecas da [Unicamp](https://www.ifch.unicamp.br/biblioteca/servico/normalizacao)
 e da [ECA/USP](https://www.eca.usp.br/biblioteca/normalizacao) identificam essas
@@ -48,12 +43,76 @@ marcador numérico ou sobrescrito usado para abrir uma referência é um control
 navegação: sua presença não significa que o texto inteiro esteja normalizado
 segundo um sistema autor-data.
 
-## Processamento comum e saída segura
+## Localizar o uso no curso e na fonte
+
+Uma localização precisa responder a uma pergunta concreta: onde a pessoa poderá conferir este uso? Na fonte, pode ser uma página, um intervalo de tempo, uma figura, um slide ou um trecho. Ao criar uma âncora relacionada a um PDF anexado, escolha o arquivo correspondente. Essa ligação conserva o arquivo correto mesmo quando seu endereço temporário de acesso muda.
+
+No conteúdo, abra **Fontes e âncoras** da unidade ou o controle de fontes da explicação. Escolha a obra e indique como ela foi utilizada. Uma adaptação reconhece o material que serviu de base a uma formulação; um contraste coloca a afirmação em relação com outra posição; uma citação direta identifica a origem das palavras reproduzidas. O papel e a relação precisam corresponder ao que foi realmente feito.
+
+O vínculo pode se referir ao item inteiro ou a um trecho. Para localizar uma ocorrência, selecione o texto literal no componente correspondente. Se houver textos iguais, a posição do componente distingue os lugares; o caminho completo do alvo ajuda a conferir a escolha. Uma citação direta também precisa de localização na fonte.
+
+Use **Adicionar outro vínculo** quando a mesma obra sustentar outro trecho ou cumprir outro uso. **Salvar** confirma o conjunto exibido para aquele item. Os papéis sugeridos no cadastro não substituem escolhas já salvas nos vínculos.
+
+Uma fonte selecionada para um vínculo ainda em rascunho pode ser aberta para inspeção. Fechar sua ficha conserva a seleção e o texto em edição. Durante a gravação e a atualização do resultado, aguarde a conclusão ou a mensagem de falha antes de mudar de contexto. Uma resposta incerta exige conferir a mesma tentativa antes de criar outra alteração, como explica [Solução de problemas](solucao-de-problemas.md#não-consigo-salvar-uma-atribuição-de-fontes).
+
+Se uma edição impedir localizar o trecho citado com precisão, o vínculo é conservado para conferência. Acrescentar dados bibliográficos ou corrigir uma localização deve preservar a identidade da fonte. Aposentar uma fonte impede novos vínculos, mas conserva referências existentes; retirar acesso a um arquivo é uma ação diferente.
+
+## Anexar e consultar PDFs
+
+No detalhe da fonte, use **Anexar PDF**. Em uma conversa conectada, envie o arquivo e peça expressamente que seja guardado como fonte. As instruções de envio estão nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
+
+A fonte identifica a obra; página externa e PDF são formas de acesso a ela. O arquivo fica em armazenamento privado e só é oferecido conforme a autorização. Remover o PDF encerra novas autorizações de leitura sem apagar a fonte, as âncoras e os vínculos. O mesmo conteúdo pode ser reativado por uma nova incorporação confirmada. Retirar a fonte inteira também retira os PDFs ativos associados, conforme a operação escolhida.
+
+Um arquivo já recebido não pode ser recolhido do dispositivo de outra pessoa. A disponibilização e a conservação do material precisam respeitar seus direitos de uso. [Privacidade](privacidade.md) e [Solução de problemas](solucao-de-problemas.md#um-pdf-de-fonte-não-foi-enviado-ou-não-abre) desenvolvem acesso e recuperação.
+
+## Referências no Estudo
+
+Abra **Explicação** ou siga uma citação sobrescrita. As referências da explicação e da unidade aparecem em grupos distintos no fim da leitura. Cada retorno leva ao trecho que usou a fonte: se ele pertence à unidade, o painel fecha e volta a ela; se pertence à base, a explicação permanece aberta. O estudante conserva a resposta ainda não enviada.
+
+A fonte pode ter uma das seguintes opções:
+
+| Opção | O que aparece para quem estuda |
+| --- | --- |
+| **Não mostrar no estudo** | A fonte fica disponível somente na autoria. |
+| **Mostrar citação** | Identificação e localização, sem endereço externo. |
+| **Mostrar citação e link** | A identificação pode oferecer também o endereço do material. |
+
+O acesso aos arquivos tem sua própria regra. Tornar o curso público não libera automaticamente seus PDFs. As regras podem ser definidas no curso, na fonte e no arquivo; a mais específica prevalece. O catálogo privado e os trechos de verificação da autoria não acompanham automaticamente a leitura estudantil.
+
+O PDF autorizado é obtido quando a pessoa o abre, na página indicada pela âncora quando ela existe. Uma falha de rede ou acesso é informada como tal. O endereço temporário de download não é a identidade da obra nem deve ser guardado como referência bibliográfica.
+
+Uma microssequência sem explicação salva mantém o acesso às referências já vinculadas às unidades. A política do curso define se é possível estudar conteúdo salvo sem declaração de revisão atual. Veja [Explicação e revisão humana](explicacao-e-revisao-humana.md#acesso-migração-e-cópia).
+
+As referências consultadas podem continuar legíveis sem rede na mesma versão guardada do curso. As que ainda não foram obtidas aparecem como não disponíveis localmente; isso não afirma que não existam fontes. Atualizações e perda de acesso seguem as [regras de persistência](persistencia-relacional.md).
+
+## Autoria nos canais conectados
+
+Os canais de conversa usam o mesmo cadastro e os mesmos vínculos da interface. A consulta precisa identificar a obra correta, sobretudo quando há títulos repetidos ou ausentes. Um título indisponível, uma fonte retirada e uma falha de acesso são situações diferentes.
+
+Uma explicação pode receber vínculos próprios depois de ter seu conteúdo produzido. As fontes previstas no mapa conservam outro papel: indicam o material que se pretende usar, sem declarar que ele já sustenta um texto salvo. Alterar fonte, âncora ou arquivo usado pode exigir nova revisão dos conteúdos dependentes.
+
+Para implementar um cliente, os campos e operações têm as seguintes relações:
+
+| Elemento do contrato | Uso |
+| --- | --- |
+| `papeisSugeridos` na ficha e `papeis` no vínculo | O primeiro oferece preferências para um novo uso; o segundo declara os papéis daquele vínculo. |
+| `consultar_fontes` com `explicacao` | Consulta os vínculos da base pelo título ou pela posição da microssequência. |
+| `manter_fonte`, itens de `vinculos` | Cada item escolhe `unidade` ou `explicacao`; a operação conserva os outros vínculos ao editar um uso pela posição apresentada. |
+| Ocorrência | Registra lugar, posição do componente, campo textual e trecho literal no curso. A âncora guarda separadamente a localização na obra. |
+| `apa7` e `abnt-2025` | Selecionam o estilo do curso sem reescrever o conteúdo ou apagar referências manuais. |
+
+A posição do vínculo pertence à consulta atual; não é o número da fonte no catálogo. Fichas e âncoras são relidas na mesma revisão do curso, com continuações quando necessário. O estado de localização de uma ocorrência é calculado na leitura, não aceito como uma confirmação fornecida pelo cliente. Os contratos dos canais estão em [Autoria por MCP](autoria-mcp.md) e [Autoria por Actions](autoria-actions.md).
+
+## Referência de implementação bibliográfica
+
+O processamento precisa apresentar a mesma referência no aplicativo e nos serviços, com os mesmos dados e estilos. Também precisa preservar os nomes e trechos informados, sem executar conteúdo vindo de uma fonte. As seções seguintes documentam as escolhas que tornam esse comportamento reproduzível.
+
+### Processamento comum e saída segura
 
 O AraLearn usa uma projeção limitada dos metadados para
 [CSL-JSON](https://docs.citationstyles.org/en/v1.0.2/specification.html), mantendo a
 fonte canônica como único cadastro. CSL (*Citation Style Language*) descreve como apresentar citações e referências;
-CSL-JSON organiza os dados bibliográficos em campos. O CSL distingue os dados do
+CSL-JSON organiza os dados bibliográficos em campos. JSON é um formato de dados estruturados: cada campo tem um nome e um valor que o programa consegue consultar. O CSL distingue os dados do
 item, o contexto da citação e as regras de apresentação. Não é necessário adotar
 um gerenciador bibliográfico completo para usar essa separação.
 
@@ -65,8 +124,7 @@ não busca código, estilos, metadados ou arquivos em serviços externos.
 
 O componente `renderCslReference(item, {style})` recebe um item CSL limitado e
 devolve texto e segmentos com formatos permitidos explicitamente. Os segmentos contêm somente texto, itálico,
-negrito e alinhamento sobrescrito/subscrito. O HTML genérico do processador não é
-repassado à interface. URLs são tratadas pelo mecanismo próprio de links do
+negrito e alinhamento sobrescrito/subscrito. O HTML genérico do processador — marcação que descreve o conteúdo de páginas — não é repassado à interface. URLs são tratadas pelo mecanismo próprio de links do
 produto, separado da formatação bibliográfica. A mesma entrada produz os mesmos
 segmentos no navegador e no servidor, que usa o ambiente de execução Deno.
 
@@ -75,122 +133,13 @@ limitado a 32 resultados usa o conteúdo normalizado completo e o estilo
 como chave. Cada consumidor recebe uma cópia; alterar o retorno não muda outra
 referência. O estado interno de um processador não é reutilizado entre obras.
 
-## Autoria nos canais conectados
-
-As tarefas de autoria usam os mesmos campos e vínculos do aplicativo. Nomes
-podem ser fornecidos como nome literal ou como sobrenome e nomes; o programa
-não decompõe uma autoria escrita livremente. `papeisSugeridos` na ficha serve
-como sugestão, enquanto `papeis` em cada vínculo declara seu uso naquele alvo.
-A mesma fonte pode ter vários vínculos. Ao editar um vínculo pela posição
-apresentada, os demais são conservados.
-
-Na consulta de uma unidade ou explicação, cada vínculo informa sua posição
-atual, o título e a citação da fonte, seu estado e as âncoras correspondentes.
-Cada âncora informa a posição na ficha corrente da fonte, o localizador e o
-trecho de verificação disponíveis, sem divulgar identificadores internos.
-As fichas são relidas na mesma revisão do curso; respostas extensas continuam
-pela paginação existente. A posição do vínculo não é o número da fonte no
-catálogo. Títulos ausentes ou repetidos exigem consultar a ficha ou desambiguar
-a fonte pelo mecanismo existente; a leitura não inventa um título nem escolhe
-um homônimo. Uma fonte retirada continua identificada como retirada. Uma ficha
-ou âncora ausente é indicada como não localizada; isso não transforma falhas de
-autorização ou de serviço em ausência e não anuncia acesso a um arquivo.
-
-O vínculo pode pertencer a uma unidade ou à **explicação compartilhada** de uma
-microssequência. `consultar_fontes` aceita `explicacao` com o título ou a posição
-da microssequência; em `manter_fonte`, cada item de `vinculos` escolhe `unidade`
-ou `explicacao`. A base precisa estar produzida para receber vínculos de
-conteúdo. Suas ocorrências apontam somente ao conteúdo da base, sem copiar
-referências em todas as unidades e sem usar resposta ou feedback. As fontes
-previstas no planejamento continuam distintas das que sustentam texto produzido.
-
-Os canais releem a versão corrente do alvo antes de gravar. Alterar uma fonte,
-âncora ou arquivo efetivamente usado pode exigir nova revisão do conteúdo que
-depende dele; conferir uma fonte não aprova automaticamente esse conteúdo.
-Referências e arquivos do rascunho ficam disponíveis à inspeção da autoria;
-a leitura estudantil também observa a situação de revisão e os direitos de
-acesso. Ver [Explicação e revisão humana](explicacao-e-revisao-humana.md).
-
-Uma ocorrência indica o lugar, a posição do componente, a folha textual e o
-trecho literal do curso. Sua localização na fonte é registrada separadamente
-pela âncora. O estado de localização da ocorrência é calculado na leitura;
-não pode ser informado como uma confirmação pelo canal de autoria. A tarefa
-`manter_fonte` também permite escolher `apa7` ou `abnt-2025` para o curso, sem
-reescrever o material didático ou apagar uma referência manual.
-
-## Inspeção e edição de vínculos
-
-Na Autoria, uma fonte selecionada para um vínculo ainda não salvo pode ser
-inspecionada no catálogo do próprio curso. Fechar sua ficha conserva a seleção
-e o rascunho em edição. Depois de salvar o vínculo, a consulta usa também o
-contexto persistido do alvo. Essa distinção evita apresentar a fonte como ausente
-por ainda não ter sido vinculada; não concede acesso ao estudante nem altera as
-permissões dos arquivos ou a revisão humana do conteúdo.
-Durante uma gravação e sua releitura, o botão de voltar fica desabilitado até
-o painel concluir a atualização ou apresentar a falha; a confirmação da escrita
-não é confundida com o término dessa leitura.
-
-No vínculo contextual, as ações de seleção ficam disponíveis depois que a
-atribuição do item foi carregada. Uma releitura conserva as alterações feitas
-durante a espera. Anexar ou remover um PDF e alterar seu acesso também conservam
-o rascunho de fonte ou âncora, seu foco e sua seleção. A confirmação de salvar
-encerra somente o editor correspondente; a revisão original do rascunho continua
-protegendo contra alterações concorrentes. Uma falha na atualização da lista
-mantém a edição disponível e informa que o estado salvo precisa ser relido.
-
-## Referências no Estudo
-
-A ação **Explicação** abre a base salva da microssequência e as referências no
-fim do mesmo corpo rolável. O estudante conserva a unidade, a posição de leitura
-e a resposta ainda não enviada. A abertura não gera conteúdo. O cabeçalho contém
-o título da folha e o controle de fechar à direita; os controles de autoria da
-unidade ficam no seu contexto e só aparecem ao proprietário com acesso de edição.
-
-As referências da base e as da unidade aparecem em grupos distintos. Essa
-apresentação conserva o alvo de cada vínculo, seus papéis, ocorrências e âncoras.
-Os números são controles locais de navegação, sem alterar o texto ou a fonte
-persistidos. Um sobrescrito junto ao trecho abre sua referência no fim da folha.
-Quando uma fonte tem várias ocorrências, cada retorno identifica o trecho a que
-leva. O retorno a uma ocorrência da unidade fecha a folha e devolve o foco àquela
-ocorrência; o retorno à base mantém a explicação aberta. Quando a notação impede
-inserir o controle junto ao texto de forma inequívoca, ele acompanha o campo ou
-componente que contém a ocorrência, preservando a notação.
-
-A inspeção na Autoria usa essa mesma navegação sobre a versão consultada do objeto. As fontes
-da base e de cada unidade conservam seus grupos e destinos; abrir uma referência
-ou um PDF não grava conteúdo, consome observações nem declara revisão humana.
-
-O destino web é identificado por seu vínculo. Um PDF autorizado é resolvido
-somente no clique, usando o arquivo e, quando declarada, a página da âncora. A URL
-temporária não integra o documento nem o cache de referências. Falha de rede ou
-de acesso permanece visível e não transforma o arquivo em ausente. Ao editar um
-campo com citações, a conversão da edição em dados salvos conserva o conteúdo e exclui os
-números transitórios; alterar o trecho pode tornar sua ocorrência pendente de
-revisão, sem apagar o vínculo ou declarar revisão humana.
-
-Um acervo sem base explicativa continua estudável e mantém as referências já
-vinculadas. A folha informa a falta da base e cresce conforme o conteúdo
-disponível. A mesma entrada substitui o botão permanente de **Fontes**. A leitura da
-base salva pode ocorrer sem marca de revisão quando a política do curso permite
-conteúdo completo salvo. O acesso segue essa escolha
-e os direitos de cada arquivo, conforme [Explicação e revisão
-humana](explicacao-e-revisao-humana.md).
-
-A cópia preparada conserva a base na revisão do conteúdo. As referências
-consultadas são armazenadas por curso, revisão e alvo; quando disponíveis,
-continuam legíveis offline nessa mesma revisão. Referências ainda não guardadas
-e arquivos externos indisponíveis são indicados explicitamente. Uma revisão nova
-invalida a reutilização da anterior, e a revogação de acesso remove os respectivos
-caches locais. Corpo e referências usam as regras comuns de tipografia e contraste;
-controles preservam nomes acessíveis e área de toque com texto ampliado.
-
-## Estilos fixados e adaptação ABNT
+### Estilos fixados e adaptação ABNT
 
 O estilo [APA 7](https://raw.githubusercontent.com/citation-style-language/styles/32078ede72b9224e1ed02c546668e20ee7c75585/apa.csl)
 e o estilo institucional
 [UFRGS — ABNT com autoria abreviada](https://raw.githubusercontent.com/citation-style-language/styles/1a16445a22e1ca8aff67cab74fb6077513d67cc0/associacao-brasileira-de-normas-tecnicas-ufrgs-initials.csl)
 são preservados no repositório com os seus autores, colaboradores, avisos e
-resumos criptográficos, que permitem conferir a integridade dos arquivos. O segundo declara NBR 6023:2025 e NBR 10520:2023. É uma implementação
+resumos criptográficos, chamados de hashes, que permitem conferir a integridade dos arquivos. O segundo declara NBR 6023:2025 e NBR 10520:2023. É uma implementação
 institucional, não um software emitido ou certificado pela ABNT.
 
 A variante distribuída aplica uma correção pequena e reproduzível ao estilo
@@ -206,7 +155,7 @@ campo bibliográfico canônico de localização eletrônica é projetado para `n
 no CSL; ele não é armazenado como intervalo de páginas.
 
 A adaptação `aralearn-abnt-access-punctuation-v1` também retira o segundo ponto
-acrescentado pelos regras de página web e relatório depois da macro de acesso, trecho reutilizável
+acrescentado pelas regras de página web e relatório depois da macro de acesso, trecho reutilizável
 do estilo
 que já fornece a pontuação. Assim, uma URL sem data de acesso termina com um
 único ponto; uma data informada continua aparecendo normalmente. O ajuste é
@@ -220,7 +169,7 @@ a vírgula antes da data não é acrescentada depois de um título sozinho nem
 de uma editora já pontuada. Isso cobre os separadores vazios observados com
 metadados mínimos, preservando os dados e os marcadores de ausência do estilo.
 
-## Reprodução, licenças e limites
+### Reprodução, licenças e limites
 
 Os arquivos originais e seus resumos de integridade ficam em
 [`src/bibliography/upstream`](../src/bibliography/upstream). Para gerar e conferir os

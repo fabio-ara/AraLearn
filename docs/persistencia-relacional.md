@@ -1,11 +1,11 @@
 # Persistência relacional e continuidade local
 
-O AraLearn precisa manter um curso coerente quando diferentes superfícies leem e
+O AraLearn precisa manter um curso coerente quando diferentes interfaces leem e
 alteram seu conteúdo, quando duas abas estão abertas ou quando uma resposta de rede se
-perde. O [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html) conserva
-o estado compartilhado e as permissões. No dispositivo, o
-[IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API), uma API
-do navegador para armazenar dados estruturados, mantém a cópia necessária ao estudo,
+perde. O [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html), sistema
+de banco de dados relacional, conserva o estado compartilhado e as permissões. No dispositivo, o
+[IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API), interface
+oferecida pelo navegador para armazenar dados estruturados, mantém a cópia necessária ao estudo,
 os rascunhos e as operações ainda não confirmadas.
 
 A autorização continua no servidor; a cópia local oferece continuidade sem rede. O
@@ -13,6 +13,12 @@ banco mantém o estado corrente e recibos temporários para recuperar operaçõe
 registrar cada estado anterior do curso.
 
 ## Autoridades de dados
+
+Para resolver uma divergência, é preciso saber qual registro determina o estado
+válido de cada informação. Esse papel é chamado de autoridade dos dados. O servidor
+decide o conteúdo compartilhado e o acesso; uma edição ainda não enviada pertence ao
+rascunho local. A autenticação fica no serviço Auth, e os arquivos ficam no Storage,
+ambos apresentados no [guia de Supabase](supabase.md).
 
 | Informação | Autoridade |
 | --- | --- |
@@ -36,6 +42,13 @@ visibilidade e política de acesso público a arquivos. Cada curso nasce privado
 estrutura curricular usa entidades ligadas por curso, tipo, pai e posição. A ordem é
 validada pelo banco; uma unidade de estudo não pode pertencer a duas posições no mesmo
 pai.
+
+A microssequência pode guardar uma [explicação](explicacao-e-revisao-humana.md),
+o texto-base com fontes que desenvolve o assunto. Ela é salva separadamente das
+unidades produzidas a partir dela. Cada unidade registra a base que utilizou;
+alterar a explicação posteriormente não reescreve essas unidades. As marcas de
+revisão humana também são separadas: registram a inspeção de cada explicação ou
+unidade e das respectivas fontes.
 
 O plano possui mapa curricular global, estado de aprovação, pré-requisitos, itens de
 escopo, repertório de unidades de análise, requisitos de evidência e partes. Cada
@@ -70,10 +83,14 @@ cuja aplicação foi invalidada.
 
 ## Escritas concorrentes
 
-A revisão do curso protege mudanças que atravessam vários objetos. Versões locais
-protegem objetos que podem mudar sem reescrever a composição inteira. Uma escrita
-aceita somente o estado que foi lido ou a repetição reconhecida do mesmo pedido já
-confirmado.
+A revisão técnica do curso é um número que muda quando os dados compartilhados são
+alterados. Ela permite detectar se outra operação salvou uma mudança desde a última
+leitura. Objetos editáveis também têm versões próprias quando podem mudar
+separadamente. Essa numeração é diferente da declaração humana de revisão do conteúdo.
+
+Por exemplo, duas abas podem ter aberto a mesma explicação. Se uma delas salva uma
+mudança, a outra não pode substituir silenciosamente esse texto com a versão antiga.
+A escrita compara o estado lido com o atual e exige releitura diante do conflito.
 
 Quando uma resposta se perde, uma identidade de pedido permite recuperar o resultado
 sem duplicar a operação. `course_change_receipts` é a autoridade temporária dessa
@@ -105,6 +122,13 @@ mantém seu próprio descritor e autorização; a exclusão da origem não inval
 da cópia. As intenções de limpeza só permitem remover o objeto depois de verificar
 todas as referências ativas e reservas de envio.
 
+Cópias criadas por versões anteriores conservam a propriedade verificada. Os dados
+de origem ficam em `courses.copy_origin`, fora da leitura pública. Para rascunhos
+antigos, uma consulta compara origem e recibo para reconhecer um resultado já salvo;
+sem prova suficiente, preserva o rascunho para inspeção ou descarte explícito. A
+retirada do mecanismo antigo de cópia automática está no
+[histórico do esquema](schema-change-log.md).
+
 ## Composição e paginação
 
 As leituras de composição devolvem páginas ordenadas e ligadas à mesma revisão. O
@@ -118,12 +142,32 @@ voltar ou avançar.
 Uma edição manual envia apenas o segmento alterado e sua versão. Alterações assistidas
 passam pela mesma validação e apresentação antes de serem salvas. Somente o
 proprietário edita. Estudantes e visitantes não criam cursos ao tentar alterar
-conteúdo. Cópias já existentes conservam a propriedade verificada; a origem útil migra
-para `courses.copy_origin`, fora da projeção pública. O escritor automático e sua
-tabela exclusiva foram retirados após a verificação das pendências de migração.
-Rascunhos locais anteriores são inspecionados por uma operação somente de leitura:
-prova de origem e recibo permitem identificar um resultado confirmado, sem repetir a
-escrita. A ausência de prova preserva o rascunho para inspeção e descarte explícito.
+conteúdo.
+
+Na autoria, o armazenamento local conserva a lista de cursos próprios, o cabeçalho,
+o planejamento, a hierarquia, páginas recentes de Conteúdo e a posição de retomada.
+Uma leitura desses dados sem confirmação remota é identificada como desatualizada e
+serve à consulta. Quando muda a revisão remota, os dados derivados da anterior são
+invalidados antes de nova leitura.
+
+Depois da confirmação de uma edição manual ou assistida, o aplicativo guarda uma
+cópia fiel da unidade salva e recompõe o curso antes de substituir a leitura local.
+Progresso, observações e posição são preservados. Estudo e Conteúdo podem apresentar
+essa revisão sem rede como confirmada, ainda com sincronização pendente. Uma consulta
+que encontra a mesma revisão encerra a pendência; uma revisão posterior substitui a
+cópia. Sair da conta, limpar o curso ou perder acesso remove esse estado de
+confirmação pendente.
+
+A sessão de Estudo adota a revisão da composição confirmada antes de consultar
+citações ou a explicação. Isso atualiza somente o curso editado e respeita o modo
+manual. Se a cópia não corresponder ao recibo ou a leitura falhar, a edição continua
+salva: o aplicativo informa a sincronização pendente e recupera a leitura, sem
+reenviar a gravação.
+
+Parâmetros, catálogos privados de fontes e áudios, caixa autoral de observações,
+revisão, correções, análise de autoria e gestão de acesso exigem o servidor corrente.
+Os bytes dos arquivos não integram essa réplica. Uma prévia na lista de cursos pode
+ser conhecida localmente sem que a composição já esteja disponível para estudo.
 
 ## Fontes e proveniência
 

@@ -338,6 +338,7 @@ function publication(entry) {
       const issue = fields.number ? `(${markdownText(fields.number)})` : "";
       parts.push(`${markdownText(fields.volume)}${issue}`);
     }
+    if (fields.eid) parts.push(`artigo ${markdownText(fields.eid)}`);
     if (fields.pages) parts.push(`p. ${pageRange(fields.pages)}`);
   } else if (entry.type === "book") {
     if (fields.edition) parts.push(`${markdownText(fields.edition)}. ed.`);

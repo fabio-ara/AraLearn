@@ -1,305 +1,123 @@
 # Guia da pessoa autora
 
-No AraLearn, a pessoa autora cria cursos com assistência de inteligência
-artificial e revisão humana. A conversa usa ferramentas autorizadas para
-consultar e alterar o curso, por [MCP](autoria-mcp.md), protocolo de conexão com
-assistentes, ou por [Actions/OpenAPI](autoria-actions.md), integração com ações
-descritas em um contrato estruturado. Esses canais permitem planejar, produzir e corrigir; o aplicativo oferece o mapa, o conteúdo salvo e as fontes
-para inspeção. O curso pode partir de um tema, de uma ementa, de slides ou de
-outros materiais de estudo.
+O AraLearn permite criar um curso a partir de um tema, de uma ementa, de slides ou de outros materiais. A inteligência artificial ajuda a desenvolver a proposta; você define a finalidade, examina o que foi produzido e decide o que precisa mudar. O aplicativo conserva o mapa do curso, o conteúdo e as fontes para essa inspeção.
 
-A pessoa define o objetivo, examina propostas, decide o que aplicar e confere o
-resultado. Gerar ou salvar um texto não o torna revisado. A
-[revisão autoral](explicacao-e-revisao-humana.md#revisão-independente-por-objeto)
-registra separadamente a declaração humana sobre cada explicação ou unidade
-salva que foi inspecionada.
+Uma parte central desse trabalho é a **explicação**: o texto-base que desenvolve um assunto, com seus conceitos, relações, exemplos e fontes. A partir dela, o curso pode ser organizado em unidades de estudo que apresentam o conteúdo e propõem atividades. A explicação permanece disponível para consulta durante o estudo, como descreve [Explicação e revisão humana](explicacao-e-revisao-humana.md).
+
+A conversa com um assistente externo e a edição no aplicativo são formas de trabalhar sobre o mesmo curso. [Criar e revisar cursos por conversa](criar-cursos-pelo-chat.md) mostra como conduzir a passagem entre esses espaços.
 
 ## Começar um curso
 
-Crie um curso privado com título e objetivo. Na conversa, descreva público,
-finalidade, conhecimentos prévios, escopo e restrições que realmente importam.
-O assistente pergunta quando falta uma decisão capaz de mudar o desenho.
+Em Autoria, use **Criar curso**, informe título e objetivo e salve. O curso começa privado. Antes de pedir a produção, descreva quem vai estudar, o que essa pessoa deverá compreender ou conseguir fazer, quais conhecimentos prévios podem ser assumidos e quais materiais delimitam o assunto.
 
-A pessoa autora não é presumida como estudante. “O público é iniciante” descreve
-o curso; “você está começando do zero” atribuiria sem base uma condição à pessoa
-que o está criando.
+Por exemplo, “redes para iniciantes” ainda deixa decisões abertas. “Adultos que usam computador, mas nunca estudaram redes, precisam explicar como uma mensagem sai de um notebook e chega a um serviço” delimita melhor o ponto de partida e a finalidade. A descrição do público orienta o curso; ela não presume o conhecimento de quem o está criando.
 
-## Compartilhar estudo e arquivos
-
-Em **Pessoas e acesso**, escolha privado ou público. A mudança exige confirmação;
-ao publicar, confira também se os arquivos ficam sem acesso público ou disponíveis
-para leitura pública. A concessão de acesso ao curso não libera, por si só, um PDF
-restrito no curso público. Em **Fontes**, cada fonte e cada PDF podem herdar a
-regra anterior ou definir uma exceção. O arquivo prevalece sobre a fonte, que
-prevalece sobre o curso. Um arquivo já baixado não pode ser recolhido.
-
-Para um acesso individual, use **Conceder acesso**, digite ao menos dois caracteres
-do `@identificador`, escolha o resultado e confirme. A busca mostra somente
-identificador e foto opcional, sem e-mail. O identificador escolhido deve
-continuar o mesmo no momento da confirmação; se mudou, refaça a busca.
-
-A pessoa favorecida pode estudar e enviar observações, sem editar o curso.
-Visitantes de um curso público leem, praticam e marcam Rever localmente; precisam
-entrar numa conta para observar. Retirar uma concessão não impede a leitura se
-o curso continua público. Tornar privado bloqueia novos acessos de visitantes e
-contas não favorecidas, preservando proprietário e acessos individuais.
+Condições de acessibilidade, idioma, dispositivo ou uma exigência de pesquisa também podem mudar a proposta. Registre as que realmente interferem no trabalho. O assistente pode pedir esclarecimento quando uma decisão ausente alterar o curso.
 
 ## Aprovar o mapa curricular
 
-O mapa organiza o curso em módulos; cada módulo reúne lições, e cada lição
-reúne microssequências didáticas, pequenos percursos com objetivo próprio.
-As unidades de estudo serão produzidas dentro dessas microssequências. O
-[modelo didático](modelo-didatico.md) desenvolve essas relações.
+O mapa organiza módulos, lições e microssequências didáticas. Um módulo reúne lições relacionadas; cada lição contém pequenos percursos com objetivo próprio, chamados **microssequências**. As unidades de estudo serão produzidas dentro deles. O [modelo didático](modelo-didatico.md) desenvolve essa organização.
 
-Confira todos os módulos, as lições e as microssequências, a progressão, as
-dependências relevantes e a cobertura do escopo. O chat pode mostrar uma
-síntese, mas o mapa completo precisa estar acessível no AraLearn.
+Em **Planejamento**, abra um ramo pela seta e consulte **Objetivo** para ler o texto completo. Confira se os assuntos obrigatórios aparecem, se a ordem prepara o que vem depois e se cada objetivo tem profundidade suficiente. **Cobertura do escopo** relaciona o que precisa ser ensinado aos pontos previstos no curso.
 
-Peça mudanças de cobertura, ordem, profundidade ou ênfase antes de aprovar. A
-aprovação corresponde à versão completa salva que você inspecionou. O mapa
-pode evoluir por ramos, e uma explicação
-pode ser desenvolvida antes dessa aprovação. Aprovar o mapa não aprova exercícios,
-componentes, formulações nem unidades de estudo que ainda serão produzidas.
+Quando uma relação necessária ficou implícita, peça que ela seja desenvolvida. Ensinar separadamente “endereço” e “entrega de mensagem”, por exemplo, não basta se o objetivo exige compreender como um endereço orienta a entrega.
+
+A conversa pode trazer uma síntese, mas a aprovação corresponde ao mapa completo salvo que você inspecionou. Peça ajustes de cobertura, ordem ou ênfase antes de aprovar. O mapa também pode evoluir por ramos, e uma explicação pode ser desenvolvida enquanto ele ainda está em rascunho. Aprovar a organização não declara revisão de textos ou atividades futuros.
 
 ## Produzir em partes
 
-As partes dividem a produção em recortes manejáveis. Elas não aparecem
-na hierarquia curricular e podem ser redimensionadas sem alterar módulos, lições
-ou microssequências.
+A produção pode ser dividida em **partes**, conjuntos de microssequências escolhidos para serem desenvolvidos e inspecionados em uma etapa de trabalho. A parte organiza a autoria; não acrescenta um nível à organização curricular. Seus limites podem mudar sem reorganizar módulos e lições.
 
-Para cada parte:
+Em **Configurações → Preferências de autoria**, o foco **Conteúdo** trabalha explicações e fontes. **Ciclo completo** inclui também o desenho e a produção das unidades. Um lote pode reunir várias partes. A **cadência** indica como agrupar o trabalho — por microssequência, parte ou lote —; o tamanho de cada grupo e os pontos em que você deseja inspecionar são escolhas separadas. Essas escolhas são explicadas em [Configurações](configuracoes.md#preferências-pessoais).
 
-1. confira o recorte e a progressão local conforme o trabalho combinado;
-2. desenvolva e inspecione a explicação e suas fontes;
-3. no Ciclo completo, prepare o desenho e as unidades a partir dessa base;
-4. abra o resultado salvo e inspecione os objetos pertinentes;
-5. continue segundo a cadência e os pontos de revisão escolhidos.
-
-O tamanho da conversa pode acompanhar sua preferência. O mapa e o conteúdo
-salvos conservam o trabalho completo, mesmo quando a resposta do assistente é curta.
+Para cada parte, combine o que será desenvolvido e examine a progressão proposta. Inspecione a explicação e suas fontes; quando o trabalho incluir unidades, confira como elas ensinam e exercitam aquele conteúdo. A continuação acompanha o alcance autorizado e os pontos de inspeção escolhidos.
 
 ## Inspecionar e ajustar no aplicativo
 
-Em **Planejamento**, use a seta para revelar um ramo e **Objetivo** para ler o
-texto completo. **Explicação prevista** apresenta a finalidade, os pressupostos,
-as relações e as fontes propostas para a microssequência. As fontes previstas
-abrem sua inspeção; quando o título não pode ser consultado, o aplicativo
-informa essa indisponibilidade sem afirmar que a fonte foi removida. Os acessos
-ao conteúdo e os vínculos de cobertura levam ao
-ponto correspondente; voltar conserva o mapa que estava aberto.
+**Explicação prevista**, no Planejamento, apresenta o que a microssequência deverá desenvolver e as fontes propostas. A proposta ajuda a avaliar a direção do trabalho. Depois da produção, abra a explicação salva para ler o desenvolvimento efetivo; uma fonte prevista no plano ainda precisa ter seu uso conferido no texto.
 
-Em **Conteúdo**, **Mostrar várias unidades** amplia a leitura. Selecione os
-alvos separadamente quando quiser registrar uma observação em lote. O comando
-**Editar** de qualquer unidade a focaliza e preserva o trabalho pendente nas
-condições indicadas pelo aviso. Essa edição é manual; **Assistência por IA** fica
-em Estudo.
+Em **Conteúdo**, você pode percorrer as unidades na ordem ou usar **Mostrar várias unidades** para compará-las. Essa leitura permite verificar as transições, os enunciados, as respostas esperadas e o retorno de cada atividade. Selecionar unidades para registrar uma observação em lote é uma ação separada da leitura múltipla.
 
-O ícone **Explicação** da unidade abre a base explicativa compartilhada pela
-microssequência. Na sua inspeção, confira o conteúdo desenvolvido, os
-pressupostos, as relações e as fontes. Ela pode ser produzida e revisada
-antes das unidades, inclusive com o mapa ainda em rascunho. Depois, confira as
-unidades com respostas, feedback e os vínculos pertinentes a cada uma.
-**Editar Explicação** abre os campos textuais editáveis dos componentes já
-presentes. Examine a prévia e use **Salvar Explicação** ou **Cancelar edição**.
-Essa edição não acrescenta componentes nem gera apoio ausente. Salvar preserva
-os demais dados e vínculos; confira se os trechos citados ainda sustentam o
-texto alterado. Mudanças materiais desatualizam a revisão do objeto afetado.
-Conteúdo completo salvo pode ser estudado por quem tem acesso mesmo sem essa
-marca; exigir somente conteúdo revisado é uma política opcional do curso.
+O controle de explicação abre a base compartilhada pela microssequência. Ela pode existir antes das unidades. **Editar Explicação** permite alterar os campos textuais disponíveis; examine a prévia e escolha **Salvar Explicação** ou **Cancelar edição**. Para acrescentar componentes ou produzir uma base ainda ausente, use o fluxo de autoria correspondente. Os [controles de edição](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) distinguem edição manual e assistência.
 
-Cada explicação e cada unidade tem sua própria **Revisão autoral**. Depois de
-inspecionar o objeto e salvar ou descartar edições pendentes, use **Marcar como
-revisado**; **Retirar marca de revisão** desfaz a declaração. A marca referencia
-o conteúdo salvo e não demonstra leitura, correção ou eficácia. No chat, a
-tarefa `declarar_revisao` também registra a escolha humana expressa sobre o
-objeto referenciado. Salvar uma edição ou corrigir uma observação não faz essa
-declaração. Se o resultado ficar incerto, **Confirmar resultado** recupera o
-mesmo pedido, inclusive ao reabrir a inspeção.
-
-**Parâmetros** reúne as escolhas sobre a apresentação e a prática, como o limite
-de ideias novas por unidade. O controle fica no contexto do objeto: curso e ramo no Planejamento,
-microssequência junto da explicação e unidade em sua inspeção. Permite distinguir intenção
-automática, valor fixado por você e herança de uma escolha mais ampla, como
-a do curso. Trocar o escopo conserva os ajustes ainda não
-salvos em seu contexto. **Observações** pode ser aberta apenas para consultar;
-um texto alterado ou um envio parcial é que exige retomar o trabalho antes de
-uma operação incompatível.
-
-Depois de produzir outro lote pela conversa, use a nuvem para atualizar o
-curso. A leitura preserva a unidade focal quando ela ainda existe. No modo
-manual, a consulta explícita continua disponível e não muda a preferência do
-dispositivo para automática. Uma cópia local disponível não confirma que a
-última produção já foi recebida.
+Depois de uma produção por conversa, volte ao aplicativo e confira a atualização. Se necessário, use a nuvem ou **Atualizar**. A presença de uma cópia antiga no dispositivo não informa se a última alteração já foi recebida. Se houver um rascunho aberto, o aplicativo orienta concluí-lo ou descartá-lo antes de trocar o conteúdo em leitura.
 
 ## Acompanhar ideias ao longo do percurso
 
-O repertório acumulado reúne o conhecimento necessário para acompanhar o curso.
-Ao produzir uma unidade, o assistente distingue:
+O curso mantém um registro do conhecimento necessário ao percurso, chamado **repertório acumulado**. Ele ajuda a distinguir a primeira apresentação de uma ideia, o uso de algo já ensinado e uma retomada deliberada. A análise é desenvolvida em [Modelo didático](modelo-didatico.md).
 
-- ideias novas introduzidas ali;
-- ideias já estabelecidas e apenas utilizadas;
-- ideias estabelecidas retomadas de propósito.
+Uma relação pode exigir mais de uma unidade. Se a primeira apresenta origem e destino de uma mensagem, uma unidade seguinte pode retomar esses papéis para explicar sua inversão na resposta. Essa retomada desenvolve o conhecimento; não deve ser contada como se os mesmos conceitos estivessem sendo introduzidos outra vez.
 
-Uma ideia pode ser desenvolvida em várias unidades. Retomada não volta a contar
-como introdução. O teto de novidades limita apenas quantas ideias
-semanticamente novas aparecem juntas numa unidade expositiva; não exige uma
-quantidade exata e não transforma prática em exposição.
+O limite de ideias novas por unidade serve para orientar o volume apresentado de uma vez. Ele não obriga a produzir uma tela por ideia, e uma atividade pode mobilizar conhecimentos anteriores sem introduzir novidades. A adequação continua dependendo do conteúdo lido na sequência.
 
 ## Produzir unidades coerentes
 
-Uma unidade de estudo é uma experiência didática, não um fragmento mínimo de
-texto. Evite:
+Uma unidade precisa desenvolver uma relação ou propor uma tarefa que faça sentido. Um resumo que apenas nomeia conceitos pode deixar o leitor sem saber como eles se relacionam. No extremo oposto, repartir uma explicação simples em muitas telas pode obrigá-lo a reconstruir sozinho o raciocínio.
 
-- compactar conceitos, relações e exemplos num resumo denso;
-- atomizar uma explicação simples em telas sem progressão perceptível.
+Se um conhecimento necessário não foi assumido como pré-requisito, desenvolva-o antes de exigir seu uso. Começar por uma situação concreta costuma ajudar a mostrar o problema que a nomenclatura resolverá: primeiro observar quem envia uma mensagem, depois nomear origem e destino, por exemplo. A escolha depende da tarefa; não é um formato obrigatório para todo assunto.
 
-Se um conhecimento necessário não foi declarado como pré-requisito, ensine-o
-antes do uso. Ensinar dois conceitos separados não basta quando a relação entre
-eles também é essencial.
-
-Quando fizer sentido, intercale problema, explicação, exemplo, previsão,
-aplicação, comparação, prática e integração. Tarefas complexas podem avançar de
-exemplo resolvido para exemplo parcial, prática com pistas e situação nova. Não
-use nenhuma dessas sequências como molde obrigatório.
+Quando uma tarefa tem vários passos, um exemplo resolvido pode mostrar o raciocínio. Em outra atividade, parte desse apoio pode ser retirada para que o estudante complete os passos. O importante é conseguir acompanhar a relação entre explicação e prática, desenvolvida no [modelo didático](modelo-didatico.md).
 
 ## Escolher componentes e prática
 
-Escolha a representação pela função: tabela para estado, diagrama para relação
-espacial, linha do tempo para mudança, comparação lado a lado para discriminação
-e resposta aberta para explicar ou justificar. Parágrafo e escolha continuam
-adequados quando cumprem a função. Variedade visual, sozinha, não é critério.
+Os **componentes didáticos** são as formas que o aplicativo usa para apresentar conteúdo ou receber respostas, como parágrafo, tabela e atividade de lacunas. O [catálogo de componentes](componentes-didaticos.md) explica suas possibilidades.
 
-Prática faz parte da aprendizagem e pode aparecer antes, durante e depois da
-explicação. Use previsão, identificação, aplicação, diagnóstico, justificativa,
-conclusão de exemplo e integração conforme o objetivo.
+Escolha a representação pelo que o estudante precisa examinar. Uma tabela ajuda a comparar dados lado a lado; um diagrama pode tornar uma relação espacial visível. Se o objetivo exige justificar uma escolha, uma resposta aberta permite formular essa justificativa, enquanto uma seleção de alternativas oferece razões já escritas para serem avaliadas. Na resposta aberta, o aplicativo não avalia automaticamente o significado do texto; a comparação com o retorno e a apreciação humana continuam necessárias.
+
+A prática pode preparar uma explicação, testar uma distinção ou mobilizar conhecimentos depois dela. Uma previsão antes do exemplo, seguida de uma comparação com o resultado, cumpre outra função que uma pergunta de aplicação ao final. Variar apenas a aparência ou os nomes dos casos não garante uma nova oportunidade de aprender.
 
 ## Ajustar o desenho
 
-Os [parâmetros de desenho](desenho-instrucional-parametrizado.md) orientam, por
-exemplo, quantas ideias novas apresentar juntas e como distribuir a prática.
-O catálogo define o significado, os limites e o alcance de cada ajuste. A
-**intenção corrente** orienta o próximo trabalho; a **configuração aplicada**
-guarda as escolhas usadas na produção de uma unidade. A revisão humana
-continua sendo uma declaração separada sobre o conteúdo salvo.
-Os alvos de palavras e de produção orientam o trabalho; não são licença para
-omitir conteúdo necessário.
+Os [parâmetros instrucionais](desenho-instrucional-parametrizado.md) registram escolhas sobre como apresentar o conteúdo e distribuir a prática. **Parâmetros** fica junto ao contexto correspondente: curso e ramo no Planejamento, microssequência na explicação e unidade em sua inspeção.
 
-**Configurações** tem os mesmos quatro grupos em Estudo e Autoria: **Conta**,
-**Aparência**, **Sincronização e dados deste dispositivo** e **Preferências de
-autoria**. Manutenção aparece somente para o papel autorizado. As preferências
-pessoais de autoria separam foco **Conteúdo / Ciclo completo**, cadência, pontos
-de revisão e diálogo. O assistente as consulta ao retomar; salvá-las não altera cursos,
-configurações aplicadas ou condições de pesquisa retroativamente. Conteúdo
-trabalha bases e fontes; Ciclo completo inclui desenho e unidades no recorte
-combinado. A cadência define se o trabalho avança por microssequência, parte
-ou lote; os pontos de revisão indicam em que momentos você quer inspecionar.
+Há duas informações que precisam ser distinguidas. A **intenção corrente** indica como você deseja orientar o próximo trabalho. A **configuração aplicada** conserva as escolhas efetivamente usadas ao produzir uma unidade. Se mudar agora o limite de novidades, as unidades antigas continuarão como foram produzidas até que uma alteração delas seja solicitada.
 
-Automático é uma intenção sem valor numérico implícito. Antes de produzir as unidades,
-o assistente escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
-função, público e planejamento. Fixações da autoria e condições de pesquisa
-prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
-A aplicação conserva os valores e motivos daquela decisão. Alterar a
-configuração corrente não reescreve essa evidência histórica.
+Uma escolha pode ser fixada por você, herdada de uma parte mais ampla do curso ou deixada em **Automático**. Herdar significa usar uma escolha já definida, por exemplo, no curso inteiro. No automático, o assistente escolhe um valor adequado ao conteúdo e registra o motivo antes da produção; não há um número fixo implícito. Condições de pesquisa ou escolhas explícitas não podem ser contrariadas silenciosamente por uma configuração mais específica.
 
-Você pode salvar um perfil de preferências e copiá-lo para um curso após
-examinar a prévia. As exceções existentes são preservadas, salvo seleção
-explícita, e condições de pesquisa continuam protegidas. Editar ou excluir o
-perfil depois não muda cursos já configurados. Distribuição e posição da
-prática orientam o desenho; as contagens calculadas mostram o que foi
-declarado e onde aparece, sem atribuir uma nota pedagógica.
+Perfis de autoria permitem guardar preferências reutilizáveis e copiá-las para um curso após conferir a prévia. Essa cópia não cria um vínculo permanente: alterar ou excluir o perfil depois não muda os cursos que o receberam. As exceções existentes são preservadas, salvo escolha expressa. Veja [Parâmetros de autoria](parametros-de-autoria.md).
 
-Direção editorial é separada. Ela pode orientar extensão, estilo, títulos e
-organização, mas não retirar conteúdo necessário.
-
-A configuração deve conservar a relação com o mapa inspecionado e com a
-finalidade de cada unidade. Ajustes editoriais orientam a apresentação; a
-suficiência da explicação continua sendo uma decisão sobre o conteúdo.
+As escolhas editoriais orientam extensão, estilo, títulos e organização. Um alvo de palavras pode ajudar a distribuir a leitura, mas não autoriza retirar uma relação necessária para caber numa contagem.
 
 ## Trabalhar com fontes
 
-Diferencie fonte de escopo, evidência de avaliação e fonte técnica ou
-conceitual. Uma ementa determina o que cobrir; questões ajudam a calibrar a
-aplicação; fontes técnicas sustentam explicações. Uma prova não se torna
-autoridade conceitual automática.
+Uma ementa pode definir o que ensinar; uma prova pode mostrar como um conhecimento é solicitado; um livro, artigo ou documento técnico pode fundamentar a explicação. Esses papéis precisam ser conferidos no uso concreto. Uma questão de prova, por exemplo, não passa a ser autoridade conceitual apenas porque foi usada para escolher atividades.
 
-Os dados bibliográficos, os trechos citados e o papel de cada fonte precisam
-ser conferidos, como explica [Fontes, citações e referências](fontes-e-citacoes.md). Um PDF enviado por
-conversa só deve ser guardado quando essa intenção estiver clara.
+Em cada explicação ou unidade, compare a afirmação com o trecho da fonte que a sustenta. O vínculo deve permitir encontrar tanto o lugar no curso quanto o lugar na obra. [Fontes, citações e referências](fontes-e-citacoes.md) explica como registrar essas relações e editar seus vínculos.
 
-Na inspeção da explicação, consulte as referências no fim do corpo para
-conferir a obra, a localização no material e sua relação com o trecho associado. Os vínculos pertencem ao apoio compartilhado da
-microssequência; não é preciso repeti-los em cada unidade. Ao localizar uma
-ocorrência, selecione o trecho literal do conteúdo mostrado. A posição do bloco
-distingue textos iguais; o caminho completo do alvo selecionado aparece abaixo
-do seletor, mesmo quando a largura da tela limita o rótulo da opção. Uma referência
-sem ocorrência vale para o apoio inteiro; uma citação direta continua exigindo
-localizador na fonte. Fechar o detalhe da fonte retorna aos vínculos da mesma
-explicação, preservando o recorte da inspeção.
-
-Conferir a referência bibliográfica não aprova automaticamente o conteúdo.
-Alterar texto, fonte ou vínculo pode desatualizar a revisão do objeto afetado. Uma
-gravação cujo resultado ficou incerto deve ser recuperada pelo mesmo pedido
-antes de iniciar outra edição; o aplicativo conserva esse pedido localmente.
+As referências da explicação pertencem ao texto-base e não precisam ser copiadas em todas as unidades. Uma unidade pode, por sua vez, usar uma fonte própria. Ao mudar uma afirmação, confira se o trecho citado ainda a sustenta. Um PDF enviado por conversa só deve ser guardado no curso quando essa intenção estiver clara.
 
 ## Revisar como estudante
 
-Antes de considerar uma parte pronta, percorra as unidades na ordem:
+Percorra a parte na ordem, assumindo somente os conhecimentos prévios declarados para o público. Observe se uma atividade pede algo que ainda não foi explicado, se uma transição omite uma relação ou se a explicação depende de vocabulário ainda desconhecido. Consulte também a base explicativa para avaliar se ela desenvolve o apoio necessário.
 
-- a primeira usa apenas pré-requisitos declarados?
-- cada novidade recebeu preparação suficiente?
-- alguma relação essencial foi pressuposta?
-- há saltos ou repetições improdutivas?
-- alguma unidade está densa demais?
-- a sequência foi fragmentada demais?
-- os exemplos tornam o mecanismo observável?
-- as práticas exigem somente o que já foi ensinado?
-- ao final, a pessoa consegue realizar o objetivo?
+Use o objetivo como referência: o conteúdo oferece condições para realizar aquela tarefa? Os exemplos mostram o raciocínio? A prática exige a operação pretendida? Para um objetivo de justificar, selecionar uma justificativa pronta e escrever uma justificativa própria são evidências diferentes.
 
-Divida unidades densas, funda fragmentos e reescreva transições quando
-necessário. A quantidade deve emergir do conhecimento e do domínio esperado.
+Divida unidades densas, reúna fragmentos que só fazem sentido juntos e reescreva transições quando necessário. Depois da inspeção, cada explicação e unidade tem sua própria **Revisão autoral**. Use **Marcar como revisado** para registrar sua declaração sobre o conteúdo salvo que examinou; **Retirar marca de revisão** desfaz a declaração. Salvar texto ou corrigir uma observação não faz essa marca automaticamente.
+
+Mudanças relevantes no conteúdo ou nas fontes podem desatualizar a marca e pedir nova inspeção. A revisão da explicação não revisa suas unidades, nem a de uma unidade revisa as demais. Veja [revisão independente por objeto](explicacao-e-revisao-humana.md#revisão-independente-por-objeto).
 
 ## Observar e corrigir
 
-Voltar a qualquer ponto do curso é a forma principal de reversibilidade. Abra
-uma unidade antiga, registre uma observação e peça revisão. Se a questão afetar
-progressão, pré-requisitos, transições, exemplos ou prática, a correção deve
-considerar todos os pontos pertinentes.
+Você pode voltar a um ponto antigo do curso e registrar o que precisa mudar. Se o problema está na explicação compartilhada, registre a observação nela; se está no enunciado ou no retorno de uma atividade, registre na unidade. [Observações](observacoes-pedagogicas.md) explica como acompanhar cada contribuição.
 
-Use **Debater com GPT** para copiar uma referência do objeto e discuti-lo numa
-conversa conectada. Esse é o nome atual do controle; o pedido apenas identifica
-o contexto, e o assistente precisa reler o estado salvo. Discuta a proposta,
-autorize a alteração e volte ao mesmo objeto para conferir se o problema foi
-resolvido. A ferramenta não inicia sozinha uma chamada de IA no aplicativo.
+**Debater com GPT** é o nome atual do controle que copia uma referência do ponto em exame para levar a uma conversa externa conectada. O controle não inicia sozinho uma chamada de IA. Peça ao assistente que leia o conteúdo salvo, discuta a mudança e confira depois o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
 
-Cada explicação e unidade conserva uma fila durável de observações autorais.
-O campo de texto acrescenta uma entrada; o ícone com contagem abre a fila para
-consulta e edição. O assistente lê as pendências pertinentes antes de corrigir. Somente
-a versão exata cuja correção foi persistida e confirmada por releitura sai da
-fila. Ler, responder ou começar uma tentativa não consome a entrada; versões
-editadas, conflitos e aplicações parciais permanecem pendentes. Se a resposta
-se perder, a retomada reconcilia conteúdo e fila pela mesma tentativa.
+Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. As observações atendidas saem da fila autoral depois da confirmação do conteúdo salvo; contribuições alteradas ou parcialmente atendidas continuam pendentes. Se a resposta de uma gravação se perder, retome a mesma tentativa antes de pedir outra alteração.
 
-No minichat **Assistência por IA**, disponível ao proprietário em Estudo, você
-pode discutir sem alterar conteúdo. Quando houver proposta, use **Preparar
-prévia**, compare **Original** e **Prévia** e escolha **Aplicar ao rascunho**.
-Salvar continua uma decisão separada. Descartar a prévia ou o rascunho preserva
-o original; uma falha de geração ou um conflito não autoriza sobrescrevê-lo.
+Para uma edição durante o estudo, **Assistência por IA** permite discutir sem mudar o curso. Use **Preparar prévia**, compare **Original** e **Prévia** e, se estiver adequada, escolha **Aplicar ao rascunho**. **Salvar** confirma a mudança. Descartar uma proposta conserva o original.
 
-## Usar Analytics em pesquisa
+## Compartilhar estudo e arquivos
 
-A área **Dados de autoria** apresenta contagens e descrições do desenho aplicado e das
-intervenções registradas, conforme a [referência de Analytics](analytics-instrucionais.md).
-Mostra valores, origem, escopo e uso nas unidades, além de repertório, prática,
-componentes e fontes.
+Depois de conferir o material, use **Pessoas e acesso** para escolher quem poderá estudá-lo. O curso pode ser privado, compartilhado com pessoas determinadas ou público. Disponibilizar o curso e permitir acesso aos seus arquivos são decisões distintas; uma fonte ou um PDF pode ter uma regra própria.
 
-Uma exportação permite confrontar o estado entre publicações ou cópias
-experimentais, desde que o protocolo preserve também o artefato correspondente.
-Ela não mede aprendizagem nem cria um histórico universal.
+O proprietário também pode exigir que o estudo ofereça somente conteúdo com revisão atual. Essa política é opcional: o padrão permite conteúdo completo salvo a quem tem acesso. Uma marca de revisão não concede acesso por si só.
 
-Para comparar condições, use cursos privados independentes, fixe somente os
-valores que distinguem as condições e documente o que deve permanecer igual.
-Finalidade de concurso ou qualquer outro contexto é uma configuração possível,
-não o padrão do AraLearn.
+A pessoa que recebe acesso pode estudar e enviar observações. Editar o original continua sendo uma atribuição do proprietário, e criar uma cópia depende de permissão própria. Veja [como conceder e revogar acesso](uso-do-app.md#conceder-e-revogar-acesso) e [as regras dos arquivos](fontes-e-citacoes.md#referências-no-estudo) antes de compartilhar.
 
-Consulte [Criar e revisar cursos por conversa](criar-cursos-pelo-chat.md),
-[Autoria pelo MCP](autoria-mcp.md) e [Autoria por Actions](autoria-actions.md).
+<a id="usar-analytics-em-pesquisa"></a>
+
+## Usar Dados de autoria em pesquisa
+
+Em **Dados de autoria**, você pode examinar contagens e registros de como o curso foi produzido. A [análise de autoria](analytics-instrucionais.md) permite comparar escolhas solicitadas com as que foram aplicadas, localizar unidades e exportar o estado salvo.
+
+Esses dados podem ajudar a estudar o processo de autoria, mas não medem aprendizagem por si só. Uma comparação de condições exige definir a pergunta, o que varia, o que permanece equivalente e quais dados responderão à pergunta. O [guia de pesquisa](guia-pesquisador.md) desenvolve possíveis percursos e seus limites metodológicos.

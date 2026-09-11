@@ -16,14 +16,14 @@ controles e regras de persistência.
 
 | Conceito | Responsabilidade operacional |
 | --- | --- |
-| Microssequência didática | Delimita objetivo e progressão, considerando público, repertório, escopo e dependências. |
-| Base explicativa da microssequência — **Explicação** na interface | Desenvolve conteúdo intelectual e documental: pressupostos, conceitos, relações, mecanismos, exemplos, limites e fontes suficientes ao objetivo. Pode ser produzida antes das unidades. No Estudo, também serve de apoio sob demanda. |
-| Desenho instrucional | Expressa a intenção sobre como apresentar e mobilizar conhecimento: evidência esperada, análise instrucional, componentes, prática e organização da experiência. |
-| Unidade de estudo | Realiza um episódio instrucional de exposição, exemplo, contraste, prática ou integração, com função delimitada. Sua extensão acompanha essa função. |
-| Unidade de análise instrucional | Identifica um conceito, relação, condição, procedimento ou operação semanticamente relevante, acompanhado no desenho. É um recorte operacional do curso, distinto da unidade de estudo, componente, palavra e unidade estatística de um estudo empírico. |
-| Configuração corrente | Intenção vigente, resolvida com o escopo, o modo e a origem de cada decisão. |
-| Configuração aplicada | Registro das decisões que orientaram a produção e gravação do conteúdo, operação chamada de materialização, com origem e motivo. |
-| Revisão autoral | Declaração da pessoa de que inspecionou a base salva do objeto. É reversível e pode ficar desatualizada após mudança material. |
+| Microssequência didática | Delimita um objetivo e a sequência necessária para desenvolvê-lo, considerando público, conhecimentos prévios e conteúdos a abordar. |
+| Base explicativa da microssequência — **Explicação** na interface | Desenvolve o texto-base e suas fontes, com as explicações necessárias ao objetivo. Pode ser produzida antes das unidades. No Estudo, também serve de apoio sob demanda. |
+| Desenho instrucional | Reúne escolhas sobre como explicar o conteúdo, propor atividades e organizar o percurso. |
+| Unidade de estudo | Organiza um trecho do percurso que explica, exemplifica ou propõe uma atividade com uma finalidade definida. Sua extensão acompanha essa finalidade. |
+| [Unidade de análise instrucional](desenho-instrucional-parametrizado.md) | Identifica um conhecimento a acompanhar no percurso, como uma relação ou operação. Permite reconhecer onde ele foi introduzido e utilizado. A unidade de estudo organiza a apresentação; a unidade de análise recorta o conhecimento. |
+| Configuração corrente | Escolhas que orientam a próxima produção ou revisão. Podem vir deste objeto ou de uma decisão mais abrangente. |
+| Configuração aplicada | Registro das decisões que orientaram a produção e gravação da unidade de estudo, operação chamada de materialização, com origem e motivo. |
+| Revisão autoral | Declaração da pessoa de que inspecionou o conteúdo salvo da explicação ou unidade. É reversível e pode ficar desatualizada após mudança material. |
 
 O curso reúne módulos; cada módulo contém lições, compostas por
 microssequências e suas unidades de estudo. Partes e lotes agrupam o trabalho
@@ -74,34 +74,19 @@ ao qual se aplica: curso, lição, microssequência ou unidade de estudo. A mesm
 definição é usada na interface, nos canais conversacionais e no banco de dados,
 para que seu significado não mude ao alternar entre formas de autoria.
 
-O catálogo contém doze parâmetros. Nove admitem os quatro escopos acima; os
-três parâmetros de cadência pertencem somente ao curso. Módulos permitem
-consulta contextual, mas não recebem atribuições desses parâmetros. A tabela
-preserva os nomes dos campos usados nos canais para facilitar sua relação com
-os controles e com uma integração.
+O [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente)
+reúne doze decisões. Nove podem ser definidas no curso, na lição, na
+microssequência ou na unidade; três organizam a cadência e pertencem somente ao
+curso. Módulos permitem consulta contextual, mas não recebem atribuições desses
+parâmetros. Direção editorial e política de componentes têm regras próprias.
+Os [campos técnicos](aralearn-contract.md#campos-de-configuração-nos-canais)
+relacionam cada decisão aos nomes, valores e limites aceitos nos canais.
 
-| Campo do catálogo | Decisão representada | Escopos | Valores admitidos e referência |
-| --- | --- | --- | --- |
-| `maximo_ideias_novas_por_unidade` | Máximo de unidades de análise instrucional introduzidas numa unidade expositiva ou mista; a contagem não mede dificuldade. | Curso, lição, microssequência, unidade | Inteiro 1–64; referência 2. |
-| `formas_de_explicacao` | Formas usadas para explicar cada unidade de análise introduzida, com motivo quando uma forma não se aplica. | Curso, lição, microssequência, unidade | Conjunto de definição, exemplo concreto, mecanismo, contraste, condição de aplicação, limite/exceção, exemplo resolvido e relação entre representações. Referência: primeiras quatro. |
-| `oportunidades_distintas_por_requisito` | Quantas oportunidades diferentes de prática devem atender a cada requisito de evidência de aprendizagem. | Curso, lição, microssequência, unidade | Inteiro 1–64; referência 2. |
-| `dimensoes_de_variacao_da_pratica` | Variação de caso/dados, contexto, tarefa, representação ou apoio, preservando a operação pertinente. | Curso, lição, microssequência, unidade | Conjunto não vazio dessas cinco dimensões; referência caso/dados. |
-| `alvo_palavras_conversa` | Extensão flexível das respostas na conversa autoral. | Curso, lição, microssequência, unidade | Inteiro 20–500; referência 120. |
-| `alvo_palavras_unidade` | Extensão editorial flexível da unidade, depois de satisfeita sua função. | Curso, lição, microssequência, unidade | Inteiro 40–1.000; referência 180. |
-| `distribuicao_da_pratica` | Organização de práticas intercaladas ou agrupadas. | Curso, lição, microssequência, unidade | `interleaved`, `clustered`; referência `interleaved`. |
-| `posicao_da_pratica` | Prática antes, depois ou antes e depois da explicação pertinente. | Curso, lição, microssequência, unidade | `before_explanation`, `after_explanation`, `before_and_after`; referência `after_explanation`. |
-| `alvo_microssequencias_por_parte` | Quantas microssequências existentes uma parte pretende reunir. | Curso | Inteiro 1–64; referência 1. |
-| `alvo_partes_por_lote` | Quantas partes preparar no lote autorizado. | Curso | Inteiro 1–64; referência 1. |
-| `frequencia_de_pausa` | Pausa por microssequência, parte, lote ou solicitação. | Curso | `each_microsequence`, `each_part`, `each_batch`, `on_request`; referência `each_part`. |
-| `preferencia_da_conversa` | Forma de discutir a decisão corrente. | Curso, lição, microssequência, unidade | `concise`, `debate`, `explanation`; referência `concise`. |
-
-Os valores de referência são hipóteses de produto, sujeitas à avaliação no
-contexto. Quando não há escolha atribuída, o servidor devolve modo `automatic`,
-valor `null` e origem `system_default`: a escolha contextual ainda precisa
-ocorrer antes da produção. Por exemplo, a referência de duas ideias novas por
-unidade não estabelece um limite automático para todos os cursos. O
-[modelo didático](modelo-didatico.md) explica a análise e a progressão do
-conteúdo que orientam essa decisão.
+Uma decisão automática delega a escolha conforme o conteúdo. Por exemplo, um
+curso pode deixar ao assistente quantas ideias novas desenvolver em cada
+unidade. O valor continua pendente até a produção, quando a escolha e seu motivo
+são registrados. Um valor de referência do produto, como duas ideias, não se
+torna um limite aplicado por ausência de escolha.
 
 Cada escolha registrada, chamada de **atribuição**, conserva parâmetro,
 escopo, modo, origem e justificativa. A **atribuição local** pertence ao objeto
@@ -123,8 +108,8 @@ aplicam a prioridade entre atribuições.
 
 O [painel de parâmetros](../src/ui/CourseDesignPanel.js) apresenta valor, origem, alcance, justificativa, limites e, na unidade, configuração aplicada. Retirar a atribuição local restaura a resolução das demais decisões do caminho (`clear_parameter`); delegar o parâmetro pede uma escolha contextual (`delegate_parameter`). Salvar intenção altera a orientação para a próxima produção ou revisão solicitada. O conteúdo salvo e seu registro aplicado só mudam mediante uma operação de conteúdo pertinente.
 
-O registro expresso das aplicações de unidades existentes descreve o conteúdo
-realizado e conserva os requisitos planejados, inclusive prática futura ainda
+O registro das aplicações em unidades existentes descreve como o conteúdo
+foi organizado e conserva os requisitos planejados, inclusive prática futura ainda
 ausente ou incompleta. Aplicar configuração e calibração a essas unidades pode
 acompanhar essa declaração fiel, preservando texto, fontes e a declaração
 anterior de revisão. Se o desenho aplicado mudar materialmente, essa
@@ -188,25 +173,25 @@ O foco **Ciclo completo** desenvolve o planejamento, a explicação e o desenho;
 **Cadência** define como agrupar o trabalho: microssequência, parte ou lote. Os alvos de tamanho da parte/lote não mudam a quantidade curricular, a função da unidade ou a frequência de pausa. Limites de transporte podem exigir várias chamadas para preservar um recorte coerente; não justificam reduzir conteúdo necessário.
 
 **Pontos de revisão** indicam o que inspecionar ao longo do trabalho: mapa,
-base ou unidades. A frequência de pausa tem um parâmetro próprio. Defini-los não marca um objeto como revisado, não altera visibilidade e não exige comentário vazio. **Diálogo** define concisão, debate ou explicação e um alvo flexível de extensão da conversa. Conversa curta preserva as decisões substantivas e a suficiência do conteúdo didático.
+base ou unidades. A frequência de pausa tem um parâmetro próprio. Escolher esses pontos organiza a inspeção; a declaração de revisão depende da decisão posterior sobre cada objeto, e o acesso conserva sua política própria. **Diálogo** define concisão, debate ou explicação e um alvo flexível de extensão da conversa. Conversa curta preserva as decisões substantivas e a suficiência do conteúdo didático.
 
-Os padrões pessoais são acessíveis em **Configurações → Preferências de autoria** e nos canais conectados. O acordo de um trabalho em andamento conserva uma cópia dessas escolhas, chamada de mandato. Cada leitura informa o padrão, a exceção expressa aplicável e o fluxo acordado. Uma alteração pessoal posterior é informada e conserva o mandato em andamento; incorporá-la ao trabalho depende de uma mudança expressa do acordo. Perfis continuam cópias explícitas. As escolhas de foco, cadência, revisão e diálogo permanecem independentes. A resolução do acordo está em [Parâmetros de autoria](parametros-de-autoria.md#resolução-com-curso-e-mandato).
+Os padrões pessoais são acessíveis em **Configurações → Preferências de autoria** e nos canais conectados. O acordo de um trabalho em andamento conserva uma cópia dessas escolhas. Seu mandato delimita o que a pessoa autorizou produzir, com o escopo e as restrições pertinentes. Cada leitura informa o padrão, a exceção expressa aplicável e o fluxo acordado. Uma alteração pessoal posterior é informada e conserva o mandato em andamento; incorporá-la ao trabalho depende de uma mudança expressa do acordo. Aplicar um perfil copia suas escolhas para o curso. As escolhas de foco, cadência, revisão e diálogo permanecem independentes. A resolução do acordo está em [Parâmetros de autoria](parametros-de-autoria.md#resolução-com-curso-e-mandato).
 
 ## Intenção, aplicado, edição e revisão
 
-No detalhe de uma decisão, a interface e os canais mostram rótulo, significado, valor efetivo, origem, alcance e motivo. Havendo conteúdo, mostram também o aplicado naquela produção ou a ausência desse registro. Um exemplo de estado legível é: “Para próximas produções: definição e contraste; fixado nesta microssequência” e “Aplicado nesta unidade: definição e exemplo; escolha contextual da produção anterior”. Os valores são ilustrativos, não prescrições universais.
+No detalhe de uma decisão, a interface e os canais mostram rótulo, significado, valor efetivo, origem, alcance e motivo. Havendo conteúdo, mostram também a configuração aplicada naquela produção ou a ausência desse registro. Um exemplo de estado legível é: “Para próximas produções: definição e contraste; fixado nesta microssequência” e “Aplicado nesta unidade: definição e exemplo; escolha contextual da produção anterior”. Os valores são ilustrativos, não prescrições universais.
 
-Uma mudança de intenção afeta a direção futura. Aplicar ao conteúdo existente é outra operação, com recorte e impacto declarados. A configuração aplicada anterior não é reescrita para coincidir com a intenção nova. A proveniência, registro da origem e das intervenções no conteúdo, distingue
+Uma mudança de intenção afeta a direção futura. Aplicar ao conteúdo existente é outra operação, com recorte e impacto declarados. Mudar apenas a intenção conserva a configuração aplicada anterior. A proveniência, registro da origem e das intervenções no conteúdo, distingue
 geração, edição manual e aplicação solicitada; texto redigido pelo assistente não recebe autoria humana por causa de um clique posterior.
 
 | Estado/ação | O que afirma | O que precisa permanecer separado |
 | --- | --- | --- |
-| Rascunho local | Existem alterações pendentes neste dispositivo. | Base salva, revisão e conteúdo acessível a terceiros. |
+| Rascunho local | Existem alterações pendentes neste dispositivo. | Conteúdo salvo, revisão e conteúdo acessível a terceiros. |
 | Salvar edição | A mudança autorizada foi persistida, com intervenção registrada. | Declaração de revisão. |
 | Registrar observação | Existe comentário ancorado ao objeto. | Correção do texto e aplicação da intenção. |
-| Marcar revisão | A pessoa declara inspeção da base salva identificada. | Prova de leitura, correção, eficácia e autorização de acesso. |
+| Marcar revisão | A pessoa declara inspeção do conteúdo salvo identificado. | Prova de leitura, correção, eficácia e autorização de acesso. |
 | Retirar revisão | A declaração foi retirada reversivelmente. | Conteúdo salvo e direitos de leitura/arquivo. |
-| Revisão desatualizada | A base materialmente relevante difere daquela inspecionada. | Apagamento da evidência histórica ou aprovação automática do conteúdo novo. |
+| Revisão desatualizada | O conteúdo ou os dados pertinentes à revisão mudaram após a inspeção. | Apagamento da evidência histórica ou aprovação automática do conteúdo novo. |
 | Publicar/compartilhar acesso | O proprietário concede acesso expresso ao conteúdo completo salvo. | Edição local, gravação parcial e arquivos sem direito. |
 
 Uma alteração material na base, fonte ou requisito pode exigir reinspeção das unidades relacionadas. O sistema usa vínculos conhecidos e comunica limites da análise de impacto sem alegar compreensão semântica perfeita. Marcar a base não marca as unidades. Diante de edição pendente, a pessoa salva ou descarta antes de marcar revisão. Quando um registro de revisão se refere ao conjunto de uma microssequência, ele conserva esse alcance; sua existência não equivale a novas declarações individuais sobre cada objeto.
@@ -214,7 +199,7 @@ Uma alteração material na base, fonte ou requisito pode exigir reinspeção da
 A leitura combina acesso autorizado com conteúdo completo salvo. A política
 `reviewed_only`, quando expressamente ativada, exige também revisão atual do
 objeto. As [regras de revisão e acesso no banco](../supabase/migrations/20260909025232_contextual_content_review_access.sql)
-implementam essa verificação; a [guia de acesso ao curso](guia-professor-autor.md)
+implementam essa verificação; o [guia de acesso ao curso](guia-professor-autor.md)
 explica a escolha do proprietário e seu efeito para quem estuda.
 
 ## Localização e continuidade da interface

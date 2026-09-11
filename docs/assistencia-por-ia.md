@@ -1,21 +1,13 @@
 # Assistência por modelo de linguagem
 
-O AraLearn usa modelos de linguagem para ajudar a planejar cursos, desenvolver
-explicações, escolher representações e preparar atividades. A pessoa autora
-define o objetivo, orienta a produção e inspeciona o conteúdo e sua relação com
-as fontes. O material permanece acessível e revisável no aplicativo entre as
-sessões de trabalho.
+Um modelo de linguagem gera texto a partir das instruções e do contexto que recebe. No AraLearn, essa capacidade pode ajudar a planejar um curso, desenvolver explicações e preparar atividades. A pessoa autora define a finalidade, discute a proposta e inspeciona o conteúdo e sua relação com as fontes.
 
-Na autoria por conversa, um assistente externo se conecta ao AraLearn para
-consultar e alterar o curso pelas [integrações de autoria](#três-formas-de-assistência). A
-interface também permite editar diretamente e pedir assistência sobre um trecho.
-O conteúdo estruturado descreve o que será apresentado; os
-[contratos](aralearn-contract.md) verificam sua forma e as operações permitidas.
-A conferência factual e pedagógica exige inspecionar o material e as fontes,
-mesmo quando essa validação técnica termina sem erros.
+A assistência pode ocorrer numa conversa externa conectada ou sobre um trecho aberto no próprio aplicativo. O curso permanece salvo e pode ser retomado entre sessões. Os fluxos diferem no que o assistente recebe, no alcance da alteração e na forma de examinar o resultado antes de gravá-lo.
+
+Para apresentar as propostas, o AraLearn usa conteúdo estruturado: os dados indicam, por exemplo, qual texto pertence a um parágrafo ou quais alternativas compõem uma atividade. Os [contratos de conteúdo](aralearn-contract.md) definem os campos e as relações aceitos. Essa conferência técnica permite verificar se a proposta pode ser utilizada pelo sistema; examinar sua correção factual e pedagógica exige ler o material e as fontes.
 
 A supervisão precisa ser descrita pelo controle exercido em cada fluxo. O
-referencial de [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao), p. 69, distingue
+referencial do Ministério da Educação ([Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao), p. 69) distingue
 *human-in-the-loop*, com decisão humana necessária antes de efeitos relevantes,
 de *human-on-the-loop*, com acompanhamento e possibilidade de intervenção.
 No AraLearn, a autorização delimita a produção e os pontos de revisão dão acesso
@@ -25,26 +17,19 @@ gravação. Essa configuração determina quais efeitos dependem de revisão pr�
 
 ## Três formas de assistência
 
-O AraLearn oferece três integrações relacionadas, mas distintas:
+No curso, uma unidade apresenta uma relação ou uma atividade; uma microssequência reúne um percurso com objetivo próprio dentro de uma lição. O [modelo didático](modelo-didatico.md) explica essa organização, usada para delimitar o trabalho da assistência.
 
-- **Assistência por IA** aparece dentro da unidade, da microssequência e da
-  lição e usa OpenAI, Gemini ou DeepSeek, escolhidos pela pessoa;
-- **Model Context Protocol (MCP)** é o protocolo pelo qual um cliente de IA
-  compatível descobre e utiliza as tarefas de autoria;
-- **Actions/OpenAPI** oferece essas tarefas a um assistente personalizado no
-  [ChatGPT](https://chatgpt.com), uma aplicação externa ao AraLearn, por
-  operações descritas em um arquivo OpenAPI.
+| Caminho | Onde ocorre e como se usa |
+| --- | --- |
+| **Assistência por IA** | Conversa dentro de Estudo sobre a unidade, microssequência ou lição aberta. A pessoa escolhe entre os provedores disponíveis: OpenAI, Gemini ou DeepSeek. |
+| **Model Context Protocol (MCP)** | Um cliente externo compatível descobre as tarefas de autoria e as utiliza sobre o curso, com autorização da conta. |
+| **Actions/OpenAPI** | As mesmas tarefas são oferecidas por operações descritas em OpenAPI, um formato de descrição de serviços. O cliente de testes atual é o [ChatGPT](https://chatgpt.com), uma aplicação externa, por meio de Actions. |
 
-Os três caminhos obedecem às mesmas regras do curso, com credenciais e sessões
-próprias. O catálogo conversacional inclui criação, cópia, exclusão e acesso a
-cursos. Dados do perfil pessoal, avatar e exclusão da conta continuam na
-interface autenticada.
+Os canais têm credenciais e sessões próprias. Uma **credencial** permite ao serviço reconhecer o acesso autorizado; uma **sessão** conserva o contexto de uma interação. A autorização de um canal não conecta automaticamente os demais.
 
-Separar as tarefas de autoria dos modelos é uma escolha de arquitetura que
-favorece o uso de clientes diferentes. A integração concreta depende dos
-recursos e da autenticação de cada cliente; as provas de MCP e Actions têm
-alcances próprios. Os provedores da assistência interna são os três adaptadores
-listados acima.
+A assistência interna utiliza adaptadores, as partes do código que convertem o pedido para o formato de cada provedor. Os três adaptadores implementados são os listados acima. Nas conversas externas, a separação entre tarefas de autoria e modelos favorece o uso de clientes diferentes, cuja compatibilidade depende dos recursos e da autenticação disponíveis.
+
+O catálogo conversacional inclui criação, cópia, exclusão e acesso a cursos. Perfil pessoal, foto e exclusão da conta são cuidados pela interface autenticada. Os guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md) detalham configuração e alcance de cada canal.
 
 ## A sessão de assistência por IA
 
@@ -64,7 +49,7 @@ Esse alvo é fixado ao iniciar a sessão, que progride assim:
 Fechar a sessão apaga mensagens, configuração e qualquer proposta ainda não
 aplicada. Um resultado já aceito permanece no rascunho; a conversa não entra no
 conteúdo do curso nem no [armazenamento do servidor ou do dispositivo](persistencia-relacional.md).
-Os recibos de gravação também não incluem a conversa.
+Os comprovantes de cada gravação, chamados de recibos, também não incluem a conversa.
 
 ### Escopos de escrita
 
@@ -107,9 +92,7 @@ pessoal ou informação sensível.
 
 ## Descoberta e geração de componentes
 
-Quando a proposta usa componentes didáticos, o AraLearn reutiliza
-`consultarComponentesDidaticos`, que identifica representações adequadas e
-fornece o contrato de cada componente. Ao preparar a prévia, a sessão descobre
+Uma proposta precisa escolher uma forma de apresentar o conteúdo e receber respostas. Os [componentes didáticos](componentes-didaticos.md), como tabela ou atividade de lacunas, definem essas possibilidades. O AraLearn consulta seus contratos para informar ao modelo quais campos precisa preencher. No código, essa consulta é feita por `consultarComponentesDidaticos`. Ao preparar a prévia, a sessão descobre
 os componentes, obtém seus contratos, gera a proposta e a valida antes da
 inspeção e da aplicação ao rascunho.
 
@@ -126,7 +109,7 @@ prévia e da decisão da pessoa.
 
 ## Aplicação ao rascunho e concorrência
 
-Antes de alterar o rascunho, o AraLearn prepara a candidata, verifica-a com o
+A proposta preparada para inspeção é uma candidata à alteração. Antes de mudar o rascunho, o AraLearn verifica essa candidata com o
 mesmo mecanismo que apresenta a unidade no estudo e aguarda **Aplicar ao rascunho**. Falha
 de geração, validação ou apresentação preserva o conteúdo corrente. Uma
 candidata aceita e válida substitui somente o rascunho do alvo; a gravação é
@@ -173,10 +156,7 @@ consulta o estado salvo, prepara o trabalho autorizado e o grava por operações
 que distinguem leitura e escrita. A produção das unidades de estudo a partir
 do planejamento é chamada de materialização.
 
-O assistente localiza objetos por título, posição ou referência humana. A camada
-confiável resolve identidades e concorrência. Assim, a conversa pode coordenar
-uma mudança e um próximo passo sem transformar detalhes do banco em trabalho da
-pessoa autora.
+O assistente localiza objetos por título, posição ou referência humana. O serviço identifica o item e verifica se ele mudou desde a leitura. Essa conferência protege a gravação sem exigir que a pessoa autora construa identificadores internos ou versões do banco.
 
 MCP usa OAuth 2.1 e Actions mantém sua própria conexão OAuth. Esse mecanismo
 permite autorizar o cliente sem lhe entregar a senha da conta. Actions descreve
@@ -186,70 +166,17 @@ Actions](autoria-actions.md) desenvolvem as diferenças de transporte.
 
 ## Planejamento, fontes e revisão
 
-O planejamento organiza módulos, lições e microssequências num mapa curricular,
-que pode ser desenvolvido por recortes coerentes. A explicação de uma
-microssequência reúne o conteúdo desenvolvido, seus pressupostos, relações e
-fontes; pode ser produzida e revista antes das unidades, inclusive com o mapa
-em rascunho. O [modelo didático](modelo-didatico.md) relaciona mapa, explicação
-e percurso de estudo.
+O [guia da pessoa autora](guia-professor-autor.md) desenvolve as decisões sobre mapa, explicação, unidades e fontes. O [guia por conversa](criar-cursos-pelo-chat.md) mostra como pedir, inspecionar e ajustar o trabalho com um assistente externo.
 
-As preferências distinguem o foco **Conteúdo**, dedicado às explicações e
-fontes, do **Ciclo completo**, que inclui também desenho e unidades. Cadência,
-pontos de revisão e diálogo são escolhas independentes. Quando o trabalho
-inclui unidades, partes agrupam sua produção em lotes operacionais. O assistente
-prepara o lote, apresenta a progressão e produz dentro da autorização vigente,
-reutilizando as explicações salvas. Mudar os limites de uma parte conserva o
-currículo.
+Aprovar o mapa confirma a organização salva que foi inspecionada. Autorizar produção delimita o que o assistente pode fazer. Declarar revisão registra uma decisão humana sobre conteúdo já salvo. Essas decisões têm efeitos próprios: uma autorização de continuidade permite avançar até o limite combinado, mas não fabrica uma declaração de inspeção.
 
-Aprovar o mapa confirma a versão completa inspecionada. Autorizar produção
-define o que o assistente pode fazer. Declarar revisão registra a inspeção
-humana de conteúdo já salvo. Essas decisões permanecem distintas, e os
-[pontos de revisão](explicacao-e-revisao-humana.md) dão acesso ao objeto e às
-fontes que a pessoa precisa conferir. Uma autorização de continuidade permite
-avançar entre lotes até o limite combinado ou uma decisão substantiva pendente.
+A configuração também distingue o que se deseja do que foi realizado. A **intenção corrente** orienta o próximo trabalho; a **configuração aplicada** registra as escolhas usadas na produção de uma unidade. No automático, o assistente escolhe valores conforme conteúdo e público e registra o motivo. Fixações da autoria e condições de pesquisa prevalecem. O [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) explica a relação entre essas escolhas.
 
-Antes de produzir, o assistente reúne configuração, fontes e repertório acumulado do
-recorte. Ele diferencia ideias introduzidas, ideias estabelecidas apenas usadas
-e retomadas deliberadas. A resposta coordenadora informa o resultado, abre o
-destino pertinente e formula no máximo uma decisão seguinte.
+Na assistência interna, o aplicativo lê a configuração do recorte na mesma versão do conteúdo original. Ele não preenche valores pendentes nem resolve por conta própria a herança, isto é, a escolha vinda de um nível mais amplo do curso. Se a versão mudou, pede sincronização e reabertura para que conteúdo e configuração sejam examinados juntos. Um conflito de configuração precisa ser resolvido antes da proposta de edição.
 
-A configuração orienta conteúdo, prática, conversa e cadência de produção. O
-[desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
-explica essas escolhas; o [catálogo de parâmetros](../src/domain/courseDesignParameters.js)
-define seus tipos, limites e escopos.
+Fontes e âncoras — localizações dos trechos utilizados — ficam no curso com os [vínculos que registram seu uso](fontes-e-citacoes.md). Um arquivo anexado à conversa só se torna uma fonte persistente quando essa intenção estiver clara. Em outra sessão, o assistente pode reler a fonte cadastrada; a memória da conversa não substitui esse registro.
 
-Automático é uma intenção sem valor numérico implícito. Antes de materializar,
-o assistente escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
-função, público e planejamento. Fixações da autoria e condições de pesquisa
-prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
-O registro aplicado à unidade conserva os valores e motivos daquela decisão. Alterar a
-configuração corrente não reescreve essa evidência histórica.
-
-Ao abrir o minichat, o aplicativo lê a configuração efetiva do foco pela mesma
-revisão do conteúdo original. Ele não calcula herança nem preenche valores
-pendentes. Se a revisão divergir, pede sincronização e reabertura; a leitura não
-substitui a versão original usada para proteger o rascunho. A conversa recebe fixações, delegações,
-motivos e conflitos. Uma proposta de edição não segue enquanto houver conflito
-de configuração.
-
-Os alvos de palavras por resposta de autoria e por unidade de estudo orientam a
-extensão, mas não são limites e não autorizam esconder decisões ou comprimir
-conteúdo necessário.
-
-Fontes e suas âncoras — localizações dos trechos usados — ficam no curso salvo,
-com os [vínculos que indicam como sustentam o conteúdo](fontes-e-citacoes.md).
-Um arquivo anexado à conversa só se torna
-fonte persistente quando essa intenção está clara. Em outra sessão, a
-assistência pode localizar a fonte pelo título e reler suas âncoras; memória da
-conversa e novo upload não substituem esse estado.
-
-Uma revisão começa pelas observações abertas e inclui outras unidades quando a
-mudança afeta progressão, pré-requisitos, exemplos, prática ou transições. O
-assistente propõe um conjunto coerente e aplica as correções autorizadas. A
-releitura confirma o conteúdo e as versões de observações efetivamente atendidas;
-a [reconciliação da tentativa](auditoria-de-conformidade-instrucional.md#aplicação-e-reinspeção)
-permite conferir uma resposta perdida sem reaplicar a alteração. A declaração
-humana de revisão continua sendo uma decisão expressa.
+Uma correção começa pela leitura do alvo, das observações e dos pontos do curso afetados. Depois da alteração autorizada, a releitura confere o conteúdo salvo e quais observações foram efetivamente atendidas. A [recuperação da mesma tentativa](auditoria-de-conformidade-instrucional.md#aplicação-e-reinspeção) permite conferir uma resposta perdida antes de outra gravação. A declaração humana de revisão permanece uma decisão separada.
 
 ## Limites de interpretação
 

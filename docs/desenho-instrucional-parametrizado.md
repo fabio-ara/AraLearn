@@ -3,7 +3,8 @@
 Os parâmetros do AraLearn registram decisões sobre como explicar, propor
 práticas, distribuir o texto e organizar a produção de um curso. A pessoa
 autora pode defini-los, delegar escolhas ao assistente e comparar a intenção
-atual com a configuração aplicada ao conteúdo salvo. A interface e os canais
+atual com a configuração aplicada, registro das escolhas usadas na produção
+das unidades salvas. A interface e os canais
 de autoria por [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md)
 usam as mesmas definições.
 
@@ -11,27 +12,22 @@ Esses parâmetros tornam o [modelo didático](modelo-didatico.md) inspecionável
 em escolhas locais. Seus valores são decisões de projeto ou condições de
 pesquisa; a avaliação do material e da aprendizagem exige evidências próprias.
 
-## Acesso e organização
-
-Na inspeção do curso, o menu de tarefas abre **Parâmetros** e **Fontes** diretamente.
-O ícone da unidade abre os ajustes daquele escopo sem perder a posição da
-inspeção. O painel mantém dimensões e ações estáveis, apresenta um grupo por vez
-e revela a definição, origem e limites ao abrir uma decisão.
-
-**Explicações** e **Prática** reúnem decisões pedagógicas; **Leitura e estilo**
-contém a extensão do material e a direção editorial. **Produção** organiza
-partes, lotes e pausas; **Conversa** regula as respostas do assistente.
-**Recursos** delimita componentes permitidos, e **Perfis** reutiliza preferências. Essa organização não
-altera o significado dos parâmetros nem converte escolhas operacionais em
-medidas de aprendizagem.
-
-O controle de alcance identifica curso, lição, microssequência ou unidade e
-permite navegar entre os escopos. Rascunhos permanecem ao trocar de grupo;
-fechar ou navegar com alterações pendentes exige salvá-las ou descartá-las.
-Preferências do aplicativo, como aparência e sincronização deste dispositivo,
-continuam na tela inicial, em Conta e aparência.
-
 ## O que constitui um parâmetro
+
+Para compreender as escolhas, considere uma unidade sobre média aritmética.
+O autor pode querer introduzir a relação entre total e quantidade de
+observações, desenvolvê-la por exemplo e pedir uma interpretação num caso novo.
+A relação acompanhada é uma **unidade de análise**; o que a prática precisa
+solicitar para examinar o objetivo forma um **requisito de evidência**. Esses
+recortes são decisões do planejamento, justificadas no
+[protocolo de unidade de análise](#protocolo-de-unidade-de-análise).
+
+Um **escopo** é o trecho a que a escolha se aplica: curso inteiro, lição,
+microssequência ou unidade. **Herdar** significa usar a orientação de um nível
+mais amplo quando não há uma definição própria naquele ponto. Por exemplo,
+uma orientação do curso pode chegar às suas unidades. No modo automático,
+a escolha ainda será feita conforme a tarefa; no modo fixo, a pessoa registra
+um valor que deve ser respeitado.
 
 Um parâmetro identifica uma decisão ajustável e define como representá-la.
 O [catálogo canônico](../src/domain/courseDesignParameters.js) registra:
@@ -48,7 +44,8 @@ No modo automático, o assistente precisa escolher cada valor conforme público,
 conteúdo, função, planejamento e escopo admitido pelo catálogo. A ausência de
 escolha é explícita; não representa um conjunto fixo de valores. Herdar conserva a intenção
 do escopo anterior, enquanto uma escolha fixa conserva o valor deliberado.
-A produção registra a calibração contextual junto ao conteúdo. Evidência
+A produção registra a **calibração**, escolha de valores e justificativas
+conforme a tarefa, junto ao conteúdo. Evidência
 externa pode justificar a investigação de uma dimensão, mas não estabelece
 automaticamente o melhor valor para toda população, conteúdo ou tarefa. Uma
 definição deliberadamente fixada pelo pesquisador prevalece no escopo pertinente.
@@ -58,37 +55,32 @@ relevantes para ergonomia e segurança. A quantidade de partes organiza a
 produção, mas não é meta pedagógica. As preferências de parte, lote e pausa têm
 escopo de curso e não viram atribuições locais de uma unidade de estudo.
 
-Ao revisar uma unidade já produzida, a leitura recupera as três escolhas de
-organização da produção — tamanho da parte, tamanho do lote e frequência de
-pausa — registradas em sua aplicação quando não existe uma atribuição vigente. Isso permite
-reproduzir a mesma configuração sem transformar aquela escolha automática em
-preferência do curso. A consulta do curso ou da microssequência continua indicando
-ausência de escolha enquanto ela não for definida nesses escopos. Uma atribuição
-vigente, inclusive uma nova fixação humana, prevalece na resolução; a aplicação
-anterior continua inspecionável separadamente e não é reescrita por essa leitura.
-
 ## Catálogo corrente
 
 O catálogo 1.2.1 contém doze decisões organizadas em explicações, prática, leitura e estilo,
 conversa e produção. Interface, MCP, Actions e banco usam essas mesmas definições.
-Comandos não criam definições livres.
+Cada escolha possui uma definição comum, usada para consultar e salvar os valores.
+Os [identificadores técnicos](#identificadores-para-integração) permitem reconhecer
+essas mesmas decisões nos dados trocados pelos canais de autoria.
 
 | Parâmetro | Forma e exemplos de valores | Escopos | Decisão representada |
 | --- | --- | --- | --- |
-| `new_analysis_unit_ceiling_per_expository_study_unit` | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
-| `required_explanation_forms` | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso, lição, microssequência e unidade de estudo | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
-| `minimum_distinct_practice_opportunities_per_evidence_requirement` | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | quantidade mínima de oportunidades distintas por requisito de evidência |
-| `required_practice_variation_dimensions` | conjunto; por exemplo, caso, contexto, representação ou apoio | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
-| `authoring_chat_response_word_target` | inteiro; por exemplo, `80` ou `120` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para uma resposta de autoria |
-| `study_unit_content_word_target` | inteiro; por exemplo, `140` ou `180` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para o conteúdo de uma unidade de estudo |
-| `practice_distribution` | intercalada ou agrupada | curso, lição, microssequência e unidade de estudo | organização das práticas na sequência |
-| `practice_position` | antes, depois ou antes e depois | curso, lição, microssequência e unidade de estudo | posição da prática em relação à explicação |
-| `authoring_part_microsequence_target` | inteiro | curso | quantidade pretendida de microssequências por parte |
-| `authoring_batch_part_target` | inteiro | curso | quantidade pretendida de partes por lote |
-| `authoring_pause_frequency` | preferência enumerada | curso | pontos de discussão e revisão durante a produção |
-| `authoring_chat_interaction` | concisão, debate ou explicação | curso, lição, microssequência e unidade de estudo | forma da conversa de autoria |
+| Teto de novidades na unidade expositiva | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
+| Formas de explicação | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso, lição, microssequência e unidade de estudo | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
+| Mínimo de oportunidades de prática | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | quantidade mínima de oportunidades distintas por requisito de evidência |
+| Variação da prática | conjunto; por exemplo, caso, contexto, representação ou apoio | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
+| Extensão da resposta na conversa | inteiro; por exemplo, `80` ou `120` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para uma resposta de autoria |
+| Extensão da unidade de estudo | inteiro; por exemplo, `140` ou `180` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para o conteúdo de uma unidade de estudo |
+| Distribuição da prática | intercalada ou agrupada | curso, lição, microssequência e unidade de estudo | organização das práticas na sequência |
+| Posição da prática | antes, depois ou antes e depois | curso, lição, microssequência e unidade de estudo | posição da prática em relação à explicação |
+| Tamanho pretendido da parte | inteiro | curso | quantidade pretendida de microssequências por parte |
+| Tamanho pretendido do lote | inteiro | curso | quantidade pretendida de partes por lote |
+| Frequência de pausa | preferência enumerada | curso | pontos de discussão e revisão durante a produção |
+| Forma da conversa de autoria | concisão, debate ou explicação | curso, lição, microssequência e unidade de estudo | forma da conversa de autoria |
 
-Os quatro primeiros parâmetros alteram decisões pedagógicas observáveis. Os dois
+Os quatro primeiros parâmetros registram como desenvolver os recortes de
+conhecimento e oferecer prática. Distribuição e posição acrescentam decisões
+sobre a sequência. Os dois
 alvos de palavras tornam a extensão editorial comparável sem transformá-la em medida de
 qualidade. Um alvo de palavras não é mínimo nem máximo: respostas e unidades
 podem ultrapassá-lo quando a decisão ou o conteúdo exigirem. Ele nunca autoriza
@@ -126,6 +118,13 @@ tratado. Quando uma forma deliberadamente exigida não se aplica, a
 produção registra a forma e uma justificativa breve. A lista completa não é um
 roteiro obrigatório para toda unidade.
 
+Uma definição esclarece o significado; um exemplo mostra um caso; um mecanismo
+explica como o resultado se produz. Um contraste torna uma diferença relevante
+visível. No caso da média, mostrar a divisão e comparar o resultado com os
+valores observados cumprem funções diferentes, mesmo que apareçam no mesmo
+parágrafo. A escolha de formas registra o desenvolvimento pretendido, que
+continua exigindo inspeção do texto.
+
 ### Oportunidades e variação da prática
 
 Um **requisito de evidência** descreve a operação e as condições de uma tarefa
@@ -153,15 +152,23 @@ si um mínimo de oportunidades distintas.
 recorte de conhecimento necessário para explicar, reconhecer, relacionar ou
 executar a operação pretendida para um público e um repertório declarados.
 Pode ser conceito, definição, relação, regra, condição ou distinção. Essas
-descrições ajudam a justificar o recorte; não formam uma ontologia universal
+descrições ajudam a justificar o recorte; não formam uma classificação universal do conhecimento
 nem exigem uma taxonomia específica de cada disciplina.
 
-O recorte pertence ao desenho do curso. Não é uma palavra, token, dimensão de
-vetor, frase, componente didático ou entidade observada na mente. A unidade de
+O recorte pertence ao desenho do curso. Ele não é identificado pela quantidade
+de palavras ou frases, pelo formato visual ou pelas unidades numéricas usadas
+internamente por um modelo de linguagem; depende do conhecimento necessário
+à tarefa. A unidade de
 estudo organiza a apresentação e a experiência: pode desenvolver vários
 recortes, e um recorte pode ser desenvolvido ao longo de várias unidades.
 
 ### Como recortar e quando parar
+
+**Codificar** significa identificar trechos e atribuir a eles as categorias do
+protocolo, com justificativa. Por exemplo, o primeiro desenvolvimento da relação
+entre total, quantidade e média recebe a categoria de introdução; usá-la num
+cálculo posterior pode receber a de uso. O registro permite que outro revisor
+localize o trecho e examine a decisão.
 
 1. Fixar finalidade, público, idioma, conhecimentos explicitamente pressupostos
    e contexto anterior. Examinar o trecho com sua tarefa e seu retorno, além
@@ -214,7 +221,7 @@ Uma retomada de pressuposto não aumenta a novidade declarada. Se a suposição
 estava errada, corrigir o repertório e recalcular as introduções; não conservar
 a classificação para atender um número fixado. Desenvolvimento satisfatório
 depende da tarefa, das formas aplicáveis e de revisão semântica; nenhuma
-cardinalidade o certifica.
+contagem o certifica.
 
 ### Codificação assistida por modelo de linguagem
 
@@ -246,8 +253,8 @@ nenhuma correspondência é encontrada: o resultado é comparação não resolvi
 não concordância zero ou perfeita.
 Repetições do mesmo modelo não são codificadores humanos independentes.
 Um estudo de confiabilidade exigirá corpus próprio, codificação humana
-independente e regra de alinhamento/adjudicação e denominador definidos antes
-da codificação. Não foi realizado
+independente e uma regra para alinhar os recortes e resolver discordâncias, com base de
+comparação definida antes da codificação. Não foi realizado
 esse estudo nesta etapa, nem estimada validade cognitiva.
 
 O [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md) torna
@@ -336,8 +343,10 @@ conhecidos, registrar medição ausente; não preencher pixels por estimativa.
 Coeficientes exploratórios por componente não substituem a observação nem
 fundamentam limite de geração.
 
-Se o desenvolvimento ultrapassar o alvo editorial, redistribuir em unidades
-coerentes e reconsiderar a prática entre elas. Preservar relações, exemplos,
+Se o desenvolvimento ultrapassar o alvo editorial, examinar sua organização.
+Manter uma unidade mais extensa pode ser adequado para ensinar uma relação que
+precisa permanecer junta; dividir faz sentido quando melhora a progressão e
+permite reconsiderar a prática entre as unidades. Preservar relações, exemplos,
 condições e ligação com a sequência. Limite de transporte exige continuação ou
 erro recuperável; nenhuma medida autoriza resumir ou truncar conhecimento.
 Comparações entre cópias que variam apenas a distribuição conservam inventário e
@@ -345,9 +354,9 @@ repertório. Fusão ou divisão de recortes muda a condição e deve ser declara
 
 ## Dimensões mantidas fora do catálogo
 
-Planejamento curricular global antes dos lotes, aprovação apenas do que estava
-inspecionável e fronteira pública em linguagem humana são invariantes do fluxo,
-não parâmetros de uma condição. Distribuição editorial, explicações e prática
+O planejamento do mapa antes dos lotes, a aprovação limitada ao material
+inspecionável e a comunicação compreensível das decisões são compromissos do
+fluxo de autoria. Eles não são parâmetros ajustáveis de uma condição. Distribuição editorial, explicações e prática
 podem variar pela configuração existente. Uma heurística pedagógica não se torna
 automaticamente entidade ou controle novo.
 
@@ -377,7 +386,7 @@ desenho conforme público, tarefa, conteúdo e função.
 Quando uma pessoa fixa uma condição, essa decisão explícita prevalece no escopo
 pertinente. Remover a definição local restaura a herança do escopo ancestral
 aplicável. Sem valor definido nessa cadeia, permanece a intenção automática,
-a ser calibrada no contexto; a remoção não cria uma narrativa histórica.
+a ser calibrada no contexto; a escolha aplicada a uma produção anterior permanece registrada separadamente.
 
 ### Exemplo de herança
 
@@ -396,7 +405,7 @@ aprendizagem pretendidos permanecem no plano geral.
 
 Salvar uma parte apenas agrupa microssequências já previstas no mapa curricular.
 O refinamento interno do repertório não altera silenciosamente cobertura, ordem
-ou profundidade aprovadas. A camada confiável resolve identidades e evita
+ou profundidade aprovadas. O serviço resolve as identidades dos registros e evita
 duplicação; o assistente distingue introdução, uso de conhecimento estabelecido e
 retomada.
 
@@ -412,8 +421,10 @@ substitua silenciosamente uma condição de pesquisa.
 Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
 de interpretações. Ele complementa os dois alvos quantitativos com orientação
 qualitativa. O assistente aplica a direção na fase editorial pertinente sem alterar o
-repertório semântico. Se o conteúdo necessário não couber no formato preferido
-ou em torno do alvo de palavras, cria mais unidades de estudo coerentes.
+repertório semântico. Se o conteúdo necessário ultrapassar o alvo de palavras,
+o assistente examina se convém manter uma unidade mais extensa ou distribuir o
+desenvolvimento. A escolha depende da relação a ensinar e da progressão; o alvo
+orienta a extensão, sem obrigar a divisão.
 
 ## Política de componentes didáticos
 
@@ -430,7 +441,7 @@ orienta a escolha entre componentes permitidos e adequados. Disponibilidade,
 preferência e uso materializado são fatos diferentes.
 
 O catálogo apresentado pela interface, pelo MCP e por Actions vem da mesma fonte
-usada na função remota. Na produção seguinte, o servidor sela a revisão do
+usada na função remota. Na produção seguinte, o servidor registra a revisão do
 catálogo e a política efetiva de cada microssequência. Componente desconhecido,
 bloqueado ou fora de uma lista restrita faz a gravação inteira ser revertida.
 
@@ -484,7 +495,34 @@ Essa verificação preserva rastreabilidade. Ela não substitui a leitura
 disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
 mecanismo ou se duas práticas são substantivamente distintas.
 
+Ao revisar uma unidade já produzida, a leitura recupera as três escolhas de
+organização da produção — tamanho da parte, tamanho do lote e frequência de
+pausa — registradas em sua aplicação quando não existe uma atribuição vigente. Isso permite
+reproduzir a mesma configuração sem transformar aquela escolha automática em
+preferência do curso. A consulta do curso ou da microssequência continua indicando
+ausência de escolha enquanto ela não for definida nesses escopos. Uma atribuição
+vigente, inclusive uma nova fixação humana, prevalece na resolução; a aplicação
+anterior continua inspecionável separadamente e não é reescrita por essa leitura.
+
 ## Interface, MCP e Actions
+
+Na inspeção do curso, o menu de tarefas abre **Parâmetros** e **Fontes** diretamente.
+O ícone da unidade abre os ajustes daquele escopo sem perder a posição da
+inspeção. O painel mantém dimensões e ações estáveis, apresenta um grupo por vez
+e revela a definição, origem e limites ao abrir uma decisão.
+
+**Explicações** e **Prática** reúnem decisões pedagógicas; **Leitura e estilo**
+contém a extensão do material e a direção editorial. **Produção** organiza
+partes, lotes e pausas; **Conversa** regula as respostas do assistente.
+**Recursos** delimita componentes permitidos, e **Perfis** reutiliza preferências. Essa organização não
+altera o significado dos parâmetros nem converte escolhas operacionais em
+medidas de aprendizagem.
+
+O controle de alcance identifica curso, lição, microssequência ou unidade e
+permite navegar entre os escopos. Rascunhos permanecem ao trocar de grupo;
+fechar ou navegar com alterações pendentes exige salvá-las ou descartá-las.
+Preferências do aplicativo, como aparência e sincronização deste dispositivo,
+continuam na tela inicial, em Conta e aparência.
 
 A subvisão **Parâmetros** abre no curso, no módulo, na lição, na microssequência
 ou na unidade de estudo e mostra:
@@ -524,6 +562,27 @@ comparar esses estados não acrescenta parâmetros ou provoca materialização.
 restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
 indica o curso e o escopo a consultar ou ajustar; o servidor verifica a versão
 atual antes de gravar e conserva a identidade de uma tentativa repetida.
+
+## Identificadores para integração
+
+Os nomes abaixo identificam as decisões no catálogo e nos registros de
+configuração. Para consultar valores, alcance e finalidade, use o
+[catálogo corrente](#catálogo-corrente).
+
+| Decisão | Identificador |
+| --- | --- |
+| Teto de novidades na unidade expositiva | `new_analysis_unit_ceiling_per_expository_study_unit` |
+| Formas de explicação | `required_explanation_forms` |
+| Mínimo de oportunidades de prática | `minimum_distinct_practice_opportunities_per_evidence_requirement` |
+| Variação da prática | `required_practice_variation_dimensions` |
+| Extensão da resposta na conversa | `authoring_chat_response_word_target` |
+| Extensão da unidade de estudo | `study_unit_content_word_target` |
+| Distribuição da prática | `practice_distribution` |
+| Posição da prática | `practice_position` |
+| Tamanho pretendido da parte | `authoring_part_microsequence_target` |
+| Tamanho pretendido do lote | `authoring_batch_part_target` |
+| Frequência de pausa | `authoring_pause_frequency` |
+| Forma da conversa de autoria | `authoring_chat_interaction` |
 
 ## Limites operacionais
 

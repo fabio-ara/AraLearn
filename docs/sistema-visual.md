@@ -16,7 +16,10 @@ ambiente em que foram observados.
 
 ## Fundamentos
 
-O AraLearn usa componentes próprios e variáveis de estilo nomeadas por função, também chamadas variáveis semânticas.
+As regras de aparência ficam em folhas de estilo
+[CSS](https://developer.mozilla.org/pt-BR/docs/Web/CSS): elas definem, por exemplo,
+cor, espaço e tamanho dos elementos da página. O AraLearn usa componentes próprios e
+variáveis de estilo nomeadas por função, também chamadas variáveis semânticas.
 Cada variável recebe o nome de sua função, como `action-primary`, `text-secondary` ou
 `status-danger`. O componente pede a função visual de que precisa, enquanto os modos
 claro e escuro fornecem o valor correspondente.
@@ -81,7 +84,7 @@ universal.
 A entrada de Autoria é **Meus cursos**. A lista mostra descritores suficientes para
 reconhecer os cursos próprios sem baixar a composição inteira. Cursos compartilhados
 aparecem somente em Estudo. Um toque abre o curso; a ação de voltar retorna à lista
-sem criar uma identidade intermediária.
+e ao ponto de navegação anterior.
 
 O curso próprio abre diretamente em **Conteúdo**. A barra mantém atalhos por ícone
 para Conteúdo e Planejamento. **Parâmetros**, **Fontes**, **Áudio**, **Revisão**,
@@ -101,19 +104,18 @@ comparações largas usam rolagem horizontal local.
 
 As ações das superfícies principais usam somente ícones, com nome acessível, estado e
 dica também alcançável por toque. Menus e ajustes revelados usam texto necessário à
-decisão. Edição, reordenação e exclusão ficam em controles progressivos, sem
-desaparecer do produto. Planejamento não cria um card textual de próxima ação:
-objetivo e parte focal permanecem visíveis, enquanto ações ficam junto do objeto e
-priorizam ícones. Partes, contexto e referências sem conteúdo não acrescentam
-mensagens de ausência; detalhes e organização avançada são abertos quando necessários.
+decisão. Edição, reordenação e exclusão aparecem ao abrir os controles do objeto.
+Planejamento conserva objetivo e parte focal visíveis; suas ações ficam junto do
+objeto a que se referem. Detalhes de organização são abertos quando necessários,
+preservando espaço para o mapa e o conteúdo.
 
 Em **Conteúdo**, observações e mudanças de parâmetros permanecem ligadas ao alvo
 inspecionado e aparecem como estado do próprio curso. A pessoa pode percorrer os
 cards, registrar decisões e verificar resultados sem abrir uma superfície paralela. Um
 assistente conectado por MCP ou Actions lê esse mesmo estado e apresenta propostas
 para discussão. A pessoa orienta a produção, inspeciona o resultado e decide o que
-aplicar; a execução respeita o alcance da autorização já dada. A interface normal não
-introduz compositor nem etapa de cópia e cola.
+aplicar; a execução respeita o alcance da autorização já dada. As alterações salvas
+pelo assistente são consultadas no próprio curso.
 
 Na unidade, **Visualizar**, **Editar** e **Assistência por IA** usam o mesmo mecanismo
 de apresentação e o mesmo alvo. A edição realça apenas os textos que o componente
@@ -128,9 +130,8 @@ curso. Copiar é uma tarefa explícita do autor e produz outro curso independent
 transportar acesso de terceiros nem estado pessoal.
 
 A sobreposição permite escolher OpenAI, Gemini ou DeepSeek e informar uma chave
-mantida somente na memória da sessão. Mensagem, conversa multiturmo, plano,
-confirmação e estado de validação seguem uma progressão única. Endereços de serviço, intermediários de rede e explicações de arquitetura não
-aparecem no uso normal. A edição manual continua
+mantida somente na memória da sessão. A pessoa pode continuar a conversa para
+reformular a proposta, examinar o resultado e então aceitá-lo no rascunho. A edição manual continua
 disponível, inclusive para código ou terminal extensos.
 
 No modo automático, o retorno de outra guia ou janela provoca a releitura do cabeçalho
@@ -178,6 +179,12 @@ reutiliza o mecanismo de renderização de Estudo com respostas inertes e mostra
 posição, hierarquia e limites do recorte. O autor pode restringir a sequência por
 curso, parte, módulo, lição ou microssequência.
 
+A [explicação](explicacao-e-revisao-humana.md), texto-base da microssequência, abre
+em uma sobreposição para consulta e inspeção junto às fontes. Ela conserva sua
+própria declaração de revisão, separada das unidades. Fechar a leitura devolve o
+foco ao ponto de origem. A sobreposição reutiliza o tratamento de texto, componentes
+e referências presente nas unidades de estudo.
+
 As páginas usam doze unidades por padrão, e a janela mantém no máximo trinta e seis no
 documento. O carregamento acontece nas duas direções. Ao atualizar uma unidade, mudar
 de recorte, perder a conexão ou abrir o mesmo curso em outra aba, a interface preserva
@@ -188,7 +195,7 @@ O seletor hierárquico fecha por clique externo e pela tecla Esc. O retorno rest
 ponto exato conhecido. Estados vazio, parcial, carregando, sem conexão e erro ocupam o
 espaço do conteúdo e oferecem uma ação compatível, sem cobrir a navegação global.
 
-## Revisão, Fontes e Analytics
+## Revisão, Fontes e Dados de autoria
 
 Revisão parte das observações abertas e da unidade de estudo focal. Seleção em lote
 aparece somente quando a ação exige vários alvos. Detalhes e decisões ficam próximos
@@ -199,10 +206,12 @@ revela disponibilidade, papel e âncoras. O envio de PDF mostra progresso, repet
 segura por conteúdo, falha recuperável e uso da cota. A opção de baixar só aparece
 quando o servidor confirma um vínculo ativo e o acesso da pessoa ao curso.
 
-Analytics usa um seletor de escopo e duas áreas: **Desenho** e **Autoria**. Cada área
-mostra quatro números com definições curtas. Tabelas simples permanecem recolhidas até
-serem solicitadas. Não há gráfico redundante, segunda coluna ou rolador interno. Dado
-ausente recebe estado acessível próprio e a superfície não resume o curso numa nota.
+**Dados de autoria** apresenta uma dimensão por vez, inicialmente **Novidade
+declarada**. A pessoa escolhe a dimensão e o recorte do curso, pode abrir os dados e
+suas definições e chegar às unidades de uma distribuição. A comparação mantém os
+dois cursos identificados. **Exportar curso e análise** abre uma confirmação do
+conteúdo incluído no arquivo. A leitura conserva uma coluna principal; dados ausentes
+recebem indicação própria, sem serem convertidos em zero ou numa nota do curso.
 
 ## Tipografia, espaço e forma
 
@@ -385,35 +394,26 @@ abrange contraste textual e não textual, ampliação de 200%, reorganização d
 teclado, toque, nome, papel e estado acessíveis, alternativa a gestos e preferência de
 movimento reduzido.
 
-As larguras de referência são 360, 390 e 430 px no celular e 1280 px no computador. A
-matriz automatizada percorre os destinos compactos e alcança cada capacidade por
-divulgação progressiva, nos modos claro e escuro. Em cada combinação, ela verifica o
-limite de 430 px, a área principal de rolagem vertical única, a ausência de rolagem horizontal da
-página, o alcance do último conteúdo, nomes acessíveis, alvos visíveis de toque e
-ausência de erro no cliente. Cenários focais cobrem textos extensos, duas abas, perda
-e retorno de conexão, endereços diretos, área segura, clique externo, Esc e
-restauração de foco.
+As larguras de referência são 360, 390 e 430 px no celular e 1280 px no computador,
+nos modos claro e escuro. Em cada combinação, a interface mantém a coluna
+centralizada de até 430 px, uma área principal de rolagem vertical e nenhum
+transbordamento horizontal da página. A verificação alcança o último conteúdo,
+nomes acessíveis e áreas de toque, incluindo textos extensos e estados intermediários.
+
+As jornadas cobrem também duas abas, perda e retorno da conexão, endereços diretos,
+área segura, clique externo, Esc e retorno do foco. **Rever** é aberto e fechado
+pelo teclado, com mudança perceptível no indicador. Na cópia de curso, a autorização
+continua explícita e a tentativa de editar uma origem alheia não cria outro curso.
 
 O teste ponta a ponta da Autoria fica em `tests/e2e/course-authoring-cutover.spec.js`.
 A galeria dos componentes é reconstruída por `npm run resources:gallery:visual`.
 Resultados e casos condicionados ficam nos checks da revisão executada. A compreensão
 por pessoas leigas depende de avaliação com participantes.
 
-O aceite da entrada percorre as combinações de largura e tema, confirma a estrutura da tela
-centralizada de no máximo 430 px e ausência de corte ou rolagem horizontal global. A verificação
-de **Rever** inclui foco, abertura e fechamento por `Enter` e mudança de orientação do
-indicador. Uma rodada no Chrome real integra a verificação pós-publicação.
-
-O aceite da cópia explícita pelo autor percorre 360, 390, 430 e 1.280 px, nos temas
-claro e escuro. A estrutura da tela permanece limitado a 430 px e centralizado em tela larga. A
-edição do estudante é recusada sem criar cópia. Seletor e ações conservam suas
-dimensões, sem transbordamento ou identificadores técnicos.
-
-A matriz visual focal da Autoria percorre as quatro larguras e os dois temas,
-incluindo comparação antes e depois e rodada de revisão em 1.280 px. Ela rejeita
-largura acima de 430 px, desalinhamento no computador, segunda coluna principal,
-rolagem horizontal global e ação de assistência sem nome acessível contextual e dica
-de uso.
+A verificação de Autoria compara o estado anterior e o posterior às alterações no
+planejamento, nos parâmetros, nas fontes e nas declarações de revisão. Seletores e ações conservam dimensões,
+posição e foco; a assistência tem nome acessível contextual e dica de uso. Depois
+da publicação, uma rodada no Chrome confere a versão efetivamente disponível.
 
 A entrada de Estudo possui a seguinte série persistente:
 
@@ -438,10 +438,6 @@ cursos.](screenshots/authoring/authoring-courses-390-light.png)
 Uma captura comprova apenas o conjunto de dados, o modo e o tamanho usados. A
 aprovação visual exige também interação real, console e rede sem erros, foco, rolagem,
 textos extensos e estados intermediários.
-
-A inspeção local percorre cursos em 360, 390, 430 e 1.280 px, Planejamento nos temas
-claro e escuro, Parâmetros, fontes e Revisão. Artefatos temporários ajudam o
-diagnóstico, mas não substituem a matriz persistente de larguras e temas.
 
 ## Critério de conclusão visual
 

@@ -1,9 +1,9 @@
 # Privacidade e tratamento de dados
 
 O AraLearn usa dados de conta para autenticar a pessoa e controlar acesso aos cursos;
-mantém também conteúdo autoral, estado de estudo e observações. Este documento explica
-quais dados circulam, quem pode acessá-los e quais decisões cabem à instituição que
-oferece o aplicativo ou conduz uma pesquisa.
+mantém também conteúdo autoral, estado de estudo e observações. Proteger esses dados
+exige distinguir o que cada pessoa fornece, quem recebe a informação e por quanto
+tempo ela permanece no aplicativo ou nos serviços contratados.
 
 A proteção desses dados considera expressamente a **Lei Geral de Proteção de Dados
 Pessoais (LGPD), no Brasil**, e o **Regulamento Geral sobre a Proteção de Dados (RGPD),
@@ -11,42 +11,11 @@ em Portugal**, acompanhado da Lei portuguesa n.º 58/2019. Os controles do softw
 constituem declaração de conformidade: cada implantação precisa identificar a legislação
 aplicável, os responsáveis, as finalidades e as condições efetivas de tratamento.
 
-Privacidade depende de minimização, finalidade, isolamento no banco e informação
-compreensível. Ocultar um campo na interface, sozinho, não protege o dado ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
-
-## Legislação e responsabilidades no Brasil e em Portugal
-
-A [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm)
-delimita seu alcance territorial no art. 3º. No uso acadêmico, o art. 4º, II, b, mantém
-aplicáveis os arts. 7º e 11: apresentar o AraLearn como artefato de pesquisa não dispensa
-a identificação de uma hipótese legal adequada. O tratamento de dados sensíveis exige
-avaliação específica.
-
-O [RGPD](https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=pt) também define seu âmbito
-territorial no art. 3º. Em Portugal, a [Lei n.º
-58/2019](https://diariodarepublica.pt/dr/detalhe/lei/58-2019-123815982) assegura sua execução
-na ordem jurídica nacional. A investigação está sujeita a salvaguardas, incluindo
-minimização e, quando a finalidade permitir, anonimização ou pseudonimização (RGPD,
-art. 89º; Lei n.º 58/2019, art. 31º). A finalidade científica não suspende por si só os
-direitos das pessoas.
-
-As leis empregam nomes diferentes para funções próximas:
-
-| Papel no tratamento | Brasil — LGPD, art. 5º | Portugal — RGPD, art. 4º |
-| --- | --- | --- |
-| decidir a finalidade e como tratar os dados | controlador | responsável pelo tratamento |
-| tratar dados por conta de quem decide | operador | subcontratante |
-
-Esses papéis dependem da atuação real de cada organização. Ser proprietário de um curso
-na interface não torna automaticamente a pessoa responsável por todos os tratamentos da
-implantação. A instituição, a equipe de pesquisa e os fornecedores precisam ter suas
-responsabilidades identificadas. O encarregado de proteção de dados atua segundo o regime
-aplicável; o aplicativo não designa uma pessoa para essa função.
-
-A base jurídica precisa corresponder a cada finalidade. Manter uma conta, produzir
-conteúdo com um serviço de IA e investigar a experiência de participantes são usos
-distintos. Consentimento não é uma base universal, e a confirmação de uma operação na
-tela não substitui as condições jurídicas para tratar os dados envolvidos.
+Cada uso dos dados precisa de uma finalidade definida. Para retomar o estudo, por
+exemplo, basta conhecer a posição e as marcações da pessoa; acompanhar todos os seus
+toques seria outra coleta, que exigiria justificativa própria. Usar somente os dados
+necessários à finalidade é o princípio de minimização. Também são necessários
+controle de acesso e informação compreensível sobre o tratamento ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
 ## Conceitos essenciais
 
@@ -54,6 +23,11 @@ tela não substitui as condições jurídicas para tratar os dados envolvidos.
 identificável, conforme o art. 5º da LGPD e o art. 4º do RGPD. No AraLearn, isso inclui
 e-mail da conta, identificador interno, identificador público escolhido e foto de
 perfil.
+
+**Pseudonimização** substitui a identificação direta, mas conserva a possibilidade
+de associar os dados à pessoa. **Anonimização** exige que ela deixe de ser
+identificável pelos meios considerados na legislação aplicável. Um comentário
+assinado com um código pode continuar identificável pelo próprio texto.
 
 **Proprietário do curso** é a pessoa autorizada a alterar o planejamento e o conteúdo,
 consultar áreas autorais e conceder acesso a estudo.
@@ -83,6 +57,41 @@ A propriedade é conferida pelo servidor. Ter uma réplica no dispositivo não c
 permissão para editar o curso. A relação entre réplica, filas e servidor está descrita
 em [persistência e sincronização](persistencia-relacional.md).
 
+## Legislação e responsabilidades no Brasil e em Portugal
+
+A [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm)
+delimita seu alcance territorial no art. 3º. No uso acadêmico, o art. 4º, II, b, mantém
+aplicáveis os arts. 7º e 11: apresentar o AraLearn como artefato de pesquisa não dispensa
+a identificação de uma hipótese legal adequada, isto é, uma condição prevista na
+lei que permita aquele tratamento. Dados especialmente protegidos, como informações
+de saúde ou convicção religiosa, exigem avaliação específica.
+
+O [RGPD](https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=pt) também define seu âmbito
+territorial no art. 3º. Em Portugal, a [Lei n.º
+58/2019](https://diariodarepublica.pt/dr/detalhe/lei/58-2019-123815982) assegura sua execução
+na ordem jurídica nacional. A investigação está sujeita a salvaguardas, incluindo
+minimização e, quando a finalidade permitir, anonimização ou pseudonimização (RGPD,
+art. 89º; Lei n.º 58/2019, art. 31º). A finalidade científica não suspende por si só os
+direitos das pessoas.
+
+As leis empregam nomes diferentes para funções próximas:
+
+| Papel no tratamento | Brasil — LGPD, art. 5º | Portugal — RGPD, art. 4º |
+| --- | --- | --- |
+| decidir a finalidade e como tratar os dados | controlador | responsável pelo tratamento |
+| tratar dados por conta de quem decide | operador | subcontratante |
+
+Esses papéis dependem da atuação real de cada organização. Ser proprietário de um curso
+na interface não torna automaticamente a pessoa responsável por todos os tratamentos da
+implantação. A instituição, a equipe de pesquisa e os fornecedores precisam ter suas
+responsabilidades identificadas. O encarregado de proteção de dados atua segundo o regime
+aplicável; o aplicativo não designa uma pessoa para essa função.
+
+A base jurídica precisa corresponder a cada finalidade. Manter uma conta, produzir
+conteúdo com um serviço de IA e investigar a experiência de participantes são usos
+distintos. Consentimento não é uma base universal, e a confirmação de uma operação na
+tela não substitui as condições jurídicas para tratar os dados envolvidos.
+
 ## Dados e finalidades
 
 O [Supabase](supabase.md) reúne o serviço de autenticação (Auth), o banco relacional
@@ -91,30 +100,24 @@ PostgreSQL e o armazenamento de arquivos (Storage). O banco guarda registros e r
 necessários para estudar ficam também no IndexedDB, o armazenamento estruturado do
 navegador.
 
-| Finalidade | Dados | Armazenamento |
-|---|---|---|
-| autenticar a conta | e-mail, credencial e sessão | Supabase Auth e sessão no dispositivo |
-| apresentar a pessoa | identificador público escolhido e referência opcional da foto | PostgreSQL |
-| exibir a foto | JPEG, PNG ou WebP de até 512 KiB | área privada `person-avatars` |
-| manter um curso | proprietário, plano, configuração e composição corrente | PostgreSQL |
-| documentar proveniência | fonte, metadados, endereço, âncoras, trecho de verificação e atribuições | PostgreSQL privado |
-| anexar documentos de fonte | PDF, tamanho, resumo criptográfico e vínculo com a revisão | área privada `course-source-pdfs` e PostgreSQL |
-| guardar e reproduzir áudio | WAV PCM ou MP3, tamanho, resumo criptográfico e vínculo com o curso | área privada `course-media` e PostgreSQL |
-| autorizar estudo | curso, conta com acesso, proprietário e data da concessão | PostgreSQL |
-| retomar estudo | posição, conclusões e marcas **Rever** | PostgreSQL e réplica local |
-| registrar observações | alvo, origem, texto, categoria, estado e resposta | PostgreSQL privado; cópia e fila no dispositivo |
-| revisar e corrigir | observações e conteúdo corrente das unidades de estudo afetadas | PostgreSQL privado do proprietário |
-| consultar indicadores de autoria | configuração, desenho aplicado e intervenções correntes agregadas | projeção PostgreSQL restrita ao proprietário |
-| repetir uma alteração com segurança | revisão esperada, identificador do pedido e recibo temporário | PostgreSQL privado |
+Ao abrir um curso, o aplicativo confirma quem pode acessá-lo e recebe somente os
+campos permitidos para aquela leitura. Essa seleção de campos é chamada de
+projeção. Um visitante pode receber o texto de estudo e as citações visíveis, por
+exemplo, enquanto notas privadas de verificação continuam restritas à autoria.
+
+Quando a pessoa avança numa atividade, o aplicativo atualiza seu estado de estudo,
+sem alterar o conteúdo do curso. Se ela registra uma observação, o comentário segue
+outro percurso: fica ligado ao ponto observado e pode ser lido pelo proprietário
+para revisão. Abrir um PDF ou áudio exige ainda verificar a permissão do arquivo,
+mesmo que a pessoa já consiga ler o curso.
 
 ### Registro técnico das classes
 
-A tabela detalha quais dados cada função utiliza e quem pode acessá-los. UUID é um
+O inventário distingue os acessos e os prazos de cada classe de dados. UUID é um
 identificador interno; tokens são credenciais de acesso ou renovação da sessão. Ambos
-podem continuar relacionados à pessoa mesmo sem seu nome. Pseudonimizar substitui a
-identificação direta, mas conserva alguma possibilidade de associação; anonimizar exige
-que a pessoa deixe de ser identificável pelos meios considerados na legislação
-aplicável.
+podem continuar relacionados à pessoa mesmo sem seu nome. Texto livre também pode
+conter informações pessoais ou sensíveis, qualquer que seja o nome da tabela onde
+foi guardado.
 
 Os prazos técnicos de limpeza abaixo não definem os prazos institucionais de retenção de
 arquivos, registros de operação e cópias de segurança.
@@ -334,11 +337,12 @@ uso em pesquisa.
 ## Integrações conversacionais
 
 Um protocolo aberto conecta clientes externos de assistência às ferramentas de autoria:
-o **Model Context Protocol (MCP)**. A pessoa escolhe e autoriza o cliente conectado;
-essa integração recebe apenas cursos próprios da pessoa autenticada.
-Cursos compartilhados para estudo não aparecem nas listagens ou leituras autorais. As
-mesmas regras de propriedade, revisão e confirmação usadas pela interface são aplicadas
-pelo servidor.
+o **Model Context Protocol (MCP)**. A pessoa escolhe e autoriza o cliente conectado.
+As listagens e leituras de autoria são limitadas aos cursos próprios. Há uma consulta
+específica para preparar cópias: ela pode localizar também metadados de um curso para
+o qual a pessoa recebeu permissão explícita de cópia. Essa permissão permite criar
+outro curso, mantendo a autoria do original com seu proprietário. As mesmas regras
+de propriedade, revisão e confirmação da interface são aplicadas pelo servidor.
 
 O [catálogo MCP](autoria-mcp.md) define tarefas também oferecidas pela [integração
 Actions/OpenAPI](autoria-actions.md). O proprietário pode consultar identificadores das
@@ -455,7 +459,9 @@ perfil do navegador não são removidos.
 ### Alterar identificador ou foto
 
 Em **Configurações → Conta**, edite o identificador ou escolha uma imagem JPEG, PNG ou
-WebP de até 512 KiB. Somente a própria pessoa envia ou remove objetos de sua pasta. Se o
+WebP de até 512 KiB. Somente a própria pessoa envia ou remove objetos de sua pasta.
+Ao substituir a foto, o aplicativo registra a nova referência antes de remover o
+arquivo anterior. Uma falha nessa remoção é informada para recuperação. Se o
 upload terminar e a atualização do perfil não devolver confirmação, o aplicativo relê o
 perfil antes de tentar desfazer o envio. Uma referência já confirmada preserva a foto;
 uma ausência confirmada permite remover o objeto sem vínculo. Se a releitura ou a

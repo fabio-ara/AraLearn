@@ -2,9 +2,9 @@
 
 O AraLearn precisa conservar relações, identificar pessoas, guardar arquivos privados
 e receber operações que não devem ser executadas somente no navegador.
-[Supabase](https://supabase.com/docs) reúne esses serviços em um projeto, mas não os
-transforma numa única tecnologia. No AraLearn, cada parte tem responsabilidade e
-fronteira próprias:
+[Supabase](https://supabase.com/docs) reúne esses serviços em um projeto. No
+AraLearn, o banco guarda as relações do curso, o armazenamento conserva os arquivos e
+a autenticação verifica a conta que solicita cada operação:
 
 | Parte da plataforma | Problema que resolve no AraLearn | O que conserva ou executa |
 | --- | --- | --- |
@@ -22,10 +22,12 @@ ativas.
 
 ## PostgreSQL, esquemas e autorização
 
-O banco conserva o curso corrente, seu mapa curricular, partes operacionais,
-repertório de unidades de análise, requisitos de evidência, parâmetros, direção
-editorial, fontes, âncoras, vínculos de PDF, áudios, observações, acesso e estado
-pessoal. Cada unidade de estudo guarda o recorte de desenho que efetivamente recebeu.
+O banco conserva o curso, seu planejamento e as decisões usadas na produção.
+Cada unidade de estudo guarda o recorte de desenho que efetivamente recebeu:
+os parâmetros e as relações instrucionais aplicados a ela. Conteúdo e estado
+pessoal de estudo são registros separados, pois a prática de um estudante não
+altera o material dos demais. A [persistência relacional](persistencia-relacional.md)
+detalha a organização do mapa, das partes de produção e do conteúdo.
 [Analytics](analytics-instrucionais.md) calcula contagens a partir desses registros,
 sem manter uma história da execução.
 
@@ -105,8 +107,9 @@ perda de Internet. A autorização de arquivos continua sendo conferida no servi
 
 Após uma leitura autorizada, o repositório salva os dados de citações permitidos para
 estudo em `course.v1.explanation-citations:<courseId>`, separados por revisão e
-microssequência. Esse objeto de transporte, ou DTO, omite os campos privados da
-autoria. A leitura sem rede e o modo manual reutilizam o DTO quando disponível. Falha
+microssequência. Essa resposta contém somente os dados permitidos ao estudo,
+omitindo os campos privados da autoria. A leitura sem rede e o modo manual reutilizam
+a resposta salva quando disponível. Falha
 transitória também permite usar a mesma revisão salva, com indicação do estado;
 conflito de revisão ou revogação não recebe esse recurso. O cache é removido com o
 curso, e uma resposta tardia não substitui a revisão aberta.
@@ -170,8 +173,9 @@ cadastro dinâmico de clientes fica habilitado; o caminho de autorização é `/
 a tela de consentimento pertence ao shell do AraLearn. Os tokens JWT são credenciais
 assinadas: o servidor confere a assinatura antes de aceitar os dados de identidade. O
 projeto usa chave assimétrica, separando a chave que assina da chave pública usada
-para conferir. Durante a emissão, a função `public.aralearn_mcp_access_token_hook` é
-chamada como hook. Esse hook reduz os dados do token de acesso, substitui
+para conferir. Durante a emissão, o Supabase chama
+`public.aralearn_mcp_access_token_hook` para ajustar os dados que entrarão na
+credencial; esse ponto de extensão é chamado de hook. A função reduz os dados do token de acesso, substitui
 identificadores diretos por identificadores específicos de cada cliente e anuncia
 somente `offline_access`. O servidor MCP ainda valida assinatura ES256, emissor,
 destinatário, tempos, cliente, escopo, sessão de origem e consentimento vivo.
@@ -274,7 +278,8 @@ o executor compartilhado. A API resolve a sessão Supabase; o MCP verifica o tok
 e a identidade autorizada; Actions resolve o hash do token opaco. Uma credencial de um
 canal é recusada nos outros.
 
-CORS define quais origens de páginas podem fazer as chamadas no navegador. As origens
+CORS é o mecanismo pelo qual um servidor informa ao navegador quais páginas podem
+ler suas respostas. Uma origem reúne protocolo, domínio e porta da página. As origens
 permitidas são exatas. API e MCP admitem somente as origens da aplicação configuradas.
 Actions acrescenta apenas `https://chatgpt.com` e `https://chat.openai.com`. Nenhum
 conjunto de produção aceita `*`. O callback de Actions precisa usar HTTPS e o formato

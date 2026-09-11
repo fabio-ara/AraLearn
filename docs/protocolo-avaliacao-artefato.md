@@ -21,78 +21,92 @@ software; satisfação informa uma dimensão da experiência de uso; compreensã
 retenção e transferência exigem tarefas e medidas próprias. Um resultado
 pertence à versão, à população e às condições em que foi obtido.
 
-## O que precisa ser avaliado
+## Escolher o objeto da avaliação
 
-O AraLearn reúne resultados que não podem ser tratados como uma única variável:
+A pergunta define o que será observado. Se uma pessoa não consegue retomar o
+estudo, pode haver falha no conteúdo disponível, dificuldade para encontrar o
+ponto em que parou ou esquecimento do raciocínio em curso. Um teste do software,
+uma observação da navegação e uma tarefa de compreensão examinam aspectos
+diferentes desse episódio.
 
-- correção e segurança do software;
-- resiliência sem conexão e sincronização;
-- usabilidade e acessibilidade;
-- retomada após interrupção;
-- qualidade factual, pedagógica e representacional;
-- compreensão imediata;
-- retenção posterior;
-- transferência para tarefa nova;
-- agência e controle humano;
-- compreensão de propriedade, acesso e responsabilidade;
-- frugalidade de armazenamento, rede e manutenção.
+| Objeto | Pergunta delimitada | Evidência pertinente |
+| --- | --- | --- |
+| Software | O curso já sincronizado abre e conserva o ponto sem conexão? | Teste de perda e retorno de rede, com verificação do estado salvo. |
+| Curso | A prática solicita algo que a explicação desenvolveu para esse público? | Análise do conteúdo e das fontes; interpretação da tarefa por estudantes. |
+| Autoria | A pessoa identifica uma atribuição incorreta e sabe corrigi-la? | Observação da conferência, decisão justificada e conteúdo depois da revisão. |
+| Estudo | A pessoa consegue aplicar uma relação em outro problema? | Tarefa nova e critérios de avaliação coerentes com a relação investigada. |
 
-A pergunta “o AraLearn funciona?” é insuficiente porque não define para quem,
-em qual tarefa, sob qual comparação e segundo qual resultado.
+Uma avaliação do software pode focalizar o **núcleo comum**, que coordena o
+aplicativo, ou um **pacote de componente**, que reúne dados, validação e
+apresentação de uma representação ou resposta. A [arquitetura](arquitetura.md)
+explica essa organização, e [armazenamento e sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo)
+desenvolve o funcionamento da cópia local.
 
-Para examinar o software, pode-se tomar como unidade o **núcleo comum**, que
-coordena o aplicativo, ou um **pacote de componente**, que reúne regras de dados,
-validação e apresentação de uma representação ou resposta. A relação entre
-essas unidades é desenvolvida na [arquitetura](arquitetura.md). A avaliação da
-continuidade examina também a cópia local do conteúdo e sua
-[sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo) com o servidor.
+## Escolher uma estratégia de investigação
 
-## Duas tradições metodológicas complementares
+A estratégia depende do conhecimento pretendido. Compreender práticas de uma
+instituição, refinar uma intervenção com educadores e estimar o efeito de uma
+mudança são propósitos distintos. Os procedimentos seguintes são possibilidades
+a particularizar; uma investigação pode seguir outro enquadramento justificado.
+
+### Compreender uma situação por estudo de caso
+
+Um estudo de caso delimita um fenômeno em contexto e relaciona fontes de dados
+que ajudam a compreendê-lo. [Baxter e Jack (2008)](referencias.md#ref-baxter2008casestudy)
+apresentam escolhas sobre a pergunta, os limites do caso e o uso de múltiplas
+fontes. No AraLearn, um caso poderia ser a autoria e a revisão de um curso numa
+equipe durante um período definido. Materiais, entrevistas e observação
+permitiriam investigar decisões e dificuldades. A interpretação resultante
+precisaria conservar as condições daquele caso.
 
 ### Trilha educacional: Design-Based Research
 
-Design-Based Research (DBR) investiga intervenções educacionais em contextos
-autênticos por ciclos que relacionam análise, desenho, implementação e revisão
-([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)). Seu objetivo não é apenas corrigir
-uma interface, mas compreender como um mecanismo opera, para quem, em quais
-condições e com quais efeitos previstos ou adversos.
+Quando interessa desenvolver uma intervenção educacional e compreender como
+ela funciona em contexto, a **pesquisa baseada em design**, ou
+*Design-Based Research* (DBR), organiza ciclos de desenho, uso e revisão
+([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
+[Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
 
-Um ciclo parte do problema educacional situado, formula uma conjectura sobre o
-mecanismo e a realiza numa intervenção identificada por versão. Dados do uso
-em contexto orientam a revisão tanto da intervenção quanto da explicação.
-
-Unidades possíveis: pessoa, unidade de estudo, microssequência didática,
-percurso, atividade de autoria e curso. Produtos esperados: descrição do contexto, conjectura sobre
-contexto, mecanismo e resultado (C–M–O), evidências, casos negativos, princípio provisório e limite de
-transferência.
+Por exemplo, educadores e estudantes podem investigar uma sequência em que a
+ajuda é pouco consultada. Uma primeira observação pode revelar dificuldade para
+reconhecer quando ela é necessária. O ciclo seguinte modifica a apresentação e
+examina novamente o uso. A análise relaciona a mudança às condições e aos
+processos observados; a contribuição inclui tanto a intervenção quanto uma
+explicação sobre as condições em que esse apoio é útil.
 
 ### Trilha do artefato: Design Science Research
 
-Design Science Research (DSR) investiga construção, demonstração, avaliação e
-contribuição de artefatos ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). A
-contribuição precisa ser posicionada em relação ao conhecimento existente e à
-maturidade do problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
+A **pesquisa orientada à construção e avaliação de artefatos**, ou *Design
+Science Research* (DSR), relaciona um problema relevante à solução construída e
+ao conhecimento produzido por sua avaliação
+([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience);
+[Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). A contribuição é
+situada em relação ao que já se conhece sobre o problema e suas soluções
+([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
 
-O percurso relaciona problema e relevância a objetivos verificáveis, desenho e
-construção. A demonstração em casos esperados e adversos antecede uma avaliação
-capaz de sustentar conhecimento de desenho e seus limites.
+Uma investigação pode comparar formas de reunir texto, fonte e decisão de
+revisão. Além do funcionamento dos controles, interessa avaliar se eles ajudam
+as pessoas a realizar a tarefa. DSR admite avaliação em uso e aspectos humanos;
+sua distinção em relação à DBR está na tradição, na pergunta e na contribuição
+pretendida, sem reservar toda pergunta educacional à DBR.
 
-Unidades possíveis: núcleo comum, pacote de componente, catálogo, contrato, fluxo, operação,
-persistência e sincronização. Produtos esperados: versão reproduzível,
-requisito, evidência técnica, avaliação de utilidade e contribuição de desenho.
+### Comparar efeitos
 
-### Relacionar as duas tradições
+Se a finalidade for atribuir uma diferença de resultado à intervenção, o
+protocolo precisa justificar como enfrenta causas alternativas. O conhecimento
+prévio, o tempo de estudo e a dificuldade dos materiais podem mudar junto com
+a condição investigada. O [guia de investigação](guia-pesquisador.md#da-pergunta-ao-método)
+introduz a diferença entre comparação experimental, quase experimental e
+observacional. A escolha requer pressupostos e análise compatíveis
+([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
 
-Um mecanismo pode funcionar corretamente e ser inadequado para a aprendizagem
-pretendida. DBR e DSR permitem examinar essas perguntas por procedimentos
-próprios, ainda que compartilhem a mesma versão do artefato e parte dos dados
-([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
-[Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)).
+### Relacionar estratégias
 
-Cada dado deve conservar a pergunta e a função que desempenha. Uma falha de uso
-pode revelar um requisito técnico, e uma falha técnica pode explicar por que a
-intervenção prevista não ocorreu. Compartilhar o cenário não torna as
-evidências intercambiáveis.
+Uma observação de uso pode revelar um requisito técnico; uma falha técnica
+pode explicar por que a intervenção prevista não ocorreu. Compartilhar dados
+entre etapas da pesquisa é útil quando sua função permanece clara. Estudo de
+caso, DBR, DSR e comparação de efeitos não são etapas obrigatórias de uma mesma
+escada: a pergunta determina quais relações precisam ser investigadas.
 
 ## Formulação de uma avaliação
 
@@ -101,13 +115,13 @@ Antes da coleta, preencher:
 | Campo | Pergunta operacional |
 | --- | --- |
 | problema | que situação concreta exige investigação? |
-| proposição | qual P1–P10 do [Quadro teórico](quadro-teorico.md) está em foco? |
+| pergunta ou proposição | qual relação ou processo se pretende compreender? As P1–P10 do [Quadro teórico](quadro-teorico.md) são possibilidades para estudos de desenho. |
 | contexto | quem, onde, com qual domínio, dispositivo, rede e experiência? |
-| mecanismo | que propriedade do desenho se espera que opere? |
+| mecanismo, quando pertinente | como se supõe que uma propriedade do desenho opere nesse contexto? |
 | resultado | que fenômeno será observado e como foi definido? |
-| comparação | qual alternativa, referência, critério ou estado anterior? |
+| comparação, quando pertinente | qual alternativa, referência, critério ou estado anterior? |
 | rivais | que outras explicações poderiam produzir o mesmo resultado? |
-| enfraquecimento | que achado exigiria rever ou abandonar a hipótese? |
+| revisão da interpretação | que achado poderia contrariar a explicação inicial ou exigir outra leitura? |
 | unidade de análise | pessoa, tarefa, unidade de estudo, sequência, curso ou componente? |
 | versão | quais são as revisões do Git, do artefato executável, dos contratos, dos pacotes de componente, do conteúdo e do modelo de IA? |
 | risco | que dano, exposição, custo ou consequência precisa ser controlado? |
@@ -151,19 +165,27 @@ Veja [Comparar condições de desenho](experimentos-instrucionais-parametrizados
 
 ## Progressão de episódios de avaliação
 
-O FEDS distingue finalidade formativa ou somativa e ambiente artificial ou
-naturalístico ([Venable et al. (2016)](referencias.md#ref-venable2016feds)). O AraLearn usa uma progressão de risco; nem
-todo estudo precisa percorrer todos os episódios.
+O **FEDS** (*Framework for Evaluation in Design Science*) ajuda a planejar a
+avaliação de artefatos. Uma avaliação **formativa** orienta mudanças durante o
+desenvolvimento; uma **somativa** julga uma versão segundo critérios definidos.
+O ambiente pode ser **artificial**, preparado para examinar certas condições,
+ou **naturalístico**, próximo do uso cotidiano
+([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
-| Episódio | Trilha | Finalidade e ambiente | Pergunta principal | Evidência mínima | Critério para avançar |
-| --- | --- | --- | --- | --- | --- |
-| E0: argumento e inspeção | DSR | formativa, artificial | problema, mecanismo e risco são coerentes? | revisão conceitual, contrato e caso adverso | hipótese e requisitos explícitos |
-| E1: verificação técnica | DSR | formativa, artificial | a versão implementa o comportamento? | testes, análise, medição e inspeção visual | falhas críticas resolvidas e artefato reproduzível |
-| E2: avaliação de especialistas | DSR/DBR | formativa, artificial | conteúdo e representação são academicamente válidos? | rubrica, justificativas e divergências | erros conceituais e representacionais graves corrigidos |
-| E3: jornada formativa | DSR | formativa, artificial ou situada | pessoas compreendem e operam o fluxo? | sucesso, erro, ajuda, verbalização e entrevista | jornada crítica executável e compreendida |
-| E4: ciclo situado | DBR | formativa, naturalística | como o mecanismo opera no uso real? | dados de processo, produto, entrevista e casos negativos | conjectura C–M–O revisada |
-| E5: avaliação de resultado | DBR/DSR | somativa, naturalística ou comparativa | a versão atende ao resultado delimitado? | análise predefinida, incerteza e limites | conclusão condicionada à versão e contexto |
-| E6: acompanhamento | DBR/DSR | somativa, naturalística | resultado, custo e governança se sustentam no tempo? | retenção, transferência, incidentes e custo | decisão longitudinal de manter, alterar ou remover |
+A progressão abaixo é uma organização possível do projeto. Começar pela
+inspeção técnica reduz o risco de levar falhas conhecidas a participantes. A
+seleção de episódios acompanha a pergunta e o risco, sem exigir que todo estudo
+percorra a tabela.
+
+| Episódio | Finalidade e ambiente | Pergunta principal | Evidência mínima | Critério para avançar |
+| --- | --- | --- | --- | --- |
+| E0: argumento e inspeção | formativa, artificial | problema, mecanismo e risco são coerentes? | revisão conceitual, contrato e caso adverso | hipótese e requisitos explícitos |
+| E1: verificação técnica | formativa, artificial | a versão implementa o comportamento? | testes, análise, medição e inspeção visual | falhas críticas resolvidas e artefato reproduzível |
+| E2: avaliação de especialistas | formativa, artificial | conteúdo e representação são academicamente válidos? | rubrica, justificativas e divergências | erros conceituais e representacionais graves corrigidos |
+| E3: jornada formativa | formativa, artificial ou situada | pessoas compreendem e operam o fluxo? | sucesso, erro, ajuda, verbalização e entrevista | jornada crítica executável e compreendida |
+| E4: ciclo situado | formativa, naturalística | como o mecanismo opera no uso real? | dados de processo, produto, entrevista e casos negativos | explicação do mecanismo e do contexto revisada |
+| E5: avaliação de resultado | somativa, naturalística ou comparativa | a versão atende ao resultado delimitado? | análise predefinida, incerteza e limites | conclusão condicionada à versão e contexto |
+| E6: acompanhamento | somativa, naturalística | resultado, custo e governança se sustentam no tempo? | retenção, transferência, incidentes e custo | decisão longitudinal de manter, alterar ou remover |
 
 Não se avança por calendário. Perda de dados, alteração de escopo pela IA,
 inacessibilidade ou conteúdo oculto devolvem o artefato à verificação técnica,
@@ -303,33 +325,40 @@ equivale a validá-la.
 
 ## Análise qualitativa
 
-O plano deve declarar:
+Na análise da revisão humana, pode interessar como a pessoa justifica a
+aceitação de uma afirmação. Um trecho da entrevista pode ser marcado como
+“conferência da fonte” e relacionado à ação observada. Marcar trechos com
+categorias de significado é **codificar**. A escolha da categoria precisa ser
+explicada e o trecho deve conservar seu contexto.
 
-- unidade de codificação e unidade de análise;
-- modo de construção do código ou categorias;
-- posição e envolvimento de quem pesquisa;
-- procedimento de revisão e tratamento de divergências;
-- forma de selecionar exemplos e casos negativos;
-- relação entre falas, ações, artefatos e contexto.
+O plano identifica o material analisado, o modo de construir categorias, a
+participação de quem pesquisa e o tratamento de divergências. Se a pessoa
+disser que conferiu a fonte, mas a observação mostrar apenas a leitura do título,
+a divergência é parte da análise. Relacionar entrevista, ação e material é uma
+possibilidade de **triangulação**, discutida para estudos de caso por
+[Baxter e Jack (2008)](referencias.md#ref-baxter2008casestudy).
 
-Triangulação relaciona manifestações para responder à mesma pergunta; não serve
-para fabricar concordância. Saturação só deve ser alegada quando definida e
-sustentada pelo desenho.
+A suficiência do material depende da pergunta e da estratégia. Alegar
+**saturação**, isto é, que novas coletas deixaram de acrescentar elementos
+relevantes segundo o critério adotado, requer mostrar como essa decisão foi
+alcançada. Outros métodos podem justificar o encerramento de outra forma.
 
 ## Análise quantitativa
 
-O plano deve declarar:
+Uma comparação numérica começa pela definição do resultado. Para investigar
+identificação de erros, por exemplo, a pesquisa pode calcular a proporção de
+propostas incorretas reconhecidas por cada participante. É preciso conservar
+também rejeições indevidas de propostas corretas, oportunidades não avaliadas e
+as condições em que a tarefa foi feita.
 
-- variável, escala e hipótese;
-- unidade de análise e dependência entre observações;
-- comparação e distribuição esperada;
-- dados ausentes, exclusões e desistências;
-- multiplicidade e análises exploratórias;
-- tamanho de efeito e incerteza;
-- desvios do plano.
-
-Unidades da mesma pessoa não se tornam observações independentes por estarem em
-linhas diferentes. A estrutura dos dados precisa ser modelada.
+O plano define a escala, a comparação, o tratamento de dados ausentes e a
+relação entre observações. Dez decisões da mesma pessoa compartilham
+experiência e contexto; analisá-las como dez participantes independentes pode
+produzir certeza excessiva. O **tamanho de efeito** expressa a magnitude da
+diferença ou associação; sua **incerteza** informa a precisão da estimativa.
+O relatório distingue análises previstas daquelas formuladas depois de observar
+os dados e considera o risco de encontrar diferenças ao realizar muitas
+comparações ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
 
 ## Ética, privacidade e segurança
 
@@ -377,29 +406,35 @@ análise de comparabilidade ou novo episódio.
 
 ## Ameaças à validade
 
-- efeito de novidade;
-- presença de quem pesquisa;
-- amostra mais experiente que o público pretendido;
-- domínio, curso ou notação específicos;
-- sessão artificialmente contínua;
-- rede melhor que a cotidiana;
-- conteúdo produzido ou revisado por quem avalia;
-- efeito de prática pela repetição da tarefa;
-- mudança de modelo de IA entre condições;
-- mistura entre avaliação formativa e somativa;
-- tratamento de unidades como observações independentes;
-- viés de confirmação após investimento no artefato;
-- publicação seletiva de sucessos.
+A validade concerne à sustentação da interpretação e de seu uso. Uma melhora
+na segunda tarefa, por exemplo, pode decorrer da familiaridade adquirida na
+primeira, mesmo que a interface tenha mudado entre ambas. O protocolo examina
+essas explicações alternativas e conserva o que limita a conclusão.
+
+| Relação a examinar | Exemplo e implicação para o estudo |
+| --- | --- |
+| participantes, tarefa e contexto | uma amostra experiente, rede estável ou sessão contínua pode representar mal o uso previsto; o estudo descreve essas condições e limita a transferência da conclusão |
+| comparação e tempo | novidade, repetição da tarefa ou mudança de modelo de IA podem acompanhar a condição comparada; ordem, versões e experiência prévia precisam ser registradas |
+| dados e análise | várias respostas da mesma pessoa compartilham sua experiência; tratá-las como observações independentes pode subestimar a incerteza |
+| participação de quem pesquisa | a presença do pesquisador e sua autoria do material podem influenciar conduta e julgamento; o procedimento explicita esses papéis e examina interpretações divergentes |
+| seleção e comunicação dos resultados | procurar apenas confirmações e publicar só sucessos oculta falhas; critérios anteriores à análise, casos contrários e desvios preservados permitem avaliar a conclusão |
+
+Uma avaliação formativa modifica o artefato para aperfeiçoá-lo; uma somativa
+julga uma versão segundo critérios definidos. Se o conteúdo muda durante o
+estudo, é preciso identificar quem encontrou cada versão e como a mudança
+participa da análise. O [glossário metodológico](glossario-construtos.md#distinções-metodológicas)
+explica essas finalidades; o [guia de investigação](guia-pesquisador.md#da-pergunta-ao-método)
+relaciona a escolha do método à pergunta.
 
 ## Modelo de relatório
 
 ```text
 Identificador e versão:
-Trilha: DBR | DSR | ambas, com funções separadas
+Estratégia de investigação e justificativa:
 Finalidade e ambiente:
-Problema, pergunta e proposição:
+Problema e pergunta; proposição quando pertinente:
 Contexto e participantes:
-Mecanismo, alternativa e comparação:
+Relações investigadas; mecanismo ou comparação quando pertinentes:
 Medidas e instrumentos:
 Procedimento e desvios:
 Resultados, incerteza e dados ausentes:
@@ -412,13 +447,14 @@ Nova pergunta:
 
 ## Referências metodológicas
 
-As referências completas estão em [`referencias.bib`](referencias.bib). As
-fontes centrais são DBR ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)), DSR
+As fontes metodológicas incluem estudo de caso ([Baxter e Jack (2008)](referencias.md#ref-baxter2008casestudy)), DBR ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)), DSR
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)), posicionamento da contribuição
 ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)) e estratégias de avaliação
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
-## Evidência exportada por Analytics
+<a id="evidência-exportada-por-analytics"></a>
+
+## Evidência exportada por Dados de autoria
 
 Ao usar a [exportação de curso e análise](analytics-instrucionais.md#exportar),
 registre o contrato, o curso, sua revisão, o escopo escolhido e a data. Preserve
@@ -437,6 +473,7 @@ estudo, de seus instrumentos e de suas premissas.
 ## Referências
 
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
+- [Baxter e Jack (2008)](referencias.md#ref-baxter2008casestudy): Pamela Baxter; Susan Jack (2008). **Qualitative Case Study Methodology: Study Design and Implementation for Novice Researchers.** *The Qualitative Report*, 13(4), p. 544–559.
 - [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
@@ -444,6 +481,7 @@ estudo, de seus instrumentos e de suas premissas.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm): Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
+- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
 - [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.
 - [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased): Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23.

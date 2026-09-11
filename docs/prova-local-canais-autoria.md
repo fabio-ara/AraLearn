@@ -57,7 +57,10 @@ O recibo JSON mede separadamente os argumentos da tarefa, o corpo do pedido
 HTTP e o corpo da resposta. Para cada um, registra bytes UTF-8, unidades de
 código UTF-16 e pontos de código Unicode. Essas medidas distinguem tamanho em
 bytes, representação usada pelo JavaScript e caracteres codificados, evitando
-comparar limites de unidades diferentes. Cabeçalhos e credenciais ficam fora
+comparar limites de unidades diferentes. Por exemplo, `𝑥` ocupa quatro bytes em
+UTF-8 e duas unidades de código UTF-16, mas representa um único ponto de código
+Unicode. Contar essas três medidas como se fossem caracteres equivalentes alteraria
+o resultado. Cabeçalhos e credenciais ficam fora
 dessa medição. A identificação do contrato observado acompanha cada operação,
 sem um hash fixado no programa de teste.
 

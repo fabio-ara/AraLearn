@@ -113,11 +113,12 @@
       "id": "analytics-surface",
       "family": "product-surfaces",
       "currentTerms": [
-        "Analytics"
+        "Analytics",
+        "Dados de autoria"
       ],
-      "productTerm": "Analytics",
+      "productTerm": "Dados de autoria",
       "technicalSymbol": "authoring_analytics",
-      "definition": "Área de consulta quantitativa do desenho corrente de um curso e das intervenções humanas registradas. As contagens descrevem conteúdo e autoria; não atribuem pontuação de qualidade ou de aprendizagem.",
+      "definition": "Área de consulta ao conteúdo e às escolhas de autoria de um curso. A pessoa escolhe o que comparar, como ideias novas ou distribuição da prática, e a parte do curso a examinar. As contagens descrevem o material salvo; verificar aprendizagem exige uma avaliação com estudantes.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -135,11 +136,11 @@
         "experimento",
         "painel administrativo"
       ],
-      "interfaceTerm": "Analytics",
-      "domainTerm": "Analytics da Autoria",
+      "interfaceTerm": "Dados de autoria",
+      "domainTerm": "análise dos dados de autoria",
       "englishEquivalent": "authoring analytics",
-      "araLearnExample": "Em Analytics, a pessoa proprietária escolhe curso, parte, microssequência ou unidade de estudo e confronta parâmetros aplicados, novidades, prática, fontes e intervenções humanas em números simples.",
-      "ambiguityRisk": "Sem esta delimitação, Analytics pode ser confundido com telemetria de atenção, avaliação de aprendizagem, pontuação de qualidade ou protocolo de pesquisa.",
+      "araLearnExample": "Em Dados de autoria, a pessoa escolhe a dimensão Novidade declarada e compara quantas ideias novas foram registradas nas unidades. Pode consultar as definições usadas na contagem e exportar o curso com sua análise.",
+      "ambiguityRisk": "Confundir os dados do material produzido com medidas de atenção, aprendizagem ou qualidade educacional.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Pesquisa”: foi retirado porque a superfície caracteriza o artefato, mas não executa nem configura um estudo.",

@@ -1,24 +1,34 @@
 # Contratos do AraLearn
 
-Os contratos do AraLearn definem a forma dos dados e os efeitos permitidos em
-cada operação. A interface e os clientes de IA enviam pedidos que os serviços
-do servidor, implementados como [Edge Functions](supabase.md), validam antes de
-consultar ou alterar o banco. Essa separação mantém o mesmo curso acessível por
-interface, MCP e Actions, com autorização e controle de versões comuns.
+A interface e os clientes externos precisam trocar dados com o servidor sem
+alterar seu significado. Os **contratos** definem a forma desses dados, as
+condições e os efeitos de cada operação. Os serviços do servidor, implementados
+como funções executadas na infraestrutura hospedada — [Edge Functions](supabase.md) —,
+validam os pedidos antes de consultar ou alterar o banco.
+
+A interface, o [MCP](autoria-mcp.md), protocolo de comunicação com clientes de IA,
+e [Actions](autoria-actions.md), acesso descrito em OpenAPI para o cliente usado
+nos testes, chegam a essas mesmas regras de autorização e controle de versões.
 
 Os identificadores abaixo servem para implementação e diagnóstico. Na conversa
 de autoria, a pessoa trabalha com títulos, conteúdo e decisões; o serviço resolve
 as identidades internas.
 
-## Princípios
+## Um pedido e seu resultado
 
-- O curso corrente é a autoridade compartilhada.
-- Uma escrita declara sua intenção e o estado lido.
-- O servidor volta a verificar propriedade e versão.
-- Resposta perdida pode ser recuperada por recibo temporário.
-- Dados ausentes permanecem ausentes.
-- Julgamento pedagógico não é apresentado como validação do banco.
-- Contrato substituído não permanece disponível sob outro nome nem como alternativa automática.
+Ao corrigir uma unidade, o cliente informa qual conteúdo leu e o que pretende
+alterar. O servidor confere acesso, identidade e versão antes de gravar. Se
+outra edição tiver modificado o alvo, a nova leitura permite examinar o conflito
+antes de substituir conteúdo.
+
+O resultado de uma alteração fica associado a um recibo. Se a resposta se
+perder depois da gravação, esse registro permite recuperar o resultado sem
+criar outra alteração. Os recibos de alterações do curso têm prazo técnico de
+14 dias e são removidos pela rotina de limpeza após a expiração. A recuperação
+depende da disponibilidade do recibo; esses registros não constituem um arquivo
+permanente de versões do curso. A mesma proteção atende à interface e aos
+clientes externos. Já a adequação pedagógica da correção depende da inspeção
+do material: a validação do formato e do acesso resolve outra parte do problema.
 
 ## Curso e estrutura
 
@@ -29,7 +39,10 @@ uma unidade. Essas seleções de campos são chamadas de projeções.
 
 O plano corrente usa `aralearn.course-instructional-plan.v3`. Ele contém título,
 objetivo, público, pré-requisitos declarados, escopo, mapa curricular completo,
-repertório acumulado, requisitos de evidência e partes operacionais. O mapa pode
+repertório acumulado, requisitos de evidência e partes operacionais. O repertório
+identifica os conhecimentos acompanhados no percurso; os requisitos descrevem
+o que uma atividade pede para tornar observável sua aplicação, conforme o
+[desenho instrucional](desenho-instrucional-parametrizado.md). O mapa pode
 estar ausente, em rascunho ou aprovado. Uma parte contém posição, título,
 intenção, progressão local e vínculos com microssequências já existentes.
 
@@ -51,8 +64,8 @@ fontes antes das unidades, inclusive com mapa em rascunho.
 
 A leitura de revisão `contentReview` é metadado protegido, separado do conteúdo
 editável. Ela informa revisão não registrada, rascunho, revisão atual ou
-desatualizada. O comando autenticado verifica o conteúdo inspecionado pelo
-proprietário. A decisão humana expressa pode ser registrada na interface ou por
+desatualizada. O comando autenticado compara a referência do conteúdo que o proprietário
+declara ter inspecionado com o estado salvo atual. A decisão humana expressa pode ser registrada na interface ou por
 `declarar_revisao`, com a referência fornecida na preparação. Importar, produzir
 ou corrigir conteúdo não declara essa revisão. Fontes e arquivos usados entram
 na base da conferência.
@@ -80,7 +93,130 @@ pertence à edição focal de uma unidade de estudo.
 A cobertura associa cada item obrigatório às microssequências previstas e às
 unidades materializadas que o desenvolveram. O estado aprovado só é aceito para
 um mapa completo quanto ao escopo declarado; nenhuma unidade de estudo é criada
-como efeito dessa aprovação.
+como efeito dessa aprovação. A leitura completa do mapa salvo fornece
+`referenciaParaAprovar`; `aprovar_mapa_curricular` recebe esse valor, sem
+reenviar uma árvore reconstruída. Uma mudança posterior exige nova inspeção
+da versão que se pretende aprovar.
+
+## Revisão do conteúdo
+
+A pessoa pode declarar que inspecionou uma explicação ou uma unidade salva.
+O sistema precisa relacionar essa decisão ao conteúdo que estava disponível
+naquele momento. Para isso, calcula uma impressão digital dos dados, ou
+**hash**, e a compara com o estado atual. A [revisão humana](explicacao-e-revisao-humana.md)
+apresenta o significado da declaração; os formatos abaixo permitem registrá-la
+e detectar mudanças posteriores.
+
+A explicação pertence à microssequência e é consultada pelas suas unidades,
+sem uma cópia do texto em cada unidade. Seus componentes mantêm identidades
+estáveis. Os vínculos de fontes usam os alvos `microsequence_explanation` ou
+`study_unit`, conservando o conteúdo que cada fonte sustenta.
+
+A coluna protegida `content_review` conserva a impressão do conteúdo,
+sua versão salva, a pessoa revisora e o instante da declaração. Esses dados
+ficam separados do conteúdo editável: importar, copiar ou produzir uma unidade
+não permite atribuir-lhe uma declaração de inspeção humana.
+
+| Estado | Significado |
+| --- | --- |
+| `unregistered` | Acervo anterior sem registro de revisão. |
+| `draft` | Objeto sem declaração individual corrente. |
+| `current` | A declaração corresponde à base material atual. |
+| `stale` | A declaração corresponde a uma base material que mudou. |
+
+A explicação pode ser revisada antes de existir unidade. Revisá-la não revisa
+automaticamente as unidades; uma unidade também pode ter revisão atual enquanto
+a explicação aguarda inspeção. A marca pessoal **Rever**, usada pelo estudante,
+permanece independente desses estados.
+
+### Ler e registrar uma declaração
+
+As operações exigem propriedade do curso. As entradas de serviço recebem a
+identidade autenticada da pessoa; as entradas diretas da aplicação usam sua
+sessão. Ambas compartilham as regras de comparação e gravação.
+
+| Operação | Entradas relevantes | Resultado |
+| --- | --- | --- |
+| `get_course_content_review_for_actor_v1` | pessoa, curso, tipo e identidade do alvo | `aralearn.course-content-review.v1`: revisão do curso, versão da entidade, `basisHash`, estado e política |
+| `set_course_content_review_for_actor_v1` | os mesmos alvos, `expectedBasisHash`, `reviewed` booleano e `requestId` | `aralearn.course-content-review-change.v1`: leitura correspondente à decisão, `changed` e `idempotent` |
+| `set_course_content_review_policy_for_actor_v1` | pessoa, curso, revisão esperada, política e `requestId` | `aralearn.course-content-review-policy.v1`: política aplicada, revisão resultante e estado do recibo |
+
+As funções SQL usam argumentos `p_*` em snake_case, convenção que separa palavras
+por sublinhado. A tabela descreve os campos do contrato de domínio. Variantes
+sem `for_actor` usam a sessão e omitem a identidade da pessoa nos argumentos.
+Na leitura do estudo, o resultado público mostra estado e `reviewedAt` quando
+pertinente; a identidade da pessoa revisora permanece no metadado protegido.
+
+Uma declaração exige conteúdo completo salvo. Unidades expositivas precisam
+de conteúdo; práticas podem usar uma resposta do catálogo sem bloco expositivo
+adicional, conforme o validador. Retirar uma marca também compara a impressão
+inspecionada, para que a decisão não atue sobre outro estado do objeto.
+
+O cliente da aplicação utiliza `getContentReview(courseId, targetKind, targetId)`,
+`setContentReview({courseId, targetKind, targetId, expectedBasisHash, reviewed,
+requestId})` e `setContentReviewPolicy({courseId, expectedRevision, policy,
+requestId})`. `changed` indica se houve mudança e `idempotent` identifica a
+recuperação do mesmo pedido sem repetir seus efeitos.
+
+Depois de uma resposta incerta, a identidade e os argumentos originais são
+conservados. A decisão pendente fica no armazenamento da conta, separada por
+curso, tipo e objeto. Reutilizar a identidade com outro alvo, impressão ou
+decisão é recusado. Recuperar o recibo informa a decisão original; uma releitura
+informa a situação atual, que pode já ter mudado. Pedidos locais antigos de
+aprovação de um conjunto não são convertidos em revisão individual.
+
+### Quais mudanças afetam a revisão
+
+A impressão reúne o conteúdo do alvo, o objetivo e a explicação da
+microssequência, as bases das dependências declaradas, a configuração aplicada
+da unidade, os requisitos vinculados e a proveniência material das fontes,
+âncoras, arquivos e mídias utilizados.
+
+Uma fonte alterada afeta apenas os alvos que dependem dela. Alterar uma unidade
+não desatualiza por si a revisão de uma unidade irmã ou da explicação. Alterar
+a explicação alcança suas unidades e as dependências registradas. Relações
+relevantes ainda não registradas precisam ser identificadas pela pessoa ao
+examinar o alcance da correção.
+
+Preferências pessoais, planejamento de produção futura, tema visual, posição
+de leitura e progresso não alteram o conteúdo aplicado. Uma gravação
+materialmente idêntica conserva a impressão. Se o texto mudar e depois voltar
+à mesma base material, volta a corresponder à impressão. Enquanto disponíveis,
+os recibos pertinentes permitem recuperar o resultado das operações a que se
+referem, dentro do prazo descrito em [Um pedido e seu resultado](#um-pedido-e-seu-resultado).
+
+Com edições concorrentes, o servidor usa os bloqueios do curso e compara a
+impressão antes de gravar. Uma mudança sem relação com o alvo pode avançar a
+revisão geral do curso sem alterar sua impressão. A declaração permanece
+vinculada ao objeto, sem ser reinterpretada como inspeção de conteúdo novo.
+
+### Política de acesso, acervo anterior e cópia
+
+A política `saved`, usada por padrão, disponibiliza o conteúdo completo salvo
+a quem possui acesso, inclusive visitantes de um curso explicitamente público.
+A política opcional `reviewed_only` exige revisão atual do objeto. Nesse caso,
+retirar uma marca pode afetar o que o estudante consegue abrir. O proprietário
+conserva acesso de autoria para resolver pendências. Visibilidade, concessões,
+permissão de cópia e direitos dos arquivos permanecem verificações próprias.
+
+O acervo sem explicação ou revisão conserva sua estrutura e suas unidades.
+Declarações antigas sobre o conjunto da microssequência ficam em
+`legacyMicrosequenceReview`, no metadado protegido, com seu alcance original.
+Elas não se tornam novas declarações por explicação ou unidade. Os antigos
+pontos de escrita de aprovação do conjunto foram retirados; a leitura agregada
+informa pendências sem registrar revisão.
+
+Uma cópia independente conserva conteúdo, fontes e configuração e recebe
+registros de revisão vazios. Os recibos da origem permanecem na origem. Exportar
+um estado de revisão permite examiná-lo, mas não autoriza reaplicá-lo numa
+importação como declaração da pessoa que recebe a cópia.
+
+A transformação de metadados de cópias locais preserva os dados úteis anteriores.
+A data de uma aprovação antiga do conjunto mantém esse significado, sem ser
+renomeada como revisão individual. A cópia local identifica a revisão do curso
+e é atualizada por recortes coerentes. O modo manual de sincronização permanece
+manual; sem conexão, não é possível confirmar revisão ou autorização remotas
+atuais nem ampliar os direitos sobre arquivos.
 
 ## Pessoas e acesso
 
@@ -166,6 +302,47 @@ pública. Ele não transforma continuidade narrativa, redução de apoio ou outr
 heurística pedagógica em estado obrigatório. Essas dimensões são realizadas
 pela composição e pelos parâmetros existentes quando pertinentes.
 
+### Campos de configuração nos canais
+
+A interface usa rótulos legíveis; os clientes enviam os campos abaixo. São as
+mesmas decisões do [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente),
+com nomes de entrada em português. Os valores de referência são exemplos de
+produto sujeitos à avaliação no contexto; não são escolhas automáticas
+aplicadas a todo curso.
+
+| Campo do catálogo | Decisão representada | Escopos | Valores admitidos e referência |
+| --- | --- | --- | --- |
+| `maximo_ideias_novas_por_unidade` | Máximo de unidades de análise instrucional introduzidas numa unidade expositiva ou mista; a contagem não mede dificuldade. | Curso, lição, microssequência, unidade | Inteiro 1–64; referência 2. |
+| `formas_de_explicacao` | Formas usadas para explicar cada unidade de análise introduzida, com motivo quando uma forma não se aplica. | Curso, lição, microssequência, unidade | Conjunto de definição, exemplo concreto, mecanismo, contraste, condição de aplicação, limite/exceção, exemplo resolvido e relação entre representações. Referência: primeiras quatro. |
+| `oportunidades_distintas_por_requisito` | Quantas oportunidades diferentes de prática devem atender a cada requisito de evidência de aprendizagem. | Curso, lição, microssequência, unidade | Inteiro 1–64; referência 2. |
+| `dimensoes_de_variacao_da_pratica` | Variação de caso/dados, contexto, tarefa, representação ou apoio, preservando a operação pertinente. | Curso, lição, microssequência, unidade | Conjunto não vazio dessas cinco dimensões; referência caso/dados. |
+| `alvo_palavras_conversa` | Extensão flexível das respostas na conversa autoral. | Curso, lição, microssequência, unidade | Inteiro 20–500; referência 120. |
+| `alvo_palavras_unidade` | Extensão editorial flexível da unidade, depois de satisfeita sua função. | Curso, lição, microssequência, unidade | Inteiro 40–1.000; referência 180. |
+| `distribuicao_da_pratica` | Organização de práticas intercaladas ou agrupadas. | Curso, lição, microssequência, unidade | `interleaved`, `clustered`; referência `interleaved`. |
+| `posicao_da_pratica` | Prática antes, depois ou antes e depois da explicação pertinente. | Curso, lição, microssequência, unidade | `before_explanation`, `after_explanation`, `before_and_after`; referência `after_explanation`. |
+| `alvo_microssequencias_por_parte` | Quantas microssequências existentes uma parte pretende reunir. | Curso | Inteiro 1–64; referência 1. |
+| `alvo_partes_por_lote` | Quantas partes preparar no lote autorizado. | Curso | Inteiro 1–64; referência 1. |
+| `frequencia_de_pausa` | Pausa por microssequência, parte, lote ou solicitação. | Curso | `each_microsequence`, `each_part`, `each_batch`, `on_request`; referência `each_part`. |
+| `preferencia_da_conversa` | Forma de discutir a decisão corrente. | Curso, lição, microssequência, unidade | `concise`, `debate`, `explanation`; referência `concise`. |
+
+Quando não há escolha atribuída, o servidor devolve `mode: automatic`,
+`value: null` e `origin: system_default`. O valor continua pendente de resolução
+contextual. `ajustar_configuracao` distingue fixações em `parametros`, delegação
+sem valor em `automaticos` e valor nulo para restaurar a herança.
+
+Na materialização, cada unidade recebe os valores pendentes em
+`configuracao.parametros` e o motivo em `configuracao.motivo`. O papel declarado
+do conteúdo determina se a aplicação é expositiva, prática ou mista. A tarefa
+`aplicar_configuracao_instrucional` pode aplicar a intenção corrente a unidades
+existentes inspecionadas, preservando texto, explicação, fixações e condições de
+pesquisa. Se falta a declaração de aplicação, ela precisa ser fornecida
+expressamente; calibrar parâmetros não fabrica uma descrição do conteúdo.
+A operação conserva a separação entre aplicação instrucional e revisão humana.
+
+`ajustar_orientacao` e `ajustar_componentes` alteram orientações para trabalho
+futuro. Nos perfis, a prévia e a aplicação verificam as versões do curso e do
+perfil; condições de pesquisa não podem ser removidas por essa aplicação.
+
 ## Fontes e PDFs
 
 O cadastro identifica a fonte; a âncora localiza um trecho; a atribuição registra
@@ -210,6 +387,22 @@ caminhos de Storage ficam fora dessa projeção. O download de PDF conserva a
 identidade da fonte, sua revisão e o hash do arquivo; não cria uma cópia por
 unidade ou um segundo serviço de arquivos para a explicação.
 
+### Atualizar vínculos sem perder suas ocorrências
+
+Ao corrigir conteúdo com fontes explícitas, o sistema relê as atribuições na
+mesma revisão do alvo. Um vínculo com a mesma fonte, relação e âncoras conserva
+sua identidade. Uma ocorrência — o ponto em que a fonte é usada no conteúdo —
+também conserva a identidade quando recurso, seletor e trecho coincidem.
+Alterações de papéis ou trechos aplicam os novos valores sem duplicar o vínculo.
+
+Omitir ocorrências conserva as existentes; enviar uma lista explicitamente
+vazia as retira. Vínculos omitidos continuam protegidos pela composição. Se
+mais de um vínculo corresponder à referência, a operação pede inspeção antes
+de escolher o alvo. Alterações de relação ou âncoras que substituam um vínculo
+usam sua posição em `manter_fonte`. O capítulo de
+[fontes e citações](fontes-e-citacoes.md) explica as relações intelectuais que
+esses registros representam.
+
 ## Áudio e ferramentas de estudo
 
 As [ferramentas de estudo](ferramentas-calculo-e-consulta.md) oferecem ações como
@@ -228,7 +421,8 @@ velocidade, preferência de voz nativa, permissão para voz remota e serviço
 opcional; não contém credenciais. Faixas nativas guardam texto, enquanto faixas
 de arquivo guardam somente SHA-256, tamanho e tipo validados pelo serviço.
 
-`aralearn.course-media-ingestion.v1` confirma o envio de WAV PCM ou MP3.
+`aralearn.course-media-ingestion.v1` confirma o envio de WAV PCM, áudio não
+comprimido, ou MP3.
 `aralearn.course-media-change.v1` confirma configuração e remoção. As mutações
 usam revisão esperada, identidade da solicitação e recibo que permite repetir
 o mesmo pedido sem duplicar efeitos; o limite
@@ -270,22 +464,29 @@ releitura. `retomar_correcao` reconcilia a tentativa original, sem reescrever o
 conteúdo. O [ciclo de revisão](auditoria-de-conformidade-instrucional.md) distingue
 essa confirmação da declaração humana de revisão.
 
-## Analytics
+## Dados de autoria
 
-[Analytics](analytics-instrucionais.md) descreve quantitativamente o conteúdo e
+[A análise dos dados de autoria](analytics-instrucionais.md) descreve quantitativamente o conteúdo e
 o desenho registrados. A consulta produz um retrato do estado corrente para
 inspeção ou exportação.
 
-`aralearn.course-authoring-analytics.v2` contém:
+`aralearn.course-authoring-analytics.v4` contém:
 
 - curso e escopo selecionado;
 - desenho quantitativo;
+- inventário do conteúdo observado (`basis`) e suas distribuições (`dimensions`);
 - autoria quantitativa corrente;
 - dados ausentes;
 - link opcional para abrir o recorte correspondente.
 
-Não há páginas de fatos ou dicionário separado. O JSON baixado é o próprio
-retrato normalizado do estado corrente.
+**Exportar curso e análise** baixa um arquivo JSON no formato
+`aralearn.course-authoring-export.v2`. Ele reúne `course`, `scope`, `analytics`
+e `artifact`: a análise mantém o escopo selecionado, enquanto
+`artifact.document` contém o curso integral, inclusive as explicações salvas.
+Outros campos de `artifact` preservam os vínculos das fontes das explicações,
+as bases explicativas aplicadas às unidades e as declarações de revisão.
+O [dicionário de dados](dicionario-metricas-datasets.md#comparação-e-exportação)
+descreve esses campos, os limites e as condições de leitura da exportação.
 
 ## Recuperação de cópias próprias e estado de Estudo
 
@@ -377,6 +578,37 @@ Erros públicos distinguem:
 Uma resposta de erro informa se a operação pode ser retomada e qual decisão
 humana falta. O serviço transforma erros internos do banco e do armazenamento
 em mensagens adequadas à tarefa, sem expor credenciais ou caminhos internos.
+
+## Continuação e reconstrução do conteúdo
+
+Uma leitura pode ser maior que a resposta admitida pelo canal. Nesse caso, o
+serviço devolve uma parte do conteúdo e uma referência para obter a seguinte.
+`temMais: true` e `continuacao` não nula indicam que a leitura está incompleta.
+O cliente reutiliza o valor recebido no mesmo recorte, sem editá-lo. Se a versão
+mudar entre páginas, a leitura reinicia para evitar combinar estados diferentes.
+
+Listas de cursos, preparo, fontes e revisão utilizam continuação. A preparação
+pode incluir proposta, explicação literal, fontes e revisão das microssequências;
+o repertório do curso usa a mesma continuação do restante do preparo. A página
+limita o volume transferido de cada vez, enquanto a decisão pedagógica determina
+quanto conteúdo precisa ser lido.
+
+Resultados extensos podem usar fragmentos de JSON, formato que organiza dados
+em campos. Esses fragmentos são trechos literais de um documento: precisam ser
+concatenados na ordem antes de sua interpretação. As posições são contíguas em
+UTF-16, a representação de texto usada pelo JavaScript. Uma página isolada não
+constitui necessariamente um documento JSON válido.
+
+`exportar_autoria` utiliza fragmentos mesmo quando basta uma resposta;
+`comparar_cursos` os utiliza quando o resultado é extenso. Na exportação, o
+hífen inseparável U+2011 aparece como o escape JSON `\u2011`. A concatenação e
+`JSON.parse` reconstituem o conteúdo original. Posições UTF-16 e hash da
+continuação correspondem ao JSON com esse escape. Essa distinção importa para
+conferir a integridade sem modificar o texto exportado.
+
+A exportação conserva o artefato literal e sua leitura autoral. A comparação
+confronta dois recortes próprios e também seu inventário, sem inferir equivalência
+pedagógica. Ambas exigem acesso de autoria aos cursos selecionados.
 
 ## Limites de tamanho
 

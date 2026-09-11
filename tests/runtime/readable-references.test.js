@@ -64,6 +64,24 @@ test("DOI prefixado é normalizado sem duplicar o resolvedor", () => {
   assert.doesNotMatch(rendered, /doi\.org\/https?:/iu);
 });
 
+test("referências distinguem número do artigo de intervalo de páginas", () => {
+  const entries = parseBibTeX(`${fixture}\n@article{artigo,
+    author = {Pessoa, Ana},
+    title = {Estudo de teste},
+    journal = {Revista},
+    year = {2026},
+    volume = {12},
+    number = {5},
+    eid = {308}
+  }`);
+  const rendered = renderReadableReferences(entries, { guides: [] });
+  assert.match(rendered, /12\(5\), artigo 308/u);
+  assert.doesNotMatch(rendered, /p\. 308/u);
+  assert.match(rendered, /p\. 251–296/u);
+  const local = renderLocalReferences(replacePandocCitations("Citação [@artigo].", entries), entries);
+  assert.match(local, /artigo 308/u);
+});
+
 test("destino Markdown preserva DOI com parênteses", () => {
   const entries = parseBibTeX(`@article{source,
   author = {Pessoa, Ana},
