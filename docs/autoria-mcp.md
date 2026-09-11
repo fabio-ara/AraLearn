@@ -1,11 +1,17 @@
 # Autoria pelo MCP
 
-O servidor MCP do AraLearn permite criar e revisar cursos numa conversa. O GPT
-trabalha com tarefas humanas; o servidor resolve identidades, concorrência e
-repetição segura internamente.
+O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/latest)
+é um protocolo que permite a um cliente de IA descobrir e chamar ferramentas
+de um serviço. No AraLearn, essas ferramentas consultam e alteram cursos: o
+assistente pode desenvolver o mapa, salvar explicações, produzir unidades e
+revisar conteúdo conforme o pedido da pessoa autora.
 
-O curso vivo é a autoridade. A interface de autoria, o MCP e Actions leem e
-alteram o mesmo estado, sem manter uma cópia paralela da conversa.
+O curso salvo é a referência comum à interface, ao MCP e a Actions. A pessoa
+inspeciona o conteúdo e suas fontes no aplicativo, orienta as alterações e pode
+declarar sua revisão. As ferramentas independem do modelo usado pelo cliente;
+a compatibilidade concreta depende do suporte ao protocolo e das capacidades
+desse cliente. O [percurso de autoria por conversa](criar-cursos-pelo-chat.md)
+explica as decisões de autoria; abaixo estão o catálogo e seu funcionamento.
 
 **Debater com GPT**, na Autoria, oferece um pedido copiável com o endereço exato
 do recorte e a revisão observada. O cliente deve resolver essa referência e ler
@@ -15,13 +21,15 @@ autoriza escrita, não registra aprovação humana e não supõe que o link cont
 o texto. Proposta, decisão de aplicar e releitura permanecem etapas distintas;
 a inspeção e a declaração de revisão pertencem à pessoa autora. A declaração
 expressa pode ser registrada na interface ou pela tarefa `declarar_revisao`;
-uma avaliação feita pelo GPT não a substitui.
+uma avaliação feita pelo assistente não a substitui.
 
 ## Tarefas disponíveis
 
 As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` 4.0.0, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
-As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dessa fonte.
+O catálogo contém 16 leituras e 38 escritas. Cada definição reúne nome,
+argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
+estruturados de entrada, ou schemas, são gerados dessa fonte.
 
 | Leitura | Quando usar |
 | --- | --- |
@@ -35,7 +43,7 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 | `preparar_materializacao` | reunir base explicativa, fontes, repertório acumulado e configuração do lote antes de produzir unidades |
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_repertorio_instrucional` | ler unidades de análise, requisitos de evidência, vínculos e aplicações salvas |
-| `consultar_observacoes` | ler as entradas versionadas da fila pertinente à Explicação ou às unidades |
+| `consultar_observacoes` | ler as entradas versionadas da fila pertinente à explicação ou às unidades |
 | `preparar_revisao` | reunir também unidades afetadas por progressão, exemplos ou prática |
 | `consultar_fontes` | localizar fontes, âncoras e proveniência |
 | `consultar_componentes` | buscar representações pela função e ler o contrato exato do componente escolhido |
@@ -70,7 +78,7 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 | `vincular_repertorio_instrucional` | salvar a seleção explícita de análise e evidência de uma microssequência |
 | `registrar_aplicacoes_instrucionais` | registrar introduções, usos, formas e oportunidades nas unidades inspecionadas |
 | `aplicar_configuracao_instrucional` | aplicar a intenção corrente às unidades existentes, com calibração explícita dos automáticos e preservação de fixações e condições de pesquisa |
-| `registrar_observacao` | acrescentar uma entrada à fila de uma Explicação ou de unidades selecionadas |
+| `registrar_observacao` | acrescentar uma entrada à fila de uma explicação ou de unidades selecionadas |
 | `editar_observacao` | alterar a versão inspecionada de uma entrada, conservando sua pendência |
 | `aplicar_correcoes` | aplicar o conjunto coerente de correções já revisado |
 | `retomar_correcao` | reconciliar conteúdo, fila e tentativa original sem reescrever a correção |
@@ -83,22 +91,26 @@ As tabelas abaixo descrevem seus usos; nomes, campos e limites são gerados dess
 | `definir_acesso_arquivos` | escolher herança, restrição ou disponibilidade dos arquivos da fonte inspecionada |
 | `definir_politica_revisao` | escolher entre conteúdo completo salvo e somente revisado sem alterar visibilidade ou direitos |
 
-Os schemas vêm do mesmo catálogo projetado para Actions. Não há aliases para
-ferramentas antigas nem um comando genérico que exponha a estrutura do banco.
+Os schemas vêm do mesmo catálogo projetado para Actions. Ferramentas antigas
+não permanecem acessíveis sob nomes alternativos; cada operação corresponde
+a uma tarefa delimitada, sem expor um comando genérico sobre o banco.
 
-No contrato 4.0.0, Explicação é a base explicativa salva da microssequência:
+No contrato 4.0.0, a [explicação](explicacao-e-revisao-humana.md) é a base salva
+da microssequência:
 conteúdo desenvolvido, pressupostos, relações e fontes. `salvar_explicacoes`
 permite desenvolvê-la antes das unidades, inclusive durante o trabalho sobre um
-mapa em rascunho. Abrir a base salva não chama LLM. `materializar_parte` reutiliza
+mapa em rascunho. Abrir a base salva lê conteúdo existente, sem chamar um modelo de linguagem. `materializar_parte` reutiliza
 as bases existentes; recebe em `explicacoes` somente aquelas que a intenção atual
-também altera. `aplicar_correcoes` pode alterar unidades, Explicações ou ambas
+também altera. `aplicar_correcoes` pode alterar unidades, explicações ou ambas
 num conjunto coerente. `consultar_fontes` e os vínculos de `manter_fonte` aceitam
-a Explicação como alvo, com suas localizações próprias. `exportar_autoria`
+a explicação como alvo, com suas localizações próprias. `exportar_autoria`
 preserva a base literal e a proveniência correspondente. As formas de explicação
 registradas na aplicação pedagógica de uma unidade continuam sendo medidas dessa
 unidade: não são a base explicativa compartilhada.
 
-Ao corrigir conteúdo com fontes explícitas, o sistema relê a atribuição do alvo
+A atribuição liga o conteúdo à fonte; a âncora localiza o trecho na obra; a
+ocorrência localiza seu uso no curso, conforme [Fontes, citações e
+referências](fontes-e-citacoes.md). Ao corrigir conteúdo com fontes explícitas, o sistema relê a atribuição do alvo
 na mesma revisão. Um vínculo com a mesma fonte, relação e âncoras conserva sua
 identidade; uma ocorrência com o mesmo recurso, seletor e trecho também a
 conserva. Alterar papéis ou trechos aplica os valores declarados, sem duplicar
@@ -112,10 +124,12 @@ Salvar registra produção ou intervenção; uma mudança material desatualiza a
 revisão afetada. Aprovar o mapa ou autorizar um lote não revisa material futuro.
 `preparar_revisao` fornece a referência do conteúdo salvo; `declarar_revisao`
 recebe essa referência e a escolha expressa da pessoa (`revisado` ou `retirar`).
-O GPT não deduz essa declaração da correção, do estudo ou de sua própria
+O assistente não deduz essa declaração da correção, do estudo ou de sua própria
 avaliação. A marca registra inspeção declarada, sem provar leitura, correção ou
 eficácia. Veja o
-[contrato de Explicação e revisão](explicacao-e-revisao-humana.md).
+[contrato de explicação e revisão](explicacao-e-revisao-humana.md).
+
+## Arquivos da conversa
 
 No cliente compatível, PDF e áudio chegam como objetos oficiais de arquivo
 declarados por `_meta["openai/fileParams"]`. Nome, caminho local ou identificador
@@ -124,9 +138,10 @@ O servidor aceita a origem temporária autorizada e valida bytes antes de
 persistir. Essa extensão depende da capacidade do cliente MCP; não se presume
 acesso a arquivos locais. Ingerir áudio não chama síntese ou transcrição.
 
+O tipo MIME é o rótulo de formato informado no envio, como `audio/wav`.
 Quando um tipo de áudio é recusado, a mensagem distingue o tipo declarado no
 descritor do anexo do tipo recebido na resposta do download. Ela informa somente
-um token MIME válido e limitado; valores inválidos não são reproduzidos. Isso
+um rótulo MIME válido e de tamanho limitado; valores inválidos não são reproduzidos. Isso
 permite identificar o ponto da rejeição sem expor a URL temporária, parâmetros
 do cabeçalho ou identificadores do arquivo. O erro continua
 `unsupported_audio_media_type` (HTTP 415); o diagnóstico não aceita tipos novos
@@ -141,26 +156,26 @@ MP3, HTML, PDF ou WAV não PCM sob esse rótulo são recusados. O armazenamento
 e a referência devolvida conservam `audio/wav`. Isso não amplia formatos,
 origens autorizadas, limite de bytes nem seguimento de redirecionamentos.
 
-As ferramentas do Estudo são pacotes do catálogo comum, compostos no `content`
-da unidade. A consulta focal de componentes fornece um contrato por vez; a de
+As ferramentas do estudo, como áudio e calculadora, são componentes do catálogo
+comum, incluídos no campo `content` da unidade ou da explicação. A consulta focal de componentes fornece um contrato por vez; a de
 fontes fornece alvos lógicos de PDF; a biblioteca fornece referências de áudio
-sem URLs de Storage. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
+sem endereços internos de armazenamento. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
 
 ## Fluxo de conversa
 
-O GPT retoma o estado real e lê preferências pessoais, condições do recorte e
+O assistente retoma o estado real e lê preferências pessoais, condições do recorte e
 pendências pertinentes antes de continuar. Define com a pessoa somente as
 decisões substantivas ainda ausentes: objetivo, público, conhecimentos prévios,
 escopo e fontes que mudam a proposta. Depois trabalha no objeto corrente:
 
 1. salva o mapa ou um ramo coerente como rascunho e oferece o destino de inspeção;
-2. desenvolve a Explicação e suas fontes na microssequência, mesmo antes de
+2. desenvolve a explicação e suas fontes na microssequência, mesmo antes de
    existir unidade; no foco Conteúdo, essa base pode ser o resultado do mandato;
 3. quando houver decisão de aprovar o mapa, lê a versão persistida completa e
    usa `aprovar_mapa_curricular` com `referenciaParaAprovar`, sem regenerar ou
    reenviar outra árvore;
-4. no Ciclo completo, prepara o lote pertinente, apresenta sua progressão breve
-   e produz as unidades dentro do mandato e dos gates da preparação vigente;
+4. no **Ciclo completo**, prepara o lote pertinente, apresenta sua progressão
+   e produz as unidades dentro da autorização e das condições da preparação;
 5. relê o que foi salvo, reconcilia as observações atendidas e devolve resultado,
    link pertinente e no máximo uma próxima decisão;
 6. continua os recortes autorizados conforme foco, cadência, pontos de revisão e
@@ -175,13 +190,14 @@ A aprovação do mapa não aprova conteúdo futuro. A aprovação da progressão
 parte não aprova automaticamente cada formulação ou exercício. Decisões
 rotineiras de redação e representação não exigem nova pergunta; mudanças
 substantivas de cobertura, ordem ou profundidade voltam à pessoa autora.
-Se a pessoa aprovar o mapa mostrado e pedir produção na mesma mensagem, o GPT
+Se a pessoa aprovar o mapa mostrado e pedir produção na mesma mensagem, o assistente
 registra essa aprovação, apresenta a progressão breve e executa o pedido. Não
 acrescenta uma confirmação obrigatória para cada lote.
 
-O mandato define escopo, lotes e restrições. `retomar_curso` e
+O mandato é o trabalho autorizado pela pessoa: escopo, lotes e restrições. `retomar_curso` e
 `preparar_materializacao` devolvem `referenciaProcesso`; o cliente conserva esse
-valor opaco no campo `processo` ao retomar, preparar e materializar dentro do
+valor opaco — que deve ser reutilizado sem interpretação ou alteração —
+no campo `processo` ao retomar, preparar e materializar dentro do
 mesmo fluxo. Não edita a referência nem a usa como nova autorização. Alterar
 preferências pessoais vale para novos fluxos e não reescreve silenciosamente o
 processo em andamento. `preferenciasMudaram`, `conflitos` e `exigeConciliacao`
@@ -191,7 +207,7 @@ conciliação pendente deve ser resolvida antes da produção dependente.
 A granularidade do lote e a
 frequência de pausas são independentes: dividir um lote não cria novas decisões
 humanas. Uma preferência de continuidade não autoriza conteúdo fora do pedido.
-Sem continuidade autorizada, o GPT entrega o primeiro lote e aguarda orientação.
+Sem continuidade autorizada, o assistente entrega o primeiro lote e aguarda orientação.
 As confirmações de segurança solicitadas pelo cliente permanecem aplicáveis;
 elas não significam que o conteúdo futuro já foi revisado.
 
@@ -211,16 +227,17 @@ de preparar outra reorganização.
 ## Repertório e materialização
 
 Antes de produzir unidades, `preparar_materializacao` traz somente o recorte
-pertinente e o repertório acumulado do percurso. O GPT distingue ideias novas,
+pertinente e o repertório acumulado do percurso. O assistente distingue ideias novas,
 ideias já estabelecidas que serão utilizadas e ideias deliberadamente retomadas.
 Conceitos auxiliares, relações, condições, procedimentos e operações também
 entram no repertório quando forem necessários para aprender o percurso.
 O mesmo recorte informa, para cada microssequência, os itens de escopo cuja
 cobertura precisa ser distribuída entre as unidades do lote.
 
-Uma unidade de análise instrucional identifica um item expresso desse repertório;
-não é card, token, medida cognitiva ou unidade estatística. Requisitos de
-evidência descrevem operações observáveis. As tarefas de manutenção e vínculo
+Uma [unidade de análise instrucional](desenho-instrucional-parametrizado.md)
+identifica uma ideia, distinção, relação ou operação desse repertório. Requisitos
+de evidência descrevem o que uma atividade pede para tornar observável sua
+aplicação. Esses itens orientam o desenho; não medem aprendizagem por si mesmos. As tarefas de manutenção e vínculo
 preservam essa distinção; registrar uma aplicação descreve decisões e
 oportunidades na sequência, sem certificar eficácia pedagógica.
 
@@ -238,13 +255,14 @@ valida propriedades determinísticas. Suficiência, progressão, ausência de
 saltos e adequação das representações continuam dependendo da produção e da
 revisão pedagógica.
 
-O GPT deve fazer uma leitura sequencial antes de concluir o lote. Uma sequência
+O assistente deve fazer uma leitura sequencial antes de concluir o lote. Uma sequência
 pode ser dividida quando estiver densa demais ou fundida quando a navegação tiver
 virado fragmentação textual. Não existe quantidade-alvo de unidades.
 
 ## Configuração para uso e pesquisa
 
-A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+A [configuração instrucional](desenho-instrucional-parametrizado.md) orienta
+como desenvolver o conteúdo e a prática. Ela vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
 que define significado, unidade, limites, natureza e escopos de cada ajuste.
 Parâmetros curriculares ficam no curso ou ramo pertinente; análise e fontes na
 microssequência; desenho aplicado e revisão na unidade. Preferências pessoais
@@ -252,16 +270,15 @@ de processo têm catálogo e persistência próprios. Os alvos de palavras e de
 produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
 Automático é uma intenção sem valor numérico implícito. Antes de materializar,
-o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+o assistente escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
 função, público e planejamento. Fixações da autoria e condições de pesquisa
 prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
 A aplicação conserva os valores e motivos daquela decisão. Alterar a
 configuração corrente não reescreve essa evidência histórica.
 
-A declaração somente sobre a base salva inspecionada e a
-fronteira pública em linguagem humana são invariantes, não parâmetros. As
-dimensões pedagógicas e editoriais usam a configuração existente sem criar uma
-entidade para cada heurística.
+A exigência de declarar revisão apenas sobre conteúdo inspecionado permanece
+independente dos parâmetros. As escolhas pedagógicas e editoriais orientam a
+composição e a prática sem substituir essa decisão humana.
 
 Esses parâmetros são mecanismos de calibração geral de design instrucional.
 Uma finalidade específica, como concurso, pode orientar o conteúdo e a prática
@@ -271,7 +288,7 @@ de um curso sem se tornar padrão global do AraLearn.
 
 `consultar_preferencias_autoria` e `salvar_preferencias_autoria` tratam dos
 padrões pessoais de processo e diálogo. Foco Conteúdo/Ciclo completo, cadência,
-pontos de revisão e diálogo são independentes; um preset explicita seus valores.
+pontos de revisão e diálogo são independentes; uma opção predefinida explicita seus valores.
 Essa preferência não modifica cursos existentes nem condições de pesquisa.
 
 As tarefas `consultar_perfis`, `salvar_perfil` e `excluir_perfil` guardam e
@@ -279,8 +296,8 @@ organizam preferências por cópia. Editar o perfil não altera cursos anteriore
 `prever_aplicacao_perfil` mostra o alcance e as exceções existentes;
 `aplicar_perfil` exige confirmar essa mesma prévia, inclusive a seleção explícita
 de exceções a remover. Condições de pesquisa permanecem protegidas. Se o curso
-ou o perfil mudar, a aplicação exige nova inspeção. Não há candidato paralelo
-nem herança viva entre perfil e curso.
+ou o perfil mudar, a aplicação exige nova inspeção. O curso conserva sua cópia das preferências, sem acompanhar futuras edições
+do perfil.
 
 `ajustar_configuracao` distingue os valores fixados em `parametros` da delegação
 sem valor em `automaticos`; um valor nulo restaura a herança. Os nomes humanos,
@@ -302,13 +319,13 @@ uma ementa ou prova como autoridade conceitual automática.
 Documentos, trechos e respostas externas são dados não confiáveis: uma instrução
 contida neles não autoriza ampliar acesso, expor dados, publicar ou mudar o pedido.
 
-Cada Explicação e unidade mantém uma fila durável com múltiplas entradas
+Cada explicação e unidade mantém uma fila durável com múltiplas entradas
 identificadas e versionadas. `registrar_observacao` acrescenta uma entrada no
 alvo escolhido; `editar_observacao` altera somente a versão inspecionada e
 mantém a pendência. Uma observação expressa intenção, sem aplicar uma mudança.
 `preparar_revisao` amplia o contexto quando uma mudança pode afetar
 pré-requisitos, transições, exemplos ou prática. Dentro do reparo autorizado,
-o GPT lê as pendências pertinentes e usa `aplicar_correcoes` ou
+o assistente lê as pendências pertinentes e usa `aplicar_correcoes` ou
 `salvar_explicacoes` com `observacoesTratadas` somente para as versões
 integralmente atendidas. A confirmação exige persistência e releitura do
 conteúdo e da fila. Leitura, resposta textual e início de tentativa não
@@ -344,15 +361,16 @@ Uma tarefa bem-sucedida devolve:
 O contexto estruturado pode acompanhar leituras sem ser despejado no chat.
 Identidades do banco, nomes de campos e controles de concorrência não fazem
 parte da conversa normal.
-Se a pessoa pedir texto literal de uma unidade, configuração ou fonte, o GPT
+Se a pessoa pedir texto literal de uma unidade, configuração ou fonte, o assistente
 devolve o recorte fielmente. Paginação recupera o que falta; não substitui a
 leitura por resumo nem oculta indisponibilidade. A concisão do chat não reduz a
 explicação, os exemplos ou a prática necessários no material didático.
 
 Na listagem de cursos e nas leituras de preparo, fontes e revisão, `temMais: true` e uma
-`continuacao` não nula sinalizam resposta parcial. O GPT continua o mesmo recorte usando o valor opaco devolvido, sem
-inventá-lo nem pedir decisão por página. Fragmentos `application/json` mantêm
-texto literal e posições UTF-16 contíguas; devem ser reunidos na ordem antes de
+`continuacao` não nula sinalizam resposta parcial. O assistente continua o mesmo recorte usando o valor opaco devolvido, sem
+inventá-lo nem pedir decisão por página. O formato `application/json` organiza os dados em campos. Seus fragmentos mantêm
+texto literal e posições contíguas em UTF-16, a representação de texto usada
+pelo JavaScript; devem ser reunidos na ordem antes de
 interpretar o documento completo. Enquanto houver trechos pendentes, não se
 declara leitura completa. Se a revisão do curso mudar, a leitura do recorte
 precisa recomeçar. A revisão inclui observações focais e plano imediato; seu
@@ -363,19 +381,19 @@ O hífen inseparável U+2011 é representado pelo escape JSON `\u2011`; concaten
 os trechos e aplicar `JSON.parse` recupera exatamente o conteúdo original.
 Posições UTF-16 e hash de continuação correspondem ao JSON com esse escape.
 
-O preparo inclui a proposta, a Explicação literal, suas fontes e o estado de
+O preparo inclui a proposta, a explicação literal, suas fontes e o estado de
 revisão de cada microssequência do lote. Essa base compartilhada também pode
 exigir continuação. A leitura preserva o conteúdo inteiro; uma mudança no curso
 ou no conteúdo entre páginas recusa a continuação para evitar combinar versões.
 
-Erros devolvem `code`, mensagem sanitizada, itens de diagnóstico limitados e
-`recovery`, com estratégia, possibilidade de retry e modo de conservar a
-tentativa. Tokens, URLs temporárias, cabeçalhos e conteúdo privado não são
+Erros devolvem `code`, mensagem sem dados sensíveis, diagnóstico limitado e
+`recovery`, com estratégia, possibilidade de repetir o pedido e modo de conservar a
+tentativa. Tokens de acesso, URLs temporárias, cabeçalhos e conteúdo privado não são
 evidência para despejar no chat. Os dados de recuperação devolvidos devem ser
 preservados integralmente quando a tarefa os solicitar.
 
 Ambiguidade entre títulos exige referência humana mais específica. Conflito
-confirmado exige releitura e avaliação do delta ainda pertinente. Escrita
+confirmado exige releitura e avaliação da alteração ainda pertinente. Escrita
 incerta conserva alvo, comando e identidade: ausência imediata de recibo não
 prova que a operação terminou sem efeito. O executor reconcilia e, quando
 cabível, repete o pedido original sob recibo; não há repetição cega nem nova
@@ -385,20 +403,23 @@ tratada como falha transitória nem resolvida por reconexão automática.
 
 ## Confirmação de exclusão por MCP
 
-A confirmação de `excluir_curso` pelo MCP pode ficar sem retorno de ferramenta.
-Em um ensaio no ChatGPT, o assistente relatou um bloqueio de segurança, mas não
-foi capturado erro bruto que confirmasse a causa. A mensagem pode variar; esse
-resultado não comprova exclusão nem falha geral do canal.
+A exclusão de um curso exige confirmação e um resultado verificável do serviço.
+Se o cliente não apresentar o retorno da ferramenta, a ação permanece incerta.
+Uma descrição produzida pelo assistente não substitui o recibo nem identifica,
+por si só, a causa da falta de resposta.
 
 Antes de outra ação, confira o estado do curso e da limpeza de arquivos com
-acesso do proprietário e preserve a confirmação original. O proprietário
-também dispõe de exclusão por [Actions](autoria-actions.md) e pela interface,
-sujeitas às respectivas confirmações e controles de acesso. Uma recusa explícita
-deve ser respeitada.
+acesso do proprietário e preserve a confirmação original. Uma resposta ausente
+exige reconciliação; uma recusa explícita deve ser respeitada e não autoriza
+repetir a exclusão por outro canal. A exclusão também existe em
+[Actions](autoria-actions.md) e na interface, com seus controles próprios; essa
+capacidade não resolve a incerteza sobre uma tentativa anterior.
 
 ## Autenticação e atualização
 
-O MCP usa OAuth 2.1. A conexão solicita o escopo autoral necessário e o servidor
+O MCP usa [OAuth 2.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1),
+que permite autorizar um cliente a acessar o serviço sem lhe entregar a senha
+da conta. A conexão solicita o escopo autoral necessário, isto é, o conjunto permitido de operações, e o servidor
 volta a conferir pessoa, sessão, cliente e consentimento em cada chamada.
 
 Uma recusa de acesso à operação (`not_authorized`) conserva o erro e não pede
@@ -419,9 +440,11 @@ O endereço hospedado do servidor é:
 
 `https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-mcp`
 
-Depois de uma publicação que altere o catálogo:
+A atualização do catálogo depende do cliente externo utilizado. No
+[ChatGPT](https://chatgpt.com), por exemplo, depois de uma publicação que altere
+as tarefas:
 
-1. use **Refresh** no app AraLearn nas configurações do ChatGPT;
+1. use **Refresh** na conexão AraLearn nas configurações desse serviço;
 2. revise e habilite as tarefas correntes indicadas pelo catálogo compartilhado;
 3. abra uma conversa nova e retome um curso pelo título;
 4. use **Reconnect** somente se a autorização estiver expirada, revogada ou
@@ -448,14 +471,14 @@ um teste local de protocolo não comprova essa etapa. O
 separa medidas mecânicas, estimativas e observação do cliente real.
 
 Há também uma fronteira entre o schema servido e a validação feita pelo
-conector. Se um campo obrigatório no catálogo vivo for rejeitado pelo cliente
+cliente. Se um campo obrigatório no catálogo corrente for rejeitado pelo cliente
 como propriedade adicional, preserve o pedido e o erro sanitizados e compare
 os contratos antes de alterar o conteúdo. Não remova uma referência pedagógica
 necessária apenas para passar nessa validação. Atualizar as ferramentas na
 página de detalhes do app recupera ferramentas, descrições e instruções do
 servidor, conforme a [documentação de gestão do app](https://developers.openai.com/api/docs/guides/developer-mode).
 A confirmação exige uma conversa nova e nova prova da chamada.
-Uma indicação genérica de restrição do workspace no erro não identifica, por
+Uma indicação genérica de restrição do ambiente de trabalho no erro não identifica, por
 si só, a configuração que causou a divergência.
 
 ## Verificação local

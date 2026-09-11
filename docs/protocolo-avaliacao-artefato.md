@@ -1,37 +1,25 @@
 # Protocolo de avaliação do AraLearn
 
-## Finalidade e estatuto
+## Planejar a avaliação
 
-Este protocolo ensina como planejar avaliações do AraLearn como artefato
-sociotécnico e intervenção educacional. Ele oferece uma estrutura comum para
-formular perguntas, escolher métodos, registrar versões, analisar resultados e
-decidir se um mecanismo deve ser mantido, alterado ou removido.
+Uma avaliação do AraLearn precisa definir que propriedade será examinada e para
+qual finalidade: funcionamento do software, qualidade do curso, trabalho de
+autoria ou aprendizagem. O protocolo relaciona a pergunta à versão do artefato,
+aos métodos, aos resultados e à decisão de manter, alterar ou remover um
+mecanismo.
 
-O documento não substitui:
-
-- projeto particular de pesquisa;
-- avaliação ética e autorização institucional;
-- consentimento livre e esclarecido;
-- plano de amostragem e análise;
-- registro prévio quando apropriado;
-- instrumentos com evidência de validade;
-- procedimentos de proteção, retenção e descarte de dados.
-
-No Brasil, a Resolução CNS nº 510/2016 estabelece normas para pesquisas em
-Ciências Humanas e Sociais que envolvem dados obtidos diretamente de
-participantes, informações identificáveis ou riscos abrangidos por seu escopo.
-Ela protege, entre outros aspectos, informação compreensível, consentimento ou
-assentimento, privacidade, confidencialidade e retirada sem prejuízo
+Cada estudo precisa de projeto próprio, plano de amostragem e análise,
+instrumentos com evidências adequadas de validade e procedimentos de proteção,
+retenção e descarte de dados. Avaliação ética, autorização institucional,
+consentimento e registro prévio seguem o contexto e o método adotados. No Brasil,
+a Resolução CNS nº 510/2016 estabelece normas para as pesquisas em Ciências
+Humanas e Sociais abrangidas por seu escopo
 ([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
-A norma orienta a governança ética do estudo; não constitui evidência de
-aprendizagem nem valida o método escolhido.
 
-O protocolo evita quatro atalhos:
-
-1. teste de software não demonstra aprendizagem;
-2. satisfação não demonstra compreensão, retenção ou transferência;
-3. repetição de ciclos de desenvolvimento não constitui, sozinha, DBR ou DSR;
-4. um resultado positivo numa versão e contexto não sustenta eficácia universal.
+O tipo de evidência acompanha a pergunta. Testes demonstram propriedades do
+software; satisfação informa uma dimensão da experiência de uso; compreensão,
+retenção e transferência exigem tarefas e medidas próprias. Um resultado
+pertence à versão, à população e às condições em que foi obtido.
 
 ## O que precisa ser avaliado
 
@@ -52,13 +40,12 @@ O AraLearn reúne resultados que não podem ser tratados como uma única variáv
 A pergunta “o AraLearn funciona?” é insuficiente porque não define para quem,
 em qual tarefa, sob qual comparação e segundo qual resultado.
 
-Para delimitar unidades técnicas, **núcleo comum** é a camada que coordena os
-módulos do aplicativo; **pacote de componente** é o módulo versionado que reúne
-contrato, validação e implementação de uma representação ou formato de
-resposta; e **inteligência artificial (IA)** designa os modelos e serviços que
-apoiam a autoria. **Operação local prioritária** designa uma arquitetura em que
-a operação corrente depende da cópia local e a sincronização remota ocorre sem
-bloquear a interação.
+Para examinar o software, pode-se tomar como unidade o **núcleo comum**, que
+coordena o aplicativo, ou um **pacote de componente**, que reúne regras de dados,
+validação e apresentação de uma representação ou resposta. A relação entre
+essas unidades é desenvolvida na [arquitetura](arquitetura.md). A avaliação da
+continuidade examina também a cópia local do conteúdo e sua
+[sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo) com o servidor.
 
 ## Duas tradições metodológicas complementares
 
@@ -70,18 +57,13 @@ autênticos por ciclos que relacionam análise, desenho, implementação e revis
 uma interface, mas compreender como um mecanismo opera, para quem, em quais
 condições e com quais efeitos previstos ou adversos.
 
-```text
-problema educacional situado
-  → conjectura sobre mecanismo
-  → intervenção versionada
-  → uso em contexto
-  → dados de processo e resultado
-  → revisão da intervenção e da explicação
-```
+Um ciclo parte do problema educacional situado, formula uma conjectura sobre o
+mecanismo e a realiza numa intervenção identificada por versão. Dados do uso
+em contexto orientam a revisão tanto da intervenção quanto da explicação.
 
 Unidades possíveis: pessoa, unidade de estudo, microssequência didática,
-percurso, atividade de autoria e curso. Produtos esperados: descrição do contexto, conjectura
-C–M–O, evidências, casos negativos, princípio provisório e limite de
+percurso, atividade de autoria e curso. Produtos esperados: descrição do contexto, conjectura sobre
+contexto, mecanismo e resultado (C–M–O), evidências, casos negativos, princípio provisório e limite de
 transferência.
 
 ### Trilha do artefato: Design Science Research
@@ -91,34 +73,26 @@ contribuição de artefatos ([Hevner et al. (2004)](referencias.md#ref-hevner200
 contribuição precisa ser posicionada em relação ao conhecimento existente e à
 maturidade do problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
 
-```text
-problema e relevância
-  → objetivos verificáveis
-  → desenho e construção
-  → demonstração em casos nominais e adversos
-  → avaliação
-  → conhecimento de desenho e limites
-```
+O percurso relaciona problema e relevância a objetivos verificáveis, desenho e
+construção. A demonstração em casos esperados e adversos antecede uma avaliação
+capaz de sustentar conhecimento de desenho e seus limites.
 
 Unidades possíveis: núcleo comum, pacote de componente, catálogo, contrato, fluxo, operação,
 persistência e sincronização. Produtos esperados: versão reproduzível,
 requisito, evidência técnica, avaliação de utilidade e contribuição de desenho.
 
-### Por que não escolher apenas uma
+### Relacionar as duas tradições
 
-- **Problema:** o mesmo mecanismo pode ser tecnicamente correto e
-  pedagogicamente inadequado.
-- **Alternativas:** tratar toda avaliação como teste de software, tratar toda
-  iteração como pesquisa educacional ou usar trilhas com perguntas diferentes.
-- **Decisão:** articular DBR e DSR sem fundi-las.
-- **Fundamentação:** DBR examina intervenção situada; DSR examina artefato e
-  conhecimento de desenho ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)).
-- **Operacionalização:** cada dado registra a trilha, a pergunta e a função que
-  desempenha.
-- **Consequência:** uma falha de uso pode gerar requisito técnico, e uma falha
-  técnica pode explicar por que a intervenção não operou.
-- **Limite:** compartilhar cenário ou versão não torna as evidências
-  intercambiáveis.
+Um mecanismo pode funcionar corretamente e ser inadequado para a aprendizagem
+pretendida. DBR e DSR permitem examinar essas perguntas por procedimentos
+próprios, ainda que compartilhem a mesma versão do artefato e parte dos dados
+([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
+[Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)).
+
+Cada dado deve conservar a pergunta e a função que desempenha. Uma falha de uso
+pode revelar um requisito técnico, e uma falha técnica pode explicar por que a
+intervenção prevista não ocorreu. Compartilhar o cenário não torna as
+evidências intercambiáveis.
 
 ## Formulação de uma avaliação
 
@@ -244,9 +218,9 @@ de convenção acadêmica.
 
 ### Representações e componentes
 
-O catálogo corrente contém 33 pacotes, sendo 29 de conteúdo e quatro de resposta.
-A amostra deve cobrir funções distintas desse conjunto, em vez de repetir
-apenas variações do mesmo tipo.
+A amostra deve cobrir funções distintas do
+[catálogo de componentes](componentes-didaticos.md), incluindo representações de
+conteúdo e formatos de resposta, em vez de repetir apenas variações do mesmo tipo.
 
 1. interpretar exposição simples e caso acadêmico complexo;
 2. comparar representação especializada, componente geral e texto para a mesma
@@ -254,7 +228,7 @@ apenas variações do mesmo tipo.
 3. preencher lacunas independentes e digitar dentro do objeto;
 4. ordenar ou associar somente quando essa é a operação pretendida;
 5. testar temas, larguras móveis, teclado, toque e tecnologia assistiva;
-6. propor uma correção focal sem alterar a hierarquia da Unidade;
+6. propor uma correção focal sem alterar a hierarquia da unidade;
 7. articular componentes sem atenção dividida ou ambiguidade.
 
 ### Autoria assistida por IA
@@ -272,12 +246,12 @@ apenas variações do mesmo tipo.
 
 ### Propriedade, acesso e autoria
 
-1. compartilhar um curso para Estudo, confirmar que o acesso não concede
-   Autoria e depois revogá-lo;
+1. compartilhar um curso para estudo, confirmar que o acesso não concede
+   autoria e depois revogá-lo;
 2. identificar autoria, origem e revisão de uma mudança;
-3. registrar uma Observação, reencontrar a resposta e compreender a correção
+3. registrar uma observação, reencontrar a resposta e compreender a correção
    vinculada;
-4. distinguir conteúdo do curso, estado pessoal, fontes e dados da Autoria;
+4. distinguir conteúdo do curso, estado pessoal, fontes e dados da autoria;
 5. anexar e reabrir um PDF na revisão correta da fonte, sob acesso autorizado;
 6. explicar quais dados existem, para que servem e quem pode acessá-los.
 
@@ -388,7 +362,7 @@ Cada episódio registra:
 
 - revisão do Git, versão web ou APK, esquemas de dados, catálogo e pacotes de componente;
 - revisão do curso e do conteúdo usado;
-- revisões das fontes, Âncoras e atribuições usadas pelo conteúdo;
+- revisões das fontes, âncoras e atribuições usadas pelo conteúdo;
 - módulos de instrução, conhecimento recuperado, modelo, provedor e parâmetros;
 - dispositivo, largura de tela, sistema, rede e cópia local relevante;
 - roteiro, instrumentos e materiais;
@@ -413,7 +387,7 @@ análise de comparabilidade ou novo episódio.
 - efeito de prática pela repetição da tarefa;
 - mudança de modelo de IA entre condições;
 - mistura entre avaliação formativa e somativa;
-- tratamento de Unidades como observações independentes;
+- tratamento de unidades como observações independentes;
 - viés de confirmação após investimento no artefato;
 - publicação seletiva de sucessos.
 
@@ -444,17 +418,19 @@ fontes centrais são DBR ([Design-Based Research Collective (2003)](referencias.
 ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)) e estratégias de avaliação
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
-## Evidência exportada pela área Pesquisa
+## Evidência exportada por Analytics
 
-Ao usar dados do AraLearn em uma avaliação, registre o contrato, o curso e sua
-revisão, os conjuntos consultados, os filtros, o instante de corte, a definição
-da métrica, o denominador, as ausências e o instante da exportação. Preserve a
-tabela que sustentou o gráfico e percorra todas as páginas sob o mesmo recorte.
+Ao usar a [exportação de curso e análise](analytics-instrucionais.md#exportar),
+registre o contrato, o curso, sua revisão, o escopo escolhido e a data. Preserve
+as distribuições que sustentaram a comparação, suas definições, denominadores
+e ausências. O arquivo inclui conteúdo salvo e metadados disponíveis de fontes,
+configuração aplicada e revisão; os PDFs e áudios precisam ser conservados
+separadamente quando integrarem a condição apresentada.
 
-As métricas correntes contam fatos por conjunto, tipo e estado. São descrições
-do processo de Autoria. Testes inferenciais e alegações causais exigem plano
-externo, pressupostos e revisão próprios. Clique, tempo, número de respostas, velocidade
-ou resposta revelada não funcionam como medidas automáticas de aprendizagem.
+As contagens descrevem o desenho e as intervenções observáveis no estado
+corrente. Não reconstituem uma história completa de autoria nem a exposição dos
+participantes. Testes inferenciais e alegações causais dependem do plano do
+estudo, de seus instrumentos e de suas premissas.
 
 <!-- referências locais: início -->
 

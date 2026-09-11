@@ -1,18 +1,19 @@
-# Exemplos de Explicação: fundamentos de redes e SNMP/RMON
+# Exemplos de explicação: fundamentos de redes e SNMP/RMON
 
-Estes exemplos sintéticos ilustram o [contrato de Explicação e revisão humana](../explicacao-e-revisao-humana.md). São rascunhos didáticos, sem aprovação humana de conteúdo, materialização no aplicativo ou evidência de aprendizagem. Casos e números são inventados; não representam cursos reais.
+Estes exemplos sintéticos ilustram o [contrato de explicação e revisão humana](../explicacao-e-revisao-humana.md). São rascunhos didáticos, sem aprovação humana de conteúdo, materialização no aplicativo ou evidência de aprendizagem. Casos e números são inventados; não representam cursos reais.
 
-Cada exemplo reúne uma microssequência, unidades substantivas, duas práticas e uma única Explicação. Quantidade de unidades, títulos, seções e extensão são decisões locais. Notas de autoria, aplicação e respostas esperadas ficam separadas do texto que será apresentado ao estudante; o gabarito não pertence ao apoio aberto durante a tentativa.
+Cada exemplo reúne uma microssequência, unidades substantivas, duas práticas e
+uma única base explicativa, acessível pelo comando **Explicação**. Quantidade de unidades, títulos, seções e extensão são decisões locais. Notas de autoria, aplicação e respostas esperadas ficam separadas do texto que será apresentado ao estudante; o gabarito não pertence ao apoio aberto durante a tentativa.
 
 ## Fundamentos de redes — quem participa, por onde se conecta e que regra usa
 
-### Plano inspecionável em Autoria
+### Plano inspecionável em autoria
 
 **Objetivo:** diante de uma pequena situação de comunicação, distinguir o host participante, sua interface com a rede e o protocolo usado, justificando por que trocar uma interface não cria, por si só, outro host.
 
 **Pressupostos a desenvolver no apoio:** uma aplicação é um programa que realiza uma tarefa; comunicar envolve informação enviada e recebida; uma conexão pode usar cabo ou rádio. Não se exige conhecer endereços, camadas, roteamento ou nomes de protocolos antes deste recorte. A distinção entre interface física e lógica será localizada como limite, sem virar requisito de avaliação aqui.
 
-**Proposta da Explicação:** desenvolver a relação participante–interface–regra em uma situação concreta; explicitar o que o desenho representa; contrastar uma máquina com duas interfaces e duas máquinas com uma interface cada. A fonte prevista é a RFC 1122, §§1.1.1, 1.1.3 e 1.3.3. Seu papel é técnico/conceitual, não evidência de avaliação nem fonte de edital.
+**Proposta da explicação:** desenvolver a relação participante–interface–regra em uma situação concreta; explicitar o que o desenho representa; contrastar uma máquina com duas interfaces e duas máquinas com uma interface cada. A fonte prevista é a RFC 1122, §§1.1.1, 1.1.3 e 1.3.3. Seu papel é técnico/conceitual, não evidência de avaliação nem fonte de edital.
 
 **Requisito de evidência F-E1:** selecionar uma descrição que preserve corretamente as três funções e sua relação quando o caso muda. As duas respostas constituem oportunidades de prática planejadas; não certificam capacidade geral de explicar redes.
 
@@ -20,7 +21,12 @@ Cada exemplo reúne uma microssequência, unidades substantivas, duas práticas 
 
 #### F-U1 — Uma máquina pode ter duas interfaces
 
-Um **host** é um participante que usa a comunicação da rede para realizar tarefas de suas aplicações. A **interface de rede** é seu ponto de conexão com uma rede. Um notebook pode usar uma interface para o cabo e outra para a conexão sem fio: são dois pontos de conexão do mesmo host. Duas interfaces não significam dois computadores. Ao descrever uma falha, identifique tanto a máquina quanto a interface afetada.¹
+Um notebook pode acessar a rede por cabo ou por uma conexão sem fio. Esses
+dois pontos de conexão pertencem à mesma máquina: cada um é uma **interface
+de rede**. O notebook executa programas para realizar tarefas, suas
+**aplicações**; como participante final da comunicação, é chamado **host**.
+Trocar a interface em uso não cria outro host. Ao descrever uma falha,
+identifique tanto a máquina quanto a interface afetada.¹
 
 #### F-U2 — Conexão e regra têm funções diferentes
 
@@ -34,7 +40,8 @@ O **protocolo** estabelece regras de comunicação: como representar uma mensage
 
 Uma técnica quer ler uma medida em um notebook. Perguntar **quem participa** leva ao notebook e à máquina que oferece a medida. Perguntar **por onde o notebook se conecta** leva à sua interface. Perguntar **como os programas entendem o pedido** leva às regras de comunicação. Essas perguntas se referem à mesma situação, mas não são intercambiáveis.
 
-O termo host destaca a função de participante final da comunicação, não um tamanho, uma marca ou uma aparência de equipamento. A RFC 1122 relaciona essa função às aplicações que usam serviços da rede. Uma interface física liga o host à rede conectada; o mesmo host pode ter mais de uma. Protocolos atuam em diferentes camadas da comunicação. O protocolo da aplicação e as regras do enlace não são a mesma coisa.¹
+O termo host destaca a função de participante final da comunicação, não um tamanho, uma marca ou uma aparência de equipamento. A RFC 1122 relaciona essa função às aplicações que usam serviços da rede. Uma interface física liga o host à rede conectada; o mesmo host pode ter mais de uma. Há regras para a troca entre programas e regras para a transmissão pela
+conexão de rede. Elas tratam de etapas diferentes da comunicação.¹
 
 #### Um caso resolvido
 
@@ -48,13 +55,15 @@ No laboratório, o notebook N tem uma interface cabeada C e uma interface sem fi
 
 #### Como ler o desenho
 
-O desenho abaixo representa **pertencimento**, não o caminho de um pacote. Há um notebook no topo e duas interfaces pertencentes a ele. Assim, contar três caixas não equivale a contar três hosts. Se fossem dois notebooks diferentes, seria necessário representar dois participantes.
+A relação abaixo representa **pertencimento**: as duas interfaces pertencem
+ao notebook N. Elas não acrescentam outros participantes. Um diagrama em
+árvore pode apresentar o notebook acima de suas interfaces; contar seus três
+elementos não equivale a contar três hosts. A composição proposta para o
+aplicativo aparece depois das práticas.
 
-```text
-Notebook N
-├── Interface C — conexão por cabo
-└── Interface S — conexão sem fio
-```
+| Participante | Interfaces que lhe pertencem |
+| --- | --- |
+| Notebook N | Interface C — conexão por cabo; interface S — conexão sem fio |
 
 **Descrição equivalente:** o notebook N possui as interfaces C e S; C corresponde à conexão por cabo, S à conexão sem fio. Nenhuma linha representa envio de mensagem.
 
@@ -88,7 +97,7 @@ As câmeras A e B são máquinas distintas. Cada uma possui apenas uma interface
 
 ### Aplicação pedagógica e composição previstas
 
-| Unidade de análise | Introdução | Uso ou retomada no percurso | Cobertura da tarefa |
+| unidade de análise | Introdução | Uso ou retomada no percurso | Cobertura da tarefa |
 |---|---|---|---|
 | F-A1 — Host como participante final | F-U1 | F-U2 usa; F-P1 e F-P2 mobilizam | Identificar o participante sem contar interfaces como hosts |
 | F-A2 — Interface como conexão do host | F-U1 | F-U2 retoma por contraste; ambas as práticas mobilizam | Distinguir alteração da conexão e identidade do participante |
@@ -96,7 +105,7 @@ As câmeras A e B são máquinas distintas. Cada uma possui apenas uma interface
 
 F-U1 e F-U2 já contêm definição, exemplo e contraste substantivos. F-X desenvolve pressupostos e relações; não recebe introduções curriculares ou oportunidades creditadas por ter sido aberto. Não há ideia nova declarada nas práticas. A segunda prática muda de **um host com várias interfaces** para **vários hosts com uma interface cada**; não é somente troca de nomes ou reordenação de alternativas. F-P1 e F-P2 vinculam-se ao mesmo F-E1 com identidades de oportunidade distintas. A avaliação declarada continua limitada à seleção com razões oferecidas, sem inferir produção autônoma de uma justificativa.
 
-Componentes do catálogo corrente: prosa em `aralearn.resource.paragraph@1.0.0`; comparação em `aralearn.resource.table@1.0.0`; pertencimento em `aralearn.resource.tree@1.0.0`, variante `hierarchy`; respostas em `aralearn.response.choice@1.0.0`. A árvore se justifica pela relação pai–filho do recorte; não substitui uma topologia quando a tarefa for seguir enlaces entre equipamentos. Configuração do desenho prevista, sem renderer novo:
+Componentes do catálogo corrente: prosa em `aralearn.resource.paragraph@1.0.0`; comparação em `aralearn.resource.table@1.0.0`; pertencimento em `aralearn.resource.tree@1.0.0`, variante `hierarchy`; respostas em `aralearn.response.choice@1.0.0`. A árvore se justifica pela relação pai–filho do recorte; não substitui uma topologia quando a tarefa for seguir enlaces entre equipamentos. Configuração do desenho prevista, com o componente já instalado:
 
 ```json
 {
@@ -112,13 +121,13 @@ Componentes do catálogo corrente: prosa em `aralearn.resource.paragraph@1.0.0`;
 
 ## Gerência SNMP/RMON — observar o estado e recuperar um intervalo
 
-### Plano inspecionável em Autoria
+### Plano inspecionável em autoria
 
 **Objetivo:** escolher uma forma de observação compatível com uma pergunta operacional, identificando quem consulta, quem responde, qual informação é nomeada e se a pergunta exige estado atual ou histórico previamente coletado.
 
-**Pressupostos:** host, interface e protocolo conforme o exemplo anterior; diferença entre “agora” e “durante um intervalo”. A Explicação recupera essas relações. Não se exige conhecer a sintaxe de comandos de fornecedor, programar uma MIB ou configurar segurança antes deste recorte.
+**Pressupostos:** host, interface e protocolo conforme o exemplo anterior; diferença entre “agora” e “durante um intervalo”. A explicação recupera essas relações. Não se exige conhecer a sintaxe de comandos de fornecedor, programar uma MIB ou configurar segurança antes deste recorte.
 
-**Proposta da Explicação:** conectar a pergunta operacional ao diálogo entre gerente e agente; desenvolver a diferença entre definição de objeto, instância e valor; resolver uma consulta de leitura; contrastar uma resposta atual com registros de intervalos RMON. As fontes previstas são RFC 3411, RFC 3416 e RFC 2819; RFC 2578 e RFC 2863 sustentam os detalhes indispensáveis de identificação e interface. Sem alegação de cobertura de concurso.
+**Proposta da explicação:** conectar a pergunta operacional ao diálogo entre gerente e agente; desenvolver a diferença entre definição de objeto, instância e valor; resolver uma consulta de leitura; contrastar uma resposta atual com registros de intervalos RMON. As fontes previstas são RFC 3411, RFC 3416 e RFC 2819; RFC 2578 e RFC 2863 sustentam os detalhes indispensáveis de identificação e interface. Sem alegação de cobertura de concurso.
 
 **Requisito G-E1:** escolher uma interpretação/plano que associe corretamente papéis, instância consultada e natureza temporal da evidência. Escolher o nome de uma sigla isolada não atende ao requisito.
 
@@ -126,7 +135,12 @@ Componentes do catálogo corrente: prosa em `aralearn.resource.paragraph@1.0.0`;
 
 #### G-U1 — A pergunta parte do gerente
 
-Para verificar uma interface, uma aplicação de **gerência** pode enviar uma consulta SNMP, o Protocolo Simples de Gerência de Rede. O **agente** oferece acesso à informação de gerência no sistema observado e responde à consulta. “Gerente” e “agente” designam papéis de software: não significam obrigatoriamente duas caixas especiais. Em nosso laboratório, o gerente roda no computador da operadora e o agente no equipamento observado. A interface observada é o objeto da pergunta; não é quem formula a consulta.²
+A operadora quer saber se uma interface do equipamento está funcionando. No
+computador dela, uma aplicação de **gerência** envia uma consulta; no equipamento
+observado, o **agente** dá acesso à informação e responde. Esse diálogo usa
+SNMP, o Protocolo Simples de Gerência de Rede. “Gerente” e “agente” são papéis
+de software: não exigem duas caixas especiais. A interface é o objeto da
+pergunta; quem formula a consulta é o gerente.²
 
 #### G-U2 — Nome, instância e valor
 
@@ -191,7 +205,7 @@ O monitor M permaneceu ativo enquanto a estação de gerência ficou sem contato
 
 ### Aplicação pedagógica e composição previstas
 
-| Unidade de análise | Introdução | Uso ou retomada no percurso | Cobertura da tarefa |
+| unidade de análise | Introdução | Uso ou retomada no percurso | Cobertura da tarefa |
 |---|---|---|---|
 | G-A1 — Relação gerente–agente na consulta | G-U1 | G-U2 e G-U3 usam; ambas as práticas mobilizam | Atribuir quem pergunta e quem dá acesso aos dados |
 | G-A2 — Objeto, instância e valor na informação de gerência | G-U2 | Ambas as práticas mobilizam | Selecionar a interface e interpretar o retorno |
@@ -210,20 +224,21 @@ As atribuições abaixo são **propostas contextuais deste rascunho**, no escopo
 
 | Parâmetro humano existente | Fundamentos | SNMP/RMON | Efeito e limite a inspecionar |
 |---|---|---|---|
-| `maximo_ideias_novas_por_unidade` | 2 | 2 | F-U1 introduz duas, F-U2 uma; G-U1 uma, G-U2 duas, G-U3 uma. O teto não mede dificuldade e não se aplica como teto paralelo de conceitos da Explicação. |
-| `formas_de_explicacao` | `plain_definition`, `concrete_example`, `contrast` | Mesmas três formas | Apontar os trechos das unidades que realizam cada forma. A Explicação adicional não substitui silenciosamente evidência de aplicação ausente. |
+| `maximo_ideias_novas_por_unidade` | 2 | 2 | F-U1 introduz duas, F-U2 uma; G-U1 uma, G-U2 duas, G-U3 uma. O teto não mede dificuldade e não se aplica como teto paralelo de conceitos da explicação. |
+| `formas_de_explicacao` | `plain_definition`, `concrete_example`, `contrast` | Mesmas três formas | Apontar os trechos das unidades que realizam cada forma. A explicação adicional não substitui silenciosamente evidência de aplicação ausente. |
 | `oportunidades_distintas_por_requisito` | 2 para F-E1 | 2 para G-E1 | Duas práticas completas por requisito, com identidades distintas e mesma operação-alvo. A escolha exige apreciação humana da pertinência, não apenas contagem. |
 | `dimensoes_de_variacao_da_pratica` | `case_or_data` | `case_or_data`, `task_feature` | Fundamentos muda a relação entre quantidade de hosts e interfaces; SNMP muda dados e interpretação de retorno para seleção de plano. Não se declara variação de nível de apoio nem dificuldade. |
 | `alvo_palavras_conversa` | 120 | 120 | Orientação flexível para resposta operacional de autoria. Não limita documentos que exigem inspeção completa. |
-| `alvo_palavras_unidade` | 90 | 100 | Escolhas editoriais locais para distribuir a exposição. Enunciados, alternativas e feedback mantêm sentido; nenhuma palavra necessária é removida para alcançar o número. Não há alvo de palavras da Explicação. |
+| `alvo_palavras_unidade` | 90 | 100 | Escolhas editoriais locais para distribuir a exposição. Enunciados, alternativas e feedback mantêm sentido; nenhuma palavra necessária é removida para alcançar o número. Não há alvo de palavras da explicação. |
 
-Não foram acrescentados controles de dificuldade, aprendizagem, comprimento do overlay ou cadência. A relação `aplicacaoPedagogica.explicacoes[].ideia` continua vinculando formas à identidade da análise; ela não é o objeto compartilhado chamado Explicação.
+O exemplo usa apenas os parâmetros pertinentes ao recorte; não acrescenta
+controles ao catálogo. A extensão da base explicativa não recebe um alvo próprio. A relação `aplicacaoPedagogica.explicacoes[].ideia` continua vinculando formas à identidade da análise; ela não é o objeto compartilhado chamado explicação.
 
-Nas quatro práticas, a composição prevista de `response.choice` usa `selectionMode: "single"` e `selectionCriterion: "correct"`. O enunciado completo vai somente em `question`, sem duplicação em `content`; `options` conserva as três alternativas com identidades estáveis; `answerIds` referencia a alternativa descrita como correta. As letras A/B/C deste arquivo são localizadores editoriais, não posições fixas de exibição: o renderer existente pode embaralhar opções. O feedback apresentado acima vai no slot `feedback`, em `paragraph`, após confirmação da resposta. O estudante não recebe o campo de resposta esperada como conteúdo antecipado do apoio.
+Nas quatro práticas, a composição prevista de `response.choice` usa `selectionMode: "single"` e `selectionCriterion: "correct"`. O enunciado completo vai somente em `question`, sem duplicação em `content`; `options` conserva as três alternativas com identidades estáveis; `answerIds` referencia a alternativa descrita como correta. As letras A/B/C deste arquivo são localizadores editoriais, não posições fixas de exibição: o aplicativo pode embaralhar opções. O feedback apresentado acima vai no slot `feedback`, em `paragraph`, após confirmação da resposta. O estudante não recebe o campo de resposta esperada como conteúdo antecipado do apoio.
 
 ## Fontes, leitura e limites
 
-As chamadas ¹–⁶ marcam vínculos previstos. Em uma futura fixture do app, devem apontar às fontes/âncoras pelo catálogo e renderer existentes, com ocorrência no trecho, retorno à origem e acesso de citação/link. A leitura técnica registrada abaixo não equivale a conferência humana da fonte. Todos os vínculos permanecem **não verificados por pessoa autora** neste rascunho. Nada precisa copiar o texto integral da RFC para o curso.
+As chamadas ¹–⁶ marcam vínculos previstos. Em uma futura versão de teste no aplicativo, devem apontar às fontes/âncoras pelo catálogo e pelos componentes de apresentação existentes, com ocorrência no trecho, retorno à origem e acesso de citação/link. A leitura técnica registrada abaixo não equivale a conferência humana da fonte. Todos os vínculos permanecem **não verificados por pessoa autora** neste rascunho. Nada precisa copiar o texto integral da RFC para o curso.
 
 | Chamada | Fonte primária e localização consultada em 07/09/2026 | Papel no exemplo e limite |
 |---|---|---|

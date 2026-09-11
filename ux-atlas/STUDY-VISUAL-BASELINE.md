@@ -1,5 +1,11 @@
 # Identidade visual de Estudo — referência histórica
 
+> Registro histórico da rodada de UX indicada neste arquivo. As afirmações de
+> vigência abaixo pertencem àquela rodada. Para a experiência atual, consulte o
+> [sistema visual](../docs/sistema-visual.md) e os guias de
+> [estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md).
+
+
 Este documento preserva a baseline visual usada na rodada de UX encerrada.
 Termos, caminhos e instruções abaixo registram aquele período e não têm
 autoridade sobre a experiência vigente. Para o estado atual, consulte o

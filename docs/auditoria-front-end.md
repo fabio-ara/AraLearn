@@ -1,40 +1,41 @@
 # Verificação da interface
 
-Esta página explica como verificar a experiência corrente do AraLearn. Ela não
-é um registro de execuções passadas. O objetivo é tornar observável a relação
-entre navegação, autorização, persistência e apresentação.
+Verificar a interface exige acompanhar a ação da pessoa, sua resposta visível e o
+efeito nos dados. O percurso reúne navegação, autorização, gravação e apresentação; a
+[matriz técnica](matriz-conformidade-tecnica.md) indica os testes disponíveis para
+cada capacidade.
 
 ## O que precisa ser demonstrado
 
-Uma tela isolada não demonstra um fluxo. Para cada jornada, a verificação parte
-do estado inicial, executa as ações da pessoa, observa a resposta visível e
-confirma o efeito na camada canônica correspondente.
+Em cada jornada, registre o estado inicial, execute as ações e confirme o efeito no
+local que conserva o dado: o servidor para o curso e as permissões; o armazenamento do
+dispositivo para rascunhos, posição e filas locais. A
+[persistência](persistencia-relacional.md) explica essa divisão.
 
 Em **Estudo**, percorra:
 
-```text
-Home → curso → módulo → lição → microssequência → unidade
-```
+1. abra a entrada de estudo e escolha o curso;
+2. percorra módulo, lição e microssequência;
+3. abra uma unidade e retorne pelos mesmos níveis.
 
-Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que
-**Home** oferece a saída global sem consumir o histórico. Acesso ao pai só deve
-aparecer quando houver ação contextual própria. Na Unidade, **Visualizar**,
-**Editar** e **Assistência por IA** devem ser modos irmãos sobre o mesmo alvo,
-sem deslocar elementos cuja função não mudou. Verifique resposta, retorno, fontes, Observações,
-marcação para rever, zeragem de progresso e retomada.
+Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que **Home**
+oferece a saída global sem consumir o histórico. Acesso ao pai só deve aparecer quando
+houver ação contextual própria. Na unidade, **Visualizar**, **Editar** e **Assistência
+por IA** devem ser modos irmãos sobre o mesmo alvo, sem deslocar elementos cuja função
+não mudou. Verifique resposta, retorno, fontes, observações, marcação para rever,
+zeragem de progresso e retomada.
 
-Em **Autoria**, abra o curso diretamente em **Conteúdo**. Confirme que uma
-unidade de estudo domina o leitor e que índice, pesquisa, endereços diretos,
-anterior e próxima permitem chegar também a unidades antigas sem renderizar o
-curso inteiro.
+Em **Autoria**, abra o curso diretamente em **Conteúdo**. Confirme que uma unidade de
+estudo domina o leitor e que índice, pesquisa, endereços diretos, anterior e próxima
+permitem chegar também a unidades antigas sem renderizar o curso inteiro.
 
-Abra a visão múltipla sem selecionar nenhum alvo. Selecione unidades
-separadamente para uma observação em lote e limpe a seleção sem recolher a
-leitura. Focalize e edite uma unidade de página posterior por seus próprios
-comandos. Verifique preservação de rascunho e retomada de envio parcial.
+Abra a visão múltipla sem selecionar nenhum alvo. Selecione unidades separadamente
+para uma observação em lote e limpe a seleção sem recolher a leitura. Focalize e edite
+uma unidade de página posterior por seus próprios comandos. Verifique preservação de
+rascunho e retomada de envio parcial.
 
-Em **Planejamento**, comece com um curso descartável ainda sem conteúdo e
-confirme, nesta ordem:
+Em **Planejamento**, comece com um curso descartável ainda sem conteúdo e confirme,
+nesta ordem:
 
 1. o mapa curricular completo apresenta módulos, lições e microssequências;
 2. a cobertura relaciona todo item obrigatório aos pontos previstos do mapa;
@@ -46,45 +47,46 @@ confirme, nesta ordem:
 7. após a produção, a cobertura mostra também as unidades em que o item foi
    desenvolvido.
 
-Materialize ao menos duas partes. Percorra o conteúdo real na ordem e abra os
-detalhes de desenho. Quando existirem, confira os rótulos humanos **Ideias
-introduzidas aqui**, **Ideias já estabelecidas usadas aqui** e **Ideias
-retomadas**. A interface normal não deve exibir nomes de campos, termos internos,
-identificadores ou contagens apresentadas como julgamento pedagógico.
+Materialize ao menos duas partes. Percorra o conteúdo real na ordem e abra os detalhes
+de desenho. Quando existirem, confira os rótulos humanos **Ideias introduzidas aqui**,
+**Ideias já estabelecidas usadas aqui** e **Ideias retomadas**. A interface normal não
+deve exibir nomes de campos, termos internos, identificadores ou contagens
+apresentadas como julgamento pedagógico.
 
 No mapa, teste a seta isoladamente, abra objetivos longos e siga vínculos da
-cobertura, retornando ao mesmo ramo, posição e foco. Em Parâmetros, alterne
-curso, módulo, lição, microssequência e unidade, incluindo valores automáticos,
-fixos e herdados e um rascunho ainda não salvo. Nas folhas de Observações,
-confira leitura sem edição, texto alterado, fechamento e retomada; avisos não
-podem encobrir campo, envio ou foco.
+cobertura, retornando ao mesmo ramo, posição e foco. Em Parâmetros, alterne curso,
+módulo, lição, microssequência e unidade, incluindo valores automáticos, fixos e
+herdados e um rascunho ainda não salvo. Nas folhas de observações, confira leitura sem
+edição, texto alterado, fechamento e retomada; avisos não podem encobrir campo, envio
+ou foco.
 
-Registre uma observação numa unidade e outra em várias unidades, peça revisão,
-aplique uma proposta aprovada e reinspecione o conjunto afetado. Abra
-**Analytics** em mais de um escopo e confira que os números coincidem com o JSON
-exportado. Inclua criação, edição e exclusão segura do curso descartável.
+Registre uma observação numa unidade e outra em várias unidades, peça revisão, aplique
+uma proposta aprovada e reinspecione o conjunto afetado. Abra **Analytics** em mais de
+um escopo e confira que os números coincidem com o JSON exportado. Inclua criação,
+edição e exclusão segura do curso descartável.
 
-A conversa que acompanha essa jornada deve ser curta: síntese do mapa, decisão
-curricular, progressão focal do lote, resultado e link. Ela não deve presumir
-que a pessoa autora é estudante nem explicar o mecanismo do AraLearn.
+A conversa deve acompanhar as decisões da pessoa autora: síntese do mapa, progressão
+do lote, inspeção do resultado e próximos ajustes. A extensão respeita a preferência
+de diálogo e o que for necessário para decidir; um pedido breve na conversa não
+autoriza reduzir a explicação didática produzida.
 
 A Assistência por IA precisa demonstrar conversa, uma proposta concreta em cada
-resposta, revisão multiturmo, aceite explícito, descoberta progressiva de
-componentes, validação no renderer real, aplicação ao rascunho e gravação
-separada. Uma proposta recusada deve deixar o conteúdo corrente intacto.
+resposta, revisão multiturmo, aceite explícito, descoberta progressiva de componentes,
+validação na apresentação real dos componentes, aplicação ao rascunho e gravação separada. Uma proposta
+recusada deve deixar o conteúdo corrente intacto.
 
 ## Revisão do percurso materializado
 
 Não encerre a verificação ao conferir cartões isolados. Leia uma microssequência
-inteira como alguém que possui somente os pré-requisitos declarados. Confirme
-que dependências aparecem antes do uso, relações essenciais são ensinadas e as
-práticas exigem operações já preparadas.
+inteira como alguém que possui somente os pré-requisitos declarados. Confirme que
+dependências aparecem antes do uso, relações essenciais são ensinadas e as práticas
+exigem operações já preparadas.
 
 Procure os dois extremos: uma unidade densa que apenas enumera conceitos e uma
-sequência fragmentada em telas sem progressão perceptível. Registre pelo menos
-um caso em que a primeira precisou ser dividida e outro em que fragmentos
-precisaram ser fundidos. Componentes devem tornar a relação pertinente
-observável, não apenas variar a aparência.
+sequência fragmentada em telas sem progressão perceptível. Quando esses problemas
+ocorrerem, registre por que foi necessário dividir uma unidade ou reunir fragmentos;
+não altere a sequência apenas para preencher uma cota de exemplos. Componentes devem
+tornar a relação pertinente observável, não apenas variar a aparência.
 
 ## Tamanhos e temas
 
@@ -97,7 +99,7 @@ representativa. Em cada tamanho, observe:
 - textos extensos sem truncamento de sentido;
 - foco depois de abrir, fechar, voltar e falhar;
 - geometria estável ao trocar modo, selecionar, validar ou editar;
-- sheets e dialogs com contorno estável e conteúdo variável rolando internamente;
+- folhas sobrepostas e diálogos com dimensões estáveis e conteúdo variável rolando internamente;
 - menus e sobreposições fechando por ação explícita, clique externo e `Esc`;
 - temas claro e escuro quando a superfície os oferece;
 - console sem erro relacionado à jornada.
@@ -108,38 +110,44 @@ navegação nem um painel paralelo.
 ## Dados e autorização
 
 Use somente identidades e sessões de teste autorizadas. A interface deve ocultar
-Manutenção de identidades comuns, mas isso não substitui a recusa do servidor.
-Do mesmo modo, esconder edição de quem não pode editar não substitui RLS,
-revisão esperada e validação da operação.
+Manutenção de identidades comuns, mas isso não substitui a recusa do servidor. Do
+mesmo modo, esconder edição de quem não pode editar não substitui a [segurança em
+nível de linha](supabase.md#postgresql-esquemas-e-autorização), a comparação de
+revisões e validação da operação.
 
-Para ações destrutivas, crie dados descartáveis e confira o alvo no diálogo. As
-ações **Excluir este curso**, **Sair deste curso**, **Remover dados deste
-dispositivo**, **Sair** e **Excluir conta** têm efeitos diferentes e não podem
-ser tratadas como atalhos equivalentes.
+Para ações destrutivas, crie dados descartáveis e confira o alvo no diálogo. As ações
+**Excluir este curso**, **Sair deste curso**, **Remover dados deste dispositivo**,
+**Sair** e **Excluir conta** têm efeitos diferentes e não podem ser tratadas como
+atalhos equivalentes.
 
 ## Automação e Chrome
 
-Os testes de runtime exercitam contratos e estados de erro. Playwright percorre
-interações repetíveis e matrizes de tamanho. O Chrome real completa a prova ao
-mostrar a aplicação efetivamente carregada, a sessão autenticada, o foco, o
-console e o comportamento físico das sobreposições.
+Os testes de execução exercitam contratos e estados de erro.
+[Playwright](https://playwright.dev/docs/intro), ferramenta que controla o navegador
+em testes automatizados, percorre interações repetíveis e matrizes de tamanho. O
+Chrome real completa a prova ao mostrar a aplicação efetivamente carregada, a sessão
+autenticada, o foco, o console e o comportamento físico das sobreposições.
 
-Execute primeiro as verificações focais da área alterada. Antes de publicar,
-execute:
+Execute as verificações da área alterada e a preparação da candidata:
 
 ```bash
-npm test
-npm run test:e2e
-npm run pages:build
+npm run validate:candidate -- --base origin/main --plan
+npm run validate:candidate -- --base origin/main
 ```
 
-Uma falha pertinente impede considerar a revisão aprovada. Corrija a causa,
-repita o menor recorte afetado e então retome o gate amplo necessário.
+O primeiro comando mostra as provas selecionadas; o segundo executa essa seleção.
+Mudanças de comportamento precisam dos testes e jornadas correspondentes. A validação
+final e a publicação seguem o [guia do
+desenvolvedor](guia-desenvolvedor.md#testes-e-integração) e o procedimento de
+[implantação](implantacao.md).
+
+Uma falha pertinente impede considerar a revisão aprovada. Corrija a causa, repita o
+menor recorte afetado e então retome o gate amplo necessário.
 
 ## Limite da evidência
 
 Uma interface que renderiza, persiste e responde corretamente demonstra uma
-propriedade técnica. Ela não demonstra, sozinha, compreensão, acessibilidade
-vivida ou aprendizagem. Essas perguntas exigem participantes, tarefas,
-instrumentos e análise adequados; consulte o [protocolo de avaliação do
+propriedade técnica. Ela não demonstra, sozinha, compreensão, acessibilidade vivida ou
+aprendizagem. Essas perguntas exigem participantes, tarefas, instrumentos e análise
+adequados; consulte o [protocolo de avaliação do
 artefato](protocolo-avaliacao-artefato.md).

@@ -1,26 +1,33 @@
 # Autoria por Actions
 
-Actions oferece no ChatGPT os mesmos casos de uso do
-[catálogo humano do MCP](autoria-mcp.md#tarefas-disponíveis). O
-transporte muda; o curso, as regras de autorização e os efeitos permanecem os
-mesmos.
+[Actions](https://developers.openai.com/api/docs/actions/introduction) é o recurso
+do [ChatGPT](https://chatgpt.com), uma aplicação externa ao AraLearn. Ele permite
+a um assistente personalizado nesse serviço consultar dados e executar tarefas
+por uma interface de programação, ou API. O arquivo OpenAPI descreve os
+pedidos que esse cliente pode enviar. No AraLearn, ele oferece as mesmas tarefas
+do [catálogo MCP](autoria-mcp.md#tarefas-disponíveis), com o mesmo conteúdo salvo
+e as mesmas regras de autorização.
 
-O contrato 4.0.0 inclui preferências pessoais de processo, estrutura por recortes,
-Explicação antes das unidades, desenho aplicado, fila versionada de observações,
-declaração humana expressa e políticas de acesso. As capacidades e seus efeitos
+A pessoa autora orienta a produção e inspeciona os objetos e suas fontes no
+aplicativo. O assistente executa as tarefas autorizadas; a declaração de revisão
+humana permanece expressa e vinculada ao conteúdo inspecionado. O
+[guia de autoria por conversa](criar-cursos-pelo-chat.md) apresenta esse percurso.
+
+O contrato 4.0.0 permite desenvolver explicações e fontes antes das unidades
+e retomar a produção conforme as preferências e os pontos de revisão escolhidos. As capacidades e seus efeitos
 estão no [catálogo comum do MCP](autoria-mcp.md#tarefas-disponíveis).
 `salvar_explicacoes` preserva as unidades existentes; `materializar_parte`
 reutiliza as bases salvas e recebe somente aquelas que também serão alteradas.
 
 O pedido **Debater com GPT** copiado da Autoria pode ser colado na conversa do
-GPT já conectado por Actions. Ele fornece identidade, recorte e revisão, sem
-chamar a API ao copiar. O GPT lê o estado corrente pelas Actions existentes e
+assistente externo já conectado por Actions. Ele fornece identidade, recorte e revisão, sem
+chamar a API ao copiar. O assistente lê o estado corrente pelas Actions existentes e
 discute a proposta antes de qualquer aplicação autorizada. A configuração de
 Actions e a leitura efetiva continuam necessárias; copiar o pedido não comprova
 que o cliente acessou o curso. A declaração humana de revisão pode ser
 registrada na Autoria ou por `declarar_revisao`, com a referência do conteúdo
 salvo e a escolha expressa da pessoa. Ela permanece separada da aprovação do
-mapa, do mandato de produção e da avaliação feita pelo GPT.
+mapa, do mandato de produção e da avaliação feita pelo assistente.
 
 O OpenAPI publicável está em
 [`downloads/aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml).
@@ -29,8 +36,10 @@ O OpenAPI publicável está em
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
 definem as **54 tarefas semânticas** de Actions. O OpenAPI as oferece por
-**30 operações HTTP**: 24 diretas e seis grupos contextuais. Os argumentos,
-handlers, autorização e efeitos derivam do mesmo catálogo usado pelo MCP.
+**30 operações HTTP**: 24 diretas e seis grupos contextuais. Uma operação HTTP
+é o pedido enviado a um endereço do serviço; um grupo permite escolher entre
+várias tarefas por esse mesmo endereço. Argumentos, validação e efeitos derivam
+do catálogo comum ao MCP.
 
 | Operação agrupada | Tarefas disponíveis |
 | --- | --- |
@@ -41,8 +50,9 @@ handlers, autorização e efeitos derivam do mesmo catálogo usado pelo MCP.
 | `perfis_de_autoria` | `consultar_perfis`, `salvar_perfil`, `excluir_perfil`, `prever_aplicacao_perfil`, `aplicar_perfil` |
 | `observacoes_autorais` | `consultar_observacoes`, `registrar_observacao`, `editar_observacao` |
 
-Cada grupo recebe `tarefa` e `argumentos`. O schema `oneOf` vincula cada nome a
-seus argumentos específicos, com os mesmos campos obrigatórios e limites da
+Cada grupo recebe `tarefa` e `argumentos`. O schema, que define os dados
+aceitos, usa `oneOf` para permitir uma das alternativas e vincular cada nome
+a seus argumentos específicos, com os mesmos campos obrigatórios e limites da
 tarefa. Por exemplo, uma chamada a `acesso_do_curso` pode receber:
 
 ```json
@@ -93,7 +103,8 @@ Exemplos:
 - `manter_fonte` recebe somente as mudanças ou retiradas realmente solicitadas.
 
 `copiar_curso` prepara uma cópia de curso próprio ou com permissão explícita de
-cópia. O servidor devolve uma confirmação opaca vinculada à conta e à intenção;
+cópia. O servidor devolve uma confirmação opaca, valor que deve ser reutilizado
+sem edição, vinculado à conta e à intenção;
 a chamada confirmada reutiliza esse valor, inclusive após uma resposta perdida.
 A cópia pertence à pessoa solicitante, começa privada com arquivos restritos e
 mantém conteúdo, configuração, fontes, PDFs e áudios. Acessos, progresso e
@@ -102,39 +113,41 @@ anotações pessoais continuam na origem. Leitura pública não concede cópia.
 `comparar_cursos` confronta dois recortes identificados por curso e, opcionalmente,
 lote, microssequência ou unidade. `exportar_autoria` entrega o artefato literal e
 sua leitura autoral. Ambas exigem acesso de autoria aos cursos selecionados.
-A exportação sempre usa fragmentos de JSON, inclusive quando cabe em uma resposta;
+A exportação usa JSON, formato que organiza conteúdo e metadados em campos.
+Ela sempre entrega fragmentos, inclusive quando cabe em uma resposta;
 a comparação usa fragmentos quando o resultado é grande. A continuação é opaca,
 como nas demais leituras. Na exportação, o hífen inseparável U+2011 é representado
 pelo escape JSON `\u2011`. Os trechos devem ser concatenados antes de `JSON.parse`,
-que recupera exatamente o conteúdo original. Posições UTF-16 e hash de continuação
+que interpreta o JSON e recupera o conteúdo original. As posições usam UTF-16,
+a representação de texto do JavaScript; elas e o hash de continuação
 correspondem ao JSON com esse escape. A comparação não certifica equivalência pedagógica.
 
 Para produzir conteúdo, `consultar_componentes` primeiro busca candidatos pela
 função instrucional e depois lê o contrato exato apenas do componente escolhido.
-O GPT não consulta o catálogo para variar a aparência.
+O assistente não consulta o catálogo para variar a aparência.
 
-Uma referência ambígua não é resolvida por acaso. A resposta orienta o GPT a
+Uma referência ambígua não é resolvida por acaso. A resposta orienta o assistente a
 pedir um título ou posição mais específica.
 
 ## Planejamento e produção
 
-O GPT retoma o estado real, lê preferências pessoais e condições do curso,
+O assistente retoma o estado real, lê preferências pessoais e condições do curso,
 identifica o objeto corrente e consulta suas observações pendentes. Mapa
 curricular, base explicativa, desenho e unidades podem ser trabalhados no
-contexto. A Explicação de uma microssequência existente pode ser produzida e
+contexto. A explicação de uma microssequência existente pode ser produzida e
 revisada enquanto o mapa ainda é rascunho e antes de existir unidade. No foco
-Conteúdo, ela pode ser o resultado completo do mandato. Abrir a base salva não
-chama LLM.
+Conteúdo, ela pode ser o resultado completo do mandato. Abrir a base salva
+lê conteúdo existente, sem chamar um modelo de linguagem.
 
-Quando houver decisão de aprovar o mapa, o GPT lê todas as páginas pertinentes
+Quando houver decisão de aprovar o mapa, o assistente lê todas as páginas pertinentes
 da versão persistida e usa sua `referenciaParaAprovar` em
 `aprovar_mapa_curricular`. Síntese, página parcial ou árvore reconstruída não
 substituem essa base. Alterações posteriores exigem nova inspeção da versão
 que se pretende aprovar.
 
-No Ciclo completo, partes agrupam a produção das unidades e respeitam os gates
+No Ciclo completo, partes agrupam a produção das unidades e respeitam as condições
 da preparação vigente. Elas não são pais curriculares; seus limites podem
-mudar sem alterar o mapa. O GPT apresenta a progressão breve, prepara e
+mudar sem alterar o mapa. O assistente apresenta a progressão breve, prepara e
 materializa dentro do mandato e relê o conteúdo real. Continua conforme a
 cadência e os pontos de revisão escolhidos, sem criar aprovação adicional por
 causa da granularidade do lote. O [fluxo comum](autoria-mcp.md#fluxo-de-conversa)
@@ -150,7 +163,7 @@ revisão e recuperação do mesmo pedido.
 
 Aprovar o mapa não declara conteúdo futuro revisado nem autoriza produção por
 si só. A pessoa pode aprovar o mapa mostrado e pedir produção ou continuidade
-na mesma mensagem; o GPT registra a aprovação e executa o mandato, apresentando
+na mesma mensagem; o assistente registra a aprovação e executa o mandato, apresentando
 a progressão. Decisões rotineiras de redação e representação não viram
 perguntas; alterações substantivas não autorizadas voltam à pessoa autora.
 Sem continuidade autorizada, a produção termina ao entregar o primeiro lote.
@@ -176,21 +189,22 @@ conservando suas definições. Uma redefinição conflitante exige conciliação
 expressa, sem substituir a descrição durante a materialização.
 
 O repertório e o restante do preparo usam a mesma continuação quando excedem
-o envelope do canal. Leia todos os trechos necessários antes de produzir;
+o tamanho de resposta aceito pelo canal. Leia todos os trechos necessários antes de produzir;
 uma alteração no repertório invalida a continuação anterior. Disponibilidade
 não declara introdução, prática nem vínculo à microssequência. O teto de novidades
 limita apenas introduções semanticamente novas em unidades expositivas. Ele
 não exige a mesma quantidade em toda unidade nem transforma cada ideia em uma
 tela.
 
-A configuração vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
+Os [parâmetros instrucionais](desenho-instrucional-parametrizado.md) orientam
+o conteúdo e a prática. A configuração vem do [catálogo](../src/domain/courseDesignParameters.js),
 que define significado, unidade, limites, natureza e escopos de cada ajuste.
 Parâmetros curriculares permanecem no curso ou ramo pertinente. Preferências
 pessoais de processo e diálogo têm catálogo e persistência próprios. Os alvos de palavras e de
 produção orientam o trabalho; não são licença para omitir conteúdo necessário.
 
 Automático é uma intenção sem valor numérico implícito. Antes de materializar,
-o GPT escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
+o assistente escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
 função, público e planejamento. Fixações da autoria e condições de pesquisa
 prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
 A aplicação conserva os valores e motivos daquela decisão. Alterar a
@@ -212,7 +226,7 @@ de pesquisa em design instrucional.
 
 `consultar_preferencias_autoria` e `salvar_preferencias_autoria` tratam dos
 padrões pessoais de processo e diálogo. Foco Conteúdo/Ciclo completo, cadência,
-pontos de revisão e diálogo são independentes; presets explicitam os valores.
+pontos de revisão e diálogo são independentes; opções predefinidas explicitam os valores.
 Mudar esses padrões não altera cursos existentes nem condições de pesquisa.
 
 `consultar_perfis`, `salvar_perfil` e `excluir_perfil` operam os perfis da conta.
@@ -238,10 +252,10 @@ aplicados próprios.
 
 ## Observações, revisão e acesso
 
-Cada Explicação e unidade mantém uma fila durável com múltiplas entradas
+Cada explicação e unidade mantém uma fila durável com múltiplas entradas
 identificadas e versionadas. `registrar_observacao` acrescenta uma entrada;
 `editar_observacao` altera somente a versão inspecionada e mantém a pendência.
-Antes de corrigir, o GPT lê a fila pertinente. `aplicar_correcoes` e
+Antes de corrigir, o assistente lê a fila pertinente. `aplicar_correcoes` e
 `salvar_explicacoes` recebem `observacoesTratadas` somente para versões
 integralmente atendidas. Persistência e releitura confirmam conteúdo e fila;
 leitura isolada, resposta textual ou início de tentativa não consomem entradas.
@@ -254,7 +268,7 @@ para retirar observações. O consumo não declara revisão humana.
 
 `declarar_revisao` recebe a referência do conteúdo salvo devolvida por
 `preparar_revisao` e a declaração expressa `revisado` ou `retirar`. Salvar,
-corrigir, estudar ou avaliar pelo GPT não declara inspeção humana. Mudança
+corrigir, estudar ou avaliar pelo assistente não declara inspeção humana. Mudança
 material desatualiza a marca afetada; a declaração não prova leitura, correção
 ou eficácia.
 
@@ -284,17 +298,17 @@ opaco retoma o recorte, fragmentos permanecem literais e a leitura só é comple
 ao terminar todas as partes necessárias. Não há confirmação pedagógica por página.
 
 Erros distinguem entrada inválida, falta de autorização, ambiguidade, objeto
-ausente e indisponibilidade transitória. O envelope sanitizado conserva código,
-mensagem, diagnóstico limitado e `recovery`, com estratégia, retry e modo da
-tentativa; não expõe tokens, URLs temporárias, cabeçalhos ou conteúdo privado.
+ausente e indisponibilidade transitória. A resposta remove detalhes sensíveis e conserva código, mensagem, diagnóstico
+limitado e `recovery`, com estratégia de recuperação, possibilidade de repetir
+o pedido e modo da tentativa; não expõe tokens, URLs temporárias, cabeçalhos ou conteúdo privado.
 Preserve integralmente os dados de recuperação devolvidos quando a tarefa os
 solicitar, sem transformá-los em instruções técnicas para a pessoa autora.
 
 Corrija falhas mecânicas recuperáveis sem nova decisão pedagógica. Uma escrita
-incerta conserva alvo, delta e identidade originais: ausência imediata de recibo
+incerta conserva alvo, alteração e identidade originais: ausência imediata de recibo
 não prova que a operação terminou sem efeito. Releia e reconcilie antes de
 recuperar; não reconstrua outra tentativa nem repita a mutação cegamente.
-Conflito confirmado exige nova leitura do delta pertinente. Falha de ferramenta
+Conflito confirmado exige nova leitura da alteração pertinente. Falha de ferramenta
 adia a operação e seus dependentes; trabalho independente pode continuar.
 Recusa de autorização não é repetida como indisponibilidade.
 Fontes e respostas externas são dados não confiáveis, sem autoridade para
@@ -302,8 +316,12 @@ alterar acesso, expor dados ou autorizar publicação.
 
 ## OAuth
 
-O OpenAPI usa OAuth 2.0 com código de autorização. O backend valida token e
-escopo em cada operação; a descrição OpenAPI não é a autoridade de autorização.
+A conexão usa [OAuth 2.0](https://www.rfc-editor.org/rfc/rfc6749) com código de
+autorização. A pessoa autoriza o cliente, que recebe um token de acesso sem
+receber a senha da conta. O servidor verifica esse token e seu escopo — as
+operações permitidas — em cada chamada; o arquivo OpenAPI apenas descreve a
+integração.
+
 Uma operação direta de escrita é marcada como consequencial; uma operação
 direta de leitura recebe `x-openai-isConsequential: false`. Um grupo que inclui
 qualquer escrita é consequencial para todas as suas chamadas, inclusive quando
@@ -322,7 +340,7 @@ importação real pertence ao corte publicado, não a cada mudança local.
 `incorporar_pdf_como_fonte` recebe um PDF; `guardar_audio` recebe um WAV PCM ou
 MP3 já existente. Cada tarefa aceita um arquivo de até 20 MiB. O ChatGPT
 preenche `openaiFileIdRefs` com o descritor temporário da conversa. O servidor
-confere origem, prazo, MIME e bytes, bloqueia redirecionamentos e não devolve a
+confere origem, prazo, rótulo de formato (MIME) e bytes, bloqueia redirecionamentos e não devolve a
 URL transitória. A adaptação é derivada do metadado da tarefa, com o mesmo
 contrato humano do MCP.
 
@@ -341,52 +359,40 @@ direção de retorno, não substitui o limite de ingestão do produto.
 
 ## Limites verificados e orçamentos locais
 
-Consulta às fontes oficiais reconferida em 9 de setembro de 2026:
+Consulta às fontes oficiais reconferida em 11 de setembro de 2026:
 
 | Item | Regra publicada |
 | --- | --- |
-| descrição e resumo de cada endpoint | até 300 caracteres em cada campo |
+| descrição e resumo de cada operação | até 300 caracteres em cada campo |
 | descrição de parâmetro | até 700 caracteres |
-| pedido e resposta de cada chamada | cada payload com menos de 100.000 caracteres |
+| pedido e resposta de cada chamada | cada corpo com menos de 100.000 caracteres |
 | duração de ida e volta | até 45 segundos |
-| transporte | TLS 1.2 ou superior, porta 443 e certificado público válido |
+| transporte | conexão criptografada com TLS 1.2 ou superior, porta 443 e certificado público válido |
 
 Essas regras vêm de
 [OpenAI: produção em Actions](https://developers.openai.com/api/docs/actions/production).
 Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
 A importação real do artefato corrente continua sendo uma verificação distinta.
 
-No editor real do ChatGPT, em 9 de setembro de 2026, o artefato com 54 operações
-foi recusado com indicação de máximo de 30. Essa observação do cliente motivou
-os seis grupos tipados e as 24 operações diretas. A redução preserva todas as
-tarefas do catálogo 4.0.0. Na mesma verificação, o editor aceitou o artefato
-agrupado e listou as 30 operações, incluindo os seis grupos, sem erro.
-Essa aceitação da importação não confirma a publicação do GPT nem a execução
-das tarefas contra o backend candidato.
+O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
+que conservam as 54 tarefas do catálogo 4.0.0. Essa organização permite
+selecionar cada tarefa com seus próprios argumentos sem ampliar o número de
+operações apresentado ao editor. A aceitação do arquivo pelo editor, a
+publicação do assistente e a execução contra o serviço são verificações
+distintas.
 
-No diagnóstico de 7 de setembro de 2026, os limites de payload e duração foram
-reconferidos na fonte oficial. Para investigar uma materialização sem retorno,
-separe quatro fatos: argumentos produzidos, despacho HTTP, validação e gravação.
-O relato do assistente não comprova sozinho que houve despacho. Registre o
-retorno acessível no cliente e confronte-o com a releitura do recorte e o recibo
-existente antes de repetir uma escrita incerta. Quando argumentos ou duração
-HTTP não estiverem expostos, registre essa lacuna; o tamanho do conteúdo
-exportado não é o tamanho do pedido enviado. Uma fixture que funciona delimita
-o caso observado, sem demonstrar que uma interrupção anterior foi corrigida.
+O gerador mede o artefato que será importado em unidades UTF-16 e bytes UTF-8.
+Os orçamentos locais são 90.000 unidades UTF-16 para o JSON compacto e 180.000
+para sua apresentação formatada. Definições compartilhadas evitam repetir
+schemas, preservando as restrições e os exemplos de cada tarefa. Esses
+orçamentos ajudam a controlar o tamanho do contrato; a aceitação pelo cliente
+é verificada pela importação do próprio arquivo. As chamadas ao serviço têm
+limites independentes, descritos a seguir.
 
-O catálogo 4.0.0 é projetado pelo gerador corrente. Quantidade de operações,
-tamanho do OpenAPI em unidades UTF-16 e bytes UTF-8 devem ser medidos sobre o
-artefato que será importado; medidas de uma versão anterior não o validam.
-As 54 tarefas, distribuídas em 30 operações, usam orçamentos locais de 90.000 unidades UTF-16 para o JSON
-compacto e 180.000 para a apresentação formatada do editor. A expansão do
-catálogo contextual para 54 tarefas motivou esses valores; a extração
-determinística de schemas repetidos conserva restrições e exemplos aceitos.
-Os schemas compartilhados conservam os argumentos de cada tarefa. O guard de
-chamadas e os fragmentos de leitura mantêm limites próprios; passar no orçamento
-local do schema não demonstra que o cliente aceitou a importação.
-
+UTF-8 é a codificação usada para transmitir o texto em bytes; UTF-16 é usada
+para representar o texto no JavaScript. Essas contagens podem ser diferentes.
 O servidor aplica uma proteção conservadora de 99.999 unidades UTF-16 ao JSON
-completo recebido ou serializado, pois a fonte não define a unidade Unicode de
+completo recebido ou convertido em texto, pois a fonte não define a unidade Unicode de
 “caractere”. A decodificação exige UTF-8 válido. A proteção de 512 KiB limita
 memória local e o prazo interno é de 40 segundos; ambos são escolhas do
 AraLearn. Os orçamentos locais do schema também não são limites oficiais.
@@ -395,13 +401,22 @@ grande exige recorte ou paginação; uma escrita possivelmente concluída exige
 releitura antes de recuperação. Medidas e aceitação do cliente seguem o
 [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
 
-Uma fixture sintética com 32 blocos válidos de texto no apoio reproduziu uma
-resposta de preparo de 128.541 unidades UTF-16: o handler Actions recusava o
-envelope com HTTP 413. O preparo agora usa a continuação comum. Na prova local,
-duas páginas abaixo do limite reconstruíram o JSON integral, com a mesma
-Explicação nos handlers Actions e MCP. Essa correção trata a leitura grande
-reproduzida; não demonstra a causa de uma interrupção histórica de escrita nem
-substitui a prova do cliente ChatGPT com o contrato hospedado correspondente.
+Respostas extensas de preparo e inspeção usam a continuação comum aos canais.
+Cada página conserva uma parte literal do conteúdo e a referência necessária
+para obter a seguinte. A reunião das páginas recupera o documento completo;
+o assistente precisa concluí-la antes de avaliar ou alterar o recorte. O
+[contrato de continuação](aralearn-contract.md) descreve essa leitura, e a
+[prova local dos canais](prova-local-canais-autoria.md) verifica a equivalência
+entre os documentos recuperados por MCP e Actions.
+
+Quando uma gravação fica sem resposta, é preciso distinguir a elaboração dos
+argumentos, o envio ao serviço, a validação e a persistência. O relato da
+conversa, isoladamente, não identifica em qual etapa houve a interrupção. A
+releitura do recorte e o recibo da tentativa permitem conferir se a mudança foi
+salva antes de recuperá-la. Os dados disponíveis no cliente delimitam o
+diagnóstico: o tamanho de um documento exportado, por exemplo, não informa o
+tamanho do pedido enviado. O [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md)
+orienta essa conferência na versão conectada efetivamente em uso.
 
 ## Gerar e validar o OpenAPI
 
@@ -433,6 +448,6 @@ versões importadas para o mesmo GPT.
 
 ## Referências técnicas
 
-- [OpenAI: otimizar metadata de ferramentas](https://developers.openai.com/plugins/guides/optimize-metadata)
-- [OpenAI: referência de Apps e hints](https://developers.openai.com/plugins/reference)
+- [OpenAI: descrições e metadados das ferramentas](https://developers.openai.com/plugins/guides/optimize-metadata)
+- [OpenAI: referência de apps e indicações para o cliente](https://developers.openai.com/plugins/reference)
 - [OAuth 2.0](https://www.rfc-editor.org/rfc/rfc6749)

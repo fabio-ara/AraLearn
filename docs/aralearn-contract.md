@@ -1,8 +1,14 @@
 # Contratos do AraLearn
 
-Os contratos do AraLearn protegem a fronteira entre interface, conversa, Edge
-Functions e banco. Eles descrevem objetos e efeitos observáveis; a topologia de
-tabelas, controles de concorrência e credenciais permanecem internos.
+Os contratos do AraLearn definem a forma dos dados e os efeitos permitidos em
+cada operação. A interface e os clientes de IA enviam pedidos que os serviços
+do servidor, implementados como [Edge Functions](supabase.md), validam antes de
+consultar ou alterar o banco. Essa separação mantém o mesmo curso acessível por
+interface, MCP e Actions, com autorização e controle de versões comuns.
+
+Os identificadores abaixo servem para implementação e diagnóstico. Na conversa
+de autoria, a pessoa trabalha com títulos, conteúdo e decisões; o serviço resolve
+as identidades internas.
 
 ## Princípios
 
@@ -12,13 +18,14 @@ tabelas, controles de concorrência e credenciais permanecem internos.
 - Resposta perdida pode ser recuperada por recibo temporário.
 - Dados ausentes permanecem ausentes.
 - Julgamento pedagógico não é apresentado como validação do banco.
-- Contrato substituído não permanece como alias ou fallback público.
+- Contrato substituído não permanece disponível sob outro nome nem como alternativa automática.
 
 ## Curso e estrutura
 
 `aralearn.course.v1` representa a composição curricular validada usada em
-Estudo e nas réplicas locais. Leituras de autoria usam projeções menores:
-descritor do curso, páginas de entidades e inspeção de unidades de estudo.
+estudo e nas cópias locais. As leituras de autoria retornam apenas os dados
+necessários ao trabalho: resumo do curso, páginas de seus itens ou inspeção de
+uma unidade. Essas seleções de campos são chamadas de projeções.
 
 O plano corrente usa `aralearn.course-instructional-plan.v3`. Ele contém título,
 objetivo, público, pré-requisitos declarados, escopo, mapa curricular completo,
@@ -26,36 +33,47 @@ repertório acumulado, requisitos de evidência e partes operacionais. O mapa po
 estar ausente, em rascunho ou aprovado. Uma parte contém posição, título,
 intenção, progressão local e vínculos com microssequências já existentes.
 
-Módulo, lição, microssequência e unidade de estudo formam a hierarquia didática.
+[Módulo, lição, microssequência e unidade de estudo](modelo-didatico.md) formam
+a hierarquia didática.
 Parte é lote de autoria e não aparece como pai curricular. Salvar ou redimensionar
 uma parte não cria nem reorganiza currículo.
 
 A microssequência conserva `explanationPlan: {purpose, prerequisites, relations,
-sourceIds}` e o apoio `explanation: {title, content}`. Os componentes de conteúdo
-usam o catálogo comum; o apoio não tem resposta nem progresso próprios. Esses
+sourceIds}`, que planeja propósito, pressupostos, relações e fontes, e
+`explanation: {title, content}`, que guarda título e conteúdo da explicação.
+Os componentes usam o catálogo comum; a base não tem resposta nem progresso
+próprios. Esses
 campos podem estar ausentes no acervo anterior. A materialização corrente exige
-proposta no mapa e uma Explicação por microssequência da parte, gravada junto às
-unidades, aplicações e fontes.
+proposta no mapa e uma explicação por microssequência da parte. Bases já salvas
+são reutilizadas; o pedido de materialização inclui apenas aquelas que também
+serão criadas ou alteradas. `salvar_explicacoes` permite desenvolver a base e suas
+fontes antes das unidades, inclusive com mapa em rascunho.
 
 A leitura de revisão `contentReview` é metadado protegido, separado do conteúdo
-editável. Ela informa revisão não registrada, rascunho, aprovação atual ou
-aprovação desatualizada. O comando autenticado de aprovação verifica a base
-inspecionada pela pessoa proprietária; importação e comandos de IA não podem
-fornecer essa decisão. Fontes e arquivos usados entram na base pertinente.
+editável. Ela informa revisão não registrada, rascunho, revisão atual ou
+desatualizada. O comando autenticado verifica o conteúdo inspecionado pelo
+proprietário. A decisão humana expressa pode ser registrada na interface ou por
+`declarar_revisao`, com a referência fornecida na preparação. Importar, produzir
+ou corrigir conteúdo não declara essa revisão. Fontes e arquivos usados entram
+na base da conferência.
 O [contrato de revisão humana](explicacao-e-revisao-humana.md) detalha inspeção,
 distribuição, concorrência e limites da preservação local.
 
-Na leitura restrita do Estudo, `pendingReviewMicrosequenceIds` identifica as
-bases ocultas na mesma revisão das páginas de entidades. Essas microssequências
+O acesso ao conteúdo segue a política expressa do curso: conteúdo completo salvo
+ou somente revisado. Na leitura restrita do estudo,
+`pendingReviewMicrosequenceIds` identifica as
+bases ocultas na mesma revisão das páginas de conteúdo. Essas microssequências
 conservam identidade, posição e o título de estado "Aguardando revisão da
 autoria", sem objetivo, papel pedagógico ou conteúdo da base. Cada unidade
 acessível é validada integralmente e conserva sua elegibilidade independente da
 base. O montador reconhece esse marcador apenas no recorte explícito de leitura,
-inclusive no cache; importação e autoria exigem a composição curricular completa.
+inclusive no armazenamento local de consulta; importação e autoria exigem a composição curricular completa.
 
 A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
 inclusive sem alterações de entidades. Metadados, entidades e atribuições são
-validados na mesma transação, com uma revisão esperada e um recibo de repetição.
+validados na mesma transação, isto é, gravados juntos ou recusados como conjunto.
+A revisão esperada protege contra mudanças simultâneas e o recibo permite
+reconhecer uma repetição do mesmo pedido.
 As contagens da resposta continuam representando entidades. Esse campo não
 pertence à edição focal de uma unidade de estudo.
 
@@ -68,17 +86,20 @@ como efeito dessa aprovação.
 
 `aralearn.person-profile.v2` contém UUID, identificador público escolhido, avatar
 opcional e data de atualização. Não expõe e-mail nem segundo nome de exibição.
-Identificadores usam ASCII minúsculo, 3–30 caracteres e extremos alfanuméricos;
-o `@` inicial é aceito na entrada. Perfis ainda sem identificador exigem escolha.
+Identificadores usam de 3 a 30 letras latinas minúsculas sem acento, algarismos
+e os sinais ponto, sublinhado ou hífen, começando e terminando com letra ou algarismo;
+o `@` inicial é aceito na entrada. UUID é a identidade estável usada internamente;
+o identificador público é o nome pelo qual a pessoa pode ser encontrada. Perfis ainda sem identificador exigem escolha.
 
 `aralearn.course-list.v2` distingue `owned`, `shared` e `public`, com permissões
-explícitas de editar, copiar e observar. O menu da Home oferece copiar quando
+explícitas de editar, copiar e observar. Esses valores distinguem cursos próprios,
+compartilhados e públicos. O menu da Home oferece copiar quando
 o resumo de acesso autoriza `canCopy`, a pessoa está autenticada e há conexão.
 Essa permissão permanece separada do documento de conteúdo, inclusive após
 abrir o curso e retornar à Home; propriedade ou visibilidade não a substituem.
 Busca de pessoas exige curso próprio, prefixo
-de ao menos dois caracteres e no máximo dez resultados; o grant confirma UUID
-e identificador selecionados. Troca ou reutilização do identificador não
+de ao menos dois caracteres e no máximo dez resultados; a concessão confirma a identidade estável
+e o identificador selecionados. Troca ou reutilização do identificador não
 redireciona permissões já concedidas.
 Cada pessoa autora dispõe de até 60 buscas e 10 tentativas de concessão por
 janela de dez minutos. Ao vencer a janela, a próxima operação inicia uma nova
@@ -91,31 +112,40 @@ somente o proprietário altera o curso.
 
 ## Desenho
 
+Os [parâmetros instrucionais](desenho-instrucional-parametrizado.md) podem ser
+definidos no curso ou em um recorte. Sem uma escolha local, vale a definição do
+nível superior: essa relação é chamada de herança.
+
 `aralearn.course-design.v3` consulta configuração corrente por escopo.
 `aralearn.course-design-change.v3` confirma uma definição ou restauração de
 herança.
 
-O catálogo 1.2.1 define identidades, tipos, valores permitidos, unidades, grupos,
-escopos e rótulos usados pela UI, pelas integrações e pela projeção SQL. Reúne
+O [catálogo de parâmetros](../src/domain/courseDesignParameters.js), na versão
+1.2.1, define identidades, tipos, valores permitidos, unidades, grupos,
+escopos e rótulos usados pela interface, pelas integrações e pelo banco. Reúne
 conteúdo, prática, conversa e cadência. Direção editorial e política de componentes
 permanecem campos distintos. Alvos de palavras são flexíveis e não autorizam
 compressão. Partes, lotes e pausas não são acoplados entre si.
 
 Uma atribuição com `mode: automatic` pode ter `value: null`: trata-se de intenção
 local de delegar a escolha, distinta da ausência de atribuição, que restaura
-herança. Uma escolha automática aplicada exige valor tipado e motivo; fixações
+herança. Uma escolha automática aplicada exige valor do tipo previsto no
+catálogo e um motivo; fixações
 de autoria e pesquisa não são substituídas pela calibração automática.
-Conflitos com condições de pesquisa em escopos ancestrais bloqueiam a escrita
+Conflitos com condições de pesquisa definidas em níveis superiores bloqueiam a escrita
 incompatível e a produção até serem resolvidos.
 
-Perfis de autoria pertencem à conta. CRUD usa revisão corrente e recibo para
+Perfis de autoria pertencem à conta. Criar, consultar, editar ou excluir um
+perfil usa a revisão corrente; mudanças recebem um recibo para
 repetição do mesmo pedido. A prévia e a aplicação verificam as revisões do curso
 e do perfil. Aplicar copia preferências de catálogo, conserva exceções por
 padrão e remove somente exceções selecionadas que não sejam de pesquisa.
-Reaplicar valores equivalentes não aumenta a revisão; conteúdo e snapshots
+Reaplicar valores equivalentes não aumenta a revisão; conteúdo e registros de desenho aplicado
 existentes ficam preservados. A cópia não mantém referência viva ao perfil.
 
-Uma unidade de estudo produzida guarda:
+Uma unidade de estudo produzida guarda dois registros. O primeiro é uma
+cópia do desenho aplicado naquele momento, ou *snapshot*; o segundo descreve
+como ele se realizou no conteúdo:
 
 - `aralearn.study-unit-design-snapshot.v2`, com o recorte aplicado de plano e
   configuração;
@@ -125,9 +155,9 @@ Uma unidade de estudo produzida guarda:
 Esses objetos são focais. Não reproduzem o curso nem a execução que os criou.
 Retomadas são identificadas quando a explicação mobiliza novamente uma ideia
 estabelecida sem apresentá-la como nova. O plano deriva do estado corrente onde
-cada ideia foi introduzida, usada ou retomada; não existe ledger paralelo.
+cada ideia foi introduzida, usada ou retomada, sem um registro paralelo de eventos.
 
-O valor `default` de configuração exige resolução contextual automática pelo GPT
+Uma escolha delegada em modo `automatic` exige resolução contextual pelo assistente
 no escopo da microssequência ou unidade antes da produção. Uma definição
 explícita do pesquisador prevalece sobre essa calibração.
 
@@ -138,6 +168,10 @@ pela composição e pelos parâmetros existentes quando pertinentes.
 
 ## Fontes e PDFs
 
+O cadastro identifica a fonte; a âncora localiza um trecho; a atribuição registra
+o uso feito no conteúdo. [Fontes, citações e referências](fontes-e-citacoes.md)
+explica essas relações e sua inspeção.
+
 `aralearn.course-sources.v3` pagina o catálogo corrente e devolve, de forma
 singular, a fonte focal ou a atribuição corrente de um alvo.
 Fonte e âncora têm uma versão corrente usada para concorrência. Uma atribuição
@@ -146,38 +180,41 @@ relaciona o alvo atual a fontes, papéis e âncoras.
 `aralearn.course-source-change.v1` confirma alterações bibliográficas,
 ancoragem, proveniência e remoção de PDF.
 
-A incorporação server-side usa:
+A incorporação do PDF é feita pelo servidor e usa:
 
 - `aralearn.course-source-pdf-ingestion-preparation.v1` para o preparo curto;
 - `aralearn.course-source-pdf-ingestion.v1` depois que bytes e vínculo foram
   confirmados;
 - `aralearn.course-source-pdf-download.v1` para autorizar o serviço a emitir
-  uma URL assinada de leitura.
+  uma URL assinada de leitura, endereço temporário que incorpora a autorização
+  para obter o arquivo.
 
 O aplicativo recebe `aralearn.course-source-pdf-download.v2`, com referência
-lógica do arquivo e URL temporária, sem caminho interno de Storage. A política
+lógica do arquivo e URL temporária, sem o caminho interno do serviço de arquivos [Storage](supabase.md). A política
 efetiva respeita a exceção do arquivo, depois a da fonte e depois a do curso;
-essa autorização não torna o bucket público.
+essa autorização não torna público o compartimento de armazenamento, chamado bucket.
 
-O caminho e o resumo SHA-256 não são argumentos de uma tarefa humana. O serviço
-os deriva dos bytes. Criar ou revisar a fonte e vincular o PDF ocorre numa única
+O caminho de armazenamento e o resumo SHA-256, que identifica os bytes do
+arquivo, são derivados pelo serviço e não são argumentos de uma tarefa humana. Criar ou revisar a fonte e vincular o PDF ocorre numa única
 transação e avança a revisão do curso uma vez.
 
 `aralearn.course-study-citations.v2` entrega ao Estudo citação, endereço
-permitido, seletor e localização legível necessários à unidade ou à Explicação
+permitido, seletor e localização legível necessários à unidade ou à explicação
 compartilhada da microssequência, além de referências lógicas dos anexos
-disponíveis. A unidade usa `studyUnitId`; a Explicação usa
+disponíveis. A unidade usa `studyUnitId`; a explicação usa
 `targetKind: "microsequence_explanation"` e `targetId` da microssequência, sem
 identidade de unidade. A leitura respeita a revisão esperada, a elegibilidade
 do conteúdo e os direitos de acesso. O proprietário pode inspecionar rascunhos;
 isso não os torna disponíveis ao estudante. Trechos privados de verificação e
 caminhos de Storage ficam fora dessa projeção. O download de PDF conserva a
 identidade da fonte, sua revisão e o hash do arquivo; não cria uma cópia por
-unidade ou um segundo serviço de arquivos para a Explicação.
+unidade ou um segundo serviço de arquivos para a explicação.
 
 ## Áudio e ferramentas de estudo
 
-Ferramentas são instâncias de pacotes de conteúdo em `content[]`, identificadas
+As [ferramentas de estudo](ferramentas-calculo-e-consulta.md) oferecem ações como
+ouvir uma faixa ou fazer um cálculo. Cada ferramenta é uma instância de pacote
+— código, dados e regras de um componente — no conteúdo em `content[]`, identificadas
 por `manifest.tool` e ativadas por `toolInteraction.bind`. O núcleo oferece
 abertura, foco, fechamento e serviços de acesso; cada pacote fornece a própria
 interação. Áudio, calculadora, gramática, dicionário e leitura compartilham os
@@ -193,23 +230,26 @@ de arquivo guardam somente SHA-256, tamanho e tipo validados pelo serviço.
 
 `aralearn.course-media-ingestion.v1` confirma o envio de WAV PCM ou MP3.
 `aralearn.course-media-change.v1` confirma configuração e remoção. As mutações
-usam revisão esperada, identidade da solicitação e recibo idempotente; o limite
+usam revisão esperada, identidade da solicitação e recibo que permite repetir
+o mesmo pedido sem duplicar efeitos; o limite
 conjunto de PDFs e áudios é verificado com reservas sob concorrência. Remoção e
 exclusão de conta conservam intenção de limpeza recuperável no Storage privado.
 
 `aralearn.course-media-download.v1` liga o endereço temporário ao curso, à
-revisão, ao alvo e ao trio binário do arquivo. O alvo é a unidade por
-`studyUnitId`, ou a Explicação por `targetKind: "microsequence_explanation"`
+revisão, ao alvo e ao hash, tamanho e tipo do arquivo. O alvo é a unidade por
+`studyUnitId`, ou a explicação por `targetKind: "microsequence_explanation"`
 e `targetId` da microssequência. A mesma rota de download aceita esses dois
 formatos mutuamente exclusivos e recusa alvos incompletos ou desconhecidos.
 Estudantes só acessam arquivos referenciados no conteúdo elegível do alvo;
 visitantes também dependem da política pública de arquivos do curso. O serviço
 confere autorização, revisão e identidade antes de assinar o endereço; o
-cliente confere tamanho, formato e hash antes de criar um Blob local, que é
+cliente confere tamanho, formato e hash antes de criar um Blob, objeto que mantém os bytes em memória e é
 descartado ao fechar a ferramenta.
 
-Não há URL de Storage persistida no conteúdo nem cópia de bytes no IndexedDB.
-O texto de uma Explicação disponível na cópia local não torna seus arquivos
+O conteúdo não guarda a URL de Storage, e os bytes não são copiados para o
+IndexedDB, a base de dados local do navegador descrita em
+[persistência relacional](persistencia-relacional.md).
+O texto de uma explicação disponível na cópia local não torna seus arquivos
 externos disponíveis offline: PDF e áudio de arquivo dependem de acesso à
 rede, sem novo cache binário. A configuração nativa pode ser reutilizada
 offline somente na mesma revisão do curso e é purgada quando o acesso é
@@ -222,11 +262,19 @@ categoria, estado, origem e versão. As projeções de página e mudança usam
 `aralearn.course-anchored-annotation-page.v1` e
 `aralearn.course-anchored-annotation-change.v1`.
 
-Seleção de várias unidades de estudo cria observações independentes. Preparar revisão e
-aplicar correções são casos de uso humanos sobre conteúdo corrente; não criam
-um contrato permanente de lote ou de auditoria.
+Cada entrada tem identidade e versão próprias. Selecionar várias unidades de
+estudo cria observações independentes. Editar uma entrada preserva a identidade
+e mantém a pendência. Corrigir conteúdo pode atender a várias entradas, mas
+somente suas versões integralmente atendidas são confirmadas após gravação e
+releitura. `retomar_correcao` reconcilia a tentativa original, sem reescrever o
+conteúdo. O [ciclo de revisão](auditoria-de-conformidade-instrucional.md) distingue
+essa confirmação da declaração humana de revisão.
 
 ## Analytics
+
+[Analytics](analytics-instrucionais.md) descreve quantitativamente o conteúdo e
+o desenho registrados. A consulta produz um retrato do estado corrente para
+inspeção ou exportação.
 
 `aralearn.course-authoring-analytics.v2` contém:
 
@@ -234,10 +282,10 @@ um contrato permanente de lote ou de auditoria.
 - desenho quantitativo;
 - autoria quantitativa corrente;
 - dados ausentes;
-- deep link opcional.
+- link opcional para abrir o recorte correspondente.
 
 Não há páginas de fatos ou dicionário separado. O JSON baixado é o próprio
-snapshot normalizado.
+retrato normalizado do estado corrente.
 
 ## Recuperação de cópias próprias e estado de Estudo
 
@@ -246,8 +294,8 @@ planejamento tanto nas associações curriculares quanto em `scopeItemIds` das
 microssequências. A cobertura representa um conjunto; a cópia nova conserva a
 ordem declarada ao traduzir os IDs. Cópias anteriores com referências órfãs são
 reparadas pelas associações canônicas do próprio plano, em ordem de posição e
-ID, somente quando cardinalidade, unicidade e referências locais existentes
-são compatíveis. Associação ausente ou ambígua interrompe o reparo. Ele preserva
+ID, somente quando a quantidade de itens, a ausência de duplicatas e as referências
+locais existentes são compatíveis. Associação ausente ou ambígua interrompe o reparo. Ele preserva
 identidade, conteúdo restante, fontes, arquivos, observações e declarações de
 revisão; incrementa as versões afetadas e devolve o mapa a rascunho para nova
 aprovação. A recuperação não depende do estado atual do curso de origem.
@@ -276,32 +324,36 @@ Cada definição contém:
 
 - nome e título;
 - descrição com “quando usar” e “quando não usar”;
-- schema de entrada humana;
+- schema de entrada, que define os campos e valores aceitos;
 - schema de resultado;
-- hints de somente leitura, consequência e acesso externo.
+- indicações para o cliente sobre leitura, consequência e acesso externo.
 
-O resultado comum possui `result`, `deepLink` e `nextDecision`. Um campo de
+O resultado comum possui `result`, com o que ocorreu, `deepLink`, com o destino
+pertinente, e `nextDecision`, com a decisão seguinte quando necessária. Um campo de
 contexto pode acompanhar a continuação das chamadas sem virar texto do chat.
 
 ## Projeção MCP
 
-`tools/list` publica diretamente o catálogo humano permitido pelo escopo OAuth.
+[MCP](autoria-mcp.md) permite descobrir e chamar as tarefas de autoria.
+`tools/list` publica o catálogo permitido pelo escopo OAuth, isto é, pelas
+operações autorizadas para o cliente.
 `tools/call` valida o argumento antes do caso de uso e devolve texto breve mais
-`structuredContent`. Recursos visuais são ligados somente às tarefas que têm um
+`structuredContent`, com o resultado estruturado. Recursos visuais são ligados somente às tarefas que têm um
 consumidor atual.
 
 O servidor identifica o catálogo por versão e hash. Depois de uma mudança, o app
-precisa de **Refresh** e a conversa deve ser nova. Renovar o login OAuth é
+usado no cliente externo [ChatGPT](https://chatgpt.com) precisa de **Refresh** e a conversa deve ser nova. Renovar o login OAuth é
 necessário somente se a autorização ou a conta também mudar. Não há aliases de
 ferramentas antigas.
 
 ## Projeção Actions
 
 O gerador `buildChatGptActionOpenApi.mjs` projeta as 54 tarefas do catálogo em
-30 operações HTTP: seis grupos tipados e 24 operações diretas. O binding
+30 operações HTTP, ou formas de pedido ao serviço: seis grupos com argumentos
+validados e 24 operações diretas. O mapeamento
 `courseActionBindings.js` vincula `tarefa` e `argumentos` nos grupos e conserva
 os argumentos na raiz das operações diretas. A validação e os casos de uso
-continuam compartilhados com o MCP; o OpenAPI preserva OAuth, hints e schemas
+continuam compartilhados com o MCP; o OpenAPI preserva a autorização OAuth, as indicações ao cliente e os schemas
 específicos de cada tarefa. Os grupos estão descritos em
 [Autoria por Actions](autoria-actions.md#operações).
 
@@ -323,8 +375,8 @@ Erros públicos distinguem:
 - indisponibilidade transitória.
 
 Uma resposta de erro informa se a operação pode ser retomada e qual decisão
-humana falta. Detalhes internos do PostgreSQL e do Storage são traduzidos na
-borda.
+humana falta. O serviço transforma erros internos do banco e do armazenamento
+em mensagens adequadas à tarefa, sem expor credenciais ou caminhos internos.
 
 ## Limites de tamanho
 
@@ -332,8 +384,11 @@ Cada camada limita corpo, resposta, listas e texto antes de alocar trabalho
 desnecessário. PDFs aceitam até 20 MiB e são lidos como fluxo limitado. Páginas
 de composição, fontes e observações possuem limites próprios.
 
-Exceder um limite não autoriza truncar conteúdo pedagógico. A solução é reduzir
-o recorte técnico ou distribuir conteúdo por mais unidades de estudo.
+Quando uma leitura excede o limite, a paginação recupera o conteúdo integral em
+várias respostas. Uma escrita grande exige rever o recorte aceito pela operação;
+isso não justifica truncar a explicação ou dividir unidades apenas para caber no
+transporte. A organização didática e o tamanho de uma chamada são decisões
+distintas.
 
 ## Verificação
 

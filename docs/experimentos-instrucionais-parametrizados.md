@@ -8,7 +8,8 @@ educacional.
 
 ## O que pode ser comparado
 
-O catálogo permite produzir diferenças concretas em:
+O [catálogo de desenho](desenho-instrucional-parametrizado.md) permite produzir
+diferenças concretas em:
 
 - distribuição de novas unidades de análise;
 - formas de explicação;
@@ -29,7 +30,7 @@ A direção editorial pode variar títulos, parágrafos e apresentação, mas n�
 eliminar conteúdo necessário. Componentes devem variar quando houver função
 instrucional distinta, não para preencher um catálogo.
 
-No estado `default`, o GPT precisa calibrar automaticamente cada parâmetro para a
+No estado `default`, o assistente de IA precisa calibrar automaticamente cada parâmetro para a
 microssequência ou unidade, conforme conteúdo, função e público. Esse estado não
 é uma condição fixa. Para tornar uma comparação auditável, o pesquisador define
 explicitamente os valores que devem prevalecer e registra o que permanecerá
@@ -52,14 +53,17 @@ escopos descendentes devem ser resolvidos antes de aplicar ou produzir.
 5. Produza quantas unidades de estudo cada condição exigir.
 6. Abra Analytics e confira configuração aplicada, extensão observada,
    distribuição, componentes e prática.
-7. Exporte o snapshot de Analytics de cada escopo usado.
-8. Preserve separadamente a composição completa entregue aos participantes.
+7. Use **Exportar curso e análise** em Analytics para guardar o conteúdo integral
+   salvo e a análise do escopo escolhido, incluindo os registros disponíveis de
+   fontes, configuração aplicada e revisão.
+8. Preserve também os PDFs, áudios e demais materiais externos efetivamente
+   apresentados, pois a exportação contém suas referências, sem os arquivos.
 
 Use a configuração efetivamente aplicada e selada em cada unidade, e não apenas
 o valor geral pretendido, para conferir a condição produzida. A exportação
 explícita do artefato e de seus parâmetros permite comparar versões publicadas
-ou cópias experimentais. Usar cursos separados evita introduzir um sistema de
-versões, ledger ou entidade de variante no produto corrente.
+ou cópias experimentais. Cada curso continua mutável; os arquivos conservados pelo estudo identificam
+qual conteúdo foi efetivamente apresentado em cada condição.
 
 ## O que o AraLearn não decide
 

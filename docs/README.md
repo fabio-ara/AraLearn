@@ -1,17 +1,8 @@
 # Mapa da documentação
 
-A documentação do AraLearn ensina o produto antes de apresentar seus detalhes
-internos. Não é necessário conhecer previamente educação, bancos de dados,
-segurança ou integração de modelos de linguagem.
+O AraLearn permite criar e inspecionar cursos com assistência de IA e estudar suas trilhas no celular. Escolha o percurso de acordo com a tarefa ou a pergunta que deseja aprofundar. A [visão do produto](visao-do-produto.md) apresenta a relação entre autoria supervisionada, fontes, estudo e pesquisa em design instrucional.
 
-Capítulos conceituais explicam problema, conceitos, alternativas, decisão,
-fundamentação, consequências e limites. Guias operacionais apresentam tarefa,
-passos, resultado esperado e recuperação de falhas. Os
-[princípios editoriais](principios-editoriais.md) formalizam essa separação.
-
-A página [Origens do AraLearn](origens-do-aralearn.md) apresenta a genealogia
-biográfica declarada do projeto e explica por que ela não substitui evidência
-científica nem representa endosso institucional.
+A [origem do projeto](origens-do-aralearn.md) reúne as experiências de estudo e automação que motivaram seu desenvolvimento.
 
 ## Começar a usar
 
@@ -20,9 +11,9 @@ científica nem representa endosso institucional.
 2. [Uso do aplicativo](uso-do-app.md): conta, seleção de curso, Estudo,
    Autoria e sincronização;
 3. [Guia do estudante](guia-estudante.md): primeiro percurso, retomada,
-   revisão, observações e citações redigidas;
+   revisão, observações e consulta às fontes;
 4. [Guia do professor e autor](guia-professor-autor.md): criação privada,
-   planejamento incremental, Conteúdo, **Fontes**, revisão, Analytics e acesso;
+   planejamento, conteúdo, fontes, revisão e acesso;
 5. [Solução de problemas](solucao-de-problemas.md): diagnóstico por sintoma e
    recuperação segura.
 
@@ -41,8 +32,8 @@ e preferências pessoais de autoria, com o mesmo acesso em Estudo e Autoria.
 
 ## Estudar o modelo pedagógico
 
-1. [Modelo didático](modelo-didatico.md): Microssequência didática,
-   microteoria, prática e progressão;
+1. [Modelo didático](modelo-didatico.md): microssequências, explicação compartilhada,
+   prática e progressão;
 2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
    propriedades pedagógicas, escopo e limites, com
    [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md);
@@ -53,8 +44,8 @@ e preferências pessoais de autoria, com o mesmo acesso em Estudo e Autoria.
    quando uma representação é justificável;
 6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md): retomada
    e dados que não devem ser confundidos com aprendizagem;
-7. [Observações e Anotações ancoradas](observacoes-pedagogicas.md): retorno
-   situado, triagem protegida, funcionamento sem conexão e limites de inferência.
+7. [Observações pedagógicas](observacoes-pedagogicas.md): registro de dificuldades,
+   revisão e acompanhamento de correções.
 
 O [glossário de construtos](glossario-construtos.md) delimita termos
 educacionais e metodológicos. O [vocabulário controlado](vocabulario-controlado.md)
@@ -63,10 +54,10 @@ registra as decisões terminológicas e seus fundamentos. A
 liga decisões, literatura, implementação e avaliação prevista.
 
 [Autoria contextual](autoria-contextual.md) reúne responsabilidades, escopos,
-origem dos controles e o contrato de evolução de Explicação, desenho, revisão
-e preferências pessoais, distinguindo base observada e aceite ainda necessário.
+origem das configurações e a relação entre explicação, desenho, revisão
+e preferências pessoais.
 
-O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
+O [contrato de explicação e revisão humana](explicacao-e-revisao-humana.md)
 define apoio compartilhado, preservação do percurso, fontes e aprovação do
 conteúdo inspecionado. A implementação e suas provas locais são distintas da
 verificação nos clientes hospedados e de uma avaliação de aprendizagem.
@@ -75,17 +66,16 @@ verificação nos clientes hospedados e de uma avaliação de aprendizagem.
 
 Aprendizagem no trabalho, gestão do conhecimento, treinamento e
 desenvolvimento e educação profissional e tecnológica são contextos possíveis
-de aplicação e investigação. O percurso abaixo não presume que disponibilizar
-um curso produza competência, transferência ao trabalho ou mudança
-organizacional:
+de aplicação e investigação. O percurso relaciona as capacidades do aplicativo com a literatura e os critérios
+para examinar aprendizagem, transferência ao trabalho e mudanças organizacionais:
 
 1. [Visão do produto](visao-do-produto.md): públicos, condições de uso e
    capacidades que o AraLearn não oferece;
 2. [Revisão de literatura](revisao-de-literatura.md#13-aprendizagem-no-trabalho-gestão-do-conhecimento-e-educação-profissional):
    aprendizagem formal e informal, processos organizacionais de conhecimento
    e educação e formação técnica e profissional;
-3. [Origens do AraLearn](origens-do-aralearn.md): experiências declaradas que
-   tornaram esses problemas relevantes, sem transformar biografia em prova;
+3. [Origens do AraLearn](origens-do-aralearn.md): experiências de estudo e trabalho que
+   tornaram esses problemas relevantes;
 4. [Modelo didático](modelo-didatico.md): como fontes, progressão,
    representações, prática e revisão organizam um curso;
 5. [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
@@ -94,13 +84,13 @@ organizacional:
 
 ## Estudar a engenharia
 
-1. [Arquitetura](arquitetura.md): Curso vivo, fronteiras e fontes de
+1. [Arquitetura](arquitetura.md): curso salvo, fronteiras e fontes de
    autoridade;
 2. [Persistência relacional e sincronização](persistencia-relacional.md):
    IndexedDB, PostgreSQL, Storage, cópia temporária e fila;
 3. [Supabase](supabase.md): Auth, banco, Storage, Edge Functions, migrações e
    políticas de acesso;
-4. [Contrato de conteúdo](aralearn-contract.md): envelopes, corte direto de
+4. [Contrato de conteúdo](aralearn-contract.md): estrutura dos dados, vínculos com
    fontes e validação;
 5. [Componentes didáticos e pacotes](componentes-didaticos.md): núcleo,
    pacotes, catálogo e renderização;
@@ -114,15 +104,15 @@ cada propriedade pode ser verificada.
 
 ## Estudar a autoria de cursos
 
-Comece pelo comportamento já implementado:
+Para acompanhar o ciclo entre pessoa autora, assistente e aplicativo:
 
 1. [Guia do professor e autor](guia-professor-autor.md): criar e abrir cursos,
    editar planejamento e proveniência e conceder acesso para Estudo;
 2. [Autoria por Model Context Protocol](autoria-mcp.md): ferramentas que
    operam o mesmo curso da interface;
-3. [GPT personalizado com Actions](autoria-actions.md): OpenAPI, conexão OAuth
+3. [OpenAPI e Actions](autoria-actions.md): OpenAPI, conexão OAuth
    e diferença em relação ao MCP;
-4. [Criar Cursos pelo chat](criar-cursos-pelo-chat.md): percurso
+4. [Criar cursos pelo chat](criar-cursos-pelo-chat.md): percurso
    conversacional e seus limites;
 5. [Assistência por modelo de linguagem](assistencia-por-ia.md): autoridade,
    contexto e concorrência;
@@ -133,8 +123,8 @@ Comece pelo comportamento já implementado:
 
 O ciclo de revisão possui um capítulo próprio:
 
-8. [Revisão e correções do Curso](auditoria-de-conformidade-instrucional.md):
-   Observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
+8. [Revisão e correções do curso](auditoria-de-conformidade-instrucional.md):
+   observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
    reinspeção.
 
 [Planejamento contextual](planejamento-contextual.md) apresenta a navegação e
@@ -143,14 +133,14 @@ relaciona intenção, origem e configuração aplicada. As operações de mover,
 duplicar e reordenar estão em
 [Estrutura curricular por referência](estrutura-curricular-por-referencia.md).
 
-A [prova local dos canais](prova-local-canais-autoria.md) descreve o runner de
-dois lotes por Actions e MCP, suas medições e a distinção da prova no ChatGPT.
+A [verificação local dos canais](prova-local-canais-autoria.md) explica como
+reproduzir os testes de autoria por MCP e OpenAPI e interpretar seu alcance.
 
 Analytics caracteriza o desenho corrente e intervenções observáveis no mesmo
 curso:
 
 - [Analytics da Autoria](analytics-instrucionais.md);
-- [Referência do snapshot de Analytics](dicionario-metricas-datasets.md);
+- [Referência dos dados exportados](dicionario-metricas-datasets.md);
 - [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md);
 - [Guia de investigação](guia-pesquisador.md).
 
@@ -164,7 +154,7 @@ resultado empírico:
 3. [Protocolo de avaliação](protocolo-avaliacao-artefato.md);
 4. [Auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md);
 5. [Auditoria da interface](auditoria-front-end.md);
-6. [Benchmark de footprint editorial](benchmark-footprint-editorial.md):
+6. [Medidas de extensão e espaço editorial](benchmark-footprint-editorial.md):
    comparação reproduzível entre extensão, composição e espaço no leitor móvel;
 7. [Capacidades e limites atuais](estado-atual-e-roadmap.md).
 
@@ -177,8 +167,7 @@ pode declarar compreensão ou eficácia educacional.
 Um gestor, uma instituição educacional ou uma administração pública pode
 começar pela [Visão do produto](visao-do-produto.md) e pelas
 [Capacidades e limites atuais](estado-atual-e-roadmap.md). Esses capítulos
-delimitam finalidade, público, propriedades implementadas e resultados ainda
-não demonstrados.
+delimitam a finalidade, o público e as capacidades disponíveis.
 
 Para examinar uma adoção concreta, continue por:
 
@@ -221,21 +210,9 @@ Documentos correntes não repetem essa cronologia.
 | [Princípios editoriais](principios-editoriais.md) | critérios de clareza e evidência |
 | [Glossário técnico](glossario-tecnico.md) | termos de software e infraestrutura |
 | [Glossário de construtos](glossario-construtos.md) | termos educacionais e metodológicos |
-| [Vocabulário controlado](vocabulario-controlado.md) | decisões terminológicas e mapa de corte |
+| [Vocabulário controlado](vocabulario-controlado.md) | decisões terminológicas e sentidos adotados |
 | [Referências](referencias.md) | bibliografia legível e percursos temáticos gerados da fonte canônica |
 | [Cobertura da documentação](inventario-documentacao.md) | assunto e percurso de cada capítulo |
 | [Matriz de conformidade](matriz-conformidade-tecnica.md) | rastreabilidade da engenharia |
 
-## Como interpretar uma afirmação
-
-- **Implementado** significa que há código e contrato verificáveis.
-- **Conectado** significa que as camadas realmente chamam umas às outras.
-- **Acessível** significa que uma pessoa autorizada alcança a função pela
-  interface ou pelo protocolo indicado.
-- **Verificado** informa a evidência e sua data.
-- **Fundamentado** informa a literatura ou norma e o limite da inferência.
-- **Planejado** não deve ser lido como disponível.
-
-Quando houver divergência, [Capacidades e limites
-atuais](estado-atual-e-roadmap.md) prevalece para o comportamento disponível; a
-[visão](visao-do-produto.md) delimita a finalidade e os compromissos do produto.
+A página de [capacidades e limites atuais](estado-atual-e-roadmap.md) reúne o funcionamento disponível e encaminha suas verificações. A [visão do produto](visao-do-produto.md) desenvolve a finalidade e os compromissos de desenho; o [protocolo de avaliação](protocolo-avaliacao-artefato.md) explica como investigar suas propriedades e seus possíveis efeitos.

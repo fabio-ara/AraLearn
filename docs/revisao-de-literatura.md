@@ -7,8 +7,9 @@ as decisões educacionais e sociotécnicas do AraLearn. Sua pergunta orientadora
 é:
 
 > Que conhecimentos publicados são relevantes para projetar e avaliar uma
-> plataforma móvel, local-first, baseada em progressão didática,
-> representações externas, prática, feedback e autoria assistida?
+> aplicação de autoria assistida por IA e revisão humana, com explicações,
+> conteúdo vinculado às fontes, representações e prática, para estudo autodidata
+> no celular e continuidade sem conexão?
 
 O texto é uma **revisão narrativa orientada ao desenho do artefato**. Isso significa que as
 fontes foram organizadas em torno de problemas do artefato e de mecanismos
@@ -30,8 +31,8 @@ oferece:
 
 As referências completas estão em [`referencias.bib`](referencias.bib). A
 [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
-liga cada eixo desta revisão a requisitos, implementação e episódios de
-avaliação.
+relaciona compromissos do produto a objetos observáveis, verificações técnicas
+e avaliações educacionais necessárias.
 
 Neste texto, **local-first** designa uma arquitetura em que a cópia local
 sustenta a operação corrente e a sincronização com o servidor ocorre sem
@@ -39,8 +40,7 @@ bloquear a interação.
 
 ## Como interpretar a força de uma fonte
 
-Uma hierarquia simples ajuda a evitar que qualquer publicação seja tratada como
-prova suficiente:
+A força de uma fonte depende da pergunta e do alcance de seu método:
 
 | Tipo de fonte | Contribuição possível | Limite principal |
 | --- | --- | --- |
@@ -197,14 +197,14 @@ demonstram efeito educacional de armazenamento local.
   crítico da interação.
 - **Decisão:** manter localmente o conteúdo sincronizado e o estado mínimo
   necessário à continuidade; não tratar abertura ou tempo como atenção. Estudo
-  e Autoria usam a mesma aplicação web no celular e no computador, com exposição
-  progressiva e restauração explícita de contexto, em vez de relegar a Autoria a
+  e autoria usam a mesma aplicação web no celular e no computador, com exposição
+  progressiva e restauração explícita de contexto, em vez de relegar a autoria a
   uma interface desktop separada.
 - **Fundamentação:** interrupções podem impor custo de retomada, enquanto a
   diversidade de situações móveis desaconselha solução universal
   ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption); [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui)).
 - **Operacionalização:** o estudo lê conteúdo e estado corrente localmente; a
-  sincronização ocorre fora do caminho crítico. Na Autoria, o servidor continua
+  sincronização ocorre fora do caminho crítico. Na autoria, o servidor continua
   sendo a autoridade para alterações; listas conhecidas e uma página exata da
   sequência de Conteúdo podem permanecer visíveis sem conexão, identificadas como cópia
   local, sem autorizar mutação.
@@ -216,7 +216,7 @@ demonstram efeito educacional de armazenamento local.
   rede definidos, medindo localização correta, continuação, erros, ajuda e
   explicação da pessoa. A paridade de funções e a ausência de overflow em
   larguras automatizadas não demonstram que uma pessoa leiga descubra a
-  alternância entre Estudo e Autoria, retome o ponto correto ou compreenda o
+  alternância entre estudo e autoria, retome o ponto correto ou compreenda o
   estado sem orientação; isso exige teste humano prioritariamente móvel.
 
 ## 2. Autorregulação, autodireção e agência
@@ -271,6 +271,28 @@ escolha significativa e apoio à autonomia de abandono ou ausência de estrutura
   operacionalizado, não atributo produzido por botões. A avaliação deve observar decisões, justificativas, rejeições,
   mudanças de estratégia e compreensão das consequências; não usar frequência
   de acesso como medida substituta.
+
+### IA e autorregulação: o processo importa
+
+[Ferreira e Pedrosa (2024)](referencias.md#ref-ferreira2024iaautorregulacao)
+analisam 14 artigos selecionados entre 67 registros de três bases de
+publicações acadêmicas: Scopus, Web of Science e ERIC. A revisão relaciona
+tecnologias e usos pedagógicos às fases de
+planejamento, execução e reflexão de Zimmerman. Os autores extraem contexto,
+tecnologia e uso, analisam o conteúdo e validam as categorias entre si. O
+corpus reúne estudos empíricos e não empíricos; não fornece um efeito agregado
+transferível ao AraLearn. Os autores apontam a necessidade de investigar como
+o design instrucional integra a IA à autorregulação e de ampliar os termos de
+busca. Também discutem proteção de dados e formação crítica diante de
+informação falaciosa.
+
+Para o AraLearn, esse recorte sugere uma pergunta de investigação: ao retomar
+uma trilha e consultar ajuda, como a pessoa escolhe o que estudar, reconhece
+dificuldades e ajusta sua estratégia? A sugestão é deste projeto. Precisa de
+observação e relatos situados; contagens do conteúdo ou marcações de conclusão
+não revelam essas fases. Uma revisão futura deve procurar também pesquisas
+pelas estratégias específicas, como busca de ajuda e reflexão, sem depender
+apenas do termo amplo autorregulação.
 
 ## 3. Carga cognitiva, segmentação e profundidade
 
@@ -329,8 +351,8 @@ sustentar a interpretação pedagógica desejada.
   pelo escopo.
 - **Decisão:** dimensionar microssequências e unidades de estudo e
   interação depois do planejamento, sem
-  quantidade fixa de teoria ou prática; tratar microteoria como recorte local
-  suficiente, não resumo.
+  quantidade fixa de exposição ou prática; desenvolver explicações suficientes
+  para cada objetivo e realizá-las em etapas coerentes do percurso.
 - **Fundamentação:** memória de trabalho e segmentação dependem da tarefa e do
   desenho; a literatura de microaprendizagem não estabelece cota universal
   ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting); [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
@@ -356,19 +378,18 @@ Esse fundamento não autoriza um sistema de autoria a declarar que um tópico é
 um componente psicológico validado ou que conhece o domínio de cada estudante.
 
 Para planejar conteúdo de modo rastreável, o AraLearn adota uma
-**unidade de análise instrucional**. Ela é um recorte editorial revisável,
+[**unidade de análise instrucional**](desenho-instrucional-parametrizado.md). Ela é um recorte editorial revisável,
 ligado a fonte e objetivo. O conhecimento prévio presumido pode ser descrito
 como novo, parcial, integrado ou desconhecido, desde que a base da suposição
 permaneça explícita. Trata-se de operacionalização própria, não de diagnóstico,
 proficiência ou probabilidade de domínio.
 
-O objeto materializado diretamente apresentado em Estudo recebe, nesta
-taxonomia, o nome **unidade de estudo**: a menor unidade persistida, ordenável,
-endereçável e renderizável que pode ser somente expositiva ou também reunir uma
-ou mais representações, solicitação de resposta e feedback. Esse é um termo
-operacional do AraLearn, não um gênero discursivo reconhecido nem um construto
-psicológico. Sua aparência corrente em bloco retangular não deve definir a
-ontologia, e o nome não pressupõe interação quando ela não existe.
+O [modelo didático](modelo-didatico.md) chama de **unidade de estudo** cada etapa
+salva e identificável do percurso apresentado ao estudante. Ela pode ser
+expositiva, propor prática ou reunir representações, solicitação de resposta e
+feedback. Essa convenção organiza a produção e a navegação; não define um
+gênero discursivo ou construto psicológico. A aparência em cartão tampouco
+implica que toda unidade proponha uma resposta.
 
 **Flashcard** fica reservado ao item realmente organizado em torno de uma pista
 e de uma resposta para recuperação. Uma revisão de escopo sobre flashcards
@@ -378,7 +399,7 @@ simulações ou toda a plataforma como flashcards
 ([Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards)).
 
 Uma **microssequência didática** ordena unidades de estudo em
-torno de um objetivo instrucional delimitado. Uma **Parte de autoria** reúne,
+torno de um objetivo instrucional delimitado. Uma **parte de autoria** reúne,
 por sua vez, trabalho de planejamento, produção e revisão que pode abranger
 várias microssequências. Ambas são construções próprias do produto: a primeira
 é didática; a segunda é uma unidade operacional de materialização. A faixa
@@ -398,8 +419,9 @@ contextualizando o material produzido
 ([Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha)). Esses
 resultados sustentam investigar planejamento revisável, intervenção humana e
 uso móvel no AraLearn. Eles não validam a entidade parte, não determinam sua
-quantidade e não demonstram que a faixa de sete a doze melhora aprendizagem ou
-qualidade autoral; essa faixa permanece um valor padrão do produto a ser estudado.
+quantidade nem demonstram que um número específico de partes melhore
+aprendizagem ou qualidade autoral. Os alvos atuais de partes e lotes são
+configurações de processo, descritas em [parâmetros de autoria](parametros-de-autoria.md).
 
 ### Interatividade depende da estrutura e do público
 
@@ -477,6 +499,26 @@ operação e estrutura semântica, não por troca cosmética de texto ou compone
 
 A fundamentação e o modelo operacional de contratos estão detalhados em
 [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
+
+### Desenho de cursos e participação de quem os utiliza
+
+[Amado et al. (2022)](referencias.md#ref-amado2022moocsdesign) propõem um quadro
+para o desenho de MOOCs — cursos on-line abertos a muitos participantes — na
+formação contínua de professores em Portugal. Com métodos mistos, que combinam
+dados numéricos e qualitativos, articulam uma revisão de escopo — mapeamento
+da literatura sobre o tema — e entrevistas à análise de 103 questionários e dois pequenos
+grupos de discussão. O quadro relaciona recursos, desenho e organização e
+acompanhamento. A combinação de números e falas permite examinar divergências,
+inclusive sobre colaboração e avaliação. Trata-se de fundamentação e
+apreciação por participantes; a eficácia formativa continua por demonstrar.
+
+Para o AraLearn, a contribuição metodológica está em confrontar um modelo de
+autoria com o julgamento de educadores e usuários. É possível examinar se
+objetivos, materiais, atividades e condições de acesso formam um percurso
+compreensível, usando cursos efetivamente produzidos. Essa é uma adaptação
+proposta aqui. O estudo original não avalia autoria generativa nem estudo
+autodidata no celular; seus requisitos de tutoria, certificação e formação
+profissional não se tornam automaticamente requisitos do aplicativo.
 
 ## 5. Exemplos resolvidos e retirada de apoio
 
@@ -596,7 +638,7 @@ os resultados dependem da tarefa, do material e do modo de interação
 ([Dyson (2004)](referencias.md#ref-dyson2004layout);
 [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens);
 [Li et al. (2021)](referencias.md#ref-li2021interaction)). Isso não estabelece
-que rolagem, paginação ou encaixe automático seja universalmente superior. A Autoria móvel
+que rolagem, paginação ou encaixe automático seja universalmente superior. A autoria móvel
 adota como hipótese de interface uma **sequência vertical de inspeção**: fluxo finito,
 curricularmente ordenado, com posição, hierarquia, retomada e marcos explícitos.
 Ela deve ser avaliada pela capacidade de localizar, revisar e anotar unidades,
@@ -741,9 +783,9 @@ permitem tratar acesso comum a um curso como colaboração ou comunidade.
 - **Problema:** compartilhar um curso para estudo precisa preservar acesso
   revogável sem tornar difusa a responsabilidade por sua autoria.
 - **Alternativas e requisitos:** edição coletiva por papéis, isolamento pessoal
-  completo ou propriedade do curso com compartilhamento direto para Estudo.
-- **Decisão:** reservar a Autoria à pessoa proprietária e conceder a outras
-  pessoas somente o Estudo e o estado pessoal associado.
+  completo ou propriedade do curso com compartilhamento direto para estudo.
+- **Decisão:** reservar a autoria à pessoa proprietária e conceder a outras
+  pessoas somente o estudo e o estado pessoal associado.
 - **Fundamentação:** participação e agência coletiva dependem do contexto e das
   relações sociais ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). A distinção entre propriedade e acesso
   torna explícito que participação social não decorre de um papel cadastrado.
@@ -751,9 +793,9 @@ permitem tratar acesso comum a um curso como colaboração ou comunidade.
   acesso direto pode ser concedido ou revogado, e as mudanças autorais preservam
   origem e revisão.
 - **Consequências e hipótese:** uma fronteira compreensível entre autoria e
-  Estudo pode apoiar responsabilidade e reduzir erros de permissão.
+  estudo pode apoiar responsabilidade e reduzir erros de permissão.
 - **Limites e evidência necessária:** acesso, copresença ou quantidade de
-  Observações não demonstram colaboração. A avaliação precisa incluir tarefas
+  observações não demonstram colaboração. A avaliação precisa incluir tarefas
   de compartilhamento, revogação e explicação de responsabilidade. Autoria
   coletiva continua sendo uma questão de pesquisa, não uma capacidade vigente.
 
@@ -796,8 +838,8 @@ não demonstra que uma plataforma específica forme competências profissionais.
   normas, manuais, experiência, explicações locais e procedimentos que mudam.
   Transformar essas fontes em percurso de estudo exige curadoria, autoria,
   revisão, proveniência e relação explícita entre explicação e prática.
-- **Decisão:** o AraLearn conserva o mesmo curso, fontes, Âncoras, planejamento,
-  representações, práticas e histórico de revisão em contextos educacionais e
+- **Decisão:** o AraLearn conserva o mesmo curso, fontes, âncoras, planejamento,
+  representações, práticas e estado de revisão em contextos educacionais e
   profissionais. Ele não cria uma ontologia especial de “conhecimento
   corporativo” nem presume que disponibilizar um curso produza aprendizagem
   organizacional.
@@ -809,7 +851,7 @@ não demonstra que uma plataforma específica forme competências profissionais.
 - **Limites:** a versão corrente não oferece gestão de competências, matrícula
   institucional, certificação, coautoria organizacional, fluxo de aprovação por
   papéis ou telemetria de desempenho no trabalho. Propriedade do curso e acesso
-  direto para Estudo não constituem comunidade de prática, gestão do
+  direto para estudo não constituem comunidade de prática, gestão do
   conhecimento ou programa de treinamento.
 - **Evidência necessária:** cada estudo precisa caracterizar ocupação,
   organização, tarefa, experiência prévia, condições de aprendizagem e
@@ -888,12 +930,85 @@ populacional nem aprendizagem.
   et al. oferece evidência situada de que forçar reflexão pode reduzir
   dependência excessiva e acrescentar custo, sem garantir transferência para
   a autoria ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
-- **Operacionalização:** catálogo, contrato específico, contexto de leitura,
-  alvos graváveis, validação e versões reversíveis formam etapas distintas.
+- **Operacionalização:** consulta ao catálogo e ao contrato, leitura do contexto,
+  identificação dos alvos editáveis, validação e revisão do conteúdo salvo
+  formam operações distintas.
 - **Consequências e hipótese:** essa delimitação pode reduzir deriva estrutural e retrabalho.
 - **Limites e evidência necessária:** JSON válido e resposta fluente não
   garantem qualidade factual, pedagógica ou acadêmica. São necessárias tarefas com modelos e contextos variados, incluindo
   erro factual, lacuna do catálogo, mudança de escopo, rejeição e reversão.
+
+### Confiança calibrada e viés de automação
+
+**Confiança calibrada** significa que a confiança na ferramenta acompanha suas
+capacidades e limitações na tarefa. A revisão de
+[Lee e See (2004)](referencias.md#ref-lee2004trust) distingue a atitude de
+confiança do comportamento de apoiar-se na automação: a primeira influencia o
+segundo, mas não o determina. O objetivo de design é favorecer um uso
+adequado, sem presumir que aumentar a confiança seja sempre benéfico.
+
+**Viés de automação** pode ocorrer quando o apoio automatizado leva a aceitar
+uma recomendação errada ou a deixar de agir porque o sistema não apontou um
+problema. [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation)
+revisam estudos e propõem um modelo que relaciona parte desses erros à atenção,
+à situação e às características do sistema. Experiência e instruções de
+conferência não garantem sua prevenção. O modelo não explica todas as formas
+de viés e foi construído em outros contextos de automação.
+
+No AraLearn, texto fluente, referências aparentes e uma resposta tecnicamente
+aceita podem parecer mais confiáveis do que são. A hipótese de transferência
+desses riscos precisa ser examinada: apresente propostas corretas e
+incorretas, observe a conferência das fontes e compare a decisão com critérios
+de conteúdo independentes. Registre também rejeições de propostas corretas.
+Satisfação, frequência de uso e a declaração de revisão, isoladamente, não
+demonstram confiança calibrada. Os controles disponíveis são condições para a
+inspeção, cuja qualidade depende da pessoa, da tarefa e do contexto.
+
+### Inspeção humana e conferência das fontes
+
+Supervisão humana precisa ser examinada como trabalho de inspeção, julgamento
+e intervenção. A pessoa autora necessita de meios para reencontrar a afirmação,
+consultar a fonte em contexto, reconhecer uma atribuição inadequada e decidir
+sobre a correção. Diretrizes de interação fundamentam esses meios; estudos
+situados de autoria mostram que conferir e reconstruir materiais pode exigir
+trabalho substancial
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+[Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting)).
+
+No AraLearn, [fontes e âncoras](fontes-e-citacoes.md) localizam o material usado,
+e a [revisão autoral](explicacao-e-revisao-humana.md) registra uma declaração
+humana sobre conteúdo salvo. São decisões de design que tornam a inspeção
+possível; uma citação presente ou uma confirmação registrada não comprova sua
+qualidade. A hipótese é que a ligação entre texto, fonte, objeto inspecionado e
+correção possa apoiar controle humano efetivo. Para examiná-la, o estudo deve
+incluir atribuições plausíveis porém incorretas, fontes insuficientes e erros
+que passem pela validação estrutural, observando como a pessoa os interpreta
+e trata.
+
+### Literacia em IA e orientações institucionais
+
+A Recomendação CM/Rec(2026)12, adotada pelo **Conselho da Europa** em 2 de
+setembro de 2026, propõe uma literacia em IA que reúne dimensões humana,
+tecnológica e prática. O conceito abrange compreender o funcionamento e os
+limites dos sistemas, avaliar suas implicações e decidir de modo informado
+quando e como utilizá-los. A recomendação destaca a preservação do julgamento
+e da responsabilidade humanos e a possibilidade de decidir pelo não uso da IA
+(apêndice, §§ 7, 27–28 e 34;
+[Conselho da Europa (2026)](referencias.md#ref-coe2026ailiteracy)).
+
+No Brasil, o referencial do Ministério da Educação orienta a **supervisão humana
+significativa**, vinculando o uso da IA às finalidades pedagógicas. Na pesquisa
+e na pós-graduação, recomenda examinar a confiabilidade e a pertinência das
+fontes, verificar os resultados, declarar como a IA foi empregada e preservar
+a responsabilidade científica e os dados da investigação (pp. 69–70 e
+175–179; [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao)).
+
+Essas fontes oferecem orientações institucionais, não resultados de eficácia
+do AraLearn. Para o projeto, fundamentam investigar se autores compreendem as
+propostas, conferem conteúdo e fontes e conservam condições reais de decisão.
+Também sustentam distinguir competência crítica no uso da IA de habilidade
+para executar comandos. Uma avaliação deve examinar essas capacidades; a
+presença de controles ou citações não comprova que foram desenvolvidas.
 
 ## 15. Análise de dados educacionais, privacidade e interpretação
 
@@ -913,16 +1028,20 @@ qualidade docente.
   indicadores sem pergunta ou intervenção legítima.
 - **Alternativas e requisitos:** coletar tudo, proibir qualquer dado ou definir
   finalidade, interpretação e ação antes da coleta.
-- **Decisão:** a área Pesquisa expõe fatos do processo de Autoria e contagens
-  descritivas por conjunto, tipo e estado. Ela não acrescenta telemetria
-  comportamental de Estudo e retira identidade de conta, texto bruto de
-  Observações e cópias integrais de conteúdo.
+- **Decisão:** [Analytics](analytics-instrucionais.md) descreve o desenho do curso
+  e intervenções observáveis no estado corrente. A leitura quantitativa não
+  coleta comportamento de estudo nem inclui identidade de conta ou texto de
+  observações. A exportação solicitada pela pessoa proprietária reúne essa
+  análise e o conteúdo integral salvo, com metadados disponíveis de fontes,
+  configuração aplicada e revisão.
 - **Fundamentação:** a ética da análise de dados exige finalidade, transparência,
   proporcionalidade e participação ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
-- **Operacionalização:** cada consulta fixa curso, revisão, filtros e instante de
-  corte. Gráfico, tabela, lista, CSV, JSON, MCP e Actions usam o mesmo recorte. As
-  métricas correntes declaram pergunta, unidade, denominador, tratamento de
-  ausências e inferências vedadas.
+- **Operacionalização:** a consulta identifica curso, revisão e escopo. As
+  distribuições da interface, a comparação e a exportação JSON usam definições
+  compartilhadas de unidade, denominador e ausências. A exportação é
+  interrompida se a revisão mudar durante a leitura, evitando reunir estados
+  incompatíveis. O [dicionário dos dados](dicionario-metricas-datasets.md)
+  descreve os cálculos e seus limites.
 - **Consequências e hipótese:** fatos rastreáveis e definições explícitas podem
   tornar análises do processo autoral mais reprodutíveis e proporcionais, com
   menor risco de vigilância.
@@ -1060,12 +1179,14 @@ O corpus atual ainda precisa ser ampliado para:
 - [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge): Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136.
+- [Amado et al. (2022)](referencias.md#ref-amado2022moocsdesign): Carolina Amado; Nuno Dorotea; Ana Pedro; João Piedade (2022). **MOOCs Design: A Conceptual Framework for Continuous Teacher Training in Portugal.** *Education Sciences*, 12(5), p. 308.
 - [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
 - [Bandura (2001)](referencias.md#ref-bandura2001agency): Albert Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26.
 - [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards): Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506.
 - [Baughan et al. (2022)](referencias.md#ref-baughan2022dissociation): Amanda Baughan; Mingrui Ray Zhang; Raveena Rao; Kai Lukoff; Anastasia Schaadhardt; Lisa D. Butler; Alexis Hiniker (2022). **I Don't Even Remember What I Read: How Design Influences Dissociation on Social Media.** In: *Proceedings of the 2022 CHI Conference on Human Factors in Computing Systems*, ACM, p. 1–13.
+- [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao): Brasil. Ministério da Educação (2026). **Referencial para Desenvolvimento e Uso Responsáveis de Inteligência Artificial na Educação.** Ministério da Educação.
 - [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative): E. N. Bridwell-Mitchell (2016). **Collaborative Institutional Agency: How Peer Learning in Communities of Practice Enables and Inhibits Micro-Institutional Change.** *Organization Studies*, 37(2), p. 161–192.
 - [Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving): Markus Brunmair; Tobias Richter (2019). **Similarity Matters: A Meta-Analysis of Interleaved Learning and Its Moderators.** *Psychological Bulletin*, 145(11), p. 1029–1052.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
@@ -1080,10 +1201,12 @@ O corpus atual ainda precisa ser ampliado para:
 - [Chi et al. (1994)](referencias.md#ref-chi1994eliciting): Michelene T. H. Chi; Nicholas de Leeuw; Mei-Hung Chiu; Christian LaVancher (1994). **Eliciting Self-Explanations Improves Understanding.** *Cognitive Science*, 18(3), p. 439–477.
 - [Choi et al. (2024)](referencias.md#ref-choi2024vivid): Seulgi Choi; Hyewon Lee; Yoonjoo Lee; Juho Kim (2024). **VIVID: Human–AI Collaborative Authoring of Vicarious Dialogues from Lecture Videos.** In: *Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems*, Association for Computing Machinery, p. 1–26.
 - [Chun et al. (2011)](referencias.md#ref-chun2011attention): Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of External and Internal Attention.** *Annual Review of Psychology*, 62(1), p. 73–101.
+- [Conselho da Europa (2026)](referencias.md#ref-coe2026ailiteracy): Conselho da Europa (2026). **Recommendation CM/Rec(2026)12 of the Committee of Ministers to Member States on Artificial Intelligence Literacy.** Council of Europe.
 - [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
 - [Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha): Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Dyson (2004)](referencias.md#ref-dyson2004layout): Mary C. Dyson (2004). **How Physical Text Layout Affects Reading from Screen.** *Behaviour & Information Technology*, 23(6), p. 377–393.
+- [Ferreira e Pedrosa (2024)](referencias.md#ref-ferreira2024iaautorregulacao): Adriano Ferreira; Daniela Pedrosa (2024). **Uso da inteligência artificial para apoiar a autorregulação de aprendizagem: uma revisão de literatura.** *PRATICA – Revista Multimédia de Investigação em Inovação Pedagógica e Práticas de e-Learning*, 7(2), p. 101–111.
 - [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Gazzola et al. (2022)](referencias.md#ref-gazzola2022textcomplexity): Murilo Gazzola; Sidney Leal; Breno Pedroni; Fábio Theoto Rocha; Sabine Pompéia; Sandra Aluísio (2022). **Text Complexity of Open Educational Resources in Portuguese: Mixing Written and Spoken Registers in a Multi-task Approach.** *Language Resources and Evaluation*, 56(2), p. 621–650.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
@@ -1106,6 +1229,7 @@ O corpus atual ainda precisa ser ampliado para:
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
 - [Lai et al. (2022)](referencias.md#ref-lai2022mobile): Yuzhi Lai; Nadira Saab; Wilfried Admiraal (2022). **Learning Strategies in Self-Directed Language Learning Using Mobile Technology in Higher Education: A Systematic Scoping Review.** *Education and Information Technologies*, 27, p. 7749–7780.
 - [Leal et al. (2024)](referencias.md#ref-leal2024nilcmetrix): Sidney Evaldo Leal; Magali Sanches Duran; Carolina Evaristo Scarton; Nathan Siegle Hartmann; Sandra Maria Aluísio (2024). **NILC-Metrix: Assessing the Complexity of Written and Spoken Language in Brazilian Portuguese.** *Language Resources and Evaluation*, 58(1), p. 73–110.
+- [Lee e See (2004)](referencias.md#ref-lee2004trust): John D. Lee; Katrina A. See (2004). **Trust in Automation: Designing for Appropriate Reliance.** *Human Factors*, 46(1), p. 50–80.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
 - [Li et al. (2021)](referencias.md#ref-li2021interaction): Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, p. 103189.
 - [Mann e Thompson (1988)](referencias.md#ref-mann1988rst): William C. Mann; Sandra A. Thompson (1988). **Rhetorical Structure Theory: Toward a Functional Theory of Text Organization.** *Text*, 8(3), p. 243–281.
@@ -1118,6 +1242,7 @@ O corpus atual ainda precisa ser ampliado para:
 - [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
 - [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
+- [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation): Raja Parasuraman; Dietrich H. Manzey (2010). **Complacency and Bias in Human Use of Automation: An Attentional Integration.** *Human Factors*, 52(3), p. 381–410.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Parry et al. (2021)](referencias.md#ref-parry2021digitalmedia): Douglas A. Parry; Brittany I. Davidson; Craig J. R. Sewall; Jacob T. Fisher; Hannah Mieczkowski; Daniel S. Quintana (2021). **A Systematic Review and Meta-analysis of Discrepancies between Logged and Self-reported Digital Media Use.** *Nature Human Behaviour*, 5(11), p. 1535–1547.
 - [Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation): Rebecca J. Passonneau; Diane J. Litman (1997). **Discourse Segmentation by Human and Automated Means.** *Computational Linguistics*, 23(1), p. 103–139.

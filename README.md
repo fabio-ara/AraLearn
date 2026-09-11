@@ -1,22 +1,18 @@
 # AraLearn
 
-O AraLearn é uma plataforma para estudo autodidata e criação de cursos com apoio de inteligência artificial generativa. A partir de um tema, de uma ementa ou de materiais já reunidos, é possível montar um curso e estudá-lo no próprio aplicativo. A inteligência artificial (IA) ajuda a planejar a sequência, redigir explicações, propor atividades e escolher formas adequadas de apresentar cada conteúdo.
+O AraLearn é um aplicativo de pesquisa em design instrucional e tecnologia educacional, voltado à autoria de cursos e ao estudo autodidata no celular. Com assistência de inteligência artificial (IA) generativa e revisão humana, o usuário cria trilhas didáticas a partir de temas, ementas, slides e outros materiais de estudo.
 
-O estudo é dividido em pequenas etapas, para que seja possível avançar mesmo quando há pouco tempo disponível e retomar o percurso depois de uma interrupção. O AraLearn funciona na web e no Android, e parte do conteúdo necessário ao estudo pode permanecer no dispositivo para continuar disponível quando a conexão não é estável.
+As trilhas reúnem explicações, conteúdo vinculado às fontes, áudio, representações visuais e atividades interativas. Sua organização em etapas procura favorecer o estudo em períodos breves e em condições de atenção fragmentada, com retomada do ponto em que se parou. O aplicativo funciona no navegador e pode ser instalado no celular; o conteúdo já carregado pode ser estudado sem conexão.
 
-A página [Origens do AraLearn](docs/origens-do-aralearn.md) apresenta o percurso que levou à criação do projeto.
+[Abrir o AraLearn](https://fabio-ara.github.io/AraLearn/) · [Conhecer a origem do projeto](docs/origens-do-aralearn.md)
 
 ## Como o conteúdo é organizado
 
-O percurso de estudo segue uma hierarquia:
+Um curso contém módulos, divididos em lições. Cada lição reúne microssequências didáticas, compostas por unidades de estudo.
 
-```text
-curso → módulo → lição → microssequência didática → unidade de estudo
-```
+Uma **microssequência didática** organiza um avanço conceitual delimitado. Suas **unidades de estudo** desenvolvem esse avanço por meio de explicações, exemplos e práticas com retorno. Uma tabela pode ajudar a comparar informações; um fluxograma, a acompanhar um processo. Atividades como preencher lacunas, selecionar alternativas ou calcular com apoio de uma calculadora permitem trabalhar sobre o conteúdo apresentado.
 
-Uma **microssequência didática** organiza um avanço conceitual delimitado. Suas **unidades de estudo** desenvolvem etapas desse avanço por meio de explicações, exemplos, práticas e retorno. Conforme o conteúdo, uma unidade pode usar prosa, fórmulas, código ou outras representações.
-
-A microssequência também pode oferecer uma **Explicação** compartilhada: um apoio previamente escrito, acessível por ícone em qualquer unidade, inclusive nas práticas. Ele desenvolve pressupostos, relações e exemplos sem repetir o texto em cada unidade. Abrir o apoio não gera conteúdo por IA nem registra aprendizagem. Cursos anteriores sem apoio continuam reconhecidos nessa condição.
+Durante a autoria, a **explicação** constitui o texto-base da microssequência: desenvolve pressupostos, conceitos, relações e exemplos, com fontes vinculadas ao conteúdo. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante o estudo. As unidades registram as escolhas instrucionais e editoriais aplicadas à sua produção.
 
 Essa organização permite acrescentar as etapas necessárias para explicar um assunto sem depender de uma única exposição extensa ou de resumos excessivamente condensados. O [modelo didático](docs/modelo-didatico.md) apresenta os fundamentos e as decisões que orientam essa estrutura.
 
@@ -24,15 +20,21 @@ Essa organização permite acrescentar as etapas necessárias para explicar um a
 
 No estudo, é possível percorrer o curso, responder a práticas, receber retorno, marcar unidades para rever, registrar observações e retomar o ponto em que o estudo foi interrompido.
 
-Na autoria, é possível planejar a estrutura do curso, produzir e revisar seu conteúdo e definir quem pode acessá-lo. Conteúdo completo salvo pode ser estudado por quem tem acesso, mesmo sem revisão registrada. A pessoa proprietária pode escolher expressamente a política de disponibilizar somente conteúdo revisado. Cada Explicação e unidade mantém sua própria marca de revisão; uma mudança material desatualiza a marca pertinente. Edições não salvas permanecem privadas, e o acervo anterior conserva a indicação de revisão não registrada, sem aprovação retroativa automática.
+Na autoria, a pessoa define o objetivo, o público e o alcance do curso, ajusta o desenho instrucional e inspeciona a estrutura, o conteúdo e as fontes. Pode pedir correções, editar o material e registrar sua revisão. A marca de revisão identifica uma decisão humana sobre o conteúdo salvo; sua relação com a disponibilização do curso está descrita em [Explicação e revisão humana](docs/explicacao-e-revisao-humana.md).
 
 O [guia do estudante](docs/guia-estudante.md) apresenta o percurso de estudo. O [guia do professor e autor](docs/guia-professor-autor.md) apresenta criação, planejamento, produção e revisão de cursos.
 
 ## Autoria com inteligência artificial
 
-A assistência por IA dentro do aplicativo trabalha com o contexto do conteúdo que está sendo editado e permite discutir uma proposta antes de aplicá-la.
+O trabalho se desenvolve em um ciclo de proposta, inspeção e correção: a IA ajuda a planejar e produzir; a pessoa examina o resultado, confere as fontes e decide o que deve mudar. O curso permanece no aplicativo e pode ser retomado em outra conversa.
 
-Também é possível usar conversas externas para trabalhar na autoria de um curso. Clientes compatíveis com o [Model Context Protocol (MCP)](docs/autoria-mcp.md) e um [GPT personalizado com Actions](docs/autoria-actions.md) podem acessar operações autorizadas do AraLearn para trabalhar com cursos. A [Assistência por modelo de linguagem](docs/assistencia-por-ia.md) explica o funcionamento da assistência integrada ao aplicativo.
+Um assistente externo pode consultar o curso e executar tarefas autorizadas por meio das interfaces de autoria do AraLearn. O [guia de autoria pelo chat](docs/criar-cursos-pelo-chat.md) apresenta esse percurso, e a [documentação das integrações](docs/assistencia-por-ia.md) explica os canais e suas condições de uso. A interface do aplicativo também oferece edição manual e assistência contextual por IA.
+
+## Pesquisa em design instrucional
+
+O AraLearn permite investigar como decisões de autoria se traduzem em material didático: que explicações são necessárias, como representar um conteúdo, quais atividades propor e como a pessoa supervisiona o trabalho da IA. Parâmetros, fontes, conteúdo e revisões podem ser inspecionados e comparados. A independência em relação a modelos e fornecedores orienta a evolução das integrações; a compatibilidade de cada cliente é verificada separadamente.
+
+A [visão do produto](docs/visao-do-produto.md) desenvolve essas relações. A [revisão de literatura](docs/revisao-de-literatura.md) fundamenta as escolhas e as hipóteses; o [guia de investigação](docs/guia-pesquisador.md) orienta sua avaliação. Os efeitos sobre aprendizagem e uso precisam ser examinados em estudos próprios.
 
 ## Documentação
 

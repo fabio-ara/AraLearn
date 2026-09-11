@@ -1,6 +1,6 @@
 ## Resumo
 
-Descreva em poucas linhas o que esta branch muda e por que ela existe.
+Descreva o problema, a mudança e seu efeito para quem usa ou mantém o AraLearn.
 
 ## Impacto visível
 
@@ -11,9 +11,12 @@ Descreva em poucas linhas o que esta branch muda e por que ela existe.
 
 ## Validação
 
-- [ ] `npm test`
-- [ ] `npm run validate:example`
-- [ ] outra validação relevante foi executada e descrita abaixo
+Registre somente as verificações pertinentes à mudança, com os resultados. Para
+documentação, inclua auditoria e links; para código, os testes do comportamento afetado.
+Informe qualquer validação exigida que não pôde ser concluída e o motivo.
+
+- Verificações executadas:
+- Resultados e limites:
 
 ## Histórico
 
@@ -24,4 +27,5 @@ Descreva em poucas linhas o que esta branch muda e por que ela existe.
 
 ## Observações
 
-Use este espaço apenas para riscos, limites conhecidos ou pontos que merecem leitura atenta.
+Use este espaço apenas para riscos, limites conhecidos ou pontos que merecem leitura
+atenta.

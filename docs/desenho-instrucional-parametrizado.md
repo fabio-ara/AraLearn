@@ -1,22 +1,27 @@
 # Desenho instrucional parametrizado
 
-O AraLearn representa um conjunto pequeno de decisões pedagógicas e editoriais
-que a pessoa autora pode compreender, revisar e aplicar a um curso. A interface,
-o MCP e a produção em partes usam a mesma resolução. O propósito é tornar uma
-intenção examinável, sem converter preferência editorial em resultado
-científico ou conformidade técnica em prova de aprendizagem.
+Os parâmetros do AraLearn registram decisões sobre como explicar, propor
+práticas, distribuir o texto e organizar a produção de um curso. A pessoa
+autora pode defini-los, delegar escolhas ao assistente e comparar a intenção
+atual com a configuração aplicada ao conteúdo salvo. A interface e os canais
+de autoria por [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md)
+usam as mesmas definições.
+
+Esses parâmetros tornam o [modelo didático](modelo-didatico.md) inspecionável
+em escolhas locais. Seus valores são decisões de projeto ou condições de
+pesquisa; a avaliação do material e da aprendizagem exige evidências próprias.
 
 ## Acesso e organização
 
 Na inspeção do curso, o menu de tarefas abre **Parâmetros** e **Fontes** diretamente.
 O ícone da unidade abre os ajustes daquele escopo sem perder a posição da
-inspeção. A folha mantém dimensões e ações estáveis, apresenta um grupo por vez
+inspeção. O painel mantém dimensões e ações estáveis, apresenta um grupo por vez
 e revela a definição, origem e limites ao abrir uma decisão.
 
-Explicações e Prática reúnem decisões pedagógicas; Leitura e estilo contém a
-extensão do material e a direção editorial. Produção organiza partes, lotes e
-pausas; Conversa regula as respostas do assistente. Recursos delimita componentes
-permitidos, e Perfis reutiliza preferências explicitamente. Essa organização não
+**Explicações** e **Prática** reúnem decisões pedagógicas; **Leitura e estilo**
+contém a extensão do material e a direção editorial. **Produção** organiza
+partes, lotes e pausas; **Conversa** regula as respostas do assistente.
+**Recursos** delimita componentes permitidos, e **Perfis** reutiliza preferências. Essa organização não
 altera o significado dos parâmetros nem converte escolhas operacionais em
 medidas de aprendizagem.
 
@@ -28,7 +33,8 @@ continuam na tela inicial, em Conta e aparência.
 
 ## O que constitui um parâmetro
 
-Um parâmetro de desenho instrucional possui:
+Um parâmetro identifica uma decisão ajustável e define como representá-la.
+O [catálogo canônico](../src/domain/courseDesignParameters.js) registra:
 
 - identidade e versão;
 - definição operacional;
@@ -40,7 +46,7 @@ Um parâmetro de desenho instrucional possui:
 
 No modo automático, o assistente precisa escolher cada valor conforme público,
 conteúdo, função, planejamento e escopo admitido pelo catálogo. A ausência de
-escolha é explícita; não representa um preset fixo. Herdar conserva a intenção
+escolha é explícita; não representa um conjunto fixo de valores. Herdar conserva a intenção
 do escopo anterior, enquanto uma escolha fixa conserva o valor deliberado.
 A produção registra a calibração contextual junto ao conteúdo. Evidência
 externa pode justificar a investigação de uma dimensão, mas não estabelece
@@ -53,7 +59,8 @@ produção, mas não é meta pedagógica. As preferências de parte, lote e paus
 escopo de curso e não viram atribuições locais de uma unidade de estudo.
 
 Ao revisar uma unidade já produzida, a leitura recupera as três escolhas de
-cadência de sua aplicação quando não existe uma atribuição vigente. Isso permite
+organização da produção — tamanho da parte, tamanho do lote e frequência de
+pausa — registradas em sua aplicação quando não existe uma atribuição vigente. Isso permite
 reproduzir a mesma configuração sem transformar aquela escolha automática em
 preferência do curso. A consulta do curso ou da microssequência continua indicando
 ausência de escolha enquanto ela não for definida nesses escopos. Uma atribuição
@@ -95,10 +102,11 @@ Perfis pertencem à conta e copiam essas preferências para um curso; editar ou
 excluir o perfil não modifica as cópias já aplicadas. Exceções locais permanecem,
 salvo remoção explícita, e condições de pesquisa impedem substituição silenciosa.
 
-O protocolo abaixo define o significado de **unidade de análise** e das contagens.
-Ele fecha a operacionalização para a evolução do produto; sua existência não
-afirma que todos os eventos e observáveis já estejam representados no runtime.
-O catálogo corrente continua sendo a descrição dos controles implementados.
+O [protocolo de unidade de análise](#protocolo-de-unidade-de-análise) define
+como recortar o conhecimento necessário à tarefa e justificar as contagens.
+Seu alcance é maior que o diagnóstico já implementado; a seção de
+[medidas observáveis](#medidas-observáveis-e-seus-denominadores) distingue os
+registros disponíveis das anotações que ainda exigem exame próprio.
 
 ### Formas de explicação
 
@@ -120,7 +128,9 @@ roteiro obrigatório para toda unidade.
 
 ### Oportunidades e variação da prática
 
-Uma oportunidade de prática solicita uma operação do estudante antes de fornecer
+Um **requisito de evidência** descreve a operação e as condições de uma tarefa
+com que se pretende examinar um objetivo. Uma oportunidade de prática solicita
+uma operação do estudante antes de fornecer
 sua solução. Para contar como oportunidade **distinta** num mesmo requisito de
 evidência, conserva a operação-alvo e modifica um aspecto semanticamente
 relevante. As dimensões disponíveis são:
@@ -215,7 +225,7 @@ verifica identidades, duplicações, referências, ordem e contagens. A pessoa
 autora pode contestar o recorte; ambiguidade que altera escopo, repertório ou
 condição fixada deve ser trazida como decisão concreta.
 
-Resultados de LLM em classificação de textos delimitam a possibilidade de
+Resultados de modelos de linguagem em classificação de textos delimitam a possibilidade de
 assistência, mas não validam este recorte de conhecimento pedagógico
 ([Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation);
 [Pangakis et al. (2023)](referencias.md#ref-pangakis2023validation)). Tokenização
@@ -264,7 +274,7 @@ Oportunidade é solicitação disponível no material; resposta é acontecimento
 do estudante. Duas solicitações independentes numa unidade podem oferecer duas
 oportunidades. Etapas inseparáveis da mesma resolução não viram várias por terem
 vários campos. Operação, apoio, localizador, ordem e distinção semântica precisam
-ser conhecidos antes da contagem. A aplicação pode ser mental e autoverificada;
+ser conhecidos antes da contagem. A resposta pode ser mental e conferida pelo próprio estudante;
 isso não produz automaticamente evidência observada de desempenho.
 
 Prática de consolidação pode apontar a unidades de análise sem requisito formal
@@ -302,13 +312,17 @@ anotações do corpus não devem ser apresentadas como campos já observados pel
 | introduções por unidade | Identidades introduzidas / uma unidade de estudo, inclusive mista ou prática com novidade no retorno. | Novidade declarada, não carga cognitiva. O teto corrente de expositivas não dispensa examinar os outros casos. |
 | mobilização e retomadas | Identidades distintas mobilizadas ou retomadas / uma unidade; cada identidade conta no máximo uma vez em cada conjunto. Retomadas são subconjunto da mobilização, não soma adicional. | Não estima elementos simultâneos na memória. Mostrar também as relações que precisam ser coordenadas. |
 | cobertura do desenho | Identidades com introdução localizada / identidades planejadas para desenvolvimento; pressupostos ficam em conjunto separado. | Nome citado não cobre desenvolvimento. O inventário pode estar incompleto; relatar lacunas necessárias fora dele. |
-| ocorrência de prática | Unidades de prática ou mistas / unidades didáticas classificadas da sequência. Mostrar as três categorias separadamente. | Uma mista conta uma vez no denominador; proporção de unidades não equivale a tempo ou extensão de prática. |
+| ocorrência de prática | unidades de prática ou mistas / unidades didáticas classificadas da sequência. Mostrar as três categorias separadamente. | Uma mista conta uma vez no denominador; proporção de unidades não equivale a tempo ou extensão de prática. |
 | intervalos sem oportunidade | Número de unidades expositivas completas entre oportunidades consecutivas, mais os trechos inicial e final; cada intervalo é delimitado por esse par de posições ou borda. | Duas oportunidades na mesma unidade têm intervalo zero nessa escala, mas podem ter exposição entre si. Informar posições internas; não inferir espaçamento temporal. |
 | oportunidades por alvo | Solicitações distintas dirigidas a uma unidade de análise ou requisito / um alvo identificado; relatar também repetições e alvos sem oportunidade. | Uma solicitação com dois alvos conta uma vez no total e uma vez em cada alvo; não somar colunas por alvo como total global. |
 | extensão textual | Palavras segundo algoritmo e idioma declarados, ou caracteres segundo unidade Unicode declarada / conteúdo textual delimitado no estado observado. | Não comparar idiomas como se palavra fosse unidade universal. Notação, imagens e retorno oculto exigem descrição própria. |
-| extensão renderizada | Altura do conteúdo inspecionável em pixels CSS / altura útil do viewport de leitura em pixels CSS, no mesmo estado. | Razão contínua de telas equivalentes, não número de gestos, tempo de leitura ou dificuldade. Transbordamento horizontal é observado à parte. |
+| extensão renderizada | Altura do conteúdo inspecionável em pixels CSS / altura útil da área de leitura em pixels CSS, no mesmo estado. | Razão contínua de telas equivalentes, não número de gestos, tempo de leitura ou dificuldade. Transbordamento horizontal é observado à parte. |
 
-Para extensão renderizada, registrar viewport e área útil após barras fixas,
+A **extensão renderizada** é o espaço ocupado pelo conteúdo tal como aparece
+na tela. A área visível da página no navegador é o
+[*viewport*](https://developer.mozilla.org/en-US/docs/Glossary/Viewport). Pixels CSS são
+unidades de disposição da página, distintas dos pontos físicos da tela. Para
+comparar medidas, registrar essa área e a parte útil após barras fixas,
 largura, tipografia carregada, tamanho de fonte, entrelinha, zoom, escala do
 dispositivo, navegador, modo de visualização, idioma, tema e estado da prática
 (inicial, resposta preenchida, retorno aberto, detalhes expandidos). Medir a área
@@ -346,7 +360,7 @@ Algumas relações podem ser examinadas por meios mais precisos:
 
 - cobertura compara o inventário planejado e as introduções correntes;
 - progressão depende de ordem curricular e pré-requisitos;
-- teoria e prática aparecem nas Unidades e em suas operações;
+- teoria e prática aparecem nas unidades e em suas operações;
 - extensão editorial usa contagens observáveis, sem equivaler a complexidade;
 - densidade textual só se torna métrica quando unidade, idioma, gênero,
   denominador e procedimento estão definidos.
@@ -358,7 +372,7 @@ indevido a números fáceis de calcular.
 
 Os parâmetros pedagógicos e os alvos editoriais podem ser definidos no curso,
 na lição, na microssequência ou na unidade de estudo. Uma unidade recebe o valor
-efetivo de seu contexto. Sem definição deliberada, o GPT precisa calibrar o
+efetivo de seu contexto. Sem definição deliberada, o assistente precisa calibrar o
 desenho conforme público, tarefa, conteúdo e função.
 Quando uma pessoa fixa uma condição, essa decisão explícita prevalece no escopo
 pertinente. Remover a definição local restaura a herança do escopo ancestral
@@ -383,7 +397,7 @@ aprendizagem pretendidos permanecem no plano geral.
 Salvar uma parte apenas agrupa microssequências já previstas no mapa curricular.
 O refinamento interno do repertório não altera silenciosamente cobertura, ordem
 ou profundidade aprovadas. A camada confiável resolve identidades e evita
-duplicação; o GPT distingue introdução, uso de conhecimento estabelecido e
+duplicação; o assistente distingue introdução, uso de conhecimento estabelecido e
 retomada.
 
 ## Direção editorial
@@ -397,24 +411,20 @@ substitua silenciosamente uma condição de pesquisa.
 
 Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
 de interpretações. Ele complementa os dois alvos quantitativos com orientação
-qualitativa. O GPT aplica a direção na fase editorial pertinente sem alterar o
+qualitativa. O assistente aplica a direção na fase editorial pertinente sem alterar o
 repertório semântico. Se o conteúdo necessário não couber no formato preferido
 ou em torno do alvo de palavras, cria mais unidades de estudo coerentes.
 
 ## Política de componentes didáticos
 
-A política de componentes é independente dos parâmetros pedagógicos. Seu valor
-efetivo fixa:
+A política de [componentes didáticos](componentes-didaticos.md) define quais
+representações e formatos de resposta podem ser usados. É independente dos
+parâmetros pedagógicos. Seu valor
+efetivo fixa a revisão do catálogo, a disponibilidade de todos os componentes
+ou de uma lista restrita, os bloqueios e as preferências entre os permitidos.
 
-```text
-revisão do catálogo
-disponibilidade: todos ou somente uma lista permitida
-componentes permitidos
-componentes bloqueados
-componentes preferidos
-```
-
-Cada referência usa a identidade técnica `package@version`. Um conjunto admite
+Cada referência combina o nome técnico do pacote e a versão do seu contrato
+na forma `package@version`. Um conjunto admite
 até 64 referências. Bloqueio prevalece sobre permissão; preferência apenas
 orienta a escolha entre componentes permitidos e adequados. Disponibilidade,
 preferência e uso materializado são fatos diferentes.
@@ -446,7 +456,7 @@ conserva a decisão e os mapeamentos registrados, incluindo sua data original.
 Uma mudança de prosa, resposta, referências ou hierarquia conserva a decisão
 histórica, mas invalida a aplicação semântica corrente. As mesmas referências de
 componentes não provam que a análise continua pertinente ao conteúdo alterado.
-Somente uma nova materialização validada registra uma nova aplicação.
+Uma nova aplicação precisa ser registrada e validada para o conteúdo corrente.
 
 Uma introdução marca somente a primeira apresentação de cada unidade de análise. O
 desenvolvimento pode continuar em duas ou mais unidades de estudo sem repetir a
@@ -466,10 +476,11 @@ aplicação e prática de evidência, sem transformar essa ordem em roteiro
 universal nem inventar um requisito de evidência.
 
 O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
-e política de componentes. O PostgreSQL também confere se unidades, pais,
-microssequências e componentes correspondem ao conteúdo gravado.
+e política de componentes. O banco de dados também confere se unidades, relações curriculares,
+microssequências e componentes correspondem ao conteúdo gravado; essa
+verificação integra a [persistência relacional](persistencia-relacional.md).
 
-Essa verificação preserva rastreabilidade. Ela não substitui leitura
+Essa verificação preserva rastreabilidade. Ela não substitui a leitura
 disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
 mecanismo ou se duas práticas são substantivamente distintas.
 
@@ -488,7 +499,7 @@ ou na unidade de estudo e mostra:
 - aplicação corrente nas unidades de estudo.
 
 Ao abrir **Ajustar**, a pessoa autora encontra o significado do parâmetro e o
-aviso de que salvar muda a orientação, sem reescrever unidades ou Explicação.
+aviso de que salvar muda a orientação, sem reescrever unidades ou a explicação.
 O detalhe **Definição e origem**, antes do formulário, reúne a operação regulada,
 o alcance, a configuração atual e sua justificativa. **Fixo** indica o valor
 vigente; **Automático** delega a escolha contextual da próxima produção. A
@@ -511,8 +522,8 @@ comparar esses estados não acrescenta parâmetros ou provoca materialização.
 
 `consultar_configuracao` lê valores efetivos e `ajustar_configuracao` define ou
 restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
-indica curso ou microssequência; a camada confiável resolve os controles de
-concorrência e repetição segura.
+indica o curso e o escopo a consultar ou ajustar; o servidor verifica a versão
+atual antes de gravar e conserva a identidade de uma tentativa repetida.
 
 ## Limites operacionais
 
@@ -538,7 +549,7 @@ protocolo e suas incertezas; não constituiu revisão sistemática da literatura
 | [Saussure (1916)](referencias.md#ref-saussure1916cours), [segunda parte, cap. IV, §§ 1–2](https://fr.wikisource.org/wiki/Cours_de_linguistique_g%C3%A9n%C3%A9rale/Deuxi%C3%A8me_partie) | Valor linguístico envolve relações no sistema; equivalências entre palavras de línguas diferentes não são necessariamente exatas. | Tratar rótulo, sentido e identidade separadamente; testar equivalência no contexto antes de fundir tradução ou sinônimo. | Identidades alinhadas no corpus, sem contar palavras como conceitos. A análise linguística não fornece unidade cognitiva nem valida o inventário do curso. |
 | [Greimas (1966)](referencias.md#ref-greimas1966recit), [§ I, p. 28](https://www.persee.fr/doc/comm_0588-8018_1966_num_8_1_1114) | No problema do relato mítico, sequências articuladas e informação extratextual são necessárias à interpretação; o texto e a recepção são planos distintos. | Examinar contexto e continuidade de sentidos além da frase; não aplicar inventário de semas ou categorias narrativas como taxonomia pedagógica universal. | Localizadores e relações entre trechos; não escore de isotopia ou medida da mente. Consulta focal ao artigo, sem alegar leitura integral de *Sémantique structurale*. |
 | [Miller (1984)](referencias.md#ref-miller1984genre), [“Recurrent Rhetorical Situations” e “Implications”, pp. 155–165](https://www.researchgate.net/profile/Carolyn-Miller-15/publication/238749675_Genre_as_Social_Action/links/56bc9c9c08ae6cc737c5c405/Genre-as-Social-Action.pdf) | Gênero envolve ação retórica em situações sociais recorrentes; semelhança formal não basta. | Tratar unidade de estudo como formato de apresentação e elemento da sequência; analisar os gêneros efetivamente usados por finalidade e interlocução. | Categorias funcionais e posições das oportunidades, sem inferir gênero pela geometria. |
-| [Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation), [artigo, tarefas e resultados](https://pmc.ncbi.nlm.nih.gov/articles/PMC10372638/); [Pangakis et al. (2023)](referencias.md#ref-pangakis2023validation), [resumo do preprint](https://arxiv.org/abs/2306.00176) | LLM pode anotar textos; desempenho é dependente da tarefa, dos dados e da instrução. O segundo trabalho requer validação específica. | Usar codificação assistida e revisão de ambiguidades, sem presumir validade a partir de concordância do modelo consigo mesmo. | Comparação de recortes, ocorrências e divergências; confiabilidade humana e validade ainda não medidas. |
+| [Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation), [artigo, tarefas e resultados](https://pmc.ncbi.nlm.nih.gov/articles/PMC10372638/); [Pangakis et al. (2023)](referencias.md#ref-pangakis2023validation), [resumo do preprint](https://arxiv.org/abs/2306.00176) | Um modelo de linguagem pode anotar textos; desempenho é dependente da tarefa, dos dados e da instrução. O segundo trabalho requer validação específica. | Usar codificação assistida e revisão de ambiguidades, sem presumir validade a partir de concordância do modelo consigo mesmo. | Comparação de recortes, ocorrências e divergências; confiabilidade humana e validade ainda não medidas. |
 | [Sennrich et al. (2016)](referencias.md#ref-sennrich2016subwords), [resumo e método de subpalavras](https://aclanthology.org/P16-1162/) | Segmentação computacional permite representar palavras raras ou desconhecidas com unidades menores. | Tokens são observáveis do instrumento, não unidades semânticas aprovadas do curso. | Contagem de tokens somente para transporte/custo computacional, nunca denominador cognitivo. |
 
 No contrato atual, a unidade de estudo é um **formato de apresentação e uma parte

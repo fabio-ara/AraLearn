@@ -3,7 +3,7 @@
 ## Problema que o estado de estudo resolve
 
 Para interromper uma lição durante um deslocamento e retomá-la depois, o
-aplicativo precisa lembrar onde continuar, quais Unidades já foram avançadas e
+aplicativo precisa lembrar onde continuar, quais unidades já foram avançadas e
 o que a pessoa marcou para rever. O AraLearn chama esse conjunto mínimo de
 **estado de estudo**.
 
@@ -26,13 +26,14 @@ proporcionais ao risco
 
 ## O que é conservado
 
-| Registro | Finalidade | Unidade | Limite de interpretação |
+| Registro | Finalidade | unidade | Limite de interpretação |
 | --- | --- | --- | --- |
-| ponto de continuação | reabrir a lição na Unidade alcançada | uma posição por lição | não informa tempo, atenção, dificuldade ou domínio |
-| conclusão estrutural | impedir que uma Unidade avançada reapareça como inédita | identidades de Unidades por lição | não informa acerto, qualidade da resposta, nota ou aprendizagem |
-| marca **Rever** | formar a lista pessoal de revisão | presença ou ausência da marca por Unidade | não informa erro, déficit, prioridade docente ou risco |
+| ponto de continuação | reabrir a lição na unidade alcançada | uma posição por lição | não informa tempo, atenção, dificuldade ou domínio |
+| conclusão estrutural | impedir que uma unidade avançada reapareça como inédita | identidades de unidades por lição | não informa acerto, qualidade da resposta, nota ou aprendizagem |
+| marca **Rever** | formar a lista pessoal de revisão | presença ou ausência da marca por unidade | não informa erro, déficit, prioridade docente ou risco |
 
-Observações ficam em Anotações ancoradas próprias. Essa separação permite que o
+As observações são textos ligados ao objeto que motivou o apontamento,
+conservados separadamente do progresso. Essa separação permite que o
 proprietário faça a triagem do texto enviado sem receber o estado pessoal de
 continuidade.
 
@@ -43,32 +44,32 @@ avanço ou comparação entre estudantes.
 
 ## Avançar e retomar
 
-Abra curso, módulo, lição, microssequência e Unidade. Quando houver prática,
+Abra curso, módulo, lição, microssequência e unidade. Quando houver prática,
 responda e use **Continuar** para confirmar; depois, use **Continuar** novamente
-para avançar. Uma Unidade apenas expositiva avança no primeiro uso do controle.
+para avançar. Uma unidade apenas expositiva avança no primeiro uso do controle.
 
-O aplicativo registra a identidade da Unidade concluída e o novo ponto de
+O aplicativo registra a identidade da unidade concluída e o novo ponto de
 retomada. A resposta momentânea do componente não é guardada como avaliação.
 Sem conexão, a mudança entra na cópia local e aguarda sincronização.
 
-Ao interromper, preserve os dados do aplicativo. Quando a conexão retornar, o
-dispositivo envia as operações pendentes e compara a versão remota antes de
-concluir a sincronização.
+Ao interromper, preserve os dados do aplicativo. No modo automático, o retorno da
+conexão permite enviar as operações pendentes e comparar a versão remota.
+No modo manual, use a nuvem para solicitar a sincronização, conforme o
+[guia do estudante](guia-estudante.md#escolher-quando-sincronizar).
 
 ## Marcar para rever
 
-Dentro de uma Unidade, use **Marcar para rever**. O estado pressionado mostra que
+Dentro de uma unidade, use **Marcar para rever**. O estado pressionado mostra que
 a marca está ativa. O mesmo controle a retira.
 
-As marcas formam a seção **Rever** da tela inicial, com o caminho até a Unidade.
+As marcas formam a seção **Rever** da tela inicial, com o caminho até a unidade.
 Elas pertencem à pessoa e podem ser atualizadas sem conexão. Em dois
 dispositivos, deixe ambos sincronizarem antes de alternar repetidamente a mesma
 marca.
 
 ## Registrar uma observação
 
-Em uma Unidade acessível, abra **Observação**, escolha uma categoria ou **Sem
-categoria**, escreva e salve. Podem existir várias Anotações próprias no mesmo
+Em uma unidade acessível, abra **Observações**, escolha uma categoria ou **Sem categoria**, escreva e salve. Podem existir várias anotações próprias no mesmo
 alvo.
 
 A pessoa estudante vê somente os próprios registros. O proprietário recebe a
@@ -76,45 +77,47 @@ caixa de entrada necessária à triagem, sem o histórico de navegação do
 estudante. Sem conexão, o comando entra numa fila própria e o texto permanece no
 dispositivo. Progresso e **Rever** usam outro repositório.
 
-O documento [Observações e Anotações
+O documento [observações e anotações
 ancoradas](observacoes-pedagogicas.md) explica respostas, retirada, retenção e
 limites.
 
-## Identidades estáveis e reorganização do Curso
+## Identidades estáveis e reorganização do curso
 
-Continuidade, **Rever** e Anotações usam identidades de lição e Unidade. Inserir
-uma Unidade no começo da sequência não desloca os vínculos seguintes apenas por
+Continuidade, **Rever** e anotações usam identidades de lição e unidade. Inserir
+uma unidade no começo da sequência não desloca os vínculos seguintes apenas por
 posição. Mover ou renomear um objeto preserva o vínculo quando sua identidade
 permanece.
 
 Se o alvo for retirado, o AraLearn não transfere automaticamente a marca ou a
-Anotação para uma Unidade de texto parecido. Uma aproximação desse tipo poderia
+anotação para uma unidade de texto parecido. Uma aproximação desse tipo poderia
 associar uma dúvida ao lugar errado. Conforme a função, o registro aparece como
 indisponível ou deixa de participar da navegação.
 
 ## Cópia local e sincronização
 
-No navegador e no Android, **IndexedDB** mantém dados estruturados que sobrevivem
-ao fechamento da página. O Supabase conserva a contraparte ligada à conta para
-que outro dispositivo possa receber a continuidade.
+No navegador e no Android, o [IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API),
+recurso do navegador para guardar dados estruturados no dispositivo, conserva
+o estado depois do fechamento da página. O servidor mantém a cópia vinculada
+à conta para que outro dispositivo possa receber a continuidade. A
+[persistência relacional](persistencia-relacional.md) descreve essa sincronização.
 
 O estado pessoal envia mudanças delimitadas de progresso ou marcas **Rever**,
 em vez de substituir todo o documento a cada ação. Um identificador reconhece a
 repetição do mesmo pedido depois de uma falha de rede. As versões impedem que
 uma cópia antiga sobrescreva silenciosamente uma mudança mais recente.
 
-Anotações usam cópia e fila próprias. A versão entregue a Estudo é monotônica e
-privada por pessoa e curso: atividade de colegas não aparece como conflito,
-invalidação local ou mensagem entre abas. Essa versão coordena a leitura; ela
-não contém texto nem amplia permissões.
+As observações usam cópia e fila próprias. Sua versão de sincronização avança
+separadamente para cada pessoa e curso. Assim, uma atividade de colegas não
+provoca conflito ou aviso nas suas observações. Esse número coordena a
+atualização e não revela o texto de outra pessoa.
 
 Contadores técnicos de envio descrevem a entrega de uma operação. Eles não se
 tornam indicadores de comportamento de estudo.
 
 ## Quem pode acessar
 
-O estado de continuidade e **Rever** pertence à conta e só pode ser lido pela
-própria pessoa. Cada estudante também lê somente suas Anotações. O proprietário
+Com conta, o estado de continuidade e **Rever** só pode ser lido pela própria
+pessoa. Sem conta, permanece localmente no dispositivo. Cada estudante também lê somente suas anotações. O proprietário
 recebe a caixa de entrada do curso, sem tempo de estudo, quantidade de respostas,
 respostas anteriores ou classificação individual de desempenho.
 
@@ -124,6 +127,9 @@ qualidade docente.
 
 ## Regra para admitir um novo indicador
 
+Um indicador pretende representar um fenômeno, como autonomia ou compreensão.
+Esse conceito teórico é chamado de construto; sua definição e as evidências
+necessárias à interpretação estão no [glossário de construtos](glossario-construtos.md).
 Antes de criar um indicador educacional, é preciso documentar:
 
 1. a pergunta educacional;

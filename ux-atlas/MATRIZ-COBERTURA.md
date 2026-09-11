@@ -1,5 +1,11 @@
 # Matriz histórica de cobertura da rodada de UX
 
+> Registro histórico da rodada de UX indicada neste arquivo. As afirmações de
+> vigência abaixo pertencem àquela rodada. Para a experiência atual, consulte o
+> [sistema visual](../docs/sistema-visual.md) e os guias de
+> [estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md).
+
+
 Esta matriz registra os requisitos examinados na rodada encerrada. Seus nomes,
 agrupamentos e instruções pertencem àquele período. Para o produto vigente,
 prevalecem os contratos executáveis e o

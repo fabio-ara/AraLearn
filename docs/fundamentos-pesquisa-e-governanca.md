@@ -1,55 +1,37 @@
-# Fundamentos de pesquisa e governança científica
+# Fundamentos de pesquisa e governança
 
-## Finalidade
+## Objeto e responsabilidade da pesquisa
 
-O AraLearn pode ser examinado simultaneamente como:
+O AraLearn é um artefato técnico de pesquisa em design instrucional e tecnologia
+educacional. A pessoa autora cria cursos com assistência de inteligência
+artificial (IA), inspeciona a estrutura e o conteúdo e confere suas relações com
+as fontes. Os cursos resultantes organizam explicações, representações e
+práticas para estudo autodidata no celular.
 
-1. **produto de software**, constituído por código, dados, contratos,
-   interfaces e infraestrutura;
-2. **artefato de design**, construído para responder a um conjunto de problemas
-   e incorporar conhecimentos de projeto;
-3. **intervenção educacional**, utilizada por pessoas em atividades de Estudo,
-   Autoria e compartilhamento;
-4. **objeto de investigação**, sobre o qual se formulam perguntas, hipóteses e
-   avaliações.
+Investigar esse artefato envolve perguntas sobre o software, o desenho
+instrucional e seu uso por pessoas. O funcionamento sem conexão pode ser
+verificado no software; saber se ele favorece a continuidade ou a aprendizagem
+exige pesquisa em condições de uso definidas. A literatura fundamenta conceitos
+e hipóteses, enquanto a avaliação examina o que ocorre numa versão do produto.
 
-Essas perspectivas se relacionam, mas não são equivalentes. Um teste pode
-demonstrar que uma unidade de estudo abre sem conexão; não demonstra que a disponibilidade local
-melhora a aprendizagem. Uma fonte pode sustentar a plausibilidade de exemplos
-resolvidos; não prova que uma microssequência concreta foi bem escrita. Uma
-entrevista pode revelar como participantes compreenderam uma permissão; não
-substitui um teste de isolamento do banco de dados.
+## Governança da pesquisa
 
-Este documento ensina como separar essas formas de conhecimento, como organizar
-uma investigação responsável e como manter a documentação auditável.
+A governança da pesquisa envolve responsabilidades e procedimentos para
+sustentar sua qualidade e integridade. O Código Europeu de Conduta para a
+Integridade da Pesquisa destaca confiabilidade, honestidade, respeito e
+responsabilização, com deveres relativos ao ambiente de pesquisa, aos métodos,
+aos dados e à comunicação dos resultados
+([ALLEA (2023)](referencias.md#ref-allea2023integrity)).
 
-Nos trechos técnicos, **núcleo comum** significa a camada que coordena os
-módulos do aplicativo; **pacote de componente**, o módulo versionado que reúne
-contrato, validação e implementação de uma representação ou formato de
-resposta; e **inteligência artificial (IA)**, os modelos e serviços usados para
-auxiliar a autoria. **Local-first** designa a arquitetura em que a cópia local
-sustenta a operação corrente e a sincronização remota ocorre fora do caminho
-crítico da interação.
+No AraLearn, esses princípios orientam o registro da origem e do alcance das
+afirmações. Uma decisão do projeto precisa permanecer distinguível do
+conhecimento publicado e dos resultados de uma avaliação. A classificação
+abaixo é uma convenção documental do projeto para manter essas diferenças.
 
-## O que significa governança científica
-
-**Governança científica** é o conjunto de regras que controla como perguntas,
-fontes, decisões, implementações, dados e conclusões são produzidos e
-relacionados. Sua finalidade não é burocratizar o desenvolvimento; é impedir
-que memória de produto, convicção de projetista e resultado empírico sejam
-tratados como se fossem a mesma coisa.
-
-No AraLearn, a governança precisa responder:
-
-- de onde vem uma afirmação;
-- em que contexto ela foi produzida;
-- que decisão ela fundamenta e com qual grau de indireção;
-- onde a decisão foi implementada;
-- que teste demonstra a implementação;
-- que avaliação poderia sustentar ou enfraquecer a hipótese;
-- quais dados são necessários e quem pode acessá-los;
-- que versão do artefato foi examinada;
-- que limites impedem generalização indevida.
+Para cada afirmação relevante, o registro deve permitir reencontrar a fonte,
+o contexto, a decisão fundamentada e, quando houver implementação ou avaliação,
+a versão e a evidência correspondentes. O protocolo também define os dados
+necessários, quem pode acessá-los e os limites da conclusão.
 
 ## Estados epistêmicos
 
@@ -70,14 +52,10 @@ do AraLearn utiliza seis estados:
 Considere a afirmação “o funcionamento sem conexão reduz o abandono”. Ela contém
 duas relações distintas:
 
-```text
-conteúdo disponível sem rede
-  → propriedade técnica demonstrável
-
-disponibilidade sem rede
-  → continuidade ou abandono
-  → hipótese que exige população, comparação e medida
-```
+| Afirmação | Evidência necessária |
+| --- | --- |
+| o conteúdo está disponível sem rede | inspeção e teste da propriedade técnica |
+| a disponibilidade sem rede altera continuidade ou abandono | população, comparação e medida definidas num estudo |
 
 O teste de rede pode sustentar a primeira; não pode sustentar a segunda.
 Expressões como “melhora”, “reduz”, “favorece” e “aumenta” precisam nomear
@@ -86,9 +64,13 @@ usa-se “pretende”, “pode” ou “hipótese a avaliar”.
 
 ## Objeto, contexto e delimitação
 
-O objeto investigado é uma plataforma móvel e local-first para Estudo e Autoria
-de cursos organizados em módulos, lições, microssequências didáticas e unidades
-de estudo com representações especializadas. O contexto prioritário inclui pessoas adultas que conciliam
+O objeto investigado reúne autoria de cursos e estudo móvel. O curso é
+organizado em módulos e lições; dentro delas, as microssequências desenvolvem
+objetivos delimitados por meio de unidades de estudo, como descreve o
+[modelo didático](modelo-didatico.md). Conteúdo previamente sincronizado fica
+disponível no dispositivo, e a troca de dados com o servidor preserva a
+interação local. Essa arquitetura, chamada *local-first*, é desenvolvida em
+[armazenamento e sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo). O contexto prioritário inclui pessoas adultas que conciliam
 trabalho e estudo, utilizam celular, enfrentam interrupções e podem perder
 conectividade.
 
@@ -103,7 +85,7 @@ O problema de pesquisa não se reduz a disponibilizar conteúdo. Ele envolve:
 - dividir o percurso sem fragmentar relações;
 - escolher representações apropriadas às operações;
 - articular teoria, prática, feedback e retomada;
-- sustentar Estudo em condições móveis e sem conexão;
+- sustentar estudo em condições móveis e sem conexão;
 - permitir autoria assistida sem transferir responsabilidade à IA;
 - delimitar propriedade e acesso sem vigilância ou poder difuso;
 - manter custo, armazenamento e manutenção proporcionais.
@@ -112,10 +94,10 @@ O problema de pesquisa não se reduz a disponibilizar conteúdo. Ele envolve:
 
 Uma pergunta ampla capaz de organizar o programa é:
 
-> Como projetar e avaliar uma plataforma móvel, local-first e orientada por
-> representações para apoiar estudo e autoria em condições de tempo fragmentado
-> e conectividade variável, preservando coerência pedagógica, agência humana e
-> responsabilidade no uso de IA?
+> Como projetar e avaliar a autoria assistida por IA, a inspeção humana e o
+> estudo autodidata no celular em condições de tempo fragmentado e conectividade
+> variável, preservando coerência pedagógica, vínculo com as fontes e controle
+> humano sobre o conteúdo?
 
 Essa pergunta deve ser decomposta em estudos delimitados:
 
@@ -177,7 +159,7 @@ ter:
 - **Fundamentação:** DBR relaciona teoria, desenho e prática sem presumir que a
   intervenção funcione da mesma forma em todos os ambientes
   ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
-- **Operacionalização:** cada ciclo registra contexto, versão, conjectura C–M–O,
+- **Operacionalização:** cada ciclo registra contexto, versão, conjectura sobre contexto, mecanismo e resultado (C–M–O),
   processo, resultados, rivais, efeitos adversos e revisão.
 - **Consequências:** mudanças no produto tornam-se parte da explicação, e não
   ruído ocultado.
@@ -200,7 +182,9 @@ planejar avaliações formativas ou somativas, artificiais ou naturalísticas
 
 ### Aplicação ao AraLearn
 
-- **Problema:** o produto articula núcleo comum, pacotes de componente, contratos, armazenamento,
+- **Problema:** o produto articula um núcleo que coordena o aplicativo e pacotes
+  que implementam suas representações e respostas, conforme a
+  [arquitetura de componentes](arquitetura.md). Essa organização envolve contratos, armazenamento,
   sincronização, autoria e governança; é necessário demonstrar correção,
   utilidade e custo sem confundir esses resultados.
 - **Alternativas:** relatar apenas implementação, executar testes sem argumento
@@ -229,19 +213,10 @@ artefato. No AraLearn, as duas perspectivas podem compartilhar episódios e
 dados, mas não compartilham automaticamente a mesma pergunta nem o mesmo tipo
 de conclusão.
 
-```text
-DBR
-problema educacional situado
-  → intervenção
-  → uso em contexto
-  → explicação e princípio educacional
-
-DSR
-problema do artefato
-  → construção
-  → demonstração e avaliação
-  → contribuição de design
-```
+| Tradição | Percurso da investigação | Conhecimento pretendido |
+| --- | --- | --- |
+| DBR | problema educacional situado, intervenção e uso em contexto | explicação e princípio educacional delimitado |
+| DSR | problema do artefato, construção, demonstração e avaliação | contribuição de design sustentada pela avaliação |
 
 As duas tradições podem examinar a mesma versão, mas usam os dados para
 perguntas diferentes. Um teste visual demonstra que rótulos não se sobrepõem;
@@ -289,7 +264,7 @@ editorial não abriu diretamente, usou-se o resumo que ela disponibilizava na
 busca ou o repositório institucional indicado; isso não foi contado como leitura
 integral. Os metadados pertencem a [`referencias.bib`](referencias.bib).
 
-| Fonte primária | Escopo consultado | Papel na decisão | Limite de inferência |
+| fonte primária | Escopo consultado | Papel na decisão | Limite de inferência |
 | --- | --- | --- | --- |
 | [Biggs (1996)](referencias.md#ref-biggs1996alignment) | Resumo e metadados na página da Springer; texto integral não consultado | Articular objetivos, atividades e avaliação ao delimitar o desenho | Não prescreve a interface, a extensão da base ou um número de unidades |
 | [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli) | Resumo e seções 1.2, sobre níveis de análise, e 2.1, sobre eventos, no HTML da Wiley | Distinguir recorte de conhecimento, episódio instrucional e aprendizagem inferida | Não valida a unidade de análise instrucional do AraLearn como componente cognitivo nem como medida |
@@ -317,7 +292,7 @@ sem alegação de redução de carga cognitiva ou melhora de aprendizagem.
 
 O [glossário](glossario-construtos.md#termos-operacionais-do-modelo-didático)
 separa quatro responsabilidades. A microssequência delimita objetivo e
-progressão. Sua **base explicativa**, chamada Explicação na interface,
+progressão. Sua **base explicativa**, chamada **Explicação** na interface,
 desenvolve conteúdo intelectual/documental e fontes. O **desenho instrucional**
 articula a intenção sobre apresentação, tarefa, evidência e prática. As
 **unidades de estudo** realizam episódios desse desenho. A **unidade de análise
@@ -329,7 +304,7 @@ Permite especificar bases antes das unidades, sem supor que uma base pronta
 resolve toda a realização instrucional. Objetivo, público, escopo e dependências
 delimitam o conteúdo; fontes próprias de uma tarefa continuam ligadas à unidade
 que as mobiliza. A disponibilidade de apoio e as condições de uso precisam ser
-descritas em cada investigação: abrir a Explicação não demonstra domínio e não
+descritas em cada investigação: abrir a explicação não demonstra domínio e não
 transforma leitura em oportunidade de prática.
 
 O [contrato de autoria contextual](autoria-contextual.md) define objeto dono,
@@ -349,7 +324,7 @@ resultados humanos exigem avaliação com participantes e instrumentos próprios
 | --- | --- | --- | --- |
 | **Controle contextual:** decisões junto do objeto, com alcance e intenção/aplicado visíveis, podem reduzir erros de alvo | A pessoa prevê o efeito, escolhe o alcance e corrige uma decisão | Alterar apenas o alvo autorizado; manter objeto, foco, rolagem e rascunho ao abrir/fechar detalhes e receber resposta tardia | Autores compreendem a origem e o alcance? Ícones ou valores herdados podem ser interpretados incorretamente |
 | **Conteúdo e realização separados:** base identificável e episódios ligados ao desenho podem facilitar inspeção e reformulação | A pessoa localiza a afirmação e decide se precisa mudar base, tarefa ou representação | Produzir/revisar base sem unidades; conservar fontes por alvo; preservar configuração aplicada e indicar reinspeção pertinente após mudança material | A separação ajuda a revisar ou cria duplicação e base excessiva? Unidades podem perder substância ou ficar desatualizadas |
-| **Cadência transparente:** foco, cadência, revisão e diálogo independentes podem acomodar modos distintos de trabalho | A pessoa combina produção e inspeção sem perder as condições acordadas | Preferência pessoal nova não altera conteúdo ou condição fixada; cada revisão corresponde ao objeto salvo indicado | A pessoa reconhece os valores do preset e o que realmente revisou? Pausa ou aceitação em lote podem gerar confirmação sem inspeção |
+| **Cadência transparente:** foco, cadência, revisão e diálogo independentes podem acomodar modos distintos de trabalho | A pessoa combina produção e inspeção sem perder as condições acordadas | Preferência pessoal nova não altera conteúdo ou condição fixada; cada revisão corresponde ao objeto salvo indicado | A pessoa reconhece os valores da combinação predefinida e o que realmente revisou? Pausa ou aceitação em lote podem gerar confirmação sem inspeção |
 | **Apoio no Estudo:** base salva disponível sob demanda pode ajudar a recuperar pressupostos | O estudante reconhece uma lacuna, encontra o apoio e retoma a tarefa | Abrir a instância salva sem gerar conteúdo; manter ponto do percurso e acesso conforme os direitos | Novatos reconhecem quando consultar? Há riscos de recurso invisível, leitura passiva e dependência do apoio |
 
 O programa técnico não inicia coleta com estudantes, inferência de domínio,
@@ -363,7 +338,7 @@ A teoria da carga cognitiva destaca demandas introduzidas pelo desenho
 ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). O quadro DeFT examina
 funções e tarefas de representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Evidências de
 contiguidade e segmentação sustentam atenção à integração, mas não tornam
-qualquer Unidade curta ou imagem pedagogicamente adequada
+qualquer unidade curta ou imagem pedagogicamente adequada
 ([Ginns (2006)](referencias.md#ref-ginns2006contiguity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
 **Decisão:** uma representação especializada só se justifica quando preserva uma
@@ -416,6 +391,23 @@ explícitos; dados só entram quando ligados a pergunta e intervenção. **Hipó
 essa arquitetura pode reduzir deriva e vigilância indevida. **Limite:** esquema de dados
 válido e coleta mínima não demonstram qualidade ou confiança.
 
+### Responsabilidade na pesquisa assistida por IA
+
+O uso de IA numa investigação sobre o AraLearn também precisa ser documentado:
+quais tarefas foram assistidas, quais materiais foram enviados ao serviço e
+como os resultados foram conferidos. O referencial do Ministério da Educação
+para a pós-graduação e a pesquisa ressalta a avaliação crítica de fontes e
+resultados, a transparência do uso e a responsabilidade final dos pesquisadores
+(pp. 175–179;
+[Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao)).
+
+No protocolo particular, isso exige distinguir conteúdo proposto pelo
+assistente, decisão do pesquisador e evidência obtida no estudo. A conferência
+bibliográfica precisa alcançar a fonte pertinente à afirmação; uma referência
+sugerida pelo modelo permanece candidata até ser verificada. As regras da
+instituição, da avaliação ética e da publicação orientam a declaração e a
+proteção dos materiais empregados.
+
 ## Proveniência bibliográfica
 
 O arquivo [`referencias.bib`](referencias.bib) é a fonte bibliográfica
@@ -432,8 +424,8 @@ crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scopi
 
 A bibliografia desta documentação e as fontes usadas num curso cumprem funções
 diferentes. Dentro do produto, uma fonte possui identidade e estado correntes;
-uma Âncora localiza página, tempo, fragmento de endereço ou trecho textual; e
-uma atribuição liga essa Âncora a um item do plano, uma StudyUnit ou à Explicação
+uma âncora localiza página, tempo, fragmento de endereço ou trecho textual; e
+uma atribuição liga essa âncora a um item do plano, uma unidade de estudo ou à explicação
 compartilhada de uma microssequência. A relação
 declara se a fonte informa ou sustenta o alvo, ou se o alvo foi adaptado ou
 citado a partir dela.
@@ -445,16 +437,18 @@ julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria
 
 ## Governança de decisões
 
-O [contrato de Explicação e revisão humana](explicacao-e-revisao-humana.md)
+O [contrato de explicação e revisão humana](explicacao-e-revisao-humana.md)
 e o [contrato contextual](autoria-contextual.md) separam conteúdo produzido,
-intervenção humana, declaração de revisão e acesso. A base anterior do produto
-possui seu fluxo de revisão e aprovação; isso não demonstra a implementação
-completa do contrato contextual de revisão por base e unidade. Cada afirmação
-de implementação deve identificar a versão, o objeto e a prova que a sustenta.
+intervenção humana, declaração de revisão e acesso. A implementação registra a
+revisão das explicações e das unidades, vinculada ao conteúdo salvo, e distingue
+uma declaração vigente daquela desatualizada por mudança material. O
+[contrato de revisão](../src/domain/courseContentReview.js) explicita esses
+estados; avaliar se a pessoa compreendeu e inspecionou adequadamente o objeto
+exige observação do uso.
 
 No contrato contextual, revisão é uma declaração reversível ligada ao conteúdo
 salvo inspecionado. Mudança material pode desatualizá-la. Salvar uma edição,
-registrar Observação ou abrir conteúdo mantém significado próprio; nenhum
+registrar observação ou abrir conteúdo mantém significado próprio; nenhum
 desses atos declara revisão. Comentário também não aplica nova intenção ao
 conteúdo. O clique de revisão registra uma declaração, sem comprovar leitura,
 correção ou eficácia.
@@ -524,6 +518,30 @@ integra o desenho da análise de dados desde a definição da finalidade
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
 operacional sempre que o desenho e o risco assim exigirem.
 
+### Finalidades educacionais e reutilização institucional
+
+A governança precisa tornar discutíveis também os fins da tecnologia. As
+[lentes críticas do quadro teórico](quadro-teorico.md#lentes-críticas-sobre-informação-e-poder),
+apoiadas em [Lyotard (1984)](referencias.md#ref-lyotard1984postmodern) e
+[Foucault (1995)](referencias.md#ref-foucault1995discipline), orientam perguntas
+do projeto: que conhecimento é valorizado, quem define uma norma e quais
+consequências seguem de tornar uma atividade visível?
+
+Na análise do AraLearn, essas perguntas têm efeitos concretos. Uma quantidade
+de unidades não deve virar meta de produtividade docente; uma conclusão não
+deve virar prova de esforço; a disponibilidade móvel não deve legitimar a
+expectativa de estudo permanente. São limites de interpretação e uso que
+precisam acompanhar qualquer proposta de adoção institucional.
+
+O produto não implementa essas avaliações de pessoas. Um estudo sobre sua
+reutilização deve examinar as decisões efetivas da instituição, ouvir autores
+e estudantes, verificar condições de recusa e contestação e preservar relatos
+de efeitos adversos. Avaliar benefícios inclui perguntar para quem eles
+ocorrem e que trabalho, dependência ou restrição de autonomia os acompanha.
+O [guia de investigação](guia-pesquisador.md#formular-caminhos-de-investigação)
+apresenta uma forma de estudar essas relações sem tratá-las como efeitos já
+constatados.
+
 ### Governança de condições comparáveis
 
 Uma investigação pode usar cursos privados independentes para produzir
@@ -540,7 +558,7 @@ fontes, unidades, divergências e regras de consulta do apoio integram a condiç
 efetivamente apresentada. Modelo e configuração só são registrados quando
 conhecidos, sem preencher lacunas por adivinhação.
 
-O produto não cria uma entidade de Variante nem bloqueia o curso. Separar os
+O produto não cria uma entidade de variante nem bloqueia o curso. Separar os
 cursos ajuda a evitar mistura acidental, mas não garante equivalência semântica,
 fidelidade de exposição ou validade causal. Consulte [Comparar condições de
 desenho](experimentos-instrucionais-parametrizados.md).
@@ -576,26 +594,30 @@ desenho](experimentos-instrucionais-parametrizados.md).
 
 **Analytics** deriva do estado corrente contagens de desenho e intervenções
 humanas explicitamente observáveis. A consulta é exclusiva da pessoa
-proprietária e não inclui texto de Observações, identidade de conta, conversa ou
-cópia integral do curso.
+proprietária; a leitura quantitativa não inclui texto de observações, identidade
+de conta ou conversa. A ação **Exportar curso e análise** acrescenta o conteúdo
+integral salvo do curso, além dos registros disponíveis de fontes, configuração
+aplicada e revisão. Esse alcance está detalhado na
+[referência da exportação](dicionario-metricas-datasets.md#comparação-e-exportação).
 
 Uma medida só deve orientar pesquisa com pergunta, unidade, denominador,
 tratamento de ausências, interpretação permitida e limite. As contagens do
 produto não medem aprendizagem, atenção, esforço ou qualidade. Um desfecho exige
-protocolo, consentimento, instrumento e finalidade próprios. O snapshot sem
-identificadores diretos ainda pode ser associável ao curso; exportá-lo não
-dispensa retenção, controle de acesso nem avaliação de reidentificação.
+protocolo, instrumento e finalidade próprios, com consentimento e avaliação
+ética quando aplicáveis. Mesmo sem registros de conta, o conteúdo e seus
+metadados podem identificar pessoas ou contextos. A exportação exige controle
+de acesso, retenção e avaliação de reidentificação conforme o plano do estudo.
 
 ## Conceitos mínimos para interpretar uma investigação
 
 Um **estado observável** é uma condição que o produto consegue derivar do
-artefato corrente, como quantidade de StudyUnits ou Observações abertas. Ele não
+artefato corrente, como quantidade de unidades de estudo ou observações abertas. Ele não
 é automaticamente uma medida educacional: só ganha significado analítico
 depois que pergunta e regra de interpretação forem declaradas.
 
 O **denominador** é o conjunto de oportunidades ao qual uma contagem se refere.
 “Duas correções”, por exemplo, muda de significado se o denominador for duas,
-vinte ou duzentas Unidades elegíveis. O denominador precisa declarar inclusões,
+vinte ou duzentas unidades elegíveis. O denominador precisa declarar inclusões,
 exclusões, ausências, filtros e instante de corte.
 
 **Confiabilidade** descreve a consistência de escores, classificações ou
@@ -634,16 +656,19 @@ limites antes de orientar outro contexto.
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
+- [ALLEA (2023)](referencias.md#ref-allea2023integrity): ALLEA (2023). **The European Code of Conduct for Research Integrity: Revised Edition 2023.** All European Academies.
 - [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
 - [Biggs (1996)](referencias.md#ref-biggs1996alignment): John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364.
+- [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao): Brasil. Ministério da Educação (2026). **Referencial para Desenvolvimento e Uso Responsáveis de Inteligência Artificial na Educação.** Ministério da Educação.
 - [Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving): Markus Brunmair; Tobias Richter (2019). **Similarity Matters: A Meta-Analysis of Interleaved Learning and Its Moderators.** *Psychological Bulletin*, 145(11), p. 1029–1052.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
+- [Foucault (1995)](referencias.md#ref-foucault1995discipline): Michel Foucault (1995). **Discipline and Punish: The Birth of the Prison.** New York, Vintage Books.
 - [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel): Four-Component Instructional Design (s.d.). **About the 4C/ID Model.**
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
@@ -654,6 +679,7 @@ limites antes de orientar outro contexto.
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
 - [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner): Diana Laurillard; Eileen Kennedy; Patricia Charlton; Joanna Wild; Dionisis Dimakopoulos (2018). **Using Technology to Develop Teachers as Designers of TEL: Evaluating the Learning Designer.** *British Journal of Educational Technology*, 49(6), p. 1044–1058.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
+- [Lyotard (1984)](referencias.md#ref-lyotard1984postmodern): Jean-François Lyotard (1984). **The Postmodern Condition: A Report on Knowledge.** Minneapolis, University of Minnesota Press.
 - [Messick (1995)](referencias.md#ref-messick1995validity): Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749.
 - [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection): Microsoft (s.d.). **Guideline 9: Support Efficient Correction.**
 - [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.

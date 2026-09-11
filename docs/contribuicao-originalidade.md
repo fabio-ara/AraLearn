@@ -25,13 +25,10 @@ O AraLearn pode ser descrito como artefato implementado. Sua originalidade
 pedagógica, sua utilidade em uso e sua eficácia de aprendizagem permanecem
 questões empíricas até que sejam avaliadas com métodos compatíveis.
 
-Nos trechos técnicos, **núcleo comum** designa a camada que coordena os módulos
-do aplicativo; **pacote de componente**, o módulo versionado que reúne contrato,
-validação e implementação de uma representação ou formato de resposta; e
-**inteligência artificial (IA)**, os modelos e serviços usados para auxiliar a
-autoria. A expressão **operação local prioritária** designa a arquitetura em
-que a cópia local sustenta a operação corrente e a sincronização com o servidor
-não bloqueia o gesto da pessoa.
+A [arquitetura](arquitetura.md) descreve como o aplicativo coordena componentes,
+conteúdo e armazenamento. As contribuições a seguir relacionam essas escolhas
+a problemas de autoria e estudo, distinguindo o mecanismo implementado da
+utilidade e dos efeitos que ainda precisam ser avaliados.
 
 ## 2. Distinções necessárias
 
@@ -53,11 +50,11 @@ software sejam apresentados como resultados educacionais.
 
 ### Problema
 
-Ambientes educacionais costumam separar planejamento didático, produção de
-conteúdo, renderização de representações, prática, Estudo sem conexão, edição
-assistida e governança. Integrar tudo em uma única aplicação pode gerar um
-monólito difícil de ampliar; mantê-los totalmente separados pode romper a
-rastreabilidade entre intenção pedagógica e experiência de estudo.
+No AraLearn, o planejamento precisa orientar conteúdo, representações e prática
+que continuem utilizáveis no celular, inclusive sem conexão. Concentrar essas
+responsabilidades num único módulo de software dificultaria sua ampliação;
+separá-las sem relações explícitas poderia romper o vínculo entre intenção
+pedagógica, fontes e experiência de estudo.
 
 ### Alternativas e requisitos
 
@@ -84,7 +81,7 @@ O AraLearn investiga uma configuração integrada composta por:
 - práticas situadas dentro do objeto quando a operação assim exige;
 - estudo com cópia local e sincronização assíncrona;
 - autoria do curso e correção focal em escalas distintas;
-- propriedade do curso, acesso direto para Estudo, proveniência e correções
+- propriedade do curso, acesso direto para estudo, proveniência e correções
   revisáveis em qualquer ponto;
 - política de dados orientada pela finalidade, sem telemetria comportamental
   automática.
@@ -106,10 +103,10 @@ avalia a configuração do AraLearn como conjunto.
 ### Operacionalização
 
 A arquitetura, os contratos, as regras de autoria, a persistência e os
-protocolos de avaliação são documentados separadamente. Cada decisão possui
-identificador na [Matriz de rastreabilidade
-pedagógica](matriz-rastreabilidade-pedagogica.md), evidência técnica e episódio
-empírico requerido.
+protocolos de avaliação são documentados separadamente. A [matriz de
+rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) relaciona
+compromissos do projeto a objetos observáveis, verificações técnicas e avaliações
+educacionais necessárias.
 
 ### Consequências
 
@@ -146,8 +143,8 @@ de um artefato extensível; sua relevância e avaliação seguem a lógica de DS
 
 **Operacionalização.** Cada pacote registra contrato, mecanismo de
 renderização, descrição de descoberta, campos editáveis e testes; o núcleo
-consome essa interface comum. O catálogo corrente materializa essa decisão em
-33 pacotes, sendo 29 de conteúdo e quatro de resposta.
+consome essa interface comum. Os pacotes disponíveis e suas funções constam no
+[catálogo de componentes](componentes-didaticos.md).
 
 **Consequências.** A contribuição potencial é um padrão arquitetural para integrar representações
 acadêmicas heterogêneas sem expor detalhes geométricos à autoria.
@@ -216,8 +213,9 @@ heterogêneos; não oferecem uma cota universal ([Rey et al. (2019)](referencias
 **Operacionalização.** Plano instrucional, rubrica e auditoria verificam a
 cobertura entre teoria, exemplo, prática e feedback.
 
-**Consequências.** A contribuição potencial é um modelo operacional que distingue microteoria de
-resumo e associa granularidade à suficiência pedagógica.
+**Consequências.** A contribuição potencial é um modelo operacional que distingue a base
+explicativa de sua realização em unidades de estudo e associa o tamanho dessas
+etapas à suficiência pedagógica.
 
 **Limites e evidência.** Exigem-se confiabilidade da rubrica, julgamento de especialistas,
 compreensão por novatos, retenção, transferência e casos em que a segmentação
@@ -254,7 +252,7 @@ recuperação não demonstram que qualquer lacuna seja válida.
 
 ### C5: autoria estrutural e correção focal com escopo explícito
 
-**Problema.** Construir um curso inteiro e corrigir uma Unidade são tarefas de
+**Problema.** Construir um curso inteiro e corrigir uma unidade são tarefas de
 escala, risco e contexto diferentes.
 
 **Alternativas e requisitos.** Usar o mesmo fluxo para tudo, separar completamente
@@ -267,7 +265,8 @@ incremental sem se tornar nível curricular. Observações ficam ancoradas no
 curso, na microssequência ou na unidade de estudo e podem ser registradas em
 vários alvos na mesma ação. Ao preparar uma revisão, o contexto inclui também as unidades afetadas por progressão,
 pré-requisitos, exemplos, prática e transições; a correção atualiza diretamente
-o curso mutável e a rematerialização volta a comprovar seus parâmetros.
+o curso mutável, preservando a necessidade de conferir conteúdo, configuração
+aplicada e vínculos com as fontes após a gravação.
 
 **Fundamentação.** A interação entre pessoas e IA requer limites
 compreensíveis, correção e controle
@@ -323,16 +322,17 @@ hipótese.
 responsabilidade e produzir inferências sem validade.
 
 **Alternativas e requisitos.** Autoria coletiva com papéis, isolamento completo
-ou propriedade do curso com acesso direto para Estudo; coleta ampla ou dados
+ou propriedade do curso com acesso direto para estudo; coleta ampla ou dados
 definidos pela finalidade. A solução precisa permitir revogação, atribuição e
 proporcionalidade.
 
-**Decisão.** Cada curso possui uma pessoa proprietária, e o acesso direto concede
-somente Estudo no original. Uma edição contextual feita
-por quem estuda cria outro curso privado, sob sua propriedade, sem escrever na
-origem. Fontes, Âncoras, eventos e correções preservam proveniência. A área
-Pesquisa expõe fatos autorais sem dados identificadores e contagens descritivas,
-sem criar telemetria comportamental por conveniência.
+**Decisão.** Cada curso possui uma pessoa proprietária, que pode autorizar acesso
+para estudo e, separadamente, permitir a criação de uma cópia. Copiar exige
+pedido e confirmação explícitos; produz outro curso privado e independente,
+conforme as [regras de autoria e acesso](autoria-contextual.md). Fontes e âncoras
+localizam materiais usados e seus vínculos com o conteúdo. A área
+[Analytics](analytics-instrucionais.md) descreve o desenho e intervenções cuja
+origem permanece observável, sem coletar o comportamento de estudo.
 
 **Fundamentação.** A ética da análise de dados educacionais exige finalidade, transparência e
 responsabilidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
@@ -342,7 +342,7 @@ recebem origem e revisão; cada métrica declara pergunta, denominador, ausênci
 e interpretações vedadas.
 
 **Consequências.** A contribuição potencial é uma política integrada de
-responsabilidade autoral, compartilhamento para Estudo e minimização de dados.
+responsabilidade autoral, compartilhamento para estudo e minimização de dados.
 
 **Limites e evidência.** Devem ser examinados isolamento, reconstrução de
 autoria, compreensão de propriedade e acesso, custo de armazenamento,
@@ -381,7 +381,7 @@ configuração inexista em outros produtos ou estudos.
 
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
-| sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do curso e acesso direto preservam responsabilidade sem burocratizar o Estudo? |
+| sistema de gestão da aprendizagem (LMS) | matrícula, distribuição, atividade e registro institucional | propriedade do curso e acesso direto preservam responsabilidade sem burocratizar o estudo? |
 | flashcards e prática | recuperação, repetição e retorno após a resposta | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
 | bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
@@ -457,16 +457,14 @@ um princípio pode ser transferido.
 
 Toda contribuição avaliada deve apresentar:
 
-```text
-problema e contexto
-→ alternativas e requisitos
-→ decisão e mecanismo implementado
-→ fundamentação externa
-→ procedimento de avaliação
-→ resultado observado e incerteza
-→ explicações rivais
-→ consequências e limites de transferência
-```
+1. problema e contexto;
+2. alternativas e requisitos;
+3. decisão e mecanismo implementado;
+4. fundamentação externa;
+5. procedimento de avaliação;
+6. resultado observado e incerteza;
+7. explicações rivais;
+8. consequências e limites de transferência.
 
 Quando não houver resultado empírico, a cadeia termina em hipótese e protocolo.
 O [Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) define
